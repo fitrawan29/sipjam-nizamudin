@@ -186,7 +186,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Kelas</label>
-                                <!-- BARU: Menambahkan event onchange untuk menarik data siswa -->
+                                <!-- onchange fetchSiswaByKelas -->
                                 <select id="jurnal-kelas" required onchange="fetchSiswaByKelas()" class="w-full px-4 py-2.5 rounded-xl input-premium">
                                     <option value="" disabled selected>Memuat kelas...</option>
                                 </select>
@@ -204,15 +204,20 @@
                                 <textarea id="jurnal-kegiatan" required rows="2" class="w-full px-4 py-2.5 rounded-xl input-premium"></textarea>
                             </div>
 
-                            <!-- BARU: Container Daftar Absensi Siswa Dinamis -->
+                            <!-- FOTO KEGIATAN WAJIB -->
+                            <div class="md:col-span-2 border border-blue-200 p-4 rounded-xl bg-blue-50/50">
+                                <label class="block text-sm font-bold text-nizamudin-green mb-2"><i class="fa-solid fa-camera mr-2"></i>Upload Foto Kegiatan (Wajib Timestamp)</label>
+                                <input type="file" id="jurnal-file" accept="image/*" class="w-full px-3 py-2 border rounded-xl bg-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-nizamudin-green file:text-white">
+                            </div>
+
+                            <!-- ABSENSI DINAMIS -->
                             <div class="md:col-span-2 border border-gray-200 p-5 rounded-xl bg-gray-50/80 shadow-inner" id="container-absensi-siswa" style="display:none;">
                                 <label class="block text-xs font-bold uppercase tracking-widest text-nizamudin-green mb-3 border-b pb-2"><i class="fa-solid fa-users mr-2"></i>Absensi Siswa Per Kelas</label>
                                 
                                 <div id="list-siswa-absensi" class="space-y-2 max-h-64 overflow-y-auto custom-scroll pr-2">
-                                    <!-- Daftar Siswa Akan Di-Inject Ke Sini -->
+                                    <!-- Data siswa masuk sini -->
                                 </div>
                                 
-                                <!-- Auto Summary -->
                                 <div class="mt-4 pt-3 border-t grid grid-cols-4 gap-2 text-center font-bold text-sm bg-white p-2 rounded-lg border">
                                     <div class="text-green-700">H: <span id="sum-h">0</span></div>
                                     <div class="text-yellow-600">S: <span id="sum-s">0</span></div>
@@ -251,7 +256,7 @@
                             <input type="text" id="search-hist-presensi" onkeyup="filterHistPresensi()" placeholder="Cari riwayat presensi..." class="px-4 py-2 border rounded-lg text-sm mb-4 w-full md:w-1/3 bg-white shadow-sm focus:ring-2 focus:ring-nizamudin-gold outline-none">
                             <div class="overflow-x-auto rounded border custom-scroll">
                                 <table class="min-w-full text-sm text-left whitespace-nowrap">
-                                    <thead class="table-header"><tr><th class="p-3">Waktu</th><th class="p-3">Nama Guru</th><th class="p-3">Tipe & Jenis</th><th class="p-3">Status Verifikasi</th></tr></thead>
+                                    <thead class="table-header"><tr><th class="p-3">Waktu</th><th class="p-3">Nama Guru</th><th class="p-3">Tipe & Jenis</th><th class="p-3 text-center">Bukti</th><th class="p-3 text-center">Status Admin</th></tr></thead>
                                     <tbody id="tb-hist-presensi" class="divide-y bg-white"></tbody>
                                 </table>
                             </div>
@@ -264,11 +269,14 @@
                             </div>
                         </div>
 
+                        <!-- HIDDEN INPUT UNTUK UPLOAD ULANG JURNAL -->
+                        <input type="file" id="hidden-jurnal-resubmit" accept="image/*" class="hidden">
+
                         <div id="hist-jurnal-area" class="hidden">
                             <input type="text" id="search-hist-jurnal" onkeyup="filterHistJurnal()" placeholder="Cari riwayat jurnal..." class="px-4 py-2 border rounded-lg text-sm mb-4 w-full md:w-1/3 bg-white shadow-sm focus:ring-2 focus:ring-nizamudin-gold outline-none">
                             <div class="overflow-x-auto rounded border custom-scroll">
                                 <table class="min-w-full text-sm text-left whitespace-nowrap">
-                                    <thead class="table-header"><tr><th class="p-3">Tanggal</th><th class="p-3">Nama Guru</th><th class="p-3">Mapel</th><th class="p-3">Kelas</th><th class="p-3">Materi</th></tr></thead>
+                                    <thead class="table-header"><tr><th class="p-3">Tanggal</th><th class="p-3">Mapel</th><th class="p-3">Kelas</th><th class="p-3">Materi</th><th class="p-3 text-center">Foto</th><th class="p-3 text-center">Status Admin</th><th class="p-3 text-center">Aksi</th></tr></thead>
                                     <tbody id="tb-hist-jurnal" class="divide-y bg-white"></tbody>
                                 </table>
                             </div>
@@ -283,23 +291,23 @@
                     </div>
                 </section>
 
-                <!-- VIEW ADMIN: VERIFIKASI PRESENSI -->
+                <!-- VIEW ADMIN: VERIFIKASI PRESENSI & JURNAL -->
                 <section id="view-admin-verif" class="view-section hidden fade-in max-w-7xl mx-auto">
-                    <div class="glass-card p-6 md:p-8">
+                    <div class="flex gap-2 overflow-x-auto custom-scroll pb-2 mb-6 border-b">
+                        <button onclick="switchVerifTab('Presensi')" id="tab-verif-presensi" class="font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2 shrink-0">Verifikasi Presensi</button>
+                        <button onclick="switchVerifTab('Jurnal')" id="tab-verif-jurnal" class="font-bold text-gray-400 px-4 py-2 shrink-0">Verifikasi Jurnal Mengajar</button>
+                    </div>
+
+                    <!-- AREA PRESENSI -->
+                    <div class="glass-card p-6 md:p-8" id="area-verif-presensi">
                         <div class="flex justify-between items-center border-b border-nizamudin-gold/30 pb-3 mb-6">
-                            <h2 class="text-2xl font-arabic font-bold text-nizamudin-green flex items-center gap-3">
-                                <i class="fa-solid fa-clipboard-check text-nizamudin-gold"></i> Verifikasi Presensi Guru
-                            </h2>
+                            <h2 class="text-xl font-arabic font-bold text-nizamudin-green flex items-center gap-3"><i class="fa-solid fa-clipboard-check text-nizamudin-gold"></i> Validasi Presensi Guru</h2>
                             <button onclick="loadDataVerifikasi()" class="bg-gray-100 hover:bg-gray-200 text-nizamudin-green px-4 py-2 rounded-lg text-sm font-bold border transition shadow-sm"><i class="fa-solid fa-rotate-right mr-1"></i> Segarkan Data</button>
                         </div>
-                        
-                        <input type="text" id="search-verif" onkeyup="filterVerifikasi()" placeholder="Ketik nama, jenis, atau waktu..." class="px-4 py-2 border rounded-lg text-sm mb-4 w-full md:w-1/3 bg-white shadow-sm focus:ring-2 focus:ring-nizamudin-gold outline-none">
-                        
+                        <input type="text" id="search-verif" onkeyup="filterVerifikasi()" placeholder="Ketik nama guru..." class="px-4 py-2 border rounded-lg text-sm mb-4 w-full md:w-1/3 bg-white shadow-sm focus:ring-2 focus:ring-nizamudin-gold outline-none">
                         <div class="overflow-x-auto rounded-xl border border-gray-200 custom-scroll shadow-inner">
                             <table class="min-w-full text-sm text-left whitespace-nowrap">
-                                <thead class="table-header">
-                                    <tr><th class="py-3 px-4">Waktu</th><th class="py-3 px-4">Nama Guru</th><th class="py-3 px-4">Tipe & Jenis</th><th class="py-3 px-4 text-center">Bukti</th><th class="py-3 px-4 text-center">Status</th><th class="py-3 px-4 text-center">Verifikasi</th></tr>
-                                </thead>
+                                <thead class="table-header"><tr><th class="py-3 px-4">Waktu</th><th class="py-3 px-4">Nama Guru</th><th class="py-3 px-4">Tipe & Jenis</th><th class="py-3 px-4 text-center">Bukti</th><th class="py-3 px-4 text-center">Status</th><th class="py-3 px-4 text-center">Verifikasi</th></tr></thead>
                                 <tbody id="tb-verifikasi" class="divide-y bg-white"></tbody>
                             </table>
                         </div>
@@ -308,6 +316,28 @@
                             <div class="flex gap-2">
                                 <button onclick="changePageVerif(-1)" id="btn-prev-verif" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 font-bold text-gray-700 rounded text-sm transition disabled:opacity-50">Prev</button>
                                 <button onclick="changePageVerif(1)" id="btn-next-verif" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 font-bold text-gray-700 rounded text-sm transition disabled:opacity-50">Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AREA JURNAL -->
+                    <div class="glass-card p-6 md:p-8 hidden" id="area-verif-jurnal">
+                        <div class="flex justify-between items-center border-b border-nizamudin-gold/30 pb-3 mb-6">
+                            <h2 class="text-xl font-arabic font-bold text-nizamudin-green flex items-center gap-3"><i class="fa-solid fa-list-check text-nizamudin-gold"></i> Validasi Jurnal Mengajar</h2>
+                            <button onclick="loadDataVerifikasiJurnal()" class="bg-gray-100 hover:bg-gray-200 text-nizamudin-green px-4 py-2 rounded-lg text-sm font-bold border transition shadow-sm"><i class="fa-solid fa-rotate-right mr-1"></i> Segarkan Data</button>
+                        </div>
+                        <input type="text" id="search-verif-jurnal" onkeyup="filterVerifikasiJurnal()" placeholder="Ketik nama, mapel, atau kelas..." class="px-4 py-2 border rounded-lg text-sm mb-4 w-full md:w-1/3 bg-white shadow-sm focus:ring-2 focus:ring-nizamudin-gold outline-none">
+                        <div class="overflow-x-auto rounded-xl border border-gray-200 custom-scroll shadow-inner">
+                            <table class="min-w-full text-sm text-left whitespace-nowrap">
+                                <thead class="table-header"><tr><th class="py-3 px-4">Tanggal</th><th class="py-3 px-4">Nama Guru</th><th class="py-3 px-4">Mapel/Kelas</th><th class="py-3 px-4">Detail Absen</th><th class="py-3 px-4 text-center">Foto Bukti</th><th class="py-3 px-4 text-center">Status</th><th class="py-3 px-4 text-center">Verifikasi</th></tr></thead>
+                                <tbody id="tb-verifikasi-jurnal" class="divide-y bg-white"></tbody>
+                            </table>
+                        </div>
+                        <div class="flex justify-between items-center mt-4">
+                            <span class="text-sm text-gray-600 font-medium" id="info-verif-jurnal">Menampilkan 0 data</span>
+                            <div class="flex gap-2">
+                                <button onclick="changePageVerifJurnal(-1)" id="btn-prev-vj" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 font-bold text-gray-700 rounded text-sm transition disabled:opacity-50">Prev</button>
+                                <button onclick="changePageVerifJurnal(1)" id="btn-next-vj" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 font-bold text-gray-700 rounded text-sm transition disabled:opacity-50">Next</button>
                             </div>
                         </div>
                     </div>
@@ -333,7 +363,7 @@
                                 <h3 class="text-lg font-bold text-nizamudin-green mb-3"><i class="fa-solid fa-user-check mr-2"></i>Rekap Kehadiran Guru</h3>
                                 <div class="overflow-x-auto rounded-xl border custom-scroll">
                                     <table class="min-w-full text-sm text-left">
-                                        <thead class="table-header"><tr><th class="p-3">Nama Guru</th><th class="p-3 text-center">Hadir Sekolah</th><th class="p-3 text-center">Dinas Luar</th><th class="p-3 text-center">Izin</th><th class="p-3 text-center">Sakit</th></tr></thead>
+                                        <thead class="table-header"><tr><th class="p-3">Nama Guru</th><th class="p-3 text-center">Hadir Sekolah</th><th class="p-3 text-center">Dinas Luar</th><th class="p-3 text-center">Izin</th><th class="p-3 text-center">Sakit</th><th class="p-3 text-center bg-red-800">Alpa / Ditolak Admin</th></tr></thead>
                                         <tbody id="tb-rekap-presensi" class="divide-y bg-white"></tbody>
                                     </table>
                                 </div>
@@ -342,7 +372,7 @@
                                 <h3 class="text-lg font-bold text-nizamudin-green mb-3"><i class="fa-solid fa-book mr-2"></i>Rekap Jurnal Mengajar</h3>
                                 <div class="overflow-x-auto rounded-xl border custom-scroll">
                                     <table class="min-w-full text-sm text-left">
-                                        <thead class="table-header"><tr><th class="p-3">Mata Pelajaran</th><th class="p-3 text-center">Total Pertemuan/Jam Terisi</th></tr></thead>
+                                        <thead class="table-header"><tr><th class="p-3">Mata Pelajaran</th><th class="p-3 text-center">Total Pertemuan/Jam (Valid)</th></tr></thead>
                                         <tbody id="tb-rekap-jurnal" class="divide-y bg-white"></tbody>
                                     </table>
                                 </div>
@@ -389,8 +419,6 @@
 
                     <!-- CRUD TABLES SECTION -->
                     <div class="glass-card p-6">
-                        
-                        <!-- SISWA TABLE -->
                         <div id="master-siswa-area">
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h3 class="font-bold text-gray-700">Manajemen Siswa & Kenaikan Kelas</h3>
@@ -410,7 +438,6 @@
                             </div>
                         </div>
 
-                        <!-- GURU TABLE -->
                         <div id="master-guru-area" class="hidden">
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h3 class="font-bold text-gray-700">Manajemen Guru (Multi-Mapel)</h3>
@@ -429,7 +456,6 @@
                             </div>
                         </div>
 
-                        <!-- MAPEL TABLE -->
                         <div id="master-mapel-area" class="hidden">
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h3 class="font-bold text-gray-700">Manajemen Mata Pelajaran</h3>
@@ -448,7 +474,6 @@
                             </div>
                         </div>
 
-                        <!-- KALENDER TABLE -->
                         <div id="master-kalender-area" class="hidden">
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h3 class="font-bold text-gray-700">Kalender Pendidikan</h3>
@@ -519,7 +544,7 @@
                                     <h3 class="text-sm font-bold text-red-700 mb-3"><i class="fa-solid fa-right-from-bracket mr-1"></i> Waktu Presensi Pulang</h3>
                                     <div class="space-y-3">
                                         <div><label class="block text-xs text-gray-500 mb-1">Jam Buka</label><input type="time" id="cfg-jp-mulai" required class="w-full px-4 py-1.5 border rounded-lg text-sm bg-white"></div>
-                                        <div><label class="block text-xs text-gray-500 mb-1">Jam Tutup</label><input type="time" id="cfg-jp-akhir" required class="w-full px-4 py-1.5 border rounded-lg text-sm bg-white"></div>
+                                        <div><label class="block text-xs text-gray-500 mb-1">Jam Tutup (Opsional/Info)</label><input type="time" id="cfg-jp-akhir" required class="w-full px-4 py-1.5 border rounded-lg text-sm bg-white"></div>
                                     </div>
                                 </div>
                             </div>
@@ -575,8 +600,11 @@
         // Pagination States
         const ITEMS_PER_PAGE = 10;
         let verifDataAll = [], verifFiltered = [], verifPage = 1;
+        let verifJurnalAll = [], verifJurnalFiltered = [], verifJurnalPage = 1;
         let histPresensiAll = [], histPresensiFiltered = [], histPresensiPage = 1;
         let histJurnalAll = [], histJurnalFiltered = [], histJurnalPage = 1;
+
+        let currentResubmitId = null;
 
         const menuConfig = {
             'Guru': [
@@ -585,7 +613,7 @@
                 { id: 'view-history', icon: 'fa-clock-rotate-left', title: 'Riwayat Anda' }
             ],
             'Admin': [
-                { id: 'view-admin-verif', icon: 'fa-clipboard-check', title: 'Verifikasi Absen' },
+                { id: 'view-admin-verif', icon: 'fa-clipboard-check', title: 'Verifikasi Absen & Jurnal' },
                 { id: 'view-history', icon: 'fa-clock-rotate-left', title: 'Riwayat Log' },
                 { id: 'view-admin-rekap', icon: 'fa-file-invoice', title: 'Tarik Rekap' },
                 { id: 'view-admin-data', icon: 'fa-users-gear', title: 'Manajemen Data' },
@@ -616,52 +644,74 @@
             
             const savedSession = sessionStorage.getItem('sipjam_session');
             if (savedSession) { loginInit(JSON.parse(savedSession)); }
+
+            // Listener untuk input file hidden upload ulang jurnal
+            document.getElementById('hidden-jurnal-resubmit').addEventListener('change', function(e) {
+                if(e.target.files.length > 0) {
+                    Swal.fire({ title: 'Menyiapkan Data...', didOpen: () => Swal.showLoading() });
+                    const file = e.target.files[0];
+                    compressImage(file, (dataUrl) => {
+                        google.script.run.withSuccessHandler(function(resStr){
+                            showLoader(false); let res = JSON.parse(resStr);
+                            if(res.status === 'success') { Swal.fire('Berhasil', res.message, 'success'); loadHistory(); }
+                            else { Swal.fire('Gagal', res.message, 'error'); }
+                            e.target.value = ""; // Reset input
+                        }).resubmitFotoJurnal({ id: currentResubmitId, fileData: dataUrl, fileName: file.name });
+                    });
+                }
+            });
         };
 
         function checkTodayEvent() {
-            google.script.run.withSuccessHandler(function(resStr){
-                let info = JSON.parse(resStr);
-                if(info.status === 'success' && info.data.keterangan) {
-                    const banner = document.getElementById('banner-kalender'); document.getElementById('banner-keterangan').innerText = info.data.keterangan; banner.classList.remove('hidden');
-                    if(info.data.isLibur) { banner.classList.add('bg-red-50', 'text-red-800', 'border-red-300'); banner.classList.remove('bg-blue-100', 'text-blue-800', 'border-blue-300'); } 
-                    else { banner.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300'); banner.classList.remove('bg-red-50', 'text-red-800', 'border-red-300'); }
-                }
-            }).getTodayEvent();
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(function(res){
+                    let info = JSON.parse(res);
+                    if(info.status === 'success' && info.data.keterangan) {
+                        const banner = document.getElementById('banner-kalender'); document.getElementById('banner-keterangan').innerText = info.data.keterangan; banner.classList.remove('hidden');
+                        if(info.data.isLibur) { banner.classList.add('bg-red-50', 'text-red-800', 'border-red-300'); banner.classList.remove('bg-blue-100', 'text-blue-800', 'border-blue-300'); } 
+                        else { banner.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300'); banner.classList.remove('bg-red-50', 'text-red-800', 'border-red-300'); }
+                    }
+                }).getTodayEvent();
+            }
         }
 
         function loadSettingsAndMaster() {
-            google.script.run.withSuccessHandler(function(resStr){
-                globalSettings = JSON.parse(resStr);
-                document.getElementById('info-ta-sem').innerText = `${globalSettings.TAHUN_AJARAN} - ${globalSettings.SEMESTER}`;
-                document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN; document.getElementById('cfg-semester').value = globalSettings.SEMESTER;
-                document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
-                document.getElementById('cfg-lat').value = globalSettings.LATITUDE; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE; document.getElementById('cfg-radius').value = globalSettings.RADIUS;
-                document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
-                document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
-                document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
-            }).getAppSettings();
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(function(res){
+                    globalSettings = JSON.parse(res);
+                    document.getElementById('info-ta-sem').innerText = `${globalSettings.TAHUN_AJARAN} - ${globalSettings.SEMESTER}`;
+                    document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN; document.getElementById('cfg-semester').value = globalSettings.SEMESTER;
+                    document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
+                    document.getElementById('cfg-lat').value = globalSettings.LATITUDE; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE; document.getElementById('cfg-radius').value = globalSettings.RADIUS;
+                    document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
+                    document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
+                    document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
+                }).getAppSettings();
 
-            google.script.run.withSuccessHandler(function(resStr){
-                let d = JSON.parse(resStr);
-                let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; d.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
-                if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
-            }).getMasterData();
+                google.script.run.withSuccessHandler(function(res){
+                    let d = JSON.parse(res);
+                    let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; d.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
+                    if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
+                }).getMasterData();
 
-            if(userSession && userSession.role === 'Guru') {
-                google.script.run.withSuccessHandler(function(resStr){
-                    let d = JSON.parse(resStr);
-                    let mHtml = '<option value="" disabled selected>Pilih Mapel Anda...</option>'; 
-                    d.mapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`);
-                    if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml;
-                }).getGuruMapel(userSession.nama);
+                if(userSession && userSession.role === 'Guru') {
+                    google.script.run.withSuccessHandler(function(res){
+                        let d = JSON.parse(res);
+                        let mHtml = '<option value="" disabled selected>Pilih Mapel Anda...</option>'; 
+                        d.mapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`);
+                        if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml;
+                    }).getGuruMapel(userSession.nama);
+                }
             }
         }
 
         function handleLogin(e) {
             e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value; showLoader(true);
-            google.script.run.withSuccessHandler(function(resStr) {
-                showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { loginInit(res.user); } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
-            }).doLogin(user, pass);
+            if (typeof google !== 'undefined' && google.script) {
+                google.script.run.withSuccessHandler(function(resStr) {
+                    showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { loginInit(res.user); } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
+                }).doLogin(user, pass);
+            } 
         }
 
         function loginInit(user) {
@@ -671,7 +721,6 @@
             buildNavigation(); loadSettingsAndMaster(); checkTodayEvent(); switchTab(menuConfig[userSession.role][0].id);
             if(document.getElementById('jurnal-tanggal')) document.getElementById('jurnal-tanggal').valueAsDate = new Date();
         }
-
         function logout() { sessionStorage.removeItem('sipjam_session'); location.reload(); }
 
         function buildNavigation() {
@@ -689,7 +738,7 @@
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.remove('hidden'); document.getElementById(`nav-link-${viewId}`).classList.add('active');
             
-            if(viewId === 'view-admin-verif') loadDataVerifikasi();
+            if(viewId === 'view-admin-verif') { loadDataVerifikasi(); loadDataVerifikasiJurnal(); }
             if(viewId === 'view-history') loadHistory();
             if(viewId === 'view-admin-data') { loadMasterData('Siswa'); loadMasterData('Guru'); loadMasterData('Kalender'); loadMasterData('Mapel'); }
         }
@@ -706,6 +755,25 @@
             }; reader.readAsDataURL(file);
         }
 
+        // --- FUNGSI PREVIEW FOTO POPUP SWEETALERT ---
+        function previewFoto(url) {
+            if (!url || url === '-') return;
+            let previewUrl = url;
+            // Ubah link dari mode view menjadi preview agar bisa masuk ke iframe dengan aman
+            if (url.includes('drive.google.com')) {
+                previewUrl = url.replace(/\/view.*/, '/preview');
+            }
+            Swal.fire({
+                title: '<span class="text-lg font-bold text-nizamudin-green"><i class="fa-solid fa-image text-nizamudin-gold mr-2"></i>Bukti Lampiran</span>',
+                html: `<div class="p-2 bg-gray-50 rounded-xl border"><iframe src="${previewUrl}" class="w-full h-80 md:h-96 border-0 rounded-lg shadow-sm"></iframe></div>`,
+                width: '600px',
+                showCloseButton: true,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-2xl' }
+            });
+        }
+
+        // --- GURU ---
         function togglePresensiFields() {
             const jenis = document.getElementById('presensi-jenis').value;
             document.getElementById('row-detail-izin').classList.toggle('hidden', jenis === 'Sekolah' || jenis === 'Dinas Luar');
@@ -713,26 +781,24 @@
         }
 
         function handlePresensiSubmit(e) {
-            e.preventDefault(); if (!navigator.geolocation) return Swal.fire('Error', 'GPS tidak didukung browser ini.', 'error');
-            Swal.fire({ title: 'Menyiapkan Data...', text:'Mengunci Sinyal GPS...', didOpen: () => Swal.showLoading() });
+            e.preventDefault(); 
+            const fileInput = document.getElementById('presensi-file');
+            if(fileInput.files.length === 0) return Swal.fire('Peringatan', 'Foto selfie/bukti wajib dilampirkan sebelum mengirim!', 'warning');
+
+            if (!navigator.geolocation) return Swal.fire('Error', 'GPS tidak didukung browser ini.', 'error');
+            Swal.fire({ title: 'Menyiapkan Data...', text:'Mengunci Sinyal GPS murni...', didOpen: () => Swal.showLoading() });
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const payload = { namaGuru: userSession.nama, tipeAbsen: document.getElementById('presensi-tipe').value, jenis: document.getElementById('presensi-jenis').value, detailIzin: document.getElementById('presensi-detail-izin').value, lat: pos.coords.latitude, lon: pos.coords.longitude };
-                    const fileInput = document.getElementById('presensi-file');
-                    if (fileInput.files.length > 0) {
-                        const file = fileInput.files[0];
-                        if(file.type.startsWith('image/')) compressImage(file, (dataUrl) => { payload.fileData = dataUrl; payload.fileName = file.name; sendPresensi(payload); });
-                        else { const r = new FileReader(); r.onload = (ev) => { payload.fileData = ev.target.result; payload.fileName = file.name; sendPresensi(payload); }; r.readAsDataURL(file); }
-                    } else {
-                        if(payload.jenis === 'Sekolah') return Swal.fire('Peringatan', 'Foto selfie wajib dilampirkan.', 'warning');
-                        payload.fileData = null; payload.fileName = null; sendPresensi(payload);
-                    }
+                    const file = fileInput.files[0];
+                    if(file.type.startsWith('image/')) compressImage(file, (dataUrl) => { payload.fileData = dataUrl; payload.fileName = file.name; sendPresensi(payload); });
+                    else { const r = new FileReader(); r.onload = (ev) => { payload.fileData = ev.target.result; payload.fileName = file.name; sendPresensi(payload); }; r.readAsDataURL(file); }
                 }, 
                 (err) => {
                     let errMsg = 'Gagal mendapatkan lokasi.';
                     if (err.code === 1) errMsg = 'Akses GPS ditolak. Silakan izinkan akses lokasi pada browser/HP Anda.';
-                    else if (err.code === 2) errMsg = 'Sinyal GPS tidak tersedia saat ini. Cobalah berpindah ke area terbuka.';
-                    else if (err.code === 3) errMsg = 'Waktu pencarian GPS habis (Timeout). Silakan coba klik submit lagi.';
+                    else if (err.code === 2) errMsg = 'Sinyal satelit GPS tidak tersedia saat ini. Pindahlah ke area terbuka.';
+                    else if (err.code === 3) errMsg = 'Waktu pencarian GPS habis (Timeout). Silakan klik submit lagi.';
                     Swal.fire('Kendala Lokasi', errMsg, 'error');
                 }, 
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -751,14 +817,11 @@
             }).submitPresensiGuru(payload);
         }
 
-        // BARU: FUNGSI AMBIL DATA SISWA UNTUK ABSENSI JURNAL
         function fetchSiswaByKelas() {
             const kelas = document.getElementById('jurnal-kelas').value;
             if(!kelas) return;
-            
             const container = document.getElementById('container-absensi-siswa');
             const listDiv = document.getElementById('list-siswa-absensi');
-            
             container.style.display = 'block';
             listDiv.innerHTML = `<div class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data siswa...</div>`;
             
@@ -767,105 +830,55 @@
                 if(res.status === 'success') {
                     if(res.data.length === 0) {
                         listDiv.innerHTML = `<div class="text-center text-red-500 py-4 font-bold">Tidak ada siswa aktif di kelas ini.</div>`;
-                        updateAbsensiSummary();
-                        return;
+                        updateAbsensiSummary(); return;
                     }
                     let html = '';
                     res.data.forEach((siswa, index) => {
-                        html += `
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white border rounded-lg shadow-sm gap-2">
-                            <div class="text-sm font-semibold text-gray-700 w-full sm:w-1/2">${index + 1}. ${siswa.nama} <span class="text-xs font-normal text-gray-400 block">${siswa.nisn}</span></div>
-                            <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                                <label class="flex flex-col items-center cursor-pointer px-2">
-                                    <input type="radio" name="absen_${siswa.nisn}" value="H" checked onchange="updateAbsensiSummary()" class="w-4 h-4 text-green-600">
-                                    <span class="text-[10px] mt-1 font-bold text-green-700">Hadir</span>
-                                </label>
-                                <label class="flex flex-col items-center cursor-pointer px-2">
-                                    <input type="radio" name="absen_${siswa.nisn}" value="S" onchange="updateAbsensiSummary()" class="w-4 h-4 text-yellow-600">
-                                    <span class="text-[10px] mt-1 font-bold text-yellow-600">Sakit</span>
-                                </label>
-                                <label class="flex flex-col items-center cursor-pointer px-2">
-                                    <input type="radio" name="absen_${siswa.nisn}" value="I" onchange="updateAbsensiSummary()" class="w-4 h-4 text-blue-600">
-                                    <span class="text-[10px] mt-1 font-bold text-blue-600">Izin</span>
-                                </label>
-                                <label class="flex flex-col items-center cursor-pointer px-2">
-                                    <input type="radio" name="absen_${siswa.nisn}" value="A" onchange="updateAbsensiSummary()" class="w-4 h-4 text-red-600">
-                                    <span class="text-[10px] mt-1 font-bold text-red-600">Alpa</span>
-                                </label>
-                            </div>
-                        </div>`;
+                        html += `<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white border rounded-lg shadow-sm gap-2"><div class="text-sm font-semibold text-gray-700 w-full sm:w-1/2">${index + 1}. ${siswa.nama} <span class="text-xs font-normal text-gray-400 block">${siswa.nisn}</span></div><div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end"><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="H" checked onchange="updateAbsensiSummary()" class="w-4 h-4 text-green-600"><span class="text-[10px] mt-1 font-bold text-green-700">Hadir</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="S" onchange="updateAbsensiSummary()" class="w-4 h-4 text-yellow-600"><span class="text-[10px] mt-1 font-bold text-yellow-600">Sakit</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="I" onchange="updateAbsensiSummary()" class="w-4 h-4 text-blue-600"><span class="text-[10px] mt-1 font-bold text-blue-600">Izin</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="A" onchange="updateAbsensiSummary()" class="w-4 h-4 text-red-600"><span class="text-[10px] mt-1 font-bold text-red-600">Alpa</span></label></div></div>`;
                     });
-                    listDiv.innerHTML = html;
-                    updateAbsensiSummary();
-                } else {
-                    listDiv.innerHTML = `<div class="text-center text-red-500 py-4">Gagal memuat siswa: ${res.message}</div>`;
-                }
+                    listDiv.innerHTML = html; updateAbsensiSummary();
+                } else { listDiv.innerHTML = `<div class="text-center text-red-500 py-4">Gagal memuat siswa: ${res.message}</div>`; }
             }).getSiswaByKelas(kelas);
         }
 
-        // BARU: FUNGSI UPDATE AUTO-SUM ABSENSI SISWA
         function updateAbsensiSummary() {
             let h = 0, s = 0, i = 0, a = 0;
             const radios = document.querySelectorAll('#list-siswa-absensi input[type="radio"]:checked');
-            radios.forEach(r => {
-                if(r.value === 'H') h++;
-                if(r.value === 'S') s++;
-                if(r.value === 'I') i++;
-                if(r.value === 'A') a++;
-            });
-            document.getElementById('sum-h').innerText = h;
-            document.getElementById('sum-s').innerText = s;
-            document.getElementById('sum-i').innerText = i;
-            document.getElementById('sum-a').innerText = a;
+            radios.forEach(r => { if(r.value === 'H') h++; if(r.value === 'S') s++; if(r.value === 'I') i++; if(r.value === 'A') a++; });
+            document.getElementById('sum-h').innerText = h; document.getElementById('sum-s').innerText = s; document.getElementById('sum-i').innerText = i; document.getElementById('sum-a').innerText = a;
         }
 
         function handleJurnalSubmit(e) {
             e.preventDefault();
-            
-            // Mengambil hasil rekapitulasi auto-sum
-            let sumH = document.getElementById('sum-h').innerText;
-            let sumS = document.getElementById('sum-s').innerText;
-            let sumI = document.getElementById('sum-i').innerText;
-            let sumA = document.getElementById('sum-a').innerText;
+            const fileInput = document.getElementById('jurnal-file');
+            if(fileInput.files.length === 0) return Swal.fire('Peringatan', 'Foto kegiatan wajib dilampirkan!', 'warning');
+
+            let sumH = document.getElementById('sum-h').innerText; let sumS = document.getElementById('sum-s').innerText; let sumI = document.getElementById('sum-i').innerText; let sumA = document.getElementById('sum-a').innerText;
             const absensiStr = `H:${sumH}|S:${sumS}|I:${sumI}|A:${sumA}`;
             
-            // Menyusun string detail siapa saja yang absen
             let detailList = [];
-            const studentDivs = document.querySelectorAll('#list-siswa-absensi > div.flex');
-            studentDivs.forEach(div => {
+            document.querySelectorAll('#list-siswa-absensi > div.flex').forEach(div => {
                 let nameText = div.querySelector('.text-sm.font-semibold').innerText.split('\n')[0].replace(/^\d+\.\s*/, '');
                 let selectedRadio = div.querySelector('input[type="radio"]:checked');
-                if(selectedRadio && selectedRadio.value !== 'H') { 
-                    detailList.push(`${nameText} (${selectedRadio.value})`);
-                }
+                if(selectedRadio && selectedRadio.value !== 'H') { detailList.push(`${nameText} (${selectedRadio.value})`); }
             });
             let detailAbsensiStr = detailList.length > 0 ? detailList.join(', ') : 'Nihil (Semua Hadir)';
 
-            const payload = { 
-                namaGuru: userSession.nama, 
-                mapel: document.getElementById('jurnal-mapel').value, 
-                kelas: document.getElementById('jurnal-kelas').value, 
-                tanggal: document.getElementById('jurnal-tanggal').value, 
-                materi: document.getElementById('jurnal-materi').value, 
-                kegiatan: document.getElementById('jurnal-kegiatan').value, 
-                absensiSiswa: absensiStr, 
-                keterangan: "-", // Default string kosong agar struktur db aman
-                refleksi: document.getElementById('jurnal-refleksi').value,
-                detailAbsensi: detailAbsensiStr
-            };
-
-            showLoader(true);
-            google.script.run.withSuccessHandler(function(resStr){
-                showLoader(false); 
-                let r = JSON.parse(resStr);
-                if(r.status === 'success') {
-                    Swal.fire('Tersimpan', r.message, 'success'); 
-                    e.target.reset(); 
-                    document.getElementById('jurnal-tanggal').valueAsDate = new Date();
-                    document.getElementById('container-absensi-siswa').style.display = 'none'; // Sembunyikan daftar siswa
-                    if(document.getElementById('view-history').classList.contains('hidden') === false) loadHistory();
-                } else { Swal.fire('Gagal', r.message, 'error'); }
-            }).submitJurnal(payload);
+            Swal.fire({ title: 'Menyiapkan Data...', didOpen: () => Swal.showLoading() });
+            const payload = { namaGuru: userSession.nama, mapel: document.getElementById('jurnal-mapel').value, kelas: document.getElementById('jurnal-kelas').value, tanggal: document.getElementById('jurnal-tanggal').value, materi: document.getElementById('jurnal-materi').value, kegiatan: document.getElementById('jurnal-kegiatan').value, absensiSiswa: absensiStr, keterangan: "-", refleksi: document.getElementById('jurnal-refleksi').value, detailAbsensi: detailAbsensiStr };
+            
+            compressImage(fileInput.files[0], (dataUrl) => {
+                payload.fileData = dataUrl; payload.fileName = fileInput.files[0].name;
+                google.script.run.withSuccessHandler(function(resStr){
+                    showLoader(false); let r = JSON.parse(resStr);
+                    if(r.status === 'success') {
+                        Swal.fire('Tersimpan', r.message, 'success'); 
+                        e.target.reset(); document.getElementById('jurnal-tanggal').valueAsDate = new Date();
+                        document.getElementById('container-absensi-siswa').style.display = 'none';
+                        if(document.getElementById('view-history').classList.contains('hidden') === false) loadHistory();
+                    } else { Swal.fire('Gagal', r.message, 'error'); }
+                }).submitJurnal(payload);
+            });
         }
 
         // --- HISTORY (WITH PAGINATION & SEARCH) ---
@@ -877,8 +890,8 @@
         }
 
         function loadHistory() {
-            document.getElementById('tb-hist-presensi').innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
-            document.getElementById('tb-hist-jurnal').innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
+            document.getElementById('tb-hist-presensi').innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
+            document.getElementById('tb-hist-jurnal').innerHTML = `<tr><td colspan="7" class="text-center p-4 text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
             const namaFilter = userSession.role === 'Admin' ? '' : userSession.nama; 
             google.script.run.withSuccessHandler(function(resStr){
                 let res = JSON.parse(resStr);
@@ -903,10 +916,12 @@
                 if(r.status.includes("Terlambat")) badgeClass = "bg-orange-100 text-orange-700";
                 else if(r.status.includes("Terverifikasi") || r.status === "Disetujui") badgeClass = "bg-green-100 text-green-700";
                 else if(r.status === "Ditolak") badgeClass = "bg-red-100 text-red-700";
+                
+                let linkBukti = (r.link && r.link !== "-") ? `<button onclick="previewFoto('${r.link}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Cek</button>` : `-`;
 
-                htmlP += `<tr class="hover:bg-gray-50"><td class="p-3">${r.waktu}</td><td class="p-3 font-bold text-nizamudin-green">${r.nama}</td><td class="p-3">${r.tipe} - ${r.jenis}</td><td class="p-3"><span class="px-2 py-1 ${badgeClass} text-xs font-bold rounded border uppercase tracking-wider">${r.status}</span></td></tr>`; 
+                htmlP += `<tr class="hover:bg-gray-50"><td class="p-3">${r.waktu}</td><td class="p-3 font-bold text-nizamudin-green">${r.nama}</td><td class="p-3">${r.tipe} - ${r.jenis}</td><td class="p-3 text-center">${linkBukti}</td><td class="p-3 text-center"><span class="px-2 py-1 ${badgeClass} text-xs font-bold rounded border uppercase tracking-wider">${r.status}</span></td></tr>`; 
             });
-            document.getElementById('tb-hist-presensi').innerHTML = htmlP || '<tr><td colspan="4" class="text-center p-4">Tidak ada riwayat presensi.</td></tr>';
+            document.getElementById('tb-hist-presensi').innerHTML = htmlP || '<tr><td colspan="5" class="text-center p-4">Tidak ada riwayat presensi.</td></tr>';
             
             document.getElementById('info-hist-presensi').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histPresensiFiltered.length)} dari ${histPresensiFiltered.length}`;
             document.getElementById('btn-prev-hp').disabled = histPresensiPage === 1;
@@ -919,18 +934,41 @@
             histJurnalPage = 1; renderHistJurnal();
         }
         function changePageHistJurnal(dir) { histJurnalPage += dir; renderHistJurnal(); }
+        function uploadUlangFotoJurnal(id) {
+            currentResubmitId = id;
+            document.getElementById('hidden-jurnal-resubmit').click();
+        }
+
         function renderHistJurnal() {
             const start = (histJurnalPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE;
             const slice = histJurnalFiltered.slice(start, end);
-            let htmlJ = ''; slice.forEach(r => { htmlJ += `<tr class="hover:bg-gray-50"><td class="p-3">${r.tanggal}</td><td class="p-3 font-bold text-nizamudin-green">${r.nama}</td><td class="p-3">${r.mapel}</td><td class="p-3">${r.kelas}</td><td class="p-3 text-xs max-w-xs truncate" title="${r.materi}">${r.materi}</td></tr>`; });
-            document.getElementById('tb-hist-jurnal').innerHTML = htmlJ || '<tr><td colspan="5" class="text-center p-4">Tidak ada riwayat jurnal.</td></tr>';
+            let htmlJ = ''; slice.forEach(r => { 
+                let badgeClass = "bg-yellow-100 text-yellow-700";
+                if(r.status === "Disetujui" || r.status.includes("Terverifikasi")) badgeClass = "bg-green-100 text-green-700";
+                else if(r.status === "Ditolak") badgeClass = "bg-red-100 text-red-700";
+
+                let linkBukti = (r.link && r.link !== "-") ? `<button onclick="previewFoto('${r.link}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Foto</button>` : `-`;
+                let btnUploadUlang = (r.status === "Ditolak" && userSession.role === 'Guru') ? `<button onclick="uploadUlangFotoJurnal('${r.id}')" class="bg-red-600 hover:bg-red-700 text-white text-[10px] px-2 py-1 rounded shadow"><i class="fa-solid fa-upload"></i> Perbaiki</button>` : `-`;
+
+                htmlJ += `<tr class="hover:bg-gray-50"><td class="p-3">${r.tanggal}</td><td class="p-3">${r.mapel}</td><td class="p-3">${r.kelas}</td><td class="p-3 text-xs max-w-xs truncate" title="${r.materi}">${r.materi}</td><td class="p-3 text-center">${linkBukti}</td><td class="p-3 text-center"><span class="px-2 py-1 ${badgeClass} text-xs font-bold rounded border uppercase tracking-wider">${r.status}</span></td><td class="p-3 text-center">${btnUploadUlang}</td></tr>`; 
+            });
+            document.getElementById('tb-hist-jurnal').innerHTML = htmlJ || '<tr><td colspan="7" class="text-center p-4">Tidak ada riwayat jurnal.</td></tr>';
             
             document.getElementById('info-hist-jurnal').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histJurnalFiltered.length)} dari ${histJurnalFiltered.length}`;
             document.getElementById('btn-prev-hj').disabled = histJurnalPage === 1;
             document.getElementById('btn-next-hj').disabled = end >= histJurnalFiltered.length;
         }
 
-        // --- VERIFIKASI ADMIN (WITH PAGINATION & SEARCH) ---
+        // --- VERIFIKASI ADMIN (PRESENSI & JURNAL) ---
+        function switchVerifTab(tabName) {
+            document.getElementById('tab-verif-presensi').className = tabName === 'Presensi' ? "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2 shrink-0" : "font-bold text-gray-400 px-4 py-2 shrink-0";
+            document.getElementById('tab-verif-jurnal').className = tabName === 'Jurnal' ? "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2 shrink-0" : "font-bold text-gray-400 px-4 py-2 shrink-0";
+            document.getElementById('area-verif-presensi').classList.toggle('hidden', tabName !== 'Presensi');
+            document.getElementById('area-verif-jurnal').classList.toggle('hidden', tabName !== 'Jurnal');
+            if(tabName === 'Presensi') loadDataVerifikasi(); else loadDataVerifikasiJurnal();
+        }
+
+        // --- VERIFIKASI PRESENSI ---
         function loadDataVerifikasi() {
             document.getElementById('tb-verifikasi').innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
             google.script.run.withSuccessHandler(function(resStr){
@@ -948,7 +986,6 @@
             const start = (verifPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE;
             const slice = verifFiltered.slice(start, end);
             const tbody = document.getElementById('tb-verifikasi'); tbody.innerHTML = '';
-            
             if(slice.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500">Tidak ada data ditemukan.</td></tr>`; }
             else {
                 slice.forEach(row => {
@@ -957,12 +994,12 @@
                     else if(row["Status Verifikasi"].includes("Terverifikasi") || row["Status Verifikasi"] === "Disetujui") badgeClass = "bg-green-100 text-green-700";
                     else if(row["Status Verifikasi"] === "Ditolak") badgeClass = "bg-red-100 text-red-700";
 
-                    let actionBtns = row["Status Verifikasi"] === "Menunggu Verifikasi" ? `<button onclick="aksiVerifikasi('${row["ID"]}', 'Disetujui')" class="bg-nizamudin-green text-white px-3 py-1 rounded text-xs shadow-sm mr-1"><i class="fa-solid fa-check"></i></button><button onclick="aksiVerifikasi('${row["ID"]}', 'Ditolak')" class="bg-red-500 text-white px-3 py-1 rounded text-xs shadow-sm"><i class="fa-solid fa-xmark"></i></button>` : `<span class="text-gray-400 text-xs italic"><i class="fa-solid fa-lock text-[10px]"></i> Selesai</span>`;
-                    let linkBukti = row["Link Bukti File"] !== "-" ? `<a href="${row["Link Bukti File"]}" target="_blank" class="text-blue-600 hover:underline text-xs"><i class="fa-solid fa-paperclip"></i> Bukti</a>` : `-`;
+                    let actionBtns = row["Status Verifikasi"].includes("Menunggu Verifikasi") || row["Status Verifikasi"].includes("Menunggu Verif") ? `<button onclick="aksiVerifikasi('${row["ID"]}', 'Disetujui')" class="bg-nizamudin-green text-white px-3 py-1 rounded text-xs shadow-sm mr-1"><i class="fa-solid fa-check"></i></button><button onclick="aksiVerifikasi('${row["ID"]}', 'Ditolak')" class="bg-red-500 text-white px-3 py-1 rounded text-xs shadow-sm"><i class="fa-solid fa-xmark"></i></button>` : `<span class="text-gray-400 text-xs italic"><i class="fa-solid fa-lock text-[10px]"></i> Selesai</span>`;
+                    let linkBukti = (row["Link Bukti File"] && row["Link Bukti File"] !== "-") ? `<button onclick="previewFoto('${row["Link Bukti File"]}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Bukti</button>` : `-`;
+                    
                     tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-3 px-4">${row["Timestamp"]}</td><td class="py-3 px-4 font-bold text-nizamudin-green">${row["Nama Guru"]}</td><td class="py-3 px-4">${row["Tipe Absen"]} - ${row["Jenis Presensi"]}</td><td class="py-3 px-4 text-center">${linkBukti}</td><td class="py-3 px-4 text-center"><span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}">${row["Status Verifikasi"]}</span></td><td class="py-3 px-4 text-center">${actionBtns}</td></tr>`;
                 });
             }
-            
             document.getElementById('info-verif').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifFiltered.length)} dari ${verifFiltered.length}`;
             document.getElementById('btn-prev-verif').disabled = verifPage === 1;
             document.getElementById('btn-next-verif').disabled = end >= verifFiltered.length;
@@ -974,6 +1011,49 @@
             })
         }
 
+        // --- VERIFIKASI JURNAL ---
+        function loadDataVerifikasiJurnal() {
+            document.getElementById('tb-verifikasi-jurnal').innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
+            google.script.run.withSuccessHandler(function(resStr){
+                let res = JSON.parse(resStr); if(res.status === 'success') { verifJurnalAll = res.data; filterVerifikasiJurnal(); }
+            }).getJurnalForVerification();
+        }
+
+        function filterVerifikasiJurnal() {
+            const kw = document.getElementById('search-verif-jurnal').value.toLowerCase();
+            verifJurnalFiltered = verifJurnalAll.filter(r => JSON.stringify(r).toLowerCase().includes(kw));
+            verifJurnalPage = 1; renderVerifikasiJurnal();
+        }
+        function changePageVerifJurnal(dir) { verifJurnalPage += dir; renderVerifikasiJurnal(); }
+        function renderVerifikasiJurnal() {
+            const start = (verifJurnalPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE;
+            const slice = verifJurnalFiltered.slice(start, end);
+            const tbody = document.getElementById('tb-verifikasi-jurnal'); tbody.innerHTML = '';
+            if(slice.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-500">Tidak ada data ditemukan.</td></tr>`; }
+            else {
+                slice.forEach(row => {
+                    let badgeClass = "bg-yellow-100 text-yellow-700";
+                    if(row["Status Verifikasi"] === "Disetujui") badgeClass = "bg-green-100 text-green-700";
+                    else if(row["Status Verifikasi"] === "Ditolak") badgeClass = "bg-red-100 text-red-700";
+
+                    let actionBtns = row["Status Verifikasi"] === "Menunggu Verifikasi" ? `<button onclick="aksiVerifikasiJurnal('${row["ID"]}', 'Disetujui')" class="bg-nizamudin-green text-white px-3 py-1 rounded text-xs shadow-sm mr-1"><i class="fa-solid fa-check"></i></button><button onclick="aksiVerifikasiJurnal('${row["ID"]}', 'Ditolak')" class="bg-red-500 text-white px-3 py-1 rounded text-xs shadow-sm"><i class="fa-solid fa-xmark"></i></button>` : `<span class="text-gray-400 text-xs italic"><i class="fa-solid fa-lock text-[10px]"></i> Selesai</span>`;
+                    let linkBukti = (row["Link Bukti File"] && row["Link Bukti File"] !== "-") ? `<button onclick="previewFoto('${row["Link Bukti File"]}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Cek Foto</button>` : `-`;
+                    
+                    tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-3 px-4">${row["Tanggal"]}</td><td class="py-3 px-4 font-bold text-nizamudin-green">${row["Nama Guru"]}</td><td class="py-3 px-4">${row["Mapel"]} / ${row["Kelas"]}</td><td class="py-3 px-4 text-xs max-w-xs truncate" title="${row["Detail Absen"]}">${row["Detail Absen"]}</td><td class="py-3 px-4 text-center">${linkBukti}</td><td class="py-3 px-4 text-center"><span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}">${row["Status Verifikasi"]}</span></td><td class="py-3 px-4 text-center">${actionBtns}</td></tr>`;
+                });
+            }
+            document.getElementById('info-verif-jurnal').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifJurnalFiltered.length)} dari ${verifJurnalFiltered.length}`;
+            document.getElementById('btn-prev-vj').disabled = verifJurnalPage === 1;
+            document.getElementById('btn-next-vj').disabled = end >= verifJurnalFiltered.length;
+        }
+
+        function aksiVerifikasiJurnal(id, status) {
+            Swal.fire({ title: 'Konfirmasi Aksi', text: `Ubah status jurnal menjadi "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#0B4619' }).then((result) => {
+                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); loadDataVerifikasiJurnal(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasiJurnal(id, status); }
+            })
+        }
+
+        // --- REKAP ADMIN DATE RANGE ---
         function tarikDataRekap() {
             const startDate = document.getElementById('rekap-start').value; const endDate = document.getElementById('rekap-end').value; 
             if(!startDate || !endDate) return Swal.fire('Peringatan', 'Lengkapi Tanggal Mulai dan Akhir.', 'warning'); showLoader(true);
@@ -981,10 +1061,11 @@
         }
         function renderTabelRekap(dataPresensi, dataJurnal) {
             const tbP = document.getElementById('tb-rekap-presensi'); const tbJ = document.getElementById('tb-rekap-jurnal'); tbP.innerHTML = ''; tbJ.innerHTML = '';
-            for(let guru in dataPresensi) { let d = dataPresensi[guru]; tbP.innerHTML += `<tr><td class="p-3">${guru}</td><td class="p-3 text-center text-green-700 font-bold">${d.Hadir}</td><td class="p-3 text-center">${d.DinasLuar}</td><td class="p-3 text-center text-blue-600">${d.Izin}</td><td class="p-3 text-center text-yellow-600">${d.Sakit}</td></tr>`; }
+            for(let guru in dataPresensi) { let d = dataPresensi[guru]; tbP.innerHTML += `<tr><td class="p-3">${guru}</td><td class="p-3 text-center text-green-700 font-bold">${d.Hadir}</td><td class="p-3 text-center">${d.DinasLuar}</td><td class="p-3 text-center text-blue-600">${d.Izin}</td><td class="p-3 text-center text-yellow-600">${d.Sakit}</td><td class="p-3 text-center text-red-100 bg-red-700 font-bold">${d.Alpa}</td></tr>`; }
             for(let mapel in dataJurnal) { tbJ.innerHTML += `<tr><td class="p-3">${mapel}</td><td class="p-3 text-center text-nizamudin-green font-bold">${dataJurnal[mapel]} Kali</td></tr>`; }
         }
 
+        // --- CRUD DATA MASTER ADMIN ---
         function switchMasterTab(tabName) {
             ['Siswa', 'Guru', 'Mapel', 'Kalender'].forEach(t => {
                 if(t === tabName) { document.getElementById(`tab-master-${t.toLowerCase()}`).className = "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2 shrink-0"; document.getElementById(`master-${t.toLowerCase()}-area`).classList.remove('hidden'); } 
@@ -994,8 +1075,8 @@
 
         function loadMasterData(tipe) {
             const tbId = `tb-master-${tipe.toLowerCase()}`; document.getElementById(tbId).innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
-            google.script.run.withSuccessHandler(function(resStr){
-                let r = JSON.parse(resStr);
+            google.script.run.withSuccessHandler(function(res){
+                let r = JSON.parse(res);
                 if(r.status === 'success') {
                     if(tipe === 'Siswa') { masterDataSiswa = r.data; renderTbSiswa(); }
                     else if(tipe === 'Guru') { masterDataGuru = r.data; renderTbGuru(); }
@@ -1046,7 +1127,7 @@
             }).then((res) => {
                 if(res.isConfirmed) {
                     showLoader(true);
-                    google.script.run.withSuccessHandler(function(resStr) { showLoader(false); let r = JSON.parse(resStr); Swal.fire('Sukses', r.message, 'success'); loadMasterData('Siswa'); }).bulkUpdateSiswaKelas(checked, res.value);
+                    google.script.run.withSuccessHandler(r => { showLoader(false); Swal.fire('Sukses', JSON.parse(r).message, 'success'); loadMasterData('Siswa'); }).bulkUpdateSiswaKelas(checked, res.value);
                 }
             });
         }
@@ -1112,7 +1193,7 @@
 
         function submitCRUD(tipe, aksi, idLama, rowBaru) {
             showLoader(true);
-            google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); Swal.fire('Informasi', res.message, res.status); loadMasterData(tipe); checkTodayEvent(); }).kelolaDataMaster(tipe, aksi, idLama, rowBaru);
+            google.script.run.withSuccessHandler(res => { showLoader(false); Swal.fire('Informasi', JSON.parse(res).message, JSON.parse(res).status); loadMasterData(tipe); checkTodayEvent(); }).kelolaDataMaster(tipe, aksi, idLama, rowBaru);
         }
 
         function downloadTemplate(type) {
@@ -1139,23 +1220,21 @@
                     else if(type === 'mapel') { targetSheetName = 'Data_Mapel'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[0], r[1]]); }
                     else if(type === 'kalender') { targetSheetName = 'Kalender_Pendidikan'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[0], r[1], r[2]]); }
 
-                    google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); Swal.fire('Sukses', res.message, 'success'); fileInput.value = ''; loadMasterData(type.charAt(0).toUpperCase() + type.slice(1)); }).bulkImportData(targetSheetName, rows);
+                    google.script.run.withSuccessHandler(function(res){ showLoader(false); Swal.fire('Sukses', JSON.parse(res).message, 'success'); fileInput.value = ''; loadMasterData(type.charAt(0).toUpperCase() + type.slice(1)); }).bulkImportData(targetSheetName, rows);
                 } catch(err) { showLoader(false); Swal.fire('Error File', 'File rusak atau format salah.', 'error'); }
             }; reader.readAsArrayBuffer(fileInput.files[0]);
         }
 
         function triggerEmailReminders() {
             Swal.fire({ title: 'Kirim Peringatan Email?', text: "Sistem akan mengecek guru yang aktif dan belum absen lalu mengirimkan email peringatan.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then((result) => {
-                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); Swal.fire('Selesai', res.message, res.status); }).sendEmailReminders(); }
+                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(res => { showLoader(false); let r = JSON.parse(res); Swal.fire('Selesai', r.message, r.status); }).sendEmailReminders(); }
             })
         }
 
         function handleSettingSubmit(e) {
             e.preventDefault(); showLoader(true);
-            const args = [
-                document.getElementById('cfg-ta').value, document.getElementById('cfg-semester').value, document.getElementById('cfg-tgl-mulai').value, document.getElementById('cfg-tgl-akhir').value, document.getElementById('cfg-lat').value, document.getElementById('cfg-lon').value, document.getElementById('cfg-radius').value, document.getElementById('cfg-jd-mulai').value, document.getElementById('cfg-jd-akhir').value, document.getElementById('cfg-jp-mulai').value, document.getElementById('cfg-jp-akhir').value, document.getElementById('cfg-hari-sekolah').value
-            ];
-            google.script.run.withSuccessHandler(function(resStr) { showLoader(false); let res = JSON.parse(resStr); Swal.fire('Berhasil', res.message, 'success'); loadSettingsAndMaster(); checkTodayEvent(); }).saveAppSettings(...args);
+            const args = [ document.getElementById('cfg-ta').value, document.getElementById('cfg-semester').value, document.getElementById('cfg-tgl-mulai').value, document.getElementById('cfg-tgl-akhir').value, document.getElementById('cfg-lat').value, document.getElementById('cfg-lon').value, document.getElementById('cfg-radius').value, document.getElementById('cfg-jd-mulai').value, document.getElementById('cfg-jd-akhir').value, document.getElementById('cfg-jp-mulai').value, document.getElementById('cfg-jp-akhir').value, document.getElementById('cfg-hari-sekolah').value ];
+            google.script.run.withSuccessHandler((res) => { showLoader(false); Swal.fire('Berhasil', 'Disimpan.', 'success'); loadSettingsAndMaster(); checkTodayEvent(); }).saveAppSettings(...args);
         }
     </script>
 </body>
