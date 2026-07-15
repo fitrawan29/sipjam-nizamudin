@@ -186,7 +186,8 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Kelas</label>
-                                <select id="jurnal-kelas" required class="w-full px-4 py-2.5 rounded-xl input-premium">
+                                <!-- BARU: Menambahkan event onchange untuk menarik data siswa -->
+                                <select id="jurnal-kelas" required onchange="fetchSiswaByKelas()" class="w-full px-4 py-2.5 rounded-xl input-premium">
                                     <option value="" disabled selected>Memuat kelas...</option>
                                 </select>
                             </div>
@@ -203,13 +204,20 @@
                                 <textarea id="jurnal-kegiatan" required rows="2" class="w-full px-4 py-2.5 rounded-xl input-premium"></textarea>
                             </div>
 
-                            <div class="md:col-span-2 border border-gray-200 p-5 rounded-xl bg-gray-50/80 shadow-inner">
-                                <label class="block text-xs font-bold uppercase tracking-widest text-nizamudin-green mb-3 border-b pb-2"><i class="fa-solid fa-users mr-2"></i>Kehadiran Siswa</label>
-                                <div class="grid grid-cols-4 gap-3">
-                                    <div><label class="block text-xs text-gray-500 mb-1 text-center font-medium">Hadir</label><input type="number" id="js-hadir" value="0" min="0" class="w-full p-2 border rounded-lg text-center font-bold text-green-700"></div>
-                                    <div><label class="block text-xs text-gray-500 mb-1 text-center font-medium">Sakit</label><input type="number" id="js-sakit" value="0" min="0" class="w-full p-2 border rounded-lg text-center font-bold text-yellow-600"></div>
-                                    <div><label class="block text-xs text-gray-500 mb-1 text-center font-medium">Izin</label><input type="number" id="js-izin" value="0" min="0" class="w-full p-2 border rounded-lg text-center font-bold text-blue-600"></div>
-                                    <div><label class="block text-xs text-gray-500 mb-1 text-center font-medium">Alpa</label><input type="number" id="js-alpa" value="0" min="0" class="w-full p-2 border rounded-lg text-center font-bold text-red-600"></div>
+                            <!-- BARU: Container Daftar Absensi Siswa Dinamis -->
+                            <div class="md:col-span-2 border border-gray-200 p-5 rounded-xl bg-gray-50/80 shadow-inner" id="container-absensi-siswa" style="display:none;">
+                                <label class="block text-xs font-bold uppercase tracking-widest text-nizamudin-green mb-3 border-b pb-2"><i class="fa-solid fa-users mr-2"></i>Absensi Siswa Per Kelas</label>
+                                
+                                <div id="list-siswa-absensi" class="space-y-2 max-h-64 overflow-y-auto custom-scroll pr-2">
+                                    <!-- Daftar Siswa Akan Di-Inject Ke Sini -->
+                                </div>
+                                
+                                <!-- Auto Summary -->
+                                <div class="mt-4 pt-3 border-t grid grid-cols-4 gap-2 text-center font-bold text-sm bg-white p-2 rounded-lg border">
+                                    <div class="text-green-700">H: <span id="sum-h">0</span></div>
+                                    <div class="text-yellow-600">S: <span id="sum-s">0</span></div>
+                                    <div class="text-blue-600">I: <span id="sum-i">0</span></div>
+                                    <div class="text-red-600">A: <span id="sum-a">0</span></div>
                                 </div>
                             </div>
 
@@ -564,6 +572,7 @@
         let userSession = null; let globalSettings = {};
         let masterDataSiswa = []; let masterDataGuru = []; let masterDataKalender = []; let masterDataMapel = [];
 
+        // Pagination States
         const ITEMS_PER_PAGE = 10;
         let verifDataAll = [], verifFiltered = [], verifPage = 1;
         let histPresensiAll = [], histPresensiFiltered = [], histPresensiPage = 1;
@@ -610,55 +619,49 @@
         };
 
         function checkTodayEvent() {
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler(function(res){
-                    let info = JSON.parse(res);
-                    if(info.status === 'success' && info.data.keterangan) {
-                        const banner = document.getElementById('banner-kalender'); document.getElementById('banner-keterangan').innerText = info.data.keterangan; banner.classList.remove('hidden');
-                        if(info.data.isLibur) { banner.classList.add('bg-red-50', 'text-red-800', 'border-red-300'); banner.classList.remove('bg-blue-100', 'text-blue-800', 'border-blue-300'); } 
-                        else { banner.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300'); banner.classList.remove('bg-red-50', 'text-red-800', 'border-red-300'); }
-                    }
-                }).getTodayEvent();
-            }
+            google.script.run.withSuccessHandler(function(resStr){
+                let info = JSON.parse(resStr);
+                if(info.status === 'success' && info.data.keterangan) {
+                    const banner = document.getElementById('banner-kalender'); document.getElementById('banner-keterangan').innerText = info.data.keterangan; banner.classList.remove('hidden');
+                    if(info.data.isLibur) { banner.classList.add('bg-red-50', 'text-red-800', 'border-red-300'); banner.classList.remove('bg-blue-100', 'text-blue-800', 'border-blue-300'); } 
+                    else { banner.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300'); banner.classList.remove('bg-red-50', 'text-red-800', 'border-red-300'); }
+                }
+            }).getTodayEvent();
         }
 
         function loadSettingsAndMaster() {
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler(function(res){
-                    globalSettings = JSON.parse(res);
-                    document.getElementById('info-ta-sem').innerText = `${globalSettings.TAHUN_AJARAN} - ${globalSettings.SEMESTER}`;
-                    document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN; document.getElementById('cfg-semester').value = globalSettings.SEMESTER;
-                    document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
-                    document.getElementById('cfg-lat').value = globalSettings.LATITUDE; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE; document.getElementById('cfg-radius').value = globalSettings.RADIUS;
-                    document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
-                    document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
-                    document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
-                }).getAppSettings();
+            google.script.run.withSuccessHandler(function(resStr){
+                globalSettings = JSON.parse(resStr);
+                document.getElementById('info-ta-sem').innerText = `${globalSettings.TAHUN_AJARAN} - ${globalSettings.SEMESTER}`;
+                document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN; document.getElementById('cfg-semester').value = globalSettings.SEMESTER;
+                document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
+                document.getElementById('cfg-lat').value = globalSettings.LATITUDE; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE; document.getElementById('cfg-radius').value = globalSettings.RADIUS;
+                document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
+                document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
+                document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
+            }).getAppSettings();
 
-                google.script.run.withSuccessHandler(function(res){
-                    let d = JSON.parse(res);
-                    let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; d.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
-                    if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
-                }).getMasterData();
+            google.script.run.withSuccessHandler(function(resStr){
+                let d = JSON.parse(resStr);
+                let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; d.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
+                if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
+            }).getMasterData();
 
-                if(userSession && userSession.role === 'Guru') {
-                    google.script.run.withSuccessHandler(function(res){
-                        let d = JSON.parse(res);
-                        let mHtml = '<option value="" disabled selected>Pilih Mapel Anda...</option>'; 
-                        d.mapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`);
-                        if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml;
-                    }).getGuruMapel(userSession.nama);
-                }
+            if(userSession && userSession.role === 'Guru') {
+                google.script.run.withSuccessHandler(function(resStr){
+                    let d = JSON.parse(resStr);
+                    let mHtml = '<option value="" disabled selected>Pilih Mapel Anda...</option>'; 
+                    d.mapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`);
+                    if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml;
+                }).getGuruMapel(userSession.nama);
             }
         }
 
         function handleLogin(e) {
             e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value; showLoader(true);
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler(function(resStr) {
-                    showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { loginInit(res.user); } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
-                }).doLogin(user, pass);
-            }
+            google.script.run.withSuccessHandler(function(resStr) {
+                showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { loginInit(res.user); } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
+            }).doLogin(user, pass);
         }
 
         function loginInit(user) {
@@ -748,22 +751,124 @@
             }).submitPresensiGuru(payload);
         }
 
+        // BARU: FUNGSI AMBIL DATA SISWA UNTUK ABSENSI JURNAL
+        function fetchSiswaByKelas() {
+            const kelas = document.getElementById('jurnal-kelas').value;
+            if(!kelas) return;
+            
+            const container = document.getElementById('container-absensi-siswa');
+            const listDiv = document.getElementById('list-siswa-absensi');
+            
+            container.style.display = 'block';
+            listDiv.innerHTML = `<div class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data siswa...</div>`;
+            
+            google.script.run.withSuccessHandler(function(resStr) {
+                let res = JSON.parse(resStr);
+                if(res.status === 'success') {
+                    if(res.data.length === 0) {
+                        listDiv.innerHTML = `<div class="text-center text-red-500 py-4 font-bold">Tidak ada siswa aktif di kelas ini.</div>`;
+                        updateAbsensiSummary();
+                        return;
+                    }
+                    let html = '';
+                    res.data.forEach((siswa, index) => {
+                        html += `
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white border rounded-lg shadow-sm gap-2">
+                            <div class="text-sm font-semibold text-gray-700 w-full sm:w-1/2">${index + 1}. ${siswa.nama} <span class="text-xs font-normal text-gray-400 block">${siswa.nisn}</span></div>
+                            <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                <label class="flex flex-col items-center cursor-pointer px-2">
+                                    <input type="radio" name="absen_${siswa.nisn}" value="H" checked onchange="updateAbsensiSummary()" class="w-4 h-4 text-green-600">
+                                    <span class="text-[10px] mt-1 font-bold text-green-700">Hadir</span>
+                                </label>
+                                <label class="flex flex-col items-center cursor-pointer px-2">
+                                    <input type="radio" name="absen_${siswa.nisn}" value="S" onchange="updateAbsensiSummary()" class="w-4 h-4 text-yellow-600">
+                                    <span class="text-[10px] mt-1 font-bold text-yellow-600">Sakit</span>
+                                </label>
+                                <label class="flex flex-col items-center cursor-pointer px-2">
+                                    <input type="radio" name="absen_${siswa.nisn}" value="I" onchange="updateAbsensiSummary()" class="w-4 h-4 text-blue-600">
+                                    <span class="text-[10px] mt-1 font-bold text-blue-600">Izin</span>
+                                </label>
+                                <label class="flex flex-col items-center cursor-pointer px-2">
+                                    <input type="radio" name="absen_${siswa.nisn}" value="A" onchange="updateAbsensiSummary()" class="w-4 h-4 text-red-600">
+                                    <span class="text-[10px] mt-1 font-bold text-red-600">Alpa</span>
+                                </label>
+                            </div>
+                        </div>`;
+                    });
+                    listDiv.innerHTML = html;
+                    updateAbsensiSummary();
+                } else {
+                    listDiv.innerHTML = `<div class="text-center text-red-500 py-4">Gagal memuat siswa: ${res.message}</div>`;
+                }
+            }).getSiswaByKelas(kelas);
+        }
+
+        // BARU: FUNGSI UPDATE AUTO-SUM ABSENSI SISWA
+        function updateAbsensiSummary() {
+            let h = 0, s = 0, i = 0, a = 0;
+            const radios = document.querySelectorAll('#list-siswa-absensi input[type="radio"]:checked');
+            radios.forEach(r => {
+                if(r.value === 'H') h++;
+                if(r.value === 'S') s++;
+                if(r.value === 'I') i++;
+                if(r.value === 'A') a++;
+            });
+            document.getElementById('sum-h').innerText = h;
+            document.getElementById('sum-s').innerText = s;
+            document.getElementById('sum-i').innerText = i;
+            document.getElementById('sum-a').innerText = a;
+        }
+
         function handleJurnalSubmit(e) {
             e.preventDefault();
-            const absensiStr = `H:${document.getElementById('js-hadir').value}|S:${document.getElementById('js-sakit').value}|I:${document.getElementById('js-izin').value}|A:${document.getElementById('js-alpa').value}`;
-            const payload = { namaGuru: userSession.nama, mapel: document.getElementById('jurnal-mapel').value, kelas: document.getElementById('jurnal-kelas').value, tanggal: document.getElementById('jurnal-tanggal').value, materi: document.getElementById('jurnal-materi').value, kegiatan: document.getElementById('jurnal-kegiatan').value, absensiSiswa: absensiStr, keterangan: document.getElementById('jurnal-ket').value, refleksi: document.getElementById('jurnal-refleksi').value };
+            
+            // Mengambil hasil rekapitulasi auto-sum
+            let sumH = document.getElementById('sum-h').innerText;
+            let sumS = document.getElementById('sum-s').innerText;
+            let sumI = document.getElementById('sum-i').innerText;
+            let sumA = document.getElementById('sum-a').innerText;
+            const absensiStr = `H:${sumH}|S:${sumS}|I:${sumI}|A:${sumA}`;
+            
+            // Menyusun string detail siapa saja yang absen
+            let detailList = [];
+            const studentDivs = document.querySelectorAll('#list-siswa-absensi > div.flex');
+            studentDivs.forEach(div => {
+                let nameText = div.querySelector('.text-sm.font-semibold').innerText.split('\n')[0].replace(/^\d+\.\s*/, '');
+                let selectedRadio = div.querySelector('input[type="radio"]:checked');
+                if(selectedRadio && selectedRadio.value !== 'H') { 
+                    detailList.push(`${nameText} (${selectedRadio.value})`);
+                }
+            });
+            let detailAbsensiStr = detailList.length > 0 ? detailList.join(', ') : 'Nihil (Semua Hadir)';
+
+            const payload = { 
+                namaGuru: userSession.nama, 
+                mapel: document.getElementById('jurnal-mapel').value, 
+                kelas: document.getElementById('jurnal-kelas').value, 
+                tanggal: document.getElementById('jurnal-tanggal').value, 
+                materi: document.getElementById('jurnal-materi').value, 
+                kegiatan: document.getElementById('jurnal-kegiatan').value, 
+                absensiSiswa: absensiStr, 
+                keterangan: "-", // Default string kosong agar struktur db aman
+                refleksi: document.getElementById('jurnal-refleksi').value,
+                detailAbsensi: detailAbsensiStr
+            };
+
             showLoader(true);
-            google.script.run.withSuccessHandler(function(res){
+            google.script.run.withSuccessHandler(function(resStr){
                 showLoader(false); 
-                let r = JSON.parse(res);
+                let r = JSON.parse(resStr);
                 if(r.status === 'success') {
                     Swal.fire('Tersimpan', r.message, 'success'); 
-                    e.target.reset(); document.getElementById('jurnal-tanggal').valueAsDate = new Date();
+                    e.target.reset(); 
+                    document.getElementById('jurnal-tanggal').valueAsDate = new Date();
+                    document.getElementById('container-absensi-siswa').style.display = 'none'; // Sembunyikan daftar siswa
                     if(document.getElementById('view-history').classList.contains('hidden') === false) loadHistory();
                 } else { Swal.fire('Gagal', r.message, 'error'); }
             }).submitJurnal(payload);
         }
 
+        // --- HISTORY (WITH PAGINATION & SEARCH) ---
         function switchHistoryTab(tabName) {
             document.getElementById('tab-hist-presensi').className = tabName === 'presensi' ? "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2" : "font-bold text-gray-400 px-4 py-2";
             document.getElementById('tab-hist-jurnal').className = tabName === 'jurnal' ? "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2" : "font-bold text-gray-400 px-4 py-2";
@@ -825,6 +930,7 @@
             document.getElementById('btn-next-hj').disabled = end >= histJurnalFiltered.length;
         }
 
+        // --- VERIFIKASI ADMIN (WITH PAGINATION & SEARCH) ---
         function loadDataVerifikasi() {
             document.getElementById('tb-verifikasi').innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
             google.script.run.withSuccessHandler(function(resStr){
@@ -888,8 +994,8 @@
 
         function loadMasterData(tipe) {
             const tbId = `tb-master-${tipe.toLowerCase()}`; document.getElementById(tbId).innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
-            google.script.run.withSuccessHandler(function(res){
-                let r = JSON.parse(res);
+            google.script.run.withSuccessHandler(function(resStr){
+                let r = JSON.parse(resStr);
                 if(r.status === 'success') {
                     if(tipe === 'Siswa') { masterDataSiswa = r.data; renderTbSiswa(); }
                     else if(tipe === 'Guru') { masterDataGuru = r.data; renderTbGuru(); }
@@ -940,7 +1046,7 @@
             }).then((res) => {
                 if(res.isConfirmed) {
                     showLoader(true);
-                    google.script.run.withSuccessHandler(r => { showLoader(false); Swal.fire('Sukses', JSON.parse(r).message, 'success'); loadMasterData('Siswa'); }).bulkUpdateSiswaKelas(checked, res.value);
+                    google.script.run.withSuccessHandler(function(resStr) { showLoader(false); let r = JSON.parse(resStr); Swal.fire('Sukses', r.message, 'success'); loadMasterData('Siswa'); }).bulkUpdateSiswaKelas(checked, res.value);
                 }
             });
         }
@@ -1006,7 +1112,7 @@
 
         function submitCRUD(tipe, aksi, idLama, rowBaru) {
             showLoader(true);
-            google.script.run.withSuccessHandler(res => { showLoader(false); Swal.fire('Informasi', JSON.parse(res).message, JSON.parse(res).status); loadMasterData(tipe); checkTodayEvent(); }).kelolaDataMaster(tipe, aksi, idLama, rowBaru);
+            google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); Swal.fire('Informasi', res.message, res.status); loadMasterData(tipe); checkTodayEvent(); }).kelolaDataMaster(tipe, aksi, idLama, rowBaru);
         }
 
         function downloadTemplate(type) {
@@ -1029,22 +1135,18 @@
                     if (rows.length === 0) { showLoader(false); return Swal.fire('Kosong', 'Tidak ada data dibaca.', 'warning'); }
                     
                     let targetSheetName = '';
-                    if(type === 'siswa') targetSheetName = 'Data_Siswa'; 
-                    else if(type === 'guru') targetSheetName = 'Data_Guru';
+                    if(type === 'siswa') targetSheetName = 'Data_Siswa'; else if(type === 'guru') targetSheetName = 'Data_Guru';
                     else if(type === 'mapel') { targetSheetName = 'Data_Mapel'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[0], r[1]]); }
                     else if(type === 'kalender') { targetSheetName = 'Kalender_Pendidikan'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[0], r[1], r[2]]); }
 
-                    google.script.run.withSuccessHandler(function(res){ showLoader(false); Swal.fire('Sukses', JSON.parse(res).message, 'success'); fileInput.value = ''; loadMasterData(type.charAt(0).toUpperCase() + type.slice(1)); }).bulkImportData(targetSheetName, rows);
+                    google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); Swal.fire('Sukses', res.message, 'success'); fileInput.value = ''; loadMasterData(type.charAt(0).toUpperCase() + type.slice(1)); }).bulkImportData(targetSheetName, rows);
                 } catch(err) { showLoader(false); Swal.fire('Error File', 'File rusak atau format salah.', 'error'); }
             }; reader.readAsArrayBuffer(fileInput.files[0]);
         }
 
         function triggerEmailReminders() {
             Swal.fire({ title: 'Kirim Peringatan Email?', text: "Sistem akan mengecek guru yang aktif dan belum absen lalu mengirimkan email peringatan.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then((result) => {
-                if (result.isConfirmed) {
-                    showLoader(true);
-                    google.script.run.withSuccessHandler(res => { showLoader(false); let r = JSON.parse(res); Swal.fire('Selesai', r.message, r.status); }).sendEmailReminders();
-                }
+                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); Swal.fire('Selesai', res.message, res.status); }).sendEmailReminders(); }
             })
         }
 
@@ -1053,7 +1155,7 @@
             const args = [
                 document.getElementById('cfg-ta').value, document.getElementById('cfg-semester').value, document.getElementById('cfg-tgl-mulai').value, document.getElementById('cfg-tgl-akhir').value, document.getElementById('cfg-lat').value, document.getElementById('cfg-lon').value, document.getElementById('cfg-radius').value, document.getElementById('cfg-jd-mulai').value, document.getElementById('cfg-jd-akhir').value, document.getElementById('cfg-jp-mulai').value, document.getElementById('cfg-jp-akhir').value, document.getElementById('cfg-hari-sekolah').value
             ];
-            google.script.run.withSuccessHandler((res) => { showLoader(false); Swal.fire('Berhasil', 'Disimpan.', 'success'); loadSettingsAndMaster(); checkTodayEvent(); }).saveAppSettings(...args);
+            google.script.run.withSuccessHandler(function(resStr) { showLoader(false); let res = JSON.parse(resStr); Swal.fire('Berhasil', res.message, 'success'); loadSettingsAndMaster(); checkTodayEvent(); }).saveAppSettings(...args);
         }
     </script>
 </body>
