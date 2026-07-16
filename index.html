@@ -643,7 +643,13 @@
             if(document.getElementById('rekap-end')) document.getElementById('rekap-end').valueAsDate = now;
             
             const savedSession = sessionStorage.getItem('sipjam_session');
-            if (savedSession) { loginInit(JSON.parse(savedSession)); }
+            const savedInit = sessionStorage.getItem('sipjam_initData');
+            
+            // Logika Auto-Login Instant dari Cache
+            if (savedSession && savedInit) { 
+                applyInitData(JSON.parse(savedInit), JSON.parse(savedSession));
+                loginInit(JSON.parse(savedSession)); 
+            }
 
             // Listener untuk input file hidden upload ulang jurnal
             document.getElementById('hidden-jurnal-resubmit').addEventListener('change', function(e) {
@@ -662,46 +668,31 @@
             });
         };
 
-        function checkTodayEvent() {
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler(function(res){
-                    let info = JSON.parse(res);
-                    if(info.status === 'success' && info.data.keterangan) {
-                        const banner = document.getElementById('banner-kalender'); document.getElementById('banner-keterangan').innerText = info.data.keterangan; banner.classList.remove('hidden');
-                        if(info.data.isLibur) { banner.classList.add('bg-red-50', 'text-red-800', 'border-red-300'); banner.classList.remove('bg-blue-100', 'text-blue-800', 'border-blue-300'); } 
-                        else { banner.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300'); banner.classList.remove('bg-red-50', 'text-red-800', 'border-red-300'); }
-                    }
-                }).getTodayEvent();
+        // FUNGSI PENERIMA DATA BUNDLING (Sangat Cepat)
+        function applyInitData(initData, user) {
+            globalSettings = initData.settings;
+            document.getElementById('info-ta-sem').innerText = `${globalSettings.TAHUN_AJARAN} - ${globalSettings.SEMESTER}`;
+            document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN; document.getElementById('cfg-semester').value = globalSettings.SEMESTER;
+            document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
+            document.getElementById('cfg-lat').value = globalSettings.LATITUDE; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE; document.getElementById('cfg-radius').value = globalSettings.RADIUS;
+            document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
+            document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
+            document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
+
+            let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; 
+            initData.master.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
+            if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
+
+            if(user && user.role === 'Guru') {
+                let mHtml = '<option value="" disabled selected>Pilih Mapel Anda...</option>'; 
+                initData.guruMapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`);
+                if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml;
             }
-        }
 
-        function loadSettingsAndMaster() {
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler(function(res){
-                    globalSettings = JSON.parse(res);
-                    document.getElementById('info-ta-sem').innerText = `${globalSettings.TAHUN_AJARAN} - ${globalSettings.SEMESTER}`;
-                    document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN; document.getElementById('cfg-semester').value = globalSettings.SEMESTER;
-                    document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
-                    document.getElementById('cfg-lat').value = globalSettings.LATITUDE; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE; document.getElementById('cfg-radius').value = globalSettings.RADIUS;
-                    document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
-                    document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
-                    document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
-                }).getAppSettings();
-
-                google.script.run.withSuccessHandler(function(res){
-                    let d = JSON.parse(res);
-                    let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; d.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
-                    if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
-                }).getMasterData();
-
-                if(userSession && userSession.role === 'Guru') {
-                    google.script.run.withSuccessHandler(function(res){
-                        let d = JSON.parse(res);
-                        let mHtml = '<option value="" disabled selected>Pilih Mapel Anda...</option>'; 
-                        d.mapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`);
-                        if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml;
-                    }).getGuruMapel(userSession.nama);
-                }
+            if(initData.todayEvent && initData.todayEvent.keterangan) {
+                const banner = document.getElementById('banner-kalender'); document.getElementById('banner-keterangan').innerText = initData.todayEvent.keterangan; banner.classList.remove('hidden');
+                if(initData.todayEvent.isLibur) { banner.classList.add('bg-red-50', 'text-red-800', 'border-red-300'); banner.classList.remove('bg-blue-100', 'text-blue-800', 'border-blue-300'); } 
+                else { banner.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-300'); banner.classList.remove('bg-red-50', 'text-red-800', 'border-red-300'); }
             }
         }
 
@@ -709,7 +700,12 @@
             e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value; showLoader(true);
             if (typeof google !== 'undefined' && google.script) {
                 google.script.run.withSuccessHandler(function(resStr) {
-                    showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { loginInit(res.user); } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
+                    showLoader(false); let res = JSON.parse(resStr); 
+                    if(res.status === 'success') { 
+                        sessionStorage.setItem('sipjam_initData', JSON.stringify(res.initData));
+                        applyInitData(res.initData, res.user);
+                        loginInit(res.user); 
+                    } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
                 }).doLogin(user, pass);
             } 
         }
@@ -718,10 +714,11 @@
             userSession = user; sessionStorage.setItem('sipjam_session', JSON.stringify(userSession));
             document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app-screen').classList.remove('hidden');
             document.getElementById('user-name').innerText = userSession.nama; document.getElementById('user-role').innerText = userSession.role;
-            buildNavigation(); loadSettingsAndMaster(); checkTodayEvent(); switchTab(menuConfig[userSession.role][0].id);
+            buildNavigation(); switchTab(menuConfig[userSession.role][0].id);
             if(document.getElementById('jurnal-tanggal')) document.getElementById('jurnal-tanggal').valueAsDate = new Date();
         }
-        function logout() { sessionStorage.removeItem('sipjam_session'); location.reload(); }
+
+        function logout() { sessionStorage.removeItem('sipjam_session'); sessionStorage.removeItem('sipjam_initData'); location.reload(); }
 
         function buildNavigation() {
             const nav = document.getElementById('nav-menu'); nav.innerHTML = '';
