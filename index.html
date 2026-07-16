@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIPJAM SMA NIZAMUDIN</title>
+    <title>SIPJAM SMA NIZAMUDIN - SUPABASE EDITION</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Poppins:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -12,6 +12,8 @@
     <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- SUPABASE LIBRARY -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
         tailwind.config = {
@@ -162,7 +164,7 @@
                             <div id="row-upload-bukti">
                                 <label class="block text-sm font-semibold text-gray-700 mb-2" id="label-upload">Unggah Foto Selfie (Wajib Timestamp)</label>
                                 <input type="file" id="presensi-file" accept="image/*,.pdf" class="w-full px-3 py-2 border rounded-xl bg-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700">
-                                <p class="text-[10px] text-gray-500 mt-1 italic" id="hint-upload">Gambar otomatis dikompres sistem untuk menghemat memori.</p>
+                                <p class="text-[10px] text-gray-500 mt-1 italic" id="hint-upload">Gambar otomatis dikompres sebelum dikirim.</p>
                             </div>
 
                             <button type="submit" class="w-full bg-nizamudin-green hover:bg-nizamudin-light text-nizamudin-gold font-bold py-3.5 rounded-xl transition shadow-lg text-lg">
@@ -186,7 +188,6 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-semibold text-gray-700 mb-1">Kelas</label>
-                                <!-- onchange fetchSiswaByKelas -->
                                 <select id="jurnal-kelas" required onchange="fetchSiswaByKelas()" class="w-full px-4 py-2.5 rounded-xl input-premium">
                                     <option value="" disabled selected>Memuat kelas...</option>
                                 </select>
@@ -204,13 +205,11 @@
                                 <textarea id="jurnal-kegiatan" required rows="2" class="w-full px-4 py-2.5 rounded-xl input-premium"></textarea>
                             </div>
 
-                            <!-- FOTO KEGIATAN WAJIB -->
                             <div class="md:col-span-2 border border-blue-200 p-4 rounded-xl bg-blue-50/50">
                                 <label class="block text-sm font-bold text-nizamudin-green mb-2"><i class="fa-solid fa-camera mr-2"></i>Upload Foto Kegiatan (Wajib Timestamp)</label>
                                 <input type="file" id="jurnal-file" accept="image/*" class="w-full px-3 py-2 border rounded-xl bg-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-nizamudin-green file:text-white">
                             </div>
 
-                            <!-- ABSENSI DINAMIS -->
                             <div class="md:col-span-2 border border-gray-200 p-5 rounded-xl bg-gray-50/80 shadow-inner" id="container-absensi-siswa" style="display:none;">
                                 <label class="block text-xs font-bold uppercase tracking-widest text-nizamudin-green mb-3 border-b pb-2"><i class="fa-solid fa-users mr-2"></i>Absensi Siswa Per Kelas</label>
                                 
@@ -394,26 +393,26 @@
                         <div class="glass-card p-4 text-center border-t-4 border-blue-500">
                             <h3 class="text-sm font-bold text-nizamudin-green mb-2">Impor Siswa</h3>
                             <button onclick="downloadTemplate('siswa')" class="w-full mb-3 bg-white border rounded-lg text-[10px] py-2"><i class="fa-solid fa-download mr-1"></i> Template</button>
-                            <input type="file" id="import-file-siswa" accept=".xlsx" class="block w-full text-[10px] text-gray-500 mb-2">
-                            <button onclick="processExcelImport('siswa')" class="w-full bg-blue-600 text-white text-xs font-bold py-2 rounded shadow">Upload</button>
+                            <input type="file" id="import-file-siswa" accept=".csv" class="block w-full text-[10px] text-gray-500 mb-2">
+                            <button onclick="processCSVImport('siswa')" class="w-full bg-blue-600 text-white text-xs font-bold py-2 rounded shadow">Upload CSV</button>
                         </div>
                         <div class="glass-card p-4 text-center border-t-4 border-nizamudin-gold">
                             <h3 class="text-sm font-bold text-nizamudin-green mb-1">Impor Guru</h3>
                             <button onclick="downloadTemplate('guru')" class="w-full mb-3 bg-white border rounded-lg text-[10px] py-2 mt-1"><i class="fa-solid fa-download mr-1"></i> Template</button>
-                            <input type="file" id="import-file-guru" accept=".xlsx" class="block w-full text-[10px] text-gray-500 mb-2">
-                            <button onclick="processExcelImport('guru')" class="w-full bg-nizamudin-gold text-nizamudin-green text-xs font-bold py-2 rounded shadow">Upload</button>
+                            <input type="file" id="import-file-guru" accept=".csv" class="block w-full text-[10px] text-gray-500 mb-2">
+                            <button onclick="processCSVImport('guru')" class="w-full bg-nizamudin-gold text-nizamudin-green text-xs font-bold py-2 rounded shadow">Upload CSV</button>
                         </div>
                         <div class="glass-card p-4 text-center border-t-4 border-green-500">
                             <h3 class="text-sm font-bold text-nizamudin-green mb-1">Impor Mapel</h3>
                             <button onclick="downloadTemplate('mapel')" class="w-full mb-3 bg-white border rounded-lg text-[10px] py-2 mt-1"><i class="fa-solid fa-download mr-1"></i> Template</button>
-                            <input type="file" id="import-file-mapel" accept=".xlsx" class="block w-full text-[10px] text-gray-500 mb-2">
-                            <button onclick="processExcelImport('mapel')" class="w-full bg-green-600 text-white text-xs font-bold py-2 rounded shadow">Upload</button>
+                            <input type="file" id="import-file-mapel" accept=".csv" class="block w-full text-[10px] text-gray-500 mb-2">
+                            <button onclick="processCSVImport('mapel')" class="w-full bg-green-600 text-white text-xs font-bold py-2 rounded shadow">Upload CSV</button>
                         </div>
                         <div class="glass-card p-4 text-center border-t-4 border-purple-500">
                             <h3 class="text-sm font-bold text-nizamudin-green mb-1">Impor Kalender</h3>
                             <button onclick="downloadTemplate('kalender')" class="w-full mb-3 bg-white border rounded-lg text-[10px] py-2 mt-1"><i class="fa-solid fa-download mr-1"></i> Template</button>
-                            <input type="file" id="import-file-kalender" accept=".xlsx" class="block w-full text-[10px] text-gray-500 mb-2">
-                            <button onclick="processExcelImport('kalender')" class="w-full bg-purple-600 text-white text-xs font-bold py-2 rounded shadow">Upload</button>
+                            <input type="file" id="import-file-kalender" accept=".csv" class="block w-full text-[10px] text-gray-500 mb-2">
+                            <button onclick="processCSVImport('kalender')" class="w-full bg-purple-600 text-white text-xs font-bold py-2 rounded shadow">Upload CSV</button>
                         </div>
                     </div>
 
@@ -424,7 +423,7 @@
                                 <h3 class="font-bold text-gray-700">Manajemen Siswa & Kenaikan Kelas</h3>
                                 <div class="flex gap-2">
                                     <button onclick="aksiMassalSiswa()" class="bg-blue-100 text-blue-800 px-3 py-1.5 rounded text-sm font-bold border border-blue-300"><i class="fa-solid fa-users-gear"></i> Ubah Kelas Massal</button>
-                                    <button onclick="loadMasterData('Siswa')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                                    <button onclick="loadMasterData('Data_Siswa')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
                                     <button onclick="modalMasterSiswa('CREATE')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah</button>
                                 </div>
                             </div>
@@ -442,7 +441,7 @@
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h3 class="font-bold text-gray-700">Manajemen Guru (Multi-Mapel)</h3>
                                 <div>
-                                    <button onclick="loadMasterData('Guru')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                                    <button onclick="loadMasterData('Data_Guru')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
                                     <button onclick="modalMasterGuru('CREATE')" class="bg-nizamudin-gold text-nizamudin-green px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah</button>
                                 </div>
                             </div>
@@ -460,7 +459,7 @@
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h3 class="font-bold text-gray-700">Manajemen Mata Pelajaran</h3>
                                 <div>
-                                    <button onclick="loadMasterData('Mapel')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                                    <button onclick="loadMasterData('Data_Mapel')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
                                     <button onclick="modalMasterMapel('CREATE')" class="bg-green-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah Mapel</button>
                                 </div>
                             </div>
@@ -478,7 +477,7 @@
                             <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
                                 <h3 class="font-bold text-gray-700">Kalender Pendidikan</h3>
                                 <div>
-                                    <button onclick="loadMasterData('Kalender')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
+                                    <button onclick="loadMasterData('Kalender_Pendidikan')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
                                     <button onclick="modalMasterKalender('CREATE')" class="bg-purple-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah Event</button>
                                 </div>
                             </div>
@@ -503,9 +502,9 @@
                             <i class="fa-solid fa-envelope-open-text text-4xl text-red-600"></i>
                             <div>
                                 <h2 class="text-lg font-bold text-nizamudin-green">Kirim Email Pengingat Otomatis</h2>
-                                <p class="text-xs text-gray-500 mt-1">Sistem akan mengecek guru aktif yang belum mengisi administrasi hari ini.</p>
+                                <p class="text-xs text-gray-500 mt-1">Hanya didukung menggunakan Edge Functions Supabase / Layanan Pihak Ketiga (Karena Google dibatasi).</p>
                             </div>
-                            <button onclick="triggerEmailReminders()" class="ml-auto bg-red-600 text-white font-bold px-6 py-3 rounded-xl shadow-lg hover:bg-red-700 flex items-center gap-2"><i class="fa-solid fa-paper-plane"></i> Eksekusi</button>
+                            <button onclick="Swal.fire('Fitur Terbatas','Pengiriman Email Serverless otomatis memerlukan layanan seperti EmailJS atau Supabase Edge Functions. Ini akan dikonfigurasi di pengembangan tahap lanjutan.','info')" class="ml-auto bg-gray-400 text-white font-bold px-6 py-3 rounded-xl shadow-lg flex items-center gap-2"><i class="fa-solid fa-paper-plane"></i> Info Layanan</button>
                         </div>
                     </div>
 
@@ -565,32 +564,14 @@
         </main>
     </div>
 
-    <!-- SCRIPT JEMBATAN API PENGGANTI GOOGLE.SCRIPT.RUN UNTUK NETLIFY -->
+    <!-- KONFIGURASI SUPABASE (UBAH BARIS DI BAWAH INI) -->
     <script>
-        // MASUKKAN URL WEB APP ANDA DI SINI (Contoh: https://script.google.com/macros/s/AKfy.../exec)
-        const GAS_URL = "https://script.google.com/macros/s/AKfycby6luv1fC8OftNI7sOEDh-tnFv6PvtlRyQW5ewTcfmaTBAe-qKRxLd1glXS4EycbztK/exec";
+        // ⚠️ Wajib diubah dengan Project URL dari Supabase Anda
+        const SUPABASE_URL = 'https://oobemkswtwlzqqhzgftw.supabase.co';
+        // ⚠️ Wajib diubah dengan anon/public key dari Supabase Anda
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vYmVta3N3dHdsenFxaHpnZnR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNTQzODQsImV4cCI6MjA5OTczMDM4NH0.uNm1jWJhGmSgO3-Ff-krrd2Q5PSjwUUVAWG-25uS6eo';
 
-        const google = {
-            script: {
-                run: {
-                    withSuccessHandler: function(successCallback) {
-                        return new Proxy({}, {
-                            get: function(target, prop) {
-                                return function(...args) {
-                                    fetch(GAS_URL, {
-                                        method: 'POST',
-                                        body: JSON.stringify({ method: prop, args: args })
-                                    })
-                                    .then(res => res.text())
-                                    .then(data => { if (successCallback) successCallback(data); })
-                                    .catch(err => { console.error("Fetch Error:", err); Swal.fire('Error Koneksi', 'Gagal menghubungi server.', 'error'); showLoader(false); });
-                                };
-                            }
-                        });
-                    }
-                }
-            }
-        };
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     </script>
 
     <script>
@@ -603,7 +584,6 @@
         let verifJurnalAll = [], verifJurnalFiltered = [], verifJurnalPage = 1;
         let histPresensiAll = [], histPresensiFiltered = [], histPresensiPage = 1;
         let histJurnalAll = [], histJurnalFiltered = [], histJurnalPage = 1;
-
         let currentResubmitId = null;
 
         const menuConfig = {
@@ -637,7 +617,7 @@
         }
         setInterval(updateClock, 1000); updateClock(); 
 
-        window.onload = () => {
+        window.onload = async () => {
             const now = new Date(); const tglAwal = new Date(now); tglAwal.setDate(now.getDate() - 7);
             if(document.getElementById('rekap-start')) document.getElementById('rekap-start').valueAsDate = tglAwal;
             if(document.getElementById('rekap-end')) document.getElementById('rekap-end').valueAsDate = now;
@@ -645,36 +625,83 @@
             const savedSession = sessionStorage.getItem('sipjam_session');
             const savedInit = sessionStorage.getItem('sipjam_initData');
             
-            // Logika Auto-Login Instant dari Cache
             if (savedSession && savedInit) { 
                 applyInitData(JSON.parse(savedInit), JSON.parse(savedSession));
                 loginInit(JSON.parse(savedSession)); 
             }
 
-            // Listener untuk input file hidden upload ulang jurnal
-            document.getElementById('hidden-jurnal-resubmit').addEventListener('change', function(e) {
+            document.getElementById('hidden-jurnal-resubmit').addEventListener('change', async function(e) {
                 if(e.target.files.length > 0) {
-                    Swal.fire({ title: 'Menyiapkan Data...', didOpen: () => Swal.showLoading() });
+                    Swal.fire({ title: 'Mengunggah Data...', didOpen: () => Swal.showLoading() });
                     const file = e.target.files[0];
-                    compressImage(file, (dataUrl) => {
-                        google.script.run.withSuccessHandler(function(resStr){
-                            showLoader(false); let res = JSON.parse(resStr);
-                            if(res.status === 'success') { Swal.fire('Berhasil', res.message, 'success'); loadHistory(); }
-                            else { Swal.fire('Gagal', res.message, 'error'); }
-                            e.target.value = ""; // Reset input
-                        }).resubmitFotoJurnal({ id: currentResubmitId, fileData: dataUrl, fileName: file.name });
-                    });
+                    const fileName = `jurnal_${new Date().getTime()}_${file.name.replace(/\s/g, '_')}`;
+                    
+                    const { data, error } = await supabase.storage.from('sipjam-bucket').upload(fileName, file);
+                    if(error) {
+                        Swal.fire('Gagal Upload', error.message, 'error');
+                        e.target.value = ""; return;
+                    }
+                    const urlFoto = SUPABASE_URL + '/storage/v1/object/public/sipjam-bucket/' + fileName;
+                    
+                    const { error: dbErr } = await supabase.from('Jurnal_Pembelajaran').update({ link_bukti_file: urlFoto, status_verifikasi: 'Menunggu Verifikasi' }).eq('id', currentResubmitId);
+                    if(dbErr) { Swal.fire('Gagal Update Database', dbErr.message, 'error'); }
+                    else { Swal.fire('Berhasil', 'Foto berhasil diperbaiki.', 'success'); loadHistory(); }
+                    e.target.value = "";
                 }
             });
         };
 
-        // FUNGSI PENERIMA DATA BUNDLING (Sangat Cepat)
+        // --- FETCHING DATA SUPABASE ---
+        async function fetchInitialData(user) {
+            try {
+                // 1. Ambil Pengaturan
+                const { data: setRes } = await supabase.from('Pengaturan').select('*');
+                let settingsObj = {};
+                if(setRes) setRes.forEach(r => settingsObj[r.key] = r.value);
+                
+                // 2. Ambil Master Data
+                const { data: klsRes } = await supabase.from('Data_Siswa').select('kelas');
+                const uniqueKelas = [...new Set(klsRes.map(k => k.kelas))].filter(Boolean);
+                const { data: mplRes } = await supabase.from('Data_Mapel').select('nama_mata_pelajaran');
+                const uniqueMapel = [...new Set(mplRes.map(m => m.nama_mata_pelajaran))].filter(Boolean);
+
+                // 3. Ambil Guru Mapel (Jika Guru)
+                let guruMapels = [];
+                if(user.role === 'Guru') {
+                    const { data: gData } = await supabase.from('Data_Guru').select('mata_pelajaran').eq('nama_guru', user.nama).single();
+                    if(gData && gData.mata_pelajaran) guruMapels = gData.mata_pelajaran.split(',').map(m => m.trim());
+                }
+
+                // 4. Ambil Kalender Hari ini
+                const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+                const dayOfWeek = new Date().getDay();
+                let hariSekolah = Number(settingsObj.HARI_SEKOLAH_PER_MINGGU || 6);
+                let isLibur = (dayOfWeek === 0) || (dayOfWeek === 6 && hariSekolah === 5);
+                let keteranganLibur = isLibur ? "Libur Akhir Pekan" : "";
+
+                const { data: kalRes } = await supabase.from('Kalender_Pendidikan').select('*').eq('tanggal', todayStr).single();
+                if(kalRes) {
+                    keteranganLibur = keteranganLibur ? `${keteranganLibur} & ${kalRes.keterangan}` : kalRes.keterangan;
+                    if(kalRes.tipe === "Libur") isLibur = true;
+                }
+
+                const initData = {
+                    settings: settingsObj,
+                    master: { kelas: uniqueKelas, mapel: uniqueMapel },
+                    guruMapels: guruMapels,
+                    todayEvent: { isLibur: isLibur, keterangan: keteranganLibur }
+                };
+                sessionStorage.setItem('sipjam_initData', JSON.stringify(initData));
+                applyInitData(initData, user);
+            } catch(e) { console.error("Fetch Init Error", e); }
+        }
+
         function applyInitData(initData, user) {
             globalSettings = initData.settings;
             document.getElementById('info-ta-sem').innerText = `${globalSettings.TAHUN_AJARAN} - ${globalSettings.SEMESTER}`;
-            document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN; document.getElementById('cfg-semester').value = globalSettings.SEMESTER;
+            document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN || ""; document.getElementById('cfg-semester').value = globalSettings.SEMESTER || "Ganjil";
             document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
-            document.getElementById('cfg-lat').value = globalSettings.LATITUDE; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE; document.getElementById('cfg-radius').value = globalSettings.RADIUS;
+            document.getElementById('cfg-lat').value = globalSettings.LATITUDE || ""; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE || ""; document.getElementById('cfg-radius').value = globalSettings.RADIUS || "";
             document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
             document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
             document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
@@ -696,18 +723,16 @@
             }
         }
 
-        function handleLogin(e) {
+        async function handleLogin(e) {
             e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value; showLoader(true);
-            if (typeof google !== 'undefined' && google.script) {
-                google.script.run.withSuccessHandler(function(resStr) {
-                    showLoader(false); let res = JSON.parse(resStr); 
-                    if(res.status === 'success') { 
-                        sessionStorage.setItem('sipjam_initData', JSON.stringify(res.initData));
-                        applyInitData(res.initData, res.user);
-                        loginInit(res.user); 
-                    } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
-                }).doLogin(user, pass);
-            } 
+            const { data, error } = await supabase.from('Users').select('*').eq('username', user).eq('password', pass).single();
+            
+            if(error || !data) { showLoader(false); Swal.fire('Akses Ditolak', 'Username atau Password salah!', 'error'); return; }
+            
+            const userData = { username: data.username, nama: data.nama, role: data.role };
+            await fetchInitialData(userData);
+            showLoader(false);
+            loginInit(userData);
         }
 
         function loginInit(user) {
@@ -737,36 +762,15 @@
             
             if(viewId === 'view-admin-verif') { loadDataVerifikasi(); loadDataVerifikasiJurnal(); }
             if(viewId === 'view-history') loadHistory();
-            if(viewId === 'view-admin-data') { loadMasterData('Siswa'); loadMasterData('Guru'); loadMasterData('Kalender'); loadMasterData('Mapel'); }
+            if(viewId === 'view-admin-data') { loadMasterData('Data_Siswa'); loadMasterData('Data_Guru'); loadMasterData('Kalender_Pendidikan'); loadMasterData('Data_Mapel'); }
         }
 
-        function compressImage(file, callback) {
-            if (!file.type.match(/image.*/)) { callback(file); return; } 
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const img = new Image(); img.onload = function () {
-                    const cvs = document.createElement('canvas'); const maxSize = 800; let w = img.width; let h = img.height;
-                    if (w > h) { if (w > maxSize) { h *= maxSize / w; w = maxSize; } } else { if (h > maxSize) { w *= maxSize / h; h = maxSize; } }
-                    cvs.width = w; cvs.height = h; cvs.getContext('2d').drawImage(img, 0, 0, w, h); callback(cvs.toDataURL('image/jpeg', 0.6));
-                }; img.src = e.target.result;
-            }; reader.readAsDataURL(file);
-        }
-
-        // --- FUNGSI PREVIEW FOTO POPUP SWEETALERT ---
         function previewFoto(url) {
             if (!url || url === '-') return;
-            let previewUrl = url;
-            // Ubah link dari mode view menjadi preview agar bisa masuk ke iframe dengan aman
-            if (url.includes('drive.google.com')) {
-                previewUrl = url.replace(/\/view.*/, '/preview');
-            }
             Swal.fire({
                 title: '<span class="text-lg font-bold text-nizamudin-green"><i class="fa-solid fa-image text-nizamudin-gold mr-2"></i>Bukti Lampiran</span>',
-                html: `<div class="p-2 bg-gray-50 rounded-xl border"><iframe src="${previewUrl}" class="w-full h-80 md:h-96 border-0 rounded-lg shadow-sm"></iframe></div>`,
-                width: '600px',
-                showCloseButton: true,
-                showConfirmButton: false,
-                customClass: { popup: 'rounded-2xl' }
+                html: `<div class="p-2 bg-gray-50 rounded-xl border text-center"><img src="${url}" class="max-w-full max-h-96 mx-auto rounded-lg shadow-sm" alt="Bukti"/></div>`,
+                width: '600px', showCloseButton: true, showConfirmButton: false, customClass: { popup: 'rounded-2xl' }
             });
         }
 
@@ -777,65 +781,103 @@
             document.getElementById('label-upload').innerText = jenis === 'Sekolah' ? 'Unggah Foto Selfie (Wajib Timestamp)' : (jenis === 'Dinas Luar' ? 'Unggah Bukti Surat Tugas & Foto (.jpg/.pdf)' : 'Unggah Surat Keterangan / Izin (.jpg/.pdf)');
         }
 
-        function handlePresensiSubmit(e) {
+        const parseNumSafe = (val) => Number(val.toString().replace(',', '.'));
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
+        }
+
+        async function checkDependencyDatang() {
+            const todayStart = new Date().setHours(0,0,0,0);
+            const { data } = await supabase.from('Presensi_Guru').select('*').eq('nama_guru', userSession.nama).gte('timestamp', new Date(todayStart).toISOString());
+            if(!data) return false;
+            return data.some(r => r.status_verifikasi !== "Ditolak" && (r.tipe_absen === "Datang" || r.jenis_presensi === "Dinas Luar"));
+        }
+
+        async function handlePresensiSubmit(e) {
             e.preventDefault(); 
             const fileInput = document.getElementById('presensi-file');
             if(fileInput.files.length === 0) return Swal.fire('Peringatan', 'Foto selfie/bukti wajib dilampirkan sebelum mengirim!', 'warning');
 
+            const tipeAbsen = document.getElementById('presensi-tipe').value;
+            const jenis = document.getElementById('presensi-jenis').value;
+
+            // Validasi Serverless Lintas Hari
+            const currTimeStr = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}).replace('.',':');
+            let isTerlambat = false;
+            
+            if(jenis === "Sekolah") {
+                if(tipeAbsen === "Datang" && currTimeStr < globalSettings.JAM_DATANG_MULAI) return Swal.fire('Error', `Belum waktunya presensi (Buka: ${globalSettings.JAM_DATANG_MULAI})`, 'error');
+                if(tipeAbsen === "Datang" && currTimeStr > globalSettings.JAM_DATANG_AKHIR) isTerlambat = true;
+                if(tipeAbsen === "Pulang") {
+                    const hasDatang = await checkDependencyDatang();
+                    if(!hasDatang) return Swal.fire('Error', "Anda belum melakukan Presensi Datang (atau ditolak admin). Presensi Pulang ditolak.", 'error');
+                    if(currTimeStr < globalSettings.JAM_PULANG_MULAI) return Swal.fire('Error', `Belum waktunya pulang (Buka: ${globalSettings.JAM_PULANG_MULAI})`, 'error');
+                }
+            }
+
             if (!navigator.geolocation) return Swal.fire('Error', 'GPS tidak didukung browser ini.', 'error');
-            Swal.fire({ title: 'Menyiapkan Data...', text:'Mengunci Sinyal GPS murni...', didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'Memproses Data...', text:'Mengunggah ke Supabase...', didOpen: () => Swal.showLoading() });
+            
             navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const payload = { namaGuru: userSession.nama, tipeAbsen: document.getElementById('presensi-tipe').value, jenis: document.getElementById('presensi-jenis').value, detailIzin: document.getElementById('presensi-detail-izin').value, lat: pos.coords.latitude, lon: pos.coords.longitude };
+                async (pos) => {
+                    let distance = getDistance(pos.coords.latitude, pos.coords.longitude, parseNumSafe(globalSettings.LATITUDE), parseNumSafe(globalSettings.LONGITUDE));
+                    if (jenis === "Sekolah" && distance > Number(globalSettings.RADIUS)) {
+                        return Swal.fire('Di Luar Radius', `Posisi di luar radius SMA Nizamudin (${Math.round(distance)} meter).`, 'warning');
+                    }
+
+                    // Upload File ke Supabase Storage
                     const file = fileInput.files[0];
-                    if(file.type.startsWith('image/')) compressImage(file, (dataUrl) => { payload.fileData = dataUrl; payload.fileName = file.name; sendPresensi(payload); });
-                    else { const r = new FileReader(); r.onload = (ev) => { payload.fileData = ev.target.result; payload.fileName = file.name; sendPresensi(payload); }; r.readAsDataURL(file); }
+                    const fileName = `${new Date().getTime()}_${file.name.replace(/\s/g, '_')}`;
+                    const { data: uploadData, error: uploadError } = await supabase.storage.from('sipjam-bucket').upload(fileName, file);
+                    
+                    if(uploadError) return Swal.fire('Gagal Upload', uploadError.message, 'error');
+                    const fileUrl = SUPABASE_URL + '/storage/v1/object/public/sipjam-bucket/' + fileName;
+
+                    let statusAwal = "Menunggu Verifikasi";
+                    if (jenis === "Sekolah") statusAwal = isTerlambat ? "Menunggu Verif (Terlambat)" : "Menunggu Verifikasi";
+
+                    const { error: dbError } = await supabase.from('Presensi_Guru').insert([{
+                        id: new Date().getTime().toString(),
+                        timestamp: new Date().toISOString(),
+                        nama_guru: userSession.nama,
+                        tipe_absen: tipeAbsen,
+                        jenis_presensi: jenis,
+                        detail_izin: document.getElementById('presensi-detail-izin').value || "-",
+                        lokasi: `${pos.coords.latitude},${pos.coords.longitude}`,
+                        jarak: Math.round(distance),
+                        link_bukti: fileUrl,
+                        status_verifikasi: statusAwal
+                    }]);
+
+                    if(dbError) return Swal.fire('Gagal Simpan Database', dbError.message, 'error');
+                    
+                    Swal.fire('Alhamdulillah', isTerlambat ? 'Presensi dikirim. Status: Terlambat.' : 'Presensi berhasil dikirim.', 'success');
+                    e.target.reset();
+                    if(!document.getElementById('view-history').classList.contains('hidden')) loadHistory();
                 }, 
-                (err) => {
-                    let errMsg = 'Gagal mendapatkan lokasi.';
-                    if (err.code === 1) errMsg = 'Akses GPS ditolak. Silakan izinkan akses lokasi pada browser/HP Anda.';
-                    else if (err.code === 2) errMsg = 'Sinyal satelit GPS tidak tersedia saat ini. Pindahlah ke area terbuka.';
-                    else if (err.code === 3) errMsg = 'Waktu pencarian GPS habis (Timeout). Silakan klik submit lagi.';
-                    Swal.fire('Kendala Lokasi', errMsg, 'error');
-                }, 
+                (err) => Swal.fire('Kendala Lokasi', 'Pastikan GPS menyala dan izinkan browser mengakses lokasi.', 'error'), 
                 { enableHighAccuracy: true, timeout: 30000, maximumAge: 15000 }
             );
         }
         
-        function sendPresensi(payload) {
-            google.script.run.withSuccessHandler(function(resStr){
-                let res = JSON.parse(resStr); 
-                if(res.status === 'success') {
-                    Swal.fire('Alhamdulillah', res.message, 'success');
-                    if(userSession && document.getElementById('view-history').classList.contains('hidden') === false) loadHistory();
-                } 
-                else if(res.status === 'out_of_range' || res.status === 'error') Swal.fire('Peringatan', res.message, 'warning'); 
-                else Swal.fire('Gagal', res.message, 'error');
-            }).submitPresensiGuru(payload);
-        }
-
-        function fetchSiswaByKelas() {
+        async function fetchSiswaByKelas() {
             const kelas = document.getElementById('jurnal-kelas').value;
             if(!kelas) return;
             const container = document.getElementById('container-absensi-siswa');
             const listDiv = document.getElementById('list-siswa-absensi');
-            container.style.display = 'block';
-            listDiv.innerHTML = `<div class="text-center text-gray-500 py-4"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data siswa...</div>`;
+            container.style.display = 'block'; listDiv.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
             
-            google.script.run.withSuccessHandler(function(resStr) {
-                let res = JSON.parse(resStr);
-                if(res.status === 'success') {
-                    if(res.data.length === 0) {
-                        listDiv.innerHTML = `<div class="text-center text-red-500 py-4 font-bold">Tidak ada siswa aktif di kelas ini.</div>`;
-                        updateAbsensiSummary(); return;
-                    }
-                    let html = '';
-                    res.data.forEach((siswa, index) => {
-                        html += `<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white border rounded-lg shadow-sm gap-2"><div class="text-sm font-semibold text-gray-700 w-full sm:w-1/2">${index + 1}. ${siswa.nama} <span class="text-xs font-normal text-gray-400 block">${siswa.nisn}</span></div><div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end"><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="H" checked onchange="updateAbsensiSummary()" class="w-4 h-4 text-green-600"><span class="text-[10px] mt-1 font-bold text-green-700">Hadir</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="S" onchange="updateAbsensiSummary()" class="w-4 h-4 text-yellow-600"><span class="text-[10px] mt-1 font-bold text-yellow-600">Sakit</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="I" onchange="updateAbsensiSummary()" class="w-4 h-4 text-blue-600"><span class="text-[10px] mt-1 font-bold text-blue-600">Izin</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="A" onchange="updateAbsensiSummary()" class="w-4 h-4 text-red-600"><span class="text-[10px] mt-1 font-bold text-red-600">Alpa</span></label></div></div>`;
-                    });
-                    listDiv.innerHTML = html; updateAbsensiSummary();
-                } else { listDiv.innerHTML = `<div class="text-center text-red-500 py-4">Gagal memuat siswa: ${res.message}</div>`; }
-            }).getSiswaByKelas(kelas);
+            const { data, error } = await supabase.from('Data_Siswa').select('*').eq('kelas', kelas);
+            if(error || !data) { listDiv.innerHTML = `<div class="text-red-500">Gagal memuat.</div>`; return; }
+            if(data.length === 0) { listDiv.innerHTML = `<div>Kosong.</div>`; updateAbsensiSummary(); return; }
+            
+            let html = '';
+            data.forEach((siswa, index) => {
+                html += `<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white border rounded-lg shadow-sm gap-2"><div class="text-sm font-semibold text-gray-700 w-full sm:w-1/2">${index + 1}. ${siswa.nama_siswa} <span class="text-xs font-normal text-gray-400 block">${siswa.nisn}</span></div><div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end"><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="H" checked onchange="updateAbsensiSummary()" class="w-4 h-4 text-green-600"><span class="text-[10px] mt-1 font-bold text-green-700">Hadir</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="S" onchange="updateAbsensiSummary()" class="w-4 h-4 text-yellow-600"><span class="text-[10px] mt-1 font-bold text-yellow-600">Sakit</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="I" onchange="updateAbsensiSummary()" class="w-4 h-4 text-blue-600"><span class="text-[10px] mt-1 font-bold text-blue-600">Izin</span></label><label class="flex flex-col items-center cursor-pointer px-2"><input type="radio" name="absen_${siswa.nisn}" value="A" onchange="updateAbsensiSummary()" class="w-4 h-4 text-red-600"><span class="text-[10px] mt-1 font-bold text-red-600">Alpa</span></label></div></div>`;
+            });
+            listDiv.innerHTML = html; updateAbsensiSummary();
         }
 
         function updateAbsensiSummary() {
@@ -845,40 +887,55 @@
             document.getElementById('sum-h').innerText = h; document.getElementById('sum-s').innerText = s; document.getElementById('sum-i').innerText = i; document.getElementById('sum-a').innerText = a;
         }
 
-        function handleJurnalSubmit(e) {
+        async function handleJurnalSubmit(e) {
             e.preventDefault();
+            const hasDatang = await checkDependencyDatang();
+            if(!hasDatang) return Swal.fire('Akses Ditolak', "Anda belum melakukan Presensi Datang (atau ditolak admin). Tidak dapat mengisi Jurnal.", 'error');
+
             const fileInput = document.getElementById('jurnal-file');
             if(fileInput.files.length === 0) return Swal.fire('Peringatan', 'Foto kegiatan wajib dilampirkan!', 'warning');
 
             let sumH = document.getElementById('sum-h').innerText; let sumS = document.getElementById('sum-s').innerText; let sumI = document.getElementById('sum-i').innerText; let sumA = document.getElementById('sum-a').innerText;
-            const absensiStr = `H:${sumH}|S:${sumS}|I:${sumI}|A:${sumA}`;
-            
             let detailList = [];
             document.querySelectorAll('#list-siswa-absensi > div.flex').forEach(div => {
                 let nameText = div.querySelector('.text-sm.font-semibold').innerText.split('\n')[0].replace(/^\d+\.\s*/, '');
                 let selectedRadio = div.querySelector('input[type="radio"]:checked');
                 if(selectedRadio && selectedRadio.value !== 'H') { detailList.push(`${nameText} (${selectedRadio.value})`); }
             });
-            let detailAbsensiStr = detailList.length > 0 ? detailList.join(', ') : 'Nihil (Semua Hadir)';
-
-            Swal.fire({ title: 'Menyiapkan Data...', didOpen: () => Swal.showLoading() });
-            const payload = { namaGuru: userSession.nama, mapel: document.getElementById('jurnal-mapel').value, kelas: document.getElementById('jurnal-kelas').value, tanggal: document.getElementById('jurnal-tanggal').value, materi: document.getElementById('jurnal-materi').value, kegiatan: document.getElementById('jurnal-kegiatan').value, absensiSiswa: absensiStr, keterangan: "-", refleksi: document.getElementById('jurnal-refleksi').value, detailAbsensi: detailAbsensiStr };
             
-            compressImage(fileInput.files[0], (dataUrl) => {
-                payload.fileData = dataUrl; payload.fileName = fileInput.files[0].name;
-                google.script.run.withSuccessHandler(function(resStr){
-                    showLoader(false); let r = JSON.parse(resStr);
-                    if(r.status === 'success') {
-                        Swal.fire('Tersimpan', r.message, 'success'); 
-                        e.target.reset(); document.getElementById('jurnal-tanggal').valueAsDate = new Date();
-                        document.getElementById('container-absensi-siswa').style.display = 'none';
-                        if(document.getElementById('view-history').classList.contains('hidden') === false) loadHistory();
-                    } else { Swal.fire('Gagal', r.message, 'error'); }
-                }).submitJurnal(payload);
-            });
+            Swal.fire({ title: 'Menyiapkan Data...', didOpen: () => Swal.showLoading() });
+            
+            // Upload Foto
+            const file = fileInput.files[0];
+            const fileName = `jurnal_${new Date().getTime()}_${file.name.replace(/\s/g, '_')}`;
+            const { error: uploadError } = await supabase.storage.from('sipjam-bucket').upload(fileName, file);
+            if(uploadError) return Swal.fire('Gagal Upload Foto', uploadError.message, 'error');
+            const fileUrl = SUPABASE_URL + '/storage/v1/object/public/sipjam-bucket/' + fileName;
+
+            // Insert Database
+            const { error: dbError } = await supabase.from('Jurnal_Pembelajaran').insert([{
+                id: new Date().getTime().toString(),
+                timestamp: new Date().toISOString(),
+                nama_guru: userSession.nama,
+                mapel: document.getElementById('jurnal-mapel').value,
+                kelas: document.getElementById('jurnal-kelas').value,
+                tanggal: document.getElementById('jurnal-tanggal').value,
+                materi: document.getElementById('jurnal-materi').value,
+                kegiatan: document.getElementById('jurnal-kegiatan').value,
+                absensi_siswa: `H:${sumH}|S:${sumS}|I:${sumI}|A:${sumA}`,
+                keterangan: "-",
+                refleksi: document.getElementById('jurnal-refleksi').value,
+                detail_absen: detailList.length > 0 ? detailList.join(', ') : 'Nihil (Semua Hadir)',
+                link_bukti_file: fileUrl,
+                status_verifikasi: "Menunggu Verifikasi"
+            }]);
+
+            if(dbError) return Swal.fire('Gagal', dbError.message, 'error');
+            Swal.fire('Tersimpan', 'Jurnal berhasil dikirim untuk diverifikasi.', 'success');
+            e.target.reset(); document.getElementById('container-absensi-siswa').style.display = 'none';
         }
 
-        // --- HISTORY (WITH PAGINATION & SEARCH) ---
+        // --- HISTORY (WITH SUPABASE PAGINATION LOGIC) ---
         function switchHistoryTab(tabName) {
             document.getElementById('tab-hist-presensi').className = tabName === 'presensi' ? "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2" : "font-bold text-gray-400 px-4 py-2";
             document.getElementById('tab-hist-jurnal').className = tabName === 'jurnal' ? "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2" : "font-bold text-gray-400 px-4 py-2";
@@ -886,17 +943,21 @@
             document.getElementById('hist-jurnal-area').classList.toggle('hidden', tabName !== 'jurnal');
         }
 
-        function loadHistory() {
-            document.getElementById('tb-hist-presensi').innerHTML = `<tr><td colspan="5" class="text-center p-4 text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
-            document.getElementById('tb-hist-jurnal').innerHTML = `<tr><td colspan="7" class="text-center p-4 text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
-            const namaFilter = userSession.role === 'Admin' ? '' : userSession.nama; 
-            google.script.run.withSuccessHandler(function(resStr){
-                let res = JSON.parse(resStr);
-                if(res.status === 'success') {
-                    histPresensiAll = res.presensi; filterHistPresensi();
-                    histJurnalAll = res.jurnal; filterHistJurnal();
-                }
-            }).getHistoryData(userSession.role, namaFilter);
+        async function loadHistory() {
+            document.getElementById('tb-hist-presensi').innerHTML = `<tr><td colspan="5" class="text-center p-4"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
+            document.getElementById('tb-hist-jurnal').innerHTML = `<tr><td colspan="7" class="text-center p-4"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
+            
+            let pQuery = supabase.from('Presensi_Guru').select('*').order('timestamp', { ascending: false });
+            let jQuery = supabase.from('Jurnal_Pembelajaran').select('*').order('timestamp', { ascending: false });
+            
+            if(userSession.role === 'Guru') {
+                pQuery = pQuery.eq('nama_guru', userSession.nama);
+                jQuery = jQuery.eq('nama_guru', userSession.nama);
+            }
+
+            const [{ data: pData }, { data: jData }] = await Promise.all([pQuery, jQuery]);
+            if(pData) { histPresensiAll = pData; filterHistPresensi(); }
+            if(jData) { histJurnalAll = jData; filterHistJurnal(); }
         }
 
         function filterHistPresensi() {
@@ -910,19 +971,19 @@
             const slice = histPresensiFiltered.slice(start, end);
             let htmlP = ''; slice.forEach(r => { 
                 let badgeClass = "bg-gray-100 text-gray-700";
-                if(r.status.includes("Terlambat")) badgeClass = "bg-orange-100 text-orange-700";
-                else if(r.status.includes("Terverifikasi") || r.status === "Disetujui") badgeClass = "bg-green-100 text-green-700";
-                else if(r.status === "Ditolak") badgeClass = "bg-red-100 text-red-700";
+                if(r.status_verifikasi.includes("Terlambat")) badgeClass = "bg-orange-100 text-orange-700";
+                else if(r.status_verifikasi.includes("Terverifikasi") || r.status_verifikasi === "Disetujui") badgeClass = "bg-green-100 text-green-700";
+                else if(r.status_verifikasi === "Ditolak") badgeClass = "bg-red-100 text-red-700";
                 
-                let linkBukti = (r.link && r.link !== "-") ? `<button onclick="previewFoto('${r.link}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Cek</button>` : `-`;
+                let timeStr = new Date(r.timestamp).toLocaleTimeString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+                let linkBukti = (r.link_bukti && r.link_bukti !== "-") ? `<button onclick="previewFoto('${r.link_bukti}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 shadow-sm">Cek</button>` : `-`;
 
-                htmlP += `<tr class="hover:bg-gray-50"><td class="p-3">${r.waktu}</td><td class="p-3 font-bold text-nizamudin-green">${r.nama}</td><td class="p-3">${r.tipe} - ${r.jenis}</td><td class="p-3 text-center">${linkBukti}</td><td class="p-3 text-center"><span class="px-2 py-1 ${badgeClass} text-xs font-bold rounded border uppercase tracking-wider">${r.status}</span></td></tr>`; 
+                htmlP += `<tr class="hover:bg-gray-50"><td class="p-3">${timeStr}</td><td class="p-3 font-bold text-nizamudin-green">${r.nama_guru}</td><td class="p-3">${r.tipe_absen} - ${r.jenis_presensi}</td><td class="p-3 text-center">${linkBukti}</td><td class="p-3 text-center"><span class="px-2 py-1 ${badgeClass} text-xs font-bold rounded border uppercase tracking-wider">${r.status_verifikasi}</span></td></tr>`; 
             });
-            document.getElementById('tb-hist-presensi').innerHTML = htmlP || '<tr><td colspan="5" class="text-center p-4">Tidak ada riwayat presensi.</td></tr>';
+            document.getElementById('tb-hist-presensi').innerHTML = htmlP || '<tr><td colspan="5" class="text-center p-4">Kosong.</td></tr>';
             
             document.getElementById('info-hist-presensi').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histPresensiFiltered.length)} dari ${histPresensiFiltered.length}`;
-            document.getElementById('btn-prev-hp').disabled = histPresensiPage === 1;
-            document.getElementById('btn-next-hp').disabled = end >= histPresensiFiltered.length;
+            document.getElementById('btn-prev-hp').disabled = histPresensiPage === 1; document.getElementById('btn-next-hp').disabled = end >= histPresensiFiltered.length;
         }
 
         function filterHistJurnal() {
@@ -931,29 +992,25 @@
             histJurnalPage = 1; renderHistJurnal();
         }
         function changePageHistJurnal(dir) { histJurnalPage += dir; renderHistJurnal(); }
-        function uploadUlangFotoJurnal(id) {
-            currentResubmitId = id;
-            document.getElementById('hidden-jurnal-resubmit').click();
-        }
+        function uploadUlangFotoJurnal(id) { currentResubmitId = id; document.getElementById('hidden-jurnal-resubmit').click(); }
 
         function renderHistJurnal() {
             const start = (histJurnalPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE;
             const slice = histJurnalFiltered.slice(start, end);
             let htmlJ = ''; slice.forEach(r => { 
                 let badgeClass = "bg-yellow-100 text-yellow-700";
-                if(r.status === "Disetujui" || r.status.includes("Terverifikasi")) badgeClass = "bg-green-100 text-green-700";
-                else if(r.status === "Ditolak") badgeClass = "bg-red-100 text-red-700";
+                if(r.status_verifikasi === "Disetujui") badgeClass = "bg-green-100 text-green-700";
+                else if(r.status_verifikasi === "Ditolak") badgeClass = "bg-red-100 text-red-700";
 
-                let linkBukti = (r.link && r.link !== "-") ? `<button onclick="previewFoto('${r.link}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Foto</button>` : `-`;
-                let btnUploadUlang = (r.status === "Ditolak" && userSession.role === 'Guru') ? `<button onclick="uploadUlangFotoJurnal('${r.id}')" class="bg-red-600 hover:bg-red-700 text-white text-[10px] px-2 py-1 rounded shadow"><i class="fa-solid fa-upload"></i> Perbaiki</button>` : `-`;
+                let linkBukti = (r.link_bukti_file && r.link_bukti_file !== "-") ? `<button onclick="previewFoto('${r.link_bukti_file}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200">Foto</button>` : `-`;
+                let btnUploadUlang = (r.status_verifikasi === "Ditolak" && userSession.role === 'Guru') ? `<button onclick="uploadUlangFotoJurnal('${r.id}')" class="bg-red-600 hover:bg-red-700 text-white text-[10px] px-2 py-1 rounded shadow">Perbaiki</button>` : `-`;
 
-                htmlJ += `<tr class="hover:bg-gray-50"><td class="p-3">${r.tanggal}</td><td class="p-3">${r.mapel}</td><td class="p-3">${r.kelas}</td><td class="p-3 text-xs max-w-xs truncate" title="${r.materi}">${r.materi}</td><td class="p-3 text-center">${linkBukti}</td><td class="p-3 text-center"><span class="px-2 py-1 ${badgeClass} text-xs font-bold rounded border uppercase tracking-wider">${r.status}</span></td><td class="p-3 text-center">${btnUploadUlang}</td></tr>`; 
+                htmlJ += `<tr class="hover:bg-gray-50"><td class="p-3">${r.tanggal}</td><td class="p-3">${r.mapel}</td><td class="p-3">${r.kelas}</td><td class="p-3 text-xs max-w-xs truncate" title="${r.materi}">${r.materi}</td><td class="p-3 text-center">${linkBukti}</td><td class="p-3 text-center"><span class="px-2 py-1 ${badgeClass} text-xs font-bold rounded border uppercase tracking-wider">${r.status_verifikasi}</span></td><td class="p-3 text-center">${btnUploadUlang}</td></tr>`; 
             });
-            document.getElementById('tb-hist-jurnal').innerHTML = htmlJ || '<tr><td colspan="7" class="text-center p-4">Tidak ada riwayat jurnal.</td></tr>';
+            document.getElementById('tb-hist-jurnal').innerHTML = htmlJ || '<tr><td colspan="7" class="text-center p-4">Kosong.</td></tr>';
             
             document.getElementById('info-hist-jurnal').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histJurnalFiltered.length)} dari ${histJurnalFiltered.length}`;
-            document.getElementById('btn-prev-hj').disabled = histJurnalPage === 1;
-            document.getElementById('btn-next-hj').disabled = end >= histJurnalFiltered.length;
+            document.getElementById('btn-prev-hj').disabled = histJurnalPage === 1; document.getElementById('btn-next-hj').disabled = end >= histJurnalFiltered.length;
         }
 
         // --- VERIFIKASI ADMIN (PRESENSI & JURNAL) ---
@@ -965,12 +1022,10 @@
             if(tabName === 'Presensi') loadDataVerifikasi(); else loadDataVerifikasiJurnal();
         }
 
-        // --- VERIFIKASI PRESENSI ---
-        function loadDataVerifikasi() {
-            document.getElementById('tb-verifikasi').innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
-            google.script.run.withSuccessHandler(function(resStr){
-                let res = JSON.parse(resStr); if(res.status === 'success') { verifDataAll = res.data; filterVerifikasi(); }
-            }).getPresensiForVerification();
+        async function loadDataVerifikasi() {
+            document.getElementById('tb-verifikasi').innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>`;
+            const { data } = await supabase.from('Presensi_Guru').select('*').order('timestamp', { ascending: false });
+            if(data) { verifDataAll = data; filterVerifikasi(); }
         }
 
         function filterVerifikasi() {
@@ -983,37 +1038,30 @@
             const start = (verifPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE;
             const slice = verifFiltered.slice(start, end);
             const tbody = document.getElementById('tb-verifikasi'); tbody.innerHTML = '';
-            if(slice.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500">Tidak ada data ditemukan.</td></tr>`; }
+            
+            if(slice.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6">Kosong.</td></tr>`; }
             else {
                 slice.forEach(row => {
                     let badgeClass = "bg-yellow-100 text-yellow-700";
-                    if(row["Status Verifikasi"].includes("Terlambat")) badgeClass = "bg-orange-100 text-orange-700";
-                    else if(row["Status Verifikasi"].includes("Terverifikasi") || row["Status Verifikasi"] === "Disetujui") badgeClass = "bg-green-100 text-green-700";
-                    else if(row["Status Verifikasi"] === "Ditolak") badgeClass = "bg-red-100 text-red-700";
+                    if(row.status_verifikasi.includes("Terlambat")) badgeClass = "bg-orange-100 text-orange-700";
+                    else if(row.status_verifikasi.includes("Terverifikasi") || row.status_verifikasi === "Disetujui") badgeClass = "bg-green-100 text-green-700";
+                    else if(row.status_verifikasi === "Ditolak") badgeClass = "bg-red-100 text-red-700";
 
-                    let actionBtns = row["Status Verifikasi"].includes("Menunggu Verifikasi") || row["Status Verifikasi"].includes("Menunggu Verif") ? `<button onclick="aksiVerifikasi('${row["ID"]}', 'Disetujui')" class="bg-nizamudin-green text-white px-3 py-1 rounded text-xs shadow-sm mr-1"><i class="fa-solid fa-check"></i></button><button onclick="aksiVerifikasi('${row["ID"]}', 'Ditolak')" class="bg-red-500 text-white px-3 py-1 rounded text-xs shadow-sm"><i class="fa-solid fa-xmark"></i></button>` : `<span class="text-gray-400 text-xs italic"><i class="fa-solid fa-lock text-[10px]"></i> Selesai</span>`;
-                    let linkBukti = (row["Link Bukti File"] && row["Link Bukti File"] !== "-") ? `<button onclick="previewFoto('${row["Link Bukti File"]}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Bukti</button>` : `-`;
+                    let actionBtns = row.status_verifikasi.includes("Menunggu Verifikasi") || row.status_verifikasi.includes("Menunggu Verif") ? `<button onclick="aksiVerifikasi('${row.id}', 'Disetujui', 'Presensi_Guru')" class="bg-nizamudin-green text-white px-3 py-1 rounded text-xs mr-1">Setuju</button><button onclick="aksiVerifikasi('${row.id}', 'Ditolak', 'Presensi_Guru')" class="bg-red-500 text-white px-3 py-1 rounded text-xs">Tolak</button>` : `<span class="text-gray-400 text-xs italic">Selesai</span>`;
+                    let linkBukti = (row.link_bukti && row.link_bukti !== "-") ? `<button onclick="previewFoto('${row.link_bukti}')" class="text-blue-600 font-bold text-xs">Bukti</button>` : `-`;
+                    let timeStr = new Date(row.timestamp).toLocaleTimeString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
                     
-                    tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-3 px-4">${row["Timestamp"]}</td><td class="py-3 px-4 font-bold text-nizamudin-green">${row["Nama Guru"]}</td><td class="py-3 px-4">${row["Tipe Absen"]} - ${row["Jenis Presensi"]}</td><td class="py-3 px-4 text-center">${linkBukti}</td><td class="py-3 px-4 text-center"><span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}">${row["Status Verifikasi"]}</span></td><td class="py-3 px-4 text-center">${actionBtns}</td></tr>`;
+                    tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-3 px-4">${timeStr}</td><td class="py-3 px-4 font-bold text-nizamudin-green">${row.nama_guru}</td><td class="py-3 px-4">${row.tipe_absen} - ${row.jenis_presensi}</td><td class="py-3 px-4 text-center">${linkBukti}</td><td class="py-3 px-4 text-center"><span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}">${row.status_verifikasi}</span></td><td class="py-3 px-4 text-center">${actionBtns}</td></tr>`;
                 });
             }
-            document.getElementById('info-verif').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifFiltered.length)} dari ${verifFiltered.length}`;
-            document.getElementById('btn-prev-verif').disabled = verifPage === 1;
-            document.getElementById('btn-next-verif').disabled = end >= verifFiltered.length;
+            document.getElementById('info-verif').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifFiltered.length)}`;
+            document.getElementById('btn-prev-verif').disabled = verifPage === 1; document.getElementById('btn-next-verif').disabled = end >= verifFiltered.length;
         }
 
-        function aksiVerifikasi(id, status) {
-            Swal.fire({ title: 'Konfirmasi Aksi', text: `Ubah status presensi menjadi "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#0B4619' }).then((result) => {
-                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); loadDataVerifikasi(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasi(id, status); }
-            })
-        }
-
-        // --- VERIFIKASI JURNAL ---
-        function loadDataVerifikasiJurnal() {
-            document.getElementById('tb-verifikasi-jurnal').innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
-            google.script.run.withSuccessHandler(function(resStr){
-                let res = JSON.parse(resStr); if(res.status === 'success') { verifJurnalAll = res.data; filterVerifikasiJurnal(); }
-            }).getJurnalForVerification();
+        async function loadDataVerifikasiJurnal() {
+            document.getElementById('tb-verifikasi-jurnal').innerHTML = `<tr><td colspan="7" class="text-center py-6"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>`;
+            const { data } = await supabase.from('Jurnal_Pembelajaran').select('*').order('timestamp', { ascending: false });
+            if(data) { verifJurnalAll = data; filterVerifikasiJurnal(); }
         }
 
         function filterVerifikasiJurnal() {
@@ -1026,212 +1074,156 @@
             const start = (verifJurnalPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE;
             const slice = verifJurnalFiltered.slice(start, end);
             const tbody = document.getElementById('tb-verifikasi-jurnal'); tbody.innerHTML = '';
-            if(slice.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-gray-500">Tidak ada data ditemukan.</td></tr>`; }
+            
+            if(slice.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6">Kosong.</td></tr>`; }
             else {
                 slice.forEach(row => {
                     let badgeClass = "bg-yellow-100 text-yellow-700";
-                    if(row["Status Verifikasi"] === "Disetujui") badgeClass = "bg-green-100 text-green-700";
-                    else if(row["Status Verifikasi"] === "Ditolak") badgeClass = "bg-red-100 text-red-700";
+                    if(row.status_verifikasi === "Disetujui") badgeClass = "bg-green-100 text-green-700";
+                    else if(row.status_verifikasi === "Ditolak") badgeClass = "bg-red-100 text-red-700";
 
-                    let actionBtns = row["Status Verifikasi"] === "Menunggu Verifikasi" ? `<button onclick="aksiVerifikasiJurnal('${row["ID"]}', 'Disetujui')" class="bg-nizamudin-green text-white px-3 py-1 rounded text-xs shadow-sm mr-1"><i class="fa-solid fa-check"></i></button><button onclick="aksiVerifikasiJurnal('${row["ID"]}', 'Ditolak')" class="bg-red-500 text-white px-3 py-1 rounded text-xs shadow-sm"><i class="fa-solid fa-xmark"></i></button>` : `<span class="text-gray-400 text-xs italic"><i class="fa-solid fa-lock text-[10px]"></i> Selesai</span>`;
-                    let linkBukti = (row["Link Bukti File"] && row["Link Bukti File"] !== "-") ? `<button onclick="previewFoto('${row["Link Bukti File"]}')" class="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition shadow-sm"><i class="fa-solid fa-image"></i> Cek Foto</button>` : `-`;
+                    let actionBtns = row.status_verifikasi === "Menunggu Verifikasi" ? `<button onclick="aksiVerifikasi('${row.id}', 'Disetujui', 'Jurnal_Pembelajaran')" class="bg-nizamudin-green text-white px-3 py-1 rounded text-xs mr-1">Setuju</button><button onclick="aksiVerifikasi('${row.id}', 'Ditolak', 'Jurnal_Pembelajaran')" class="bg-red-500 text-white px-3 py-1 rounded text-xs">Tolak</button>` : `<span class="text-gray-400 text-xs italic">Selesai</span>`;
+                    let linkBukti = (row.link_bukti_file && row.link_bukti_file !== "-") ? `<button onclick="previewFoto('${row.link_bukti_file}')" class="text-blue-600 font-bold text-xs">Foto</button>` : `-`;
                     
-                    tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-3 px-4">${row["Tanggal"]}</td><td class="py-3 px-4 font-bold text-nizamudin-green">${row["Nama Guru"]}</td><td class="py-3 px-4">${row["Mapel"]} / ${row["Kelas"]}</td><td class="py-3 px-4 text-xs max-w-xs truncate" title="${row["Detail Absen"]}">${row["Detail Absen"]}</td><td class="py-3 px-4 text-center">${linkBukti}</td><td class="py-3 px-4 text-center"><span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}">${row["Status Verifikasi"]}</span></td><td class="py-3 px-4 text-center">${actionBtns}</td></tr>`;
+                    tbody.innerHTML += `<tr class="hover:bg-gray-50"><td class="py-3 px-4">${row.tanggal}</td><td class="py-3 px-4 font-bold text-nizamudin-green">${row.nama_guru}</td><td class="py-3 px-4">${row.mapel} / ${row.kelas}</td><td class="py-3 px-4 text-xs truncate max-w-[100px]" title="${row.detail_absen}">${row.detail_absen}</td><td class="py-3 px-4 text-center">${linkBukti}</td><td class="py-3 px-4 text-center"><span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}">${row.status_verifikasi}</span></td><td class="py-3 px-4 text-center">${actionBtns}</td></tr>`;
                 });
             }
-            document.getElementById('info-verif-jurnal').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifJurnalFiltered.length)} dari ${verifJurnalFiltered.length}`;
-            document.getElementById('btn-prev-vj').disabled = verifJurnalPage === 1;
-            document.getElementById('btn-next-vj').disabled = end >= verifJurnalFiltered.length;
+            document.getElementById('info-verif-jurnal').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifJurnalFiltered.length)}`;
+            document.getElementById('btn-prev-vj').disabled = verifJurnalPage === 1; document.getElementById('btn-next-vj').disabled = end >= verifJurnalFiltered.length;
         }
 
-        function aksiVerifikasiJurnal(id, status) {
-            Swal.fire({ title: 'Konfirmasi Aksi', text: `Ubah status jurnal menjadi "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#0B4619' }).then((result) => {
-                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); loadDataVerifikasiJurnal(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasiJurnal(id, status); }
+        function aksiVerifikasi(id, status, tabel) {
+            Swal.fire({ title: 'Konfirmasi Aksi', text: `Ubah status menjadi "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#0B4619' }).then(async (result) => {
+                if (result.isConfirmed) { 
+                    showLoader(true); 
+                    const { error } = await supabase.from(tabel).update({ status_verifikasi: status }).eq('id', id);
+                    showLoader(false);
+                    if(error) Swal.fire('Error', error.message, 'error');
+                    else { 
+                        Swal.fire('Sukses', 'Status Diubah', 'success'); 
+                        if(tabel === 'Presensi_Guru') loadDataVerifikasi(); else loadDataVerifikasiJurnal();
+                    }
+                }
             })
         }
 
-        // --- REKAP ADMIN DATE RANGE ---
-        function tarikDataRekap() {
-            const startDate = document.getElementById('rekap-start').value; const endDate = document.getElementById('rekap-end').value; 
-            if(!startDate || !endDate) return Swal.fire('Peringatan', 'Lengkapi Tanggal Mulai dan Akhir.', 'warning'); showLoader(true);
-            google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { renderTabelRekap(res.dataPresensi, res.dataJurnal); document.getElementById('hasil-rekap').classList.remove('hidden'); } else { Swal.fire('Error', res.message, 'error'); } }).getRekapData(startDate, endDate);
-        }
-        function renderTabelRekap(dataPresensi, dataJurnal) {
+        // --- REKAP ADMIN ---
+        async function tarikDataRekap() {
+            const start = document.getElementById('rekap-start').value; const end = document.getElementById('rekap-end').value; 
+            if(!start || !end) return Swal.fire('Peringatan', 'Lengkapi Tanggal Mulai dan Akhir.', 'warning'); 
+            showLoader(true);
+            
+            const startT = new Date(start).setHours(0,0,0,0); const endT = new Date(end).setHours(23,59,59,999);
+            
+            const [{ data: pData }, { data: jData }] = await Promise.all([
+                supabase.from('Presensi_Guru').select('*'),
+                supabase.from('Jurnal_Pembelajaran').select('*')
+            ]);
+            showLoader(false);
+
+            let rekapP = {}; let rekapJ = {};
+            if(pData) {
+                pData.forEach(r => {
+                    let d = new Date(r.timestamp);
+                    if(d >= startT && d <= endT && r.status_verifikasi !== "Ditolak") {
+                        if(!rekapP[r.nama_guru]) rekapP[r.nama_guru] = { H: 0, S: 0, I: 0, DL: 0, A: 0 };
+                        if(r.jenis_presensi === "Sekolah") rekapP[r.nama_guru].H++;
+                        else if(r.jenis_presensi === "Dinas Luar") rekapP[r.nama_guru].DL++;
+                        else if(r.detail_izin === "Sakit") rekapP[r.nama_guru].S++;
+                        else rekapP[r.nama_guru].I++;
+                    }
+                });
+            }
+            if(jData) {
+                jData.forEach(r => {
+                    let d = new Date(r.tanggal);
+                    if(d >= startT && d <= endT && r.status_verifikasi === "Disetujui") {
+                        if(!rekapJ[r.mapel]) rekapJ[r.mapel] = 0; rekapJ[r.mapel]++;
+                    }
+                });
+            }
+
             const tbP = document.getElementById('tb-rekap-presensi'); const tbJ = document.getElementById('tb-rekap-jurnal'); tbP.innerHTML = ''; tbJ.innerHTML = '';
-            for(let guru in dataPresensi) { let d = dataPresensi[guru]; tbP.innerHTML += `<tr><td class="p-3">${guru}</td><td class="p-3 text-center text-green-700 font-bold">${d.Hadir}</td><td class="p-3 text-center">${d.DinasLuar}</td><td class="p-3 text-center text-blue-600">${d.Izin}</td><td class="p-3 text-center text-yellow-600">${d.Sakit}</td><td class="p-3 text-center text-red-100 bg-red-700 font-bold">${d.Alpa}</td></tr>`; }
-            for(let mapel in dataJurnal) { tbJ.innerHTML += `<tr><td class="p-3">${mapel}</td><td class="p-3 text-center text-nizamudin-green font-bold">${dataJurnal[mapel]} Kali</td></tr>`; }
+            for(let guru in rekapP) { let d = rekapP[guru]; tbP.innerHTML += `<tr><td class="p-3">${guru}</td><td class="p-3 text-center font-bold text-green-700">${d.H}</td><td class="p-3 text-center">${d.DL}</td><td class="p-3 text-center">${d.I}</td><td class="p-3 text-center">${d.S}</td><td class="p-3 text-center font-bold text-red-600">${d.A}</td></tr>`; }
+            for(let mapel in rekapJ) { tbJ.innerHTML += `<tr><td class="p-3">${mapel}</td><td class="p-3 text-center font-bold text-nizamudin-green">${rekapJ[mapel]} Kali</td></tr>`; }
+            document.getElementById('hasil-rekap').classList.remove('hidden');
         }
 
-        // --- CRUD DATA MASTER ADMIN ---
+        // --- CRUD DATA MASTER SUPABASE ---
         function switchMasterTab(tabName) {
-            ['Siswa', 'Guru', 'Mapel', 'Kalender'].forEach(t => {
-                if(t === tabName) { document.getElementById(`tab-master-${t.toLowerCase()}`).className = "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2 shrink-0"; document.getElementById(`master-${t.toLowerCase()}-area`).classList.remove('hidden'); } 
-                else { document.getElementById(`tab-master-${t.toLowerCase()}`).className = "font-bold text-gray-400 px-4 py-2 shrink-0"; document.getElementById(`master-${t.toLowerCase()}-area`).classList.add('hidden'); }
+            ['Data_Siswa', 'Data_Guru', 'Data_Mapel', 'Kalender_Pendidikan'].forEach(t => {
+                let sId = t.toLowerCase().replace('_', '-');
+                document.getElementById(`tab-master-${sId}`).className = t === tabName ? "font-bold text-nizamudin-green border-b-4 border-nizamudin-gold px-4 py-2" : "font-bold text-gray-400 px-4 py-2"; 
+                document.getElementById(`master-${sId}-area`).classList.toggle('hidden', t !== tabName); 
             });
         }
 
-        function loadMasterData(tipe) {
-            const tbId = `tb-master-${tipe.toLowerCase()}`; document.getElementById(tbId).innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
-            google.script.run.withSuccessHandler(function(res){
-                let r = JSON.parse(res);
-                if(r.status === 'success') {
-                    if(tipe === 'Siswa') { masterDataSiswa = r.data; renderTbSiswa(); }
-                    else if(tipe === 'Guru') { masterDataGuru = r.data; renderTbGuru(); }
-                    else if(tipe === 'Mapel') { masterDataMapel = r.data; renderTbMapel(); }
-                    else if(tipe === 'Kalender') { masterDataKalender = r.data; renderTbKalender(); }
-                }
-            }).kelolaDataMaster(tipe, 'GET', '', []);
+        async function loadMasterData(tipe) {
+            const tbId = `tb-master-${tipe.toLowerCase().replace('_', '-')}`; document.getElementById(tbId).innerHTML = `<tr><td colspan="6" class="text-center py-4"><i class="fa-solid fa-spin fa-spinner"></i></td></tr>`;
+            const { data } = await supabase.from(tipe).select('*');
+            if(data) {
+                if(tipe === 'Data_Siswa') { masterDataSiswa = data; renderTbSiswa(); }
+                else if(tipe === 'Data_Guru') { masterDataGuru = data; renderTbGuru(); }
+                else if(tipe === 'Data_Mapel') { masterDataMapel = data; renderTbMapel(); }
+                else if(tipe === 'Kalender_Pendidikan') { masterDataKalender = data; renderTbKalender(); }
+            }
         }
 
         function renderTbSiswa() {
-            let html = ''; masterDataSiswa.forEach(d => {
-                html += `<tr class="hover:bg-gray-50"><td class="p-3 text-center"><input type="checkbox" class="siswa-cb w-4 h-4" value="${d[0]}"></td><td class="p-3">${d[0]}</td><td class="p-3 font-bold text-blue-800">${d[1]}</td><td class="p-3">${d[2]}</td><td class="p-3">${d[4]}</td><td class="p-3 text-center"><button onclick="modalMasterSiswa('UPDATE', '${d[0]}')" class="text-blue-500 mr-2"><i class="fa-solid fa-edit"></i></button><button onclick="hapusMasterData('Siswa', '${d[0]}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`;
-            });
-            document.getElementById('tb-master-siswa').innerHTML = html || '<tr><td colspan="6" class="p-4 text-center">Belum ada data.</td></tr>';
+            let html = ''; masterDataSiswa.forEach(d => { html += `<tr class="hover:bg-gray-50"><td class="p-3 text-center"><input type="checkbox" class="siswa-cb" value="${d.nisn}"></td><td class="p-3">${d.nisn}</td><td class="p-3 font-bold">${d.nama_siswa}</td><td class="p-3">${d.kelas}</td><td class="p-3">${d.status}</td><td class="p-3 text-center"><button onclick="hapusMasterData('Data_Siswa', 'nisn', '${d.nisn}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`; });
+            document.getElementById('tb-master-data-siswa').innerHTML = html || '<tr><td colspan="6" class="text-center">Kosong</td></tr>';
         }
 
         function renderTbGuru() {
-            let html = ''; masterDataGuru.forEach(d => {
-                html += `<tr class="hover:bg-gray-50"><td class="p-3">${d[0]}</td><td class="p-3 font-bold text-amber-800">${d[1]}</td><td class="p-3 max-w-xs truncate text-xs" title="${d[2]}">${d[2]}</td><td class="p-3 text-xs">${d[5]}</td><td class="p-3 text-center"><button onclick="modalMasterGuru('UPDATE', '${d[0]}')" class="text-blue-500 mr-2"><i class="fa-solid fa-edit"></i></button><button onclick="hapusMasterData('Guru', '${d[0]}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`;
-            });
-            document.getElementById('tb-master-guru').innerHTML = html || '<tr><td colspan="5" class="p-4 text-center">Belum ada data.</td></tr>';
+            let html = ''; masterDataGuru.forEach(d => { html += `<tr class="hover:bg-gray-50"><td class="p-3">${d.nip}</td><td class="p-3 font-bold">${d.nama_guru}</td><td class="p-3 text-xs max-w-[100px] truncate">${d.mata_pelajaran}</td><td class="p-3 text-xs">${d.email}</td><td class="p-3 text-center"><button onclick="hapusMasterData('Data_Guru', 'nip', '${d.nip}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`; });
+            document.getElementById('tb-master-data-guru').innerHTML = html || '<tr><td colspan="5" class="text-center">Kosong</td></tr>';
         }
 
         function renderTbMapel() {
-            let html = ''; masterDataMapel.forEach(d => {
-                html += `<tr class="hover:bg-gray-50"><td class="p-3 font-bold text-green-800">${d[1]}</td><td class="p-3">${d[2]}</td><td class="p-3 text-center"><button onclick="modalMasterMapel('UPDATE', '${d[0]}')" class="text-blue-500 mr-2"><i class="fa-solid fa-edit"></i></button><button onclick="hapusMasterData('Mapel', '${d[0]}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`;
-            });
-            document.getElementById('tb-master-mapel').innerHTML = html || '<tr><td colspan="3" class="p-4 text-center">Belum ada data Mapel.</td></tr>';
+            let html = ''; masterDataMapel.forEach(d => { html += `<tr class="hover:bg-gray-50"><td class="p-3 font-bold">${d.nama_mata_pelajaran}</td><td class="p-3">${d.kategori}</td><td class="p-3 text-center"><button onclick="hapusMasterData('Data_Mapel', 'id', '${d.id}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`; });
+            document.getElementById('tb-master-data-mapel').innerHTML = html || '<tr><td colspan="3" class="text-center">Kosong</td></tr>';
         }
         
         function renderTbKalender() {
-            let html = ''; masterDataKalender.sort((a,b) => new Date(b[1]) - new Date(a[1])).forEach(d => {
-                const dateIndo = new Date(d[1]).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year:'numeric'});
-                const badge = d[3] === 'Libur' ? '<span class="bg-red-100 text-red-700 px-2 rounded font-bold text-[10px]">Libur</span>' : '<span class="bg-blue-100 text-blue-700 px-2 rounded font-bold text-[10px]">Kegiatan</span>';
-                html += `<tr class="hover:bg-gray-50"><td class="p-3">${dateIndo}</td><td class="p-3 font-bold text-purple-800">${d[2]}</td><td class="p-3">${badge}</td><td class="p-3 text-center"><button onclick="modalMasterKalender('UPDATE', '${d[0]}')" class="text-blue-500 mr-2"><i class="fa-solid fa-edit"></i></button><button onclick="hapusMasterData('Kalender', '${d[0]}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`;
-            });
-            document.getElementById('tb-master-kalender').innerHTML = html || '<tr><td colspan="4" class="p-4 text-center">Belum ada data kalender pendidikan.</td></tr>';
+            let html = ''; masterDataKalender.forEach(d => { html += `<tr class="hover:bg-gray-50"><td class="p-3">${d.tanggal}</td><td class="p-3 font-bold">${d.keterangan}</td><td class="p-3">${d.tipe}</td><td class="p-3 text-center"><button onclick="hapusMasterData('Kalender_Pendidikan', 'id', '${d.id}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button></td></tr>`; });
+            document.getElementById('tb-master-kalender-pendidikan').innerHTML = html || '<tr><td colspan="4" class="text-center">Kosong</td></tr>';
         }
 
-        function toggleSemuaSiswa(source) { let cbs = document.querySelectorAll('.siswa-cb'); cbs.forEach(cb => cb.checked = source.checked); }
+        function toggleSemuaSiswa(source) { document.querySelectorAll('.siswa-cb').forEach(cb => cb.checked = source.checked); }
 
         function aksiMassalSiswa() {
             const checked = Array.from(document.querySelectorAll('.siswa-cb:checked')).map(cb => cb.value);
-            if(checked.length === 0) return Swal.fire('Peringatan', 'Pilih minimal satu siswa dari tabel.', 'warning');
-            Swal.fire({
-                title: 'Ubah Kelas Massal', text: `${checked.length} Siswa Terpilih. Masukkan nama kelas baru (Misal: XI IPA 1):`,
-                input: 'text', showCancelButton: true, confirmButtonText: 'Terapkan', preConfirm: (val) => { if(!val) Swal.showValidationMessage('Kelas tidak boleh kosong'); return val; }
-            }).then((res) => {
-                if(res.isConfirmed) {
+            if(checked.length === 0) return Swal.fire('Peringatan', 'Pilih minimal satu siswa.', 'warning');
+            Swal.fire({ title: 'Ubah Kelas Massal', input: 'text', showCancelButton: true, confirmButtonText: 'Terapkan' }).then(async (res) => {
+                if(res.isConfirmed && res.value) {
                     showLoader(true);
-                    google.script.run.withSuccessHandler(r => { showLoader(false); Swal.fire('Sukses', JSON.parse(r).message, 'success'); loadMasterData('Siswa'); }).bulkUpdateSiswaKelas(checked, res.value);
+                    const { error } = await supabase.from('Data_Siswa').update({ kelas: res.value }).in('nisn', checked);
+                    showLoader(false);
+                    if(error) Swal.fire('Error', error.message, 'error'); else { Swal.fire('Sukses', 'Diperbarui', 'success'); loadMasterData('Data_Siswa'); }
                 }
             });
         }
 
-        function modalMasterSiswa(aksi, idLama = '') {
-            let data = ['', '', '', 'Laki-laki', 'Aktif']; if(aksi === 'UPDATE') data = masterDataSiswa.find(x => x[0].toString() === idLama.toString());
-            Swal.fire({
-                title: aksi === 'CREATE' ? 'Tambah Siswa' : 'Edit Siswa',
-                html: `<input id="ms-nisn" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="NIS/NISN" value="${data[0]}" ${aksi==='UPDATE'?'readonly bg-gray-100':''}>
-                    <input id="ms-nama" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="Nama Lengkap" value="${data[1]}"><input id="ms-kelas" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="Kelas" value="${data[2]}">
-                    <select id="ms-gender" class="swal2-select !w-full !m-0 !mt-3 text-sm"><option value="Laki-laki" ${data[3]==='Laki-laki'?'selected':''}>Laki-laki</option><option value="Perempuan" ${data[3]==='Perempuan'?'selected':''}>Perempuan</option></select>
-                    <select id="ms-status" class="swal2-select !w-full !m-0 !mt-3 text-sm"><option value="Aktif" ${data[4]==='Aktif'?'selected':''}>Aktif</option><option value="Lulus" ${data[4]==='Lulus'?'selected':''}>Lulus</option></select>`,
-                showCancelButton: true, confirmButtonText: 'Simpan', preConfirm: () => [document.getElementById('ms-nisn').value, document.getElementById('ms-nama').value, document.getElementById('ms-kelas').value, document.getElementById('ms-gender').value, document.getElementById('ms-status').value]
-            }).then((res) => { if(res.isConfirmed) submitCRUD('Siswa', aksi, idLama, res.value); })
+        function hapusMasterData(tabel, pkCol, id) {
+            Swal.fire({ title: 'Hapus?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then(async res => { 
+                if(res.isConfirmed) { showLoader(true); await supabase.from(tabel).delete().eq(pkCol, id); showLoader(false); loadMasterData(tabel); } 
+            });
         }
 
-        function modalMasterGuru(aksi, idLama = '') {
-            let data = ['', '', '', '', 'Aktif', '']; if(aksi === 'UPDATE') data = masterDataGuru.find(x => x[0].toString() === idLama.toString());
-            let mapelArr = data[2] ? data[2].split(',').map(m => m.trim()) : [];
-            let mapelHtml = `<div class="text-left mt-3 max-h-32 overflow-y-auto border p-2 rounded text-sm bg-gray-50"><p class="font-bold mb-1 text-xs text-gray-500">Pilih Mapel (Bisa > 1):</p>`;
-            masterDataMapel.forEach(m => { const isChecked = mapelArr.includes(m[1]) ? 'checked' : ''; mapelHtml += `<label class="block"><input type="checkbox" class="mg-mapel-cb mr-2" value="${m[1]}" ${isChecked}> ${m[1]}</label>`; });
-            mapelHtml += `</div>`;
-            Swal.fire({
-                title: aksi === 'CREATE' ? 'Tambah Guru' : 'Edit Guru',
-                html: `<input id="mg-nip" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="NIP/NIY" value="${data[0]}" ${aksi==='UPDATE'?'readonly bg-gray-100':''}>
-                    <input id="mg-nama" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="Nama Lengkap & Gelar" value="${data[1]}">
-                    ${mapelHtml}
-                    <input id="mg-hp" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="No HP/WA" value="${data[3]}">
-                    <select id="mg-status" class="swal2-select !w-full !m-0 !mt-3 text-sm"><option value="Aktif" ${data[4]==='Aktif'?'selected':''}>Aktif</option><option value="Non-Aktif" ${data[4]==='Non-Aktif'?'selected':''}>Non-Aktif</option></select>
-                    <input id="mg-email" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="Email (Untuk Notifikasi)" value="${data[5]}">`,
-                showCancelButton: true, confirmButtonText: 'Simpan',
-                preConfirm: () => { const selectedMapels = Array.from(document.querySelectorAll('.mg-mapel-cb:checked')).map(cb => cb.value).join(', '); return [document.getElementById('mg-nip').value, document.getElementById('mg-nama').value, selectedMapels, document.getElementById('mg-hp').value, document.getElementById('mg-status').value, document.getElementById('mg-email').value] }
-            }).then((res) => { if(res.isConfirmed) submitCRUD('Guru', aksi, idLama, res.value); })
-        }
-
-        function modalMasterMapel(aksi, idLama = '') {
-            let data = ['', '', 'Wajib']; if(aksi === 'UPDATE') data = masterDataMapel.find(x => x[0].toString() === idLama.toString());
-            Swal.fire({
-                title: aksi === 'CREATE' ? 'Tambah Mapel' : 'Edit Mapel',
-                html: `<input id="mm-nama" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="Nama Mata Pelajaran" value="${data[1]}">
-                    <select id="mm-kategori" class="swal2-select !w-full !m-0 !mt-3 text-sm"><option value="Wajib" ${data[2]==='Wajib'?'selected':''}>Wajib</option><option value="Muatan Lokal" ${data[2]==='Muatan Lokal'?'selected':''}>Muatan Lokal</option><option value="Peminatan" ${data[2]==='Peminatan'?'selected':''}>Peminatan</option></select>`,
-                showCancelButton: true, confirmButtonText: 'Simpan',
-                preConfirm: () => { const uniqueId = aksi === 'CREATE' ? new Date().getTime().toString() : idLama; return [uniqueId, document.getElementById('mm-nama').value, document.getElementById('mm-kategori').value] }
-            }).then((res) => { if(res.isConfirmed) submitCRUD('Mapel', aksi, idLama, res.value); })
-        }
-
-        function modalMasterKalender(aksi, idLama = '') {
-            let data = ['', '', '', 'Libur']; if(aksi === 'UPDATE') data = masterDataKalender.find(x => x[0].toString() === idLama.toString());
-            Swal.fire({
-                title: aksi === 'CREATE' ? 'Tambah Event Kalender' : 'Edit Event Kalender',
-                html: `<input type="date" id="mk-tgl" class="swal2-input !w-full !m-0 !mt-3 text-sm" value="${data[1]}">
-                    <input id="mk-ket" class="swal2-input !w-full !m-0 !mt-3 text-sm" placeholder="Keterangan Event" value="${data[2]}">
-                    <select id="mk-tipe" class="swal2-select !w-full !m-0 !mt-3 text-sm"><option value="Libur" ${data[3]==='Libur'?'selected':''}>Hari Libur</option><option value="Kegiatan" ${data[3]==='Kegiatan'?'selected':''}>Hari Kegiatan (Tidak Libur)</option></select>`,
-                showCancelButton: true, confirmButtonText: 'Simpan',
-                preConfirm: () => { const uniqueId = aksi === 'CREATE' ? new Date().getTime().toString() : idLama; return [uniqueId, document.getElementById('mk-tgl').value, document.getElementById('mk-ket').value, document.getElementById('mk-tipe').value] }
-            }).then((res) => { if(res.isConfirmed) submitCRUD('Kalender', aksi, idLama, res.value); })
-        }
-
-        function hapusMasterData(tipe, id) {
-            Swal.fire({ title: 'Hapus Data?', text: "Tindakan ini tidak bisa dikembalikan!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' })
-            .then(res => { if(res.isConfirmed) submitCRUD(tipe, 'DELETE', id, []); });
-        }
-
-        function submitCRUD(tipe, aksi, idLama, rowBaru) {
-            showLoader(true);
-            google.script.run.withSuccessHandler(res => { showLoader(false); Swal.fire('Informasi', JSON.parse(res).message, JSON.parse(res).status); loadMasterData(tipe); checkTodayEvent(); }).kelolaDataMaster(tipe, aksi, idLama, rowBaru);
-        }
-
-        function downloadTemplate(type) {
-            let data = [];
-            if(type === 'siswa') data = [["NIS/NISN", "Nama Siswa", "Kelas", "Gender", "Status"]];
-            else if(type === 'guru') data = [["NIP/NIY", "Nama Guru", "Mata Pelajaran Utama (Bisa Multi)", "No HP", "Status", "Email"]];
-            else if(type === 'mapel') data = [["Nama Mata Pelajaran", "Kategori (Wajib/Muatan Lokal/Peminatan)"]];
-            else if(type === 'kalender') data = [["Tanggal (YYYY-MM-DD)", "Keterangan", "Tipe (Libur/Kegiatan)"]];
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "Sheet1"); XLSX.writeFile(wb, `Template_Import_${type.toUpperCase()}.xlsx`);
-        }
-
-        function processExcelImport(type) {
-            const fileInput = document.getElementById(`import-file-${type}`);
-            if (fileInput.files.length === 0) return Swal.fire('Perhatian', 'Pilih file terlebih dahulu.', 'warning');
-            showLoader(true); const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    let rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 }).slice(1).filter(r => r.length > 0);
-                    if (rows.length === 0) { showLoader(false); return Swal.fire('Kosong', 'Tidak ada data dibaca.', 'warning'); }
-                    
-                    let targetSheetName = '';
-                    if(type === 'siswa') targetSheetName = 'Data_Siswa'; else if(type === 'guru') targetSheetName = 'Data_Guru';
-                    else if(type === 'mapel') { targetSheetName = 'Data_Mapel'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[0], r[1]]); }
-                    else if(type === 'kalender') { targetSheetName = 'Kalender_Pendidikan'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[0], r[1], r[2]]); }
-
-                    google.script.run.withSuccessHandler(function(res){ showLoader(false); Swal.fire('Sukses', JSON.parse(res).message, 'success'); fileInput.value = ''; loadMasterData(type.charAt(0).toUpperCase() + type.slice(1)); }).bulkImportData(targetSheetName, rows);
-                } catch(err) { showLoader(false); Swal.fire('Error File', 'File rusak atau format salah.', 'error'); }
-            }; reader.readAsArrayBuffer(fileInput.files[0]);
-        }
-
-        function triggerEmailReminders() {
-            Swal.fire({ title: 'Kirim Peringatan Email?', text: "Sistem akan mengecek guru yang aktif dan belum absen lalu mengirimkan email peringatan.", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then((result) => {
-                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(res => { showLoader(false); let r = JSON.parse(res); Swal.fire('Selesai', r.message, r.status); }).sendEmailReminders(); }
-            })
-        }
-
-        function handleSettingSubmit(e) {
+        // --- PENGATURAN SUBMIT ---
+        async function handleSettingSubmit(e) {
             e.preventDefault(); showLoader(true);
-            const args = [ document.getElementById('cfg-ta').value, document.getElementById('cfg-semester').value, document.getElementById('cfg-tgl-mulai').value, document.getElementById('cfg-tgl-akhir').value, document.getElementById('cfg-lat').value, document.getElementById('cfg-lon').value, document.getElementById('cfg-radius').value, document.getElementById('cfg-jd-mulai').value, document.getElementById('cfg-jd-akhir').value, document.getElementById('cfg-jp-mulai').value, document.getElementById('cfg-jp-akhir').value, document.getElementById('cfg-hari-sekolah').value ];
-            google.script.run.withSuccessHandler((res) => { showLoader(false); Swal.fire('Berhasil', 'Disimpan.', 'success'); loadSettingsAndMaster(); checkTodayEvent(); }).saveAppSettings(...args);
+            const updates = [
+                { key: "TAHUN_AJARAN", value: document.getElementById('cfg-ta').value }, { key: "SEMESTER", value: document.getElementById('cfg-semester').value },
+                { key: "TGL_MULAI_SEMESTER", value: document.getElementById('cfg-tgl-mulai').value }, { key: "TGL_AKHIR_SEMESTER", value: document.getElementById('cfg-tgl-akhir').value },
+                { key: "LATITUDE", value: document.getElementById('cfg-lat').value }, { key: "LONGITUDE", value: document.getElementById('cfg-lon').value },
+                { key: "RADIUS", value: document.getElementById('cfg-radius').value }, { key: "HARI_SEKOLAH_PER_MINGGU", value: document.getElementById('cfg-hari-sekolah').value },
+                { key: "JAM_DATANG_MULAI", value: document.getElementById('cfg-jd-mulai').value }, { key: "JAM_DATANG_AKHIR", value: document.getElementById('cfg-jd-akhir').value },
+                { key: "JAM_PULANG_MULAI", value: document.getElementById('cfg-jp-mulai').value }, { key: "JAM_PULANG_AKHIR", value: document.getElementById('cfg-jp-akhir').value }
+            ];
+            const { error } = await supabase.from('Pengaturan').upsert(updates, { onConflict: 'key' });
+            showLoader(false);
+            if(error) Swal.fire('Error', error.message, 'error'); else { Swal.fire('Berhasil', 'Disimpan.', 'success'); fetchInitialData(userSession); }
         }
     </script>
 </body>
