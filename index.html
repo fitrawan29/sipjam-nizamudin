@@ -801,7 +801,7 @@
                     else if (err.code === 3) errMsg = 'Waktu pencarian GPS habis (Timeout). Silakan klik submit lagi.';
                     Swal.fire('Kendala Lokasi', errMsg, 'error');
                 }, 
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 30000, maximumAge: 15000 }
             );
         }
         
