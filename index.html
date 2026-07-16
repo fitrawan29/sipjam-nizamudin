@@ -424,7 +424,6 @@
                                 <div class="flex gap-2">
                                     <button onclick="aksiMassalSiswa()" class="bg-blue-100 text-blue-800 px-3 py-1.5 rounded text-sm font-bold border border-blue-300"><i class="fa-solid fa-users-gear"></i> Ubah Kelas Massal</button>
                                     <button onclick="loadMasterData('Data_Siswa')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-                                    <button onclick="modalMasterSiswa('CREATE')" class="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah</button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto rounded border custom-scroll">
@@ -432,7 +431,7 @@
                                     <thead class="bg-blue-50 text-blue-900 border-b">
                                         <tr><th class="p-3"><input type="checkbox" onchange="toggleSemuaSiswa(this)"></th><th class="p-3">NIS/NISN</th><th class="p-3">Nama Siswa</th><th class="p-3">Kelas</th><th class="p-3">Status</th><th class="p-3 text-center">Aksi</th></tr>
                                     </thead>
-                                    <tbody id="tb-master-siswa" class="divide-y"></tbody>
+                                    <tbody id="tb-master-data-siswa" class="divide-y"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -442,7 +441,6 @@
                                 <h3 class="font-bold text-gray-700">Manajemen Guru (Multi-Mapel)</h3>
                                 <div>
                                     <button onclick="loadMasterData('Data_Guru')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-                                    <button onclick="modalMasterGuru('CREATE')" class="bg-nizamudin-gold text-nizamudin-green px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah</button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto rounded border custom-scroll">
@@ -450,7 +448,7 @@
                                     <thead class="bg-amber-50 text-amber-900 border-b">
                                         <tr><th class="p-3">NIP/NIY</th><th class="p-3">Nama Guru</th><th class="p-3">Mata Pelajaran (Multi)</th><th class="p-3">Email</th><th class="p-3 text-center">Aksi</th></tr>
                                     </thead>
-                                    <tbody id="tb-master-guru" class="divide-y"></tbody>
+                                    <tbody id="tb-master-data-guru" class="divide-y"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -460,7 +458,6 @@
                                 <h3 class="font-bold text-gray-700">Manajemen Mata Pelajaran</h3>
                                 <div>
                                     <button onclick="loadMasterData('Data_Mapel')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-                                    <button onclick="modalMasterMapel('CREATE')" class="bg-green-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah Mapel</button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto rounded border custom-scroll">
@@ -468,7 +465,7 @@
                                     <thead class="bg-green-50 text-green-900 border-b">
                                         <tr><th class="p-3">Nama Mata Pelajaran</th><th class="p-3">Kategori</th><th class="p-3 text-center">Aksi</th></tr>
                                     </thead>
-                                    <tbody id="tb-master-mapel" class="divide-y"></tbody>
+                                    <tbody id="tb-master-data-mapel" class="divide-y"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -478,7 +475,6 @@
                                 <h3 class="font-bold text-gray-700">Kalender Pendidikan</h3>
                                 <div>
                                     <button onclick="loadMasterData('Kalender_Pendidikan')" class="bg-gray-100 px-3 py-1.5 rounded border text-sm font-bold mr-2"><i class="fa-solid fa-rotate-right"></i> Refresh</button>
-                                    <button onclick="modalMasterKalender('CREATE')" class="bg-purple-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow"><i class="fa-solid fa-plus"></i> Tambah Event</button>
                                 </div>
                             </div>
                             <div class="overflow-x-auto rounded border custom-scroll">
@@ -486,7 +482,7 @@
                                     <thead class="bg-purple-50 text-purple-900 border-b">
                                         <tr><th class="p-3">Tanggal</th><th class="p-3">Keterangan</th><th class="p-3">Tipe Event</th><th class="p-3 text-center">Aksi</th></tr>
                                     </thead>
-                                    <tbody id="tb-master-kalender" class="divide-y"></tbody>
+                                    <tbody id="tb-master-kalender-pendidikan" class="divide-y"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -571,7 +567,8 @@
         // ⚠️ Wajib diubah dengan anon/public key dari Supabase Anda
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vYmVta3N3dHdsenFxaHpnZnR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNTQzODQsImV4cCI6MjA5OTczMDM4NH0.uNm1jWJhGmSgO3-Ff-krrd2Q5PSjwUUVAWG-25uS6eo';
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // MENGHINDARI TABRAKAN VARIABEL Bawaan Supabase
+        const SUPABASE_DB = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     </script>
 
     <script>
@@ -636,14 +633,14 @@
                     const file = e.target.files[0];
                     const fileName = `jurnal_${new Date().getTime()}_${file.name.replace(/\s/g, '_')}`;
                     
-                    const { data, error } = await supabase.storage.from('sipjam-bucket').upload(fileName, file);
+                    const { data, error } = await SUPABASE_DB.storage.from('sipjam-bucket').upload(fileName, file);
                     if(error) {
                         Swal.fire('Gagal Upload', error.message, 'error');
                         e.target.value = ""; return;
                     }
                     const urlFoto = SUPABASE_URL + '/storage/v1/object/public/sipjam-bucket/' + fileName;
                     
-                    const { error: dbErr } = await supabase.from('Jurnal_Pembelajaran').update({ link_bukti_file: urlFoto, status_verifikasi: 'Menunggu Verifikasi' }).eq('id', currentResubmitId);
+                    const { error: dbErr } = await SUPABASE_DB.from('Jurnal_Pembelajaran').update({ link_bukti_file: urlFoto, status_verifikasi: 'Menunggu Verifikasi' }).eq('id', currentResubmitId);
                     if(dbErr) { Swal.fire('Gagal Update Database', dbErr.message, 'error'); }
                     else { Swal.fire('Berhasil', 'Foto berhasil diperbaiki.', 'success'); loadHistory(); }
                     e.target.value = "";
@@ -655,20 +652,20 @@
         async function fetchInitialData(user) {
             try {
                 // 1. Ambil Pengaturan
-                const { data: setRes } = await supabase.from('Pengaturan').select('*');
+                const { data: setRes } = await SUPABASE_DB.from('Pengaturan').select('*');
                 let settingsObj = {};
                 if(setRes) setRes.forEach(r => settingsObj[r.key] = r.value);
                 
                 // 2. Ambil Master Data
-                const { data: klsRes } = await supabase.from('Data_Siswa').select('kelas');
-                const uniqueKelas = [...new Set(klsRes.map(k => k.kelas))].filter(Boolean);
-                const { data: mplRes } = await supabase.from('Data_Mapel').select('nama_mata_pelajaran');
-                const uniqueMapel = [...new Set(mplRes.map(m => m.nama_mata_pelajaran))].filter(Boolean);
+                const { data: klsRes } = await SUPABASE_DB.from('Data_Siswa').select('kelas');
+                const uniqueKelas = klsRes ? [...new Set(klsRes.map(k => k.kelas))].filter(Boolean) : [];
+                const { data: mplRes } = await SUPABASE_DB.from('Data_Mapel').select('nama_mata_pelajaran');
+                const uniqueMapel = mplRes ? [...new Set(mplRes.map(m => m.nama_mata_pelajaran))].filter(Boolean) : [];
 
                 // 3. Ambil Guru Mapel (Jika Guru)
                 let guruMapels = [];
                 if(user.role === 'Guru') {
-                    const { data: gData } = await supabase.from('Data_Guru').select('mata_pelajaran').eq('nama_guru', user.nama).single();
+                    const { data: gData } = await SUPABASE_DB.from('Data_Guru').select('mata_pelajaran').eq('nama_guru', user.nama).single();
                     if(gData && gData.mata_pelajaran) guruMapels = gData.mata_pelajaran.split(',').map(m => m.trim());
                 }
 
@@ -679,7 +676,7 @@
                 let isLibur = (dayOfWeek === 0) || (dayOfWeek === 6 && hariSekolah === 5);
                 let keteranganLibur = isLibur ? "Libur Akhir Pekan" : "";
 
-                const { data: kalRes } = await supabase.from('Kalender_Pendidikan').select('*').eq('tanggal', todayStr).single();
+                const { data: kalRes } = await SUPABASE_DB.from('Kalender_Pendidikan').select('*').eq('tanggal', todayStr).single();
                 if(kalRes) {
                     keteranganLibur = keteranganLibur ? `${keteranganLibur} & ${kalRes.keterangan}` : kalRes.keterangan;
                     if(kalRes.tipe === "Libur") isLibur = true;
@@ -725,7 +722,7 @@
 
         async function handleLogin(e) {
             e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value; showLoader(true);
-            const { data, error } = await supabase.from('Users').select('*').eq('username', user).eq('password', pass).single();
+            const { data, error } = await SUPABASE_DB.from('Users').select('*').eq('username', user).eq('password', pass).single();
             
             if(error || !data) { showLoader(false); Swal.fire('Akses Ditolak', 'Username atau Password salah!', 'error'); return; }
             
@@ -790,7 +787,7 @@
 
         async function checkDependencyDatang() {
             const todayStart = new Date().setHours(0,0,0,0);
-            const { data } = await supabase.from('Presensi_Guru').select('*').eq('nama_guru', userSession.nama).gte('timestamp', new Date(todayStart).toISOString());
+            const { data } = await SUPABASE_DB.from('Presensi_Guru').select('*').eq('nama_guru', userSession.nama).gte('timestamp', new Date(todayStart).toISOString());
             if(!data) return false;
             return data.some(r => r.status_verifikasi !== "Ditolak" && (r.tipe_absen === "Datang" || r.jenis_presensi === "Dinas Luar"));
         }
@@ -830,7 +827,7 @@
                     // Upload File ke Supabase Storage
                     const file = fileInput.files[0];
                     const fileName = `${new Date().getTime()}_${file.name.replace(/\s/g, '_')}`;
-                    const { data: uploadData, error: uploadError } = await supabase.storage.from('sipjam-bucket').upload(fileName, file);
+                    const { data: uploadData, error: uploadError } = await SUPABASE_DB.storage.from('sipjam-bucket').upload(fileName, file);
                     
                     if(uploadError) return Swal.fire('Gagal Upload', uploadError.message, 'error');
                     const fileUrl = SUPABASE_URL + '/storage/v1/object/public/sipjam-bucket/' + fileName;
@@ -838,7 +835,7 @@
                     let statusAwal = "Menunggu Verifikasi";
                     if (jenis === "Sekolah") statusAwal = isTerlambat ? "Menunggu Verif (Terlambat)" : "Menunggu Verifikasi";
 
-                    const { error: dbError } = await supabase.from('Presensi_Guru').insert([{
+                    const { error: dbError } = await SUPABASE_DB.from('Presensi_Guru').insert([{
                         id: new Date().getTime().toString(),
                         timestamp: new Date().toISOString(),
                         nama_guru: userSession.nama,
@@ -869,7 +866,7 @@
             const listDiv = document.getElementById('list-siswa-absensi');
             container.style.display = 'block'; listDiv.innerHTML = `<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i></div>`;
             
-            const { data, error } = await supabase.from('Data_Siswa').select('*').eq('kelas', kelas);
+            const { data, error } = await SUPABASE_DB.from('Data_Siswa').select('*').eq('kelas', kelas);
             if(error || !data) { listDiv.innerHTML = `<div class="text-red-500">Gagal memuat.</div>`; return; }
             if(data.length === 0) { listDiv.innerHTML = `<div>Kosong.</div>`; updateAbsensiSummary(); return; }
             
@@ -908,12 +905,12 @@
             // Upload Foto
             const file = fileInput.files[0];
             const fileName = `jurnal_${new Date().getTime()}_${file.name.replace(/\s/g, '_')}`;
-            const { error: uploadError } = await supabase.storage.from('sipjam-bucket').upload(fileName, file);
+            const { error: uploadError } = await SUPABASE_DB.storage.from('sipjam-bucket').upload(fileName, file);
             if(uploadError) return Swal.fire('Gagal Upload Foto', uploadError.message, 'error');
             const fileUrl = SUPABASE_URL + '/storage/v1/object/public/sipjam-bucket/' + fileName;
 
             // Insert Database
-            const { error: dbError } = await supabase.from('Jurnal_Pembelajaran').insert([{
+            const { error: dbError } = await SUPABASE_DB.from('Jurnal_Pembelajaran').insert([{
                 id: new Date().getTime().toString(),
                 timestamp: new Date().toISOString(),
                 nama_guru: userSession.nama,
@@ -947,8 +944,8 @@
             document.getElementById('tb-hist-presensi').innerHTML = `<tr><td colspan="5" class="text-center p-4"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
             document.getElementById('tb-hist-jurnal').innerHTML = `<tr><td colspan="7" class="text-center p-4"><i class="fa-solid fa-spin fa-spinner"></i> Memuat...</td></tr>`;
             
-            let pQuery = supabase.from('Presensi_Guru').select('*').order('timestamp', { ascending: false });
-            let jQuery = supabase.from('Jurnal_Pembelajaran').select('*').order('timestamp', { ascending: false });
+            let pQuery = SUPABASE_DB.from('Presensi_Guru').select('*').order('timestamp', { ascending: false });
+            let jQuery = SUPABASE_DB.from('Jurnal_Pembelajaran').select('*').order('timestamp', { ascending: false });
             
             if(userSession.role === 'Guru') {
                 pQuery = pQuery.eq('nama_guru', userSession.nama);
@@ -1024,7 +1021,7 @@
 
         async function loadDataVerifikasi() {
             document.getElementById('tb-verifikasi').innerHTML = `<tr><td colspan="6" class="text-center py-6 text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>`;
-            const { data } = await supabase.from('Presensi_Guru').select('*').order('timestamp', { ascending: false });
+            const { data } = await SUPABASE_DB.from('Presensi_Guru').select('*').order('timestamp', { ascending: false });
             if(data) { verifDataAll = data; filterVerifikasi(); }
         }
 
@@ -1060,7 +1057,7 @@
 
         async function loadDataVerifikasiJurnal() {
             document.getElementById('tb-verifikasi-jurnal').innerHTML = `<tr><td colspan="7" class="text-center py-6"><i class="fa-solid fa-spinner fa-spin"></i></td></tr>`;
-            const { data } = await supabase.from('Jurnal_Pembelajaran').select('*').order('timestamp', { ascending: false });
+            const { data } = await SUPABASE_DB.from('Jurnal_Pembelajaran').select('*').order('timestamp', { ascending: false });
             if(data) { verifJurnalAll = data; filterVerifikasiJurnal(); }
         }
 
@@ -1096,7 +1093,7 @@
             Swal.fire({ title: 'Konfirmasi Aksi', text: `Ubah status menjadi "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#0B4619' }).then(async (result) => {
                 if (result.isConfirmed) { 
                     showLoader(true); 
-                    const { error } = await supabase.from(tabel).update({ status_verifikasi: status }).eq('id', id);
+                    const { error } = await SUPABASE_DB.from(tabel).update({ status_verifikasi: status }).eq('id', id);
                     showLoader(false);
                     if(error) Swal.fire('Error', error.message, 'error');
                     else { 
@@ -1116,8 +1113,8 @@
             const startT = new Date(start).setHours(0,0,0,0); const endT = new Date(end).setHours(23,59,59,999);
             
             const [{ data: pData }, { data: jData }] = await Promise.all([
-                supabase.from('Presensi_Guru').select('*'),
-                supabase.from('Jurnal_Pembelajaran').select('*')
+                SUPABASE_DB.from('Presensi_Guru').select('*'),
+                SUPABASE_DB.from('Jurnal_Pembelajaran').select('*')
             ]);
             showLoader(false);
 
@@ -1160,7 +1157,7 @@
 
         async function loadMasterData(tipe) {
             const tbId = `tb-master-${tipe.toLowerCase().replace('_', '-')}`; document.getElementById(tbId).innerHTML = `<tr><td colspan="6" class="text-center py-4"><i class="fa-solid fa-spin fa-spinner"></i></td></tr>`;
-            const { data } = await supabase.from(tipe).select('*');
+            const { data } = await SUPABASE_DB.from(tipe).select('*');
             if(data) {
                 if(tipe === 'Data_Siswa') { masterDataSiswa = data; renderTbSiswa(); }
                 else if(tipe === 'Data_Guru') { masterDataGuru = data; renderTbGuru(); }
@@ -1197,7 +1194,7 @@
             Swal.fire({ title: 'Ubah Kelas Massal', input: 'text', showCancelButton: true, confirmButtonText: 'Terapkan' }).then(async (res) => {
                 if(res.isConfirmed && res.value) {
                     showLoader(true);
-                    const { error } = await supabase.from('Data_Siswa').update({ kelas: res.value }).in('nisn', checked);
+                    const { error } = await SUPABASE_DB.from('Data_Siswa').update({ kelas: res.value }).in('nisn', checked);
                     showLoader(false);
                     if(error) Swal.fire('Error', error.message, 'error'); else { Swal.fire('Sukses', 'Diperbarui', 'success'); loadMasterData('Data_Siswa'); }
                 }
@@ -1206,7 +1203,7 @@
 
         function hapusMasterData(tabel, pkCol, id) {
             Swal.fire({ title: 'Hapus?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then(async res => { 
-                if(res.isConfirmed) { showLoader(true); await supabase.from(tabel).delete().eq(pkCol, id); showLoader(false); loadMasterData(tabel); } 
+                if(res.isConfirmed) { showLoader(true); await SUPABASE_DB.from(tabel).delete().eq(pkCol, id); showLoader(false); loadMasterData(tabel); } 
             });
         }
 
@@ -1221,7 +1218,7 @@
                 { key: "JAM_DATANG_MULAI", value: document.getElementById('cfg-jd-mulai').value }, { key: "JAM_DATANG_AKHIR", value: document.getElementById('cfg-jd-akhir').value },
                 { key: "JAM_PULANG_MULAI", value: document.getElementById('cfg-jp-mulai').value }, { key: "JAM_PULANG_AKHIR", value: document.getElementById('cfg-jp-akhir').value }
             ];
-            const { error } = await supabase.from('Pengaturan').upsert(updates, { onConflict: 'key' });
+            const { error } = await SUPABASE_DB.from('Pengaturan').upsert(updates, { onConflict: 'key' });
             showLoader(false);
             if(error) Swal.fire('Error', error.message, 'error'); else { Swal.fire('Berhasil', 'Disimpan.', 'success'); fetchInitialData(userSession); }
         }
