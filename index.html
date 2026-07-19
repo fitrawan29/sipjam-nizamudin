@@ -46,18 +46,17 @@
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        #loader { display: none; position: absolute; inset: 0; background: rgba(255,255,255, 0.9); z-index: 9999; justify-content: center; align-items: center; }
-        .dark #loader { background: rgba(18, 18, 18, 0.9); }
         .spinner { border: 4px solid #e5e7eb; border-top: 4px solid #2e7d32; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         .dark .spinner { border-color: #333; border-top-color: #4caf50; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         .custom-scroll::-webkit-scrollbar { height: 4px; width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
 
         /* KELAS EFEK KLIK TACTILE */
-        .btn-click { transition: transform 0.15s ease-out, opacity 0.15s ease-out; }
-        .btn-click:active { transform: scale(0.92); opacity: 0.8; }
+        .btn-click { transition: transform 0.1s ease-out, opacity 0.15s ease-out; }
+        .btn-click:active { transform: scale(0.95); opacity: 0.8; }
 
         /* Sidebar Off-canvas transition */
         .sidebar-open { transform: translateX(0%); }
@@ -67,7 +66,16 @@
 <body class="text-gray-800 dark:text-dark-text transition-colors duration-300">
 
     <div id="app-container" class="bg-nizamudin-bg dark:bg-dark-bg relative">
-        <div id="loader"><div class="spinner"></div></div>
+        
+        <!-- ================= LOADING SCREEN (PERSENTASE) ================= -->
+        <div id="loader" class="hidden fixed inset-0 bg-white/95 dark:bg-dark-bg/95 z-[9999] flex-col justify-center items-center backdrop-blur-sm">
+            <div class="spinner mb-4"></div>
+            <div id="loader-text" class="text-sm font-bold text-nizamudin-green dark:text-nizamudin-light mb-3">Memproses Data...</div>
+            <div class="w-64 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 overflow-hidden shadow-inner">
+                <div id="loader-progress-bar" class="bg-gradient-to-r from-nizamudin-green to-nizamudin-light h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+            </div>
+            <div id="loader-percentage" class="text-xs font-bold font-mono mt-2 text-gray-500 dark:text-gray-400">0%</div>
+        </div>
 
         <!-- ================= LOGIN SCREEN ================= -->
         <div id="login-screen" class="min-h-screen flex flex-col items-center justify-center p-6 relative">
@@ -109,14 +117,14 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="toggleDarkMode()" class="w-9 h-9 rounded-full bg-gray-50 dark:bg-dark-bg border dark:border-dark-border flex items-center justify-center text-gray-600 dark:text-gray-300 btn-click">
+                    <button onclick="toggleDarkMode()" class="w-9 h-9 rounded-full bg-gray-50 dark:bg-dark-bg border dark:border-dark-border flex items-center justify-center text-gray-600 dark:text-gray-300 btn-click shadow-sm">
                         <i id="dark-mode-icon" class="fa-solid fa-moon"></i>
                     </button>
                 </div>
             </header>
 
             <!-- Sidebar Overlay -->
-            <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden opacity-0 transition-opacity duration-300"></div>
+            <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-40 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm"></div>
             
             <!-- Sidebar Panel -->
             <div id="sidebar-panel" class="fixed inset-y-0 left-0 w-[260px] bg-white dark:bg-dark-surface z-50 sidebar-closed shadow-2xl flex flex-col transition-transform duration-300 border-r dark:border-dark-border">
@@ -138,7 +146,7 @@
                     <!-- Dinamis by JS -->
                 </div>
                 <div class="p-5 border-t dark:border-dark-border">
-                    <button onclick="logout()" class="btn-click w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold py-3 rounded-xl text-sm border border-red-100 dark:border-red-900/50"><i class="fa-solid fa-power-off"></i> Keluar Akun</button>
+                    <button onclick="logout()" class="btn-click w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold py-3 rounded-xl text-sm border border-red-100 dark:border-red-900/50 shadow-sm"><i class="fa-solid fa-power-off"></i> Keluar Akun</button>
                 </div>
             </div>
 
@@ -162,7 +170,7 @@
                             <div class="absolute -right-8 -bottom-10 opacity-[0.05] text-[150px] pointer-events-none"><i class="fa-solid fa-graduation-cap"></i></div>
 
                             <div class="flex items-center gap-4 relative z-10 mb-5">
-                                <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 backdrop-blur-md shrink-0">
+                                <div class="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center border border-white/20 backdrop-blur-md shrink-0 shadow-sm">
                                     <i class="fa-solid fa-user-tie text-2xl text-white"></i>
                                 </div>
                                 <div>
@@ -171,7 +179,7 @@
                                 </div>
                             </div>
 
-                            <div class="inline-flex items-center gap-2 text-xs font-semibold text-white/90 mb-5 bg-black/20 px-3 py-1.5 rounded-lg backdrop-blur-sm relative z-10">
+                            <div class="inline-flex items-center gap-2 text-xs font-semibold text-white/90 mb-5 bg-black/20 px-3 py-1.5 rounded-lg backdrop-blur-sm relative z-10 border border-white/10">
                                 <i class="fa-solid fa-building-columns text-nizamudin-gold"></i> SMA Nizamudin
                             </div>
 
@@ -193,8 +201,8 @@
                     </div>
 
                     <!-- Notifikasi Banner -->
-                    <div id="banner-kalender" class="hidden mx-5 mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl p-4 flex items-start gap-3 shadow-sm">
-                        <div class="bg-blue-100 dark:bg-blue-800/50 text-blue-600 dark:text-blue-400 w-8 h-8 rounded-full flex items-center justify-center shrink-0"><i class="fa-solid fa-bullhorn text-sm"></i></div>
+                    <div id="banner-kalender" class="hidden mx-5 mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl p-4 flex items-start gap-3 shadow-sm btn-click">
+                        <div class="bg-blue-100 dark:bg-blue-800/50 text-blue-600 dark:text-blue-400 w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm"><i class="fa-solid fa-bullhorn text-sm"></i></div>
                         <div>
                             <h4 class="font-bold text-xs text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-0.5">Info Hari Ini</h4>
                             <p id="banner-keterangan" class="text-[11px] text-blue-600 dark:text-blue-400 font-medium"></p>
@@ -224,7 +232,7 @@
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">Tipe</label>
-                                    <select id="presensi-tipe" required class="w-full px-3 py-3 rounded-xl input-premium text-xs font-bold text-nizamudin-green">
+                                    <select id="presensi-tipe" required onchange="resetPresensiPhoto()" class="w-full px-3 py-3 rounded-xl input-premium text-xs font-bold text-nizamudin-green">
                                         <option value="Datang">DATANG</option>
                                         <option value="Pulang">PULANG</option>
                                     </select>
@@ -247,18 +255,22 @@
                                 </select>
                             </div>
 
-                            <!-- LIVE CAMERA DEPAN DENGAN KANVAS WATERMARK -->
+                            <!-- LIVE CAMERA DENGAN PREVIEW -->
                             <div class="border-2 border-dashed border-nizamudin-green/30 dark:border-nizamudin-green/50 bg-green-50/50 dark:bg-green-900/10 p-5 rounded-2xl text-center relative overflow-hidden btn-click group" id="row-upload-bukti">
                                 <i class="fa-solid fa-camera text-3xl text-nizamudin-green/50 dark:text-nizamudin-light/50 mb-2 group-active:scale-110 transition-transform"></i>
                                 <label class="block text-xs font-bold text-nizamudin-dark dark:text-nizamudin-light mb-2" id="label-upload">Buka Kamera Selfie</label>
                                 
-                                <!-- Capture="user" memaksa buka kamera depan di HP -->
-                                <input type="file" id="presensi-file" accept="image/*" capture="user" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                <input type="file" id="presensi-file" accept="image/*" capture="user" onchange="handlePresensiFileChange(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                                 
                                 <div class="bg-white dark:bg-dark-surface border dark:border-dark-border text-gray-600 dark:text-gray-300 text-[10px] font-bold py-2 px-4 rounded-xl inline-block shadow-sm">
-                                    Klik untuk Ambil Foto
+                                    Klik Ambil Foto
                                 </div>
-                                <p class="text-[9px] text-gray-500 dark:text-gray-400 mt-3 font-medium bg-yellow-100/50 dark:bg-yellow-900/20 px-2 py-1 rounded">Koordinat, Waktu, dan Label otomatis disematkan.</p>
+                            </div>
+
+                            <!-- PREVIEW BOX -->
+                            <div class="relative hidden mt-2 rounded-xl overflow-hidden border-2 border-gray-200 dark:border-dark-border shadow-sm" id="presensi-preview-box">
+                                <img id="presensi-preview" class="w-full h-auto object-contain bg-black" />
+                                <div class="absolute top-2 right-2 bg-green-500 text-white text-[9px] font-bold px-2 py-1 rounded shadow"><i class="fa-solid fa-check"></i> Foto Disimpan</div>
                             </div>
 
                             <button type="submit" class="btn-click w-full bg-nizamudin-green hover:bg-nizamudin-dark text-white font-bold py-4 rounded-xl shadow-md text-sm mt-2 flex items-center justify-center gap-2">
@@ -279,12 +291,12 @@
                         <form onsubmit="handleJurnalSubmit(event)" class="space-y-4">
                             <div>
                                 <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Mata Pelajaran</label>
-                                <select id="jurnal-mapel" required class="w-full px-3 py-3 rounded-xl input-premium text-xs"><option value="" disabled selected>Pilih Mapel...</option></select>
+                                <select id="jurnal-mapel" required onchange="resetJurnalPhoto()" class="w-full px-3 py-3 rounded-xl input-premium text-xs"><option value="" disabled selected>Pilih Mapel...</option></select>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1.5 ml-1">Kelas</label>
-                                    <select id="jurnal-kelas" required onchange="fetchSiswaByKelas()" class="w-full px-3 py-3 rounded-xl input-premium text-xs">
+                                    <select id="jurnal-kelas" required onchange="fetchSiswaByKelas(); resetJurnalPhoto();" class="w-full px-3 py-3 rounded-xl input-premium text-xs">
                                         <option value="" disabled selected>Pilih...</option>
                                     </select>
                                 </div>
@@ -307,17 +319,21 @@
                                 <i class="fa-solid fa-camera-rotate text-3xl text-blue-400/50 dark:text-blue-500/50 mb-2 group-active:scale-110 transition-transform"></i>
                                 <label class="block text-xs font-bold text-blue-800 dark:text-blue-400 mb-2">Dokumentasi Kelas</label>
                                 
-                                <!-- Capture="environment" memaksa buka kamera belakang -->
-                                <input type="file" id="jurnal-file" accept="image/*" capture="environment" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                                <input type="file" id="jurnal-file" accept="image/*" capture="environment" onchange="handleJurnalFileChange(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                                 
                                 <div class="bg-white dark:bg-dark-surface border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-[10px] font-bold py-2 px-4 rounded-xl inline-block shadow-sm">
                                     Buka Kamera Belakang
                                 </div>
-                                <p class="text-[9px] text-gray-500 dark:text-gray-400 mt-3 font-medium bg-blue-100/50 dark:bg-blue-900/30 px-2 py-1 rounded">Watermark otomatis disematkan di foto.</p>
+                            </div>
+
+                            <!-- PREVIEW JURNAL BOX -->
+                            <div class="relative hidden mt-2 rounded-xl overflow-hidden border-2 border-blue-200 dark:border-dark-border shadow-sm" id="jurnal-preview-box">
+                                <img id="jurnal-preview" class="w-full h-auto object-contain bg-black" />
+                                <div class="absolute top-2 right-2 bg-blue-500 text-white text-[9px] font-bold px-2 py-1 rounded shadow"><i class="fa-solid fa-check"></i> Foto Disimpan</div>
                             </div>
 
                             <!-- ABSENSI SISWA -->
-                            <div class="border border-gray-100 dark:border-dark-border p-4 rounded-2xl bg-gray-50 dark:bg-dark-bg/50 mt-2" id="container-absensi-siswa" style="display:none;">
+                            <div class="border border-gray-100 dark:border-dark-border p-4 rounded-2xl bg-gray-50 dark:bg-dark-bg/50 mt-2 shadow-inner" id="container-absensi-siswa" style="display:none;">
                                 <label class="block text-[10px] font-bold uppercase tracking-widest text-nizamudin-green dark:text-nizamudin-light mb-3"><i class="fa-solid fa-users-viewfinder mr-1"></i> Kehadiran Siswa</label>
                                 <div id="list-siswa-absensi" class="space-y-2 max-h-56 overflow-y-auto custom-scroll pr-1"></div>
                                 <div class="mt-4 pt-3 border-t dark:border-dark-border grid grid-cols-4 gap-1 text-center font-bold text-xs bg-white dark:bg-dark-surface py-2 rounded-xl shadow-sm border border-gray-100 dark:border-dark-border">
@@ -443,7 +459,6 @@
                             <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2"><i class="fa-solid fa-calendar-check mr-1"></i> Rekap Cepat Per Bulan</label>
                             <select id="rekap-bulan-cepat" onchange="setBulanRekap()" class="w-full px-4 py-3 rounded-xl input-premium text-sm font-bold text-nizamudin-green">
                                 <option value="" disabled selected>Pilih Bulan...</option>
-                                <!-- Diisi oleh JS -->
                             </select>
                         </div>
 
@@ -482,7 +497,7 @@
                     </div>
                 </section>
 
-                <!-- VIEW ADMIN: DATA MASTER (Card Lists Mobile UI) -->
+                <!-- VIEW ADMIN: DATA MASTER -->
                 <section id="view-admin-data" class="view-section hidden fade-in px-5 py-6">
                     <div class="flex items-center gap-3 mb-6">
                         <button onclick="switchTab('view-dashboard')" class="btn-click w-9 h-9 bg-white dark:bg-dark-surface rounded-xl shadow-sm flex items-center justify-center border dark:border-dark-border text-gray-600 dark:text-gray-300"><i class="fa-solid fa-chevron-left"></i></button>
@@ -595,7 +610,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT JEMBATAN API (PROXY) KE GOOGLE APPS SCRIPT -->
+    <!-- SCRIPT JEMBATAN API MENGGUNAKAN XHR (REAL PERCENTAGE) -->
     <script>
         // ⚠️ MASUKKAN URL WEB APP GOOGLE SCRIPT ANDA DI SINI ⚠️
         const GAS_URL = "https://script.google.com/macros/s/AKfycby6luv1fC8OftNI7sOEDh-tnFv6PvtlRyQW5ewTcfmaTBAe-qKRxLd1glXS4EycbztK/exec";
@@ -607,13 +622,37 @@
                         return new Proxy({}, {
                             get: function(target, prop) {
                                 return function(...args) {
-                                    fetch(GAS_URL, {
-                                        method: 'POST',
-                                        body: JSON.stringify({ method: prop, args: args })
-                                    })
-                                    .then(res => res.text())
-                                    .then(data => { if (successCallback) successCallback(data); })
-                                    .catch(err => { console.error("Fetch Error:", err); Swal.fire('Error Koneksi', 'Gagal menghubungi server Google.', 'error'); showLoader(false); });
+                                    const xhr = new XMLHttpRequest();
+                                    xhr.open('POST', GAS_URL, true);
+                                    
+                                    // Tracking Progress Real-Time
+                                    xhr.upload.onprogress = function(e) {
+                                        if (e.lengthComputable && document.getElementById('loader').style.display !== 'none') {
+                                            const percent = Math.round((e.loaded / e.total) * 100);
+                                            const progressText = document.getElementById('loader-percentage');
+                                            const progressBar = document.getElementById('loader-progress-bar');
+                                            if(progressText) progressText.innerText = percent + '%';
+                                            if(progressBar) progressBar.style.width = percent + '%';
+                                        }
+                                    };
+                                    
+                                    xhr.onload = function() {
+                                        if (xhr.status >= 200 && xhr.status < 300) {
+                                            if(successCallback) successCallback(xhr.responseText);
+                                        } else {
+                                            console.error("Fetch Error:", xhr.statusText);
+                                            Swal.fire('Error Koneksi', 'Gagal menghubungi server.', 'error');
+                                            showLoader(false);
+                                        }
+                                    };
+                                    
+                                    xhr.onerror = function() {
+                                        console.error("Fetch Error:", xhr.statusText);
+                                        Swal.fire('Error Koneksi', 'Koneksi ke server terputus.', 'error');
+                                        showLoader(false);
+                                    };
+                                    
+                                    xhr.send(JSON.stringify({ method: prop, args: args }));
                                 };
                             }
                         });
@@ -627,7 +666,7 @@
         let userSession = null; let globalSettings = {};
         let masterDataSiswa = []; let masterDataGuru = []; let masterDataKalender = []; let masterDataMapel = [];
 
-        // Pagination States Limit 10
+        // Pagination States
         const ITEMS_PER_PAGE = 10;
         let verifDataAll = [], verifFiltered = [], verifPage = 1;
         let verifJurnalAll = [], verifJurnalFiltered = [], verifJurnalPage = 1;
@@ -636,6 +675,10 @@
         
         let msPage = 1, mgPage = 1, mmPage = 1, mkPage = 1; 
         let currentResubmitId = null;
+
+        // Temporary Image Payloads for Preview logic
+        let presensiPayloadTemp = null;
+        let jurnalPayloadTemp = null;
 
         const menuConfig = {
             'Guru': [
@@ -652,7 +695,17 @@
             ]
         };
 
-        function showLoader(status) { document.getElementById('loader').style.display = status ? 'flex' : 'none'; }
+        function showLoader(status, text = "Memproses Data...") {
+            const loader = document.getElementById('loader');
+            if(status) {
+                document.getElementById('loader-text').innerText = text;
+                document.getElementById('loader-progress-bar').style.width = '0%';
+                document.getElementById('loader-percentage').innerText = '0%';
+                loader.style.display = 'flex';
+            } else {
+                loader.style.display = 'none';
+            }
+        }
 
         // Dark Mode Logic
         function toggleDarkMode() {
@@ -715,26 +768,11 @@
                 applyInitData(JSON.parse(savedInit), JSON.parse(savedSession));
                 loginInit(JSON.parse(savedSession)); 
             }
-
-            document.getElementById('hidden-jurnal-resubmit').addEventListener('change', function(e) {
-                if(e.target.files.length > 0) {
-                    Swal.fire({ title: 'Menyiapkan Data...', didOpen: () => Swal.showLoading() });
-                    const file = e.target.files[0];
-                    const purposeText = "Perbaikan Dokumentasi KBM";
-                    processImageWithWatermark(file, purposeText, null, null, (dataUrl) => {
-                        google.script.run.withSuccessHandler(function(resStr){
-                            showLoader(false); let res = JSON.parse(resStr);
-                            if(res.status === 'success') { Swal.fire('Berhasil', res.message, 'success'); loadHistory(); }
-                            else { Swal.fire('Gagal', res.message, 'error'); }
-                            e.target.value = "";
-                        }).resubmitFotoJurnal({ id: currentResubmitId, fileData: dataUrl, fileName: file.name });
-                    });
-                }
-            });
         };
 
         function handleLogin(e) {
-            e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value; showLoader(true);
+            e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value; 
+            showLoader(true, "Otentikasi...");
             google.script.run.withSuccessHandler(function(resStr) {
                 showLoader(false); let res = JSON.parse(resStr); 
                 if(res.status === 'success') { 
@@ -832,6 +870,7 @@
 
         function openPresensiForm(tipe) {
             document.getElementById('presensi-tipe').value = tipe;
+            resetPresensiPhoto();
             switchTab('view-guru-presensi');
         }
 
@@ -843,7 +882,7 @@
         }
 
         // ====================================================
-        // ENGINE WATERMARK MENGGUNAKAN HTML5 CANVAS
+        // ENGINE WATERMARK MENGGUNAKAN HTML5 CANVAS (TENGAH BAWAH)
         // ====================================================
         function processImageWithWatermark(file, purposeText, lat = null, lon = null, callback) {
             const reader = new FileReader();
@@ -860,23 +899,25 @@
                     const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
                     const tzMatch = new Date().toString().match(/\(([A-Z]+)\)/);
                     const tzName = tzMatch ? tzMatch[1] : 'WITA';
-                    const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' ' + tzName;
+                    const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second:'2-digit' }) + ' ' + tzName;
                     
                     let textLines = [purposeText, dateStr + ' - ' + timeStr];
                     if (lat && lon) textLines.push(`Koor: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
 
-                    ctx.font = "bold 24px 'Plus Jakarta Sans', Arial"; ctx.textAlign = "left";
-                    const padding = 20; const lineHeight = 34;
+                    ctx.font = "bold 26px 'Plus Jakarta Sans', Arial"; 
+                    ctx.textAlign = "center";
+
+                    const padding = 20; const lineHeight = 36;
                     const bgHeight = (textLines.length * lineHeight) + padding * 2;
                     
-                    // Background transparan hitam di bawah
                     ctx.fillStyle = "rgba(0, 0, 0, 0.6)"; 
                     ctx.fillRect(0, height - bgHeight, width, bgHeight);
 
                     ctx.fillStyle = "white";
+                    const centerX = width / 2;
                     textLines.forEach((line, index) => {
-                        const yPosition = height - padding - ((textLines.length - 1 - index) * lineHeight);
-                        ctx.fillText(line, padding, yPosition);
+                        const yPosition = height - bgHeight + padding + (index * lineHeight) + 26;
+                        ctx.fillText(line, centerX, yPosition);
                     });
 
                     callback(canvas.toDataURL('image/jpeg', 0.8));
@@ -886,7 +927,7 @@
             reader.readAsDataURL(file);
         }
 
-        // --- GURU ---
+        // --- GURU PRESENSI ---
         function togglePresensiFields() {
             const jenis = document.getElementById('presensi-jenis').value;
             document.getElementById('row-detail-izin').classList.toggle('hidden', jenis === 'Sekolah' || jenis === 'Dinas Luar');
@@ -901,7 +942,7 @@
                 fileInput.setAttribute('capture', 'user');
                 icon.className = 'fa-solid fa-camera text-3xl text-nizamudin-green/50 dark:text-nizamudin-light/50 mb-2 group-active:scale-110 transition-transform';
                 labelUpload.innerText = 'Buka Kamera Selfie';
-                labelBtn.innerText = 'Klik untuk Ambil Foto';
+                labelBtn.innerText = 'Klik Ambil Foto';
             } else if(jenis === 'Dinas Luar') {
                 fileInput.setAttribute('capture', 'environment');
                 icon.className = 'fa-solid fa-camera-rotate text-3xl text-blue-500/50 dark:text-blue-400/50 mb-2 group-active:scale-110 transition-transform';
@@ -913,6 +954,51 @@
                 labelUpload.innerText = 'Unggah Surat Izin';
                 labelBtn.innerText = 'Pilih File Galeri / PDF';
             }
+            resetPresensiPhoto();
+        }
+
+        function resetPresensiPhoto() {
+            presensiPayloadTemp = null;
+            document.getElementById('presensi-file').value = '';
+            document.getElementById('presensi-preview').src = '';
+            document.getElementById('presensi-preview-box').classList.add('hidden');
+        }
+
+        function handlePresensiFileChange(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            
+            if(!file.type.startsWith('image/')) {
+                const r = new FileReader();
+                r.onload = ev => {
+                    presensiPayloadTemp = { fileData: ev.target.result, fileName: file.name, isImage: false, photoTimeStr: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}).replace('.',':') };
+                    document.getElementById('presensi-preview').src = 'https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg';
+                    document.getElementById('presensi-preview-box').classList.remove('hidden');
+                };
+                r.readAsDataURL(file);
+                return;
+            }
+
+            Swal.fire({ title: 'Memproses Foto...', text:'Menyiapkan Watermark & Lokasi...', didOpen: () => Swal.showLoading() });
+            
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude; const lon = pos.coords.longitude;
+                    const purposeText = `Presensi ${document.getElementById('presensi-tipe').value} - ${document.getElementById('presensi-jenis').value}`;
+                    
+                    processImageWithWatermark(file, purposeText, lat, lon, (dataUrl) => {
+                        presensiPayloadTemp = { fileData: dataUrl, fileName: file.name, lat: lat, lon: lon, photoTimeStr: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}).replace('.',':'), isImage: true };
+                        document.getElementById('presensi-preview').src = dataUrl;
+                        document.getElementById('presensi-preview-box').classList.remove('hidden');
+                        Swal.close();
+                    });
+                },
+                (err) => {
+                    Swal.fire('Error Lokasi', 'Gagal mendapat lokasi akurat. Pastikan GPS menyala.', 'error');
+                    resetPresensiPhoto();
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
         }
 
         const parseNumSafe = (val) => Number(val.toString().replace(',', '.'));
@@ -924,55 +1010,62 @@
 
         function handlePresensiSubmit(e) {
             e.preventDefault(); 
-            const fileInput = document.getElementById('presensi-file');
-            if(fileInput.files.length === 0) return Swal.fire('Peringatan', 'Foto/Bukti wajib dilampirkan sebelum mengirim!', 'warning');
+            if(!presensiPayloadTemp) return Swal.fire('Peringatan', 'Foto/Bukti wajib diambil terlebih dahulu!', 'warning');
 
             const tipeAbsen = document.getElementById('presensi-tipe').value;
             const jenis = document.getElementById('presensi-jenis').value;
-            const currTimeStr = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}).replace('.',':');
+            
+            // Kita gunakan waktu saat foto diambil untuk memvalidasi keterlambatan
+            const photoTimeStr = presensiPayloadTemp.photoTimeStr;
             let isTerlambat = false;
             
             if(jenis === "Sekolah") {
-                if(tipeAbsen === "Datang" && currTimeStr < globalSettings.JAM_DATANG_MULAI) return Swal.fire('Error', `Belum waktunya presensi (Buka: ${globalSettings.JAM_DATANG_MULAI})`, 'error');
-                if(tipeAbsen === "Datang" && currTimeStr > globalSettings.JAM_DATANG_AKHIR) isTerlambat = true;
-                if(tipeAbsen === "Pulang" && currTimeStr < globalSettings.JAM_PULANG_MULAI) return Swal.fire('Error', `Belum waktunya pulang (Buka: ${globalSettings.JAM_PULANG_MULAI})`, 'error');
+                if(tipeAbsen === "Datang" && photoTimeStr < globalSettings.JAM_DATANG_MULAI) return Swal.fire('Error', `Belum waktunya presensi (Buka: ${globalSettings.JAM_DATANG_MULAI})`, 'error');
+                if(tipeAbsen === "Datang" && photoTimeStr > globalSettings.JAM_DATANG_AKHIR) isTerlambat = true;
+                if(tipeAbsen === "Pulang" && photoTimeStr < globalSettings.JAM_PULANG_MULAI) return Swal.fire('Error', `Belum waktunya pulang (Buka: ${globalSettings.JAM_PULANG_MULAI})`, 'error');
+                
+                let distance = getDistance(presensiPayloadTemp.lat, presensiPayloadTemp.lon, parseNumSafe(globalSettings.LATITUDE), parseNumSafe(globalSettings.LONGITUDE));
+                if (distance > Number(globalSettings.RADIUS)) return Swal.fire('Di Luar Radius', `Posisi saat foto di luar radius (${Math.round(distance)} meter).`, 'warning');
             }
 
-            if (!navigator.geolocation) return Swal.fire('Error', 'GPS tidak didukung browser ini.', 'error');
-            Swal.fire({ title: 'Memproses Data...', text:'Mengunci Sinyal GPS murni...', didOpen: () => Swal.showLoading(), customClass: { popup: 'dark:bg-dark-surface dark:text-white' } });
+            showLoader(true, "Mengunggah Presensi...");
+            const payload = { 
+                namaGuru: userSession.nama, tipeAbsen: tipeAbsen, jenis: jenis, detailIzin: document.getElementById('presensi-detail-izin').value, 
+                lat: presensiPayloadTemp.lat || 0, lon: presensiPayloadTemp.lon || 0, jarak: Math.round(getDistance(presensiPayloadTemp.lat||0, presensiPayloadTemp.lon||0, parseNumSafe(globalSettings.LATITUDE), parseNumSafe(globalSettings.LONGITUDE))), 
+                statusAwal: (jenis === "Sekolah" && isTerlambat) ? "Menunggu Verif (Terlambat)" : "Menunggu Verifikasi",
+                fileData: presensiPayloadTemp.fileData, fileName: presensiPayloadTemp.fileName
+            };
             
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    let distance = getDistance(pos.coords.latitude, pos.coords.longitude, parseNumSafe(globalSettings.LATITUDE), parseNumSafe(globalSettings.LONGITUDE));
-                    if (jenis === "Sekolah" && distance > Number(globalSettings.RADIUS)) return Swal.fire('Di Luar Radius', `Posisi di luar radius sekolah (${Math.round(distance)} meter).`, 'warning');
-
-                    const payload = { 
-                        namaGuru: userSession.nama, tipeAbsen: tipeAbsen, jenis: jenis, detailIzin: document.getElementById('presensi-detail-izin').value, 
-                        lat: pos.coords.latitude, lon: pos.coords.longitude, jarak: distance, statusAwal: (jenis === "Sekolah" && isTerlambat) ? "Menunggu Verif (Terlambat)" : "Menunggu Verifikasi"
-                    };
-                    
-                    const file = fileInput.files[0];
-                    const purposeText = `Presensi ${tipeAbsen} - ${jenis}`;
-
-                    if(file.type.startsWith('image/')) {
-                        processImageWithWatermark(file, purposeText, pos.coords.latitude, pos.coords.longitude, (dataUrl) => {
-                            payload.fileData = dataUrl; payload.fileName = file.name; sendPresensi(payload, e.target); 
-                        });
-                    } else { 
-                        const r = new FileReader(); r.onload = (ev) => { payload.fileData = ev.target.result; payload.fileName = file.name; sendPresensi(payload, e.target); }; r.readAsDataURL(file); 
-                    }
-                }, 
-                (err) => { Swal.fire('Kendala Lokasi', 'Waktu pencarian GPS habis atau ditolak. Pastikan GPS menyala.', 'error'); }, 
-                { enableHighAccuracy: true, timeout: 30000, maximumAge: 15000 }
-            );
-        }
-        
-        function sendPresensi(payload, formElement) {
             google.script.run.withSuccessHandler(function(resStr){
-                let res = JSON.parse(resStr); 
-                if(res.status === 'success') { Swal.fire('Alhamdulillah', res.message, 'success'); formElement.reset(); switchTab('view-dashboard'); } 
+                showLoader(false); let res = JSON.parse(resStr); 
+                if(res.status === 'success') { Swal.fire('Alhamdulillah', res.message, 'success'); e.target.reset(); resetPresensiPhoto(); switchTab('view-dashboard'); } 
                 else Swal.fire('Peringatan', res.message, 'warning'); 
             }).submitPresensiGuru(payload);
+        }
+
+        // --- GURU JURNAL ---
+        function resetJurnalPhoto() {
+            jurnalPayloadTemp = null;
+            document.getElementById('jurnal-file').value = '';
+            document.getElementById('jurnal-preview').src = '';
+            document.getElementById('jurnal-preview-box').classList.add('hidden');
+        }
+
+        function handleJurnalFileChange(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            Swal.fire({ title: 'Memproses Foto...', didOpen: () => Swal.showLoading() });
+            
+            const mapelInfo = document.getElementById('jurnal-mapel').value || 'Mapel';
+            const kelasInfo = document.getElementById('jurnal-kelas').value || 'Kelas';
+            const purposeText = `Dokumentasi KBM - ${mapelInfo} (${kelasInfo})`;
+
+            processImageWithWatermark(file, purposeText, null, null, (dataUrl) => {
+                jurnalPayloadTemp = { fileData: dataUrl, fileName: file.name };
+                document.getElementById('jurnal-preview').src = dataUrl;
+                document.getElementById('jurnal-preview-box').classList.remove('hidden');
+                Swal.close();
+            });
         }
 
         function fetchSiswaByKelas() {
@@ -1003,8 +1096,7 @@
 
         function handleJurnalSubmit(e) {
             e.preventDefault();
-            const fileInput = document.getElementById('jurnal-file');
-            if(fileInput.files.length === 0) return Swal.fire('Peringatan', 'Dokumentasi kegiatan wajib dilampirkan!', 'warning');
+            if(!jurnalPayloadTemp) return Swal.fire('Peringatan', 'Dokumentasi kegiatan wajib diambil terlebih dahulu!', 'warning');
 
             let sumH = document.getElementById('sum-h').innerText; let sumS = document.getElementById('sum-s').innerText; let sumI = document.getElementById('sum-i').innerText; let sumA = document.getElementById('sum-a').innerText;
             const absensiStr = `H:${sumH}|S:${sumS}|I:${sumI}|A:${sumA}`;
@@ -1017,21 +1109,21 @@
             });
             let detailAbsensiStr = detailList.length > 0 ? detailList.join(', ') : 'Nihil (Semua Hadir)';
 
-            Swal.fire({ title: 'Menyiapkan Data...', text: 'Membuat Watermark Jurnal...', didOpen: () => Swal.showLoading(), customClass: { popup: 'dark:bg-dark-surface dark:text-white' } });
+            showLoader(true, "Mengunggah Jurnal...");
             const mapelInfo = document.getElementById('jurnal-mapel').value;
             const kelasInfo = document.getElementById('jurnal-kelas').value;
-            const payload = { namaGuru: userSession.nama, mapel: mapelInfo, kelas: kelasInfo, tanggal: document.getElementById('jurnal-tanggal').value, materi: document.getElementById('jurnal-materi').value, kegiatan: document.getElementById('jurnal-kegiatan').value, absensiSiswa: absensiStr, keterangan: "-", refleksi: document.getElementById('jurnal-refleksi').value, detailAbsensi: detailAbsensiStr };
+            const payload = { 
+                namaGuru: userSession.nama, mapel: mapelInfo, kelas: kelasInfo, tanggal: document.getElementById('jurnal-tanggal').value, 
+                materi: document.getElementById('jurnal-materi').value, kegiatan: document.getElementById('jurnal-kegiatan').value, 
+                absensiSiswa: absensiStr, keterangan: "-", refleksi: document.getElementById('jurnal-refleksi').value, detailAbsensi: detailAbsensiStr,
+                fileData: jurnalPayloadTemp.fileData, fileName: jurnalPayloadTemp.fileName 
+            };
             
-            const purposeText = `Dokumentasi KBM - ${mapelInfo} (${kelasInfo})`;
-
-            processImageWithWatermark(fileInput.files[0], purposeText, null, null, (dataUrl) => {
-                payload.fileData = dataUrl; payload.fileName = fileInput.files[0].name;
-                google.script.run.withSuccessHandler(function(resStr){
-                    showLoader(false); let r = JSON.parse(resStr);
-                    if(r.status === 'success') { Swal.fire('Tersimpan', r.message, 'success'); e.target.reset(); document.getElementById('container-absensi-siswa').style.display = 'none'; switchTab('view-dashboard'); } 
-                    else { Swal.fire('Gagal', r.message, 'error'); }
-                }).submitJurnal(payload);
-            });
+            google.script.run.withSuccessHandler(function(resStr){
+                showLoader(false); let r = JSON.parse(resStr);
+                if(r.status === 'success') { Swal.fire('Tersimpan', r.message, 'success'); e.target.reset(); resetJurnalPhoto(); document.getElementById('container-absensi-siswa').style.display = 'none'; switchTab('view-dashboard'); } 
+                else { Swal.fire('Gagal', r.message, 'error'); }
+            }).submitJurnal(payload);
         }
 
         // --- HISTORY (MOBILE CARDS) ---
@@ -1191,7 +1283,7 @@
 
         function aksiVerifikasi(id, status) {
             Swal.fire({ title: 'Konfirmasi', text: `Ubah status presensi menjadi "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#0B4619' }).then((result) => {
-                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); loadDataVerifikasi(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasi(id, status); }
+                if (result.isConfirmed) { showLoader(true, "Mengupdate..."); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); loadDataVerifikasi(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasi(id, status); }
             })
         }
 
@@ -1246,7 +1338,7 @@
 
         function aksiVerifikasiJurnal(id, status) {
             Swal.fire({ title: 'Konfirmasi', text: `Ubah status jurnal menjadi "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonColor: '#0B4619' }).then((result) => {
-                if (result.isConfirmed) { showLoader(true); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); loadDataVerifikasiJurnal(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasiJurnal(id, status); }
+                if (result.isConfirmed) { showLoader(true, "Mengupdate..."); google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); loadDataVerifikasiJurnal(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasiJurnal(id, status); }
             })
         }
 
@@ -1265,7 +1357,7 @@
 
         function tarikDataRekap() {
             const startDate = document.getElementById('rekap-start').value; const endDate = document.getElementById('rekap-end').value; 
-            if(!startDate || !endDate) return Swal.fire('Peringatan', 'Lengkapi Tanggal Mulai dan Akhir.', 'warning'); showLoader(true);
+            if(!startDate || !endDate) return Swal.fire('Peringatan', 'Lengkapi Tanggal Mulai dan Akhir.', 'warning'); showLoader(true, "Menarik Data...");
             google.script.run.withSuccessHandler(function(resStr){ showLoader(false); let res = JSON.parse(resStr); if(res.status === 'success') { renderTabelRekap(res.dataPresensi, res.dataJurnal); document.getElementById('hasil-rekap').classList.remove('hidden'); } else { Swal.fire('Error', res.message, 'error'); } }).getRekapData(startDate, endDate);
         }
 
@@ -1278,15 +1370,16 @@
         function simpanCSVkeDrive() {
             const startDate = document.getElementById('rekap-start').value; const endDate = document.getElementById('rekap-end').value; 
             if(!startDate || !endDate) return Swal.fire('Peringatan', 'Tarik data terlebih dahulu.', 'warning');
-            Swal.fire({ title: 'Menyimpan...', text: 'Membuat file CSV di Google Drive...', didOpen: () => Swal.showLoading() });
+            showLoader(true, "Menyimpan ke Drive...");
             google.script.run.withSuccessHandler(function(res){
+                showLoader(false);
                 if(res.status === 'success') {
                     Swal.fire({ title: 'Berhasil', text: res.message, icon: 'success', confirmButtonText: 'Buka Drive', showCancelButton: true, cancelButtonText: 'Tutup' }).then(r => { if(r.isConfirmed) window.open(res.url, '_blank'); });
                 } else Swal.fire('Error', res.message, 'error');
             }).simpanRekapKeDrive(startDate, endDate);
         }
 
-        // --- CRUD DATA MASTER ADMIN (CARD LIST MOBILE) ---
+        // --- CRUD DATA MASTER ADMIN (Card Lists Mobile UI) ---
         function switchMasterTab(tabName) {
             ['Data_Siswa', 'Data_Guru', 'Data_Mapel', 'Kalender_Pendidikan'].forEach(t => {
                 let sId = t.toLowerCase().replace('_', '-');
@@ -1381,7 +1474,7 @@
                 input: 'text', showCancelButton: true, confirmButtonText: 'Terapkan', customClass: { popup: 'dark:bg-dark-surface dark:text-white', input: 'dark:bg-dark-bg dark:text-white dark:border-dark-border' }, preConfirm: (val) => { if(!val) Swal.showValidationMessage('Kelas tidak boleh kosong'); return val; }
             }).then((res) => {
                 if(res.isConfirmed) {
-                    showLoader(true);
+                    showLoader(true, "Memperbarui Kelas...");
                     google.script.run.withSuccessHandler(r => { showLoader(false); Swal.fire('Sukses', JSON.parse(r).message, 'success'); loadMasterData('Data_Siswa'); }).bulkUpdateSiswaKelas(checked, res.value);
                 }
             });
@@ -1447,41 +1540,12 @@
         }
 
         function submitCRUD(tipe, aksi, idLama, rowBaru) {
-            showLoader(true);
+            showLoader(true, "Menyimpan Data...");
             google.script.run.withSuccessHandler(res => { showLoader(false); let r = JSON.parse(res); Swal.fire({title:'Informasi', text:r.message, icon:r.status, customClass: { popup: 'dark:bg-dark-surface dark:text-white' }}); loadMasterData(tipe); }).kelolaDataMaster(tipe, aksi, idLama, rowBaru);
         }
 
-        function downloadTemplate(type) {
-            let data = [];
-            if(type === 'siswa') data = [["NIS/NISN", "Nama Siswa", "Kelas", "Gender", "Status"]];
-            else if(type === 'guru') data = [["NIP/NIY", "Nama Guru", "Mata Pelajaran Utama (Bisa Multi)", "No HP", "Status", "Email"]];
-            else if(type === 'mapel') data = [["ID (Acak/Kosongkan)", "Nama Mata Pelajaran", "Kategori"]];
-            else if(type === 'kalender') data = [["ID (Acak/Kosongkan)", "Tanggal (YYYY-MM-DD)", "Keterangan", "Tipe"]];
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), "Sheet1"); XLSX.writeFile(wb, `Template_Import_${type.toUpperCase()}.xlsx`);
-        }
-
-        function processExcelImport(type) {
-            const fileInput = document.getElementById(`import-file-${type}`);
-            if (fileInput.files.length === 0) return Swal.fire('Perhatian', 'Pilih file terlebih dahulu.', 'warning');
-            showLoader(true); const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    let rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 }).slice(1).filter(r => r.length > 0);
-                    if (rows.length === 0) { showLoader(false); return Swal.fire('Kosong', 'Tidak ada data dibaca.', 'warning'); }
-                    
-                    let targetSheetName = '';
-                    if(type === 'siswa') targetSheetName = 'Data_Siswa'; else if(type === 'guru') targetSheetName = 'Data_Guru';
-                    else if(type === 'mapel') { targetSheetName = 'Data_Mapel'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[1], r[2]]); }
-                    else if(type === 'kalender') { targetSheetName = 'Kalender_Pendidikan'; rows = rows.map((r, i) => [(new Date().getTime() + i).toString(), r[1], r[2], r[3]]); }
-
-                    google.script.run.withSuccessHandler(function(res){ showLoader(false); let r = JSON.parse(res); Swal.fire({title:'Sukses', text:r.message, icon:'success', customClass: { popup: 'dark:bg-dark-surface dark:text-white' }}); fileInput.value = ''; loadMasterData(targetSheetName); }).bulkImportData(targetSheetName, rows);
-                } catch(err) { showLoader(false); Swal.fire('Error File', 'File rusak atau format salah.', 'error'); }
-            }; reader.readAsArrayBuffer(fileInput.files[0]);
-        }
-
         function handleSettingSubmit(e) {
-            e.preventDefault(); showLoader(true);
+            e.preventDefault(); showLoader(true, "Menyimpan Pengaturan...");
             const args = [ document.getElementById('cfg-ta').value, document.getElementById('cfg-semester').value, document.getElementById('cfg-tgl-mulai').value, document.getElementById('cfg-tgl-akhir').value, document.getElementById('cfg-lat').value, document.getElementById('cfg-lon').value, document.getElementById('cfg-radius').value, document.getElementById('cfg-jd-mulai').value, document.getElementById('cfg-jd-akhir').value, document.getElementById('cfg-jp-mulai').value, document.getElementById('cfg-jp-akhir').value, document.getElementById('cfg-hari-sekolah').value ];
             google.script.run.withSuccessHandler((res) => { showLoader(false); Swal.fire({title:'Berhasil', text:'Disimpan.', icon:'success', customClass: { popup: 'dark:bg-dark-surface dark:text-white' }}); }).saveAppSettings(...args);
         }
