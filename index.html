@@ -195,16 +195,22 @@
                             </div>
                             
                             <div id="row-detail-izin" class="hidden">
-                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Keterangan Izin</label>
+                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Kategori / Keterangan</label>
                                 <select id="presensi-detail-izin" class="w-full px-3 py-2.5 text-sm rounded-xl input-premium">
                                     <option value="Sakit">Sakit</option>
                                     <option value="Izin Kegiatan Personal">Keperluan Personal</option>
                                 </select>
                             </div>
 
+                            <div id="row-keterangan-izin" class="hidden">
+                                <label class="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5">Penjelasan Detail <span class="text-nizamudin-green dark:text-nizamudin-gold">(Min. 20 Kata)</span></label>
+                                <textarea id="presensi-keterangan" rows="3" class="w-full px-3 py-2 text-sm rounded-xl input-premium" placeholder="Ceritakan alasan secara detail..."></textarea>
+                                <div id="word-count-info" class="text-[10px] mt-1 text-red-500 font-bold text-right">0 / 20 Kata</div>
+                            </div>
+
                             <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
                                 <i class="fa-solid fa-user-shield text-2xl text-gray-400 mb-2"></i>
-                                <p class="text-xs text-gray-500 font-medium">Validasi Lokasi (GPS) Murni aktif untuk Presensi Sekolah.</p>
+                                <p class="text-xs text-gray-500 font-medium">Sistem Validasi Lokasi (GPS) Murni aktif untuk Presensi Kehadiran Sekolah.</p>
                             </div>
 
                             <button type="submit" class="btn-click w-full bg-nizamudin-green hover:bg-nizamudin-light text-nizamudin-gold font-bold py-3.5 rounded-xl transition shadow-lg text-sm mt-2">
@@ -248,7 +254,6 @@
                                 <textarea id="jurnal-kegiatan" required rows="2" class="w-full px-3 py-2 text-sm rounded-xl input-premium" placeholder="Uraian singkat..."></textarea>
                             </div>
 
-                            <!-- Area Absensi Siswa List Card -->
                             <div id="container-absensi-siswa" class="hidden bg-gray-50 dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
                                 <label class="block text-xs font-bold uppercase text-nizamudin-green dark:text-nizamudin-gold mb-2 border-b dark:border-gray-700 pb-2"><i class="fa-solid fa-users mr-1"></i> Absensi Kelas Live</label>
                                 
@@ -483,9 +488,9 @@
         </main>
     </div>
 
-    <!-- SCRIPT JEMBATAN API (FETCH API STRICT SYNC) -->
+    <!-- SCRIPT JEMBATAN FETCH API ANTI-CORS -->
     <script>
-        // ⚠️ MASUKKAN URL WEB APP GOOGLE SCRIPT ANDA DI SINI ⚠️
+        // ⚠️ MASUKKAN URL WEB APP GOOGLE SCRIPT ANDA DI SINI
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz_ExQoQ-TTIVhIDniAlTz6AuYaXiKPP3nGQ2cKtNhBg40iofcWYfY99p8_VFP1zgCT/exec";
 
         const google = {
@@ -610,19 +615,28 @@
             
             const savedSession = sessionStorage.getItem('sipjam_session');
             if (savedSession) { 
-                // Strict Sync: Refresh master data instead of relying purely on session cache
                 showLoader(true);
                 google.script.run.withSuccessHandler(function(resStr) {
                     showLoader(false); let res = JSON.parse(resStr); 
                     if(res.status === 'success') { applyInitData(res.initData, res.user); loginInit(res.user); }
-                }).doLogin(JSON.parse(savedSession).username, "CACHE_BYPASS_NOT_NEEDED"); // Simplified assumption, login usually requires pass. We bypass by just re-fetching initData if needed.
-                // For simplicity and security in this static script, we just trigger normal relogin if session exists.
+                }).doLogin(JSON.parse(savedSession).username, "CACHE_BYPASS_NOT_NEEDED"); 
                 document.getElementById('login-user').value = JSON.parse(savedSession).username;
-                // Since password isn't cached, user must login again or we just accept cached session but force load data.
-                // We will use cached initData if available to speed up, but force refresh when tabs are clicked.
             }
             const savedInit = sessionStorage.getItem('sipjam_initData');
             if (savedSession && savedInit) { applyInitData(JSON.parse(savedInit), JSON.parse(savedSession)); loginInit(JSON.parse(savedSession)); }
+
+            // Listener Penghitung Kata untuk Keterangan Izin
+            const ketInput = document.getElementById('presensi-keterangan');
+            if(ketInput) {
+                ketInput.addEventListener('input', function() {
+                    let text = this.value.trim();
+                    let count = text === "" ? 0 : text.split(/\s+/).length;
+                    let info = document.getElementById('word-count-info');
+                    info.innerText = count + " / 20 Kata";
+                    if(count >= 20) { info.classList.remove('text-red-500'); info.classList.add('text-green-600'); }
+                    else { info.classList.remove('text-green-600'); info.classList.add('text-red-500'); }
+                });
+            }
         };
 
         // --- AUTH & INIT ---
@@ -694,7 +708,24 @@
         // --- GURU PRESENSI & JURNAL SUBMIT ---
         function togglePresensiFields() {
             const jenis = document.getElementById('presensi-jenis').value;
-            document.getElementById('row-detail-izin').classList.toggle('hidden', jenis === 'Sekolah' || jenis === 'Dinas Luar');
+            const selectDetail = document.getElementById('presensi-detail-izin');
+            
+            if(jenis === 'Sekolah') {
+                document.getElementById('row-detail-izin').classList.add('hidden');
+                document.getElementById('row-keterangan-izin').classList.add('hidden');
+                document.getElementById('presensi-keterangan').removeAttribute('required');
+            } else {
+                document.getElementById('row-detail-izin').classList.remove('hidden');
+                document.getElementById('row-keterangan-izin').classList.remove('hidden');
+                document.getElementById('presensi-keterangan').setAttribute('required', 'true');
+                
+                selectDetail.innerHTML = '';
+                if(jenis === 'Dinas Luar') {
+                    selectDetail.innerHTML = '<option value="Tugas Kedinasan">Tugas Kedinasan</option>';
+                } else if(jenis === 'Izin') {
+                    selectDetail.innerHTML = '<option value="Sakit">Sakit</option><option value="Izin Kegiatan Personal">Keperluan Personal</option>';
+                }
+            }
         }
 
         const parseNumSafe = (val) => Number(val.toString().replace(',', '.'));
@@ -709,22 +740,29 @@
             const tipeAbsen = document.getElementById('presensi-tipe').value; const jenis = document.getElementById('presensi-jenis').value;
             const currTimeStr = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}).replace('.',':');
             let isTerlambat = false;
+            let finalDetail = "-";
             
             if(jenis === "Sekolah") {
                 if(tipeAbsen === "Datang" && currTimeStr < globalSettings.JAM_DATANG_MULAI) return Swal.fire('Error', `Belum waktunya (Buka: ${globalSettings.JAM_DATANG_MULAI})`, 'error');
                 if(tipeAbsen === "Datang" && currTimeStr > globalSettings.JAM_DATANG_AKHIR) isTerlambat = true;
                 if(tipeAbsen === "Pulang" && currTimeStr < globalSettings.JAM_PULANG_MULAI) return Swal.fire('Error', `Belum waktunya (Buka: ${globalSettings.JAM_PULANG_MULAI})`, 'error');
+            } else {
+                const ketText = document.getElementById('presensi-keterangan').value.trim();
+                const wordCount = ketText === "" ? 0 : ketText.split(/\s+/).length;
+                if(wordCount < 20) {
+                    return Swal.fire('Keterangan Belum Lengkap', `Detail keterangan harus berjumlah minimal 20 kata. Saat ini baru ${wordCount} kata.`, 'warning');
+                }
+                finalDetail = document.getElementById('presensi-detail-izin').value + " | Ket: " + ketText;
             }
 
             if (!navigator.geolocation && jenis === "Sekolah") return Swal.fire('Error', 'GPS tidak didukung.', 'error');
             showLoader(true);
             
             const execSend = (lat, lon, distance) => {
-                // Strict Sync payload (No image data)
-                const payload = { namaGuru: userSession.nama, tipeAbsen: tipeAbsen, jenis: jenis, detailIzin: document.getElementById('presensi-detail-izin').value, lat: lat, lon: lon, jarak: distance, statusAwal: (jenis === "Sekolah" && isTerlambat) ? "Menunggu Verif (Terlambat)" : "Menunggu Verifikasi" };
+                const payload = { namaGuru: userSession.nama, tipeAbsen: tipeAbsen, jenis: jenis, detailIzin: finalDetail, lat: lat, lon: lon, jarak: distance, statusAwal: (jenis === "Sekolah" && isTerlambat) ? "Menunggu Verif (Terlambat)" : "Menunggu Verifikasi" };
                 google.script.run.withSuccessHandler(function(resStr){
                     let res = JSON.parse(resStr); showLoader(false);
-                    if(res.status === 'success') { Swal.fire('Alhamdulillah', res.message, 'success'); e.target.reset(); if(!document.getElementById('view-history').classList.contains('hidden')) loadHistory(); } else Swal.fire('Peringatan', res.message, 'warning'); 
+                    if(res.status === 'success') { Swal.fire('Alhamdulillah', res.message, 'success'); e.target.reset(); document.getElementById('word-count-info').innerText="0 / 20 Kata"; document.getElementById('word-count-info').className="text-[10px] mt-1 text-red-500 font-bold text-right"; if(!document.getElementById('view-history').classList.contains('hidden')) loadHistory(); } else Swal.fire('Peringatan', res.message, 'warning'); 
                 }).submitPresensiGuru(payload);
             };
 
@@ -740,7 +778,7 @@
             } else { execSend(0, 0, 0); }
         }
 
-        // Live Strict Sync: Fetch Siswa Data explicitly from Database, not from cached arrays
+        // Live Strict Sync: Fetch Siswa Data explicitly from Database
         function fetchSiswaByKelas() {
             const kelas = document.getElementById('jurnal-kelas').value;
             if(!kelas) return;
@@ -813,12 +851,6 @@
         function searchCurrentHistoryTab() { if(activeHistoryTab === 'presensi') filterHistPresensi(); else filterHistJurnal(); }
         function changePageHistory(dir) { if(activeHistoryTab === 'presensi') { histPresensiPage += dir; renderHistPresensiCards(); } else { histJurnalPage += dir; renderHistJurnalCards(); } }
 
-        function filterHistPresensi() {
-            const kw = document.getElementById('search-hist').value.toLowerCase();
-            histPresensiFiltered = histPresensiAll.filter(r => JSON.stringify(r).toLowerCase().includes(kw));
-            histPresensiPage = 1; renderHistPresensiCards();
-        }
-
         function renderHistPresensiCards() {
             const start = (histPresensiPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE;
             const slice = histPresensiFiltered.slice(start, end);
@@ -847,6 +879,12 @@
             }
             document.getElementById('info-hist-page').innerText = `Menampilkan ${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histPresensiFiltered.length)} dari ${histPresensiFiltered.length}`;
             document.getElementById('btn-prev-hist').disabled = histPresensiPage === 1; document.getElementById('btn-next-hist').disabled = end >= histPresensiFiltered.length;
+        }
+
+        function filterHistPresensi() {
+            const kw = document.getElementById('search-hist').value.toLowerCase();
+            histPresensiFiltered = histPresensiAll.filter(r => JSON.stringify(r).toLowerCase().includes(kw));
+            histPresensiPage = 1; renderHistPresensiCards();
         }
 
         function filterHistJurnal() {
@@ -940,7 +978,8 @@
                                 <span class="text-[9px] text-gray-400 whitespace-nowrap ml-2">${r["Timestamp"]}</span>
                             </div>
                             <div class="text-[11px] text-gray-500 dark:text-gray-400 mb-1">${r["Tipe Absen"]} - ${r["Jenis Presensi"]}</div>
-                            <div class="flex items-center gap-2 mt-2">
+                            <div class="text-[10px] text-gray-400 dark:text-gray-500 mb-2 truncate" title="${r["Detail Izin"]}">${r["Detail Izin"]}</div>
+                            <div class="flex items-center gap-2">
                                 <span class="inline-block px-1.5 py-0.5 border text-[9px] font-bold uppercase rounded-md ${bColor}">${r["Status Verifikasi"]}</span>
                             </div>
                         </div>
@@ -1014,7 +1053,7 @@
             })
         }
 
-        // --- REKAP ADMIN DATE RANGE & MONTHLY ---
+        // --- REKAP ADMIN ---
         function tarikDataRekapBulan() {
             const bulanVal = document.getElementById('rekap-bulan').value; // format YYYY-MM
             if(!bulanVal) return Swal.fire('Peringatan', 'Pilih bulan terlebih dahulu.', 'warning');
