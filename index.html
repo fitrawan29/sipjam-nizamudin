@@ -570,13 +570,18 @@
         };
 
         // --- UTILS & UI ---
-        function padTime(t) {
-            if (!t) return "00:00";
-            let str = t.toString().replace('.', ':');
-            let parts = str.split(':');
-            let h = parts[0] ? parts[0].padStart(2, '0') : "00";
-            let m = parts[1] ? parts[1].padStart(2, '0') : "00";
+        function cleanTime(val, defaultVal) {
+            if(!val) return defaultVal;
+            let str = val.toString();
+            if(str.includes('1899') || str.includes('T')) return defaultVal; // Fallback jika rusak
+            let parts = str.replace('.', ':').split(':');
+            let h = parts[0] ? parts[0].padStart(2, '0').slice(-2) : "00";
+            let m = parts[1] ? parts[1].padStart(2, '0').slice(0,2) : "00";
             return `${h}:${m}`;
+        }
+
+        function padTime(t) {
+            return cleanTime(t, "00:00");
         }
 
         function showLoader(status) { 
@@ -663,8 +668,13 @@
             document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN || ""; document.getElementById('cfg-semester').value = globalSettings.SEMESTER || "Ganjil";
             document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
             document.getElementById('cfg-lat').value = globalSettings.LATITUDE || ""; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE || ""; document.getElementById('cfg-radius').value = globalSettings.RADIUS || "";
-            document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
-            document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
+            
+            // Pengamanan ekstrim form input time anti-bug 1899
+            document.getElementById('cfg-jd-mulai').value = cleanTime(globalSettings.JAM_DATANG_MULAI, "06:00");
+            document.getElementById('cfg-jd-akhir').value = cleanTime(globalSettings.JAM_DATANG_AKHIR, "08:00");
+            document.getElementById('cfg-jp-mulai').value = cleanTime(globalSettings.JAM_PULANG_MULAI, "14:00");
+            document.getElementById('cfg-jp-akhir').value = cleanTime(globalSettings.JAM_PULANG_AKHIR, "16:00");
+            
             document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
 
             let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; initData.master.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
