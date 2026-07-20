@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="id" class="light">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SIPJAM SMA NIZAMUDIN</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,9 +18,7 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: { 
-                        nizamudin: { green: '#0B4619', light: '#146a28', gold: '#D4AF37', goldlight: '#F8F1D1', darkbg: '#121212', darkcard: '#1e1e1e' } 
-                    },
+                    colors: { nizamudin: { green: '#0B4619', light: '#146a28', gold: '#D4AF37', goldlight: '#F8F1D1', darkbg: '#121212', darkcard: '#1e1e1e' } },
                     fontFamily: { arabic: ['Amiri', 'serif'], sans: ['Poppins', 'sans-serif'], mono: ['Space Mono', 'monospace'] }
                 }
             }
@@ -29,9 +27,10 @@
     <style>
         body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; }
         .light-bg { background-color: #FDFBF7; background-image: radial-gradient(#d4af37 0.5px, transparent 0.5px); background-size: 30px 30px; background-attachment: fixed; }
+        .dark .light-bg { background-color: #121212; background-image: radial-gradient(#333 0.5px, transparent 0.5px); }
         
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-radius: 20px; box-shadow: 0 10px 30px -5px rgba(11, 70, 25, 0.1); }
-        .dark .glass-card { background: #1e1e1e; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5); border: 1px solid #333; }
+        .dark .glass-card { background: #1e1e1e; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5); border: 1px solid #333; color: #fff; }
         
         .input-premium { border: 1px solid #e5e7eb; transition: all 0.3s; background-color: #FDFBF7; border-radius: 12px; }
         .dark .input-premium { background-color: #2a2a2a; border-color: #444; color: #fff; }
@@ -64,9 +63,9 @@
         @media (min-width: 768px) { .sidebar-closed { transform: translateX(0%); } }
     </style>
 </head>
-<body class="text-gray-800 bg-gray-50 dark:bg-nizamudin-darkbg dark:text-gray-200 light-bg transition-colors duration-300">
+<body class="text-gray-800 dark:text-gray-200 light-bg transition-colors duration-300">
 
-    <!-- GLOBAL LOADER -->
+    <!-- GLOBAL LOADER DENGAN PERSENTASE -->
     <div id="loader">
         <div class="spinner mb-4"></div>
         <div class="w-64 bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
@@ -79,7 +78,7 @@
 
     <!-- ================= LOGIN SCREEN ================= -->
     <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
-        <div class="glass-card w-full max-w-sm p-8 border-t-0 border-b-4 border-nizamudin-gold text-center relative overflow-hidden">
+        <div class="glass-card w-full max-w-sm p-8 border-t-0 border-b-4 border-nizamudin-gold text-center relative overflow-hidden shadow-2xl">
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-nizamudin-gold opacity-10 rounded-full blur-2xl"></div>
             <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-nizamudin-green opacity-10 rounded-full blur-2xl"></div>
             
@@ -169,7 +168,7 @@
             <!-- SCROLLABLE CONTENT -->
             <div class="flex-grow p-4 md:p-6 overflow-y-auto custom-scroll w-full pb-20">
                 
-                <!-- VIEW GURU: PRESENSI -->
+                <!-- VIEW GURU: PRESENSI (TANPA GAMBAR) -->
                 <section id="view-guru-presensi" class="view-section hidden fade-in max-w-lg mx-auto">
                     <div class="glass-card p-5 md:p-7">
                         <h2 class="text-xl font-arabic font-bold text-nizamudin-green dark:text-nizamudin-gold border-b border-gray-200 dark:border-gray-700 pb-3 mb-5 flex items-center gap-2">
@@ -223,7 +222,7 @@
                     </div>
                 </section>
 
-                <!-- VIEW GURU: JURNAL -->
+                <!-- VIEW GURU: JURNAL (TANPA GAMBAR) -->
                 <section id="view-guru-jurnal" class="view-section hidden fade-in max-w-2xl mx-auto">
                     <div class="glass-card p-5 md:p-7">
                         <h2 class="text-xl font-arabic font-bold text-nizamudin-green dark:text-nizamudin-gold border-b border-gray-200 dark:border-gray-700 pb-3 mb-5 flex items-center gap-2">
@@ -578,6 +577,15 @@
         };
 
         // --- UTILS & UI ---
+        function padTime(t) {
+            if (!t) return "00:00";
+            let str = t.toString().replace('.', ':');
+            let parts = str.split(':');
+            let h = parts[0] ? parts[0].padStart(2, '0') : "00";
+            let m = parts[1] ? parts[1].padStart(2, '0') : "00";
+            return `${h}:${m}`;
+        }
+
         function showLoader(status) { 
             const loader = document.getElementById('loader');
             if(status) {
@@ -605,8 +613,12 @@
 
         function updateClock() {
             const now = new Date();
-            document.getElementById('clock-time').innerText = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
-            document.getElementById('clock-masehi').innerText = now.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short' });
+            // FORCING GMT+8 (Asia/Makassar) for display
+            const timeOpts = { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit', hour12: false };
+            document.getElementById('clock-time').innerText = new Intl.DateTimeFormat('id-ID', timeOpts).format(now).replace(/\./g, ':');
+            
+            const dateOpts = { timeZone: 'Asia/Makassar', weekday: 'short', day: '2-digit', month: 'short' };
+            document.getElementById('clock-masehi').innerText = new Intl.DateTimeFormat('id-ID', dateOpts).format(now) + ' (WITA)';
         }
         setInterval(updateClock, 1000); updateClock(); 
 
@@ -743,14 +755,22 @@
         function handlePresensiSubmit(e) {
             e.preventDefault(); 
             const tipeAbsen = document.getElementById('presensi-tipe').value; const jenis = document.getElementById('presensi-jenis').value;
-            const currTimeStr = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}).replace('.',':');
+            
+            // FORCING GMT+8 (Asia/Makassar)
+            const formatter = new Intl.DateTimeFormat('id-ID', { timeZone: 'Asia/Makassar', hour: '2-digit', minute: '2-digit', hour12: false });
+            const currTimeStr = formatter.format(new Date()).replace(/\./g, ':');
+            
             let isTerlambat = false;
             let finalDetail = "-";
             
             if(jenis === "Sekolah") {
-                if(tipeAbsen === "Datang" && currTimeStr < globalSettings.JAM_DATANG_MULAI) return Swal.fire('Error', `Belum waktunya (Buka: ${globalSettings.JAM_DATANG_MULAI})`, 'error');
-                if(tipeAbsen === "Datang" && currTimeStr > globalSettings.JAM_DATANG_AKHIR) isTerlambat = true;
-                if(tipeAbsen === "Pulang" && currTimeStr < globalSettings.JAM_PULANG_MULAI) return Swal.fire('Error', `Belum waktunya (Buka: ${globalSettings.JAM_PULANG_MULAI})`, 'error');
+                let bukaDatang = padTime(globalSettings.JAM_DATANG_MULAI);
+                let tutupDatang = padTime(globalSettings.JAM_DATANG_AKHIR);
+                let bukaPulang = padTime(globalSettings.JAM_PULANG_MULAI);
+
+                if(tipeAbsen === "Datang" && currTimeStr < bukaDatang) return Swal.fire('Error', `Belum waktunya presensi Datang.\nBuka: ${bukaDatang} WITA\nSekarang: ${currTimeStr} WITA`, 'error');
+                if(tipeAbsen === "Datang" && currTimeStr > tutupDatang) isTerlambat = true;
+                if(tipeAbsen === "Pulang" && currTimeStr < bukaPulang) return Swal.fire('Error', `Belum waktunya presensi Pulang.\nBuka: ${bukaPulang} WITA\nSekarang: ${currTimeStr} WITA`, 'error');
             } else {
                 const ketText = document.getElementById('presensi-keterangan').value.trim();
                 const wordCount = ketText === "" ? 0 : ketText.split(/\s+/).length;
@@ -1086,9 +1106,9 @@
             showLoader(true);
             google.script.run.withSuccessHandler(function(resStr){ 
                 showLoader(false); let res = JSON.parse(resStr); 
-                if(res.status === 'success') { renderCardRekap(res.dataPresensi, res.dataJurnal); document.getElementById('hasil-rekap').classList.remove('hidden'); Swal.fire('Berhasil', `Data ${labelTitle} ditarik dari Database. Berkas CSV sudah disimpan ke Google Drive (SIPJAM SMA NIZAMUDIN > Rekapitulasi).`, 'success'); } 
+                if(res.status === 'success') { renderCardRekap(res.dataPresensi, res.dataJurnal); document.getElementById('hasil-rekap').classList.remove('hidden'); Swal.fire('Berhasil', `Data ${labelTitle} berhasil direkap dari Database.`, 'success'); } 
                 else { Swal.fire('Error', res.message, 'error'); } 
-            }).simpanRekapKeDrive(startDate, endDate);
+            }).getRekapData(startDate, endDate);
         }
 
         function renderCardRekap(dataPresensi, dataJurnal) {
