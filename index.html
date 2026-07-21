@@ -670,8 +670,10 @@
             document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
             document.getElementById('cfg-lat').value = globalSettings.LATITUDE || ""; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE || ""; document.getElementById('cfg-radius').value = globalSettings.RADIUS || "";
             
-            document.getElementById('cfg-jd-mulai').value = globalSettings.JAM_DATANG_MULAI || "06:00"; document.getElementById('cfg-jd-akhir').value = globalSettings.JAM_DATANG_AKHIR || "08:00";
-            document.getElementById('cfg-jp-mulai').value = globalSettings.JAM_PULANG_MULAI || "14:00"; document.getElementById('cfg-jp-akhir').value = globalSettings.JAM_PULANG_AKHIR || "16:00";
+            document.getElementById('cfg-jd-mulai').value = padTimeStr(globalSettings.JAM_DATANG_MULAI || "06:00"); 
+            document.getElementById('cfg-jd-akhir').value = padTimeStr(globalSettings.JAM_DATANG_AKHIR || "08:00");
+            document.getElementById('cfg-jp-mulai').value = padTimeStr(globalSettings.JAM_PULANG_MULAI || "14:00"); 
+            document.getElementById('cfg-jp-akhir').value = padTimeStr(globalSettings.JAM_PULANG_AKHIR || "16:00");
             document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
 
             let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; initData.master.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`);
@@ -687,6 +689,17 @@
                 if(initData.todayEvent.isLibur) { banner.className = "hidden mx-4 md:mx-6 mt-4 p-3 rounded-xl border flex items-center gap-3 shadow-sm fade-in shrink-0 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-900"; } 
                 else { banner.className = "hidden mx-4 md:mx-6 mt-4 p-3 rounded-xl border flex items-center gap-3 shadow-sm fade-in shrink-0 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-900"; }
             }
+        }
+
+        // Helper Frontend untuk Time Padding 1899 Fix
+        function padTimeStr(t) {
+            if(!t) return "00:00";
+            let str = t.toString().replace('.', ':');
+            if (str.includes('T') || str.includes('1899')) return "06:00";
+            let parts = str.split(':');
+            let h = parts[0] ? parts[0] : "00"; let m = parts[1] ? parts[1] : "00";
+            if (h.length < 2) h = "0" + h; if (m.length < 2) m = "0" + m;
+            return h.slice(-2) + ":" + m.slice(0,2);
         }
 
         function loginInit(user) {
@@ -752,9 +765,9 @@
             let isTerlambat = false; let finalDetail = "-";
             
             if(jenis === "Sekolah") {
-                if(tipeAbsen === "Datang" && currTimeStr < globalSettings.JAM_DATANG_MULAI) return Swal.fire('Error', `Belum waktunya presensi Datang.\nBuka: ${globalSettings.JAM_DATANG_MULAI} WITA\nSekarang: ${currTimeStr} WITA`, 'error');
-                if(tipeAbsen === "Datang" && currTimeStr > globalSettings.JAM_DATANG_AKHIR) isTerlambat = true;
-                if(tipeAbsen === "Pulang" && currTimeStr < globalSettings.JAM_PULANG_MULAI) return Swal.fire('Error', `Belum waktunya presensi Pulang.\nBuka: ${globalSettings.JAM_PULANG_MULAI} WITA\nSekarang: ${currTimeStr} WITA`, 'error');
+                if(tipeAbsen === "Datang" && currTimeStr < padTimeStr(globalSettings.JAM_DATANG_MULAI)) return Swal.fire('Error', `Belum waktunya presensi Datang.\nBuka: ${padTimeStr(globalSettings.JAM_DATANG_MULAI)} WITA\nSekarang: ${currTimeStr} WITA`, 'error');
+                if(tipeAbsen === "Datang" && currTimeStr > padTimeStr(globalSettings.JAM_DATANG_AKHIR)) isTerlambat = true;
+                if(tipeAbsen === "Pulang" && currTimeStr < padTimeStr(globalSettings.JAM_PULANG_MULAI)) return Swal.fire('Error', `Belum waktunya presensi Pulang.\nBuka: ${padTimeStr(globalSettings.JAM_PULANG_MULAI)} WITA\nSekarang: ${currTimeStr} WITA`, 'error');
             } else {
                 const ketText = document.getElementById('presensi-keterangan').value.trim(); const wordCount = ketText === "" ? 0 : ketText.split(/\s+/).length;
                 if(wordCount < 20) return Swal.fire('Keterangan Belum Lengkap', `Detail keterangan WAJIB diisi minimal 20 kata. Saat ini baru ${wordCount} kata.`, 'warning');
@@ -1068,7 +1081,9 @@
         
         function bulkVerifyCurrent() {
             let dataToVerify = (activeVerifTab === 'Presensi') ? verifFiltered : verifJurnalFiltered;
-            let pendingIds = dataToVerify.filter(r => r["Status Verifikasi"].includes("Menunggu")).map(r => r["ID"]);
+            
+            // ANTI-BUG: Tambahkan .toString() agar ID yang awalnya angka diubah menjadi Teks (String)
+            let pendingIds = dataToVerify.filter(r => r["Status Verifikasi"].includes("Menunggu")).map(r => r["ID"].toString());
             
             if (pendingIds.length === 0) return Swal.fire('Info', 'Tidak ada data berstatus Menunggu untuk disetujui pada filter ini.', 'info');
             
