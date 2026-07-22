@@ -50,10 +50,7 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
-        /* Squircle (iOS style icon) */
         .squircle-icon { border-radius: 20px; aspect-ratio: 1; display: flex; justify-content: center; align-items: center; }
-
-        /* Leaflet Overrides */
         .leaflet-control-attribution { display: none !important; }
     </style>
 </head>
@@ -90,6 +87,7 @@
 
         <div id="app-screen" class="hidden flex-col h-full w-full bg-[#78B3CE] dark:bg-gray-900 relative">
             
+            <!-- Global App Header dengan Tombol Logout Universal -->
             <header class="px-4 pt-5 pb-3 flex justify-between items-center shrink-0 z-20">
                 <div class="flex items-center gap-3">
                     <button id="btn-back" onclick="goHome()" class="hidden btn-click w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm"><i class="fa-solid fa-arrow-left text-sm"></i></button>
@@ -97,7 +95,10 @@
                         <i class="fa-solid fa-mosque"></i> SIPJAM<span class="font-normal opacity-80">Nizamudin</span>
                     </div>
                 </div>
-                <button onclick="toggleDarkMode()" class="btn-click w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm"><i id="icon-theme" class="fa-solid fa-moon text-xs"></i></button>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleDarkMode()" class="btn-click w-8 h-8 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm"><i id="icon-theme" class="fa-solid fa-moon text-xs"></i></button>
+                    <button onclick="logout()" class="btn-click w-8 h-8 bg-red-500/80 backdrop-blur-md rounded-full flex items-center justify-center text-white shadow-sm"><i class="fa-solid fa-power-off text-xs"></i></button>
+                </div>
             </header>
 
             <!-- Main Content Area (Rounded Top) -->
@@ -131,12 +132,11 @@
                         </div>
                     </div>
 
-                    <!-- Grid Menu Vibe Boalemo -->
+                    <!-- Grid Menu -->
                     <div id="nav-grid" class="grid grid-cols-4 gap-y-6 gap-x-2"></div>
                 </section>
 
                 <section id="view-map-presensi" class="view-section hidden h-full flex flex-col absolute inset-0 z-50 bg-gray-100 dark:bg-gray-900 rounded-t-[32px] overflow-hidden">
-                    <!-- Map Header -->
                     <div class="bg-[#4CAF50] text-white px-4 py-4 flex justify-between items-center z-10 shadow-md">
                         <div class="flex items-center gap-3">
                             <button onclick="closeMapPresensi()" class="btn-click w-8 h-8 rounded-full flex items-center justify-center bg-white/20"><i class="fa-solid fa-arrow-left"></i></button>
@@ -145,11 +145,8 @@
                         <button onclick="refreshLocation()" class="btn-click"><i class="fa-solid fa-rotate-right"></i></button>
                     </div>
 
-                    <!-- Map Container -->
                     <div class="relative flex-grow">
                         <div id="leaflet-map" class="w-full h-full z-0"></div>
-                        
-                        <!-- Overlay Warning Card -->
                         <div class="absolute top-4 left-4 right-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 z-[1000] border border-gray-100 dark:border-gray-700">
                             <div class="flex items-center gap-2 border-b border-gray-100 dark:border-gray-700 pb-2 mb-2">
                                 <i class="fa-solid fa-location-dot text-green-600 dark:text-green-400"></i>
@@ -160,7 +157,6 @@
                         </div>
                     </div>
 
-                    <!-- Bottom Action Sheet -->
                     <div class="bg-white dark:bg-gray-800 rounded-t-3xl shadow-[0_-5px_20px_rgba(0,0,0,0.1)] p-5 z-10 relative">
                         <div id="map-dl-input" class="hidden mb-4 fade-in">
                             <label class="text-[11px] font-bold text-gray-700 dark:text-gray-300 flex justify-between">
@@ -272,7 +268,6 @@
                         <h3 class="text-xs font-bold text-gray-800 dark:text-gray-200 mb-3 ml-1 flex items-center gap-2"><i class="fa-solid fa-gear text-gray-400"></i> Pengaturan</h3>
                         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 shadow-sm mb-6">
                             <div class="p-3.5 flex items-center gap-4 btn-click cursor-pointer" onclick="editProfil()"><div class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center shrink-0"><i class="fa-solid fa-pen-to-square"></i></div><div class="min-w-0 flex-grow"><p class="text-xs font-bold text-gray-800 dark:text-white truncate">Edit Identitas & Sandi</p><p class="text-[9px] text-gray-500">Ubah No HP, Email, atau Sandi</p></div><i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i></div>
-                            <div class="p-3.5 flex items-center gap-4 btn-click cursor-pointer" onclick="logout()"><div class="w-8 h-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-power-off"></i></div><div class="min-w-0 flex-grow"><p class="text-xs font-bold text-red-600 truncate">Keluar Aplikasi</p></div></div>
                         </div>
                     </div>
                 </section>
@@ -411,7 +406,6 @@
     </div>
 
     <script>
-        // MASUKKAN URL GOOGLE APPS SCRIPT ANDA DI SINI
         const GAS_URL = "https://script.google.com/macros/s/AKfycbz_ExQoQ-TTIVhIDniAlTz6AuYaXiKPP3nGQ2cKtNhBg40iofcWYfY99p8_VFP1zgCT/exec";
 
         const google = {
@@ -487,7 +481,6 @@
             const savedSession = sessionStorage.getItem('sipjam_session');
             if (savedSession) { google.script.run.withSuccessHandler(function(resStr) { let res = JSON.parse(resStr); if(res.status === 'success') { applyInitData(res.initData, res.user); loginInit(res.user); } }).doLogin(JSON.parse(savedSession).username, "CACHE_BYPASS"); }
             
-            // Textarea listeners
             ['map-dl-text', 'izin-keterangan'].forEach(id => {
                 const el = document.getElementById(id); const countEl = document.getElementById(id.replace('text', 'count').replace('keterangan', 'word-count'));
                 if(el) {
@@ -512,14 +505,17 @@
         }
 
         function applyInitData(initData, user) {
-            globalSettings = initData.settings; window.masterMapelList = initData.master.mapel || []; 
-            document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN || ""; document.getElementById('cfg-semester').value = globalSettings.SEMESTER || "Ganjil";
-            document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
-            document.getElementById('cfg-lat').value = globalSettings.LATITUDE || ""; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE || ""; document.getElementById('cfg-radius').value = globalSettings.RADIUS || "";
-            document.getElementById('cfg-jd-mulai').value = padTimeStr(globalSettings.JAM_DATANG_MULAI); document.getElementById('cfg-jd-akhir').value = padTimeStr(globalSettings.JAM_DATANG_AKHIR); document.getElementById('cfg-jp-mulai').value = padTimeStr(globalSettings.JAM_PULANG_MULAI); document.getElementById('cfg-jp-akhir').value = padTimeStr(globalSettings.JAM_PULANG_AKHIR); document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
-            let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; initData.master.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`); if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
-            if(user && user.role === 'Guru') { let mHtml = '<option value="" disabled selected>Pilih Mapel...</option>'; initData.guruMapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`); if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml; }
-            document.getElementById('status-hari').innerText = (initData.todayEvent && initData.todayEvent.isLibur) ? "Libur" : "Reguler";
+            try {
+                initData = initData || {}; initData.settings = initData.settings || {}; initData.master = initData.master || {kelas: [], mapel: []}; initData.guruMapels = initData.guruMapels || [];
+                globalSettings = initData.settings; window.masterMapelList = initData.master.mapel || []; 
+                document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN || ""; document.getElementById('cfg-semester').value = globalSettings.SEMESTER || "Ganjil";
+                document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
+                document.getElementById('cfg-lat').value = globalSettings.LATITUDE || ""; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE || ""; document.getElementById('cfg-radius').value = globalSettings.RADIUS || "";
+                document.getElementById('cfg-jd-mulai').value = padTimeStr(globalSettings.JAM_DATANG_MULAI); document.getElementById('cfg-jd-akhir').value = padTimeStr(globalSettings.JAM_DATANG_AKHIR); document.getElementById('cfg-jp-mulai').value = padTimeStr(globalSettings.JAM_PULANG_MULAI); document.getElementById('cfg-jp-akhir').value = padTimeStr(globalSettings.JAM_PULANG_AKHIR); document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
+                let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; initData.master.kelas.forEach(k => kHtml += `<option value="${k}">${k}</option>`); if(document.getElementById('jurnal-kelas')) document.getElementById('jurnal-kelas').innerHTML = kHtml;
+                if(user && user.role === 'Guru') { let mHtml = '<option value="" disabled selected>Pilih Mapel...</option>'; initData.guruMapels.forEach(m => mHtml += `<option value="${m}">${m}</option>`); if(document.getElementById('jurnal-mapel')) document.getElementById('jurnal-mapel').innerHTML = mHtml; }
+                document.getElementById('status-hari').innerText = (initData.todayEvent && initData.todayEvent.isLibur) ? "Libur" : "Reguler";
+            } catch(e) { console.error("Error applying init data", e); }
         }
 
         function loginInit(user) {
@@ -527,7 +523,6 @@
             document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app-screen').classList.replace('hidden', 'flex');
             document.getElementById('user-name').innerText = user.nama; document.getElementById('user-role-badge').innerText = user.role;
             document.getElementById('user-id').innerText = `ID: ${maskString(user.username)}`;
-            // Populate Profil
             document.getElementById('prof-header-nama').innerText = user.nama; document.getElementById('prof-header-role').innerText = user.role;
             document.getElementById('prof-nama').innerText = user.nama; document.getElementById('prof-nip').innerText = maskString(user.nip); document.getElementById('prof-hp').innerText = maskString(user.hp); document.getElementById('prof-email').innerText = maskString(user.email);
             buildGridMenu(); goHome();
@@ -538,7 +533,9 @@
 
         function buildGridMenu() {
             const grid = document.getElementById('nav-grid'); grid.innerHTML = '';
-            menuConfig[userSession.role].forEach(item => {
+            let role = (userSession.role || '').trim();
+            if(!menuConfig[role]) { console.error("Menu configuration not found for role:", role); return; }
+            menuConfig[role].forEach(item => {
                 const node = document.createElement('div'); node.className = 'btn-click flex flex-col items-center gap-2'; node.onclick = item.action;
                 node.innerHTML = `<div class="w-14 h-14 squircle-icon shadow-sm ${item.color}"><i class="fa-solid ${item.icon} text-2xl"></i></div><span class="text-[10px] font-bold text-gray-700 dark:text-gray-300 text-center leading-tight tracking-tight">${item.title}</span>`;
                 grid.appendChild(node);
@@ -599,7 +596,7 @@
                     if(dist <= parseFloat(globalSettings.RADIUS)) { warnText.innerText = 'Anda berada di lokasi presensi'; warnText.className = 'text-green-600 text-center font-bold text-[11px] mb-1'; isMapValid = true; } 
                     else { warnText.innerText = 'Anda tidak berada di lokasi presensi'; warnText.className = 'text-red-500 text-center font-bold text-[11px] mb-1'; isMapValid = false; }
                 } else {
-                    warnText.innerText = 'Mode Dinas Luar Aktif'; warnText.className = 'text-blue-500 text-center font-bold text-[11px] mb-1'; isMapValid = true; // DL bebas lokasi
+                    warnText.innerText = 'Mode Dinas Luar Aktif'; warnText.className = 'text-blue-500 text-center font-bold text-[11px] mb-1'; isMapValid = true; 
                 }
                 checkMapSubmitBtn();
             }, (err) => { Swal.close(); Swal.fire('Kendala GPS', 'Pastikan GPS menyala dan izinkan browser mengakses lokasi.', 'error'); }, { enableHighAccuracy: true, timeout: 15000 });
@@ -675,12 +672,8 @@
                 if(res.status === 'success') {
                     if(res.data.length === 0) { area.innerHTML = `<div class="text-center py-5 text-gray-400 text-xs">Tidak ditemukan.</div>`; return; }
                     let html = ''; res.data.forEach(g => {
-                        if(g.nama !== userSession.nama) { // Jangan tampilkan diri sendiri
-                            html += `
-                            <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-2xl flex items-center gap-3 cursor-pointer btn-click border border-transparent hover:border-green-500" onclick="presensikanTeman('${g.nama}')">
-                                <div class="flex-1"><h3 class="font-bold text-xs text-gray-800 dark:text-white uppercase">${g.nama}</h3><p class="text-[10px] text-gray-500 font-mono mt-0.5">${maskString(g.nip)}</p><p class="text-[9px] text-gray-400 mt-2 flex items-center gap-1"><i class="fa-solid fa-building-columns"></i> SMA Nizamudin</p></div>
-                                <i class="fa-solid fa-chevron-right text-gray-300"></i>
-                            </div>`;
+                        if(g.nama !== userSession.nama) { 
+                            html += `<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-2xl flex items-center gap-3 cursor-pointer btn-click border border-transparent hover:border-green-500" onclick="presensikanTeman('${g.nama}')"><div class="flex-1"><h3 class="font-bold text-xs text-gray-800 dark:text-white uppercase">${g.nama}</h3><p class="text-[10px] text-gray-500 font-mono mt-0.5">${maskString(g.nip)}</p><p class="text-[9px] text-gray-400 mt-2 flex items-center gap-1"><i class="fa-solid fa-building-columns"></i> SMA Nizamudin</p></div><i class="fa-solid fa-chevron-right text-gray-300"></i></div>`;
                         }
                     }); area.innerHTML = html;
                 }
@@ -699,7 +692,7 @@
             }).then(res => {
                 if(res.isConfirmed) {
                     let dIzin = "-"; if(res.value.jenis === 'Izin') dIzin = `Izin Personal | Ket: [Via Teman: ${userSession.nama}] ${res.value.ket}`; else dIzin = `[Via Teman: ${userSession.nama}]`;
-                    const payload = { namaGuru: namaTeman, tipeAbsen: res.value.tipe, jenis: res.value.jenis, detailIzin: dIzin, lat: globalSettings.LATITUDE, lon: globalSettings.LONGITUDE }; // Anggap dr sekolah
+                    const payload = { namaGuru: namaTeman, tipeAbsen: res.value.tipe, jenis: res.value.jenis, detailIzin: dIzin, lat: globalSettings.LATITUDE, lon: globalSettings.LONGITUDE }; 
                     google.script.run.withSuccessHandler(rStr => { let r = JSON.parse(rStr); if(r.status==='success') Swal.fire('Berhasil', r.message, 'success'); else Swal.fire('Gagal', r.message, 'error'); }).submitPresensiGuru(payload);
                 }
             });
@@ -726,7 +719,6 @@
             document.getElementById('info-hist-page').innerText = `${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histJurnalFiltered.length)} dari ${histJurnalFiltered.length}`; document.getElementById('btn-prev-hist').disabled = histJurnalPage === 1; document.getElementById('btn-next-hist').disabled = end >= histJurnalFiltered.length;
         }
 
-        // Verifikasi Admin
         function switchVerifTab(tabName) { activeVerifTab = tabName; let actClass = "verif-tab-btn active flex-1 text-[11px] font-bold py-2.5 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600"; let inactClass = "verif-tab-btn flex-1 text-[11px] font-bold py-2.5 rounded-lg text-gray-500 dark:text-gray-400 border border-transparent"; document.getElementById('tab-verif-presensi').className = tabName === 'Presensi' ? actClass : inactClass; document.getElementById('tab-verif-jurnal').className = tabName === 'Jurnal' ? actClass : inactClass; document.getElementById('search-verif').value = ''; reloadVerifData(); }
         function reloadVerifData() { if(activeVerifTab === 'Presensi') loadDataVerifikasi(); else loadDataVerifikasiJurnal(); }
         function clearDateVerif() { document.getElementById('filter-date-verif').value = ''; reloadVerifData(); }
@@ -766,7 +758,7 @@
         
         function bulkVerifyCurrent() {
             let dataToVerify = (activeVerifTab === 'Presensi') ? verifFiltered : verifJurnalFiltered;
-            let pendingIds = dataToVerify.filter(r => r["Status Verifikasi"].includes("Menunggu")).map(r => r["ID"].toString()); // Patenkan String!
+            let pendingIds = dataToVerify.filter(r => r["Status Verifikasi"].includes("Menunggu")).map(r => r["ID"].toString()); 
             if (pendingIds.length === 0) return Swal.fire('Info', 'Tidak ada data Menunggu untuk disetujui.', 'info');
             Swal.fire({ title: 'Setujui Semua?', text: `${pendingIds.length} data akan disetujui sekaligus.`, icon: 'question', showCancelButton: true, confirmButtonColor: '#4CAF50', customClass: { popup: 'dark:bg-gray-900 dark:text-white rounded-2xl' } }).then(res => {
                 if (res.isConfirmed) { let type = activeVerifTab === 'Presensi' ? 'presensi' : 'jurnal'; google.script.run.withSuccessHandler(r => { Swal.fire('Sukses', JSON.parse(r).message, 'success'); reloadVerifData(); }).bulkUpdateVerifikasi(type, pendingIds, 'Disetujui'); }
@@ -784,7 +776,6 @@
             if(jCount === 0) cJ.innerHTML = `<div class="text-[11px] text-gray-500 italic">Kosong.</div>`;
         }
 
-        // Master Data (Lazy Loading)
         function loadMasterData(tabName) { document.getElementById('master-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spin fa-spinner text-xl mb-2"></i><p class="text-[10px]">Menarik data...</p></div>`; google.script.run.withSuccessHandler(function(res){ let r = JSON.parse(res); if(r.status === 'success') { if(tabName === 'Data_Siswa') masterDataSiswa = r.data; else if(tabName === 'Data_Guru') masterDataGuru = r.data; else if(tabName === 'Data_Mapel') { masterDataMapel = r.data; window.masterMapelList = r.data.map(m => m[1]); } else if(tabName === 'Kalender_Pendidikan') masterDataKalender = r.data; searchCurrentMasterTab(); } }).kelolaDataMaster(tabName, 'GET', '', []); }
         function switchMasterTab(tabName) { activeMasterTab = tabName; ['Data_Siswa', 'Data_Guru', 'Data_Mapel', 'Kalender_Pendidikan'].forEach(t => { let sId = `tab-master-${t.toLowerCase().replace('_', '-')}`; document.getElementById(sId).className = t === tabName ? "btn-click master-tab-btn active px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm" : "btn-click master-tab-btn px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 border border-transparent"; }); document.getElementById('search-master').value = ''; let label = tabName.replace('Data_', ''); if(label==='Kalender_Pendidikan') label='Kalender'; document.getElementById('label-import-master').innerText = `Impor ${label}`; document.getElementById('btn-mass-siswa').classList.toggle('hidden', tabName !== 'Data_Siswa'); loadMasterData(tabName); }
         function loadCurrentMasterData() { loadMasterData(activeMasterTab); }
