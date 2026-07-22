@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Library SheetJS untuk Export to Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <script>
@@ -215,22 +216,21 @@
                                 </div>
                             </div>
 
-                            <!-- [UPDATE] Upload Bukti File (Bisa Foto/PDF) -->
+                            <!-- Upload Bukti File (WAJIB bagi Izin/Sakit) -->
                             <div id="row-file" class="hidden fade-in pt-1">
-                                <label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Surat Keterangan (Opsional/Wajib)</label>
+                                <label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1 text-red-500"><i class="fa-solid fa-asterisk"></i> Wajib Upload Surat Keterangan</label>
                                 <input type="file" id="presensi-file" accept="image/*,.pdf" class="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800">
                             </div>
 
-                            <!-- [UPDATE] Kolom Tempat via GPS -->
+                            <!-- Kolom Tempat (Ditampilkan untuk DL dan Izin/Sakit) -->
                             <div id="row-tempat" class="hidden fade-in pt-1">
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1 flex justify-between">
-                                    <span>Tempat / Lokasi Kunjungan</span>
+                                    <span>Titik Lokasi (Tempat)</span>
                                     <span class="text-[9px] text-blue-500 cursor-pointer" onclick="getLocationNameForTempat()"><i class="fa-solid fa-location-crosshairs"></i> Refresh API</span>
                                 </label>
                                 <input type="text" id="presensi-tempat" placeholder="Mendeteksi koordinat..." class="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800">
                             </div>
 
-                            <!-- Notifikasi GPS Kini Berlaku Untuk Semuanya -->
                             <div class="text-[10px] text-gray-500 text-center italic mt-2"><i class="fa-solid fa-map-pin text-red-500"></i> Sistem akan merekam otomatis titik GPS (lokasi) Anda saat mengirim.</div>
 
                             <div class="pt-2">
@@ -304,7 +304,7 @@
                     </div>
                 </section>
 
-                <!-- [UPDATE] GURU: REKAP JURNAL SAYA -->
+                <!-- GURU: REKAP JURNAL SAYA (WITH EXCEL) -->
                 <section id="view-guru-rekap-jurnal" class="view-section hidden fade-in">
                     <div class="glass-card p-4">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
@@ -334,6 +334,10 @@
                         <div id="hasil-rekap-jurnal-guru" class="space-y-3 min-h-[200px]">
                             <div class="text-center py-10 text-gray-400 text-[11px] italic">Silakan atur filter dan klik tampilkan.</div>
                         </div>
+                        
+                        <button id="btn-export-jurnal-guru" onclick="exportJurnalGuruToExcel()" class="hidden btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold mt-4 shadow-md flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-file-excel"></i> Download Excel
+                        </button>
                     </div>
                 </section>
 
@@ -413,7 +417,7 @@
                     </div>
                 </section>
 
-                <!-- ADMIN: REKAP BULANAN -->
+                <!-- ADMIN: REKAP BULANAN (WITH EXCEL) -->
                 <section id="view-admin-rekap" class="view-section hidden fade-in">
                     <div class="glass-card p-4">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
@@ -449,6 +453,13 @@
                             <div>
                                 <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2 border-t dark:border-gray-800 pt-4"><i class="fa-solid fa-book text-blue-500"></i> Jurnal KBM</h3>
                                 <div id="card-rekap-jurnal" class="grid grid-cols-1 gap-2"></div>
+                            </div>
+                            
+                            <!-- Tombol Download Excel Admin -->
+                            <div class="pt-2 border-t dark:border-gray-800">
+                                <button onclick="exportRekapAdminToExcel()" class="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-file-excel"></i> Download Excel
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -616,12 +627,16 @@
         window.masterMapelList = []; 
         let masterDataSiswa = []; let masterDataGuru = []; let masterDataKalender = []; let masterDataMapel = [];
 
+        // Global Variable untuk Excel
+        let globalRekapAdminPresensi = {};
+        let globalRekapAdminJurnal = {};
+        let globalRekapJurnalGuruList = [];
+
         const ITEMS_PER_PAGE = 10;
         let activeHistoryTab = 'presensi'; let histPresensiAll = [], histPresensiFiltered = [], histPresensiPage = 1; let histJurnalAll = [], histJurnalFiltered = [], histJurnalPage = 1;
         let activeVerifTab = 'Presensi'; let verifDataAll = [], verifFiltered = [], verifPage = 1; let verifJurnalAll = [], verifJurnalFiltered = [], verifJurnalPage = 1;
         let activeMasterTab = 'Data_Siswa'; let masterFiltered = [], masterPage = 1;
 
-        // [UPDATE]: Menambahkan Navigasi Rekap Jurnal di Konfigurasi Grid Guru
         const menuConfig = {
             'Guru': [
                 { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', title: 'Presensi', color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
@@ -805,20 +820,21 @@
             
             if(jenis !== 'Sekolah') {
                 document.getElementById('row-detail-izin').classList.remove('hidden');
+                document.getElementById('row-tempat').classList.remove('hidden'); // Tempat muncul untuk DL & Izin/Sakit
                 document.getElementById('presensi-keterangan').setAttribute('required', 'true');
                 
                 if(jenis === 'Dinas Luar') { 
                     selectDetail.innerHTML = '<option value="Tugas Kedinasan">Tugas Kedinasan</option>'; 
-                    document.getElementById('row-tempat').classList.remove('hidden');
                     labelReq.innerText = "Wajib Min. 10 Kata";
                     wordCountInfo.dataset.min = 10;
-                    getLocationNameForTempat(); // Coba autofetch tempat jika DL
                 } else if(jenis === 'Izin') { 
                     selectDetail.innerHTML = '<option value="Sakit">Sakit</option><option value="Izin Kegiatan Personal">Keperluan Personal</option>'; 
-                    document.getElementById('row-file').classList.remove('hidden');
+                    document.getElementById('row-file').classList.remove('hidden'); // Upload file hanya di Izin/Sakit
                     labelReq.innerText = "Wajib Min. 5 Kata";
                     wordCountInfo.dataset.min = 5;
                 }
+                
+                getLocationNameForTempat();
                 updateWordCount();
             }
         }
@@ -838,7 +854,6 @@
             }
         }
 
-        // Fungsi fetch nominatim GPS (Reverse Geocoding)
         function getLocationNameForTempat() {
             const tempatInput = document.getElementById('presensi-tempat');
             tempatInput.value = "Mencari alamat (GPS)...";
@@ -880,17 +895,17 @@
                 
                 finalDetail = document.getElementById('presensi-detail-izin').value + " | Ket: " + ketText;
                 
-                if (jenis === "Dinas Luar") {
-                    tempatStr = document.getElementById('presensi-tempat').value || "-";
-                }
+                tempatStr = document.getElementById('presensi-tempat').value || "-"; // Mengambil kolom Tempat yang berlaku untuk DL & Izin
                 
                 if (jenis === "Izin") {
                     const fileInput = document.getElementById('presensi-file');
-                    if(fileInput.files.length > 0) {
-                        // Max limit check for safe payload 
-                        if(fileInput.files[0].size > 5 * 1024 * 1024) { return Swal.fire('Ukuran File', 'Maaf ukuran file tidak boleh lebih dari 5MB.', 'warning'); }
-                        fileBase64 = await toBase64(fileInput.files[0]);
+                    if(fileInput.files.length === 0) {
+                        return Swal.fire('Wajib', 'Surat Keterangan/Bukti WAJIB dilampirkan untuk Izin/Sakit.', 'warning');
                     }
+                    if(fileInput.files[0].size > 5 * 1024 * 1024) { 
+                        return Swal.fire('Ukuran File', 'Maaf ukuran file tidak boleh lebih dari 5MB.', 'warning'); 
+                    }
+                    fileBase64 = await toBase64(fileInput.files[0]);
                 }
             }
 
@@ -903,8 +918,7 @@
                     let lat = pos.coords.latitude;
                     let lon = pos.coords.longitude;
                     
-                    // Backup call for Reverse Geocode if not yet populated
-                    if (jenis === "Dinas Luar" && (tempatStr === "-" || tempatStr.includes("GPS") || tempatStr === "")) {
+                    if (jenis !== "Sekolah" && (tempatStr === "-" || tempatStr.includes("GPS") || tempatStr === "")) {
                         try {
                             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
                             const data = await res.json();
@@ -983,7 +997,7 @@
             }).submitJurnal(payload);
         }
 
-        // [FUNGSI BARU]: Tarik Data Rekap Jurnal Guru
+        // [FUNGSI EXPORT EXCEL] Rekap Jurnal Guru
         function tarikRekapJurnalGuru() {
             const start = document.getElementById('rekap-jurnal-start').value;
             const end = document.getElementById('rekap-jurnal-end').value;
@@ -993,15 +1007,19 @@
             if(!start || !end) return Swal.fire('Perhatian', 'Harap pilih rentang Tanggal mulai & akhir.', 'warning');
             
             document.getElementById('hasil-rekap-jurnal-guru').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><p class="text-[10px]">Menarik data Anda...</p></div>`;
+            document.getElementById('btn-export-jurnal-guru').classList.add('hidden');
             
             google.script.run.withSuccessHandler(resStr => {
                 let res = JSON.parse(resStr);
                 const container = document.getElementById('hasil-rekap-jurnal-guru');
                 container.innerHTML = '';
                 if(res.status === 'success') {
+                    globalRekapJurnalGuruList = res.data; // Simpan untuk Excel
+                    
                     if(res.data.length === 0) {
                         container.innerHTML = `<div class="text-center py-5 text-[11px] text-gray-500 italic">Tidak ada rekap jurnal di rentang waktu/filter ini.</div>`;
                     } else {
+                        document.getElementById('btn-export-jurnal-guru').classList.remove('hidden');
                         res.data.forEach(r => {
                             let bColor = (r.status === "Disetujui" || r.status.includes("Terverifikasi")) ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400" : (r.status === "Ditolak" ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400");
                             container.innerHTML += `
@@ -1019,11 +1037,21 @@
                             </div>`;
                         });
                     }
-                } else {
-                    Swal.fire('Error', res.message, 'error');
-                }
+                } else { Swal.fire('Error', res.message, 'error'); }
             }).getRekapJurnalGuru(userSession.nama, start, end, kelas, mapel);
         }
+
+        function exportJurnalGuruToExcel() {
+            if (globalRekapJurnalGuruList.length === 0) return;
+            let arrData = [["Tanggal", "Mata Pelajaran", "Kelas", "Materi", "Kegiatan", "Absensi", "Status Verifikasi"]];
+            globalRekapJurnalGuruList.forEach(r => {
+                arrData.push([r.tanggal, r.mapel, r.kelas, r.materi, r.kegiatan, r.absensi, r.status]);
+            });
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(arrData), "Rekap Jurnal Saya");
+            XLSX.writeFile(wb, `Rekap_Jurnal_${userSession.nama.replace(/\s/g, '_')}_${new Date().getTime()}.xlsx`);
+        }
+
 
         // HISTORY VIEW 
         function switchHistoryTab(tabName) {
@@ -1062,7 +1090,7 @@
                     else if(r.status.includes("Terverifikasi") || r.status === "Disetujui") bColor = "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50";
                     else if(r.status === "Ditolak") bColor = "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50";
 
-                    let downloadFile = (r.link && r.link !== "-") ? `<a href="${r.link}" target="_blank" class="text-blue-500 font-bold ml-2 text-[9px]"><i class="fa-solid fa-paperclip"></i> File</a>` : "";
+                    let downloadFile = (r.link && r.link !== "-") ? `<a href="${r.link}" target="_blank" class="text-blue-500 font-bold ml-2 text-[9px]"><i class="fa-solid fa-paperclip"></i> Lampiran</a>` : "";
 
                     container.innerHTML += `
                     <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -1220,7 +1248,7 @@
             });
         }
 
-        // ADMIN REKAP
+        // ADMIN REKAP (WITH EXPORT EXCEL)
         function tarikDataRekapBulan() {
             const bulanVal = document.getElementById('rekap-bulan').value; if(!bulanVal) return;
             const [yyyy, mm] = bulanVal.split('-');
@@ -1236,7 +1264,14 @@
         function doTarikRekap(startDate, endDate, labelTitle) {
             google.script.run.withSuccessHandler(function(resStr){ 
                 let res = JSON.parse(resStr); 
-                if(res.status === 'success') { renderCardRekap(res.dataPresensi, res.dataJurnal); document.getElementById('hasil-rekap').classList.remove('hidden'); Swal.fire({title:'Berhasil', text:`Data ${labelTitle} ditarik.`, icon:'success', timer:1500, showConfirmButton:false, customClass: { popup: 'rounded-2xl dark:bg-gray-900 dark:text-white'}}); } 
+                if(res.status === 'success') { 
+                    globalRekapAdminPresensi = res.dataPresensi;
+                    globalRekapAdminJurnal = res.dataJurnal;
+                    
+                    renderCardRekap(res.dataPresensi, res.dataJurnal); 
+                    document.getElementById('hasil-rekap').classList.remove('hidden'); 
+                    Swal.fire({title:'Berhasil', text:`Data ${labelTitle} ditarik.`, icon:'success', timer:1500, showConfirmButton:false, customClass: { popup: 'rounded-2xl dark:bg-gray-900 dark:text-white'}}); 
+                } 
                 else { Swal.fire('Error', res.message, 'error'); } 
             }).getRekapData(startDate, endDate);
         }
@@ -1271,6 +1306,24 @@
                 </div>`; 
             }
             if(jCount === 0) cJ.innerHTML = `<div class="text-[11px] text-gray-500 italic">Kosong.</div>`;
+        }
+        
+        function exportRekapAdminToExcel() {
+            let dataPresensiArr = [["Nama Guru", "Hadir", "Dinas Luar", "Izin", "Sakit", "Alpa"]];
+            for(let guru in globalRekapAdminPresensi) {
+                let d = globalRekapAdminPresensi[guru];
+                dataPresensiArr.push([guru, d.Hadir, d.DinasLuar, d.Izin, d.Sakit, d.Alpa]);
+            }
+            
+            let dataJurnalArr = [["Mata Pelajaran", "Jumlah Jurnal Terverifikasi"]];
+            for(let mapel in globalRekapAdminJurnal) {
+                dataJurnalArr.push([mapel, globalRekapAdminJurnal[mapel]]);
+            }
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataPresensiArr), "Rekap Kehadiran Guru");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataJurnalArr), "Rekap Jurnal KBM");
+            XLSX.writeFile(wb, `Rekapitulasi_SIPJAM_${new Date().getTime()}.xlsx`);
         }
 
         // ADMIN MASTER DATA
