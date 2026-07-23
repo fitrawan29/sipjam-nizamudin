@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Library SheetJS untuk Export to Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <script>
@@ -145,6 +146,9 @@
                         </div>
                     </div>
 
+                    <!-- [UPDATE] Alert Dashboard Guru Container -->
+                    <div id="dashboard-alerts" class="space-y-2 hidden fade-in"></div>
+
                     <div id="banner-kalender" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-3 flex items-start gap-3 fade-in shadow-sm">
                         <i class="fa-solid fa-bullhorn text-blue-500 mt-0.5"></i>
                         <div>
@@ -237,7 +241,7 @@
                     </div>
                 </section>
 
-                <!-- [UPDATE] GURU: JURNAL -->
+                <!-- GURU: JURNAL -->
                 <section id="view-guru-jurnal" class="view-section hidden fade-in">
                     <div class="glass-card p-5 relative overflow-hidden">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
@@ -246,7 +250,6 @@
                         
                         <form onsubmit="handleJurnalSubmit(event)" class="space-y-4">
                             
-                            <!-- Toggle Jurnal Tipe -->
                             <div>
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Jenis Jurnal</label>
                                 <select id="jurnal-tipe" class="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400" onchange="toggleJurnalFields()">
@@ -282,7 +285,6 @@
                                 <textarea id="jurnal-kegiatan" required rows="2" class="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none" placeholder="Deskripsikan selengkapnya..."></textarea>
                             </div>
 
-                            <!-- Live Student Absensi (Hanya KBM) -->
                             <div id="container-absensi-siswa" class="hidden bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 fade-in">
                                 <label class="block text-[11px] font-bold uppercase text-gray-600 dark:text-gray-400 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2"><i class="fa-solid fa-users text-blue-500"></i> Absensi Kelas Live</label>
                                 
@@ -310,7 +312,7 @@
                     </div>
                 </section>
 
-                <!-- GURU: REKAP JURNAL SAYA (WITH EXCEL SPLIT) -->
+                <!-- GURU: REKAP JURNAL SAYA -->
                 <section id="view-guru-rekap-jurnal" class="view-section hidden fade-in">
                     <div class="glass-card p-4">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
@@ -379,7 +381,7 @@
                     </div>
                 </section>
 
-                <!-- [UPDATE] ADMIN: PANTAUAN HARIAN (MENGGANTIKAN RIWAYAT LAMA) -->
+                <!-- ADMIN: PANTAUAN HARIAN (DENGAN WHATSAPP) -->
                 <section id="view-admin-monitor" class="view-section hidden fade-in">
                     <div class="glass-card p-4">
                         <div class="flex justify-between items-center mb-4">
@@ -447,7 +449,7 @@
                     </div>
                 </section>
 
-                <!-- ADMIN: REKAP BULANAN (WITH EXCEL 3 SHEETS) -->
+                <!-- ADMIN: REKAP BULANAN -->
                 <section id="view-admin-rekap" class="view-section hidden fade-in">
                     <div class="glass-card p-4">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
@@ -489,7 +491,7 @@
                                 <button onclick="exportRekapAdminToExcel()" class="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
                                     <i class="fa-solid fa-file-excel"></i> Download Excel Lengkap
                                 </button>
-                                <p class="text-center text-[9px] text-gray-400 mt-2">*Termasuk Detail Semua Jurnal Guru</p>
+                                <p class="text-center text-[9px] text-gray-400 mt-2">*Termasuk Detail Daftar Nama Siswa Sakit/Izin</p>
                             </div>
                         </div>
                     </div>
@@ -665,7 +667,6 @@
         let activeVerifTab = 'Presensi'; let verifDataAll = [], verifFiltered = [], verifPage = 1; let verifJurnalAll = [], verifJurnalFiltered = [], verifJurnalPage = 1;
         let activeMasterTab = 'Data_Siswa'; let masterFiltered = [], masterPage = 1;
 
-        // [UPDATE]: Merubah Config Admin "Riwayat" jadi "Pantauan Harian"
         const menuConfig = {
             'Guru': [
                 { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', title: 'Presensi', color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
@@ -812,11 +813,30 @@
             });
         }
 
+        // [FUNGSI BARU] Load Peringatan Dashboard Guru
+        function loadDashboardAlerts() {
+            if(userSession.role !== 'Guru') return;
+            google.script.run.withSuccessHandler(res => {
+                let r = JSON.parse(res);
+                if(r.status === 'success') {
+                    let html = '';
+                    if(!r.data.datang) html += `<div class="bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-lg"></i> Peringatan: Anda belum mengisi Presensi Datang hari ini!</div>`;
+                    if(r.data.datang && !r.data.pulang) html += `<div class="bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-base"></i> Jangan lupa untuk mengisi Presensi Pulang nanti.</div>`;
+                    if(!r.data.jurnal) html += `<div class="bg-blue-50 border border-blue-200 text-blue-600 px-3 py-2 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-info-circle text-base"></i> Anda belum mengisi Jurnal (KBM/Kegiatan) hari ini.</div>`;
+
+                    const container = document.getElementById('dashboard-alerts');
+                    if(html) { container.innerHTML = html; container.classList.remove('hidden'); }
+                    else { container.classList.add('hidden'); }
+                }
+            }).getDashboardStatus(userSession.nama);
+        }
+
         function goHome() {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById('view-home').classList.remove('hidden');
             document.getElementById('btn-back').classList.add('hidden');
             document.getElementById('header-title').innerHTML = `SIPJAM <span class="text-nizamudin-green dark:text-nizamudin-gold font-black">Nizamudin</span>`;
+            loadDashboardAlerts();
         }
 
         function switchTab(viewId, title) {
@@ -958,7 +978,6 @@
             );
         }
 
-        // [FUNGSI BARU]: Menghandle Toggle Jurnal Kegiatan/KBM
         function toggleJurnalFields() {
             const tipe = document.getElementById('jurnal-tipe').value;
             const rowMapelKelas = document.getElementById('row-mapel-kelas');
@@ -987,7 +1006,7 @@
 
         function fetchSiswaByKelas() {
             const tipe = document.getElementById('jurnal-tipe').value;
-            if(tipe === 'Kegiatan') return; // Bypass if not teaching
+            if(tipe === 'Kegiatan') return;
 
             const kelas = document.getElementById('jurnal-kelas').value; if(!kelas) return;
             const listDiv = document.getElementById('list-siswa-absensi');
@@ -1088,8 +1107,8 @@
                         res.data.forEach(r => {
                             let bColor = (r.status === "Disetujui" || r.status.includes("Terverifikasi")) ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400" : (r.status === "Ditolak" ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400");
                             
-                            // [UPDATE] Tampilan split Absensi
                             let abs = parseAbsensiStr(r.absensi);
+                            let detailSiswaHtml = (r.detailAbsensi && r.detailAbsensi !== "-" && r.detailAbsensi !== "Nihil") ? `<div class="mt-1 text-[9px] text-gray-500"><span class="font-bold">Keterangan Siswa:</span> ${r.detailAbsensi}</div>` : '';
                             let absHtml = abs.h === "-" ? `<span class="text-[10px] text-gray-400 italic">Jurnal Kegiatan (Non-KBM)</span>` : 
                                 `<div class="flex gap-1.5 font-bold"><span class="text-green-600 bg-green-50 px-1 rounded">H:${abs.h}</span><span class="text-yellow-600 bg-yellow-50 px-1 rounded">S:${abs.s}</span><span class="text-blue-600 bg-blue-50 px-1 rounded">I:${abs.i}</span><span class="text-red-600 bg-red-50 px-1 rounded border border-red-100">A:${abs.a}</span></div>`;
 
@@ -1101,10 +1120,11 @@
                                 </div>
                                 <div class="text-[10px] text-gray-600 dark:text-gray-300 mb-1 font-bold">Kls: ${r.kelas}</div>
                                 <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-2 leading-snug">Materi: <span class="font-bold">${r.materi}</span><br>Kegiatan: ${r.kegiatan}</div>
-                                <div class="flex justify-between items-center border-t dark:border-gray-700 pt-2">
+                                <div class="border-t dark:border-gray-700 pt-2 mb-2">
                                     <div class="text-[9px]">${absHtml}</div>
-                                    <span class="inline-block px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${bColor}">${r.status}</span>
+                                    ${detailSiswaHtml}
                                 </div>
+                                <div class="text-right"><span class="inline-block px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${bColor}">${r.status}</span></div>
                             </div>`;
                         });
                     }
@@ -1112,13 +1132,13 @@
             }).getRekapJurnalGuru(userSession.nama, start, end, kelas, mapel);
         }
 
-        // [UPDATE] Export Excel Guru (Absensi Dijabarkan Per Kolom)
+        // EXPORT EXCEL GURU
         function exportJurnalGuruToExcel() {
             if (globalRekapJurnalGuruList.length === 0) return;
-            let arrData = [["Tanggal", "Mata Pelajaran", "Kelas", "Materi/Kegiatan", "Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Status Verifikasi"]];
+            let arrData = [["Tanggal", "Mata Pelajaran", "Kelas", "Materi/Kegiatan", "Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Siswa Tidak Hadir & Keterangan", "Status Verifikasi"]];
             globalRekapJurnalGuruList.forEach(r => {
                 let abs = parseAbsensiStr(r.absensi);
-                arrData.push([r.tanggal, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.status]);
+                arrData.push([r.tanggal, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.detailAbsensi, r.status]);
             });
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(arrData), "Rekap Jurnal Saya");
             XLSX.writeFile(wb, `Rekap_Jurnal_${userSession.nama.replace(/\s/g, '_')}_${new Date().getTime()}.xlsx`);
@@ -1200,7 +1220,7 @@
             document.getElementById('btn-prev-hist').disabled = histJurnalPage === 1; document.getElementById('btn-next-hist').disabled = end >= histJurnalFiltered.length;
         }
 
-        // [FUNGSI BARU] ADMIN PANTAUAN HARIAN
+        // [UPDATED] ADMIN PANTAUAN HARIAN (DENGAN WHATSAPP)
         function loadDailyMonitor() {
             document.getElementById('monitor-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><p class="text-[10px]">Memuat status hari ini...</p></div>`;
             const dateStr = document.getElementById('date-monitor').value;
@@ -1224,6 +1244,23 @@
                     let jKbmBadge = d.jurnalKbm > 0 ? `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">KBM: ${d.jurnalKbm}x</span>` : `<span class="bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full border border-gray-200">KBM: 0</span>`;
                     let jKegBadge = d.jurnalKeg > 0 ? `<span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">Kegiatan: ${d.jurnalKeg}x</span>` : `<span class="bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full border border-gray-200">Kegiatan: 0</span>`;
 
+                    // Generate WhatsApp Notification Button
+                    let missingTasks = [];
+                    if(d.datang === "Belum") missingTasks.push("Presensi Datang");
+                    if(d.datang !== "Belum" && d.pulang === "Belum") missingTasks.push("Presensi Pulang");
+                    if(d.jurnalKbm === 0 && d.jurnalKeg === 0) missingTasks.push("Jurnal Pembelajaran/Kegiatan");
+
+                    let waButtonHtml = '';
+                    if(missingTasks.length > 0 && d.hp) {
+                        let phone = d.hp.toString().replace(/\D/g, ''); 
+                        if(phone.startsWith('0')) phone = '62' + phone.substring(1);
+                        if(phone.length >= 9) {
+                            let msg = `Assalamu'alaikum Yth. Ustadz/ah ${d.nama},\n\nMohon izin mengingatkan bahwa sistem SIPJAM mendeteksi Anda belum mengisi data administrasi berikut untuk hari ini:\n- ${missingTasks.join('\n- ')}\n\nMohon untuk segera dilengkapi. Syukron.`;
+                            let waLink = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                            waButtonHtml = `<a href="${waLink}" target="_blank" class="w-full mt-3 bg-green-500 hover:bg-green-600 text-white text-[10px] font-bold py-2 rounded-xl flex justify-center items-center gap-1.5 shadow-sm transition"><i class="fa-brands fa-whatsapp text-sm"></i> Kirim Peringatan via WA</a>`;
+                        }
+                    }
+
                     container.innerHTML += `
                     <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                         <div class="font-bold text-[12px] text-gray-800 dark:text-gray-100 mb-2 truncate">${d.nama}</div>
@@ -1239,10 +1276,11 @@
                                 <div class="text-[9px] font-normal text-gray-400 mt-0.5"><i class="fa-regular fa-clock"></i> ${d.waktuPulang}</div>
                             </div>
                         </div>
-                        <div class="border-t dark:border-gray-700 pt-2 flex items-center justify-between">
+                        <div class="border-t dark:border-gray-700 pt-2 pb-1 flex items-center justify-between">
                             <span class="text-[9px] font-bold text-gray-500">Status Jurnal:</span>
                             <div class="flex gap-1 text-[9px] font-bold">${jKbmBadge}${jKegBadge}</div>
                         </div>
+                        ${waButtonHtml}
                     </div>`;
                 });
             }
@@ -1369,7 +1407,7 @@
             });
         }
 
-        // ADMIN REKAP (WITH EXCEL 3 SHEETS)
+        // [UPDATE] EXCEL ADMIN (KOLOM DETAIL SISWA)
         function tarikDataRekapBulan() {
             const bulanVal = document.getElementById('rekap-bulan').value; if(!bulanVal) return;
             const [yyyy, mm] = bulanVal.split('-');
@@ -1442,11 +1480,10 @@
                 dataJurnalArr.push([mapel, globalRekapAdminJurnal[mapel]]);
             }
 
-            // [UPDATE] Detail 3rd Sheet Excel 
-            let dataDetailJurnalArr = [["Tanggal", "Nama Guru", "Mapel / Jenis", "Kelas", "Materi / Judul Kegiatan", "Deskripsi Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Status Verifikasi"]];
+            let dataDetailJurnalArr = [["Tanggal", "Nama Guru", "Mapel / Jenis", "Kelas", "Materi / Judul Kegiatan", "Deskripsi Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Siswa Tidak Hadir & Keterangan", "Status Verifikasi"]];
             globalDetailJurnalAdmin.forEach(r => {
                 let abs = parseAbsensiStr(r.absensi);
-                dataDetailJurnalArr.push([r.tanggal, r.nama, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.status]);
+                dataDetailJurnalArr.push([r.tanggal, r.nama, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.detailAbsensi, r.status]);
             });
 
             const wb = XLSX.utils.book_new();
