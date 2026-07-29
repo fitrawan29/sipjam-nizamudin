@@ -536,7 +536,7 @@
                                 <button onclick="exportRekapAdminToExcel()" class="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
                                     <i class="fa-solid fa-file-excel"></i> Download Excel Lengkap
                                 </button>
-                                <p class="text-center text-[9px] text-gray-400 mt-2">*Termasuk Detail Daftar Nama Siswa & Absensinya</p>
+                                <p class="text-center text-[9px] text-gray-400 mt-2">*Format Nested Sesuai Template Nasional</p>
                             </div>
                         </div>
                     </div>
@@ -1138,7 +1138,7 @@
             }); return res;
         }
 
-        // [FITUR BARU]: REKAP PRESENSI SISWA
+        // REKAP PRESENSI SISWA
         function tarikRekapSiswa() {
             const start = document.getElementById('rekap-siswa-start').value;
             const end = document.getElementById('rekap-siswa-end').value;
@@ -1254,7 +1254,7 @@
         }
 
 
-        // [UPDATE] REKAP JURNAL GURU
+        // REKAP JURNAL GURU
         function tarikRekapJurnalGuru() {
             const start = document.getElementById('rekap-jurnal-start').value; const end = document.getElementById('rekap-jurnal-end').value; const kelas = document.getElementById('rekap-jurnal-kelas').value; const mapel = document.getElementById('rekap-jurnal-mapel').value;
             
@@ -1391,7 +1391,7 @@
             document.getElementById('btn-prev-hist').disabled = histJurnalPage === 1; document.getElementById('btn-next-hist').disabled = end >= histJurnalFiltered.length;
         }
 
-        // [UPDATED] ADMIN PANTAUAN HARIAN (DENGAN WA AMAN)
+        // ADMIN PANTAUAN HARIAN (DENGAN WHATSAPP)
         function loadDailyMonitor() {
             document.getElementById('monitor-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><p class="text-[10px]">Memuat status hari ini...</p></div>`;
             const dateStr = document.getElementById('date-monitor').value;
@@ -1422,7 +1422,6 @@
 
                     let waButtonHtml = '';
                     if(missingTasks.length > 0 && d.hp) {
-                        // [UPDATE]: Parser WA Aman & Sesuai Format
                         let rawPhone = d.hp.toString().replace(/[^0-9]/g, ''); 
                         if(rawPhone.length > 5) {
                             if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
@@ -1643,28 +1642,127 @@
         }
         
         function exportRekapAdminToExcel() {
-            let dataPresensiArr = [["Nama Guru", "Hadir", "Dinas Luar", "Izin", "Sakit", "Alpa"]];
+            if(!globalRekapAdminPresensi) return;
+
+            // 1. Dapatkan daftar unik bulan dari seluruh data guru
+            let monthsSet = new Set();
+            for(let guru in globalRekapAdminPresensi) {
+                for(let m in globalRekapAdminPresensi[guru].bulanan) { monthsSet.add(m); }
+            }
+            let monthsArr = Array.from(monthsSet).sort(); 
+            if(monthsArr.length === 0) { monthsArr = [new Date().toISOString().slice(0,7)]; } // Fallback
+
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            let formatMonth = (yyyy_mm) => { let [y, m] = yyyy_mm.split('-'); return `${monthNames[parseInt(m)-1]}`; };
+
+            let wsData = [];
+
+            // --- KOP SURAT ---
+            wsData.push(["Nama Sekolah", ": SMA NIZAMUDIN", "", "", "", "", "", "NPSN"]);
+            wsData.push(["Status Sekolah", ": Swasta", "", "", "", "", "", "12345678"]);
+            wsData.push(["Desa", ": -", "", "", "REKAP DAFTAR HADIR GURU DAN PEGAWAI"]);
+            wsData.push(["Kecamatan", ": -", "", "", "BULAN", ": " + formatMonth(monthsArr[0]) + " s/d " + formatMonth(monthsArr[monthsArr.length-1]) + " " + monthsArr[0].split('-')[0]]);
+            wsData.push(["Kabupaten", ": -", "", "", "TAHUN PELAJARAN", ": " + (globalSettings.TAHUN_AJARAN || "-")]);
+            wsData.push(["Propinsi", ": -"]);
+            wsData.push([]); 
+
+            // --- STRUKTUR HEADER (NESTED) ---
+            let row7 = ["No", "NAMA / NIP", "L/P", "JABATAN", "BULAN (HARI EFEKTIF / HADIR / SAKIT / IJIN / ALPA)"];
+            let row8 = ["", "", "", ""];
+            let row9 = ["", "", "", ""];
+
+            for(let i=0; i < monthsArr.length * 5 - 1; i++) row7.push("");
+
+            monthsArr.forEach(m => {
+                row8.push(formatMonth(m), "", "", "", "");
+                row9.push("HE", "H", "S", "I", "A");
+            });
+
+            row7.push("JUMLAH ABSEN", "", "", "", "", "", "% Keha", "KET");
+            row8.push("HE", "H", "S", "I", "A", "DLL", "diran", "");
+            row9.push("", "", "", "", "", "", "", "");
+
+            wsData.push(row7); wsData.push(row8); wsData.push(row9);
+
+            // --- MERGING CELLS (SheetJS) ---
+            let merges = [
+                { s: {r: 7, c: 0}, e: {r: 9, c: 0} }, // No
+                { s: {r: 7, c: 1}, e: {r: 9, c: 1} }, // Nama
+                { s: {r: 7, c: 2}, e: {r: 9, c: 2} }, // L/P
+                { s: {r: 7, c: 3}, e: {r: 9, c: 3} }, // Jabatan
+                { s: {r: 7, c: 4}, e: {r: 7, c: 4 + (monthsArr.length*5) - 1} }, // Title Bulan
+            ];
+
+            monthsArr.forEach((m, idx) => {
+                let startCol = 4 + (idx * 5);
+                merges.push({ s: {r: 8, c: startCol}, e: {r: 8, c: startCol + 4} }); 
+            });
+
+            let startJumlah = 4 + (monthsArr.length*5);
+            merges.push({ s: {r: 7, c: startJumlah}, e: {r: 7, c: startJumlah+5} }); // JUMLAH ABSEN
+            merges.push({ s: {r: 8, c: startJumlah+6}, e: {r: 9, c: startJumlah+6} }); // % Kehadiran 2
+            merges.push({ s: {r: 7, c: startJumlah+6}, e: {r: 7, c: startJumlah+6} }); // % Kehadiran 1
+            merges.push({ s: {r: 7, c: startJumlah+7}, e: {r: 9, c: startJumlah+7} }); // KET
+
+            // --- BODY TABLE ---
+            let no = 1;
             for(let guru in globalRekapAdminPresensi) {
                 let d = globalRekapAdminPresensi[guru];
-                dataPresensiArr.push([guru, d.Hadir, d.DinasLuar, d.Izin, d.Sakit, d.Alpa]);
-            }
-            
-            let dataJurnalArr = [["Mata Pelajaran / Kegiatan", "Jumlah Disetujui"]];
-            for(let mapel in globalRekapAdminJurnal) {
-                dataJurnalArr.push([mapel, globalRekapAdminJurnal[mapel]]);
+                let nipText = d.nip && d.nip !== "-" ? d.nip : "";
+                let namaNip = guru + (nipText ? "\n" + nipText : "");
+
+                let rowData = [ no++, namaNip, d.gender || "-", d.jabatan || "Guru Mapel" ];
+                let totalHE = 0, totalH = 0, totalS = 0, totalI = 0, totalA = 0, totalDLL = 0;
+
+                monthsArr.forEach(m => {
+                    let mData = d.bulanan[m] || {H:0, S:0, I:0, A:0, DL:0};
+                    let he = mData.H + mData.S + mData.I + mData.A + mData.DL;
+                    rowData.push(he, mData.H, mData.S, mData.I, mData.A);
+                    totalHE += he; totalH += mData.H; totalS += mData.S; totalI += mData.I; totalA += mData.A; totalDLL += mData.DL;
+                });
+
+                let persen = totalHE > 0 ? ((totalH / totalHE) * 100).toFixed(1) : "0.0";
+                rowData.push(totalHE, totalH, totalS, totalI, totalA, totalDLL, persen, "PNS/PPPK");
+                wsData.push(rowData);
             }
 
+            // --- FOOTER TANDA TANGAN ---
+            wsData.push([]); wsData.push([]);
+            let today = new Date();
+            let tglIndo = today.getDate() + " " + monthNames[today.getMonth()] + " " + today.getFullYear();
+
+            wsData.push(["Catatan :", "", "", "", "", "", "", "", "", "", "", "", "", "", "Kota/Kabupaten, " + tglIndo]);
+            wsData.push(["HE : Hari Efektif", "", "", "", "", "", "", "", "", "", "", "", "", "", "Kepala Sekolah"]);
+            wsData.push(["H : Hadir"]);
+            wsData.push(["S : Sakit"]);
+            wsData.push(["I : Izin"]);
+            wsData.push(["A : Alpa"]);
+            wsData.push(["DLL: Cuti / Dinas Luar", "", "", "", "", "", "", "", "", "", "", "", "", "", "___________________________"]);
+            wsData.push(["", "", "", "", "", "", "", "", "", "", "", "", "", "", "NIP. "]);
+
+            // GENERATE WORKBOOK
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!merges'] = merges;
+            
+            // Atur lebar kolom (Estimasi agar rapi)
+            ws['!cols'] = [ {wch: 5}, {wch: 35}, {wch: 5}, {wch: 18} ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap_Kehadiran_Guru");
+
+            // --- SHEET 2 & 3: JURNAL ---
+            let dataJurnalArr = [["Mata Pelajaran / Kegiatan", "Jumlah Disetujui"]];
+            for(let mapel in globalRekapAdminJurnal) { dataJurnalArr.push([mapel, globalRekapAdminJurnal[mapel]]); }
+            
             let dataDetailJurnalArr = [["Tanggal", "Nama Guru", "Mapel / Jenis", "Kelas", "Materi / Judul Kegiatan", "Deskripsi Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Detail Absensi Siswa (H/I/S/A)", "Status Verifikasi"]];
             globalDetailJurnalAdmin.forEach(r => {
                 let abs = parseAbsensiStr(r.absensi);
                 dataDetailJurnalArr.push([r.tanggal, r.nama, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.detailAbsensi, r.status]);
             });
 
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataPresensiArr), "Kehadiran_Guru");
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataJurnalArr), "Summary_Jurnal");
             XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataDetailJurnalArr), "Semua_Detail_Jurnal");
-            XLSX.writeFile(wb, `Rekapitulasi_SIPJAM_Lengkap_${new Date().getTime()}.xlsx`);
+            XLSX.writeFile(wb, `Rekap_Daftar_Hadir_Guru_${new Date().getTime()}.xlsx`);
         }
 
         // ADMIN MASTER DATA
