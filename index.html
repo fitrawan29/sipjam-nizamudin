@@ -25,6 +25,7 @@
             }
         }
     </script>
+    
     <style>
         body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; background-color: #F8FAFC; box-shadow: 0 0 20px rgba(0,0,0,0.05); overflow-x: hidden;}
@@ -44,6 +45,7 @@
         .fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
+        /* Loader Styles */
         #loader { display: none; position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; max-width: 480px; margin: 0 auto; }
         .dark #loader { background: rgba(18, 18, 18, 0.95); }
         .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #0B4619; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; }
@@ -60,9 +62,39 @@
         .master-tab-btn, .verif-tab-btn, .piket-tab-btn { transition: all 0.2s ease; border: 1px solid transparent; }
         .master-tab-btn.active, .verif-tab-btn.active, .piket-tab-btn.active { border-color: #0B4619; background-color: #f0fdf4; color: #0B4619; font-weight: 700; }
         .dark .master-tab-btn.active, .dark .verif-tab-btn.active, .dark .piket-tab-btn.active { border-color: #D4AF37; background-color: rgba(212, 175, 55, 0.1); color: #D4AF37; }
+
+        @media screen {
+            #print-area { display: none; }
+        }
+        @media print {
+            body { background: white; margin: 0; padding: 0; }
+            .mobile-container, #loader, .swal2-container { display: none !important; }
+            #print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: black; background: white; }
+            
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            table, th, td { border: 1px solid black; }
+            th { padding: 8px; text-align: center; font-weight: bold; background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            td { padding: 6px; }
+            
+            .text-center { text-align: center; }
+            .kop-surat { display: flex; align-items: center; border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 20px; }
+            .kop-surat img { width: 80px; height: 80px; object-fit: contain; margin-right: 15px; }
+            .kop-surat-text { flex-grow: 1; text-align: center; }
+            .kop-surat-text h1 { margin: 0; font-size: 20px; font-weight: bold; text-transform: uppercase; }
+            .kop-surat-text p { margin: 2px 0 0 0; font-size: 12px; }
+            
+            .ttd-container { display: flex; justify-content: flex-end; margin-top: 30px; }
+            .ttd-box { text-align: center; width: 250px; }
+            .ttd-box p { margin: 0; }
+            .ttd-box .name { margin-top: 70px; font-weight: bold; text-decoration: underline; }
+            
+            .page-break { page-break-before: always; }
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-black transition-colors duration-300">
+
+    <div id="print-area"></div>
 
     <div class="mobile-container flex flex-col h-screen">
         
@@ -77,7 +109,6 @@
             </p>
         </div>
 
-        <!-- LOGIN SCREEN -->
         <div id="login-screen" class="flex-grow flex flex-col items-center justify-center p-6 relative overflow-hidden">
             <div class="absolute -top-20 -right-20 w-64 h-64 bg-green-100 dark:bg-green-900/20 rounded-full blur-3xl opacity-50"></div>
             <div class="absolute -bottom-20 -left-20 w-64 h-64 bg-yellow-100 dark:bg-yellow-900/20 rounded-full blur-3xl opacity-50"></div>
@@ -99,7 +130,6 @@
             </div>
         </div>
 
-        <!-- APP SCREEN -->
         <div id="app-screen" class="hidden flex-col h-full w-full">
             <header class="bg-transparent px-5 py-4 flex justify-between items-center shrink-0 z-20 absolute top-0 left-0 w-full">
                 <div class="flex items-center gap-3">
@@ -117,7 +147,6 @@
 
             <main class="flex-grow overflow-y-auto custom-scroll w-full relative pt-16 pb-6 px-4">
                 
-                <!-- HOME VIEW -->
                 <section id="view-home" class="fade-in block space-y-6">
                     <div class="bg-gradient-to-br from-[#0B4619] to-[#1a7031] rounded-[28px] p-5 shadow-xl shadow-green-900/20 text-white relative overflow-hidden border border-green-700/50">
                         <i class="fa-solid fa-mosque absolute -right-6 -bottom-6 text-9xl text-white opacity-5 rotate-[-15deg]"></i>
@@ -134,7 +163,7 @@
 
                         <div class="relative z-10 flex items-center gap-2 text-[11px] text-green-50 mb-5 pb-4 border-b border-white/10">
                             <i class="fa-solid fa-building-columns opacity-70"></i>
-                            <span class="font-medium tracking-wide">SMA NIZAMUDIN</span>
+                            <span class="font-medium tracking-wide" id="lbl-sekolah-home">SMA NIZAMUDIN</span>
                             <span id="user-role-badge" class="ml-auto bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase shadow-sm">ROLE</span>
                         </div>
 
@@ -157,9 +186,7 @@
 
                     <div>
                         <h3 class="text-[13px] font-bold text-gray-800 dark:text-gray-200 mb-4 px-2">Aktivitas Utama</h3>
-                        <div id="nav-grid" class="grid grid-cols-4 gap-y-6 gap-x-2">
-                            <!-- Injected by JS -->
-                        </div>
+                        <div id="nav-grid" class="grid grid-cols-4 gap-y-6 gap-x-2"></div>
                     </div>
 
                     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-center">
@@ -198,8 +225,7 @@
                             <div id="row-detail-izin" class="hidden fade-in space-y-4">
                                 <div>
                                     <label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Kategori Detail</label>
-                                    <select id="presensi-detail-izin" class="w-full px-3 py-3 text-sm rounded-xl input-premium">
-                                    </select>
+                                    <select id="presensi-detail-izin" class="w-full px-3 py-3 text-sm rounded-xl input-premium"></select>
                                 </div>
                                 
                                 <div class="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800/50 p-4 rounded-2xl">
@@ -227,7 +253,7 @@
                                 <input type="text" id="presensi-tempat" placeholder="Mendeteksi koordinat..." class="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800">
                             </div>
 
-                            <div class="text-[10px] text-gray-500 text-center italic mt-2"><i class="fa-solid fa-map-pin text-red-500"></i> Sistem akan merekam otomatis titik GPS (lokasi) Anda saat mengirim.</div>
+                            <div class="text-[10px] text-gray-500 text-center italic mt-2"><i class="fa-solid fa-map-pin text-red-500"></i> Sistem akan merekam otomatis GPS (lokasi) Anda saat mengirim.</div>
 
                             <div class="pt-2">
                                 <button type="submit" class="btn-click w-full bg-nizamudin-green text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2">
@@ -350,8 +376,8 @@
                             <button onclick="exportJurnalGuruToExcel()" class="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-file-excel"></i> Excel
                             </button>
-                            <button onclick="exportJurnalGuruToWord()" class="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-file-word"></i> Word
+                            <button onclick="printRekapJurnalGuru()" class="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-print"></i> Cetak PDF
                             </button>
                         </div>
                     </div>
@@ -393,13 +419,12 @@
                                     </tbody>
                                 </table>
                             </div>
-                            
                             <div class="grid grid-cols-2 gap-2 mt-1">
                                 <button onclick="exportRekapSiswaToExcel()" class="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
                                     <i class="fa-solid fa-file-excel"></i> Excel
                                 </button>
-                                <button onclick="exportRekapSiswaToWord()" class="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-file-word"></i> Word
+                                <button onclick="printRekapSiswa()" class="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-print"></i> Cetak PDF
                                 </button>
                             </div>
                         </div>
@@ -420,30 +445,25 @@
 
                         <!-- TABS PIKET -->
                         <div class="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-4 overflow-x-auto custom-scroll" id="piket-tabs-container">
-                            <!-- Di-injeksi lewat JS sesuai Role -->
                         </div>
 
-                        <!-- TAB CONTENT: Beranda Piket (Lihat Jadwal & Laporan) -->
+                        <!-- TAB CONTENT: Beranda Piket -->
                         <div id="piket-content-beranda" class="space-y-4">
                             <div class="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl">
-                                <h3 class="text-xs font-bold text-teal-800 dark:text-teal-400 mb-3"><i class="fa-regular fa-calendar-check mr-1"></i> Jadwal Piket Bulan Ini</h3>
-                                <div id="piket-jadwal-list" class="space-y-2 max-h-40 overflow-y-auto custom-scroll pr-1">
-                                    <!-- Injeksi JS -->
-                                </div>
+                                <h3 class="text-xs font-bold text-teal-800 dark:text-teal-400 mb-3"><i class="fa-regular fa-calendar-check mr-1"></i> Jadwal Piket Aktif</h3>
+                                <div id="piket-jadwal-list" class="space-y-2 max-h-40 overflow-y-auto custom-scroll pr-1"></div>
                             </div>
                             
                             <div>
                                 <div class="flex justify-between items-center mb-3 px-1">
-                                    <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300"><i class="fa-solid fa-list-check mr-1 text-gray-400"></i> Laporan Piket Terbaru</h3>
+                                    <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300"><i class="fa-solid fa-list-check mr-1 text-gray-400"></i> Laporan Terbaru</h3>
                                     <input type="date" id="piket-filter-date" onchange="loadPiketLaporanData()" class="px-2 py-1 text-[10px] rounded border dark:border-gray-700 bg-white dark:bg-gray-800">
                                 </div>
-                                <div id="piket-laporan-list" class="space-y-3 min-h-[150px]">
-                                    <!-- Injeksi JS -->
-                                </div>
+                                <div id="piket-laporan-list" class="space-y-3 min-h-[150px]"></div>
                             </div>
                         </div>
 
-                        <!-- TAB CONTENT: Form Laporan Piket (Khusus Guru) -->
+                        <!-- TAB CONTENT: Form Laporan Piket (Guru) -->
                         <div id="piket-content-form" class="hidden">
                             <div class="bg-orange-50 border border-orange-200 p-3 rounded-xl mb-4 text-[10px] text-orange-800 font-medium">
                                 <i class="fa-solid fa-circle-info mr-1"></i> Silakan isi laporan jika Anda ditugaskan piket hari ini. Periksa seluruh kelas secara bergantian.
@@ -459,7 +479,6 @@
                                     <label class="block text-[11px] font-bold uppercase text-gray-600 dark:text-gray-400 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2"><i class="fa-solid fa-users-rays text-teal-500"></i> Cek Kehadiran Siswa</label>
                                     
                                     <div id="piket-form-accordion" class="space-y-2">
-                                        <!-- Injeksi JS Accordion Per Kelas -->
                                         <div class="text-center py-5 text-gray-400 text-xs"><i class="fa-solid fa-spinner fa-spin"></i> Memuat data siswa...</div>
                                     </div>
                                 </div>
@@ -482,35 +501,35 @@
                             </form>
                         </div>
 
-                        <!-- TAB CONTENT: Kelola Jadwal Piket (Khusus Admin) -->
+                        <!-- TAB CONTENT: Kelola Jadwal Piket (Admin) -->
                         <div id="piket-content-admin-jadwal" class="hidden space-y-4">
                             <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700">
                                 <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3"><i class="fa-solid fa-calendar-plus mr-1 text-teal-500"></i> Tugaskan Guru Piket</h3>
                                 <form onsubmit="simpanJadwalPiket(event)" class="space-y-3">
                                     <div>
-                                        <label class="block text-[10px] text-gray-500 mb-1">Tanggal</label>
-                                        <input type="date" id="admin-piket-date" required class="w-full px-3 py-2 rounded-lg input-premium text-xs">
+                                        <label class="block text-[10px] text-gray-500 mb-1">Hari</label>
+                                        <select id="admin-piket-hari" required class="w-full px-3 py-2 rounded-lg input-premium text-xs">
+                                            <option value="Senin">Senin</option><option value="Selasa">Selasa</option>
+                                            <option value="Rabu">Rabu</option><option value="Kamis">Kamis</option>
+                                            <option value="Jumat">Jumat</option><option value="Sabtu">Sabtu</option>
+                                        </select>
                                     </div>
                                     <div>
                                         <label class="block text-[10px] text-gray-500 mb-1">Pilih Guru (Bisa lebih dari 1)</label>
-                                        <div id="admin-piket-guru-list" class="max-h-32 overflow-y-auto custom-scroll border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-900 text-[10px] space-y-1">
-                                            <!-- Injeksi Checkbox -->
-                                        </div>
+                                        <div id="admin-piket-guru-list" class="max-h-32 overflow-y-auto custom-scroll border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-900 text-[10px] space-y-1"></div>
                                     </div>
                                     <button type="submit" class="btn-click w-full bg-gray-800 dark:bg-gray-600 text-white py-2 rounded-lg font-bold text-[11px]">Simpan / Update Jadwal</button>
                                 </form>
                             </div>
                         </div>
 
-                        <!-- TAB CONTENT: Verifikasi Laporan Piket (Khusus Admin) -->
+                        <!-- TAB CONTENT: Verifikasi Laporan Piket (Admin) -->
                         <div id="piket-content-admin-verif" class="hidden">
                             <div class="relative mb-3">
                                 <i class="fa-regular fa-calendar absolute left-3.5 top-2 text-gray-400 text-xs"></i>
                                 <input type="date" id="piket-verif-date" onchange="loadVerifikasiPiket()" class="w-full pl-9 pr-4 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-800">
                             </div>
-                            <div id="piket-verif-list" class="space-y-3 min-h-[200px]">
-                                <!-- Injeksi JS -->
-                            </div>
+                            <div id="piket-verif-list" class="space-y-3 min-h-[200px]"></div>
                         </div>
                     </div>
                 </section>
@@ -547,7 +566,7 @@
                     </div>
                 </section>
 
-                <!-- ADMIN: PANTAUAN HARIAN (DENGAN WHATSAPP) -->
+                <!-- ADMIN: PANTAUAN HARIAN -->
                 <section id="view-admin-monitor" class="view-section hidden fade-in">
                     <div class="glass-card p-4">
                         <div class="flex justify-between items-center mb-4">
@@ -653,17 +672,15 @@
                                 <div id="card-rekap-jurnal" class="grid grid-cols-1 gap-2"></div>
                             </div>
                             
-                            <div class="pt-2 border-t dark:border-gray-800">
-                                <div class="grid grid-cols-2 gap-2 mt-2">
-                                    <button onclick="exportRekapAdminToExcel()" class="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
-                                        <i class="fa-solid fa-file-excel"></i> Excel Lengkap
-                                    </button>
-                                    <button onclick="exportRekapAdminToWord()" class="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
-                                        <i class="fa-solid fa-file-word"></i> Word (Docx)
-                                    </button>
-                                </div>
-                                <p class="text-center text-[9px] text-gray-400 mt-2">*Termasuk Detail Daftar Nama Siswa & Absensinya</p>
+                            <div class="pt-2 border-t dark:border-gray-800 grid grid-cols-2 gap-2 mt-2">
+                                <button onclick="exportRekapAdminToExcel()" class="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-file-excel"></i> Excel
+                                </button>
+                                <button onclick="printRekapAdmin()" class="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-print"></i> Cetak PDF
+                                </button>
                             </div>
+                            <p class="text-center text-[9px] text-gray-400 mt-1">*Termasuk Detail Daftar Nama Siswa & Absensinya</p>
                         </div>
                     </div>
                 </section>
@@ -741,6 +758,16 @@
                                         <option value="6">6 Hari (Senin - Sabtu)</option>
                                         <option value="5">5 Hari (Senin - Jumat)</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4">
+                                <h3 class="text-[10px] font-bold text-blue-800 dark:text-blue-500 mb-3 uppercase flex items-center gap-1.5"><i class="fa-solid fa-print"></i> Pengaturan Kop Surat</h3>
+                                <div class="space-y-2.5">
+                                    <div><label class="block text-[9px] text-gray-500 mb-0.5">Nama Sekolah</label><input type="text" id="cfg-nama-sekolah" required class="w-full px-2 py-1.5 border dark:border-gray-700 rounded text-xs font-bold bg-white dark:bg-gray-800 dark:text-white"></div>
+                                    <div><label class="block text-[9px] text-gray-500 mb-0.5">Alamat Lengkap</label><input type="text" id="cfg-alamat" required class="w-full px-2 py-1.5 border dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 dark:text-white"></div>
+                                    <div><label class="block text-[9px] text-gray-500 mb-0.5">URL Logo Sekolah (Link Gambar PNG)</label><input type="text" id="cfg-logo" required class="w-full px-2 py-1.5 border dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 dark:text-white"></div>
+                                    <div class="flex gap-2"><div class="flex-1"><label class="block text-[9px] text-gray-500 mb-0.5">Nama Kepala Sekolah</label><input type="text" id="cfg-nama-kepsek" required class="w-full px-2 py-1.5 border dark:border-gray-700 rounded text-xs font-bold bg-white dark:bg-gray-800 dark:text-white"></div><div class="flex-1"><label class="block text-[9px] text-gray-500 mb-0.5">NIP Kepala Sekolah</label><input type="text" id="cfg-nip-kepsek" required class="w-full px-2 py-1.5 border dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 dark:text-white"></div></div>
                                 </div>
                             </div>
                             
@@ -845,7 +872,6 @@
         let activeVerifTab = 'Presensi'; let verifDataAll = [], verifFiltered = [], verifPage = 1; let verifJurnalAll = [], verifJurnalFiltered = [], verifJurnalPage = 1;
         let activeMasterTab = 'Data_Siswa'; let masterFiltered = [], masterPage = 1;
 
-        // [UPDATE] Menu Grid kini mencakup Piket untuk Guru dan Admin
         const menuConfig = {
             'Guru': [
                 { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', title: 'Presensi', color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
@@ -943,6 +969,14 @@
             document.getElementById('cfg-jp-mulai').value = padTimeStr(globalSettings.JAM_PULANG_MULAI || "14:00"); 
             document.getElementById('cfg-jp-akhir').value = padTimeStr(globalSettings.JAM_PULANG_AKHIR || "16:00");
             document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
+
+            document.getElementById('cfg-nama-sekolah').value = globalSettings.NAMA_SEKOLAH || "";
+            document.getElementById('cfg-alamat').value = globalSettings.ALAMAT_SEKOLAH || "";
+            document.getElementById('cfg-logo').value = globalSettings.LOGO_URL || "";
+            document.getElementById('cfg-nama-kepsek').value = globalSettings.NAMA_KEPALA_SEKOLAH || "";
+            document.getElementById('cfg-nip-kepsek').value = globalSettings.NIP_KEPALA_SEKOLAH || "";
+
+            if(document.getElementById('lbl-sekolah-home')) document.getElementById('lbl-sekolah-home').innerText = globalSettings.NAMA_SEKOLAH || "SMA NIZAMUDIN";
 
             let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; 
             let kHtmlRekap = '<option value="">Semua Kelas / Angkatan</option>';
@@ -1044,6 +1078,44 @@
                 else { switchMasterTab('Data_Siswa'); }
             }
             if(viewId === 'view-piket') loadPiketUtama();
+        }
+
+        function generateKopSuratHtml(title) {
+            let logoSrc = globalSettings.LOGO_URL || "https://placehold.co/100x100?text=LOGO";
+            let namaSekolah = globalSettings.NAMA_SEKOLAH || "NAMA SEKOLAH";
+            let alamat = globalSettings.ALAMAT_SEKOLAH || "Alamat Sekolah";
+            return `
+            <div class="kop-surat">
+                <img src="${logoSrc}" alt="Logo">
+                <div class="kop-surat-text">
+                    <h1>${namaSekolah}</h1>
+                    <p>${alamat}</p>
+                </div>
+            </div>
+            <h2 style="text-align:center; font-size:16px; font-weight:bold; margin-bottom:15px; text-decoration:underline;">${title}</h2>
+            `;
+        }
+
+        function generateTandaTanganHtml() {
+            let kepsek = globalSettings.NAMA_KEPALA_SEKOLAH || "Nama Kepala Sekolah";
+            let nip = globalSettings.NIP_KEPALA_SEKOLAH || "NIP. -";
+            let tglFormat = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+            return `
+            <div class="ttd-container">
+                <div class="ttd-box">
+                    <p>Mengetahui,</p>
+                    <p>Kepala Sekolah,</p>
+                    <p class="name">${kepsek}</p>
+                    <p>${nip}</p>
+                </div>
+            </div>
+            `;
+        }
+
+        function executePrint(title, htmlContent) {
+            const printArea = document.getElementById('print-area');
+            printArea.innerHTML = generateKopSuratHtml(title) + htmlContent + generateTandaTanganHtml();
+            setTimeout(() => { window.print(); }, 500);
         }
 
         function togglePresensiFields() {
@@ -1282,14 +1354,10 @@
             }); return res;
         }
 
-        // ==========================================
-        //  FUNGSI BARU: MODUL PIKET GURU
-        // ==========================================
         function loadPiketUtama() {
             let tc = document.getElementById('piket-tabs-container');
             tc.innerHTML = '';
             
-            // Build Tabs based on Role
             let actCl = "piket-tab-btn active px-4 py-2 rounded-lg text-[11px] font-bold whitespace-nowrap shadow-sm";
             let inactCl = "piket-tab-btn px-4 py-2 rounded-lg text-[11px] font-bold whitespace-nowrap text-gray-500 dark:text-gray-400";
             
@@ -1298,7 +1366,7 @@
             if(userSession.role === 'Guru') {
                 tc.innerHTML += `<button onclick="switchPiketTab('form')" id="tab-piket-form" class="${activePiketTab === 'form' ? actCl : inactCl}">Laporan Piket</button>`;
             } else if(userSession.role === 'Admin') {
-                tc.innerHTML += `<button onclick="switchPiketTab('admin-jadwal')" id="tab-piket-admin-jadwal" class="${activePiketTab === 'admin-jadwal' ? actCl : inactCl}">Jadwal</button>`;
+                tc.innerHTML += `<button onclick="switchPiketTab('admin-jadwal')" id="tab-piket-admin-jadwal" class="${activePiketTab === 'admin-jadwal' ? actCl : inactCl}">Jadwal (Per Hari)</button>`;
                 tc.innerHTML += `<button onclick="switchPiketTab('admin-verif')" id="tab-piket-admin-verif" class="${activePiketTab === 'admin-verif' ? actCl : inactCl}">Verifikasi</button>`;
             }
             
@@ -1318,7 +1386,7 @@
 
             if(tabId === 'beranda') { loadPiketJadwal(); loadPiketLaporanData(); }
             if(tabId === 'form') { document.getElementById('piket-form-date').valueAsDate = new Date(); loadFormPiketSiswa(); }
-            if(tabId === 'admin-jadwal') { document.getElementById('admin-piket-date').valueAsDate = new Date(); renderAdminPiketGuruCheckboxes(); }
+            if(tabId === 'admin-jadwal') { renderAdminPiketGuruCheckboxes(); }
             if(tabId === 'admin-verif') { document.getElementById('piket-verif-date').valueAsDate = new Date(); loadVerifikasiPiket(); }
         }
 
@@ -1326,23 +1394,21 @@
             const list = document.getElementById('piket-jadwal-list');
             list.innerHTML = `<div class="text-center text-xs text-teal-600"><i class="fa-solid fa-spin fa-spinner"></i></div>`;
             
-            let monthStr = Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM");
             google.script.run.withSuccessHandler(res => {
                 let r = JSON.parse(res);
                 if(r.status === 'success') {
                     globalJadwalPiket = r.data;
-                    if(r.data.length === 0) { list.innerHTML = `<div class="text-[10px] text-gray-500 italic">Belum ada jadwal bulan ini.</div>`; return; }
+                    if(r.data.length === 0) { list.innerHTML = `<div class="text-[10px] text-gray-500 italic">Belum ada jadwal yang disetel Admin.</div>`; return; }
                     let html = '';
                     r.data.forEach(j => {
-                        let isToday = j.tanggal === Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM-dd");
                         html += `
-                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 flex justify-between items-center ${isToday ? 'border-l-4 border-l-teal-500' : ''}">
-                            <div class="text-[10px] font-bold text-gray-800 dark:text-gray-200">${j.tanggal}</div>
-                            <div class="text-[9px] text-teal-700 dark:text-teal-400 font-medium truncate max-w-[200px] text-right">${j.guru}</div>
+                        <div class="bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700 flex justify-between items-center mb-1 shadow-sm">
+                            <div class="text-[11px] font-bold text-gray-800 dark:text-gray-200 uppercase w-16 shrink-0">${j.hari}</div>
+                            <div class="text-[9px] text-teal-700 dark:text-teal-400 font-medium text-right leading-tight">${j.guru}</div>
                         </div>`;
                     }); list.innerHTML = html;
                 }
-            }).getJadwalPiket(monthStr);
+            }).getJadwalPiket();
         }
 
         function loadPiketLaporanData() {
@@ -1378,7 +1444,7 @@
 
         function lihatDetailAbsenPiket(id) {
             let lp = globalLaporanPiket.find(x => x.id.toString() === id.toString()); if(!lp) return;
-            let rekap = JSON.parse(lp.rekapAbsen); // Format: { "X-A": { h:10, s:1, i:0, a:0, detail: "Budi(S)" }, ... }
+            let rekap = JSON.parse(lp.rekapAbsen); 
             let html = `<div class="text-left max-h-[60vh] overflow-y-auto custom-scroll space-y-3">`;
             for(let kelas in rekap) {
                 let d = rekap[kelas];
@@ -1408,11 +1474,11 @@
 
         function simpanJadwalPiket(e) {
             e.preventDefault();
-            const tgl = document.getElementById('admin-piket-date').value;
+            const hari = document.getElementById('admin-piket-hari').value;
             const checked = Array.from(document.querySelectorAll('.cb-piket-guru:checked')).map(cb => cb.value).join(', ');
             if(!checked) return Swal.fire('Peringatan', 'Pilih minimal 1 guru piket.', 'warning');
             
-            google.script.run.withSuccessHandler(r => { let res = JSON.parse(r); Swal.fire('Sukses', res.message, 'success'); }).saveJadwalPiket(tgl, checked);
+            google.script.run.withSuccessHandler(r => { let res = JSON.parse(r); Swal.fire('Sukses', res.message, 'success'); }).saveJadwalPiket(hari, checked);
         }
 
         function loadFormPiketSiswa() {
@@ -1527,6 +1593,8 @@
             document.getElementById('rekap-siswa-kosong').classList.remove('hidden');
             document.getElementById('rekap-siswa-kosong').innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xl mb-2 text-teal-500"></i><p class="text-[10px]">Menarik data siswa...</p>`;
             
+            globalPeriodeStart = start; globalPeriodeEnd = end;
+            
             google.script.run.withSuccessHandler(resStr => {
                 let res = JSON.parse(resStr);
                 if(res.status === 'success') {
@@ -1586,14 +1654,12 @@
             if (!globalRekapSiswaData || globalRekapSiswaData.students.length === 0) return;
             const kelas = document.getElementById('rekap-siswa-kelas').value;
             const mapel = document.getElementById('rekap-siswa-mapel').value || "Semua Mapel";
-            const start = document.getElementById('rekap-siswa-start').value;
-            const end = document.getElementById('rekap-siswa-end').value;
 
             let arrData = [];
             arrData.push(["REKAPITULASI PRESENSI SISWA"]);
             arrData.push(["Kelas", ":", kelas]);
             arrData.push(["Mata Pelajaran", ":", mapel]);
-            arrData.push(["Periode", ":", `${start} s/d ${end}`]);
+            arrData.push(["Periode", ":", `${globalPeriodeStart} s/d ${globalPeriodeEnd}`]);
             arrData.push([]);
             
             let headers = ["No", "NISN", "Nama Siswa", "L/P"];
@@ -1628,22 +1694,19 @@
             XLSX.utils.book_append_sheet(wb, ws, "Rekap_Presensi_Siswa");
             XLSX.writeFile(wb, `Rekap_Presensi_Siswa_${kelas}_${new Date().getTime()}.xlsx`);
         }
-
-        function exportRekapSiswaToWord() {
+        
+        function printRekapSiswa() {
             if (!globalRekapSiswaData || globalRekapSiswaData.students.length === 0) return;
             const kelas = document.getElementById('rekap-siswa-kelas').value;
             const mapel = document.getElementById('rekap-siswa-mapel').value || "Semua Mapel";
-            const start = document.getElementById('rekap-siswa-start').value;
-            const end = document.getElementById('rekap-siswa-end').value;
 
-            let html = `<h2>REKAPITULASI PRESENSI SISWA</h2>`;
-            html += `<p><b>Kelas:</b> ${kelas}<br><b>Mata Pelajaran:</b> ${mapel}<br><b>Periode:</b> ${start} s/d ${end}</p>`;
+            let html = `<p style="text-align:center; font-weight:bold; margin-bottom:10px;">Kelas: ${kelas} | Mapel: ${mapel}<br>Periode: ${globalPeriodeStart} s/d ${globalPeriodeEnd}</p>`;
             html += `<table><thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>L/P</th>`;
             globalRekapSiswaData.journals.forEach((j, i) => { html += `<th>P-${i+1}<br>(${j.tanggal})</th>`; });
             html += `<th>H</th><th>S</th><th>I</th><th>A</th></tr></thead><tbody>`;
 
             globalRekapSiswaData.students.forEach((s, idx) => {
-                html += `<tr><td class="center">${idx+1}</td><td>${s.nisn}</td><td>${s.nama}</td><td class="center">${s.gender === 'Laki-laki' ? 'L' : 'P'}</td>`;
+                html += `<tr><td class="text-center">${idx+1}</td><td>${s.nisn}</td><td>${s.nama}</td><td class="text-center">${s.gender === 'Laki-laki' ? 'L' : 'P'}</td>`;
                 let h=0, sakit=0, izin=0, a=0;
                 globalRekapSiswaData.journals.forEach(j => {
                     let status = 'H';
@@ -1657,151 +1720,96 @@
                             }
                         }
                     }
-                    html += `<td class="center">${status}</td>`;
+                    html += `<td class="text-center">${status}</td>`;
                     if(status==='H') h++; if(status==='S') sakit++; if(status==='I') izin++; if(status==='A') a++;
                 });
-                html += `<td class="center">${h}</td><td class="center">${sakit}</td><td class="center">${izin}</td><td class="center">${a}</td></tr>`;
+                html += `<td class="text-center"><b>${h}</b></td><td class="text-center"><b>${sakit}</b></td><td class="text-center"><b>${izin}</b></td><td class="text-center"><b>${a}</b></td></tr>`;
             });
             html += `</tbody></table>`;
-            exportToDoc(html, `Rekap_Presensi_Siswa_${kelas}_${new Date().getTime()}`);
+            executePrint("REKAPITULASI PRESENSI SISWA", html);
         }
 
-        // ==========================================
-        //  FUNGSI EKSPOR ADMIN
-        // ==========================================
-        function exportRekapAdminToExcel() {
-            if(!globalRekapAdminPresensi) return;
-
-            let wsData = [];
-
-            // KOP / HEADER PDF
-            wsData.push([`Periode ${globalPeriodeStart} s/d ${globalPeriodeEnd}`]);
-            wsData.push(["Rekap Absensi Guru"]);
-            wsData.push([]); 
+        function tarikRekapJurnalGuru() {
+            const start = document.getElementById('rekap-jurnal-start').value; const end = document.getElementById('rekap-jurnal-end').value; const kelas = document.getElementById('rekap-jurnal-kelas').value; const mapel = document.getElementById('rekap-jurnal-mapel').value;
             
-            // Kolom Persis Seperti PDF
-            wsData.push(["No", "Nama Guru", "Total", "Hadir", "Alpa", "Terlambat", "% Hadir"]);
-
-            let no = 1;
-            for(let guru in globalRekapAdminPresensi) {
-                let d = globalRekapAdminPresensi[guru];
-                
-                let hadir = d.Hadir || 0;
-                let terlambat = d.Terlambat || 0; 
-                let alpa = d.Alpa || 0;
-                // [UPDATE] Perhitungan total mengakumulasi semua status (termasuk Alpa)
-                let total = hadir + (d.Izin || 0) + (d.Sakit || 0) + alpa + (d.DinasLuar || 0);
-                
-                // Mencegah NaN pada persen
-                let persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
-
-                wsData.push([no++, guru, total, hadir, alpa, terlambat, persen]);
-            }
-
-            // FOOTER TANDA TANGAN
-            wsData.push([]); 
-            wsData.push([]);
-            wsData.push(["", "", "", "", "", "Mengetahui"]);
-            wsData.push(["", "", "", "", "", "Kepala Sekolah"]);
-            wsData.push([]);
-            wsData.push([]);
-            wsData.push([]);
-            wsData.push(["", "", "", "", "", "___________________________"]);
-            wsData.push(["", "", "", "", "", "NIP. "]);
-
-            // GENERATE WORKBOOK
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            if(!start || !end) return Swal.fire('Perhatian', 'Harap pilih rentang Tanggal mulai & akhir.', 'warning');
+            document.getElementById('hasil-rekap-jurnal-guru').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><p class="text-[10px]">Menarik data Anda...</p></div>`;
+            document.getElementById('btn-group-jurnal-guru').classList.add('hidden');
             
-            // Merging untuk Kop/Header
-            ws['!merges'] = [
-                { s: {r: 0, c: 0}, e: {r: 0, c: 6} }, 
-                { s: {r: 1, c: 0}, e: {r: 1, c: 6} }, 
-            ];
+            globalPeriodeStart = start; globalPeriodeEnd = end;
             
-            // Mengatur Lebar Kolom
-            ws['!cols'] = [ {wch: 5}, {wch: 35}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10} ];
+            google.script.run.withSuccessHandler(resStr => {
+                let res = JSON.parse(resStr);
+                const container = document.getElementById('hasil-rekap-jurnal-guru'); container.innerHTML = '';
+                if(res.status === 'success') {
+                    globalRekapJurnalGuruList = res.data; 
+                    
+                    if(res.data.length === 0) {
+                        container.innerHTML = `<div class="text-center py-5 text-[11px] text-gray-500 italic">Tidak ada rekap jurnal di rentang waktu/filter ini.</div>`;
+                    } else {
+                        document.getElementById('btn-group-jurnal-guru').classList.remove('hidden');
+                        res.data.forEach(r => {
+                            let bColor = (r.status === "Disetujui" || r.status.includes("Terverifikasi")) ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400" : (r.status === "Ditolak" ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400");
+                            
+                            let abs = parseAbsensiStr(r.absensi);
+                            let detailSiswaHtml = (r.detailAbsensi && r.detailAbsensi !== "-" && r.detailAbsensi !== "Nihil") 
+                                ? `<div class="mt-2 text-[9px] text-gray-600 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg max-h-24 overflow-y-auto custom-scroll border border-gray-100 dark:border-gray-600"><span class="font-bold text-blue-600 dark:text-blue-400 block mb-1">Rincian Seluruh Siswa:</span> ${r.detailAbsensi}</div>` 
+                                : '';
+                            
+                            let absHtml = abs.h === "-" ? `<span class="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-1 rounded border border-indigo-100">📋 Jurnal Kegiatan (Non-KBM)</span>` : 
+                                `<div class="flex gap-1.5 font-bold"><span class="text-green-600 bg-green-50 px-1 rounded">H:${abs.h}</span><span class="text-yellow-600 bg-yellow-50 px-1 rounded">S:${abs.s}</span><span class="text-blue-600 bg-blue-50 px-1 rounded">I:${abs.i}</span><span class="text-red-600 bg-red-50 px-1 rounded border border-red-100">A:${abs.a}</span></div>`;
 
-            XLSX.utils.book_append_sheet(wb, ws, "Rekap_Kehadiran_Guru");
+                            container.innerHTML += `
+                            <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                                <div class="flex justify-between items-start mb-1.5">
+                                    <span class="font-bold text-xs text-indigo-700 dark:text-indigo-400 truncate pr-2">${r.mapel}</span>
+                                    <span class="text-[9px] text-gray-400 whitespace-nowrap bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded"><i class="fa-regular fa-calendar mr-1"></i> ${r.tanggal}</span>
+                                </div>
+                                <div class="text-[10px] text-gray-600 dark:text-gray-300 mb-1 font-bold">Kls: ${r.kelas}</div>
+                                <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-2 leading-snug">Materi/Keg: <span class="font-bold">${r.materi}</span><br>Uraian: ${r.kegiatan}</div>
+                                <div class="border-t dark:border-gray-700 pt-2 mb-2">
+                                    <div class="text-[9px]">${absHtml}</div>
+                                    ${detailSiswaHtml}
+                                </div>
+                                <div class="text-right"><span class="inline-block px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${bColor}">${r.status}</span></div>
+                            </div>`;
+                        });
+                    }
+                } else { Swal.fire('Error', res.message, 'error'); }
+            }).getRekapJurnalGuru(userSession.nama, start, end, kelas, mapel);
+        }
 
-            // JURNAL SHEETS (Pelengkap)
-            let dataJurnalArr = [["Mata Pelajaran / Kegiatan", "Jumlah Disetujui"]];
-            for(let mapel in globalRekapAdminJurnal) { dataJurnalArr.push([mapel, globalRekapAdminJurnal[mapel]]); }
-
-            let dataDetailJurnalArr = [["Tanggal", "Nama Guru", "Mapel / Jenis", "Kelas", "Materi / Judul Kegiatan", "Deskripsi Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Detail Absensi Siswa (H/I/S/A)", "Status Verifikasi"]];
-            globalDetailJurnalAdmin.forEach(r => {
+        function exportJurnalGuruToExcel() {
+            if (globalRekapJurnalGuruList.length === 0) return;
+            let arrData = [["Tanggal", "Mata Pelajaran", "Kelas", "Materi/Kegiatan", "Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Detail Absensi Semua Siswa", "Status Verifikasi"]];
+            globalRekapJurnalGuruList.forEach(r => {
                 let abs = parseAbsensiStr(r.absensi);
-                dataDetailJurnalArr.push([r.tanggal, r.nama, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.detailAbsensi, r.status]);
+                arrData.push([r.tanggal, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.detailAbsensi, r.status]);
             });
-
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataJurnalArr), "Summary_Jurnal");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataDetailJurnalArr), "Semua_Detail_Jurnal");
-
-            XLSX.writeFile(wb, `Rekap_Absensi_Guru_${new Date().getTime()}.xlsx`);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(arrData), "Rekap Jurnal Saya");
+            XLSX.writeFile(wb, `Rekap_Jurnal_${userSession.nama.replace(/\s/g, '_')}_${new Date().getTime()}.xlsx`);
         }
-
-        function exportToDoc(htmlContent, filename) {
-            let preHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-            <head>
-                <meta charset='utf-8'><title>Export HTML To Doc</title>
-                <style>
-                    body { font-family: 'Times New Roman', sans-serif; font-size: 12px; }
-                    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-                    th, td { border: 1px solid black; padding: 6px; text-align: left; }
-                    th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
-                    h2, h3 { text-align: center; margin-bottom: 5px; }
-                    .center { text-align: center; }
-                </style>
-            </head><body>`;
-            let postHtml = "</body></html>";
-            let html = preHtml + htmlContent + postHtml;
-
-            let blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-            let downloadLink = document.createElement("a");
-            document.body.appendChild(downloadLink);
+        
+        function printRekapJurnalGuru() {
+            if (globalRekapJurnalGuruList.length === 0) return;
             
-            downloadLink.href = URL.createObjectURL(blob);
-            downloadLink.download = filename ? filename + '.doc' : 'document.doc';
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-        }
-
-        function exportRekapAdminToWord() {
-            if(!globalRekapAdminPresensi) return;
-            let html = `<h2>REKAP ABSENSI GURU</h2><p class="center">Periode ${globalPeriodeStart} s/d ${globalPeriodeEnd}</p>`;
-            html += `<table><thead><tr><th>No</th><th>Nama Guru</th><th>Total</th><th>Hadir</th><th>Alpa</th><th>Terlambat</th><th>% Hadir</th></tr></thead><tbody>`;
+            let html = `<p style="text-align:center; font-weight:bold; margin-bottom:10px;">Nama Guru: ${userSession.nama}<br>Periode: ${globalPeriodeStart} s/d ${globalPeriodeEnd}</p>`;
+            html += `<table><thead><tr><th>Tanggal</th><th>Mata Pelajaran</th><th>Kelas</th><th>Materi/Kegiatan</th><th>Uraian</th><th>H</th><th>S</th><th>I</th><th>A</th><th>Status</th></tr></thead><tbody>`;
             
-            let no = 1;
-            for(let guru in globalRekapAdminPresensi) {
-                let d = globalRekapAdminPresensi[guru];
-                let hadir = d.Hadir || 0;
-                let terlambat = d.Terlambat || 0;
-                let alpa = d.Alpa || 0;
-                
-                // [UPDATE]
-                let total = hadir + (d.Izin || 0) + (d.Sakit || 0) + alpa + (d.DinasLuar || 0);
-                let persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
-                
-                html += `<tr><td class="center">${no++}</td><td>${guru}</td><td class="center">${total}</td><td class="center">${hadir}</td><td class="center">${alpa}</td><td class="center">${terlambat}</td><td class="center">${persen}%</td></tr>`;
-            }
-            html += `</tbody></table>`;
-
-            html += `<h3>Summary Jurnal</h3><table><thead><tr><th>Mata Pelajaran / Kegiatan</th><th>Jumlah Disetujui</th></tr></thead><tbody>`;
-            for(let mapel in globalRekapAdminJurnal) {
-                html += `<tr><td>${mapel}</td><td class="center">${globalRekapAdminJurnal[mapel]}</td></tr>`;
-            }
-            html += `</tbody></table>`;
-
-            html += `<h3>Detail Jurnal & Presensi Kelas</h3><table><thead><tr><th>Tanggal</th><th>Nama Guru</th><th>Mapel / Jenis</th><th>Kelas</th><th>Materi</th><th>Uraian</th><th>H</th><th>S</th><th>I</th><th>A</th><th>Detail Absensi Siswa</th><th>Status</th></tr></thead><tbody>`;
-            globalDetailJurnalAdmin.forEach(r => {
+            globalRekapJurnalGuruList.forEach(r => {
                 let abs = parseAbsensiStr(r.absensi);
-                html += `<tr><td>${r.tanggal}</td><td>${r.nama}</td><td>${r.mapel}</td><td>${r.kelas}</td><td>${r.materi}</td><td>${r.kegiatan}</td><td class="center">${abs.h}</td><td class="center">${abs.s}</td><td class="center">${abs.i}</td><td class="center">${abs.a}</td><td>${r.detailAbsensi}</td><td>${r.status}</td></tr>`;
+                html += `<tr>
+                    <td class="text-center">${r.tanggal}</td>
+                    <td>${r.mapel}</td>
+                    <td class="text-center">${r.kelas}</td>
+                    <td>${r.materi}</td>
+                    <td>${r.kegiatan}</td>
+                    <td class="text-center">${abs.h}</td><td class="text-center">${abs.s}</td><td class="text-center">${abs.i}</td><td class="text-center">${abs.a}</td>
+                    <td class="text-center">${r.status}</td>
+                </tr>`;
             });
             html += `</tbody></table>`;
-
-            html += `<br><br><table style="border:none; width:100%;"><tr style="border:none;"><td style="border:none; width:60%;"></td><td style="border:none; text-align:center;">Mengetahui,<br>Kepala Sekolah<br><br><br><br>___________________________<br>NIP. </td></tr></table>`;
-
-            exportToDoc(html, `Rekap_SIPJAM_${new Date().getTime()}`);
+            executePrint("REKAP JURNAL PEMBELAJARAN GURU", html);
         }
 
         function tarikDataRekapBulan() {
@@ -1867,8 +1875,367 @@
             }
             if(jCount === 0) cJ.innerHTML = `<div class="text-[11px] text-gray-500 italic">Kosong.</div>`;
         }
+
+        function exportRekapAdminToExcel() {
+            if(!globalRekapAdminPresensi) return;
+
+            let wsData = [];
+            wsData.push([`Periode ${globalPeriodeStart} s/d ${globalPeriodeEnd}`]);
+            wsData.push(["Rekap Absensi Guru"]);
+            wsData.push([]); 
+            
+            wsData.push(["No", "Nama Guru", "Total", "Hadir", "Terlambat", "% Hadir"]);
+
+            let no = 1;
+            for(let guru in globalRekapAdminPresensi) {
+                let d = globalRekapAdminPresensi[guru];
+                let hadir = d.Hadir || 0;
+                let terlambat = d.Terlambat || 0; 
+                let alpa = d.Alpa || 0;
+                
+                let total = hadir + (d.Izin || 0) + (d.Sakit || 0) + alpa + (d.DinasLuar || 0);
+                let persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                wsData.push([no++, guru, total, hadir, terlambat, persen]);
+            }
+
+            wsData.push([]); wsData.push([]);
+            wsData.push(["", "", "", "", "Mengetahui"]);
+            wsData.push(["", "", "", "", "Kepala Sekolah"]);
+            wsData.push([]); wsData.push([]); wsData.push([]);
+            wsData.push(["", "", "", "", (globalSettings.NAMA_KEPALA_SEKOLAH || "___________________")]);
+            wsData.push(["", "", "", "", "NIP. " + (globalSettings.NIP_KEPALA_SEKOLAH || "")]);
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            
+            ws['!merges'] = [ { s: {r: 0, c: 0}, e: {r: 0, c: 5} }, { s: {r: 1, c: 0}, e: {r: 1, c: 5} } ];
+            ws['!cols'] = [ {wch: 5}, {wch: 35}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10} ];
+
+            XLSX.utils.book_append_sheet(wb, ws, "Rekap_Kehadiran_Guru");
+
+            let dataJurnalArr = [["Mata Pelajaran / Kegiatan", "Jumlah Disetujui"]];
+            for(let mapel in globalRekapAdminJurnal) { dataJurnalArr.push([mapel, globalRekapAdminJurnal[mapel]]); }
+
+            let dataDetailJurnalArr = [["Tanggal", "Nama Guru", "Mapel / Jenis", "Kelas", "Materi / Judul Kegiatan", "Deskripsi Uraian", "Hadir", "Sakit", "Izin", "Alpa", "Detail Absensi Siswa", "Status"]];
+            globalDetailJurnalAdmin.forEach(r => {
+                let abs = parseAbsensiStr(r.absensi);
+                dataDetailJurnalArr.push([r.tanggal, r.nama, r.mapel, r.kelas, r.materi, r.kegiatan, abs.h, abs.s, abs.i, abs.a, r.detailAbsensi, r.status]);
+            });
+
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataJurnalArr), "Summary_Jurnal");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dataDetailJurnalArr), "Semua_Detail_Jurnal");
+
+            XLSX.writeFile(wb, `Rekap_Absensi_Guru_${new Date().getTime()}.xlsx`);
+        }
         
-        // ADMIN MASTER DATA
+        function printRekapAdmin() {
+            if(!globalRekapAdminPresensi) return;
+            
+            let html = `<p style="text-align:center; font-weight:bold; margin-bottom:10px;">Periode: ${globalPeriodeStart} s/d ${globalPeriodeEnd}</p>`;
+            html += `<table><thead><tr><th>No</th><th>Nama Guru</th><th>Total</th><th>Hadir</th><th>Terlambat</th><th>% Hadir</th></tr></thead><tbody>`;
+            
+            let no = 1;
+            for(let guru in globalRekapAdminPresensi) {
+                let d = globalRekapAdminPresensi[guru];
+                let hadir = d.Hadir || 0;
+                let terlambat = d.Terlambat || 0;
+                let alpa = d.Alpa || 0;
+                let total = hadir + (d.Izin || 0) + (d.Sakit || 0) + alpa + (d.DinasLuar || 0);
+                let persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                
+                html += `<tr><td class="text-center">${no++}</td><td>${guru}</td><td class="text-center">${total}</td><td class="text-center">${hadir}</td><td class="text-center">${terlambat}</td><td class="text-center"><b>${persen}%</b></td></tr>`;
+            }
+            html += `</tbody></table>`;
+            
+            html += `<div class="page-break"></div>`;
+            
+            html += `<h2 style="text-align:center; font-size:16px; font-weight:bold; margin-bottom:15px; text-decoration:underline;">SUMMARY JURNAL PEMBELAJARAN</h2>`;
+            html += `<table><thead><tr><th>Mata Pelajaran / Kegiatan</th><th>Jumlah Disetujui</th></tr></thead><tbody>`;
+            for(let mapel in globalRekapAdminJurnal) {
+                html += `<tr><td>${mapel}</td><td class="text-center">${globalRekapAdminJurnal[mapel]}</td></tr>`;
+            }
+            html += `</tbody></table>`;
+            
+            executePrint("REKAP ABSENSI GURU", html);
+        }
+
+        function switchHistoryTab(tabName) {
+            activeHistoryTab = tabName;
+            let actClass = "btn-click flex-1 text-[11px] font-bold py-2 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm transition-all z-10";
+            let inactClass = "btn-click flex-1 text-[11px] font-bold py-2 rounded-lg text-gray-500 dark:text-gray-400 transition-all z-10";
+            document.getElementById('tab-hist-presensi').className = tabName === 'presensi' ? actClass : inactClass;
+            document.getElementById('tab-hist-jurnal').className = tabName === 'jurnal' ? actClass : inactClass;
+            document.getElementById('search-hist').value = '';
+            if(tabName === 'presensi') { histPresensiPage = 1; filterHistPresensi(); } else { histJurnalPage = 1; filterHistJurnal(); }
+        }
+
+        function loadHistory() {
+            document.getElementById('hist-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spin fa-spinner text-xl mb-2"></i><p class="text-[10px]">Menarik data...</p></div>`;
+            google.script.run.withSuccessHandler(function(resStr){
+                let res = JSON.parse(resStr);
+                if(res.status === 'success') { histPresensiAll = res.presensi; histJurnalAll = res.jurnal; if(activeHistoryTab === 'presensi') filterHistPresensi(); else filterHistJurnal(); }
+            }).getHistoryData(userSession.nama);
+        }
+
+        function searchCurrentHistoryTab() { if(activeHistoryTab === 'presensi') filterHistPresensi(); else filterHistJurnal(); }
+        function changePageHistory(dir) { if(activeHistoryTab === 'presensi') { histPresensiPage += dir; renderHistPresensiCards(); } else { histJurnalPage += dir; renderHistJurnalCards(); } }
+
+        function filterHistPresensi() { const kw = document.getElementById('search-hist').value.toLowerCase(); histPresensiFiltered = histPresensiAll.filter(r => JSON.stringify(r).toLowerCase().includes(kw)); histPresensiPage = 1; renderHistPresensiCards(); }
+        function filterHistJurnal() { const kw = document.getElementById('search-hist').value.toLowerCase(); histJurnalFiltered = histJurnalAll.filter(r => JSON.stringify(r).toLowerCase().includes(kw)); histJurnalPage = 1; renderHistJurnalCards(); }
+
+        function renderHistPresensiCards() {
+            const start = (histPresensiPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE; const slice = histPresensiFiltered.slice(start, end);
+            const container = document.getElementById('hist-list-area'); container.innerHTML = '';
+            if(slice.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-400 text-[11px]">Kosong.</div>`; }
+            else {
+                slice.forEach(r => {
+                    let bColor = "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50";
+                    if(r.status.includes("Terlambat")) bColor = "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 border border-orange-200 dark:border-orange-800/50";
+                    else if(r.status.includes("Terverifikasi") || r.status === "Disetujui") bColor = "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50";
+                    else if(r.status === "Ditolak") bColor = "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50";
+                    let downloadFile = (r.link && r.link !== "-") ? `<a href="${r.link}" target="_blank" class="text-blue-500 font-bold ml-2 text-[9px]"><i class="fa-solid fa-paperclip"></i> Lampiran</a>` : "";
+
+                    container.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold text-xs text-gray-800 dark:text-gray-100 truncate pr-2">${r.nama}</span>
+                            <span class="text-[9px] text-gray-400 whitespace-nowrap bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded"><i class="fa-regular fa-clock mr-1"></i>${r.waktu}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-2 font-medium">${r.tipe} &bull; ${r.jenis} ${downloadFile}</div>
+                        <span class="inline-block px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${bColor}">${r.status}</span>
+                    </div>`;
+                });
+            }
+            document.getElementById('info-hist-page').innerText = `${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histPresensiFiltered.length)} dari ${histPresensiFiltered.length}`;
+            document.getElementById('btn-prev-hist').disabled = histPresensiPage === 1; document.getElementById('btn-next-hist').disabled = end >= histPresensiFiltered.length;
+        }
+
+        function renderHistJurnalCards() {
+            const start = (histJurnalPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE; const slice = histJurnalFiltered.slice(start, end);
+            const container = document.getElementById('hist-list-area'); container.innerHTML = '';
+            if(slice.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-400 text-[11px]">Kosong.</div>`; }
+            else {
+                slice.forEach(r => {
+                    let bColor = (r.status === "Disetujui" || r.status.includes("Terverifikasi")) ? "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50" : (r.status === "Ditolak" ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50" : "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50");
+                    let downloadFile = (r.link && r.link !== "-") ? `<a href="${r.link}" target="_blank" class="text-blue-500 font-bold ml-2 text-[9px]"><i class="fa-solid fa-image"></i> Foto</a>` : "";
+                    
+                    container.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div class="flex justify-between items-start mb-1.5">
+                            <span class="font-bold text-xs text-blue-700 dark:text-blue-400 truncate pr-2">${r.mapel} ${downloadFile}</span>
+                            <span class="text-[9px] text-gray-400 whitespace-nowrap bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded"><i class="fa-regular fa-calendar mr-1"></i>${r.tanggal}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-600 dark:text-gray-300 mb-1 font-bold">Kls: ${r.kelas}</div>
+                        <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-2 truncate">${r.materi}</div>
+                        <span class="inline-block px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${bColor}">${r.status}</span>
+                    </div>`;
+                });
+            }
+            document.getElementById('info-hist-page').innerText = `${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, histJurnalFiltered.length)} dari ${histJurnalFiltered.length}`;
+            document.getElementById('btn-prev-hist').disabled = histJurnalPage === 1; document.getElementById('btn-next-hist').disabled = end >= histJurnalFiltered.length;
+        }
+
+        function loadDailyMonitor() {
+            document.getElementById('monitor-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><p class="text-[10px]">Memuat status hari ini...</p></div>`;
+            const dateStr = document.getElementById('date-monitor').value;
+            google.script.run.withSuccessHandler(resStr => {
+                let res = JSON.parse(resStr);
+                if(res.status === 'success') { monitorAll = res.data; filterMonitorCards(); }
+            }).getDailyMonitor(dateStr);
+        }
+
+        function filterMonitorCards() {
+            const kw = document.getElementById('search-monitor').value.toLowerCase();
+            const filtered = monitorAll.filter(r => r.nama.toLowerCase().includes(kw));
+            const container = document.getElementById('monitor-list-area'); container.innerHTML = '';
+
+            if(filtered.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-400 text-[11px]">Tidak ada data guru.</div>`; }
+            else {
+                filtered.forEach(d => {
+                    let dClass = d.datang === "Belum" ? "text-red-500 font-bold bg-red-50 border-red-100" : (d.datang === "Hadir Sekolah" ? "text-green-600 font-bold bg-green-50 border-green-100" : "text-yellow-600 font-bold bg-yellow-50 border-yellow-100");
+                    let pClass = d.pulang === "Belum" ? "text-red-500 font-bold bg-red-50 border-red-100" : "text-orange-600 font-bold bg-orange-50 border-orange-100";
+                    
+                    let jKbmBadge = d.jurnalKbm > 0 ? `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">KBM: ${d.jurnalKbm}x</span>` : `<span class="bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full border border-gray-200">KBM: 0</span>`;
+                    let jKegBadge = d.jurnalKeg > 0 ? `<span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">Keg: ${d.jurnalKeg}x</span>` : `<span class="bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full border border-gray-200">Keg: 0</span>`;
+
+                    let missingTasks = [];
+                    if(d.datang === "Belum") missingTasks.push("Presensi Datang");
+                    if(d.datang !== "Belum" && d.pulang === "Belum") missingTasks.push("Presensi Pulang");
+                    if(d.jurnalKbm === 0 && d.jurnalKeg === 0) missingTasks.push("Jurnal Pembelajaran / Kegiatan");
+
+                    let waButtonHtml = '';
+                    if(missingTasks.length > 0 && d.hp) {
+                        let rawPhone = d.hp.toString().replace(/[^0-9]/g, ''); 
+                        if(rawPhone.length > 5) {
+                            if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+                            else if (rawPhone.startsWith('8')) rawPhone = '62' + rawPhone;
+                            
+                            let cleanPhone = '+' + rawPhone;
+                            let msg = `Assalamu'alaikum Yth. Bpk/Ibu ${d.nama},\n\nMohon izin mengingatkan bahwa sistem SIPJAM mendeteksi Anda belum mengisi data administrasi berikut untuk hari ini:\n- ${missingTasks.join('\n- ')}\n\nMohon untuk segera dilengkapi. Syukron.`;
+                            let waLink = `https://api.whatsapp.com/send?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(msg)}`;
+                            waButtonHtml = `<a href="${waLink}" target="_blank" class="w-full mt-3 bg-[#25D366] hover:bg-[#128C7E] text-white text-[10px] font-bold py-2 rounded-xl flex justify-center items-center gap-1.5 shadow-sm transition"><i class="fa-brands fa-whatsapp text-sm"></i> Kirim Peringatan via WA</a>`;
+                        }
+                    }
+
+                    container.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <div class="font-bold text-[12px] text-gray-800 dark:text-gray-100 mb-2 truncate">${d.nama}</div>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div class="border dark:border-gray-600 rounded-lg p-1.5 text-center ${dClass}">
+                                <div class="text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">DATANG</div>
+                                <div class="text-[10px] truncate leading-tight">${d.datang}</div>
+                                <div class="text-[9px] font-normal text-gray-400 mt-0.5"><i class="fa-regular fa-clock"></i> ${d.waktuDatang}</div>
+                            </div>
+                            <div class="border dark:border-gray-600 rounded-lg p-1.5 text-center ${pClass}">
+                                <div class="text-[8px] text-gray-500 uppercase tracking-widest mb-0.5">PULANG</div>
+                                <div class="text-[10px] truncate leading-tight">${d.pulang}</div>
+                                <div class="text-[9px] font-normal text-gray-400 mt-0.5"><i class="fa-regular fa-clock"></i> ${d.waktuPulang}</div>
+                            </div>
+                        </div>
+                        <div class="border-t dark:border-gray-700 pt-2 pb-1 flex items-center justify-between">
+                            <span class="text-[9px] font-bold text-gray-500">Status Jurnal:</span>
+                            <div class="flex gap-1 text-[9px] font-bold">${jKbmBadge}${jKegBadge}</div>
+                        </div>
+                        ${waButtonHtml}
+                    </div>`;
+                });
+            }
+        }
+
+        function switchVerifTab(tabName) {
+            activeVerifTab = tabName;
+            let actClass = "verif-tab-btn active flex-1 text-[11px] font-bold py-2 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm";
+            let inactClass = "verif-tab-btn flex-1 text-[11px] font-bold py-2 rounded-lg text-gray-500 dark:text-gray-400";
+            document.getElementById('tab-verif-presensi').className = tabName === 'Presensi' ? actClass : inactClass;
+            document.getElementById('tab-verif-jurnal').className = tabName === 'Jurnal' ? actClass : inactClass;
+            document.getElementById('search-verif').value = ''; reloadVerifData();
+        }
+
+        function reloadVerifData() { if(activeVerifTab === 'Presensi') loadDataVerifikasi(); else loadDataVerifikasiJurnal(); }
+        function clearDateVerif() { document.getElementById('filter-date-verif').value = ''; reloadVerifData(); }
+
+        function loadDataVerifikasi() {
+            document.getElementById('verif-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spin fa-spinner text-xl mb-2"></i><p class="text-[10px]">Menarik data...</p></div>`;
+            const dateStr = document.getElementById('filter-date-verif').value;
+            google.script.run.withSuccessHandler(function(resStr){ let res = JSON.parse(resStr); if(res.status === 'success') { verifDataAll = res.data; filterVerifikasi(); } }).getPresensiForVerification(dateStr);
+        }
+
+        function searchCurrentVerifTab() { if(activeVerifTab === 'Presensi') filterVerifikasi(); else filterVerifikasiJurnal(); }
+        function filterVerifikasi() { const kw = document.getElementById('search-verif').value.toLowerCase(); verifFiltered = verifDataAll.filter(r => JSON.stringify(r).toLowerCase().includes(kw)); verifPage = 1; renderVerifikasiCards(); }
+        function changePageVerif(dir) { if(activeVerifTab === 'Presensi') { verifPage += dir; renderVerifikasiCards(); } else { verifJurnalPage += dir; renderVerifikasiJurnalCards(); } }
+
+        function renderVerifikasiCards() {
+            const start = (verifPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE; const slice = verifFiltered.slice(start, end);
+            const container = document.getElementById('verif-list-area'); container.innerHTML = '';
+            if(slice.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-400 text-[11px]">Beres. Tidak ada.</div>`; }
+            else {
+                slice.forEach(r => {
+                    let isPending = r["Status Verifikasi"].includes("Menunggu");
+                    let bColor = isPending ? "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50" : (r["Status Verifikasi"] === "Ditolak" ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50" : "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50");
+
+                    let actionHtml = isPending ? `<button onclick="aksiVerifikasi('${r["ID"]}', 'Disetujui')" class="btn-click bg-green-500 text-white w-8 h-8 rounded-xl shadow-sm flex items-center justify-center"><i class="fa-solid fa-check"></i></button><button onclick="aksiVerifikasi('${r["ID"]}', 'Ditolak')" class="btn-click bg-red-500 text-white w-8 h-8 rounded-xl shadow-sm flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>` : `<i class="fa-solid fa-circle-check text-gray-300 dark:text-gray-600 text-xl"></i>`;
+                    let downloadFile = (r["Link"] && r["Link"] !== "-") ? `<a href="${r["Link"]}" target="_blank" class="text-blue-500 font-bold ml-1 text-[9px]"><i class="fa-solid fa-paperclip"></i> Bukti</a>` : "";
+                    
+                    container.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border ${isPending?'border-nizamudin-gold dark:border-nizamudin-gold/30':'border-gray-100 dark:border-gray-700'} flex justify-between items-center gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-bold text-xs text-gray-800 dark:text-gray-100 truncate">${r["Nama Guru"]}</span>
+                                <span class="text-[8px] text-gray-400 whitespace-nowrap bg-gray-50 dark:bg-gray-700 px-1 py-0.5 rounded ml-1">${r["Timestamp"]}</span>
+                            </div>
+                            <div class="text-[10px] text-gray-500 dark:text-gray-400 mb-1 font-medium">${r["Tipe Absen"]} &bull; ${r["Jenis Presensi"]} ${downloadFile}</div>
+                            <div class="text-[9px] text-gray-400 dark:text-gray-500 mb-2 truncate" title="${r["Detail Izin"]}">${r["Detail Izin"]}</div>
+                            <span class="inline-block px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${bColor}">${r["Status Verifikasi"]}</span>
+                        </div>
+                        <div class="shrink-0 flex gap-1.5 flex-col">${actionHtml}</div>
+                    </div>`;
+                });
+            }
+            document.getElementById('info-verif-page').innerText = `${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifFiltered.length)} dari ${verifFiltered.length}`;
+            document.getElementById('btn-prev-verif').disabled = verifPage === 1; document.getElementById('btn-next-verif').disabled = end >= verifFiltered.length;
+        }
+
+        function aksiVerifikasi(id, status) {
+            Swal.fire({ title: 'Konfirmasi', text: `Set status ke "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonText: 'Ya', customClass: { popup: 'dark:bg-gray-900 dark:text-white rounded-2xl' } }).then((result) => {
+                if (result.isConfirmed) { google.script.run.withSuccessHandler(function(resStr){ let res = JSON.parse(resStr); if(res.status === 'success') { loadDataVerifikasi(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasi(id, status); }
+            })
+        }
+
+        function loadDataVerifikasiJurnal() {
+            document.getElementById('verif-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-xl mb-2"></i><p class="text-[10px]">Menarik data...</p></div>`;
+            const dateStr = document.getElementById('filter-date-verif').value;
+            google.script.run.withSuccessHandler(function(resStr){ let res = JSON.parse(resStr); if(res.status === 'success') { verifJurnalAll = res.data; filterVerifikasiJurnal(); } }).getJurnalForVerification(dateStr);
+        }
+        function filterVerifikasiJurnal() { const kw = document.getElementById('search-verif').value.toLowerCase(); verifJurnalFiltered = verifJurnalAll.filter(r => JSON.stringify(r).toLowerCase().includes(kw)); verifJurnalPage = 1; renderVerifikasiJurnalCards(); }
+
+        function renderVerifikasiJurnalCards() {
+            const start = (verifJurnalPage - 1) * ITEMS_PER_PAGE; const end = start + ITEMS_PER_PAGE; const slice = verifJurnalFiltered.slice(start, end);
+            const container = document.getElementById('verif-list-area'); container.innerHTML = '';
+            if(slice.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-400 text-[11px]">Beres. Tidak ada.</div>`; }
+            else {
+                slice.forEach(r => {
+                    let isPending = r["Status Verifikasi"].includes("Menunggu");
+                    let bColor = isPending ? "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50" : (r["Status Verifikasi"] === "Ditolak" ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800/50" : "bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800/50");
+                    
+                    let actionHtml = isPending ? `<button onclick="aksiVerifikasiJurnal('${r["ID"]}', 'Disetujui')" class="btn-click bg-green-500 text-white w-8 h-8 rounded-xl shadow-sm flex items-center justify-center"><i class="fa-solid fa-check"></i></button><button onclick="aksiVerifikasiJurnal('${r["ID"]}', 'Ditolak')" class="btn-click bg-red-500 text-white w-8 h-8 rounded-xl shadow-sm flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>` : `<i class="fa-solid fa-circle-check text-gray-300 dark:text-gray-600 text-xl"></i>`;
+                    let downloadFile = (r["Link"] && r["Link"] !== "-") ? `<a href="${r["Link"]}" target="_blank" class="text-blue-500 font-bold ml-1 text-[9px]"><i class="fa-solid fa-image"></i> Foto</a>` : "";
+
+                    let isKeg = r["Mapel"] === "Jurnal Kegiatan";
+                    let absenDisplay = isKeg ? "-" : r["Detail Absen"];
+
+                    container.innerHTML += `
+                    <div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border ${isPending?'border-nizamudin-gold dark:border-nizamudin-gold/30':'border-gray-100 dark:border-gray-700'} flex justify-between items-center gap-2">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="font-bold text-xs text-gray-800 dark:text-gray-100 truncate pr-2">${r["Nama Guru"]}</span>
+                            </div>
+                            <div class="text-[10px] text-blue-700 dark:text-blue-400 font-bold mb-1 truncate">${r["Mapel"]} (${r["Kelas"]}) ${downloadFile}</div>
+                            <div class="text-[9px] text-gray-500 dark:text-gray-400 mb-2 truncate">Detail Siswa: ${absenDisplay}</div>
+                            <span class="inline-block px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${bColor}">${r["Status Verifikasi"]}</span>
+                        </div>
+                        <div class="shrink-0 flex gap-1.5 flex-col">${actionHtml}</div>
+                    </div>`;
+                });
+            }
+            document.getElementById('info-verif-page').innerText = `${start + (slice.length > 0 ? 1 : 0)}-${Math.min(end, verifJurnalFiltered.length)} dari ${verifJurnalFiltered.length}`;
+            document.getElementById('btn-prev-verif').disabled = verifJurnalPage === 1; document.getElementById('btn-next-verif').disabled = end >= verifJurnalFiltered.length;
+        }
+
+        function aksiVerifikasiJurnal(id, status) {
+            Swal.fire({ title: 'Konfirmasi', text: `Set status ke "${status}"?`, icon: 'question', showCancelButton: true, confirmButtonText: 'Ya', customClass: { popup: 'dark:bg-gray-900 dark:text-white rounded-2xl' } }).then((result) => {
+                if (result.isConfirmed) { google.script.run.withSuccessHandler(function(resStr){ let res = JSON.parse(resStr); if(res.status === 'success') { loadDataVerifikasiJurnal(); } else { Swal.fire('Error', res.message, 'error'); } }).updateStatusVerifikasiJurnal(id, status); }
+            })
+        }
+        
+        function bulkVerifyCurrent() {
+            let dataToVerify = (activeVerifTab === 'Presensi') ? verifFiltered : verifJurnalFiltered;
+            let pendingIds = dataToVerify.filter(r => r["Status Verifikasi"].includes("Menunggu")).map(r => r["ID"].toString());
+            
+            if (pendingIds.length === 0) return Swal.fire('Info', 'Tidak ada data Menunggu untuk filter saat ini.', 'info');
+            
+            Swal.fire({
+                title: 'Setujui Semua?', text: `${pendingIds.length} data akan disetujui sekaligus.`, icon: 'question', showCancelButton: true, confirmButtonColor: '#16a34a', customClass: { popup: 'dark:bg-gray-900 dark:text-white rounded-2xl' }
+            }).then(res => {
+                if (res.isConfirmed) {
+                    let type = activeVerifTab === 'Presensi' ? 'presensi' : 'jurnal';
+                    google.script.run.withSuccessHandler(r => { Swal.fire('Sukses', JSON.parse(r).message, 'success'); reloadVerifData(); }).bulkUpdateVerifikasi(type, pendingIds, 'Disetujui');
+                }
+            });
+        }
+
+        function switchMasterTab(tabName) {
+            activeMasterTab = tabName;
+            ['Data_Siswa', 'Data_Guru', 'Data_Mapel', 'Kalender_Pendidikan'].forEach(t => {
+                let sId = `tab-master-${t.toLowerCase().replace('_', '-')}`;
+                document.getElementById(sId).className = t === tabName ? "btn-click master-tab-btn active px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0" : "btn-click master-tab-btn px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0";
+            });
+            document.getElementById('search-master').value = '';
+            let label = tabName.replace('Data_', ''); if(label==='Kalender_Pendidikan') label='Kalender';
+            document.getElementById('label-import-master').innerText = `Impor ${label}`;
+            document.getElementById('btn-mass-siswa').classList.toggle('hidden', tabName !== 'Data_Siswa');
+            loadCurrentMasterData();
+        }
+
         function loadCurrentMasterData() {
             document.getElementById('master-list-area').innerHTML = `<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spin fa-spinner text-xl mb-2"></i><p class="text-[10px]">Menarik data...</p></div>`;
             google.script.run.withSuccessHandler(function(res){
@@ -2032,11 +2399,28 @@
             }; reader.readAsArrayBuffer(inputEl.files[0]);
         }
 
-        // ADMIN SYSTEM CONFIG
         function handleSettingSubmit(e) {
             e.preventDefault(); 
-            const args = [ document.getElementById('cfg-ta').value, document.getElementById('cfg-semester').value, document.getElementById('cfg-tgl-mulai').value, document.getElementById('cfg-tgl-akhir').value, document.getElementById('cfg-lat').value, document.getElementById('cfg-lon').value, document.getElementById('cfg-radius').value, document.getElementById('cfg-jd-mulai').value, document.getElementById('cfg-jd-akhir').value, document.getElementById('cfg-jp-mulai').value, document.getElementById('cfg-jp-akhir').value, document.getElementById('cfg-hari-sekolah').value ];
-            google.script.run.withSuccessHandler((res) => { Swal.fire('Berhasil', 'Sistem diperbarui.', 'success'); }).saveAppSettings(...args);
+            const payload = {
+                TAHUN_AJARAN: document.getElementById('cfg-ta').value,
+                SEMESTER: document.getElementById('cfg-semester').value,
+                TGL_MULAI_SEMESTER: document.getElementById('cfg-tgl-mulai').value,
+                TGL_AKHIR_SEMESTER: document.getElementById('cfg-tgl-akhir').value,
+                LATITUDE: document.getElementById('cfg-lat').value,
+                LONGITUDE: document.getElementById('cfg-lon').value,
+                RADIUS: document.getElementById('cfg-radius').value,
+                JAM_DATANG_MULAI: document.getElementById('cfg-jd-mulai').value,
+                JAM_DATANG_AKHIR: document.getElementById('cfg-jd-akhir').value,
+                JAM_PULANG_MULAI: document.getElementById('cfg-jp-mulai').value,
+                JAM_PULANG_AKHIR: document.getElementById('cfg-jp-akhir').value,
+                HARI_SEKOLAH_PER_MINGGU: document.getElementById('cfg-hari-sekolah').value,
+                NAMA_SEKOLAH: document.getElementById('cfg-nama-sekolah').value,
+                ALAMAT_SEKOLAH: document.getElementById('cfg-alamat').value,
+                LOGO_URL: document.getElementById('cfg-logo').value,
+                NAMA_KEPALA_SEKOLAH: document.getElementById('cfg-nama-kepsek').value,
+                NIP_KEPALA_SEKOLAH: document.getElementById('cfg-nip-kepsek').value
+            };
+            google.script.run.withSuccessHandler((res) => { Swal.fire('Berhasil', 'Sistem & Kop Surat diperbarui.', 'success'); globalSettings = payload; if(document.getElementById('lbl-sekolah-home')) document.getElementById('lbl-sekolah-home').innerText = payload.NAMA_SEKOLAH; }).saveAppSettings(payload);
         }
     </script>
 </body>
