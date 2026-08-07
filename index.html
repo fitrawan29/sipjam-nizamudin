@@ -105,8 +105,8 @@
     <div id="print-area"></div>
 
     <!-- Sidebar Menu Drawer -->
-    <div id="sidebar-drawer" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300" onclick="toggleSidebarMenu()">
-        <div class="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between" onclick="event.stopPropagation()">
+    <div id="sidebar-drawer" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300 ease-in-out" onclick="toggleSidebarMenu()">
+        <div id="sidebar-panel" class="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between transform -translate-x-full transition-transform duration-300 ease-in-out" onclick="event.stopPropagation()">
             <div>
                 <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
                     <div class="flex items-center gap-2">
@@ -1008,18 +1008,30 @@
             if (loginPass) loginPass.value = '';
 
             const sidebar = document.getElementById('sidebar-drawer');
-            if (sidebar && !sidebar.classList.contains('hidden')) {
-                sidebar.classList.add('hidden');
+            const panel = document.getElementById('sidebar-panel');
+            if (sidebar && panel) {
+                sidebar.classList.remove('opacity-100', 'pointer-events-auto');
+                sidebar.classList.add('opacity-0', 'pointer-events-none');
+                panel.classList.remove('translate-x-0');
+                panel.classList.add('-translate-x-full');
             }
         }
 
         function toggleSidebarMenu() {
             const drawer = document.getElementById('sidebar-drawer');
-            if (drawer) {
-                if (drawer.classList.contains('hidden')) {
-                    drawer.classList.remove('hidden');
+            const panel = document.getElementById('sidebar-panel');
+            if (drawer && panel) {
+                const isOpen = drawer.classList.contains('opacity-100');
+                if (isOpen) {
+                    drawer.classList.remove('opacity-100', 'pointer-events-auto');
+                    drawer.classList.add('opacity-0', 'pointer-events-none');
+                    panel.classList.remove('translate-x-0');
+                    panel.classList.add('-translate-x-full');
                 } else {
-                    drawer.classList.add('hidden');
+                    drawer.classList.remove('opacity-0', 'pointer-events-none');
+                    drawer.classList.add('opacity-100', 'pointer-events-auto');
+                    panel.classList.remove('-translate-x-full');
+                    panel.classList.add('translate-x-0');
                 }
             }
         }
