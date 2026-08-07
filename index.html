@@ -28,8 +28,12 @@
     
     <style>
         body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
-        .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; background-color: #F8FAFC; box-shadow: 0 0 20px rgba(0,0,0,0.05); overflow-x: hidden;}
+        .mobile-container { width: 100%; max-width: 100%; margin: 0 auto; min-height: 100vh; position: relative; background-color: #F8FAFC; overflow-x: hidden; }
+        @media (min-width: 768px) { .mobile-container { max-width: 100%; } }
+        @media (min-width: 1024px) { .mobile-container { max-width: 1280px; } }
         .dark .mobile-container { background-color: #121212; box-shadow: none; }
+        
+        img { max-width: 100%; height: auto; object-fit: contain; }
         
         .glass-card { background: #ffffff; border-radius: 24px; box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; position: relative; z-index: 10; }
         .dark .glass-card { background: #1e1e1e; box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5); border: 1px solid #2d3748; color: #fff; }
@@ -45,7 +49,7 @@
         .fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         
-        #loader { display: none; position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; max-width: 480px; margin: 0 auto; }
+        #loader { display: none; position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; width: 100%; height: 100%; margin: 0 auto; }
         .dark #loader { background: rgba(18, 18, 18, 0.95); }
         .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #0B4619; border-radius: 50%; width: 45px; height: 45px; animation: spin 1s linear infinite; }
         .dark .spinner { border: 4px solid #2d3748; border-top: 4px solid #D4AF37; }
@@ -100,6 +104,31 @@
 
     <div id="print-area"></div>
 
+    <!-- Drawer Navigation (Hamburger Menu) -->
+    <div id="mobile-menu-drawer" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300" onclick="toggleMobileMenu()">
+        <div class="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between" onclick="event.stopPropagation()">
+            <div>
+                <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
+                            <i class="fa-solid fa-mosque"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-800 dark:text-white">SIPJAM Menu</span>
+                    </div>
+                    <button type="button" onclick="toggleMobileMenu()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+                <div id="drawer-menu-list" class="space-y-1.5 overflow-y-auto max-h-[calc(100vh-180px)] custom-scroll"></div>
+            </div>
+            <div class="pt-4 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="logout()" class="w-full text-left px-3 py-2.5 text-xs font-bold text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                    <i class="fa-solid fa-power-off"></i> Keluar Aplikasi
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="mobile-container flex flex-col h-screen">
         
         <div id="loader">
@@ -116,7 +145,7 @@
             <div class="absolute -top-20 -right-20 w-64 h-64 bg-green-100 dark:bg-green-900/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
             <div class="absolute -bottom-20 -left-20 w-64 h-64 bg-yellow-100 dark:bg-yellow-900/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
             
-            <div class="glass-card w-full p-8 border-t-4 border-nizamudin-green dark:border-nizamudin-gold text-center relative z-10">
+            <div class="glass-card w-full max-w-md p-8 border-t-4 border-nizamudin-green dark:border-nizamudin-gold text-center relative z-10 mx-auto">
                 <div class="w-20 h-20 bg-nizamudin-green rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg border-4 border-white dark:border-gray-800">
                     <i class="fa-solid fa-mosque text-3xl text-nizamudin-gold"></i>
                 </div>
@@ -134,66 +163,72 @@
         </div>
 
         <div id="app-screen" class="hidden flex-col h-full w-full">
-            <header class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md px-5 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full max-w-[480px] shadow-sm border-b border-gray-100 dark:border-gray-800">
+            <header class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px]">
                 <div class="flex items-center gap-3">
+                    <button type="button" id="btn-hamburger" onclick="toggleMobileMenu()" class="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700">
+                        <i class="fa-solid fa-bars text-sm"></i>
+                    </button>
                     <button type="button" id="btn-back" onclick="goHome()" class="hidden btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700">
                         <i class="fa-solid fa-arrow-left text-sm"></i>
                     </button>
-                    <div id="header-title" class="text-sm font-bold text-gray-800 dark:text-white">SIPJAM <span class="text-nizamudin-green dark:text-nizamudin-gold font-black">Nizamudin</span></div>
+                    <div id="header-title" class="text-sm md:text-base font-bold text-gray-800 dark:text-white cursor-pointer" onclick="goHome()">SIPJAM <span class="text-nizamudin-green dark:text-nizamudin-gold font-black">Nizamudin</span></div>
                 </div>
-                <div class="flex gap-2">
+
+                <nav id="desktop-nav-links" class="hidden lg:flex items-center gap-1 text-xs font-bold text-gray-600 dark:text-gray-300"></nav>
+
+                <div class="flex items-center gap-2">
                     <button type="button" onclick="toggleDarkMode()" class="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-600 dark:text-nizamudin-gold shadow-sm border border-gray-200 dark:border-gray-700">
                         <i id="icon-theme" class="fa-solid fa-moon text-xs"></i>
                     </button>
                 </div>
             </header>
 
-            <main class="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 z-10">
+            <main class="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
                 
                 <section id="view-home" class="fade-in block space-y-6">
-                    <div class="bg-gradient-to-br from-[#0B4619] to-[#1a7031] rounded-[28px] p-5 shadow-xl shadow-green-900/20 text-white relative overflow-hidden border border-green-700/50">
+                    <div class="bg-gradient-to-br from-[#0B4619] to-[#1a7031] rounded-[28px] p-5 md:p-8 shadow-xl shadow-green-900/20 text-white relative overflow-hidden border border-green-700/50">
                         <i class="fa-solid fa-mosque absolute -right-6 -bottom-6 text-9xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
                         
                         <div class="relative z-10 flex items-center gap-4 mb-4">
-                            <div class="w-14 h-14 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/20 shrink-0">
-                                <i class="fa-solid fa-user-tie text-2xl text-white"></i>
+                            <div class="w-14 h-14 md:w-16 md:h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/20 shrink-0">
+                                <i class="fa-solid fa-user-tie text-2xl md:text-3xl text-white"></i>
                             </div>
                             <div class="min-w-0">
-                                <h2 id="user-name" class="font-bold text-lg leading-tight truncate">Nama User</h2>
+                                <h2 id="user-name" class="font-bold text-lg md:text-xl leading-tight truncate">Nama User</h2>
                                 <p class="text-xs text-green-100/80 font-mono mt-0.5 tracking-wider truncate" id="user-id">ID: ***</p>
                             </div>
                         </div>
 
-                        <div class="relative z-10 flex items-center gap-2 text-[11px] text-green-50 mb-5 pb-4 border-b border-white/10">
+                        <div class="relative z-10 flex items-center gap-2 text-[11px] md:text-xs text-green-50 mb-5 pb-4 border-b border-white/10">
                             <i class="fa-solid fa-building-columns opacity-70"></i>
                             <span class="font-medium tracking-wide" id="lbl-sekolah-home">SMA NIZAMUDIN</span>
                             <span id="user-role-badge" class="ml-auto bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase shadow-sm">ROLE</span>
                         </div>
 
-                        <div class="relative z-10 grid grid-cols-3 gap-2 text-center">
-                            <div><p class="text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Status</p><p id="status-hari" class="text-xs font-bold text-white truncate">Reguler</p></div>
-                            <div><p class="text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Tanggal</p><p id="clock-date" class="text-xs font-bold text-white truncate">--/--/----</p></div>
-                            <div><p class="text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Jam Server</p><p id="clock-time" class="text-sm font-black text-nizamudin-gold font-mono tracking-tight leading-none pt-0.5">00:00</p></div>
+                        <div class="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
+                            <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm"><p class="text-[9px] md:text-[10px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Status</p><p id="status-hari" class="text-xs md:text-sm font-bold text-white truncate">Reguler</p></div>
+                            <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm"><p class="text-[9px] md:text-[10px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Tanggal</p><p id="clock-date" class="text-xs md:text-sm font-bold text-white truncate">--/--/----</p></div>
+                            <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm"><p class="text-[9px] md:text-[10px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Jam Server</p><p id="clock-time" class="text-sm md:text-base font-black text-nizamudin-gold font-mono tracking-tight leading-none pt-0.5">00:00</p></div>
                         </div>
                     </div>
 
                     <div id="dashboard-alerts" class="space-y-2 hidden fade-in"></div>
 
-                    <div id="banner-kalender" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-3 flex items-start gap-3 fade-in shadow-sm">
-                        <i class="fa-solid fa-bullhorn text-blue-500 mt-0.5"></i>
+                    <div id="banner-kalender" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-4 flex items-start gap-3 fade-in shadow-sm">
+                        <i class="fa-solid fa-bullhorn text-blue-500 mt-0.5 text-base"></i>
                         <div>
                             <h4 class="font-bold text-[10px] uppercase tracking-wide text-blue-800 dark:text-blue-400">Pengumuman Akademik</h4>
-                            <p id="banner-keterangan" class="text-xs font-medium text-gray-600 dark:text-gray-300 mt-0.5 leading-snug"></p>
+                            <p id="banner-keterangan" class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-300 mt-0.5 leading-snug"></p>
                         </div>
                     </div>
 
                     <div>
-                        <h3 class="text-[13px] font-bold text-gray-800 dark:text-gray-200 mb-4 px-2">Aktivitas Utama</h3>
-                        <div id="nav-grid" class="grid grid-cols-4 gap-y-6 gap-x-2"></div>
+                        <h3 class="text-[13px] md:text-base font-bold text-gray-800 dark:text-gray-200 mb-4 px-1">Aktivitas Utama</h3>
+                        <div id="nav-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"></div>
                     </div>
 
                     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-center">
-                        <button type="button" onclick="logout()" class="btn-click flex items-center gap-2 text-red-500 text-xs font-bold bg-red-50 dark:bg-red-900/20 px-4 py-2 rounded-full border border-red-100 dark:border-red-900/50">
+                        <button type="button" onclick="logout()" class="btn-click flex items-center gap-2 text-red-500 text-xs md:text-sm font-bold bg-red-50 dark:bg-red-900/20 px-5 py-2.5 rounded-full border border-red-100 dark:border-red-900/50">
                             <i class="fa-solid fa-power-off"></i> Keluar Aplikasi
                         </button>
                     </div>
@@ -407,7 +442,7 @@
                                 <i class="fa-regular fa-calendar absolute left-3.5 top-2.5 text-gray-400 text-xs"></i>
                                 <input type="date" id="piket-verif-date" onchange="loadVerifikasiPiket()" class="w-full pl-9 pr-4 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-800">
                             </div>
-                            <div id="piket-verif-list" class="space-y-3 min-h-[200px]"></div>
+                            <div id="piket-verif-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[200px]"></div>
                         </div>
                     </div>
                 </section>
@@ -422,7 +457,7 @@
                             <button type="button" onclick="switchDokumenTab('list')" id="tab-dokumen-list" class="dokumen-tab-btn active px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border border-gray-200">Daftar Dokumen</button>
                             <button type="button" onclick="switchDokumenTab('upload')" id="tab-dokumen-upload" class="dokumen-tab-btn px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 border border-gray-200 text-gray-500 dark:text-gray-400">Upload Baru</button>
                         </div>
-                        <div id="dokumen-content-list" class="space-y-3 min-h-[300px]"></div>
+                        <div id="dokumen-content-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]"></div>
                         <div id="dokumen-content-upload" class="hidden">
                             <form onsubmit="submitDokumen(event)" class="space-y-4">
                                 <div><label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Jenis Dokumen</label><select id="dok-jenis" required class="w-full px-3 py-3 text-sm rounded-xl input-premium"><option value="RPP / Modul Ajar">RPP / Modul Ajar</option><option value="Silabus / ATP">Silabus / ATP</option><option value="Bahan Evaluasi">Bahan Evaluasi (Soal)</option><option value="Lainnya">Lainnya</option></select></div>
@@ -448,7 +483,7 @@
                             <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 text-xs"></i>
                             <input type="text" id="search-hist" onkeyup="searchCurrentHistoryTab()" placeholder="Cari riwayat..." class="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium">
                         </div>
-                        <div id="hist-list-area" class="space-y-3 min-h-[300px]"></div>
+                        <div id="hist-list-area" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]"></div>
                         <div class="flex justify-between items-center mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <span class="text-[10px] text-gray-400 font-medium" id="info-hist-page">0 Data</span>
                             <div class="flex gap-2">
@@ -463,20 +498,20 @@
                     <div class="glass-card p-4">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2"><i class="fa-solid fa-book-open text-indigo-500"></i> Rekap Jurnal Pribadi</h2>
                         <div class="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 space-y-3">
-                            <div class="flex gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">DARI TANGGAL</label><input type="date" id="rekap-jurnal-start" class="w-full px-2 py-2 text-xs rounded-lg input-premium"></div>
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">SAMPAI TANGGAL</label><input type="date" id="rekap-jurnal-end" class="w-full px-2 py-2 text-xs rounded-lg input-premium"></div>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">KELAS / ANGKATAN</label><select id="rekap-jurnal-kelas" class="w-full px-2 py-2 text-xs rounded-lg input-premium"><option value="">Semua Kelas</option></select></div>
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">MATA PELAJARAN</label><select id="rekap-jurnal-mapel" class="w-full px-2 py-2 text-xs rounded-lg input-premium"><option value="">Semua Mapel</option></select></div>
                             </div>
                             <button type="button" onclick="tarikRekapJurnalGuru()" class="btn-click w-full bg-indigo-600 text-white py-2.5 rounded-xl text-xs font-bold mt-2 shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-search"></i> Tampilkan Rekap</button>
                         </div>
-                        <div id="hasil-rekap-jurnal-guru" class="space-y-3 min-h-[150px]">
-                            <div class="text-center py-10 text-gray-400 text-[11px] italic">Silakan atur filter dan klik tampilkan.</div>
+                        <div id="hasil-rekap-jurnal-guru" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[150px]">
+                            <div class="text-center py-10 text-gray-400 text-[11px] italic col-span-full">Silakan atur filter dan klik tampilkan.</div>
                         </div>
-                        <div id="btn-group-jurnal-guru" class="hidden grid grid-cols-2 gap-2 mt-4">
+                        <div id="btn-group-jurnal-guru" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                             <button type="button" onclick="exportJurnalGuruToExcel()" class="btn-click w-full bg-green-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-file-excel"></i> Excel</button>
                             <button type="button" onclick="printRekapJurnalGuru()" class="btn-click w-full bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-print"></i> Cetak Dokumen</button>
                         </div>
@@ -487,11 +522,11 @@
                     <div class="glass-card p-4">
                         <h2 class="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2"><i class="fa-solid fa-users-viewfinder text-teal-500"></i> Rekap Absen Siswa</h2>
                         <div class="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3">
-                            <div class="flex gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">DARI TANGGAL</label><input type="date" id="rekap-siswa-start" class="w-full px-2 py-2 text-xs rounded-lg input-premium"></div>
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">SAMPAI TANGGAL</label><input type="date" id="rekap-siswa-end" class="w-full px-2 py-2 text-xs rounded-lg input-premium"></div>
                             </div>
-                            <div class="flex gap-2">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">KELAS <span class="text-red-500">*</span></label><select id="rekap-siswa-kelas" class="w-full px-2 py-2 text-xs rounded-lg input-premium"><option value="" disabled selected>Pilih...</option></select></div>
                                 <div class="flex-1"><label class="block text-[10px] text-gray-500 mb-1">MATA PELAJARAN</label><select id="rekap-siswa-mapel" class="w-full px-2 py-2 text-xs rounded-lg input-premium"><option value="">Semua Mapel</option></select></div>
                             </div>
@@ -504,7 +539,7 @@
                                     <tbody id="tabel-rekap-siswa-body"></tbody>
                                 </table>
                             </div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
                                 <button type="button" onclick="exportRekapSiswaToExcel()" class="btn-click w-full bg-green-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-file-excel"></i> Excel</button>
                                 <button type="button" onclick="printRekapSiswa()" class="btn-click w-full bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-print"></i> Cetak Dokumen</button>
                             </div>
@@ -528,8 +563,8 @@
                         </div>
                         <div>
                             <h3 class="text-sm font-black text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2"><i class="fa-solid fa-medal text-yellow-500"></i> Papan Peringkat (Top 10)</h3>
-                            <div id="leaderboard-list" class="space-y-2 min-h-[150px]">
-                                <div class="text-center py-5 text-[10px] text-gray-400 italic">Pilih bulan dan klik proses...</div>
+                            <div id="leaderboard-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3 min-h-[150px]">
+                                <div class="text-center py-5 text-[10px] text-gray-400 italic col-span-full">Pilih bulan dan klik proses...</div>
                             </div>
                         </div>
                     </div>
@@ -549,7 +584,7 @@
                             <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 text-xs"></i>
                             <input type="text" id="search-monitor" onkeyup="filterMonitorCards()" placeholder="Cari nama guru..." class="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium">
                         </div>
-                        <div id="monitor-list-area" class="space-y-3 min-h-[300px]"></div>
+                        <div id="monitor-list-area" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]"></div>
                     </div>
                 </section>
 
@@ -576,7 +611,7 @@
                             <i class="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 text-xs"></i>
                             <input type="text" id="search-verif" onkeyup="searchCurrentVerifTab()" placeholder="Cari nama guru..." class="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium">
                         </div>
-                        <div id="verif-list-area" class="space-y-3 min-h-[300px]"></div>
+                        <div id="verif-list-area" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]"></div>
                         <div class="flex justify-between items-center mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <span class="text-[10px] text-gray-400 font-medium" id="info-verif-page">0 Data</span>
                             <div class="flex gap-2">
@@ -602,7 +637,7 @@
                                 <i class="fa-solid fa-caret-right transition-transform group-open:rotate-90"></i> Filter Rentang Khusus
                             </summary>
                             <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mt-2 space-y-3">
-                                <div class="flex gap-2">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div class="flex-1"><label class="block text-[9px] text-gray-500 mb-1">DARI</label><input type="date" id="rekap-start" class="w-full px-2 py-2 text-xs rounded-lg input-premium"></div>
                                     <div class="flex-1"><label class="block text-[9px] text-gray-500 mb-1">SAMPAI</label><input type="date" id="rekap-end" class="w-full px-2 py-2 text-xs rounded-lg input-premium"></div>
                                 </div>
@@ -612,13 +647,13 @@
                         <div id="hasil-rekap" class="hidden space-y-5">
                             <div>
                                 <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2"><i class="fa-solid fa-user-check text-green-500"></i> Kehadiran Guru</h3>
-                                <div id="card-rekap-presensi" class="grid grid-cols-1 gap-3"></div>
+                                <div id="card-rekap-presensi" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                             </div>
                             <div>
                                 <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2 border-t dark:border-gray-800 pt-4"><i class="fa-solid fa-book text-blue-500"></i> Total Jurnal Disetujui</h3>
-                                <div id="card-rekap-jurnal" class="grid grid-cols-1 gap-2"></div>
+                                <div id="card-rekap-jurnal" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
                             </div>
-                            <div class="pt-2 border-t dark:border-gray-800 grid grid-cols-2 gap-2 mt-2">
+                            <div class="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                                 <button type="button" onclick="exportRekapAdminToExcel()" class="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-file-excel"></i> Excel</button>
                                 <button type="button" onclick="printRekapAdmin()" class="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2"><i class="fa-solid fa-print"></i> Cetak PDF</button>
                             </div>
@@ -658,7 +693,7 @@
                                 <button type="button" onclick="modalCurrentMaster('CREATE')" class="btn-click bg-nizamudin-green text-white px-3 h-8 rounded-xl text-[10px] font-bold shadow-md flex items-center gap-1 border border-nizamudin-light"><i class="fa-solid fa-plus"></i> Baru</button>
                             </div>
                         </div>
-                        <div id="master-list-area" class="space-y-2.5 min-h-[300px]"></div>
+                        <div id="master-list-area" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]"></div>
                         <div class="flex justify-between items-center mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
                             <span class="text-[10px] text-gray-400 font-medium" id="info-master-page">0 Data</span>
                             <div class="flex gap-2">
@@ -946,12 +981,46 @@
         }
         function logout() { sessionStorage.removeItem('sipjam_session'); sessionStorage.removeItem('sipjam_initData'); location.reload(); }
 
+        function toggleMobileMenu() {
+            const drawer = document.getElementById('mobile-menu-drawer');
+            if (drawer) {
+                if (drawer.classList.contains('hidden')) {
+                    drawer.classList.remove('hidden');
+                } else {
+                    drawer.classList.add('hidden');
+                }
+            }
+        }
+
         function buildGridMenu() {
-            const grid = document.getElementById('nav-grid'); grid.innerHTML = '';
+            const grid = document.getElementById('nav-grid'); if(grid) grid.innerHTML = '';
+            const drawerList = document.getElementById('drawer-menu-list'); if(drawerList) drawerList.innerHTML = '';
+            const desktopNav = document.getElementById('desktop-nav-links'); if(desktopNav) desktopNav.innerHTML = '';
+
+            if(!userSession || !userSession.role || !menuConfig[userSession.role]) return;
+
             menuConfig[userSession.role].forEach(item => {
-                const node = document.createElement('div'); node.className = 'btn-click flex flex-col items-center gap-1.5'; node.onclick = () => switchTab(item.id, item.title);
-                node.innerHTML = `<div class="w-14 h-14 squircle-icon shadow-sm ${item.color}"><i class="fa-solid ${item.icon} text-2xl"></i></div><span class="text-[10px] font-bold text-gray-700 dark:text-gray-300 text-center leading-tight tracking-tight">${item.title}</span>`;
-                grid.appendChild(node);
+                const node = document.createElement('div');
+                node.className = 'btn-click flex flex-col items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm hover:shadow-md transition';
+                node.onclick = () => switchTab(item.id, item.title);
+                node.innerHTML = `<div class="w-12 h-12 md:w-14 md:h-14 squircle-icon shadow-sm ${item.color}"><i class="fa-solid ${item.icon} text-xl md:text-2xl"></i></div><span class="text-[10px] md:text-xs font-bold text-gray-700 dark:text-gray-300 text-center leading-tight tracking-tight">${item.title}</span>`;
+                if(grid) grid.appendChild(node);
+
+                if(drawerList) {
+                    const dNode = document.createElement('button');
+                    dNode.className = 'w-full text-left px-3 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3 transition';
+                    dNode.onclick = () => { toggleMobileMenu(); switchTab(item.id, item.title); };
+                    dNode.innerHTML = `<i class="fa-solid ${item.icon} text-sm text-nizamudin-green dark:text-nizamudin-gold w-5 text-center"></i> <span>${item.title}</span>`;
+                    drawerList.appendChild(dNode);
+                }
+
+                if(desktopNav) {
+                    const dtNode = document.createElement('button');
+                    dtNode.className = 'px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-1.5';
+                    dtNode.onclick = () => switchTab(item.id, item.title);
+                    dtNode.innerHTML = `<i class="fa-solid ${item.icon} text-xs text-nizamudin-green dark:text-nizamudin-gold"></i> <span>${item.title}</span>`;
+                    desktopNav.appendChild(dtNode);
+                }
             });
         }
 
@@ -962,8 +1031,19 @@
                     let r = JSON.parse(res);
                     if(r.status === 'success') {
                         let html = '';
-                        if(!r.data.datang) html += `<div class="bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-base"></i> Peringatan: Anda belum mengisi Presensi Datang hari ini!</div>`;
-                        if(r.data.datang && !r.data.pulang) html += `<div class="bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-base"></i> Jangan lupa untuk mengisi Presensi Pulang nanti.</div>`;
+                        const selectTipe = document.getElementById('presensi-tipe');
+                        if(!r.data.datang) {
+                            html += `<div class="bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-base"></i> Peringatan: Anda belum mengisi Presensi Datang hari ini!</div>`;
+                            if(selectTipe) selectTipe.value = "Datang";
+                        }
+                        else if(r.data.datang && !r.data.pulang) {
+                            html += `<div class="bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-base"></i> Jangan lupa untuk mengisi Presensi Pulang nanti.</div>`;
+                            if(selectTipe) selectTipe.value = "Pulang";
+                        }
+                        else if(r.data.datang && r.data.pulang) {
+                            html += `<div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-check text-base"></i> Presensi Hari Ini Lengkap: Datang & Pulang sudah tercatat.</div>`;
+                        }
+
                         if(!r.data.jurnal) html += `<div class="bg-blue-50 border border-blue-200 text-blue-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-info-circle text-base"></i> Anda belum mengisi Jurnal (KBM / Kegiatan) hari ini.</div>`;
                         if(r.data.piket) html += `<div class="bg-teal-50 border border-teal-200 text-teal-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-shield-halved text-base"></i> Perhatian: Anda ditugaskan sebagai GURU PIKET hari ini.</div>`;
                         const container = document.getElementById('dashboard-alerts'); if(html) { container.innerHTML = html; container.classList.remove('hidden'); } else { container.classList.add('hidden'); }
@@ -1510,8 +1590,8 @@
             data.forEach((g, idx) => {
                 let rankClass = idx === 0 ? "bg-yellow-100 text-yellow-600 border-yellow-200" : (idx === 1 ? "bg-gray-200 text-gray-600 border-gray-300" : (idx === 2 ? "bg-orange-100 text-orange-600 border-orange-200" : "bg-gray-50 text-gray-500 border-gray-100"));
                 let iconRank = idx < 3 ? `<i class="fa-solid fa-medal text-lg"></i>` : `<span class="font-bold">${idx+1}</span>`;
-                let persenHtml = g.persenHadir !== undefined ? `<div class="mt-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full ${g.persenHadir >= 80 ? 'bg-green-500' : (g.persenHadir >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width:${g.persenHadir}%"></div></div><div class="text-[8px] text-gray-400 mt-0.5">Kehadiran: ${g.persenHadir}%</div>` : '';
-                let izinInfo = (g.izin || g.sakit || g.dinasLuar) ? ` | DL: ${g.dinasLuar||0} | Izin: ${g.izin||0} | Sakit: ${g.sakit||0}` : '';
+                let persenHtml = g.persenHadir !== undefined ? `<div class="mt-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full ${g.persenHadir >= 80 ? 'bg-green-500' : (g.persenHadir >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width:${g.persenHadir}%"></div></div><div class="text-[8px] text-gray-400 mt-0.5">Kehadiran: ${g.persenHadir}% (${g.totalHariKerja||0} Hari Efektif)</div>` : '';
+                let izinInfo = ` | DL: ${g.dinasLuar||0} | Izin: ${g.izin||0} | Sakit: ${g.sakit||0} | <span class="text-red-500 font-bold">Alpa: ${g.alpa||0}</span>`;
                 container.innerHTML += `<div class="flex items-center gap-3 p-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm"><div class="w-9 h-9 flex items-center justify-center rounded-full border-2 ${rankClass} shrink-0">${iconRank}</div><div class="flex-grow min-w-0"><div class="font-bold text-[11px] text-gray-800 dark:text-gray-100 truncate">${g.nama}</div><div class="text-[9px] text-gray-500">Hadir: <span class="text-green-600 font-bold">${g.hadir}</span> | Telat: <span class="text-orange-500 font-bold">${g.telat}</span> | Jurnal: <span class="text-blue-600 font-bold">${g.jurnal}</span>${izinInfo}</div>${persenHtml}</div><div class="text-right shrink-0"><div class="font-black text-sm text-rose-600 dark:text-rose-400">${g.points}</div><div class="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Poin</div></div></div>`;
             });
         }
@@ -1645,7 +1725,7 @@
             const cP = document.getElementById('card-rekap-presensi'); const cJ = document.getElementById('card-rekap-jurnal'); cP.innerHTML = ''; cJ.innerHTML = '';
             let pCount = 0; for(let guru in dataPresensi) { 
                 let d = dataPresensi[guru]; pCount++;
-                cP.innerHTML += `<div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"><div class="font-bold text-xs text-gray-800 dark:text-gray-200 mb-2.5 truncate">${guru}</div><div class="grid grid-cols-5 gap-1.5 text-center"><div class="bg-green-50 dark:bg-green-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-green-600 dark:text-green-400 font-bold">HADIR</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.Hadir}</div></div><div class="bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-blue-600 dark:text-blue-400 font-bold">DL</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.DinasLuar}</div></div><div class="bg-purple-50 dark:bg-purple-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-purple-600 dark:text-purple-400 font-bold">IZIN</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.Izin}</div></div><div class="bg-yellow-50 dark:bg-yellow-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-yellow-600 dark:text-yellow-400 font-bold">SAKIT</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.Sakit}</div></div><div class="bg-red-50 dark:bg-red-900/30 p-1.5 rounded-lg border border-red-200 dark:border-red-800"><div class="text-[8px] text-red-600 dark:text-red-400 font-bold">ALPA</div><div class="text-sm font-black text-red-700 dark:text-red-400">${d.Alpa}</div></div></div></div>`; 
+                cP.innerHTML += `<div class="bg-white dark:bg-gray-800 p-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"><div class="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1.5 truncate">${guru} <span class="text-[9px] font-normal text-gray-400">(${d.TotalHariKerja || 0} Hari Efektif)</span></div><div class="grid grid-cols-5 gap-1.5 text-center"><div class="bg-green-50 dark:bg-green-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-green-600 dark:text-green-400 font-bold">HADIR</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.Hadir}</div></div><div class="bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-blue-600 dark:text-blue-400 font-bold">DL</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.DinasLuar}</div></div><div class="bg-purple-50 dark:bg-purple-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-purple-600 dark:text-purple-400 font-bold">IZIN</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.Izin}</div></div><div class="bg-yellow-50 dark:bg-yellow-900/30 p-1.5 rounded-lg"><div class="text-[8px] text-yellow-600 dark:text-yellow-400 font-bold">SAKIT</div><div class="text-sm font-black text-gray-800 dark:text-gray-100">${d.Sakit}</div></div><div class="bg-red-50 dark:bg-red-900/30 p-1.5 rounded-lg border border-red-200 dark:border-red-800"><div class="text-[8px] text-red-600 dark:text-red-400 font-bold">ALPA</div><div class="text-sm font-black text-red-700 dark:text-red-400">${d.Alpa}</div></div></div></div>`; 
             } if(pCount === 0) cP.innerHTML = `<div class="text-[11px] text-gray-500 italic">Kosong.</div>`;
 
             let jCount = 0; for(let mapel in dataJurnal) { 
@@ -1656,21 +1736,21 @@
         function exportRekapAdminToExcel() {
             if(!globalRekapAdminPresensi) return;
             let wsData = []; wsData.push([`Periode ${globalPeriodeStart} s/d ${globalPeriodeEnd}`]); wsData.push(["Rekap Absensi Guru"]); wsData.push([]); 
-            wsData.push(["No", "Nama Guru", "Total", "Hadir", "Terlambat", "% Hadir"]);
+            wsData.push(["No", "NIP", "Nama Guru", "Hari Efektif", "Hadir", "Dinas Luar", "Izin", "Sakit", "Alpa", "Terlambat", "% Hadir"]);
 
             let no = 1;
             for(let guru in globalRekapAdminPresensi) {
                 let d = globalRekapAdminPresensi[guru];
-                let hadir = d.Hadir || 0; let terlambat = d.Terlambat || 0; let alpa = d.Alpa || 0;
-                let total = hadir + (d.Izin || 0) + (d.Sakit || 0) + alpa + (d.DinasLuar || 0);
-                let persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
-                wsData.push([no++, guru, total, hadir, terlambat, persen]);
+                let hadir = d.Hadir || 0; let dl = d.DinasLuar || 0; let izin = d.Izin || 0; let sakit = d.Sakit || 0; let alpa = d.Alpa || 0; let terlambat = d.Terlambat || 0;
+                let totalHari = d.TotalHariKerja || (hadir + dl + izin + sakit + alpa);
+                let persen = d.PersenHadir !== undefined ? d.PersenHadir : (totalHari > 0 ? Math.round(((hadir + dl) / totalHari) * 100) : 0);
+                wsData.push([no++, d.Nip || "-", guru, totalHari, hadir, dl, izin, sakit, alpa, terlambat, `${persen}%`]);
             }
-            wsData.push([]); wsData.push([]); wsData.push(["", "", "", "", "Mengetahui"]); wsData.push(["", "", "", "", "Kepala Sekolah"]); wsData.push([]); wsData.push([]); wsData.push([]);
-            wsData.push(["", "", "", "", (globalSettings.NAMA_KEPALA_SEKOLAH || "___________________")]); wsData.push(["", "", "", "", "NIP. " + (globalSettings.NIP_KEPALA_SEKOLAH || "")]);
+            wsData.push([]); wsData.push([]); wsData.push(["", "", "", "", "", "", "", "Mengetahui"]); wsData.push(["", "", "", "", "", "", "", "Kepala Sekolah"]); wsData.push([]); wsData.push([]); wsData.push([]);
+            wsData.push(["", "", "", "", "", "", "", (globalSettings.NAMA_KEPALA_SEKOLAH || "___________________")]); wsData.push(["", "", "", "", "", "", "", "NIP. " + (globalSettings.NIP_KEPALA_SEKOLAH || "")]);
 
             const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(wsData);
-            ws['!merges'] = [ { s: {r: 0, c: 0}, e: {r: 0, c: 5} }, { s: {r: 1, c: 0}, e: {r: 1, c: 5} } ]; ws['!cols'] = [ {wch: 5}, {wch: 35}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10} ];
+            ws['!merges'] = [ { s: {r: 0, c: 0}, e: {r: 0, c: 10} }, { s: {r: 1, c: 0}, e: {r: 1, c: 10} } ]; ws['!cols'] = [ {wch: 5}, {wch: 20}, {wch: 35}, {wch: 12}, {wch: 10}, {wch: 12}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 12}, {wch: 10} ];
             XLSX.utils.book_append_sheet(wb, ws, "Rekap_Kehadiran_Guru");
 
             let dataJurnalArr = [["Mata Pelajaran / Kegiatan", "Jumlah Disetujui"]]; for(let mapel in globalRekapAdminJurnal) { dataJurnalArr.push([mapel, globalRekapAdminJurnal[mapel]]); }
@@ -1684,11 +1764,11 @@
         
         function printRekapAdmin() {
             if(!globalRekapAdminPresensi) return;
-            let html = `<p style="text-align:center; font-weight:bold; margin-bottom:10px;">Periode: ${globalPeriodeStart} s/d ${globalPeriodeEnd}</p><table><thead><tr><th>No</th><th>Nama Guru</th><th>Total</th><th>Hadir</th><th>Terlambat</th><th>% Hadir</th></tr></thead><tbody>`;
+            let html = `<p style="text-align:center; font-weight:bold; margin-bottom:10px;">Periode: ${globalPeriodeStart} s/d ${globalPeriodeEnd}</p><table><thead><tr><th>No</th><th>Nama Guru</th><th>Hari Efektif</th><th>Hadir</th><th>DL</th><th>Izin</th><th>Sakit</th><th>Alpa</th><th>Terlambat</th><th>% Hadir</th></tr></thead><tbody>`;
             let no = 1;
             for(let guru in globalRekapAdminPresensi) {
-                let d = globalRekapAdminPresensi[guru]; let hadir = d.Hadir || 0; let terlambat = d.Terlambat || 0; let alpa = d.Alpa || 0; let total = hadir + (d.Izin || 0) + (d.Sakit || 0) + alpa + (d.DinasLuar || 0); let persen = total > 0 ? Math.round((hadir / total) * 100) : 0;
-                html += `<tr><td class="text-center">${no++}</td><td>${guru}</td><td class="text-center">${total}</td><td class="text-center">${hadir}</td><td class="text-center">${terlambat}</td><td class="text-center"><b>${persen}%</b></td></tr>`;
+                let d = globalRekapAdminPresensi[guru]; let hadir = d.Hadir || 0; let dl = d.DinasLuar || 0; let izin = d.Izin || 0; let sakit = d.Sakit || 0; let alpa = d.Alpa || 0; let terlambat = d.Terlambat || 0; let totalHari = d.TotalHariKerja || (hadir + dl + izin + sakit + alpa); let persen = d.PersenHadir !== undefined ? d.PersenHadir : (totalHari > 0 ? Math.round(((hadir + dl) / totalHari) * 100) : 0);
+                html += `<tr><td class="text-center">${no++}</td><td>${guru}</td><td class="text-center">${totalHari}</td><td class="text-center">${hadir}</td><td class="text-center">${dl}</td><td class="text-center">${izin}</td><td class="text-center">${sakit}</td><td class="text-center" style="color:red; font-weight:bold;">${alpa}</td><td class="text-center">${terlambat}</td><td class="text-center"><b>${persen}%</b></td></tr>`;
             }
             html += `</tbody></table><div class="page-break"></div><h2 style="text-align:center; font-size:16px; font-weight:bold; margin-bottom:15px; text-decoration:underline;">SUMMARY JURNAL PEMBELAJARAN</h2><table><thead><tr><th>Mata Pelajaran / Kegiatan</th><th>Jumlah Disetujui</th></tr></thead><tbody>`;
             for(let mapel in globalRekapAdminJurnal) { html += `<tr><td>${mapel}</td><td class="text-center">${globalRekapAdminJurnal[mapel]}</td></tr>`; } html += `</tbody></table>`;
