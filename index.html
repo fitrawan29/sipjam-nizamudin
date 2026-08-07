@@ -66,7 +66,7 @@
         @media print {
             body { background: white; margin: 0; padding: 0; }
             .mobile-container, #loader, .swal2-container { display: none !important; }
-            #print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 10pt; color: black; background: white; }
+            #print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; font-family: 'Times New Roman', Times, serif; font-size: 10pt; color: black; background: white; padding: 15mm 20mm; box-sizing: border-box; }
             
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: auto; }
             tr { page-break-inside: avoid; page-break-after: auto; }
@@ -75,16 +75,23 @@
             td { padding: 5px; }
             .text-center { text-align: center; }
             
-            .kop-surat { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px double black; padding-bottom: 10px; margin-bottom: 20px; }
-            .kop-surat img { width: 75px; height: 75px; object-fit: contain; }
-            .kop-surat-text { flex-grow: 1; text-align: center; padding: 0 15px; }
-            .kop-surat-text h1 { margin: 0; font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;}
-            .kop-surat-text p { margin: 4px 0 0 0; font-size: 11px; }
+            .kop-surat { display: flex; align-items: center; justify-content: center; padding-bottom: 8px; margin-bottom: 5px; position: relative; }
+            .kop-surat::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; border-bottom: 3.5px solid black; }
+            .kop-surat::before { content: ''; position: absolute; bottom: 5px; left: 0; right: 0; border-bottom: 1.5px solid black; }
+            .kop-surat img { width: 80px; height: 80px; object-fit: contain; }
+            .kop-surat-text { flex-grow: 1; text-align: center; padding: 0 12px; }
+            .kop-surat-text .yayasan-name { margin: 0; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+            .kop-surat-text h1 { margin: 2px 0 0 0; font-size: 22px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+            .kop-surat-text .alamat { margin: 3px 0 0 0; font-size: 10px; font-style: italic; }
+            .kop-surat-text .npsn { margin: 2px 0 0 0; font-size: 10px; font-weight: bold; }
+            
+            .kop-spacer { height: 15px; }
             
             .ttd-container { display: flex; justify-content: flex-end; margin-top: 30px; page-break-inside: avoid; }
-            .ttd-box { text-align: center; width: 250px; }
-            .ttd-box p { margin: 0; }
+            .ttd-box { text-align: center; width: 280px; }
+            .ttd-box p { margin: 0; font-size: 11px; }
             .ttd-box .name { margin-top: 70px; font-weight: bold; text-decoration: underline; }
+            .ttd-box .nip-line { font-size: 10px; }
             .page-break { page-break-before: always; }
         }
     </style>
@@ -681,8 +688,10 @@
                             <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4">
                                 <h3 class="text-[10px] font-bold text-blue-800 dark:text-blue-500 mb-3 uppercase flex items-center gap-1.5"><i class="fa-solid fa-print"></i> Pengaturan Kop Surat</h3>
                                 <div class="space-y-2.5">
+                                    <div><label class="block text-[9px] text-gray-500 mb-0.5">Nama Yayasan</label><input type="text" id="cfg-nama-yayasan" class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs font-bold bg-white dark:bg-gray-800 dark:text-white" placeholder="Contoh: YAYASAN NIZAMUDIN"></div>
                                     <div><label class="block text-[9px] text-gray-500 mb-0.5">Nama Sekolah</label><input type="text" id="cfg-nama-sekolah" required class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs font-bold bg-white dark:bg-gray-800 dark:text-white"></div>
                                     <div><label class="block text-[9px] text-gray-500 mb-0.5">Alamat Lengkap</label><input type="text" id="cfg-alamat" required class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 dark:text-white"></div>
+                                    <div><label class="block text-[9px] text-gray-500 mb-0.5">NPSN</label><input type="text" id="cfg-npsn" class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 dark:text-white" placeholder="Nomor Pokok Sekolah Nasional"></div>
                                     <div class="flex gap-2">
                                         <div class="flex-1"><label class="block text-[9px] text-gray-500 mb-0.5">URL Logo Kiri (Dinas)</label><input type="text" id="cfg-logo-kiri" required class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 dark:text-white"></div>
                                         <div class="flex-1"><label class="block text-[9px] text-gray-500 mb-0.5">URL Logo Kanan (Yayasan)</label><input type="text" id="cfg-logo-kanan" required class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 dark:text-white"></div>
@@ -890,6 +899,8 @@
             document.getElementById('cfg-nama-sekolah').value = globalSettings.NAMA_SEKOLAH || ""; document.getElementById('cfg-alamat').value = globalSettings.ALAMAT_SEKOLAH || "";
             document.getElementById('cfg-logo-kiri').value = globalSettings.LOGO_KIRI_URL || ""; document.getElementById('cfg-logo-kanan').value = globalSettings.LOGO_KANAN_URL || "";
             document.getElementById('cfg-nama-kepsek').value = globalSettings.NAMA_KEPALA_SEKOLAH || ""; document.getElementById('cfg-nip-kepsek').value = globalSettings.NIP_KEPALA_SEKOLAH || "";
+            if(document.getElementById('cfg-nama-yayasan')) document.getElementById('cfg-nama-yayasan').value = globalSettings.NAMA_YAYASAN || "";
+            if(document.getElementById('cfg-npsn')) document.getElementById('cfg-npsn').value = globalSettings.NPSN || "";
 
             if(document.getElementById('lbl-sekolah-home')) document.getElementById('lbl-sekolah-home').innerText = globalSettings.NAMA_SEKOLAH || "SMA NIZAMUDIN";
 
@@ -982,19 +993,35 @@
         function generateKopSuratHtml(title) {
             let logoKiriSrc = globalSettings.LOGO_KIRI_URL || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/320px-Logo_Tut_Wuri_Handayani.png";
             let logoKananSrc = globalSettings.LOGO_KANAN_URL || "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/320px-Logo_Tut_Wuri_Handayani.png";
-            let namaSekolah = globalSettings.NAMA_SEKOLAH || "NAMA SEKOLAH"; let alamat = globalSettings.ALAMAT_SEKOLAH || "Alamat Sekolah";
+            let namaSekolah = globalSettings.NAMA_SEKOLAH || "NAMA SEKOLAH";
+            let namaYayasan = globalSettings.NAMA_YAYASAN || "";
+            let alamat = globalSettings.ALAMAT_SEKOLAH || "Alamat Sekolah";
+            let npsn = globalSettings.NPSN || "";
+            let yayasanLine = namaYayasan ? `<p class="yayasan-name">${namaYayasan}</p>` : '';
+            let npsnLine = npsn ? `<p class="npsn">NPSN: ${npsn}</p>` : '';
             return `
             <div class="kop-surat">
-                <img src="${logoKiriSrc}" alt="Logo Kiri">
-                <div class="kop-surat-text"><h1>${namaSekolah}</h1><p>${alamat}</p></div>
-                <img src="${logoKananSrc}" alt="Logo Kanan">
+                <img src="${logoKiriSrc}" alt="Logo Kiri" crossorigin="anonymous">
+                <div class="kop-surat-text">
+                    ${yayasanLine}
+                    <h1>${namaSekolah}</h1>
+                    <p class="alamat">${alamat}</p>
+                    ${npsnLine}
+                </div>
+                <img src="${logoKananSrc}" alt="Logo Kanan" crossorigin="anonymous">
             </div>
-            <h2 style="text-align:center; font-size:16px; font-weight:bold; margin-bottom:15px; text-decoration:underline;">${title}</h2>
+            <div class="kop-spacer"></div>
+            <h2 style="text-align:center; font-size:14px; font-weight:bold; margin-bottom:5px; text-decoration:underline; text-transform:uppercase; letter-spacing:1px;">${title}</h2>
+            <p style="text-align:center; font-size:10px; margin-bottom:15px; color:#333;">Tahun Ajaran ${globalSettings.TAHUN_AJARAN || '-'} | Semester ${globalSettings.SEMESTER || '-'}</p>
             `;
         }
         function generateTandaTanganHtml() {
-            let kepsek = globalSettings.NAMA_KEPALA_SEKOLAH || "Nama Kepala Sekolah"; let nip = globalSettings.NIP_KEPALA_SEKOLAH || "NIP. -";
-            return `<div class="ttd-container"><div class="ttd-box"><p>Mengetahui,</p><p>Kepala Sekolah,</p><p class="name">${kepsek}</p><p>${nip}</p></div></div>`;
+            let kepsek = globalSettings.NAMA_KEPALA_SEKOLAH || "Nama Kepala Sekolah";
+            let nip = globalSettings.NIP_KEPALA_SEKOLAH || "NIP. -";
+            let lokasi = (globalSettings.ALAMAT_SEKOLAH || "Kota").split(',')[0].trim();
+            let now = new Date();
+            let tglStr = now.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+            return `<div class="ttd-container"><div class="ttd-box"><p>${lokasi}, ${tglStr}</p><p>Mengetahui,</p><p>Kepala Sekolah,</p><p class="name">${kepsek}</p><p class="nip-line">NIP. ${nip}</p></div></div>`;
         }
         function executePrint(title, htmlContent) {
             const printArea = document.getElementById('print-area'); printArea.innerHTML = generateKopSuratHtml(title) + htmlContent + generateTandaTanganHtml();
@@ -1483,7 +1510,9 @@
             data.forEach((g, idx) => {
                 let rankClass = idx === 0 ? "bg-yellow-100 text-yellow-600 border-yellow-200" : (idx === 1 ? "bg-gray-200 text-gray-600 border-gray-300" : (idx === 2 ? "bg-orange-100 text-orange-600 border-orange-200" : "bg-gray-50 text-gray-500 border-gray-100"));
                 let iconRank = idx < 3 ? `<i class="fa-solid fa-medal text-lg"></i>` : `<span class="font-bold">${idx+1}</span>`;
-                container.innerHTML += `<div class="flex items-center gap-3 p-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm"><div class="w-8 h-8 flex items-center justify-center rounded-full border ${rankClass} shrink-0">${iconRank}</div><div class="flex-grow min-w-0"><div class="font-bold text-[11px] text-gray-800 dark:text-gray-100 truncate">${g.nama}</div><div class="text-[9px] text-gray-500">Hadir: ${g.hadir} | Telat: ${g.telat} | Jurnal: ${g.jurnal}</div></div><div class="text-right shrink-0"><div class="font-black text-sm text-rose-600 dark:text-rose-400">${g.points}</div><div class="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Poin</div></div></div>`;
+                let persenHtml = g.persenHadir !== undefined ? `<div class="mt-1 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden"><div class="h-1.5 rounded-full ${g.persenHadir >= 80 ? 'bg-green-500' : (g.persenHadir >= 50 ? 'bg-yellow-500' : 'bg-red-500')}" style="width:${g.persenHadir}%"></div></div><div class="text-[8px] text-gray-400 mt-0.5">Kehadiran: ${g.persenHadir}%</div>` : '';
+                let izinInfo = (g.izin || g.sakit || g.dinasLuar) ? ` | DL: ${g.dinasLuar||0} | Izin: ${g.izin||0} | Sakit: ${g.sakit||0}` : '';
+                container.innerHTML += `<div class="flex items-center gap-3 p-2.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm"><div class="w-9 h-9 flex items-center justify-center rounded-full border-2 ${rankClass} shrink-0">${iconRank}</div><div class="flex-grow min-w-0"><div class="font-bold text-[11px] text-gray-800 dark:text-gray-100 truncate">${g.nama}</div><div class="text-[9px] text-gray-500">Hadir: <span class="text-green-600 font-bold">${g.hadir}</span> | Telat: <span class="text-orange-500 font-bold">${g.telat}</span> | Jurnal: <span class="text-blue-600 font-bold">${g.jurnal}</span>${izinInfo}</div>${persenHtml}</div><div class="text-right shrink-0"><div class="font-black text-sm text-rose-600 dark:text-rose-400">${g.points}</div><div class="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Poin</div></div></div>`;
             });
         }
 
@@ -1844,7 +1873,9 @@
                 HARI_SEKOLAH_PER_MINGGU: document.getElementById('cfg-hari-sekolah').value,
                 NAMA_SEKOLAH: document.getElementById('cfg-nama-sekolah').value, ALAMAT_SEKOLAH: document.getElementById('cfg-alamat').value,
                 LOGO_KIRI_URL: document.getElementById('cfg-logo-kiri').value, LOGO_KANAN_URL: document.getElementById('cfg-logo-kanan').value,
-                NAMA_KEPALA_SEKOLAH: document.getElementById('cfg-nama-kepsek').value, NIP_KEPALA_SEKOLAH: document.getElementById('cfg-nip-kepsek').value
+                NAMA_KEPALA_SEKOLAH: document.getElementById('cfg-nama-kepsek').value, NIP_KEPALA_SEKOLAH: document.getElementById('cfg-nip-kepsek').value,
+                NAMA_YAYASAN: document.getElementById('cfg-nama-yayasan') ? document.getElementById('cfg-nama-yayasan').value : '',
+                NPSN: document.getElementById('cfg-npsn') ? document.getElementById('cfg-npsn').value : ''
             };
             google.script.run.withSuccessHandler((res) => { Swal.fire('Berhasil', 'Sistem & Kop Surat diperbarui.', 'success'); globalSettings = payload; if(document.getElementById('lbl-sekolah-home')) document.getElementById('lbl-sekolah-home').innerText = payload.NAMA_SEKOLAH; }).saveAppSettings(payload);
         }
