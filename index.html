@@ -104,6 +104,31 @@
 
     <div id="print-area"></div>
 
+    <!-- Sidebar Menu Drawer -->
+    <div id="sidebar-drawer" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300" onclick="toggleSidebarMenu()">
+        <div class="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between" onclick="event.stopPropagation()">
+            <div>
+                <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
+                            <i class="fa-solid fa-mosque"></i>
+                        </div>
+                        <span class="font-bold text-sm text-gray-800 dark:text-white">SIPJAM Menu</span>
+                    </div>
+                    <button type="button" onclick="toggleSidebarMenu()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+                <div id="sidebar-menu-list" class="space-y-1.5 overflow-y-auto max-h-[calc(100vh-180px)] custom-scroll"></div>
+            </div>
+            <div class="pt-4 border-t border-gray-100 dark:border-gray-800">
+                <button type="button" onclick="logout()" class="w-full text-left px-3 py-2.5 text-xs font-bold text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                    <i class="fa-solid fa-power-off"></i> Keluar Aplikasi
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="mobile-container flex flex-col h-screen">
         
         <div id="loader">
@@ -139,7 +164,10 @@
 
         <div id="app-screen" class="hidden flex-col h-full w-full">
             <header class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px]">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button type="button" id="btn-sidebar" onclick="toggleSidebarMenu()" class="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700">
+                        <i class="fa-solid fa-bars text-sm"></i>
+                    </button>
                     <button type="button" id="btn-back" onclick="goHome()" class="hidden btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700">
                         <i class="fa-solid fa-arrow-left text-sm"></i>
                     </button>
@@ -149,6 +177,9 @@
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="toggleDarkMode()" class="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-600 dark:text-nizamudin-gold shadow-sm border border-gray-200 dark:border-gray-700">
                         <i id="icon-theme" class="fa-solid fa-moon text-xs"></i>
+                    </button>
+                    <button type="button" onclick="logout()" class="btn-click bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-3 py-1.5 rounded-xl text-xs font-bold border border-red-200 dark:border-red-800/50 flex items-center gap-1.5 shadow-sm">
+                        <i class="fa-solid fa-power-off text-xs"></i> <span class="hidden sm:inline">Keluar</span>
                     </button>
                 </div>
             </header>
@@ -195,12 +226,6 @@
                     <div>
                         <h3 class="text-[13px] md:text-base font-bold text-gray-800 dark:text-gray-200 mb-4 px-1">Aktivitas Utama</h3>
                         <div id="nav-grid" class="grid grid-cols-4 gap-y-6 gap-x-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"></div>
-                    </div>
-
-                    <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-center">
-                        <button type="button" onclick="logout()" class="btn-click flex items-center gap-2 text-red-500 text-xs md:text-sm font-bold bg-red-50 dark:bg-red-900/20 px-5 py-2.5 rounded-full border border-red-100 dark:border-red-900/50">
-                            <i class="fa-solid fa-power-off"></i> Keluar Aplikasi
-                        </button>
                     </div>
                 </section>
 
@@ -949,11 +974,22 @@
             buildGridMenu(); goHome();
             if(document.getElementById('jurnal-tanggal')) document.getElementById('jurnal-tanggal').valueAsDate = new Date();
         }
-        function logout() { sessionStorage.removeItem('sipjam_session'); sessionStorage.removeItem('sipjam_initData'); location.reload(); }
+        function toggleSidebarMenu() {
+            const drawer = document.getElementById('sidebar-drawer');
+            if (drawer) {
+                if (drawer.classList.contains('hidden')) {
+                    drawer.classList.remove('hidden');
+                } else {
+                    drawer.classList.add('hidden');
+                }
+            }
+        }
 
         function buildGridMenu() {
             const grid = document.getElementById('nav-grid'); if(!grid) return;
             grid.innerHTML = '';
+            const sidebarList = document.getElementById('sidebar-menu-list'); if(sidebarList) sidebarList.innerHTML = '';
+
             if(!userSession || !userSession.role || !menuConfig[userSession.role]) return;
 
             menuConfig[userSession.role].forEach(item => {
@@ -962,6 +998,14 @@
                 node.onclick = () => switchTab(item.id, item.title);
                 node.innerHTML = `<div class="w-14 h-14 squircle-icon shadow-sm ${item.color}"><i class="fa-solid ${item.icon} text-2xl"></i></div><span class="text-[10px] font-bold text-gray-700 dark:text-gray-300 text-center leading-tight tracking-tight">${item.title}</span>`;
                 grid.appendChild(node);
+
+                if (sidebarList) {
+                    const sNode = document.createElement('button');
+                    sNode.className = 'w-full text-left px-3 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3 transition';
+                    sNode.onclick = () => { toggleSidebarMenu(); switchTab(item.id, item.title); };
+                    sNode.innerHTML = `<i class="fa-solid ${item.icon} text-sm text-nizamudin-green dark:text-nizamudin-gold w-5 text-center"></i> <span>${item.title}</span>`;
+                    sidebarList.appendChild(sNode);
+                }
             });
         }
 
