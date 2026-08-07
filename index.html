@@ -974,6 +974,33 @@
             buildGridMenu(); goHome();
             if(document.getElementById('jurnal-tanggal')) document.getElementById('jurnal-tanggal').valueAsDate = new Date();
         }
+
+        function logout() {
+            sessionStorage.removeItem('sipjam_session');
+            sessionStorage.removeItem('sipjam_initData');
+            userSession = null;
+            
+            const appScreen = document.getElementById('app-screen');
+            const loginScreen = document.getElementById('login-screen');
+            if (appScreen) {
+                appScreen.classList.add('hidden');
+                appScreen.classList.remove('flex');
+            }
+            if (loginScreen) {
+                loginScreen.classList.remove('hidden');
+            }
+            
+            const loginUser = document.getElementById('login-user');
+            const loginPass = document.getElementById('login-pass');
+            if (loginUser) loginUser.value = '';
+            if (loginPass) loginPass.value = '';
+
+            const sidebar = document.getElementById('sidebar-drawer');
+            if (sidebar && !sidebar.classList.contains('hidden')) {
+                sidebar.classList.add('hidden');
+            }
+        }
+
         function toggleSidebarMenu() {
             const drawer = document.getElementById('sidebar-drawer');
             if (drawer) {
