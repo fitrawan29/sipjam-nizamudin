@@ -186,46 +186,58 @@
 
             <main class="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
                 
-                <section id="view-home" class="fade-in block space-y-6">
-                    <div class="bg-gradient-to-br from-[#0B4619] to-[#1a7031] rounded-[28px] p-5 md:p-8 shadow-xl shadow-green-900/20 text-white relative overflow-hidden border border-green-700/50">
-                        <i class="fa-solid fa-mosque absolute -right-6 -bottom-6 text-9xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
+                <section id="view-home" class="fade-in block space-y-4">
+                    <div class="bg-gradient-to-br from-[#0B4619] to-[#1a7031] rounded-2xl p-3.5 sm:p-4 shadow-lg shadow-green-900/20 text-white relative overflow-hidden border border-green-700/50">
+                        <i class="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
                         
-                        <div class="relative z-10 flex items-center gap-4 mb-4">
-                            <div class="w-14 h-14 md:w-16 md:h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border-2 border-white/20 shrink-0">
-                                <i class="fa-solid fa-user-tie text-2xl md:text-3xl text-white"></i>
-                            </div>
-                            <div class="min-w-0">
-                                <h2 id="user-name" class="font-bold text-lg md:text-xl leading-tight truncate">Nama User</h2>
-                                <p class="text-xs text-green-100/80 font-mono mt-0.5 tracking-wider truncate" id="user-id">ID: ***</p>
+                        <div class="relative z-10 flex items-center justify-between gap-3 mb-2.5">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 sm:w-11 sm:h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 shrink-0">
+                                    <i class="fa-solid fa-user-tie text-lg sm:text-xl text-white"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <h2 id="user-name" class="font-bold text-sm sm:text-base leading-tight truncate">Nama User</h2>
+                                        <span id="user-role-badge" class="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">ROLE</span>
+                                    </div>
+                                    <p class="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
+                                        <span id="user-id">ID: ***</span>
+                                        <span>•</span>
+                                        <span id="lbl-sekolah-home" class="truncate font-sans font-medium">SMA NIZAMUDIN</span>
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="relative z-10 flex items-center gap-2 text-[11px] md:text-xs text-green-50 mb-5 pb-4 border-b border-white/10">
-                            <i class="fa-solid fa-building-columns opacity-70"></i>
-                            <span class="font-medium tracking-wide" id="lbl-sekolah-home">SMA NIZAMUDIN</span>
-                            <span id="user-role-badge" class="ml-auto bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[9px] uppercase shadow-sm">ROLE</span>
-                        </div>
-
-                        <div class="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
-                            <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm"><p class="text-[9px] md:text-[10px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Status</p><p id="status-hari" class="text-xs md:text-sm font-bold text-white truncate">Reguler</p></div>
-                            <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm"><p class="text-[9px] md:text-[10px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Tanggal</p><p id="clock-date" class="text-xs md:text-sm font-bold text-white truncate">--/--/----</p></div>
-                            <div class="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm"><p class="text-[9px] md:text-[10px] text-green-200/80 uppercase font-bold tracking-wider mb-1">Jam Server</p><p id="clock-time" class="text-sm md:text-base font-black text-nizamudin-gold font-mono tracking-tight leading-none pt-0.5">00:00</p></div>
+                        <div class="relative z-10 grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/10">
+                            <div class="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
+                                <p class="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Status</p>
+                                <p id="status-hari" class="text-[10px] sm:text-xs font-bold text-white truncate">Reguler</p>
+                            </div>
+                            <div class="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
+                                <p class="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
+                                <p id="clock-date" class="text-[10px] sm:text-xs font-bold text-white truncate">--/--/----</p>
+                            </div>
+                            <div class="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
+                                <p class="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Jam Server</p>
+                                <p id="clock-time" class="text-xs sm:text-sm font-black text-nizamudin-gold font-mono tracking-tight leading-none pt-0.5">00:00</p>
+                            </div>
                         </div>
                     </div>
 
                     <div id="dashboard-alerts" class="space-y-2 hidden fade-in"></div>
 
-                    <div id="banner-kalender" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-4 flex items-start gap-3 fade-in shadow-sm">
-                        <i class="fa-solid fa-bullhorn text-blue-500 mt-0.5 text-base"></i>
+                    <div id="banner-kalender" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-3 flex items-start gap-3 fade-in shadow-sm">
+                        <i class="fa-solid fa-bullhorn text-blue-500 mt-0.5 text-sm"></i>
                         <div>
                             <h4 class="font-bold text-[10px] uppercase tracking-wide text-blue-800 dark:text-blue-400">Pengumuman Akademik</h4>
-                            <p id="banner-keterangan" class="text-xs md:text-sm font-medium text-gray-600 dark:text-gray-300 mt-0.5 leading-snug"></p>
+                            <p id="banner-keterangan" class="text-xs font-medium text-gray-600 dark:text-gray-300 mt-0.5 leading-snug"></p>
                         </div>
                     </div>
 
                     <div>
-                        <h3 class="text-[13px] md:text-base font-bold text-gray-800 dark:text-gray-200 mb-4 px-1">Aktivitas Utama</h3>
-                        <div id="nav-grid" class="grid grid-cols-4 gap-y-6 gap-x-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"></div>
+                        <h3 class="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-3 px-1">Aktivitas Utama</h3>
+                        <div id="nav-grid" class="grid grid-cols-4 gap-y-5 gap-x-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"></div>
                     </div>
                 </section>
 
