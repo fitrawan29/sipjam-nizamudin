@@ -104,31 +104,6 @@
 
     <div id="print-area"></div>
 
-    <!-- Drawer Navigation (Hamburger Menu) -->
-    <div id="mobile-menu-drawer" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300" onclick="toggleMobileMenu()">
-        <div class="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between" onclick="event.stopPropagation()">
-            <div>
-                <div class="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
-                            <i class="fa-solid fa-mosque"></i>
-                        </div>
-                        <span class="font-bold text-sm text-gray-800 dark:text-white">SIPJAM Menu</span>
-                    </div>
-                    <button type="button" onclick="toggleMobileMenu()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                        <i class="fa-solid fa-xmark text-sm"></i>
-                    </button>
-                </div>
-                <div id="drawer-menu-list" class="space-y-1.5 overflow-y-auto max-h-[calc(100vh-180px)] custom-scroll"></div>
-            </div>
-            <div class="pt-4 border-t border-gray-100 dark:border-gray-800">
-                <button type="button" onclick="logout()" class="w-full text-left px-3 py-2.5 text-xs font-bold text-red-500 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
-                    <i class="fa-solid fa-power-off"></i> Keluar Aplikasi
-                </button>
-            </div>
-        </div>
-    </div>
-
     <div class="mobile-container flex flex-col h-screen">
         
         <div id="loader">
@@ -165,16 +140,11 @@
         <div id="app-screen" class="hidden flex-col h-full w-full">
             <header class="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px]">
                 <div class="flex items-center gap-3">
-                    <button type="button" id="btn-hamburger" onclick="toggleMobileMenu()" class="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700">
-                        <i class="fa-solid fa-bars text-sm"></i>
-                    </button>
                     <button type="button" id="btn-back" onclick="goHome()" class="hidden btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700">
                         <i class="fa-solid fa-arrow-left text-sm"></i>
                     </button>
                     <div id="header-title" class="text-sm md:text-base font-bold text-gray-800 dark:text-white cursor-pointer" onclick="goHome()">SIPJAM <span class="text-nizamudin-green dark:text-nizamudin-gold font-black">Nizamudin</span></div>
                 </div>
-
-                <nav id="desktop-nav-links" class="hidden lg:flex items-center gap-1 text-xs font-bold text-gray-600 dark:text-gray-300"></nav>
 
                 <div class="flex items-center gap-2">
                     <button type="button" onclick="toggleDarkMode()" class="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-600 dark:text-nizamudin-gold shadow-sm border border-gray-200 dark:border-gray-700">
@@ -224,7 +194,7 @@
 
                     <div>
                         <h3 class="text-[13px] md:text-base font-bold text-gray-800 dark:text-gray-200 mb-4 px-1">Aktivitas Utama</h3>
-                        <div id="nav-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"></div>
+                        <div id="nav-grid" class="grid grid-cols-4 gap-y-6 gap-x-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"></div>
                     </div>
 
                     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 flex justify-center">
@@ -981,46 +951,17 @@
         }
         function logout() { sessionStorage.removeItem('sipjam_session'); sessionStorage.removeItem('sipjam_initData'); location.reload(); }
 
-        function toggleMobileMenu() {
-            const drawer = document.getElementById('mobile-menu-drawer');
-            if (drawer) {
-                if (drawer.classList.contains('hidden')) {
-                    drawer.classList.remove('hidden');
-                } else {
-                    drawer.classList.add('hidden');
-                }
-            }
-        }
-
         function buildGridMenu() {
-            const grid = document.getElementById('nav-grid'); if(grid) grid.innerHTML = '';
-            const drawerList = document.getElementById('drawer-menu-list'); if(drawerList) drawerList.innerHTML = '';
-            const desktopNav = document.getElementById('desktop-nav-links'); if(desktopNav) desktopNav.innerHTML = '';
-
+            const grid = document.getElementById('nav-grid'); if(!grid) return;
+            grid.innerHTML = '';
             if(!userSession || !userSession.role || !menuConfig[userSession.role]) return;
 
             menuConfig[userSession.role].forEach(item => {
                 const node = document.createElement('div');
-                node.className = 'btn-click flex flex-col items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700/60 shadow-sm hover:shadow-md transition';
+                node.className = 'btn-click flex flex-col items-center gap-1.5';
                 node.onclick = () => switchTab(item.id, item.title);
-                node.innerHTML = `<div class="w-12 h-12 md:w-14 md:h-14 squircle-icon shadow-sm ${item.color}"><i class="fa-solid ${item.icon} text-xl md:text-2xl"></i></div><span class="text-[10px] md:text-xs font-bold text-gray-700 dark:text-gray-300 text-center leading-tight tracking-tight">${item.title}</span>`;
-                if(grid) grid.appendChild(node);
-
-                if(drawerList) {
-                    const dNode = document.createElement('button');
-                    dNode.className = 'w-full text-left px-3 py-2.5 text-xs font-bold text-gray-700 dark:text-gray-200 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center gap-3 transition';
-                    dNode.onclick = () => { toggleMobileMenu(); switchTab(item.id, item.title); };
-                    dNode.innerHTML = `<i class="fa-solid ${item.icon} text-sm text-nizamudin-green dark:text-nizamudin-gold w-5 text-center"></i> <span>${item.title}</span>`;
-                    drawerList.appendChild(dNode);
-                }
-
-                if(desktopNav) {
-                    const dtNode = document.createElement('button');
-                    dtNode.className = 'px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-1.5';
-                    dtNode.onclick = () => switchTab(item.id, item.title);
-                    dtNode.innerHTML = `<i class="fa-solid ${item.icon} text-xs text-nizamudin-green dark:text-nizamudin-gold"></i> <span>${item.title}</span>`;
-                    desktopNav.appendChild(dtNode);
-                }
+                node.innerHTML = `<div class="w-14 h-14 squircle-icon shadow-sm ${item.color}"><i class="fa-solid ${item.icon} text-2xl"></i></div><span class="text-[10px] font-bold text-gray-700 dark:text-gray-300 text-center leading-tight tracking-tight">${item.title}</span>`;
+                grid.appendChild(node);
             });
         }
 
