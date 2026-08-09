@@ -1222,9 +1222,14 @@
         function togglePresensiFields() {
             const jenis = document.getElementById('presensi-jenis').value; const selectDetail = document.getElementById('presensi-detail-izin');
             const labelReq = document.getElementById('label-word-req'); const wordCountInfo = document.getElementById('word-count-info');
+            const tipeAbsenDiv = document.getElementById('presensi-tipe').parentElement;
+            
             document.getElementById('row-detail-izin').classList.add('hidden'); document.getElementById('row-file').classList.add('hidden'); document.getElementById('row-tempat').classList.add('hidden');
             document.getElementById('presensi-keterangan').removeAttribute('required');
+            tipeAbsenDiv.classList.remove('hidden');
+
             if(jenis !== 'Sekolah') {
+                tipeAbsenDiv.classList.add('hidden');
                 document.getElementById('row-detail-izin').classList.remove('hidden'); document.getElementById('row-tempat').classList.remove('hidden'); document.getElementById('presensi-keterangan').setAttribute('required', 'true');
                 if(jenis === 'Dinas Luar') { selectDetail.innerHTML = '<option value="Tugas Kedinasan">Tugas Kedinasan</option>'; labelReq.innerText = "Wajib Min. 10 Kata"; wordCountInfo.dataset.min = 10; } 
                 else if(jenis === 'Izin') { selectDetail.innerHTML = '<option value="Sakit">Sakit</option><option value="Izin Kegiatan Personal">Keperluan Personal</option>'; document.getElementById('row-file').classList.remove('hidden'); labelReq.innerText = "Wajib Min. 5 Kata"; wordCountInfo.dataset.min = 5; }
@@ -1841,7 +1846,6 @@
                     } else { Swal.fire('Error', res.message, 'error'); } 
                 } catch(e){}
             }).getRekapData(startDate, endDate);
-        }
         }
 
         function renderCardRekap(dataPresensi, dataJurnal) {
