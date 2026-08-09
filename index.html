@@ -907,7 +907,6 @@
             if(document.getElementById('clock-time')) document.getElementById('clock-time').innerText = timeStr;
             if(document.getElementById('clock-date')) document.getElementById('clock-date').innerText = dateStr;
         } setInterval(updateClock, 1000); updateClock(); 
-
         window.onload = () => {
             if (localStorage.getItem('theme') === 'dark') { document.documentElement.classList.add('dark'); document.getElementById('icon-theme').className = 'fa-solid fa-sun text-xs text-yellow-400'; }
             const now = new Date(); const yyyy = now.getFullYear(); const mm = String(now.getMonth() + 1).padStart(2, '0'); const dd = String(now.getDate()).padStart(2, '0');
@@ -920,21 +919,36 @@
             
             const savedSession = sessionStorage.getItem('sipjam_session');
             if (savedSession) { 
-                google.script.run.withSuccessHandler(function(resStr) {
-                    try {
-                        let res = JSON.parse(resStr); 
-                        if(res.status === 'success') { applyInitData(res.initData, res.user); loginInit(res.user); }
-                    } catch(e) {}
-                }).doLogin(JSON.parse(savedSession).username, "CACHE_BYPASS"); 
+                try {
+                    const sessUser = JSON.parse(savedSession);
+                    if(sessUser && sessUser.username) {
+                        google.script.run.withSuccessHandler(function(resStr) {
+                            try {
+                                let res = JSON.parse(resStr); 
+                                if(res.status === 'success') { applyInitData(res.initData, res.user); loginInit(res.user); }
+                                else { sessionStorage.removeItem('sipjam_session'); }
+                            } catch(e) { sessionStorage.removeItem('sipjam_session'); }
+                        }).doLogin(sessUser.username, "CACHE_BYPASS"); 
+                    }
+                } catch(se) { sessionStorage.removeItem('sipjam_session'); }
             }
         };
 
         function handleLogin(e) {
-            e.preventDefault(); const user = document.getElementById('login-user').value; const pass = document.getElementById('login-pass').value;
+            e.preventDefault(); 
+            const user = document.getElementById('login-user').value.trim(); 
+            const pass = document.getElementById('login-pass').value.trim();
+            if(!user || !pass) return Swal.fire('Peringatan', 'Username dan Password tidak boleh kosong.', 'warning');
+
             google.script.run.withSuccessHandler(function(resStr) {
                 try {
                     let res = JSON.parse(resStr); 
-                    if(res.status === 'success') { applyInitData(res.initData, res.user); loginInit(res.user); } else { Swal.fire('Akses Ditolak', res.message, 'error'); }
+                    if(res.status === 'success') { 
+                        applyInitData(res.initData, res.user); 
+                        loginInit(res.user); 
+                    } else { 
+                        Swal.fire('Akses Ditolak', res.message, 'error'); 
+                    }
                 } catch(e) { Swal.fire('Error', 'Data respons dari server tidak valid.', 'error'); }
             }).doLogin(user, pass);
         }
@@ -947,38 +961,57 @@
         }
 
         function applyInitData(initData, user) {
-            globalSettings = initData.settings; window.masterMapelList = initData.master.mapel || []; 
-            window.todaySchedule = initData.todaySchedule || []; window.isLibur = initData.todayEvent ? initData.todayEvent.isLibur : false; window.keteranganLibur = initData.todayEvent ? initData.todayEvent.keterangan : "";
-            
-            document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN || ""; document.getElementById('cfg-semester').value = globalSettings.SEMESTER || "Ganjil";
-            document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
-            document.getElementById('cfg-lat').value = globalSettings.LATITUDE || ""; document.getElementById('cfg-lon').value = globalSettings.LONGITUDE || ""; document.getElementById('cfg-radius').value = globalSettings.RADIUS || "";
-            document.getElementById('cfg-jd-mulai').value = padTimeStr(globalSettings.JAM_DATANG_MULAI || "06:00"); document.getElementById('cfg-jd-akhir').value = padTimeStr(globalSettings.JAM_DATANG_AKHIR || "08:00");
-            document.getElementById('cfg-jp-mulai').value = padTimeStr(globalSettings.JAM_PULANG_MULAI || "14:00"); document.getElementById('cfg-jp-akhir').value = padTimeStr(globalSettings.JAM_PULANG_AKHIR || "16:00");
-            document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
-            document.getElementById('cfg-nama-sekolah').value = globalSettings.NAMA_SEKOLAH || ""; document.getElementById('cfg-alamat').value = globalSettings.ALAMAT_SEKOLAH || "";
-            document.getElementById('cfg-logo-kiri').value = globalSettings.LOGO_KIRI_URL || ""; document.getElementById('cfg-logo-kanan').value = globalSettings.LOGO_KANAN_URL || "";
-            document.getElementById('cfg-nama-kepsek').value = globalSettings.NAMA_KEPALA_SEKOLAH || ""; document.getElementById('cfg-nip-kepsek').value = globalSettings.NIP_KEPALA_SEKOLAH || "";
-            if(document.getElementById('cfg-nama-yayasan')) document.getElementById('cfg-nama-yayasan').value = globalSettings.NAMA_YAYASAN || "";
-            if(document.getElementById('cfg-npsn')) document.getElementById('cfg-npsn').value = globalSettings.NPSN || "";
+            try {
+                initData = initData || {};
+                globalSettings = initData.settings || {}; 
+                window.masterMapelList = (initData.master && initData.master.mapel) ? initData.master.mapel : []; 
+                window.todaySchedule = initData.todaySchedule || []; 
+                window.isLibur = initData.todayEvent ? initData.todayEvent.isLibur : false; 
+                window.keteranganLibur = initData.todayEvent ? initData.todayEvent.keterangan : "";
+                
+                if(document.getElementById('cfg-ta')) document.getElementById('cfg-ta').value = globalSettings.TAHUN_AJARAN || ""; 
+                if(document.getElementById('cfg-semester')) document.getElementById('cfg-semester').value = globalSettings.SEMESTER || "Ganjil";
+                if(document.getElementById('cfg-tgl-mulai')) document.getElementById('cfg-tgl-mulai').value = globalSettings.TGL_MULAI_SEMESTER || ""; 
+                if(document.getElementById('cfg-tgl-akhir')) document.getElementById('cfg-tgl-akhir').value = globalSettings.TGL_AKHIR_SEMESTER || "";
+                if(document.getElementById('cfg-lat')) document.getElementById('cfg-lat').value = globalSettings.LATITUDE || ""; 
+                if(document.getElementById('cfg-lon')) document.getElementById('cfg-lon').value = globalSettings.LONGITUDE || ""; 
+                if(document.getElementById('cfg-radius')) document.getElementById('cfg-radius').value = globalSettings.RADIUS || "";
+                if(document.getElementById('cfg-jd-mulai')) document.getElementById('cfg-jd-mulai').value = padTimeStr(globalSettings.JAM_DATANG_MULAI || "06:00"); 
+                if(document.getElementById('cfg-jd-akhir')) document.getElementById('cfg-jd-akhir').value = padTimeStr(globalSettings.JAM_DATANG_AKHIR || "08:00");
+                if(document.getElementById('cfg-jp-mulai')) document.getElementById('cfg-jp-mulai').value = padTimeStr(globalSettings.JAM_PULANG_MULAI || "14:00"); 
+                if(document.getElementById('cfg-jp-akhir')) document.getElementById('cfg-jp-akhir').value = padTimeStr(globalSettings.JAM_PULANG_AKHIR || "16:00");
+                if(document.getElementById('cfg-hari-sekolah')) document.getElementById('cfg-hari-sekolah').value = globalSettings.HARI_SEKOLAH_PER_MINGGU || "6";
+                if(document.getElementById('cfg-nama-sekolah')) document.getElementById('cfg-nama-sekolah').value = globalSettings.NAMA_SEKOLAH || ""; 
+                if(document.getElementById('cfg-alamat')) document.getElementById('cfg-alamat').value = globalSettings.ALAMAT_SEKOLAH || "";
+                if(document.getElementById('cfg-logo-kiri')) document.getElementById('cfg-logo-kiri').value = globalSettings.LOGO_KIRI_URL || ""; 
+                if(document.getElementById('cfg-logo-kanan')) document.getElementById('cfg-logo-kanan').value = globalSettings.LOGO_KANAN_URL || "";
+                if(document.getElementById('cfg-nama-kepsek')) document.getElementById('cfg-nama-kepsek').value = globalSettings.NAMA_KEPALA_SEKOLAH || ""; 
+                if(document.getElementById('cfg-nip-kepsek')) document.getElementById('cfg-nip-kepsek').value = globalSettings.NIP_KEPALA_SEKOLAH || "";
+                if(document.getElementById('cfg-nama-yayasan')) document.getElementById('cfg-nama-yayasan').value = globalSettings.NAMA_YAYASAN || "";
+                if(document.getElementById('cfg-npsn')) document.getElementById('cfg-npsn').value = globalSettings.NPSN || "";
 
-            if(document.getElementById('lbl-sekolah-home')) document.getElementById('lbl-sekolah-home').innerText = globalSettings.NAMA_SEKOLAH || "SMA NIZAMUDIN";
+                if(document.getElementById('lbl-sekolah-home')) document.getElementById('lbl-sekolah-home').innerText = globalSettings.NAMA_SEKOLAH || "SMA NIZAMUDIN";
 
-            let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; let kHtmlRekap = '<option value="">Semua Kelas / Angkatan</option>';
-            if(initData.master && initData.master.kelas) { initData.master.kelas.forEach(k => { kHtml += `<option value="${k}">${k}</option>`; kHtmlRekap += `<option value="${k}">${k}</option>`; }); }
-            if(document.getElementById('rekap-jurnal-kelas')) document.getElementById('rekap-jurnal-kelas').innerHTML = kHtmlRekap;
-            if(document.getElementById('rekap-siswa-kelas')) document.getElementById('rekap-siswa-kelas').innerHTML = kHtml; 
+                let kHtml = '<option value="" disabled selected>Pilih Kelas...</option>'; let kHtmlRekap = '<option value="">Semua Kelas / Angkatan</option>';
+                if(initData.master && initData.master.kelas) { initData.master.kelas.forEach(k => { kHtml += `<option value="${k}">${k}</option>`; kHtmlRekap += `<option value="${k}">${k}</option>`; }); }
+                if(document.getElementById('rekap-jurnal-kelas')) document.getElementById('rekap-jurnal-kelas').innerHTML = kHtmlRekap;
+                if(document.getElementById('rekap-siswa-kelas')) document.getElementById('rekap-siswa-kelas').innerHTML = kHtml; 
 
-            let mHtmlRekap = '<option value="">Semua Mapel</option>';
-            window.masterMapelList.forEach(m => { mHtmlRekap += `<option value="${m}">${m}</option>`; });
-            if(document.getElementById('rekap-jurnal-mapel')) document.getElementById('rekap-jurnal-mapel').innerHTML = mHtmlRekap;
-            if(document.getElementById('rekap-siswa-mapel')) document.getElementById('rekap-siswa-mapel').innerHTML = mHtmlRekap;
+                let mHtmlRekap = '<option value="">Semua Mapel</option>';
+                (window.masterMapelList || []).forEach(m => { mHtmlRekap += `<option value="${m}">${m}</option>`; });
+                if(document.getElementById('rekap-jurnal-mapel')) document.getElementById('rekap-jurnal-mapel').innerHTML = mHtmlRekap;
+                if(document.getElementById('rekap-siswa-mapel')) document.getElementById('rekap-siswa-mapel').innerHTML = mHtmlRekap;
 
-            if(initData.todayEvent && initData.todayEvent.keterangan) {
-                const banner = document.getElementById('banner-kalender'); document.getElementById('banner-keterangan').innerText = initData.todayEvent.keterangan; banner.classList.remove('hidden');
-                document.getElementById('status-hari').innerText = initData.todayEvent.isLibur ? "Libur" : "Kegiatan";
+                if(initData.todayEvent && initData.todayEvent.keterangan) {
+                    const banner = document.getElementById('banner-kalender'); 
+                    if(document.getElementById('banner-keterangan')) document.getElementById('banner-keterangan').innerText = initData.todayEvent.keterangan; 
+                    if(banner) banner.classList.remove('hidden');
+                    if(document.getElementById('status-hari')) document.getElementById('status-hari').innerText = initData.todayEvent.isLibur ? "Libur" : "Kegiatan";
+                }
+                setupJurnalForm(user);
+            } catch(err) {
+                console.error("Error in applyInitData:", err);
             }
-            setupJurnalForm(user);
         }
 
         function setupJurnalForm(user) {
@@ -997,13 +1030,24 @@
         }
 
         function loginInit(user) {
-            userSession = user; sessionStorage.setItem('sipjam_session', JSON.stringify(user));
-            document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app-screen').classList.replace('hidden', 'flex');
-            document.getElementById('user-name').innerText = user.nama; document.getElementById('user-role-badge').innerText = user.role;
-            let maskedId = user.username.length > 4 ? user.username.substring(0,2) + "***" + user.username.slice(-2) : user.username; document.getElementById('user-id').innerText = `ID: ${maskedId}`;
-            buildGridMenu(); goHome();
+            userSession = user; 
+            sessionStorage.setItem('sipjam_session', JSON.stringify(user));
+            const loginScr = document.getElementById('login-screen');
+            const appScr = document.getElementById('app-screen');
+            if(loginScr) loginScr.classList.add('hidden');
+            if(appScr) {
+                appScr.classList.remove('hidden');
+                appScr.classList.add('flex');
+            }
+            if(document.getElementById('user-name')) document.getElementById('user-name').innerText = user.nama || user.username; 
+            if(document.getElementById('user-role-badge')) document.getElementById('user-role-badge').innerText = user.role || 'Guru';
+            let uName = user.username || user.nama || "User";
+            let maskedId = uName.length > 4 ? uName.substring(0,2) + "***" + uName.slice(-2) : uName; 
+            if(document.getElementById('user-id')) document.getElementById('user-id').innerText = `ID: ${maskedId}`;
+            buildGridMenu(); 
+            goHome();
             if(document.getElementById('jurnal-tanggal')) document.getElementById('jurnal-tanggal').valueAsDate = new Date();
-        }
+        } 
 
         function logout() {
             sessionStorage.removeItem('sipjam_session');
