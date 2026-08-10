@@ -423,6 +423,7 @@
                             </div>
                             <form onsubmit="submitLaporanPiketGuru(event)" class="space-y-4">
                                 <div><label class="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Tanggal Piket</label><input type="date" id="piket-form-date" required class="w-full px-3 py-2.5 text-sm rounded-xl input-premium"></div>
+                                <div id="piket-form-guru-list" class="hidden mb-4"></div>
                                 <div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-700">
                                     <label class="block text-[11px] font-bold uppercase text-gray-600 dark:text-gray-400 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2"><i class="fa-solid fa-users-rays text-teal-500"></i> Cek Kehadiran Siswa</label>
                                     <div id="piket-form-accordion" class="space-y-2"></div>
@@ -1509,6 +1510,30 @@
 
         function loadFormPiketSiswa() {
             const acc = document.getElementById('piket-form-accordion'); acc.innerHTML = `<div class="text-center py-5 text-gray-400 text-xs"><i class="fa-solid fa-spin fa-spinner"></i> Memuat data seluruh siswa...</div>`;
+            
+            const guruAcc = document.getElementById('piket-form-guru-list');
+            if (guruAcc) {
+                let hariIni = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date().getDay()];
+                let guruPiket = [];
+                if(globalJadwalPiket) {
+                    let jdwl = globalJadwalPiket.find(j => j.hari === hariIni);
+                    if (jdwl && jdwl.guru) guruPiket = jdwl.guru.split(',').map(g => g.trim()).filter(g => g !== userSession.nama);
+                }
+                
+                if (guruPiket.length > 0) {
+                    let guruHtml = `<div class="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-100 dark:border-gray-700"><label class="block text-[11px] font-bold uppercase text-gray-600 dark:text-gray-400 mb-3 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2"><i class="fa-solid fa-chalkboard-user text-teal-500"></i> Kehadiran Rekan Guru Piket</label><div class="space-y-2">`;
+                    guruPiket.forEach(g => {
+                        guruHtml += `<div class="flex justify-between items-center p-2 bg-white dark:bg-gray-700/50 rounded border border-gray-100 dark:border-gray-600 shadow-sm"><div class="text-[10px] font-bold text-gray-700 dark:text-gray-300 w-1/2 truncate">${g}</div><div class="flex gap-2 bg-gray-50 dark:bg-gray-800 rounded p-1 border border-gray-200 dark:border-gray-600 shrink-0"><label class="flex flex-col items-center cursor-pointer px-3"><input type="radio" name="pkt_guru_${g.replace(/\s/g,'_')}" data-guru="${g}" value="Hadir" checked class="w-3.5 h-3.5 text-green-600"><span class="text-[9px] font-bold text-green-600 mt-1">Hadir</span></label><label class="flex flex-col items-center cursor-pointer px-3"><input type="radio" name="pkt_guru_${g.replace(/\s/g,'_')}" data-guru="${g}" value="Tidak Hadir" class="w-3.5 h-3.5 text-red-500"><span class="text-[9px] font-bold text-red-500 mt-1">Tidak Hadir</span></label></div></div>`;
+                    });
+                    guruHtml += `</div></div>`;
+                    guruAcc.innerHTML = guruHtml;
+                    guruAcc.classList.remove('hidden');
+                } else {
+                    guruAcc.innerHTML = "";
+                    guruAcc.classList.add('hidden');
+                }
+            }
+
             google.script.run.withSuccessHandler(res => {
                 try { let r = JSON.parse(res); if(r.status === 'success') {
                     globalSiswaGrouped = r.data || {}; let html = '';
@@ -1532,7 +1557,13 @@
             if (fileInput.files.length === 0) return Swal.fire('Wajib Diisi', 'Foto dokumentasi piket wajib dilampirkan.', 'warning');
             if (fileInput.files[0].size > 5 * 1024 * 1024) return Swal.fire('Ukuran File', 'Maaf ukuran foto maksimal 5MB.', 'warning');
             const fileBase64 = await toBase64(fileInput.files[0]);
-            const payload = { namaGuru: userSession.nama, tanggal: document.getElementById('piket-form-date').value, rekapAbsen: rekapFinal, catatanApel: document.getElementById('piket-form-catatan').value || "-", fileBase64: fileBase64 };
+            
+            let kehadiranGuru = [];
+            document.querySelectorAll('input[type="radio"][name^="pkt_guru_"]:checked').forEach(rad => {
+                kehadiranGuru.push({ guru: rad.dataset.guru, status: rad.value });
+            });
+            
+            const payload = { namaGuru: userSession.nama, tanggal: document.getElementById('piket-form-date').value, rekapAbsen: rekapFinal, catatanApel: document.getElementById('piket-form-catatan').value || "-", fileBase64: fileBase64, kehadiranGuruPiket: kehadiranGuru };
             Swal.fire({ title: 'Mengirim Laporan Piket...', text:'Memproses data siswa', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
             google.script.run.withSuccessHandler(r => { try { let res = JSON.parse(r); if(res.status === 'success') { Swal.fire('Sukses', res.message, 'success'); switchPiketTab('beranda'); e.target.reset(); } else { Swal.fire('Gagal', res.message, 'error'); } } catch(err){} }).submitLaporanPiket(payload);
         }
@@ -1550,7 +1581,11 @@
                         let bColor = isPending ? "bg-yellow-50 text-yellow-700" : (lp.status === "Ditolak" ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700");
                         let actionHtml = isPending ? `<button type="button" onclick="aksiVerifikasiPiket('${lp.id}', 'Disetujui')" class="btn-click bg-green-500 text-white w-7 h-7 rounded shadow-sm"><i class="fa-solid fa-check text-[10px]"></i></button><button type="button" onclick="aksiVerifikasiPiket('${lp.id}', 'Ditolak')" class="btn-click bg-red-500 text-white w-7 h-7 rounded shadow-sm"><i class="fa-solid fa-xmark text-[10px]"></i></button>` : `<i class="fa-solid fa-circle-check text-gray-300"></i>`;
                         let downloadFile = (lp.link && lp.link !== "-") ? `<a href="${lp.link}" target="_blank" class="text-blue-500 font-bold text-[9px]"><i class="fa-solid fa-image"></i></a>` : "";
-                        html += `<div class="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center gap-2"><div class="flex-1 min-w-0"><div class="font-bold text-[11px] text-gray-800 dark:text-gray-100">${lp.guru}</div><div class="text-[9px] text-gray-500 dark:text-gray-400 mb-1">Tgl: ${lp.tanggal} ${downloadFile}</div><span class="inline-block px-2 py-0.5 text-[8px] font-bold uppercase rounded ${bColor}">${lp.status}</span></div><div class="shrink-0 flex gap-1">${actionHtml}</div></div>`;
+                        let guruPiketHtml = '';
+                        if (lp.kehadiranGuruPiket && Array.isArray(lp.kehadiranGuruPiket) && lp.kehadiranGuruPiket.length > 0) {
+                            guruPiketHtml = `<div class="mt-1.5 text-[8px] text-gray-500 dark:text-gray-400"><span class="font-bold">Kehadiran Rekan:</span> ` + lp.kehadiranGuruPiket.map(g => `<span class="${g.status==='Hadir'?'text-green-600':'text-red-500'} font-bold">${g.guru} (${g.status[0]})</span>`).join(', ') + `</div>`;
+                        }
+                        html += `<div class="bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex justify-between items-center gap-2"><div class="flex-1 min-w-0"><div class="font-bold text-[11px] text-gray-800 dark:text-gray-100">${lp.guru}</div><div class="text-[9px] text-gray-500 dark:text-gray-400 mb-1">Tgl: ${lp.tanggal} ${downloadFile}</div>${guruPiketHtml}<span class="inline-block mt-1 px-2 py-0.5 text-[8px] font-bold uppercase rounded ${bColor}">${lp.status}</span></div><div class="shrink-0 flex gap-1">${actionHtml}</div></div>`;
                     }); list.innerHTML = html;
                 } } catch(e){}
             }).getLaporanPiket(dStr);
