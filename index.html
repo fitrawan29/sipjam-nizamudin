@@ -1242,9 +1242,9 @@
             return `
             <div class="ttd-container">
                 <div class="ttd-box">
-                    <p>${lokasi}, ${tglStr}</p>
+                    <p style="white-space: nowrap;">${lokasi}, ${tglStr}</p>
                     <p>Mengetahui,</p>
-                    <p>Kepala Sekolah,</p>
+                    <p>Kepala ${globalSettings.NAMA_SEKOLAH || "Sekolah"},</p>
                     ${ttdImageHtml}
                     <div class="ttd-name-block">
                         <p class="name">${kepsek}</p>
