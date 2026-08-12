@@ -1155,20 +1155,40 @@
                     if(r.status === 'success') {
                         let html = '';
                         const selectTipe = document.getElementById('presensi-tipe');
-                        if(!r.data.datang) {
-                            html += `<div class="bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-base"></i> Peringatan: Anda belum mengisi Presensi Datang hari ini!</div>`;
+                        if(r.data.jenisDatang === "Izin" || r.data.jenisDatang === "Sakit") {
+                            html += `<div class="bg-blue-50 border border-blue-200 text-blue-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-info-circle text-base"></i> Anda sedang ${r.data.jenisDatang} hari ini. Tidak perlu presensi pulang, jurnal kegiatan, atau laporan piket.</div>`;
                             if(selectTipe) selectTipe.value = "Datang";
                         }
-                        else if(r.data.datang && !r.data.pulang) {
-                            html += `<div class="bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-base"></i> Jangan lupa untuk mengisi Presensi Pulang nanti.</div>`;
-                            if(selectTipe) selectTipe.value = "Pulang";
+                        else if(r.data.jenisDatang === "Dinas Luar") {
+                            if(!r.data.pulang) {
+                                html += `<div class="bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-base"></i> Anda sedang Dinas Luar. Jangan lupa untuk mengisi Presensi Pulang (Dinas Luar) nanti.</div>`;
+                                if(selectTipe) selectTipe.value = "Pulang";
+                            } else {
+                                html += `<div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-check text-base"></i> Presensi Dinas Luar Hari Ini Lengkap.</div>`;
+                            }
+                            if(!r.data.jurnal) html += `<div class="bg-blue-50 border border-blue-200 text-blue-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-info-circle text-base"></i> Anda belum mengisi Jurnal (KBM / Kegiatan) hari ini.</div>`;
                         }
-                        else if(r.data.datang && r.data.pulang) {
-                            html += `<div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-check text-base"></i> Presensi Hari Ini Lengkap: Datang & Pulang sudah tercatat.</div>`;
+                        else {
+                            if(!r.data.datang) {
+                                html += `<div class="bg-red-50 border border-red-200 text-red-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-base"></i> Peringatan: Anda belum mengisi Presensi Datang hari ini!</div>`;
+                                if(selectTipe) selectTipe.value = "Datang";
+                            }
+                            else if(r.data.datang && !r.data.pulang) {
+                                html += `<div class="bg-orange-50 border border-orange-200 text-orange-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-exclamation text-base"></i> Jangan lupa untuk mengisi Presensi Pulang nanti.</div>`;
+                                if(selectTipe) selectTipe.value = "Pulang";
+                            }
+                            else if(r.data.datang && r.data.pulang) {
+                                html += `<div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-circle-check text-base"></i> Presensi Hari Ini Lengkap: Datang & Pulang sudah tercatat.</div>`;
+                            }
+                            if(!r.data.jurnal) html += `<div class="bg-blue-50 border border-blue-200 text-blue-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-info-circle text-base"></i> Anda belum mengisi Jurnal (KBM / Kegiatan) hari ini.</div>`;
+                            if(r.data.piket) {
+                                if(r.data.hasLaporanPiket) {
+                                    html += `<div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-shield-halved text-base"></i> Laporan Piket hari ini sudah diisi. Terima kasih.</div>`;
+                                } else {
+                                    html += `<div class="bg-teal-50 border border-teal-200 text-teal-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-base"></i> Perhatian: Anda ditugaskan sebagai GURU PIKET hari ini dan Laporan Piket belum diisi.</div>`;
+                                }
+                            }
                         }
-
-                        if(!r.data.jurnal) html += `<div class="bg-blue-50 border border-blue-200 text-blue-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-info-circle text-base"></i> Anda belum mengisi Jurnal (KBM / Kegiatan) hari ini.</div>`;
-                        if(r.data.piket) html += `<div class="bg-teal-50 border border-teal-200 text-teal-600 px-3 py-2.5 rounded-xl text-[11px] font-bold flex items-center gap-2"><i class="fa-solid fa-shield-halved text-base"></i> Perhatian: Anda ditugaskan sebagai GURU PIKET hari ini.</div>`;
                         
                         if(r.data.rekapBulanIni) {
                             let rk = r.data.rekapBulanIni;
@@ -1288,7 +1308,7 @@
             if(jenis !== 'Sekolah') {
                 tipeAbsenDiv.classList.add('hidden');
                 document.getElementById('row-detail-izin').classList.remove('hidden'); document.getElementById('row-tempat').classList.remove('hidden'); document.getElementById('presensi-keterangan').setAttribute('required', 'true');
-                if(jenis === 'Dinas Luar') { selectDetail.innerHTML = '<option value="Tugas Kedinasan">Tugas Kedinasan</option>'; labelReq.innerText = "Wajib Min. 10 Kata"; wordCountInfo.dataset.min = 10; } 
+                if(jenis === 'Dinas Luar') { selectDetail.innerHTML = '<option value="Tugas Kedinasan">Tugas Kedinasan</option>'; labelReq.innerText = "Wajib Min. 10 Kata"; wordCountInfo.dataset.min = 10; document.getElementById('row-file').classList.remove('hidden'); } 
                 else if(jenis === 'Izin') { selectDetail.innerHTML = '<option value="Sakit">Sakit</option><option value="Izin Kegiatan Personal">Keperluan Personal</option>'; document.getElementById('row-file').classList.remove('hidden'); labelReq.innerText = "Wajib Min. 5 Kata"; wordCountInfo.dataset.min = 5; }
                 getLocationNameForTempat(); updateWordCount();
             }
