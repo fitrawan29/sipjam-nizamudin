@@ -1318,7 +1318,41 @@
         }
         function executePrint(title, htmlContent, guruName = null) {
             const printArea = document.getElementById('print-area'); printArea.innerHTML = generateKopSuratHtml(title) + htmlContent + generateTandaTanganHtml(guruName);
-            setTimeout(() => { window.print(); }, 500);
+            
+            const images = printArea.getElementsByTagName('img');
+            let loadedCount = 0;
+            const totalImages = images.length;
+            
+            if (totalImages === 0) {
+                setTimeout(() => { window.print(); }, 500);
+                return;
+            }
+
+            let printTriggered = false;
+            const fallbackTimer = setTimeout(() => {
+                if (!printTriggered) {
+                    printTriggered = true;
+                    window.print();
+                }
+            }, 5000);
+
+            function checkDone() {
+                loadedCount++;
+                if (loadedCount >= totalImages && !printTriggered) {
+                    printTriggered = true;
+                    clearTimeout(fallbackTimer);
+                    setTimeout(() => { window.print(); }, 300);
+                }
+            }
+
+            for (let i = 0; i < totalImages; i++) {
+                if (images[i].complete) {
+                    checkDone();
+                } else {
+                    images[i].onload = checkDone;
+                    images[i].onerror = checkDone;
+                }
+            }
         }
 
         function togglePresensiFields() {
