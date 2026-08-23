@@ -207,8 +207,7 @@
                                         <span id="user-role-badge" class="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">ROLE</span>
                                     </div>
                                     <p class="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
-                                        <span id="user-id">ID: ***</span>
-                                        <span>â€¢</span>
+                                        <span id="user-id"></span>
                                         <span id="lbl-sekolah-home" class="truncate font-sans font-medium">SMA NIZAMUDIN</span>
                                     </p>
                                 </div>
@@ -458,7 +457,8 @@
                                     <i class="fa-regular fa-calendar absolute left-3.5 top-2.5 text-gray-400 text-xs"></i>
                                     <input type="date" id="piket-verif-date" onchange="loadVerifikasiPiket()" class="w-full pl-9 pr-4 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-800">
                                 </div>
-                                <button type="button" onclick="bulkVerifyPiket()" class="btn-click bg-nizamudin-green hover:bg-green-700 text-white text-[10px] font-bold py-2 px-3 rounded-xl shadow-sm whitespace-nowrap"><i class="fa-solid fa-check-double mr-1"></i> Semua</button>
+                                <button type="button" onclick="document.getElementById('piket-verif-date').value=''; loadVerifikasiPiket();" class="btn-click bg-blue-500 hover:bg-blue-600 text-white text-[10px] font-bold py-2 px-3 rounded-xl shadow-sm whitespace-nowrap"><i class="fa-solid fa-download mr-1"></i> Tarik Semua</button>
+                                <button type="button" onclick="bulkVerifyPiket()" class="btn-click bg-nizamudin-green hover:bg-green-700 text-white text-[10px] font-bold py-2 px-3 rounded-xl shadow-sm whitespace-nowrap"><i class="fa-solid fa-check-double mr-1"></i> Setujui Semua</button>
                             </div>
                             <div id="piket-verif-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[200px]"></div>
                         </div>
@@ -1083,8 +1083,7 @@
             if(document.getElementById('user-name')) document.getElementById('user-name').innerText = user.nama || user.username; 
             if(document.getElementById('user-role-badge')) document.getElementById('user-role-badge').innerText = user.role || 'Guru';
             let uName = user.username || user.nama || "User";
-            let maskedId = uName.length > 4 ? uName.substring(0,2) + "***" + uName.slice(-2) : uName; 
-            if(document.getElementById('user-id')) document.getElementById('user-id').innerText = `ID: ${maskedId}`;
+            if(document.getElementById('user-id')) document.getElementById('user-id').innerText = uName;
             buildGridMenu(); 
             goHome();
             if(document.getElementById('jurnal-tanggal')) document.getElementById('jurnal-tanggal').valueAsDate = new Date();
@@ -1317,8 +1316,9 @@
                 </div>
             </div>`;
         }
-        function executePrint(title, htmlContent, guruName = null) {
-            const printArea = document.getElementById('print-area'); printArea.innerHTML = generateKopSuratHtml(title) + htmlContent + generateTandaTanganHtml(guruName);
+        function executePrint(title, htmlContent, guruName = null, hideSignature = false) {
+            const sigHtml = hideSignature ? "" : generateTandaTanganHtml(guruName);
+            const printArea = document.getElementById('print-area'); printArea.innerHTML = generateKopSuratHtml(title) + htmlContent + sigHtml;
             
             const images = printArea.getElementsByTagName('img');
             let loadedCount = 0;
@@ -2029,7 +2029,9 @@
                     if(j.detailAbsensi && j.detailAbsensi !== "Nihil" && j.detailAbsensi !== "-") { let details = j.detailAbsensi.split(','); for(let det of details) { det = det.trim(); if(det.toLowerCase().includes(s.nama.toLowerCase())) { let match = det.match(/\((.)\)/); if(match) status = match[1].toUpperCase(); break; } } }
                     html += `<td class="text-center">${status}</td>`; if(status==='H') h++; if(status==='S') sakit++; if(status==='I') izin++; if(status==='A') a++;
                 }); html += `<td class="text-center"><b>${h}</b></td><td class="text-center"><b>${sakit}</b></td><td class="text-center"><b>${izin}</b></td><td class="text-center"><b>${a}</b></td></tr>`;
-            }); html += `</tbody></table>`; executePrint("REKAPITULASI PRESENSI SISWA", html, userSession.nama);
+            }); html += `</tbody></table>`; 
+            let isHideSig = userSession.role === 'Admin';
+            executePrint("REKAPITULASI PRESENSI SISWA", html, userSession.nama, isHideSig);
         }
 
         let chartInstance = null;
