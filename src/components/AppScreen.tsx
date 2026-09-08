@@ -5,6 +5,17 @@ import HomeView from './HomeView';
 import GuruPresensi from './GuruPresensi';
 import GuruJurnal from './GuruJurnal';
 import PiketView from './PiketView';
+import DokumenView from './DokumenView';
+import HistoryView from './HistoryView';
+import RekapJurnalView from './RekapJurnalView';
+import RekapSiswaView from './RekapSiswaView';
+import AdminMonitorView from './AdminMonitorView';
+import AdminVerifView from './AdminVerifView';
+import AdminRekapView from './AdminRekapView';
+import AdminDataView from './AdminDataView';
+import AdminBackupView from './AdminBackupView';
+import AdminConfigView from './AdminConfigView';
+import AnalitikView from './AnalitikView';
 // Import other views as we build them
 
 export default function AppScreen({ user, onLogout }: { user: any, onLogout: () => void }) {
@@ -32,12 +43,32 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     }
   };
 
-  const menuItems = [
+  const menuItemsGuru = [
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
-    { id: 'view-guru-presensi', icon: 'fa-user-check', label: 'Presensi Guru' },
-    { id: 'view-guru-jurnal', icon: 'fa-book-open', label: 'Jurnal Pembelajaran' },
+    { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', label: 'Presensi Guru' },
+    { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' },
+    { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
+    { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' },
+    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }
   ];
+
+  const menuItemsAdmin = [
+    { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
+    { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
+    { id: 'view-piket', icon: 'fa-shield-halved', label: 'Kelola Piket' },
+    { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik' },
+    { id: 'view-admin-rekap', icon: 'fa-file-invoice', label: 'Rekap Akhir' },
+    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' },
+    { id: 'view-admin-data', icon: 'fa-database', label: 'Master' },
+    { id: 'view-admin-monitor', icon: 'fa-user-clock', label: 'Pantauan Harian' },
+    { id: 'view-admin-backup', icon: 'fa-hard-drive', label: 'Akses Data / Backup' },
+    { id: 'view-admin-config', icon: 'fa-gears', label: 'Sistem' }
+  ];
+
+  const menuItems = user?.role === 'Admin' ? menuItemsAdmin : menuItemsGuru;
 
   return (
     <div className="flex-col h-full w-full flex">
@@ -102,6 +133,17 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
         {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
         {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
         {currentView === 'view-piket' && <PiketView user={user} />}
+        {currentView === 'view-dokumen' && <DokumenView user={user} />}
+        {currentView === 'view-history' && <HistoryView user={user} />}
+        {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
+        {currentView === 'view-rekap-siswa' && <RekapSiswaView user={user} />}
+        {currentView === 'view-admin-monitor' && <AdminMonitorView user={user} />}
+        {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
+        {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
+        {currentView === 'view-admin-data' && <AdminDataView user={user} />}
+        {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
+        {currentView === 'view-admin-config' && <AdminConfigView user={user} />}
+        {currentView === 'view-analitik' && <AnalitikView user={user} />}
       </main>
     </div>
   );
