@@ -16,19 +16,54 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [file, setFile] = useState<File | null>(null);
   
   const [mapelList, setMapelList] = useState<any[]>([]);
+  const [kelasList, setKelasList] = useState<string[]>([]);
+  const [hasScheduleToday, setHasScheduleToday] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Fetch Mapel for dropdown
-    const fetchMapel = async () => {
-      const { data } = await supabase.from('data_mapel').select('*');
-      if (data) setMapelList(data);
+    // Fetch Mapel and Kelas on mount
+    const fetchMasterData = async () => {
+      const { data: mapelData } = await supabase.from('data_mapel').select('*');
+      if (mapelData) setMapelList(mapelData);
+
+      const { data: siswaData } = await supabase.from('data_siswa').select('kelas');
+      if (siswaData) {
+        const uniqueKelas = [...new Set(siswaData.map(s => s.kelas).filter(Boolean))].sort();
+        setKelasList(uniqueKelas as string[]);
+      }
     };
-    fetchMapel();
+    fetchMasterData();
     
     // Set default date
     setTanggal(new Date().toISOString().split('T')[0]);
   }, []);
+
+  useEffect(() => {
+    // Check if the teacher has a schedule on the selected date
+    const checkSchedule = async () => {
+      if (!tanggal || !user?.nama) return;
+      
+      const selectedDate = new Date(tanggal);
+      const hariList = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const selectedHari = hariList[selectedDate.getDay()];
+      
+      const { data: jadwalData } = await supabase
+        .from('jadwal_pelajaran')
+        .select('*')
+        .eq('hari', selectedHari)
+        .eq('nama_guru', user.nama);
+      
+      if (jadwalData && jadwalData.length > 0) {
+        setHasScheduleToday(true);
+        setTipeJurnal('Jurnal KBM');
+      } else {
+        setHasScheduleToday(false);
+        setTipeJurnal('Jurnal Kegiatan');
+      }
+    };
+    
+    checkSchedule();
+  }, [tanggal, user?.nama]);
 
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,9 +115,13 @@ export default function GuruJurnal({ user }: { user: any }) {
                 <div>
                     <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Jenis Jurnal</label>
                     <select value={tipeJurnal} onChange={e => setTipeJurnal(e.target.value)} className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400">
-                      <option value="Reguler">Pembelajaran Reguler</option>
-                      <option value="Proyek">Proyek P5 / Ekstra</option>
-                      <option value="Tugas">Pemberian Tugas (Siswa Mandiri)</option>
+                      {hasScheduleToday === true ? (
+                        <option value="Jurnal KBM">Jurnal KBM (Ada Jadwal)</option>
+                      ) : hasScheduleToday === false ? (
+                        <option value="Jurnal Kegiatan">Jurnal Kegiatan (Tidak Ada Jadwal)</option>
+                      ) : (
+                        <option value="">Memuat jadwal...</option>
+                      )}
                     </select>
                 </div>
 
@@ -100,9 +139,9 @@ export default function GuruJurnal({ user }: { user: any }) {
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Kelas</label>
                         <select value={kelas} onChange={e => setKelas(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium">
                           <option value="" disabled>Pilih...</option>
-                          <option value="X-1">X-1</option>
-                          <option value="XI-IPA">XI-IPA</option>
-                          <option value="XII-IPS">XII-IPS</option>
+                          {kelasList.map(k => (
+                            <option key={k} value={k}>{k}</option>
+                          ))}
                         </select>
                     </div>
                 </div>

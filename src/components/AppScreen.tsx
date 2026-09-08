@@ -129,7 +129,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       )}
 
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
-        {currentView === 'view-home' && <HomeView user={user} setView={setCurrentView} />}
+        {currentView === 'view-home' && <HomeView user={user} setView={setCurrentView} menuItems={menuItems} />}
         {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
         {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
         {currentView === 'view-piket' && <PiketView user={user} />}
