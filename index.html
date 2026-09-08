@@ -1062,43 +1062,21 @@
             const tipeSelect = document.getElementById('jurnal-tipe'); const mapelSelect = document.getElementById('jurnal-mapel'); const kelasSelect = document.getElementById('jurnal-kelas');
             if (!tipeSelect || !mapelSelect || !kelasSelect) return;
             if (user && user.role === 'Guru') {
-                tipeSelect.innerHTML = '<option value="KBM">Jurnal KBM (Mengajar)</option><option value="Kegiatan">Jurnal Kegiatan (Tidak Mengajar)</option>';
-                
-                let mapelHtml = '<option value="" disabled selected>Pilih Mapel...</option>'; 
-                let kelasHtml = '<option value="" disabled selected>Pilih Kelas...</option>';
-                
                 if (window.todaySchedule && window.todaySchedule.length > 0) {
+                    tipeSelect.innerHTML = '<option value="KBM">Jurnal KBM (Jadwal Mengajar Hari Ini)</option>';
+                    let mapelHtml = '<option value="" disabled selected>Pilih Mapel...</option>'; 
+                    let kelasHtml = '<option value="" disabled selected>Pilih Kelas...</option>';
+                    
                     const mapels = [...new Set(window.todaySchedule.map(s => s.mapel))]; 
                     const kelass = [...new Set(window.todaySchedule.map(s => s.kelas))];
                     
-                    mapelHtml += `<optgroup label="Jadwal Hari Ini">`;
                     mapels.forEach(m => mapelHtml += `<option value="${m}">${m}</option>`); 
-                    mapelHtml += `</optgroup>`;
-                    
-                    kelasHtml += `<optgroup label="Jadwal Hari Ini">`;
                     kelass.forEach(k => kelasHtml += `<option value="${k}">${k}</option>`);
-                    kelasHtml += `</optgroup>`;
-                }
-                
-                if(window.masterMapelList && window.masterMapelList.length > 0) {
-                    mapelHtml += `<optgroup label="Semua Mapel">`;
-                    window.masterMapelList.forEach(m => mapelHtml += `<option value="${m}">${m}</option>`);
-                    mapelHtml += `</optgroup>`;
-                }
-                
-                if(window.masterKelasList && window.masterKelasList.length > 0) {
-                    kelasHtml += `<optgroup label="Semua Kelas">`;
-                    window.masterKelasList.forEach(k => kelasHtml += `<option value="${k}">${k}</option>`);
-                    kelasHtml += `</optgroup>`;
-                }
-                
-                mapelSelect.innerHTML = mapelHtml; 
-                kelasSelect.innerHTML = kelasHtml;
-                
-                if (!window.todaySchedule || window.todaySchedule.length === 0) {
-                    tipeSelect.value = "Kegiatan"; 
-                } else {
-                    tipeSelect.value = "KBM";
+                    
+                    mapelSelect.innerHTML = mapelHtml; 
+                    kelasSelect.innerHTML = kelasHtml;
+                } else { 
+                    tipeSelect.innerHTML = '<option value="Kegiatan">Jurnal Kegiatan (Tidak Mengajar)</option>'; 
                 }
                 
                 toggleJurnalFields();
