@@ -17,6 +17,8 @@ export default function GuruJurnal({ user }: { user: any }) {
   
   const [mapelList, setMapelList] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [absensi, setAbsensi] = useState<Record<string, string>>({});
   const [hasScheduleToday, setHasScheduleToday] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -65,6 +67,27 @@ export default function GuruJurnal({ user }: { user: any }) {
     checkSchedule();
   }, [tanggal, user?.nama]);
 
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!kelas) {
+        setStudents([]);
+        setAbsensi({});
+        return;
+      }
+      const { data } = await supabase.from('data_siswa').select('*').eq('kelas', kelas).order('nama_siswa', { ascending: true });
+      if (data) {
+        setStudents(data);
+        // Default all to 'H' (Hadir)
+        const initialAbsensi: Record<string, string> = {};
+        data.forEach(s => {
+          initialAbsensi[s.nisn] = 'H';
+        });
+        setAbsensi(initialAbsensi);
+      }
+    };
+    fetchStudents();
+  }, [kelas]);
+
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -80,7 +103,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       tanggal: tanggal,
       materi: materi,
       kegiatan: kegiatan,
-      absensi_siswa: '[]', // Mocked for now, in real app needs live student checklist
+      absensi_siswa: JSON.stringify(absensi),
       keterangan: tipeJurnal,
       refleksi: refleksi,
       detail_absen: '',
@@ -167,9 +190,49 @@ export default function GuruJurnal({ user }: { user: any }) {
                     <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
                 </div>
                 
+                {students.length > 0 && (
+                  <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl">
+                    <h3 className="text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <i className="fa-solid fa-users text-blue-500"></i> Live Absensi Kelas {kelas}
+                    </h3>
+                    <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
+                      {students.map((siswa, idx) => (
+                        <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-gray-400 w-4">{idx + 1}.</span>
+                            <div>
+                              <div className="text-xs font-bold text-gray-800 dark:text-gray-200">{siswa.nama_siswa}</div>
+                              <div className="text-[9px] text-gray-500">{siswa.nisn}</div>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            {['H', 'S', 'I', 'A'].map(status => (
+                              <button 
+                                key={status}
+                                type="button"
+                                onClick={() => setAbsensi(prev => ({...prev, [siswa.nisn]: status}))}
+                                className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
+                                  absensi[siswa.nisn] === status 
+                                  ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
+                                     status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
+                                     status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
+                                     'bg-red-500 text-white shadow-sm') 
+                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                                }`}
+                              >
+                                {status}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Upload Foto Jurnal (Opsional)</label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800" />
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Upload Foto Jurnal <span className="text-red-500">(Wajib)</span></label>
+                    <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800" />
                 </div>
 
                 <div>

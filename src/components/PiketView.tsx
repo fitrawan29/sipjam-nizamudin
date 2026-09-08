@@ -9,8 +9,34 @@ export default function PiketView({ user }: { user: any }) {
   const [jadwalPiket, setJadwalPiket] = useState<any[]>([]);
   const [laporanPiket, setLaporanPiket] = useState<any[]>([]);
 
+  const [allStudents, setAllStudents] = useState<any[]>([]);
+  const [kelasList, setKelasList] = useState<string[]>([]);
+  const [activeKelas, setActiveKelas] = useState<string>('');
+  const [piketAbsensi, setPiketAbsensi] = useState<Record<string, string>>({});
+  const [catatan, setCatatan] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     fetchDataPiket();
+
+    const fetchStudents = async () => {
+      const { data } = await supabase.from('data_siswa').select('*').order('kelas', { ascending: true }).order('nama_siswa', { ascending: true });
+      if (data) {
+        setAllStudents(data);
+        const uniqueKelas = [...new Set(data.map(s => s.kelas).filter(Boolean))];
+        setKelasList(uniqueKelas as string[]);
+        if (uniqueKelas.length > 0) setActiveKelas(uniqueKelas[0] as string);
+        
+        // Initialize default attendance
+        const initialAbsensi: Record<string, string> = {};
+        data.forEach(s => {
+          initialAbsensi[s.nisn] = 'H';
+        });
+        setPiketAbsensi(initialAbsensi);
+      }
+    };
+    fetchStudents();
   }, []);
 
   const fetchDataPiket = async () => {
@@ -21,6 +47,38 @@ export default function PiketView({ user }: { user: any }) {
     // Fetch Laporan
     const { data: laporan } = await supabase.from('laporan_piket').select('*').order('timestamp', { ascending: false }).limit(10);
     if (laporan) setLaporanPiket(laporan);
+  };
+
+  const handlePiketSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const fileUrl = file ? 'https://example.com/piket-file.jpg' : '';
+
+    const newLaporan = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      tanggal: new Date().toISOString().split('T')[0],
+      guru_pelapor: user.nama,
+      rekap_absen_kelas: JSON.stringify(piketAbsensi),
+      catatan_apel: catatan,
+      link_foto: fileUrl,
+      status_verifikasi: 'Menunggu',
+      kehadiran_guru_piket: 'Hadir'
+    };
+
+    const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
+
+    if (error) {
+      Swal.fire('Error', 'Gagal menyimpan laporan piket', 'error');
+    } else {
+      Swal.fire('Berhasil', 'Laporan piket berhasil disimpan!', 'success');
+      setCatatan('');
+      setFile(null);
+      setActiveTab('beranda');
+      fetchDataPiket(); // Refresh data
+    }
+    setLoading(false);
   };
 
   return (
@@ -93,23 +151,78 @@ export default function PiketView({ user }: { user: any }) {
                   <div className="bg-orange-50 border border-orange-200 p-3 rounded-xl mb-4 text-[10px] text-orange-800 font-medium leading-relaxed">
                       <i className="fa-solid fa-circle-info mr-1"></i> Silakan isi laporan jika Anda ditugaskan piket hari ini. Periksa seluruh kelas secara bergantian. Foto dokumentasi wajib dilampirkan.
                   </div>
-                  <form onSubmit={(e) => { e.preventDefault(); Swal.fire('Info', 'Fitur simpan laporan sedang dikembangkan', 'info'); }} className="space-y-4">
+                  <form onSubmit={handlePiketSubmit} className="space-y-4">
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Tanggal Piket</label>
                         <input type="date" required value={new Date().toISOString().split('T')[0]} readOnly className="w-full px-3 py-2.5 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
                       </div>
                       
+                      <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/50 rounded-xl p-3">
+                        <label className="block text-[11px] font-bold text-teal-800 dark:text-teal-400 mb-2">
+                          <i className="fa-solid fa-clipboard-check mr-1"></i> Rekap Absensi Sekolah
+                        </label>
+                        <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 mb-2">
+                          {kelasList.map(k => (
+                            <button
+                              key={k}
+                              type="button"
+                              onClick={() => setActiveKelas(k)}
+                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 transition-all ${
+                                activeKelas === k 
+                                ? 'bg-teal-600 text-white shadow-md' 
+                                : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+                              }`}
+                            >
+                              Kelas {k}
+                            </button>
+                          ))}
+                        </div>
+                        
+                        <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll pr-1">
+                          {allStudents.filter(s => s.kelas === activeKelas).map((siswa, idx) => (
+                            <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-gray-400 w-4">{idx + 1}.</span>
+                                <div>
+                                  <div className="text-xs font-bold text-gray-800 dark:text-gray-200">{siswa.nama_siswa}</div>
+                                  <div className="text-[9px] text-gray-500">{siswa.nisn}</div>
+                                </div>
+                              </div>
+                              <div className="flex gap-1 shrink-0">
+                                {['H', 'S', 'I', 'A'].map(status => (
+                                  <button 
+                                    key={status}
+                                    type="button"
+                                    onClick={() => setPiketAbsensi(prev => ({...prev, [siswa.nisn]: status}))}
+                                    className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
+                                      piketAbsensi[siswa.nisn] === status 
+                                      ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
+                                         status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
+                                         status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
+                                         'bg-red-500 text-white shadow-sm') 
+                                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                                    }`}
+                                  >
+                                    {status}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Catatan Khusus</label>
-                        <textarea rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none" placeholder="Deskripsikan kejadian saat piket..."></textarea>
+                        <textarea value={catatan} onChange={e => setCatatan(e.target.value)} rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none" placeholder="Deskripsikan kejadian saat piket..."></textarea>
                       </div>
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Upload Foto Dokumentasi Piket <span className="text-red-500">(Wajib)</span></label>
-                        <input type="file" accept="image/*" required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800" />
+                        <input type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800" />
                       </div>
                       <div className="pt-2">
-                        <button type="submit" className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2">
-                          <i className="fa-solid fa-paper-plane"></i> Kirim Laporan
+                        <button type="submit" disabled={loading} className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                          {loading ? 'Menyimpan...' : <><i className="fa-solid fa-paper-plane"></i> Kirim Laporan</>}
                         </button>
                       </div>
                   </form>
