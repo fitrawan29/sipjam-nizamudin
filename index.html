@@ -1228,6 +1228,11 @@
                         }
                         
                         const container = document.getElementById('dashboard-alerts'); if(html) { container.innerHTML = html; container.classList.remove('hidden'); } else { container.classList.add('hidden'); }
+                        
+                        if (r.data.todaySchedule) {
+                            window.todaySchedule = r.data.todaySchedule;
+                            setupJurnalForm(userSession);
+                        }
                     }
                 } catch(e) {}
             }).getDashboardStatus(userSession.nama);
