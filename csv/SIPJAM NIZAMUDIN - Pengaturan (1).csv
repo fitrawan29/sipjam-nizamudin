@@ -1,0 +1,26 @@
+key,value
+TAHUN_AJARAN,2026/2027
+SEMESTER,Ganjil
+TGL_MULAI_SEMESTER,2026-07-13
+TGL_AKHIR_SEMESTER,2026-12-19
+LATITUDE,0.7218291973
+LONGITUDE,124.3802995
+RADIUS,250
+JAM_DATANG_MULAI,6:45
+JAM_DATANG_AKHIR,8:00
+JAM_PULANG_MULAI,11:00
+JAM_PULANG_AKHIR,22:00
+HARI_SEKOLAH_PER_MINGGU,6
+NAMA_SEKOLAH,SMA Nizamudin
+ALAMAT_SEKOLAH,"Dusun I, Jln. Wiratama no.1, Desa Candi Rejo, Kec. Modayag, Kab. Bolaangmongondow Timur"
+LOGO_URL,https://freeimage.host/i/CSKDVGs
+NAMA_KEPALA_SEKOLAH,"Ade Fitrawan Ibrahim, M.Pd., Gr."
+NIP_KEPALA_SEKOLAH,-
+LOGO_KIRI_URL,https://drive.google.com/file/d/1IuiijBtVcKtvTItL9ZqAwMhxJh0y8pE0/view?usp=sharing
+LOGO_KANAN_URL,https://drive.google.com/file/d/1YEB9w1-JeTVKbDwdrjhX-824euORrd3f/view?usp=sharing
+WA_API_URL,https://api.fonnte.com/send
+WA_API_KEY,-
+NAMA_YAYASAN,YAYASAN NIZAMUDIN CANDI LIBERIA
+NPSN,70040625
+KOTA_TTD,Kab. Bolaangmongondow Timur
+TTD_URL,

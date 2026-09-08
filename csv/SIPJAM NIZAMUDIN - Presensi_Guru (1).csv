@@ -1,0 +1,233 @@
+0,timestamp,nama_guru,tipe_absen,jenis_presensi,detail_izin,lokasi,jarak,link_bukti,status_verifikasi,
+1784160207107,7/16/2026 8:03:27,Ade Fitrawan Ibrahim,Datang,Sekolah,Sakit,"0.7216662,124.3807335",90,https://drive.google.com/file/d/1FT9A6VtGmlUinbqGS7h7pMJE1D0JJAZT/view?usp=drivesdk,Disetujui,
+1784162750774,7/16/2026 8:45:51,Setia Ambar Ningsih Mamonto,Datang,Sekolah,Sakit,"0.7207853,124.3794298",196,https://drive.google.com/file/d/1QadKwpAtZgxtO3iDC_KOoYFJhlDHZLBw/view?usp=drivesdk,Disetujui,
+1784163390683,7/16/2026 8:56:31,Rohani Marham,Datang,Sekolah,Sakit,"0.7216321,124.3805738",85,https://drive.google.com/file/d/1VcRmfmQfm20TZuOx9B_1efPEnMT9Bg15/view?usp=drivesdk,Disetujui,
+1784177550743,2026-07-16 12:52:30,Ade Fitrawan Ibrahim,Pulang,Sekolah,Sakit,"0.7216525,124.3810298",112.8459976,https://drive.google.com/file/d/14-OCElB3Y1Ufgc3Df1_-NbSSXfRNePwo/view?usp=drivesdk,Disetujui,
+1784246087711,2026-07-17 7:54:47,Ade Fitrawan Ibrahim,Datang,Sekolah,Sakit,"0.7215924,124.3806849",94.12663844,https://drive.google.com/file/d/1vtb_Wz3ocbnXb5DYdkPWMN9zwmK1MeRK/view?usp=drivesdk,Disetujui,
+1784507183945,2026-07-20 8:26:23,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Izin Kegiatan Personal,"0,0",0,-,Disetujui,
+1784507222990,2026-07-20 8:27:02,Setia Ambar Ningsih Mamonto,Datang,Dinas Luar,Sakit,"0,0",0,-,Disetujui,
+1784515376560,2026-07-20 10:42:56,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216509,124.3807241",51.20360137,-,Disetujui,
+1784515525554,2026-07-20 10:45:25,Rohani Marham,Datang,Sekolah,-,"0.7216531,124.3807202",50.70911304,-,Disetujui,
+1784518499404,2026-07-20 11:34:59,Rohani Marham,Pulang,Sekolah,-,"0.7217408,124.3803921",14.23446292,-,Disetujui,
+1784525365101,2026-07-20 13:29:25,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216351,124.3807081",50.29665405,-,Disetujui,
+1784525385699,2026-07-20 13:29:45,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.7216351,124.3807081",50.29665405,-,Disetujui,
+1784592017040,2026-07-21 8:00:17,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7215602,124.3807505",58.38827259,-,Disetujui,
+1784592032888,2026-07-21 8:00:32,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7217551,124.3803542",10.24082036,-,Disetujui,
+1784592499473,2026-07-21 8:08:19,Rohani Marham,Datang,Sekolah,-,"0.7216297,124.3805664",37.05035648,-,Disetujui,
+1784598634431,2026-07-21 9:50:34,Saskia Agow,Datang,Sekolah,-,"0.7217794533142459,124.38049882208901",22.84168292,-,Disetujui,
+1784603805474,2026-07-21 11:16:45,Rohani Marham,Pulang,Sekolah,-,"0.7216416,124.3805515",34.93125765,-,Disetujui,
+1784604408827,2026-07-21 11:26:48,Saskia Agow,Pulang,Sekolah,-,"0.7217794533142459,124.38049882208901",22.84168292,-,Disetujui,
+1784610985144,2026-07-21 13:16:25,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.721631,124.3805725",37.51067273,-,Disetujui,
+1784612561777,2026-07-21 13:42:41,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.721663,124.3805337",31.93104759,-,Disetujui,
+1784675943691,2026-07-22 7:19:03,Rohani Marham,Datang,Sekolah,-,"0.7216273,124.3805685",37,-,Disetujui,
+1784675959485,2026-07-22 7:19:19,Rohani Marham,Datang,Sekolah,-,"0.7216403,124.3805635",36,-,Disetujui,
+1784675988409,2026-07-22 7:19:48,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Tugas Luar di SMA Negeri 1 Tutuyan Mengajar di SMA Negeri 1 Tutuyan mata  pelajaran matematika sebagai guru bantu di sekolah tersebut,"0,0",0,-,Disetujui,
+1784685402886,2026-07-22 9:56:42,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7216581,124.3805367",33,-,Disetujui,
+1784690980507,2026-07-22 11:29:40,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,"Tugas Kedinasan | Ket: melakukan tugas di SMA Negeri 1 Tutuyan sebagai guru bantu di sekolah tersebut. mengampu mata pelajaaran matematika kelas X,XI dan biologi kelas X","0,0",0,-,Disetujui,
+1784774160059,2026-07-23 10:36:00,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Mengajar biologi di kelas XA pertemuan pertama terkait kesepakatan bersama dan pemaparan sistem penilaian,"0.7587035,124.6120385","Puskesmas Tutuyan, Dusun Empat Togid, Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1784788637127,2026-07-23 14:37:17,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: Mengajar di SMA Negeri 1 Tutuyan sebagai guru matematika dan biologi,"0.7594544,124.6116458","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1784851068625,2026-07-24 7:57:48,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.721742,124.3804004",-,15,-,Disetujui
+1784851146642,2026-07-24 7:59:06,Rohani Marham,Datang,Sekolah,-,"0.7216282,124.3805673",-,37,-,Disetujui
+1784862078213,2026-07-24 11:01:18,Rohani Marham,Pulang,Sekolah,-,"0.7216303,124.3805708",-,37,-,Disetujui
+1784937490512,2026-07-25 7:58:10,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216448,124.3807706",-,56,-,Disetujui
+1785108648554,2026-07-27 7:30:48,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7217606,124.380465",-,20,-,Disetujui
+1785108752125,2026-07-27 7:32:32,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216793,124.3805584",-,33,-,Disetujui
+1785112981327,2026-07-27 8:43:01,Riski Candra Mamangkai,Datang,Sekolah,-,"0.7215531,124.3810051",-,84,-,Disetujui
+1785120219600,2026-07-27 10:43:39,Rohani Marham,Datang,Sekolah,-,"0.7219454,124.3805601",-,32,-,Disetujui
+1785131270839,2026-07-27 13:47:50,Rohani Marham,Pulang,Sekolah,-,"0.72166,124.3806433",-,43,-,Disetujui
+1785131286625,2026-07-27 13:48:06,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216826,124.3805108",-,29,-,Disetujui
+1785195232743,2026-07-28 7:33:52,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216989,124.3804818",-,25,-,Disetujui
+1785197070534,2026-07-28 8:04:30,Rohani Marham,Datang,Sekolah,-,"0.7217365,124.3803843",-,14,-,Disetujui
+1785197769120,2026-07-28 8:16:09,Saskia Agow,Datang,Sekolah,-,"0.7217632283168597,124.38051837499346",-,25,-,Disetujui
+1785211517345,2026-07-28 12:05:17,Saskia Agow,Datang,Sekolah,-,"0.7217632283168597,124.38051837499346",-,25,-,Disetujui
+1785211671939,2026-07-28 12:07:51,Saskia Agow,Pulang,Sekolah,-,"0.7217632283168597,124.38051837499346",-,25,-,Disetujui
+1785211686575,2026-07-28 12:08:06,Saskia Agow,Datang,Sekolah,-,"0.7217632283168597,124.38051837499346",-,25,-,Disetujui
+1785214286332,2026-07-28 12:51:26,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216886,124.380476",-,25,-,Disetujui
+1785285416151,2026-07-29 8:36:56,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216706,124.3805281",-,31,-,Disetujui
+1785285510637,2026-07-29 8:38:30,Mohamad Adnan Mamangkai,Datang,Sekolah,-,"0.7216546,124.3805514",-,34,-,Disetujui
+1785285547858,2026-07-29 8:39:07,Mohamad Adnan Mamangkai,Datang,Sekolah,-,"0.722555,124.3806917",-,92,-,Disetujui
+1785293726255,2026-07-29 10:55:26,Saskia Agow,Datang,Sekolah,-,"0.7217050854215322,124.380510947452",-,27,-,Disetujui
+1785295525400,2026-07-29 11:25:25,Venda Lestari Kairupan,Datang,Sekolah,-,"0.721674,124.3805204",-,30,-,Disetujui
+1785296148205,2026-07-29 11:35:48,Saskia Agow,Pulang,Sekolah,-,"0.7217050854215322,124.380510947452",-,27,-,Disetujui
+1785319217766,2026-07-29 18:00:17,Susana Muliono,Datang,Dinas Luar,Tugas Kedinasan | Ket: Tugas luar atau mengajar di sekolah smp negeri 2 modayag,"0.7158633765722543,124.39379934776434","Purworejo Tengah, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1785370538255,2026-07-30 8:15:38,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216993,124.380473",-,24,-,Disetujui
+1785371089225,2026-07-30 8:24:49,Susana Muliono,Datang,Sekolah,-,"0.7217643609757195,124.38053159531393",-,27,-,Disetujui
+1785381058866,2026-07-30 11:10:58,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7217896,124.3804284",-,15,-,Disetujui
+1785456973281,2026-07-31 8:16:13,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216754,124.38052",-,30,-,Disetujui
+1785461445494,2026-07-31 9:30:45,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7219073,124.3806192",-,37,-,Disetujui
+1785462370875,2026-07-31 9:46:10,Rohani Marham,Datang,Sekolah,-,"0.7215108,124.3804842",-,41,-,Disetujui
+1785464147268,2026-07-31 10:15:47,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7216637,124.3805413",-,33,-,Disetujui
+1785467783487,2026-07-31 11:16:23,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7217152,124.3807299",-,50,-,Disetujui
+1785467791385,2026-07-31 11:16:31,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7216638,124.3805299",-,32,-,Disetujui
+1785467829550,2026-07-31 11:17:09,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.7216809,124.3805128",-,29,-,Disetujui
+1785467845600,2026-07-31 11:17:25,Rohani Marham,Pulang,Sekolah,-,"0.7217524,124.3807411",-,50,-,Disetujui
+1785541069293,2026-08-01 7:37:49,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216689,124.3805305",-,31,-,Disetujui
+1785544275208,2026-08-01 8:31:15,Rohani Marham,Datang,Sekolah,-,"0.7216732,124.3804957",-,28,-,Disetujui
+1785544730588,2026-08-01 8:38:50,Mohamad Adnan Mamangkai,Datang,Sekolah,-,"0.7217461,124.3803898",-,14,-,Disetujui
+1785544787928,2026-08-01 8:39:47,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7217033,124.3804694",-,24,-,Disetujui
+1785546583482,2026-08-01 9:09:43,Saskia Agow,Datang,Sekolah,-,"0.7217050854215322,124.380510947452",-,27,-,Disetujui
+1785550797158,2026-08-01 10:19:57,Susana Muliono,Datang,Sekolah,-,"0.7216377552607138,124.3805652966916",-,36,-,Disetujui
+1785550825146,2026-08-01 10:20:25,Dinda Putri Kurniawati,Datang,Sekolah,-,"0.7216917,124.3804876",-,26,-,Disetujui
+1785550831439,2026-08-01 10:20:31,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7227288,124.3822043",-,234,-,Disetujui
+1785553542630,2026-08-01 11:05:42,Rohani Marham,Pulang,Sekolah,-,"0.7217365,124.3803843",-,14,-,Disetujui
+1785554094749,2026-08-01 11:14:54,Susana Muliono,Pulang,Sekolah,-,"0.7217412489908577,124.38048342571712",-,23,-,Disetujui
+1785554198374,2026-08-01 11:16:38,Dinda Putri Kurniawati,Pulang,Sekolah,-,"0.7216538,124.38055",-,34,-,Disetujui
+1785554206067,2026-08-01 11:16:46,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216535,124.3805491",-,34,-,Disetujui
+1785555816716,2026-08-01 11:43:36,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.7216533,124.3805481",-,34,-,Disetujui
+1785713141144,2026-08-03 7:25:41,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216487,124.3805409",-,34,-,Disetujui
+1785713243949,2026-08-03 7:27:23,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7217111,124.3804589",-,22,-,Disetujui
+1785713533947,2026-08-03 7:32:13,Rohani Marham,Datang,Sekolah,-,"0.7216547,124.3805319",-,32,-,Disetujui
+1785715531053,2026-08-03 8:05:31,Riski Candra Mamangkai,Datang,Sekolah,-,"0.7220447,124.3811927",-,102,-,Disetujui
+1785725416132,2026-08-03 10:50:16,Riski Candra Mamangkai,Datang,Sekolah,-,"0.7216496,124.3805404",-,33,-,Disetujui
+1785726654017,2026-08-03 11:10:54,Riski Candra Mamangkai,Pulang,Sekolah,-,"0.7216661,124.3805215",-,31,-,Disetujui
+1785733956521,2026-08-03 13:12:36,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216459,124.3805383",-,33,-,Disetujui
+1785800281732,2026-08-04 7:38:01,Saskia Agow,Datang,Sekolah,-,"0.7217050854215322,124.380510947452",-,27,-,Disetujui
+1785800408784,2026-08-04 7:40:08,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7219242,124.3805208",-,27,-,Disetujui
+1785800502680,2026-08-04 7:41:42,Dinda Putri Kurniawati,Datang,Sekolah,-,"0.7216499,124.3804959",-,30,-,Disetujui
+1785800639296,2026-08-04 7:43:59,Saskia Agow,Datang,Sekolah,-,"0.7217050854215322,124.380510947452",-,27,-,Disetujui
+1785800831504,2026-08-04 7:47:11,Saskia Agow,Datang,Sekolah,-,"0.7217050854215322,124.380510947452",-,27,-,Disetujui
+1785801678171,2026-08-04 8:01:18,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216129,124.3806783",-,49,-,Disetujui
+1785815200540,2026-08-04 11:46:40,Dinda Putri Kurniawati,Pulang,Sekolah,-,"0.7216115,124.3806753",-,48,-,Disetujui
+1785818190690,2026-08-04 12:36:30,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7217246,124.3804284",-,18,-,Disetujui
+1785891673637,2026-08-05 9:01:13,Susana Muliono,Datang,Sekolah,-,"0.7216774,124.380502",-,28,-,Disetujui
+1785892907735,2026-08-05 9:21:47,Saskia Agow,Datang,Sekolah,-,"0.7216619981959845,124.38053940294117",-,33,-,Disetujui
+1785902140473,2026-08-05 11:55:40,Susana Muliono,Pulang,Sekolah,-,"0.7216883,124.3804774",-,25,-,Disetujui
+1785902660295,2026-08-05 12:04:20,Saskia Agow,Pulang,Sekolah,-,"0.7216846714044967,124.38048641993423",-,26,-,Disetujui
+1785903010637,2026-08-05 12:10:10,Fitri Aprilia Dotulong,Datang,Izin,Sakit | Ket: Sudah 4 hari ini saya merasa kurang sehat,"0.71657,124.3675933","Inaton, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,https://drive.google.com/file/d/1tiyDHjvRJAlVz2pOCasV3Cmp9IODKiVH/view?usp=drivesdk,Disetujui
+1785973848137,2026-08-06 7:50:48,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7217393,124.3803976",-,15,-,Disetujui
+1785974949485,2026-08-06 8:09:09,Susana Muliono,Datang,Sekolah,-,"0.7216839,124.380487",-,26,-,Disetujui
+1785977214415,2026-08-06 8:46:54,Fitri Aprilia Dotulong,Datang,Izin,Sakit | Ket: Badan masih terasa lemah dan letih,"0.7166519,124.3678509","Inaton, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,https://drive.google.com/file/d/1tGZ3cP6yhNDS1Tqq8vKDP_UxsaY-eghC/view?usp=drivesdk,Disetujui
+1785978867607,2026-08-06 9:14:27,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7216771,124.380514",-,29,-,Disetujui
+1786059916651,2026-08-07 7:45:16,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216049,124.3806759",-,49,-,Disetujui
+1786062099100,2026-08-07 8:21:39,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.72156,124.3807557",-,59,-,Disetujui
+1786062207675,2026-08-07 8:23:27,Rohani Marham,Datang,Sekolah,-,"0.7216087,124.3806817",-,49,-,Disetujui
+1786062242099,2026-08-07 8:24:02,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216076,124.3806812",-,49,-,Disetujui
+1786062270093,2026-08-07 8:24:30,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216081,124.3806816",-,49,-,Disetujui
+1786066187638,2026-08-07 9:29:47,Venda Lestari Kairupan,Datang,Izin,Sakit | Ket: Ada urusan keluarga saya izin (Duka),"0.7117769,124.3807519","Modayag II, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,https://drive.google.com/file/d/1NqLAYtXdPo4jSFVDQ4hWPrToekJCEILa/view?usp=drivesdk,Disetujui
+1786071640525,2026-08-07 11:00:40,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.7216123,124.3806777",-,48,-,Disetujui
+1786071727157,2026-08-07 11:02:07,Fitri Aprilia Dotulong,Pulang,Sekolah,-,"0.7216035,124.3806814",-,49,-,Disetujui
+1786072173082,2026-08-07 11:09:33,Fitri Aprilia Dotulong,Pulang,Sekolah,-,"0.7216125,124.3806793",-,49,-,Disetujui
+1786072379132,2026-08-07 11:12:59,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216491,124.3806317",-,42,-,Disetujui
+1786147330129,2026-08-08 8:02:10,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7215853,124.3805547",-,39,-,Disetujui
+1786152780024,2026-08-08 9:33:00,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7216741,124.3805097",-,29,-,Disetujui
+1786158355844,2026-08-08 11:05:55,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216545,124.3805534",-,34,-,Disetujui
+1786158633635,2026-08-08 11:10:33,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7219112,124.3805086",-,25,-,Disetujui
+1786318126165,2026-08-10 7:28:46,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7217838,124.3804617",-,19,-,Disetujui
+1786318193541,2026-08-10 7:29:53,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7217392,124.3804598",-,20,-,Disetujui
+1786318555041,2026-08-10 7:35:55,Rohani Marham,Datang,Sekolah,-,"0.7218553,124.3805159",-,24,-,Disetujui
+1786320979681,2026-08-10 8:16:19,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216074,124.3806816",-,49,-,Disetujui
+1786338627104,2026-08-10 13:10:27,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216734,124.3805053",-,29,-,Disetujui
+1786338681257,2026-08-10 13:11:21,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.7216474,124.380541",-,34,-,Disetujui
+1786403956271,2026-08-11 7:19:16,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216459,124.3805383",-,33,-,Disetujui
+1786405428744,2026-08-11 7:43:48,Dinda Putri Kurniawati,Datang,Sekolah,-,"0.721612,124.3806728",-,48,-,Disetujui
+1786406248321,2026-08-11 7:57:28,Saskia Agow,Datang,Sekolah,-,"0.7216846714044967,124.38048641993423",-,26,-,Disetujui
+1786407966585,2026-08-11 8:26:06,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216037,124.3806661",-,48,-,Disetujui
+1786420640847,2026-08-11 11:57:20,Dinda Putri Kurniawati,Pulang,Sekolah,-,"0.7216095,124.3806663",-,48,-,Disetujui
+1786430083553,2026-08-11 14:34:43,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7219282,124.3805914",-,34,-,Disetujui
+1786495392365,2026-08-12 8:43:12,Susana Muliono,Datang,Sekolah,-,"0.722003,124.3808171",-,61,-,Disetujui
+1786496906552,2026-08-12 9:08:26,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7215907,124.380468",-,32,-,Disetujui
+1786497055337,2026-08-12 9:10:55,FITRA SURYAZANA MAMONTO,Datang,Sekolah,-,"0.7216752,124.3804875",-,27,-,Disetujui
+1786497300296,2026-08-12 9:15:00,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Melakukan dinas luar di SMA Negeri 1 Tutuyan dan mengajar kelas X dan XI,"0.7594538,124.6116539","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1786498270189,2026-08-12 9:31:10,Saskia Agow,Datang,Sekolah,-,"0.7215675766133998,124.38059036896972",-,43,-,Disetujui
+1786505714617,2026-08-12 11:35:14,Susana Muliono,Pulang,Sekolah,-,"0.7215312,124.3807118",-,57,-,Disetujui
+1786537603142,2026-08-12 20:26:43,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: menjalankan dinas luar di SMA Negeri 1 Tutuyan sebagai guru bantu matematika,"-6.325198,106.679329","BSD City, Serpong, Tangerang Selatan, Banten, 15318, Indonesia",0,-,Disetujui
+1786578758880,2026-08-13 7:52:38,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216772,124.3804988",-,28,-,Disetujui
+1786581306715,2026-08-13 8:35:06,Susana Muliono,Datang,Sekolah,-,"0.7216927,124.3804701",-,24,-,Disetujui
+1786584164802,2026-08-13 9:22:44,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru bantu,"0.7594614,124.6116464","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1786591330035,2026-08-13 11:22:10,Susana Muliono,Pulang,Sekolah,-,"0.7217474,124.3803542",-,11,-,Disetujui
+1786615719953,2026-08-13 18:08:39,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7246662,124.3835773","Candi Rejo, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1786663706260,2026-08-14 7:28:26,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7219145,124.380573",-,32,-,Disetujui
+1786664175498,2026-08-14 7:36:15,Rohani Marham,Datang,Sekolah,-,"0.7218767,124.380625",-,37,-,Disetujui
+1786750887990,2026-08-15 7:41:27,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7219355,124.3804925",-,24,-,Disetujui
+1787007055740,2026-08-18 6:50:55,Ade Fitrawan Ibrahim,Datang,Izin,Izin Kegiatan Personal | Ket: Mengunjungi ayah di Gorontalo karena dalam keadaan sakit,"0.5507928,123.0012457","Jalan Gorontalo 6, Gorontalo, 96136, Indonesia",0,-,Disetujui
+1787010379651,2026-08-18 7:46:19,Rohani Marham,Datang,Sekolah,-,"0.7216976,124.380412",-,19,-,Disetujui
+1787022715992,2026-08-18 11:11:55,Dinda Putri Kurniawati,Datang,Izin,Izin Kegiatan Personal | Ket: Mohon ijin blum bisa masuk skolah karna lagi ikut kegiatan pawai ditutuyan 🙏🙏,"0.7447305,124.6083516","Dusun Dua Togid, Togid, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1787094634245,2026-08-19 7:10:34,Ade Fitrawan Ibrahim,Datang,Izin,Izin Kegiatan Personal | Ket: Melakukan penrjalana ke Gorontalo untuk mengunjungi orang tua,"0.5507628,123.0013228","Jalan Gorontalo 6, Gorontalo, 96136, Indonesia",0,-,Disetujui
+1787095950495,2026-08-19 7:32:30,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216602,124.3804865",-,28,-,Disetujui
+1787098111889,2026-08-19 8:08:31,FITRA SURYAZANA MAMONTO,Datang,Sekolah,-,"0.7217449,124.3803725",-,12,-,Disetujui
+1787101483798,2026-08-19 9:04:43,Susana Muliono,Datang,Sekolah,-,"0.7217483,124.380378",-,13,-,Disetujui
+1787104900309,2026-08-19 10:01:40,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7216681,124.3804774",-,27,-,Disetujui
+1787109540981,2026-08-19 11:19:00,Susana Muliono,Pulang,Sekolah,-,"0.7216969,124.3804384",-,21,-,Disetujui
+1787112588777,2026-08-19 12:09:48,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7216413,124.3805084",-,31,-,Disetujui
+1787185014941,2026-08-20 8:16:54,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan tugas mengajar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7594993,124.6119296","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1787185609575,2026-08-20 8:26:49,Susana Muliono,Datang,Sekolah,-,"0.7216611,124.3804864",-,28,-,Disetujui
+1787196633708,2026-08-20 11:30:33,Susana Muliono,Pulang,Sekolah,-,"0.7215704,124.3807127",-,54,-,Disetujui
+1787224375797,2026-08-20 19:12:55,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7246423,124.3835472","Candi Rejo, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1787268929225,2026-08-21 7:35:29,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216619,124.3803987",-,22,-,Disetujui
+1787269002782,2026-08-21 7:36:42,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216755,124.3804106",-,21,-,Disetujui
+1787270415407,2026-08-21 8:00:15,Venda Lestari Kairupan,Datang,Sekolah,-,"0.721713,124.3804165",-,18,-,Disetujui
+1787277076684,2026-08-21 9:51:16,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7213659,124.3809131",-,85,-,Disetujui
+1787281391507,2026-08-21 11:03:11,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216159,124.3804385",-,28,-,Disetujui
+1787281983819,2026-08-21 11:13:03,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7217182,124.3803454",-,13,-,Disetujui
+1787283040170,2026-08-21 11:30:40,Fitri Aprilia Dotulong,Pulang,Sekolah,-,"0.7217048,124.3803752",-,16,-,Disetujui
+1787354934638,2026-08-22 7:28:54,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7219079,124.3804869",-,23,-,Disetujui
+1787360658848,2026-08-22 9:04:18,Venda Lestari Kairupan,Datang,Sekolah,-,"0.721696,124.3804391",-,21,-,Disetujui
+1787361706773,2026-08-22 9:21:46,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216163,124.3804415",-,28,-,Disetujui
+1787368565309,2026-08-22 11:16:05,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7217168,124.3807947",-,56,-,Disetujui
+1787371782308,2026-08-22 12:09:42,Fitri Aprilia Dotulong,Pulang,Sekolah,-,"0.7216905,124.3803879",-,18,-,Disetujui
+1787528312363,2026-08-24 7:38:32,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216382,124.3804314",-,26,-,Disetujui
+1787531799193,2026-08-24 8:36:39,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216487,124.3806705",-,46,-,Disetujui
+1787535270249,2026-08-24 9:34:30,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7217483,124.3803774",-,12,-,Disetujui
+1787550255303,2026-08-24 13:44:15,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216172,124.3808216",-,63,-,Disetujui
+1787550292916,2026-08-24 13:44:52,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.7216588,124.3804236",-,23,-,Disetujui
+1787555352135,2026-08-24 15:09:12,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7217483,124.3803775",-,12,-,Disetujui
+1787701755063,2026-08-26 7:49:15,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.759004,124.6115395","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1787702336275,2026-08-26 7:58:56,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216324,124.3804213",-,26,-,Disetujui
+1787705919801,2026-08-26 8:58:39,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7216742,124.3804563",-,25,-,Disetujui
+1787708431124,2026-08-26 9:40:31,Saskia Agow,Datang,Sekolah,-,"0.7216674585199953,124.38050091020754",-,29,-,Disetujui
+1787709443425,2026-08-26 9:57:23,Susana Muliono,Datang,Sekolah,-,"0.7211078,124.3804379",-,82,-,Disetujui
+1787717873634,2026-08-26 12:17:53,Susana Muliono,Pulang,Sekolah,-,"0.7222824,124.3810286",-,95,-,Disetujui
+1787725734483,2026-08-26 14:28:54,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7210283,124.3797766",-,106,-,Disetujui
+1787737790132,2026-08-26 17:49:50,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: Dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7246527,124.383566","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1787793068896,2026-08-27 9:11:08,Susana Muliono,Datang,Sekolah,-,"0.7216259,124.3804224",-,26,-,Disetujui
+1787793371080,2026-08-27 9:16:11,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7217259,124.3803709",-,14,-,Disetujui
+1787800436380,2026-08-27 11:13:56,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7217281,124.3803571",-,13,-,Disetujui
+1787873115636,2026-08-28 7:25:15,Ade Fitrawan Ibrahim,Datang,Izin,Izin Kegiatan Personal | Ket: Mengatarkan istri ke sekolah karena bekas suntikan pperasi sesarnya terasa sakit sehingga sulit untuk mengemudikan motor,"0.7246481,124.3835583","Candi Rejo, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,https://drive.google.com/file/d/1ezlGHGKF6es2BT_4-Rm9qqb8aBjD9Qhb/view?usp=drivesdk,Disetujui
+1787880158192,2026-08-28 9:22:38,Venda Lestari Kairupan,Datang,Sekolah,-,"0.72173,124.3803773",-,14,-,Disetujui
+1787882353178,2026-08-28 9:59:13,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7217311,124.3803716",-,14,-,Disetujui
+1787960542072,2026-08-29 7:42:22,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7217087,124.3803845",-,16,-,Disetujui
+1787969535178,2026-08-29 10:12:15,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216414,124.3804135",-,24,-,Disetujui
+1788132761010,2026-08-31 7:32:41,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216463,124.3804163",-,24,-,Disetujui
+1788138748299,2026-08-31 9:12:28,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7214503,124.38059",-,53,-,Disetujui
+1788138868256,2026-08-31 9:14:28,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7217293,124.3803738",-,14,-,Disetujui
+1788182404627,2026-08-31 21:20:04,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7246525,124.383567","Candi Rejo, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1788219346847,2026-09-01 7:35:46,Saskia Agow,Datang,Sekolah,-,"0.7216674585199953,124.38050091020754",-,29,-,Disetujui
+1788221218239,2026-09-01 8:06:58,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Melakukan pembelajaran jarak jauh dari tutuyan karena mengantarkan istri di dodap,"0.7594587,124.6116492","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1788232038674,2026-09-01 11:07:18,Dinda Putri Kurniawati,Datang,Sekolah,-,"0.7216373,124.3804193",-,25,-,Disetujui
+1788242596633,2026-09-01 14:03:16,Saskia Agow,Pulang,Sekolah,-,"0.7216674585199953,124.38050091020754",-,29,-,Disetujui
+1788263251099,2026-09-01 19:47:31,Ade Fitrawan Ibrahim,Pulang,Dinas Luar, | Ket: Melakukan pembelajaran jarak jauh dari tutuyan karena mengantarkan istri di dodap,"0.7246547,124.3835629","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1788305577985,2026-09-02 7:32:57,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7594586,124.6116417","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1788311121775,2026-09-02 9:05:21,Susana Muliono,Datang,Sekolah,-,"0.7217246,124.3803535",-,13,-,Disetujui
+1788316002497,2026-09-02 10:26:42,Saskia Agow,Datang,Sekolah,-,"0.7216674585199953,124.38050091020754",-,29,-,Disetujui
+1788318862381,2026-09-02 11:14:22,Susana Muliono,Pulang,Sekolah,-,"0.7217318,124.3803715",-,13,-,Disetujui
+1788322187807,2026-09-02 12:09:47,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7217272,124.3803539",-,13,-,Disetujui
+1788323233521,2026-09-02 12:27:13,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7217277,124.3803532",-,13,-,Disetujui
+1788328912691,2026-09-02 14:01:52,Saskia Agow,Pulang,Sekolah,-,"0.7216674585199953,124.38050091020754",-,29,-,Disetujui
+1788337565800,2026-09-02 16:26:05,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7246529,124.3835623","Candi Rejo, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1788390230230,2026-09-03 7:03:50,Ade Fitrawan Ibrahim,Datang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7114844,124.390268","Jalan Amurang - Kotamobagu, Purworejo, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1788396655837,2026-09-03 8:50:55,Susana Muliono,Datang,Sekolah,-,"0.7216822,124.3803986",-,20,-,Disetujui
+1788399512188,2026-09-03 9:38:32,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7217286,124.3803623",-,13,-,Disetujui
+1788408480500,2026-09-03 12:08:00,Susana Muliono,Pulang,Sekolah,-,"0.7222779,124.3810309",-,95,-,Disetujui
+1788417076147,2026-09-03 14:31:16,Ade Fitrawan Ibrahim,Pulang,Dinas Luar,Tugas Kedinasan | Ket: Melaksanakan dinas luar di SMA Negeri 1 Tutuyan sebagai guru matematika,"0.7594554,124.6116524","Tutuyan, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,-,Disetujui
+1788420402867,2026-09-03 15:26:42,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7217331,124.380377",-,14,-,Disetujui
+1788478712650,2026-09-04 7:38:32,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7217441,124.3805189",-,26,-,Disetujui
+1788486757057,2026-09-04 9:52:37,Venda Lestari Kairupan,Datang,Sekolah,-,"0.7217442,124.3803886",-,14,-,Disetujui
+1788490933974,2026-09-04 11:02:13,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216899,124.3803939",-,19,-,Disetujui
+1788507395499,2026-09-04 15:36:35,Venda Lestari Kairupan,Pulang,Sekolah,-,"0.7217563,124.380389",-,13,-,Disetujui
+1788570741683,2026-09-05 9:12:21,"Tika Mamonto, S.Pd.",Datang,Sekolah,-,"0.7217523,124.3803847",-,13,-,Disetujui
+1788573954374,2026-09-05 10:05:54,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216053,124.3808241",-,63,-,Disetujui
+1788580590123,2026-09-05 11:56:30,"Tika Mamonto, S.Pd.",Pulang,Sekolah,-,"0.7217562,124.380385",-,13,-,Disetujui
+1788583464534,2026-09-05 12:44:24,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.7216127,124.3806598",-,47,-,Disetujui
+1788739313272,2026-09-07 8:01:53,Setia Ambar Ningsih Mamonto,Datang,Sekolah,-,"0.7216646,124.3804156",-,22,-,Disetujui
+1788740114290,2026-09-07 8:15:14,Ade Fitrawan Ibrahim,Datang,Izin,Izin Kegiatan Personal | Ket: Mengantarkan anak ke dokter spesialis anak Karena sakit,"0.7246655,124.3835598","Candi Rejo, Bolaang Mongondow Timur, Sulawesi Utara, Indonesia",0,https://drive.google.com/file/d/1FWe7i2JLCgw6EyczWZ3k6uctSxV70FTF/view?usp=drivesdk,Disetujui
+1788755372306,2026-09-07 12:29:32,Setia Ambar Ningsih Mamonto,Pulang,Sekolah,-,"0.7217289,124.3803778",-,14,-,Disetujui
+1788825453114,2026-09-08 7:57:33,Dinda Putri Kurniawati,Datang,Sekolah,-,"0.7216166,124.3805115",-,33,-,Disetujui
+1788825874542,2026-09-08 8:04:34,Saskia Agow,Datang,Sekolah,-,"0.7216832482280032,124.38050725081347",-,28,-,Disetujui
+1788826844881,2026-09-08 8:20:44,"Tika Mamonto, S.Pd.",Datang,Sekolah,-,"0.7216422,124.3804222",-,25,-,Disetujui
+1788830621406,2026-09-08 9:23:41,Fitri Aprilia Dotulong,Datang,Sekolah,-,"0.7216487,124.380422",-,24,-,Disetujui
+1788831220115,2026-09-08 9:33:40,Ade Fitrawan Ibrahim,Datang,Sekolah,-,"0.7216415,124.3804222",-,25,-,Disetujui
+1788839230563,2026-09-08 11:47:10,Dinda Putri Kurniawati,Pulang,Sekolah,-,"0.7217547,124.3803853",-,13,-,Menunggu Verifikasi
+1788839489233,2026-09-08 11:51:29,"Tika Mamonto, S.Pd.",Pulang,Sekolah,-,"0.7217547,124.3803853",-,13,-,Menunggu Verifikasi
+1788843973754,2026-09-08 13:06:13,Ade Fitrawan Ibrahim,Pulang,Sekolah,-,"0.72164,124.3804207",-,25,-,Menunggu Verifikasi
+1788848405244,2026-09-08 14:20:05,Saskia Agow,Pulang,Sekolah,-,"0.7216832482280032,124.38050725081347",-,28,-,Menunggu Verifikasi
+1788848850184,2026-09-08 14:27:30,Fitri Aprilia Dotulong,Pulang,Sekolah,-,"0.7217548,124.3803833",-,12,-,Menunggu Verifikasi

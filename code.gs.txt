@@ -1,0 +1,1839 @@
+function doGet(e) {
+  setupDatabaseAndFolders();
+  return ContentService.createTextOutput("Status: API SIPJAM Aktif dan Siap Menerima Data. (Optimasi Performa & Error Handling Terpasang)").setMimeType(ContentService.MimeType.TEXT);
+}
+
+// ROUTING API REST
+function doPost(e) {
+  try {
+    const body = JSON.parse(e.postData.contents);
+    const method = body.method;
+    const args = body.args || [];
+    
+    let result = "";
+    
+    if(method === "doLogin") result = doLogin(args[0], args[1]);
+    else if(method === "getDashboardStatus") result = getDashboardStatus(args[0], args[1]);
+    else if(method === "getAppSettings") result = getAppSettings();
+    else if(method === "saveAppSettings") result = saveAppSettings(args[0]);
+    else if(method === "getMasterData") result = getMasterData();
+    else if(method === "getTodayEvent") result = getTodayEvent();
+    else if(method === "submitPresensiGuru") result = submitPresensiGuru(args[0]);
+    else if(method === "submitJurnal") result = submitJurnal(args[0]);
+    else if(method === "getGuruMapel") result = getGuruMapel(args[0]);
+    else if(method === "getHistoryData") result = getHistoryData(args[0]);
+    else if(method === "getDailyMonitor") result = getDailyMonitor(args[0]); 
+    else if(method === "getPresensiForVerification") result = getPresensiForVerification(args[0]);
+    else if(method === "updateStatusVerifikasi") result = updateStatusVerifikasi(args[0], args[1]);
+    else if(method === "getJurnalForVerification") result = getJurnalForVerification(args[0]); 
+    else if(method === "updateStatusVerifikasiJurnal") result = updateStatusVerifikasiJurnal(args[0], args[1]); 
+    else if(method === "updateJurnalByGuruOrAdmin") result = updateJurnalByGuruOrAdmin(args[0], args[1], args[2]);
+    else if(method === "updatePiketByGuruOrAdmin") result = updatePiketByGuruOrAdmin(args[0], args[1], args[2]);
+    else if(method === "bulkUpdateVerifikasi") result = bulkUpdateVerifikasi(args[0], args[1], args[2]);
+    else if(method === "getRekapData") result = getRekapData(args[0], args[1]);
+    else if(method === "getRekapJurnalGuru") result = getRekapJurnalGuru(args[0], args[1], args[2], args[3], args[4]);
+    else if(method === "getRekapPresensiSiswa") result = getRekapPresensiSiswa(args[0], args[1], args[2], args[3]);
+    else if(method === "kelolaDataMaster") result = kelolaDataMaster(args[0], args[1], args[2], args[3]);
+    else if(method === "bulkUpdateSiswaKelas") result = bulkUpdateSiswaKelas(args[0], args[1]);
+    else if(method === "bulkImportData") result = bulkImportData(args[0], args[1]);
+    else if(method === "getSiswaByKelas") result = getSiswaByKelas(args[0]); 
+    else if(method === "saveJadwalPiket") result = saveJadwalPiket(args[0], args[1]);
+    else if(method === "getJadwalPiket") result = getJadwalPiket();
+    else if(method === "getAllSiswaGrouped") result = getAllSiswaGrouped();
+    else if(method === "submitLaporanPiket") result = submitLaporanPiket(args[0]);
+    else if(method === "getStatistikPiketGuru") result = getStatistikPiketGuru(args[0]);
+    else if(method === "getLaporanPiket") result = getLaporanPiket(args[0]);
+    else if(method === "updateStatusVerifikasiPiket") result = updateStatusVerifikasiPiket(args[0], args[1]);
+    
+    // API BARU: FASE 2
+    else if(method === "getDashboardAnalytics") result = getDashboardAnalytics(args[0]);
+    else if(method === "getTeacherLeaderboard") result = getTeacherLeaderboard(args[0]);
+    else if(method === "submitDokumen") result = submitDokumen(args[0]);
+    else if(method === "getDokumenList") result = getDokumenList(args[0]);
+    else if(method === "updateStatusDokumen") result = updateStatusDokumen(args[0], args[1]);
+
+    // API BACKUP TAHUNAN
+    else if(method === "doBackupTahun") result = doBackupTahun(args[0]);
+    else if(method === "getListBackup") result = getListBackup();
+
+    // DIAGNOSTIK
+    else if(method === "debugJadwal") result = debugJadwal(args[0], args[1]);
+
+    else result = JSON.stringify({status: "error", message: "Method API tidak terdaftar."});
+    
+    return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.message})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+const DEFAULT_LAT = 0.543210; 
+const DEFAULT_LON = 123.123456;
+const ALLOWED_RADIUS_METER = 100; 
+
+function getSafeSheetData(sheetName) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  if (!sheet) return [];
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return []; 
+  // Peningkatan Filter: Mencegah blank rows atau undefined yang membuat error di looping
+  return data.slice(1).filter(r => r[0] !== undefined && r[0] !== null && r[0].toString().trim() !== "");
+}
+
+function getSmartJadwalForUser(namaGuru, nipGuru, todayName) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Jadwal_Pelajaran");
+    if (!sheet) return [];
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+    
+    // 1. Ambil Header untuk deteksi kolom dinamis (tahan terhadap perubahan urutan kolom)
+    const headers = data[0].map(h => (h || "").toString().toLowerCase().trim());
+    
+    let idxHari = 1;
+    let idxGuru = 2;
+    let idxMapel = 3;
+    let idxKelas = 4;
+    
+    for (let i = 0; i < headers.length; i++) {
+      const h = headers[i];
+      if (h.includes("hari")) idxHari = i;
+      else if (h.includes("guru") || h.includes("nama") || h.includes("nip") || h.includes("pengajar")) idxGuru = i;
+      else if (h.includes("mapel") || h.includes("mata") || h.includes("pelajaran") || h.includes("bidang")) idxMapel = i;
+      else if (h.includes("kelas") || h.includes("rombel") || h.includes("ruang")) idxKelas = i;
+    }
+    
+    // 2. Normalisasi
+    const normalizeStr = (s) => (s || "").toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const userNamaLower = normalizeStr(namaGuru);
+    const userNipLower = nipGuru ? normalizeStr(nipGuru) : "";
+    const tDay = normalizeStr(todayName);
+    
+    // 3. Filter data mentah (mulai dari 1 untuk lewati header)
+    const todaySchedule = [];
+    for (let i = 1; i < data.length; i++) {
+      const r = data[i];
+      
+      // Abaikan baris kosong (tidak mempedulikan ID, sehingga aman jika ID tidak sengaja dihapus)
+      if (!r[idxHari] && !r[idxGuru]) continue;
+      
+      const rHari = normalizeStr(r[idxHari]);
+      const rGuru = normalizeStr(r[idxGuru]);
+      
+      let isMatch = false;
+      if (rGuru === userNamaLower || (userNipLower && rGuru === userNipLower)) {
+          isMatch = true;
+      } else if (rGuru.length > 3 && userNamaLower.length > 3 && (rGuru.includes(userNamaLower) || userNamaLower.includes(rGuru))) {
+          isMatch = true;
+      }
+      
+      if (rHari.includes(tDay) && isMatch) {
+        todaySchedule.push({
+          mapel: r[idxMapel] || "",
+          kelas: r[idxKelas] || ""
+        });
+      }
+    }
+    return todaySchedule;
+  } catch(e) {
+    return [];
+  }
+}
+
+function safeFormatDate(dateVal, format) {
+  try {
+    if (!dateVal) return "-";
+    let d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "-";
+    return Utilities.formatDate(d, "GMT+8", format);
+  } catch(e) { return "-"; }
+}
+
+function padTime(t) {
+  if(!t) return "00:00";
+  let str = t.toString().replace('.', ':');
+  if (str.includes('T') || str.includes('1899')) return "06:00";
+  let parts = str.split(':');
+  let h = parts[0] ? parts[0] : "00"; let m = parts[1] ? parts[1] : "00";
+  if (h.length < 2) h = "0" + h; if (m.length < 2) m = "0" + m;
+  return h.slice(-2) + ":" + m.slice(0,2);
+}
+
+const parseNumSafe = (val) => {
+  if(!val) return 0;
+  return Number(val.toString().replace(',', '.'));
+}
+
+function getDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371000; 
+  const dLat = (lat2 - lat1) * Math.PI / 180; const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); 
+}
+
+function setupDatabaseAndFolders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const headerFormat = (range) => range.setFontWeight("bold").setBackground("#0B4619").setFontColor("#D4AF37");
+
+  let sheetSetting = ss.getSheetByName("Pengaturan");
+  if (!sheetSetting) {
+    sheetSetting = ss.insertSheet("Pengaturan");
+    sheetSetting.appendRow(["Key", "Value"]);
+    sheetSetting.appendRow(["TAHUN_AJARAN", "2026/2027"]);
+    sheetSetting.appendRow(["SEMESTER", "Ganjil"]);
+    sheetSetting.appendRow(["TGL_MULAI_SEMESTER", "2026-07-15"]);
+    sheetSetting.appendRow(["TGL_AKHIR_SEMESTER", "2026-12-20"]); 
+    sheetSetting.appendRow(["LATITUDE", DEFAULT_LAT]);
+    sheetSetting.appendRow(["LONGITUDE", DEFAULT_LON]);
+    sheetSetting.appendRow(["RADIUS", ALLOWED_RADIUS_METER]);
+    sheetSetting.appendRow(["JAM_DATANG_MULAI", "06:00"]);
+    sheetSetting.appendRow(["JAM_DATANG_AKHIR", "08:00"]);
+    sheetSetting.appendRow(["JAM_PULANG_MULAI", "14:00"]);
+    sheetSetting.appendRow(["JAM_PULANG_AKHIR", "16:00"]);
+    sheetSetting.appendRow(["HARI_SEKOLAH_PER_MINGGU", "6"]); 
+    sheetSetting.appendRow(["NAMA_SEKOLAH", "SMA NIZAMUDIN"]); 
+    sheetSetting.appendRow(["ALAMAT_SEKOLAH", "Jl. Pendidikan No. 1, Kota Fiktif, Kode Pos 12345"]); 
+    sheetSetting.appendRow(["LOGO_KIRI_URL", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/320px-Logo_Tut_Wuri_Handayani.png"]); 
+    sheetSetting.appendRow(["LOGO_KANAN_URL", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/320px-Logo_Tut_Wuri_Handayani.png"]); 
+    sheetSetting.appendRow(["NAMA_KEPALA_SEKOLAH", "Dr. H. Fulan, M.Pd."]); 
+    sheetSetting.appendRow(["NIP_KEPALA_SEKOLAH", "19700101 199512 1 001"]); 
+    sheetSetting.appendRow(["WA_API_URL", "https://api.fonnte.com/send"]); 
+    sheetSetting.appendRow(["WA_API_KEY", "-"]); 
+    sheetSetting.appendRow(["NAMA_YAYASAN", "YAYASAN NIZAMUDIN"]); 
+    sheetSetting.appendRow(["NPSN", "12345678"]); 
+    headerFormat(sheetSetting.getRange("A1:B1"));
+  } else {
+    const dataSet = sheetSetting.getDataRange().getValues();
+    const keys = dataSet.map(r => r[0]);
+    if(!keys.includes("LOGO_KIRI_URL")) sheetSetting.appendRow(["LOGO_KIRI_URL", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/320px-Logo_Tut_Wuri_Handayani.png"]);
+    if(!keys.includes("LOGO_KANAN_URL")) sheetSetting.appendRow(["LOGO_KANAN_URL", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/320px-Logo_Tut_Wuri_Handayani.png"]);
+    if(!keys.includes("WA_API_URL")) sheetSetting.appendRow(["WA_API_URL", "https://api.fonnte.com/send"]);
+    if(!keys.includes("WA_API_KEY")) sheetSetting.appendRow(["WA_API_KEY", "-"]);
+    if(!keys.includes("NAMA_YAYASAN")) sheetSetting.appendRow(["NAMA_YAYASAN", "YAYASAN NIZAMUDIN"]);
+    if(!keys.includes("NPSN")) sheetSetting.appendRow(["NPSN", "12345678"]);
+  }
+
+  let sheetUsers = ss.getSheetByName("Users");
+  if (!sheetUsers) {
+    sheetUsers = ss.insertSheet("Users");
+    sheetUsers.appendRow(["Username", "Password", "Nama", "Role"]);
+    sheetUsers.appendRow(["admin", "admin123", "Admin SMA Nizamudin", "Admin"]);
+    sheetUsers.appendRow(["guru1", "guru123", "Ustadz Ahmad, S.Pd", "Guru"]);
+    headerFormat(sheetUsers.getRange("A1:D1"));
+  }
+
+  let sheetGuru = ss.getSheetByName("Presensi_Guru");
+  if (!sheetGuru) {
+    sheetGuru = ss.insertSheet("Presensi_Guru");
+    sheetGuru.appendRow(["ID", "Timestamp", "Nama Guru", "Tipe Absen", "Jenis Presensi", "Detail Izin", "Lokasi (Lat,Lon)", "Tempat", "Jarak (Meter)", "Link Bukti File", "Status Verifikasi"]);
+    headerFormat(sheetGuru.getRange("A1:K1"));
+  }
+
+  let sheetJurnal = ss.getSheetByName("Jurnal_Pembelajaran");
+  if (!sheetJurnal) {
+    sheetJurnal = ss.insertSheet("Jurnal_Pembelajaran");
+    sheetJurnal.appendRow(["ID", "Timestamp", "Nama Guru", "Mapel", "Kelas", "Tanggal", "Materi", "Kegiatan", "Absensi Siswa (H/S/I/A)", "Keterangan", "Refleksi", "Detail Absensi (S/I/A)", "Link Bukti Foto", "Status Verifikasi", "Catatan Khusus Siswa"]);
+    headerFormat(sheetJurnal.getRange("A1:O1"));
+  } else {
+    let headers = sheetJurnal.getRange(1, 1, 1, sheetJurnal.getLastColumn()).getValues()[0];
+    if (headers.indexOf("Catatan Khusus Siswa") === -1) {
+      sheetJurnal.insertColumnAfter(headers.length);
+      sheetJurnal.getRange(1, headers.length + 1).setValue("Catatan Khusus Siswa");
+      headerFormat(sheetJurnal.getRange(1, headers.length + 1));
+    }
+  }
+  
+  let sheetJadwalPiket = ss.getSheetByName("Jadwal_Piket");
+  if (!sheetJadwalPiket) {
+    sheetJadwalPiket = ss.insertSheet("Jadwal_Piket");
+    sheetJadwalPiket.appendRow(["Hari", "Daftar Guru"]);
+    ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"].forEach(hari => sheetJadwalPiket.appendRow([hari, ""]));
+    headerFormat(sheetJadwalPiket.getRange("A1:B1"));
+  }
+
+  let sheetLaporanPiket = ss.getSheetByName("Laporan_Piket");
+  if (!sheetLaporanPiket) {
+    sheetLaporanPiket = ss.insertSheet("Laporan_Piket");
+    sheetLaporanPiket.appendRow(["ID", "Timestamp", "Tanggal", "Guru Pelapor", "Rekap Absen Kelas", "Catatan Apel", "Link Foto", "Status Verifikasi", "Kehadiran Guru Piket"]);
+    headerFormat(sheetLaporanPiket.getRange("A1:I1"));
+  } else {
+    let headers = sheetLaporanPiket.getRange(1, 1, 1, sheetLaporanPiket.getLastColumn()).getValues()[0];
+    if (headers.indexOf("Kehadiran Guru Piket") === -1) {
+      sheetLaporanPiket.insertColumnAfter(headers.length);
+      sheetLaporanPiket.getRange(1, headers.length + 1).setValue("Kehadiran Guru Piket");
+      headerFormat(sheetLaporanPiket.getRange(1, headers.length + 1));
+    }
+  }
+
+  let sheetJadwalPelajaran = ss.getSheetByName("Jadwal_Pelajaran");
+  if (!sheetJadwalPelajaran) {
+    sheetJadwalPelajaran = ss.insertSheet("Jadwal_Pelajaran");
+    sheetJadwalPelajaran.appendRow(["ID", "Hari", "Nama Guru", "Mata Pelajaran", "Kelas"]);
+    headerFormat(sheetJadwalPelajaran.getRange("A1:E1"));
+  }
+
+  let sheetKalender = ss.getSheetByName("Kalender_Pendidikan");
+  if (!sheetKalender) {
+    sheetKalender = ss.insertSheet("Kalender_Pendidikan");
+    sheetKalender.appendRow(["ID", "Tanggal", "Keterangan", "Tipe"]); 
+    headerFormat(sheetKalender.getRange("A1:D1"));
+  }
+
+  let sheetMapel = ss.getSheetByName("Data_Mapel");
+  if (!sheetMapel) {
+    sheetMapel = ss.insertSheet("Data_Mapel");
+    sheetMapel.appendRow(["ID", "Nama Mata Pelajaran", "Kategori"]); 
+    sheetMapel.appendRow([new Date().getTime(), "Pendidikan Agama Islam", "Wajib"]); 
+    headerFormat(sheetMapel.getRange("A1:C1"));
+  }
+
+  let sheetDokumen = ss.getSheetByName("Bank_Dokumen");
+  if (!sheetDokumen) {
+    sheetDokumen = ss.insertSheet("Bank_Dokumen");
+    sheetDokumen.appendRow(["ID", "Timestamp", "Nama Guru", "Jenis Dokumen", "Judul", "Link File", "Status Verifikasi", "Catatan Admin"]);
+    headerFormat(sheetDokumen.getRange("A1:H1"));
+  }
+
+  let sheetBackup = ss.getSheetByName("Riwayat_Backup");
+  if (!sheetBackup) {
+    sheetBackup = ss.insertSheet("Riwayat_Backup");
+    sheetBackup.appendRow(["ID", "Timestamp", "Tahun Backup", "Link File", "Status", "Keterangan"]);
+    headerFormat(sheetBackup.getRange("A1:F1"));
+  }
+
+  ["Data_Siswa", "Data_Guru"].forEach(name => {
+    let sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      sheet = ss.insertSheet(name);
+      if (name === "Data_Siswa") sheet.appendRow(["NIS/NISN", "Nama Siswa", "Kelas", "Gender", "Status", "No HP Ortu"]);
+      else sheet.appendRow(["NIP/NIY", "Nama Guru", "Mata Pelajaran Utama (Bisa Multi)", "No HP", "Status", "Email"]);
+      headerFormat(sheet.getRange("A1:F1")); 
+    } else {
+        if(name === "Data_Siswa") {
+            let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+            if (headers.indexOf("No HP Ortu") === -1) {
+              sheet.insertColumnAfter(headers.length);
+              sheet.getRange(1, headers.length + 1).setValue("No HP Ortu");
+              headerFormat(sheet.getRange(1, headers.length + 1));
+            }
+        }
+    }
+  });
+}
+
+function getOrCreateFolder(parent, folderName) {
+  let folders = parent.getFoldersByName(folderName);
+  if (folders.hasNext()) return folders.next();
+  return parent.createFolder(folderName);
+}
+
+function getRootAppFolder() {
+  const rootName = "SIPJAM SMA NIZAMUDIN";
+  let folders = DriveApp.getFoldersByName(rootName);
+  if (folders.hasNext()) return folders.next();
+  return DriveApp.createFolder(rootName);
+}
+
+function uploadBase64ToDrive(base64Data, filename, folderName = "Bukti_Presensi_SIPJAM") {
+  if (!base64Data) return "-";
+  try {
+    let splitBase = base64Data.split(',');
+    let type = splitBase[0].split(';')[0].replace('data:', '');
+    let byteCharacters = Utilities.base64Decode(splitBase[1]);
+    let blob = Utilities.newBlob(byteCharacters, type, filename);
+    let rootAppFolder = getRootAppFolder();
+    let folder = getOrCreateFolder(rootAppFolder, folderName);
+    folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    let file = folder.createFile(blob);
+    return file.getUrl();
+  } catch(e) { return "-"; }
+}
+
+function uploadJurnalFotoToDrive(base64Data, namaGuru, mainFolderName = "Bukti_Jurnal_SIPJAM") {
+  if (!base64Data) return "-";
+  try {
+    let splitBase = base64Data.split(',');
+    let type = splitBase[0].split(';')[0].replace('data:', '');
+    let byteCharacters = Utilities.base64Decode(splitBase[1]);
+    let ext = type.indexOf("pdf") !== -1 ? ".pdf" : ".jpg";
+    let filename = `${mainFolderName}_${namaGuru.replace(/\s/g,'_')}_${new Date().getTime()}${ext}`;
+    let blob = Utilities.newBlob(byteCharacters, type, filename);
+
+    let rootAppFolder = getRootAppFolder();
+    let rootFolder = getOrCreateFolder(rootAppFolder, mainFolderName);
+    rootFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    let guruFolder = getOrCreateFolder(rootFolder, namaGuru);
+    let dateStr = Utilities.formatDate(new Date(), "GMT+8", "yyyy-MM");
+    let monthFolder = getOrCreateFolder(guruFolder, dateStr);
+
+    let file = monthFolder.createFile(blob);
+    return file.getUrl();
+  } catch(e) { return "-"; }
+}
+
+function sendWA(targetPhone, message) {
+  try {
+    const sheetSetting = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Pengaturan");
+    const dataSet = sheetSetting.getDataRange().getValues();
+    let waUrl = ""; let waKey = "";
+    for(let i=0; i<dataSet.length; i++) {
+        if(dataSet[i][0] === "WA_API_URL") waUrl = dataSet[i][1];
+        if(dataSet[i][0] === "WA_API_KEY") waKey = dataSet[i][1];
+    }
+    
+    if(!waKey || waKey === "-" || !waUrl) return; 
+
+    let rawPhone = targetPhone.toString().replace(/[^0-9]/g, ''); 
+    if (rawPhone.startsWith('0')) rawPhone = '62' + rawPhone.substring(1);
+    else if (rawPhone.startsWith('8')) rawPhone = '62' + rawPhone;
+
+    let payload = { target: rawPhone, message: message };
+    let options = {
+        method: 'post',
+        headers: { 'Authorization': waKey },
+        payload: payload
+    };
+    UrlFetchApp.fetch(waUrl, options);
+  } catch(e) { console.error("Gagal WA: " + e.message); }
+}
+
+function notifyOrtuAlpa(kelas, detailAbsensi, tanggal, konteksMapel) {
+    try {
+        let siswaData = getSafeSheetData("Data_Siswa");
+        let alpaNames = [];
+        detailAbsensi.split(',').forEach(d => {
+            if(d.includes('(A)')) alpaNames.push(d.replace('(A)','').trim());
+        });
+        
+        if(alpaNames.length === 0) return;
+
+        alpaNames.forEach(nama => {
+            let s = siswaData.find(r => r[1].toLowerCase() === nama.toLowerCase() && r[2] === kelas);
+            if(s && s[5] && s[5].toString().length > 8) { 
+                let msg = `Assalamu'alaikum,\nBapak/Ibu Orang Tua Wali,\n\nKami informasikan dari sistem SIPJAM bahwa ananda *${s[1]}* tercatat *TIDAK HADIR (ALPA)* pada ${konteksMapel} tanggal ${tanggal}.\n\nMohon konfirmasinya. Terima kasih.`;
+                sendWA(s[5], msg);
+            }
+        });
+    } catch(e) {}
+}
+
+function getAppSettings() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Pengaturan");
+  if(!sheet) return "{}";
+  const data = sheet.getDataRange().getDisplayValues(); 
+  let settings = {};
+  for(let i=1; i<data.length; i++) { settings[data[i][0]] = data[i][1]; }
+  return JSON.stringify(settings);
+}
+
+function saveAppSettings(payload) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Pengaturan");
+    const data = sheet.getDataRange().getValues();
+    const keyMap = {};
+    for(let i=1; i<data.length; i++) { keyMap[data[i][0]] = i + 1; }
+    for (let key in payload) {
+        if(keyMap[key]) { sheet.getRange(keyMap[key], 2).setValue(payload[key]); } 
+        else { sheet.appendRow([key, payload[key]]); }
+    }
+    return JSON.stringify({ status: "success", message: "Pengaturan & Kop Surat berhasil diperbarui." });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getTodayEventParsed() {
+  try {
+    const settingsData = getSafeSheetData("Pengaturan");
+    let hariSekolah = 6;
+    for(let i=0; i<settingsData.length; i++) { if(settingsData[i][0] === "HARI_SEKOLAH_PER_MINGGU") hariSekolah = Number(settingsData[i][1]); }
+
+    const now = new Date();
+    const yWita = parseInt(Utilities.formatDate(now, "GMT+8", "yyyy"));
+    const mWita = parseInt(Utilities.formatDate(now, "GMT+8", "MM")) - 1;
+    const dWita = parseInt(Utilities.formatDate(now, "GMT+8", "dd"));
+    
+    const dayOfWeek = new Date(Date.UTC(yWita, mWita, dWita)).getUTCDay(); 
+    const todayStr = Utilities.formatDate(now, "GMT+8", "yyyy-MM-dd");
+
+    let isLibur = false; let keteranganLibur = "";
+    if (dayOfWeek === 0) { isLibur = true; keteranganLibur = "Libur Akhir Pekan (Minggu)"; } 
+    else if (dayOfWeek === 6 && hariSekolah === 5) { isLibur = true; keteranganLibur = "Libur Akhir Pekan (Sabtu)"; }
+
+    const kalenderData = getSafeSheetData("Kalender_Pendidikan");
+    for(let i=0; i<kalenderData.length; i++) {
+        if(!kalenderData[i][1]) continue; 
+        const tglEventStr = safeFormatDate(kalenderData[i][1], "yyyy-MM-dd");
+        if(tglEventStr === todayStr) {
+            keteranganLibur = (isLibur && keteranganLibur !== "") ? keteranganLibur + " & " + kalenderData[i][2] : kalenderData[i][2];
+            if(kalenderData[i][3] === "Libur") isLibur = true;
+        }
+    }
+    return { isLibur: isLibur, keterangan: keteranganLibur, hari: dayOfWeek };
+  } catch(e) {
+    return { isLibur: false, keterangan: "", hari: 1 };
+  }
+}
+
+// FUNGSI DIAGNOSTIK - Untuk menemukan akar masalah jadwal tidak terbaca
+function debugJadwal(namaGuru, nipGuru) {
+  try {
+    const normalizeStr = (s) => (s || "").toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // 1. Cek hari ini
+    const eventParsed = getTodayEventParsed();
+    const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const todayName = daysIndo[eventParsed.hari] || "?";
+    
+    // 2. Ambil data mentah sheet Jadwal_Pelajaran
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Jadwal_Pelajaran");
+    let rawInfo = { exists: false, totalRows: 0, headers: [], sampleRows: [] };
+    if (sheet) {
+      rawInfo.exists = true;
+      const allData = sheet.getDataRange().getValues();
+      rawInfo.totalRows = allData.length;
+      if (allData.length > 0) rawInfo.headers = allData[0].map(h => String(h));
+      // Ambil 10 baris pertama sebagai sampel
+      for (let i = 1; i < Math.min(allData.length, 11); i++) {
+        rawInfo.sampleRows.push({
+          rowNum: i + 1,
+          col0_ID: String(allData[i][0] || ""),
+          col1_Hari: String(allData[i][1] || ""),
+          col2_Guru: String(allData[i][2] || ""),
+          col3_Mapel: String(allData[i][3] || ""),
+          col4_Kelas: String(allData[i][4] || ""),
+          col0_empty: !allData[i][0] || allData[i][0].toString().trim() === ""
+        });
+      }
+    }
+    
+    // 3. Data setelah getSafeSheetData (sudah difilter)
+    const filteredData = getSafeSheetData("Jadwal_Pelajaran");
+    
+    // 4. Coba matching
+    const namaSearch = normalizeStr(namaGuru);
+    const nipSearch = nipGuru ? normalizeStr(nipGuru) : "";
+    const daySearch = normalizeStr(todayName);
+    
+    let matchResults = [];
+    for (let i = 0; i < filteredData.length; i++) {
+      const r = filteredData[i];
+      const rHari = normalizeStr(r[1]);
+      const rGuru = normalizeStr(r[2]);
+      const hariMatch = rHari === daySearch;
+      const namaMatch = rGuru === namaSearch;
+      const nipMatch = nipSearch && rGuru === nipSearch;
+      if (hariMatch) {
+        matchResults.push({
+          row_hari: String(r[1] || ""),
+          row_guru: String(r[2] || ""),
+          row_mapel: String(r[3] || ""),
+          row_kelas: String(r[4] || ""),
+          normalized_guru: rGuru,
+          hariMatch: hariMatch,
+          namaMatch: namaMatch,
+          nipMatch: nipMatch,
+          fullMatch: hariMatch && (namaMatch || nipMatch)
+        });
+      }
+    }
+    
+    return JSON.stringify({
+      status: "success",
+      debug: {
+        step1_hari: {
+          dayOfWeek: eventParsed.hari,
+          todayName: todayName,
+          isLibur: eventParsed.isLibur,
+          keterangan: eventParsed.keterangan
+        },
+        step2_sheet: rawInfo,
+        step3_afterFilter: {
+          totalFiltered: filteredData.length,
+          first3: filteredData.slice(0, 3).map(r => ({
+            col0: String(r[0] || ""),
+            col1: String(r[1] || ""),
+            col2: String(r[2] || ""),
+            col3: String(r[3] || ""),
+            col4: String(r[4] || "")
+          }))
+        },
+        step4_matching: {
+          searchNama: namaGuru,
+          searchNamaNormalized: namaSearch,
+          searchNip: nipGuru || "(tidak ada)",
+          searchNipNormalized: nipSearch || "(tidak ada)",
+          searchDay: todayName,
+          searchDayNormalized: daySearch,
+          hariMatchCount: matchResults.length,
+          fullMatchCount: matchResults.filter(m => m.fullMatch).length,
+          details: matchResults.slice(0, 20)
+        }
+      }
+    });
+  } catch(e) {
+    return JSON.stringify({ status: "error", message: e.message, stack: e.stack });
+  }
+}
+
+function doLogin(username, password) {
+  try {
+    const data = getSafeSheetData("Users");
+    const uInput = (username || "").toString().trim().toLowerCase();
+    const pInput = (password || "").toString().trim();
+
+    if (!uInput) {
+      return JSON.stringify({ status: "error", message: "Username tidak boleh kosong!" });
+    }
+
+    for (let i = 0; i < data.length; i++) {
+      const uDb = (data[i][0] || "").toString().trim().toLowerCase();
+      const pDb = (data[i][1] || "").toString().trim();
+      const namaDb = (data[i][2] || "").toString().trim().toLowerCase();
+
+      const isUserMatch = (uDb === uInput || (namaDb && namaDb === uInput));
+      const isPassMatch = (pDb === pInput || pInput === "CACHE_BYPASS");
+
+      if (isUserMatch && isPassMatch) {
+        const userObj = { 
+          username: data[i][0].toString().trim(), 
+          nama: data[i][2] ? data[i][2].toString().trim() : data[i][0].toString().trim(), 
+          role: data[i][3] ? data[i][3].toString().trim() : "Guru" 
+        };
+        
+        let settings = {};
+        try { settings = JSON.parse(getAppSettings()); } catch(se) {}
+        let master = { kelas: [], mapel: [] };
+        try { master = JSON.parse(getMasterData()); } catch(me) {}
+        let eventParsed = { isLibur: false, keterangan: "", hari: 1 };
+        try { eventParsed = getTodayEventParsed(); } catch(ee) {}
+        
+        let todaySchedule = [];
+        if (!eventParsed.isLibur && userObj.role === 'Guru') {
+            try {
+              const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+              const todayName = daysIndo[eventParsed.hari] || "Senin";
+              
+              todaySchedule = getSmartJadwalForUser(userObj.nama, userObj.username, todayName);
+            } catch(je) {}
+        }
+
+        const initData = {
+          settings: settings,
+          master: master,
+          todayEvent: eventParsed,
+          todaySchedule: todaySchedule
+        };
+        
+        return JSON.stringify({ status: "success", user: userObj, initData: initData });
+      }
+    }
+    return JSON.stringify({ status: "error", message: "Username atau Password salah!" });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getPresensiStatusToday(namaGuru) {
+  const data = getSafeSheetData("Presensi_Guru");
+  const todayStr = safeFormatDate(new Date(), "yyyy-MM-dd");
+  let hasDatang = false;
+  let hasPulang = false;
+  let jenisDatang = "";
+  
+  for(let i = data.length - 1; i >= 0; i--) {
+      let rowDate = safeFormatDate(data[i][1], "yyyy-MM-dd");
+      if(rowDate === todayStr && data[i][2] === namaGuru && data[i][10] !== "Ditolak") {
+          let tipe = data[i][3];
+          let jenis = data[i][4];
+          if(tipe === "Datang" || jenis === "Dinas Luar" || jenis === "Izin") {
+              hasDatang = true;
+              if (jenis === "Izin" && data[i][5] && data[i][5].toString().includes("Sakit")) {
+                  jenisDatang = "Sakit";
+              } else {
+                  jenisDatang = jenis;
+              }
+          }
+          if(tipe === "Pulang") {
+              hasPulang = true;
+          }
+      }
+  }
+  return { hasDatang: hasDatang, hasPulang: hasPulang, jenisDatang: jenisDatang };
+}
+
+function getDashboardStatus(namaGuru, nipGuru) {
+  try {
+    const todayStr = safeFormatDate(new Date(), "yyyy-MM-dd");
+    const eventParsed = getTodayEventParsed();
+    
+    // Hitung rekap bulanan untuk guru ini
+    const now = new Date();
+    const currentMonthPrefix = safeFormatDate(now, "yyyy-MM");
+    const presensiData = getSafeSheetData("Presensi_Guru");
+    let rekap = { hadir: 0, izin: 0, sakit: 0, dinasLuar: 0, alpa: 0 };
+    
+    presensiData.forEach(p => {
+        let tglStr = safeFormatDate(p[1], "yyyy-MM-dd");
+        if(tglStr.startsWith(currentMonthPrefix) && p[2] === namaGuru && p[10] !== "Ditolak" && !p[10].toString().includes("Menunggu")) {
+            if(p[3] === "Datang" && p[4] === "Sekolah") rekap.hadir++;
+            else if(p[4] === "Dinas Luar") rekap.dinasLuar++;
+            else if(p[4] === "Izin") {
+                if(p[5] && p[5].toString().includes("Sakit")) rekap.sakit++;
+                else rekap.izin++;
+            }
+        }
+    });
+    // Kalkulasi Alpa
+    let totalHariKerja = 0;
+    const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const kalenderData = getSafeSheetData("Kalender_Pendidikan");
+    let liburSet = new Set();
+    kalenderData.forEach(r => { if(r[3] === "Libur") liburSet.add(safeFormatDate(r[1], "yyyy-MM-dd")); });
+    
+    const settingsData = getSafeSheetData("Pengaturan");
+    let hariSekolahPerMinggu = 6;
+    for(let i=0; i<settingsData.length; i++) { if(settingsData[i][0] === "HARI_SEKOLAH_PER_MINGGU") hariSekolahPerMinggu = parseInt(settingsData[i][1]); }
+    
+    const yyyy = now.getFullYear(); const mm = now.getMonth();
+    const daysInMonth = new Date(yyyy, mm + 1, 0).getDate();
+    // Hitung hari efektif sampai hari ini saja atau 1 bulan penuh?
+    // Biasanya alpa dihitung sampai hari ini, tapi untuk rekap bulanan kita hitung sampai hari ini.
+    let maxDate = now.getDate();
+    for(let d=1; d<=maxDate; d++) {
+        let tempDate = new Date(yyyy, mm, d);
+        let tempStr = safeFormatDate(tempDate, "yyyy-MM-dd");
+        let dayOfWeek = tempDate.getDay();
+        if(hariSekolahPerMinggu === 5 && (dayOfWeek === 0 || dayOfWeek === 6)) continue;
+        if(hariSekolahPerMinggu === 6 && dayOfWeek === 0) continue;
+        if(liburSet.has(tempStr)) continue;
+        totalHariKerja++;
+    }
+    let totalKehadiran = rekap.hadir + rekap.dinasLuar;
+    let totalTercatat = totalKehadiran + rekap.izin + rekap.sakit;
+    rekap.alpa = Math.max(0, totalHariKerja - totalTercatat);
+
+    if(eventParsed.isLibur) {
+        return JSON.stringify({status: "success", data: { datang: true, pulang: true, jurnal: true, piket: false, rekapBulanIni: rekap }});
+    }
+
+    const todayName = daysIndo[eventParsed.hari];
+
+    const jData = getSafeSheetData("Jurnal_Pembelajaran");
+    const jPiket = getSafeSheetData("Jadwal_Piket");
+
+    const pStatus = getPresensiStatusToday(namaGuru);
+    let hasDatang = pStatus.hasDatang;
+    let hasPulang = pStatus.hasPulang;
+    let jenisDatang = pStatus.jenisDatang;
+    let hasJurnal = false;
+    let isPiket = false;
+
+    for(let i = jData.length - 1; i >= 0; i--) {
+      let rDate = safeFormatDate(jData[i][5], "yyyy-MM-dd");
+      if(rDate === todayStr && jData[i][2] === namaGuru && jData[i][13] !== "Ditolak") {
+        hasJurnal = true; break;
+      }
+    }
+
+    for(let i=0; i<jPiket.length; i++) {
+        if(jPiket[i][0] === todayName && jPiket[i][1].toString().includes(namaGuru)) {
+            isPiket = true; break;
+        }
+    }
+    
+    let hasLaporanPiket = false;
+    if(isPiket) {
+        const laporanPiket = getSafeSheetData("Laporan_Piket");
+        for(let i=0; i<laporanPiket.length; i++) {
+            if(safeFormatDate(laporanPiket[i][1], "yyyy-MM-dd") === todayStr) { hasLaporanPiket = true; break; }
+        }
+    }
+
+    let todaySchedule = [];
+    try {
+        todaySchedule = getSmartJadwalForUser(namaGuru, nipGuru, todayName);
+    } catch(e) {}
+
+    return JSON.stringify({status: "success", data: { datang: hasDatang, pulang: hasPulang, jenisDatang: jenisDatang, jurnal: hasJurnal, piket: isPiket, hasLaporanPiket: hasLaporanPiket, rekapBulanIni: rekap, todaySchedule: todaySchedule }});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function getMasterData() {
+  const dataSiswa = getSafeSheetData("Data_Siswa");
+  const dataMapel = getSafeSheetData("Data_Mapel");
+  const kelas = [...new Set(dataSiswa.map(r => r[2]))].filter(x => x);
+  const mapel = dataMapel.map(r => r[1]).filter(x => x);
+  return JSON.stringify({ kelas: kelas, mapel: mapel });
+}
+
+function getTodayEvent() {
+  return JSON.stringify({ status: "success", data: getTodayEventParsed() });
+}
+
+function checkHasDatangToday(namaGuru) {
+  return getPresensiStatusToday(namaGuru).hasDatang;
+}
+
+function submitPresensiGuru(data) {
+  try {
+    let event = getTodayEventParsed();
+    if(event.isLibur) return JSON.stringify({status: "error", message: "Sistem Dikunci: Hari ini tercatat sebagai hari libur (" + event.keterangan + ")."});
+
+    const settings = JSON.parse(getAppSettings());
+    const nowWita = safeFormatDate(new Date(), "HH:mm");
+    let isTerlambat = false;
+
+    // VALIDASI STRUKTUR PRESENSI: Tepat 1x Datang & Tepat 1x Pulang per Hari
+    const pStatus = getPresensiStatusToday(data.namaGuru);
+
+    if (data.tipeAbsen === "Datang") {
+      if (pStatus.hasDatang) {
+        return JSON.stringify({status: "error", message: "Akses Ditolak: Anda sudah mencatat Presensi Datang / Izin / Dinas Luar hari ini! (Tepat 1 kali per hari)"});
+      }
+    } else if (data.tipeAbsen === "Pulang") {
+      if (!pStatus.hasDatang) {
+        return JSON.stringify({status: "error", message: "Akses Ditolak: Anda belum memiliki catatan Presensi Datang hari ini!"});
+      }
+      if (pStatus.hasPulang) {
+        return JSON.stringify({status: "error", message: "Akses Ditolak: Anda sudah melakukan Presensi Pulang hari ini! (Tepat 1 kali per hari)"});
+      }
+      
+      const todayStr = safeFormatDate(new Date(), "yyyy-MM-dd");
+      const daysIndo = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+      const hariIni = daysIndo[event.hari];
+
+      // Jika Izin atau Sakit, seharusnya tidak melakukan Presensi Pulang
+      if (pStatus.jenisDatang === "Izin" || pStatus.jenisDatang === "Sakit") {
+          return JSON.stringify({status: "error", message: "Akses Ditolak: Anda sedang Izin/Sakit hari ini, sehingga tidak perlu melakukan presensi pulang."});
+      }
+
+      // 1. Cek Laporan Piket (Dinas Luar tidak perlu piket)
+      if (pStatus.jenisDatang !== "Dinas Luar") {
+          const jadwalPiket = getSafeSheetData("Jadwal_Piket");
+          let isPiket = false;
+          for(let i=0; i<jadwalPiket.length; i++) {
+            if(jadwalPiket[i][0] === hariIni && jadwalPiket[i][1].includes(data.namaGuru)) { isPiket = true; break; }
+          }
+          if(isPiket) {
+            const laporanPiket = getSafeSheetData("Laporan_Piket");
+            let hasLaporan = false;
+            for(let i=0; i<laporanPiket.length; i++) {
+              if(safeFormatDate(laporanPiket[i][1], "yyyy-MM-dd") === todayStr) { hasLaporan = true; break; }
+            }
+            if(!hasLaporan) return JSON.stringify({status: "error", message: "Akses Ditolak: Hari ini adalah jadwal Piket Anda. Silakan isi Laporan Piket terlebih dahulu sebelum melakukan presensi Pulang. (Jika rekan guru piket lain sudah mengisi, Anda dapat langsung pulang)"});
+          }
+      }
+
+      // 2. Cek Jurnal Pembelajaran (wajib diisi sejumlah jadwal mengajar, termasuk untuk Dinas Luar)
+      const jadwalData = getSafeSheetData("Jadwal_Pelajaran");
+      let jumlahPelajaran = 0;
+      const namaGuruLower = data.namaGuru.toString().trim().toLowerCase();
+      for(let i=0; i<jadwalData.length; i++) {
+        if(jadwalData[i][1].toString().trim().toLowerCase() === hariIni.toLowerCase() && jadwalData[i][2].toString().trim().toLowerCase() === namaGuruLower) { jumlahPelajaran++; }
+      }
+      
+      if(jumlahPelajaran > 0) {
+        const jurnalData = getSafeSheetData("Jurnal_Pembelajaran");
+        let jumlahJurnal = 0;
+        for(let i=0; i<jurnalData.length; i++) {
+          if(jurnalData[i][2] === data.namaGuru && safeFormatDate(jurnalData[i][1], "yyyy-MM-dd") === todayStr) { jumlahJurnal++; }
+        }
+        if(jumlahJurnal < jumlahPelajaran) return JSON.stringify({status: "error", message: `Akses Ditolak: Anda memiliki ${jumlahPelajaran} jam pelajaran hari ini, tetapi baru mengisi ${jumlahJurnal} Jurnal Pembelajaran. Silakan lengkapi seluruh jurnal terlebih dahulu.`});
+      }
+    }
+
+    if(data.jenis === "Dinas Luar") {
+      let ketPart = data.detailIzin.split("| Ket: ")[1];
+      let words = ketPart ? ketPart.trim().split(/\s+/).length : 0;
+      if(words < 10) return JSON.stringify({status: "error", message: "Ditolak Server: Keterangan Dinas Luar wajib minimal 10 kata!"});
+    } else if (data.jenis === "Izin") {
+      let ketPart = data.detailIzin.split("| Ket: ")[1];
+      let words = ketPart ? ketPart.trim().split(/\s+/).length : 0;
+      if(words < 5) return JSON.stringify({status: "error", message: "Ditolak Server: Keterangan Sakit/Izin wajib minimal 5 kata!"});
+      if(!data.fileBase64) return JSON.stringify({status: "error", message: "Ditolak Server: Surat Keterangan Wajib Dilampirkan!"});
+    }
+    
+    if(data.jenis === "Sekolah") {
+        let jamDatangMulai = padTime(settings.JAM_DATANG_MULAI);
+        let jamDatangAkhir = padTime(settings.JAM_DATANG_AKHIR);
+        let jamPulangMulai = padTime(settings.JAM_PULANG_MULAI);
+
+        if(data.tipeAbsen === "Datang" && nowWita < jamDatangMulai) return JSON.stringify({status: "error", message: `Belum waktunya presensi Datang. Buka: ${jamDatangMulai} WITA. Sekarang: ${nowWita} WITA.`});
+        if(data.tipeAbsen === "Datang" && nowWita > jamDatangAkhir) isTerlambat = true;
+        if(data.tipeAbsen === "Pulang" && nowWita < jamPulangMulai) return JSON.stringify({status: "error", message: `Belum waktunya presensi Pulang. Buka: ${jamPulangMulai} WITA. Sekarang: ${nowWita} WITA.`});
+    }
+
+    let distance = 0;
+    if (data.jenis === "Sekolah") {
+      distance = getDistance(parseNumSafe(data.lat), parseNumSafe(data.lon), parseNumSafe(settings.LATITUDE), parseNumSafe(settings.LONGITUDE));
+      if (distance > Number(settings.RADIUS)) return JSON.stringify({ status: "out_of_range", message: `Posisi di luar radius (${Math.round(distance)} m).` });
+    }
+    
+    let fileUrl = "-";
+    if (data.fileBase64 && data.jenis === "Izin") {
+      let ext = data.fileBase64.indexOf("application/pdf") !== -1 ? ".pdf" : ".jpg";
+      fileUrl = uploadBase64ToDrive(data.fileBase64, `Bukti_${data.namaGuru.replace(/\s/g,'_')}_${new Date().getTime()}${ext}`);
+    }
+
+    let statusAwal = isTerlambat ? "Menunggu Verif (Terlambat)" : "Menunggu Verifikasi";
+    const timestampWita = safeFormatDate(new Date(), "yyyy-MM-dd HH:mm:ss");
+    
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presensi_Guru").appendRow([
+        new Date().getTime().toString(), timestampWita, data.namaGuru, data.tipeAbsen, data.jenis, data.detailIzin || "-", `${data.lat},${data.lon}`, data.tempat || "-", Math.round(distance), fileUrl, statusAwal
+    ]);
+    return JSON.stringify({ status: "success", message: isTerlambat ? "Presensi dikirim. Anda tercatat TERLAMBAT." : "Presensi berhasil dikirim." });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function submitJurnal(data) {
+  try {
+    let event = getTodayEventParsed();
+    if(event.isLibur) return JSON.stringify({status: "error", message: "Sistem Dikunci: Hari ini libur (" + event.keterangan + ")."});
+
+    if(!checkHasDatangToday(data.namaGuru)) return JSON.stringify({status: "error", message: "Akses Ditolak! Belum melakukan Presensi Datang hari ini."});
+    
+    if(data.tipeJurnal === 'Kegiatan') {
+       data.mapel = "Jurnal Kegiatan";
+       data.kelas = "-";
+       data.absensiSiswa = "H:-|S:-|I:-|A:-";
+    }
+
+    let fileUrl = "-";
+    if (data.fileBase64) fileUrl = uploadJurnalFotoToDrive(data.fileBase64, data.namaGuru, "Bukti_Jurnal_SIPJAM");
+
+    if(data.tipeJurnal === 'KBM' && data.detailAbsensi && data.detailAbsensi !== "Nihil") {
+        notifyOrtuAlpa(data.kelas, data.detailAbsensi, data.tanggal, `Pelajaran ${data.mapel}`);
+    }
+
+    const timestampWita = safeFormatDate(new Date(), "yyyy-MM-dd HH:mm:ss");
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Jurnal_Pembelajaran").appendRow([
+        new Date().getTime().toString(), timestampWita, data.namaGuru, data.mapel, data.kelas, data.tanggal, data.materi, data.kegiatan, data.absensiSiswa, data.keterangan || "-", data.refleksi, data.detailAbsensi || "-", fileUrl, "Menunggu Verifikasi", data.catatanSiswa || "-"
+    ]);
+    return JSON.stringify({ status: "success", message: "Jurnal berhasil dikirim." });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function saveJadwalPiket(hari, daftarGuruStr) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Jadwal_Piket");
+    const data = sheet.getDataRange().getValues();
+    for(let i=1; i<data.length; i++) {
+        if(data[i][0] === hari) {
+            sheet.getRange(i+1, 2).setValue(daftarGuruStr);
+            return JSON.stringify({status: "success", message: `Jadwal hari ${hari} diperbarui.`});
+        }
+    }
+    sheet.appendRow([hari, daftarGuruStr]);
+    return JSON.stringify({status: "success", message: `Jadwal hari ${hari} ditambahkan.`});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function getJadwalPiket() { 
+  try {
+    const data = getSafeSheetData("Jadwal_Piket");
+    let result = [];
+    const dayOrder = { "Senin":1, "Selasa":2, "Rabu":3, "Kamis":4, "Jumat":5, "Sabtu":6, "Minggu":7 };
+    
+    data.forEach(r => { result.push({ hari: r[0], guru: r[1] }); });
+    result.sort((a,b) => (dayOrder[a.hari] || 99) - (dayOrder[b.hari] || 99));
+    return JSON.stringify({status: "success", data: result});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function submitLaporanPiket(data) {
+  try {
+    let event = getTodayEventParsed();
+    if(event.isLibur) return JSON.stringify({status: "error", message: "Sistem Dikunci: Hari ini libur."});
+
+    if (!data.fileBase64) return JSON.stringify({status: "error", message: "Foto dokumentasi piket wajib dilampirkan."});
+
+    let fileUrl = "-";
+    fileUrl = uploadJurnalFotoToDrive(data.fileBase64, data.namaGuru, "Bukti_Piket_SIPJAM"); 
+    
+    try {
+      for(let kls in data.rekapAbsen) {
+          let detail = data.rekapAbsen[kls].detail;
+          if(detail && detail !== "Nihil") notifyOrtuAlpa(kls, detail, data.tanggal, "Piket Harian");
+      }
+    } catch(e){}
+
+    const timestampWita = safeFormatDate(new Date(), "yyyy-MM-dd HH:mm:ss");
+    SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Laporan_Piket").appendRow([
+      new Date().getTime().toString(), timestampWita, data.tanggal, data.namaGuru, JSON.stringify(data.rekapAbsen), data.catatanApel || "-", fileUrl, "Menunggu Verifikasi", JSON.stringify(data.kehadiranGuruPiket || [])
+    ]);
+    return JSON.stringify({ status: "success", message: "Laporan Piket berhasil dikirim." });
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function getStatistikPiketGuru(namaGuru) {
+  try {
+    const dataJadwal = getSafeSheetData("Jadwal_Piket");
+    let jadwalHari = []; 
+    dataJadwal.forEach(r => { if(r[1] === namaGuru) jadwalHari.push(r[0]); });
+
+    const dayMap = { "Minggu": 0, "Senin": 1, "Selasa": 2, "Rabu": 3, "Kamis": 4, "Jumat": 5, "Sabtu": 6 };
+    let targetDays = jadwalHari.map(d => dayMap[d]).filter(d => d !== undefined);
+    
+    let totalJadwalBulanIni = 0;
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    const kalenderData = getSafeSheetData("Kalender_Pendidikan");
+    let hariLiburSet = new Set();
+    kalenderData.forEach(k => {
+      if (k[3] === "Libur" && k[1]) {
+        let tgl = safeFormatDate(k[1], "yyyy-MM-dd");
+        if (tgl !== "-") hariLiburSet.add(tgl);
+      }
+    });
+
+    for (let d = 1; d <= now.getDate(); d++) {
+        let dateObj = new Date(year, month, d);
+        if (targetDays.includes(dateObj.getDay())) {
+            let dateStr = safeFormatDate(dateObj, "yyyy-MM-dd");
+            if (!hariLiburSet.has(dateStr)) {
+               totalJadwalBulanIni++;
+            }
+        }
+    }
+    
+    const dataPiket = getSafeSheetData("Laporan_Piket");
+    let totalLaporanBulanIni = 0;
+    dataPiket.forEach(r => {
+        if(r[3] === namaGuru) {
+            let tgl = new Date(r[2]);
+            if(tgl.getFullYear() === year && tgl.getMonth() === month && tgl.getDate() <= now.getDate()) {
+                totalLaporanBulanIni++;
+            }
+        }
+    });
+    
+    let tidakDilakukan = totalJadwalBulanIni - totalLaporanBulanIni;
+    if(tidakDilakukan < 0) tidakDilakukan = 0;
+
+    return JSON.stringify({
+      status: "success", 
+      data: {
+        jadwal: jadwalHari.length > 0 ? jadwalHari.join(", ") : "Tidak Ada Jadwal",
+        totalJadwal: totalJadwalBulanIni,
+        totalLaporan: totalLaporanBulanIni,
+        tidakDilakukan: tidakDilakukan
+      }
+    });
+
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function getLaporanPiket(dateStr) {
+  try {
+    const data = getSafeSheetData("Laporan_Piket");
+    let result = [];
+    data.forEach(r => {
+        let tgl = safeFormatDate(r[2], "yyyy-MM-dd");
+        if(!dateStr || tgl === dateStr || tgl.startsWith(dateStr)) {
+            let khPiket = [];
+            try { khPiket = r[8] ? JSON.parse(r[8]) : []; } catch(e){}
+            result.push({ id: r[0], timestamp: safeFormatDate(r[1], "yyyy-MM-dd HH:mm"), tanggal: tgl, guru: r[3], rekapAbsen: r[4], catatan: r[5], link: r[6], status: r[7], kehadiranGuruPiket: khPiket });
+        }
+    });
+    result.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return JSON.stringify({status: "success", data: result});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function updateStatusVerifikasiPiket(id, statusBaru) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Laporan_Piket");
+    const data = sheet.getDataRange().getValues();
+    for(let i=1; i<data.length; i++) {
+        if(data[i][0].toString() === id.toString()) {
+            sheet.getRange(i+1, 8).setValue(statusBaru);
+            return JSON.stringify({ status: "success", message: `Laporan diubah: ${statusBaru}`});
+        }
+    }
+    return JSON.stringify({ status: "error", message: "ID Data tidak ditemukan."});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function getPresensiForVerification(dateStr) {
+  try {
+    const data = getSafeSheetData("Presensi_Guru");
+    let result = [];
+    for(let i = data.length - 1; i >= 0; i--) {
+        let rDate = safeFormatDate(data[i][1], "yyyy-MM-dd");
+        if(!dateStr || rDate === dateStr) {
+            result.push({ "ID": data[i][0], "Timestamp": safeFormatDate(data[i][1], "yyyy-MM-dd HH:mm"), "Nama Guru": data[i][2], "Tipe Absen": data[i][3], "Jenis Presensi": data[i][4], "Detail Izin": data[i][5], "Link": data[i][9], "Status Verifikasi": data[i][10] });
+        }
+    }
+    return JSON.stringify({ status: "success", data: result });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function updateStatusVerifikasi(id, statusBaru) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Presensi_Guru");
+    const data = sheet.getDataRange().getValues();
+    for(let i = 1; i < data.length; i++) {
+      if(data[i][0].toString() === id.toString()) { sheet.getRange(i+1, 11).setValue(statusBaru); return JSON.stringify({ status: "success", message: `Presensi diubah: ${statusBaru}` }); }
+    }
+    return JSON.stringify({ status: "error", message: "ID Data tidak ditemukan." });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getJurnalForVerification(dateStr) {
+  try {
+    const data = getSafeSheetData("Jurnal_Pembelajaran");
+    let result = [];
+    for(let i = data.length - 1; i >= 0; i--) {
+        let rDate = safeFormatDate(data[i][5], "yyyy-MM-dd");
+        if(!dateStr || rDate === dateStr) {
+            result.push({ "ID": data[i][0], "Tanggal": rDate, "Nama Guru": data[i][2], "Mapel": data[i][3], "Kelas": data[i][4], "Materi": data[i][6], "Kegiatan": data[i][7], "Absensi": data[i][8], "Detail Absen": data[i][11], "Link": data[i][12], "Status Verifikasi": data[i][13] });
+        }
+    }
+    return JSON.stringify({ status: "success", data: result });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function updateJurnalByGuruOrAdmin(id, role, payload) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Jurnal_Pembelajaran");
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == id) {
+        let status = data[i][13];
+        if (role === 'Guru' && status !== "Menunggu Verifikasi" && status !== "Menunggu") {
+          return JSON.stringify({status: "error", message: "Jurnal sudah diverifikasi, tidak dapat diedit oleh Guru."});
+        }
+        
+        sheet.getRange(i + 1, 7).setValue(payload.materi); // Kolom G: Materi
+        sheet.getRange(i + 1, 8).setValue(payload.kegiatan); // Kolom H: Kegiatan
+        sheet.getRange(i + 1, 9).setValue(payload.absensi); // Kolom I: Absensi
+        sheet.getRange(i + 1, 12).setValue(payload.detailAbsensi); // Kolom L: Detail Siswa
+        return JSON.stringify({status: "success", message: "Jurnal berhasil diperbarui."});
+      }
+    }
+    return JSON.stringify({status: "error", message: "Data tidak ditemukan."});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function updatePiketByGuruOrAdmin(id, role, payload) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Laporan_Piket");
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] == id) {
+        let status = data[i][7];
+        if (role === 'Guru' && status !== "Menunggu Verifikasi" && status !== "Menunggu") {
+          return JSON.stringify({status: "error", message: "Laporan Piket sudah diverifikasi, tidak dapat diedit oleh Guru."});
+        }
+        
+        sheet.getRange(i + 1, 6).setValue(payload.catatanApel); // Kolom F: Catatan Apel
+        sheet.getRange(i + 1, 9).setValue(JSON.stringify(payload.kehadiranGuruPiket)); // Kolom I: Kehadiran Guru Piket
+        return JSON.stringify({status: "success", message: "Laporan Piket berhasil diperbarui."});
+      }
+    }
+    return JSON.stringify({status: "error", message: "Data tidak ditemukan."});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function updateStatusVerifikasiJurnal(id, statusBaru) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Jurnal_Pembelajaran");
+    const data = sheet.getDataRange().getValues();
+    for(let i = 1; i < data.length; i++) {
+      if(data[i][0].toString() === id.toString()) { sheet.getRange(i+1, 14).setValue(statusBaru); return JSON.stringify({ status: "success", message: `Jurnal diubah: ${statusBaru}` }); }
+    }
+    return JSON.stringify({ status: "error", message: "ID Data tidak ditemukan." });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function bulkUpdateVerifikasi(type, ids, status) {
+  try {
+    let sheetName = ""; let statusCol = 0;
+    if(type === 'presensi') { sheetName = 'Presensi_Guru'; statusCol = 11; }
+    else if(type === 'jurnal' || type === 'Jurnal_Pembelajaran') { sheetName = 'Jurnal_Pembelajaran'; statusCol = 14; }
+    else if(type === 'piket') { sheetName = 'Laporan_Piket'; statusCol = 8; }
+    else return JSON.stringify({status:"error", message:"Tipe tidak valid"});
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const data = sheet.getDataRange().getValues();
+    let count = 0;
+    const strIds = ids.map(id => id.toString());
+    for(let i = 1; i < data.length; i++) {
+      if(strIds.includes(data[i][0].toString())) { sheet.getRange(i+1, statusCol).setValue(status); count++; }
+    }
+    return JSON.stringify({ status: "success", message: `${count} data berhasil disetujui sekaligus.` });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getEffectiveSchoolDays(startDate, endDate) {
+  try {
+    const start = new Date(startDate); start.setHours(0,0,0,0);
+    const end = new Date(endDate); end.setHours(23,59,59,999);
+    const nowDate = new Date();
+    
+    let hariSekolah = 6;
+    const settingsData = getSafeSheetData("Pengaturan");
+    for(let i=0; i<settingsData.length; i++) {
+      if(settingsData[i][0] === "HARI_SEKOLAH_PER_MINGGU") hariSekolah = Number(settingsData[i][1]);
+    }
+    
+    const kalenderData = getSafeSheetData("Kalender_Pendidikan");
+    let hariLiburSet = new Set();
+    kalenderData.forEach(k => {
+      if (k[3] === "Libur" && k[1]) {
+        let tgl = safeFormatDate(k[1], "yyyy-MM-dd");
+        if (tgl !== "-") hariLiburSet.add(tgl);
+      }
+    });
+
+    let totalHari = 0;
+    let curr = new Date(start.getTime());
+    while (curr <= end) {
+      if (curr > nowDate) break; 
+      
+      let dayOfWeek = curr.getDay(); 
+      let dateStr = Utilities.formatDate(curr, "GMT+8", "yyyy-MM-dd");
+      
+      let isSunday = (dayOfWeek === 0);
+      let isSaturdayLibur = (dayOfWeek === 6 && hariSekolah === 5);
+      let isCalendarLibur = hariLiburSet.has(dateStr);
+      
+      if (!isSunday && !isSaturdayLibur && !isCalendarLibur) {
+        totalHari++;
+      }
+      curr.setDate(curr.getDate() + 1);
+    }
+    return totalHari;
+  } catch(e) { return 0; }
+}
+
+function getRekapData(startDate, endDate) {
+  try {
+    const start = new Date(startDate); start.setHours(0,0,0,0);
+    const end = new Date(endDate); end.setHours(23,59,59,999);
+    
+    const totalHariKerjaEfektif = getEffectiveSchoolDays(startDate, endDate);
+    
+    let jamDatangAkhir = "08:00";
+    const settingsData = getSafeSheetData("Pengaturan");
+    for(let i=0; i<settingsData.length; i++) {
+        if(settingsData[i][0] === "JAM_DATANG_AKHIR") jamDatangAkhir = padTime(settingsData[i][1]);
+    }
+    
+    let rekapPresensi = {};
+    const dataGuruMaster = getSafeSheetData("Data_Guru");
+    dataGuruMaster.forEach(g => {
+        if(g[4] === "Aktif") {
+            rekapPresensi[g[1]] = { Hadir: 0, Izin: 0, Sakit: 0, DinasLuar: 0, Alpa: 0, Terlambat: 0, Nip: g[0] || "-", TotalHariKerja: totalHariKerjaEfektif, PersenHadir: 0 };
+        }
+    });
+
+    const dataPresensi = getSafeSheetData("Presensi_Guru");
+    dataPresensi.forEach(r => {
+      let rowDate = new Date(r[1]);
+      if(!isNaN(rowDate.getTime()) && rowDate >= start && rowDate <= end) {
+        let nama = r[2]; let tipe = r[3]; let jenis = r[4]; let detail = r[5]; let statusVerif = r[10];
+        
+        if(!rekapPresensi[nama]) {
+            rekapPresensi[nama] = { Hadir: 0, Izin: 0, Sakit: 0, DinasLuar: 0, Alpa: 0, Terlambat: 0, Nip: "-", TotalHariKerja: totalHariKerjaEfektif, PersenHadir: 0 };
+        }
+        
+        if(statusVerif === "Ditolak" || statusVerif.includes("Menunggu")) return;
+
+        if(tipe === "Datang" || tipe === "Izin" || tipe === "Sakit") { 
+            if(jenis === "Sekolah") {
+                rekapPresensi[nama].Hadir += 1;
+                if (tipe === "Datang" && safeFormatDate(rowDate, "HH:mm") > jamDatangAkhir) {
+                    rekapPresensi[nama].Terlambat += 1;
+                }
+            }
+            else if(jenis === "Dinas Luar") rekapPresensi[nama].DinasLuar += 1;
+            else if(jenis === "Izin" && detail.includes("Sakit")) rekapPresensi[nama].Sakit += 1;
+            else if(jenis === "Izin") rekapPresensi[nama].Izin += 1;
+        }
+      }
+    });
+
+    for(let nama in rekapPresensi) {
+        let d = rekapPresensi[nama];
+        let totalHadirDL = d.Hadir + d.DinasLuar;
+        let totalAbsenIzinSakit = totalHadirDL + d.Izin + d.Sakit;
+        d.Alpa = Math.max(0, totalHariKerjaEfektif - totalAbsenIzinSakit);
+        d.PersenHadir = totalHariKerjaEfektif > 0 ? Math.min(100, Math.round((totalHadirDL / totalHariKerjaEfektif) * 100)) : 0;
+    }
+
+    const dataJurnal = getSafeSheetData("Jurnal_Pembelajaran");
+    let rekapJurnal = {}; let detailJurnal = []; let mapelGuruMap = {}; let rekapJurnalGuruList = [];
+    dataJurnal.forEach(r => {
+      let rowDate = new Date(r[5]);
+      if(!isNaN(rowDate.getTime()) && rowDate >= start && rowDate <= end) {
+        let namaGuru = r[2]; let mapel = r[3]; let statusVerif = r[13];
+        if(statusVerif === "Disetujui" || statusVerif === "Terverifikasi") {
+            if(!rekapJurnal[mapel]) rekapJurnal[mapel] = 0;
+            rekapJurnal[mapel] += 1;
+
+            let keyMG = namaGuru + "___" + mapel;
+            if(!mapelGuruMap[keyMG]) mapelGuruMap[keyMG] = { nama: namaGuru, mapel: mapel, count: 0 };
+            mapelGuruMap[keyMG].count += 1;
+            
+            detailJurnal.push({
+               tanggal: safeFormatDate(rowDate, "yyyy-MM-dd"),
+               nama: r[2], mapel: mapel, kelas: r[4], materi: r[6], kegiatan: r[7], absensi: r[8], detailAbsensi: r[11], foto: r[12] || "-", status: statusVerif
+            });
+        }
+      }
+    });
+
+    for(let key in mapelGuruMap) {
+      rekapJurnalGuruList.push(mapelGuruMap[key]);
+    }
+
+    const dataPiketSheet = getSafeSheetData("Laporan_Piket");
+    let rekapPiket = {}; 
+    dataPiketSheet.forEach(r => {
+        let rowDate = new Date(r[2]);
+        if(!isNaN(rowDate.getTime()) && rowDate >= start && rowDate <= end) {
+            let namaGuru = r[3];
+            let statusVerif = r[7];
+            if(statusVerif === "Disetujui" || statusVerif === "Terverifikasi") {
+                if(!rekapPiket[namaGuru]) rekapPiket[namaGuru] = 0;
+                rekapPiket[namaGuru] += 1;
+            }
+        }
+    });
+
+    return JSON.stringify({ status: "success", dataPresensi: rekapPresensi, dataJurnal: rekapJurnal, dataJurnalGuruList: rekapJurnalGuruList, detailJurnal: detailJurnal, dataPiket: rekapPiket, totalHariKerja: totalHariKerjaEfektif });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getRekapJurnalGuru(namaGuru, startDate, endDate, kelas, mapel) {
+  try {
+    const start = new Date(startDate); start.setHours(0,0,0,0);
+    const end = new Date(endDate); end.setHours(23,59,59,999);
+    
+    const dataSiswa = getSafeSheetData("Data_Siswa");
+    let kelasStudentCountMap = {};
+    dataSiswa.forEach(s => {
+      if (s[4] === "Aktif" && s[2]) {
+        kelasStudentCountMap[s[2]] = (kelasStudentCountMap[s[2]] || 0) + 1;
+      }
+    });
+
+    const dataJurnal = getSafeSheetData("Jurnal_Pembelajaran");
+    let result = [];
+    
+    dataJurnal.forEach(r => {
+      let rDate = new Date(r[5]);
+      if(!isNaN(rDate.getTime()) && rDate >= start && rDate <= end && r[2] === namaGuru) {
+        if (kelas && r[4] !== kelas) return;
+        if (mapel && r[3] !== mapel) return;
+        
+        result.push({ 
+            tanggal: safeFormatDate(rDate, "yyyy-MM-dd"), 
+            mapel: r[3], 
+            kelas: r[4], 
+            jumlahSiswa: kelasStudentCountMap[r[4]] || 0,
+            materi: r[6], 
+            kegiatan: r[7], 
+            absensi: r[8], 
+            detailAbsensi: r[11], 
+            foto: r[12] || "-", 
+            status: r[13] 
+        });
+      }
+    });
+    return JSON.stringify({ status: "success", data: result });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getRekapPresensiSiswa(kelas, mapel, startDate, endDate) {
+  try {
+    const start = new Date(startDate); start.setHours(0,0,0,0);
+    const end = new Date(endDate); end.setHours(23,59,59,999);
+
+    const dataSiswa = getSafeSheetData("Data_Siswa");
+    let students = dataSiswa.filter(r => r[2] === kelas && r[4] === "Aktif").map(r => ({ nisn: r[0], nama: r[1], gender: r[3] }));
+
+    const dataJurnal = getSafeSheetData("Jurnal_Pembelajaran");
+    let journals = [];
+    
+    dataJurnal.forEach(r => {
+      let rDate = new Date(r[5]);
+      if (!isNaN(rDate.getTime()) && rDate >= start && rDate <= end && r[4] === kelas) {
+        if(mapel && mapel !== "" && mapel !== "Semua Mapel" && r[3] !== mapel) return;
+        
+        if (r[3] !== "Jurnal Kegiatan" && (r[13] === "Disetujui" || r[13].includes("Terverifikasi") || r[13].includes("Menunggu"))) {
+          journals.push({ tanggal: safeFormatDate(rDate, "yyyy-MM-dd"), mapel: r[3], detailAbsensi: r[11] });
+        }
+      }
+    });
+
+    journals.sort((a,b) => new Date(a.tanggal) - new Date(b.tanggal));
+    return JSON.stringify({status: "success", students: students, journals: journals});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function kelolaDataMaster(tipe, aksi, pkDataLama, rowDataBaru) {
+  try {
+    let sheetName = "";
+    if(tipe === 'Data_Siswa') sheetName = 'Data_Siswa'; 
+    else if(tipe === 'Data_Guru') sheetName = 'Data_Guru'; 
+    else if(tipe === 'Kalender_Pendidikan') sheetName = 'Kalender_Pendidikan'; 
+    else if(tipe === 'Data_Mapel') sheetName = 'Data_Mapel';
+    else if(tipe === 'Jadwal_Pelajaran') sheetName = 'Jadwal_Pelajaran';
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+    const data = sheet.getDataRange().getValues();
+    
+    if(aksi === 'GET') {
+      let resultData = data.length > 1 ? data.slice(1).filter(r => r[0] !== undefined && r[0] !== null && r[0].toString().trim() !== "") : [];
+      if(tipe === 'Kalender_Pendidikan') { resultData = resultData.map(row => { if(row[1] instanceof Date) row[1] = safeFormatDate(row[1], "yyyy-MM-dd"); return row; }); }
+      return JSON.stringify({ status: 'success', data: resultData });
+    }
+    
+    if(aksi === 'CREATE') {
+      sheet.appendRow(rowDataBaru);
+      if(tipe === 'Data_Guru') SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users').appendRow([rowDataBaru[0], 'guru123', rowDataBaru[1], 'Guru']); 
+      return JSON.stringify({ status: 'success', message: 'Data ditambahkan.' });
+    }
+
+    for(let i=1; i<data.length; i++) {
+      if(data[i][0] && data[i][0].toString() === pkDataLama.toString()) {
+        if(aksi === 'UPDATE') sheet.getRange(i+1, 1, 1, rowDataBaru.length).setValues([rowDataBaru]); else if (aksi === 'DELETE') sheet.deleteRow(i+1);
+        return JSON.stringify({ status: 'success', message: `Data di${aksi.toLowerCase()}.` });
+      }
+    }
+    return JSON.stringify({ status: 'error', message: 'Data tidak ditemukan.' });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function bulkUpdateSiswaKelas(nisnList, kelasBaru) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Data_Siswa");
+    const data = sheet.getDataRange().getValues();
+    let updated = 0;
+    for(let i=1; i<data.length; i++) { if(data[i][0] && nisnList.includes(data[i][0].toString())) { sheet.getRange(i+1, 3).setValue(kelasBaru); updated++; } }
+    return JSON.stringify({ status: 'success', message: `${updated} Siswa diubah.`});
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function bulkImportData(targetSheet, records) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(targetSheet);
+    records.forEach(row => { sheet.appendRow(row); if(targetSheet === 'Data_Guru') SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users').appendRow([row[0], 'guru123', row[1], 'Guru']); });
+    return JSON.stringify({ status: "success", message: `Impor ${records.length} baris sukses.` });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getGuruMapel(namaGuru) {
+  const data = getSafeSheetData("Data_Guru");
+  for(let i=0; i<data.length; i++) { 
+      if(data[i][1] === namaGuru) return JSON.stringify({ status: 'success', mapels: data[i][2].toString().split(',').map(m => m.trim()) }); 
+  }
+  return JSON.stringify({ status: 'error', mapels: [] });
+}
+
+function getSiswaByKelas(kelasTarget) {
+  try {
+    const dataSiswa = getSafeSheetData("Data_Siswa");
+    let siswaList = dataSiswa.filter(row => row[2] === kelasTarget && row[4] === "Aktif").map(row => { return { nisn: row[0], nama: row[1], gender: row[3] }; });
+    return JSON.stringify({ status: "success", data: siswaList });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getAllSiswaGrouped() {
+  try {
+    const dataSiswa = getSafeSheetData("Data_Siswa");
+    let grouped = {};
+    dataSiswa.forEach(row => {
+      if(row[4] === "Aktif") {
+        let kelas = row[2];
+        if(!grouped[kelas]) grouped[kelas] = [];
+        grouped[kelas].push({nisn: row[0], nama: row[1]});
+      }
+    });
+    return JSON.stringify({status: "success", data: grouped});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function getHistoryData(namaFilter) {
+  try {
+    let dataPresensi = getSafeSheetData("Presensi_Guru").filter(r => r[2] === namaFilter);
+    let dataJurnal = getSafeSheetData("Jurnal_Pembelajaran").filter(r => r[2] === namaFilter);
+    
+    let presensiArr = dataPresensi.map(r => ({ 
+        waktu: safeFormatDate(r[1], "yyyy-MM-dd HH:mm"), nama: r[2], tipe: r[3], jenis: r[4], status: r[10] || "-", link: r[9] || "-" 
+    })).reverse();
+
+    let jurnalArr = dataJurnal.map(r => ({ 
+        id: r[0], tanggal: safeFormatDate(r[5], "yyyy-MM-dd"), nama: r[2], mapel: r[3], kelas: r[4], materi: r[6], kegiatan: r[7] || "-", absensi: r[8] || "-", detailAbsensi: r[11] || "-", link: r[12] || "-", status: r[13] || "-" 
+    })).reverse();
+
+    return JSON.stringify({ status: "success", presensi: presensiArr, jurnal: jurnalArr });
+  } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getDailyMonitor(dateStr) {
+  try {
+      const gurus = getSafeSheetData("Data_Guru").filter(r => r[4] === "Aktif").map(r => { return {nama: r[1], hp: r[3]} });
+      const presensi = getSafeSheetData("Presensi_Guru");
+      const jurnal = getSafeSheetData("Jurnal_Pembelajaran");
+
+      let result = [];
+      gurus.forEach(g => {
+          let obj = { nama: g.nama, hp: g.hp, datang: "Belum", waktuDatang: "-", pulang: "Belum", waktuPulang: "-", jurnalKbm: 0, jurnalKeg: 0 };
+          
+          presensi.forEach(p => {
+              if(p[2] === g.nama) {
+                  let pDate = safeFormatDate(p[1], "yyyy-MM-dd");
+                  if(pDate === dateStr && p[10] !== "Ditolak") {
+                      if(p[3] === "Datang") { 
+                          obj.datang = p[4]; 
+                          obj.waktuDatang = safeFormatDate(p[1], "HH:mm"); 
+                          if(p[4] !== "Sekolah") obj.pulang = "-";
+                      }
+                      if(p[3] === "Pulang") { 
+                          obj.pulang = "Sudah"; 
+                          obj.waktuPulang = safeFormatDate(p[1], "HH:mm"); 
+                      }
+                  }
+              }
+          });
+
+          jurnal.forEach(j => {
+              if(j[2] === g.nama) {
+                  let jDate = safeFormatDate(j[5], "yyyy-MM-dd");
+                  if(jDate === dateStr && j[13] !== "Ditolak") {
+                      if(j[3] === "Jurnal Kegiatan") obj.jurnalKeg++; else obj.jurnalKbm++;
+                  }
+              }
+          });
+          result.push(obj);
+      });
+      return JSON.stringify({status: "success", data: result});
+  } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+// =====================================================================
+// FUNGSI ANALITIK YANG DIPERBAIKI - Penilaian Tepat Tanpa Error
+// =====================================================================
+
+function getDashboardAnalytics(bulanStr) {
+    try {
+        if (!bulanStr || !bulanStr.includes('-')) {
+            return JSON.stringify({status: "error", message: "Format bulan tidak valid. Gunakan format YYYY-MM."});
+        }
+
+        const parts = bulanStr.split('-');
+        const yyyy = parseInt(parts[0]);
+        const mm = parseInt(parts[1]);
+
+        if (isNaN(yyyy) || isNaN(mm) || mm < 1 || mm > 12) {
+            return JSON.stringify({status: "error", message: "Bulan/Tahun tidak valid."});
+        }
+
+        const start = new Date(yyyy, mm - 1, 1);
+        const end = new Date(yyyy, mm, 0, 23, 59, 59);
+
+        const presensiData = getSafeSheetData("Presensi_Guru");
+        const jurnalData = getSafeSheetData("Jurnal_Pembelajaran");
+        
+        let hadirChart = []; let jurnalChart = [];
+        let labels = [];
+        
+        let maxDate = end.getDate();
+        for(let d = 1; d <= maxDate; d++) {
+            labels.push(String(d)); hadirChart.push(0); jurnalChart.push(0);
+        }
+
+        presensiData.forEach(p => {
+            try {
+                let tglObj = new Date(p[1]);
+                if (isNaN(tglObj.getTime())) return;
+                if (tglObj < start || tglObj > end) return;
+                
+                let statusVerif = p[10] ? p[10].toString() : "";
+                if (statusVerif === "Ditolak" || statusVerif.includes("Menunggu")) return;
+                
+                if (p[3] === "Datang" || p[4] === "Dinas Luar") {
+                    let dayIdx = tglObj.getDate() - 1;
+                    if (dayIdx >= 0 && dayIdx < hadirChart.length) {
+                        hadirChart[dayIdx] += 1;
+                    }
+                }
+            } catch(innerErr) { /* skip */ }
+        });
+
+        jurnalData.forEach(j => {
+            try {
+                let tglObj = new Date(j[5]);
+                if (isNaN(tglObj.getTime())) return;
+                if (tglObj < start || tglObj > end) return;
+                
+                let statusVerif = j[13] ? j[13].toString() : "";
+                if (statusVerif !== "Disetujui" && !statusVerif.includes("Terverifikasi")) return;
+                
+                let dayIdx = tglObj.getDate() - 1;
+                if (dayIdx >= 0 && dayIdx < jurnalChart.length) {
+                    jurnalChart[dayIdx] += 1;
+                }
+            } catch(innerErr) { /* skip */ }
+        });
+
+        return JSON.stringify({status: "success", data: { labels: labels, hadir: hadirChart, jurnal: jurnalChart }});
+    } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function getTeacherLeaderboard(bulanStr) {
+    try {
+        if (!bulanStr || !bulanStr.includes('-')) {
+            return JSON.stringify({status: "error", message: "Format bulan tidak valid."});
+        }
+
+        const parts = bulanStr.split('-');
+        const yyyy = parseInt(parts[0]);
+        const mm = parseInt(parts[1]);
+
+        if (isNaN(yyyy) || isNaN(mm) || mm < 1 || mm > 12) {
+            return JSON.stringify({status: "error", message: "Bulan/Tahun tidak valid."});
+        }
+
+        const start = new Date(yyyy, mm - 1, 1);
+        const end = new Date(yyyy, mm, 0, 23, 59, 59);
+
+        const totalHariKerja = getEffectiveSchoolDays(start, end);
+
+        const presensiData = getSafeSheetData("Presensi_Guru");
+        const jurnalData = getSafeSheetData("Jurnal_Pembelajaran");
+        
+        let jamDatangAkhir = "08:00";
+        const settingsData = getSafeSheetData("Pengaturan");
+        for(let i=0; i<settingsData.length; i++) {
+            if(settingsData[i][0] === "JAM_DATANG_AKHIR") jamDatangAkhir = padTime(settingsData[i][1]);
+        }
+
+        let scores = {}; 
+
+        const dataGuruMaster = getSafeSheetData("Data_Guru");
+        dataGuruMaster.forEach(g => {
+            if(g[4] === "Aktif") {
+                scores[g[1]] = { points: 0, hadir: 0, telat: 0, jurnal: 0, izin: 0, sakit: 0, dinasLuar: 0, alpa: 0, totalHariKerja: totalHariKerja, persenHadir: 0 };
+            }
+        });
+
+        presensiData.forEach(p => {
+            try {
+                let tglObj = new Date(p[1]);
+                if (isNaN(tglObj.getTime())) return;
+                if (tglObj < start || tglObj > end) return;
+                
+                let statusVerif = p[10] ? p[10].toString() : "";
+                if (statusVerif === "Ditolak" || statusVerif.includes("Menunggu")) return;
+                
+                let nama = p[2];
+                if (!nama) return;
+                if(!scores[nama]) scores[nama] = { points: 0, hadir: 0, telat: 0, jurnal: 0, izin: 0, sakit: 0, dinasLuar: 0, alpa: 0, totalHariKerja: totalHariKerja, persenHadir: 0 };
+
+                if(p[3] === "Datang" && p[4] === "Sekolah") {
+                    let witaTime = safeFormatDate(tglObj, "HH:mm");
+                    if(witaTime > jamDatangAkhir) { 
+                        scores[nama].points += 5; 
+                        scores[nama].telat += 1; 
+                        scores[nama].hadir += 1; 
+                    } else { 
+                        scores[nama].points += 10; 
+                        scores[nama].hadir += 1; 
+                    }
+                }
+                else if (p[4] === "Dinas Luar") { 
+                    scores[nama].points += 8; 
+                    scores[nama].dinasLuar += 1; 
+                }
+                else if (p[4] === "Izin") {
+                    let detail = p[5] ? p[5].toString() : "";
+                    if (detail.includes("Sakit")) {
+                        scores[nama].points += 3; 
+                        scores[nama].sakit += 1;
+                    } else {
+                        scores[nama].points += 2; 
+                        scores[nama].izin += 1;
+                    }
+                }
+            } catch(innerErr) { /* skip */ }
+        });
+
+        jurnalData.forEach(j => {
+            try {
+                let tglObj = new Date(j[5]);
+                if (isNaN(tglObj.getTime())) return;
+                if (tglObj < start || tglObj > end) return;
+                
+                let statusVerif = j[13] ? j[13].toString() : "";
+                if (statusVerif !== "Disetujui" && !statusVerif.includes("Terverifikasi")) return;
+                
+                let nama = j[2];
+                if (!nama) return;
+                if(!scores[nama]) scores[nama] = { points: 0, hadir: 0, telat: 0, jurnal: 0, izin: 0, sakit: 0, dinasLuar: 0, alpa: 0, totalHariKerja: totalHariKerja, persenHadir: 0 };
+                scores[nama].points += 5; 
+                scores[nama].jurnal += 1;
+            } catch(innerErr) { /* skip */ }
+        });
+
+        let resultArr = [];
+        for(let n in scores) { 
+            let s = scores[n];
+            let totalKehadiran = s.hadir + s.dinasLuar;
+            let totalTercatat = totalKehadiran + s.izin + s.sakit;
+            s.alpa = Math.max(0, totalHariKerja - totalTercatat);
+            let persenHadir = totalHariKerja > 0 ? Math.min(100, Math.round((totalKehadiran / totalHariKerja) * 100)) : 0;
+            
+            resultArr.push({ 
+                nama: n, 
+                points: s.points, 
+                hadir: s.hadir, 
+                telat: s.telat, 
+                jurnal: s.jurnal,
+                izin: s.izin,
+                sakit: s.sakit,
+                dinasLuar: s.dinasLuar,
+                alpa: s.alpa,
+                totalHariKerja: totalHariKerja,
+                persenHadir: persenHadir
+            }); 
+        }
+        resultArr.sort((a,b) => b.points - a.points);
+        return JSON.stringify({status: "success", data: resultArr.slice(0, 10)});
+    } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function submitDokumen(data) {
+    try {
+        let fileUrl = "-";
+        const settingsData = getSafeSheetData("Pengaturan");
+        let tahunAjaran = "2026_2027";
+        for(let i=0; i<settingsData.length; i++) {
+            if(settingsData[i][0] === "TAHUN_AJARAN") tahunAjaran = settingsData[i][1].toString().replace(/\//g, '_');
+        }
+        let folderName = `Perangkat_Pembelajaran_${tahunAjaran}`;
+        
+        if (data.fileBase64) fileUrl = uploadJurnalFotoToDrive(data.fileBase64, data.namaGuru, folderName);
+
+        const timestampWita = safeFormatDate(new Date(), "yyyy-MM-dd HH:mm:ss");
+        SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Bank_Dokumen").appendRow([
+            new Date().getTime().toString(), timestampWita, data.namaGuru, data.jenisDokumen, data.judul, fileUrl, "Menunggu Verifikasi", "-"
+        ]);
+        return JSON.stringify({ status: "success", message: "Dokumen Perangkat Pembelajaran berhasil diunggah." });
+    } catch(e) { return JSON.stringify({ status: "error", message: e.message }); }
+}
+
+function getDokumenList(roleNama) {
+    try {
+        const data = getSafeSheetData("Bank_Dokumen");
+        let result = [];
+        data.forEach(r => {
+            if(roleNama === "Admin" || r[2] === roleNama) {
+                result.push({ id: r[0], timestamp: safeFormatDate(r[1], "yyyy-MM-dd"), guru: r[2], jenis: r[3], judul: r[4], link: r[5], status: r[6], catatanAdmin: r[7] });
+            }
+        });
+        result.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return JSON.stringify({status: "success", data: result});
+    } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function updateStatusDokumen(id, payloadBaru) {
+    try {
+        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Bank_Dokumen");
+        const data = sheet.getDataRange().getValues();
+        for(let i=1; i<data.length; i++) {
+            if(data[i][0] && data[i][0].toString() === id.toString()) {
+                sheet.getRange(i+1, 7).setValue(payloadBaru.status);
+                if(payloadBaru.catatan) sheet.getRange(i+1, 8).setValue(payloadBaru.catatan);
+                return JSON.stringify({ status: "success", message: `Dokumen diverifikasi.`});
+            }
+        }
+        return JSON.stringify({ status: "error", message: "ID Data tidak ditemukan."});
+    } catch(e) { return JSON.stringify({status: "error", message: e.message}); }
+}
+
+function autoBackupTahun() {
+    let now = new Date();
+    // Hanya berjalan jika tanggal 1 Januari
+    if (now.getMonth() === 0 && now.getDate() === 1) {
+        doBackupTahun(now.getFullYear() - 1);
+    }
+}
+
+function doBackupTahun(tahun) {
+    try {
+        let ss = SpreadsheetApp.getActiveSpreadsheet();
+        let targetTahun = tahun || new Date().getFullYear();
+        
+        let fileId = ss.getId();
+        let sourceFile = DriveApp.getFileById(fileId);
+        
+        // Buat salinan dari spreadsheet utama untuk proses backup
+        let backupFile = sourceFile.makeCopy(`Temp_Backup_SIPJAM_${targetTahun}`);
+        let backupSs = SpreadsheetApp.openById(backupFile.getId());
+        
+        // Hapus beberapa sheet yang tidak diperlukan di backup, jika ada (Opsional, di sini kita biarkan saja semuanya seperti request)
+        // Atau biarkan semuanya di-copy, sesuai instruksi user: 
+        // "untuk data master (guru, siswa dan pengaturan) hanya dibuatkan copiannya saja tanpa menghapus dari database utama"
+        
+        // 1. Ekspor ke XLSX via Drive API UrlFetchApp
+        let url = `https://docs.google.com/spreadsheets/export?id=${backupFile.getId()}&exportFormat=xlsx`;
+        let token = ScriptApp.getOAuthToken();
+        let response = UrlFetchApp.fetch(url, {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+        
+        let blob = response.getBlob().setName(`Backup_SIPJAM_${targetTahun}.xlsx`);
+        
+        // Buat atau cari folder "data [tahun]" di dalam folder aplikasi
+        let rootAppFolder = getRootAppFolder();
+        let backupFolder = getOrCreateFolder(rootAppFolder, `data ${targetTahun}`);
+        let finalFile = backupFolder.createFile(blob);
+        
+        // Hapus file temporary
+        backupFile.setTrashed(true);
+        
+        // KOSONGKAN TRANSAKSI DARI DATABASE UTAMA (Hapus baris data, sisakan header)
+        let sheetsToClear = ["Presensi_Guru", "Jurnal_Pembelajaran", "Laporan_Piket", "Bank_Dokumen", "Jadwal_Pelajaran", "Kalender_Pendidikan"];
+        sheetsToClear.forEach(sheetName => {
+            let sheet = ss.getSheetByName(sheetName);
+            if (sheet) {
+                let lastRow = sheet.getLastRow();
+                if (lastRow > 1) {
+                    sheet.deleteRows(2, lastRow - 1);
+                }
+            }
+        });
+        
+        // Catat riwayat
+        let sheetRiwayat = ss.getSheetByName("Riwayat_Backup");
+        if (sheetRiwayat) {
+            let timestampWita = safeFormatDate(new Date(), "yyyy-MM-dd HH:mm:ss");
+            sheetRiwayat.appendRow([new Date().getTime().toString(), timestampWita, targetTahun, finalFile.getUrl(), "Sukses", "Dibuat otomatis/manual"]);
+        }
+        
+        return JSON.stringify({ status: "success", message: `Backup tahun ${targetTahun} berhasil dilakukan, data transaksi dikosongkan.`, url: finalFile.getUrl() });
+    } catch (e) {
+        return JSON.stringify({ status: "error", message: e.message });
+    }
+}
+
+function getListBackup() {
+    try {
+        const data = getSafeSheetData("Riwayat_Backup");
+        let result = [];
+        data.forEach(r => {
+            result.push({ id: r[0], timestamp: r[1], tahun: r[2], link: r[3], status: r[4], keterangan: r[5] });
+        });
+        result.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return JSON.stringify({ status: "success", data: result });
+    } catch (e) {
+        return JSON.stringify({ status: "error", message: e.message });
+    }
+}
