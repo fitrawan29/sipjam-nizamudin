@@ -232,6 +232,7 @@
                     </div>
 
                     <div id="dashboard-alerts" class="space-y-2 hidden fade-in"></div>
+                    <div id="debug-jadwal-btn-container"><button type="button" onclick="runDebugJadwal()" class="w-full mt-2 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 px-3 py-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-2 btn-click"><i class="fa-solid fa-bug"></i> 🔧 DIAGNOSTIK JADWAL (Klik untuk cek masalah)</button></div>
 
                     <div id="banner-kalender" class="hidden bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-3 flex items-start gap-3 fade-in shadow-sm">
                         <i class="fa-solid fa-bullhorn text-blue-500 mt-0.5 text-sm"></i>
@@ -1069,6 +1070,64 @@
                 } else { tipeSelect.innerHTML = '<option value="Kegiatan">Jurnal Kegiatan (Tidak Mengajar)</option>'; }
                 toggleJurnalFields();
             }
+        }
+
+        // FUNGSI DIAGNOSTIK - Tekan tombol debug di dashboard untuk melihat data mentah jadwal
+        function runDebugJadwal() {
+            Swal.fire({ title: 'Menjalankan Diagnostik...', text: 'Sedang membaca data jadwal dari server...', allowOutsideClick: false, didOpen: () => Swal.showLoading(), customClass: { popup: 'dark:bg-gray-900 dark:text-white rounded-2xl' } });
+            google.script.run.withSuccessHandler(resStr => {
+                try {
+                    let res = JSON.parse(resStr);
+                    if (res.status === 'success') {
+                        let d = res.debug;
+                        let html = `<div style="text-align:left; font-size:11px; max-height:60vh; overflow-y:auto;">`;
+                        html += `<h4 style="font-weight:bold; margin:8px 0 4px;">📅 STEP 1: Hari Ini</h4>`;
+                        html += `<p>Hari: <b>${d.step1_hari.todayName}</b> (dayOfWeek=${d.step1_hari.dayOfWeek})</p>`;
+                        html += `<p>Libur: <b>${d.step1_hari.isLibur}</b> ${d.step1_hari.keterangan ? '('+d.step1_hari.keterangan+')' : ''}</p>`;
+                        
+                        html += `<h4 style="font-weight:bold; margin:8px 0 4px;">📋 STEP 2: Sheet Jadwal_Pelajaran</h4>`;
+                        html += `<p>Sheet ada: <b>${d.step2_sheet.exists}</b>, Total baris: <b>${d.step2_sheet.totalRows}</b></p>`;
+                        html += `<p>Header: <code>${JSON.stringify(d.step2_sheet.headers)}</code></p>`;
+                        if (d.step2_sheet.sampleRows.length > 0) {
+                            html += `<table style="width:100%; border-collapse:collapse; font-size:10px; margin:4px 0;"><tr style="background:#f0f0f0;"><th style="border:1px solid #ccc;padding:2px;">Row</th><th style="border:1px solid #ccc;padding:2px;">ID</th><th style="border:1px solid #ccc;padding:2px;">Hari</th><th style="border:1px solid #ccc;padding:2px;">Guru</th><th style="border:1px solid #ccc;padding:2px;">Mapel</th><th style="border:1px solid #ccc;padding:2px;">Kelas</th><th style="border:1px solid #ccc;padding:2px;">ID Kosong?</th></tr>`;
+                            d.step2_sheet.sampleRows.forEach(r => {
+                                html += `<tr><td style="border:1px solid #ccc;padding:2px;">${r.rowNum}</td><td style="border:1px solid #ccc;padding:2px;">${r.col0_ID}</td><td style="border:1px solid #ccc;padding:2px;">${r.col1_Hari}</td><td style="border:1px solid #ccc;padding:2px;">${r.col2_Guru}</td><td style="border:1px solid #ccc;padding:2px;">${r.col3_Mapel}</td><td style="border:1px solid #ccc;padding:2px;">${r.col4_Kelas}</td><td style="border:1px solid #ccc;padding:2px;color:${r.col0_empty?'red':'green'};">${r.col0_empty?'⚠ KOSONG':'✅ Ada'}</td></tr>`;
+                            });
+                            html += `</table>`;
+                        }
+                        
+                        html += `<h4 style="font-weight:bold; margin:8px 0 4px;">🔍 STEP 3: Setelah Filter getSafeSheetData</h4>`;
+                        html += `<p>Jumlah baris lolos filter: <b style="color:${d.step3_afterFilter.totalFiltered > 0 ? 'green':'red'};">${d.step3_afterFilter.totalFiltered}</b></p>`;
+                        if (d.step3_afterFilter.totalFiltered === 0) {
+                            html += `<p style="color:red; font-weight:bold;">⚠ SEMUA BARIS TERFILTER HABIS! Kemungkinan kolom ID (kolom pertama) kosong di spreadsheet.</p>`;
+                        }
+                        
+                        html += `<h4 style="font-weight:bold; margin:8px 0 4px;">🎯 STEP 4: Pencocokan Jadwal</h4>`;
+                        html += `<p>Cari nama: "<b>${d.step4_matching.searchNama}</b>" → normalized: "<b>${d.step4_matching.searchNamaNormalized}</b>"</p>`;
+                        html += `<p>Cari NIP: "<b>${d.step4_matching.searchNip}</b>" → normalized: "<b>${d.step4_matching.searchNipNormalized}</b>"</p>`;
+                        html += `<p>Cari hari: "<b>${d.step4_matching.searchDay}</b>" → normalized: "<b>${d.step4_matching.searchDayNormalized}</b>"</p>`;
+                        html += `<p>Jadwal cocok hari ini: <b>${d.step4_matching.hariMatchCount}</b> baris, Cocok guru: <b style="color:${d.step4_matching.fullMatchCount > 0 ? 'green':'red'};">${d.step4_matching.fullMatchCount}</b></p>`;
+                        
+                        if (d.step4_matching.details.length > 0) {
+                            html += `<p style="font-weight:bold;">Detail jadwal hari ${d.step4_matching.searchDay}:</p>`;
+                            html += `<table style="width:100%; border-collapse:collapse; font-size:10px; margin:4px 0;"><tr style="background:#f0f0f0;"><th style="border:1px solid #ccc;padding:2px;">Guru di Sheet</th><th style="border:1px solid #ccc;padding:2px;">Normalized</th><th style="border:1px solid #ccc;padding:2px;">Mapel</th><th style="border:1px solid #ccc;padding:2px;">Kelas</th><th style="border:1px solid #ccc;padding:2px;">Cocok?</th></tr>`;
+                            d.step4_matching.details.forEach(m => {
+                                html += `<tr><td style="border:1px solid #ccc;padding:2px;">${m.row_guru}</td><td style="border:1px solid #ccc;padding:2px;">${m.normalized_guru}</td><td style="border:1px solid #ccc;padding:2px;">${m.row_mapel}</td><td style="border:1px solid #ccc;padding:2px;">${m.row_kelas}</td><td style="border:1px solid #ccc;padding:2px;color:${m.fullMatch?'green':'red'};">${m.fullMatch?'✅ COCOK':'❌ TIDAK'}</td></tr>`;
+                            });
+                            html += `</table>`;
+                        } else if (d.step3_afterFilter.totalFiltered > 0) {
+                            html += `<p style="color:orange; font-weight:bold;">⚠ Tidak ada jadwal untuk hari ${d.step4_matching.searchDay}. Mungkin data jadwal hanya berisi hari lain?</p>`;
+                        }
+                        
+                        html += `</div>`;
+                        Swal.fire({ title: '🔧 Hasil Diagnostik Jadwal', html: html, width: '95%', customClass: { popup: 'dark:bg-gray-900 dark:text-white rounded-2xl' } });
+                    } else {
+                        Swal.fire('Error', res.message || 'Gagal menjalankan diagnostik', 'error');
+                    }
+                } catch(e) { Swal.fire('Error Parse', e.message, 'error'); }
+            }).withFailureHandler(err => {
+                Swal.fire('Error Server', err.message || 'Tidak bisa menghubungi server', 'error');
+            }).debugJadwal(userSession ? userSession.nama : '', userSession ? userSession.username : '');
         }
 
         function loginInit(user) {
