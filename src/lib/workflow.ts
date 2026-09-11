@@ -53,13 +53,8 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
     if (!jNama) return false;
     const jNorm = normalizeName(jNama);
 
-    // 1. Prioritaskan username matching jika disediakan
-    if (userNorm) {
-      if (userNorm === jNorm) return true;
-      if (userNorm.length >= 3 && jNorm.length >= 3) {
-        if (userNorm.startsWith(jNorm) || jNorm.startsWith(userNorm)) return true;
-      }
-    }
+    // 1. Prioritaskan username matching jika disediakan (hanya exact match untuk mencegah collision seperti Fitrawan vs Fitra)
+    if (userNorm && userNorm === jNorm) return true;
 
     // 2. Exact match nama lengkap
     if (namaNorm === jNorm) return true;

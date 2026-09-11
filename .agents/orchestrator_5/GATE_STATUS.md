@@ -13,3 +13,12 @@
 | Auditor | teamwork_preview_auditor | CLEAN | handoff.md | Authentic implementation, zero cheating |
 
 Gate Result: **FAIL** (Challenger 2: schedule matching defects in workflow.ts)
+
+## Gate — Iteration 2
+| Agent | Role | Verdict | Source | Notes |
+|---|---|---|---|---|
+| Worker 4 | teamwork_preview_worker | DONE | handoff.md | Schedule matching remediated & verified |
+| Challenger 3 | teamwork_preview_challenger | PENDING | - | Re-verifying schedule resolution & edge cases |
+| Auditor 2 | teamwork_preview_auditor | PENDING | - | Forensic integrity audit of remediation |
+
+Gate Result: **IN_PROGRESS**
