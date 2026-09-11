@@ -26,6 +26,7 @@ export default function AdminConfigView({ user }: { user: any }) {
     ttd_kepsek_nama: '',
     ttd_kepsek_nip: '',
     kota_ttd: '',
+    kota_kabupaten: '',
     gps_lat: '-6.200000',
     gps_lng: '106.816666',
     gps_radius: '100'
@@ -46,6 +47,13 @@ export default function AdminConfigView({ user }: { user: any }) {
               (newConfig as any)[item.key.toLowerCase()] = item.value;
             }
           });
+          // Ensure bidirectional fallback between kota_kabupaten and kota_ttd
+          if (!newConfig.kota_kabupaten && newConfig.kota_ttd) {
+            newConfig.kota_kabupaten = newConfig.kota_ttd;
+          }
+          if (!newConfig.kota_ttd && newConfig.kota_kabupaten) {
+            newConfig.kota_ttd = newConfig.kota_kabupaten;
+          }
           setConfig(newConfig);
         }
       } catch (err) {
@@ -56,7 +64,14 @@ export default function AdminConfigView({ user }: { user: any }) {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setConfig({ ...config, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'kota_kabupaten') {
+      setConfig(prev => ({ ...prev, kota_kabupaten: value, kota_ttd: value }));
+    } else if (name === 'kota_ttd') {
+      setConfig(prev => ({ ...prev, kota_ttd: value, kota_kabupaten: value }));
+    } else {
+      setConfig(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleDetectGps = () => {
@@ -104,9 +119,16 @@ export default function AdminConfigView({ user }: { user: any }) {
     e.preventDefault();
     setLoading(true);
 
-    const upsertData = Object.entries(config).map(([key, value]) => ({
+    const cityVal = config.kota_kabupaten || config.kota_ttd || '';
+    const saveConfig = {
+      ...config,
+      kota_kabupaten: cityVal,
+      kota_ttd: cityVal
+    };
+
+    const upsertData = Object.entries(saveConfig).map(([key, value]) => ({
       key,
-      value: value.toString()
+      value: value !== undefined && value !== null ? value.toString() : ''
     }));
 
     try {
@@ -174,7 +196,7 @@ export default function AdminConfigView({ user }: { user: any }) {
                         <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">NPSN</label><input type="text" name="kop_npsn" value={config.kop_npsn} onChange={handleChange} className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Nomor Pokok Sekolah Nasional" /></div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Logo Kiri (Dinas)</label>
+                                <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Logo Kiri (Yayasan)</label>
                                 <input type="text" name="logo_kiri" value={config.logo_kiri} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Link Hosting / Google Drive" />
                                 {config.logo_kiri && (
                                   <div className="mt-1.5 flex items-center gap-2">
@@ -189,7 +211,7 @@ export default function AdminConfigView({ user }: { user: any }) {
                                 )}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Logo Kanan (Sekolah)</label>
+                                <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Logo Kanan (Dinas)</label>
                                 <input type="text" name="logo_kanan" value={config.logo_kanan} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Link Hosting / Google Drive" />
                                 {config.logo_kanan && (
                                   <div className="mt-1.5 flex items-center gap-2">
@@ -219,8 +241,8 @@ export default function AdminConfigView({ user }: { user: any }) {
                         </div>
                     </div>
                     <div>
-                        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Kabupaten / Kota Tanda Tangan</label>
-                        <input type="text" name="kota_ttd" value={config.kota_ttd || ''} onChange={handleChange} placeholder="Contoh: Kab. Bolaangmongondow Timur" className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Nama Kota/Kabupaten</label>
+                        <input type="text" name="kota_kabupaten" value={config.kota_kabupaten || config.kota_ttd || ''} onChange={handleChange} placeholder="Contoh: Kab. Bolaangmongondow Timur" className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                     </div>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">

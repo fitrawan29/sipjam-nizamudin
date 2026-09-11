@@ -51,9 +51,15 @@ function MainApp() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('sipjam_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    try {
+      const storedUser = localStorage.getItem('sipjam_user');
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (e) {
+      console.error('Failed to parse stored user session:', e);
+      localStorage.removeItem('sipjam_user');
+      setUser(null);
     }
   }, []);
 

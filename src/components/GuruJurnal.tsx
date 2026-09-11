@@ -17,6 +17,12 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [catatanSiswa, setCatatanSiswa] = useState('');
   const [refleksi, setRefleksi] = useState('');
   const [file, setFile] = useState<File | null>(null);
+
+  // New R2 state variables
+  const [pertemuanKe, setPertemuanKe] = useState('');
+  const [jamKe, setJamKe] = useState('');
+  const [tujuanPembelajaran, setTujuanPembelajaran] = useState('');
+  const [kehadiranMurid, setKehadiranMurid] = useState('');
   
   const [mapelList, setMapelList] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
@@ -26,6 +32,32 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [absensi, setAbsensi] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
+
+  const calculateKehadiranSummary = (abs: Record<string, string>, stList: any[]): string => {
+    if (!stList || stList.length === 0) return 'Semua Hadir';
+    const counts = { H: 0, S: 0, I: 0, A: 0 };
+    const absents: string[] = [];
+
+    stList.forEach(s => {
+      const status = (abs[s.nisn] || 'H').toUpperCase();
+      if (status === 'H') counts.H++;
+      else if (status === 'S') { counts.S++; absents.push(`${s.nama_siswa} (S)`); }
+      else if (status === 'I') { counts.I++; absents.push(`${s.nama_siswa} (I)`); }
+      else if (status === 'A') { counts.A++; absents.push(`${s.nama_siswa} (A)`); }
+    });
+
+    if (counts.S === 0 && counts.I === 0 && counts.A === 0) {
+      return `Semua Hadir (${counts.H} siswa)`;
+    }
+    let summary = `Hadir: ${counts.H}`;
+    if (counts.S > 0) summary += `, Sakit: ${counts.S}`;
+    if (counts.I > 0) summary += `, Izin: ${counts.I}`;
+    if (counts.A > 0) summary += `, Alpa: ${counts.A}`;
+    if (absents.length > 0) {
+      summary += ` [${absents.join(', ')}]`;
+    }
+    return summary;
+  };
 
   useEffect(() => {
     // Fetch Master Data
@@ -145,6 +177,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       if (!kelas || tipeJurnal !== 'Jurnal KBM') {
         setStudents([]);
         setAbsensi({});
+        setKehadiranMurid('');
         return;
       }
       const { data } = await supabase.from('data_siswa').select('*').eq('kelas', kelas).order('nama_siswa', { ascending: true });
@@ -153,10 +186,17 @@ export default function GuruJurnal({ user }: { user: any }) {
         const initialAbsensi: Record<string, string> = {};
         data.forEach(s => { initialAbsensi[s.nisn] = 'H'; });
         setAbsensi(initialAbsensi);
+        setKehadiranMurid(`Semua Hadir (${data.length} siswa)`);
       }
     };
     fetchStudents();
   }, [kelas, tipeJurnal]);
+
+  const handleAbsensiChange = (nisn: string, status: string) => {
+    const newAbsensi = { ...absensi, [nisn]: status };
+    setAbsensi(newAbsensi);
+    setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
+  };
 
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +211,10 @@ export default function GuruJurnal({ user }: { user: any }) {
         return Swal.fire('Gagal Upload', err.message, 'error');
       }
     }
+
+    const computedKehadiran = tipeJurnal === 'Jurnal KBM'
+      ? (kehadiranMurid || calculateKehadiranSummary(absensi, students))
+      : 'Hadir';
 
     const newJurnal = {
       id: crypto.randomUUID(),
@@ -187,7 +231,15 @@ export default function GuruJurnal({ user }: { user: any }) {
       detail_absen: '',
       link_bukti_foto: fileUrl,
       status_verifikasi: 'Menunggu',
-      catatan_khusus_siswa: catatanSiswa
+      catatan_khusus_siswa: catatanSiswa,
+      // Dual-write new R2 columns
+      pertemuan_ke: tipeJurnal === 'Jurnal KBM' ? (pertemuanKe || '1') : '-',
+      jam_ke: tipeJurnal === 'Jurnal KBM' ? (jamKe || '1-2') : '-',
+      tujuan_pembelajaran: tipeJurnal === 'Jurnal KBM' ? (tujuanPembelajaran || '-') : '-',
+      materi_pembelajaran: materi,
+      kehadiran_murid: computedKehadiran,
+      catatan_refleksi: refleksi || '-',
+      foto_kegiatan: fileUrl
     };
 
     try {
@@ -202,6 +254,10 @@ export default function GuruJurnal({ user }: { user: any }) {
         setCatatanSiswa('');
         setRefleksi('');
         setFile(null);
+        setPertemuanKe('');
+        setJamKe('');
+        setTujuanPembelajaran('');
+        setKehadiranMurid('');
         // Refresh state to update canPresensiPulang
         getGuruDailyState(user.nama).then(setDailyState).catch(console.error);
       }
@@ -322,6 +378,34 @@ export default function GuruJurnal({ user }: { user: any }) {
                           </div>
                       </div>
                     )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                          Pertemuan Ke- <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={pertemuanKe}
+                          onChange={e => setPertemuanKe(e.target.value)}
+                          required={tipeJurnal === 'Jurnal KBM'}
+                          placeholder="Contoh: 1 atau 1-2"
+                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                          Jam Ke- <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={jamKe}
+                          onChange={e => setJamKe(e.target.value)}
+                          required={tipeJurnal === 'Jurnal KBM'}
+                          placeholder="Contoh: 1 - 2 (07.15 - 08.35)"
+                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
                 
@@ -331,15 +415,48 @@ export default function GuruJurnal({ user }: { user: any }) {
                         <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" />
                     </div>
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">{tipeJurnal === 'Jurnal KBM' ? 'Materi Pokok' : 'Nama Kegiatan'}</label>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">{tipeJurnal === 'Jurnal KBM' ? 'Materi Pembelajaran' : 'Nama Kegiatan'}</label>
                         <input type="text" value={materi} onChange={e => setMateri(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" placeholder="..." />
                     </div>
                 </div>
 
+                {tipeJurnal === 'Jurnal KBM' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                      Tujuan Pembelajaran <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={tujuanPembelajaran}
+                      onChange={e => setTujuanPembelajaran(e.target.value)}
+                      required={tipeJurnal === 'Jurnal KBM'}
+                      rows={2}
+                      className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                      placeholder="Tuliskan capaian/tujuan pembelajaran..."
+                    />
+                  </div>
+                )}
+
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Uraian / Deskripsi</label>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                      {tipeJurnal === 'Jurnal KBM' ? 'Kegiatan Pembelajaran' : 'Uraian / Deskripsi'}
+                    </label>
                     <textarea value={kegiatan} onChange={e => setKegiatan(e.target.value)} required rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white" placeholder="Deskripsikan selengkapnya..."></textarea>
                 </div>
+
+                {tipeJurnal === 'Jurnal KBM' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                      Kehadiran Murid <span className="text-gray-500 dark:text-gray-400 font-normal">(Tersinkronisasi Otomatis)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={kehadiranMurid}
+                      onChange={e => setKehadiranMurid(e.target.value)}
+                      placeholder="Contoh: Semua Hadir (29 siswa) atau Hadir: 28, Sakit: 1"
+                      className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                    />
+                  </div>
+                )}
 
                 {tipeJurnal === 'Jurnal KBM' && (
                   <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
@@ -368,7 +485,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                               <button 
                                 key={status}
                                 type="button"
-                                onClick={() => setAbsensi(prev => ({...prev, [siswa.nisn]: status}))}
+                                onClick={() => handleAbsensiChange(siswa.nisn, status)}
                                 className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
                                   absensi[siswa.nisn] === status 
                                   ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
@@ -394,7 +511,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                 </div>
 
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Refleksi Pembelajaran (Opsional)</label>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Catatan Refleksi (Opsional)</label>
                     <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={1} className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
                 </div>
                 

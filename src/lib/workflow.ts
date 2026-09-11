@@ -32,13 +32,14 @@ export type GuruDailyState = {
  * Contoh: jadwal_pelajaran punya "Ade", tapi user login punya "Ade Fitrawan Ibrahim"
  * Kita cari semua jadwal hari ini, lalu filter yang nama guru-nya COCOK (partial match).
  */
-async function findJadwalForGuru(hari: string, namaGuru: string): Promise<any[]> {
+export async function findJadwalForGuru(hari: string, namaGuru: string): Promise<any[]> {
   // Pertama, coba exact match
   const { data: exact } = await supabase
     .from('jadwal_pelajaran')
     .select('*')
     .eq('hari', hari)
-    .eq('nama_guru', namaGuru);
+    .eq('nama_guru', namaGuru)
+    .order('kelas', { ascending: true });
   
   if (exact && exact.length > 0) return exact;
 
@@ -46,16 +47,22 @@ async function findJadwalForGuru(hari: string, namaGuru: string): Promise<any[]>
   const { data: allJadwal } = await supabase
     .from('jadwal_pelajaran')
     .select('*')
-    .eq('hari', hari);
+    .eq('hari', hari)
+    .order('kelas', { ascending: true });
   
   if (!allJadwal || allJadwal.length === 0) return [];
 
-  const namaLower = namaGuru.toLowerCase();
-  // Cek apakah nama_guru di jadwal merupakan bagian awal dari namaGuru
-  // (misal "Ade" cocok dengan "Ade Fitrawan Ibrahim")
+  const namaLower = namaGuru.toLowerCase().trim();
+  const guruWords = namaLower.split(/\s+/).filter(w => w.length >= 3);
+
   return allJadwal.filter((j: any) => {
     const jNama = (j.nama_guru || '').toLowerCase().trim();
-    return namaLower.startsWith(jNama) || namaLower.includes(jNama) || jNama.includes(namaLower);
+    if (!jNama) return false;
+    if (namaLower === jNama) return true;
+    if (namaLower.startsWith(jNama) || jNama.startsWith(namaLower)) return true;
+    if (guruWords.includes(jNama)) return true;
+    if (jNama.length >= 3 && (namaLower.includes(jNama) || jNama.includes(namaLower))) return true;
+    return false;
   });
 }
 
@@ -75,7 +82,7 @@ function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
  * Jadwal punya mata_pelajaran (singkat: "MTK") sedangkan jurnal punya mapel (panjang: "XI Merdeka_Matematika")
  * Kita lakukan fuzzy matching.
  */
-function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
+export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   const jMapel = (jurnal.mapel || '').toLowerCase();
   const jKelas = (jurnal.kelas || '').toLowerCase();
   const jdMapel = (jadwal.mata_pelajaran || '').toLowerCase();
@@ -133,6 +140,11 @@ export async function getGuruDailyState(namaGuru: string): Promise<GuruDailyStat
       }
     }
 
+    const selectedHari = getWitaDayName(now);
+
+    // Selalu muat jadwal KBM hari ini untuk guru (tidak ditekan oleh isDinasLuar ataupun presensi datang)
+    state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru);
+
     // 2. Cek Presensi Hari Ini
     const startOfDay = getWitaStartOfDay(todayStr);
     const endOfDay = getWitaEndOfDay(todayStr);
@@ -186,8 +198,6 @@ export async function getGuruDailyState(namaGuru: string): Promise<GuruDailyStat
     }
 
     // 3. Cek Piket (case-insensitive matching)
-    const selectedHari = getWitaDayName(now);
-
     const { data: jpiket } = await supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
     if (jpiket && jpiket.length > 0) {
       const piketHariIni = jpiket[0];
@@ -209,10 +219,7 @@ export async function getGuruDailyState(namaGuru: string): Promise<GuruDailyStat
       }
     }
 
-    // 4. Cek Jadwal KBM (fuzzy name matching)
-    if (!state.isDinasLuar) {
-      state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru);
-    }
+    // 4. Jadwal KBM sudah dipopulasikan di awal untuk hari berjalan, tidak di-clear ketika isDinasLuar
 
     // 5. Cek Jurnal
     const { data: jurnal } = await supabase

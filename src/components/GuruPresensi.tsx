@@ -115,10 +115,19 @@ export default function GuruPresensi({ user }: { user: any }) {
       return Swal.fire('Info', 'Anda sudah melakukan Presensi Datang hari ini.', 'info');
     }
 
-    // Validasi Waktu Presensi
+    // Validasi Waktu Presensi (dinormalisasi ke WITA / Asia/Makassar)
     const now = new Date();
-    const currH = now.getHours();
-    const currM = now.getMinutes();
+    const witaParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Makassar',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    }).formatToParts(now);
+
+    const currH = parseInt(witaParts.find(p => p.type === 'hour')?.value || '0', 10);
+    const currM = parseInt(witaParts.find(p => p.type === 'minute')?.value || '0', 10);
+    const currS = parseInt(witaParts.find(p => p.type === 'second')?.value || '0', 10);
     const currTimeVal = currH * 60 + currM;
 
     const parseTime = (timeStr: string) => {
@@ -142,9 +151,9 @@ export default function GuruPresensi({ user }: { user: any }) {
       }
 
       if (currTimeVal > batasVal && jenisPresensi === 'Sekolah') {
-        const batasDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(batasVal / 60), batasVal % 60, 0);
-        keterlambatanDetik = Math.floor((now.getTime() - batasDate.getTime()) / 1000);
-        if (keterlambatanDetik < 0) keterlambatanDetik = 0;
+        const currTotalSeconds = currH * 3600 + currM * 60 + currS;
+        const batasTotalSeconds = batasVal * 60;
+        keterlambatanDetik = Math.max(0, currTotalSeconds - batasTotalSeconds);
       }
     } else if (tipeAbsen === 'Pulang') {
       const startVal = parseTime(jamPresensi.pulangMulai);

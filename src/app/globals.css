@@ -179,11 +179,7 @@ body.fade-out {
 
   /* Enforce line-height: 1 for PrintHeader */
   .print-header,
-  .print-header h1,
-  .print-header h2,
-  .print-header p,
-  .print-header div,
-  .print-header span {
+  .print-header * {
     line-height: 1 !important;
   }
 
@@ -195,7 +191,7 @@ body.fade-out {
   .print-address {
     white-space: nowrap !important;
     line-height: 1 !important;
-    font-size: clamp(6.5pt, 1.35vw, 9.5pt) !important;
+    font-size: var(--address-font-size, clamp(5pt, 1.8cqw, 9pt)) !important;
     overflow: hidden !important;
     text-overflow: clip !important;
     max-width: 100% !important;
@@ -206,8 +202,21 @@ body.fade-out {
 
   @container (max-width: 550px) {
     .print-address {
-      font-size: clamp(6pt, 2.1cqw, 9pt) !important;
+      font-size: var(--address-font-size, clamp(5pt, 2.1cqw, 9pt)) !important;
     }
+  }
+
+  /* Right-align signature and prevent block override from .print-only */
+  .print-signature {
+    display: flex !important;
+    justify-content: flex-end !important;
+    margin-left: auto !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-signature > div {
+    margin-left: auto !important;
   }
 
   /* Pagination protection */

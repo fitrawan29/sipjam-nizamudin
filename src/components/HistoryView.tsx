@@ -17,13 +17,12 @@ export default function HistoryView({ user }: { user: any }) {
 
   useEffect(() => {
     loadData();
-  }, [activeTab, page]);
+  }, [activeTab]);
 
   const loadData = async () => {
     if (!user?.nama) return;
     setLoading(true);
     setErrorMsg('');
-    setDataList([]); // Clear previous to prevent stale data
     
     let query;
     if (activeTab === 'presensi') {
@@ -86,14 +85,14 @@ export default function HistoryView({ user }: { user: any }) {
             <div className="flex gap-2 mb-4">
                 <button 
                   type="button" 
-                  onClick={() => { setActiveTab('presensi'); setPage(0); }} 
+                  onClick={() => { setActiveTab('presensi'); setPage(0); setDataList([]); }} 
                   className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'presensi' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'}`}
                 >
                   Presensi
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => { setActiveTab('jurnal'); setPage(0); }} 
+                  onClick={() => { setActiveTab('jurnal'); setPage(0); setDataList([]); }} 
                   className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'jurnal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'}`}
                 >
                   Jurnal

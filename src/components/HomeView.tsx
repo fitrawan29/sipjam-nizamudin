@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getWitaDateLong, getWitaTimeStr } from '@/lib/wita';
-import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
+import { getWitaDateLong, getWitaTimeStr, getWitaDayName } from '@/lib/wita';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal } from '@/lib/workflow';
 
 export default function HomeView({ user, setView, menuItems = [] }: { user: any, setView: (view: string) => void, menuItems?: any[] }) {
   const dateStr = getWitaDateLong();
   const timeStr = getWitaTimeStr();
+  const hariIni = getWitaDayName();
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
   const [loadingState, setLoadingState] = useState(false);
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
@@ -317,6 +318,148 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Jadwal Mengajar Hari Ini Widget - Only for Guru */}
+      {isGuru && (
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm shadow-sm">
+                <i className="fa-solid fa-calendar-day"></i>
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white leading-none">
+                  Jadwal Mengajar Hari Ini
+                </h3>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                  {hariIni}, {dateStr.split(',')[1]?.trim() || dateStr}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {dailyState?.isDinasLuar && (
+                <span className="bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200 dark:border-sky-800">
+                  <i className="fa-solid fa-briefcase mr-1 text-[8px]"></i> Dinas Luar
+                </span>
+              )}
+              {dailyState && dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0 && (
+                <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  {dailyState.jadwalKBM.length} Kelas
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Loading State */}
+          {loadingState ? (
+            <div className="flex items-center justify-center py-6 text-gray-500 dark:text-gray-400">
+              <i className="fa-solid fa-circle-notch fa-spin text-base mr-2 text-emerald-600 dark:text-emerald-400"></i>
+              <span className="text-xs">Memuat jadwal pelajaran...</span>
+            </div>
+          ) : dailyState?.isLibur ? (
+            /* Holiday State */
+            <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-center">
+              <i className="fa-solid fa-umbrella-beach text-blue-500 text-xl mb-1.5"></i>
+              <p className="text-xs font-bold text-blue-800 dark:text-blue-300">
+                Hari Ini Libur: {dailyState.keteranganLibur || 'Tidak ada kegiatan KBM'}
+              </p>
+              <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                Selamat menikmati hari libur Anda.
+              </p>
+            </div>
+          ) : (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0) ? (
+            /* Empty State */
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2 text-sm">
+                <i className="fa-solid fa-calendar-check"></i>
+              </div>
+              <p className="text-xs font-bold text-gray-900 dark:text-white">
+                Tidak Ada Jadwal Mengajar Hari Ini
+              </p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                {hariIni === 'Minggu' 
+                  ? 'Hari Minggu merupakan hari libur akhir pekan.' 
+                  : `Anda tidak memiliki jadwal KBM pada hari ${hariIni}.`}
+              </p>
+            </div>
+          ) : (
+            /* Schedule Cards List */
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {dailyState.jadwalKBM.map((jk: any, idx: number) => {
+                  const isFilled = dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk));
+                  
+                  // Badge color based on grade level
+                  const kelasStr = (jk.kelas || '').trim();
+                  const gradeBadge = kelasStr.startsWith('X ') || kelasStr === 'X'
+                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                    : kelasStr.startsWith('XI ') || kelasStr === 'XI'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                    : 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border-purple-300 dark:border-purple-700';
+
+                  return (
+                    <div 
+                      key={jk.id || `${jk.kelas}-${jk.mata_pelajaran}-${idx}`}
+                      className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-sm flex flex-col justify-between gap-2 transition hover:border-emerald-300 dark:hover:border-emerald-700"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${gradeBadge} mb-1 leading-none`}>
+                            {jk.kelas}
+                          </span>
+                          <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-tight truncate" title={jk.mata_pelajaran}>
+                            {jk.mata_pelajaran}
+                          </h4>
+                        </div>
+                        
+                        {isFilled ? (
+                          <span className="shrink-0 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border border-green-200 dark:border-green-800">
+                            <i className="fa-solid fa-circle-check text-[8px]"></i> Sudah Diisi
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setView('view-guru-jurnal')}
+                            className="btn-click shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-900/80 dark:text-amber-200 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border border-amber-300 dark:border-amber-700 shadow-sm transition"
+                          >
+                            <i className="fa-solid fa-pen-to-square text-[8px]"></i> Isi Jurnal
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-700/60">
+                        <span className="flex items-center gap-1 truncate">
+                          <i className="fa-solid fa-user-tie text-[9px]"></i> {jk.nama_guru}
+                        </span>
+                        <span className="text-[9px] font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">
+                          {hariIni}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Quick summary footer */}
+              <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <span>
+                  Progres Jurnal: <strong className="text-gray-900 dark:text-white">
+                    {dailyState.jadwalKBM.filter(jk => dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk))).length}
+                  </strong> dari <strong className="text-gray-900 dark:text-white">{dailyState.jadwalKBM.length}</strong> kelas selesai
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setView('view-guru-jurnal')}
+                  className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-[10px]"
+                >
+                  Buka Jurnal <i className="fa-solid fa-arrow-right text-[8px]"></i>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
