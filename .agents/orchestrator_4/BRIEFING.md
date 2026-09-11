@@ -52,12 +52,17 @@ Deliver targeted UI/UX and database schema improvements: Light Mode default, Goo
 | worker_m1 | teamwork_preview_worker | Implement M1 (Theme & Drive Image) | completed | 15fb1ecd-2bce-4af2-8c16-93ccccd34c44 |
 | worker_m2 | teamwork_preview_worker | Implement M2 (KBM Schema & Form) | completed | 5428eeb9-aa1a-4c1a-8bea-5ebaf13e3961 |
 | worker_m3 | teamwork_preview_worker | Implement M3 (Strict Print Formatting) | completed | 39cb05aa-7da2-4957-b71c-719b638e0029 |
-| worker_m4 | teamwork_preview_worker | Implement M4 (QoL, Build & Git Push) | running | 1d211c4e-c0f3-4eea-92dd-301f74ef0918 |
+| worker_m4 | teamwork_preview_worker | Implement M4 (QoL, Build & Git Push) | completed | 1d211c4e-c0f3-4eea-92dd-301f74ef0918 |
+| reviewer_1 | teamwork_preview_reviewer | Comprehensive Code Review | running | e5633766-585c-4d0e-afe6-cab9e3a82c6a |
+| reviewer_2 | teamwork_preview_reviewer | Adversarial Code Review | running | dc782ff8-28ad-4c55-9479-c081b5c01ebb |
+| challenger_1 | teamwork_preview_challenger | E2E Empirical Verification | running | efda867e-eed1-45f7-a456-b87200f7c5d3 |
+| challenger_2 | teamwork_preview_challenger | Stress Testing & Robustness | running | e78458cd-09b5-4045-8a30-6151551d1de4 |
+| auditor | teamwork_preview_auditor | Forensic Integrity Audit | running | b7ec1cfe-a502-4874-9bac-4ab19bb9c358 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 7 / 16
-- Pending subagents: 1d211c4e-c0f3-4eea-92dd-301f74ef0918
+- Spawn count: 12 / 16
+- Pending subagents: e5633766-585c-4d0e-afe6-cab9e3a82c6a, dc782ff8-28ad-4c55-9479-c081b5c01ebb, efda867e-eed1-45f7-a456-b87200f7c5d3, e78458cd-09b5-4045-8a30-6151551d1de4, b7ec1cfe-a502-4874-9bac-4ab19bb9c358
 - Predecessor: orchestrator_3
 - Successor: not yet spawned
 

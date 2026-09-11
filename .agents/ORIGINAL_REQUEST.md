@@ -84,3 +84,62 @@ Conduct a systematic sweep of the application to identify and resolve any other 
 - [ ] An independent reviewing agent confirms that Supabase queries in the Jurnal KBM form dynamically filter Mapel/Kelas based on the user's identity (validating any newly created schema relations).
 - [ ] An independent reviewing agent confirms the Print CSS explicitly uses `white-space: nowrap` and flexible text shrinking for the address, `line-height: 1` for the header, and correctly formats the signature date line.
 - [ ] An independent reviewing agent confirms the general sweep introduced no breaking changes and the Next.js application builds cleanly.
+
+## 2026-09-11T22:35:46Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Delegate to teamwork_preview
+> Requested team: Full Team
+
+Memperbaiki tata letak cetak dokumen sesuai standar persuratan (Kop Surat & Tanda Tangan), mengubah Jurnal KBM menjadi tabel 8 kolom (termasuk migrasi DB dan pembaruan Form), menampilkan jadwal mapel harian di dashboard, serta melakukan bug hunting menyeluruh. Gunakan tim berskala penuh (Full Team) untuk mengeksekusi berbagai perubahan ini secara simultan.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Penyesuaian Format Cetak Kop Surat & Tanda Tangan
+- Tambahkan input "Nama Kota/Kabupaten" pada halaman Pengaturan Admin dan simpan konfigurasinya ke Supabase.
+- Pada style cetak (print): set line-height ke 1 untuk jarak spasi.
+- Teks alamat kop surat wajib 1 baris. Gunakan teknik CSS (misal: white-space nowrap dan penyesuaian font-size otomatis) agar teks tidak terpotong atau membungkus (wrap) ke baris baru.
+- Letakkan logo yayasan (kiri) dan logo dinas (kanan) bersumber dari tabel pengaturan.
+- Format tanda tangan: Letakkan seluruh blok tanggal dan tanda tangan di rata kanan (align right).
+- Baris pertama tanda tangan menggunakan format "[Kota/Kabupaten dari Pengaturan], [DD Bulan YYYY]". Diikuti dengan "Kepala Sekolah", nama, dan NIP.
+
+### R2. Modifikasi Struktur Database & Form Jurnal KBM
+- Tambahkan kolom-kolom baru ke tabel `jurnal_pembelajaran` di Supabase untuk menampung data: pertemuan_ke, jam_ke, tujuan_pembelajaran, materi_pembelajaran, kehadiran_murid, catatan_refleksi, foto_kegiatan (sesuaikan kolom yang belum ada).
+- Perbarui UI `GuruJurnal.tsx` dengan field input baru agar guru dapat mengisi kelengkapan data tersebut.
+
+### R3. Rekonstruksi Tabel Rekap Jurnal Pembelajaran
+- Pada tampilan `RekapJurnalView.tsx` dan saat dicetak, gunakan tata letak tabel dengan tepat 8 kolom ini:
+  1. Hari, tanggal bulan tahun
+  2. Kelas, pertemuan dan jam ke-
+  3. Tujuan pembelajaran
+  4. Materi pembelajaran
+  5. Kegiatan pembelajaran
+  6. Kehadiran murid
+  7. Catatan refleksi
+  8. Foto kegiatan
+
+### R4. Menampilkan Jadwal Mengajar Harian
+- Tambahkan informasi/widget jadwal mata pelajaran khusus guru yang bersangkutan pada halaman dashboard utama mereka (HomeView), disesuaikan dengan hari berjalan.
+
+### R5. Bug Hunting & Stabilisasi
+- Eksplorasi seluruh komponen aplikasi, perbaiki bug yang ditemukan (UI glitch, logic errors, null references).
+- Lakukan pengecekan ketat pada kode yang diubah.
+
+## Acceptance Criteria
+
+### Verifikasi Database & TypeScript
+- [ ] Menjalankan `npx tsc --noEmit` menghasilkan exit code 0 tanpa error tipe data baru.
+- [ ] Kueri ke Supabase `information_schema.columns` memverifikasi bahwa kolom-kolom baru pada `jurnal_pembelajaran` telah berhasil ditambahkan.
+
+### Verifikasi Fungsional & UI
+- [ ] Komponen admin (Pengaturan) berhasil menyimpan data `kota_kabupaten`.
+- [ ] Elemen alamat kop surat (print-only) dikonfigurasi dengan CSS agar tidak membungkus (`whitespace-nowrap`) dengan skala font yang dapat menyusut (jika menggunakan text-wrap styling).
+- [ ] Blok tanda tangan (PrintSignature) memiliki CSS flex/grid yang memaksanya merapat ke kanan (`justify-end`).
+- [ ] Tabel rekap jurnal menggunakan tag `<table>` yang secara eksplisit memiliki 8 header `<th>` sesuai urutan yang diminta.
+- [ ] Halaman dashboard guru (HomeView) merender daftar mata pelajaran/jadwal spesifik untuk guru tersebut di hari itu berdasarkan tabel `jadwal_pelajaran`.
+
