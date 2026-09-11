@@ -32,18 +32,8 @@ export type GuruDailyState = {
  * Contoh: jadwal_pelajaran punya "Ade", tapi user login punya "Ade Fitrawan Ibrahim"
  * Kita cari semua jadwal hari ini, lalu filter yang nama guru-nya COCOK (partial match).
  */
-export async function findJadwalForGuru(hari: string, namaGuru: string): Promise<any[]> {
-  // Pertama, coba exact match
-  const { data: exact } = await supabase
-    .from('jadwal_pelajaran')
-    .select('*')
-    .eq('hari', hari)
-    .eq('nama_guru', namaGuru)
-    .order('kelas', { ascending: true });
-  
-  if (exact && exact.length > 0) return exact;
-
-  // Jika exact match gagal, ambil semua jadwal hari ini dan cari partial match
+export async function findJadwalForGuru(hari: string, namaGuru: string, username?: string): Promise<any[]> {
+  // Ambil semua jadwal hari ini
   const { data: allJadwal } = await supabase
     .from('jadwal_pelajaran')
     .select('*')
@@ -52,16 +42,36 @@ export async function findJadwalForGuru(hari: string, namaGuru: string): Promise
   
   if (!allJadwal || allJadwal.length === 0) return [];
 
-  const namaLower = namaGuru.toLowerCase().trim();
-  const guruWords = namaLower.split(/\s+/).filter(w => w.length >= 3);
+  const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
+
+  const namaNorm = normalizeName(namaGuru);
+  const firstName = namaNorm.split(/\s+/)[0] || '';
+  const userNorm = username ? normalizeName(username) : '';
 
   return allJadwal.filter((j: any) => {
-    const jNama = (j.nama_guru || '').toLowerCase().trim();
+    const jNama = (j.nama_guru || '').trim();
     if (!jNama) return false;
-    if (namaLower === jNama) return true;
-    if (namaLower.startsWith(jNama) || jNama.startsWith(namaLower)) return true;
-    if (guruWords.includes(jNama)) return true;
-    if (jNama.length >= 3 && (namaLower.includes(jNama) || jNama.includes(namaLower))) return true;
+    const jNorm = normalizeName(jNama);
+
+    // 1. Prioritaskan username matching jika disediakan
+    if (userNorm) {
+      if (userNorm === jNorm) return true;
+      if (userNorm.length >= 3 && jNorm.length >= 3) {
+        if (userNorm.startsWith(jNorm) || jNorm.startsWith(userNorm)) return true;
+      }
+    }
+
+    // 2. Exact match nama lengkap
+    if (namaNorm === jNorm) return true;
+
+    // 3. Match first name (e.g. "Ade" matches "Ade Fitrawan Ibrahim", "Riski" matches "Riski Candra Mamangkai")
+    // Do NOT match middle/last name tokens if the first name is different (e.g. "assyfa" must NOT match "fitra")
+    if (firstName && firstName.length >= 2) {
+      if (firstName === jNorm || firstName.startsWith(jNorm) || jNorm.startsWith(firstName)) {
+        return true;
+      }
+    }
+
     return false;
   });
 }
@@ -103,7 +113,7 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   return false;
 }
 
-export async function getGuruDailyState(namaGuru: string): Promise<GuruDailyState> {
+export async function getGuruDailyState(namaGuru: string, username?: string): Promise<GuruDailyState> {
   const now = new Date();
   const todayStr = getWitaDateStr(now);
   
@@ -143,7 +153,7 @@ export async function getGuruDailyState(namaGuru: string): Promise<GuruDailyStat
     const selectedHari = getWitaDayName(now);
 
     // Selalu muat jadwal KBM hari ini untuk guru (tidak ditekan oleh isDinasLuar ataupun presensi datang)
-    state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru);
+    state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username);
 
     // 2. Cek Presensi Hari Ini
     const startOfDay = getWitaStartOfDay(todayStr);

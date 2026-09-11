@@ -63,7 +63,7 @@ export default function PiketView({ user }: { user: any }) {
     });
 
     if (user?.role === 'Guru') {
-      getGuruDailyState(user.nama).then(setDailyState).catch(console.error);
+      getGuruDailyState(user.nama, user.username).then(setDailyState).catch(console.error);
     }
   }, [user]);
 
@@ -187,7 +187,7 @@ export default function PiketView({ user }: { user: any }) {
       setFile(null);
       setActiveTab('beranda');
       fetchDataPiket(); // Refresh data
-      if (user?.role === 'Guru') getGuruDailyState(user.nama).then(setDailyState).catch(console.error);
+      if (user?.role === 'Guru') getGuruDailyState(user.nama, user.username).then(setDailyState).catch(console.error);
     }
     setLoading(false);
   };

@@ -17,7 +17,7 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
   useEffect(() => {
     if (isGuru && user?.nama) {
       setLoadingState(true);
-      getGuruDailyState(user.nama)
+      getGuruDailyState(user.nama, user.username)
         .then(setDailyState)
         .catch(console.error)
         .finally(() => setLoadingState(false));

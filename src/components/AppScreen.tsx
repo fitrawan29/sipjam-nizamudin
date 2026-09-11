@@ -41,7 +41,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       
       if (restrictedViews.includes(targetId)) {
         Swal.fire({ title: 'Memeriksa Akses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const state = await getGuruDailyState(user.nama);
+        const state = await getGuruDailyState(user.nama, user.username);
         Swal.close();
 
         if (state.isLibur) {

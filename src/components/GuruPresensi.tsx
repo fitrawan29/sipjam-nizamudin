@@ -84,7 +84,7 @@ export default function GuruPresensi({ user }: { user: any }) {
       }
       fetchLocation(newConfig);
 
-      const state = await getGuruDailyState(user.nama);
+      const state = await getGuruDailyState(user.nama, user.username);
       setDailyState(state);
       if (state.presensiDatang && !state.presensiPulang) {
         setTipeAbsen('Pulang');
@@ -210,7 +210,7 @@ export default function GuruPresensi({ user }: { user: any }) {
       setFile(null);
       
       // Update state
-      const state = await getGuruDailyState(user.nama);
+      const state = await getGuruDailyState(user.nama, user.username);
       setDailyState(state);
       if (tipeAbsen === 'Datang') setTipeAbsen('Pulang');
     }

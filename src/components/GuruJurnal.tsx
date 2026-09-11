@@ -156,7 +156,7 @@ export default function GuruJurnal({ user }: { user: any }) {
     const checkState = async () => {
       if (!user?.nama) return;
       
-      const state = await getGuruDailyState(user.nama);
+      const state = await getGuruDailyState(user.nama, user.username);
       setDailyState(state);
       
       // Auto-select Tipe Jurnal based on workflow
@@ -259,7 +259,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         setTujuanPembelajaran('');
         setKehadiranMurid('');
         // Refresh state to update canPresensiPulang
-        getGuruDailyState(user.nama).then(setDailyState).catch(console.error);
+        getGuruDailyState(user.nama, user.username).then(setDailyState).catch(console.error);
       }
       setLoading(false);
     } catch (err: any) {
