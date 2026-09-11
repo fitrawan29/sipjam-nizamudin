@@ -28,15 +28,19 @@ export default function AdminConfigView({ user }: { user: any }) {
 
   useEffect(() => {
     const fetchConfig = async () => {
-      const { data } = await supabase.from('pengaturan').select('*');
-      if (data && data.length > 0) {
-        const newConfig = { ...config };
-        data.forEach(item => {
-          if (item.key in newConfig) {
-            (newConfig as any)[item.key] = item.value;
-          }
-        });
-        setConfig(newConfig);
+      try {
+        const { data } = await supabase.from('pengaturan').select('*');
+        if (data && data.length > 0) {
+          const newConfig = { ...config };
+          data.forEach(item => {
+            if (item.key in newConfig) {
+              (newConfig as any)[item.key] = item.value;
+            }
+          });
+          setConfig(newConfig);
+        }
+      } catch (err) {
+        console.error('Config fetch error:', err);
       }
     };
     fetchConfig();
@@ -55,14 +59,19 @@ export default function AdminConfigView({ user }: { user: any }) {
       value: value.toString()
     }));
 
-    const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'key' });
+    try {
+      const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'key' });
 
-    if (error) {
-      Swal.fire('Error', 'Gagal menyimpan pengaturan', 'error');
-    } else {
-      Swal.fire('Berhasil', 'Pengaturan berhasil disimpan!', 'success');
+      if (error) {
+        Swal.fire('Error', 'Gagal menyimpan pengaturan', 'error');
+      } else {
+        Swal.fire('Berhasil', 'Pengaturan berhasil disimpan!', 'success');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menyimpan: ' + (err as any).message, 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (

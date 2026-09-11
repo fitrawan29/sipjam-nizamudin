@@ -1,10 +1,11 @@
 'use client';
 
+import { getWitaDateLong, getWitaTimeStr, getWitaDayName } from '@/lib/wita';
+
 export default function HomeView({ user, setView, menuItems = [] }: { user: any, setView: (view: string) => void, menuItems?: any[] }) {
   // Parse clock 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = getWitaDateLong();
+  const timeStr = getWitaTimeStr();
 
   // Map icons to appropriate Tailwind colors for visual variety
   const getColorClasses = (index: number) => {

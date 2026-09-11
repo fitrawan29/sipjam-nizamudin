@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import HomeView from './HomeView';
 import GuruPresensi from './GuruPresensi';
 import GuruJurnal from './GuruJurnal';
@@ -16,7 +17,7 @@ import AdminDataView from './AdminDataView';
 import AdminBackupView from './AdminBackupView';
 import AdminConfigView from './AdminConfigView';
 import AnalitikView from './AnalitikView';
-// Import other views as we build them
+import { getGuruDailyState } from '@/lib/workflow';
 
 export default function AppScreen({ user, onLogout }: { user: any, onLogout: () => void }) {
   const [currentView, setCurrentView] = useState('view-home');
@@ -40,6 +41,50 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     } else {
       setTheme('light');
       document.documentElement.classList.remove('dark');
+    }
+  };
+
+  const handleNavigation = async (targetId: string) => {
+    try {
+      // Admin bypasses all checks
+      if (user?.role === 'Admin') {
+        setCurrentView(targetId);
+        setSidebarOpen(false);
+        return;
+      }
+
+      // Guru workflow checks
+      const restrictedViews = ['view-guru-jurnal', 'view-piket', 'view-guru-presensi'];
+      
+      if (restrictedViews.includes(targetId)) {
+        Swal.fire({ title: 'Memeriksa Akses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const state = await getGuruDailyState(user.nama);
+        Swal.close();
+
+        if (state.isLibur) {
+          Swal.fire('Akses Ditolak', state.lockedReason || 'Hari ini libur.', 'warning');
+          return;
+        }
+
+        if (targetId === 'view-piket') {
+          if (!state.presensiDatang) return Swal.fire('Akses Ditolak', 'Harap lakukan Presensi Datang terlebih dahulu.', 'warning');
+          if (state.isIzinSakit) return Swal.fire('Akses Ditolak', state.lockedReason || '', 'info');
+        }
+
+        if (targetId === 'view-guru-jurnal') {
+          if (!state.presensiDatang) return Swal.fire('Akses Ditolak', 'Harap lakukan Presensi Datang terlebih dahulu.', 'warning');
+          if (state.isIzinSakit) return Swal.fire('Akses Ditolak', state.lockedReason || '', 'info');
+          if (!state.canOpenJurnal) return Swal.fire('Akses Ditolak', state.lockedReason || 'Selesaikan tugas lain.', 'warning');
+        }
+        
+        // If target is presensi, we let them open it so they can see the "locked" status for Pulang inside the component
+      }
+
+      setCurrentView(targetId);
+      setSidebarOpen(false);
+    } catch (err) {
+      Swal.close();
+      Swal.fire('Error', 'Gagal memeriksa status harian. Periksa koneksi internet Anda.', 'error');
     }
   };
 
@@ -77,7 +122,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
             <button type="button" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-700 dark:text-gray-200 shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className="fa-solid fa-bars text-sm"></i>
             </button>
-            <div className="text-sm md:text-base font-bold text-gray-800 dark:text-white cursor-pointer" onClick={() => setCurrentView('view-home')}>
+            <div className="text-sm md:text-base font-bold text-gray-800 dark:text-white cursor-pointer" onClick={() => handleNavigation('view-home')}>
               SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">Nizamudin</span>
             </div>
         </div>
@@ -112,7 +157,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
                 {menuItems.map(item => (
                   <button 
                     key={item.id}
-                    onClick={() => { setCurrentView(item.id); setSidebarOpen(false); }}
+                    onClick={() => handleNavigation(item.id)}
                     className={`w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
                       currentView === item.id 
                         ? 'bg-green-50 text-nizamudin-green border border-green-200 dark:bg-green-900/20 dark:text-nizamudin-gold dark:border-green-800/50' 
@@ -129,7 +174,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       )}
 
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
-        {currentView === 'view-home' && <HomeView user={user} setView={setCurrentView} menuItems={menuItems} />}
+        {currentView === 'view-home' && <HomeView user={user} setView={handleNavigation} menuItems={menuItems} />}
         {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
         {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
         {currentView === 'view-piket' && <PiketView user={user} />}

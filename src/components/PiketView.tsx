@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
+import { uploadToDrive } from '@/lib/driveUpload';
+import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 
 export default function PiketView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('beranda');
@@ -16,6 +19,7 @@ export default function PiketView({ user }: { user: any }) {
   const [catatan, setCatatan] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
 
   useEffect(() => {
     fetchDataPiket();
@@ -37,7 +41,11 @@ export default function PiketView({ user }: { user: any }) {
       }
     };
     fetchStudents();
-  }, []);
+
+    if (user?.role === 'Guru') {
+      getGuruDailyState(user.nama).then(setDailyState).catch(console.error);
+    }
+  }, [user]);
 
   const fetchDataPiket = async () => {
     // Fetch Jadwal
@@ -53,12 +61,20 @@ export default function PiketView({ user }: { user: any }) {
     e.preventDefault();
     setLoading(true);
 
-    const fileUrl = file ? 'https://example.com/piket-file.jpg' : '';
+    let fileUrl = '';
+    if (file) {
+      try {
+        fileUrl = await uploadToDrive(file, user.nama, 'Laporan_Piket', 'Piket');
+      } catch (err: any) {
+        setLoading(false);
+        return Swal.fire('Gagal Upload', err.message, 'error');
+      }
+    }
 
     const newLaporan = {
       id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      tanggal: new Date().toISOString().split('T')[0],
+      timestamp: getWitaTimestamp(),
+      tanggal: getWitaDateStr(),
       guru_pelapor: user.nama,
       rekap_absen_kelas: JSON.stringify(piketAbsensi),
       catatan_apel: catatan,
@@ -77,9 +93,13 @@ export default function PiketView({ user }: { user: any }) {
       setFile(null);
       setActiveTab('beranda');
       fetchDataPiket(); // Refresh data
+      if (user?.role === 'Guru') getGuruDailyState(user.nama).then(setDailyState).catch(console.error);
     }
     setLoading(false);
   };
+
+  const isGuru = user?.role === 'Guru';
+  const canReport = !isGuru || (dailyState && dailyState.isPiket && !dailyState.isLibur);
 
   return (
     <section id="view-piket" className="view-section fade-in">
@@ -93,6 +113,12 @@ export default function PiketView({ user }: { user: any }) {
                 </button>
             </div>
 
+            {dailyState?.isLibur && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200">
+                <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {dailyState.lockedReason}
+              </div>
+            )}
+
             <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1">
               <button 
                 onClick={() => setActiveTab('beranda')} 
@@ -100,12 +126,14 @@ export default function PiketView({ user }: { user: any }) {
               >
                 Beranda Piket
               </button>
-              <button 
-                onClick={() => setActiveTab('lapor')} 
-                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${activeTab === 'lapor' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-600 border border-transparent dark:bg-gray-800 dark:text-gray-300'}`}
-              >
-                Isi Laporan
-              </button>
+              {canReport && (
+                <button 
+                  onClick={() => setActiveTab('lapor')} 
+                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${activeTab === 'lapor' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-600 border border-transparent dark:bg-gray-800 dark:text-gray-300'}`}
+                >
+                  Isi Laporan
+                </button>
+              )}
             </div>
 
             {activeTab === 'beranda' && (
@@ -146,15 +174,15 @@ export default function PiketView({ user }: { user: any }) {
               </div>
             )}
 
-            {activeTab === 'lapor' && (
+            {activeTab === 'lapor' && canReport && (
               <div id="piket-content-form" className="fade-in space-y-4">
                   <div className="bg-orange-50 border border-orange-200 p-3 rounded-xl mb-4 text-[10px] text-orange-800 font-medium leading-relaxed">
-                      <i className="fa-solid fa-circle-info mr-1"></i> Silakan isi laporan jika Anda ditugaskan piket hari ini. Periksa seluruh kelas secara bergantian. Foto dokumentasi wajib dilampirkan.
+                      <i className="fa-solid fa-circle-info mr-1"></i> Silakan isi laporan karena Anda ditugaskan piket hari ini. Periksa seluruh kelas secara bergantian.
                   </div>
                   <form onSubmit={handlePiketSubmit} className="space-y-4">
                       <div>
                         <label className="block text-[11px] font-bold text-gray-500 mb-1.5 ml-1">Tanggal Piket</label>
-                        <input type="date" required value={new Date().toISOString().split('T')[0]} readOnly className="w-full px-3 py-2.5 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
+                        <input type="date" required value={getWitaDateStr()} readOnly className="w-full px-3 py-2.5 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 cursor-not-allowed" />
                       </div>
                       
                       <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/50 rounded-xl p-3">

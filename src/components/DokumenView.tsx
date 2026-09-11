@@ -1,16 +1,92 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { uploadToDrive } from '@/lib/driveUpload';
+import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
 
 export default function DokumenView({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState('list');
+  const [activeTab, setActiveTab] = useState<'list'|'upload'>('list');
   const [judul, setJudul] = useState('');
   const [jenis, setJenis] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [dokumenList, setDokumenList] = useState<any[]>([]);
+  const [fetching, setFetching] = useState(false);
 
-  const submitDokumen = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (activeTab === 'list' && user?.nama) {
+      loadDokumen();
+    }
+  }, [activeTab]);
+
+  const loadDokumen = async () => {
+    try {
+      setFetching(true);
+      const { data, error } = await supabase
+        .from('bank_dokumen')
+        .select('*')
+        .eq('nama_guru', user.nama)
+        .order('timestamp', { ascending: false });
+
+      if (!error && data) {
+        setDokumenList(data);
+      }
+    } catch (err) {
+      console.error('Dokumen load error:', err);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const submitDokumen = async (e: React.FormEvent) => {
     e.preventDefault();
-    Swal.fire('Info', 'Fitur upload sedang dalam pengembangan pada versi Next.js', 'info');
+    if (!jenis || !judul || !file) {
+      Swal.fire('Peringatan', 'Mohon lengkapi semua data', 'warning');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Upload the file to Google Drive using Webhook
+      let fileUrl = '';
+      if (file) {
+        try {
+          fileUrl = await uploadToDrive(file, user.nama, 'Perangkat_Pembelajaran', 'Dokumen');
+        } catch (err: any) {
+          setLoading(false);
+          return Swal.fire('Gagal Upload', err.message, 'error');
+        }
+      }
+
+      const newDokumen = {
+        id: crypto.randomUUID(),
+        timestamp: getWitaTimestamp(),
+        nama_guru: user.nama,
+        jenis_dokumen: jenis,
+        judul: judul,
+        link_file: fileUrl,
+        status_verifikasi: 'Menunggu',
+        catatan_admin: ''
+      };
+
+      const { error } = await supabase.from('bank_dokumen').insert([newDokumen]);
+
+      if (error) {
+        Swal.fire('Error', 'Gagal mengupload dokumen: ' + error.message, 'error');
+      } else {
+        Swal.fire('Berhasil', 'Dokumen berhasil diupload dan menunggu verifikasi', 'success');
+        setJenis('');
+        setJudul('');
+        setFile(null);
+        setActiveTab('list');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menyimpan dokumen: ' + (err as any).message, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -20,22 +96,22 @@ export default function DokumenView({ user }: { user: any }) {
                 <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
                   <i className="fa-solid fa-folder-open text-amber-500"></i> Perangkat Pembelajaran
                 </h2>
-                <button type="button" className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
-                  <i className="fa-solid fa-rotate-right"></i>
+                <button type="button" onClick={loadDokumen} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
+                  <i className={`fa-solid fa-rotate-right ${fetching ? 'animate-spin' : ''}`}></i>
                 </button>
             </div>
             <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1">
                 <button 
                   type="button" 
                   onClick={() => setActiveTab('list')} 
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border ${activeTab === 'list' ? 'bg-green-50 text-nizamudin-green border-nizamudin-green dark:bg-green-900/20 dark:text-nizamudin-gold dark:border-nizamudin-gold' : 'border-gray-200 text-gray-500 dark:text-gray-400 dark:border-gray-700'}`}
+                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border ${activeTab === 'list' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' : 'border-gray-200 text-gray-500 dark:text-gray-400 dark:border-gray-700'}`}
                 >
                   Daftar Dokumen
                 </button>
                 <button 
                   type="button" 
                   onClick={() => setActiveTab('upload')} 
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 border ${activeTab === 'upload' ? 'bg-green-50 text-nizamudin-green border-nizamudin-green dark:bg-green-900/20 dark:text-nizamudin-gold dark:border-nizamudin-gold' : 'border-gray-200 text-gray-500 dark:text-gray-400 dark:border-gray-700'}`}
+                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 border ${activeTab === 'upload' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' : 'border-gray-200 text-gray-500 dark:text-gray-400 dark:border-gray-700'}`}
                 >
                   Upload Baru
                 </button>
@@ -43,7 +119,39 @@ export default function DokumenView({ user }: { user: any }) {
             
             {activeTab === 'list' && (
               <div id="dokumen-content-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
-                <div className="col-span-full text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">Belum ada dokumen.</div>
+                {fetching ? (
+                  <div className="col-span-full text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">Memuat data...</div>
+                ) : dokumenList.length === 0 ? (
+                  <div className="col-span-full text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">Belum ada dokumen yang diupload.</div>
+                ) : (
+                  dokumenList.map((dok: any) => (
+                    <div key={dok.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className="text-[11px] font-bold text-gray-800 dark:text-gray-100 uppercase text-amber-600">{dok.jenis_dokumen}</h3>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                            dok.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                            dok.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          }`}>{dok.status_verifikasi || 'Menunggu'}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{dok.judul}</h4>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{formatTimestampWita(dok.timestamp)}</p>
+                      
+                      {dok.catatan_admin && (
+                        <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg text-[10px] border border-gray-100 dark:border-gray-700">
+                          <span className="font-bold block mb-0.5 text-gray-700 dark:text-gray-300">Catatan Admin:</span>
+                          <span className="text-gray-600 dark:text-gray-400 italic">{dok.catatan_admin}</span>
+                        </div>
+                      )}
+                      
+                      {dok.link_file && dok.link_file !== '-' && (
+                        <a href={dok.link_file} target="_blank" rel="noreferrer" className="mt-2 text-center text-[10px] font-bold bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded-lg transition-colors">
+                          <i className="fa-solid fa-file-pdf mr-1 text-red-500"></i> Buka Dokumen
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
@@ -68,11 +176,11 @@ export default function DokumenView({ user }: { user: any }) {
                       </div>
                       <div>
                           <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1 text-red-500"><i className="fa-solid fa-asterisk"></i> File PDF/Gambar (Bisa lebih dari 1)</label>
-                          <input type="file" required multiple accept=".pdf,image/*" className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800" />
+                          <input type="file" required accept=".pdf,image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800" />
                       </div>
                       <div className="pt-2">
-                          <button type="submit" className="btn-click w-full bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-amber-900/20 text-sm flex items-center justify-center gap-2 hover:bg-amber-700 transition">
-                            <i className="fa-solid fa-cloud-arrow-up"></i> Upload
+                          <button type="submit" disabled={loading} className="btn-click w-full bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-amber-900/20 text-sm flex items-center justify-center gap-2 hover:bg-amber-700 transition disabled:opacity-50">
+                            {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-cloud-arrow-up"></i>} {loading ? 'Mengupload...' : 'Upload'}
                           </button>
                       </div>
                   </form>

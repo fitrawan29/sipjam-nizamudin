@@ -40,6 +40,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
       }
     } catch (err) {
       console.error(err);
+      Swal.fire('Error', 'Koneksi ke server gagal. Periksa internet Anda.', 'error');
     } finally {
       setLoading(false);
     }
