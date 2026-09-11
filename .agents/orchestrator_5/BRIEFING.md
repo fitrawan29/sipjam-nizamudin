@@ -65,12 +65,13 @@ Orchestrate Milestone 5 implementation across all 5 requirements: Kop Surat & Si
 | Worker 4 | teamwork_preview_worker | Fix schedule matching defects | completed | 7a5a6ac9-9190-49a7-bb99-33a8ca94f440 |
 | Challenger 3 | teamwork_preview_challenger | Re-verify schedule matching | completed | 8102606e-695d-4d17-b972-dce5f6e3b85a |
 | Auditor 2 | teamwork_preview_auditor | Forensic Integrity Audit 2 | completed | 3d22b7a2-8180-4369-8fcf-469614cf6c21 |
-| Worker 5 | teamwork_preview_worker | Exact username match fix | running | f219c700-50b7-4aa0-bda4-6bc788d1a6ef |
+| Worker 5 | teamwork_preview_worker | Exact username match fix | completed | f219c700-50b7-4aa0-bda4-6bc788d1a6ef |
+| Challenger 4 | teamwork_preview_challenger | Final Verification | running | 3c6c8506-4c69-414c-8022-b29f57b35b06 |
 
 ## Succession Status
-- Succession required: no
-- Spawn count: 15 / 16
-- Pending subagents: f219c700-50b7-4aa0-bda4-6bc788d1a6ef
+- Succession required: yes (threshold 16 reached once subagents complete)
+- Spawn count: 16 / 16
+- Pending subagents: 3c6c8506-4c69-414c-8022-b29f57b35b06
 - Predecessor: none
 - Successor: not yet spawned
 - Predecessor: none
