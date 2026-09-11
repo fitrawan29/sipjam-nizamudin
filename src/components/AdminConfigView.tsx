@@ -55,6 +55,47 @@ export default function AdminConfigView({ user }: { user: any }) {
     setConfig({ ...config, [e.target.name]: e.target.value });
   };
 
+  const handleDetectGps = () => {
+    if (!navigator.geolocation) {
+      Swal.fire('Error', 'Browser atau perangkat Anda tidak mendukung geolokasi GPS.', 'error');
+      return;
+    }
+
+    Swal.fire({
+      title: 'Mendeteksi GPS...',
+      text: 'Mohon izinkan akses lokasi jika diminta oleh browser.',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        setConfig(prev => ({
+          ...prev,
+          gps_lat: lat,
+          gps_lng: lng
+        }));
+        Swal.fire({
+          icon: 'success',
+          title: 'Lokasi Terdeteksi',
+          text: `Koordinat GPS berhasil diperbarui:\nLatitude: ${lat}\nLongitude: ${lng}`,
+          confirmButtonColor: '#059669',
+          timer: 3000
+        });
+      },
+      (err) => {
+        let msg = err.message || 'Gagal mendapatkan koordinat GPS.';
+        if (err.code === 1) msg = 'Izin akses lokasi ditolak oleh pengguna atau browser.';
+        else if (err.code === 2) msg = 'Posisi perangkat tidak dapat ditentukan (sinyal GPS lemah).';
+        else if (err.code === 3) msg = 'Waktu permintaan GPS habis (timeout).';
+        Swal.fire('Gagal Deteksi Lokasi', msg, 'error');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -68,7 +109,7 @@ export default function AdminConfigView({ user }: { user: any }) {
       const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'key' });
 
       if (error) {
-        Swal.fire('Error', 'Gagal menyimpan pengaturan', 'error');
+        Swal.fire('Error', 'Gagal menyimpan pengaturan: ' + error.message, 'error');
       } else {
         Swal.fire('Berhasil', 'Pengaturan berhasil disimpan!', 'success');
       }
@@ -89,11 +130,11 @@ export default function AdminConfigView({ user }: { user: any }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 ml-1">TAHUN AJARAN</label>
-                      <input type="text" name="tahun_ajaran" value={config.tahun_ajaran} onChange={handleChange} required className="w-full px-3 py-2.5 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white" />
+                      <input type="text" name="tahun_ajaran" value={config.tahun_ajaran} onChange={handleChange} required className="w-full px-3 py-2.5 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 ml-1">SEMESTER</label>
-                      <select name="semester" value={config.semester} onChange={handleChange} required className="w-full px-3 py-2.5 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white">
+                      <select name="semester" value={config.semester} onChange={handleChange} required className="w-full px-3 py-2.5 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
                         <option value="Ganjil">Ganjil</option>
                         <option value="Genap">Genap</option>
                       </select>
@@ -153,7 +194,18 @@ export default function AdminConfigView({ user }: { user: any }) {
                     </div>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">
-                    <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-location-dot text-xs"></i> Kordinat GPS Absensi</h3>
+                    <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
+                        <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase flex items-center gap-2">
+                          <i className="fa-solid fa-location-dot text-xs"></i> Kordinat GPS Absensi
+                        </h3>
+                        <button 
+                          type="button" 
+                          onClick={handleDetectGps}
+                          className="btn-click text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/70 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5 shadow-sm transition"
+                        >
+                          <i className="fa-solid fa-crosshairs text-xs"></i> Deteksi Lokasi Saat Ini
+                        </button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Latitude</label>

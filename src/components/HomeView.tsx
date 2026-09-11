@@ -128,6 +128,13 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
 
   const steps = isGuru ? getWorkflowSteps() : [];
 
+  const getStepTargetView = (label: string): string | null => {
+    if (label.includes('Presensi Datang') || label.includes('Presensi Pulang')) return 'view-guru-presensi';
+    if (label.includes('Piket')) return 'view-piket';
+    if (label.includes('Jurnal')) return 'view-guru-jurnal';
+    return null;
+  };
+
   // Determine next action message
   const getNextAction = () => {
     if (!dailyState) return null;
@@ -194,65 +201,98 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
           </h3>
 
           {loadingState ? (
-            <div className="flex items-center justify-center py-6 text-gray-500 dark:text-white/80">
+            <div className="flex items-center justify-center py-6 text-gray-500 dark:text-white">
               <i className="fa-solid fa-circle-notch fa-spin text-lg mr-2"></i>
               <span className="text-xs">Memeriksa status...</span>
             </div>
           ) : steps.length === 0 ? (
-            <div className="text-center py-4 text-gray-500 dark:text-white/80 text-xs italic">
+            <div className="text-center py-4 text-gray-500 dark:text-white text-xs italic">
               Tidak ada data status hari ini.
             </div>
           ) : (
-            <div className="space-y-0">
-              {steps.map((step, idx) => (
-                <div key={idx} className="flex items-start gap-3 relative">
-                  {/* Vertical line connector */}
-                  {idx < steps.length - 1 && (
-                    <div className={`absolute left-[13px] top-[26px] w-0.5 h-[calc(100%-2px)] ${
-                      step.status === 'done' ? 'bg-green-300 dark:bg-green-700' : 'bg-gray-200 dark:bg-gray-700'
-                    }`} />
-                  )}
-                  
-                  {/* Status icon */}
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs z-10 ${
-                    step.status === 'done' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' :
-                    step.status === 'active' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 ring-2 ring-amber-300 dark:ring-amber-700' :
-                    step.status === 'skipped' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' :
-                    'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-400'
-                  }`}>
-                    {step.status === 'done' ? <i className="fa-solid fa-check" /> :
-                     step.status === 'active' ? <i className={`fa-solid ${step.icon}`} /> :
-                     step.status === 'skipped' ? <i className="fa-solid fa-minus" /> :
-                     <i className="fa-solid fa-lock text-[9px]" />}
-                  </div>
+            <div className="space-y-1">
+              {steps.map((step, idx) => {
+                const targetView = getStepTargetView(step.label);
+                const isClickable = step.status === 'active' && Boolean(targetView);
 
-                  {/* Content */}
-                  <div className="flex-grow pb-4">
-                    <p className={`text-[11px] font-bold ${
-                      step.status === 'done' ? 'text-green-700 dark:text-green-400' :
-                      step.status === 'active' ? 'text-amber-700 dark:text-amber-400' :
-                      step.status === 'skipped' ? 'text-blue-600 dark:text-blue-400' :
-                      'text-gray-500 dark:text-white/80'
+                return (
+                  <div 
+                    key={idx} 
+                    className={`flex items-start gap-3 relative rounded-xl p-2 transition-all ${
+                      isClickable 
+                        ? 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 bg-amber-50/40 dark:bg-amber-950/20' 
+                        : 'border border-transparent'
+                    }`}
+                    onClick={() => {
+                      if (isClickable && targetView) {
+                        setView(targetView);
+                      }
+                    }}
+                  >
+                    {/* Vertical line connector */}
+                    {idx < steps.length - 1 && (
+                      <div className={`absolute left-[19px] top-[34px] w-0.5 h-[calc(100%-8px)] ${
+                        step.status === 'done' ? 'bg-green-300 dark:bg-green-700' : 'bg-gray-200 dark:bg-gray-700'
+                      }`} />
+                    )}
+                    
+                    {/* Status icon */}
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs z-10 mt-0.5 ${
+                      step.status === 'done' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' :
+                      step.status === 'active' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 ring-2 ring-amber-300 dark:ring-amber-700' :
+                      step.status === 'skipped' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' :
+                      'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-400'
                     }`}>
-                      {step.label}
-                    </p>
-                    <p className={`text-[10px] mt-0.5 ${
-                      step.status === 'done' ? 'text-green-600/70 dark:text-green-500/70' :
-                      step.status === 'active' ? 'text-amber-600/70 dark:text-amber-400/70' :
-                      step.status === 'skipped' ? 'text-blue-500/70 dark:text-blue-400/70' :
-                      'text-gray-500 dark:text-white/80'
-                    }`}>
-                      {step.detail}
-                    </p>
+                      {step.status === 'done' ? <i className="fa-solid fa-check" /> :
+                       step.status === 'active' ? <i className={`fa-solid ${step.icon}`} /> :
+                       step.status === 'skipped' ? <i className="fa-solid fa-minus" /> :
+                       <i className="fa-solid fa-lock text-[9px]" />}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-grow min-w-0 pb-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className={`text-[11px] font-bold ${
+                          step.status === 'done' ? 'text-green-700 dark:text-green-400' :
+                          step.status === 'active' ? 'text-amber-800 dark:text-amber-300' :
+                          step.status === 'skipped' ? 'text-blue-600 dark:text-blue-400' :
+                          'text-gray-500 dark:text-white'
+                        }`}>
+                          {step.label}
+                        </p>
+
+                        {/* Interactive Action Button for Active Step */}
+                        {isClickable && targetView && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setView(targetView);
+                            }}
+                            className="btn-click text-[10px] font-bold text-amber-800 dark:text-amber-200 bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0 shadow-sm transition"
+                          >
+                            Buka <i className="fa-solid fa-arrow-right text-[8px]"></i>
+                          </button>
+                        )}
+                      </div>
+                      <p className={`text-[10px] mt-0.5 ${
+                        step.status === 'done' ? 'text-green-600 dark:text-green-400' :
+                        step.status === 'active' ? 'text-amber-700 dark:text-amber-300' :
+                        step.status === 'skipped' ? 'text-blue-500 dark:text-blue-400' :
+                        'text-gray-500 dark:text-white'
+                      }`}>
+                        {step.detail}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {/* Next action message */}
           {nextAction && (
-            <div className={`mt-1 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2 ${nextAction.color}`}>
+            <div className={`mt-2 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2 ${nextAction.color}`}>
               <i className="fa-solid fa-circle-info text-xs mt-0.5 shrink-0"></i>
               <p className="text-[11px] font-semibold leading-snug">{nextAction.text}</p>
             </div>
@@ -260,11 +300,11 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
           {/* Lateness Info */}
           <div className="mt-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-white/80">
+              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-white">
                 <i className="fa-solid fa-stopwatch"></i>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-600 dark:text-white/80">Akumulasi Keterlambatan Bulan Ini</p>
+                <p className="text-[10px] font-bold text-slate-600 dark:text-white">Akumulasi Keterlambatan Bulan Ini</p>
                 <p className="text-xs font-black text-gray-900 dark:text-white">
                   {Math.floor(akumulasiTelat.detik / 3600)} Jam {Math.floor((akumulasiTelat.detik % 3600) / 60)} Menit {akumulasiTelat.detik % 60} Detik
                 </p>

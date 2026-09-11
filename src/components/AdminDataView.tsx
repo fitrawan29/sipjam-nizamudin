@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import Swal from 'sweetalert2';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
@@ -11,6 +12,7 @@ export default function AdminDataView({ user }: { user: any }) {
   const [page, setPage] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const ITEMS_PER_PAGE = 20;
 
   const tabs = [
@@ -53,11 +55,10 @@ export default function AdminDataView({ user }: { user: any }) {
       } else if (data && data.length === 0) {
         setDebugInfo(`Tabel "${tabObj.table}" mengembalikan 0 baris (kosong).`);
       } else {
-        // data is null/undefined — ini yang mencurigakan
+        // Fallback direct REST API
         setDebugInfo(`Supabase mengembalikan data=null tanpa error. Kemungkinan masalah RLS atau koneksi.`);
         setErrorMsg('Data null tanpa error. Coba refresh halaman (Ctrl+Shift+R).');
         
-        // FALLBACK: langsung fetch via REST API
         console.log('[AdminDataView] Trying fallback direct fetch...');
         try {
           const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -100,6 +101,531 @@ export default function AdminDataView({ user }: { user: any }) {
     setPage(0);
   }, [loadData]);
 
+  // CSV Template Generation and Download
+  const handleDownloadTemplate = () => {
+    const templates: Record<string, { filename: string; headers: string[]; sample: string[] }> = {
+      Data_Siswa: {
+        filename: 'Template_Data_Siswa.csv',
+        headers: ['nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu'],
+        sample: ['114367407', 'Moh. Candra Podomi', 'X Merdeka', 'Laki-laki', 'Aktif', '081234567890']
+      },
+      Data_Guru: {
+        filename: 'Template_Data_Guru.csv',
+        headers: ['nip', 'nama_guru', 'mata_pelajaran', 'no_hp', 'status', 'email'],
+        sample: ['198501012010011001', 'Fitri Aprilia Dotulong', 'Bahasa Inggris', '6281241316190', 'Aktif', 'vitridotulong26@gmail.com']
+      },
+      Data_Mapel: {
+        filename: 'Template_Data_Mapel.csv',
+        headers: ['id', 'nama_mata_pelajaran', 'kategori'],
+        sample: ['MP-01', 'Matematika Wajib', 'X Merdeka']
+      },
+      Kalender_Pendidikan: {
+        filename: 'Template_Kalender_Pendidikan.csv',
+        headers: ['id', 'tanggal', 'keterangan', 'tipe'],
+        sample: ['KP-01', '2026-10-01', 'Hari Kesaktian Pancasila', 'Libur']
+      },
+      Jadwal_Pelajaran: {
+        filename: 'Template_Jadwal_Pelajaran.csv',
+        headers: ['id', 'hari', 'nama_guru', 'mata_pelajaran', 'kelas'],
+        sample: ['JP-01', 'Senin', 'Fitri Aprilia Dotulong', 'Bahasa Inggris', 'X Merdeka']
+      }
+    };
+
+    const current = templates[activeTab];
+    if (!current) return;
+
+    const escapeCsv = (val: string) => {
+      if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+        return `"${val.replace(/"/g, '""')}"`;
+      }
+      return val;
+    };
+
+    const content = '\uFEFF' + [
+      current.headers.join(','),
+      current.sample.map(escapeCsv).join(',')
+    ].join('\r\n');
+
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = current.filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // CSV File Parser & Batch Upsert
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const tabObj = tabs.find(t => t.id === activeTab);
+    if (!tabObj) return;
+
+    setLoading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length < 2) {
+        throw new Error('File CSV kosong atau tidak memiliki baris data.');
+      }
+
+      // Robust CSV line parser with quotes handling
+      const parseCsvLine = (line: string): string[] => {
+        const parts: string[] = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else {
+              inQuotes = !inQuotes;
+            }
+          } else if (c === ',' && !inQuotes) {
+            parts.push(cur.trim());
+            cur = '';
+          } else {
+            cur += c;
+          }
+        }
+        parts.push(cur.trim());
+        return parts;
+      };
+
+      const rawHeaders = parseCsvLine(lines[0]);
+      // Normalize header names: lowercase, replace spaces/dashes with underscores
+      const headers = rawHeaders.map(h => {
+        const clean = h.toLowerCase().replace(/[\s-]+/g, '_').replace(/^"|"$/g, '');
+        if (clean === 'no_hp_orang_tua' || clean === 'hp_ortu') return 'no_hp_ortu';
+        if (clean === 'nama') return tabObj.table === 'data_siswa' ? 'nama_siswa' : 'nama_guru';
+        if (clean === 'mata_pelajaran' && tabObj.table === 'data_mapel') return 'nama_mata_pelajaran';
+        if (clean === 'guru') return 'nama_guru';
+        return clean;
+      });
+
+      const rows: Record<string, any>[] = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const vals = parseCsvLine(lines[i]);
+        if (vals.length === 0 || (vals.length === 1 && vals[0] === '')) continue;
+        
+        const row: Record<string, any> = {};
+        headers.forEach((h, idx) => {
+          if (vals[idx] !== undefined && h) {
+            row[h] = vals[idx];
+          }
+        });
+
+        // Ensure primary key exists
+        if (!row.id) {
+          row.id = crypto.randomUUID();
+        }
+
+        // Apply default values if needed
+        if (tabObj.table === 'data_siswa' && !row.status) row.status = 'Aktif';
+        if (tabObj.table === 'data_guru' && !row.status) row.status = 'Aktif';
+
+        rows.push(row);
+      }
+
+      if (rows.length === 0) {
+        throw new Error('Tidak ada baris data valid yang ditemukan dalam CSV.');
+      }
+
+      // Batch upsert to Supabase in chunks of 50
+      const batchSize = 50;
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize);
+        const { error } = await supabase
+          .from(tabObj.table)
+          .upsert(batch, { ignoreDuplicates: false });
+        if (error) throw error;
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Unggah Berhasil',
+        text: `Berhasil mengimpor dan memperbarui ${rows.length} data ke tabel ${tabObj.label}!`,
+        confirmButtonColor: '#0B4619'
+      });
+      loadData();
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Impor CSV',
+        text: err.message || 'Terjadi kesalahan saat memproses file CSV.',
+        confirmButtonColor: '#dc2626'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manual Insert Modal
+  const handleOpenCreateModal = async () => {
+    const tabObj = tabs.find(t => t.id === activeTab);
+    if (!tabObj) return;
+
+    if (activeTab === 'Data_Siswa') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Tambah Siswa Baru',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">NISN *</label>
+              <input id="swal-nisn" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 114367407">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Lengkap Siswa *</label>
+              <input id="swal-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Budi Santoso">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Kelas *</label>
+              <input id="swal-kelas" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: X Merdeka, XI-1">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Jenis Kelamin *</label>
+              <select id="swal-gender" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">No HP Orang Tua</label>
+              <input id="swal-hp" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 081234567890">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Data',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nisn = (document.getElementById('swal-nisn') as HTMLInputElement)?.value?.trim();
+          const nama_siswa = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim();
+          const kelas = (document.getElementById('swal-kelas') as HTMLInputElement)?.value?.trim();
+          const gender = (document.getElementById('swal-gender') as HTMLSelectElement)?.value;
+          const no_hp_ortu = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '';
+
+          if (!nisn || !nama_siswa || !kelas) {
+            Swal.showValidationMessage('NISN, Nama Siswa, dan Kelas wajib diisi!');
+            return null;
+          }
+          return {
+            id: crypto.randomUUID(),
+            nisn,
+            nama_siswa,
+            kelas,
+            gender,
+            status: 'Aktif',
+            no_hp_ortu
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        const { error } = await supabase.from('data_siswa').insert([formValues]);
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Menambah Data', error.message, 'error');
+        } else {
+          Swal.fire('Berhasil', 'Data siswa berhasil disimpan!', 'success');
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Data_Guru') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Tambah Guru Baru',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">NIP (atau kode pengenal)</label>
+              <input id="swal-nip" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 198501012010011001">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Lengkap Guru *</label>
+              <input id="swal-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Fitri Aprilia Dotulong, S.Pd.">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran Diampu *</label>
+              <input id="swal-mapel" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Bahasa Inggris">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">No HP / WhatsApp</label>
+              <input id="swal-hp" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 628123456789">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Email</label>
+              <input id="swal-email" type="email" class="swal2-input !mt-0 !w-full text-xs" placeholder="guru@nizamudin.sch.id">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Data',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nip = (document.getElementById('swal-nip') as HTMLInputElement)?.value?.trim() || '-';
+          const nama_guru = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim();
+          const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLInputElement)?.value?.trim();
+          const no_hp = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '-';
+          const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || '-';
+
+          if (!nama_guru || !mata_pelajaran) {
+            Swal.showValidationMessage('Nama Guru dan Mata Pelajaran wajib diisi!');
+            return null;
+          }
+          return {
+            id: crypto.randomUUID(),
+            nip,
+            nama_guru,
+            mata_pelajaran,
+            no_hp,
+            status: 'Aktif',
+            email
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        const { error } = await supabase.from('data_guru').insert([formValues]);
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Menambah Data', error.message, 'error');
+        } else {
+          Swal.fire('Berhasil', 'Data guru berhasil disimpan!', 'success');
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Data_Mapel') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Tambah Mata Pelajaran',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Kode / ID Mapel (Opsional)</label>
+              <input id="swal-id" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: MP-01 (kosongkan untuk otomatis)">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Mata Pelajaran *</label>
+              <input id="swal-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Matematika Wajib">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Kategori / Tingkat *</label>
+              <input id="swal-kat" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: X Merdeka, Umum, Peminatan">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Data',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const userGivenId = (document.getElementById('swal-id') as HTMLInputElement)?.value?.trim();
+          const nama_mata_pelajaran = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim();
+          const kategori = (document.getElementById('swal-kat') as HTMLInputElement)?.value?.trim() || 'Umum';
+
+          if (!nama_mata_pelajaran) {
+            Swal.showValidationMessage('Nama Mata Pelajaran wajib diisi!');
+            return null;
+          }
+          return {
+            id: userGivenId || crypto.randomUUID(),
+            nama_mata_pelajaran,
+            kategori
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        const { error } = await supabase.from('data_mapel').insert([formValues]);
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Menambah Data', error.message, 'error');
+        } else {
+          Swal.fire('Berhasil', 'Mata Pelajaran berhasil disimpan!', 'success');
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Kalender_Pendidikan') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Tambah Agenda Kalender',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Tanggal *</label>
+              <input id="swal-tgl" type="date" class="swal2-input !mt-0 !w-full text-xs">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Keterangan Agenda *</label>
+              <input id="swal-ket" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Hari Libur Nasional">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Tipe Agenda *</label>
+              <select id="swal-tipe" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Libur">Libur</option>
+                <option value="Kegiatan">Kegiatan</option>
+                <option value="Ujian">Ujian</option>
+              </select>
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Data',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const tanggal = (document.getElementById('swal-tgl') as HTMLInputElement)?.value?.trim();
+          const keterangan = (document.getElementById('swal-ket') as HTMLInputElement)?.value?.trim();
+          const tipe = (document.getElementById('swal-tipe') as HTMLSelectElement)?.value || 'Libur';
+
+          if (!tanggal || !keterangan) {
+            Swal.showValidationMessage('Tanggal dan Keterangan wajib diisi!');
+            return null;
+          }
+          return {
+            id: crypto.randomUUID(),
+            tanggal,
+            keterangan,
+            tipe
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        const { error } = await supabase.from('kalender_pendidikan').insert([formValues]);
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Menambah Agenda', error.message, 'error');
+        } else {
+          Swal.fire('Berhasil', 'Agenda kalender berhasil disimpan!', 'success');
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Jadwal_Pelajaran') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Tambah Jadwal Pelajaran',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Hari *</label>
+              <select id="swal-hari" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Senin">Senin</option>
+                <option value="Selasa">Selasa</option>
+                <option value="Rabu">Rabu</option>
+                <option value="Kamis">Kamis</option>
+                <option value="Jumat">Jumat</option>
+                <option value="Sabtu">Sabtu</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Guru *</label>
+              <input id="swal-guru" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Fitri Aprilia Dotulong">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran *</label>
+              <input id="swal-mapel" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Bahasa Inggris">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Kelas *</label>
+              <input id="swal-kelas" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: X Merdeka">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Data',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const hari = (document.getElementById('swal-hari') as HTMLSelectElement)?.value;
+          const nama_guru = (document.getElementById('swal-guru') as HTMLInputElement)?.value?.trim();
+          const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLInputElement)?.value?.trim();
+          const kelas = (document.getElementById('swal-kelas') as HTMLInputElement)?.value?.trim();
+
+          if (!nama_guru || !mata_pelajaran || !kelas) {
+            Swal.showValidationMessage('Nama Guru, Mapel, dan Kelas wajib diisi!');
+            return null;
+          }
+          return {
+            id: crypto.randomUUID(),
+            hari,
+            nama_guru,
+            mata_pelajaran,
+            kelas
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        const { error } = await supabase.from('jadwal_pelajaran').insert([formValues]);
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Menambah Jadwal', error.message, 'error');
+        } else {
+          Swal.fire('Berhasil', 'Jadwal pelajaran berhasil disimpan!', 'success');
+          loadData();
+        }
+      }
+    }
+  };
+
+  // Delete Individual Master Data Item
+  const handleDeleteItem = async (item: any) => {
+    const tabObj = tabs.find(t => t.id === activeTab);
+    if (!tabObj) return;
+
+    const itemName = item.nama_siswa || item.nama_guru || item.nama_mata_pelajaran || item.keterangan || item.id || 'data ini';
+
+    const result = await Swal.fire({
+      title: 'Hapus Data?',
+      text: `Apakah Anda yakin ingin menghapus "${itemName}"? Data yang dihapus tidak dapat dikembalikan.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus!',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      setLoading(true);
+      const idField = item.id ? 'id' : (item.nisn ? 'nisn' : (item.nip ? 'nip' : 'id'));
+      const idVal = item[idField];
+
+      const { error } = await supabase.from(tabObj.table).delete().eq(idField, idVal);
+      setLoading(false);
+
+      if (error) {
+        Swal.fire('Gagal Menghapus', error.message, 'error');
+      } else {
+        Swal.fire({
+          icon: 'success',
+          title: 'Terhapus',
+          text: 'Data berhasil dihapus dari database.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        loadData();
+      }
+    }
+  };
+
   const filteredList = Array.isArray(dataList) ? dataList.filter(item => {
     if (!item) return false;
     if (!search) return true;
@@ -132,6 +658,7 @@ export default function AdminDataView({ user }: { user: any }) {
             <p><span className="font-semibold">NISN:</span> {item.nisn || '-'}</p>
             <p><span className="font-semibold">Kelas:</span> {item.kelas || '-'}</p>
             <p><span className="font-semibold">Gender:</span> {item.gender || '-'}</p>
+            {item.no_hp_ortu && <p><span className="font-semibold">HP Ortu:</span> {item.no_hp_ortu}</p>}
           </div>
           <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">{item.status || 'Aktif'}</div>
         </>
@@ -144,6 +671,7 @@ export default function AdminDataView({ user }: { user: any }) {
             <p><span className="font-semibold">NIP:</span> {item.nip || '-'}</p>
             <p><span className="font-semibold">Mapel:</span> {item.mata_pelajaran || '-'}</p>
             <p><span className="font-semibold">Kontak:</span> {item.no_hp || '-'}</p>
+            {item.email && <p className="truncate"><span className="font-semibold">Email:</span> {item.email}</p>}
           </div>
           <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">{item.status || 'Aktif'}</div>
         </>
@@ -153,6 +681,7 @@ export default function AdminDataView({ user }: { user: any }) {
         <>
           <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.nama_mata_pelajaran || 'Tanpa Nama'}</h3>
           <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
+            <p><span className="font-semibold">Kode/ID:</span> {item.id || '-'}</p>
             <p><span className="font-semibold">Kategori:</span> {item.kategori || '-'}</p>
           </div>
         </>
@@ -183,6 +712,15 @@ export default function AdminDataView({ user }: { user: any }) {
 
   return (
     <section id="view-admin-data" className="view-section fade-in">
+        {/* Hidden file input for CSV upload */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          accept=".csv,text/csv,text/plain" 
+          onChange={handleFileUpload} 
+          className="hidden" 
+        />
+
         <div className="glass-card p-4">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <i className="fa-solid fa-database text-purple-500 dark:text-purple-400"></i> Master Data
@@ -218,10 +756,23 @@ export default function AdminDataView({ user }: { user: any }) {
 
             <div className="bg-purple-50 dark:bg-purple-900/10 rounded-2xl p-3 border border-purple-100 dark:border-purple-900/30 mb-4">
                 <div className="flex justify-between items-center gap-2">
-                    <span className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase truncate">Impor Excel</span>
+                    <span className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase truncate">Impor & Kelola Data</span>
                     <div className="flex gap-1.5 shrink-0">
-                        <button type="button" onClick={() => alert('Fitur unduh template Excel sedang dalam pengembangan')} className="btn-click bg-white dark:bg-gray-800 px-2 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600">Template</button>
-                        <button type="button" onClick={() => alert('Fitur unggah Excel massal sedang dalam pengembangan')} className="btn-click bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded-lg text-xs font-bold shadow-md"><i className="fa-solid fa-upload"></i> Unggah</button>
+                        <button 
+                          type="button" 
+                          onClick={handleDownloadTemplate} 
+                          className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                        >
+                          <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i> Template
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => fileInputRef.current?.click()} 
+                          disabled={loading}
+                          className="btn-click bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
+                        >
+                          <i className="fa-solid fa-upload"></i> Unggah
+                        </button>
                     </div>
                 </div>
             </div>
@@ -236,7 +787,12 @@ export default function AdminDataView({ user }: { user: any }) {
                     <button type="button" onClick={loadData} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
                       <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                     </button>
-                    <button type="button" onClick={() => alert('Fitur tambah data manual sedang dalam pengembangan')} className="btn-click bg-nizamudin-green text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1 border border-nizamudin-light hover:brightness-110">
+                    <button 
+                      type="button" 
+                      onClick={handleOpenCreateModal} 
+                      disabled={loading}
+                      className="btn-click bg-nizamudin-green text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 border border-nizamudin-light hover:brightness-110 transition disabled:opacity-50"
+                    >
                       <i className="fa-solid fa-plus"></i> Baru
                     </button>
                 </div>
@@ -255,8 +811,19 @@ export default function AdminDataView({ user }: { user: any }) {
                   </div>
                 ) : (
                   paginatedList.map((item, idx) => (
-                    <div key={item?.id || idx} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3 rounded-xl shadow-sm relative hover:shadow-md transition">
-                      {renderCard(item)}
+                    <div key={item?.id || item?.nisn || item?.nip || idx} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3 rounded-xl shadow-sm relative hover:shadow-md transition flex flex-col justify-between">
+                      <div>
+                        {renderCard(item)}
+                      </div>
+                      <div className="flex justify-end mt-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <button 
+                          type="button" 
+                          onClick={() => handleDeleteItem(item)} 
+                          className="btn-click text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition"
+                        >
+                          <i className="fa-solid fa-trash-can text-[10px]"></i> Hapus
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

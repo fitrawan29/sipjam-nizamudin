@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { formatTimestampWita } from '@/lib/wita';
 
 export default function HistoryView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<'presensi'|'jurnal'>('presensi');
@@ -56,12 +57,14 @@ export default function HistoryView({ user }: { user: any }) {
 
   const filteredData = dataList.filter(item => {
     if (activeTab === 'presensi') {
-      return item.tipe_absen?.toLowerCase().includes(search.toLowerCase()) || 
-             item.jenis_presensi?.toLowerCase().includes(search.toLowerCase());
+      return (item.tipe_absen || '').toLowerCase().includes(search.toLowerCase()) || 
+             (item.jenis_presensi || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase());
     } else {
-      return item.mapel?.toLowerCase().includes(search.toLowerCase()) ||
-             item.kelas?.toLowerCase().includes(search.toLowerCase()) ||
-             item.materi?.toLowerCase().includes(search.toLowerCase());
+      return (item.mapel || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.kelas || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.materi || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase());
     }
   });
 
@@ -110,44 +113,88 @@ export default function HistoryView({ user }: { user: any }) {
                     <i className="fa-solid fa-circle-exclamation mr-1"></i> Gagal memuat data: {errorMsg}
                 </div>
             )}
-            <div id="hist-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
+            <div id="hist-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px] content-start">
               {loading && dataList.length === 0 ? (
                 <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400 text-xs italic">Memuat data...</div>
               ) : paginatedData.length === 0 ? (
                 <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400 text-xs italic">Belum ada riwayat.</div>
               ) : (
                 paginatedData.map((item: any) => (
-                  <div key={item.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
+                  <div key={item.id} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-between gap-2 hover:shadow-md transition">
                     {activeTab === 'presensi' ? (
                       <>
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="text-xs font-bold text-gray-900 dark:text-white">{item.tipe_absen} - {item.jenis_presensi}</h3>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                              item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                              item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                              'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                            }`}>{item.status_verifikasi || 'Menunggu'}</span>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-start mb-1">
+                            <h3 className="text-xs font-bold text-gray-900 dark:text-white">{item.tipe_absen} - {item.jenis_presensi}</h3>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              }`}>{item.status_verifikasi || 'Menunggu'}</span>
+                          </div>
+                          <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
+                            <p><span className="font-semibold text-gray-900 dark:text-white">Waktu:</span> {formatTimestampWita(item.timestamp)}</p>
+                            {item.detail_izin && <p><span className="font-semibold text-gray-900 dark:text-white">Keterangan:</span> {item.detail_izin}</p>}
+                          </div>
+                          {item.catatan_admin && (
+                            <div className="mt-1 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-[9px] border border-gray-100 dark:border-gray-700">
+                              <span className="font-semibold text-gray-900 dark:text-white">Catatan Admin: </span>
+                              <span className="text-gray-700 dark:text-gray-300 italic">{item.catatan_admin}</span>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
-                          <p><span className="font-semibold text-gray-900 dark:text-white">Waktu:</span> {new Date(item.timestamp).toLocaleString('id-ID')}</p>
-                          {item.detail_izin && <p><span className="font-semibold text-gray-900 dark:text-white">Keterangan:</span> {item.detail_izin}</p>}
-                        </div>
+
+                        {/* Presensi Attachment Link ("Lihat Bukti") */}
+                        {item.link_bukti && item.link_bukti !== '-' && (
+                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700">
+                            <a 
+                              href={item.link_bukti} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 transition"
+                            >
+                              <i className="fa-solid fa-paperclip text-[9px]"></i> Lihat Bukti Presensi
+                            </a>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
-                        <div className="flex justify-between items-start mb-1">
-                          <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate pr-2">{item.mapel}</h3>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                              item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                              item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                              'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                            }`}>{item.status_verifikasi || 'Menunggu'}</span>
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-start mb-1">
+                            <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate pr-2">{item.mapel}</h3>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              }`}>{item.status_verifikasi || 'Menunggu'}</span>
+                          </div>
+                          <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
+                            <p><span className="font-semibold text-gray-900 dark:text-white">Tanggal:</span> {item.tanggal}</p>
+                            <p><span className="font-semibold text-gray-900 dark:text-white">Kelas:</span> {item.kelas}</p>
+                            <p className="truncate"><span className="font-semibold text-gray-900 dark:text-white">Materi:</span> {item.materi}</p>
+                          </div>
+                          {item.catatan_admin && (
+                            <div className="mt-1 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-[9px] border border-gray-100 dark:border-gray-700">
+                              <span className="font-semibold text-gray-900 dark:text-white">Catatan Admin: </span>
+                              <span className="text-gray-700 dark:text-gray-300 italic">{item.catatan_admin}</span>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
-                          <p><span className="font-semibold text-gray-900 dark:text-white">Tanggal:</span> {item.tanggal}</p>
-                          <p><span className="font-semibold text-gray-900 dark:text-white">Kelas:</span> {item.kelas}</p>
-                          <p className="truncate"><span className="font-semibold text-gray-900 dark:text-white">Materi:</span> {item.materi}</p>
-                        </div>
+
+                        {/* Jurnal Attachment Link ("Lihat Bukti") */}
+                        {item.link_bukti_foto && item.link_bukti_foto !== '-' && (
+                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700">
+                            <a 
+                              href={item.link_bukti_foto} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 transition"
+                            >
+                              <i className="fa-solid fa-image text-[9px]"></i> Lihat Bukti Foto
+                            </a>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

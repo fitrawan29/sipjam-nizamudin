@@ -10,7 +10,7 @@ export default function AnalitikView({ user }: { user: any }) {
   });
   const [loading, setLoading] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[] | null>(null);
-  const [stats, setStats] = useState({ hadir: 0, izin: 0, dinasLuar: 0, jurnal: 0 });
+  const [stats, setStats] = useState({ hadir: 0, izin: 0, dinasLuar: 0, jurnal: 0, piket: 0 });
 
   useEffect(() => {
     if (bulan) loadAnalitik();
@@ -25,7 +25,10 @@ export default function AnalitikView({ user }: { user: any }) {
       const lastDay = new Date(year, month, 0).getDate();
       const lastDayStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       const end = getWitaEndOfDay(lastDayStr);
+      const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+      const endDateStr = lastDayStr;
 
+      // 1. Fetch Presensi
       const { data: presensi } = await supabase
         .from('presensi_guru')
         .select('nama_guru, jenis_presensi')
@@ -34,6 +37,7 @@ export default function AnalitikView({ user }: { user: any }) {
         .eq('tipe_absen', 'Datang')
         .eq('status_verifikasi', 'Disetujui');
 
+      // 2. Fetch Jurnal
       const { data: jurnal } = await supabase
         .from('jurnal_pembelajaran')
         .select('nama_guru')
@@ -41,41 +45,64 @@ export default function AnalitikView({ user }: { user: any }) {
         .lte('timestamp', end)
         .eq('status_verifikasi', 'Disetujui');
 
+      // 3. Fetch Piket
+      const { data: piket } = await supabase
+        .from('laporan_piket')
+        .select('guru_pelapor, tanggal, status_verifikasi')
+        .gte('tanggal', startDateStr)
+        .lte('tanggal', endDateStr)
+        .eq('status_verifikasi', 'Disetujui');
+
       // Aggregate stats
-      let h = 0, i = 0, d = 0, jCount = jurnal?.length || 0;
+      let h = 0, i = 0, d = 0;
+      const jCount = jurnal?.length || 0;
+      const pkCount = piket?.length || 0;
       
-      const lMap: Record<string, { hadir: number, jurnal: number }> = {};
+      const lMap: Record<string, { hadir: number, jurnal: number, piket: number, dinasLuar: number }> = {};
       
       presensi?.forEach(p => {
         const nama = p.nama_guru;
-        if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0 };
+        if (!nama) return;
+        if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0, piket: 0, dinasLuar: 0 };
         
         if (p.jenis_presensi === 'Sekolah') {
           h++;
           lMap[nama].hadir++;
         }
         else if (p.jenis_presensi === 'Izin') i++;
-        else if (p.jenis_presensi === 'Dinas Luar') d++;
+        else if (p.jenis_presensi === 'Dinas Luar') {
+          d++;
+          lMap[nama].dinasLuar++;
+        }
       });
 
       jurnal?.forEach(j => {
         const nama = j.nama_guru;
-        if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0 };
+        if (!nama) return;
+        if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0, piket: 0, dinasLuar: 0 };
         lMap[nama].jurnal++;
       });
 
-      setStats({ hadir: h, izin: i, dinasLuar: d, jurnal: jCount });
+      piket?.forEach(pk => {
+        const nama = pk.guru_pelapor;
+        if (!nama) return;
+        if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0, piket: 0, dinasLuar: 0 };
+        lMap[nama].piket++;
+      });
 
-      // Calculate score
+      setStats({ hadir: h, izin: i, dinasLuar: d, jurnal: jCount, piket: pkCount });
+
+      // Calculate real performance score:
+      // Hadir Sekolah: 10 poin, Piket: 10 poin, Jurnal: 5 poin, Dinas Luar: 5 poin
       const lArr = Object.keys(lMap).map(nama => {
         const data = lMap[nama];
-        const score = (data.hadir * 10) + (data.jurnal * 5); // Dummy score logic
+        const score = (data.hadir * 10) + (data.piket * 10) + (data.jurnal * 5) + (data.dinasLuar * 5);
         return { nama, ...data, score };
-      }).sort((a,b) => b.score - a.score).slice(0, 10);
+      }).sort((a, b) => b.score - a.score).slice(0, 10);
 
       setLeaderboard(lArr);
     } catch (error) {
-      console.error(error);
+      console.error('Error loading analytics data:', error);
     } finally {
       setLoading(false);
     }
@@ -101,9 +128,12 @@ export default function AnalitikView({ user }: { user: any }) {
                 </button>
             </div>
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-5 shadow-sm">
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-4">Statistik Global (Bulan Ini)</h3>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xs font-bold text-gray-900 dark:text-white">Statistik Global (Bulan Ini)</h3>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 italic">Data terverifikasi</span>
+                </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                   <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-900/50 text-center">
                     <div className="text-2xl font-black text-green-600 dark:text-green-400">{stats.hadir}</div>
                     <div className="text-[9px] font-bold text-green-800 dark:text-green-500 uppercase tracking-wide mt-1">Total Hadir</div>
@@ -111,6 +141,14 @@ export default function AnalitikView({ user }: { user: any }) {
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-xl border border-blue-100 dark:border-blue-900/50 text-center">
                     <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{stats.jurnal}</div>
                     <div className="text-[9px] font-bold text-blue-800 dark:text-blue-500 uppercase tracking-wide mt-1">Total Jurnal</div>
+                  </div>
+                  <div className="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/50 text-center">
+                    <div className="text-2xl font-black text-teal-600 dark:text-teal-400">{stats.piket}</div>
+                    <div className="text-[9px] font-bold text-teal-800 dark:text-teal-500 uppercase tracking-wide mt-1">Total Piket</div>
+                  </div>
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/50 text-center">
+                    <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{stats.dinasLuar}</div>
+                    <div className="text-[9px] font-bold text-indigo-800 dark:text-indigo-500 uppercase tracking-wide mt-1">Dinas Luar</div>
                   </div>
                 </div>
 
@@ -121,7 +159,7 @@ export default function AnalitikView({ user }: { user: any }) {
                       <span>{pSeko}%</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div className="bg-green-500 h-2 rounded-full" style={{ width: `${pSeko}%` }}></div>
+                      <div className="bg-green-500 h-2 rounded-full transition-all duration-500" style={{ width: `${pSeko}%` }}></div>
                     </div>
                   </div>
                   <div>
@@ -130,7 +168,7 @@ export default function AnalitikView({ user }: { user: any }) {
                       <span>{pIzin}%</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${pIzin}%` }}></div>
+                      <div className="bg-yellow-500 h-2 rounded-full transition-all duration-500" style={{ width: `${pIzin}%` }}></div>
                     </div>
                   </div>
                   <div>
@@ -139,16 +177,21 @@ export default function AnalitikView({ user }: { user: any }) {
                       <span>{pDinas}%</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${pDinas}%` }}></div>
+                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${pDinas}%` }}></div>
                     </div>
                   </div>
                 </div>
             </div>
             
             <div>
-                <h3 className="text-sm font-black text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <i className="fa-solid fa-medal text-yellow-500 dark:text-yellow-400"></i> Papan Peringkat (Top 10)
-                </h3>
+                <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                      <i className="fa-solid fa-medal text-yellow-500 dark:text-yellow-400"></i> Papan Peringkat Kinerja (Top 10)
+                    </h3>
+                    <span className="text-[9px] text-gray-500 dark:text-gray-400 hidden sm:inline font-medium">
+                      Formula: Hadir×10 + Piket×10 + Jurnal×5 + Dinas×5
+                    </span>
+                </div>
                 <div id="leaderboard-list" className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[150px]">
                     {!leaderboard && !loading && (
                       <div className="text-center py-5 text-xs text-gray-500 italic dark:text-gray-400 col-span-full">Pilih bulan dan klik proses...</div>
@@ -168,9 +211,11 @@ export default function AnalitikView({ user }: { user: any }) {
                         </div>
                         <div className="flex-grow min-w-0">
                           <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">{l.nama}</h4>
-                          <div className="text-xs text-gray-600 dark:text-gray-300 flex gap-2 mt-0.5">
+                          <div className="text-[10px] text-gray-600 dark:text-gray-300 flex flex-wrap gap-2 mt-0.5">
                             <span><i className="fa-solid fa-check text-green-500 dark:text-green-400"></i> {l.hadir} Hadir</span>
+                            <span><i className="fa-solid fa-shield-halved text-teal-500 dark:text-teal-400"></i> {l.piket || 0} Piket</span>
                             <span><i className="fa-solid fa-book text-blue-500 dark:text-blue-400"></i> {l.jurnal} Jurnal</span>
+                            {l.dinasLuar > 0 && <span><i className="fa-solid fa-briefcase text-indigo-500 dark:text-indigo-400"></i> {l.dinasLuar} Dinas</span>}
                           </div>
                         </div>
                         <div className="text-right shrink-0">

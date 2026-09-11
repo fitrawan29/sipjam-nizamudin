@@ -17,10 +17,13 @@ export default function AdminBackupView({ user }: { user: any }) {
 
   const fetchRiwayat = async () => {
     try {
-      const { data } = await supabase.from('riwayat_backup').select('*').order('timestamp', { ascending: false });
-      if (data) setRiwayat(data);
+      const { data, error } = await supabase
+        .from('riwayat_backup')
+        .select('*')
+        .order('timestamp', { ascending: false });
+      if (data && !error) setRiwayat(data);
     } catch (error) {
-      console.error(error);
+      console.error('Fetch riwayat backup error:', error);
     }
   };
 
@@ -79,15 +82,19 @@ export default function AdminBackupView({ user }: { user: any }) {
       await supabase.from('presensi_guru').delete().neq('id', 'dummy');
       await supabase.from('jurnal_pembelajaran').delete().neq('id', 'dummy');
 
-      // 5. Catat riwayat backup
+      // 5. Catat riwayat backup sesuai skema riwayat_backup (id, timestamp, tahun_backup, link_file, status, keterangan)
       const newBackup = {
         id: crypto.randomUUID(),
         timestamp: new Date().toISOString(),
-        periode: tahun,
-        admin: user.nama,
-        link_drive: webhookUrl // can be replaced with actual spreadsheet link if known
+        tahun_backup: tahun,
+        link_file: webhookUrl || '',
+        status: 'Sukses',
+        keterangan: `Backup transaksi tahun ${tahun} oleh ${user?.nama || 'Admin'} (${user?.role || 'Admin'})`
       };
-      await supabase.from('riwayat_backup').insert([newBackup]);
+      const { error: insertErr } = await supabase.from('riwayat_backup').insert([newBackup]);
+      if (insertErr) {
+        console.error('Catat riwayat backup gagal:', insertErr);
+      }
 
       Swal.fire('Berhasil', 'Backup data berhasil dilakukan dan database dikosongkan.', 'success');
       fetchRiwayat();
@@ -175,8 +182,8 @@ export default function AdminBackupView({ user }: { user: any }) {
             </div>
 
             <div>
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3">
-                  <i className="fa-solid fa-clock-rotate-left mr-1 text-indigo-500 dark:text-indigo-400"></i> Riwayat Backup
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
+                  <i className="fa-solid fa-clock-rotate-left text-indigo-500 dark:text-indigo-400"></i> Riwayat Backup
                 </h3>
                 <div id="list-backup-area" className="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto custom-scroll pr-1">
                     {riwayat.length === 0 ? (
@@ -185,14 +192,39 @@ export default function AdminBackupView({ user }: { user: any }) {
                       riwayat.map(item => (
                         <div key={item.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
                           <div className="flex justify-between items-start">
-                            <div>
-                              <div className="text-xs font-bold text-gray-900 dark:text-white">Backup {item.periode}</div>
-                              <div className="text-xs text-gray-600 dark:text-gray-300">Oleh: {item.admin}</div>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-900 dark:text-white">
+                                  Backup {item.tahun_backup || item.periode || 'Data'}
+                                </span>
+                                {item.status && (
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                    item.status === 'Sukses' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                  }`}>
+                                    {item.status}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-600 dark:text-gray-300">
+                                {item.keterangan || (item.admin ? `Oleh: ${item.admin}` : 'Backup Transaksi')}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-white/70 text-right">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 text-right shrink-0">
                               {formatTimestampWita(item.timestamp)}
                             </div>
                           </div>
+                          {item.link_file && item.link_file !== '-' && (
+                            <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
+                              <a 
+                                href={item.link_file} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                              >
+                                <i className="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> Tautan File / Webhook
+                              </a>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}

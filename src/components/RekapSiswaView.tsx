@@ -9,6 +9,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
   const [endDate, setEndDate] = useState('');
   const [kelas, setKelas] = useState('');
   const [mapel, setMapel] = useState('');
+  const [search, setSearch] = useState('');
 
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [mapelList, setMapelList] = useState<string[]>([]);
@@ -21,17 +22,20 @@ export default function RekapSiswaView({ user }: { user: any }) {
       try {
         const { data: siswa } = await supabase.from('data_siswa').select('kelas');
         if (siswa) {
-          const uniqueKelas = Array.from(new Set(siswa.map(s => s.kelas).filter(Boolean)));
-          setKelasList(uniqueKelas as string[]);
+          const uniqueKelas = Array.from(new Set(siswa.map(s => s.kelas).filter(Boolean))) as string[];
+          setKelasList(uniqueKelas);
+          if (uniqueKelas.length > 0) {
+            setKelas(prev => prev || uniqueKelas[0]);
+          }
         }
 
         const { data: mData } = await supabase.from('data_mapel').select('nama_mata_pelajaran');
         if (mData) {
-          const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean)));
-          setMapelList(uniqueMapel as string[]);
+          const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[];
+          setMapelList(uniqueMapel);
         }
       } catch (error) {
-        console.error(error);
+        console.error('Error fetching master data:', error);
       }
     };
     fetchMaster();
@@ -64,41 +68,123 @@ export default function RekapSiswaView({ user }: { user: any }) {
 
       const { data: jurnal } = await query;
 
-      // Process rekap
+      // Process rekap: initialize with hadir: 0
       const rekapMap: Record<string, any> = {};
       siswa?.forEach(s => {
-        rekapMap[s.nama_siswa] = { ...s, sakit: 0, izin: 0, alpa: 0 };
+        rekapMap[s.nama_siswa] = {
+          ...s,
+          hadir: 0,
+          sakit: 0,
+          izin: 0,
+          alpa: 0,
+          total: 0,
+          persentase: 0
+        };
       });
 
-      // Parse jurnal absences (assuming detail_absen contains string like "Sakit: Andi, Izin: Budi")
-      // Note: Since data structure may vary, we try our best to match student names in the absensi field.
+      // Parse multi-format student attendance
       jurnal?.forEach(j => {
-        const text = `${j.absensi_siswa || ''} ${j.detail_absen || ''}`.toLowerCase();
+        let absensiJson: Record<string, string> | null = null;
+        if (j.absensi_siswa && typeof j.absensi_siswa === 'string' && j.absensi_siswa.trim().startsWith('{')) {
+          try {
+            absensiJson = JSON.parse(j.absensi_siswa);
+          } catch (_) {
+            absensiJson = null;
+          }
+        }
+
         siswa?.forEach(s => {
-          const nama = s.nama_siswa.toLowerCase();
-          if (text.includes(nama)) {
-            // simple heuristic
-            if (text.includes(`sakit:`) && text.substring(text.indexOf(`sakit:`)).includes(nama)) {
-              rekapMap[s.nama_siswa].sakit++;
-            } else if (text.includes(`izin:`) && text.substring(text.indexOf(`izin:`)).includes(nama)) {
-              rekapMap[s.nama_siswa].izin++;
-            } else if (text.includes(`alpa:`) && text.substring(text.indexOf(`alpa:`)).includes(nama)) {
-              rekapMap[s.nama_siswa].alpa++;
+          const nisn = s.nisn;
+          const nama = s.nama_siswa;
+          const target = rekapMap[nama];
+          if (!target) return;
+
+          // 1. Check modern JSON by NISN key
+          if (absensiJson && nisn && absensiJson[nisn] !== undefined) {
+            const code = String(absensiJson[nisn]).trim().toUpperCase();
+            if (code === 'H') target.hadir++;
+            else if (code === 'S') target.sakit++;
+            else if (code === 'I') target.izin++;
+            else if (code === 'A') target.alpa++;
+            return;
+          }
+
+          // 2. Check detail_absen parenthetical format: "Nama Siswa (H)", "(S)", "(I)", "(A)"
+          const detail = j.detail_absen || '';
+          if (detail && typeof detail === 'string') {
+            const escaped = nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const match = detail.match(new RegExp(`${escaped}\\s*\\(([HSIAhsia])\\)`, 'i'));
+            if (match) {
+              const code = match[1].toUpperCase();
+              if (code === 'H') target.hadir++;
+              else if (code === 'S') target.sakit++;
+              else if (code === 'I') target.izin++;
+              else if (code === 'A') target.alpa++;
+              return;
+            }
+          }
+
+          // 3. Fallback: formatted with keywords "Sakit: Nama, Izin: Nama, Alpa: Nama"
+          const combined = `${j.absensi_siswa || ''} ${j.detail_absen || ''}`;
+          const combinedLower = combined.toLowerCase();
+          const namaLower = nama.toLowerCase();
+          if (combinedLower.includes(namaLower)) {
+            const idxNama = combinedLower.indexOf(namaLower);
+            const idxSakit = combinedLower.lastIndexOf('sakit', idxNama);
+            const idxIzin = combinedLower.lastIndexOf('izin', idxNama);
+            const idxAlpa = combinedLower.lastIndexOf('alpa', idxNama);
+            const idxHadir = combinedLower.lastIndexOf('hadir', idxNama);
+
+            const maxIdx = Math.max(idxSakit, idxIzin, idxAlpa, idxHadir);
+            if (maxIdx === idxSakit && idxSakit !== -1) {
+              target.sakit++;
+            } else if (maxIdx === idxIzin && idxIzin !== -1) {
+              target.izin++;
+            } else if (maxIdx === idxAlpa && idxAlpa !== -1) {
+              target.alpa++;
+            } else if (maxIdx === idxHadir && idxHadir !== -1) {
+              target.hadir++;
             } else {
-              // default fallback if name is found but no specific reason parsed
-              rekapMap[s.nama_siswa].alpa++; 
+              target.alpa++;
             }
           }
         });
       });
 
-      setRekapData(Object.values(rekapMap));
+      // Compute total sessions and attendance percentage per student
+      const result = Object.values(rekapMap).map(s => {
+        const total = s.hadir + s.sakit + s.izin + s.alpa;
+        const persentase = total > 0 ? Math.round((s.hadir / total) * 100) : 0;
+        return {
+          ...s,
+          total,
+          persentase
+        };
+      });
+
+      setRekapData(result);
     } catch (error) {
-      console.error(error);
+      console.error('Error calculating student recap:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const filteredData = (rekapData || []).filter(s => {
+    if (!search) return true;
+    const query = search.toLowerCase();
+    return (s.nama_siswa && s.nama_siswa.toLowerCase().includes(query)) ||
+           (s.nisn && s.nisn.toLowerCase().includes(query));
+  });
+
+  // Calculate summary metrics
+  const totalSiswa = rekapData ? rekapData.length : 0;
+  const totalHadir = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.hadir || 0), 0) : 0;
+  const totalSakit = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.sakit || 0), 0) : 0;
+  const totalIzin = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.izin || 0), 0) : 0;
+  const totalAlpa = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.alpa || 0), 0) : 0;
+  const totalAllSessions = totalHadir + totalSakit + totalIzin + totalAlpa;
+  const avgKehadiran = totalAllSessions > 0 ? Math.round((totalHadir / totalAllSessions) * 100) : 0;
 
   return (
     <section id="view-rekap-siswa" className="view-section fade-in">
@@ -140,7 +226,58 @@ export default function RekapSiswaView({ user }: { user: any }) {
             </div>
             
             {rekapData ? (
-              <div id="hasil-rekap-siswa" className="flex-col gap-3 fade-in">
+              <div id="hasil-rekap-siswa" className="flex flex-col gap-4 fade-in">
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 no-print">
+                      <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/50 p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Total Siswa</div>
+                          <div className="text-lg font-black text-teal-600 dark:text-teal-400">{totalSiswa}</div>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/50 p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-green-800 dark:text-green-300">% Kehadiran</div>
+                          <div className="text-lg font-black text-green-600 dark:text-green-400">{avgKehadiran}%</div>
+                      </div>
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Total Hadir</div>
+                          <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">{totalHadir}</div>
+                      </div>
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/50 p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-yellow-800 dark:text-yellow-300">Sakit</div>
+                          <div className="text-lg font-black text-yellow-600 dark:text-yellow-400">{totalSakit}</div>
+                      </div>
+                      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50 p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-orange-800 dark:text-orange-300">Izin</div>
+                          <div className="text-lg font-black text-orange-600 dark:text-orange-400">{totalIzin}</div>
+                      </div>
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-red-800 dark:text-red-300">Alpa</div>
+                          <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
+                      </div>
+                  </div>
+
+                  {/* Student search input */}
+                  <div className="flex items-center gap-2 no-print">
+                      <div className="relative flex-1">
+                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                          <input
+                            type="text"
+                            placeholder="Cari nama atau NISN siswa..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                          />
+                      </div>
+                      {search && (
+                        <button
+                          type="button"
+                          onClick={() => setSearch('')}
+                          className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold"
+                        >
+                          Reset
+                        </button>
+                      )}
+                  </div>
+
                   <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] border border-gray-200 dark:border-gray-800 rounded-xl custom-scroll bg-white dark:bg-gray-800 shadow-sm">
                       <table className="w-full text-[10px] text-left text-gray-900 dark:text-white whitespace-nowrap">
                           <thead className="text-[9px] text-gray-900 dark:text-white uppercase bg-gray-100 dark:bg-gray-700 font-bold border-b border-gray-200 dark:border-gray-800">
@@ -148,25 +285,33 @@ export default function RekapSiswaView({ user }: { user: any }) {
                               <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">No</th>
                               <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">NISN</th>
                               <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">Nama Siswa</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-emerald-600 dark:text-emerald-400">Hadir</th>
                               <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-yellow-600 dark:text-yellow-400">Sakit</th>
                               <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-orange-600 dark:text-orange-400">Izin</th>
                               <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-red-600 dark:text-red-400">Alpa</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-blue-600 dark:text-blue-400">% Kehadiran</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {rekapData.map((s, i) => (
+                            {filteredData.map((s, i) => (
                               <tr key={i} className="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white">
                                 <td className="px-3 py-2">{i + 1}</td>
                                 <td className="px-3 py-2">{s.nisn}</td>
                                 <td className="px-3 py-2 font-bold text-gray-900 dark:text-white">{s.nama_siswa}</td>
-                                <td className="px-3 py-2 text-center font-bold text-gray-900 dark:text-white">{s.sakit > 0 ? s.sakit : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold text-gray-900 dark:text-white">{s.izin > 0 ? s.izin : '-'}</td>
+                                <td className="px-3 py-2 text-center font-bold text-emerald-600 dark:text-emerald-400">{s.hadir > 0 ? s.hadir : '-'}</td>
+                                <td className="px-3 py-2 text-center font-bold text-yellow-600 dark:text-yellow-400">{s.sakit > 0 ? s.sakit : '-'}</td>
+                                <td className="px-3 py-2 text-center font-bold text-orange-600 dark:text-orange-400">{s.izin > 0 ? s.izin : '-'}</td>
                                 <td className="px-3 py-2 text-center font-bold text-red-600 dark:text-red-400">{s.alpa > 0 ? s.alpa : '-'}</td>
+                                <td className="px-3 py-2 text-center font-bold text-blue-600 dark:text-blue-400">
+                                  {s.total > 0 ? `${s.persentase}%` : '-'}
+                                </td>
                               </tr>
                             ))}
-                            {rekapData.length === 0 && (
+                            {filteredData.length === 0 && (
                               <tr>
-                                <td colSpan={6} className="text-center py-4 italic text-gray-500 dark:text-gray-400">Tidak ada data siswa untuk kelas tersebut.</td>
+                                <td colSpan={8} className="text-center py-4 italic text-gray-500 dark:text-gray-400">
+                                  {search ? 'Tidak ada siswa yang cocok dengan kata kunci pencarian.' : 'Tidak ada data siswa untuk kelas tersebut.'}
+                                </td>
                               </tr>
                             )}
                           </tbody>
@@ -178,12 +323,13 @@ export default function RekapSiswaView({ user }: { user: any }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 no-print">
                       <button type="button" onClick={() => {
                         if (!rekapData || rekapData.length === 0) return;
-                        const headers = ['No', 'NISN', 'Nama Siswa', 'Sakit', 'Izin', 'Alpa'];
+                        const headers = ['No', 'NISN', 'Nama Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', '% Kehadiran'];
                         const csvRows = [headers.join(',')];
                         rekapData.forEach((r: any, i: number) => {
-                          csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.sakit||0, r.izin||0, r.alpa||0].join(','));
+                          const persentaseStr = r.total > 0 ? `${r.persentase}%` : '0%';
+                          csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.hadir||0, r.sakit||0, r.izin||0, r.alpa||0, `"${persentaseStr}"`].join(','));
                         });
-                        const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                        const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -205,3 +351,4 @@ export default function RekapSiswaView({ user }: { user: any }) {
     </section>
   );
 }
+
