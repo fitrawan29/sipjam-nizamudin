@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { getWitaStartOfDay, getWitaEndOfDay, formatTimestampWita } from '@/lib/wita';
+import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 
 export default function AdminVerifView({ user }: { user: any }) {
   const [date, setDate] = useState('');
@@ -288,9 +289,17 @@ export default function AdminVerifView({ user }: { user: any }) {
                         <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-nizamudin-green dark:text-green-400">{item.tipe_absen}</span></p>
                         <p><span className="font-semibold">Jenis:</span> {item.jenis_presensi} {item.detail_izin && `(${item.detail_izin})`}</p>
                         {item.link_bukti && item.link_bukti !== '-' && (
-                          <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline mt-1 block">
-                            <i className="fa-solid fa-link mr-1"></i> Bukti Lampiran
-                          </a>
+                          <div className="mt-2 flex items-center gap-2">
+                            <img 
+                              src={transformGoogleDriveUrl(item.link_bukti)} 
+                              alt="Bukti Presensi" 
+                              className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
+                            <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                              <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
+                            </a>
+                          </div>
                         )}
                       </div>
                     ) : activeTab === 'Jurnal' ? (
@@ -299,9 +308,17 @@ export default function AdminVerifView({ user }: { user: any }) {
                         <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
                         <p className="line-clamp-2"><span className="font-semibold">Materi:</span> {item.materi}</p>
                         {item.link_bukti_foto && item.link_bukti_foto !== '-' && (
-                          <a href={item.link_bukti_foto} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline mt-1 block">
-                            <i className="fa-solid fa-link mr-1"></i> Bukti Lampiran
-                          </a>
+                          <div className="mt-2 flex items-center gap-2">
+                            <img 
+                              src={transformGoogleDriveUrl(item.link_bukti_foto)} 
+                              alt="Bukti Jurnal" 
+                              className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
+                            <a href={item.link_bukti_foto} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                              <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
+                            </a>
+                          </div>
                         )}
                       </div>
                     ) : (
@@ -310,9 +327,17 @@ export default function AdminVerifView({ user }: { user: any }) {
                         <p><span className="font-semibold">Guru Pelapor:</span> {item.guru_pelapor}</p>
                         <p className="line-clamp-2"><span className="font-semibold">Catatan Apel:</span> {item.catatan_apel || '-'}</p>
                         {item.link_foto && item.link_foto !== '-' && (
-                          <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline mt-1 block">
-                            <i className="fa-solid fa-camera mr-1"></i> Foto Piket
-                          </a>
+                          <div className="mt-2 flex items-center gap-2">
+                            <img 
+                              src={transformGoogleDriveUrl(item.link_foto)} 
+                              alt="Foto Piket" 
+                              className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
+                            <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline text-xs block">
+                              <i className="fa-solid fa-camera mr-1"></i> Foto Piket
+                            </a>
+                          </div>
                         )}
                       </div>
                     )}

@@ -18,31 +18,14 @@ import AdminBackupView from './AdminBackupView';
 import AdminConfigView from './AdminConfigView';
 import AnalitikView from './AnalitikView';
 import { getGuruDailyState } from '@/lib/workflow';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function AppScreen({ user, onLogout }: { user: any, onLogout: () => void }) {
   const [currentView, setCurrentView] = useState('view-home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [theme, setTheme] = useState('light');
-
-  useEffect(() => {
-    // Check system preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
+  const { theme, toggleTheme } = useTheme();
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  
-  const toggleTheme = () => {
-    if (theme === 'light') {
-      setTheme('dark');
-      document.documentElement.classList.add('dark');
-    } else {
-      setTheme('light');
-      document.documentElement.classList.remove('dark');
-    }
-  };
 
   const handleNavigation = async (targetId: string) => {
     try {

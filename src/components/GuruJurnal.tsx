@@ -20,6 +20,8 @@ export default function GuruJurnal({ user }: { user: any }) {
   
   const [mapelList, setMapelList] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [isFetchingAssignments, setIsFetchingAssignments] = useState(true);
   const [students, setStudents] = useState<any[]>([]);
   const [absensi, setAbsensi] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -28,20 +30,94 @@ export default function GuruJurnal({ user }: { user: any }) {
   useEffect(() => {
     // Fetch Master Data
     const fetchMasterData = async () => {
-      const { data: mapelData } = await supabase.from('data_mapel').select('*');
-      if (mapelData) setMapelList(mapelData);
+      setIsFetchingAssignments(true);
+      try {
+        if (!user) {
+          setIsFetchingAssignments(false);
+          return;
+        }
 
-      const { data: siswaData } = await supabase.from('data_siswa').select('kelas');
-      if (siswaData) {
-        const uniqueKelas = [...new Set(siswaData.map(s => s.kelas).filter(Boolean))].sort();
-        setKelasList(uniqueKelas as string[]);
+        // Admin role: full access to all mapel and kelas
+        if (user.role === 'Admin') {
+          const { data: mapelData } = await supabase
+            .from('data_mapel')
+            .select('*')
+            .order('nama_mata_pelajaran', { ascending: true });
+          if (mapelData) {
+            const formatted = mapelData.map(m => ({
+              id: m.id,
+              nama_mata_pelajaran: m.nama_mata_pelajaran,
+              nama_mapel: m.nama_mata_pelajaran,
+              kelas: m.kategori || m.nama_mata_pelajaran.split('_')[0]
+            }));
+            setMapelList(formatted);
+            setAssignments(formatted);
+          }
+
+          const { data: siswaData } = await supabase
+            .from('data_siswa')
+            .select('kelas');
+          if (siswaData) {
+            const uniqueKelas = [...new Set(siswaData.map(s => s.kelas).filter(Boolean))].sort();
+            setKelasList(uniqueKelas as string[]);
+          }
+          setIsFetchingAssignments(false);
+          return;
+        }
+
+        // Teacher role: query guru_mapel matching nip (user.username) or nama_guru (user.nama)
+        let query = supabase.from('guru_mapel').select('*');
+        if (user.username && user.nama) {
+          query = query.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
+        } else if (user.username) {
+          query = query.eq('nip', user.username);
+        } else if (user.nama) {
+          query = query.ilike('nama_guru', `%${user.nama}%`);
+        }
+
+        const { data, error } = await query.order('nama_mapel', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching guru_mapel:', error);
+        }
+
+        if (data && data.length > 0) {
+          setAssignments(data);
+
+          const assignedMapel = data.map(d => ({
+            id: d.mapel_id || d.id,
+            nama_mata_pelajaran: d.nama_mapel,
+            nama_mapel: d.nama_mapel,
+            kelas: d.kelas,
+            mapel_singkat: d.mapel_singkat
+          }));
+          setMapelList(assignedMapel);
+
+          const assignedKelas = [...new Set(data.map(d => d.kelas).filter(Boolean))].sort();
+          setKelasList(assignedKelas as string[]);
+
+          // Auto-select if teacher only teaches 1 subject
+          if (assignedMapel.length === 1) {
+            setMapel(assignedMapel[0].nama_mata_pelajaran);
+            setKelas(assignedMapel[0].kelas);
+          }
+        } else {
+          setAssignments([]);
+          setMapelList([]);
+          setKelasList([]);
+        }
+      } catch (err) {
+        console.error('fetchMasterData error:', err);
+      } finally {
+        setIsFetchingAssignments(false);
       }
     };
+
     fetchMasterData();
     
     // Set default date
     setTanggal(getWitaDateStr());
-  }, []);
+  }, [user?.username, user?.nama, user?.role]);
 
   useEffect(() => {
     // Check Workflow State
@@ -136,7 +212,43 @@ export default function GuruJurnal({ user }: { user: any }) {
     }
   };
 
-  const isLocked = !!(dailyState?.isLibur || (dailyState && !dailyState.canOpenJurnal));
+  const handleMapelChange = (val: string) => {
+    setMapel(val);
+    // Cascading auto-sync: automatically set corresponding class
+    const matched = assignments.find(
+      a => (a.nama_mapel === val || a.nama_mata_pelajaran === val)
+    );
+    if (matched && matched.kelas) {
+      setKelas(matched.kelas);
+    } else {
+      const prefix = val.split('_')[0];
+      if (prefix && kelasList.includes(prefix)) {
+        setKelas(prefix);
+      }
+    }
+  };
+
+  const handleKelasChange = (val: string) => {
+    setKelas(val);
+    // If current mapel doesn't belong to the newly selected class, reset or auto-select
+    const mapelsInClass = assignments.filter(a => a.kelas === val);
+    const currentMatches = mapelsInClass.some(
+      a => (a.nama_mapel === mapel || a.nama_mata_pelajaran === mapel)
+    );
+    if (!currentMatches) {
+      if (mapelsInClass.length === 1) {
+        setMapel(mapelsInClass[0].nama_mapel || mapelsInClass[0].nama_mata_pelajaran);
+      } else {
+        setMapel('');
+      }
+    }
+  };
+
+  const hasNoKbmAssignments = tipeJurnal === 'Jurnal KBM' && !isFetchingAssignments && mapelList.length === 0 && user?.role !== 'Admin';
+  const isLocked = !!(dailyState?.isLibur || (dailyState && !dailyState.canOpenJurnal) || hasNoKbmAssignments);
+  const lockedMessage = hasNoKbmAssignments 
+    ? 'Belum ada mata pelajaran atau kelas yang ditugaskan kepada Anda. Hubungi Administrator.' 
+    : dailyState?.lockedReason;
 
   return (
     <section id="view-guru-jurnal" className="view-section fade-in">
@@ -147,7 +259,7 @@ export default function GuruJurnal({ user }: { user: any }) {
 
             {isLocked && (
               <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
-                <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {dailyState?.lockedReason}
+                <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {lockedMessage}
               </div>
             )}
             
@@ -161,26 +273,56 @@ export default function GuruJurnal({ user }: { user: any }) {
                 </div>
 
                 {tipeJurnal === 'Jurnal KBM' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
-                      <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Mata Pelajaran</label>
-                          <select value={mapel} onChange={e => setMapel(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
-                            <option value="" disabled>Pilih...</option>
-                            {mapelList.map(m => (
-                              <option key={m.id} value={m.nama_mata_pelajaran}>{m.nama_mata_pelajaran}</option>
-                            ))}
-                          </select>
+                  <>
+                    {!isFetchingAssignments && mapelList.length === 0 && user?.role !== 'Admin' ? (
+                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 p-4 rounded-xl text-xs flex items-center gap-3">
+                        <i className="fa-solid fa-circle-exclamation text-lg shrink-0 text-amber-600 dark:text-amber-400"></i>
+                        <div>
+                          <div className="font-bold">Belum Ada Penugasan Mata Pelajaran</div>
+                          <div className="text-[11px] mt-0.5 text-amber-700 dark:text-amber-300">
+                            Akun Anda belum memiliki mata pelajaran atau kelas yang terdaftar dalam sistem. Silakan hubungi Administrator untuk memperbarui data pengampu Anda.
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kelas</label>
-                          <select value={kelas} onChange={e => setKelas(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
-                            <option value="" disabled>Pilih...</option>
-                            {kelasList.map(k => (
-                              <option key={k} value={k}>{k}</option>
-                            ))}
-                          </select>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
+                          <div>
+                              <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                                Mata Pelajaran {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
+                              </label>
+                              <select 
+                                value={mapel} 
+                                onChange={e => handleMapelChange(e.target.value)} 
+                                required 
+                                className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                              >
+                                <option value="" disabled>Pilih Mapel...</option>
+                                {mapelList.map(m => (
+                                  <option key={m.id || m.nama_mata_pelajaran} value={m.nama_mata_pelajaran}>
+                                    {m.nama_mata_pelajaran}
+                                  </option>
+                                ))}
+                              </select>
+                          </div>
+                          <div>
+                              <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                                Kelas {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
+                              </label>
+                              <select 
+                                value={kelas} 
+                                onChange={e => handleKelasChange(e.target.value)} 
+                                required 
+                                className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                              >
+                                <option value="" disabled>Pilih Kelas...</option>
+                                {kelasList.map(k => (
+                                  <option key={k} value={k}>{k}</option>
+                                ))}
+                              </select>
+                          </div>
                       </div>
-                  </div>
+                    )}
+                  </>
                 )}
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

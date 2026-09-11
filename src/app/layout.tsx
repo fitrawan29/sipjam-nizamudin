@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Amiri, Poppins, Space_Mono } from 'next/font/google';
 import './globals.css';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 const amiri = Amiri({
   weight: ['400', '700'],
@@ -31,12 +32,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className="light">
+    <html lang="id" className="light" suppressHydrationWarning>
       <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body className={`${amiri.variable} ${poppins.variable} ${spaceMono.variable} font-sans bg-gray-100 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300`}>
-        {children}
+        <ThemeProvider defaultTheme="light">
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

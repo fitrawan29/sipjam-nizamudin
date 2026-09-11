@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 
 export default function AdminConfigView({ user }: { user: any }) {
   const [config, setConfig] = useState({
@@ -24,6 +25,7 @@ export default function AdminConfigView({ user }: { user: any }) {
     logo_kanan: '',
     ttd_kepsek_nama: '',
     ttd_kepsek_nip: '',
+    kota_ttd: '',
     gps_lat: '-6.200000',
     gps_lng: '106.816666',
     gps_radius: '100'
@@ -40,6 +42,8 @@ export default function AdminConfigView({ user }: { user: any }) {
           data.forEach(item => {
             if (item.key in newConfig) {
               (newConfig as any)[item.key] = item.value;
+            } else if (item.key.toLowerCase() in newConfig) {
+              (newConfig as any)[item.key.toLowerCase()] = item.value;
             }
           });
           setConfig(newConfig);
@@ -171,18 +175,40 @@ export default function AdminConfigView({ user }: { user: any }) {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Logo Kiri (Dinas)</label>
-                                <input type="text" name="logo_kiri" value={config.logo_kiri} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Link Hosting JPEG/PNG" />
+                                <input type="text" name="logo_kiri" value={config.logo_kiri} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Link Hosting / Google Drive" />
+                                {config.logo_kiri && (
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Preview:</span>
+                                    <img 
+                                      src={transformGoogleDriveUrl(config.logo_kiri)} 
+                                      alt="Preview Logo Kiri" 
+                                      className="w-10 h-10 object-contain border border-gray-200 dark:border-gray-700 rounded bg-white p-0.5 shadow-sm" 
+                                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} 
+                                    />
+                                  </div>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Logo Kanan (Sekolah)</label>
-                                <input type="text" name="logo_kanan" value={config.logo_kanan} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Link Hosting JPEG/PNG" />
+                                <input type="text" name="logo_kanan" value={config.logo_kanan} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Link Hosting / Google Drive" />
+                                {config.logo_kanan && (
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Preview:</span>
+                                    <img 
+                                      src={transformGoogleDriveUrl(config.logo_kanan)} 
+                                      alt="Preview Logo Kanan" 
+                                      className="w-10 h-10 object-contain border border-gray-200 dark:border-gray-700 rounded bg-white p-0.5 shadow-sm" 
+                                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} 
+                                    />
+                                  </div>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
                     <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-signature text-xs text-blue-600 dark:text-blue-400"></i> Tanda Tangan Laporan</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
                             <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Nama Kepala Sekolah</label>
                             <input type="text" name="ttd_kepsek_nama" value={config.ttd_kepsek_nama} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
@@ -191,6 +217,10 @@ export default function AdminConfigView({ user }: { user: any }) {
                             <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">NIP Kepala Sekolah</label>
                             <input type="text" name="ttd_kepsek_nip" value={config.ttd_kepsek_nip} onChange={handleChange} className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Kosongkan jika tidak ada" />
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Kabupaten / Kota Tanda Tangan</label>
+                        <input type="text" name="kota_ttd" value={config.kota_ttd || ''} onChange={handleChange} placeholder="Contoh: Kab. Bolaangmongondow Timur" className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                     </div>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">

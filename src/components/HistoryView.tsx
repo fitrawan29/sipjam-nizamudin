@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { formatTimestampWita } from '@/lib/wita';
+import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 
 export default function HistoryView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<'presensi'|'jurnal'>('presensi');
@@ -146,7 +147,13 @@ export default function HistoryView({ user }: { user: any }) {
 
                         {/* Presensi Attachment Link ("Lihat Bukti") */}
                         {item.link_bukti && item.link_bukti !== '-' && (
-                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700">
+                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
+                            <img 
+                              src={transformGoogleDriveUrl(item.link_bukti)} 
+                              alt="Bukti Presensi" 
+                              className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
                             <a 
                               href={item.link_bukti} 
                               target="_blank" 
@@ -184,7 +191,13 @@ export default function HistoryView({ user }: { user: any }) {
 
                         {/* Jurnal Attachment Link ("Lihat Bukti") */}
                         {item.link_bukti_foto && item.link_bukti_foto !== '-' && (
-                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700">
+                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
+                            <img 
+                              src={transformGoogleDriveUrl(item.link_bukti_foto)} 
+                              alt="Bukti Foto" 
+                              className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
                             <a 
                               href={item.link_bukti_foto} 
                               target="_blank" 

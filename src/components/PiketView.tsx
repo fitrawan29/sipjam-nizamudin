@@ -7,6 +7,7 @@ import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName } from '@/lib/wita';
 import { PrintHeader, PrintSignature } from './PrintHeader';
+import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 
 export default function PiketView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<'beranda' | 'lapor' | 'rekap'>('beranda');
@@ -343,9 +344,17 @@ export default function PiketView({ user }: { user: any }) {
                             </div>
                             <div className="text-[10px] text-gray-700 dark:text-white/80 line-clamp-2">{l.catatan_apel || "Tidak ada catatan."}</div>
                             {l.link_foto && l.link_foto !== '-' && (
-                              <a href={l.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline text-[10px] inline-flex items-center gap-1">
-                                <i className="fa-solid fa-camera mr-1"></i> Foto Piket
-                              </a>
+                              <div className="flex items-center gap-2 mt-1">
+                                <img 
+                                  src={transformGoogleDriveUrl(l.link_foto)} 
+                                  alt="Foto Piket" 
+                                  className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                />
+                                <a href={l.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline text-[10px] inline-flex items-center gap-1">
+                                  <i className="fa-solid fa-camera mr-1"></i> Foto Piket
+                                </a>
+                              </div>
                             )}
                             {user?.role === 'Admin' && (
                               <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
@@ -600,9 +609,17 @@ export default function PiketView({ user }: { user: any }) {
                                       <p><span className="font-semibold">Kehadiran Siswa:</span> <span className="font-medium text-teal-700 dark:text-teal-400">{formatRekapAbsen(item.rekap_absen_kelas)}</span></p>
                                   )}
                                   {item.link_foto && item.link_foto !== '-' && (
-                                      <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1 mt-1 text-xs">
-                                          <i className="fa-solid fa-camera mr-1"></i> Lihat Foto Dokumentasi
-                                      </a>
+                                      <div className="flex items-center gap-2 mt-1.5">
+                                          <img 
+                                              src={transformGoogleDriveUrl(item.link_foto)} 
+                                              alt="Foto Dokumentasi" 
+                                              className="w-9 h-9 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                          />
+                                          <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1 text-xs">
+                                              <i className="fa-solid fa-camera mr-1"></i> Lihat Foto Dokumentasi
+                                          </a>
+                                      </div>
                                   )}
                               </div>
 
