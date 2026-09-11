@@ -274,7 +274,23 @@ export default function AdminRekapView({ user }: { user: any }) {
                             </div>
                           </div>
                         ))}
-                        {filteredPresensi.length === 0 && <div className="text-xs text-gray-500 dark:text-gray-400 italic col-span-full">Tidak ada data guru yang cocok.</div>}
+                        {filteredPresensi.length === 0 && (
+                          <div className="col-span-full text-center py-8 px-4 bg-gray-50/60 dark:bg-gray-800/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 my-2">
+                            <i className="fa-solid fa-user-slash text-2xl text-gray-400 dark:text-gray-500 mb-2"></i>
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              {search ? `Tidak ada data guru yang sesuai dengan pencarian "${search}".` : 'Tidak ada data kehadiran guru untuk periode ini.'}
+                            </p>
+                            {search && (
+                              <button
+                                type="button"
+                                onClick={() => setSearch('')}
+                                className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1"
+                              >
+                                <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                   </div>
 
@@ -291,7 +307,12 @@ export default function AdminRekapView({ user }: { user: any }) {
                             <div className="text-[9px] font-bold text-gray-700 dark:text-gray-300">JURNAL</div>
                           </div>
                         ))}
-                        {rekapData.jurnal.length === 0 && <div className="text-xs text-gray-500 dark:text-gray-400 italic col-span-full">Tidak ada data jurnal.</div>}
+                        {rekapData.jurnal.length === 0 && (
+                          <div className="col-span-full text-center py-6 px-4 bg-gray-50/60 dark:bg-gray-800/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                            <i className="fa-solid fa-book-open text-xl text-gray-400 dark:text-gray-500 mb-1.5"></i>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 italic">Tidak ada data jurnal untuk periode ini.</p>
+                          </div>
+                        )}
                       </div>
                   </div>
 
@@ -308,7 +329,12 @@ export default function AdminRekapView({ user }: { user: any }) {
                             <div className="text-[9px] font-bold text-gray-700 dark:text-gray-300">PIKET</div>
                           </div>
                         ))}
-                        {rekapData.piket.length === 0 && <div className="text-xs text-gray-500 dark:text-gray-400 italic col-span-full">Tidak ada data piket untuk periode ini.</div>}
+                        {rekapData.piket.length === 0 && (
+                          <div className="col-span-full text-center py-6 px-4 bg-gray-50/60 dark:bg-gray-800/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                            <i className="fa-solid fa-clipboard-check text-xl text-gray-400 dark:text-gray-500 mb-1.5"></i>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 italic">Tidak ada data laporan piket untuk periode ini.</p>
+                          </div>
+                        )}
                       </div>
                   </div>
                   

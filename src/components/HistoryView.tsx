@@ -99,15 +99,26 @@ export default function HistoryView({ user }: { user: any }) {
                   Jurnal
                 </button>
             </div>
-            <div className="relative mb-4">
-                <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-white/70 text-xs"></i>
-                <input 
-                  type="text" 
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); setPage(0); }}
-                  placeholder={`Cari riwayat ${activeTab}...`} 
-                  className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 dark:placeholder-gray-400" 
-                />
+            <div className="relative mb-4 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-white/70 text-xs"></i>
+                  <input 
+                    type="text" 
+                    value={search} 
+                    onChange={e => { setSearch(e.target.value); setPage(0); }} 
+                    placeholder={`Cari riwayat ${activeTab}...`} 
+                    className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 dark:placeholder-gray-400" 
+                  />
+                </div>
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => { setSearch(''); setPage(0); }}
+                    className="px-3 py-2.5 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold shrink-0"
+                  >
+                    Reset
+                  </button>
+                )}
             </div>
             {errorMsg && (
                 <div className="bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800 p-3 rounded-xl mb-4 text-xs">
@@ -118,7 +129,21 @@ export default function HistoryView({ user }: { user: any }) {
               {loading && dataList.length === 0 ? (
                 <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400 text-xs italic">Memuat data...</div>
               ) : paginatedData.length === 0 ? (
-                <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400 text-xs italic">Belum ada riwayat.</div>
+                <div className="col-span-full text-center py-10 px-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 my-2">
+                  <i className="fa-solid fa-clock-rotate-left text-2xl text-gray-400 dark:text-gray-500 mb-2"></i>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    {search ? `Tidak ada riwayat ${activeTab} yang sesuai dengan pencarian "${search}".` : `Belum ada riwayat ${activeTab}.`}
+                  </p>
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearch(''); setPage(0); }}
+                      className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1"
+                    >
+                      <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
+                    </button>
+                  )}
+                </div>
               ) : (
                 paginatedData.map((item: any) => (
                   <div key={item.id} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-between gap-2 hover:shadow-md transition">

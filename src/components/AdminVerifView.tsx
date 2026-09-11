@@ -256,21 +256,46 @@ export default function AdminVerifView({ user }: { user: any }) {
                   <i className="fa-solid fa-shield-halved mr-1.5"></i> Piket
                 </button>
             </div>
-            <div className="relative mb-4">
-                <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-gray-400 text-xs"></i>
-                <input 
-                  type="text" 
-                  value={search} 
-                  onChange={e => setSearch(e.target.value)} 
-                  placeholder={activeTab === 'Piket' ? 'Cari guru pelapor atau catatan apel...' : 'Cari nama guru...'} 
-                  className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" 
-                />
+            <div className="relative mb-4 flex items-center gap-2">
+                <div className="relative flex-1">
+                  <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-gray-400 text-xs"></i>
+                  <input 
+                    type="text" 
+                    value={search} 
+                    onChange={e => setSearch(e.target.value)} 
+                    placeholder={activeTab === 'Piket' ? 'Cari guru pelapor atau catatan apel...' : 'Cari nama guru...'} 
+                    className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" 
+                  />
+                </div>
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch('')}
+                    className="px-3 py-2.5 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold shrink-0"
+                  >
+                    Reset
+                  </button>
+                )}
             </div>
             <div id="verif-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
                 {loading && displayList.length === 0 ? (
                   <div className="col-span-full text-center py-10 text-gray-500 text-xs italic dark:text-gray-400">Memuat data...</div>
                 ) : displayList.length === 0 ? (
-                  <div className="col-span-full text-center py-10 text-gray-500 text-xs italic dark:text-gray-400">Tidak ada data untuk diverifikasi.</div>
+                  <div className="col-span-full text-center py-10 px-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 my-2">
+                    <i className="fa-solid fa-clipboard-check text-2xl text-gray-400 dark:text-gray-500 mb-2"></i>
+                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                      {search ? `Tidak ada data yang cocok dengan pencarian "${search}".` : 'Tidak ada data untuk diverifikasi.'}
+                    </p>
+                    {search && (
+                      <button
+                        type="button"
+                        onClick={() => setSearch('')}
+                        className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1"
+                      >
+                        <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
+                      </button>
+                    )}
+                  </div>
                 ) : displayList.map((item: any) => (
                   <div key={item.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
                     <div className="flex justify-between items-start mb-1">

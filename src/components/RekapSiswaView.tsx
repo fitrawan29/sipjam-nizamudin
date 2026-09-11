@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 
 export default function RekapSiswaView({ user }: { user: any }) {
@@ -43,7 +44,12 @@ export default function RekapSiswaView({ user }: { user: any }) {
 
   const tarikRekap = async () => {
     if (!kelas) {
-      alert("Pilih kelas terlebih dahulu.");
+      Swal.fire({
+        icon: 'warning',
+        title: 'Peringatan',
+        text: 'Pilih kelas terlebih dahulu.',
+        confirmButtonColor: '#0d9488'
+      });
       return;
     }
     setLoading(true);
@@ -163,8 +169,9 @@ export default function RekapSiswaView({ user }: { user: any }) {
       });
 
       setRekapData(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calculating student recap:', error);
+      Swal.fire('Error', error?.message || 'Gagal memproses rekap data siswa', 'error');
     } finally {
       setLoading(false);
     }
