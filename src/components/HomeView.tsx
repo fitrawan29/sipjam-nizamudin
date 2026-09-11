@@ -189,17 +189,17 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
       {/* Workflow Status Tracker - Only for Guru */}
       {isGuru && (
         <div className="glass-card p-4">
-          <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+          <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
             <i className="fa-solid fa-list-check text-emerald-500"></i> Status Tugas Hari Ini
           </h3>
 
           {loadingState ? (
-            <div className="flex items-center justify-center py-6 text-gray-400 dark:text-gray-500">
+            <div className="flex items-center justify-center py-6 text-gray-500 dark:text-white/80">
               <i className="fa-solid fa-circle-notch fa-spin text-lg mr-2"></i>
               <span className="text-xs">Memeriksa status...</span>
             </div>
           ) : steps.length === 0 ? (
-            <div className="text-center py-4 text-gray-400 dark:text-gray-500 text-xs italic">
+            <div className="text-center py-4 text-gray-500 dark:text-white/80 text-xs italic">
               Tidak ada data status hari ini.
             </div>
           ) : (
@@ -218,7 +218,7 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
                     step.status === 'done' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' :
                     step.status === 'active' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 ring-2 ring-amber-300 dark:ring-amber-700' :
                     step.status === 'skipped' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' :
-                    'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+                    'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-400'
                   }`}>
                     {step.status === 'done' ? <i className="fa-solid fa-check" /> :
                      step.status === 'active' ? <i className={`fa-solid ${step.icon}`} /> :
@@ -232,7 +232,7 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
                       step.status === 'done' ? 'text-green-700 dark:text-green-400' :
                       step.status === 'active' ? 'text-amber-700 dark:text-amber-400' :
                       step.status === 'skipped' ? 'text-blue-600 dark:text-blue-400' :
-                      'text-gray-400 dark:text-gray-500'
+                      'text-gray-500 dark:text-white/80'
                     }`}>
                       {step.label}
                     </p>
@@ -240,7 +240,7 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
                       step.status === 'done' ? 'text-green-600/70 dark:text-green-500/70' :
                       step.status === 'active' ? 'text-amber-600/70 dark:text-amber-400/70' :
                       step.status === 'skipped' ? 'text-blue-500/70 dark:text-blue-400/70' :
-                      'text-gray-400 dark:text-gray-600'
+                      'text-gray-500 dark:text-white/80'
                     }`}>
                       {step.detail}
                     </p>
@@ -258,14 +258,14 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
             </div>
           )}
           {/* Lateness Info */}
-          <div className="mt-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+          <div className="mt-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400">
+              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-white/80">
                 <i className="fa-solid fa-stopwatch"></i>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Akumulasi Keterlambatan Bulan Ini</p>
-                <p className="text-xs font-black text-slate-700 dark:text-slate-200">
+                <p className="text-[10px] font-bold text-slate-600 dark:text-white/80">Akumulasi Keterlambatan Bulan Ini</p>
+                <p className="text-xs font-black text-gray-900 dark:text-white">
                   {Math.floor(akumulasiTelat.detik / 3600)} Jam {Math.floor((akumulasiTelat.detik % 3600) / 60)} Menit {akumulasiTelat.detik % 60} Detik
                 </p>
               </div>
@@ -282,7 +282,7 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
 
       {/* Menu Grid */}
       <div>
-          <h3 className="text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 mb-3 px-1">Aktivitas Utama</h3>
+          <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-3 px-1">Aktivitas Utama</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {menuItems.filter(item => item.id !== 'view-home').map((item, idx) => {
                 const colors = getColorClasses(idx);
@@ -291,7 +291,7 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
                     <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center mb-2 ${colors.bg} ${colors.text}`}>
                       <i className={`fa-solid ${item.icon} text-xl`}></i>
                     </div>
-                    <h4 className="font-bold text-[11px] sm:text-xs text-gray-800 dark:text-gray-200">{item.label}</h4>
+                    <h4 className="font-bold text-[11px] sm:text-xs text-gray-900 dark:text-white">{item.label}</h4>
                   </button>
                 );
               })}

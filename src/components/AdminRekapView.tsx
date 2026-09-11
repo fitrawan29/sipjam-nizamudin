@@ -99,47 +99,47 @@ export default function AdminRekapView({ user }: { user: any }) {
     <section id="view-admin-rekap" className="view-section fade-in">
         <div className="glass-card p-4">
             <PrintHeader />
-            <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
               <i className="fa-solid fa-file-invoice text-blue-500 dark:text-blue-400 no-print"></i> Rekapitulasi Akhir
             </h2>
             <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 p-4 rounded-2xl mb-5 no-print">
-                <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-2">Pilih Bulan</label>
+                <label className="block text-xs font-bold text-gray-900 dark:text-white mb-2">Pilih Bulan</label>
                 <div className="flex gap-2">
-                    <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2.5 rounded-xl input-premium text-sm bg-white dark:bg-gray-800 dark:text-white" />
+                    <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2.5 rounded-xl input-premium text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                     <button type="button" onClick={() => tarikDataRekap(false)} disabled={loading} className="btn-click bg-blue-600 text-white px-4 rounded-xl text-xs font-bold shadow-md border border-blue-700 hover:bg-blue-700 disabled:opacity-50">
                       {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-download"></i>}
                     </button>
                 </div>
             </div>
             <details className="mb-5 text-sm group no-print">
-                <summary className="font-bold text-[11px] text-gray-500 dark:text-gray-400 cursor-pointer outline-none flex items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <summary className="font-bold text-xs text-gray-900 dark:text-white cursor-pointer outline-none flex items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <i className="fa-solid fa-caret-right transition-transform group-open:rotate-90"></i> Filter Rentang Khusus
                 </summary>
                 <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mt-2 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="flex-1">
-                          <label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">DARI</label>
-                          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-700 dark:text-white" />
+                          <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">DARI</label>
+                          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-700" />
                         </div>
                         <div className="flex-1">
-                          <label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">SAMPAI</label>
-                          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-700 dark:text-white" />
+                          <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">SAMPAI</label>
+                          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-700" />
                         </div>
                     </div>
-                    <button type="button" onClick={() => tarikDataRekap(true)} disabled={loading} className="btn-click w-full bg-gray-800 dark:bg-gray-600 text-white py-2 rounded-lg text-[11px] font-bold shadow-sm hover:bg-gray-900 transition disabled:opacity-50">Tarik Data Custom</button>
+                    <button type="button" onClick={() => tarikDataRekap(true)} disabled={loading} className="btn-click w-full bg-gray-800 dark:bg-gray-600 text-white py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-900 transition disabled:opacity-50">Tarik Data Custom</button>
                 </div>
             </details>
             
             {rekapData ? (
               <div id="hasil-rekap" className="space-y-5 fade-in">
                   <div>
-                      <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                      <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                         <i className="fa-solid fa-user-check text-green-500 dark:text-green-400 no-print"></i> Kehadiran Guru
                       </h3>
                       <div id="card-rekap-presensi" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {rekapData.presensi.map((p, i) => (
                           <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 shadow-sm">
-                            <h4 className="text-[11px] font-bold text-gray-800 dark:text-gray-100 mb-2 truncate" title={p.nama}>{p.nama}</h4>
+                            <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-2 truncate" title={p.nama}>{p.nama}</h4>
                             <div className="grid grid-cols-3 gap-1 text-center">
                               <div className="bg-green-50 dark:bg-green-900/30 rounded p-1"><div className="text-[8px] text-green-600 dark:text-green-400 font-bold">HADIR</div><div className="text-xs font-black text-green-700 dark:text-green-300">{p.hadir}</div></div>
                               <div className="bg-blue-50 dark:bg-blue-900/30 rounded p-1"><div className="text-[8px] text-blue-600 dark:text-blue-400 font-bold">DINAS</div><div className="text-xs font-black text-blue-700 dark:text-blue-300">{p.dinasLuar}</div></div>
@@ -150,22 +150,22 @@ export default function AdminRekapView({ user }: { user: any }) {
                             </div>
                           </div>
                         ))}
-                        {rekapData.presensi.length === 0 && <div className="text-[10px] text-gray-400 dark:text-gray-500 italic">Tidak ada data presensi.</div>}
+                        {rekapData.presensi.length === 0 && <div className="text-xs text-gray-500 dark:text-gray-400 italic">Tidak ada data presensi.</div>}
                       </div>
                   </div>
                   <div>
-                      <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2 border-t dark:border-gray-800 pt-4">
+                      <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2 border-t dark:border-gray-800 pt-4">
                         <i className="fa-solid fa-book text-blue-500 dark:text-blue-400 no-print"></i> Total Jurnal Disetujui
                       </h3>
                       <div id="card-rekap-jurnal" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                         {rekapData.jurnal.map((j, i) => (
                           <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-2 shadow-sm text-center flex flex-col justify-center">
-                            <h4 className="text-[9px] font-bold text-gray-600 dark:text-gray-400 mb-1 truncate" title={j.nama}>{j.nama}</h4>
+                            <h4 className="text-xs font-bold text-gray-900 dark:text-white mb-1 truncate" title={j.nama}>{j.nama}</h4>
                             <div className="text-lg font-black text-blue-600 dark:text-blue-400">{j.total}</div>
-                            <div className="text-[8px] text-gray-400 dark:text-gray-400">JURNAL</div>
+                            <div className="text-[9px] font-bold text-gray-700 dark:text-gray-300">JURNAL</div>
                           </div>
                         ))}
-                        {rekapData.jurnal.length === 0 && <div className="text-[10px] text-gray-400 dark:text-gray-500 italic">Tidak ada data jurnal.</div>}
+                        {rekapData.jurnal.length === 0 && <div className="text-xs text-gray-500 dark:text-gray-400 italic">Tidak ada data jurnal.</div>}
                       </div>
                   </div>
                   
@@ -197,7 +197,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                   </div>
               </div>
             ) : (
-              <div className="text-center py-10 text-gray-400 text-xs italic dark:text-gray-500 no-print">
+              <div className="text-center py-10 text-gray-500 text-xs italic dark:text-gray-400 no-print">
                 Pilih bulan atau rentang khusus untuk menarik rekap.
               </div>
             )}

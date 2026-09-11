@@ -51,12 +51,12 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
       <div className="absolute -top-20 -right-20 w-64 h-64 bg-green-100 dark:bg-green-900/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-yellow-100 dark:bg-yellow-900/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       
-      <div className="glass-card w-full max-w-md p-8 border-t-4 border-nizamudin-green dark:border-nizamudin-gold text-center relative z-10 mx-auto">
+      <div className="glass-card w-full max-w-md p-6 sm:p-8 border-t-4 border-nizamudin-green dark:border-nizamudin-gold text-center relative z-10 mx-auto">
         <div className="w-20 h-20 bg-nizamudin-green rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg border-4 border-white dark:border-gray-800">
             <i className="fa-solid fa-mosque text-3xl text-nizamudin-gold"></i>
         </div>
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white tracking-tight mb-1">SIPJAM Login</h1>
-        <h2 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-6">SMA Nizamudin</h2>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-1">SIPJAM Login</h1>
+        <h2 className="text-[11px] font-semibold text-gray-700 dark:text-white uppercase tracking-widest mb-6">SMA Nizamudin</h2>
         
         <form onSubmit={handleLogin} className="text-left space-y-4 relative z-20">
             <div>
@@ -65,7 +65,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required 
-                className="w-full px-4 py-3.5 input-premium text-sm font-medium" 
+                className="w-full px-4 py-3.5 input-premium text-sm font-medium text-gray-900 dark:text-white" 
                 placeholder="ID Pengguna / Username" 
               />
             </div>
@@ -75,7 +75,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required 
-                className="w-full px-4 py-3.5 input-premium text-sm font-medium" 
+                className="w-full px-4 py-3.5 input-premium text-sm font-medium text-gray-900 dark:text-white" 
                 placeholder="Kata Sandi" 
               />
             </div>

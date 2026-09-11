@@ -104,69 +104,69 @@ export default function RekapSiswaView({ user }: { user: any }) {
     <section id="view-rekap-siswa" className="view-section fade-in">
         <div className="glass-card p-4">
             <PrintHeader />
-            <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 no-print"></i> Rekap Absen Siswa
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
+              <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 no-print text-base"></i> Rekap Absen Siswa
             </h2>
             <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3 no-print">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">DARI TANGGAL</label>
-                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white" />
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">DARI TANGGAL</label>
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800" />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">SAMPAI TANGGAL</label>
-                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white" />
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">SAMPAI TANGGAL</label>
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800" />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">KELAS <span className="text-red-500 dark:text-red-400">*</span></label>
-                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white">
-                        <option value="" disabled>Pilih...</option>
-                        {kelasList.map((k, i) => <option key={i} value={k}>{k}</option>)}
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">KELAS <span className="text-red-500 dark:text-red-400">*</span></label>
+                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800">
+                        <option value="" disabled className="text-gray-900 dark:text-white dark:bg-gray-800">Pilih...</option>
+                        {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">MATA PELAJARAN</label>
-                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white">
-                        <option value="">Semua Mapel</option>
-                        {mapelList.map((m, i) => <option key={i} value={m}>{m}</option>)}
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">MATA PELAJARAN</label>
+                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800">
+                        <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel</option>
+                        {mapelList.map((m, i) => <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">{m}</option>)}
                       </select>
                     </div>
                 </div>
                 <button type="button" onClick={tarikRekap} disabled={loading} className="btn-click w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-xs font-bold mt-2 shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50">
-                  {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-search"></i>} Tampilkan Rekap
+                  {loading ? <i className="fa-solid fa-circle-notch fa-spin text-sm"></i> : <i className="fa-solid fa-search text-sm"></i>} Tampilkan Rekap
                 </button>
             </div>
             
             {rekapData ? (
               <div id="hasil-rekap-siswa" className="flex-col gap-3 fade-in">
-                  <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl custom-scroll bg-white dark:bg-gray-800 shadow-sm">
-                      <table className="w-full text-[10px] text-left text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                          <thead className="text-[9px] text-gray-700 dark:text-gray-300 uppercase bg-gray-50 dark:bg-gray-700">
+                  <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] border border-gray-200 dark:border-gray-800 rounded-xl custom-scroll bg-white dark:bg-gray-800 shadow-sm">
+                      <table className="w-full text-[10px] text-left text-gray-900 dark:text-white whitespace-nowrap">
+                          <thead className="text-[9px] text-gray-900 dark:text-white uppercase bg-gray-100 dark:bg-gray-700 font-bold border-b border-gray-200 dark:border-gray-800">
                             <tr>
-                              <th className="px-3 py-2 border-b dark:border-gray-700">No</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700">NISN</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700">Nama Siswa</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-yellow-600 dark:text-yellow-400">Sakit</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-orange-600 dark:text-orange-400">Izin</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-red-600 dark:text-red-400">Alpa</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">No</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">NISN</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">Nama Siswa</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-yellow-600 dark:text-yellow-400">Sakit</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-orange-600 dark:text-orange-400">Izin</th>
+                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-red-600 dark:text-red-400">Alpa</th>
                             </tr>
                           </thead>
                           <tbody>
                             {rekapData.map((s, i) => (
-                              <tr key={i} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                              <tr key={i} className="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white">
                                 <td className="px-3 py-2">{i + 1}</td>
                                 <td className="px-3 py-2">{s.nisn}</td>
-                                <td className="px-3 py-2 font-bold text-gray-800 dark:text-gray-200">{s.nama_siswa}</td>
-                                <td className="px-3 py-2 text-center font-bold">{s.sakit > 0 ? s.sakit : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold">{s.izin > 0 ? s.izin : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold text-red-500 dark:text-red-400">{s.alpa > 0 ? s.alpa : '-'}</td>
+                                <td className="px-3 py-2 font-bold text-gray-900 dark:text-white">{s.nama_siswa}</td>
+                                <td className="px-3 py-2 text-center font-bold text-gray-900 dark:text-white">{s.sakit > 0 ? s.sakit : '-'}</td>
+                                <td className="px-3 py-2 text-center font-bold text-gray-900 dark:text-white">{s.izin > 0 ? s.izin : '-'}</td>
+                                <td className="px-3 py-2 text-center font-bold text-red-600 dark:text-red-400">{s.alpa > 0 ? s.alpa : '-'}</td>
                               </tr>
                             ))}
                             {rekapData.length === 0 && (
                               <tr>
-                                <td colSpan={6} className="text-center py-4 italic">Tidak ada data siswa untuk kelas tersebut.</td>
+                                <td colSpan={6} className="text-center py-4 italic text-gray-500 dark:text-gray-400">Tidak ada data siswa untuk kelas tersebut.</td>
                               </tr>
                             )}
                           </tbody>
@@ -190,16 +190,16 @@ export default function RekapSiswaView({ user }: { user: any }) {
                         a.download = `Rekap_Siswa_${kelas}.csv`;
                         a.click();
                         URL.revokeObjectURL(url);
-                      }} className="btn-click w-full bg-green-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
-                        <i className="fa-solid fa-file-excel"></i> Excel
+                      }} className="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
+                        <i className="fa-solid fa-file-excel text-sm"></i> Excel
                       </button>
-                      <button type="button" onClick={() => window.print()} className="btn-click w-full bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2">
-                        <i className="fa-solid fa-print"></i> Cetak Dokumen
+                      <button type="button" onClick={() => window.print()} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
+                        <i className="fa-solid fa-print text-sm"></i> Cetak Dokumen
                       </button>
                   </div>
               </div>
             ) : (
-              <div id="rekap-siswa-kosong" className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic no-print">Silakan atur filter dan klik tampilkan.</div>
+              <div id="rekap-siswa-kosong" className="text-center py-10 text-gray-500 dark:text-gray-400 text-[11px] italic no-print">Silakan atur filter dan klik tampilkan.</div>
             )}
         </div>
     </section>

@@ -25,16 +25,16 @@ export function PrintHeader() {
   }, []);
 
   return (
-    <div className="print-only mb-6 border-b-4 border-black pb-4">
+    <div className="print-only mb-6 border-b-4 border-black pb-4 text-black font-medium">
       <div className="flex items-center justify-between">
         <div className="w-24 h-24 flex items-center justify-center">
           {config.logo_kiri && <img src={config.logo_kiri} alt="Logo Kiri" className="max-w-full max-h-full object-contain" />}
         </div>
         <div className="flex-1 text-center px-4">
-          {config.kop_yayasan && <h2 className="text-lg font-bold uppercase">{config.kop_yayasan}</h2>}
-          <h1 className="text-2xl font-black uppercase tracking-wider">{config.kop_sekolah}</h1>
-          <p className="text-sm mt-1">{config.kop_alamat}</p>
-          {config.kop_npsn && <p className="text-sm font-bold mt-1">NPSN: {config.kop_npsn}</p>}
+          {config.kop_yayasan && <h2 className="text-lg font-bold uppercase text-black">{config.kop_yayasan}</h2>}
+          <h1 className="text-2xl font-black uppercase tracking-wider text-black">{config.kop_sekolah}</h1>
+          <p className="text-sm mt-1 text-black">{config.kop_alamat}</p>
+          {config.kop_npsn && <p className="text-sm font-bold mt-1 text-black">NPSN: {config.kop_npsn}</p>}
         </div>
         <div className="w-24 h-24 flex items-center justify-center">
           {config.logo_kanan && <img src={config.logo_kanan} alt="Logo Kanan" className="max-w-full max-h-full object-contain" />}
@@ -71,8 +71,8 @@ export function PrintSignature() {
   }, []);
 
   return (
-    <div className="print-only mt-10 flex justify-end">
-      <div className="text-center w-64">
+    <div className="print-only mt-10 flex justify-end text-black">
+      <div className="text-center w-64 text-black">
         <p>{dateStr}</p>
         <p className="mb-24">Kepala Sekolah</p>
         <p className="font-bold underline">{config.ttd_kepsek_nama}</p>

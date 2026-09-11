@@ -213,8 +213,8 @@ export default function GuruPresensi({ user }: { user: any }) {
   return (
     <section id="view-guru-presensi" className="view-section fade-in">
         <div className="glass-card p-5">
-            <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-                <i className="fa-solid fa-right-to-bracket text-green-500"></i> Form Presensi
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
+                <i className="fa-solid fa-right-to-bracket text-green-500 dark:text-green-400"></i> Form Presensi
             </h2>
 
             {dailyState?.isLibur && (
@@ -224,17 +224,17 @@ export default function GuruPresensi({ user }: { user: any }) {
             )}
             
             <form onSubmit={handlePresensiSubmit} className={`space-y-4 ${dailyState?.isLibur ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Tipe Absen</label>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tipe Absen</label>
                         <select value={tipeAbsen} onChange={e => setTipeAbsen(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-nizamudin-green dark:text-nizamudin-gold">
                             <option value="Datang" disabled={!!dailyState?.presensiDatang}>DATANG</option>
                             <option value="Pulang" disabled={!dailyState?.presensiDatang}>PULANG</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Kondisi / Sifat</label>
-                        <select value={jenisPresensi} onChange={e => togglePresensiFields(e.target.value)} disabled={tipeAbsen === 'Pulang'} required className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50">
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kondisi / Sifat</label>
+                        <select value={jenisPresensi} onChange={e => togglePresensiFields(e.target.value)} disabled={tipeAbsen === 'Pulang'} required className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50 text-gray-900 dark:text-white">
                             <option value="Sekolah">Hadir Sekolah</option>
                             <option value="Dinas Luar">Dinas Luar</option>
                             <option value="Izin">Izin / Sakit</option>
@@ -251,8 +251,8 @@ export default function GuruPresensi({ user }: { user: any }) {
                 {jenisPresensi === 'Izin' && tipeAbsen === 'Datang' && (
                   <div id="row-detail-izin" className="fade-in space-y-4">
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Kategori Detail</label>
-                          <select value={detailIzin} onChange={e => setDetailIzin(e.target.value)} className="w-full px-3 py-3 text-sm rounded-xl input-premium">
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kategori Detail</label>
+                          <select value={detailIzin} onChange={e => setDetailIzin(e.target.value)} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
                             <option value="Sakit">Sakit</option>
                             <option value="Izin Pribadi">Izin Pribadi</option>
                             <option value="Izin Khusus">Izin Khusus</option>
@@ -260,7 +260,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                       </div>
                       
                       <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800/50 p-4 rounded-2xl">
-                          <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-2 flex justify-between items-center">
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-2 flex justify-between items-center">
                               <span><i className="fa-solid fa-pen mr-1 text-yellow-600 dark:text-yellow-400"></i> Penjelasan Detail</span>
                               <span className="text-[9px] text-red-500 dark:text-red-400 uppercase tracking-wide">Wajib Minimal</span>
                           </label>
@@ -269,7 +269,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                             onChange={e => setKeterangan(e.target.value)}
                             rows={3} 
                             required
-                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:ring-2 focus:ring-nizamudin-green/20 outline-none transition resize-none placeholder-gray-400 dark:placeholder-gray-500" 
+                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-nizamudin-green/20 outline-none transition resize-none placeholder-gray-400 dark:placeholder-gray-500" 
                             placeholder="Jelaskan secara lengkap..."
                           ></textarea>
                       </div>
@@ -279,18 +279,18 @@ export default function GuruPresensi({ user }: { user: any }) {
                 {jenisPresensi !== 'Sekolah' && tipeAbsen === 'Datang' && (
                   <div id="row-file" className="fade-in pt-1">
                       <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1"><i className="fa-solid fa-asterisk"></i> Wajib Upload Surat Keterangan</label>
-                      <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 dark:text-white" />
+                      <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                   </div>
                 )}
 
                 <div id="row-tempat" className="fade-in pt-1">
-                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1 flex justify-between">
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex justify-between">
                         <span>Titik Lokasi (Tempat)</span>
                         <span className="text-[9px] text-blue-500 dark:text-blue-400 cursor-pointer btn-click" onClick={() => fetchLocation(gpsConfig)}>
                           <i className="fa-solid fa-location-crosshairs"></i> Refresh API
                         </span>
                     </label>
-                    <input type="text" value={lokasi} readOnly className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 dark:text-white cursor-not-allowed" />
+                    <input type="text" value={lokasi} readOnly className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed" />
                     {jarakAktual !== null && jenisPresensi === 'Sekolah' && (
                       <div className={`text-[10px] mt-1 ml-1 font-bold ${jarakAktual <= gpsConfig.radius ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                         <i className={`fa-solid ${jarakAktual <= gpsConfig.radius ? 'fa-check-circle' : 'fa-triangle-exclamation'} mr-1`}></i> 

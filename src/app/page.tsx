@@ -27,7 +27,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-screen w-full items-center justify-center bg-gray-100 dark:bg-black">
+      <div className="flex flex-col min-h-screen min-h-dvh w-full items-center justify-center bg-gray-100 dark:bg-black">
         <div className="w-48 bg-gray-200 rounded-full h-2 dark:bg-gray-700 overflow-hidden">
           <div className="bg-nizamudin-green dark:bg-nizamudin-gold h-2 rounded-full w-full animate-pulse"></div>
         </div>
@@ -41,7 +41,7 @@ export default function Home() {
   // We are currently simulating login using the users table, not Supabase Auth directly yet
   // If we want to use the users table for custom login:
   return (
-    <div className="mobile-container flex flex-col h-screen">
+    <div className="mobile-container flex flex-col min-h-screen min-h-dvh">
       <MainApp />
     </div>
   );

@@ -93,10 +93,10 @@ export default function DokumenView({ user }: { user: any }) {
     <section id="view-dokumen" className="view-section fade-in">
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <i className="fa-solid fa-folder-open text-amber-500 dark:text-amber-400"></i> Perangkat Pembelajaran
                 </h2>
-                <button type="button" onClick={loadDokumen} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
+                <button type="button" onClick={loadDokumen} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
                   <i className={`fa-solid fa-rotate-right ${fetching ? 'animate-spin' : ''}`}></i>
                 </button>
             </div>
@@ -104,14 +104,14 @@ export default function DokumenView({ user }: { user: any }) {
                 <button 
                   type="button" 
                   onClick={() => setActiveTab('list')} 
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border ${activeTab === 'list' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' : 'border-gray-200 text-gray-500 dark:text-gray-400 dark:border-gray-700'}`}
+                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm border ${activeTab === 'list' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' : 'border-gray-200 text-gray-700 dark:text-gray-200 dark:border-gray-700'}`}
                 >
                   Daftar Dokumen
                 </button>
                 <button 
                   type="button" 
                   onClick={() => setActiveTab('upload')} 
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 border ${activeTab === 'upload' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' : 'border-gray-200 text-gray-500 dark:text-gray-400 dark:border-gray-700'}`}
+                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 border ${activeTab === 'upload' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800' : 'border-gray-200 text-gray-700 dark:text-gray-200 dark:border-gray-700'}`}
                 >
                   Upload Baru
                 </button>
@@ -120,9 +120,9 @@ export default function DokumenView({ user }: { user: any }) {
             {activeTab === 'list' && (
               <div id="dokumen-content-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
                 {fetching ? (
-                  <div className="col-span-full text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">Memuat data...</div>
+                  <div className="col-span-full text-center py-10 text-gray-500 text-xs italic dark:text-white/80">Memuat data...</div>
                 ) : dokumenList.length === 0 ? (
-                  <div className="col-span-full text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">Belum ada dokumen yang diupload.</div>
+                  <div className="col-span-full text-center py-10 text-gray-500 text-xs italic dark:text-white/80">Belum ada dokumen yang diupload.</div>
                 ) : (
                   dokumenList.map((dok: any) => (
                     <div key={dok.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
@@ -135,17 +135,17 @@ export default function DokumenView({ user }: { user: any }) {
                           }`}>{dok.status_verifikasi || 'Menunggu'}</span>
                       </div>
                       <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{dok.judul}</h4>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{formatTimestampWita(dok.timestamp)}</p>
+                      <p className="text-[10px] text-gray-500 dark:text-white/80 mt-1">{formatTimestampWita(dok.timestamp)}</p>
                       
                       {dok.catatan_admin && (
                         <div className="mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg text-[10px] border border-gray-100 dark:border-gray-700">
-                          <span className="font-bold block mb-0.5 text-gray-700 dark:text-gray-300">Catatan Admin:</span>
-                          <span className="text-gray-600 dark:text-gray-400 italic">{dok.catatan_admin}</span>
+                          <span className="font-bold block mb-0.5 text-gray-900 dark:text-white">Catatan Admin:</span>
+                          <span className="text-gray-700 dark:text-white/80 italic">{dok.catatan_admin}</span>
                         </div>
                       )}
                       
                       {dok.link_file && dok.link_file !== '-' && (
-                        <a href={dok.link_file} target="_blank" rel="noreferrer" className="mt-2 text-center text-[10px] font-bold bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded-lg transition-colors">
+                        <a href={dok.link_file} target="_blank" rel="noreferrer" className="mt-2 text-center text-[10px] font-bold bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white py-2 rounded-lg transition-colors">
                           <i className="fa-solid fa-file-pdf mr-1 text-red-500 dark:text-red-400"></i> Buka Dokumen
                         </a>
                       )}
@@ -159,8 +159,8 @@ export default function DokumenView({ user }: { user: any }) {
               <div id="dokumen-content-upload" className="fade-in">
                   <form onSubmit={submitDokumen} className="space-y-4">
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Jenis Dokumen</label>
-                          <select required value={jenis} onChange={e => setJenis(e.target.value)} className="w-full px-3 py-3 text-sm rounded-xl input-premium">
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Jenis Dokumen</label>
+                          <select required value={jenis} onChange={e => setJenis(e.target.value)} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
                               <option value="" disabled>Pilih Jenis...</option>
                               <option value="Analisis Capaian Pembelajaran">Analisis Capaian Pembelajaran</option>
                               <option value="Alur Tujuan Pembelajaran">Alur Tujuan Pembelajaran</option>
@@ -171,12 +171,12 @@ export default function DokumenView({ user }: { user: any }) {
                           </select>
                       </div>
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Judul / Deskripsi</label>
-                          <input type="text" required value={judul} onChange={e => setJudul(e.target.value)} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium" placeholder="Contoh: Modul Ajar Bab 1 Kelas X" />
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Judul / Deskripsi</label>
+                          <input type="text" required value={judul} onChange={e => setJudul(e.target.value)} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" placeholder="Contoh: Modul Ajar Bab 1 Kelas X" />
                       </div>
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1"><i className="fa-solid fa-asterisk text-red-500 dark:text-red-400 text-[9px] mr-1"></i>File PDF/Gambar (Bisa lebih dari 1)</label>
-                          <input type="file" required accept=".pdf,image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 dark:text-white" />
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1"><i className="fa-solid fa-asterisk text-red-500 dark:text-red-400 text-[9px] mr-1"></i>File PDF/Gambar (Bisa lebih dari 1)</label>
+                          <input type="file" required accept=".pdf,image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                       </div>
                       <div className="pt-2">
                           <button type="submit" disabled={loading} className="btn-click w-full bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-amber-900/20 text-sm flex items-center justify-center gap-2 hover:bg-amber-700 transition disabled:opacity-50">

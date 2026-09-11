@@ -72,10 +72,10 @@ export default function HistoryView({ user }: { user: any }) {
     <section id="view-history" className="view-section fade-in">
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-clipboard-list text-gray-500 dark:text-gray-400"></i> Riwayat Anda
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-clipboard-list text-blue-500 dark:text-blue-400"></i> Riwayat Anda
                 </h2>
-                <button type="button" onClick={loadData} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700">
+                <button type="button" onClick={loadData} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700">
                   <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                 </button>
             </div>
@@ -83,26 +83,26 @@ export default function HistoryView({ user }: { user: any }) {
                 <button 
                   type="button" 
                   onClick={() => { setActiveTab('presensi'); setPage(0); }} 
-                  className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'presensi' ? 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-500 dark:text-gray-400 border border-transparent'}`}
+                  className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'presensi' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'}`}
                 >
                   Presensi
                 </button>
                 <button 
                   type="button" 
                   onClick={() => { setActiveTab('jurnal'); setPage(0); }} 
-                  className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'jurnal' ? 'bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-500 dark:text-gray-400 border border-transparent'}`}
+                  className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'jurnal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'}`}
                 >
                   Jurnal
                 </button>
             </div>
             <div className="relative mb-4">
-                <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 text-xs"></i>
+                <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-white/70 text-xs"></i>
                 <input 
                   type="text" 
                   value={search}
                   onChange={e => { setSearch(e.target.value); setPage(0); }}
                   placeholder={`Cari riwayat ${activeTab}...`} 
-                  className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium dark:bg-gray-800 dark:text-gray-200" 
+                  className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 dark:placeholder-gray-400" 
                 />
             </div>
             {errorMsg && (
@@ -112,41 +112,41 @@ export default function HistoryView({ user }: { user: any }) {
             )}
             <div id="hist-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
               {loading && dataList.length === 0 ? (
-                <div className="col-span-full text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">Memuat data...</div>
+                <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400 text-xs italic">Memuat data...</div>
               ) : paginatedData.length === 0 ? (
-                <div className="col-span-full text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">Belum ada riwayat.</div>
+                <div className="col-span-full text-center py-10 text-gray-500 dark:text-gray-400 text-xs italic">Belum ada riwayat.</div>
               ) : (
                 paginatedData.map((item: any) => (
                   <div key={item.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
                     {activeTab === 'presensi' ? (
                       <>
                         <div className="flex justify-between items-start mb-1">
-                          <h3 className="text-xs font-bold text-gray-800 dark:text-gray-100">{item.tipe_absen} - {item.jenis_presensi}</h3>
+                          <h3 className="text-xs font-bold text-gray-900 dark:text-white">{item.tipe_absen} - {item.jenis_presensi}</h3>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                               item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                               item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                               'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                             }`}>{item.status_verifikasi || 'Menunggu'}</span>
                         </div>
-                        <div className="text-[10px] text-gray-600 dark:text-gray-300 space-y-1">
-                          <p><span className="font-semibold">Waktu:</span> {new Date(item.timestamp).toLocaleString('id-ID')}</p>
-                          {item.detail_izin && <p><span className="font-semibold">Keterangan:</span> {item.detail_izin}</p>}
+                        <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
+                          <p><span className="font-semibold text-gray-900 dark:text-white">Waktu:</span> {new Date(item.timestamp).toLocaleString('id-ID')}</p>
+                          {item.detail_izin && <p><span className="font-semibold text-gray-900 dark:text-white">Keterangan:</span> {item.detail_izin}</p>}
                         </div>
                       </>
                     ) : (
                       <>
                         <div className="flex justify-between items-start mb-1">
-                          <h3 className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate pr-2">{item.mapel}</h3>
+                          <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate pr-2">{item.mapel}</h3>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                               item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                               item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                               'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                             }`}>{item.status_verifikasi || 'Menunggu'}</span>
                         </div>
-                        <div className="text-[10px] text-gray-600 dark:text-gray-300 space-y-1">
-                          <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>
-                          <p><span className="font-semibold">Kelas:</span> {item.kelas}</p>
-                          <p className="truncate"><span className="font-semibold">Materi:</span> {item.materi}</p>
+                        <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
+                          <p><span className="font-semibold text-gray-900 dark:text-white">Tanggal:</span> {item.tanggal}</p>
+                          <p><span className="font-semibold text-gray-900 dark:text-white">Kelas:</span> {item.kelas}</p>
+                          <p className="truncate"><span className="font-semibold text-gray-900 dark:text-white">Materi:</span> {item.materi}</p>
                         </div>
                       </>
                     )}
@@ -155,7 +155,7 @@ export default function HistoryView({ user }: { user: any }) {
               )}
             </div>
             <div className="flex justify-between items-center mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <span className="text-[10px] text-gray-400 font-medium">
+                <span className="text-[10px] text-gray-600 dark:text-white/80 font-medium">
                   Menampilkan {paginatedData.length > 0 ? page * ITEMS_PER_PAGE + 1 : 0} - {Math.min((page + 1) * ITEMS_PER_PAGE, filteredData.length)} dari {filteredData.length} Data
                 </span>
                 <div className="flex gap-2">
@@ -163,14 +163,14 @@ export default function HistoryView({ user }: { user: any }) {
                       type="button" 
                       disabled={page === 0}
                       onClick={() => setPage(Math.max(0, page - 1))}
-                      className="btn-click w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg text-xs disabled:opacity-30 border border-gray-200 dark:border-gray-700 dark:text-gray-300">
+                      className="btn-click w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg text-xs disabled:opacity-30 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-white">
                       <i className="fa-solid fa-chevron-left"></i>
                     </button>
                     <button 
                       type="button" 
                       disabled={page >= totalPages - 1}
                       onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-                      className="btn-click w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg text-xs disabled:opacity-30 border border-gray-200 dark:border-gray-700 dark:text-gray-300">
+                      className="btn-click w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg text-xs disabled:opacity-30 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-white">
                       <i className="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>

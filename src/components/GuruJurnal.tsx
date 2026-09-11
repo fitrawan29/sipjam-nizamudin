@@ -141,7 +141,7 @@ export default function GuruJurnal({ user }: { user: any }) {
   return (
     <section id="view-guru-jurnal" className="view-section fade-in">
         <div className="glass-card p-5">
-            <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
                 <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal
             </h2>
 
@@ -153,18 +153,18 @@ export default function GuruJurnal({ user }: { user: any }) {
             
             <form onSubmit={handleJurnalSubmit} className={`space-y-4 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Jenis Jurnal</label>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Jenis Jurnal</label>
                     <select value={tipeJurnal} disabled className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
                         <option value={tipeJurnal}>{tipeJurnal} {dailyState?.isDinasLuar ? '(Dinas Luar)' : ''}</option>
                     </select>
-                    <p className="text-[9px] text-gray-400 dark:text-gray-500 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
+                    <p className="text-[9px] text-gray-500 dark:text-white/80 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
                 </div>
 
                 {tipeJurnal === 'Jurnal KBM' && (
-                  <div className="grid grid-cols-2 gap-3 fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Mata Pelajaran</label>
-                          <select value={mapel} onChange={e => setMapel(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium">
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Mata Pelajaran</label>
+                          <select value={mapel} onChange={e => setMapel(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
                             <option value="" disabled>Pilih...</option>
                             {mapelList.map(m => (
                               <option key={m.id} value={m.nama_mata_pelajaran}>{m.nama_mata_pelajaran}</option>
@@ -172,8 +172,8 @@ export default function GuruJurnal({ user }: { user: any }) {
                           </select>
                       </div>
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Kelas</label>
-                          <select value={kelas} onChange={e => setKelas(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium">
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kelas</label>
+                          <select value={kelas} onChange={e => setKelas(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
                             <option value="" disabled>Pilih...</option>
                             {kelasList.map(k => (
                               <option key={k} value={k}>{k}</option>
@@ -183,42 +183,42 @@ export default function GuruJurnal({ user }: { user: any }) {
                   </div>
                 )}
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Tanggal</label>
-                        <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium" />
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tanggal</label>
+                        <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" />
                     </div>
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">{tipeJurnal === 'Jurnal KBM' ? 'Materi Pokok' : 'Nama Kegiatan'}</label>
-                        <input type="text" value={materi} onChange={e => setMateri(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium" placeholder="..." />
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">{tipeJurnal === 'Jurnal KBM' ? 'Materi Pokok' : 'Nama Kegiatan'}</label>
+                        <input type="text" value={materi} onChange={e => setMateri(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" placeholder="..." />
                     </div>
                 </div>
 
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Uraian / Deskripsi</label>
-                    <textarea value={kegiatan} onChange={e => setKegiatan(e.target.value)} required rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none" placeholder="Deskripsikan selengkapnya..."></textarea>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Uraian / Deskripsi</label>
+                    <textarea value={kegiatan} onChange={e => setKegiatan(e.target.value)} required rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white" placeholder="Deskripsikan selengkapnya..."></textarea>
                 </div>
 
                 {tipeJurnal === 'Jurnal KBM' && (
                   <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
                       <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
-                      <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
+                      <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
                   </div>
                 )}
                 
                 {tipeJurnal === 'Jurnal KBM' && students.length > 0 && (
                   <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
-                    <h3 className="text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                    <h3 className="text-[11px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                       <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
                     </h3>
                     <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
                       {students.map((siswa, idx) => (
                         <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 w-4">{idx + 1}.</span>
+                            <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4">{idx + 1}.</span>
                             <div>
-                              <div className="text-xs font-bold text-gray-800 dark:text-gray-200">{siswa.nama_siswa}</div>
-                              <div className="text-[9px] text-gray-500 dark:text-gray-400">{siswa.nisn}</div>
+                              <div className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</div>
+                              <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
                             </div>
                           </div>
                           <div className="flex gap-1 shrink-0">
@@ -233,7 +233,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                                      status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
                                      status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
                                      'bg-red-500 text-white shadow-sm') 
-                                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                                 }`}
                               >
                                 {status}
@@ -247,13 +247,13 @@ export default function GuruJurnal({ user }: { user: any }) {
                 )}
                 
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Upload Foto / Dokumen <span className="text-red-500 dark:text-red-400">(Wajib)</span></label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 dark:text-white" />
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Upload Foto / Dokumen <span className="text-red-500 dark:text-red-400">(Wajib)</span></label>
+                    <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                 </div>
 
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1">Refleksi Pembelajaran (Opsional)</label>
-                    <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={1} className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none"></textarea>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Refleksi Pembelajaran (Opsional)</label>
+                    <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={1} className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
                 </div>
                 
                 <div className="pt-2">

@@ -90,20 +90,20 @@ export default function AnalitikView({ user }: { user: any }) {
     <section id="view-analitik" className="view-section fade-in">
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <i className="fa-solid fa-chart-pie text-rose-500 dark:text-rose-400"></i> Dasbor Analitik
                 </h2>
             </div>
             <div className="bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/50 p-3 rounded-2xl mb-4 flex gap-2">
-                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 dark:text-white" />
+                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                 <button type="button" onClick={loadAnalitik} disabled={loading} className="btn-click bg-rose-600 hover:bg-rose-700 text-white px-4 rounded-xl text-xs font-bold shadow-md border border-rose-700 transition disabled:opacity-50">
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-rotate-right"></i>}
                 </button>
             </div>
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-4 mb-5 shadow-sm">
-                <h3 className="text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-4">Statistik Global (Bulan Ini)</h3>
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-4">Statistik Global (Bulan Ini)</h3>
                 
-                <div className="grid grid-cols-2 gap-4 mb-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                   <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-xl border border-green-100 dark:border-green-900/50 text-center">
                     <div className="text-2xl font-black text-green-600 dark:text-green-400">{stats.hadir}</div>
                     <div className="text-[9px] font-bold text-green-800 dark:text-green-500 uppercase tracking-wide mt-1">Total Hadir</div>
@@ -116,7 +116,7 @@ export default function AnalitikView({ user }: { user: any }) {
 
                 <div className="space-y-3">
                   <div>
-                    <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-600 dark:text-gray-400">
+                    <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
                       <span>Hadir Sekolah</span>
                       <span>{pSeko}%</span>
                     </div>
@@ -125,7 +125,7 @@ export default function AnalitikView({ user }: { user: any }) {
                     </div>
                   </div>
                   <div>
-                    <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-600 dark:text-gray-400">
+                    <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
                       <span>Izin / Sakit</span>
                       <span>{pIzin}%</span>
                     </div>
@@ -134,7 +134,7 @@ export default function AnalitikView({ user }: { user: any }) {
                     </div>
                   </div>
                   <div>
-                    <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-600 dark:text-gray-400">
+                    <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
                       <span>Dinas Luar</span>
                       <span>{pDinas}%</span>
                     </div>
@@ -146,15 +146,15 @@ export default function AnalitikView({ user }: { user: any }) {
             </div>
             
             <div>
-                <h3 className="text-sm font-black text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-black text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                   <i className="fa-solid fa-medal text-yellow-500 dark:text-yellow-400"></i> Papan Peringkat (Top 10)
                 </h3>
                 <div id="leaderboard-list" className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[150px]">
                     {!leaderboard && !loading && (
-                      <div className="text-center py-5 text-[10px] text-gray-400 italic dark:text-gray-500 col-span-full">Pilih bulan dan klik proses...</div>
+                      <div className="text-center py-5 text-xs text-gray-500 italic dark:text-gray-400 col-span-full">Pilih bulan dan klik proses...</div>
                     )}
                     {leaderboard?.length === 0 && (
-                      <div className="text-center py-5 text-[10px] text-gray-400 italic dark:text-gray-500 col-span-full">Belum ada data untuk bulan ini.</div>
+                      <div className="text-center py-5 text-xs text-gray-500 italic dark:text-gray-400 col-span-full">Belum ada data untuk bulan ini.</div>
                     )}
                     {leaderboard?.map((l: any, i: number) => (
                       <div key={i} className="flex items-center gap-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-2.5 rounded-xl shadow-sm">
@@ -167,15 +167,15 @@ export default function AnalitikView({ user }: { user: any }) {
                           {i + 1}
                         </div>
                         <div className="flex-grow min-w-0">
-                          <h4 className="text-[11px] font-bold text-gray-800 dark:text-gray-100 truncate">{l.nama}</h4>
-                          <div className="text-[9px] text-gray-500 dark:text-gray-400 flex gap-2 mt-0.5">
+                          <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">{l.nama}</h4>
+                          <div className="text-xs text-gray-600 dark:text-gray-300 flex gap-2 mt-0.5">
                             <span><i className="fa-solid fa-check text-green-500 dark:text-green-400"></i> {l.hadir} Hadir</span>
                             <span><i className="fa-solid fa-book text-blue-500 dark:text-blue-400"></i> {l.jurnal} Jurnal</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-xs font-black text-rose-500 dark:text-rose-400">{l.score}</div>
-                          <div className="text-[8px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Poin</div>
+                          <div className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">Poin</div>
                         </div>
                       </div>
                     ))}

@@ -35,7 +35,7 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
-      <body className={`${amiri.variable} ${poppins.variable} ${spaceMono.variable} font-sans bg-gray-100 dark:bg-black transition-colors duration-300`}>
+      <body className={`${amiri.variable} ${poppins.variable} ${spaceMono.variable} font-sans bg-gray-100 dark:bg-black text-gray-900 dark:text-white transition-colors duration-300`}>
         {children}
       </body>
     </html>

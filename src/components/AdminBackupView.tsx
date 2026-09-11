@@ -150,24 +150,24 @@ export default function AdminBackupView({ user }: { user: any }) {
     <section id="view-admin-backup" className="view-section fade-in">
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <i className="fa-solid fa-hard-drive text-indigo-500 dark:text-indigo-400"></i> Akses Data & Backup
                 </h2>
-                <button type="button" onClick={fetchRiwayat} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
+                <button type="button" onClick={fetchRiwayat} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
                   <i className="fa-solid fa-rotate-right"></i>
                 </button>
             </div>
             
             <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 text-center">
-                <h3 className="text-[11px] font-bold text-indigo-800 dark:text-indigo-400 mb-2">Lakukan Backup & Restore</h3>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 mb-3">Backup akan memindahkan data transaksi (presensi, jurnal) ke Spreadsheet dan <b>mengosongkan database Supabase</b> agar performa tetap cepat. Gunakan Restore untuk menarik kembali data tersebut ke Supabase.</p>
+                <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">Lakukan Backup & Restore</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">Backup akan memindahkan data transaksi (presensi, jurnal) ke Spreadsheet dan <b>mengosongkan database Supabase</b> agar performa tetap cepat. Gunakan Restore untuk menarik kembali data tersebut ke Supabase.</p>
                 <div className="flex flex-col sm:flex-row justify-center gap-2 max-w-sm mx-auto">
-                    <input type="number" value={tahun} onChange={e => setTahun(e.target.value)} className="w-full sm:w-24 px-3 py-2.5 text-sm rounded-xl input-premium text-center dark:bg-gray-800 dark:text-white" placeholder="Tahun" />
+                    <input type="number" value={tahun} onChange={e => setTahun(e.target.value)} className="w-full sm:w-24 px-3 py-2.5 text-sm rounded-xl input-premium text-center text-gray-900 dark:text-white bg-white dark:bg-gray-800" placeholder="Tahun" />
                     <div className="flex gap-2 flex-grow">
-                      <button type="button" onClick={handleBackup} disabled={loading} className="btn-click flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-[10px] font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50">
+                      <button type="button" onClick={handleBackup} disabled={loading} className="btn-click flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50">
                         {loading ? 'Proses...' : <><i className="fa-solid fa-cloud-arrow-up"></i> Backup</>}
                       </button>
-                      <button type="button" onClick={handleRestore} disabled={loading} className="btn-click flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-[10px] font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50">
+                      <button type="button" onClick={handleRestore} disabled={loading} className="btn-click flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50">
                         {loading ? 'Proses...' : <><i className="fa-solid fa-cloud-arrow-down"></i> Restore</>}
                       </button>
                     </div>
@@ -175,21 +175,21 @@ export default function AdminBackupView({ user }: { user: any }) {
             </div>
 
             <div>
-                <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3">
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3">
                   <i className="fa-solid fa-clock-rotate-left mr-1 text-indigo-500 dark:text-indigo-400"></i> Riwayat Backup
                 </h3>
                 <div id="list-backup-area" className="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto custom-scroll pr-1">
                     {riwayat.length === 0 ? (
-                      <div className="text-center py-5 text-gray-400 text-[11px] italic dark:text-gray-500">Belum ada riwayat backup.</div>
+                      <div className="text-center py-5 text-gray-500 text-xs italic dark:text-gray-400">Belum ada riwayat backup.</div>
                     ) : (
                       riwayat.map(item => (
                         <div key={item.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
                           <div className="flex justify-between items-start">
                             <div>
-                              <div className="text-xs font-bold text-gray-800 dark:text-gray-200">Backup {item.periode}</div>
-                              <div className="text-[10px] text-gray-500 dark:text-gray-400">Oleh: {item.admin}</div>
+                              <div className="text-xs font-bold text-gray-900 dark:text-white">Backup {item.periode}</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-300">Oleh: {item.admin}</div>
                             </div>
-                            <div className="text-[9px] text-gray-400 text-right">
+                            <div className="text-xs text-gray-500 dark:text-white/70 text-right">
                               {formatTimestampWita(item.timestamp)}
                             </div>
                           </div>

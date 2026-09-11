@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-nizamudin-green: #0B4619;
@@ -20,7 +21,7 @@
 
 .dark {
   --background: #121212;
-  --foreground: #f8fafc;
+  --foreground: #ffffff;
 }
 
 body {
@@ -68,7 +69,7 @@ body.fade-out {
     @apply bg-slate-800 border-slate-700 text-white;
   }
   .dark .input-premium::placeholder {
-    @apply text-slate-500;
+    @apply text-slate-400;
   }
   .input-premium:focus {
     @apply border-nizamudin-green outline-none;
@@ -121,7 +122,7 @@ body.fade-out {
     @apply block text-[11px] font-bold text-gray-500 mb-1.5 ml-1;
   }
   .dark .form-label {
-    @apply text-gray-400;
+    @apply text-white;
   }
 
   .btn-click {
