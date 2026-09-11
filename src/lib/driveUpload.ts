@@ -1,10 +1,6 @@
-export async function uploadToDrive(file: File, namaGuru: string, folderFitur: string, prefix: string = 'Upload'): Promise<string> {
-  const webhookUrl = process.env.NEXT_PUBLIC_DRIVE_UPLOAD_WEBHOOK_URL;
-  
-  if (!webhookUrl) {
-    throw new Error('Konfigurasi Webhook Google Drive belum dipasang. Hubungi admin.');
-  }
+const DRIVE_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxYQXyTxV2DPiOQ5WDYSs_vgYuxHobCSTTrxIuE7WxUqfi6IgWGEsWYgZq6T6hxRNc/exec';
 
+export async function uploadToDrive(file: File, namaGuru: string, folderFitur: string, prefix: string = 'Upload'): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -14,7 +10,7 @@ export async function uploadToDrive(file: File, namaGuru: string, folderFitur: s
       const filename = `${prefix}_${timestamp}_${file.name}`;
 
       try {
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(DRIVE_WEBHOOK_URL, {
           method: 'POST',
           body: JSON.stringify({
             filename: filename,
