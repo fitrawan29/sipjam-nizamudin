@@ -164,7 +164,33 @@ body.fade-out {
 
 /* Print Styles */
 @media print {
-  @page { size: A4 landscape; margin: 15mm; }
-  body { background: white; margin: 0; padding: 0; line-height: 1.0 !important; color: black; }
-  .mobile-container, .swal2-container { display: none !important; }
+  @page { size: A4 portrait; margin: 15mm; }
+  body { background: white !important; margin: 0; padding: 0; line-height: 1.2 !important; color: black !important; }
+  *, *::before, *::after {
+    color: black !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  .swal2-container { display: none !important; }
+  .no-print { display: none !important; }
+  .mobile-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    min-height: auto !important;
+    border: none !important;
+    background: transparent !important;
+  }
+  .glass-card {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
+  thead { display: table-header-group; }
+  tr, img { page-break-inside: avoid; }
+}
+@media screen {
+  .print-only { display: none !important; }
 }

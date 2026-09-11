@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { PrintHeader, PrintSignature } from './PrintHeader';
 
 export default function RekapJurnalView({ user }: { user: any }) {
   const [startDate, setStartDate] = useState('');
@@ -62,10 +63,11 @@ export default function RekapJurnalView({ user }: { user: any }) {
   return (
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
         <div className="glass-card p-4">
+            <PrintHeader />
             <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-book-open text-indigo-500 dark:text-indigo-400"></i> Rekap Jurnal Pribadi
+              <i className="fa-solid fa-book-open text-indigo-500 dark:text-indigo-400 no-print"></i> Rekap Jurnal Pribadi
             </h2>
-            <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 space-y-3">
+            <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 space-y-3 no-print">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">DARI TANGGAL</label>
@@ -99,10 +101,10 @@ export default function RekapJurnalView({ user }: { user: any }) {
             
             <div id="hasil-rekap-jurnal-guru" className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[150px]">
                 {!jurnalData && !loading && (
-                  <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic col-span-full">Silakan atur filter dan klik tampilkan.</div>
+                  <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic col-span-full no-print">Silakan atur filter dan klik tampilkan.</div>
                 )}
                 {jurnalData?.length === 0 && (
-                  <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic col-span-full">Tidak ada jurnal ditemukan dengan filter tersebut.</div>
+                  <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic col-span-full no-print">Tidak ada jurnal ditemukan dengan filter tersebut.</div>
                 )}
                 {jurnalData?.map((j: any) => (
                   <div key={j.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl shadow-sm space-y-2">
@@ -128,8 +130,10 @@ export default function RekapJurnalView({ user }: { user: any }) {
                 ))}
             </div>
 
+            <PrintSignature />
+
             {jurnalData && jurnalData.length > 0 && (
-              <div id="btn-group-jurnal-guru" className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 fade-in">
+              <div id="btn-group-jurnal-guru" className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 fade-in no-print">
                   <button type="button" onClick={() => {
                     if (!jurnalData || jurnalData.length === 0) return;
                     const headers = ['Tanggal', 'Kelas', 'Mapel', 'Materi', 'Kegiatan', 'Absensi', 'Status'];

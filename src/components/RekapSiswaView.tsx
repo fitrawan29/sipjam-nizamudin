@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { PrintHeader, PrintSignature } from './PrintHeader';
 
 export default function RekapSiswaView({ user }: { user: any }) {
   const [startDate, setStartDate] = useState('');
@@ -102,10 +103,11 @@ export default function RekapSiswaView({ user }: { user: any }) {
   return (
     <section id="view-rekap-siswa" className="view-section fade-in">
         <div className="glass-card p-4">
+            <PrintHeader />
             <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400"></i> Rekap Absen Siswa
+              <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 no-print"></i> Rekap Absen Siswa
             </h2>
-            <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3">
+            <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3 no-print">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">DARI TANGGAL</label>
@@ -170,7 +172,10 @@ export default function RekapSiswaView({ user }: { user: any }) {
                           </tbody>
                       </table>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                  
+                  <PrintSignature />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 no-print">
                       <button type="button" onClick={() => {
                         if (!rekapData || rekapData.length === 0) return;
                         const headers = ['No', 'NISN', 'Nama Siswa', 'Sakit', 'Izin', 'Alpa'];
@@ -194,7 +199,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                   </div>
               </div>
             ) : (
-              <div id="rekap-siswa-kosong" className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic">Silakan atur filter dan klik tampilkan.</div>
+              <div id="rekap-siswa-kosong" className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic no-print">Silakan atur filter dan klik tampilkan.</div>
             )}
         </div>
     </section>

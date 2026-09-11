@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
+import { PrintHeader, PrintSignature } from './PrintHeader';
 
 export default function AdminRekapView({ user }: { user: any }) {
   const [bulan, setBulan] = useState(() => {
@@ -97,10 +98,11 @@ export default function AdminRekapView({ user }: { user: any }) {
   return (
     <section id="view-admin-rekap" className="view-section fade-in">
         <div className="glass-card p-4">
+            <PrintHeader />
             <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-file-invoice text-blue-500 dark:text-blue-400"></i> Rekapitulasi Akhir
+              <i className="fa-solid fa-file-invoice text-blue-500 dark:text-blue-400 no-print"></i> Rekapitulasi Akhir
             </h2>
-            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 p-4 rounded-2xl mb-5">
+            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 p-4 rounded-2xl mb-5 no-print">
                 <label className="block text-[11px] font-bold text-gray-600 dark:text-gray-400 mb-2">Pilih Bulan</label>
                 <div className="flex gap-2">
                     <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2.5 rounded-xl input-premium text-sm bg-white dark:bg-gray-800 dark:text-white" />
@@ -109,7 +111,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                     </button>
                 </div>
             </div>
-            <details className="mb-5 text-sm group">
+            <details className="mb-5 text-sm group no-print">
                 <summary className="font-bold text-[11px] text-gray-500 dark:text-gray-400 cursor-pointer outline-none flex items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <i className="fa-solid fa-caret-right transition-transform group-open:rotate-90"></i> Filter Rentang Khusus
                 </summary>
@@ -132,7 +134,7 @@ export default function AdminRekapView({ user }: { user: any }) {
               <div id="hasil-rekap" className="space-y-5 fade-in">
                   <div>
                       <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                        <i className="fa-solid fa-user-check text-green-500 dark:text-green-400"></i> Kehadiran Guru
+                        <i className="fa-solid fa-user-check text-green-500 dark:text-green-400 no-print"></i> Kehadiran Guru
                       </h3>
                       <div id="card-rekap-presensi" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {rekapData.presensi.map((p, i) => (
@@ -153,7 +155,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                   </div>
                   <div>
                       <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2 border-t dark:border-gray-800 pt-4">
-                        <i className="fa-solid fa-book text-blue-500 dark:text-blue-400"></i> Total Jurnal Disetujui
+                        <i className="fa-solid fa-book text-blue-500 dark:text-blue-400 no-print"></i> Total Jurnal Disetujui
                       </h3>
                       <div id="card-rekap-jurnal" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                         {rekapData.jurnal.map((j, i) => (
@@ -166,7 +168,10 @@ export default function AdminRekapView({ user }: { user: any }) {
                         {rekapData.jurnal.length === 0 && <div className="text-[10px] text-gray-400 dark:text-gray-500 italic">Tidak ada data jurnal.</div>}
                       </div>
                   </div>
-                  <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                  
+                  <PrintSignature />
+                  
+                  <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">
                       <button type="button" onClick={() => {
                         if (!rekapData || rekapData.presensi.length === 0) return;
                         const headers = ['No', 'Nama Guru', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Jurnal Disetujui'];
@@ -192,7 +197,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                   </div>
               </div>
             ) : (
-              <div className="text-center py-10 text-gray-400 text-xs italic dark:text-gray-500">
+              <div className="text-center py-10 text-gray-400 text-xs italic dark:text-gray-500 no-print">
                 Pilih bulan atau rentang khusus untuk menarik rekap.
               </div>
             )}
