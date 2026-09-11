@@ -9,6 +9,7 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
   const timeStr = getWitaTimeStr();
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
   const [loadingState, setLoadingState] = useState(false);
+  const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
 
   const isGuru = user?.role !== 'Admin';
 
@@ -19,6 +20,23 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
         .then(setDailyState)
         .catch(console.error)
         .finally(() => setLoadingState(false));
+
+      // Fetch Akumulasi Keterlambatan bulan ini
+      const fetchTelat = async () => {
+        const now = new Date();
+        const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        const sb = await import('@/lib/supabaseClient').then(m => m.supabase);
+        const { data } = await sb
+          .from('presensi_guru')
+          .select('keterlambatan_detik')
+          .eq('nama_guru', user.nama)
+          .gte('timestamp', firstDay);
+        
+        let totalDetik = 0;
+        data?.forEach((p: any) => totalDetik += (p.keterlambatan_detik || 0));
+        setAkumulasiTelat({ detik: totalDetik, alpa: Math.floor(totalDetik / 14400) });
+      };
+      fetchTelat();
     }
   }, [isGuru, user?.nama]);
 
@@ -239,6 +257,26 @@ export default function HomeView({ user, setView, menuItems = [] }: { user: any,
               <p className="text-[11px] font-semibold leading-snug">{nextAction.text}</p>
             </div>
           )}
+          {/* Lateness Info */}
+          <div className="mt-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <i className="fa-solid fa-stopwatch"></i>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Akumulasi Keterlambatan Bulan Ini</p>
+                <p className="text-xs font-black text-slate-700 dark:text-slate-200">
+                  {Math.floor(akumulasiTelat.detik / 3600)} Jam {Math.floor((akumulasiTelat.detik % 3600) / 60)} Menit {akumulasiTelat.detik % 60} Detik
+                </p>
+              </div>
+            </div>
+            {akumulasiTelat.alpa > 0 && (
+              <div className="text-right">
+                <p className="text-[9px] font-bold text-red-500 uppercase">Potongan Alpa</p>
+                <p className="text-sm font-black text-red-600">{akumulasiTelat.alpa} Hari</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

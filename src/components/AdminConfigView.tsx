@@ -12,6 +12,7 @@ export default function AdminConfigView({ user }: { user: any }) {
     waktu_efektif_akhir: '',
     hari_sekolah: '6',
     jam_datang_mulai: '06:45',
+    jam_datang_batas: '07:15',
     jam_datang_akhir: '08:00',
     jam_pulang_mulai: '11:00',
     jam_pulang_akhir: '22:00',
@@ -108,15 +109,16 @@ export default function AdminConfigView({ user }: { user: any }) {
                 </div>
                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4">
                     <h3 className="text-[10px] font-bold text-amber-800 dark:text-amber-400 mb-3 uppercase flex items-center gap-1.5"><i className="fa-regular fa-clock"></i> Pengaturan Jam Presensi</h3>
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Datang Mulai</label><input type="time" name="jam_datang_mulai" value={config.jam_datang_mulai} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
-                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Datang Akhir</label><input type="time" name="jam_datang_akhir" value={config.jam_datang_akhir} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Datang Buka</label><input type="time" name="jam_datang_mulai" value={config.jam_datang_mulai || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Batas Terlambat</label><input type="time" name="jam_datang_batas" value={config.jam_datang_batas || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Datang Tutup</label><input type="time" name="jam_datang_akhir" value={config.jam_datang_akhir || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Pulang Mulai</label><input type="time" name="jam_pulang_mulai" value={config.jam_pulang_mulai} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
-                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Pulang Akhir</label><input type="time" name="jam_pulang_akhir" value={config.jam_pulang_akhir} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Pulang Buka</label><input type="time" name="jam_pulang_mulai" value={config.jam_pulang_mulai || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Pulang Tutup</label><input type="time" name="jam_pulang_akhir" value={config.jam_pulang_akhir || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
                     </div>
-                    <p className="text-[8px] text-gray-400 dark:text-gray-500 mt-2 italic">* Guru hanya bisa melakukan presensi datang/pulang di rentang waktu yang ditentukan.</p>
+                    <p className="text-[8px] text-gray-400 dark:text-gray-500 mt-2 italic">* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total 4 jam keterlambatan = 1 Hari Alpa otomatis.</p>
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4">
                     <h3 className="text-[10px] font-bold text-blue-800 dark:text-blue-500 mb-3 uppercase flex items-center gap-1.5"><i className="fa-solid fa-print"></i> Pengaturan Kop Surat</h3>

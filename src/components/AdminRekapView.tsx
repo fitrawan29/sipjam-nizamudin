@@ -51,9 +51,12 @@ export default function AdminRekapView({ user }: { user: any }) {
       const pMap: Record<string, any> = {};
       presensi?.forEach(p => {
         const nama = p.nama_guru;
-        if (!pMap[nama]) pMap[nama] = { hadir: 0, izin: 0, sakit: 0, dinasLuar: 0 };
+        if (!pMap[nama]) pMap[nama] = { hadir: 0, izin: 0, sakit: 0, dinasLuar: 0, telatDetik: 0 };
         if (p.tipe_absen === 'Datang') {
-          if (p.jenis_presensi === 'Sekolah') pMap[nama].hadir++;
+          if (p.jenis_presensi === 'Sekolah') {
+            pMap[nama].hadir++;
+            pMap[nama].telatDetik += (p.keterlambatan_detik || 0);
+          }
           else if (p.jenis_presensi === 'Dinas Luar') pMap[nama].dinasLuar++;
           else if (p.jenis_presensi === 'Izin') {
             if (p.detail_izin?.includes('Sakit')) pMap[nama].sakit++;
@@ -62,7 +65,17 @@ export default function AdminRekapView({ user }: { user: any }) {
         }
       });
 
-      const pArr = Object.keys(pMap).map(k => ({ nama: k, ...pMap[k] })).sort((a,b) => a.nama.localeCompare(b.nama));
+      const pArr = Object.keys(pMap).map(k => {
+        const telat = pMap[k].telatDetik;
+        const alpaOtomatis = Math.floor(telat / 14400); // 4 hours = 14400 seconds
+        const hadirEfektif = Math.max(0, pMap[k].hadir - alpaOtomatis);
+        return { 
+          nama: k, 
+          ...pMap[k],
+          alpa: alpaOtomatis,
+          hadir: hadirEfektif
+        };
+      }).sort((a,b) => a.nama.localeCompare(b.nama));
 
       // Process jurnal
       const jMap: Record<string, number> = {};
@@ -125,11 +138,13 @@ export default function AdminRekapView({ user }: { user: any }) {
                         {rekapData.presensi.map((p, i) => (
                           <div key={i} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl p-3 shadow-sm">
                             <h4 className="text-[11px] font-bold text-gray-800 dark:text-gray-100 mb-2 truncate" title={p.nama}>{p.nama}</h4>
-                            <div className="grid grid-cols-2 gap-1 text-center">
+                            <div className="grid grid-cols-3 gap-1 text-center">
                               <div className="bg-green-50 dark:bg-green-900/30 rounded p-1"><div className="text-[8px] text-green-600 dark:text-green-400 font-bold">HADIR</div><div className="text-xs font-black text-green-700 dark:text-green-300">{p.hadir}</div></div>
                               <div className="bg-blue-50 dark:bg-blue-900/30 rounded p-1"><div className="text-[8px] text-blue-600 dark:text-blue-400 font-bold">DINAS</div><div className="text-xs font-black text-blue-700 dark:text-blue-300">{p.dinasLuar}</div></div>
                               <div className="bg-yellow-50 dark:bg-yellow-900/30 rounded p-1"><div className="text-[8px] text-yellow-600 dark:text-yellow-400 font-bold">SAKIT</div><div className="text-xs font-black text-yellow-700 dark:text-yellow-300">{p.sakit}</div></div>
                               <div className="bg-orange-50 dark:bg-orange-900/30 rounded p-1"><div className="text-[8px] text-orange-600 dark:text-orange-400 font-bold">IZIN</div><div className="text-xs font-black text-orange-700 dark:text-orange-300">{p.izin}</div></div>
+                              <div className="bg-red-50 dark:bg-red-900/30 rounded p-1"><div className="text-[8px] text-red-600 dark:text-red-400 font-bold">ALPA</div><div className="text-xs font-black text-red-700 dark:text-red-300">{p.alpa}</div></div>
+                              <div className="bg-slate-50 dark:bg-slate-900/30 rounded p-1" title={`${p.telatDetik} detik`}><div className="text-[8px] text-slate-600 dark:text-slate-400 font-bold">TELAT</div><div className="text-xs font-black text-slate-700 dark:text-slate-300">{Math.floor(p.telatDetik / 3600)}j {Math.floor((p.telatDetik % 3600) / 60)}m</div></div>
                             </div>
                           </div>
                         ))}

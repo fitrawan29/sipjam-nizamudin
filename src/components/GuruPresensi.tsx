@@ -19,6 +19,14 @@ export default function GuruPresensi({ user }: { user: any }) {
   const [jarakAktual, setJarakAktual] = useState<number | null>(null);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
 
+  const [jamPresensi, setJamPresensi] = useState({
+    datangMulai: '06:00',
+    datangBatas: '07:15',
+    datangAkhir: '08:00',
+    pulangMulai: '11:00',
+    pulangAkhir: '22:00',
+  });
+
   // Haversine formula
   const getDistanceFromLatLonInM = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; 
@@ -50,22 +58,29 @@ export default function GuruPresensi({ user }: { user: any }) {
         { enableHighAccuracy: true }
       );
     } else {
-      setLokasi('Browser tidak mendukung Geolocation.');
+      setLokasi('Browser tidak mendukung GPS');
     }
   };
 
   // Fetch Supabase Config & State
   useEffect(() => {
     const initConfig = async () => {
-      const { data } = await supabase.from('pengaturan').select('*').in('key', ['gps_lat', 'gps_lng', 'gps_radius']);
+      const { data } = await supabase.from('pengaturan').select('*').in('key', ['gps_lat', 'gps_lng', 'gps_radius', 'jam_datang_mulai', 'jam_datang_batas', 'jam_datang_akhir', 'jam_pulang_mulai', 'jam_pulang_akhir']);
       let newConfig = { lat: -6.200000, lng: 106.816666, radius: 100 };
+      let newJam = { ...jamPresensi };
       if (data) {
         data.forEach(item => {
           if (item.key === 'gps_lat') newConfig.lat = parseFloat(item.value);
           if (item.key === 'gps_lng') newConfig.lng = parseFloat(item.value);
           if (item.key === 'gps_radius') newConfig.radius = parseInt(item.value, 10);
+          if (item.key === 'jam_datang_mulai') newJam.datangMulai = item.value;
+          if (item.key === 'jam_datang_batas') newJam.datangBatas = item.value;
+          if (item.key === 'jam_datang_akhir') newJam.datangAkhir = item.value;
+          if (item.key === 'jam_pulang_mulai') newJam.pulangMulai = item.value;
+          if (item.key === 'jam_pulang_akhir') newJam.pulangAkhir = item.value;
         });
         setGpsConfig(newConfig);
+        setJamPresensi(newJam);
       }
       fetchLocation(newConfig);
 
@@ -100,6 +115,49 @@ export default function GuruPresensi({ user }: { user: any }) {
       return Swal.fire('Info', 'Anda sudah melakukan Presensi Datang hari ini.', 'info');
     }
 
+    // Validasi Waktu Presensi
+    const now = new Date();
+    const currH = now.getHours();
+    const currM = now.getMinutes();
+    const currTimeVal = currH * 60 + currM;
+
+    const parseTime = (timeStr: string) => {
+      if (!timeStr) return 0;
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    let keterlambatanDetik = 0;
+
+    if (tipeAbsen === 'Datang') {
+      const startVal = parseTime(jamPresensi.datangMulai);
+      const batasVal = parseTime(jamPresensi.datangBatas);
+      const akhirVal = parseTime(jamPresensi.datangAkhir);
+
+      if (currTimeVal < startVal) {
+        return Swal.fire('Belum Waktunya', `Presensi datang baru dibuka jam ${jamPresensi.datangMulai} WITA.`, 'warning');
+      }
+      if (currTimeVal > akhirVal) {
+        return Swal.fire('Ditutup', `Presensi datang sudah ditutup jam ${jamPresensi.datangAkhir} WITA. Silakan hubungi admin.`, 'error');
+      }
+
+      if (currTimeVal > batasVal && jenisPresensi === 'Sekolah') {
+        const batasDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(batasVal / 60), batasVal % 60, 0);
+        keterlambatanDetik = Math.floor((now.getTime() - batasDate.getTime()) / 1000);
+        if (keterlambatanDetik < 0) keterlambatanDetik = 0;
+      }
+    } else if (tipeAbsen === 'Pulang') {
+      const startVal = parseTime(jamPresensi.pulangMulai);
+      const akhirVal = parseTime(jamPresensi.pulangAkhir);
+
+      if (currTimeVal < startVal) {
+        return Swal.fire('Belum Waktunya', `Presensi pulang baru dibuka jam ${jamPresensi.pulangMulai} WITA.`, 'warning');
+      }
+      if (currTimeVal > akhirVal) {
+        return Swal.fire('Ditutup', `Presensi pulang ditutup jam ${jamPresensi.pulangAkhir} WITA.`, 'error');
+      }
+    }
+
     setLoading(true);
     
     if (jenisPresensi === 'Sekolah' && jarakAktual !== null && jarakAktual > gpsConfig.radius) {
@@ -128,7 +186,8 @@ export default function GuruPresensi({ user }: { user: any }) {
       lokasi: lokasi,
       jarak: jarakAktual !== null ? `${jarakAktual} m` : 'Unknown',
       link_bukti: fileUrl,
-      status_verifikasi: statusVerif
+      status_verifikasi: statusVerif,
+      keterlambatan_detik: keterlambatanDetik
     };
 
     const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
