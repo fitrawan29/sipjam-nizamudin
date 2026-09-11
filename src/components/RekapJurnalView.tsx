@@ -63,30 +63,30 @@ export default function RekapJurnalView({ user }: { user: any }) {
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
         <div className="glass-card p-4">
             <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-book-open text-indigo-500"></i> Rekap Jurnal Pribadi
+              <i className="fa-solid fa-book-open text-indigo-500 dark:text-indigo-400"></i> Rekap Jurnal Pribadi
             </h2>
             <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">DARI TANGGAL</label>
-                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800" />
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white" />
                     </div>
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">SAMPAI TANGGAL</label>
-                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800" />
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white" />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">KELAS / ANGKATAN</label>
-                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800">
+                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white">
                         <option value="">Semua Kelas</option>
                         {kelasList.map((k, i) => <option key={i} value={k}>{k}</option>)}
                       </select>
                     </div>
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">MATA PELAJARAN</label>
-                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800">
+                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white">
                         <option value="">Semua Mapel</option>
                         {mapelList.map((m, i) => <option key={i} value={m}>{m}</option>)}
                       </select>
@@ -99,10 +99,10 @@ export default function RekapJurnalView({ user }: { user: any }) {
             
             <div id="hasil-rekap-jurnal-guru" className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-[150px]">
                 {!jurnalData && !loading && (
-                  <div className="text-center py-10 text-gray-400 text-[11px] italic col-span-full">Silakan atur filter dan klik tampilkan.</div>
+                  <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic col-span-full">Silakan atur filter dan klik tampilkan.</div>
                 )}
                 {jurnalData?.length === 0 && (
-                  <div className="text-center py-10 text-gray-400 text-[11px] italic col-span-full">Tidak ada jurnal ditemukan dengan filter tersebut.</div>
+                  <div className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic col-span-full">Tidak ada jurnal ditemukan dengan filter tersebut.</div>
                 )}
                 {jurnalData?.map((j: any) => (
                   <div key={j.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-xl shadow-sm space-y-2">
@@ -121,7 +121,7 @@ export default function RekapJurnalView({ user }: { user: any }) {
                       {j.refleksi && <p><span className="font-semibold text-gray-700 dark:text-gray-300">Refleksi:</span> {j.refleksi}</p>}
                     </div>
                     <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                      <p className="text-[9px] font-bold text-gray-500 mb-1">Absensi Siswa:</p>
+                      <p className="text-[9px] font-bold text-gray-500 dark:text-gray-400 mb-1">Absensi Siswa:</p>
                       <p className="text-[10px] text-gray-600 dark:text-gray-400">{j.absensi_siswa}</p>
                     </div>
                   </div>

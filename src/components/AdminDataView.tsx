@@ -133,7 +133,7 @@ export default function AdminDataView({ user }: { user: any }) {
             <p><span className="font-semibold">Kelas:</span> {item.kelas || '-'}</p>
             <p><span className="font-semibold">Gender:</span> {item.gender || '-'}</p>
           </div>
-          <div className="absolute top-2 right-2 text-[8px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700">{item.status || 'Aktif'}</div>
+          <div className="absolute top-2 right-2 text-[8px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{item.status || 'Aktif'}</div>
         </>
       );
     } else if (activeTab === 'Data_Guru') {
@@ -145,7 +145,7 @@ export default function AdminDataView({ user }: { user: any }) {
             <p><span className="font-semibold">Mapel:</span> {item.mata_pelajaran || '-'}</p>
             <p><span className="font-semibold">Kontak:</span> {item.no_hp || '-'}</p>
           </div>
-          <div className="absolute top-2 right-2 text-[8px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700">{item.status || 'Aktif'}</div>
+          <div className="absolute top-2 right-2 text-[8px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{item.status || 'Aktif'}</div>
         </>
       );
     } else if (activeTab === 'Data_Mapel') {
@@ -185,7 +185,7 @@ export default function AdminDataView({ user }: { user: any }) {
     <section id="view-admin-data" className="view-section fade-in">
         <div className="glass-card p-4">
             <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-database text-purple-500"></i> Master Data
+              <i className="fa-solid fa-database text-purple-500 dark:text-purple-400"></i> Master Data
             </h2>
             
             {/* TABS */}
@@ -211,7 +211,7 @@ export default function AdminDataView({ user }: { user: any }) {
 
             {/* DEBUG INFO (small text at top) */}
             {debugInfo && !loading && (
-              <div className="text-[9px] text-gray-400 dark:text-gray-600 mb-2 px-1">
+              <div className="text-[9px] text-gray-400 dark:text-gray-500 mb-2 px-1">
                 <i className="fa-solid fa-info-circle mr-1"></i>{debugInfo}
               </div>
             )}
@@ -230,7 +230,7 @@ export default function AdminDataView({ user }: { user: any }) {
             <div className="flex justify-between items-center mb-4 gap-2">
                 <div className="relative flex-grow">
                     <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 text-xs"></i>
-                    <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Cari data..." className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium dark:bg-gray-800 dark:text-white" />
+                    <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Cari data..." className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" />
                 </div>
                 <div className="flex gap-1.5 shrink-0">
                     <button type="button" onClick={loadData} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
@@ -246,7 +246,7 @@ export default function AdminDataView({ user }: { user: any }) {
             <div id="master-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px] content-start">
                 {loading ? (
                   <div className="col-span-full flex flex-col items-center justify-center py-10 text-gray-400 dark:text-gray-500">
-                    <i className="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-purple-500"></i>
+                    <i className="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-purple-500 dark:text-purple-400"></i>
                     <span className="text-xs italic">Menarik data dari Supabase...</span>
                   </div>
                 ) : paginatedList.length === 0 ? (

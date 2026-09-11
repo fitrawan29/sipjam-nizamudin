@@ -59,10 +59,16 @@ body.fade-out {
   }
 
   .input-premium {
-    @apply border border-slate-200 transition-all duration-300 bg-slate-50 rounded-2xl w-full relative z-20;
+    @apply border border-slate-200 transition-all duration-300 bg-slate-50 rounded-2xl w-full relative z-20 text-gray-800;
+  }
+  .input-premium::placeholder {
+    @apply text-slate-400;
   }
   .dark .input-premium {
     @apply bg-slate-800 border-slate-700 text-white;
+  }
+  .dark .input-premium::placeholder {
+    @apply text-slate-500;
   }
   .input-premium:focus {
     @apply border-nizamudin-green outline-none;
@@ -71,6 +77,51 @@ body.fade-out {
   .dark .input-premium:focus {
     @apply border-nizamudin-gold;
     box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+  }
+  .input-premium:disabled {
+    @apply opacity-60 cursor-not-allowed bg-slate-100;
+  }
+  .dark .input-premium:disabled {
+    @apply bg-slate-900/50;
+  }
+
+  /* Select elements inside dark mode */
+  .dark select.input-premium option {
+    @apply bg-slate-800 text-white;
+  }
+
+  /* Alert banners - consistent dark mode */
+  .alert-banner-red {
+    @apply bg-red-50 text-red-600 border border-red-200 rounded-xl p-3 text-xs;
+  }
+  .dark .alert-banner-red {
+    @apply bg-red-900/20 text-red-400 border-red-800;
+  }
+  .alert-banner-orange {
+    @apply bg-orange-50 text-orange-700 border border-orange-200 rounded-xl p-3 text-xs;
+  }
+  .dark .alert-banner-orange {
+    @apply bg-orange-900/20 text-orange-400 border-orange-800;
+  }
+  .alert-banner-blue {
+    @apply bg-blue-50 text-blue-600 border border-blue-200 rounded-xl p-3 text-xs;
+  }
+  .dark .alert-banner-blue {
+    @apply bg-blue-900/20 text-blue-400 border-blue-800;
+  }
+  .alert-banner-green {
+    @apply bg-green-50 text-green-600 border border-green-200 rounded-xl p-3 text-xs;
+  }
+  .dark .alert-banner-green {
+    @apply bg-green-900/20 text-green-400 border-green-800;
+  }
+
+  /* Form labels */
+  .form-label {
+    @apply block text-[11px] font-bold text-gray-500 mb-1.5 ml-1;
+  }
+  .dark .form-label {
+    @apply text-gray-400;
   }
 
   .btn-click {
@@ -116,5 +167,4 @@ body.fade-out {
   @page { size: A4 landscape; margin: 15mm; }
   body { background: white; margin: 0; padding: 0; line-height: 1.0 !important; color: black; }
   .mobile-container, .swal2-container { display: none !important; }
-  /* Additional print overrides will be managed by components using hidden print:block */
 }

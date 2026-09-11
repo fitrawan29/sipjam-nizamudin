@@ -63,7 +63,7 @@ export default function AdminMonitorView({ user }: { user: any }) {
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-user-clock text-orange-500"></i> Pantauan Harian
+                  <i className="fa-solid fa-user-clock text-orange-500 dark:text-orange-400"></i> Pantauan Harian
                 </h2>
                 <button type="button" onClick={loadData} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
                   <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
@@ -77,7 +77,7 @@ export default function AdminMonitorView({ user }: { user: any }) {
             </div>
             <div className="relative mb-4">
                 <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 text-xs"></i>
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama guru..." className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium dark:bg-gray-800 dark:text-white" />
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama guru..." className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" />
             </div>
             <div id="monitor-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
                 {loading && presensiList.length === 0 ? (
@@ -108,7 +108,7 @@ export default function AdminMonitorView({ user }: { user: any }) {
                         {p.detail_izin && <span> ({p.detail_izin})</span>}
                       </div>
                       {p.lokasi && (
-                        <div className="text-[9px] text-gray-400 truncate">
+                        <div className="text-[9px] text-gray-400 dark:text-gray-400 truncate">
                           <i className="fa-solid fa-location-dot"></i> {p.lokasi}
                         </div>
                       )}

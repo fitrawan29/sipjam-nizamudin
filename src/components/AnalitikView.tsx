@@ -91,7 +91,7 @@ export default function AnalitikView({ user }: { user: any }) {
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-chart-pie text-rose-500"></i> Dasbor Analitik
+                  <i className="fa-solid fa-chart-pie text-rose-500 dark:text-rose-400"></i> Dasbor Analitik
                 </h2>
             </div>
             <div className="bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/50 p-3 rounded-2xl mb-4 flex gap-2">
@@ -147,7 +147,7 @@ export default function AnalitikView({ user }: { user: any }) {
             
             <div>
                 <h3 className="text-sm font-black text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
-                  <i className="fa-solid fa-medal text-yellow-500"></i> Papan Peringkat (Top 10)
+                  <i className="fa-solid fa-medal text-yellow-500 dark:text-yellow-400"></i> Papan Peringkat (Top 10)
                 </h3>
                 <div id="leaderboard-list" className="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[150px]">
                     {!leaderboard && !loading && (
@@ -169,13 +169,13 @@ export default function AnalitikView({ user }: { user: any }) {
                         <div className="flex-grow min-w-0">
                           <h4 className="text-[11px] font-bold text-gray-800 dark:text-gray-100 truncate">{l.nama}</h4>
                           <div className="text-[9px] text-gray-500 dark:text-gray-400 flex gap-2 mt-0.5">
-                            <span><i className="fa-solid fa-check text-green-500"></i> {l.hadir} Hadir</span>
-                            <span><i className="fa-solid fa-book text-blue-500"></i> {l.jurnal} Jurnal</span>
+                            <span><i className="fa-solid fa-check text-green-500 dark:text-green-400"></i> {l.hadir} Hadir</span>
+                            <span><i className="fa-solid fa-book text-blue-500 dark:text-blue-400"></i> {l.jurnal} Jurnal</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-xs font-black text-rose-500 dark:text-rose-400">{l.score}</div>
-                          <div className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Poin</div>
+                          <div className="text-[8px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">Poin</div>
                         </div>
                       </div>
                     ))}

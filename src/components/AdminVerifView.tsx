@@ -110,7 +110,7 @@ export default function AdminVerifView({ user }: { user: any }) {
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-clipboard-check text-green-600"></i> Verifikasi Data
+                  <i className="fa-solid fa-clipboard-check text-green-600 dark:text-green-400"></i> Verifikasi Data
                 </h2>
                 <button type="button" onClick={loadData} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
                   <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
@@ -140,7 +140,7 @@ export default function AdminVerifView({ user }: { user: any }) {
             </div>
             <div className="relative mb-4">
                 <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 text-xs"></i>
-                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama guru..." className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium dark:bg-gray-800 dark:text-white" />
+                <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama guru..." className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium dark:bg-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" />
             </div>
             <div id="verif-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
                 {loading && displayList.length === 0 ? (
@@ -160,10 +160,10 @@ export default function AdminVerifView({ user }: { user: any }) {
                     {activeTab === 'Presensi' ? (
                       <div className="text-[10px] text-gray-600 dark:text-gray-300 space-y-1">
                         <p><span className="font-semibold">Waktu:</span> {formatTimestampWita(item.timestamp)}</p>
-                        <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-nizamudin-green">{item.tipe_absen}</span></p>
+                        <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-nizamudin-green dark:text-green-400">{item.tipe_absen}</span></p>
                         <p><span className="font-semibold">Jenis:</span> {item.jenis_presensi} {item.detail_izin && `(${item.detail_izin})`}</p>
                         {item.link_bukti && item.link_bukti !== '-' && (
-                          <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline mt-1 block">
+                          <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-blue-500 dark:text-blue-400 hover:underline mt-1 block">
                             <i className="fa-solid fa-link"></i> Bukti Lampiran
                           </a>
                         )}
@@ -174,7 +174,7 @@ export default function AdminVerifView({ user }: { user: any }) {
                         <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
                         <p><span className="font-semibold">Materi:</span> {item.materi}</p>
                         {item.link_bukti_foto && item.link_bukti_foto !== '-' && (
-                          <a href={item.link_bukti_foto} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline mt-1 block">
+                          <a href={item.link_bukti_foto} target="_blank" rel="noreferrer" className="text-blue-500 dark:text-blue-400 hover:underline mt-1 block">
                             <i className="fa-solid fa-link"></i> Bukti Lampiran
                           </a>
                         )}

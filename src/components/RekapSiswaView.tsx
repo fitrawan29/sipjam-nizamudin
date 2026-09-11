@@ -103,30 +103,30 @@ export default function RekapSiswaView({ user }: { user: any }) {
     <section id="view-rekap-siswa" className="view-section fade-in">
         <div className="glass-card p-4">
             <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-users-viewfinder text-teal-500"></i> Rekap Absen Siswa
+              <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400"></i> Rekap Absen Siswa
             </h2>
             <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">DARI TANGGAL</label>
-                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800" />
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white" />
                     </div>
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">SAMPAI TANGGAL</label>
-                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800" />
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white" />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">KELAS <span className="text-red-500">*</span></label>
-                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800">
+                      <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">KELAS <span className="text-red-500 dark:text-red-400">*</span></label>
+                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white">
                         <option value="" disabled>Pilih...</option>
                         {kelasList.map((k, i) => <option key={i} value={k}>{k}</option>)}
                       </select>
                     </div>
                     <div className="flex-1">
                       <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">MATA PELAJARAN</label>
-                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800">
+                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium dark:bg-gray-800 dark:text-white">
                         <option value="">Semua Mapel</option>
                         {mapelList.map((m, i) => <option key={i} value={m}>{m}</option>)}
                       </select>
@@ -146,9 +146,9 @@ export default function RekapSiswaView({ user }: { user: any }) {
                               <th className="px-3 py-2 border-b dark:border-gray-700">No</th>
                               <th className="px-3 py-2 border-b dark:border-gray-700">NISN</th>
                               <th className="px-3 py-2 border-b dark:border-gray-700">Nama Siswa</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-yellow-600">Sakit</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-orange-600">Izin</th>
-                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-red-600">Alpa</th>
+                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-yellow-600 dark:text-yellow-400">Sakit</th>
+                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-orange-600 dark:text-orange-400">Izin</th>
+                              <th className="px-3 py-2 border-b dark:border-gray-700 text-center text-red-600 dark:text-red-400">Alpa</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -159,7 +159,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                                 <td className="px-3 py-2 font-bold text-gray-800 dark:text-gray-200">{s.nama_siswa}</td>
                                 <td className="px-3 py-2 text-center font-bold">{s.sakit > 0 ? s.sakit : '-'}</td>
                                 <td className="px-3 py-2 text-center font-bold">{s.izin > 0 ? s.izin : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold text-red-500">{s.alpa > 0 ? s.alpa : '-'}</td>
+                                <td className="px-3 py-2 text-center font-bold text-red-500 dark:text-red-400">{s.alpa > 0 ? s.alpa : '-'}</td>
                               </tr>
                             ))}
                             {rekapData.length === 0 && (
@@ -194,7 +194,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                   </div>
               </div>
             ) : (
-              <div id="rekap-siswa-kosong" className="text-center py-10 text-gray-400 text-[11px] italic">Silakan atur filter dan klik tampilkan.</div>
+              <div id="rekap-siswa-kosong" className="text-center py-10 text-gray-400 dark:text-gray-500 text-[11px] italic">Silakan atur filter dan klik tampilkan.</div>
             )}
         </div>
     </section>

@@ -151,7 +151,7 @@ export default function AdminBackupView({ user }: { user: any }) {
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-hard-drive text-indigo-500"></i> Akses Data & Backup
+                  <i className="fa-solid fa-hard-drive text-indigo-500 dark:text-indigo-400"></i> Akses Data & Backup
                 </h2>
                 <button type="button" onClick={fetchRiwayat} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
                   <i className="fa-solid fa-rotate-right"></i>
@@ -176,7 +176,7 @@ export default function AdminBackupView({ user }: { user: any }) {
 
             <div>
                 <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-3">
-                  <i className="fa-solid fa-clock-rotate-left mr-1 text-indigo-500"></i> Riwayat Backup
+                  <i className="fa-solid fa-clock-rotate-left mr-1 text-indigo-500 dark:text-indigo-400"></i> Riwayat Backup
                 </h3>
                 <div id="list-backup-area" className="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto custom-scroll pr-1">
                     {riwayat.length === 0 ? (

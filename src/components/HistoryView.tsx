@@ -73,7 +73,7 @@ export default function HistoryView({ user }: { user: any }) {
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-clipboard-list text-gray-500"></i> Riwayat Anda
+                  <i className="fa-solid fa-clipboard-list text-gray-500 dark:text-gray-400"></i> Riwayat Anda
                 </h2>
                 <button type="button" onClick={loadData} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700">
                   <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
@@ -106,7 +106,7 @@ export default function HistoryView({ user }: { user: any }) {
                 />
             </div>
             {errorMsg && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-xs border border-red-200">
+                <div className="bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800 p-3 rounded-xl mb-4 text-xs">
                     <i className="fa-solid fa-circle-exclamation mr-1"></i> Gagal memuat data: {errorMsg}
                 </div>
             )}

@@ -11,6 +11,10 @@ export default function AdminConfigView({ user }: { user: any }) {
     waktu_efektif_mulai: '',
     waktu_efektif_akhir: '',
     hari_sekolah: '6',
+    jam_datang_mulai: '06:45',
+    jam_datang_akhir: '08:00',
+    jam_pulang_mulai: '11:00',
+    jam_pulang_akhir: '22:00',
     kop_yayasan: '',
     kop_sekolah: '',
     kop_alamat: '',
@@ -78,7 +82,7 @@ export default function AdminConfigView({ user }: { user: any }) {
     <section id="view-admin-config" className="view-section fade-in">
         <div className="glass-card p-5">
             <h2 className="text-lg font-bold text-gray-800 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-gears text-gray-500"></i> Konfigurasi
+              <i className="fa-solid fa-gears text-gray-500 dark:text-gray-400"></i> Konfigurasi
             </h2>
             <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -95,12 +99,24 @@ export default function AdminConfigView({ user }: { user: any }) {
                     </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                    <h3 className="text-[10px] font-bold text-gray-400 mb-3 uppercase flex items-center gap-1.5"><i className="fa-regular fa-calendar"></i> Waktu Efektif</h3>
+                    <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-3 uppercase flex items-center gap-1.5"><i className="fa-regular fa-calendar"></i> Waktu Efektif</h3>
                     <div className="grid grid-cols-2 gap-3 mb-3">
                         <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Mulai Sem.</label><input type="date" name="waktu_efektif_mulai" value={config.waktu_efektif_mulai} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
                         <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Akhir Sem.</label><input type="date" name="waktu_efektif_akhir" value={config.waktu_efektif_akhir} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
                     </div>
                     <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Hari Sekolah / Minggu</label><select name="hari_sekolah" value={config.hari_sekolah} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white"><option value="6">6 Hari (Senin - Sabtu)</option><option value="5">5 Hari (Senin - Jumat)</option></select></div>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4">
+                    <h3 className="text-[10px] font-bold text-amber-800 dark:text-amber-400 mb-3 uppercase flex items-center gap-1.5"><i className="fa-regular fa-clock"></i> Pengaturan Jam Presensi</h3>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Datang Mulai</label><input type="time" name="jam_datang_mulai" value={config.jam_datang_mulai} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Datang Akhir</label><input type="time" name="jam_datang_akhir" value={config.jam_datang_akhir} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Pulang Mulai</label><input type="time" name="jam_pulang_mulai" value={config.jam_pulang_mulai} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                        <div><label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-1">Pulang Akhir</label><input type="time" name="jam_pulang_akhir" value={config.jam_pulang_akhir} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 dark:text-white" /></div>
+                    </div>
+                    <p className="text-[8px] text-gray-400 dark:text-gray-500 mt-2 italic">* Guru hanya bisa melakukan presensi datang/pulang di rentang waktu yang ditentukan.</p>
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4">
                     <h3 className="text-[10px] font-bold text-blue-800 dark:text-blue-500 mb-3 uppercase flex items-center gap-1.5"><i className="fa-solid fa-print"></i> Pengaturan Kop Surat</h3>
@@ -122,7 +138,7 @@ export default function AdminConfigView({ user }: { user: any }) {
                     </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                    <h3 className="text-[10px] font-bold text-gray-400 mb-3 uppercase flex items-center gap-1.5"><i className="fa-solid fa-signature"></i> Tanda Tangan Laporan</h3>
+                    <h3 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-3 uppercase flex items-center gap-1.5"><i className="fa-solid fa-signature"></i> Tanda Tangan Laporan</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="block text-[9px] text-gray-500 dark:text-gray-400 mb-0.5">Nama Kepala Sekolah</label>

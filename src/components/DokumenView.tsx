@@ -94,7 +94,7 @@ export default function DokumenView({ user }: { user: any }) {
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-folder-open text-amber-500"></i> Perangkat Pembelajaran
+                  <i className="fa-solid fa-folder-open text-amber-500 dark:text-amber-400"></i> Perangkat Pembelajaran
                 </h2>
                 <button type="button" onClick={loadDokumen} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
                   <i className={`fa-solid fa-rotate-right ${fetching ? 'animate-spin' : ''}`}></i>
@@ -127,7 +127,7 @@ export default function DokumenView({ user }: { user: any }) {
                   dokumenList.map((dok: any) => (
                     <div key={dok.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
                       <div className="flex justify-between items-start mb-1">
-                        <h3 className="text-[11px] font-bold text-gray-800 dark:text-gray-100 uppercase text-amber-600">{dok.jenis_dokumen}</h3>
+                        <h3 className="text-[11px] font-bold uppercase text-amber-600 dark:text-amber-400">{dok.jenis_dokumen}</h3>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                             dok.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                             dok.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
@@ -146,7 +146,7 @@ export default function DokumenView({ user }: { user: any }) {
                       
                       {dok.link_file && dok.link_file !== '-' && (
                         <a href={dok.link_file} target="_blank" rel="noreferrer" className="mt-2 text-center text-[10px] font-bold bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 rounded-lg transition-colors">
-                          <i className="fa-solid fa-file-pdf mr-1 text-red-500"></i> Buka Dokumen
+                          <i className="fa-solid fa-file-pdf mr-1 text-red-500 dark:text-red-400"></i> Buka Dokumen
                         </a>
                       )}
                     </div>
@@ -175,8 +175,8 @@ export default function DokumenView({ user }: { user: any }) {
                           <input type="text" required value={judul} onChange={e => setJudul(e.target.value)} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium" placeholder="Contoh: Modul Ajar Bab 1 Kelas X" />
                       </div>
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1 text-red-500"><i className="fa-solid fa-asterisk"></i> File PDF/Gambar (Bisa lebih dari 1)</label>
-                          <input type="file" required accept=".pdf,image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800" />
+                          <label className="block text-[11px] font-bold text-gray-500 dark:text-gray-400 mb-1.5 ml-1"><i className="fa-solid fa-asterisk text-red-500 dark:text-red-400 text-[9px] mr-1"></i>File PDF/Gambar (Bisa lebih dari 1)</label>
+                          <input type="file" required accept=".pdf,image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 dark:text-white" />
                       </div>
                       <div className="pt-2">
                           <button type="submit" disabled={loading} className="btn-click w-full bg-amber-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-amber-900/20 text-sm flex items-center justify-center gap-2 hover:bg-amber-700 transition disabled:opacity-50">
