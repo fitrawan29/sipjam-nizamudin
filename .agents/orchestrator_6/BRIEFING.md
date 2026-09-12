@@ -53,12 +53,14 @@ Execute Milestone 6: Perombakan masif dashboard Guru & Admin, cetak dokumen (ori
 | worker_m6_2 | teamwork_preview_worker | M6.2 Document Print Redesign (R1) | completed | a602fc9d-1127-4b03-ace2-df22fa423b16 |
 | worker_m6_3 | teamwork_preview_worker | M6.3 Dashboards & Verification (R2 & R3) | completed | 79c29586-3b26-402a-b745-c04afaf12a2b |
 | worker_m6_4 | teamwork_preview_worker | M6.4 Piket, Perangkat, Broadcast & Transitions | completed | d70254ac-d6d6-435b-8559-d766d57ec6fc |
-| worker_m6_fix | teamwork_preview_worker | AdminVerifView Defect Remediation | running | 3498c6bd-1f88-4d98-a2f4-1f6e8f2ad444 |
+| worker_m6_fix | teamwork_preview_worker | AdminVerifView Defect Remediation | completed | 3498c6bd-1f88-4d98-a2f4-1f6e8f2ad444 |
+| challenger_m6_final | teamwork_preview_challenger | Final Adversarial Gate Verification | running | 06cc1ec8-2ce6-4ecb-96cb-6df25469f230 |
+| auditor_m6_final | teamwork_preview_auditor | Final Forensic Integrity Audit | running | fd04abcc-d701-4c4b-b14c-f8dc4629ba65 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 13 / 16
-- Pending subagents: 3498c6bd-1f88-4d98-a2f4-1f6e8f2ad444
+- Spawn count: 15 / 16
+- Pending subagents: 06cc1ec8-2ce6-4ecb-96cb-6df25469f230, fd04abcc-d701-4c4b-b14c-f8dc4629ba65
 - Predecessor: none
 - Successor: not yet spawned
 
