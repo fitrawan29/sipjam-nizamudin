@@ -133,7 +133,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
   if (!namaGuru) return state;
 
   try {
-    // 1. Cek Hari Libur
+    // 1. Cek Hari Libur dari kalender_pendidikan
     const { data: cal } = await supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
     if (cal && cal.length > 0) {
       const libur = cal.find((c: any) => c.tipe === 'Libur');
@@ -145,12 +145,39 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
       }
     }
 
-    const selectedHari = getWitaDayName(now);
+    // 2. Cek Libur Akhir Pekan berdasarkan pengaturan hari_sekolah
+    const { data: pengaturanRows } = await supabase
+      .from('pengaturan')
+      .select('key, value')
+      .eq('key', 'hari_sekolah')
+      .limit(1);
+
+    const hariSekolah = pengaturanRows && pengaturanRows.length > 0
+      ? parseInt(pengaturanRows[0].value || '6', 10)
+      : 6; // Default 6 hari jika belum dikonfigurasi
+
+    const hariIni = getWitaDayName(now); // "Senin", "Selasa", ..., "Sabtu", "Minggu"
+
+    if (hariIni === 'Minggu') {
+      state.isLibur = true;
+      state.keteranganLibur = 'Hari Minggu - Hari Libur Mingguan';
+      state.lockedReason = 'Hari Minggu adalah hari libur. Presensi, Jurnal, dan Piket tidak dibuka.';
+      return state;
+    }
+
+    if (hariSekolah === 5 && hariIni === 'Sabtu') {
+      state.isLibur = true;
+      state.keteranganLibur = 'Hari Sabtu - Libur (Sekolah 5 Hari Kerja)';
+      state.lockedReason = 'Hari Sabtu adalah hari libur karena sekolah menerapkan 5 hari kerja. Presensi, Jurnal, dan Piket tidak dibuka.';
+      return state;
+    }
+
+    const selectedHari = hariIni; // Reuse hariIni already computed above
 
     // Selalu muat jadwal KBM hari ini untuk guru (tidak ditekan oleh isDinasLuar ataupun presensi datang)
     state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username);
 
-    // 2. Cek Presensi Hari Ini
+    // 3. Cek Presensi Hari Ini
     const startOfDay = getWitaStartOfDay(todayStr);
     const endOfDay = getWitaEndOfDay(todayStr);
 
