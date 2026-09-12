@@ -75,7 +75,7 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
  * Helper: Cek apakah namaGuru terdaftar di string daftar_guru piket (case-insensitive).
  * daftar_guru format: "Setia Ambar Ningsih Mamonto, Rohani Marham"
  */
-function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
+export function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
   if (!daftarGuru || !namaGuru) return false;
   const namaLower = namaGuru.toLowerCase().trim();
   const daftarArr = daftarGuru.split(',').map(n => n.trim().toLowerCase());
