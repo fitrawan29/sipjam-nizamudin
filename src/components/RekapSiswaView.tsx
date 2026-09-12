@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
-import { PrintHeader, PrintSignature } from './PrintHeader';
+import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
 
 export default function RekapSiswaView({ user }: { user: any }) {
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [kelas, setKelas] = useState('');
@@ -197,8 +198,20 @@ export default function RekapSiswaView({ user }: { user: any }) {
     <section id="view-rekap-siswa" className="view-section fade-in">
         <div className="glass-card p-4">
             <PrintHeader />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 no-print text-base"></i> Rekap Absen Siswa
+            {/* Document Print Subheader */}
+            <div className="text-center my-3 print:my-2">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+                Rekapitulasi Presensi Kehadiran Siswa
+              </h3>
+              <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+                <span>Kelas: <strong>{kelas || '-'}</strong></span>
+                {mapel && <span>Mapel: <strong>{mapel}</strong></span>}
+                <span><strong>{formatPeriodHeader('', startDate, endDate)}</strong></span>
+                <span>Guru: <strong>{user?.nama || '-'}</strong></span>
+              </div>
+            </div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
+              <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 text-base"></i> Rekap Absen Siswa
             </h2>
             <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3 no-print">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -262,9 +275,9 @@ export default function RekapSiswaView({ user }: { user: any }) {
                       </div>
                   </div>
 
-                  {/* Student search input */}
-                  <div className="flex items-center gap-2 no-print">
-                      <div className="relative flex-1">
+                  {/* Student search input & Orientation Toolbar */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 no-print">
+                      <div className="relative flex-1 min-w-[200px]">
                           <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                           <input
                             type="text"
@@ -283,40 +296,41 @@ export default function RekapSiswaView({ user }: { user: any }) {
                           Reset
                         </button>
                       )}
+                      <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
                   </div>
 
-                  <div className="overflow-x-auto [-webkit-overflow-scrolling:touch] border border-gray-200 dark:border-gray-800 rounded-xl custom-scroll bg-white dark:bg-gray-800 shadow-sm">
-                      <table className="w-full text-[10px] text-left text-gray-900 dark:text-white whitespace-nowrap">
-                          <thead className="text-[9px] text-gray-900 dark:text-white uppercase bg-gray-100 dark:bg-gray-700 font-bold border-b border-gray-200 dark:border-gray-800">
+                  <div className="overflow-x-auto w-full border border-gray-300 dark:border-gray-700 print:border-black rounded-xl print:overflow-visible shadow-sm">
+                      <table className="w-full text-xs text-left border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
+                          <thead className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white font-bold border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
                             <tr>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">No</th>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">NISN</th>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800">Nama Siswa</th>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-emerald-600 dark:text-emerald-400">Hadir</th>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-yellow-600 dark:text-yellow-400">Sakit</th>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-orange-600 dark:text-orange-400">Izin</th>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-red-600 dark:text-red-400">Alpa</th>
-                              <th className="px-3 py-2 border-b border-gray-200 dark:border-gray-800 text-center text-blue-600 dark:text-blue-400">% Kehadiran</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-10">No</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black w-28">NISN</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black">Nama Siswa</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-emerald-700 dark:text-emerald-400 print:text-black">Hadir</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-24 text-blue-700 dark:text-blue-400 print:text-black">% Kehadiran</th>
                             </tr>
                           </thead>
                           <tbody>
                             {filteredData.map((s, i) => (
-                              <tr key={i} className="border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-900 dark:text-white">
-                                <td className="px-3 py-2">{i + 1}</td>
-                                <td className="px-3 py-2">{s.nisn}</td>
-                                <td className="px-3 py-2 font-bold text-gray-900 dark:text-white">{s.nama_siswa}</td>
-                                <td className="px-3 py-2 text-center font-bold text-emerald-600 dark:text-emerald-400">{s.hadir > 0 ? s.hadir : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold text-yellow-600 dark:text-yellow-400">{s.sakit > 0 ? s.sakit : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold text-orange-600 dark:text-orange-400">{s.izin > 0 ? s.izin : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold text-red-600 dark:text-red-400">{s.alpa > 0 ? s.alpa : '-'}</td>
-                                <td className="px-3 py-2 text-center font-bold text-blue-600 dark:text-blue-400">
+                              <tr key={i} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 text-gray-900 dark:text-white">
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center">{i + 1}</td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-mono text-[11px] print:text-[8pt]">{s.nisn || '-'}</td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold">{s.nama_siswa}</td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-emerald-700 dark:text-emerald-400 print:text-black">{s.hadir > 0 ? s.hadir : '-'}</td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-yellow-700 dark:text-yellow-400 print:text-black">{s.sakit > 0 ? s.sakit : '-'}</td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-orange-700 dark:text-orange-400 print:text-black">{s.izin > 0 ? s.izin : '-'}</td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-red-700 dark:text-red-400 print:text-black">{s.alpa > 0 ? s.alpa : '-'}</td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">
                                   {s.total > 0 ? `${s.persentase}%` : '-'}
                                 </td>
                               </tr>
                             ))}
                             {filteredData.length === 0 && (
                               <tr>
-                                <td colSpan={8} className="text-center py-4 italic text-gray-500 dark:text-gray-400">
+                                <td colSpan={8} className="text-center py-6 italic text-gray-500 dark:text-gray-400 text-xs">
                                   {search ? 'Tidak ada siswa yang cocok dengan kata kunci pencarian.' : 'Tidak ada data siswa untuk kelas tersebut.'}
                                 </td>
                               </tr>
@@ -325,7 +339,12 @@ export default function RekapSiswaView({ user }: { user: any }) {
                       </table>
                   </div>
                   
-                  <PrintSignature />
+                  <PrintSignature
+                    leftTitle="Mengetahui,"
+                    leftSubtitle={user?.role === 'guru' ? 'Guru Mata Pelajaran' : 'Wali Kelas'}
+                    leftName={user?.nama}
+                    leftNip={user?.nip}
+                  />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 no-print">
                       <button type="button" onClick={() => {

@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr } from '@/lib/wita';
-import { transformGoogleDriveUrl } from '@/lib/imageUrl';
-import { PrintHeader, PrintSignature } from './PrintHeader';
+import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
+import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
 
 export default function RekapJurnalView({ user }: { user: any }) {
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });
@@ -264,10 +265,22 @@ export default function RekapJurnalView({ user }: { user: any }) {
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
                 Rekapitulasi Jurnal Pembelajaran Guru
               </h3>
-              <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex justify-center gap-4">
+              <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
                 <span>Guru: <strong>{user?.nama || '-'}</strong></span>
-                {bulan && <span>Periode: <strong>{bulan}</strong></span>}
+                <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
+                {kelas && <span>Kelas: <strong>{kelas}</strong></span>}
+                {mapel && <span>Mapel: <strong>{mapel}</strong></span>}
               </div>
+            </div>
+
+            {/* Print Toolbar Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3 no-print">
+              <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
+              {filteredJurnal && filteredJurnal.length > 0 && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Menampilkan {filteredJurnal.length} entri jurnal
+                </div>
+              )}
             </div>
 
             <div id="hasil-rekap-jurnal-guru" className="min-h-[150px]">
@@ -355,10 +368,19 @@ export default function RekapJurnalView({ user }: { user: any }) {
                                 {hasFoto ? (
                                   <div className="flex flex-col items-center justify-center gap-1">
                                     <img
-                                      src={transformGoogleDriveUrl(fotoUrl)}
+                                      src={getGoogleDriveThumbnailUrl(fotoUrl, 800) || transformGoogleDriveUrl(fotoUrl)}
                                       alt="Foto Kegiatan"
-                                      className="w-12 h-12 print:w-10 print:h-10 object-cover rounded border border-gray-300 dark:border-gray-600 print:border-black mx-auto"
-                                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                      loading="eager"
+                                      referrerPolicy="no-referrer"
+                                      className="w-14 h-14 print:w-20 print:h-16 object-contain rounded border border-gray-300 dark:border-gray-600 print:border-gray-300 mx-auto bg-white"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
+                                          target.src = transformGoogleDriveUrl(fotoUrl);
+                                        } else {
+                                          target.style.display = 'none';
+                                        }
+                                      }}
                                     />
                                     <a
                                       href={fotoUrl}
@@ -382,7 +404,12 @@ export default function RekapJurnalView({ user }: { user: any }) {
                 )}
             </div>
 
-            <PrintSignature />
+            <PrintSignature
+              leftTitle="Mengetahui,"
+              leftSubtitle="Guru Mata Pelajaran"
+              leftName={user?.nama}
+              leftNip={user?.nip}
+            />
 
             {jurnalData && jurnalData.length > 0 && (
               <div id="btn-group-jurnal-guru" className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 fade-in no-print">

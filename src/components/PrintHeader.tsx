@@ -100,7 +100,27 @@ export function PrintHeader() {
   );
 }
 
-export function PrintSignature() {
+export interface PrintSignatureProps {
+  leftTitle?: string;
+  leftSubtitle?: string;
+  leftName?: string;
+  leftNip?: string;
+  rightTitle?: string;
+  rightName?: string;
+  rightNip?: string;
+  singleColumn?: boolean;
+}
+
+export function PrintSignature({
+  leftTitle,
+  leftSubtitle,
+  leftName,
+  leftNip,
+  rightTitle,
+  rightName,
+  rightNip,
+  singleColumn = false
+}: PrintSignatureProps = {}) {
   const [config, setConfig] = useState<any>({});
   const [dateStr, setDateStr] = useState('');
 
@@ -155,19 +175,150 @@ export function PrintSignature() {
   };
 
   const region = getRegion();
-  const kepsekNama = config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || 'Kepala Sekolah';
-  const kepsekNip = config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || '';
+  const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || 'Kepala Sekolah';
+  const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || '';
+
+  const containerClass = singleColumn
+    ? "print-only print-signature mt-10 flex justify-end ml-auto text-black"
+    : "print-only print-signature w-full flex justify-between items-start mt-8 pt-4 page-break-inside-avoid text-black";
+
+  const containerStyle = singleColumn
+    ? { display: 'flex', justifyContent: 'flex-end', marginLeft: 'auto' }
+    : { display: 'flex', justifyContent: 'space-between', width: '100%' };
 
   return (
-    <div className="print-only print-signature mt-10 flex justify-end ml-auto text-black" style={{ display: 'flex', justifyContent: 'flex-end', marginLeft: 'auto' }}>
-      <div className="text-center w-64 ml-auto text-black">
-        <p className="leading-tight text-xs sm:text-sm">{region ? `${region}, ` : ''}{dateStr}</p>
-        <p className="mb-24 leading-tight text-xs sm:text-sm">Kepala Sekolah</p>
-        <p className="font-bold underline leading-tight text-xs sm:text-sm">{kepsekNama}</p>
-        <p className="leading-tight text-[11px] sm:text-xs">
+    <div className={containerClass} style={containerStyle}>
+      {/* Left Signer: Guru Mata Pelajaran / Wali Kelas */}
+      {!singleColumn && (
+        <div className="text-center min-w-[200px] text-black">
+          <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
+            {leftTitle || 'Mengetahui,'}
+          </span>
+          <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
+            {leftSubtitle || 'Guru Mata Pelajaran'}
+          </span>
+          <div className="h-20 sm:h-24" />
+          <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+            {leftName || '( ........................................ )'}
+          </span>
+          <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+            {leftNip && leftNip !== '-' ? `NIP. ${leftNip}` : 'NIP. -'}
+          </span>
+        </div>
+      )}
+
+      {/* Right Signer: Kepala Sekolah with [Kabupaten/Kota], [Date] */}
+      <div className={`text-center min-w-[200px] text-black ${singleColumn ? 'w-64 ml-auto' : ''}`}>
+        <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
+          {region ? `${region}, ` : ''}{dateStr}
+        </span>
+        <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
+          {rightTitle || 'Kepala Sekolah'}
+        </span>
+        <div className="h-20 sm:h-24" />
+        <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+          {kepsekNama}
+        </span>
+        <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
           {kepsekNip && kepsekNip !== '-' ? `NIP. ${kepsekNip}` : 'NIP. -'}
-        </p>
+        </span>
       </div>
     </div>
   );
+}
+
+export function PrintOrientationToggle({
+  orientation,
+  setOrientation
+}: {
+  orientation: 'landscape' | 'portrait';
+  setOrientation: (val: 'landscape' | 'portrait') => void;
+}) {
+  return (
+    <>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 ${orientation} !important;
+            margin: 10mm 12mm !important;
+          }
+          header, nav, aside, .app-header, .no-print {
+            display: none !important;
+          }
+          main {
+            padding-top: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
+      <div className="flex items-center gap-2 no-print">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+          <i className="fa-solid fa-arrows-rotate text-[11px] text-gray-400"></i> Orientasi Cetak:
+        </span>
+        <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
+          <button
+            type="button"
+            onClick={() => setOrientation('portrait')}
+            className={`px-3 py-1 text-xs rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+              orientation === 'portrait'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <i className="fa-solid fa-file text-[11px]"></i> Portrait
+          </button>
+          <button
+            type="button"
+            onClick={() => setOrientation('landscape')}
+            className={`px-3 py-1 text-xs rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
+              orientation === 'landscape'
+                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <i className="fa-solid fa-file fa-rotate-90 text-[11px]"></i> Landscape
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function formatPeriodHeader(bulan?: string, startDate?: string, endDate?: string): string {
+  const formatDateIndo = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+    }
+    return dateStr;
+  };
+
+  if (startDate && endDate) {
+    if (startDate === endDate) {
+      return `Periode: ${formatDateIndo(startDate)}`;
+    }
+    return `Periode: ${formatDateIndo(startDate)} - ${formatDateIndo(endDate)}`;
+  }
+  if (startDate && !endDate) {
+    return `Periode: Sejak ${formatDateIndo(startDate)}`;
+  }
+  if (!startDate && endDate) {
+    return `Periode: Sampai ${formatDateIndo(endDate)}`;
+  }
+  if (bulan && bulan.includes('-')) {
+    const [year, month] = bulan.split('-');
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const mIdx = parseInt(month, 10) - 1;
+    const monthName = monthNames[mIdx] || month;
+    return `Periode: ${monthName} ${year}`;
+  }
+  return 'Periode: Semua Data';
 }

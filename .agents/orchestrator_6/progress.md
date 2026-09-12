@@ -1,12 +1,13 @@
 # Progress — Orchestrator 6
 
 ## Current Status
-Last visited: 2026-09-12T04:50:20Z
+Last visited: 2026-09-12T05:00:20Z
 - [x] Initial dispatch received & recorded
 - [x] BRIEFING initialized
 - [x] Survey codebase (R1-R5) completed via Explorers
 - [x] PROJECT.md updated with M6 architecture & Feature Inventory
-- [/] M6.1 Database Migration & Schema (worker_m6_1 active)
+- [x] M6.1 Database Migration & Schema completed
+- [/] M6.2 Document Printing Redesign (worker_m6_2 verifying build & git)
 - [ ] Establish architecture & update PROJECT.md
 - [ ] Implement database migrations (Pengumuman & Penugasan Piket)
 - [ ] Implement R1 (Document Print adjustments: orientation toggle, CSS @page, signatures, photos, headers)
