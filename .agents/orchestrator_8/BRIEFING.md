@@ -47,12 +47,17 @@ Remediate Milestone 7 RLS integrity defects, apply live Supabase migration, wire
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| worker_m8_remediation | teamwork_preview_worker | Remediation implementation & DB migration | in-progress | f91e3181-aadd-4af0-bbb1-703d6055b394 |
+| worker_m8_remediation | teamwork_preview_worker | Remediation implementation & DB migration | completed | f91e3181-aadd-4af0-bbb1-703d6055b394 |
+| reviewer_m8_security | teamwork_preview_reviewer | Security & RLS Isolation Review | in-progress | 2453bfcd-3687-4f3e-9e38-1f29a4500a45 |
+| reviewer_m8_fullstack | teamwork_preview_reviewer | Full-Stack & UI Recap Review | in-progress | e3f7a1b2-85a8-44d7-b4a8-769c35690f9f |
+| challenger_m8_multitenant | teamwork_preview_challenger | Multi-Tenant Live Stress Testing | in-progress | c5a6c4ab-6a53-415b-a453-b7eb005eb41c |
+| challenger_m8_recap_sorting | teamwork_preview_challenger | Ascending Date Sorting Empirical Check | in-progress | 0784d3c5-2d9b-448d-ab04-4a37bea4951b |
+| auditor_m8_forensic | teamwork_preview_auditor | Forensic Integrity Audit | in-progress | 9d2b2250-f28b-4275-b77f-424e941dfcd6 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: f91e3181-aadd-4af0-bbb1-703d6055b394
+- Spawn count: 6 / 16
+- Pending subagents: 2453bfcd-3687-4f3e-9e38-1f29a4500a45, e3f7a1b2-85a8-44d7-b4a8-769c35690f9f, c5a6c4ab-6a53-415b-a453-b7eb005eb41c, 0784d3c5-2d9b-448d-ab04-4a37bea4951b, 9d2b2250-f28b-4275-b77f-424e941dfcd6
 - Predecessor: orchestrator_7
 - Successor: not yet spawned
 
