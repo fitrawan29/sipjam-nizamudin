@@ -56,7 +56,9 @@ export default function PiketView({ user }: { user: any }) {
     fetchDataPiket();
 
     const fetchStudents = async () => {
-      const { data } = await supabase.from('data_siswa').select('*').order('kelas', { ascending: true }).order('nama_siswa', { ascending: true });
+      let query = supabase.from('data_siswa').select('*').order('kelas', { ascending: true }).order('nama_siswa', { ascending: true });
+      if (user?.sekolah_id) query = query.eq('sekolah_id', user.sekolah_id);
+      const { data } = await query;
       if (data) {
         setAllStudents(data);
         const uniqueKelas = [...new Set(data.map(s => s.kelas).filter(Boolean))];
@@ -77,7 +79,9 @@ export default function PiketView({ user }: { user: any }) {
     fetchStudents();
 
     // Fetch teachers for penugasan & rekap filter
-    supabase.from('data_guru').select('id, nama_guru, nip').order('nama_guru').then(({ data }) => {
+    let gQuery = supabase.from('data_guru').select('id, nama_guru, nip').order('nama_guru');
+    if (user?.sekolah_id) gQuery = gQuery.eq('sekolah_id', user.sekolah_id);
+    gQuery.then(({ data }) => {
       if (data) {
         setAllTeachers(data);
         const list = data.map(g => g.nama_guru).filter(Boolean);
@@ -99,34 +103,46 @@ export default function PiketView({ user }: { user: any }) {
 
   const fetchDataPiket = async () => {
     // Fetch Jadwal
-    const { data: jadwal } = await supabase.from('jadwal_piket').select('*');
+    let jQ = supabase.from('jadwal_piket').select('*');
+    if (user?.sekolah_id) jQ = jQ.eq('sekolah_id', user.sekolah_id);
+    const { data: jadwal } = await jQ;
     if (jadwal) setJadwalPiket(jadwal);
 
     // Fetch Penugasan Piket
-    const { data: penugasan } = await supabase.from('penugasan_piket').select('*').order('created_at', { ascending: true });
+    let pQ = supabase.from('penugasan_piket').select('*').order('created_at', { ascending: true });
+    if (user?.sekolah_id) pQ = pQ.eq('sekolah_id', user.sekolah_id);
+    const { data: penugasan } = await pQ;
     if (penugasan) setPenugasanList((penugasan as PenugasanPiket[]) || []);
 
     // Fetch Laporan
-    const { data: laporan } = await supabase.from('laporan_piket').select('*').order('timestamp', { ascending: false }).limit(10);
+    let lQ = supabase.from('laporan_piket').select('*').order('timestamp', { ascending: false }).limit(10);
+    if (user?.sekolah_id) lQ = lQ.eq('sekolah_id', user.sekolah_id);
+    const { data: laporan } = await lQ;
     if (laporan) setLaporanPiket(laporan);
   };
 
   const syncJadwalPiketForDay = async (day: string) => {
     try {
-      const { data } = await supabase
+      let penugasanQuery = supabase
         .from('penugasan_piket')
         .select('guru_nama')
         .eq('hari', day)
         .eq('tipe_petugas', 'Guru');
+      if (user?.sekolah_id) penugasanQuery = penugasanQuery.eq('sekolah_id', user.sekolah_id);
+      const { data } = await penugasanQuery;
 
       const names = (data || []).map(g => g.guru_nama).filter(Boolean);
       const daftarGuruStr = names.join(', ');
 
-      const { data: existing } = await supabase.from('jadwal_piket').select('id').eq('hari', day);
+      let existQuery = supabase.from('jadwal_piket').select('id').eq('hari', day);
+      if (user?.sekolah_id) existQuery = existQuery.eq('sekolah_id', user.sekolah_id);
+      const { data: existing } = await existQuery;
       if (existing && existing.length > 0) {
-        await supabase.from('jadwal_piket').update({ daftar_guru: daftarGuruStr }).eq('hari', day);
+        let updQuery = supabase.from('jadwal_piket').update({ daftar_guru: daftarGuruStr }).eq('hari', day);
+        if (user?.sekolah_id) updQuery = updQuery.eq('sekolah_id', user.sekolah_id);
+        await updQuery;
       } else {
-        await supabase.from('jadwal_piket').insert([{ hari: day, daftar_guru: daftarGuruStr }]);
+        await supabase.from('jadwal_piket').insert([{ hari: day, daftar_guru: daftarGuruStr, ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {}) }]);
       }
     } catch (err) {
       console.error('Error syncing jadwal_piket:', err);
@@ -136,7 +152,8 @@ export default function PiketView({ user }: { user: any }) {
   const fetchRekapPiket = async () => {
     setRekapLoading(true);
     try {
-      let query = supabase.from('laporan_piket').select('*').order('tanggal', { ascending: false }).order('timestamp', { ascending: false });
+      let query = supabase.from('laporan_piket').select('*').order('tanggal', { ascending: true }).order('timestamp', { ascending: true });
+      if (user?.sekolah_id) query = query.eq('sekolah_id', user.sekolah_id);
       
       if (rekapBulan) {
         const [year, month] = rekapBulan.split('-').map(Number);
@@ -223,7 +240,8 @@ export default function PiketView({ user }: { user: any }) {
       catatan_apel: catatan,
       link_foto: fileUrl,
       status_verifikasi: 'Menunggu',
-      kehadiran_guru_piket: 'Hadir'
+      kehadiran_guru_piket: 'Hadir',
+      ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
     };
 
     const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
@@ -258,15 +276,17 @@ export default function PiketView({ user }: { user: any }) {
     }
   };
 
-  const filteredRekap = rekapList.filter(item => {
-    if (!rekapSearch) return true;
-    const q = rekapSearch.toLowerCase();
-    return (
-      item.guru_pelapor?.toLowerCase().includes(q) ||
-      item.catatan_apel?.toLowerCase().includes(q) ||
-      item.tanggal?.toLowerCase().includes(q)
-    );
-  });
+  const filteredRekap = rekapList
+    .filter(item => {
+      if (!rekapSearch) return true;
+      const q = rekapSearch.toLowerCase();
+      return (
+        item.guru_pelapor?.toLowerCase().includes(q) ||
+        item.catatan_apel?.toLowerCase().includes(q) ||
+        item.tanggal?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (a.timestamp || '').localeCompare(b.timestamp || ''));
 
   const totalRekap = filteredRekap.length;
   const totalDisetujui = filteredRekap.filter(r => r.status_verifikasi === 'Disetujui').length;

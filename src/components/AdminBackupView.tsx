@@ -13,14 +13,15 @@ export default function AdminBackupView({ user }: { user: any }) {
 
   useEffect(() => {
     fetchRiwayat();
-  }, []);
+  }, [user?.sekolah_id]);
 
   const fetchRiwayat = async () => {
     try {
-      const { data, error } = await supabase
-        .from('riwayat_backup')
-        .select('*')
-        .order('timestamp', { ascending: false });
+      let query = supabase.from('riwayat_backup').select('*');
+      if (user?.sekolah_id) {
+        query = query.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data, error } = await query.order('timestamp', { ascending: false });
       if (data && !error) setRiwayat(data);
     } catch (error) {
       console.error('Fetch riwayat backup error:', error);
@@ -48,9 +49,16 @@ export default function AdminBackupView({ user }: { user: any }) {
     Swal.fire({ title: 'Memproses Backup...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
-      // 1. Fetch data
-      const { data: presensi } = await supabase.from('presensi_guru').select('*');
-      const { data: jurnal } = await supabase.from('jurnal_pembelajaran').select('*');
+      // 1. Fetch data scoped by user.sekolah_id
+      let presensiQuery = supabase.from('presensi_guru').select('*');
+      let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*');
+      if (user?.sekolah_id) {
+        presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
+        jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const { data: presensi } = await presensiQuery;
+      const { data: jurnal } = await jurnalQuery;
 
       if ((!presensi || presensi.length === 0) && (!jurnal || jurnal.length === 0)) {
         Swal.fire('Info', 'Tidak ada data presensi atau jurnal untuk dibackup.', 'info');
@@ -78,13 +86,24 @@ export default function AdminBackupView({ user }: { user: any }) {
         if (!resJJson.success) throw new Error("Gagal mengirim jurnal ke spreadsheet");
       }
 
-      // 4. Hapus data dari Supabase (filter by id isnot null)
-      await supabase.from('presensi_guru').delete().neq('id', 'dummy');
-      await supabase.from('jurnal_pembelajaran').delete().neq('id', 'dummy');
+      // 4. Hapus data dari Supabase (scoped strictly to active sekolah_id to prevent multi-tenant data wipe)
+      let delPresensi = supabase.from('presensi_guru').delete();
+      let delJurnal = supabase.from('jurnal_pembelajaran').delete();
+      if (user?.sekolah_id) {
+        delPresensi = delPresensi.eq('sekolah_id', user.sekolah_id);
+        delJurnal = delJurnal.eq('sekolah_id', user.sekolah_id);
+      } else {
+        delPresensi = delPresensi.neq('id', 'dummy');
+        delJurnal = delJurnal.neq('id', 'dummy');
+      }
 
-      // 5. Catat riwayat backup sesuai skema riwayat_backup (id, timestamp, tahun_backup, link_file, status, keterangan)
+      await delPresensi;
+      await delJurnal;
+
+      // 5. Catat riwayat backup sesuai skema riwayat_backup
       const newBackup = {
         id: crypto.randomUUID(),
+        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
         timestamp: new Date().toISOString(),
         tahun_backup: tahun,
         link_file: webhookUrl || '',
@@ -126,14 +145,22 @@ export default function AdminBackupView({ user }: { user: any }) {
 
       if (!json.success || !json.data) throw new Error("Gagal menarik data dari Spreadsheet");
 
+      const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+
       const presensiToInsert = json.data.filter((r: any) => r.Tabel === 'presensi_guru').map((r: any) => {
         const { Tabel, ...rest } = r;
-        return rest;
+        return {
+          ...rest,
+          sekolah_id: rest.sekolah_id || targetSekolahId
+        };
       });
 
       const jurnalToInsert = json.data.filter((r: any) => r.Tabel === 'jurnal_pembelajaran').map((r: any) => {
         const { Tabel, ...rest } = r;
-        return rest;
+        return {
+          ...rest,
+          sekolah_id: rest.sekolah_id || targetSekolahId
+        };
       });
 
       let count = 0;

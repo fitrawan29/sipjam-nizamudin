@@ -56,12 +56,14 @@ Milestone 7: Multi-Tenant Database Architecture & RLS, Superadmin & Admin Hierar
 | explorer_m7_db | teamwork_preview_explorer | DB Schema & RLS | completed | bc41e0ba-387b-403d-8e0b-3a15db1bb9eb |
 | explorer_m7_auth_admin | teamwork_preview_explorer | Auth & Superadmin | completed | d157b13e-a463-405e-8080-67a11a6fd315 |
 | explorer_m7_recap_sorting | teamwork_preview_explorer | Recap Views & Date Sorting | completed | 2f1fe5a7-386c-4c38-b41b-a26f62fad315 |
-| worker_m7_db | teamwork_preview_worker | M7.1 DB Migration & Types | running | 2949a7fc-6c73-40e8-8150-87f9448d2c30 |
+| worker_m7_db | teamwork_preview_worker | M7.1 DB Migration & Types | completed | 2949a7fc-6c73-40e8-8150-87f9448d2c30 |
+| worker_m7_auth_ui | teamwork_preview_worker | M7.2 & M7.3 Superadmin & Tenant UI | running | 6f172a9a-7a7f-4c49-8bc3-ef39250cc568 |
+| worker_m7_recap_sorting | teamwork_preview_worker | M7.4 Ascending Date Sorting | running | 5802494f-543d-46b3-b20a-e083f63bb949 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 4 / 16
-- Pending subagents: 2949a7fc-6c73-40e8-8150-87f9448d2c30
+- Spawn count: 6 / 16
+- Pending subagents: 6f172a9a-7a7f-4c49-8bc3-ef39250cc568, 5802494f-543d-46b3-b20a-e083f63bb949
 - Predecessor: none
 - Successor: not yet spawned
 

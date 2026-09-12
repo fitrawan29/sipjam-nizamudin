@@ -35,10 +35,12 @@ export default function AdminDataView({ user }: { user: any }) {
     try {
       console.log(`[AdminDataView] Fetching from table: ${tabObj.table}`);
 
-      const { data, error, status, statusText } = await supabase
-        .from(tabObj.table)
-        .select('*')
-        .limit(2000);
+      let query = supabase.from(tabObj.table).select('*');
+      if (user?.sekolah_id) {
+        query = query.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const { data, error, status, statusText } = await query.limit(2000);
 
       console.log(`[AdminDataView] Response status: ${status} ${statusText}`);
       console.log(`[AdminDataView] Error:`, error);
@@ -64,7 +66,11 @@ export default function AdminDataView({ user }: { user: any }) {
           const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
           const apiKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
           if (baseUrl && apiKey) {
-            const res = await fetch(`${baseUrl}/rest/v1/${tabObj.table}?select=*&limit=2000`, {
+            let endpoint = `${baseUrl}/rest/v1/${tabObj.table}?select=*&limit=2000`;
+            if (user?.sekolah_id) {
+              endpoint += `&sekolah_id=eq.${user.sekolah_id}`;
+            }
+            const res = await fetch(endpoint, {
               headers: {
                 'apikey': apiKey,
                 'Authorization': `Bearer ${apiKey}`,
@@ -94,7 +100,7 @@ export default function AdminDataView({ user }: { user: any }) {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, user?.sekolah_id]);
 
   useEffect(() => {
     loadData();
@@ -228,6 +234,9 @@ export default function AdminDataView({ user }: { user: any }) {
           row.id = crypto.randomUUID();
         }
 
+        // Scope by sekolah_id
+        row.sekolah_id = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+
         // Apply default values if needed
         if (tabObj.table === 'data_siswa' && !row.status) row.status = 'Aktif';
         if (tabObj.table === 'data_guru' && !row.status) row.status = 'Aktif';
@@ -321,6 +330,7 @@ export default function AdminDataView({ user }: { user: any }) {
           }
           return {
             id: crypto.randomUUID(),
+            sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
             nisn,
             nama_siswa,
             kelas,
@@ -387,6 +397,7 @@ export default function AdminDataView({ user }: { user: any }) {
           }
           return {
             id: crypto.randomUUID(),
+            sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
             nip,
             nama_guru,
             mata_pelajaran,
@@ -443,6 +454,7 @@ export default function AdminDataView({ user }: { user: any }) {
           }
           return {
             id: userGivenId || crypto.randomUUID(),
+            sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
             nama_mata_pelajaran,
             kategori
           };
@@ -499,6 +511,7 @@ export default function AdminDataView({ user }: { user: any }) {
           }
           return {
             id: crypto.randomUUID(),
+            sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
             tanggal,
             keterangan,
             tipe
@@ -564,6 +577,7 @@ export default function AdminDataView({ user }: { user: any }) {
           }
           return {
             id: crypto.randomUUID(),
+            sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
             hari,
             nama_guru,
             mata_pelajaran,
@@ -608,7 +622,11 @@ export default function AdminDataView({ user }: { user: any }) {
       const idField = item.id ? 'id' : (item.nisn ? 'nisn' : (item.nip ? 'nip' : 'id'));
       const idVal = item[idField];
 
-      const { error } = await supabase.from(tabObj.table).delete().eq(idField, idVal);
+      let delQuery = supabase.from(tabObj.table).delete().eq(idField, idVal);
+      if (user?.sekolah_id) {
+        delQuery = delQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { error } = await delQuery;
       setLoading(false);
 
       if (error) {

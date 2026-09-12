@@ -37,7 +37,11 @@ export default function AdminConfigView({ user }: { user: any }) {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const { data } = await supabase.from('pengaturan').select('*');
+        let query = supabase.from('pengaturan').select('*');
+        if (user?.sekolah_id) {
+          query = query.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data } = await query;
         if (data && data.length > 0) {
           const newConfig = { ...config };
           data.forEach(item => {
@@ -61,7 +65,7 @@ export default function AdminConfigView({ user }: { user: any }) {
       }
     };
     fetchConfig();
-  }, []);
+  }, [user?.sekolah_id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -126,13 +130,15 @@ export default function AdminConfigView({ user }: { user: any }) {
       kota_ttd: cityVal
     };
 
+    const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
     const upsertData = Object.entries(saveConfig).map(([key, value]) => ({
+      sekolah_id: targetSekolahId,
       key,
       value: value !== undefined && value !== null ? value.toString() : ''
     }));
 
     try {
-      const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'key' });
+      const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'sekolah_id,key' });
 
       if (error) {
         Swal.fire('Error', 'Gagal menyimpan pengaturan: ' + error.message, 'error');

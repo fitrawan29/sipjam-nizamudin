@@ -4,13 +4,41 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 
-export function PrintHeader() {
+export interface PrintHeaderProps {
+  sekolahId?: string;
+  user?: any;
+}
+
+export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
   const [config, setConfig] = useState<any>({});
+  const [schoolInfo, setSchoolInfo] = useState<any>(null);
 
   useEffect(() => {
+    const resolveSekolahId = (): string | null => {
+      if (sekolahId) return sekolahId;
+      if (user?.sekolah_id) return user.sekolah_id;
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('sipjam_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed?.sekolah_id) return parsed.sekolah_id;
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+      return null;
+    };
+
     const fetchConfig = async () => {
       try {
-        const { data } = await supabase.from('pengaturan').select('*');
+        const activeSekolahId = resolveSekolahId();
+        let query = supabase.from('pengaturan').select('*');
+        if (activeSekolahId) {
+          query = query.eq('sekolah_id', activeSekolahId);
+        }
+        const { data } = await query;
         if (data && data.length > 0) {
           const newConfig: any = {};
           data.forEach(item => {
@@ -18,19 +46,30 @@ export function PrintHeader() {
           });
           setConfig(newConfig);
         }
+
+        if (activeSekolahId) {
+          const { data: sData } = await supabase
+            .from('sekolah')
+            .select('*')
+            .eq('id', activeSekolahId)
+            .single();
+          if (sData) {
+            setSchoolInfo(sData);
+          }
+        }
       } catch (err) {
         console.error('PrintHeader config error:', err);
       }
     };
     fetchConfig();
-  }, []);
+  }, [sekolahId, user?.sekolah_id]);
 
-  const logoYayasan = transformGoogleDriveUrl(config.logo_yayasan || config.logo_kiri || config.LOGO_KIRI_URL || '');
+  const logoYayasan = transformGoogleDriveUrl(config.logo_yayasan || config.logo_kiri || config.LOGO_KIRI_URL || schoolInfo?.logo_url || '');
   const logoDinas = transformGoogleDriveUrl(config.logo_dinas || config.logo_kanan || config.LOGO_KANAN_URL || '');
   const yayasan = config.kop_yayasan || config.NAMA_YAYASAN || '';
-  const sekolah = config.kop_sekolah || config.NAMA_SEKOLAH || 'SMA NIZAMUDIN';
-  const alamat = config.kop_alamat || config.ALAMAT_SEKOLAH || '';
-  const npsn = config.kop_npsn || config.NPSN || '';
+  const sekolah = config.kop_sekolah || config.NAMA_SEKOLAH || schoolInfo?.nama || 'SMA NIZAMUDIN';
+  const alamat = config.kop_alamat || config.ALAMAT_SEKOLAH || schoolInfo?.alamat || '';
+  const npsn = config.kop_npsn || config.NPSN || schoolInfo?.npsn || '';
 
   // Dynamic font size scaling based on address length to ensure single-line fit without logo overlap
   const getAddressFontSize = (text: string) => {
@@ -105,6 +144,8 @@ export interface PrintSignatureProps {
   rightName?: string;
   rightNip?: string;
   singleColumn?: boolean;
+  sekolahId?: string;
+  user?: any;
 }
 
 export function PrintSignature({
@@ -115,21 +156,57 @@ export function PrintSignature({
   rightTitle,
   rightName,
   rightNip,
-  singleColumn = false
+  singleColumn = false,
+  sekolahId,
+  user
 }: PrintSignatureProps = {}) {
   const [config, setConfig] = useState<any>({});
+  const [schoolInfo, setSchoolInfo] = useState<any>(null);
   const [dateStr, setDateStr] = useState('');
 
   useEffect(() => {
+    const resolveSekolahId = (): string | null => {
+      if (sekolahId) return sekolahId;
+      if (user?.sekolah_id) return user.sekolah_id;
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('sipjam_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed?.sekolah_id) return parsed.sekolah_id;
+          }
+        } catch (e) {
+          // ignore parsing error
+        }
+      }
+      return null;
+    };
+
     const fetchConfig = async () => {
       try {
-        const { data } = await supabase.from('pengaturan').select('*');
+        const activeSekolahId = resolveSekolahId();
+        let query = supabase.from('pengaturan').select('*');
+        if (activeSekolahId) {
+          query = query.eq('sekolah_id', activeSekolahId);
+        }
+        const { data } = await query;
         if (data && data.length > 0) {
           const newConfig: any = {};
           data.forEach(item => {
             newConfig[item.key] = item.value;
           });
           setConfig(newConfig);
+        }
+
+        if (activeSekolahId) {
+          const { data: sData } = await supabase
+            .from('sekolah')
+            .select('*')
+            .eq('id', activeSekolahId)
+            .single();
+          if (sData) {
+            setSchoolInfo(sData);
+          }
         }
       } catch (err) {
         console.error('PrintSignature config error:', err);
@@ -146,9 +223,9 @@ export function PrintSignature({
       year: 'numeric'
     });
     setDateStr(formattedDate);
-  }, []);
+  }, [sekolahId, user?.sekolah_id]);
 
-  // Dynamically resolve region (Kabupaten / Kota) from config or extract from kop_alamat
+  // Dynamically resolve region (Kabupaten / Kota) from config or extract from kop_alamat or schoolInfo
   const getRegion = () => {
     if (config.kota_kabupaten && typeof config.kota_kabupaten === 'string' && config.kota_kabupaten.trim()) {
       return config.kota_kabupaten.trim();
@@ -162,7 +239,10 @@ export function PrintSignature({
     if (config.KOTA_TTD && typeof config.KOTA_TTD === 'string' && config.KOTA_TTD.trim()) {
       return config.KOTA_TTD.trim();
     }
-    const alamat = config.kop_alamat || config.ALAMAT_SEKOLAH || '';
+    if (schoolInfo?.kota_kabupaten && typeof schoolInfo.kota_kabupaten === 'string' && schoolInfo.kota_kabupaten.trim()) {
+      return schoolInfo.kota_kabupaten.trim();
+    }
+    const alamat = config.kop_alamat || config.ALAMAT_SEKOLAH || schoolInfo?.alamat || '';
     if (alamat && typeof alamat === 'string') {
       const match = alamat.match(/(Kab\.\s*[^,]+|Kota\s*[^,]+|Kabupaten\s*[^,]+)/i);
       if (match) return match[1].trim();
@@ -171,9 +251,10 @@ export function PrintSignature({
   };
 
   const region = getRegion();
-  const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || 'Kepala Sekolah';
-  const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || '';
-  const defaultKepalaTitle = (config.kop_sekolah || config.NAMA_SEKOLAH) ? `Kepala ${config.kop_sekolah || config.NAMA_SEKOLAH}` : 'Kepala Sekolah';
+  const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || 'Kepala Sekolah';
+  const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah || '';
+  const schoolName = config.kop_sekolah || config.NAMA_SEKOLAH || schoolInfo?.nama || '';
+  const defaultKepalaTitle = schoolName ? `Kepala ${schoolName}` : 'Kepala Sekolah';
 
   const containerClass = singleColumn
     ? "print-only print-signature mt-10 flex justify-end ml-auto text-black"

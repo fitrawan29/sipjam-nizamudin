@@ -47,34 +47,53 @@ export default function AdminRekapView({ user }: { user: any }) {
       }
 
       // 1. Fetch all teachers from data_guru to seed the map (ensures 0 attendance teachers appear)
-      const { data: guruList } = await supabase
+      let guruQuery = supabase
         .from('data_guru')
         .select('nama_guru')
         .order('nama_guru', { ascending: true });
+      if (user?.sekolah_id) {
+        guruQuery = guruQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: guruList } = await guruQuery;
 
       // 2. Fetch presensi_guru
-      const { data: presensi } = await supabase
+      let presensiQuery = supabase
         .from('presensi_guru')
         .select('*')
         .gte('timestamp', start)
         .lte('timestamp', end)
-        .eq('status_verifikasi', 'Disetujui');
+        .eq('status_verifikasi', 'Disetujui')
+        .order('timestamp', { ascending: true });
+      if (user?.sekolah_id) {
+        presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: presensi } = await presensiQuery;
 
       // 3. Fetch jurnal_pembelajaran
-      const { data: jurnal } = await supabase
+      let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')
         .gte('timestamp', start)
         .lte('timestamp', end)
-        .eq('status_verifikasi', 'Disetujui');
+        .eq('status_verifikasi', 'Disetujui')
+        .order('timestamp', { ascending: true });
+      if (user?.sekolah_id) {
+        jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: jurnal } = await jurnalQuery;
 
       // 4. Fetch laporan_piket
-      const { data: piket } = await supabase
+      let piketQuery = supabase
         .from('laporan_piket')
         .select('guru_pelapor, tanggal, status_verifikasi')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
-        .eq('status_verifikasi', 'Disetujui');
+        .eq('status_verifikasi', 'Disetujui')
+        .order('tanggal', { ascending: true });
+      if (user?.sekolah_id) {
+        piketQuery = piketQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: piket } = await piketQuery;
 
       // Seed map with all teachers from data_guru
       const pMap: Record<string, any> = {};

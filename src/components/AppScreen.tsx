@@ -17,20 +17,47 @@ import AdminDataView from './AdminDataView';
 import AdminBackupView from './AdminBackupView';
 import AdminConfigView from './AdminConfigView';
 import AnalitikView from './AnalitikView';
+import SuperadminView from './SuperadminView';
+import { supabase } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function AppScreen({ user, onLogout }: { user: any, onLogout: () => void }) {
-  const [currentView, setCurrentView] = useState('view-home');
+  const [currentView, setCurrentView] = useState(() => {
+    if (user?.role === 'Superadmin') return 'view-superadmin-overview';
+    return 'view-home';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [schoolData, setSchoolData] = useState<any>(null);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    if (user?.sekolah_id) {
+      const fetchSchool = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('sekolah')
+            .select('*')
+            .eq('id', user.sekolah_id)
+            .single();
+
+          if (data && !error) {
+            setSchoolData(data);
+          }
+        } catch (err) {
+          console.error('[AppScreen] Failed to fetch school profile:', err);
+        }
+      };
+      fetchSchool();
+    }
+  }, [user?.sekolah_id]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const handleNavigation = async (targetId: string) => {
     try {
-      // Admin bypasses all checks
-      if (user?.role === 'Admin') {
+      // Superadmin and Admin bypass all daily guru checks
+      if (user?.role === 'Superadmin' || user?.role === 'Admin') {
         setCurrentView(targetId);
         setSidebarOpen(false);
         return;
@@ -71,6 +98,12 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     }
   };
 
+  const menuItemsSuperadmin = [
+    { id: 'view-superadmin-overview', icon: 'fa-gauge-high', label: 'Ringkasan Platform' },
+    { id: 'view-superadmin-sekolah', icon: 'fa-school', label: 'Kelola Sekolah' },
+    { id: 'view-superadmin-admins', icon: 'fa-user-shield', label: 'Admin Sekolah' }
+  ];
+
   const menuItemsGuru = [
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
     { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', label: 'Presensi Guru' },
@@ -97,7 +130,14 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     { id: 'view-admin-config', icon: 'fa-gears', label: 'Sistem' }
   ];
 
-  const menuItems = user?.role === 'Admin' ? menuItemsAdmin : menuItemsGuru;
+  let menuItems = menuItemsGuru;
+  if (user?.role === 'Superadmin') {
+    menuItems = menuItemsSuperadmin;
+  } else if (user?.role === 'Admin') {
+    menuItems = menuItemsAdmin;
+  }
+
+  const defaultHomeView = user?.role === 'Superadmin' ? 'view-superadmin-overview' : 'view-home';
 
   return (
     <div className="flex-col h-full w-full flex">
@@ -106,8 +146,10 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
             <button type="button" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className="fa-solid fa-bars text-sm"></i>
             </button>
-            <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation('view-home')}>
-              SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">Nizamudin</span>
+            <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
+              SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">
+                {user?.role === 'Superadmin' ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
+              </span>
             </div>
         </div>
 
@@ -129,9 +171,11 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
               <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
-                        <i className="fa-solid fa-mosque"></i>
+                        <i className={`fa-solid ${user?.role === 'Superadmin' ? 'fa-crown' : 'fa-mosque'}`}></i>
                     </div>
-                    <span className="font-bold text-sm text-gray-900 dark:text-white">SIPJAM Menu</span>
+                    <span className="font-bold text-sm text-gray-900 dark:text-white">
+                      {user?.role === 'Superadmin' ? 'Portal Superadmin' : 'SIPJAM Menu'}
+                    </span>
                 </div>
                 <button type="button" onClick={toggleSidebar} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
                     <i className="fa-solid fa-xmark text-sm"></i>
@@ -159,21 +203,41 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
 
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
         <div key={currentView} className="page-transition">
-          {currentView === 'view-home' && <HomeView user={user} setView={handleNavigation} menuItems={menuItems} />}
-          {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
-          {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
-          {currentView === 'view-piket' && <PiketView user={user} />}
-          {currentView === 'view-dokumen' && <DokumenView user={user} />}
-          {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
-          {currentView === 'view-history' && <HistoryView user={user} />}
-          {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
-          {currentView === 'view-rekap-siswa' && <RekapSiswaView user={user} />}
-          {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
-          {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
-          {currentView === 'view-admin-data' && <AdminDataView user={user} />}
-          {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
-          {currentView === 'view-admin-config' && <AdminConfigView user={user} />}
-          {currentView === 'view-analitik' && <AnalitikView user={user} />}
+          {user?.role === 'Superadmin' ? (
+            <SuperadminView
+              user={user}
+              initialTab={
+                currentView === 'view-superadmin-sekolah'
+                  ? 'sekolah'
+                  : currentView === 'view-superadmin-admins'
+                  ? 'admins'
+                  : 'overview'
+              }
+              onNavigateTab={(tab) => {
+                if (tab === 'sekolah') setCurrentView('view-superadmin-sekolah');
+                else if (tab === 'admins') setCurrentView('view-superadmin-admins');
+                else setCurrentView('view-superadmin-overview');
+              }}
+            />
+          ) : (
+            <>
+              {currentView === 'view-home' && <HomeView user={user} setView={handleNavigation} menuItems={menuItems} />}
+              {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
+              {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
+              {currentView === 'view-piket' && <PiketView user={user} />}
+              {currentView === 'view-dokumen' && <DokumenView user={user} />}
+              {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
+              {currentView === 'view-history' && <HistoryView user={user} />}
+              {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
+              {currentView === 'view-rekap-siswa' && <RekapSiswaView user={user} />}
+              {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
+              {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
+              {currentView === 'view-admin-data' && <AdminDataView user={user} />}
+              {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
+              {currentView === 'view-admin-config' && <AdminConfigView user={user} />}
+              {currentView === 'view-analitik' && <AnalitikView user={user} />}
+            </>
+          )}
         </div>
       </main>
     </div>

@@ -14,14 +14,30 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
     setLoading(true);
     
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username)
-        .eq('password', password)
-        .single();
+      // 1. Attempt secure login via verify_login RPC
+      let userData: any = null;
+      const { data: rpcData, error: rpcError } = await supabase.rpc('verify_login', {
+        p_username: username.trim(),
+        p_password: password
+      });
 
-      if (error || !data) {
+      if (!rpcError && rpcData && rpcData.length > 0) {
+        userData = rpcData[0];
+      } else {
+        // Fallback: direct table select
+        const { data: tableData, error: tableError } = await supabase
+          .from('users')
+          .select('id, username, nama, role, sekolah_id')
+          .eq('username', username.trim())
+          .eq('password', password)
+          .single();
+
+        if (!tableError && tableData) {
+          userData = tableData;
+        }
+      }
+
+      if (!userData) {
         Swal.fire({
           icon: 'error',
           title: 'Login Gagal',
@@ -29,17 +45,17 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
           confirmButtonColor: '#0B4619'
         });
       } else {
-        onLoginSuccess(data);
+        onLoginSuccess(userData);
         Swal.fire({
           icon: 'success',
-          title: 'Berhasil',
-          text: `Selamat datang, ${data.nama}!`,
+          title: 'Berhasil Masuk',
+          text: `Selamat datang, ${userData.nama}! (${userData.role})`,
           showConfirmButton: false,
           timer: 1500
         });
       }
     } catch (err) {
-      console.error(err);
+      console.error('[LoginScreen] Error:', err);
       Swal.fire('Error', 'Koneksi ke server gagal. Periksa internet Anda.', 'error');
     } finally {
       setLoading(false);
@@ -53,10 +69,10 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
       
       <div className="glass-card w-full max-w-md p-6 sm:p-8 border-t-4 border-nizamudin-green dark:border-nizamudin-gold text-center relative z-10 mx-auto">
         <div className="w-20 h-20 bg-nizamudin-green rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg border-4 border-white dark:border-gray-800">
-            <i className="fa-solid fa-mosque text-3xl text-nizamudin-gold"></i>
+            <i className="fa-solid fa-graduation-cap text-3xl text-nizamudin-gold"></i>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-1">SIPJAM Login</h1>
-        <h2 className="text-[11px] font-semibold text-gray-700 dark:text-white uppercase tracking-widest mb-6">SMA Nizamudin</h2>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-1">SIPJAM SaaS Portal</h1>
+        <h2 className="text-[11px] font-semibold text-gray-700 dark:text-white uppercase tracking-widest mb-6">Presensi & Jurnal Multi-Sekolah</h2>
         
         <form onSubmit={handleLogin} className="text-left space-y-4 relative z-20">
             <div>
@@ -87,6 +103,12 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
                 {loading ? 'Memproses...' : <>Masuk Sistem <i className="fa-solid fa-arrow-right"></i></>}
             </button>
         </form>
+
+        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Multi-Tenant SaaS • Superadmin, Admin Sekolah & Guru
+          </p>
+        </div>
       </div>
     </div>
   );

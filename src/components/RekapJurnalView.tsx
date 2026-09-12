@@ -26,13 +26,21 @@ export default function RekapJurnalView({ user }: { user: any }) {
   useEffect(() => {
     const fetchMaster = async () => {
       try {
-        const { data: siswa } = await supabase.from('data_siswa').select('kelas');
+        let siswaQuery = supabase.from('data_siswa').select('kelas');
+        if (user?.sekolah_id) {
+          siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: siswa } = await siswaQuery;
         if (siswa) {
           const uniqueKelas = Array.from(new Set(siswa.map(s => s.kelas).filter(Boolean))) as string[];
           setKelasList(uniqueKelas);
         }
 
-        const { data: mData } = await supabase.from('data_mapel').select('nama_mata_pelajaran');
+        let mapelQuery = supabase.from('data_mapel').select('nama_mata_pelajaran');
+        if (user?.sekolah_id) {
+          mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: mData } = await mapelQuery;
         if (mData) {
           const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[];
           setMapelList(uniqueMapel);
@@ -42,7 +50,7 @@ export default function RekapJurnalView({ user }: { user: any }) {
       }
     };
     fetchMaster();
-  }, []);
+  }, [user]);
 
   // Auto-fetch on mount for current month
   useEffect(() => {
@@ -56,7 +64,12 @@ export default function RekapJurnalView({ user }: { user: any }) {
         .from('jurnal_pembelajaran')
         .select('*')
         .eq('nama_guru', user.nama)
-        .order('tanggal', { ascending: false });
+        .order('tanggal', { ascending: true })
+        .order('jam_ke', { ascending: true });
+
+      if (user?.sekolah_id) {
+        query = query.eq('sekolah_id', user.sekolah_id);
+      }
 
       if (startDate && endDate) {
         query = query.gte('tanggal', startDate).lte('tanggal', endDate);
@@ -129,21 +142,23 @@ export default function RekapJurnalView({ user }: { user: any }) {
     return detailAbsen || rawAbsensi || 'Semua Hadir';
   }
 
-  const filteredJurnal = (jurnalData || []).filter(j => {
-    if (!search) return true;
-    const s = search.toLowerCase();
-    return (
-      (j.materi && j.materi.toLowerCase().includes(s)) ||
-      (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(s)) ||
-      (j.tujuan_pembelajaran && j.tujuan_pembelajaran.toLowerCase().includes(s)) ||
-      (j.kegiatan && j.kegiatan.toLowerCase().includes(s)) ||
-      (j.kelas && j.kelas.toLowerCase().includes(s)) ||
-      (j.mapel && j.mapel.toLowerCase().includes(s)) ||
-      (j.tanggal && j.tanggal.toLowerCase().includes(s)) ||
-      (j.kehadiran_murid && j.kehadiran_murid.toLowerCase().includes(s)) ||
-      (j.catatan_refleksi && j.catatan_refleksi.toLowerCase().includes(s))
-    );
-  });
+  const filteredJurnal = (jurnalData || [])
+    .filter(j => {
+      if (!search) return true;
+      const s = search.toLowerCase();
+      return (
+        (j.materi && j.materi.toLowerCase().includes(s)) ||
+        (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(s)) ||
+        (j.tujuan_pembelajaran && j.tujuan_pembelajaran.toLowerCase().includes(s)) ||
+        (j.kegiatan && j.kegiatan.toLowerCase().includes(s)) ||
+        (j.kelas && j.kelas.toLowerCase().includes(s)) ||
+        (j.mapel && j.mapel.toLowerCase().includes(s)) ||
+        (j.tanggal && j.tanggal.toLowerCase().includes(s)) ||
+        (j.kehadiran_murid && j.kehadiran_murid.toLowerCase().includes(s)) ||
+        (j.catatan_refleksi && j.catatan_refleksi.toLowerCase().includes(s))
+      );
+    })
+    .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (Number(a.jam_ke) || 0) - (Number(b.jam_ke) || 0));
 
   const totalJurnal = jurnalData?.length || 0;
   const totalDisetujui = jurnalData?.filter(j => j.status_verifikasi === 'Disetujui').length || 0;
