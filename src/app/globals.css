@@ -128,9 +128,21 @@ body.fade-out {
   .btn-click {
     @apply cursor-pointer relative z-20 transition-all duration-200 ease-in-out;
   }
+  .btn-click:hover {
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+  }
   .btn-click:active {
-    transform: scale(0.92);
-    opacity: 0.8;
+    transform: scale(0.96) translateY(0);
+    opacity: 0.85;
+  }
+
+  .card-interactive {
+    @apply transition-all duration-200 ease-in-out hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  .pill-interactive {
+    @apply transition-all duration-200 ease-in-out hover:scale-105 active:scale-95;
   }
 
   .squircle-icon {
@@ -138,7 +150,7 @@ body.fade-out {
   }
 }
 
-/* Utilities */
+/* Utilities & Animations */
 @layer utilities {
   .fade-in {
     animation: fadeIn 0.3s ease-out forwards;
@@ -146,6 +158,37 @@ body.fade-out {
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(15px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pageEnter {
+    0% {
+      opacity: 0;
+      transform: translateY(8px) scale(0.995);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes modalPop {
+    0% {
+      opacity: 0;
+      transform: scale(0.95) translateY(8px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .page-transition,
+  .page-enter {
+    animation: pageEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .modal-pop {
+    animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
 
   .custom-scroll::-webkit-scrollbar {
@@ -166,15 +209,14 @@ body.fade-out {
 /* Print Styles */
 @media print {
   @page { size: A4 portrait; margin: 15mm; }
-  body { background: white !important; margin: 0; padding: 0; line-height: 1.2 !important; color: black !important; }
+  body { background: white !important; margin: 0 !important; padding: 0 !important; line-height: 1.2 !important; color: black !important; }
   *, *::before, *::after {
     color: black !important;
     background: transparent !important;
     box-shadow: none !important;
     text-shadow: none !important;
   }
-  .swal2-container { display: none !important; }
-  .no-print { display: none !important; }
+  header, nav, aside, .swal2-container, .no-print { display: none !important; }
   .print-only { display: block !important; }
 
   /* Enforce line-height: 1 for PrintHeader */

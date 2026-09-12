@@ -51,12 +51,13 @@ Execute Milestone 6: Perombakan masif dashboard Guru & Admin, cetak dokumen (ori
 | explorer_m6_3 | teamwork_preview_explorer | R4/R5 Piket, Perangkat, Broadcast Survey | completed | 8ae62208-c3d5-491f-9a2b-fb9dcd7cb94f |
 | worker_m6_1 | teamwork_preview_worker | M6.1 Database Migration & Schema | completed | 635f702e-f6a4-40b2-a854-9c923e59876e |
 | worker_m6_2 | teamwork_preview_worker | M6.2 Document Print Redesign (R1) | completed | a602fc9d-1127-4b03-ace2-df22fa423b16 |
-| worker_m6_3 | teamwork_preview_worker | M6.3 Dashboards & Verification (R2 & R3) | running | 79c29586-3b26-402a-b745-c04afaf12a2b |
+| worker_m6_3 | teamwork_preview_worker | M6.3 Dashboards & Verification (R2 & R3) | completed | 79c29586-3b26-402a-b745-c04afaf12a2b |
+| worker_m6_4 | teamwork_preview_worker | M6.4 Piket, Perangkat, Broadcast & Transitions (R4 & R5) | running | d70254ac-d6d6-435b-8559-d766d57ec6fc |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 6 / 16
-- Pending subagents: 79c29586-3b26-402a-b745-c04afaf12a2b
+- Spawn count: 7 / 16
+- Pending subagents: d70254ac-d6d6-435b-8559-d766d57ec6fc
 - Predecessor: none
 - Successor: not yet spawned
 

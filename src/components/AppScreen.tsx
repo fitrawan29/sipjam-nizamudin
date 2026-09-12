@@ -10,7 +10,7 @@ import DokumenView from './DokumenView';
 import HistoryView from './HistoryView';
 import RekapJurnalView from './RekapJurnalView';
 import RekapSiswaView from './RekapSiswaView';
-import AdminMonitorView from './AdminMonitorView';
+import InformasiView from './InformasiView';
 import AdminVerifView from './AdminVerifView';
 import AdminRekapView from './AdminRekapView';
 import AdminDataView from './AdminDataView';
@@ -77,6 +77,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
     { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
     { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' },
     { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }
@@ -87,11 +88,11 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Kelola Piket' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
     { id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik' },
     { id: 'view-admin-rekap', icon: 'fa-file-invoice', label: 'Rekap Akhir' },
     { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' },
     { id: 'view-admin-data', icon: 'fa-database', label: 'Master' },
-    { id: 'view-admin-monitor', icon: 'fa-user-clock', label: 'Pantauan Harian' },
     { id: 'view-admin-backup', icon: 'fa-hard-drive', label: 'Akses Data / Backup' },
     { id: 'view-admin-config', icon: 'fa-gears', label: 'Sistem' }
   ];
@@ -100,7 +101,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
 
   return (
     <div className="flex-col h-full w-full flex">
-      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px]">
+      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
         <div className="flex items-center gap-2 sm:gap-3">
             <button type="button" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className="fa-solid fa-bars text-sm"></i>
@@ -157,21 +158,23 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       )}
 
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
-        {currentView === 'view-home' && <HomeView user={user} setView={handleNavigation} menuItems={menuItems} />}
-        {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
-        {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
-        {currentView === 'view-piket' && <PiketView user={user} />}
-        {currentView === 'view-dokumen' && <DokumenView user={user} />}
-        {currentView === 'view-history' && <HistoryView user={user} />}
-        {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
-        {currentView === 'view-rekap-siswa' && <RekapSiswaView user={user} />}
-        {currentView === 'view-admin-monitor' && <AdminMonitorView user={user} />}
-        {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
-        {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
-        {currentView === 'view-admin-data' && <AdminDataView user={user} />}
-        {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
-        {currentView === 'view-admin-config' && <AdminConfigView user={user} />}
-        {currentView === 'view-analitik' && <AnalitikView user={user} />}
+        <div key={currentView} className="page-transition">
+          {currentView === 'view-home' && <HomeView user={user} setView={handleNavigation} menuItems={menuItems} />}
+          {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
+          {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
+          {currentView === 'view-piket' && <PiketView user={user} />}
+          {currentView === 'view-dokumen' && <DokumenView user={user} />}
+          {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
+          {currentView === 'view-history' && <HistoryView user={user} />}
+          {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
+          {currentView === 'view-rekap-siswa' && <RekapSiswaView user={user} />}
+          {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
+          {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
+          {currentView === 'view-admin-data' && <AdminDataView user={user} />}
+          {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
+          {currentView === 'view-admin-config' && <AdminConfigView user={user} />}
+          {currentView === 'view-analitik' && <AnalitikView user={user} />}
+        </div>
       </main>
     </div>
   );

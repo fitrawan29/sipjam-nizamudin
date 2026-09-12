@@ -8,11 +8,30 @@ import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName } from '@/lib/wita';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
+import { PenugasanPiket } from '@/types/database';
+
+const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
 export default function PiketView({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState<'beranda' | 'lapor' | 'rekap'>('beranda');
+  const [activeTab, setActiveTab] = useState<'beranda' | 'lapor' | 'penugasan' | 'rekap'>('beranda');
   const [jadwalPiket, setJadwalPiket] = useState<any[]>([]);
+  const [penugasanList, setPenugasanList] = useState<PenugasanPiket[]>([]);
   const [laporanPiket, setLaporanPiket] = useState<any[]>([]);
+
+  // Penugasan Piket states (Admin)
+  const currentDayWita = getWitaDayName();
+  const [selectedHariPiket, setSelectedHariPiket] = useState<string>(
+    ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].includes(currentDayWita) ? currentDayWita : 'Senin'
+  );
+  const [allTeachers, setAllTeachers] = useState<any[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [siswaAssignMode, setSiswaAssignMode] = useState<'select' | 'manual'>('select');
+  const [selectedSiswaFilterKelas, setSelectedSiswaFilterKelas] = useState('');
+  const [selectedSiswaNisn, setSelectedSiswaNisn] = useState('');
+  const [manualSiswaNama, setManualSiswaNama] = useState('');
+  const [manualSiswaNisn, setManualSiswaNisn] = useState('');
+  const [manualSiswaKelas, setManualSiswaKelas] = useState('');
+  const [assignLoading, setAssignLoading] = useState(false);
 
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
@@ -42,7 +61,10 @@ export default function PiketView({ user }: { user: any }) {
         setAllStudents(data);
         const uniqueKelas = [...new Set(data.map(s => s.kelas).filter(Boolean))];
         setKelasList(uniqueKelas as string[]);
-        if (uniqueKelas.length > 0) setActiveKelas(uniqueKelas[0] as string);
+        if (uniqueKelas.length > 0) {
+          setActiveKelas(uniqueKelas[0] as string);
+          setSelectedSiswaFilterKelas(uniqueKelas[0] as string);
+        }
         
         // Initialize default attendance
         const initialAbsensi: Record<string, string> = {};
@@ -54,9 +76,10 @@ export default function PiketView({ user }: { user: any }) {
     };
     fetchStudents();
 
-    // Fetch teachers for rekap filter
-    supabase.from('data_guru').select('nama_guru').order('nama_guru').then(({ data }) => {
+    // Fetch teachers for penugasan & rekap filter
+    supabase.from('data_guru').select('id, nama_guru, nip').order('nama_guru').then(({ data }) => {
       if (data) {
+        setAllTeachers(data);
         const list = data.map(g => g.nama_guru).filter(Boolean);
         setGuruOptions([...new Set(list)]);
       }
@@ -79,9 +102,35 @@ export default function PiketView({ user }: { user: any }) {
     const { data: jadwal } = await supabase.from('jadwal_piket').select('*');
     if (jadwal) setJadwalPiket(jadwal);
 
+    // Fetch Penugasan Piket
+    const { data: penugasan } = await supabase.from('penugasan_piket').select('*').order('created_at', { ascending: true });
+    if (penugasan) setPenugasanList((penugasan as PenugasanPiket[]) || []);
+
     // Fetch Laporan
     const { data: laporan } = await supabase.from('laporan_piket').select('*').order('timestamp', { ascending: false }).limit(10);
     if (laporan) setLaporanPiket(laporan);
+  };
+
+  const syncJadwalPiketForDay = async (day: string) => {
+    try {
+      const { data } = await supabase
+        .from('penugasan_piket')
+        .select('guru_nama')
+        .eq('hari', day)
+        .eq('tipe_petugas', 'Guru');
+
+      const names = (data || []).map(g => g.guru_nama).filter(Boolean);
+      const daftarGuruStr = names.join(', ');
+
+      const { data: existing } = await supabase.from('jadwal_piket').select('id').eq('hari', day);
+      if (existing && existing.length > 0) {
+        await supabase.from('jadwal_piket').update({ daftar_guru: daftarGuruStr }).eq('hari', day);
+      } else {
+        await supabase.from('jadwal_piket').insert([{ hari: day, daftar_guru: daftarGuruStr }]);
+      }
+    } catch (err) {
+      console.error('Error syncing jadwal_piket:', err);
+    }
   };
 
   const fetchRekapPiket = async () => {
@@ -253,15 +302,179 @@ export default function PiketView({ user }: { user: any }) {
     URL.revokeObjectURL(url);
   };
 
+  const handleAddGuruPiket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTeacherId) {
+      Swal.fire('Peringatan', 'Silakan pilih guru terlebih dahulu.', 'warning');
+      return;
+    }
+
+    const teacher = allTeachers.find(t => t.id === selectedTeacherId);
+    if (!teacher) return;
+
+    // Prevent duplicate assignment on the same day
+    const already = penugasanList.some(
+      p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru' && (p.guru_id === teacher.id || p.guru_nama === teacher.nama_guru)
+    );
+    if (already) {
+      Swal.fire('Perhatian', `${teacher.nama_guru} sudah terdaftar pada jadwal piket hari ${selectedHariPiket}.`, 'info');
+      return;
+    }
+
+    setAssignLoading(true);
+    try {
+      const newEntry = {
+        hari: selectedHariPiket,
+        tipe_petugas: 'Guru',
+        guru_id: teacher.id,
+        guru_nama: teacher.nama_guru,
+        guru_nip: teacher.nip || '',
+        tahun_ajaran: '2026/2027'
+      };
+
+      const { data, error } = await supabase.from('penugasan_piket').insert([newEntry]).select().single();
+      if (error) throw error;
+
+      if (data) {
+        setPenugasanList(prev => [...prev, data as PenugasanPiket]);
+      }
+      await syncJadwalPiketForDay(selectedHariPiket);
+      await fetchDataPiket();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Guru Ditugaskan',
+        text: `${teacher.nama_guru} berhasil ditugaskan untuk piket hari ${selectedHariPiket}.`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      setSelectedTeacherId('');
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Gagal menambahkan guru piket', 'error');
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const handleAddSiswaPiket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let nama = '';
+    let nisn = '';
+    let kelas = '';
+
+    if (siswaAssignMode === 'select') {
+      const student = allStudents.find(s => s.nisn === selectedSiswaNisn);
+      if (!student) {
+        Swal.fire('Peringatan', 'Silakan pilih siswa dari daftar.', 'warning');
+        return;
+      }
+      nama = student.nama_siswa;
+      nisn = student.nisn;
+      kelas = student.kelas;
+    } else {
+      nama = manualSiswaNama.trim();
+      nisn = manualSiswaNisn.trim();
+      kelas = manualSiswaKelas.trim();
+      if (!nama || !kelas) {
+        Swal.fire('Peringatan', 'Nama siswa dan kelas wajib diisi.', 'warning');
+        return;
+      }
+    }
+
+    // Check duplicate
+    const already = penugasanList.some(
+      p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa' && p.siswa_nama?.toLowerCase() === nama.toLowerCase()
+    );
+    if (already) {
+      Swal.fire('Perhatian', `${nama} sudah terdaftar pada piket siswa hari ${selectedHariPiket}.`, 'info');
+      return;
+    }
+
+    setAssignLoading(true);
+    try {
+      const newEntry = {
+        hari: selectedHariPiket,
+        tipe_petugas: 'Siswa',
+        siswa_nama: nama,
+        siswa_nisn: nisn || null,
+        kelas: kelas || null,
+        tahun_ajaran: '2026/2027'
+      };
+
+      const { data, error } = await supabase.from('penugasan_piket').insert([newEntry]).select().single();
+      if (error) throw error;
+
+      if (data) {
+        setPenugasanList(prev => [...prev, data as PenugasanPiket]);
+      }
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Siswa Ditugaskan',
+        text: `${nama} (${kelas}) berhasil ditugaskan untuk piket hari ${selectedHariPiket}.`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+      setSelectedSiswaNisn('');
+      setManualSiswaNama('');
+      setManualSiswaNisn('');
+      setManualSiswaKelas('');
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Gagal menambahkan siswa piket', 'error');
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const handleDeletePenugasan = async (id: string, nama: string, tipe: 'Guru' | 'Siswa') => {
+    const result = await Swal.fire({
+      title: `Hapus ${tipe} Piket?`,
+      text: `Hapus ${nama} dari daftar piket hari ${selectedHariPiket}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const { error } = await supabase.from('penugasan_piket').delete().eq('id', id);
+        if (error) throw error;
+
+        setPenugasanList(prev => prev.filter(p => p.id !== id));
+        if (tipe === 'Guru') {
+          await syncJadwalPiketForDay(selectedHariPiket);
+          await fetchDataPiket();
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Penugasan Dihapus',
+          timer: 1200,
+          showConfirmButton: false
+        });
+      } catch (err: any) {
+        Swal.fire('Error', err.message || 'Gagal menghapus penugasan', 'error');
+      }
+    }
+  };
+
   const isGuru = user?.role === 'Guru';
-  const canReport = !isGuru || (dailyState && dailyState.isPiket && !dailyState.isLibur);
+  const isAdmin = user?.role === 'Admin';
+  // Admin never conducts daily report; Guru conducts report if assigned and not on leave
+  const canReport = !isAdmin && isGuru && Boolean(dailyState && dailyState.isPiket && !dailyState.isLibur);
 
   return (
-    <section id="view-piket" className="view-section fade-in">
-        <div className="glass-card p-4">
+    <section id="view-piket" className="view-section page-enter">
+        <div className="glass-card p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4 no-print">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i className="fa-solid fa-shield-halved text-teal-600 dark:text-teal-400"></i> Modul Piket
+                    <span className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                      <i className="fa-solid fa-shield-halved text-sm"></i>
+                    </span>
+                    {isAdmin ? 'Manajemen & Penugasan Piket' : 'Modul Piket Guru'}
                 </h2>
                 <button 
                   type="button" 
@@ -281,26 +494,42 @@ export default function PiketView({ user }: { user: any }) {
               </div>
             )}
 
+            {/* TAB BUTTONS */}
             <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1 no-print">
               <button 
+                type="button"
                 onClick={() => setActiveTab('beranda')} 
-                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${activeTab === 'beranda' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'beranda' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
               >
                 Beranda Piket
               </button>
-              {canReport && (
+
+              {isAdmin && (
                 <button 
-                  onClick={() => setActiveTab('lapor')} 
-                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${activeTab === 'lapor' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                  type="button"
+                  onClick={() => setActiveTab('penugasan')} 
+                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'penugasan' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
                 >
-                  Isi Laporan
+                  <i className="fa-solid fa-user-gear mr-1.5 text-teal-600 dark:text-teal-400"></i> Penugasan Piket
                 </button>
               )}
+
+              {canReport && (
+                <button 
+                  type="button"
+                  onClick={() => setActiveTab('lapor')} 
+                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'lapor' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                >
+                  <i className="fa-solid fa-pen-to-square mr-1.5 text-teal-600 dark:text-teal-400"></i> Isi Laporan
+                </button>
+              )}
+
               <button 
+                type="button"
                 onClick={() => setActiveTab('rekap')} 
-                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${activeTab === 'rekap' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'rekap' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
               >
-                <i className="fa-solid fa-chart-pie mr-1.5"></i> Rekap Piket
+                <i className="fa-solid fa-chart-pie mr-1.5 text-teal-600 dark:text-teal-400"></i> Rekap Piket
               </button>
             </div>
 
@@ -308,18 +537,63 @@ export default function PiketView({ user }: { user: any }) {
             {activeTab === 'beranda' && (
               <div id="piket-content-beranda" className="space-y-4 fade-in">
                   <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl">
-                      <h3 className="text-xs font-bold text-teal-800 dark:text-teal-400 mb-3">
-                        <i className="fa-regular fa-calendar-check mr-1.5"></i> Jadwal Piket Harian
-                      </h3>
-                      <div className="space-y-2 max-h-40 overflow-y-auto custom-scroll pr-1">
-                        {jadwalPiket.length === 0 ? (
-                          <div className="text-center text-[10px] text-gray-500 dark:text-white/80 py-2">Belum ada jadwal.</div>
-                        ) : jadwalPiket.map(j => (
-                          <div key={j.id} className="bg-white dark:bg-gray-800 p-2 rounded-lg border border-teal-100 dark:border-teal-900">
-                            <div className="font-bold text-teal-700 dark:text-teal-400 text-xs">{j.hari}</div>
-                            <div className="text-[10px] text-gray-700 dark:text-white/80 mt-0.5">{j.daftar_guru}</div>
-                          </div>
-                        ))}
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-xs font-bold text-teal-800 dark:text-teal-400 flex items-center gap-1.5">
+                          <i className="fa-regular fa-calendar-check"></i> Jadwal Piket Harian (Senin – Sabtu)
+                        </h3>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('penugasan')}
+                            className="text-[11px] font-bold text-teal-700 dark:text-teal-400 hover:underline inline-flex items-center gap-1"
+                          >
+                            <i className="fa-solid fa-gear text-[10px]"></i> Kelola Penugasan
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto custom-scroll pr-1">
+                        {HARI_PIKET_LIST.map(hari => {
+                          const guruList = penugasanList.filter(p => p.hari === hari && p.tipe_petugas === 'Guru');
+                          const siswaList = penugasanList.filter(p => p.hari === hari && p.tipe_petugas === 'Siswa');
+                          const legacyRow = jadwalPiket.find(j => j.hari === hari);
+
+                          return (
+                            <div key={hari} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-teal-100 dark:border-teal-900 shadow-2xs space-y-1.5">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-teal-700 dark:text-teal-400 text-xs">{hari}</span>
+                                <span className="text-[10px] bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 font-semibold px-1.5 py-0.2 rounded">
+                                  {guruList.length} Guru • {siswaList.length} Siswa
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-gray-800 dark:text-gray-200">
+                                <span className="font-bold text-gray-500 dark:text-gray-400 text-[10px] block">Guru:</span>
+                                {guruList.length > 0 ? (
+                                  <ul className="list-disc list-inside space-y-0.5 mt-0.5">
+                                    {guruList.map(g => (
+                                      <li key={g.id} className="truncate">{g.guru_nama}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <span className="text-[10px] text-gray-400 italic">
+                                    {legacyRow?.daftar_guru || 'Belum ditugaskan'}
+                                  </span>
+                                )}
+                              </div>
+                              {siswaList.length > 0 && (
+                                <div className="text-[11px] text-gray-800 dark:text-gray-200 pt-1 border-t border-gray-100 dark:border-gray-700">
+                                  <span className="font-bold text-gray-500 dark:text-gray-400 text-[10px] block">Siswa:</span>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {siswaList.map(s => (
+                                      <span key={s.id} className="text-[9px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded font-medium">
+                                        {s.siswa_nama} {s.kelas ? `(${s.kelas})` : ''}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                   </div>
                   <div>
@@ -389,7 +663,294 @@ export default function PiketView({ user }: { user: any }) {
               </div>
             )}
 
-            {/* TAB 2: LAPOR PIKET */}
+            {/* TAB: PENUGASAN PIKET (ADMIN ONLY) */}
+            {activeTab === 'penugasan' && isAdmin && (
+              <div id="piket-content-penugasan" className="space-y-5 fade-in">
+                {/* Day selector pills */}
+                <div className="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-2xl border border-teal-100 dark:border-teal-900/50">
+                  <div className="text-[10px] font-bold text-teal-800 dark:text-teal-400 mb-2 uppercase tracking-wide">
+                    Pilih Hari Penugasan:
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {HARI_PIKET_LIST.map(day => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => setSelectedHariPiket(day)}
+                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all pill-interactive flex flex-col items-center justify-center ${
+                          selectedHariPiket === day
+                            ? 'bg-teal-600 text-white shadow-md'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+                        }`}
+                      >
+                        <span>{day}</span>
+                        <span className="text-[9px] opacity-75 font-normal">
+                          {penugasanList.filter(p => p.hari === day).length} Petugas
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center text-xs">
+                      <i className="fa-solid fa-calendar-day"></i>
+                    </span>
+                    Jadwal Piket Hari {selectedHariPiket}
+                  </h3>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Tahun Ajaran 2026/2027
+                  </span>
+                </div>
+
+                {/* Section 1: Guru Piket */}
+                <div className="bg-white dark:bg-gray-800/80 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-solid fa-chalkboard-user text-teal-600 dark:text-teal-400"></i>
+                      <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                        Dewan Guru Piket ({penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru').length})
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* List of assigned teachers */}
+                  <div className="space-y-2">
+                    {penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru').length === 0 ? (
+                      <div className="text-center py-6 text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                        Belum ada guru yang ditugaskan piket pada hari {selectedHariPiket}.
+                      </div>
+                    ) : (
+                      penugasanList
+                        .filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru')
+                        .map((guruItem, idx) => (
+                          <div
+                            key={guruItem.id}
+                            className="flex items-center justify-between p-3 bg-teal-50/40 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/50 rounded-xl"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="w-7 h-7 rounded-lg bg-teal-600 text-white font-bold text-xs flex items-center justify-center">
+                                {idx + 1}
+                              </span>
+                              <div>
+                                <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                  {guruItem.guru_nama}
+                                </div>
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                  NIP: {guruItem.guru_nip || '-'}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePenugasan(guruItem.id, guruItem.guru_nama || '', 'Guru')}
+                              title="Hapus penugasan guru"
+                              className="btn-click w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 flex items-center justify-center transition border border-red-200 dark:border-red-900"
+                            >
+                              <i className="fa-solid fa-trash text-xs"></i>
+                            </button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+
+                  {/* Add Guru form */}
+                  <form onSubmit={handleAddGuruPiket} className="pt-2 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row gap-2">
+                    <select
+                      value={selectedTeacherId}
+                      onChange={e => setSelectedTeacherId(e.target.value)}
+                      className="flex-1 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                    >
+                      <option value="">-- Pilih Guru untuk Ditugaskan --</option>
+                      {allTeachers
+                        .filter(t => !penugasanList.some(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru' && p.guru_id === t.id))
+                        .map(t => (
+                          <option key={t.id} value={t.id}>
+                            {t.nama_guru} {t.nip ? `(${t.nip})` : ''}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={assignLoading || !selectedTeacherId}
+                      className="btn-click bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 shrink-0"
+                    >
+                      <i className="fa-solid fa-plus text-xs"></i> Tugaskan Guru
+                    </button>
+                  </form>
+                </div>
+
+                {/* Section 2: Siswa Piket */}
+                <div className="bg-white dark:bg-gray-800/80 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-solid fa-users text-teal-600 dark:text-teal-400"></i>
+                      <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                        Siswa Piket ({penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa').length})
+                      </h4>
+                    </div>
+                  </div>
+
+                  {/* List of assigned students */}
+                  <div className="space-y-2">
+                    {penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa').length === 0 ? (
+                      <div className="text-center py-6 text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                        Belum ada siswa yang ditugaskan piket pada hari {selectedHariPiket}.
+                      </div>
+                    ) : (
+                      penugasanList
+                        .filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa')
+                        .map((siswaItem, idx) => (
+                          <div
+                            key={siswaItem.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700 rounded-xl"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="w-7 h-7 rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 font-bold text-xs flex items-center justify-center">
+                                {idx + 1}
+                              </span>
+                              <div>
+                                <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                  {siswaItem.siswa_nama}
+                                </div>
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                  <span className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-semibold px-1.5 py-0.2 rounded">
+                                    Kelas {siswaItem.kelas || '-'}
+                                  </span>
+                                  <span>NISN: {siswaItem.siswa_nisn || '-'}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePenugasan(siswaItem.id, siswaItem.siswa_nama || '', 'Siswa')}
+                              title="Hapus penugasan siswa"
+                              className="btn-click w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 flex items-center justify-center transition border border-red-200 dark:border-red-900"
+                            >
+                              <i className="fa-solid fa-trash text-xs"></i>
+                            </button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+
+                  {/* Add Siswa Form with Selection / Manual toggle */}
+                  <div className="pt-2 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                        + Tambah Siswa Piket
+                      </span>
+                      <div className="flex gap-1 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setSiswaAssignMode('select')}
+                          className={`px-2 py-1 rounded-lg font-bold transition ${
+                            siswaAssignMode === 'select'
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                          }`}
+                        >
+                          Pilih dari Data
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSiswaAssignMode('manual')}
+                          className={`px-2 py-1 rounded-lg font-bold transition ${
+                            siswaAssignMode === 'manual'
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                          }`}
+                        >
+                          Input Manual
+                        </button>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleAddSiswaPiket} className="space-y-2">
+                      {siswaAssignMode === 'select' ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div>
+                            <select
+                              value={selectedSiswaFilterKelas}
+                              onChange={e => {
+                                setSelectedSiswaFilterKelas(e.target.value);
+                                setSelectedSiswaNisn('');
+                              }}
+                              className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                            >
+                              <option value="">Semua Kelas</option>
+                              {kelasList.map(k => (
+                                <option key={k} value={k}>Kelas {k}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="sm:col-span-2 flex gap-2">
+                            <select
+                              value={selectedSiswaNisn}
+                              onChange={e => setSelectedSiswaNisn(e.target.value)}
+                              className="flex-1 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                            >
+                              <option value="">-- Pilih Siswa --</option>
+                              {allStudents
+                                .filter(s => !selectedSiswaFilterKelas || s.kelas === selectedSiswaFilterKelas)
+                                .map(s => (
+                                  <option key={s.nisn} value={s.nisn}>
+                                    {s.nama_siswa} ({s.kelas}) - {s.nisn}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              type="submit"
+                              disabled={assignLoading || !selectedSiswaNisn}
+                              className="btn-click bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 shrink-0"
+                            >
+                              <i className="fa-solid fa-plus text-xs"></i> Tambah
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Nama Siswa"
+                            value={manualSiswaNama}
+                            onChange={e => setManualSiswaNama(e.target.value)}
+                            className="sm:col-span-2 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Kelas (e.g. X Merdeka)"
+                            value={manualSiswaKelas}
+                            onChange={e => setManualSiswaKelas(e.target.value)}
+                            className="px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                          />
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="NISN"
+                              value={manualSiswaNisn}
+                              onChange={e => setManualSiswaNisn(e.target.value)}
+                              className="flex-1 px-2.5 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                            />
+                            <button
+                              type="submit"
+                              disabled={assignLoading || !manualSiswaNama || !manualSiswaKelas}
+                              className="btn-click bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 shrink-0"
+                            >
+                              <i className="fa-solid fa-plus text-xs"></i> Tambah
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: LAPOR PIKET (GURU ON DUTY ONLY) */}
             {activeTab === 'lapor' && canReport && (
               <div id="piket-content-form" className="fade-in space-y-4">
                   <div className="bg-orange-50 border border-orange-200 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400 p-3 rounded-xl mb-4 text-[10px] text-orange-800 font-medium leading-relaxed">
