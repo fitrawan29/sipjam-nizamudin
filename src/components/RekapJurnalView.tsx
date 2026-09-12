@@ -154,8 +154,8 @@ export default function RekapJurnalView({ user }: { user: any }) {
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
         <div className="glass-card p-4">
             <PrintHeader />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-book-open text-indigo-500 dark:text-indigo-400 no-print text-base"></i> Rekap Jurnal Pribadi
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
+              <i className="fa-solid fa-book-open text-indigo-500 dark:text-indigo-400 text-base"></i> Rekap Jurnal Pribadi
             </h2>
 
             {/* Summary Metric Cards */}
@@ -304,7 +304,7 @@ export default function RekapJurnalView({ user }: { user: any }) {
                           <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kegiatan pembelajaran</th>
                           <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kehadiran murid</th>
                           <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Catatan refleksi</th>
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Foto kegiatan</th>
+                          <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Foto kegiatan</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -364,15 +364,15 @@ export default function RekapJurnalView({ user }: { user: any }) {
                               </td>
 
                               {/* 8. Foto kegiatan */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
+                              <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
                                 {hasFoto ? (
-                                  <div className="flex flex-col items-center justify-center gap-1">
+                                  <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
                                     <img
                                       src={getGoogleDriveThumbnailUrl(fotoUrl, 800) || transformGoogleDriveUrl(fotoUrl)}
                                       alt="Foto Kegiatan"
                                       loading="eager"
                                       referrerPolicy="no-referrer"
-                                      className="w-14 h-14 print:w-20 print:h-16 object-contain rounded border border-gray-300 dark:border-gray-600 print:border-gray-300 mx-auto bg-white"
+                                      className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[70px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         if (target.src !== transformGoogleDriveUrl(fotoUrl)) {

@@ -46,18 +46,16 @@ export function PrintHeader() {
 
   return (
     <div className="print-header print-only mb-6 border-b-4 border-black pb-4 text-black font-medium leading-none">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center justify-center gap-4 sm:gap-8 max-w-4xl mx-auto">
         {/* Left Logo Container (Yayasan) */}
-        <div className="shrink-0 w-24 h-24 flex items-center justify-center">
-          {logoYayasan ? (
+        {logoYayasan && (
+          <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
             <img src={logoYayasan} alt="Logo Yayasan" className="max-w-full max-h-full object-contain" />
-          ) : (
-            <div className="w-20 h-20" />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Center Text Container */}
-        <div className="print-header-center flex-1 min-w-0 text-center px-2 sm:px-4 overflow-hidden leading-none">
+        <div className="print-header-center flex-1 min-w-0 text-center px-2 overflow-hidden leading-none">
           {yayasan && (
             <h2 className="text-base sm:text-lg font-bold uppercase text-black leading-none tracking-wide mb-1">
               {yayasan}
@@ -88,13 +86,11 @@ export function PrintHeader() {
         </div>
 
         {/* Right Logo Container (Dinas) */}
-        <div className="shrink-0 w-24 h-24 flex items-center justify-center">
-          {logoDinas ? (
+        {logoDinas && (
+          <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
             <img src={logoDinas} alt="Logo Dinas" className="max-w-full max-h-full object-contain" />
-          ) : (
-            <div className="w-20 h-20" />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -177,6 +173,7 @@ export function PrintSignature({
   const region = getRegion();
   const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || 'Kepala Sekolah';
   const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || '';
+  const defaultKepalaTitle = (config.kop_sekolah || config.NAMA_SEKOLAH) ? `Kepala ${config.kop_sekolah || config.NAMA_SEKOLAH}` : 'Kepala Sekolah';
 
   const containerClass = singleColumn
     ? "print-only print-signature mt-10 flex justify-end ml-auto text-black"
@@ -198,12 +195,14 @@ export function PrintSignature({
             {leftSubtitle || 'Guru Mata Pelajaran'}
           </span>
           <div className="h-20 sm:h-24" />
-          <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
-            {leftName || '( ........................................ )'}
-          </span>
-          <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
-            {leftNip && leftNip !== '-' ? `NIP. ${leftNip}` : 'NIP. -'}
-          </span>
+          <div className="inline-block text-left">
+            <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+              {leftName || '( ........................................ )'}
+            </span>
+            <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+              {leftNip && leftNip !== '-' ? `NIP. ${leftNip}` : 'NIP. -'}
+            </span>
+          </div>
         </div>
       )}
 
@@ -213,15 +212,17 @@ export function PrintSignature({
           {region ? `${region}, ` : ''}{dateStr}
         </span>
         <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
-          {rightTitle || 'Kepala Sekolah'}
+          {rightTitle || defaultKepalaTitle}
         </span>
         <div className="h-20 sm:h-24" />
-        <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
-          {kepsekNama}
-        </span>
-        <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
-          {kepsekNip && kepsekNip !== '-' ? `NIP. ${kepsekNip}` : 'NIP. -'}
-        </span>
+        <div className="inline-block text-left">
+          <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+            {kepsekNama}
+          </span>
+          <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+            {kepsekNip && kepsekNip !== '-' ? `NIP. ${kepsekNip}` : 'NIP. -'}
+          </span>
+        </div>
       </div>
     </div>
   );
