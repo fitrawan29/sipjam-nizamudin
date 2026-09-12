@@ -16,10 +16,11 @@ Coordinate and monitor the transition of SIPJAM to a multi-tenant SaaS platform:
 - Victory Auditor (previous): f354ce81-a125-46eb-b9f6-840f1d21a89e (.agents/victory_auditor_3)
 - Active Orchestrator (previous): 391b5d0f-960b-430f-985b-4245841f8551 (.agents/orchestrator_6)
 - Victory Auditor (previous): 7e8bfec7-a8ad-4c37-b24d-4a2e5ab9e5bb (.agents/victory_auditor_4)
-- Active Orchestrator: bedfb7f0-1cec-4949-8c24-27709173b6ec (.agents/orchestrator_7)
+- Active Orchestrator (previous): bedfb7f0-1cec-4949-8c24-27709173b6ec (.agents/orchestrator_7)
+- Active Orchestrator: f0a4047d-f184-479b-9852-09ec5b34921f (.agents/orchestrator_8)
 - Victory Auditor: [to be spawned on victory claim]
-- Cron 1 (Progress Reporting): task-34 (*/8 * * * *)
-- Cron 2 (Liveness Check): task-36 (*/10 * * * *)
+- Cron 1 (Progress Reporting): 6463d6bb-0cf2-41e8-9ec3-6c138f9bc4a8/task-44 (*/8 * * * *)
+- Cron 2 (Liveness Check): 6463d6bb-0cf2-41e8-9ec3-6c138f9bc4a8/task-46 (*/10 * * * *)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -50,6 +51,6 @@ Coordinate and monitor the transition of SIPJAM to a multi-tenant SaaS platform:
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md — Verbatim user requests (.agents mirror)
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\sentinel\BRIEFING.md — Sentinel working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\sentinel\handoff.md — Sentinel handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_7\ — Active Orchestrator working directory
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_8\ — Active Orchestrator working directory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md — Master project documentation
 

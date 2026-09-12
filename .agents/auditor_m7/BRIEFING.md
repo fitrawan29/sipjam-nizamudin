@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-12T17:12:00+07:00
+# BRIEFING — 2026-09-12T17:16:00+07:00
 
 ## Mission
 Conduct a comprehensive Forensic Integrity Audit of Milestone 7 code changes (multi-tenant RLS, superadmin, ascending date sorting, sekolah_id integrity).
@@ -20,7 +20,7 @@ Conduct a comprehensive Forensic Integrity Audit of Milestone 7 code changes (mu
 
 ## Current Parent
 - Conversation ID: bedfb7f0-1cec-4949-8c24-27709173b6ec
-- Updated: 2026-09-12T17:12:00+07:00
+- Updated: 2026-09-12T17:16:00+07:00
 
 ## Audit Scope
 - **Work product**: Milestone 7 implementation files:
@@ -38,14 +38,13 @@ Conduct a comprehensive Forensic Integrity Audit of Milestone 7 code changes (mu
   - `src/components/RekapSiswaView.tsx`
   - `src/components/AdminRekapView.tsx`
   - `src/components/PiketView.tsx`
-- **Profile loaded**: General Project
+- **Profile loaded**: General Project (Benchmark Integrity Mode)
 - **Audit type**: forensic integrity check
 
 ## Audit Progress
-- **Phase**: investigating
-- **Checks completed**: [none]
-- **Checks remaining**:
-  - Read ORIGINAL_REQUEST.md and PROJECT.md
+- **Phase**: completed
+- **Checks completed**:
+  - Read ORIGINAL_REQUEST.md & PROJECT.md
   - Static analysis of 14 target files
   - Hardcoded output / faked date / facade detection
   - RLS policy authenticity & bypass check
@@ -53,15 +52,19 @@ Conduct a comprehensive Forensic Integrity Audit of Milestone 7 code changes (mu
   - Multi-tenant sekolah_id integrity check
   - Build & test execution
   - Verification & report generation
-- **Findings so far**: CLEAN (under investigation)
+- **Findings**: 🔴 INTEGRITY VIOLATION detected (permissive RLS backdoor shortcut in migration lines 546-571)
 
 ## Key Decisions Made
-- Independent verification without code modifications.
+- Binary verdict: INTEGRITY VIOLATION due to RLS bypass shortcut `OR (public.get_auth_user_sekolah_id() IS NULL AND true)` and complete absence of `x-sekolah-id` in frontend client.
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD]
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+- **Hypotheses tested**:
+  - Can an anonymous client without headers insert or delete rows in tenant tables? Confirmed: YES.
+  - Does the frontend provide `x-sekolah-id`? Confirmed: NO (0 occurrences).
+- **Vulnerabilities found**:
+  - Database-level RLS is bypassed for all application traffic due to `IS NULL AND true` fallback.
+  - Self-certifying test in `tests/m7_1_db_migration.test.ts` line 126.
+- **Untested angles**: All primary angles tested empirically.
 
 ## Loaded Skills
 - None
@@ -70,4 +73,5 @@ Conduct a comprehensive Forensic Integrity Audit of Milestone 7 code changes (mu
 - `.agents/auditor_m7/DISPATCH.md` — Dispatch instructions
 - `.agents/auditor_m7/BRIEFING.md` — Persistent state index
 - `.agents/auditor_m7/progress.md` — Liveness & execution log
+- `.agents/auditor_m7/test_rls_bypass.ts` — Empirical proof script for RLS bypass
 - `.agents/auditor_m7/handoff.md` — Final forensic audit report

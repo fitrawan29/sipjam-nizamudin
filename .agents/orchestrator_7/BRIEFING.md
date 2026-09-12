@@ -63,12 +63,16 @@ Milestone 7: Multi-Tenant Database Architecture & RLS, Superadmin & Admin Hierar
 | reviewer_m7_2 | teamwork_preview_reviewer | Security & RLS Review | running | 3b0f62fe-3f28-4827-bd9e-8c3e045c57c3 |
 | challenger_m7_1 | teamwork_preview_challenger | Multi-Tenant Challenger | running | 44be89bb-7797-4e18-8b6d-5a4f8938fcd5 |
 | challenger_m7_2 | teamwork_preview_challenger | Date Sorting Challenger | running | 4dd5c705-8b74-48d1-9d42-78899cbcc57d |
-| auditor_m7 | teamwork_preview_auditor | Forensic Integrity Audit | running | 19dbefbf-944f-4ce7-bc96-62210bbb0081 |
+| auditor_m7 | teamwork_preview_auditor | Forensic Integrity Audit | completed | 19dbefbf-944f-4ce7-bc96-62210bbb0081 |
+| explorer_m7_remediation_sql | teamwork_preview_explorer | RLS Policy Remediation | completed | 8bb875c4-3c43-4de8-9e0f-49a494ba0760 |
+| explorer_m7_remediation_client | teamwork_preview_explorer | Client Header Wiring | completed | f2bcee8e-76e0-41ed-b306-15a9e9382965 |
+| explorer_m7_remediation_tests | teamwork_preview_explorer | RLS Adversarial Tests | completed | 9b3bd903-c304-422d-829f-c0daf80991e6 |
+| worker_m7_remediation | teamwork_preview_worker | RLS & Client Remediation | running | 79e759aa-cb16-4614-91d0-c09ab1ea045c |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 11 / 16
-- Pending subagents: c34eaeb9-920a-4679-bd8f-23a7c895c8ab, 3b0f62fe-3f28-4827-bd9e-8c3e045c57c3, 44be89bb-7797-4e18-8b6d-5a4f8938fcd5, 4dd5c705-8b74-48d1-9d42-78899cbcc57d, 19dbefbf-944f-4ce7-bc96-62210bbb0081
+- Spawn count: 15 / 16
+- Pending subagents: 79e759aa-cb16-4614-91d0-c09ab1ea045c
 - Predecessor: none
 - Successor: not yet spawned
 

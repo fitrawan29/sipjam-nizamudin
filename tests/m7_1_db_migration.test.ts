@@ -1,6 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Ensure environment variables are loaded
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 
 // ANSI colors for clean test reporting
 const GREEN = '\x1b[32m';
@@ -46,6 +51,17 @@ async function runM71Verification() {
   }
   pass('Migration reconfigures multi-tenant composite unique constraints');
 
+  // Verify Hardened Remediation Migration File
+  const remediationPath = path.resolve(__dirname, '../supabase/migrations/20260912_fix_rls_integrity.sql');
+  if (!fs.existsSync(remediationPath)) {
+    fail('Hardened RLS integrity migration file missing: supabase/migrations/20260912_fix_rls_integrity.sql');
+  }
+  const remediationContent = fs.readFileSync(remediationPath, 'utf8');
+  if (remediationContent.includes('IS NULL AND true')) {
+    fail('Remediation migration still contains permissive shortcut "IS NULL AND true"');
+  }
+  pass('Hardened RLS integrity migration file exists and contains zero permissive shortcuts: supabase/migrations/20260912_fix_rls_integrity.sql');
+
   // 2. Verify TypeScript Types
   console.log('\n--- Step 2: TypeScript Types Verification ---');
   const typesPath = path.resolve(__dirname, '../src/types/database.ts');
@@ -69,13 +85,43 @@ async function runM71Verification() {
   if (!supabaseUrl || !supabaseKey) {
     fail('Missing Supabase environment variables');
   }
-  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  const defaultSchoolAId = 'a0000000-0000-0000-0000-000000000001';
+  const anonClient = createClient(supabaseUrl, supabaseKey);
+
+  // Authenticate via verify_login to get legitimate Superadmin identity
+  const { data: superadminAuth, error: saAuthErr } = await anonClient.rpc('verify_login', {
+    p_username: 'superadmin',
+    p_password: 'superadmin123'
+  });
+  if (saAuthErr || !superadminAuth || superadminAuth.length === 0) {
+    fail('verify_login RPC failed for superadmin during setup', saAuthErr);
+  }
+  const superadminUserId = superadminAuth[0].id;
+
+  const superadminClient = createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        'x-user-role': 'Superadmin',
+        'x-user-id': superadminUserId
+      }
+    }
+  });
+
+  const tenantSchoolAClient = createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        'x-sekolah-id': defaultSchoolAId,
+        'x-user-role': 'Admin'
+      }
+    }
+  });
 
   // 3.1 Verify public.sekolah and SMA Nizamudin
-  const { data: sekolahList, error: sekolahErr } = await supabase
+  const { data: sekolahList, error: sekolahErr } = await tenantSchoolAClient
     .from('sekolah')
     .select('*')
-    .eq('id', 'a0000000-0000-0000-0000-000000000001');
+    .eq('id', defaultSchoolAId);
 
   if (sekolahErr || !sekolahList || sekolahList.length === 0) {
     fail('Failed to query public.sekolah or default school not found', sekolahErr);
@@ -84,7 +130,7 @@ async function runM71Verification() {
   pass(`Default school exists: "${s.nama}" (NPSN: ${s.npsn}, Status: ${s.status})`);
 
   // 3.2 Verify public.users contains Superadmin with sekolah_id IS NULL
-  const { data: superadminUser, error: saErr } = await supabase
+  const { data: superadminUser, error: saErr } = await superadminClient
     .from('users')
     .select('id, username, role, sekolah_id')
     .eq('role', 'Superadmin')
@@ -97,7 +143,7 @@ async function runM71Verification() {
   pass(`Superadmin user exists: "${sa.username}" (role: ${sa.role}, sekolah_id: ${sa.sekolah_id})`);
 
   // 3.3 Verify existing teachers have sekolah_id backfilled
-  const { data: teachers, error: tErr } = await supabase
+  const { data: teachers, error: tErr } = await tenantSchoolAClient
     .from('data_guru')
     .select('id, nama_guru, sekolah_id')
     .limit(5);
@@ -105,14 +151,14 @@ async function runM71Verification() {
   if (tErr || !teachers || teachers.length === 0) {
     fail('Failed to fetch data_guru', tErr);
   }
-  const allBackfilled = teachers.every(t => t.sekolah_id === 'a0000000-0000-0000-0000-000000000001');
+  const allBackfilled = teachers.every(t => t.sekolah_id === defaultSchoolAId);
   if (!allBackfilled) {
     fail('Teachers not correctly backfilled with default sekolah_id', teachers);
   }
   pass(`Teachers correctly backfilled with sekolah_id: ${teachers[0].sekolah_id}`);
 
   // 3.4 Verify verify_login RPC
-  const { data: rpcData, error: rpcErr } = await supabase.rpc('verify_login', {
+  const { data: rpcData, error: rpcErr } = await anonClient.rpc('verify_login', {
     p_username: 'superadmin',
     p_password: 'superadmin123'
   });
@@ -122,19 +168,33 @@ async function runM71Verification() {
   }
   pass(`verify_login RPC functional: authenticated as ${rpcData[0].username} (${rpcData[0].role})`);
 
-  // 3.5 Verify tenant isolation query
-  const { data: dummySchoolData, error: dummyErr } = await supabase
+  // 3.5 Verify tenant isolation: Anonymous query returns 0 rows (Strict RLS enforcement)
+  const { data: anonTeachers } = await anonClient
     .from('data_guru')
-    .select('id')
-    .eq('sekolah_id', 'b0000000-0000-0000-0000-000000000002');
+    .select('id, nama_guru');
 
-  if (dummyErr) {
-    fail('Failed to query with secondary school ID', dummyErr);
+  if (anonTeachers && anonTeachers.length > 0) {
+    fail('Tenant isolation leak: anonymous client without headers was able to read data_guru', anonTeachers);
   }
-  if (dummySchoolData && dummySchoolData.length !== 0) {
-    fail('Tenant isolation leak: non-existent school returned records', dummySchoolData);
+  pass('Tenant isolation verified: anonymous unheadered query on data_guru strictly denied by RLS (0 rows)');
+
+  // 3.6 Verify tenant isolation: Secondary school client query returns 0 rows for School A records
+  const secondarySchoolClient = createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        'x-sekolah-id': 'b0000000-0000-0000-0000-000000000002',
+        'x-user-role': 'Admin'
+      }
+    }
+  });
+  const { data: secondaryData } = await secondarySchoolClient
+    .from('data_guru')
+    .select('id');
+
+  if (secondaryData && secondaryData.length !== 0) {
+    fail('Tenant isolation leak: secondary school client received School A records', secondaryData);
   }
-  pass('Tenant isolation verified: query with different sekolah_id returns 0 records');
+  pass('Tenant isolation verified: query with different sekolah_id returns 0 records under strict RLS');
 
   console.log(`\n${GREEN}====================================================${RESET}`);
   console.log(`${GREEN}🎉 ALL M7.1 MULTI-TENANT DB & RLS TESTS PASSED!${RESET}`);

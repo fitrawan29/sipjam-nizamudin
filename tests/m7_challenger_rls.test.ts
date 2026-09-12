@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
 import { randomUUID } from 'crypto';
+
+// Ensure environment variables are loaded
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 
 // ANSI colors for clean test reporting
 const GREEN = '\x1b[32m';
