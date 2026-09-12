@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-13T05:42:00+08:00
+# BRIEFING — 2026-09-13T05:44:00+08:00
 
 ## Mission
 Adversarial re-challenge of live Supabase database after Superadmin RLS hardening, specifically verifying unauthenticated spoofing defense, multi-tenant isolation, and complete fixture teardown.
@@ -20,7 +20,7 @@ Adversarial re-challenge of live Supabase database after Superadmin RLS hardenin
 
 ## Current Parent
 - Conversation ID: f0a4047d-f184-479b-9852-09ec5b34921f
-- Updated: 2026-09-13T05:42:00+08:00
+- Updated: 2026-09-13T05:44:00+08:00
 
 ## Review Scope
 - **Files to review**:
@@ -33,20 +33,21 @@ Adversarial re-challenge of live Supabase database after Superadmin RLS hardenin
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Unauthenticated client sending `headers: {'x-user-role': 'Superadmin'}` returns 0 rows (no password dumps)
-  - Unauthenticated client cannot register schools in public.sekolah
-  - Forged x-user-id with Superadmin header returns 0 rows
-  - School Admin cannot escalate privileges or delete other schools
-- **Vulnerabilities found**: TBD during empirical test execution
-- **Untested angles**: Live DB re-verification pending
+  - Unauthenticated client sending `headers: {'x-user-role': 'Superadmin'}` returns 0 rows (no password dumps): CONFIRMED PROTECTED (PASS [41])
+  - Unauthenticated client cannot register schools in public.sekolah: CONFIRMED PROTECTED (PASS [42])
+  - Forged x-user-id with Superadmin header returns 0 rows: CONFIRMED PROTECTED (PASS [32-34] in m7_rls_integrity)
+  - School Admin cannot escalate privileges or delete other schools: CONFIRMED PROTECTED (PASS [35-41] in m7_rls_integrity)
+  - Teardown cleanly removes all test fixtures: CONFIRMED (0 extra schools, 0 extra users)
+- **Vulnerabilities found**: None. All previous privilege escalation vectors successfully neutralized.
+- **Untested angles**: All scoped attack vectors empirically validated against live Supabase project `jicvvqxjyzntdrccnuyz`.
 
 ## Loaded Skills
 - None required
 
 ## Key Decisions Made
-- Plan step-by-step empirical execution: m8_empirical_challenger -> m7_rls_integrity -> m7_challenger_rls -> teardown audit.
+- All empirical verification suites passed without exception. Formulating APPROVE verdict.
 
 ## Artifact Index
-- handoff.md — Final verdict report
+- handoff.md — Final verdict report (APPROVE)
 - progress.md — Liveness heartbeat
 - BRIEFING.md — Persistent context index
