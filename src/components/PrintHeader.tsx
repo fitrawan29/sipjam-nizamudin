@@ -240,15 +240,13 @@ export function PrintOrientationToggle({
         @media print {
           @page {
             size: A4 ${orientation} !important;
-            margin: 10mm 12mm !important;
+            margin: ${orientation === 'landscape' ? '8mm 10mm' : '12mm 15mm'} !important;
           }
           header, nav, aside, .app-header, .no-print {
             display: none !important;
           }
           main {
-            padding-top: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
+            padding: 0 !important;
             margin: 0 !important;
             max-width: 100% !important;
             width: 100% !important;

@@ -208,28 +208,55 @@ body.fade-out {
 
 /* Print Styles */
 @media print {
-  @page { size: A4 portrait; margin: 15mm; }
-  body { background: white !important; margin: 0 !important; padding: 0 !important; line-height: 1.2 !important; color: black !important; }
-  *, *::before, *::after {
+  /* NOTE: Do NOT set @page here — PrintOrientationToggle injects it dynamically.
+     If no toggle is present, fallback to browser default (usually portrait). */
+
+  html, body {
+    background: white !important;
     color: black !important;
-    background: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.4 !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Reset colors for print but KEEP table borders */
+  * {
+    color: black !important;
     box-shadow: none !important;
     text-shadow: none !important;
   }
-  header, nav, aside, .swal2-container, .no-print { display: none !important; }
-  .print-only { display: block !important; }
 
-  /* Enforce line-height: 1 for PrintHeader */
+  /* Hide non-printable elements */
+  header, nav, aside, .swal2-container, .no-print,
+  .app-header, .page-transition > .no-print {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Print-only elements: use their natural display (flex, block, etc.) */
+  .print-only {
+    display: revert !important;
+    visibility: visible !important;
+  }
+  /* If print-only has flex class, let flex win */
+  .print-only.flex,
+  .print-only[class*="flex"] {
+    display: flex !important;
+  }
+
+  /* === KOP SURAT HEADER === */
   .print-header,
   .print-header * {
     line-height: 1 !important;
   }
-
-  /* Single horizontal line address with flexible dynamic shrinking */
   .print-header-center {
     container-type: inline-size;
   }
-
   .print-address {
     white-space: nowrap !important;
     line-height: 1 !important;
@@ -241,43 +268,79 @@ body.fade-out {
     margin-left: auto !important;
     margin-right: auto !important;
   }
-
   @container (max-width: 550px) {
     .print-address {
       font-size: var(--address-font-size, clamp(5pt, 2.1cqw, 9pt)) !important;
     }
   }
 
-  /* Right-align signature and prevent block override from .print-only */
+  /* === SIGNATURE BLOCK === */
   .print-signature {
     display: flex !important;
-    justify-content: flex-end !important;
-    margin-left: auto !important;
+    justify-content: space-between !important;
+    margin-top: 2rem !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
-
   .print-signature > div {
-    margin-left: auto !important;
+    min-width: 180px;
   }
 
-  /* Pagination protection */
-  .print-signature,
+  /* === TABLE PRINTING === */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    font-size: 8pt !important;
+  }
+  table, th, td {
+    border: 1px solid black !important;
+    background: white !important;
+  }
+  th {
+    background: #f0f0f0 !important;
+    font-weight: bold !important;
+    padding: 4px 6px !important;
+  }
+  td {
+    padding: 3px 5px !important;
+    vertical-align: top !important;
+  }
+  thead {
+    display: table-header-group !important;
+  }
+  tfoot {
+    display: table-footer-group !important;
+  }
+  /* Allow table rows to break across pages so content isn't pushed to new page */
+  tr {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  /* Keep signature and header together on same page */
   .print-header,
-  .print-avoid-break,
-  table,
-  tr,
-  td,
-  th,
-  img {
+  .print-signature,
+  .print-avoid-break {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
+  /* Print signature should start on new page if near bottom */
+  .print-signature {
+    page-break-before: auto;
+  }
+
+  /* Images in print */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Container resets */
   .overflow-x-auto {
     overflow: visible !important;
   }
-
   .mobile-container {
     padding: 0 !important;
     margin: 0 !important;
@@ -285,15 +348,33 @@ body.fade-out {
     width: 100% !important;
     min-height: auto !important;
     border: none !important;
-    background: transparent !important;
+    background: white !important;
   }
   .glass-card {
     border: none !important;
     box-shadow: none !important;
-    background: transparent !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
   }
-  thead { display: table-header-group; }
+
+  /* Remove padding from main content during print */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  /* Remove page-transition animation artifacts */
+  .page-transition {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
+
 @media screen {
   .print-only { display: none !important; }
 }
