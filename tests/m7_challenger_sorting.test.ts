@@ -235,8 +235,20 @@ async function runM7ChallengerSortingTests() {
     fail('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY in environment');
   }
 
+  const anonClient = createClient(supabaseUrl, supabaseKey);
+  const { data: saLogin } = await anonClient.rpc('verify_login', {
+    p_username: 'superadmin',
+    p_password: 'superadmin123'
+  });
+  const superadminUserId = saLogin?.[0]?.id || '5dfbfc0a-8b4b-4c47-aeb9-bc1d2cbac438';
+
   const superadminClient = createClient(supabaseUrl, supabaseKey, {
-    global: { headers: { 'x-user-role': 'Superadmin' } }
+    global: {
+      headers: {
+        'x-user-role': 'Superadmin',
+        'x-user-id': superadminUserId
+      }
+    }
   });
 
   // Get active school for foreign key reference

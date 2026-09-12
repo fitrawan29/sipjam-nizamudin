@@ -53,14 +53,15 @@ Remediate Milestone 7 RLS integrity defects, apply live Supabase migration, wire
 | challenger_m8_multitenant | teamwork_preview_challenger | Multi-Tenant Live Stress Testing | in-progress | c5a6c4ab-6a53-415b-a453-b7eb005eb41c |
 | challenger_m8_recap_sorting | teamwork_preview_challenger | Ascending Date Sorting Empirical Check | completed | 0784d3c5-2d9b-448d-ab04-4a37bea4951b |
 | auditor_m8_forensic | teamwork_preview_auditor | Forensic Integrity Audit | completed (integrity violation) | 9d2b2250-f28b-4275-b77f-424e941dfcd6 |
-| explorer_m8_fix_sql | teamwork_preview_explorer | SQL Remediation Specification | in-progress | c228bf2a-2a1a-4a71-8ec3-5d77bc0683ad |
-| explorer_m8_fix_client_tests | teamwork_preview_explorer | Client & Test Remediation Specification | in-progress | 130cae5e-c805-407f-a3b9-a2b5db7148b6 |
-| explorer_m8_fix_adversarial | teamwork_preview_explorer | Adversarial Test Specification | in-progress | 597c6bdb-083c-4db2-bc1f-d8d53db59723 |
+| explorer_m8_fix_sql | teamwork_preview_explorer | SQL Remediation Specification | completed | c228bf2a-2a1a-4a71-8ec3-5d77bc0683ad |
+| explorer_m8_fix_client_tests | teamwork_preview_explorer | Client & Test Remediation Specification | completed | 130cae5e-c805-407f-a3b9-a2b5db7148b6 |
+| explorer_m8_fix_adversarial | teamwork_preview_explorer | Adversarial Test Specification | completed | 597c6bdb-083c-4db2-bc1f-d8d53db59723 |
+| worker_m8_fix_implementation | teamwork_preview_worker | SQL Hardening & Test Updates Implementation | in-progress | 3ff41d8c-36c2-4359-9061-fde60845e609 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 9 / 16
-- Pending subagents: c228bf2a-2a1a-4a71-8ec3-5d77bc0683ad, 130cae5e-c805-407f-a3b9-a2b5db7148b6, 597c6bdb-083c-4db2-bc1f-d8d53db59723
+- Spawn count: 10 / 16
+- Pending subagents: 3ff41d8c-36c2-4359-9061-fde60845e609
 - Predecessor: orchestrator_7
 - Successor: not yet spawned
 

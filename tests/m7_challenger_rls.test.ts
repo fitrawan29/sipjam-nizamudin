@@ -57,9 +57,28 @@ async function runChallengerRlsTests() {
   console.log(`- School A: ID=${schoolAId}, NPSN=${npsnA}`);
   console.log(`- School B: ID=${schoolBId}, NPSN=${npsnB}`);
 
-  // Create scoped clients
+  // 1. Raw anonymous client
+  const anonClient = createClient(supabaseUrl, supabaseKey);
+
+  // Authenticate superadmin via verify_login RPC to obtain legitimate superadmin user ID
+  const { data: superadminAuth, error: saAuthErr } = await anonClient.rpc('verify_login', {
+    p_username: 'superadmin',
+    p_password: 'superadmin123'
+  });
+
+  if (saAuthErr || !superadminAuth || superadminAuth.length === 0) {
+    fail('Superadmin pre-authentication via verify_login failed', saAuthErr);
+  }
+  const superadminUserId = superadminAuth[0].id;
+
+  // Create scoped clients with authentic credentials
   const superadminClient = createClient(supabaseUrl, supabaseKey, {
-    global: { headers: { 'x-user-role': 'Superadmin' } }
+    global: {
+      headers: {
+        'x-user-role': 'Superadmin',
+        'x-user-id': superadminUserId
+      }
+    }
   });
 
   const schoolAAdminClient = createClient(supabaseUrl, supabaseKey, {
@@ -73,8 +92,6 @@ async function runChallengerRlsTests() {
   const schoolBAdminClient = createClient(supabaseUrl, supabaseKey, {
     global: { headers: { 'x-sekolah-id': schoolBId, 'x-user-role': 'Admin' } }
   });
-
-  const anonClient = createClient(supabaseUrl, supabaseKey);
 
   try {
     // =========================================================================
@@ -301,6 +318,31 @@ async function runChallengerRlsTests() {
       fail('SECURITY LEAK: School Guru A was able to insert into public.users!');
     }
     pass('Blocked: School Guru A cannot insert into public.users (RLS enforced)');
+
+    // 2.9 Unauthenticated client attempting Superadmin role spoofing without x-user-id (Must be BLOCKED)
+    const spoofedSaClient = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { 'x-user-role': 'Superadmin' } }
+    });
+    const { data: spoofedUsers, error: errSpoofUsers } = await spoofedSaClient
+      .from('users')
+      .select('id, username, password');
+    if (!errSpoofUsers && spoofedUsers && spoofedUsers.length > 0) {
+      fail('SECURITY LEAK: Unauthenticated client spoofed Superadmin without x-user-id and dumped users!');
+    }
+    pass('Blocked: Unauthenticated role spoofing without x-user-id cannot access public.users');
+
+    const { data: spoofedSchoolInsert, error: errSpoofedSchoolInsert } = await spoofedSaClient
+      .from('sekolah')
+      .insert({
+        id: randomUUID(),
+        nama: 'Rogue Spoofed School',
+        npsn: `SPOOF_${timestamp.toString().slice(-4)}`
+      })
+      .select();
+    if (!errSpoofedSchoolInsert && spoofedSchoolInsert && spoofedSchoolInsert.length > 0) {
+      fail('SECURITY LEAK: Unauthenticated client spoofed Superadmin without x-user-id and registered a school!');
+    }
+    pass('Blocked: Unauthenticated role spoofing without x-user-id cannot insert into public.sekolah');
 
     // =========================================================================
     // SECTION 3: BASELINE DATA POPULATION IN SCHOOL A & SCHOOL B

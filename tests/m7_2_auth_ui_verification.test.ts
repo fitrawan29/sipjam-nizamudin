@@ -79,13 +79,6 @@ async function runM72Verification() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   const supabase = createClient(supabaseUrl, supabaseKey);
-  const superadminClient = createClient(supabaseUrl, supabaseKey, {
-    global: {
-      headers: {
-        'x-user-role': 'Superadmin'
-      }
-    }
-  });
 
   // 2.1 Test Superadmin Login simulation via verify_login RPC
   const { data: saLogin, error: saLoginErr } = await supabase.rpc('verify_login', {
@@ -97,6 +90,15 @@ async function runM72Verification() {
     fail('verify_login RPC failed for superadmin user', saLoginErr);
   }
   pass(`Superadmin login verified: role="${saLogin[0].role}", username="${saLogin[0].username}", sekolah_id=${saLogin[0].sekolah_id}`);
+
+  const superadminClient = createClient(supabaseUrl, supabaseKey, {
+    global: {
+      headers: {
+        'x-user-role': 'Superadmin',
+        'x-user-id': saLogin[0].id
+      }
+    }
+  });
 
   // 2.2 Test School Creation & Admin Creation Workflow Simulation
   const testNpsn = '99887766';

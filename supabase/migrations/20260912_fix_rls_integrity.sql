@@ -161,8 +161,8 @@ BEGIN
   -- 4. Check authenticated user by 'x-user-id' header against public.users
   BEGIN
     v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-    IF v_raw IS NOT NULL AND v_raw <> '' THEN
-      v_user_id := v_raw::uuid;
+    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
+      v_user_id := trim(v_raw)::uuid;
       SELECT u.role INTO v_role
       FROM public.users u
       WHERE u.id = v_user_id
@@ -175,11 +175,14 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 
-  -- 5. Fallback from PostgREST request header 'x-user-role'
+  -- 5. Fallback from PostgREST request header 'x-user-role' (NEVER trust Superadmin claim)
   BEGIN
     v_raw := current_setting('request.headers', true)::json->>'x-user-role';
-    IF v_raw IS NOT NULL AND v_raw <> '' THEN
-      RETURN v_raw;
+    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
+      IF trim(v_raw) = 'Superadmin' THEN
+        RETURN 'anon'; -- Block spoofed Superadmin role
+      END IF;
+      RETURN trim(v_raw);
     END IF;
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
@@ -192,39 +195,60 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
 CREATE OR REPLACE FUNCTION public.is_superadmin()
 RETURNS BOOLEAN AS $$
 DECLARE
-  v_role TEXT;
   v_user_id UUID;
   v_raw TEXT;
   v_db_role TEXT;
 BEGIN
-  -- A Superadmin can NEVER be scoped to a specific school tenant
+  -- 1. A Superadmin can NEVER be scoped to a specific school tenant
   IF public.get_auth_user_sekolah_id() IS NOT NULL THEN
     RETURN FALSE;
   END IF;
 
-  -- If x-user-id header is provided, strictly verify against public.users
+  -- 2. Check JWT app_metadata (if using Supabase Auth JWT)
+  BEGIN
+    IF (auth.jwt() -> 'app_metadata' ->> 'role') = 'Superadmin' THEN
+      RETURN TRUE;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  -- 3. Check public.users by auth.uid() (if Supabase Auth authenticated)
+  IF auth.uid() IS NOT NULL THEN
+    SELECT u.role INTO v_db_role
+    FROM public.users u
+    WHERE u.id = auth.uid() AND u.sekolah_id IS NULL
+    LIMIT 1;
+
+    IF v_db_role = 'Superadmin' THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  -- 4. Strictly require verified x-user-id matching a Superadmin in public.users
   BEGIN
     v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-    IF v_raw IS NOT NULL AND v_raw <> '' THEN
-      v_user_id := v_raw::uuid;
+    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
+      v_user_id := trim(v_raw)::uuid;
       SELECT u.role INTO v_db_role
       FROM public.users u
-      WHERE u.id = v_user_id
+      WHERE u.id = v_user_id AND u.sekolah_id IS NULL
       LIMIT 1;
 
-      IF v_db_role IS NOT NULL THEN
-        RETURN (v_db_role = 'Superadmin');
-      ELSE
-        RETURN FALSE;
+      IF v_db_role = 'Superadmin' THEN
+        RETURN TRUE;
       END IF;
     END IF;
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 
-  v_role := public.get_auth_user_role();
-  RETURN (v_role = 'Superadmin');
+  -- 5. NEVER fall back to raw x-user-role header. Missing or invalid identity ALWAYS returns FALSE.
+  RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
+
+-- Revoke public execution and grant to API roles
+REVOKE EXECUTE ON FUNCTION public.is_superadmin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_superadmin() TO anon, authenticated, service_role;
 
 -- Helper 4: Secure Login RPC (SECURITY DEFINER allows login without public table SELECT)
 CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
