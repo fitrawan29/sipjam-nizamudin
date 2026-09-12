@@ -716,10 +716,71 @@ async function runChallengerRlsTests() {
     }
     pass('Isolated: School A Admin cannot bulk DELETE School B attendance records');
 
+    // 7.5 School A Admin attempts to UPDATE School B Admin user
+    const { data: illegalUpdateUserB, error: errIllegalUpdateUserB } = await schoolAAdminClient
+      .from('users')
+      .update({ nama: 'Tampered Admin B' })
+      .eq('username', userAdminB)
+      .select();
+
+    if (!errIllegalUpdateUserB && illegalUpdateUserB && illegalUpdateUserB.length > 0) {
+      fail('CRITICAL VULNERABILITY: School A Admin modified School B Admin user!', illegalUpdateUserB);
+    }
+    pass('Isolated: School A Admin cannot UPDATE School B user records');
+
+    // 7.6 School A Admin attempts to DELETE School B Admin user
+    const { data: illegalDeleteUserB, error: errIllegalDeleteUserB } = await schoolAAdminClient
+      .from('users')
+      .delete()
+      .eq('username', userAdminB)
+      .select();
+
+    if (!errIllegalDeleteUserB && illegalDeleteUserB && illegalDeleteUserB.length > 0) {
+      fail('CRITICAL VULNERABILITY: School A Admin deleted School B Admin user!', illegalDeleteUserB);
+    }
+    pass('Isolated: School A Admin cannot DELETE School B user records');
+
     // =========================================================================
-    // SECTION 8: SUPERADMIN PLATFORM-WIDE GOVERNANCE & TEARDOWN
+    // SECTION 8: MULTI-TENANT COMPOSITE UNIQUE CONSTRAINTS VERIFICATION
     // =========================================================================
-    console.log(`\n${CYAN}--- SECTION 8: Superadmin Governance & Teardown Verification ---${RESET}`);
+    console.log(`\n${CYAN}--- SECTION 8: Multi-Tenant Composite Unique Constraints Coexistence ---${RESET}`);
+
+    // Both School A and School B insert identical setting key 'motto_sekolah' with different values
+    const { error: errMottoA } = await schoolAAdminClient.from('pengaturan').insert({
+      sekolah_id: schoolAId,
+      key: 'motto_sekolah',
+      value: 'Excellence in School A'
+    });
+    if (errMottoA) {
+      fail('School A failed to insert shared key into pengaturan', errMottoA);
+    }
+
+    const { error: errMottoB } = await schoolBAdminClient.from('pengaturan').insert({
+      sekolah_id: schoolBId,
+      key: 'motto_sekolah',
+      value: 'Innovation in School B'
+    });
+    if (errMottoB) {
+      fail('School B failed to insert identical shared key into pengaturan (Composite unique broken)', errMottoB);
+    }
+    pass('Composite unique verified: Both schools successfully saved identical setting key "motto_sekolah" without conflict');
+
+    // Verify School A reads its own value
+    const { data: readMottoA } = await schoolAAdminClient.from('pengaturan').select('value').eq('key', 'motto_sekolah').single();
+    if (readMottoA?.value !== 'Excellence in School A') {
+      fail('School A read incorrect value for shared key', readMottoA);
+    }
+    // Verify School B reads its own value
+    const { data: readMottoB } = await schoolBAdminClient.from('pengaturan').select('value').eq('key', 'motto_sekolah').single();
+    if (readMottoB?.value !== 'Innovation in School B') {
+      fail('School B read incorrect value for shared key', readMottoB);
+    }
+    pass('Tenant segregation verified: Both schools retrieve their respective values for shared key "motto_sekolah"');
+
+    // =========================================================================
+    // SECTION 9: SUPERADMIN PLATFORM-WIDE GOVERNANCE & TEARDOWN
+    // =========================================================================
+    console.log(`\n${CYAN}--- SECTION 9: Superadmin Governance & Teardown Verification ---${RESET}`);
 
     // Superadmin updates School A status from aktif to nonaktif
     const { data: updatedSchoolA, error: errUpdateSchoolA } = await superadminClient
