@@ -4,646 +4,912 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5";
-  };
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       bank_dokumen: {
         Row: {
-          catatan_admin: string | null;
-          id: string;
-          jenis_dokumen: string | null;
-          judul: string | null;
-          kelas: string | null;
-          link_file: string | null;
-          mapel: string | null;
-          nama_guru: string | null;
-          status_verifikasi: string | null;
-          timestamp: string | null;
-        };
+          catatan_admin: string | null
+          id: string
+          jenis_dokumen: string | null
+          judul: string | null
+          kelas: string | null
+          link_file: string | null
+          mapel: string | null
+          nama_guru: string | null
+          sekolah_id: string
+          status_verifikasi: string | null
+          timestamp: string | null
+        }
         Insert: {
-          catatan_admin?: string | null;
-          id?: string;
-          jenis_dokumen?: string | null;
-          judul?: string | null;
-          kelas?: string | null;
-          link_file?: string | null;
-          mapel?: string | null;
-          nama_guru?: string | null;
-          status_verifikasi?: string | null;
-          timestamp?: string | null;
-        };
+          catatan_admin?: string | null
+          id: string
+          jenis_dokumen?: string | null
+          judul?: string | null
+          kelas?: string | null
+          link_file?: string | null
+          mapel?: string | null
+          nama_guru?: string | null
+          sekolah_id: string
+          status_verifikasi?: string | null
+          timestamp?: string | null
+        }
         Update: {
-          catatan_admin?: string | null;
-          id?: string;
-          jenis_dokumen?: string | null;
-          judul?: string | null;
-          kelas?: string | null;
-          link_file?: string | null;
-          mapel?: string | null;
-          nama_guru?: string | null;
-          status_verifikasi?: string | null;
-          timestamp?: string | null;
-        };
-        Relationships: [];
-      };
+          catatan_admin?: string | null
+          id?: string
+          jenis_dokumen?: string | null
+          judul?: string | null
+          kelas?: string | null
+          link_file?: string | null
+          mapel?: string | null
+          nama_guru?: string | null
+          sekolah_id?: string
+          status_verifikasi?: string | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_dokumen_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_guru: {
         Row: {
-          email: string | null;
-          id: string;
-          mata_pelajaran: string | null;
-          nama_guru: string | null;
-          nip: string | null;
-          no_hp: string | null;
-          status: string | null;
-        };
+          email: string | null
+          id: string
+          mata_pelajaran: string | null
+          nama_guru: string | null
+          nip: string | null
+          no_hp: string | null
+          sekolah_id: string
+          status: string | null
+        }
         Insert: {
-          email?: string | null;
-          id?: string;
-          mata_pelajaran?: string | null;
-          nama_guru?: string | null;
-          nip?: string | null;
-          no_hp?: string | null;
-          status?: string | null;
-        };
+          email?: string | null
+          id?: string
+          mata_pelajaran?: string | null
+          nama_guru?: string | null
+          nip?: string | null
+          no_hp?: string | null
+          sekolah_id: string
+          status?: string | null
+        }
         Update: {
-          email?: string | null;
-          id?: string;
-          mata_pelajaran?: string | null;
-          nama_guru?: string | null;
-          nip?: string | null;
-          no_hp?: string | null;
-          status?: string | null;
-        };
-        Relationships: [];
-      };
+          email?: string | null
+          id?: string
+          mata_pelajaran?: string | null
+          nama_guru?: string | null
+          nip?: string | null
+          no_hp?: string | null
+          sekolah_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_guru_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_mapel: {
         Row: {
-          id: string;
-          kategori: string | null;
-          nama_mata_pelajaran: string | null;
-        };
+          id: string
+          kategori: string | null
+          nama_mata_pelajaran: string | null
+          sekolah_id: string
+        }
         Insert: {
-          id: string;
-          kategori?: string | null;
-          nama_mata_pelajaran?: string | null;
-        };
+          id: string
+          kategori?: string | null
+          nama_mata_pelajaran?: string | null
+          sekolah_id: string
+        }
         Update: {
-          id?: string;
-          kategori?: string | null;
-          nama_mata_pelajaran?: string | null;
-        };
-        Relationships: [];
-      };
+          id?: string
+          kategori?: string | null
+          nama_mata_pelajaran?: string | null
+          sekolah_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_mapel_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_siswa: {
         Row: {
-          gender: string | null;
-          id: string;
-          kelas: string | null;
-          nama_siswa: string | null;
-          nisn: string | null;
-          no_hp_ortu: string | null;
-          status: string | null;
-        };
+          gender: string | null
+          id: string
+          kelas: string | null
+          nama_siswa: string | null
+          nisn: string | null
+          no_hp_ortu: string | null
+          sekolah_id: string
+          status: string | null
+        }
         Insert: {
-          gender?: string | null;
-          id?: string;
-          kelas?: string | null;
-          nama_siswa?: string | null;
-          nisn?: string | null;
-          no_hp_ortu?: string | null;
-          status?: string | null;
-        };
+          gender?: string | null
+          id?: string
+          kelas?: string | null
+          nama_siswa?: string | null
+          nisn?: string | null
+          no_hp_ortu?: string | null
+          sekolah_id: string
+          status?: string | null
+        }
         Update: {
-          gender?: string | null;
-          id?: string;
-          kelas?: string | null;
-          nama_siswa?: string | null;
-          nisn?: string | null;
-          no_hp_ortu?: string | null;
-          status?: string | null;
-        };
-        Relationships: [];
-      };
+          gender?: string | null
+          id?: string
+          kelas?: string | null
+          nama_siswa?: string | null
+          nisn?: string | null
+          no_hp_ortu?: string | null
+          sekolah_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_siswa_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guru_mapel: {
         Row: {
-          created_at: string | null;
-          guru_id: string | null;
-          id: string;
-          kelas: string;
-          mapel_id: string | null;
-          mapel_singkat: string | null;
-          nama_guru: string;
-          nama_mapel: string;
-          nip: string;
-        };
+          created_at: string | null
+          guru_id: string | null
+          id: string
+          kelas: string
+          mapel_id: string | null
+          mapel_singkat: string | null
+          nama_guru: string
+          nama_mapel: string
+          nip: string
+          sekolah_id: string
+        }
         Insert: {
-          created_at?: string | null;
-          guru_id?: string | null;
-          id?: string;
-          kelas: string;
-          mapel_id?: string | null;
-          mapel_singkat?: string | null;
-          nama_guru: string;
-          nama_mapel: string;
-          nip: string;
-        };
+          created_at?: string | null
+          guru_id?: string | null
+          id?: string
+          kelas: string
+          mapel_id?: string | null
+          mapel_singkat?: string | null
+          nama_guru: string
+          nama_mapel: string
+          nip: string
+          sekolah_id: string
+        }
         Update: {
-          created_at?: string | null;
-          guru_id?: string | null;
-          id?: string;
-          kelas?: string;
-          mapel_id?: string | null;
-          mapel_singkat?: string | null;
-          nama_guru?: string;
-          nama_mapel?: string;
-          nip?: string;
-        };
+          created_at?: string | null
+          guru_id?: string | null
+          id?: string
+          kelas?: string
+          mapel_id?: string | null
+          mapel_singkat?: string | null
+          nama_guru?: string
+          nama_mapel?: string
+          nip?: string
+          sekolah_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "guru_mapel_guru_id_fkey";
-            columns: ["guru_id"];
-            isOneToOne: false;
-            referencedRelation: "data_guru";
-            referencedColumns: ["id"];
+            foreignKeyName: "guru_mapel_guru_id_fkey"
+            columns: ["guru_id"]
+            isOneToOne: false
+            referencedRelation: "data_guru"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "guru_mapel_mapel_id_fkey";
-            columns: ["mapel_id"];
-            isOneToOne: false;
-            referencedRelation: "data_mapel";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "guru_mapel_mapel_id_fkey"
+            columns: ["mapel_id"]
+            isOneToOne: false
+            referencedRelation: "data_mapel"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guru_mapel_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jadwal_pelajaran: {
         Row: {
-          hari: string | null;
-          id: string;
-          kelas: string | null;
-          mata_pelajaran: string | null;
-          nama_guru: string | null;
-        };
+          hari: string | null
+          id: string
+          kelas: string | null
+          mata_pelajaran: string | null
+          nama_guru: string | null
+          sekolah_id: string
+        }
         Insert: {
-          hari?: string | null;
-          id?: string;
-          kelas?: string | null;
-          mata_pelajaran?: string | null;
-          nama_guru?: string | null;
-        };
+          hari?: string | null
+          id: string
+          kelas?: string | null
+          mata_pelajaran?: string | null
+          nama_guru?: string | null
+          sekolah_id: string
+        }
         Update: {
-          hari?: string | null;
-          id?: string;
-          kelas?: string | null;
-          mata_pelajaran?: string | null;
-          nama_guru?: string | null;
-        };
-        Relationships: [];
-      };
+          hari?: string | null
+          id?: string
+          kelas?: string | null
+          mata_pelajaran?: string | null
+          nama_guru?: string | null
+          sekolah_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jadwal_pelajaran_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jadwal_piket: {
         Row: {
-          daftar_guru: string | null;
-          hari: string | null;
-          id: string;
-        };
+          daftar_guru: string | null
+          hari: string | null
+          id: string
+          sekolah_id: string
+        }
         Insert: {
-          daftar_guru?: string | null;
-          hari?: string | null;
-          id?: string;
-        };
+          daftar_guru?: string | null
+          hari?: string | null
+          id?: string
+          sekolah_id: string
+        }
         Update: {
-          daftar_guru?: string | null;
-          hari?: string | null;
-          id?: string;
-        };
-        Relationships: [];
-      };
+          daftar_guru?: string | null
+          hari?: string | null
+          id?: string
+          sekolah_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jadwal_piket_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jurnal_pembelajaran: {
         Row: {
-          absensi_siswa: string | null;
-          catatan_khusus_siswa: string | null;
-          catatan_refleksi: string | null;
-          detail_absen: string | null;
-          foto_kegiatan: string | null;
-          id: string;
-          jam_ke: string | null;
-          kegiatan: string | null;
-          kehadiran_murid: string | null;
-          kelas: string | null;
-          keterangan: string | null;
-          link_bukti_foto: string | null;
-          mapel: string | null;
-          materi: string | null;
-          materi_pembelajaran: string | null;
-          nama_guru: string | null;
-          pertemuan_ke: string | null;
-          refleksi: string | null;
-          status_verifikasi: string | null;
-          tanggal: string | null;
-          timestamp: string | null;
-          tujuan_pembelajaran: string | null;
-        };
+          absensi_siswa: string | null
+          catatan_khusus_siswa: string | null
+          catatan_refleksi: string | null
+          detail_absen: string | null
+          foto_kegiatan: string | null
+          id: string
+          jam_ke: string | null
+          kegiatan: string | null
+          kehadiran_murid: string | null
+          kelas: string | null
+          keterangan: string | null
+          link_bukti_foto: string | null
+          mapel: string | null
+          materi: string | null
+          materi_pembelajaran: string | null
+          nama_guru: string | null
+          pertemuan_ke: string | null
+          refleksi: string | null
+          sekolah_id: string
+          status_verifikasi: string | null
+          tanggal: string | null
+          timestamp: string | null
+          tujuan_pembelajaran: string | null
+        }
         Insert: {
-          absensi_siswa?: string | null;
-          catatan_khusus_siswa?: string | null;
-          catatan_refleksi?: string | null;
-          detail_absen?: string | null;
-          foto_kegiatan?: string | null;
-          id?: string;
-          jam_ke?: string | null;
-          kegiatan?: string | null;
-          kehadiran_murid?: string | null;
-          kelas?: string | null;
-          keterangan?: string | null;
-          link_bukti_foto?: string | null;
-          mapel?: string | null;
-          materi?: string | null;
-          materi_pembelajaran?: string | null;
-          nama_guru?: string | null;
-          pertemuan_ke?: string | null;
-          refleksi?: string | null;
-          status_verifikasi?: string | null;
-          tanggal?: string | null;
-          timestamp?: string | null;
-          tujuan_pembelajaran?: string | null;
-        };
+          absensi_siswa?: string | null
+          catatan_khusus_siswa?: string | null
+          catatan_refleksi?: string | null
+          detail_absen?: string | null
+          foto_kegiatan?: string | null
+          id: string
+          jam_ke?: string | null
+          kegiatan?: string | null
+          kehadiran_murid?: string | null
+          kelas?: string | null
+          keterangan?: string | null
+          link_bukti_foto?: string | null
+          mapel?: string | null
+          materi?: string | null
+          materi_pembelajaran?: string | null
+          nama_guru?: string | null
+          pertemuan_ke?: string | null
+          refleksi?: string | null
+          sekolah_id: string
+          status_verifikasi?: string | null
+          tanggal?: string | null
+          timestamp?: string | null
+          tujuan_pembelajaran?: string | null
+        }
         Update: {
-          absensi_siswa?: string | null;
-          catatan_khusus_siswa?: string | null;
-          catatan_refleksi?: string | null;
-          detail_absen?: string | null;
-          foto_kegiatan?: string | null;
-          id?: string;
-          jam_ke?: string | null;
-          kegiatan?: string | null;
-          kehadiran_murid?: string | null;
-          kelas?: string | null;
-          keterangan?: string | null;
-          link_bukti_foto?: string | null;
-          mapel?: string | null;
-          materi?: string | null;
-          materi_pembelajaran?: string | null;
-          nama_guru?: string | null;
-          pertemuan_ke?: string | null;
-          refleksi?: string | null;
-          status_verifikasi?: string | null;
-          tanggal?: string | null;
-          timestamp?: string | null;
-          tujuan_pembelajaran?: string | null;
-        };
-        Relationships: [];
-      };
+          absensi_siswa?: string | null
+          catatan_khusus_siswa?: string | null
+          catatan_refleksi?: string | null
+          detail_absen?: string | null
+          foto_kegiatan?: string | null
+          id?: string
+          jam_ke?: string | null
+          kegiatan?: string | null
+          kehadiran_murid?: string | null
+          kelas?: string | null
+          keterangan?: string | null
+          link_bukti_foto?: string | null
+          mapel?: string | null
+          materi?: string | null
+          materi_pembelajaran?: string | null
+          nama_guru?: string | null
+          pertemuan_ke?: string | null
+          refleksi?: string | null
+          sekolah_id?: string
+          status_verifikasi?: string | null
+          tanggal?: string | null
+          timestamp?: string | null
+          tujuan_pembelajaran?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jurnal_pembelajaran_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kalender_pendidikan: {
         Row: {
-          id: string;
-          keterangan: string | null;
-          tanggal: string | null;
-          tipe: string | null;
-        };
+          id: string
+          keterangan: string | null
+          sekolah_id: string
+          tanggal: string | null
+          tipe: string | null
+        }
         Insert: {
-          id?: string;
-          keterangan?: string | null;
-          tanggal?: string | null;
-          tipe?: string | null;
-        };
+          id: string
+          keterangan?: string | null
+          sekolah_id: string
+          tanggal?: string | null
+          tipe?: string | null
+        }
         Update: {
-          id?: string;
-          keterangan?: string | null;
-          tanggal?: string | null;
-          tipe?: string | null;
-        };
-        Relationships: [];
-      };
+          id?: string
+          keterangan?: string | null
+          sekolah_id?: string
+          tanggal?: string | null
+          tipe?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kalender_pendidikan_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       laporan_piket: {
         Row: {
-          catatan_apel: string | null;
-          guru_pelapor: string | null;
-          id: string;
-          kehadiran_guru_piket: string | null;
-          link_foto: string | null;
-          rekap_absen_kelas: string | null;
-          status_verifikasi: string | null;
-          tanggal: string | null;
-          timestamp: string | null;
-        };
+          catatan_apel: string | null
+          guru_pelapor: string | null
+          id: string
+          kehadiran_guru_piket: string | null
+          link_foto: string | null
+          rekap_absen_kelas: string | null
+          sekolah_id: string
+          status_verifikasi: string | null
+          tanggal: string | null
+          timestamp: string | null
+        }
         Insert: {
-          catatan_apel?: string | null;
-          guru_pelapor?: string | null;
-          id?: string;
-          kehadiran_guru_piket?: string | null;
-          link_foto?: string | null;
-          rekap_absen_kelas?: string | null;
-          status_verifikasi?: string | null;
-          tanggal?: string | null;
-          timestamp?: string | null;
-        };
+          catatan_apel?: string | null
+          guru_pelapor?: string | null
+          id: string
+          kehadiran_guru_piket?: string | null
+          link_foto?: string | null
+          rekap_absen_kelas?: string | null
+          sekolah_id: string
+          status_verifikasi?: string | null
+          tanggal?: string | null
+          timestamp?: string | null
+        }
         Update: {
-          catatan_apel?: string | null;
-          guru_pelapor?: string | null;
-          id?: string;
-          kehadiran_guru_piket?: string | null;
-          link_foto?: string | null;
-          rekap_absen_kelas?: string | null;
-          status_verifikasi?: string | null;
-          tanggal?: string | null;
-          timestamp?: string | null;
-        };
-        Relationships: [];
-      };
+          catatan_apel?: string | null
+          guru_pelapor?: string | null
+          id?: string
+          kehadiran_guru_piket?: string | null
+          link_foto?: string | null
+          rekap_absen_kelas?: string | null
+          sekolah_id?: string
+          status_verifikasi?: string | null
+          tanggal?: string | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "laporan_piket_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pengaturan: {
         Row: {
-          id: string;
-          key: string | null;
-          value: string | null;
-        };
+          id: string
+          key: string | null
+          sekolah_id: string
+          value: string | null
+        }
         Insert: {
-          id?: string;
-          key?: string | null;
-          value?: string | null;
-        };
+          id?: string
+          key?: string | null
+          sekolah_id: string
+          value?: string | null
+        }
         Update: {
-          id?: string;
-          key?: string | null;
-          value?: string | null;
-        };
-        Relationships: [];
-      };
+          id?: string
+          key?: string | null
+          sekolah_id?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pengaturan_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pengumuman: {
         Row: {
-          created_at: string | null;
-          id: string;
-          is_pinned: boolean | null;
-          judul: string;
-          konten: string;
-          lampiran_url: string | null;
-          mode: string;
-          penulis_nama: string;
-          penulis_role: string;
-          sasaran: string;
-          updated_at: string | null;
-        };
+          created_at: string | null
+          id: string
+          is_pinned: boolean | null
+          judul: string
+          konten: string
+          lampiran_url: string | null
+          mode: string
+          penulis_nama: string
+          penulis_role: string
+          sasaran: string
+          sekolah_id: string
+          updated_at: string | null
+        }
         Insert: {
-          created_at?: string | null;
-          id?: string;
-          is_pinned?: boolean | null;
-          judul: string;
-          konten: string;
-          lampiran_url?: string | null;
-          mode?: string;
-          penulis_nama: string;
-          penulis_role?: string;
-          sasaran?: string;
-          updated_at?: string | null;
-        };
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          judul: string
+          konten: string
+          lampiran_url?: string | null
+          mode?: string
+          penulis_nama: string
+          penulis_role?: string
+          sasaran?: string
+          sekolah_id: string
+          updated_at?: string | null
+        }
         Update: {
-          created_at?: string | null;
-          id?: string;
-          is_pinned?: boolean | null;
-          judul?: string;
-          konten?: string;
-          lampiran_url?: string | null;
-          mode?: string;
-          penulis_nama?: string;
-          penulis_role?: string;
-          sasaran?: string;
-          updated_at?: string | null;
-        };
-        Relationships: [];
-      };
+          created_at?: string | null
+          id?: string
+          is_pinned?: boolean | null
+          judul?: string
+          konten?: string
+          lampiran_url?: string | null
+          mode?: string
+          penulis_nama?: string
+          penulis_role?: string
+          sasaran?: string
+          sekolah_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pengumuman_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pengumuman_tanggapan: {
         Row: {
-          created_at: string | null;
-          id: string;
-          komentar: string;
-          pengumuman_id: string;
-          user_nama: string;
-          user_role: string;
-        };
+          created_at: string | null
+          id: string
+          komentar: string
+          pengumuman_id: string
+          sekolah_id: string
+          user_nama: string
+          user_role: string
+        }
         Insert: {
-          created_at?: string | null;
-          id?: string;
-          komentar: string;
-          pengumuman_id: string;
-          user_nama: string;
-          user_role: string;
-        };
+          created_at?: string | null
+          id?: string
+          komentar: string
+          pengumuman_id: string
+          sekolah_id: string
+          user_nama: string
+          user_role: string
+        }
         Update: {
-          created_at?: string | null;
-          id?: string;
-          komentar?: string;
-          pengumuman_id?: string;
-          user_nama?: string;
-          user_role?: string;
-        };
+          created_at?: string | null
+          id?: string
+          komentar?: string
+          pengumuman_id?: string
+          sekolah_id?: string
+          user_nama?: string
+          user_role?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "pengumuman_tanggapan_pengumuman_id_fkey";
-            columns: ["pengumuman_id"];
-            isOneToOne: false;
-            referencedRelation: "pengumuman";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "pengumuman_tanggapan_pengumuman_id_fkey"
+            columns: ["pengumuman_id"]
+            isOneToOne: false
+            referencedRelation: "pengumuman"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pengumuman_tanggapan_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       penugasan_piket: {
         Row: {
-          created_at: string | null;
-          guru_id: string | null;
-          guru_nama: string | null;
-          guru_nip: string | null;
-          hari: string;
-          id: string;
-          kelas: string | null;
-          siswa_nama: string | null;
-          siswa_nisn: string | null;
-          tahun_ajaran: string | null;
-          tipe_petugas: string;
-        };
+          created_at: string | null
+          guru_id: string | null
+          guru_nama: string | null
+          guru_nip: string | null
+          hari: string
+          id: string
+          kelas: string | null
+          sekolah_id: string
+          siswa_nama: string | null
+          siswa_nisn: string | null
+          tahun_ajaran: string | null
+          tipe_petugas: string
+        }
         Insert: {
-          created_at?: string | null;
-          guru_id?: string | null;
-          guru_nama?: string | null;
-          guru_nip?: string | null;
-          hari: string;
-          id?: string;
-          kelas?: string | null;
-          siswa_nama?: string | null;
-          siswa_nisn?: string | null;
-          tahun_ajaran?: string | null;
-          tipe_petugas?: string;
-        };
+          created_at?: string | null
+          guru_id?: string | null
+          guru_nama?: string | null
+          guru_nip?: string | null
+          hari: string
+          id?: string
+          kelas?: string | null
+          sekolah_id: string
+          siswa_nama?: string | null
+          siswa_nisn?: string | null
+          tahun_ajaran?: string | null
+          tipe_petugas?: string
+        }
         Update: {
-          created_at?: string | null;
-          guru_id?: string | null;
-          guru_nama?: string | null;
-          guru_nip?: string | null;
-          hari?: string;
-          id?: string;
-          kelas?: string | null;
-          siswa_nama?: string | null;
-          siswa_nisn?: string | null;
-          tahun_ajaran?: string | null;
-          tipe_petugas?: string;
-        };
+          created_at?: string | null
+          guru_id?: string | null
+          guru_nama?: string | null
+          guru_nip?: string | null
+          hari?: string
+          id?: string
+          kelas?: string | null
+          sekolah_id?: string
+          siswa_nama?: string | null
+          siswa_nisn?: string | null
+          tahun_ajaran?: string | null
+          tipe_petugas?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "penugasan_piket_guru_id_fkey";
-            columns: ["guru_id"];
-            isOneToOne: false;
-            referencedRelation: "data_guru";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
+            foreignKeyName: "penugasan_piket_guru_id_fkey"
+            columns: ["guru_id"]
+            isOneToOne: false
+            referencedRelation: "data_guru"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "penugasan_piket_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       presensi_guru: {
         Row: {
-          detail_izin: string | null;
-          id: string;
-          jarak: string | null;
-          jenis_presensi: string | null;
-          keterlambatan_detik: number | null;
-          link_bukti: string | null;
-          lokasi: string | null;
-          nama_guru: string | null;
-          status_verifikasi: string | null;
-          timestamp: string | null;
-          tipe_absen: string | null;
-        };
+          detail_izin: string | null
+          id: string
+          jarak: string | null
+          jenis_presensi: string | null
+          keterlambatan_detik: number | null
+          link_bukti: string | null
+          lokasi: string | null
+          nama_guru: string | null
+          sekolah_id: string
+          status_verifikasi: string | null
+          timestamp: string | null
+          tipe_absen: string | null
+        }
         Insert: {
-          detail_izin?: string | null;
-          id?: string;
-          jarak?: string | null;
-          jenis_presensi?: string | null;
-          keterlambatan_detik?: number | null;
-          link_bukti?: string | null;
-          lokasi?: string | null;
-          nama_guru?: string | null;
-          status_verifikasi?: string | null;
-          timestamp?: string | null;
-          tipe_absen?: string | null;
-        };
+          detail_izin?: string | null
+          id: string
+          jarak?: string | null
+          jenis_presensi?: string | null
+          keterlambatan_detik?: number | null
+          link_bukti?: string | null
+          lokasi?: string | null
+          nama_guru?: string | null
+          sekolah_id: string
+          status_verifikasi?: string | null
+          timestamp?: string | null
+          tipe_absen?: string | null
+        }
         Update: {
-          detail_izin?: string | null;
-          id?: string;
-          jarak?: string | null;
-          jenis_presensi?: string | null;
-          keterlambatan_detik?: number | null;
-          link_bukti?: string | null;
-          lokasi?: string | null;
-          nama_guru?: string | null;
-          status_verifikasi?: string | null;
-          timestamp?: string | null;
-          tipe_absen?: string | null;
-        };
-        Relationships: [];
-      };
+          detail_izin?: string | null
+          id?: string
+          jarak?: string | null
+          jenis_presensi?: string | null
+          keterlambatan_detik?: number | null
+          link_bukti?: string | null
+          lokasi?: string | null
+          nama_guru?: string | null
+          sekolah_id?: string
+          status_verifikasi?: string | null
+          timestamp?: string | null
+          tipe_absen?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presensi_guru_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       riwayat_backup: {
         Row: {
-          id: string;
-          keterangan: string | null;
-          link_file: string | null;
-          status: string | null;
-          tahun_backup: string | null;
-          timestamp: string | null;
-        };
+          id: string
+          keterangan: string | null
+          link_file: string | null
+          sekolah_id: string
+          status: string | null
+          tahun_backup: string | null
+          timestamp: string | null
+        }
         Insert: {
-          id?: string;
-          keterangan?: string | null;
-          link_file?: string | null;
-          status?: string | null;
-          tahun_backup?: string | null;
-          timestamp?: string | null;
-        };
+          id: string
+          keterangan?: string | null
+          link_file?: string | null
+          sekolah_id: string
+          status?: string | null
+          tahun_backup?: string | null
+          timestamp?: string | null
+        }
         Update: {
-          id?: string;
-          keterangan?: string | null;
-          link_file?: string | null;
-          status?: string | null;
-          tahun_backup?: string | null;
-          timestamp?: string | null;
-        };
-        Relationships: [];
-      };
+          id?: string
+          keterangan?: string | null
+          link_file?: string | null
+          sekolah_id?: string
+          status?: string | null
+          tahun_backup?: string | null
+          timestamp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "riwayat_backup_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sekolah: {
+        Row: {
+          alamat: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          kota_kabupaten: string | null
+          logo_kanan_url: string | null
+          logo_kiri_url: string | null
+          logo_url: string | null
+          nama: string
+          nama_kepala_sekolah: string | null
+          nip_kepala_sekolah: string | null
+          npsn: string | null
+          provinsi: string | null
+          status: string
+          telepon: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          alamat?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          kota_kabupaten?: string | null
+          logo_kanan_url?: string | null
+          logo_kiri_url?: string | null
+          logo_url?: string | null
+          nama: string
+          nama_kepala_sekolah?: string | null
+          nip_kepala_sekolah?: string | null
+          npsn?: string | null
+          provinsi?: string | null
+          status?: string
+          telepon?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          alamat?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          kota_kabupaten?: string | null
+          logo_kanan_url?: string | null
+          logo_kiri_url?: string | null
+          logo_url?: string | null
+          nama?: string
+          nama_kepala_sekolah?: string | null
+          nip_kepala_sekolah?: string | null
+          npsn?: string | null
+          provinsi?: string | null
+          status?: string
+          telepon?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       users: {
         Row: {
-          id: string;
-          nama: string | null;
-          password: string | null;
-          role: string | null;
-          username: string | null;
-        };
+          id: string
+          nama: string | null
+          password: string | null
+          role: string | null
+          sekolah_id: string | null
+          username: string | null
+        }
         Insert: {
-          id?: string;
-          nama?: string | null;
-          password?: string | null;
-          role?: string | null;
-          username?: string | null;
-        };
+          id?: string
+          nama?: string | null
+          password?: string | null
+          role?: string | null
+          sekolah_id?: string | null
+          username?: string | null
+        }
         Update: {
-          id?: string;
-          nama?: string | null;
-          password?: string | null;
-          role?: string | null;
-          username?: string | null;
-        };
-        Relationships: [];
-      };
-    };
+          id?: string
+          nama?: string | null
+          password?: string | null
+          role?: string | null
+          sekolah_id?: string | null
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Views: {
       guru_kelas: {
         Row: {
-          guru_id: string | null;
-          kelas: string | null;
-          nama_guru: string | null;
-          nip: string | null;
-        };
+          guru_id: string | null
+          kelas: string | null
+          nama_guru: string | null
+          nip: string | null
+          sekolah_id: string | null
+        }
         Relationships: [
           {
-            foreignKeyName: "guru_mapel_guru_id_fkey";
-            columns: ["guru_id"];
-            isOneToOne: false;
-            referencedRelation: "data_guru";
-            referencedColumns: ["id"];
-          }
-        ];
-      };
-    };
+            foreignKeyName: "guru_mapel_guru_id_fkey"
+            columns: ["guru_id"]
+            isOneToOne: false
+            referencedRelation: "data_guru"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guru_mapel_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Functions: {
-      [_ in never]: never;
-    };
+      get_auth_user_role: { Args: never; Returns: string }
+      get_auth_user_sekolah_id: { Args: never; Returns: string }
+      is_superadmin: { Args: never; Returns: boolean }
+      verify_login: {
+        Args: { p_password: string; p_username: string }
+        Returns: {
+          id: string
+          nama: string
+          role: string
+          sekolah_id: string
+          username: string
+        }[]
+      }
+    }
     Enums: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R;
+      Row: infer R
     }
     ? R
     : never
@@ -651,82 +917,110 @@ export type Tables<
         DefaultSchema["Views"])
     ? (DefaultSchema["Tables"] &
         DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R;
+        Row: infer R
       }
       ? R
       : never
-    : never;
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I;
+      Insert: infer I
     }
     ? I
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I;
+        Insert: infer I
       }
       ? I
       : never
-    : never;
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U;
+      Update: infer U
     }
     ? U
     : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
     ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U;
+        Update: infer U
       }
       ? U
       : never
-    : never;
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals;
+    schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
+  schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never;
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
+
 
 // ==============================================================================
 // Domain Entity Type Aliases for High Developer Ergonomics
 // ==============================================================================
+export type Sekolah = Tables<"sekolah">;
+export type SekolahInsert = TablesInsert<"sekolah">;
+export type SekolahUpdate = TablesUpdate<"sekolah">;
+
 export type PenugasanPiket = Tables<"penugasan_piket">;
 export type PenugasanPiketInsert = TablesInsert<"penugasan_piket">;
 export type PenugasanPiketUpdate = TablesUpdate<"penugasan_piket">;
@@ -811,3 +1105,5 @@ export type JenisDokumenKurikulum =
   | "Program Semester (Promes)"
   | "Rencana Pembelajaran Mendalam / Modul Ajar (RPM)"
   | string;
+export type RoleUser = "Superadmin" | "Admin" | "Guru";
+export type StatusSekolah = "aktif" | "nonaktif";

@@ -85,6 +85,7 @@ async function runChallengerStressTests() {
   const mockPenugasanList: PenugasanPiket[] = [
     {
       id: 'p-1',
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001',
       hari: 'Senin',
       tipe_petugas: 'Guru',
       guru_id: 't-1',
@@ -98,6 +99,7 @@ async function runChallengerStressTests() {
     },
     {
       id: 'p-2',
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001',
       hari: 'Senin',
       tipe_petugas: 'Siswa',
       guru_id: null,
@@ -176,10 +178,10 @@ async function runChallengerStressTests() {
   }
 
   const syncTestList: PenugasanPiket[] = [
-    { id: '1', hari: 'Senin', tipe_petugas: 'Guru', guru_nama: 'Guru A', guru_id: '1', guru_nip: null, siswa_nama: null, siswa_nisn: null, kelas: null, tahun_ajaran: '2026/2027', created_at: '' },
-    { id: '2', hari: 'Senin', tipe_petugas: 'Guru', guru_nama: 'Guru B', guru_id: '2', guru_nip: null, siswa_nama: null, siswa_nisn: null, kelas: null, tahun_ajaran: '2026/2027', created_at: '' },
-    { id: '3', hari: 'Senin', tipe_petugas: 'Siswa', guru_nama: null, guru_id: null, guru_nip: null, siswa_nama: 'Siswa X', siswa_nisn: '123', kelas: 'X', tahun_ajaran: '2026/2027', created_at: '' },
-    { id: '4', hari: 'Rabu', tipe_petugas: 'Guru', guru_nama: 'Guru C', guru_id: '3', guru_nip: null, siswa_nama: null, siswa_nisn: null, kelas: null, tahun_ajaran: '2026/2027', created_at: '' }
+    { id: '1', sekolah_id: 'a0000000-0000-0000-0000-000000000001', hari: 'Senin', tipe_petugas: 'Guru', guru_nama: 'Guru A', guru_id: '1', guru_nip: null, siswa_nama: null, siswa_nisn: null, kelas: null, tahun_ajaran: '2026/2027', created_at: '' },
+    { id: '2', sekolah_id: 'a0000000-0000-0000-0000-000000000001', hari: 'Senin', tipe_petugas: 'Guru', guru_nama: 'Guru B', guru_id: '2', guru_nip: null, siswa_nama: null, siswa_nisn: null, kelas: null, tahun_ajaran: '2026/2027', created_at: '' },
+    { id: '3', sekolah_id: 'a0000000-0000-0000-0000-000000000001', hari: 'Senin', tipe_petugas: 'Siswa', guru_nama: null, guru_id: null, guru_nip: null, siswa_nama: 'Siswa X', siswa_nisn: '123', kelas: 'X', tahun_ajaran: '2026/2027', created_at: '' },
+    { id: '4', sekolah_id: 'a0000000-0000-0000-0000-000000000001', hari: 'Rabu', tipe_petugas: 'Guru', guru_nama: 'Guru C', guru_id: '3', guru_nip: null, siswa_nama: null, siswa_nisn: null, kelas: null, tahun_ajaran: '2026/2027', created_at: '' }
   ];
 
   const seninSync = simulateSyncJadwalPiket(syncTestList, 'Senin');
@@ -236,6 +238,7 @@ async function runChallengerStressTests() {
   docMatchingVariations.forEach(tc => {
     const dummyDoc: BankDokumen = {
       id: 'doc-test',
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001',
       timestamp: '2026-09-12 10:00:00',
       nama_guru: 'Test Guru',
       jenis_dokumen: tc.jenis,
@@ -365,10 +368,10 @@ async function runChallengerStressTests() {
 
   // 5.1 Audience Filter Logic Simulation
   const mockBroadcasts: Pengumuman[] = [
-    { id: 'b-1', judul: 'Semua Civitas Info', konten: 'Info umum', sasaran: 'Semua', mode: 'Satu Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
-    { id: 'b-2', judul: 'Khusus Guru Info', konten: 'Info guru', sasaran: 'Guru', mode: 'Dua Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
-    { id: 'b-3', judul: 'Wali Kelas Info', konten: 'Info walkes', sasaran: 'Wali Kelas', mode: 'Satu Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
-    { id: 'b-4', judul: 'Orang Tua Info', konten: 'Info ortu', sasaran: 'Orang Tua', mode: 'Dua Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
+    { id: 'b-1', sekolah_id: 'a0000000-0000-0000-0000-000000000001', judul: 'Semua Civitas Info', konten: 'Info umum', sasaran: 'Semua', mode: 'Satu Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
+    { id: 'b-2', sekolah_id: 'a0000000-0000-0000-0000-000000000001', judul: 'Khusus Guru Info', konten: 'Info guru', sasaran: 'Guru', mode: 'Dua Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
+    { id: 'b-3', sekolah_id: 'a0000000-0000-0000-0000-000000000001', judul: 'Wali Kelas Info', konten: 'Info walkes', sasaran: 'Wali Kelas', mode: 'Satu Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
+    { id: 'b-4', sekolah_id: 'a0000000-0000-0000-0000-000000000001', judul: 'Orang Tua Info', konten: 'Info ortu', sasaran: 'Orang Tua', mode: 'Dua Arah', penulis_nama: 'Admin', penulis_role: 'Admin', is_pinned: false, lampiran_url: null, created_at: '', updated_at: '' },
   ];
 
   function filterBroadcasts(list: Pengumuman[], activeFilter: string, search: string = '') {
@@ -427,6 +430,7 @@ async function runChallengerStressTests() {
   // 5.3 WhatsApp Broadcast URL Encoding Stress Test
   const extremeBroadcast: Pengumuman = {
     id: 'b-extreme',
+    sekolah_id: 'a0000000-0000-0000-0000-000000000001',
     judul: 'RAPAT DEWAN GURU & PENETAPAN NILAI AKHIR (2026/2027)? #PENTING!',
     konten: 'Salam hangat untuk Bapak/Ibu Guru & Staf:\n1. Rapat dimulai pukul 08:30 WITA.\n2. Agenda: Evaluasi KBM & 100% tuntas.\nLink: https://meet.google.com/abc-defg-hij?authuser=1&pli=1',
     sasaran: 'Guru',

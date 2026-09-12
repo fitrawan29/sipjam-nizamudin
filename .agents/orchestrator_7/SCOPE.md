@@ -1,4 +1,4 @@
-# Project: SIPJAM — Milestone 7: Multi-Tenant Database Architecture & RLS, Superadmin Hierarchy, and Ascending Date Sorting
+# Scope: Milestone 7 Multi-Tenant Database Architecture & RLS, Superadmin & Admin Hierarchy, and Ascending Date Sorting
 
 ## Architecture
 - **Multi-Tenant Model**: Pooled database schema with row-level discriminator (`sekolah_id UUID REFERENCES public.sekolah(id)`).
@@ -53,17 +53,3 @@
 ### Recap Views ↔ Output
 - Data returned from `jurnal_pembelajaran`, `presensi_guru`, `laporan_piket` must be sorted ascending: `tanggal ASC`, `jam_ke ASC`.
 - Cetak Dokumen renders earliest date (day 1 of month) in row 1, and latest date in final row.
-
-## Code Layout
-- `supabase/migrations/20260912_multi_tenant_sekolah_rls.sql`: Database migration SQL
-- `src/types/database.ts`: PostgREST TypeScript schema definitions
-- `src/components/SuperadminView.tsx`: Superadmin management interface
-- `src/app/superadmin/page.tsx`: Superadmin deep-link route
-- `src/components/AppScreen.tsx`: Main shell with dynamic tenant header and navigation
-- `src/components/LoginScreen.tsx`: Multi-school login screen
-- `src/components/PrintHeader.tsx`: Tenant-scoped print letterhead and signatures
-- `src/components/RekapJurnalView.tsx`: Teacher journal recap with ascending order
-- `src/components/RekapSiswaView.tsx`: Student attendance recap with ascending order
-- `src/components/AdminRekapView.tsx`: Admin presensi, journal, and piket recap
-- `src/components/PiketView.tsx`: Piket recap with ascending order
-- `tests/m7_multi_tenant_e2e.test.ts`: Automated test suite
