@@ -51,13 +51,16 @@ Remediate Milestone 7 RLS integrity defects, apply live Supabase migration, wire
 | reviewer_m8_security | teamwork_preview_reviewer | Security & RLS Isolation Review | in-progress | 2453bfcd-3687-4f3e-9e38-1f29a4500a45 |
 | reviewer_m8_fullstack | teamwork_preview_reviewer | Full-Stack & UI Recap Review | in-progress | e3f7a1b2-85a8-44d7-b4a8-769c35690f9f |
 | challenger_m8_multitenant | teamwork_preview_challenger | Multi-Tenant Live Stress Testing | in-progress | c5a6c4ab-6a53-415b-a453-b7eb005eb41c |
-| challenger_m8_recap_sorting | teamwork_preview_challenger | Ascending Date Sorting Empirical Check | in-progress | 0784d3c5-2d9b-448d-ab04-4a37bea4951b |
-| auditor_m8_forensic | teamwork_preview_auditor | Forensic Integrity Audit | in-progress | 9d2b2250-f28b-4275-b77f-424e941dfcd6 |
+| challenger_m8_recap_sorting | teamwork_preview_challenger | Ascending Date Sorting Empirical Check | completed | 0784d3c5-2d9b-448d-ab04-4a37bea4951b |
+| auditor_m8_forensic | teamwork_preview_auditor | Forensic Integrity Audit | completed (integrity violation) | 9d2b2250-f28b-4275-b77f-424e941dfcd6 |
+| explorer_m8_fix_sql | teamwork_preview_explorer | SQL Remediation Specification | in-progress | c228bf2a-2a1a-4a71-8ec3-5d77bc0683ad |
+| explorer_m8_fix_client_tests | teamwork_preview_explorer | Client & Test Remediation Specification | in-progress | 130cae5e-c805-407f-a3b9-a2b5db7148b6 |
+| explorer_m8_fix_adversarial | teamwork_preview_explorer | Adversarial Test Specification | in-progress | 597c6bdb-083c-4db2-bc1f-d8d53db59723 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 6 / 16
-- Pending subagents: 2453bfcd-3687-4f3e-9e38-1f29a4500a45, e3f7a1b2-85a8-44d7-b4a8-769c35690f9f, c5a6c4ab-6a53-415b-a453-b7eb005eb41c, 0784d3c5-2d9b-448d-ab04-4a37bea4951b, 9d2b2250-f28b-4275-b77f-424e941dfcd6
+- Spawn count: 9 / 16
+- Pending subagents: c228bf2a-2a1a-4a71-8ec3-5d77bc0683ad, 130cae5e-c805-407f-a3b9-a2b5db7148b6, 597c6bdb-083c-4db2-bc1f-d8d53db59723
 - Predecessor: orchestrator_7
 - Successor: not yet spawned
 

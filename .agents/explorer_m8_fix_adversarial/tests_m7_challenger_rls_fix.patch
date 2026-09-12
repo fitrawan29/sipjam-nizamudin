@@ -1,0 +1,20 @@
+--- a/tests/m7_challenger_rls.test.ts
++++ b/tests/m7_challenger_rls.test.ts
+@@ -60,9 +60,18 @@
+   // Create scoped clients
++  // Authenticate superadmin via verify_login RPC to obtain valid superadmin user ID
++  const { data: superadminAuth } = await anonClient.rpc('verify_login', {
++    p_username: 'superadmin',
++    p_password: 'superadmin123'
++  });
++  const superadminUserId = superadminAuth?.[0]?.id || '5dfbfc0a-8b4b-4c47-aeb9-bc1d2cbac438';
++
+   const superadminClient = createClient(supabaseUrl, supabaseKey, {
+-    global: { headers: { 'x-user-role': 'Superadmin' } }
++    global: {
++      headers: {
++        'x-user-role': 'Superadmin',
++        'x-user-id': superadminUserId
++      }
++    }
+   });

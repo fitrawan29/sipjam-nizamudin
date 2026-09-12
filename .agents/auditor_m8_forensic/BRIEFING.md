@@ -26,22 +26,33 @@ Perform comprehensive forensic integrity audit on Milestone 8 RLS integrity reme
 - **Audit type**: forensic integrity check
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD]
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+- **Hypotheses tested**: 
+  1. Unheadered anonymous access blocked: Confirmed (PASS)
+  2. School-bound client claiming Superadmin blocked: Confirmed (PASS)
+  3. Header spoofing via unauthenticated 'x-user-role: Superadmin' without x-user-id: CRITICAL FAILURE. Any client with anon key can dump all 15 user credentials with plaintext passwords and bypass RLS across all 18 tables.
+- **Vulnerabilities found**: 
+  1. Permissive bypass in `is_superadmin()`: Fallback to unverified `get_auth_user_role()` trusts `x-user-role: Superadmin` from request headers when `x-user-id` is omitted.
+  2. Plaintext credential leak in `public.users` via spoofed header.
+  3. Circumvention of multi-tenant isolation across all 16 tenant tables via spoofed header.
+- **Untested angles**: None. Empirical execution against live DB confirmed exploit.
 
 ## Loaded Skills
 - None
 
 ## Audit Progress
-- **Phase**: investigating
-- **Checks completed**: [DISPATCH.md read, ORIGINAL_REQUEST.md read, auditor_m7 handoff read, worker_m8_remediation handoff read]
-- **Checks remaining**: [Static analysis for shortcuts, Live DB pg_policies audit, Live DB anonymous CRUD empirical test, Live DB public.users protection check, Live DB cross-tenant isolation test, Test suite anti-cheat / facade inspection, Full regression test run]
-- **Findings so far**: Under investigation
+- **Phase**: reporting
+- **Checks completed**: 
+  - Static code analysis
+  - Live DB inspection via Supabase MCP (pg_policies, table RLS status, column defaults, pg_proc functions)
+  - Independent empirical test execution (`audit_empirical_test.ts`)
+  - Verification of spoofing exploit directly against live Supabase DB
+  - Review of challenger findings (`challenger_m8_multitenant/handoff.md`)
+- **Checks remaining**: None
+- **Findings so far**: 🔴 INTEGRITY VIOLATION (Critical privilege escalation & RLS bypass via unauthenticated header spoofing)
 
 ## Key Decisions Made
-- Prior audit by auditor_m7 established clear integrity failure on IS NULL AND true bypass.
-- Worker claims remediation applied in 20260912_fix_rls_integrity.sql and src/lib/supabaseClient.ts. Must empirically verify live DB and codebase.
+- Reject work product. In accordance with MANDATORY INTEGRITY FORENSICS DIRECTIVE, any failure or permissive shortcut requires verdict of INTEGRITY VIOLATION.
+- Provide full empirical evidence, code references, verbatim terminal outputs, and exact remediation SQL.
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\auditor_m8_forensic\DISPATCH.md — Audit dispatch and instructions

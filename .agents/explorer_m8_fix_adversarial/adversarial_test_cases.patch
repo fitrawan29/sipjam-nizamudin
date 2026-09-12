@@ -1,0 +1,345 @@
+--- a/tests/m7_rls_integrity.test.ts
++++ b/tests/m7_rls_integrity.test.ts
+@@ -21,9 +21,12 @@
+  *    records when School B ACTUALLY HAS REAL DATA populated in the database.
+  *    (Eliminates previous self-certifying queries against non-existent UUIDs).
+  *
+- * 4. HEADER SPOOFING & PRIVILEGE ESCALATION DEFENSE:
+- *    Proves School Admin CANNOT escalate to Superadmin by spoofing headers
+- *    or tamper with other schools' entities or create rogue Superadmins.
++ * 4. HOSTILE ADVERSARIAL ATTACKS & PRIVILEGE ESCALATION DEFENSE:
++ *    - Unauthenticated client sending ONLY {'x-user-role': 'Superadmin'} without
++ *      x-user-id receives 0 rows from users and cannot mutate tables.
++ *    - Forged non-existent x-user-id with Superadmin role receives 0 rows.
++ *    - School Admin x-user-id cannot escalate to Superadmin (u.sekolah_id IS NOT NULL).
++ *    - School Admin with x-sekolah-id cannot mutate platform tables or delete other schools.
++ *    - Cross-tenant user provisioning is strictly blocked.
+  * ============================================================================
+  */
+ 
+@@ -96,12 +99,19 @@
+   });
+   const superadminUserId = superadminAuth?.[0]?.id || '5dfbfc0a-8b4b-4c47-aeb9-bc1d2cbac438';
+ 
++  // Authenticate school admin via verify_login RPC to obtain legitimate school admin user ID
++  const { data: schoolAAdminAuth } = await anonClient.rpc('verify_login', {
++    p_username: 'admin',
++    p_password: 'QWerty1334#'
++  });
++  const schoolAAdminUserId = schoolAAdminAuth?.[0]?.id || 'd23141e4-2116-4946-8094-895ef21a50e5';
++
+   // 2. School A Admin client (Authenticated for School A)
+   const schoolAAdminClient = createClient(supabaseUrl, supabaseKey, {
+     global: {
+       headers: {
+         'x-sekolah-id': defaultSchoolAId,
+-        'x-user-role': 'Admin'
++        'x-user-role': 'Admin',
++        'x-user-id': schoolAAdminUserId
+       }
+     }
+   });
+@@ -128,7 +138,7 @@
+     }
+   });
+ 
+-  // 5. Spoofed School Admin client (School A Admin attempting to claim Superadmin)
++  // 5. Spoofed School Admin client (School A Admin attempting to claim Superadmin with school scope)
+   const spoofedSchoolAdminClient = createClient(supabaseUrl, supabaseKey, {
+     global: {
+       headers: {
+@@ -147,6 +157,33 @@
+     }
+   });
+ 
++  // 7. Hostile Adversary 1: Unauthenticated role spoofer (omitting x-user-id and x-sekolah-id)
++  const unauthenticatedSuperadminClient = createClient(supabaseUrl, supabaseKey, {
++    global: {
++      headers: {
++        'x-user-role': 'Superadmin'
++      }
++    }
++  });
++
++  // 8. Hostile Adversary 2: Forged random non-existent x-user-id with Superadmin role
++  const forgedRandomUserId = randomUUID();
++  const forgedUserSuperadminClient = createClient(supabaseUrl, supabaseKey, {
++    global: {
++      headers: {
++        'x-user-id': forgedRandomUserId,
++        'x-user-role': 'Superadmin'
++      }
++    }
++  });
++
++  // 9. Hostile Adversary 3: School Admin privilege escalation (real School Admin UUID + Superadmin role, omitting x-sekolah-id)
++  const schoolAdminEscalationClient = createClient(supabaseUrl, supabaseKey, {
++    global: {
++      headers: {
++        'x-user-id': schoolAAdminUserId,
++        'x-user-role': 'Superadmin'
++      }
++    }
++  });
++
+   try {
+@@ -558,10 +595,148 @@
+     // =========================================================================
+-    // SECTION 4: HEADER SPOOFING & PRIVILEGE ESCALATION DEFENSE
++    // SECTION 4: HOSTILE ADVERSARIAL ATTACKS & PRIVILEGE ESCALATION DEFENSE
+     // =========================================================================
+-    console.log(`\n${CYAN}--- SECTION 4: Header Spoofing & Privilege Escalation Defense ---${RESET}`);
++    console.log(`\n${CYAN}--- SECTION 4: Hostile Adversarial Attacks & Privilege Escalation Defense ---${RESET}`);
+ 
+-    // 4.1 School Admin Spoofing x-user-role: Superadmin while bound to School A
++    // -------------------------------------------------------------------------
++    // 4.1 Unauthenticated Role Spoofing (Omitting x-user-id and x-sekolah-id)
++    // -------------------------------------------------------------------------
++    console.log(`\n${YELLOW}4.1 Adversarial: Unauthenticated Role Spoofing (headers: {'x-user-role': 'Superadmin'})${RESET}`);
++
++    // 4.1.1 Credential Dump Exfiltration Denial on public.users
++    const { data: unauthUsersDump, error: unauthUsersErr } = await unauthenticatedSuperadminClient
++      .from('users')
++      .select('id, username, password, role');
++
++    if (!unauthUsersErr && unauthUsersDump && unauthUsersDump.length > 0) {
++      fail(
++        `CRITICAL RLS BYPASS: Unauthenticated client sending only 'x-user-role': 'Superadmin' dumped ${unauthUsersDump.length} user accounts with passwords!`,
++        { exposedCount: unauthUsersDump.length, sample: unauthUsersDump[0] }
++      );
++    }
++    pass('Unauthenticated x-user-role: Superadmin client received 0 rows from public.users (credential dump blocked)');
++
++    // 4.1.2 School Provisioning Denial (public.sekolah INSERT)
++    const rogueUnauthSchoolId = randomUUID();
++    const { data: rogueUnauthSchoolData, error: rogueUnauthSchoolErr } = await unauthenticatedSuperadminClient
++      .from('sekolah')
++      .insert([{
++        id: rogueUnauthSchoolId,
++        nama: 'Hostile Unauthenticated School Exploit',
++        npsn: `97${timestamp.toString().slice(-6)}`,
++        status: 'aktif'
++      }])
++      .select();
++
++    if (!rogueUnauthSchoolErr && rogueUnauthSchoolData && rogueUnauthSchoolData.length > 0) {
++      await superadminClient.from('sekolah').delete().eq('id', rogueUnauthSchoolId);
++      fail('CRITICAL RLS BYPASS: Unauthenticated client with x-user-role: Superadmin created a school in public.sekolah!', rogueUnauthSchoolData);
++    }
++    const { data: checkRogueUnauthSchool } = await superadminClient.from('sekolah').select('id').eq('id', rogueUnauthSchoolId);
++    if (checkRogueUnauthSchool && checkRogueUnauthSchool.length > 0) {
++      await superadminClient.from('sekolah').delete().eq('id', rogueUnauthSchoolId);
++      fail('Rogue school was found in public.sekolah after unauthenticated insert!');
++    }
++    pass('Unauthenticated x-user-role: Superadmin cannot create schools in public.sekolah');
++
++    // 4.1.3 Cross-Tenant Exfiltration Denial: data_guru
++    const { data: unauthGuruData } = await unauthenticatedSuperadminClient
++      .from('data_guru')
++      .select('id, nama_guru, sekolah_id');
++
++    if (unauthGuruData && unauthGuruData.length > 0) {
++      fail(`CRITICAL RLS BYPASS: Unauthenticated client with x-user-role: Superadmin read ${unauthGuruData.length} rows from data_guru!`, unauthGuruData[0]);
++    }
++    pass('Unauthenticated x-user-role: Superadmin returned 0 rows from data_guru');
++
++    // 4.1.4 Cross-Tenant Exfiltration Denial: pengaturan
++    const { data: unauthPengaturanData } = await unauthenticatedSuperadminClient
++      .from('pengaturan')
++      .select('id, key, value');
++
++    if (unauthPengaturanData && unauthPengaturanData.length > 0) {
++      fail(`CRITICAL RLS BYPASS: Unauthenticated client with x-user-role: Superadmin read ${unauthPengaturanData.length} rows from pengaturan!`, unauthPengaturanData[0]);
++    }
++    pass('Unauthenticated x-user-role: Superadmin returned 0 rows from pengaturan');
++
++    // 4.1.5 Tenant Mutation Denial: pengaturan INSERT
++    const hostileUnauthSettingId = randomUUID();
++    const { data: hostileSettingData, error: hostileSettingErr } = await unauthenticatedSuperadminClient
++      .from('pengaturan')
++      .insert([{
++        id: hostileUnauthSettingId,
++        sekolah_id: defaultSchoolAId,
++        key: 'hostile_unauth_key',
++        value: 'ATTACK_SUCCESS'
++      }])
++      .select();
++
++    if (!hostileSettingErr && hostileSettingData && hostileSettingData.length > 0) {
++      await superadminClient.from('pengaturan').delete().eq('id', hostileUnauthSettingId);
++      fail('CRITICAL RLS BYPASS: Unauthenticated client with x-user-role: Superadmin inserted row into pengaturan!', hostileSettingData);
++    }
++    pass('Unauthenticated x-user-role: Superadmin rejected on tenant table mutation (pengaturan INSERT)');
++
++    // -------------------------------------------------------------------------
++    // 4.2 Forged Non-Existent x-user-id with 'x-user-role: Superadmin'
++    // -------------------------------------------------------------------------
++    console.log(`\n${YELLOW}4.2 Adversarial: Forged Non-Existent x-user-id with Superadmin Role${RESET}`);
++
++    // 4.2.1 Bulk Credential Rejection on public.users
++    const { data: forgedIdUsersData, error: forgedIdUsersErr } = await forgedUserSuperadminClient
++      .from('users')
++      .select('id, username, password, role');
++
++    if (!forgedIdUsersErr && forgedIdUsersData && forgedIdUsersData.length > 0) {
++      fail(`CRITICAL RLS BYPASS: Forged random x-user-id with x-user-role: Superadmin read ${forgedIdUsersData.length} user accounts!`, forgedIdUsersData[0]);
++    }
++    pass('Forged random x-user-id with x-user-role: Superadmin received 0 rows from public.users');
++
++    // 4.2.2 Mutation Rejection on public.sekolah
++    const rogueForgedSchoolId = randomUUID();
++    const { data: rogueForgedSchoolData, error: rogueForgedSchoolErr } = await forgedUserSuperadminClient
++      .from('sekolah')
++      .insert([{
++        id: rogueForgedSchoolId,
++        nama: 'Forged Identity School Exploit',
++        npsn: `96${timestamp.toString().slice(-6)}`,
++        status: 'aktif'
++      }])
++      .select();
++
++    if (!rogueForgedSchoolErr && rogueForgedSchoolData && rogueForgedSchoolData.length > 0) {
++      await superadminClient.from('sekolah').delete().eq('id', rogueForgedSchoolId);
++      fail('CRITICAL RLS BYPASS: Forged random x-user-id created a school in public.sekolah!', rogueForgedSchoolData);
++    }
++    const { data: checkRogueForgedSchool } = await superadminClient.from('sekolah').select('id').eq('id', rogueForgedSchoolId);
++    if (checkRogueForgedSchool && checkRogueForgedSchool.length > 0) {
++      await superadminClient.from('sekolah').delete().eq('id', rogueForgedSchoolId);
++      fail('Forged school was found in public.sekolah after rejected insert!');
++    }
++    pass('Forged random x-user-id with x-user-role: Superadmin cannot create schools in public.sekolah');
++
++    // 4.2.3 Tenant Table Exfiltration Denial: public.data_siswa
++    const { data: forgedSiswaData } = await forgedUserSuperadminClient
++      .from('data_siswa')
++      .select('id, nama_siswa, sekolah_id');
++
++    if (forgedSiswaData && forgedSiswaData.length > 0) {
++      fail(`CRITICAL RLS BYPASS: Forged random x-user-id read ${forgedSiswaData.length} rows from data_siswa!`, forgedSiswaData[0]);
++    }
++    pass('Forged random x-user-id with x-user-role: Superadmin received 0 rows from data_siswa');
++
++    // -------------------------------------------------------------------------
++    // 4.3 School Admin x-user-id Privilege Escalation (u.sekolah_id IS NOT NULL)
++    // -------------------------------------------------------------------------
++    console.log(`\n${YELLOW}4.3 Adversarial: School Admin x-user-id Privilege Escalation (u.sekolah_id IS NOT NULL)${RESET}`);
++
++    // 4.3.1 School Creation Denial
++    const rogueEscSchoolId = randomUUID();
++    const { data: rogueEscSchoolData, error: rogueEscSchoolErr } = await schoolAdminEscalationClient
++      .from('sekolah')
++      .insert([{
++        id: rogueEscSchoolId,
++        nama: 'Escalated School Admin Exploit',
++        npsn: `95${timestamp.toString().slice(-6)}`,
++        status: 'aktif'
++      }])
++      .select();
++
++    if (!rogueEscSchoolErr && rogueEscSchoolData && rogueEscSchoolData.length > 0) {
++      await superadminClient.from('sekolah').delete().eq('id', rogueEscSchoolId);
++      fail('CRITICAL PRIVILEGE ESCALATION: School Admin user ID with x-user-role: Superadmin created a school in public.sekolah!', rogueEscSchoolData);
++    }
++    pass('School Admin user ID with x-user-role: Superadmin cannot create schools in public.sekolah');
++
++    // 4.3.2 School Deletion Denial (Targeting School B)
++    const { data: escDelSchoolData, error: escDelSchoolErr } = await schoolAdminEscalationClient
++      .from('sekolah')
++      .delete()
++      .eq('id', schoolBId)
++      .select();
++
++    if (!escDelSchoolErr && escDelSchoolData && escDelSchoolData.length > 0) {
++      fail('CRITICAL PRIVILEGE ESCALATION: School Admin user ID with x-user-role: Superadmin deleted School B!', escDelSchoolData);
++    }
++    const { data: verifySchoolBStillAlive } = await superadminClient.from('sekolah').select('id').eq('id', schoolBId).single();
++    if (!verifySchoolBStillAlive) {
++      fail('School B was deleted by School Admin escalation client!');
++    }
++    pass('School Admin user ID with x-user-role: Superadmin cannot delete other schools (School B unharmed)');
++
++    // 4.3.3 Cross-Tenant Data Harvest Denial (Reading School B teacher without x-sekolah-id)
++    const { data: escReadGuruBData } = await schoolAdminEscalationClient
++      .from('data_guru')
++      .select('*')
++      .eq('id', guruBId);
++
++    if (escReadGuruBData && escReadGuruBData.length > 0) {
++      fail('CRITICAL PRIVILEGE ESCALATION: School Admin user ID with x-user-role: Superadmin read School B teacher!', escReadGuruBData);
++    }
++    pass('School Admin user ID with x-user-role: Superadmin cannot read School B teacher (returned 0 rows)');
++
++    // 4.3.4 Platform Superadmin Account Harvest Denial (public.users where role = 'Superadmin')
++    const { data: escSuperUsersData } = await schoolAdminEscalationClient
++      .from('users')
++      .select('id, username, password, role, sekolah_id')
++      .eq('role', 'Superadmin');
++
++    if (escSuperUsersData && escSuperUsersData.length > 0) {
++      fail('CRITICAL PRIVILEGE ESCALATION: School Admin user ID with x-user-role: Superadmin read platform Superadmin accounts!', escSuperUsersData);
++    }
++    pass('School Admin user ID with x-user-role: Superadmin cannot read platform Superadmin rows (u.sekolah_id IS NOT NULL constraint enforced)');
++
++    // 4.3.5 Platform Superadmin Account Creation Denial
++    const rogueEscSuperUsername = `rogue_esc_super_${timestamp}`;
++    const { data: rogueEscUserData, error: rogueEscUserErr } = await schoolAdminEscalationClient
++      .from('users')
++      .insert([{
++        username: rogueEscSuperUsername,
++        password: 'HostilePassword99!',
++        nama: 'Rogue Escalated Superadmin',
++        role: 'Superadmin',
++        sekolah_id: null
++      }])
++      .select();
++
++    if (!rogueEscUserErr && rogueEscUserData && rogueEscUserData.length > 0) {
++      await superadminClient.from('users').delete().eq('username', rogueEscSuperUsername);
++      fail('CRITICAL PRIVILEGE ESCALATION: School Admin user ID with x-user-role: Superadmin created a Superadmin in public.users!', rogueEscUserData);
++    }
++    pass('School Admin user ID with x-user-role: Superadmin blocked from provisioning platform Superadmins');
++
++    // -------------------------------------------------------------------------
++    // 4.4 School Admin Claiming Superadmin While Bound to School A (x-sekolah-id present)
++    // -------------------------------------------------------------------------
++    console.log(`\n${YELLOW}4.4 School Admin with x-sekolah-id Claiming Superadmin${RESET}`);
++
++    // 4.4.1 Creation of school blocked
+     const illegalSchoolId = randomUUID();
+     const { data: spoofInsData, error: spoofInsErr } = await spoofedSchoolAdminClient
+@@ -576,9 +751,9 @@
+       fail('CRITICAL PRIVILEGE ESCALATION: School Admin spoofed Superadmin role and created a new school!', spoofInsData);
+     }
+-    pass('Header spoofing attack on public.sekolah rejected (School Admin cannot create schools)');
++    pass('Header spoofing attack with x-sekolah-id on public.sekolah rejected (School Admin cannot create schools)');
+ 
+-    // 4.2 School Admin Spoofing x-user-role to delete other schools
++    // 4.4.2 Deletion of School B blocked
+     const { data: spoofDelData, error: spoofDelErr } = await spoofedSchoolAdminClient
+       .from('sekolah')
+       .delete()
+@@ -591,9 +766,13 @@
+     if (!verifySchoolBStillExists) {
+       fail('School B was deleted by spoofed School Admin client!');
+     }
+-    pass('Header spoofing attack on school deletion blocked (School B unharmed)');
++    pass('Header spoofing attack with x-sekolah-id on school deletion blocked (School B unharmed)');
+ 
+-    // 4.3 School Admin attempting to provision a rogue Superadmin user
++    // -------------------------------------------------------------------------
++    // 4.5 Cross-Tenant User Provisioning Defense
++    // -------------------------------------------------------------------------
++    console.log(`\n${YELLOW}4.5 Cross-Tenant User Provisioning Defense${RESET}`);
++
++    // 4.5.1 School Admin attempting to provision a rogue Superadmin user
+     const rogueSuperadminUsername = `rogue_super_${timestamp}`;
+     const { data: rogueData, error: rogueErr } = await schoolAAdminClient
+       .from('users')
+@@ -610,7 +789,7 @@
+     pass('Privilege escalation in public.users blocked (School Admin cannot provision Superadmins)');
+ 
+-    // 4.4 School Admin attempting to create an Admin for another school
++    // 4.5.2 School Admin attempting to create an Admin for another school
+     const rogueAdminBUsername = `rogue_admin_b_${timestamp}`;
+     const { data: rogueAdminBData, error: rogueAdminBErr } = await schoolAAdminClient
+       .from('users')
