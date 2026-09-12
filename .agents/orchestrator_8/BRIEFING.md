@@ -60,12 +60,13 @@ Remediate Milestone 7 RLS integrity defects, apply live Supabase migration, wire
 | reviewer_m8_final_security | teamwork_preview_reviewer | Final Security & Live DB Review | completed (APPROVE) | 65c3495d-c45d-4920-991e-bbaa99a38793 |
 | challenger_m8_final | teamwork_preview_challenger | Final Adversarial Challenge on Spoofing Vectors | completed (APPROVE) | 371b5dde-5ffa-48e1-b690-1b39ef3cd031 |
 | auditor_m8_final | teamwork_preview_auditor | Final Forensic Integrity Audit | completed (CLEAN) | 18ad2c37-4e38-4005-9a39-03f8304ca231 |
-| worker_m8_post_audit_fix | teamwork_preview_worker | SuperadminView client wiring & test column fix | in-progress | 9275c2c4-0e27-41de-94a4-9fe1d454972c |
+| worker_m8_post_audit_fix | teamwork_preview_worker | SuperadminView client wiring & test column fix | completed | 9275c2c4-0e27-41de-94a4-9fe1d454972c |
+| auditor_m8_post_victory | teamwork_preview_auditor | Post-Victory Forensic Audit Re-Check | completed (CLEAN) | af7e38ca-8a33-4bbc-a17b-25910be3f6e9 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 14 / 16
-- Pending subagents: 9275c2c4-0e27-41de-94a4-9fe1d454972c
+- Spawn count: 15 / 16
+- Pending subagents: af7e38ca-8a33-4bbc-a17b-25910be3f6e9
 - Predecessor: orchestrator_7
 - Successor: not yet spawned
 

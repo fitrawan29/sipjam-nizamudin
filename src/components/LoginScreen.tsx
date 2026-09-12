@@ -14,28 +14,24 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
     setLoading(true);
     
     try {
-      // 1. Attempt secure login via verify_login RPC
-      let userData: any = null;
+      // Use secure verify_login RPC (SECURITY DEFINER — bypasses RLS, works for all roles including Superadmin)
       const { data: rpcData, error: rpcError } = await supabase.rpc('verify_login', {
         p_username: username.trim(),
         p_password: password
       });
 
-      if (!rpcError && rpcData && rpcData.length > 0) {
-        userData = rpcData[0];
-      } else {
-        // Fallback: direct table select
-        const { data: tableData, error: tableError } = await supabase
-          .from('users')
-          .select('id, username, nama, role, sekolah_id')
-          .eq('username', username.trim())
-          .eq('password', password)
-          .single();
-
-        if (!tableError && tableData) {
-          userData = tableData;
-        }
+      if (rpcError) {
+        console.error('[LoginScreen] RPC Error:', rpcError);
+        Swal.fire({
+          icon: 'error',
+          title: 'Koneksi Gagal',
+          text: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+          confirmButtonColor: '#0B4619'
+        });
+        return;
       }
+
+      const userData = rpcData && rpcData.length > 0 ? rpcData[0] : null;
 
       if (!userData) {
         Swal.fire({
@@ -61,6 +57,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
       setLoading(false);
     }
   };
+
 
   return (
     <div id="login-screen" className="flex-grow flex flex-col items-center justify-center p-6 relative overflow-hidden h-full">
