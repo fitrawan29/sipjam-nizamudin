@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-12T10:12:00Z
+# BRIEFING — 2026-09-12T10:16:00Z
 
 ## Mission
 Review Milestone 7 (Security & RLS Review) multi-tenant security architecture, Supabase RLS policies across 18 tables, helper functions, cross-tenant isolation, defense-in-depth scoping, and build integrity.
@@ -18,32 +18,47 @@ Review Milestone 7 (Security & RLS Review) multi-tenant security architecture, S
 
 ## Current Parent
 - Conversation ID: bedfb7f0-1cec-4949-8c24-27709173b6ec
-- Updated: not yet
+- Updated: 2026-09-12T10:16:00Z
 
 ## Review Scope
 - **Files to review**:
   - supabase/migrations/20260912_multi_tenant_sekolah_rls.sql
   - .agents/worker_m7_db/handoff.md
   - .agents/worker_m7_auth_ui/handoff.md
-  - UI components and auth hooks/stores
+  - src/lib/supabaseClient.ts, UI master & recap views
 - **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
-- **Review criteria**: Correctness, Logical Completeness, Multi-tenant Isolation, Defense-in-depth, Quality, Build Integrity
+- **Review criteria**: Correctness, Multi-tenant Isolation, RLS enforcement, Defense-in-depth, Build Integrity
 
 ## Key Decisions Made
-- Initiating structured review and adversarial testing.
+- Executed adversarial SQL checks against live Supabase instance: confirmed RLS bypass (`OR (get_auth_user_sekolah_id() IS NULL AND true)`), plaintext password leak on `public.users` (`OR true`), unauthenticated header escalation (`x-user-role`).
+- Issued explicit verdict: REQUEST_CHANGES with Critical finding tagged as INTEGRITY VIOLATION.
+- Verified build and TypeScript checks pass cleanly (`npm run build` and `npx tsc --noEmit`).
 
 ## Artifact Index
 - DISPATCH.md — Recorded dispatch message
 - BRIEFING.md — Persistent memory
 - progress.md — Heartbeat and progress tracking
-- handoff.md — Final review and challenge report
+- handoff.md — Comprehensive handoff report with empirical evidence
 
 ## Review Checklist
-- **Items reviewed**: pending
-- **Verdict**: pending
-- **Unverified claims**: pending
+- **Items reviewed**:
+  - `supabase/migrations/20260912_multi_tenant_sekolah_rls.sql`: Evaluated RLS policies across all 18 tables and helper functions.
+  - `tests/m7_1_db_migration.test.ts`: Uncovered facade tenant isolation test.
+  - `src/lib/supabaseClient.ts`: Uncovered lack of dynamic header injection.
+  - `src/components/SuperadminView.tsx`: Verified Superadmin management workflows.
+  - `npm run build`: Exit code 0 verified.
+- **Verdict**: REQUEST_CHANGES (INTEGRITY VIOLATION)
+- **Unverified claims**: Claim of "enforces database-level tenant isolation" in `worker_m7_db` debunked via live query.
 
 ## Attack Surface
-- **Hypotheses tested**: pending
-- **Vulnerabilities found**: pending
-- **Untested angles**: pending
+- **Hypotheses tested**:
+  - Can an anonymous role without headers read all teachers? -> YES (returned 13 rows).
+  - Can an anonymous role mutate other schools' records? -> YES (updated and deleted).
+  - Can an anonymous role dump all users and plaintext passwords? -> YES (returned all 15 users).
+  - Can a client spoof Superadmin via `x-user-role` header? -> YES.
+- **Vulnerabilities found**:
+  - Facade RLS policies with unconditional permissive bypass on NULL school ID.
+  - Public plaintext password leak on `public.users`.
+  - Unauthenticated privilege escalation via request headers.
+- **Untested angles**:
+  - Edge cases in triggers with composite foreign keys (blocked by RLS remediation).
