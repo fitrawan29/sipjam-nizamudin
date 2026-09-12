@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-13T05:22:00+08:00
+# BRIEFING — 2026-09-13T05:32:00+08:00
 
 ## Mission
 Empirically stress-test Supabase live database RLS policies, tenant isolation, anonymous denial, and header spoofing defenses to find any remaining vulnerabilities.
@@ -20,7 +20,7 @@ Empirically stress-test Supabase live database RLS policies, tenant isolation, a
 
 ## Current Parent
 - Conversation ID: f0a4047d-f184-479b-9852-09ec5b34921f
-- Updated: not yet
+- Updated: 2026-09-12T21:30:19Z
 
 ## Review Scope
 - **Files to review**:
@@ -29,6 +29,7 @@ Empirically stress-test Supabase live database RLS policies, tenant isolation, a
   - `tests/m7_rls_integrity.test.ts`
   - `tests/m7_challenger_rls.test.ts`
   - `tests/m7_1_db_migration.test.ts`
+  - `tests/m8_empirical_challenger.test.ts`
 - **Interface contracts**:
   - Supabase RLS policies across 16 tenant tables, `public.sekolah`, and `public.users`
 - **Review criteria**:
@@ -40,24 +41,27 @@ Empirically stress-test Supabase live database RLS policies, tenant isolation, a
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Can an anonymous client without headers read or mutate any of the 16 tenant tables?
-  - Can an anonymous client dump users or password hashes?
-  - Can School A access, alter, or wipe School B records?
-  - Can a tenant admin spoof Superadmin headers to register schools or escalate privileges?
-- **Vulnerabilities found**: None yet confirmed
-- **Untested angles**:
-  - Comprehensive check on all 16 tenant tables for anonymous read/write
-  - Edge cases on RPC `verify_login`
+  - Anonymous CRUD across all 16 tenant tables: PASSED (denied with 0 rows on all 16 tables)
+  - Anonymous credential dumping from public.users (no headers): PASSED (denied with 0 rows)
+  - School A vs School B real multi-tenant data isolation: PASSED (School A Admin cannot read, update, or delete School B data)
+  - School A Admin claiming Superadmin while sending x-sekolah-id: PASSED (rejected)
+  - Header spoofing attack omitting x-sekolah-id and x-user-id with `x-user-role: Superadmin`: **FAILED - CRITICAL EXPLOIT CONFIRMED**
+- **Vulnerabilities found**:
+  - **CRITICAL**: `is_superadmin()` fallback in `supabase/migrations/20260912_fix_rls_integrity.sql` lines 224-225 returns TRUE if client passes `x-user-role: Superadmin` without `x-user-id` and without `x-sekolah-id`. Allows dumping all 15 users, all plaintext passwords, and creating rogue schools/users.
+- **Untested angles**: None. Empirical challenge verified across all layers.
 
 ## Loaded Skills
 - None specified in dispatch
 
 ## Key Decisions Made
-- Execute tests/m7_rls_integrity.test.ts first to verify worker's claims.
-- Execute tests/m7_challenger_rls.test.ts to verify multi-tenant hierarchy stress.
-- Formulate and run an exhaustive 16-tenant-tables anonymous access harness to prove no individual tenant table was overlooked.
+- Executed `tests/m7_rls_integrity.test.ts` (30/30 passed) and `tests/m7_challenger_rls.test.ts` (45/45 passed).
+- Built and executed `tests/m8_empirical_challenger.test.ts` (42 checks).
+- Discovered and empirically reproduced critical RLS bypass where unauthenticated attacker can dump passwords by passing only `x-user-role: Superadmin`.
+- Confirmed all test fixtures are 100% wiped cleanly via teardown verification.
+- Delivered verdict: **REJECT** with complete remediation recommendation.
 
 ## Artifact Index
 - `BRIEFING.md` — Situational awareness
 - `progress.md` — Liveness & step tracking
 - `handoff.md` — Final challenge report & verdict
+- `tests/m8_empirical_challenger.test.ts` — Empirical test harness reproducing both passed defenses and critical finding
