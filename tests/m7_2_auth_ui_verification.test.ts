@@ -103,11 +103,11 @@ async function runM72Verification() {
   const testUsername = `admin_test_${Date.now()}`;
 
   // Clean up any stale test records first
-  await supabase.from('users').delete().eq('username', testUsername);
-  await supabase.from('sekolah').delete().eq('npsn', testNpsn);
+  await superadminClient.from('users').delete().eq('username', testUsername);
+  await superadminClient.from('sekolah').delete().eq('npsn', testNpsn);
 
   console.log('Inserting test school into public.sekolah...');
-  const { data: newSchool, error: schoolErr } = await supabase
+  const { data: newSchool, error: schoolErr } = await superadminClient
     .from('sekolah')
     .insert([
       {
@@ -130,7 +130,7 @@ async function runM72Verification() {
   pass(`Test school registered: "${newSchool.nama}" (ID: ${newSchool.id})`);
 
   console.log('Inserting test school admin linked to the new school...');
-  const { data: newAdmin, error: adminErr } = await supabase
+  const { data: newAdmin, error: adminErr } = await superadminClient
     .from('users')
     .insert([
       {
@@ -164,7 +164,7 @@ async function runM72Verification() {
   pass(`New School Admin logged in successfully with bound sekolah_id: ${adminLogin[0].sekolah_id}`);
 
   // 2.4 Verify composite upsert on pengaturan for the new school
-  const { error: upsertErr } = await supabase
+  const { error: upsertErr } = await superadminClient
     .from('pengaturan')
     .upsert([
       {
@@ -181,9 +181,9 @@ async function runM72Verification() {
 
   // Clean up test records
   console.log('\n--- Cleaning up temporary test records ---');
-  await supabase.from('users').delete().eq('username', testUsername);
-  await supabase.from('pengaturan').delete().eq('sekolah_id', newSchool.id);
-  await supabase.from('sekolah').delete().eq('id', newSchool.id);
+  await superadminClient.from('users').delete().eq('username', testUsername);
+  await superadminClient.from('pengaturan').delete().eq('sekolah_id', newSchool.id);
+  await superadminClient.from('sekolah').delete().eq('id', newSchool.id);
   pass('Test records cleaned up cleanly');
 
   console.log(`\n${GREEN}====================================================${RESET}`);
