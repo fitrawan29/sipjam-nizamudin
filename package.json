@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx tests/imageUrl.test.ts && tsx tests/printHeader.test.ts && tsx tests/qolAudit.test.ts"
+    "test": "tsx tests/imageUrl.test.ts && tsx tests/printHeader.test.ts && tsx tests/qolAudit.test.ts && tsx tests/m6_1_database_and_types.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

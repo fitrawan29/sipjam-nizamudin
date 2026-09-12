@@ -1,87 +1,59 @@
-# Project: SIPJAM UI/UX, Relational Schema & Print Standardization
+# Project: SIPJAM - Milestone 6: Full Dashboard, Print, Piket, Perangkat, Broadcast & Transitions Overhaul
 
 ## Architecture
 - **Framework**: Next.js 16 (App Router), React 19, Tailwind CSS v4, Supabase JS Client.
-- **Theme Layer**: `ThemeContext` providing `'light'` and `'dark'` modes, strictly defaulting to `'light'` for all unconfigured sessions and persisting manual user toggles in `localStorage.getItem('sipjam_theme')`.
-- **Media / Image Layer**: `src/lib/imageUrl.ts` utility converting all Google Drive sharing URLs (`/file/d/{id}/view`, `open?id={id}`, `uc?id={id}`) into direct image streaming URLs (`drive.google.com/uc?export=view&id={id}`), integrated across print headers, admin verification, and history cards.
-- **Relational Data Layer**: `public.guru_mapel` table in Supabase mapping `(guru_id, nip, nama_guru, mapel_id, nama_mapel, kelas)`, populated via SQL migration and kept synchronized with `data_guru` via PostgreSQL trigger `trg_sync_guru_mapel`.
-- **Form Dynamic Filtering Layer**: `src/components/GuruJurnal.tsx` querying `public.guru_mapel` to dynamically restrict Mapel and Kelas dropdowns exclusively to the authenticated teacher's assigned subjects and classes.
-- **Print Standardization Layer**: `PrintHeader.tsx` enforcing strict `line-height: 1` and single-line address with dynamic font shrinking (`clamp()` and character-length scaling), plus `PrintSignature` rendering dynamic `"[Kabupaten/Kota], [Date]"` above `"Kepala Sekolah"`.
+- **Print Engine**: Dynamic `@page` CSS injection supporting real-time Landscape/Portrait orientation toggle, strict `@media print` layout cleanup (`print:hidden` for navbar/sidebar), justified signature container, high-res activity photos, and professional table borders.
+- **Teacher Dashboard Engine**: Live calculation of personal attendance stats (H, TL, I, S), dynamic daily journal target ratio (`jadwal_pelajaran` today), student attendance percentage per subject (`guru_mapel` + `jurnal_pembelajaran.absensi_siswa`), and curriculum document completeness checklist.
+- **Admin Dashboard & Verification Engine**: Comprehensive daily teacher status matrix (Presensi Datang, Jurnal, Piket, Presensi Pulang) and reactive client-side dropdown filters ("Sudah" / "Belum") in AdminVerifView.
+- **Picket & Learning Devices Management**: Day-by-day picket scheduling ("Penugasan Piket") replacing "Isi Laporan" for Admin, and teacher matrix cards for Perangkat Pembelajaran replacing "Upload Baru" for Admin.
+- **Broadcast Information System**: Announcement system (`public.pengumuman` & `public.pengumuman_tanggapan`) replacing "Pantauan Harian" with audience targeting (Semua, Guru, Wali Kelas, Orang Tua), 1-way & 2-way modes, and WhatsApp broadcast integration.
+- **Motion & Transition Layer**: Smooth CSS keyframes and transitions for hover states, modals, and page transitions.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | Default Light Mode | Enforce Light Mode as default theme; ignore OS dark mode preference; persist manual toggles in `localStorage` | M1 | ORIGINAL_REQUEST §R1 |
-| 2 | Google Drive Image Transformer | Transform Google Drive share links into direct renderable image stream URLs across app | M1 | ORIGINAL_REQUEST §R1 |
-| 3 | Image Thumbnails in Admin & History | Display direct image previews in AdminVerifView, HistoryView, PiketView, and AdminConfigView | M1 | ORIGINAL_REQUEST §R1 & survey |
-| 4 | Relational Schema (`guru_mapel`) | Create `guru_mapel` table with DDL, indexes, RLS, seed data (39 items), and auto-sync trigger | M2 | ORIGINAL_REQUEST §R2 |
-| 5 | Dynamic Jurnal KBM Form Filtering | Filter Mata Pelajaran and Kelas dropdowns in GuruJurnal based on logged-in teacher identity | M2 | ORIGINAL_REQUEST §R2 |
-| 6 | Jurnal Dropdown Interactivity | Auto-sync Mapel and Kelas selection, handle Admin bypass and empty state notices | M2 | ORIGINAL_REQUEST §R2 |
-| 7 | Strict PrintHeader CSS Constraints | Single-line address (`white-space: nowrap !important;`) with dynamic font shrinking without logo overlap | M3 | ORIGINAL_REQUEST §R3 |
-| 8 | Header Exact Line-Height 1 | Enforce `line-height: 1` (`leading-none`) on header text and Kop Surat elements | M3 | ORIGINAL_REQUEST §R3 |
-| 9 | Dynamic Signature Block | Append `"[Kabupaten/Kota], [Date]"` immediately above "Kepala Sekolah" pulling region from `pengaturan.KOTA_TTD` | M3 | ORIGINAL_REQUEST §R3 |
-| 10 | SweetAlert2 Standardization | Replace native `alert()` in RekapSiswaView with SweetAlert2 (`Swal.fire`) | M4 | ORIGINAL_REQUEST §R4 |
-| 11 | Empty State Handling in Admin Rekap | Add empty state feedback for searches returning 0 records | M4 | ORIGINAL_REQUEST §R4 |
-| 12 | Production Build & Git Push | Verify `npm run build` exits with 0 errors, execute git status/add/commit/push per GEMINI.md | M4 | ORIGINAL_REQUEST §R4 & GEMINI.md |
+| 1 | Supabase Migration for Pengumuman & Penugasan Piket | Tables `pengumuman`, `pengumuman_tanggapan`, `penugasan_piket`, `bank_dokumen.mapel` | M6.1 | R4, R5 & survey |
+| 2 | TypeScript Types Synchronization | Add database types to `src/types/database.ts` | M6.1 | Verification criteria |
+| 3 | Print Orientation Toggle (Landscape / Portrait) | Interactive toggle button dynamically injecting `@page { size: A4 orientation }` | M6.2 | R1 |
+| 4 | Navbar & Sidebar Print Hiding | Enforce `print:hidden` and `@media print` rules to prevent navigation from printing | M6.2 | R1 |
+| 5 | Justified Signature Blocks | Container justified (`justify-between`), elements on individual lines, zero wrapping | M6.2 | R1 |
+| 6 | Dynamic Period/Date Range Header | Display formatted date range (e.g. "Periode: September 2026") in print header | M6.2 | R1 |
+| 7 | Journal Activity Photo Rendering | Render high-res thumbnail (`getGoogleDriveThumbnailUrl(..., 800)`) with clear aspect ratio | M6.2 | R1 |
+| 8 | Professional Table Styling for Rekap Akhir & Siswa | 10-column table for Admin Rekap and enhanced bordered grid for Rekap Siswa | M6.2 | R1 |
+| 9 | Teacher Dashboard: Remove "Aktivitas Utama" | Delete deprecated button grid from HomeView | M6.3 | R2 |
+| 10 | Teacher Dashboard: Personal Attendance Cards | Cards for Hadir (H), Terlambat (TL), Izin, Sakit from `presensi_guru` | M6.3 | R2 |
+| 11 | Teacher Dashboard: Dynamic Target Journal Ratio | Calculate today's journal target from `jadwal_pelajaran` and track completion ratio | M6.3 | R2 |
+| 12 | Teacher Dashboard: Student Attendance % per Mapel | Calculate student attendance percentage for each subject taught from journal logs | M6.3 | R2 |
+| 13 | Teacher Dashboard: Document Completeness List | Status list of uploaded vs pending documents per subject from 6 standard types | M6.3 | R2 |
+| 14 | Admin Dashboard: Daily Teacher Status Matrix | Live matrix mapping all teachers: Datang, Jurnal, Piket, Pulang | M6.3 | R3 |
+| 15 | Admin Verification: Reactive Dropdown Filters | Dropdown for "Sudah" / "Belum" completing tasks without page reload or flicker | M6.3 | R3 |
+| 16 | Admin Piket: Penugasan Piket System | Day-by-day scheduling for teachers and students replacing "Isi Laporan" tab | M6.4 | R4 |
+| 17 | Admin Perangkat: Teacher Matrix Cards | Teacher matrix cards showing subjects and document upload indicators replacing "Upload Baru" | M6.4 | R4 |
+| 18 | Navigation: Remove Pantauan Harian & Add Informasi | Remove "Pantauan Harian" from menus; add "Informasi" menu | M6.4 | R5 |
+| 19 | Broadcast Information System (`InformasiView.tsx`) | Announcement broadcaster with multi-target audience, 1-way / 2-way modes, WhatsApp share | M6.4 | R5 |
+| 20 | Modern UI Transitions & Motion | Smooth hover effects, modal transitions, and page entry animations in `globals.css` | M6.4 | R5 |
+| 21 | Full Verification, E2E Testing & Git Push | Type checking, build verification, adversarial review, audit, auto git commit & push | M6.5 | Acceptance & GEMINI.md |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Default Theme & Google Drive Image Rendering | `ThemeContext.tsx`, `layout.tsx`, `AppScreen.tsx`, `imageUrl.ts`, `next.config.ts`, thumbnail renderers | none | PLANNED |
-| M2 | Dynamic KBM Journal Filtering & Relational Schema | Supabase migration for `guru_mapel`, triggers, `GuruJurnal.tsx` dynamic queries & cascading dropdowns | none | PLANNED |
-| M3 | Strict Print Formatting | `PrintHeader.tsx`, `globals.css` print styles, dynamic signature line, `AdminConfigView.tsx` `kota_ttd` field | M1 | PLANNED |
-| M4 | Quality-of-Life Audit, Build Verification & Git Push | SweetAlert polish, empty states, `npm run build` verification, `git push origin main` | M1, M2, M3 | PLANNED |
-
-## Interface Contracts
-
-### `src/context/ThemeContext.tsx`
-```typescript
-export type Theme = 'light' | 'dark';
-export interface ThemeContextType {
-  theme: Theme;
-  toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
-}
-export function ThemeProvider({ children, defaultTheme = 'light' }: { children: React.ReactNode; defaultTheme?: Theme }): JSX.Element;
-export function useTheme(): ThemeContextType;
-```
-
-### `src/lib/imageUrl.ts`
-```typescript
-export function getGoogleDriveFileId(url: string | null | undefined): string | null;
-export function transformGoogleDriveUrl(url: string | null | undefined): string;
-export function getGoogleDriveThumbnailUrl(url: string | null | undefined, size?: number): string;
-export function isGoogleDriveUrl(url: string | null | undefined): boolean;
-```
-
-### Database Relational Schema `public.guru_mapel`
-```sql
-CREATE TABLE public.guru_mapel (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    guru_id UUID REFERENCES public.data_guru(id) ON DELETE CASCADE,
-    nip TEXT NOT NULL,
-    nama_guru TEXT NOT NULL,
-    mapel_id TEXT REFERENCES public.data_mapel(id) ON DELETE CASCADE,
-    nama_mapel TEXT NOT NULL,
-    mapel_singkat TEXT,
-    kelas TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    CONSTRAINT uq_guru_mapel UNIQUE (nip, nama_mapel)
-);
-```
+| M6.1 | Database Migrations & TypeScript Schema | Supabase SQL execution (`pengumuman`, `penugasan_piket`, `bank_dokumen.mapel`) & `database.ts` | none | IN_PROGRESS |
+| M6.2 | Document Printing Redesign (R1) | `RekapJurnalView.tsx`, `AdminRekapView.tsx`, `RekapSiswaView.tsx`, `PrintHeader.tsx`, `AppScreen.tsx`, `globals.css` | M6.1 | PLANNED |
+| M6.3 | Teacher & Admin Dashboards & Verification (R2 & R3) | `HomeView.tsx`, `AdminVerifView.tsx` | M6.1 | PLANNED |
+| M6.4 | Piket, Perangkat, Broadcast & Transitions (R4 & R5) | `PiketView.tsx`, `DokumenView.tsx`, `InformasiView.tsx`, `AppScreen.tsx`, `globals.css` | M6.1 | PLANNED |
+| M6.5 | Review, Adversarial Testing, Audit & Git Push | E2E verification, tsc, review, challenger, forensic audit, git commit & push | M6.2, M6.3, M6.4 | PLANNED |
 
 ## Code Layout
-- `src/context/ThemeContext.tsx` (New) - React context for Light/Dark mode
-- `src/lib/imageUrl.ts` (New) - URL parser and transformer for Google Drive and external images
-- `supabase/migrations/20260911_guru_mapel_relational.sql` (New) - Migration script for relational tables
-- `src/app/layout.tsx` (Modified) - Mount ThemeProvider
-- `src/components/AppScreen.tsx` (Modified) - Integrate useTheme(), remove matchMedia override
-- `src/components/GuruJurnal.tsx` (Modified) - Filter Mapel/Kelas dropdowns per teacher from `guru_mapel`
-- `src/components/PrintHeader.tsx` (Modified) - Single-line address with dynamic shrinking, line-height: 1, dynamic signature
-- `src/app/globals.css` (Modified) - Strict print media styles
-- `src/components/AdminConfigView.tsx` (Modified) - Logo previews and `kota_ttd` configuration
-- `src/components/AdminVerifView.tsx` (Modified) - Image thumbnails for Jurnal/Piket/Presensi
-- `src/components/HistoryView.tsx` (Modified) - Image thumbnails
-- `src/components/PiketView.tsx` (Modified) - Image thumbnails
-- `src/components/RekapSiswaView.tsx` (Modified) - Replace native alert() with Swal.fire
-- `next.config.ts` (Modified) - Remote image patterns for Google Drive / Google usercontent
+- `supabase/migrations/20260912_m6_overhaul.sql` (New) - SQL migration for Pengumuman & Penugasan Piket
+- `src/types/database.ts` (Modified) - Updated schema types for new tables
+- `src/components/PrintHeader.tsx` (Modified) - Dynamic period header, justified signature container
+- `src/components/RekapJurnalView.tsx` (Modified) - Print orientation toggle, photo rendering, table styling
+- `src/components/AdminRekapView.tsx` (Modified) - Print orientation toggle, 10-column table layout, print headers
+- `src/components/RekapSiswaView.tsx` (Modified) - Print orientation toggle, enhanced bordered table
+- `src/components/HomeView.tsx` (Modified) - Remove "Aktivitas Utama", add Teacher stats & target journal ratio, add Admin daily status matrix
+- `src/components/AdminVerifView.tsx` (Modified) - Add reactive dropdown filters ("Sudah" / "Belum" & status)
+- `src/components/PiketView.tsx` (Modified) - Remove "Isi Laporan" in Admin mode, add "Penugasan Piket" tab
+- `src/components/DokumenView.tsx` (Modified) - Remove "Upload Baru" in Admin mode, add Teacher Matrix Cards
+- `src/components/InformasiView.tsx` (New) - Broadcast announcement system
+- `src/components/AppScreen.tsx` (Modified) - Remove "Pantauan Harian", add "Informasi" navigation, hide header during print
+- `src/app/globals.css` (Modified) - Print media CSS, animation keyframes, smooth hover & transitions

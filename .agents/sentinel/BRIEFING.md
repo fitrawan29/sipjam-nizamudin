@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-11T22:35:46Z
+# BRIEFING — 2026-09-12T04:36:57Z
 
 ## Mission
-Coordinate and monitor document print layout standardization (Kop Surat & Tanda Tangan), KBM Journal 8-column table reconstruction (including DB migration & Form update), daily teaching schedule widget on HomeView dashboard, and comprehensive bug hunting & stabilization.
+Coordinate and monitor the massive overhaul of Teacher and Admin dashboards, print document layout redesign with orientation switch, piket and learning document management redesign, broadcast announcement system with Supabase migrations, and smooth UI transitions.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -12,10 +12,12 @@ Coordinate and monitor document print layout standardization (Kop Surat & Tanda 
 - Active Orchestrator (previous): 742c922b-4acf-4153-902f-de90d07d6ea8 (completed)
 - Active Victory Auditor (previous): 37b70f15-690d-4057-b494-568c3e3d6b47 (completed)
 - Active Orchestrator (previous): 5a481f87-05a5-40d3-b299-861aa70f2584 (.agents/orchestrator_4)
-- Active Orchestrator: 0436a7e8-c270-413c-bcf5-b9e753860f23 (.agents/orchestrator_5)
+- Active Orchestrator (previous): 0436a7e8-c270-413c-bcf5-b9e753860f23 (.agents/orchestrator_5)
+- Victory Auditor (previous): f354ce81-a125-46eb-b9f6-840f1d21a89e (.agents/victory_auditor_3)
+- Active Orchestrator: 391b5d0f-960b-430f-985b-4245841f8551 (.agents/orchestrator_6)
 - Victory Auditor: [to be spawned on victory claim]
-- Cron 1 (Progress Reporting): task-32 (*/8 * * * *)
-- Cron 2 (Liveness Check): task-34 (*/10 * * * *)
+- Cron 1 (Progress Reporting): task-30 (*/8 * * * *)
+- Cron 2 (Liveness Check): task-32 (*/10 * * * *)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -25,11 +27,12 @@ Coordinate and monitor document print layout standardization (Kop Surat & Tanda 
 - Path: General (teamwork_preview_orchestrator)
 - Route decision rationale: UI/UX improvements, Google Drive link transformer, KBM journal teacher-specific filtering with Supabase relations, PrintHeader strict formatting, and broad QoL sweep; multi-part project requesting large team.
 - Route decision milestone 5: General (teamwork_preview_orchestrator) — full team requested for Kop Surat & Tanda Tangan print layout, 8-column Jurnal KBM DB migration & form update, daily schedule widget on dashboard, and comprehensive bug hunting.
+- Route decision milestone 6: General (teamwork_preview_orchestrator) — full team requested for massive overhaul across Teacher & Admin dashboards, print document layout & orientation switch, piket scheduling & learning device matrix, broadcast announcements with Supabase tables, and CSS smooth transitions.
 
 ## User Context
-- **Last user request**: Standardize print layout (Kop Surat & Tanda Tangan), KBM Journal 8-column table (DB migration + Form), daily schedule widget on dashboard, comprehensive bug hunting.
+- **Last user request**: Massive overhaul of Guru & Admin dashboards, print document layout with orientation toggle, piket assignment & learning device matrix, announcement/broadcast system, smooth UI transitions.
 - **Pending clarifications**: none
-- **Delivered results**: Milestones 1-4 delivered and victory confirmed.
+- **Delivered results**: Milestones 1-5 delivered and victory confirmed. Milestone 6 underway.
 
 ## Project Status
 - **Phase**: in progress
@@ -44,4 +47,6 @@ Coordinate and monitor document print layout standardization (Kop Surat & Tanda 
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md — Verbatim user requests (.agents mirror)
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\sentinel\BRIEFING.md — Sentinel working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\sentinel\handoff.md — Sentinel handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_5\handoff.md — Orchestrator 5 handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\victory_auditor_3\handoff.md — Victory Auditor 3 report
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md — Master project documentation
