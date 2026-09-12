@@ -197,3 +197,40 @@ Integrity mode: development
 - [ ] Sakelar orientasi cetak langsung mengubah properti dokumen cetak secara nyata.
 - [ ] Filter pada halaman Verifikasi memilah daftar komponen tanpa reload/flicker.
 - [ ] Semua komponen antarmuka yang dirombak merespons animasi transisi dengan mulus.
+
+## 2026-09-12T09:49:49Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: Full team (karena ini adalah refactor arsitektur database berskala besar)
+
+Mengubah aplikasi presensi dan jurnal sekolah (SIPJAM) yang saat ini bersifat *single-tenant* menjadi sistem perangkat lunak sebagai layanan (*SaaS*) multi-sekolah. Mengimplementasikan hierarki pengguna dengan peran **Superadmin** (untuk mendaftarkan sekolah dan membuat akun admin sekolahnya) dan **Admin** sekolah. Memastikan isolasi data antar sekolah secara ketat dan sangat efisien menggunakan Row Level Security (RLS) pada tingkat database Supabase, serta mengurutkan data dari tanggal terkecil ke terbesar pada semua rekap dan hasil cetak dokumen.
+
+Working directory: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Multi-Tenant Database Architecture & RLS
+Buat tabel baru untuk entitas `sekolah`. Modifikasi skema seluruh tabel transaksional dan master yang ada (seperti `data_guru`, `data_siswa`, `presensi_guru`, `jurnal_pembelajaran`, `pengaturan`, dll) untuk menyertakan `sekolah_id`. Aktifkan **Row Level Security (RLS)** bawaan Supabase pada tabel-tabel tersebut agar kueri data otomatis terfilter di level database. Hal ini penting untuk mengoptimalkan performa Vercel & Supabase tanpa harus memfilter data di level memori aplikasi.
+
+### R2. Superadmin & Admin Hierarchy
+Buat antarmuka (dashboard) khusus untuk pengguna dengan peran "Superadmin". Superadmin bertugas mendaftarkan data sekolah baru ke sistem, lalu membuatkan akun dengan peran "Admin" yang terikat (link) dengan `sekolah_id` tersebut. Pastikan saat "Admin" sekolah login, seluruh tampilan aplikasi hanya akan merender dan mengelola data untuk sekolahnya saja.
+
+### R3. Ascending Date Sorting
+Ubah logika pada fitur penarikan data rekapitulasi (khususnya Rekap Jurnal, Rekap Siswa, dan halaman hasil Cetak Dokumen) agar selalu mengurutkan (*sorting*) berdasarkan data tanggal dari yang terkecil (terlama) ke yang terbesar (terbaru).
+
+## Acceptance Criteria
+
+### Data Security & Isolation
+- [ ] Pengujian kueri RLS Supabase memastikan bahwa *session* untuk Admin/Guru dari Sekolah A tidak dapat membaca (SELECT), menambah (INSERT), memperbarui (UPDATE), atau menghapus (DELETE) baris data milik Sekolah B.
+
+### Role Hierarchy Workflow
+- [ ] Tersedia halaman di mana Superadmin dapat menambahkan entri sekolah baru.
+- [ ] Tersedia fitur di mana Superadmin dapat membuat akun Admin baru yang direlasikan ke sebuah sekolah.
+
+### Data Ordering
+- [ ] Hasil pencetakan (Cetak Dokumen) pada Rekap Jurnal dan Rekap Presensi secara visual menampilkan baris tabel dari tanggal awal bulan hingga tanggal akhir bulan (ascending).
+
