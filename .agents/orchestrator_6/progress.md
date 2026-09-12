@@ -1,7 +1,7 @@
 # Progress — Orchestrator 6
 
 ## Current Status
-Last visited: 2026-09-12T05:10:15Z
+Last visited: 2026-09-12T05:30:18Z
 - [x] Initial dispatch received & recorded
 - [x] BRIEFING initialized
 - [x] Survey codebase (R1-R5) completed via Explorers
@@ -9,7 +9,9 @@ Last visited: 2026-09-12T05:10:15Z
 - [x] M6.1 Database Migration & Schema completed
 - [x] M6.2 Document Printing Redesign completed
 - [x] M6.3 Dashboards & Verification completed
-- [/] M6.4 Piket, Perangkat, Broadcast & Transitions (worker_m6_4 active)
+- [x] M6.4 Piket, Perangkat, Broadcast & Transitions completed
+- [x] M6.5 Review & Audit round 1 (identified AdminVerifView filter defect)
+- [/] M6.5 Remediation in progress (worker_m6_fix active)
 - [ ] Establish architecture & update PROJECT.md
 - [ ] Implement database migrations (Pengumuman & Penugasan Piket)
 - [ ] Implement R1 (Document Print adjustments: orientation toggle, CSS @page, signatures, photos, headers)

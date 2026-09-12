@@ -40,8 +40,8 @@
 | M6.1 | Database Migrations & TypeScript Schema | Supabase SQL execution (`pengumuman`, `penugasan_piket`, `bank_dokumen.mapel`) & `database.ts` | none | DONE |
 | M6.2 | Document Printing Redesign (R1) | `RekapJurnalView.tsx`, `AdminRekapView.tsx`, `RekapSiswaView.tsx`, `PrintHeader.tsx` | M6.1 | DONE |
 | M6.3 | Teacher & Admin Dashboards & Verification (R2 & R3) | `HomeView.tsx`, `AdminVerifView.tsx` | M6.1 | DONE |
-| M6.4 | Piket, Perangkat, Broadcast & Transitions (R4 & R5) | `PiketView.tsx`, `DokumenView.tsx`, `InformasiView.tsx`, `AppScreen.tsx`, `globals.css` | M6.1 | IN_PROGRESS |
-| M6.5 | Review, Adversarial Testing, Audit & Git Push | E2E verification, tsc, review, challenger, forensic audit, git commit & push | M6.2, M6.3, M6.4 | PLANNED |
+| M6.4 | Piket, Perangkat, Broadcast & Transitions (R4 & R5) | `PiketView.tsx`, `DokumenView.tsx`, `InformasiView.tsx`, `AppScreen.tsx`, `globals.css` | M6.1 | DONE |
+| M6.5 | Review, Adversarial Testing, Audit & Git Push | E2E verification, tsc, review, challenger, forensic audit, git commit & push | M6.2, M6.3, M6.4 | IN_PROGRESS |
 
 ## Code Layout
 - `supabase/migrations/20260912_m6_overhaul.sql` (New) - SQL migration for Pengumuman & Penugasan Piket

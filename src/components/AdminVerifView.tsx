@@ -241,6 +241,33 @@ export default function AdminVerifView({ user }: { user: any }) {
     }
   };
 
+// Helper: Normalisasi nama guru untuk perbandingan presisi tanpa false substring collision
+function normalizeTeacherName(name?: string | null): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/,.*$/, '') // Hapus gelar setelah koma (misal: ", S.Pd.")
+    .replace(/\b(s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Hapus singkatan gelar
+    .replace(/[^a-z0-9\s]/gi, ' ') // Ganti tanda baca dengan spasi
+    .replace(/\s+/g, ' ') // Rapikan multi-spasi
+    .trim();
+}
+
+function isTeacherMatch(teacherName?: string | null, candidateName?: string | null, nip?: string | null): boolean {
+  if (!teacherName || !candidateName) return false;
+  const normTeacher = normalizeTeacherName(teacherName);
+  const normCandidate = normalizeTeacherName(candidateName);
+
+  if (normTeacher && normCandidate && normTeacher === normCandidate) return true;
+
+  if (nip) {
+    const normNip = normalizeTeacherName(nip);
+    if (normNip && (normNip === normTeacher || normNip === normCandidate)) return true;
+  }
+
+  return false;
+}
+
   // Target date for cross-referencing
   const effectiveDate = useMemo(() => {
     return date || getWitaDateStr();
@@ -256,18 +283,23 @@ export default function AdminVerifView({ user }: { user: any }) {
   const unsubmittedPresensi = useMemo(() => {
     if (allTeachers.length === 0) return [];
     
-    // Set of teacher names who have submitted presensi on effectiveDate
-    const submittedTeacherNames = new Set(
-      presensiList
-        .filter(p => !date || (p.timestamp && p.timestamp.includes(effectiveDate)))
-        .map(p => (p.nama_guru || '').trim().toLowerCase())
-    );
+    // Always filter strictly by targetDate = date || effectiveDate
+    const targetDate = date || effectiveDate;
+    const submittedList = presensiList.filter(p => {
+      if (!p.timestamp) return false;
+      if (p.timestamp.includes(targetDate)) return true;
+      try {
+        return getWitaDateStr(new Date(p.timestamp)) === targetDate;
+      } catch {
+        return false;
+      }
+    });
 
     return allTeachers
       .filter(t => {
-        const tName = (t.nama_guru || '').trim().toLowerCase();
-        const hasSubmitted = submittedTeacherNames.has(tName) || 
-          Array.from(submittedTeacherNames).some(sn => sn.includes(tName) || tName.includes(sn));
+        const hasSubmitted = submittedList.some(p => 
+          isTeacherMatch(t.nama_guru, p.nama_guru, t.nip)
+        );
         return !hasSubmitted;
       })
       .map(t => ({
@@ -277,7 +309,7 @@ export default function AdminVerifView({ user }: { user: any }) {
         mata_pelajaran: t.mata_pelajaran || 'Guru',
         task_type: 'Presensi',
         pesan_belum: 'Belum melakukan presensi datang maupun pulang',
-        tanggal: effectiveDate,
+        tanggal: targetDate,
         isUnsubmitted: true
       }));
   }, [allTeachers, presensiList, date, effectiveDate]);
@@ -285,19 +317,17 @@ export default function AdminVerifView({ user }: { user: any }) {
   const unsubmittedJurnal = useMemo(() => {
     if (allTeachers.length === 0) return [];
 
-    const submittedTeacherNames = new Set(
-      jurnalList
-        .filter(j => !date || j.tanggal === effectiveDate)
-        .map(j => (j.nama_guru || '').trim().toLowerCase())
-    );
+    // Always filter strictly by targetDate = date || effectiveDate
+    const targetDate = date || effectiveDate;
+    const submittedList = jurnalList.filter(j => j.tanggal === targetDate);
 
     const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
 
     return allTeachers
       .filter(t => {
-        const tName = (t.nama_guru || '').trim().toLowerCase();
-        const hasSubmitted = submittedTeacherNames.has(tName) || 
-          Array.from(submittedTeacherNames).some(sn => sn.includes(tName) || tName.includes(sn));
+        const hasSubmitted = submittedList.some(j => 
+          isTeacherMatch(t.nama_guru, j.nama_guru, t.nip)
+        );
         return !hasSubmitted;
       })
       .map(t => {
@@ -325,8 +355,8 @@ export default function AdminVerifView({ user }: { user: any }) {
           task_type: 'Jurnal',
           pesan_belum: scheduledClasses.length > 0 
             ? `Belum mengisi jurnal KBM untuk ${scheduledClasses.length} kelas terjadwal pada hari ${effectiveDayName}` 
-            : `Belum mengisi jurnal pembelajaran untuk tanggal ${effectiveDate}`,
-          tanggal: effectiveDate,
+            : `Belum mengisi jurnal pembelajaran untuk tanggal ${targetDate}`,
+          tanggal: targetDate,
           isUnsubmitted: true
         };
       });
@@ -338,11 +368,9 @@ export default function AdminVerifView({ user }: { user: any }) {
     const piketToday = allPiketSchedule.find((p: any) => p.hari === effectiveDayName);
     if (!piketToday) return [];
 
-    const submittedReporters = new Set(
-      piketList
-        .filter(p => !date || p.tanggal === effectiveDate)
-        .map(p => (p.guru_pelapor || '').trim().toLowerCase())
-    );
+    // Always filter strictly by targetDate = date || effectiveDate
+    const targetDate = date || effectiveDate;
+    const submittedList = piketList.filter(p => p.tanggal === targetDate);
 
     // Only teachers assigned to picket today
     const assignedTeachers = allTeachers.filter(t => 
@@ -351,9 +379,9 @@ export default function AdminVerifView({ user }: { user: any }) {
 
     return assignedTeachers
       .filter(t => {
-        const tName = (t.nama_guru || '').trim().toLowerCase();
-        const hasSubmitted = submittedReporters.has(tName) || 
-          Array.from(submittedReporters).some(sr => sr.includes(tName) || tName.includes(sr));
+        const hasSubmitted = submittedList.some(p => 
+          isTeacherMatch(t.nama_guru, p.guru_pelapor, t.nip)
+        );
         return !hasSubmitted;
       })
       .map(t => ({
@@ -364,40 +392,40 @@ export default function AdminVerifView({ user }: { user: any }) {
         mata_pelajaran: t.mata_pelajaran || 'Petugas Piket',
         task_type: 'Piket',
         pesan_belum: `Terjadwal sebagai petugas piket hari ${effectiveDayName}, belum melapor`,
-        tanggal: effectiveDate,
+        tanggal: targetDate,
         isUnsubmitted: true
       }));
   }, [allTeachers, allPiketSchedule, piketList, date, effectiveDate, effectiveDayName]);
 
   // Reactive Instant Client-side Filter Calculation (Zero flicker, zero reload)
   const displayList = useMemo(() => {
-    // 1. If filtering for Belum Menyelesaikan
-    if (taskFilter === 'Belum') {
-      const unsubmittedList = activeTab === 'Presensi' 
-        ? unsubmittedPresensi 
-        : activeTab === 'Jurnal' 
-        ? unsubmittedJurnal 
-        : unsubmittedPiket;
+    const unsubmittedList = activeTab === 'Presensi' 
+      ? unsubmittedPresensi 
+      : activeTab === 'Jurnal' 
+      ? unsubmittedJurnal 
+      : unsubmittedPiket;
 
-      if (!search) return unsubmittedList;
-      const q = search.toLowerCase();
-      return unsubmittedList.filter((item: any) => 
-        (item.nama_guru || '').toLowerCase().includes(q) ||
-        (item.guru_pelapor || '').toLowerCase().includes(q) ||
-        (item.nip || '').toLowerCase().includes(q) ||
-        (item.mata_pelajaran || '').toLowerCase().includes(q) ||
-        (item.pesan_belum || '').toLowerCase().includes(q)
-      );
-    }
-
-    // 2. If filtering for Sudah Menyelesaikan or Semua
     const submittedList = activeTab === 'Presensi' 
       ? presensiList 
       : activeTab === 'Jurnal' 
       ? jurnalList 
       : piketList;
 
-    return submittedList.filter((item: any) => {
+    // Filter unsubmitted items by search
+    const filteredUnsubmitted = unsubmittedList.filter((item: any) => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        (item.nama_guru || '').toLowerCase().includes(q) ||
+        (item.guru_pelapor || '').toLowerCase().includes(q) ||
+        (item.nip || '').toLowerCase().includes(q) ||
+        (item.mata_pelajaran || '').toLowerCase().includes(q) ||
+        (item.pesan_belum || '').toLowerCase().includes(q)
+      );
+    });
+
+    // Filter submitted items by verification status and search
+    const filteredSubmitted = submittedList.filter((item: any) => {
       // Verification status filter
       if (verifFilter !== 'Semua') {
         const status = item.status_verifikasi || 'Menunggu';
@@ -427,6 +455,22 @@ export default function AdminVerifView({ user }: { user: any }) {
         );
       }
     });
+
+    // 1. If filtering for Belum Menyelesaikan
+    if (taskFilter === 'Belum') {
+      return filteredUnsubmitted;
+    }
+
+    // 2. If filtering for Sudah Menyelesaikan
+    if (taskFilter === 'Sudah') {
+      return filteredSubmitted;
+    }
+
+    // 3. If filtering for Semua (Sudah & Belum): Combine submitted items with unsubmitted items
+    if (verifFilter !== 'Semua') {
+      return filteredSubmitted;
+    }
+    return [...filteredSubmitted, ...filteredUnsubmitted];
   }, [
     taskFilter, 
     verifFilter, 
@@ -790,7 +834,7 @@ export default function AdminVerifView({ user }: { user: any }) {
         {/* Footer Summary */}
         <div className="flex justify-between items-center mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
           <span className="text-xs text-gray-600 dark:text-white/80 font-medium">
-            {displayList.length} Data {taskFilter === 'Belum' ? 'Guru Belum Menyelesaikan' : 'Diverifikasi'}
+            {displayList.length} Data {taskFilter === 'Belum' ? 'Guru Belum Menyelesaikan' : taskFilter === 'Semua' ? 'Guru (Sudah & Belum)' : 'Diverifikasi'}
           </span>
         </div>
       </div>
