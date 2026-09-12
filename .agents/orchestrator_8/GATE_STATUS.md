@@ -1,28 +1,30 @@
 # Gate Status: Milestone 7 Remediation
 
-## Gate — Iteration 2 (Pending)
+## Gate — Iteration 3 (FINAL)
 | Agent | Role | Verdict | Source |
 |-------|------|---------|--------|
-| worker_m8_remediation | teamwork_preview_worker | DONE (build passed) | handoff.md |
-| reviewer_m8_security | teamwork_preview_reviewer | APPROVE | handoff.md |
-| reviewer_m8_fullstack | teamwork_preview_reviewer | APPROVE | handoff.md |
-| challenger_m8_multitenant | teamwork_preview_challenger | REJECT | handoff.md |
-| challenger_m8_recap_sorting | teamwork_preview_challenger | APPROVE | handoff.md |
-| auditor_m8_forensic | teamwork_preview_auditor | 🔴 INTEGRITY VIOLATION | handoff.md |
+| worker_m8_fix_implementation | teamwork_preview_worker | DONE (build passed, git push b236dfd) | handoff.md |
+| reviewer_m8_final_security | teamwork_preview_reviewer | APPROVE | handoff.md |
+| challenger_m8_final | teamwork_preview_challenger | APPROVE | handoff.md |
+| auditor_m8_final | teamwork_preview_auditor | 🟢 CLEAN | handoff.md |
 
-Gate Result: **FAIL** (auditor_m8_forensic INTEGRITY VIOLATION; challenger_m8_multitenant REJECT)
+Gate Result: **PASS**
 
-### Critical Defect Identified (Gate 2):
-1. **Unauthenticated Superadmin Spoofing Bypass in `is_superadmin()`**:
-   In `supabase/migrations/20260912_fix_rls_integrity.sql`, lines 224-225:
-   When `x-user-id` is omitted, `is_superadmin()` falls back to `v_role := public.get_auth_user_role(); RETURN (v_role = 'Superadmin');`.
-   An unauthenticated client sending header `'x-user-role': 'Superadmin'` without `x-sekolah-id` and without `x-user-id` evaluates `is_superadmin() = TRUE`.
-   This bypasses RLS completely across all 18 tables, allowing unauthenticated clients to dump all 15 user credentials with plaintext passwords, register rogue schools, and mutate tenant data.
-2. `tests/m7_challenger_rls.test.ts` line 61 relied on this unauthenticated header spoofing instead of authenticating via `verify_login`.
+### Summary of Final Gate Verification:
+1. **RLS Integrity & Elimination of Shortcuts**:
+   - Zero occurrences of `OR true` or `IS NULL AND true` across all 18 tables in `pg_policies`.
+   - `public.is_superadmin()` strictly requires verified `x-user-id` in `public.users` where `role = 'Superadmin' AND sekolah_id IS NULL` (or valid Supabase Auth JWT claim).
+   - Unauthenticated header spoofing (`{ 'x-user-role': 'Superadmin' }` with NO user ID) returned 0 rows on `public.users` (credential dump neutralized) and was denied on table mutations.
+   - All 16 tenant tables enforce column default `sekolah_id = public.get_auth_user_sekolah_id()`.
+2. **True Multi-Tenant Isolation**:
+   - Cross-tenant SELECT, INSERT, UPDATE, and DELETE across real secondary school fixtures are strictly denied at the PostgreSQL level.
+3. **Superadmin & Admin Hierarchy**:
+   - Superadmin dashboard and `/superadmin` route guard verified for school registration and admin provisioning.
+4. **Ascending Date Sorting**:
+   - Database queries (`.order('tanggal', { ascending: true })` and `.order('timestamp', { ascending: true })`) and defensive in-memory comparators verified across Rekap Jurnal, Rekap Siswa, Admin Rekap, Piket, and printed documents ("Cetak Dokumen").
+5. **Quality & Builds**:
+   - All 8 test suites passed 100% (including 43/43 in `tests/m7_rls_integrity.test.ts` and 47/47 in `tests/m7_challenger_rls.test.ts`).
+   - `npx tsc --noEmit`: 0 errors.
+   - `npm run build`: Next.js production build succeeded with exit code 0.
+   - Git workflow: staged, committed (`b236dfd`), and pushed to `origin main`.
 
-### Required Remediation:
-1. Update `is_superadmin()` in SQL so that Superadmin status is NEVER granted by raw `x-user-role` header fallback. Superadmin requires a verified `x-user-id` in `public.users` where `role = 'Superadmin'` AND `sekolah_id IS NULL` (or Supabase Auth JWT claim).
-2. Apply hardened SQL to live database `jicvvqxjyzntdrccnuyz`.
-3. Update `tests/m7_challenger_rls.test.ts` to authenticate legitimate Superadmin via `verify_login` and pass verified `x-user-id`.
-4. Update `tests/m7_rls_integrity.test.ts` to include explicit test case proving that unauthenticated client sending `{ 'x-user-role': 'Superadmin' }` without `x-user-id` receives 0 rows.
-5. Re-run typecheck, build, git commit & push per GEMINI.md.

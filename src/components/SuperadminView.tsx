@@ -1,20 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import Swal from 'sweetalert2';
 import type { Sekolah, User } from '@/types/database';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  global: {
-    headers: {
-      'x-user-role': 'Superadmin'
-    }
-  }
-});
+import { supabase } from '@/lib/supabaseClient';
 
 interface SuperadminViewProps {
   user: any;

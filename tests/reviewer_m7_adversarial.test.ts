@@ -157,7 +157,7 @@ async function runAdversarialReview() {
       .insert({
         sekolah_id: schoolXId,
         hari: 'Senin',
-        nama_guru: 'Guru Alpha'
+        daftar_guru: ['Guru A']
       });
     assert(!piketXErr, 'School Alpha piket (Senin) inserted');
 
@@ -166,7 +166,7 @@ async function runAdversarialReview() {
       .insert({
         sekolah_id: schoolYId,
         hari: 'Senin',
-        nama_guru: 'Guru Beta'
+        daftar_guru: ['Guru B']
       });
     assert(!piketYErr, 'School Beta piket with identical day (Senin) inserted without collision');
 

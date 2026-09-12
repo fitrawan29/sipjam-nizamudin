@@ -57,19 +57,20 @@ Remediate Milestone 7 RLS integrity defects, apply live Supabase migration, wire
 | explorer_m8_fix_client_tests | teamwork_preview_explorer | Client & Test Remediation Specification | completed | 130cae5e-c805-407f-a3b9-a2b5db7148b6 |
 | explorer_m8_fix_adversarial | teamwork_preview_explorer | Adversarial Test Specification | completed | 597c6bdb-083c-4db2-bc1f-d8d53db59723 |
 | worker_m8_fix_implementation | teamwork_preview_worker | SQL Hardening & Test Updates Implementation | completed | 3ff41d8c-36c2-4359-9061-fde60845e609 |
-| reviewer_m8_final_security | teamwork_preview_reviewer | Final Security & Live DB Review | in-progress | 65c3495d-c45d-4920-991e-bbaa99a38793 |
-| challenger_m8_final | teamwork_preview_challenger | Final Adversarial Challenge on Spoofing Vectors | in-progress | 371b5dde-5ffa-48e1-b690-1b39ef3cd031 |
-| auditor_m8_final | teamwork_preview_auditor | Final Forensic Integrity Audit | in-progress | 18ad2c37-4e38-4005-9a39-03f8304ca231 |
+| reviewer_m8_final_security | teamwork_preview_reviewer | Final Security & Live DB Review | completed (APPROVE) | 65c3495d-c45d-4920-991e-bbaa99a38793 |
+| challenger_m8_final | teamwork_preview_challenger | Final Adversarial Challenge on Spoofing Vectors | completed (APPROVE) | 371b5dde-5ffa-48e1-b690-1b39ef3cd031 |
+| auditor_m8_final | teamwork_preview_auditor | Final Forensic Integrity Audit | completed (CLEAN) | 18ad2c37-4e38-4005-9a39-03f8304ca231 |
+| worker_m8_post_audit_fix | teamwork_preview_worker | SuperadminView client wiring & test column fix | in-progress | 9275c2c4-0e27-41de-94a4-9fe1d454972c |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 13 / 16
-- Pending subagents: 65c3495d-c45d-4920-991e-bbaa99a38793, 371b5dde-5ffa-48e1-b690-1b39ef3cd031, 18ad2c37-4e38-4005-9a39-03f8304ca231
+- Spawn count: 14 / 16
+- Pending subagents: 9275c2c4-0e27-41de-94a4-9fe1d454972c
 - Predecessor: orchestrator_7
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: f0a4047d-f184-479b-9852-09ec5b34921f/task-34
+- Heartbeat cron: cancelled
 - Safety timer: none
 
 ## Artifact Index
