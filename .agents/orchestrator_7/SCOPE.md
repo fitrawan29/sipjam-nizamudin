@@ -37,7 +37,7 @@
 | M7.1 | Multi-Tenant Database & RLS Migration | SQL migration, table alterations, backfill, unique constraints, RLS policies, TypeScript types | none | DONE |
 | M7.2 | Superadmin & Admin Hierarchy | `SuperadminView`, `/superadmin` page, Admin creation modal, dynamic header, navigation isolation | M7.1 | IN_PROGRESS |
 | M7.3 | App Tenant Context & Scoping | Update `AdminDataView`, `AdminConfigView`, `AdminBackupView`, `PrintHeader` for `sekolah_id` | M7.1, M7.2 | IN_PROGRESS |
-| M7.4 | Ascending Date Sorting | Fix sorting in `RekapJurnalView`, `RekapSiswaView`, `AdminRekapView`, `PiketView` | M7.1 | IN_PROGRESS |
+| M7.4 | Ascending Date Sorting | Fix sorting in `RekapJurnalView`, `RekapSiswaView`, `AdminRekapView`, `PiketView` | M7.1 | DONE |
 | M7.5 | Verification, E2E Testing & Audit | End-to-end tests, challenger stress tests, forensic audit, build verification | M7.1-M7.4 | PLANNED |
 
 ## Interface Contracts
