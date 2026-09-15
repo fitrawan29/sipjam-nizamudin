@@ -73,7 +73,33 @@ export default function DokumenView({ user }: { user: any }) {
         .from('guru_mapel')
         .select('*');
       if (gmError) console.error('Error fetching guru_mapel:', gmError);
-      if (gm) setGuruMapelList(gm as GuruMapel[]);
+      
+      let guruMapels = (gm as GuruMapel[]) || [];
+      if (guruMapels.length === 0) {
+        const { data: jadwalData } = await supabase.from('jadwal_pelajaran').select('*');
+        if (jadwalData && jadwalData.length > 0) {
+          const uniqueMapels = new Map();
+          jadwalData.forEach((j: any) => {
+            const namaGuru = j.nama_guru || '-';
+            const mapel = j.mata_pelajaran || '-';
+            const kls = j.kelas || '-';
+            const key = `${namaGuru}-${mapel}-${kls}`;
+            if (!uniqueMapels.has(key)) {
+              uniqueMapels.set(key, {
+                id: j.id,
+                nama_mapel: mapel,
+                kelas: kls,
+                mapel_singkat: mapel,
+                nama_guru: namaGuru,
+                sekolah_id: j.sekolah_id || ''
+              });
+            }
+          });
+          guruMapels = Array.from(uniqueMapels.values());
+        }
+      }
+      
+      setGuruMapelList(guruMapels);
 
     } catch (err) {
       console.error('loadAllData exception:', err);

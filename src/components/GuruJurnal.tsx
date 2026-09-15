@@ -107,10 +107,39 @@ export default function GuruJurnal({ user }: { user: any }) {
           query = query.ilike('nama_guru', `%${user.nama}%`);
         }
 
-        const { data, error } = await query.order('nama_mapel', { ascending: true });
+        let { data, error } = await query.order('nama_mapel', { ascending: true });
 
         if (error) {
           console.error('Error fetching guru_mapel:', error);
+        }
+        
+        // Fallback to jadwal_pelajaran if guru_mapel is empty
+        if (!data || data.length === 0) {
+          if (user.nama) {
+            const { data: jadwalData } = await supabase.from('jadwal_pelajaran')
+              .select('*')
+              .ilike('nama_guru', `%${user.nama}%`);
+              
+            if (jadwalData && jadwalData.length > 0) {
+              const uniqueMapels = new Map();
+              jadwalData.forEach((j: any) => {
+                const mapel = j.mata_pelajaran || '-';
+                const kls = j.kelas || '-';
+                const key = `${mapel}-${kls}`;
+                if (!uniqueMapels.has(key)) {
+                  uniqueMapels.set(key, {
+                    id: j.id,
+                    nama_mapel: mapel,
+                    kelas: kls,
+                    mapel_singkat: mapel,
+                    nip: user.username || '',
+                    nama_guru: j.nama_guru
+                  });
+                }
+              });
+              data = Array.from(uniqueMapels.values());
+            }
+          }
         }
 
         if (data && data.length > 0) {

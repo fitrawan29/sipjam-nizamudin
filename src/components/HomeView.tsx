@@ -184,7 +184,33 @@ export default function HomeView({
               .order('timestamp', { ascending: false }),
           ]);
 
-          if (mapelRes.data) setTeacherSubjects(mapelRes.data);
+          let teacherMapels = mapelRes.data || [];
+          if (teacherMapels.length === 0 && user.nama) {
+            const { data: jadwalData } = await supabase.from('jadwal_pelajaran')
+              .select('*')
+              .ilike('nama_guru', `%${user.nama}%`);
+            if (jadwalData && jadwalData.length > 0) {
+              const uniqueMapels = new Map();
+              jadwalData.forEach((j: any) => {
+                const mapel = j.mata_pelajaran || '-';
+                const kls = j.kelas || '-';
+                const key = `${mapel}-${kls}`;
+                if (!uniqueMapels.has(key)) {
+                  uniqueMapels.set(key, {
+                    id: j.id,
+                    nama_mapel: mapel,
+                    kelas: kls,
+                    mapel_singkat: mapel,
+                    nip: user.username || '',
+                    nama_guru: j.nama_guru
+                  });
+                }
+              });
+              teacherMapels = Array.from(uniqueMapels.values());
+            }
+          }
+
+          setTeacherSubjects(teacherMapels);
           if (journalRes.data) setTeacherJournals(journalRes.data);
           if (docRes.data) setTeacherDocuments(docRes.data);
         } catch (err) {
