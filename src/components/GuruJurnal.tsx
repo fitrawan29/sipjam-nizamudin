@@ -209,22 +209,75 @@ export default function GuruJurnal({ user }: { user: any }) {
         setKehadiranMurid('');
         return;
       }
-      const { data } = await supabase.from('data_siswa').select('*').eq('kelas', kelas).order('nama_siswa', { ascending: true });
+      let sQuery = supabase.from('data_siswa').select('*').eq('kelas', kelas).order('nama_siswa', { ascending: true });
+      if (user?.sekolah_id) sQuery = sQuery.eq('sekolah_id', user.sekolah_id);
+      const { data } = await sQuery;
       if (data) {
         setStudents(data);
+
+        // Pre-populate attendance from canonical public.absensi for this class and date
+        const tgl = tanggal || getWitaDateStr();
+        let aQuery = supabase.from('absensi').select('*').eq('tanggal', tgl).eq('kelas', kelas);
+        if (user?.sekolah_id) aQuery = aQuery.eq('sekolah_id', user.sekolah_id);
+        const { data: absData } = await aQuery;
+
         const initialAbsensi: Record<string, string> = {};
-        data.forEach(s => { initialAbsensi[s.nisn] = 'H'; });
+        data.forEach(s => {
+          const existing = absData?.find(a => a.nisn === s.nisn);
+          if (existing) {
+            const st = existing.status || 'Hadir';
+            if (st === 'Sakit' || st === 'S') initialAbsensi[s.nisn] = 'S';
+            else if (st === 'Izin' || st === 'I') initialAbsensi[s.nisn] = 'I';
+            else if (st === 'Alpa' || st === 'A') initialAbsensi[s.nisn] = 'A';
+            else initialAbsensi[s.nisn] = 'H';
+          } else {
+            initialAbsensi[s.nisn] = 'H';
+          }
+        });
         setAbsensi(initialAbsensi);
-        setKehadiranMurid(`Semua Hadir (${data.length} siswa)`);
+        setKehadiranMurid(calculateKehadiranSummary(initialAbsensi, data));
       }
     };
     fetchStudents();
-  }, [kelas, tipeJurnal]);
+  }, [kelas, tipeJurnal, tanggal, user?.sekolah_id]);
 
-  const handleAbsensiChange = (nisn: string, status: string) => {
+  const handleAbsensiChange = async (nisn: string, status: string) => {
     const newAbsensi = { ...absensi, [nisn]: status };
     setAbsensi(newAbsensi);
     setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
+
+    // Live sync to public.absensi
+    const student = students.find(s => s.nisn === nisn);
+    if (student && tanggal && kelas) {
+      const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
+        H: 'Hadir',
+        S: 'Sakit',
+        I: 'Izin',
+        A: 'Alpa'
+      };
+      const fullStatus = statusMap[status] || 'Hadir';
+      const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
+
+      let aQ = supabase.from('absensi').select('log_perubahan').eq('tanggal', tanggal).eq('nisn', nisn);
+      if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
+      const { data: existing } = await aQ;
+      const prevLogs = (existing && existing[0]?.log_perubahan) || [];
+      const logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user?.nama || 'Guru Mapel'} (Guru Mapel)`;
+
+      supabase.from('absensi').upsert([{
+        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+        tanggal: tanggal,
+        kelas: kelas,
+        siswa_id: student.id,
+        nisn: student.nisn,
+        nama_siswa: student.nama_siswa,
+        status: fullStatus,
+        sumber_perubahan: 'Guru Mapel',
+        diubah_oleh: user?.nama || 'Guru Mapel',
+        log_perubahan: [...prevLogs, logEntry],
+        updated_at: new Date().toISOString()
+      }], { onConflict: 'sekolah_id, tanggal, nisn' }).catch(console.error);
+    }
   };
 
   const handleJurnalSubmit = async (e: React.FormEvent) => {
@@ -277,7 +330,50 @@ export default function GuruJurnal({ user }: { user: any }) {
       if (error) {
         Swal.fire('Error', 'Gagal menyimpan jurnal', 'error');
       } else {
-        Swal.fire('Berhasil', 'Jurnal berhasil disimpan!', 'success');
+        // Sync student attendance to canonical public.absensi
+        if (tipeJurnal === 'Jurnal KBM' && students.length > 0) {
+          try {
+            const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
+              H: 'Hadir',
+              S: 'Sakit',
+              I: 'Izin',
+              A: 'Alpa'
+            };
+            const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
+
+            let aQ = supabase.from('absensi').select('nisn, log_perubahan').eq('tanggal', tanggal).eq('kelas', kelas);
+            if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
+            const { data: existingAbs } = await aQ;
+            const existingMap = new Map(existingAbs?.map(a => [a.nisn, a.log_perubahan || []]));
+
+            const absensiRows = students.map(s => {
+              const statusCode = absensi[s.nisn] || 'H';
+              const fullStatus = statusMap[statusCode] || 'Hadir';
+              const prevLogs = existingMap.get(s.nisn) || [];
+              const logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user.nama} (Guru Mapel)`;
+
+              return {
+                sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+                tanggal: tanggal,
+                kelas: kelas,
+                siswa_id: s.id,
+                nisn: s.nisn,
+                nama_siswa: s.nama_siswa,
+                status: fullStatus,
+                sumber_perubahan: 'Guru Mapel',
+                diubah_oleh: user.nama,
+                log_perubahan: [...prevLogs, logEntry],
+                updated_at: new Date().toISOString()
+              };
+            });
+
+            await supabase.from('absensi').upsert(absensiRows, { onConflict: 'sekolah_id, tanggal, nisn' });
+          } catch (syncErr) {
+            console.error('Error synchronizing attendance to public.absensi:', syncErr);
+          }
+        }
+
+        Swal.fire('Berhasil', 'Jurnal berhasil disimpan dan presensi disinkronkan!', 'success');
         setMateri('');
         setKegiatan('');
         setCatatanSiswa('');

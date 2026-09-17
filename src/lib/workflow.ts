@@ -25,6 +25,12 @@ export type GuruDailyState = {
   canPresensiPulang: boolean;
   
   lockedReason: string | null;
+
+  // Attendance requirement & exemption fields
+  aturanKehadiran?: 'Semua_Hari' | 'Hari_Mengajar_Saja';
+  isNonTeachingDay?: boolean;
+  bebasAlpa?: boolean;
+  isAlpa?: boolean;
 };
 
 /**
@@ -127,7 +133,11 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
     canOpenPiket: false,
     canOpenJurnal: false,
     canPresensiPulang: false,
-    lockedReason: null
+    lockedReason: null,
+    aturanKehadiran: 'Semua_Hari',
+    isNonTeachingDay: false,
+    bebasAlpa: false,
+    isAlpa: false
   };
 
   if (!namaGuru) return state;
@@ -139,27 +149,41 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
       const libur = cal.find((c: any) => c.tipe === 'Libur');
       if (libur) {
         state.isLibur = true;
+        state.bebasAlpa = true;
+        state.isAlpa = false;
         state.keteranganLibur = libur.keterangan;
         state.lockedReason = `Hari ini Libur: ${libur.keterangan}`;
         return state;
       }
     }
 
-    // 2. Cek Libur Akhir Pekan berdasarkan pengaturan hari_sekolah
+    // 2. Cek Libur Akhir Pekan & Aturan Kehadiran dari tabel pengaturan
     const { data: pengaturanRows } = await supabase
       .from('pengaturan')
-      .select('key, value')
-      .eq('key', 'hari_sekolah')
-      .limit(1);
+      .select('key, value, aturan_kehadiran_guru');
 
-    const hariSekolah = pengaturanRows && pengaturanRows.length > 0
-      ? parseInt(pengaturanRows[0].value || '6', 10)
-      : 6; // Default 6 hari jika belum dikonfigurasi
+    let hariSekolah = 6;
+    let aturanKehadiran = 'Semua_Hari';
+
+    if (pengaturanRows && pengaturanRows.length > 0) {
+      const hsRow = pengaturanRows.find((p: any) => p.key === 'hari_sekolah');
+      if (hsRow && hsRow.value) {
+        hariSekolah = parseInt(hsRow.value, 10) || 6;
+      }
+      const akRow = pengaturanRows.find((p: any) => p.key === 'aturan_kehadiran_guru' || p.aturan_kehadiran_guru);
+      if (akRow) {
+        aturanKehadiran =
+          (akRow.key === 'aturan_kehadiran_guru' ? akRow.value : akRow.aturan_kehadiran_guru) || 'Semua_Hari';
+      }
+    }
+    state.aturanKehadiran = aturanKehadiran as 'Semua_Hari' | 'Hari_Mengajar_Saja';
 
     const hariIni = getWitaDayName(now); // "Senin", "Selasa", ..., "Sabtu", "Minggu"
 
     if (hariIni === 'Minggu') {
       state.isLibur = true;
+      state.bebasAlpa = true;
+      state.isAlpa = false;
       state.keteranganLibur = 'Hari Minggu - Hari Libur Mingguan';
       state.lockedReason = 'Hari Minggu adalah hari libur. Presensi, Jurnal, dan Piket tidak dibuka.';
       return state;
@@ -167,6 +191,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
 
     if (hariSekolah === 5 && hariIni === 'Sabtu') {
       state.isLibur = true;
+      state.bebasAlpa = true;
+      state.isAlpa = false;
       state.keteranganLibur = 'Hari Sabtu - Libur (Sekolah 5 Hari Kerja)';
       state.lockedReason = 'Hari Sabtu adalah hari libur karena sekolah menerapkan 5 hari kerja. Presensi, Jurnal, dan Piket tidak dibuka.';
       return state;
@@ -177,7 +203,16 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
     // Selalu muat jadwal KBM hari ini untuk guru (tidak ditekan oleh isDinasLuar ataupun presensi datang)
     state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username);
 
-    // 3. Cek Presensi Hari Ini
+    // 3. Cek Piket Hari Ini (case-insensitive matching)
+    const { data: jpiket } = await supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
+    if (jpiket && jpiket.length > 0) {
+      const piketHariIni = jpiket[0];
+      if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)) {
+        state.isPiket = true;
+      }
+    }
+
+    // 4. Cek Presensi Hari Ini
     const startOfDay = getWitaStartOfDay(todayStr);
     const endOfDay = getWitaEndOfDay(todayStr);
 
@@ -213,29 +248,43 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
       state.presensiPulang = todayPresensi.find((p: any) => p.tipe_absen === 'Pulang') || null;
     }
 
+    const hasTeachingObligation = state.jadwalKBM.length > 0 || state.isPiket;
+
+    // Evaluasi kewajiban kehadiran & penentuan Alpa
     if (!state.presensiDatang) {
+      // Jika aturan adalah 'Hari_Mengajar_Saja' dan guru tidak memiliki jadwal KBM atau tugas piket hari ini
+      if (state.aturanKehadiran === 'Hari_Mengajar_Saja' && !hasTeachingObligation) {
+        state.isNonTeachingDay = true;
+        state.bebasAlpa = true;
+        state.isAlpa = false;
+        state.lockedReason = 'Hari ini tidak ada jadwal mengajar atau piket (Bebas Kehadiran).';
+        return state;
+      }
+
+      // Wajib hadir (mode 'Semua_Hari' atau ada jadwal mengajar/piket) tapi belum presensi datang
+      state.isAlpa = true;
+      state.bebasAlpa = false;
       state.lockedReason = 'Anda belum melakukan Presensi Datang hari ini.';
       return state;
+    }
+
+    // Guru sudah melakukan presensi datang
+    state.isAlpa = false;
+    if (state.aturanKehadiran === 'Hari_Mengajar_Saja' && !hasTeachingObligation) {
+      state.isNonTeachingDay = true;
+      state.bebasAlpa = true;
     }
 
     const jp = state.presensiDatang.jenis_presensi;
     if (jp === 'Izin' || jp === 'Sakit') {
       state.isIzinSakit = true;
+      state.bebasAlpa = true;
       state.lockedReason = `Anda sedang ${jp}. Tidak perlu mengisi Jurnal/Piket/Pulang.`;
       return state;
     }
 
     if (jp === 'Dinas Luar') {
       state.isDinasLuar = true;
-    }
-
-    // 3. Cek Piket (case-insensitive matching)
-    const { data: jpiket } = await supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
-    if (jpiket && jpiket.length > 0) {
-      const piketHariIni = jpiket[0];
-      if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)) {
-        state.isPiket = true;
-      }
     }
 
     if (state.isPiket) {

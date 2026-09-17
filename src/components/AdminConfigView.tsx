@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
+import AccountSettingsModal from './AccountSettingsModal';
 
 export default function AdminConfigView({ user }: { user: any }) {
   const [config, setConfig] = useState({
@@ -12,6 +13,8 @@ export default function AdminConfigView({ user }: { user: any }) {
     waktu_efektif_mulai: '',
     waktu_efektif_akhir: '',
     hari_sekolah: '6',
+    aturan_kehadiran_guru: 'Semua_Hari',
+    email_tujuan_upload: '',
     jam_datang_mulai: '06:45',
     jam_datang_batas: '07:15',
     jam_datang_akhir: '08:00',
@@ -33,6 +36,7 @@ export default function AdminConfigView({ user }: { user: any }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -47,8 +51,14 @@ export default function AdminConfigView({ user }: { user: any }) {
           data.forEach(item => {
             if (item.key in newConfig) {
               (newConfig as any)[item.key] = item.value;
-            } else if (item.key.toLowerCase() in newConfig) {
+            } else if (item.key && item.key.toLowerCase() in newConfig) {
               (newConfig as any)[item.key.toLowerCase()] = item.value;
+            }
+            if (item.aturan_kehadiran_guru) {
+              newConfig.aturan_kehadiran_guru = item.aturan_kehadiran_guru;
+            }
+            if (item.email_tujuan_upload) {
+              newConfig.email_tujuan_upload = item.email_tujuan_upload;
             }
           });
           // Ensure bidirectional fallback between kota_kabupaten and kota_ttd
@@ -134,11 +144,19 @@ export default function AdminConfigView({ user }: { user: any }) {
     const upsertData = Object.entries(saveConfig).map(([key, value]) => ({
       sekolah_id: targetSekolahId,
       key,
-      value: value !== undefined && value !== null ? value.toString() : ''
+      value: value !== undefined && value !== null ? value.toString() : '',
+      aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
+      email_tujuan_upload: saveConfig.email_tujuan_upload
     }));
 
     try {
       const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'sekolah_id,key' });
+
+      // Also ensure column values are set on pengaturan rows for this school
+      await supabase.from('pengaturan').update({
+        aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
+        email_tujuan_upload: saveConfig.email_tujuan_upload
+      }).eq('sekolah_id', targetSekolahId);
 
       if (error) {
         Swal.fire('Error', 'Gagal menyimpan pengaturan: ' + error.message, 'error');
@@ -155,9 +173,18 @@ export default function AdminConfigView({ user }: { user: any }) {
   return (
     <section id="view-admin-config" className="view-section fade-in">
         <div className="glass-card p-5">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
-              <i className="fa-solid fa-gears text-gray-700 dark:text-gray-300 text-sm"></i> Konfigurasi
-            </h2>
+            <div className="flex flex-wrap justify-between items-center mb-5 gap-2">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-gears text-gray-700 dark:text-gray-300 text-sm"></i> Konfigurasi Sistem
+              </h2>
+              <button
+                type="button"
+                onClick={() => setAccountModalOpen(true)}
+                className="btn-click text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-xs"
+              >
+                <i className="fa-solid fa-user-gear text-xs"></i> Pengaturan Akun & Profil
+              </button>
+            </div>
             <form onSubmit={handleSave} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
@@ -190,6 +217,33 @@ export default function AdminConfigView({ user }: { user: any }) {
                           {config.hari_sekolah === '5'
                             ? 'Mode 5 hari kerja aktif: Hari Sabtu & Minggu otomatis menjadi hari libur. Guru tidak dapat melakukan presensi, mengisi jurnal, atau laporan piket pada hari tersebut.'
                             : 'Mode 6 hari kerja aktif: Hanya hari Minggu yang otomatis menjadi hari libur. Hari Sabtu adalah hari kerja normal.'
+                          }
+                        </span>
+                      </p>
+                    </div>
+                </div>
+                <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-4">
+                    <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-3 uppercase flex items-center gap-2">
+                      <i className="fa-solid fa-user-check text-xs"></i> Aturan Kehadiran Guru
+                    </h3>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Kewajiban Kehadiran Harian Guru</label>
+                      <select 
+                        name="aturan_kehadiran_guru" 
+                        value={config.aturan_kehadiran_guru} 
+                        onChange={handleChange} 
+                        required 
+                        className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                      >
+                        <option value="Semua_Hari">Semua_Hari (Wajib Hadir Setiap Hari)</option>
+                        <option value="Hari_Mengajar_Saja">Hari_Mengajar_Saja (Wajib Hadir Hanya di Hari Mengajar)</option>
+                      </select>
+                      <p className="text-[10px] text-indigo-700 dark:text-indigo-300 mt-1.5 flex items-start gap-1">
+                        <i className="fa-solid fa-circle-info mt-0.5 shrink-0"></i>
+                        <span>
+                          {config.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
+                            ? 'Mode Hari Mengajar Saja: Guru yang tidak memiliki jadwal KBM atau tugas piket pada hari berjalan dibebaskan dari kewajiban presensi dan tidak dihitung sebagai Alpa.'
+                            : 'Mode Semua Hari: Seluruh guru wajib hadir dan melakukan presensi pada setiap hari aktif sekolah.'
                           }
                         </span>
                       </p>
@@ -294,11 +348,42 @@ export default function AdminConfigView({ user }: { user: any }) {
                         </div>
                     </div>
                 </div>
+                <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-900/30 rounded-2xl p-4">
+                    <h3 className="text-xs font-bold text-purple-900 dark:text-purple-300 mb-3 uppercase flex items-center gap-2">
+                      <i className="fa-brands fa-google-drive text-xs"></i> Integrasi Google Drive & Upload File
+                    </h3>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
+                        Email Tujuan Upload Berkas (Target Email)
+                      </label>
+                      <input 
+                        type="email" 
+                        name="email_tujuan_upload" 
+                        value={config.email_tujuan_upload || ''} 
+                        onChange={handleChange} 
+                        placeholder="Contoh: arsip.sekolah@gmail.com" 
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
+                      />
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-start gap-1">
+                        <i className="fa-solid fa-circle-info mt-0.5 shrink-0"></i>
+                        <span>
+                          Alamat email Google Drive tujuan penerima berkas foto selfie presensi, bukti jurnal, dan perangkat pembelajaran melalui integrasi Google Apps Script (GAS).
+                        </span>
+                      </p>
+                    </div>
+                </div>
                 <button type="submit" disabled={loading} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-900/20 text-sm flex justify-center items-center gap-2 mt-4 transition disabled:opacity-50">
                   {loading ? 'Menyimpan...' : <><i className="fa-solid fa-save"></i> Simpan Konfigurasi</>}
                 </button>
             </form>
         </div>
+
+        {/* Account Settings Modal */}
+        <AccountSettingsModal 
+          isOpen={accountModalOpen} 
+          onClose={() => setAccountModalOpen(false)} 
+          user={user} 
+        />
     </section>
   );
 }

@@ -1,18 +1,18 @@
 # Progress Log — orchestrator_9
 
 ## Current Status
-Last visited: 2026-09-17T10:40:05Z
+Last visited: 2026-09-17T10:44:45Z
 - [x] Initialized orchestrator state (DISPATCH.md, BRIEFING.md)
 - [x] Started heartbeat cron (task-12)
 - [x] Phase 0: Survey codebase with 3 parallel explorers (completed)
 - [x] Synthesized survey findings and generated PROJECT.md with 7 milestones
-- [ ] Milestone 1: Database Foundations & Migrations (worker_m1_db running, actively authoring and applying schema)
-- [ ] Milestone 2: Attendance Sync & Wali Kelas (R1)
-- [ ] Milestone 3: Teacher Selfie Attendance & Watermark (R2)
-- [ ] Milestone 4: Gradebook / Daftar Nilai (R3)
-- [ ] Milestone 5: VAPID Push Notifications & Account Settings (R4)
-- [ ] Milestone 6: Advanced Master Data & UI Polish (R5 & R6)
-- [ ] Milestone 7: E2E Testing, Adversarial Verification & Delivery
+- [x] Milestone 1: Database Foundations & Migrations (completed & verified)
+- [ ] Milestone 2: Attendance Sync & Wali Kelas (R1) (worker_m2_attendance running)
+- [x] Milestone 3: Teacher Selfie Attendance & Watermark (R2) (completed & verified)
+- [ ] Milestone 4: Gradebook / Daftar Nilai (R3) (worker_m4_gradebook running)
+- [ ] Milestone 5: VAPID Push Notifications & Account Settings (R4) (worker_m5_push_settings running)
+- [ ] Milestone 6: Advanced Master Data & UI Polish (R5 & R6) (pending)
+- [ ] Milestone 7: E2E Testing, Adversarial Verification & Delivery (pending)
 
 ## Iteration Status
 Current iteration: 0 / 32

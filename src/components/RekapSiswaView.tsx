@@ -19,6 +19,16 @@ export default function RekapSiswaView({ user }: { user: any }) {
   const [loading, setLoading] = useState(false);
   const [rekapData, setRekapData] = useState<any[] | null>(null);
 
+  // Wali Kelas feature states
+  const [waliKelasList, setWaliKelasList] = useState<any[]>([]);
+  const [activeWaliKelas, setActiveWaliKelas] = useState<any | null>(null);
+  const [showWaliInput, setShowWaliInput] = useState(false);
+  const [waliTanggal, setWaliTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [waliStudents, setWaliStudents] = useState<any[]>([]);
+  const [waliAttendance, setWaliAttendance] = useState<Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'; keterangan: string; logs: string[] }>>({});
+  const [waliLoading, setWaliLoading] = useState(false);
+  const [waliSaving, setWaliSaving] = useState(false);
+
   useEffect(() => {
     const fetchMaster = async () => {
       try {
@@ -40,12 +50,162 @@ export default function RekapSiswaView({ user }: { user: any }) {
           const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[];
           setMapelList(uniqueMapel);
         }
+
+        // Fetch Wali Kelas assignments
+        let wQuery = supabase.from('wali_kelas').select('*');
+        if (user?.sekolah_id) wQuery = wQuery.eq('sekolah_id', user.sekolah_id);
+        const { data: wData } = await wQuery;
+        if (wData && wData.length > 0) {
+          const userWalis = user?.role === 'Admin'
+            ? wData
+            : wData.filter(w => 
+                (user?.id && w.guru_id === user.id) ||
+                (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
+                (user?.username && w.nip && w.nip === user.username)
+              );
+          setWaliKelasList(userWalis);
+          if (userWalis.length > 0) {
+            setActiveWaliKelas(userWalis[0]);
+            setKelas(prev => prev || userWalis[0].kelas);
+          }
+        }
       } catch (error) {
         console.error('Error fetching master data:', error);
       }
     };
     fetchMaster();
   }, [user]);
+
+  // Load students and existing absensi when activeWaliKelas, waliTanggal, or showWaliInput changes
+  useEffect(() => {
+    if (!activeWaliKelas || !showWaliInput) return;
+
+    const loadWaliData = async () => {
+      setWaliLoading(true);
+      try {
+        let sQ = supabase
+          .from('data_siswa')
+          .select('*')
+          .eq('kelas', activeWaliKelas.kelas)
+          .order('nama_siswa', { ascending: true });
+        if (user?.sekolah_id) sQ = sQ.eq('sekolah_id', user.sekolah_id);
+        const { data: studentsData } = await sQ;
+
+        if (studentsData) {
+          setWaliStudents(studentsData);
+
+          let aQ = supabase
+            .from('absensi')
+            .select('*')
+            .eq('tanggal', waliTanggal)
+            .eq('kelas', activeWaliKelas.kelas);
+          if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
+          const { data: absensiData } = await aQ;
+
+          const map: Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'; keterangan: string; logs: string[] }> = {};
+          studentsData.forEach(s => {
+            const found = absensiData?.find(a => a.nisn === s.nisn);
+            map[s.nisn] = {
+              status: (found?.status as any) || 'Hadir',
+              keterangan: found?.keterangan || '',
+              logs: Array.isArray(found?.log_perubahan) ? (found.log_perubahan as string[]) : []
+            };
+          });
+          setWaliAttendance(map);
+        }
+      } catch (err) {
+        console.error('Error loading wali students and absensi:', err);
+      } finally {
+        setWaliLoading(false);
+      }
+    };
+
+    loadWaliData();
+  }, [activeWaliKelas, waliTanggal, showWaliInput, user?.sekolah_id]);
+
+  const handleSetWaliStatus = (nisn: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
+    setWaliAttendance(prev => ({
+      ...prev,
+      [nisn]: {
+        ...(prev[nisn] || { keterangan: '', logs: [] }),
+        status
+      }
+    }));
+  };
+
+  const handleSetWaliKeterangan = (nisn: string, keterangan: string) => {
+    setWaliAttendance(prev => ({
+      ...prev,
+      [nisn]: {
+        ...(prev[nisn] || { status: 'Hadir', logs: [] }),
+        keterangan
+      }
+    }));
+  };
+
+  const handleSetAllWaliStatus = (status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
+    setWaliAttendance(prev => {
+      const updated = { ...prev };
+      waliStudents.forEach(s => {
+        updated[s.nisn] = {
+          ...(updated[s.nisn] || { keterangan: '', logs: [] }),
+          status
+        };
+      });
+      return updated;
+    });
+  };
+
+  const handleSaveWaliAttendance = async () => {
+    if (!activeWaliKelas || waliStudents.length === 0) return;
+    setWaliSaving(true);
+    try {
+      const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
+      const rowsToUpsert = waliStudents.map(s => {
+        const record = waliAttendance[s.nisn] || { status: 'Hadir', keterangan: '', logs: [] };
+        const currentLogs = Array.isArray(record.logs) ? [...record.logs] : [];
+        const logNote = record.keterangan ? `. Keterangan: ${record.keterangan}` : '';
+        const logEntry = `[${nowWita} WITA] Diubah ke ${record.status} oleh ${user?.nama || 'Wali Kelas'} (Wali Kelas)${logNote}`;
+
+        return {
+          sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+          tanggal: waliTanggal,
+          kelas: activeWaliKelas.kelas,
+          siswa_id: s.id,
+          nisn: s.nisn,
+          nama_siswa: s.nama_siswa,
+          status: record.status,
+          keterangan: record.keterangan || null,
+          sumber_perubahan: 'Wali Kelas',
+          diubah_oleh: user?.nama || 'Wali Kelas',
+          log_perubahan: [...currentLogs, logEntry],
+          updated_at: new Date().toISOString()
+        };
+      });
+
+      const { error } = await supabase.from('absensi').upsert(rowsToUpsert, {
+        onConflict: 'sekolah_id, tanggal, nisn'
+      });
+
+      if (error) throw error;
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Presensi Tersimpan',
+        text: `Presensi siswa kelas ${activeWaliKelas.kelas} tanggal ${waliTanggal} berhasil disimpan dan disinkronkan ke seluruh mapel!`,
+        confirmButtonColor: '#0d9488'
+      });
+
+      // If viewing the same class, refresh recap
+      if (kelas === activeWaliKelas.kelas) {
+        tarikRekap();
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Gagal menyimpan presensi', 'error');
+    } finally {
+      setWaliSaving(false);
+    }
+  };
 
   const tarikRekap = async () => {
     if (!kelas) {
@@ -117,10 +277,10 @@ export default function RekapSiswaView({ user }: { user: any }) {
           // 1. Check modern JSON by NISN key
           if (absensiJson && nisn && absensiJson[nisn] !== undefined) {
             const code = String(absensiJson[nisn]).trim().toUpperCase();
-            if (code === 'H') target.hadir++;
-            else if (code === 'S') target.sakit++;
-            else if (code === 'I') target.izin++;
-            else if (code === 'A') target.alpa++;
+            if (code === 'H' || code === 'HADIR') target.hadir++;
+            else if (code === 'S' || code === 'SAKIT') target.sakit++;
+            else if (code === 'I' || code === 'IZIN') target.izin++;
+            else if (code === 'A' || code === 'ALPA') target.alpa++;
             return;
           }
 
@@ -218,6 +378,199 @@ export default function RekapSiswaView({ user }: { user: any }) {
                 <span>Guru: <strong>{user?.nama || '-'}</strong></span>
               </div>
             </div>
+
+            {/* WALI KELAS BANNER & TOGGLE */}
+            {waliKelasList.length > 0 && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 p-4 rounded-2xl mb-5 no-print shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base shadow-sm shrink-0">
+                      <i className="fa-solid fa-user-shield"></i>
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                        <span>Penugasan Wali Kelas</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 text-[10px]">
+                          {activeWaliKelas?.kelas || 'Kelas'}
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                        Input presensi harian siswa (Izin, Sakit, Alpa, Hadir) dengan sinkronisasi global otomatis ke jurnal semua guru mapel.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {waliKelasList.length > 1 && (
+                      <select
+                        value={activeWaliKelas?.id}
+                        onChange={e => {
+                          const w = waliKelasList.find(item => item.id === e.target.value);
+                          if (w) {
+                            setActiveWaliKelas(w);
+                            setKelas(w.kelas);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-emerald-300 dark:border-emerald-700 font-semibold"
+                      >
+                        {waliKelasList.map(w => (
+                          <option key={w.id} value={w.id}>Kelas {w.kelas}</option>
+                        ))}
+                      </select>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowWaliInput(!showWaliInput)}
+                      className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition shrink-0"
+                    >
+                      <i className={`fa-solid ${showWaliInput ? 'fa-xmark' : 'fa-pen-to-square'}`}></i>
+                      {showWaliInput ? 'Tutup Form Presensi' : 'Input Presensi Kelas'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* EXPANDED WALI KELAS INPUT PANEL */}
+                {showWaliInput && (
+                  <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800/60 space-y-4 fade-in">
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-800/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Tanggal Presensi:</label>
+                        <input
+                          type="date"
+                          value={waliTanggal}
+                          onChange={e => setWaliTanggal(e.target.value)}
+                          className="px-2.5 py-1.5 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mr-1">Tandai Cepat:</span>
+                        <button
+                          type="button"
+                          onClick={() => handleSetAllWaliStatus('Hadir')}
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 transition"
+                        >
+                          Semua Hadir
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetAllWaliStatus('Sakit')}
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 transition"
+                        >
+                          Semua Sakit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetAllWaliStatus('Izin')}
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 transition"
+                        >
+                          Semua Izin
+                        </button>
+                      </div>
+                    </div>
+
+                    {waliLoading ? (
+                      <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-400">
+                        <i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Memuat data siswa kelas {activeWaliKelas?.kelas}...
+                      </div>
+                    ) : waliStudents.length === 0 ? (
+                      <div className="text-center py-6 text-xs text-gray-500 italic">
+                        Tidak ada data siswa terdaftar di kelas {activeWaliKelas?.kelas}.
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5 max-h-[380px] overflow-y-auto custom-scroll pr-1">
+                        {waliStudents.map((siswa, idx) => {
+                          const currentRec = waliAttendance[siswa.nisn] || { status: 'Hadir', keterangan: '', logs: [] };
+                          return (
+                            <div
+                              key={siswa.nisn || idx}
+                              className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3"
+                            >
+                              <div className="flex items-start gap-2.5 min-w-[200px]">
+                                <span className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                                  {idx + 1}
+                                </span>
+                                <div>
+                                  <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                    {siswa.nama_siswa}
+                                  </div>
+                                  <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                    NISN: {siswa.nisn || '-'}
+                                  </div>
+                                  {currentRec.logs && currentRec.logs.length > 0 && (
+                                    <div className="text-[9px] text-emerald-600 dark:text-emerald-400 mt-0.5 line-clamp-1">
+                                      <i className="fa-solid fa-clock-rotate-left mr-1"></i>
+                                      Terakhir: {currentRec.logs[currentRec.logs.length - 1]}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2 md:justify-end flex-1">
+                                <div className="flex gap-1">
+                                  {(['Hadir', 'Izin', 'Sakit', 'Alpa'] as const).map(st => {
+                                    const isSelected = currentRec.status === st;
+                                    const colorClasses = 
+                                      st === 'Hadir' ? (isSelected ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
+                                      st === 'Izin' ? (isSelected ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
+                                      st === 'Sakit' ? (isSelected ? 'bg-yellow-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
+                                      (isSelected ? 'bg-red-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300');
+
+                                    return (
+                                      <button
+                                        key={st}
+                                        type="button"
+                                        onClick={() => handleSetWaliStatus(siswa.nisn, st)}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${colorClasses}`}
+                                      >
+                                        {st}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+
+                                <input
+                                  type="text"
+                                  placeholder="Keterangan / alasan (opsional)..."
+                                  value={currentRec.keterangan || ''}
+                                  onChange={e => handleSetWaliKeterangan(siswa.nisn, e.target.value)}
+                                  className="w-full md:w-56 px-2.5 py-1 text-[11px] rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowWaliInput(false)}
+                        className="btn-click px-3 py-2 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                      >
+                        Tutup
+                      </button>
+                      <button
+                        type="button"
+                        disabled={waliSaving || waliLoading || waliStudents.length === 0}
+                        onClick={handleSaveWaliAttendance}
+                        className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
+                      >
+                        {waliSaving ? (
+                          <>
+                            <i className="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa-solid fa-cloud-arrow-up"></i> Simpan Presensi Kelas
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
               <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 text-base"></i> Rekap Absen Siswa
             </h2>

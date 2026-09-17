@@ -18,6 +18,7 @@ import AdminBackupView from './AdminBackupView';
 import AdminConfigView from './AdminConfigView';
 import AnalitikView from './AnalitikView';
 import SuperadminView from './SuperadminView';
+import GradebookView from './GradebookView';
 import { supabase } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
@@ -110,6 +111,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
     { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
     { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
     { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' },
@@ -121,6 +123,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Kelola Piket' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
     { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
     { id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik' },
     { id: 'view-admin-rekap', icon: 'fa-file-invoice', label: 'Rekap Akhir' },
@@ -226,6 +229,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
               {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
               {currentView === 'view-piket' && <PiketView user={user} />}
               {currentView === 'view-dokumen' && <DokumenView user={user} />}
+              {currentView === 'view-gradebook' && <GradebookView user={user} />}
               {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
               {currentView === 'view-history' && <HistoryView user={user} />}
               {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
