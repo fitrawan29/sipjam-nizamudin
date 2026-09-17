@@ -1,0 +1,72 @@
+# BRIEFING — 2026-09-17T10:31:00Z
+
+## Mission
+Orchestrate the comprehensive feature additions and enhancements (R1 to R6) for the SIPJAM multi-tenant application.
+
+## 🔒 My Identity
+- Archetype: orchestrator
+- Roles: orchestrator, user_liaison, human_reporter, successor
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_9
+- Original parent: parent
+- Original parent conversation ID: 407edddb-7195-47cd-ac4e-a320c4188b4f
+
+## 🔒 My Workflow
+- **Pattern**: Project Orchestrator
+- **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+1. **Decompose**: Survey (3 explorers) -> Decompose into milestones -> Dispatch sub-orchestrators/workers & E2E Testing track
+2. **Dispatch & Execute**:
+   - Iteration loop: Explorer -> Worker -> Reviewer -> Challenger -> Auditor
+3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate
+4. **Succession**: Self-succeed at 16 spawns
+- **Work items**:
+  1. Survey phase (3 parallel explorers) [done]
+  2. Plan & Decompose (PROJECT.md created with 7 milestones) [done]
+  3. Milestone 1: Database Foundations & Migrations [in-progress]
+  4. Milestone 2: Attendance Sync & Wali Kelas (R1) [pending]
+  5. Milestone 3: Teacher Selfie Attendance & Watermark (R2) [pending]
+  6. Milestone 4: Gradebook / Daftar Nilai (R3) [pending]
+  7. Milestone 5: VAPID Push Notifications & Account Settings (R4) [pending]
+  8. Milestone 6: Advanced Master Data & UI Polish (R5 & R6) [pending]
+  9. Milestone 7: E2E Testing, Adversarial Verification & Delivery [pending]
+- **Current phase**: 1 (Implementation Track - Milestone 1)
+- **Current focus**: Milestone 1 (Database Foundations, Migrations, Triggers, RLS, and TypeScript types)
+
+## 🔒 Key Constraints
+- Never write source code directly.
+- Adhere strictly to the Git Workflow Rule in GEMINI.md.
+- Adhere to AGENTS.md Next.js rules.
+- Maintain persistent state files in .agents/orchestrator_9.
+- Subagent communication must use send_message back to parent when reporting.
+- Never reuse a subagent after it has delivered its handoff — always spawn fresh.
+
+## Current Parent
+- Conversation ID: 407edddb-7195-47cd-ac4e-a320c4188b4f
+- Updated: 2026-09-17T10:30:44Z
+
+## Key Decisions Made
+- Initiated 3 parallel survey explorers covering R1-R2, R3-R4, R5-R6.
+
+## Team Roster
+| Agent | Type | Work Item | Status | Conv ID |
+|---|---|---|---|---|
+| explorer_9_survey_r1r2 | teamwork_preview_explorer | Survey R1 (Attendance Sync) & R2 (Selfie/GAS) | completed | 47d44dd9-759f-4617-a338-e068803b3ecc |
+| explorer_9_survey_r3r4 | teamwork_preview_explorer | Survey R3 (Gradebook) & R4 (Push/Settings) | completed | e6facef4-0ec7-4f00-a333-36509db01ea6 |
+| explorer_9_survey_r5r6 | teamwork_preview_explorer | Survey R5 (Master Data) & R6 (UI Polish) | completed | 1727dfc8-6b8c-47c5-af5b-167a4fb692bb |
+| worker_m1_db | teamwork_preview_worker | Milestone 1 (SQL Migrations, Tables, Triggers, RLS, Types) | running | 2d88b62e-4eda-4725-a740-e189a9c1bf0e |
+
+## Succession Status
+- Succession required: no
+- Spawn count: 4 / 16
+- Pending subagents: 2d88b62e-4eda-4725-a740-e189a9c1bf0e
+- Predecessor: none
+- Successor: not yet spawned
+
+## Active Timers
+- Heartbeat cron: task-12
+- Safety timer: none
+
+## Artifact Index
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_9\DISPATCH.md — Initial dispatch prompt
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_9\BRIEFING.md — Working memory & state
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_9\progress.md — Progress & heartbeat checkpoint
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_9\plan.md — Orchestration plan

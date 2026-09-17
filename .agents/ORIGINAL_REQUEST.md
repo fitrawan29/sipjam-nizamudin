@@ -234,3 +234,69 @@ Ubah logika pada fitur penarikan data rekapitulasi (khususnya Rekap Jurnal, Reka
 ### Data Ordering
 - [ ] Hasil pencetakan (Cetak Dokumen) pada Rekap Jurnal dan Rekap Presensi secara visual menampilkan baris tabel dari tanggal awal bulan hingga tanggal akhir bulan (ascending).
 
+## 2026-09-17T10:29:39Z
+
+# Teamwork Project Prompt - Draft
+
+> Status: Launched
+> Goal: Delegated to teamwork_preview
+> Requested team: Full teamwork (skala besar)
+
+Implement comprehensive feature additions and enhancements for the SIPJAM multi-tenant application. Key implementations include attendance synchronization across roles, gradebook management, selfie-based attendance with auto-watermarks, native VAPID PWA push notifications, and extensive administrative controls.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Sinkronisasi Kehadiran & Wali Kelas
+- Admin dapat menetapkan guru sebagai Wali Kelas untuk kelas tertentu.
+- Wali kelas dapat menginput status Izin/Sakit untuk siswa di kelasnya.
+- Sinkronisasi absolut: Jika status kehadiran siswa diubah (menjadi Hadir, Izin, Sakit, atau Alpa) oleh Wali Kelas, Piket, atau Guru Mapel, maka status siswa tersebut akan berubah secara global untuk hari tersebut di semua catatan sesi mapel lainnya. 
+- Sistem harus tetap menyimpan log/keterangan (*audit trail*) mengenai siapa yang terakhir melakukan perubahan status tersebut.
+
+### R2. Presensi Guru Selfie & Integrasi Google Drive
+- Presensi Datang dan Dinas Luar wajib menggunakan antarmuka foto selfie menggunakan kamera perangkat.
+- Pada preview foto, sistem merender *watermark/stamp* (berisi tanggal, lokasi koordinat, dan waktu) di posisi tengah bawah foto.
+- Pengguna dapat memilih untuk foto ulang atau menyimpan.
+- Foto diunggah menggunakan sistem *webhook* Google Apps Script (GAS) yang sudah pernah dibuat sebelumnya.
+- Jika guru Datang dengan status "Dinas Luar", saat presensi Pulang, sistem memberikan opsi antara "Di Sekolah" atau "Dinas Luar".
+
+### R3. Daftar Nilai (Gradebook)
+- Guru dapat melakukan CRUD pada entitas Daftar Nilai.
+- Kategori asesmen didesain dinamis: Asesmen Diagnostik (1 per TP), Asesmen Formatif (jumlah disesuaikan per TP), dan Asesmen Sumatif (jumlah disesuaikan per TP).
+
+### R4. PWA Push Notifications & Pengaturan Akun
+- Implementasikan Push Notifikasi berbasis Web Push API standar (VAPID) yang tidak bergantung pada pihak ketiga (bukan Firebase), terhubung langsung ke *service worker*.
+- Menu Pengaturan Guru & Admin: Izinkan ganti avatar (dari sekumpulan opsi gambar *default* yang keren), ganti username, dan ganti password.
+- Admin dapat mengatur opsi kehadiran guru: "Wajib Hadir Setiap Hari" vs "Wajib Hadir Hanya di Hari Mengajar". Kalkulasi sistem Alpa/Terlambat menyesuaikan opsi ini.
+- Admin dapat mengubah alamat email tujuan untuk tempat integrasi upload file.
+
+### R5. Master Data & Administrasi Lanjutan
+- Tambahkan antarmuka *Edit* pada seluruh Master Data (Guru, Siswa, Kelas, dll).
+- Tambahkan fitur "Naik Kelas" untuk siswa (bisa dipilih secara perorangan, per kelas, atau satu angkatan sekaligus) yang mengubah tingkat kelas mereka di database.
+- Tampilkan "Rekapan Jurnal Per Kelas": Berupa tabel kompilasi dari isian semua guru yang mengajar di kelas tersebut (No, Nama Guru, Tanggal & Waktu, Mapel, Jam KBM, Materi, Foto, Keterangan kehadiran guru).
+
+### R6. Perbaikan UI
+- Format cetak variabel "Kepala [Nama Sekolah]" harus terformat menjadi *Capitalize Each Word* di seluruh fungsi cetak dokumen.
+- Pada halaman Perangkat Pembelajaran Guru, dokumen harus dikelompokkan berdasarkan mata pelajaran yang diampu, dengan indikator status jelas (Sudah / Belum di-upload).
+
+## Acceptance Criteria
+
+### Attendance Synchronization (R1)
+- [ ] Terdapat pengujian terprogram (*test script*) yang memvalidasi bahwa memperbarui status kehadiran seorang siswa di tabel absensi (misal via Piket) akan memicu *trigger* atau fungsi logika yang mensinkronkan status tersebut ke absensi Mapel lain pada hari yang sama, dan kolom *log_perubahan* mencatat nama *user* pengubahnya.
+
+### Selfie Watermark & Storage (R2)
+- [ ] Aplikasi merender elemen <canvas> yang berhasil menggabungkan aliran video (kamera) dengan teks *watermark* koordinat geolokasi tanpa bergantung pada API server (diproses di *client-side*).
+- [ ] Transmisi unggahan foto membidik *endpoint webhook* GAS secara asinkron tanpa memblokir UI utama.
+
+### Gradebook Schema (R3)
+- [ ] Database Supabase (via skrip migrasi SQL) memiliki tabel nilai yang berelasi dengan Tujuan Pembelajaran (TP) dan mendukung pencatatan nilai terpisah untuk Diagnostik, Formatif, dan Sumatif secara fleksibel.
+
+### Push Notifications & VAPID (R4)
+- [ ] *Service worker* (sw.js) mendengarkan *event push* dan mampu menampilkan self.registration.showNotification. Backend Next.js menyediakan rute API validasi *subscription* web push menggunakan pustaka web-push.
+
+### Administrative Rules (R4-R5)
+- [ ] Skrip fungsi getGuruDailyState() memiliki percabangan logika yang membebaskan perhitungan "Alpa" pada hari-hari tanpa jadwal mengajar jika guru ditandai sebagai "Wajib Hadir Hanya di Hari Mengajar".
+- [ ] Logika "Naik Kelas" berhasil memperbarui kolom kelas pada entitas data_siswa dalam operasi *batch/bulk update*.
+
