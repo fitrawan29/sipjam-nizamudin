@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import NaikKelasModal from './NaikKelasModal';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
@@ -12,6 +13,8 @@ export default function AdminDataView({ user }: { user: any }) {
   const [page, setPage] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [debugInfo, setDebugInfo] = useState('');
+  const [isNaikKelasOpen, setIsNaikKelasOpen] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ITEMS_PER_PAGE = 20;
 
@@ -803,6 +806,428 @@ export default function AdminDataView({ user }: { user: any }) {
     }
   };
 
+  // Student multi-selection handlers for Naik Kelas
+  const toggleSelectStudent = (id: string) => {
+    setSelectedStudentIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllStudents = () => {
+    if (selectedStudentIds.length === filteredList.length && filteredList.length > 0) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(filteredList.map(item => item.id).filter(Boolean));
+    }
+  };
+
+  // Master Data Edit Modal Handler (Dispatches genuine Supabase UPDATE queries)
+  const handleOpenEditModal = async (item: any) => {
+    const tabObj = tabs.find(t => t.id === activeTab);
+    if (!tabObj) return;
+
+    if (activeTab === 'Data_Siswa') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Data Siswa',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">NISN *</label>
+              <input id="swal-edit-nisn" class="swal2-input !mt-0 !w-full text-xs" value="${item.nisn || ''}" placeholder="Contoh: 114367407">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Lengkap Siswa *</label>
+              <input id="swal-edit-nama" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama_siswa || ''}" placeholder="Contoh: Budi Santoso">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Kelas *</label>
+              <input id="swal-edit-kelas" class="swal2-input !mt-0 !w-full text-xs" value="${item.kelas || ''}" placeholder="Contoh: X Merdeka, XI-1">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Jenis Kelamin *</label>
+              <select id="swal-edit-gender" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Laki-laki" ${item.gender === 'Laki-laki' ? 'selected' : ''}>Laki-laki</option>
+                <option value="Perempuan" ${item.gender === 'Perempuan' ? 'selected' : ''}>Perempuan</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Status *</label>
+              <select id="swal-edit-status" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Aktif" ${item.status === 'Aktif' || !item.status ? 'selected' : ''}>Aktif</option>
+                <option value="Lulus" ${item.status === 'Lulus' ? 'selected' : ''}>Lulus</option>
+                <option value="Pindah" ${item.status === 'Pindah' ? 'selected' : ''}>Pindah</option>
+                <option value="Nonaktif" ${item.status === 'Nonaktif' ? 'selected' : ''}>Nonaktif</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">No HP Orang Tua</label>
+              <input id="swal-edit-hp" class="swal2-input !mt-0 !w-full text-xs" value="${item.no_hp_ortu || ''}" placeholder="Contoh: 081234567890">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Perubahan',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nisn = (document.getElementById('swal-edit-nisn') as HTMLInputElement)?.value?.trim();
+          const nama_siswa = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim();
+          const kelas = (document.getElementById('swal-edit-kelas') as HTMLInputElement)?.value?.trim();
+          const gender = (document.getElementById('swal-edit-gender') as HTMLSelectElement)?.value;
+          const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
+          const no_hp_ortu = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '';
+
+          if (!nisn || !nama_siswa || !kelas) {
+            Swal.showValidationMessage('NISN, Nama Siswa, dan Kelas wajib diisi!');
+            return null;
+          }
+          return {
+            nisn,
+            nama_siswa,
+            kelas,
+            gender,
+            status,
+            no_hp_ortu
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        const pkField = item.id ? 'id' : 'nisn';
+        const pkVal = item[pkField];
+        let q = supabase.from('data_siswa').update(formValues).eq(pkField, pkVal);
+        if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        const { error } = await q;
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Mengubah Data', error.message, 'error');
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: 'Data siswa berhasil diperbarui!',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Data_Guru') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Data Guru',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">NIP</label>
+              <input id="swal-edit-nip" class="swal2-input !mt-0 !w-full text-xs" value="${item.nip || ''}" placeholder="Contoh: 198501012010011001">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Lengkap Guru *</label>
+              <input id="swal-edit-nama" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama_guru || ''}" placeholder="Contoh: Fitri Aprilia Dotulong, S.Pd.">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran Diampu *</label>
+              <input id="swal-edit-mapel" class="swal2-input !mt-0 !w-full text-xs" value="${item.mata_pelajaran || ''}" placeholder="Contoh: Bahasa Inggris">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">No HP / WhatsApp</label>
+              <input id="swal-edit-hp" class="swal2-input !mt-0 !w-full text-xs" value="${item.no_hp || ''}" placeholder="Contoh: 628123456789">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Email</label>
+              <input id="swal-edit-email" type="email" class="swal2-input !mt-0 !w-full text-xs" value="${item.email || ''}" placeholder="guru@nizamudin.sch.id">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Status *</label>
+              <select id="swal-edit-status" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Aktif" ${item.status === 'Aktif' || !item.status ? 'selected' : ''}>Aktif</option>
+                <option value="Cuti" ${item.status === 'Cuti' ? 'selected' : ''}>Cuti</option>
+                <option value="Nonaktif" ${item.status === 'Nonaktif' ? 'selected' : ''}>Nonaktif</option>
+              </select>
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Perubahan',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nip = (document.getElementById('swal-edit-nip') as HTMLInputElement)?.value?.trim() || '-';
+          const nama_guru = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim();
+          const mata_pelajaran = (document.getElementById('swal-edit-mapel') as HTMLInputElement)?.value?.trim();
+          const no_hp = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '-';
+          const email = (document.getElementById('swal-edit-email') as HTMLInputElement)?.value?.trim() || '-';
+          const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
+
+          if (!nama_guru || !mata_pelajaran) {
+            Swal.showValidationMessage('Nama Guru dan Mata Pelajaran wajib diisi!');
+            return null;
+          }
+          return {
+            nip,
+            nama_guru,
+            mata_pelajaran,
+            no_hp,
+            email,
+            status
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        const pkField = item.id ? 'id' : 'nip';
+        const pkVal = item[pkField];
+        let q = supabase.from('data_guru').update(formValues).eq(pkField, pkVal);
+        if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        const { error } = await q;
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Mengubah Data', error.message, 'error');
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: 'Data guru berhasil diperbarui!',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Data_Mapel') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Mata Pelajaran',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Kode Mapel</label>
+              <input id="swal-edit-kode" class="swal2-input !mt-0 !w-full text-xs" value="${item.kode_mapel || item.id || ''}" placeholder="Contoh: MP-01">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Mata Pelajaran *</label>
+              <input id="swal-edit-nama" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama_mapel || item.nama_mata_pelajaran || ''}" placeholder="Contoh: Matematika Wajib">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Kelompok / Kategori *</label>
+              <input id="swal-edit-kat" class="swal2-input !mt-0 !w-full text-xs" value="${item.kelompok || item.kategori || ''}" placeholder="Contoh: Umum, Peminatan, Kejuruan">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Perubahan',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const kode_mapel = (document.getElementById('swal-edit-kode') as HTMLInputElement)?.value?.trim() || item.id;
+          const nama_mapel = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim();
+          const kelompok = (document.getElementById('swal-edit-kat') as HTMLInputElement)?.value?.trim() || 'Umum';
+
+          if (!nama_mapel) {
+            Swal.showValidationMessage('Nama Mata Pelajaran wajib diisi!');
+            return null;
+          }
+          return {
+            kode_mapel,
+            nama_mapel,
+            nama_mata_pelajaran: nama_mapel,
+            kelompok,
+            kategori: kelompok
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        let q = supabase.from('data_mapel').update(formValues).eq('id', item.id);
+        if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        const { error } = await q;
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Mengubah Data', error.message, 'error');
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: 'Mata pelajaran berhasil diperbarui!',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Kalender_Pendidikan') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Agenda Kalender',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="font-bold text-gray-700 block mb-1">Tanggal Mulai *</label>
+                <input id="swal-edit-tgl-mulai" type="date" class="swal2-input !mt-0 !w-full text-xs" value="${item.tanggal_mulai || item.tanggal || ''}">
+              </div>
+              <div>
+                <label class="font-bold text-gray-700 block mb-1">Tanggal Selesai *</label>
+                <input id="swal-edit-tgl-selesai" type="date" class="swal2-input !mt-0 !w-full text-xs" value="${item.tanggal_selesai || item.tanggal || ''}">
+              </div>
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Keterangan Agenda *</label>
+              <input id="swal-edit-ket" class="swal2-input !mt-0 !w-full text-xs" value="${item.keterangan || ''}" placeholder="Contoh: Libur Akhir Semester">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Tipe Agenda *</label>
+              <select id="swal-edit-tipe" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Libur" ${item.tipe === 'Libur' ? 'selected' : ''}>Libur</option>
+                <option value="Kegiatan" ${item.tipe === 'Kegiatan' ? 'selected' : ''}>Kegiatan</option>
+                <option value="Ujian" ${item.tipe === 'Ujian' ? 'selected' : ''}>Ujian</option>
+              </select>
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Perubahan',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const tanggal_mulai = (document.getElementById('swal-edit-tgl-mulai') as HTMLInputElement)?.value?.trim();
+          const tanggal_selesai = (document.getElementById('swal-edit-tgl-selesai') as HTMLInputElement)?.value?.trim() || tanggal_mulai;
+          const keterangan = (document.getElementById('swal-edit-ket') as HTMLInputElement)?.value?.trim();
+          const tipe = (document.getElementById('swal-edit-tipe') as HTMLSelectElement)?.value || 'Libur';
+
+          if (!tanggal_mulai || !keterangan) {
+            Swal.showValidationMessage('Tanggal Mulai dan Keterangan wajib diisi!');
+            return null;
+          }
+          return {
+            tanggal_mulai,
+            tanggal_selesai,
+            tanggal: tanggal_mulai,
+            keterangan,
+            tipe
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        let q = supabase.from('kalender_pendidikan').update(formValues).eq('id', item.id);
+        if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        const { error } = await q;
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Mengubah Agenda', error.message, 'error');
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: 'Agenda kalender berhasil diperbarui!',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Jadwal_Pelajaran') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Edit Jadwal Pelajaran',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="font-bold text-gray-700 block mb-1">Hari *</label>
+                <select id="swal-edit-hari" class="swal2-select !mt-0 !w-full text-xs">
+                  <option value="Senin" ${item.hari === 'Senin' ? 'selected' : ''}>Senin</option>
+                  <option value="Selasa" ${item.hari === 'Selasa' ? 'selected' : ''}>Selasa</option>
+                  <option value="Rabu" ${item.hari === 'Rabu' ? 'selected' : ''}>Rabu</option>
+                  <option value="Kamis" ${item.hari === 'Kamis' ? 'selected' : ''}>Kamis</option>
+                  <option value="Jumat" ${item.hari === 'Jumat' ? 'selected' : ''}>Jumat</option>
+                  <option value="Sabtu" ${item.hari === 'Sabtu' ? 'selected' : ''}>Sabtu</option>
+                </select>
+              </div>
+              <div>
+                <label class="font-bold text-gray-700 block mb-1">Kelas *</label>
+                <input id="swal-edit-kelas" class="swal2-input !mt-0 !w-full text-xs" value="${item.kelas || ''}" placeholder="Contoh: X Merdeka">
+              </div>
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran *</label>
+              <input id="swal-edit-mapel" class="swal2-input !mt-0 !w-full text-xs" value="${item.mapel || item.mata_pelajaran || ''}" placeholder="Contoh: Bahasa Inggris">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 block mb-1">Nama Guru *</label>
+              <input id="swal-edit-guru" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama_guru || ''}" placeholder="Contoh: Fitri Aprilia Dotulong">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="font-bold text-gray-700 block mb-1">Jam Mulai</label>
+                <input id="swal-edit-jam-mulai" type="time" class="swal2-input !mt-0 !w-full text-xs" value="${item.jam_mulai || ''}">
+              </div>
+              <div>
+                <label class="font-bold text-gray-700 block mb-1">Jam Selesai</label>
+                <input id="swal-edit-jam-selesai" type="time" class="swal2-input !mt-0 !w-full text-xs" value="${item.jam_selesai || ''}">
+              </div>
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Perubahan',
+        confirmButtonColor: '#0B4619',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const hari = (document.getElementById('swal-edit-hari') as HTMLSelectElement)?.value;
+          const kelas = (document.getElementById('swal-edit-kelas') as HTMLInputElement)?.value?.trim();
+          const mapel = (document.getElementById('swal-edit-mapel') as HTMLInputElement)?.value?.trim();
+          const nama_guru = (document.getElementById('swal-edit-guru') as HTMLInputElement)?.value?.trim();
+          const jam_mulai = (document.getElementById('swal-edit-jam-mulai') as HTMLInputElement)?.value?.trim() || null;
+          const jam_selesai = (document.getElementById('swal-edit-jam-selesai') as HTMLInputElement)?.value?.trim() || null;
+
+          if (!hari || !kelas || !mapel || !nama_guru) {
+            Swal.showValidationMessage('Hari, Kelas, Mapel, dan Nama Guru wajib diisi!');
+            return null;
+          }
+          return {
+            hari,
+            kelas,
+            mapel,
+            mata_pelajaran: mapel,
+            nama_guru,
+            jam_mulai,
+            jam_selesai
+          };
+        }
+      });
+
+      if (formValues) {
+        setLoading(true);
+        let q = supabase.from('jadwal_pelajaran').update(formValues).eq('id', item.id);
+        if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        const { error } = await q;
+        setLoading(false);
+        if (error) {
+          Swal.fire('Gagal Mengubah Jadwal', error.message, 'error');
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil',
+            text: 'Jadwal pelajaran berhasil diperbarui!',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          loadData();
+        }
+      }
+    } else if (activeTab === 'Wali_Kelas') {
+      handleEditWaliKelas(item);
+    }
+  };
+
   // Delete Individual Master Data Item
   const handleDeleteItem = async (item: any) => {
     const tabObj = tabs.find(t => t.id === activeTab);
@@ -900,17 +1325,20 @@ export default function AdminDataView({ user }: { user: any }) {
     } else if (activeTab === 'Data_Mapel') {
       return (
         <>
-          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.nama_mata_pelajaran || 'Tanpa Nama'}</h3>
+          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.nama_mapel || item.nama_mata_pelajaran || 'Tanpa Nama'}</h3>
           <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
-            <p><span className="font-semibold">Kode/ID:</span> {item.id || '-'}</p>
-            <p><span className="font-semibold">Kategori:</span> {item.kategori || '-'}</p>
+            <p><span className="font-semibold">Kode Mapel:</span> {item.kode_mapel || item.id || '-'}</p>
+            <p><span className="font-semibold">Kelompok:</span> {item.kelompok || item.kategori || '-'}</p>
           </div>
         </>
       );
     } else if (activeTab === 'Kalender_Pendidikan') {
+      const displayDate = item.tanggal_mulai && item.tanggal_selesai && item.tanggal_mulai !== item.tanggal_selesai
+        ? `${item.tanggal_mulai} s/d ${item.tanggal_selesai}`
+        : (item.tanggal_mulai || item.tanggal || '-');
       return (
         <>
-          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.tanggal || '-'}</h3>
+          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{displayDate}</h3>
           <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
             <p className="font-semibold text-blue-600 dark:text-blue-400">{item.keterangan || '-'}</p>
             <p><span className="font-semibold">Tipe:</span> {item.tipe || '-'}</p>
@@ -918,12 +1346,13 @@ export default function AdminDataView({ user }: { user: any }) {
         </>
       );
     } else if (activeTab === 'Jadwal_Pelajaran') {
+      const jamStr = item.jam_mulai && item.jam_selesai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : '';
       return (
         <>
           <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.hari || '-'} - {item.kelas || '-'}</h3>
           <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
             <p><span className="font-semibold">Guru:</span> {item.nama_guru || '-'}</p>
-            <p><span className="font-semibold">Mapel:</span> {item.mata_pelajaran || '-'}</p>
+            <p><span className="font-semibold">Mapel:</span> {item.mapel || item.mata_pelajaran || '-'}{jamStr}</p>
           </div>
         </>
       );
@@ -976,7 +1405,11 @@ export default function AdminDataView({ user }: { user: any }) {
                   <button 
                     key={tab.id}
                     type="button" 
-                    onClick={() => setActiveTab(tab.id)} 
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setSelectedStudentIds([]);
+                      setPage(0);
+                    }} 
                     className={`btn-click master-tab-btn px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 border transition ${activeTab === tab.id ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' : 'border-gray-200 text-gray-700 dark:text-gray-300 dark:border-gray-700'}`}
                   >
                     {tab.label}
@@ -1027,7 +1460,27 @@ export default function AdminDataView({ user }: { user: any }) {
                     <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-400 text-xs"></i>
                     <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Cari data..." className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" />
                 </div>
-                <div className="flex gap-1.5 shrink-0 ml-auto sm:ml-0">
+                <div className="flex gap-1.5 shrink-0 ml-auto sm:ml-0 items-center">
+                    {activeTab === 'Data_Siswa' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={toggleSelectAllStudents}
+                          className="btn-click bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white px-2.5 h-8 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition"
+                          title="Pilih Semua Siswa"
+                        >
+                          <i className={`fa-solid ${selectedStudentIds.length === filteredList.length && filteredList.length > 0 ? 'fa-square-check text-emerald-600 dark:text-emerald-400' : 'fa-square text-gray-400'}`}></i>
+                          <span className="hidden sm:inline">Pilih Semua</span>
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setIsNaikKelasOpen(true)}
+                          className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+                        >
+                          <i className="fa-solid fa-arrow-up-right-dots"></i> Naik Kelas {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
+                        </button>
+                      </>
+                    )}
                     <button type="button" onClick={loadData} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
                       <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                     </button>
@@ -1054,31 +1507,50 @@ export default function AdminDataView({ user }: { user: any }) {
                     {errorMsg ? 'Gagal memuat data. Lihat pesan error di atas.' : (!dataList || dataList.length === 0) ? 'Tabel ini kosong atau data belum dapat dimuat.' : 'Tidak ditemukan data yang cocok dengan pencarian.'}
                   </div>
                 ) : (
-                  paginatedList.map((item, idx) => (
-                    <div key={item?.id || item?.nisn || item?.nip || idx} className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-3 rounded-xl shadow-sm relative hover:shadow-md transition flex flex-col justify-between">
-                      <div>
-                        {renderCard(item)}
-                      </div>
-                      <div className="flex justify-end items-center mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 gap-2">
-                        {activeTab === 'Wali_Kelas' && (
+                  paginatedList.map((item, idx) => {
+                    const isSelected = activeTab === 'Data_Siswa' && selectedStudentIds.includes(item.id);
+                    return (
+                      <div 
+                        key={item?.id || item?.nisn || item?.nip || idx} 
+                        className={`bg-white dark:bg-gray-800 border p-3 rounded-xl shadow-sm relative hover:shadow-md transition flex flex-col justify-between ${
+                          isSelected ? 'border-emerald-500 ring-1 ring-emerald-500 dark:border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20' : 'border-gray-100 dark:border-gray-700'
+                        }`}
+                      >
+                        {activeTab === 'Data_Siswa' && (
+                          <div className="absolute top-2.5 left-2.5 z-10">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleSelectStudent(item.id);
+                              }}
+                              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-gray-600 cursor-pointer"
+                            />
+                          </div>
+                        )}
+                        <div className={activeTab === 'Data_Siswa' ? 'pl-6' : ''}>
+                          {renderCard(item)}
+                        </div>
+                        <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 gap-2">
                           <button 
                             type="button" 
-                            onClick={() => handleEditWaliKelas(item)} 
+                            onClick={() => handleOpenEditModal(item)} 
                             className="btn-click text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 transition mr-auto"
                           >
-                            <i className="fa-solid fa-pen-to-square text-[10px]"></i> Ubah
+                            <i className="fa-solid fa-pen-to-square text-[10px]"></i> Edit
                           </button>
-                        )}
-                        <button 
-                          type="button" 
-                          onClick={() => handleDeleteItem(item)} 
-                          className="btn-click text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition"
-                        >
-                          <i className="fa-solid fa-trash-can text-[10px]"></i> Hapus
-                        </button>
+                          <button 
+                            type="button" 
+                            onClick={() => handleDeleteItem(item)} 
+                            className="btn-click text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition"
+                          >
+                            <i className="fa-solid fa-trash-can text-[10px]"></i> Hapus
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
             </div>
 
@@ -1099,6 +1571,19 @@ export default function AdminDataView({ user }: { user: any }) {
               </div>
             )}
         </div>
+
+        {/* Naik Kelas Batch Progression Modal */}
+        <NaikKelasModal
+          isOpen={isNaikKelasOpen}
+          onClose={() => setIsNaikKelasOpen(false)}
+          onSuccess={() => {
+            setSelectedStudentIds([]);
+            loadData();
+          }}
+          selectedStudentIds={selectedStudentIds}
+          students={activeTab === 'Data_Siswa' ? dataList : []}
+          sekolahId={user?.sekolah_id}
+        />
     </section>
   );
 }

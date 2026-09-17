@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { uploadToDrive } from '@/lib/driveUpload';
@@ -24,6 +24,7 @@ export default function DokumenView({ user }: { user: any }) {
   const [dokumenList, setDokumenList] = useState<BankDokumen[]>([]);
   const [teachersList, setTeachersList] = useState<DataGuru[]>([]);
   const [guruMapelList, setGuruMapelList] = useState<GuruMapel[]>([]);
+  const [kelasList, setKelasList] = useState<string[]>([]);
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -37,6 +38,8 @@ export default function DokumenView({ user }: { user: any }) {
   // Teacher Upload Form States (For non-admin)
   const [judul, setJudul] = useState('');
   const [jenis, setJenis] = useState('');
+  const [selectedMapel, setSelectedMapel] = useState('');
+  const [selectedKelas, setSelectedKelas] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
@@ -101,6 +104,16 @@ export default function DokumenView({ user }: { user: any }) {
       
       setGuruMapelList(guruMapels);
 
+      // 4. Fetch distinct kelas from data_siswa
+      let siswaQuery = supabase.from('data_siswa').select('kelas');
+      if (user?.sekolah_id) {
+        siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: siswaData } = await siswaQuery;
+      if (siswaData) {
+        const uniqueKls = Array.from(new Set(siswaData.map((s: any) => s.kelas).filter(Boolean))) as string[];
+        setKelasList(uniqueKls.sort());
+      }
     } catch (err) {
       console.error('loadAllData exception:', err);
     } finally {
@@ -194,7 +207,10 @@ export default function DokumenView({ user }: { user: any }) {
         judul: judul,
         link_file: fileUrl,
         status_verifikasi: 'Menunggu',
-        catatan_admin: ''
+        catatan_admin: '',
+        mapel: selectedMapel || null,
+        kelas: selectedKelas || null,
+        sekolah_id: user?.sekolah_id || null
       };
 
       const { error } = await supabase.from('bank_dokumen').insert([newDokumen]);
@@ -205,6 +221,8 @@ export default function DokumenView({ user }: { user: any }) {
         Swal.fire('Berhasil', 'Dokumen berhasil diupload dan menunggu verifikasi admin.', 'success');
         setJenis('');
         setJudul('');
+        setSelectedMapel('');
+        setSelectedKelas('');
         setFile(null);
         setActiveTab('list');
         loadAllData();
@@ -228,6 +246,92 @@ export default function DokumenView({ user }: { user: any }) {
       if (docId === 'RPM') return j.includes('mendalam') || j.includes('rpm') || j.includes('modul');
       return false;
     });
+  };
+
+  // Helper to match a document for a specific subject
+  const matchDocToTypeForSubject = (teacherDocs: BankDokumen[], docId: string, mapelName?: string, kelasName?: string) => {
+    return teacherDocs.find(d => {
+      if (mapelName && d.mapel) {
+        if (d.mapel.trim().toLowerCase() !== mapelName.trim().toLowerCase()) {
+          if (!d.judul || !d.judul.toLowerCase().includes(mapelName.toLowerCase())) {
+            return false;
+          }
+        }
+      }
+      if (kelasName && d.kelas) {
+        if (d.kelas.trim().toLowerCase() !== kelasName.trim().toLowerCase()) {
+          if (!d.judul || !d.judul.toLowerCase().includes(kelasName.toLowerCase())) {
+            return false;
+          }
+        }
+      }
+
+      const j = (d.jenis_dokumen || '').toLowerCase();
+      if (docId === 'CP') return j.includes('capaian') || j.includes('cp');
+      if (docId === 'ATP') return j.includes('tujuan') || j.includes('atp');
+      if (docId === 'RPE') return j.includes('pekan') || j.includes('rpe');
+      if (docId === 'Prota') return j.includes('tahunan') || j.includes('prota');
+      if (docId === 'Promes') return j.includes('semester') || j.includes('promes');
+      if (docId === 'RPM') return j.includes('mendalam') || j.includes('rpm') || j.includes('modul');
+      return false;
+    });
+  };
+
+  // Subjects assigned to the currently logged in teacher
+  const myTeacherSubjects = useMemo(() => {
+    const list: { nama_mapel: string; kelas: string }[] = [];
+    const seen = new Set<string>();
+
+    const teacherGm = guruMapelList.filter(
+      gm => (gm.nama_guru || '').trim().toLowerCase() === (user?.nama || '').trim().toLowerCase()
+    );
+
+    teacherGm.forEach(gm => {
+      const mapelName = gm.nama_mapel || gm.mapel_singkat || '';
+      const kls = gm.kelas || '';
+      const key = `${mapelName}-${kls}`;
+      if (mapelName && !seen.has(key)) {
+        seen.add(key);
+        list.push({ nama_mapel: mapelName, kelas: kls });
+      }
+    });
+
+    // Fallback if no specific guru_mapel relations
+    if (list.length === 0) {
+      const g = teachersList.find(t => (t.nama_guru || '').trim().toLowerCase() === (user?.nama || '').trim().toLowerCase());
+      const fallbackMapel = g?.mata_pelajaran || user?.mata_pelajaran || 'Mata Pelajaran Umum';
+      list.push({ nama_mapel: fallbackMapel, kelas: '' });
+    }
+
+    return list;
+  }, [guruMapelList, teachersList, user]);
+
+  const availableMapels = useMemo(() => {
+    const set = new Set<string>();
+    myTeacherSubjects.forEach(s => {
+      if (s.nama_mapel) set.add(s.nama_mapel);
+    });
+    return Array.from(set);
+  }, [myTeacherSubjects]);
+
+  const allKelasOptions = useMemo(() => {
+    const set = new Set<string>();
+    myTeacherSubjects.forEach(s => {
+      if (s.kelas) set.add(s.kelas);
+    });
+    kelasList.forEach(k => {
+      if (k) set.add(k);
+    });
+    return Array.from(set).sort();
+  }, [myTeacherSubjects, kelasList]);
+
+  // Handler for direct upload trigger from matrix card
+  const handleTriggerDirectUpload = (docTypeName: string, mapelName: string, kelasName?: string) => {
+    setJenis(docTypeName);
+    setSelectedMapel(mapelName);
+    setSelectedKelas(kelasName || '');
+    setJudul(`${docTypeName} ${mapelName}${kelasName ? ` Kelas ${kelasName}` : ''}`.trim());
+    setActiveTab('upload');
   };
 
   // Teacher Matrix Calculations
@@ -609,50 +713,118 @@ export default function DokumenView({ user }: { user: any }) {
         {/* ========================================================================= */}
         {!isAdmin && activeTab === 'list' && (
           <div className="space-y-6 fade-in">
-            {/* Personal Curriculum Completeness Checklist for Teacher */}
-            <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-4 rounded-2xl">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-xs font-bold text-amber-900 dark:text-amber-400 flex items-center gap-1.5">
-                  <i className="fa-solid fa-list-check"></i> Checklist 6 Perangkat Pembelajaran Anda
+            {/* Subject-Grouped 6-Document Matrix for Teacher */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <i className="fa-solid fa-layer-group text-amber-600 dark:text-amber-400"></i>
+                  Matriks Kelengkapan Dokumen Per Mata Pelajaran
                 </h3>
-                <span className="text-[11px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 px-2 py-0.5 rounded-md">
-                  {KURIKULUM_DOCS.filter(d => matchDocToType(dokumenList, d.id)).length}/6 Selesai
+                <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                  {myTeacherSubjects.length} Rombel / Mapel Diampu
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                {KURIKULUM_DOCS.map(doc => {
-                  const matchDoc = matchDocToType(dokumenList, doc.id);
-                  const uploaded = Boolean(matchDoc);
+              {myTeacherSubjects.map((sub, sIdx) => {
+                const completedInSubject = KURIKULUM_DOCS.filter(d => 
+                  matchDocToTypeForSubject(dokumenList, d.id, sub.nama_mapel, sub.kelas)
+                ).length;
+                const percentage = Math.round((completedInSubject / 6) * 100);
 
-                  return (
-                    <div
-                      key={doc.id}
-                      className={`p-2.5 rounded-xl border flex flex-col justify-between min-h-[64px] ${
-                        uploaded
-                          ? 'bg-white dark:bg-gray-800 border-emerald-300 dark:border-emerald-800'
-                          : 'bg-white/60 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700 opacity-80'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="font-bold text-xs text-gray-900 dark:text-white">{doc.short}</span>
-                        {uploaded ? (
-                          <span className="text-emerald-600 dark:text-emerald-400 text-xs">
-                            <i className="fa-solid fa-circle-check"></i>
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-xs">
-                            <i className="fa-regular fa-circle"></i>
-                          </span>
-                        )}
+                return (
+                  <div
+                    key={`${sub.nama_mapel}-${sub.kelas}-${sIdx}`}
+                    className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 shadow-sm space-y-3"
+                  >
+                    {/* Subject Header with Progress */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-gray-100 dark:border-gray-700">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                          <h4 className="font-bold text-sm text-gray-900 dark:text-white">
+                            {sub.nama_mapel}
+                          </h4>
+                          {sub.kelas && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+                              Kelas {sub.kelas}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate mt-1">
-                        {uploaded ? matchDoc?.status_verifikasi || 'Menunggu' : 'Belum upload'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md ${
+                          completedInSubject === 6
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                        }`}>
+                          {completedInSubject}/6 Selesai ({percentage}%)
+                        </span>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* 6-Document Status Matrix Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                      {KURIKULUM_DOCS.map(doc => {
+                        const matchDoc = matchDocToTypeForSubject(dokumenList, doc.id, sub.nama_mapel, sub.kelas);
+                        const isUploaded = Boolean(matchDoc);
+
+                        return (
+                          <div
+                            key={doc.id}
+                            className={`p-3 rounded-xl border flex flex-col justify-between min-h-[95px] transition ${
+                              isUploaded
+                                ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                                : 'bg-gray-50/60 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start">
+                              <span className="font-bold text-xs text-gray-900 dark:text-white">{doc.short}</span>
+                              <span className={`text-[11px] ${isUploaded ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
+                                <i className={`fa-solid ${isUploaded ? 'fa-circle-check' : 'fa-circle-notch'}`}></i>
+                              </span>
+                            </div>
+
+                            <div className="my-1">
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded inline-block ${
+                                isUploaded
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                  : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                              }`}>
+                                {isUploaded ? 'Sudah Diunggah' : 'Belum Diunggah'}
+                              </span>
+                              {isUploaded && matchDoc?.status_verifikasi && (
+                                <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                                  {matchDoc.status_verifikasi}
+                                </div>
+                              )}
+                            </div>
+
+                            <div>
+                              {isUploaded ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewDoc(matchDoc!)}
+                                  className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                                >
+                                  <i className="fa-solid fa-eye text-[9px]"></i> Lihat
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleTriggerDirectUpload(doc.name, sub.nama_mapel, sub.kelas)}
+                                  className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-1"
+                                >
+                                  <i className="fa-solid fa-upload text-[9px]"></i> Unggah
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Uploaded Documents List */}
@@ -750,6 +922,45 @@ export default function DokumenView({ user }: { user: any }) {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                      Mata Pelajaran
+                    </label>
+                    <input
+                      type="text"
+                      list="mapel-upload-options"
+                      value={selectedMapel}
+                      onChange={e => setSelectedMapel(e.target.value)}
+                      placeholder="Contoh: Matematika"
+                      className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                    />
+                    <datalist id="mapel-upload-options">
+                      {availableMapels.map((m, idx) => (
+                        <option key={idx} value={m} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                      Kelas
+                    </label>
+                    <input
+                      type="text"
+                      list="kelas-upload-options"
+                      value={selectedKelas}
+                      onChange={e => setSelectedKelas(e.target.value)}
+                      placeholder="Contoh: X Merdeka"
+                      className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                    />
+                    <datalist id="kelas-upload-options">
+                      {allKelasOptions.map((k, idx) => (
+                        <option key={idx} value={k} />
+                      ))}
+                    </datalist>
+                  </div>
                 </div>
 
                 <div>

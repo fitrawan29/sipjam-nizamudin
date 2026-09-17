@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
+import { formatKepalaSekolahTitle } from '@/utils/textUtils';
+
+export { formatKepalaSekolahTitle };
 
 export interface PrintHeaderProps {
   sekolahId?: string;
@@ -254,7 +257,10 @@ export function PrintSignature({
   const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || 'Kepala Sekolah';
   const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah || '';
   const schoolName = config.kop_sekolah || config.NAMA_SEKOLAH || schoolInfo?.nama || '';
-  const defaultKepalaTitle = schoolName ? `Kepala ${schoolName}` : 'Kepala Sekolah';
+  const defaultKepalaTitle = formatKepalaSekolahTitle(schoolName);
+  const displayRightTitle = rightTitle
+    ? (rightTitle.toLowerCase().includes('kepala') ? formatKepalaSekolahTitle(rightTitle) : rightTitle)
+    : defaultKepalaTitle;
 
   const containerClass = singleColumn
     ? "print-only print-signature mt-10 flex justify-end ml-auto text-black"
@@ -293,7 +299,7 @@ export function PrintSignature({
           {region ? `${region}, ` : ''}{dateStr}
         </span>
         <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
-          {rightTitle || defaultKepalaTitle}
+          {displayRightTitle}
         </span>
         <div className="h-20 sm:h-24" />
         <div className="inline-block text-left">

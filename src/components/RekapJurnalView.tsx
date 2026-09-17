@@ -7,6 +7,7 @@ import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/image
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
 
 export default function RekapJurnalView({ user }: { user: any }) {
+  const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>('pribadi');
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
@@ -57,15 +58,22 @@ export default function RekapJurnalView({ user }: { user: any }) {
     tarikRekap();
   }, []);
 
-  const tarikRekap = async () => {
+  const tarikRekap = async (overrideMode?: 'pribadi' | 'kelas', overrideKelas?: string) => {
+    const activeMode = overrideMode || tabMode;
+    const activeKelas = overrideKelas !== undefined ? overrideKelas : kelas;
     setLoading(true);
     try {
       let query = supabase
         .from('jurnal_pembelajaran')
         .select('*')
-        .eq('nama_guru', user.nama)
         .order('tanggal', { ascending: true })
         .order('jam_ke', { ascending: true });
+
+      // In personal mode, restrict to the logged-in teacher
+      // In classroom mode ("Rekapan Jurnal Per Kelas"), query across ALL teachers for that class
+      if (activeMode === 'pribadi' && user?.nama) {
+        query = query.eq('nama_guru', user.nama);
+      }
 
       if (user?.sekolah_id) {
         query = query.eq('sekolah_id', user.sekolah_id);
@@ -82,7 +90,7 @@ export default function RekapJurnalView({ user }: { user: any }) {
         query = query.gte('tanggal', firstDay).lte('tanggal', lastDayStr);
       }
 
-      if (kelas) query = query.eq('kelas', kelas);
+      if (activeKelas) query = query.eq('kelas', activeKelas);
       if (mapel) query = query.eq('mapel', mapel);
 
       const { data } = await query;
@@ -92,6 +100,16 @@ export default function RekapJurnalView({ user }: { user: any }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTabChange = (newMode: 'pribadi' | 'kelas') => {
+    setTabMode(newMode);
+    let targetKelas = kelas;
+    if (newMode === 'kelas' && !targetKelas && kelasList.length > 0) {
+      targetKelas = kelasList[0];
+      setKelas(targetKelas);
+    }
+    tarikRekap(newMode, targetKelas);
   };
 
   function formatHariTanggal(dateStr?: string): string {
@@ -147,6 +165,7 @@ export default function RekapJurnalView({ user }: { user: any }) {
       if (!search) return true;
       const s = search.toLowerCase();
       return (
+        (j.nama_guru && j.nama_guru.toLowerCase().includes(s)) ||
         (j.materi && j.materi.toLowerCase().includes(s)) ||
         (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(s)) ||
         (j.tujuan_pembelajaran && j.tujuan_pembelajaran.toLowerCase().includes(s)) ||
@@ -155,7 +174,8 @@ export default function RekapJurnalView({ user }: { user: any }) {
         (j.mapel && j.mapel.toLowerCase().includes(s)) ||
         (j.tanggal && j.tanggal.toLowerCase().includes(s)) ||
         (j.kehadiran_murid && j.kehadiran_murid.toLowerCase().includes(s)) ||
-        (j.catatan_refleksi && j.catatan_refleksi.toLowerCase().includes(s))
+        (j.catatan_refleksi && j.catatan_refleksi.toLowerCase().includes(s)) ||
+        (j.keterangan && j.keterangan.toLowerCase().includes(s))
       );
     })
     .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (Number(a.jam_ke) || 0) - (Number(b.jam_ke) || 0));
@@ -169,9 +189,40 @@ export default function RekapJurnalView({ user }: { user: any }) {
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
         <div className="glass-card p-4">
             <PrintHeader />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
-              <i className="fa-solid fa-book-open text-indigo-500 dark:text-indigo-400 text-base"></i> Rekap Jurnal Pribadi
-            </h2>
+            
+            {/* View Header with Tab Toggle */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 no-print">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <i className={`fa-solid ${tabMode === 'pribadi' ? 'fa-book-open text-indigo-500 dark:text-indigo-400' : 'fa-chalkboard-user text-purple-500 dark:text-purple-400'} text-base`}></i>
+                {tabMode === 'pribadi' ? 'Rekap Jurnal Pribadi' : 'Rekapan Jurnal Per Kelas'}
+              </h2>
+
+              {/* Mode Toggle: Jurnal Guru Pribadi vs Rekapan Jurnal Per Kelas */}
+              <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('pribadi')}
+                  className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    tabMode === 'pribadi'
+                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <i className="fa-solid fa-user text-[11px]"></i> Jurnal Guru Pribadi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('kelas')}
+                  className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    tabMode === 'kelas'
+                      ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <i className="fa-solid fa-users text-[11px]"></i> Rekapan Jurnal Per Kelas
+                </button>
+              </div>
+            </div>
 
             {/* Summary Metric Cards */}
             {jurnalData && (
@@ -245,7 +296,7 @@ export default function RekapJurnalView({ user }: { user: any }) {
                       </select>
                     </div>
                 </div>
-                <button type="button" onClick={tarikRekap} disabled={loading} className="btn-click w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold mt-2 shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50">
+                <button type="button" onClick={() => tarikRekap()} disabled={loading} className="btn-click w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold mt-2 shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50">
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin text-sm"></i> : <i className="fa-solid fa-search text-sm"></i>} Tampilkan Rekap
                 </button>
             </div>
@@ -278,10 +329,10 @@ export default function RekapJurnalView({ user }: { user: any }) {
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
-                Rekapitulasi Jurnal Pembelajaran Guru
+                {tabMode === 'kelas' ? `Rekapitulasi Jurnal Pembelajaran Kelas ${kelas || '(Semua Kelas)'}` : 'Rekapitulasi Jurnal Pembelajaran Guru'}
               </h3>
               <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
-                <span>Guru: <strong>{user?.nama || '-'}</strong></span>
+                {tabMode === 'pribadi' && <span>Guru: <strong>{user?.nama || '-'}</strong></span>}
                 <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
                 {kelas && <span>Kelas: <strong>{kelas}</strong></span>}
                 {mapel && <span>Mapel: <strong>{mapel}</strong></span>}
@@ -293,7 +344,7 @@ export default function RekapJurnalView({ user }: { user: any }) {
               <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
               {filteredJurnal && filteredJurnal.length > 0 && (
                 <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Menampilkan {filteredJurnal.length} entri jurnal
+                  Menampilkan {filteredJurnal.length} entri jurnal {tabMode === 'kelas' ? `kelas ${kelas || ''}` : ''}
                 </div>
               )}
             </div>
@@ -309,167 +360,342 @@ export default function RekapJurnalView({ user }: { user: any }) {
                 )}
                 {jurnalData && filteredJurnal.length > 0 && (
                   <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-200 dark:border-gray-700 print:border-black print:overflow-visible">
-                    <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
-                      <thead>
-                        <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Hari, tanggal bulan tahun</th>
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kelas, pertemuan dan jam ke-</th>
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Tujuan pembelajaran</th>
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Materi pembelajaran</th>
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kegiatan pembelajaran</th>
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kehadiran murid</th>
-                          <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Catatan refleksi</th>
-                          <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Foto kegiatan</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredJurnal.map((j: any, index: number) => {
-                          const fotoUrl = j.foto_kegiatan || j.link_bukti_foto;
-                          const hasFoto = fotoUrl && fotoUrl !== '-' && fotoUrl.trim() !== '';
+                    {tabMode === 'kelas' ? (
+                      /* ============================================================ */
+                      /* REKAPAN JURNAL PER KELAS: EXACT 8 COLUMNS LAYOUT             */
+                      /* ============================================================ */
+                      <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
+                        <thead>
+                          <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Guru</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Tanggal & Waktu</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Mapel</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Jam KBM</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Materi</th>
+                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Foto</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterangan kehadiran guru</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredJurnal.map((j: any, index: number) => {
+                            const fotoUrl = j.foto_kegiatan || j.link_bukti_foto;
+                            const hasFoto = fotoUrl && fotoUrl !== '-' && fotoUrl.trim() !== '';
+                            const waktuStr = j.timestamp ? j.timestamp.substring(11, 16) : '';
+                            const jamKbmStr = j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-');
+                            const ketKehadiran = j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir');
 
-                          return (
-                            <tr 
-                              key={j.id || index}
-                              className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 print:hover:bg-transparent"
-                            >
-                              {/* 1. Hari, tanggal bulan tahun */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
-                                {formatHariTanggal(j.tanggal)}
-                              </td>
+                            return (
+                              <tr 
+                                key={j.id || index}
+                                className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 print:hover:bg-transparent"
+                              >
+                                {/* 1. No */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold align-top">
+                                  {index + 1}
+                                </td>
 
-                              {/* 2. Kelas, pertemuan dan jam ke- */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
-                                <div className="font-bold text-gray-900 dark:text-white print:text-black">{j.kelas || '-'}</div>
-                                <div className="text-[11px] print:text-[8pt] text-gray-600 dark:text-gray-300 print:text-black">
-                                  {j.pertemuan_ke ? `Pertemuan ke-${j.pertemuan_ke}` : '-'}
-                                </div>
-                                <div className="text-[10px] print:text-[7pt] text-gray-500 dark:text-gray-400 print:text-black">
-                                  {j.jam_ke ? `Jam ke-${j.jam_ke}` : '-'}
-                                </div>
-                                {j.mapel && j.mapel !== '-' && (
-                                  <div className="text-[10px] print:text-[7pt] font-semibold text-blue-600 dark:text-blue-400 print:text-black mt-0.5">
-                                    ({j.mapel})
+                                {/* 2. Nama Guru */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black font-bold align-top text-gray-900 dark:text-white print:text-black">
+                                  {j.nama_guru || '-'}
+                                </td>
+
+                                {/* 3. Tanggal & Waktu */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top">
+                                  <div className="font-semibold text-gray-900 dark:text-white print:text-black">{formatHariTanggal(j.tanggal)}</div>
+                                  {waktuStr && (
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-400 print:text-black">
+                                      Pukul {waktuStr}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* 4. Mapel */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-semibold text-blue-600 dark:text-blue-400 print:text-black">
+                                  {j.mapel || '-'}
+                                </td>
+
+                                {/* 5. Jam KBM */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-medium">
+                                  <div>{jamKbmStr}</div>
+                                  {j.pertemuan_ke && j.jam_ke && (
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-400 print:text-black">
+                                      Pertemuan {j.pertemuan_ke}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* 6. Materi */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                  <div className="font-bold text-gray-900 dark:text-white print:text-black">
+                                    {j.materi_pembelajaran || j.materi || '-'}
                                   </div>
-                                )}
-                              </td>
+                                  {j.tujuan_pembelajaran && (
+                                    <div className="text-[10px] text-gray-600 dark:text-gray-400 print:text-black mt-1">
+                                      <span className="font-semibold">TP:</span> {j.tujuan_pembelajaran}
+                                    </div>
+                                  )}
+                                </td>
 
-                              {/* 3. Tujuan pembelajaran */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                {j.tujuan_pembelajaran || '-'}
-                              </td>
+                                {/* 7. Foto */}
+                                <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
+                                  {hasFoto ? (
+                                    <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
+                                      <img
+                                        src={getGoogleDriveThumbnailUrl(fotoUrl, 800) || transformGoogleDriveUrl(fotoUrl)}
+                                        alt="Foto Kegiatan"
+                                        loading="eager"
+                                        referrerPolicy="no-referrer"
+                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[70px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
+                                            target.src = transformGoogleDriveUrl(fotoUrl);
+                                          } else {
+                                            target.style.display = 'none';
+                                          }
+                                        }}
+                                      />
+                                      <a
+                                        href={fotoUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline font-semibold no-print inline-flex items-center gap-0.5"
+                                      >
+                                        <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-[10px] italic">-</span>
+                                  )}
+                                </td>
 
-                              {/* 4. Materi pembelajaran */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
-                                {j.materi_pembelajaran || j.materi || '-'}
-                              </td>
+                                {/* 8. Keterangan kehadiran guru */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                    j.status_verifikasi === 'Disetujui'
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                      : j.status_verifikasi === 'Ditolak'
+                                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                      : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                  }`}>
+                                    {ketKehadiran}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    ) : (
+                      /* ============================================================ */
+                      /* JURNAL PRIBADI GURU: 8 COLUMNS LAYOUT                        */
+                      /* ============================================================ */
+                      <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
+                        <thead>
+                          <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Hari, tanggal bulan tahun</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kelas, pertemuan dan jam ke-</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Tujuan pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Materi pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kegiatan pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kehadiran murid</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Catatan refleksi</th>
+                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Foto kegiatan</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredJurnal.map((j: any, index: number) => {
+                            const fotoUrl = j.foto_kegiatan || j.link_bukti_foto;
+                            const hasFoto = fotoUrl && fotoUrl !== '-' && fotoUrl.trim() !== '';
 
-                              {/* 5. Kegiatan pembelajaran */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                {j.kegiatan || '-'}
-                              </td>
+                            return (
+                              <tr 
+                                key={j.id || index}
+                                className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 print:hover:bg-transparent"
+                              >
+                                {/* 1. Hari, tanggal bulan tahun */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
+                                  {formatHariTanggal(j.tanggal)}
+                                </td>
 
-                              {/* 6. Kehadiran murid */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top">
-                                {j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen)}
-                              </td>
-
-                              {/* 7. Catatan refleksi */}
-                              <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
-                                {j.catatan_refleksi || j.refleksi || '-'}
-                              </td>
-
-                              {/* 8. Foto kegiatan */}
-                              <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
-                                {hasFoto ? (
-                                  <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
-                                    <img
-                                      src={getGoogleDriveThumbnailUrl(fotoUrl, 800) || transformGoogleDriveUrl(fotoUrl)}
-                                      alt="Foto Kegiatan"
-                                      loading="eager"
-                                      referrerPolicy="no-referrer"
-                                      className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[70px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
-                                          target.src = transformGoogleDriveUrl(fotoUrl);
-                                        } else {
-                                          target.style.display = 'none';
-                                        }
-                                      }}
-                                    />
-                                    <a
-                                      href={fotoUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline font-semibold no-print inline-flex items-center gap-0.5"
-                                    >
-                                      <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
-                                    </a>
+                                {/* 2. Kelas, pertemuan dan jam ke- */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
+                                  <div className="font-bold text-gray-900 dark:text-white print:text-black">{j.kelas || '-'}</div>
+                                  <div className="text-[11px] print:text-[8pt] text-gray-600 dark:text-gray-300 print:text-black">
+                                    {j.pertemuan_ke ? `Pertemuan ke-${j.pertemuan_ke}` : '-'}
                                   </div>
-                                ) : (
-                                  <span className="text-gray-400 text-[10px] italic">-</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                  <div className="text-[10px] print:text-[7pt] text-gray-500 dark:text-gray-400 print:text-black">
+                                    {j.jam_ke ? `Jam ke-${j.jam_ke}` : '-'}
+                                  </div>
+                                  {j.mapel && j.mapel !== '-' && (
+                                    <div className="text-[10px] print:text-[7pt] font-semibold text-blue-600 dark:text-blue-400 print:text-black mt-0.5">
+                                      ({j.mapel})
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* 3. Tujuan pembelajaran */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                  {j.tujuan_pembelajaran || '-'}
+                                </td>
+
+                                {/* 4. Materi pembelajaran */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
+                                  {j.materi_pembelajaran || j.materi || '-'}
+                                </td>
+
+                                {/* 5. Kegiatan pembelajaran */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                  {j.kegiatan || '-'}
+                                </td>
+
+                                {/* 6. Kehadiran murid */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top">
+                                  {j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen)}
+                                </td>
+
+                                {/* 7. Catatan refleksi */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
+                                  {j.catatan_refleksi || j.refleksi || '-'}
+                                </td>
+
+                                {/* 8. Foto kegiatan */}
+                                <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
+                                  {hasFoto ? (
+                                    <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
+                                      <img
+                                        src={getGoogleDriveThumbnailUrl(fotoUrl, 800) || transformGoogleDriveUrl(fotoUrl)}
+                                        alt="Foto Kegiatan"
+                                        loading="eager"
+                                        referrerPolicy="no-referrer"
+                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[70px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
+                                            target.src = transformGoogleDriveUrl(fotoUrl);
+                                          } else {
+                                            target.style.display = 'none';
+                                          }
+                                        }}
+                                      />
+                                      <a
+                                        href={fotoUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline font-semibold no-print inline-flex items-center gap-0.5"
+                                      >
+                                        <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-[10px] italic">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 )}
             </div>
 
             <PrintSignature
               leftTitle="Mengetahui,"
-              leftSubtitle="Guru Mata Pelajaran"
-              leftName={user?.nama}
-              leftNip={user?.nip}
+              leftSubtitle={tabMode === 'kelas' ? 'Wali Kelas' : 'Guru Mata Pelajaran'}
+              leftName={tabMode === 'kelas' ? '( ........................................ )' : user?.nama}
+              leftNip={tabMode === 'kelas' ? '-' : user?.nip}
             />
 
             {jurnalData && jurnalData.length > 0 && (
               <div id="btn-group-jurnal-guru" className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 fade-in no-print">
                   <button type="button" onClick={() => {
                     if (!filteredJurnal || filteredJurnal.length === 0) return;
-                    const headers = [
-                      'Hari, tanggal bulan tahun',
-                      'Kelas, pertemuan dan jam ke-',
-                      'Tujuan pembelajaran',
-                      'Materi pembelajaran',
-                      'Kegiatan pembelajaran',
-                      'Kehadiran murid',
-                      'Catatan refleksi',
-                      'Foto kegiatan',
-                      'Status Verifikasi'
-                    ];
-                    const csvRows = [headers.map(h => `"${h}"`).join(',')];
-                    filteredJurnal.forEach((j: any) => {
-                      const col1 = formatHariTanggal(j.tanggal);
-                      const col2 = `${j.kelas || '-'}${j.pertemuan_ke ? ` | Pertemuan: ${j.pertemuan_ke}` : ''}${j.jam_ke ? ` | Jam: ${j.jam_ke}` : ''}${j.mapel ? ` (${j.mapel})` : ''}`;
-                      const col3 = j.tujuan_pembelajaran || '-';
-                      const col4 = j.materi_pembelajaran || j.materi || '-';
-                      const col5 = j.kegiatan || '-';
-                      const col6 = j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen);
-                      const col7 = j.catatan_refleksi || j.refleksi || '-';
-                      const col8 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                      const status = j.status_verifikasi || 'Menunggu';
 
-                      csvRows.push([
-                        `"${col1.replace(/"/g, '""')}"`,
-                        `"${col2.replace(/"/g, '""')}"`,
-                        `"${col3.replace(/"/g, '""')}"`,
-                        `"${col4.replace(/"/g, '""')}"`,
-                        `"${col5.replace(/"/g, '""')}"`,
-                        `"${col6.replace(/"/g, '""')}"`,
-                        `"${col7.replace(/"/g, '""')}"`,
-                        `"${col8.replace(/"/g, '""')}"`,
-                        `"${status.replace(/"/g, '""')}"`
-                      ].join(','));
-                    });
+                    let headers: string[] = [];
+                    let csvRows: string[] = [];
+
+                    if (tabMode === 'kelas') {
+                      headers = [
+                        'No',
+                        'Nama Guru',
+                        'Tanggal & Waktu',
+                        'Mapel',
+                        'Jam KBM',
+                        'Materi',
+                        'Foto',
+                        'Keterangan kehadiran guru'
+                      ];
+                      csvRows = [headers.map(h => `"${h}"`).join(',')];
+                      filteredJurnal.forEach((j: any, index: number) => {
+                        const col1 = String(index + 1);
+                        const col2 = j.nama_guru || '-';
+                        const col3 = `${formatHariTanggal(j.tanggal)}${j.timestamp ? ` ${j.timestamp.substring(11, 16)}` : ''}`;
+                        const col4 = j.mapel || '-';
+                        const col5 = j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-');
+                        const col6 = j.materi_pembelajaran || j.materi || '-';
+                        const col7 = j.foto_kegiatan || j.link_bukti_foto || '-';
+                        const col8 = j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir');
+
+                        csvRows.push([
+                          `"${col1.replace(/"/g, '""')}"`,
+                          `"${col2.replace(/"/g, '""')}"`,
+                          `"${col3.replace(/"/g, '""')}"`,
+                          `"${col4.replace(/"/g, '""')}"`,
+                          `"${col5.replace(/"/g, '""')}"`,
+                          `"${col6.replace(/"/g, '""')}"`,
+                          `"${col7.replace(/"/g, '""')}"`,
+                          `"${col8.replace(/"/g, '""')}"`
+                        ].join(','));
+                      });
+                    } else {
+                      headers = [
+                        'Hari, tanggal bulan tahun',
+                        'Kelas, pertemuan dan jam ke-',
+                        'Tujuan pembelajaran',
+                        'Materi pembelajaran',
+                        'Kegiatan pembelajaran',
+                        'Kehadiran murid',
+                        'Catatan refleksi',
+                        'Foto kegiatan',
+                        'Status Verifikasi'
+                      ];
+                      csvRows = [headers.map(h => `"${h}"`).join(',')];
+                      filteredJurnal.forEach((j: any) => {
+                        const col1 = formatHariTanggal(j.tanggal);
+                        const col2 = `${j.kelas || '-'}${j.pertemuan_ke ? ` | Pertemuan: ${j.pertemuan_ke}` : ''}${j.jam_ke ? ` | Jam: ${j.jam_ke}` : ''}${j.mapel ? ` (${j.mapel})` : ''}`;
+                        const col3 = j.tujuan_pembelajaran || '-';
+                        const col4 = j.materi_pembelajaran || j.materi || '-';
+                        const col5 = j.kegiatan || '-';
+                        const col6 = j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen);
+                        const col7 = j.catatan_refleksi || j.refleksi || '-';
+                        const col8 = j.foto_kegiatan || j.link_bukti_foto || '-';
+                        const status = j.status_verifikasi || 'Menunggu';
+
+                        csvRows.push([
+                          `"${col1.replace(/"/g, '""')}"`,
+                          `"${col2.replace(/"/g, '""')}"`,
+                          `"${col3.replace(/"/g, '""')}"`,
+                          `"${col4.replace(/"/g, '""')}"`,
+                          `"${col5.replace(/"/g, '""')}"`,
+                          `"${col6.replace(/"/g, '""')}"`,
+                          `"${col7.replace(/"/g, '""')}"`,
+                          `"${col8.replace(/"/g, '""')}"`,
+                          `"${status.replace(/"/g, '""')}"`
+                        ].join(','));
+                      });
+                    }
+
                     const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `Rekap_Jurnal_${user.nama}_${bulan}.csv`;
+                    const fileName = tabMode === 'kelas'
+                      ? `Rekap_Jurnal_Kelas_${kelas || 'Semua'}_${bulan}.csv`
+                      : `Rekap_Jurnal_${user?.nama || 'Guru'}_${bulan}.csv`;
+                    a.download = fileName;
                     a.click();
                     URL.revokeObjectURL(url);
                   }} className="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
