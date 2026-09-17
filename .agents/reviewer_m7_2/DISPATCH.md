@@ -1,24 +1,23 @@
-## 2026-09-12T10:11:57Z
-You are a Reviewer subagent for Milestone 7 (Security & RLS Review).
+## 2026-09-17T15:29:34Z
+
+You are reviewer_m7_2, an independent security and database reviewer.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_2
 
-MANDATORY FIRST STEP:
-Read the authoritative user request and project scope:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\ORIGINAL_REQUEST.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m7_db\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m7_auth_ui\handoff.md
+MANDATORY: Read ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md and PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md.
 
 YOUR MISSION:
-Review the multi-tenant security architecture and Supabase Row Level Security (RLS):
-1. Review RLS policies across all 18 tables in `supabase/migrations/20260912_multi_tenant_sekolah_rls.sql`.
-2. Verify security helper functions (`get_auth_user_sekolah_id`, `get_auth_user_role`, `is_superadmin`, `verify_login`).
-3. Verify that School Admin and Guru cannot see, modify, or delete other schools' data.
-4. Verify that Superadmin can manage schools and admin accounts.
-5. Verify defense-in-depth scoping in UI components.
-6. Run `npm run build` to verify build integrity.
+Review the database schema, security, RLS policies, and backend routes across all milestones:
+- SQL Migration `supabase/migrations/20260917_comprehensive_features.sql`
+- RLS policies on `wali_kelas`, `absensi`, `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa`, `push_subscriptions`
+- Multi-tenant data isolation (`sekolah_id = public.get_auth_user_sekolah_id()`)
+- Database trigger `trg_sync_absensi_to_jurnal` and function `sync_absensi_to_jurnal()`
+- Security Definer RPC `update_user_profile`
+- Next.js API routes `/api/push/subscribe` and `/api/push/validate`
 
-Render an explicit verdict: APPROVE or REQUEST_CHANGES.
-Write your full review report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_2\handoff.md`.
-When done, message orchestrator parent (bedfb7f0-1cec-4949-8c24-27709173b6ec).
+Evaluate:
+1. Tenant isolation: verify no cross-tenant leakage between schools.
+2. Role permissions: verify that teachers cannot arbitrarily elevate privileges or overwrite unauthorized records.
+3. Transactional safety and SQL injection avoidance.
+4. Provide an explicit verdict: APPROVE or REQUEST_CHANGES in your handoff.md at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_2\handoff.md
+Send a message back to orchestrator_9 with your verdict and summary.

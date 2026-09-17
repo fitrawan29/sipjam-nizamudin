@@ -1,16 +1,20 @@
-# Progress - Reviewer M7-2
+# Progress Log — reviewer_m7_2
 
-Last visited: 2026-09-12T10:16:15Z
+Last visited: 2026-09-17T15:35:00Z
+Status: Completed deep security and database audit. Findings documented and handoff report prepared with verdict REQUEST_CHANGES.
 
-## Current Status
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Read authoritative documentation (ORIGINAL_REQUEST.md, PROJECT.md, worker handoffs)
-- [x] Review RLS policies across all 18 tables in `supabase/migrations/20260912_multi_tenant_sekolah_rls.sql`
-- [x] Verify security helper functions (`get_auth_user_sekolah_id`, `get_auth_user_role`, `is_superadmin`, `verify_login`)
-- [x] Verify tenant isolation: DISPROVED — empirical tests reveal RLS bypass on NULL headers and plaintext password leak
-- [x] Verify Superadmin capabilities: Verified in UI, but database RLS allows spoofing via header
-- [x] Verify UI defense-in-depth scoping in components: Verified `.eq('sekolah_id', ...)` present
-- [x] Run `npm run build`: Verified exit code 0
-- [x] Adversarial stress test & integrity violation check: Confirmed facade RLS bypass and facade test in `m7_1_db_migration.test.ts`
-- [x] Render verdict and write handoff report: REQUEST_CHANGES (INTEGRITY VIOLATION) written to handoff.md
-- [x] Coordinate with parent orchestrator
+## Steps
+- [x] Received dispatch and initialized BRIEFING.md and DISPATCH.md
+- [x] Read ORIGINAL_REQUEST.md and PROJECT.md
+- [x] Examined `supabase/migrations/20260917_comprehensive_features.sql` and earlier migrations
+- [x] Examined RLS policies across `wali_kelas`, `absensi`, `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa`, `push_subscriptions`
+- [x] Audited multi-tenant isolation helper `public.get_auth_user_sekolah_id()` and search_path settings
+- [x] Audited trigger `trg_sync_absensi_to_jurnal` & `sync_absensi_to_jurnal()`
+- [x] Audited Security Definer RPC `update_user_profile`
+- [x] Audited Next.js API routes `/api/push/subscribe` and `/api/push/validate`
+- [x] Conducted adversarial stress testing via `tests/reviewer_m7_2_security_audit.ts`
+- [x] Executed build and type checks:
+  - `npx tsc --noEmit` -> PASS (Exit Code 0)
+  - `npm run build` -> FAIL (Exit Code 1: Turbopack client component bundling failure due to `web-push` in `src/lib/pushClient.ts`)
+- [x] Discovered 2 Critical and 3 Major vulnerabilities
+- [x] Document findings, issue verdict in handoff.md, notify orchestrator

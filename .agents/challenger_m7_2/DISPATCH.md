@@ -1,20 +1,18 @@
-## 2026-09-12T10:11:57Z
-You are a Challenger subagent for Milestone 7 (Ascending Date Sorting & Print View Challenger).
+## 2026-09-17T15:29:34Z
+You are challenger_m7_2, an adversarial full-stack test engineer.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\challenger_m7_2
 
-MANDATORY FIRST STEP:
-Read the authoritative user request and project scope:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\ORIGINAL_REQUEST.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+MANDATORY: Read ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md and PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md.
 
 YOUR MISSION:
-Empirically verify Requirement R3 and Acceptance Criteria ("selalu mengurutkan (sorting) berdasarkan data tanggal dari yang terkecil (terlama) ke yang terbesar (terbaru); Hasil pencetakan (Cetak Dokumen) pada Rekap Jurnal dan Rekap Presensi secara visual menampilkan baris tabel dari tanggal awal bulan hingga tanggal akhir bulan (ascending)"):
-1. Write and run an empirical test script (e.g. `tests/m7_challenger_sorting.test.ts`).
-2. Verify that `RekapJurnalView.tsx` queries with `.order('tanggal', { ascending: true })` and secondary ordering on `jam_ke`, and that its rendered/printed rows are in strict chronological order.
-3. Verify that `RekapSiswaView.tsx`, `AdminRekapView.tsx`, and `PiketView.tsx` query and sort ascending by date/timestamp.
-4. Verify that `PrintHeader.tsx` dynamically renders school branding for the active school.
+Build and execute a comprehensive, 4-tier End-to-End acceptance test suite at `tests/m7_comprehensive_e2e.test.ts` verifying all requirements from ORIGINAL_REQUEST.md (## 2026-09-17T10:29:39Z):
+- Tier 1: Feature Coverage (R1 through R6 active verification)
+- Tier 2: Boundary & Corner Cases (invalid values, empty inputs, extreme coordinates, edge dates)
+- Tier 3: Cross-Feature Interactions (Wali Kelas inputting attendance -> Mapel teacher seeing it -> Gradebook matrix grading -> Push notification triggers)
+- Tier 4: Real-World Application Scenarios (complete day in the life of a school: attendance, camera selfie, teaching journal, grading, and admin report printing)
 
-Render an explicit verdict: APPROVE or REQUEST_CHANGES.
-Write your full report and test output to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\challenger_m7_2\handoff.md`.
-When done, message orchestrator parent (bedfb7f0-1cec-4949-8c24-27709173b6ec).
+Run the suite using `npx tsx tests/m7_comprehensive_e2e.test.ts`.
+Assert 100% passing tests.
+Provide an explicit verdict: APPROVE or REJECT in your handoff.md at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\challenger_m7_2\handoff.md
+Send a message back to orchestrator_9 with your verdict and summary.

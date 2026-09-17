@@ -1,74 +1,64 @@
-# BRIEFING — 2026-09-12T17:15:00+07:00
+# BRIEFING — 2026-09-17T15:34:00Z
 
 ## Mission
-Comprehensive Review and Adversarial Stress-Testing of Milestone 7 (Full-Stack & Multi-Tenant Architecture, Superadmin, RLS, Sorting, Tenant Isolation).
+Conduct independent adversarial review of all code changes from Milestones M1 through M6.
 
 ## 🔒 My Identity
 - Archetype: reviewer_critic
 - Roles: reviewer, critic
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1
-- Original parent: bedfb7f0-1cec-4949-8c24-27709173b6ec
-- Milestone: Milestone 7
+- Original parent: 438061dd-8b26-44e8-acfe-051ab3586841
+- Milestone: M7
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Check for integrity violations (hardcoded results, dummy implementations, facade code, bypassed checks)
-- Verify claims independently (run tests, examine code, inspect queries)
-- Maintain strict multi-tenant isolation standards
+- Zero native alert calls (all dialogues must use SweetAlert2)
+- Actively check for integrity violations (hardcoding, facades, shortcuts, fake verifications)
+- Run npx tsc --noEmit to verify type safety
+- Contrast and responsiveness (light and dark mode legibility)
+- Check Next.js App Router rules and React 19 standards
 
 ## Current Parent
-- Conversation ID: bedfb7f0-1cec-4949-8c24-27709173b6ec
-- Updated: 2026-09-12T17:15:00+07:00
+- Conversation ID: 438061dd-8b26-44e8-acfe-051ab3586841
+- Updated: 2026-09-17T15:34:00Z
 
 ## Review Scope
 - **Files to review**:
-  - `supabase/migrations/20260912_multi_tenant_sekolah_rls.sql`
-  - `src/types/database.ts`
-  - `src/components/SuperadminView.tsx`
-  - `src/app/superadmin/page.tsx`
-  - `src/components/AppScreen.tsx`
-  - `src/components/LoginScreen.tsx`
-  - `src/components/AdminConfigView.tsx`
-  - `src/components/AdminDataView.tsx`
-  - `src/components/AdminBackupView.tsx`
-  - `src/components/PrintHeader.tsx`
-  - `src/components/RekapJurnalView.tsx`
-  - `src/components/RekapSiswaView.tsx`
-  - `src/components/AdminRekapView.tsx`
-  - `src/components/PiketView.tsx`
+  - R1: src/components/AdminDataView.tsx, src/components/RekapSiswaView.tsx, src/components/GuruJurnal.tsx, src/components/PiketView.tsx, scripts/test-attendance-sync.ts
+  - R2: src/lib/watermarkCanvas.ts, src/components/CameraSelfieCapture.tsx, src/components/GuruPresensi.tsx
+  - R3: src/components/GradebookView.tsx, src/components/AppScreen.tsx
+  - R4: public/sw.js, src/app/api/push/subscribe/route.ts, src/app/api/push/validate/route.ts, src/components/AccountSettingsModal.tsx, src/components/AdminConfigView.tsx, src/lib/workflow.ts, src/lib/driveUpload.ts
+  - R5: src/components/AdminDataView.tsx, src/components/NaikKelasModal.tsx, src/components/RekapJurnalView.tsx
+  - R6: src/utils/textUtils.ts, src/components/PrintHeader.tsx, src/components/DokumenView.tsx
 - **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
-- **Review criteria**: correctness, multi-tenant security/RLS, completeness, quality, date sorting asc
+- **Review criteria**: Correctness, integrity, quality, React 19 / Next.js standards, type safety, responsiveness & contrast, error handling, alert usage
+
+## Key Decisions Made
+- Discovered critical production build failure in Next.js Turbopack caused by `src/lib/pushClient.ts` importing `src/lib/vapid.ts`, leaking Node.js `web-push` into client browser bundles.
+- Issued verdict: REQUEST_CHANGES.
 
 ## Review Checklist
 - **Items reviewed**:
-  - Migration DDL & live Supabase status: PASS
-  - PostgREST TypeScript schema (`database.ts`): PASS
-  - Superadmin CRUD & deep link route: PASS
-  - AppScreen isolation & dynamic school header: PASS
-  - LoginScreen multi-tenant branding & RPC: PASS
-  - Master view scoping (Config, Data, Backup, PrintHeader): PASS
-  - Chronological ascending sorting across 4 recap views: PASS
-  - Build & TypeScript compilation: PASS (0 errors)
-- **Verdict**: APPROVE
-- **Unverified claims**: NONE (all claims verified against live database and code artifacts)
+  - R1-R6 feature suites: verified
+  - Zero native alerts: verified 0 calls repo-wide
+  - Contrast & responsiveness: verified
+  - TypeScript types: verified clean (0 errors)
+  - Next.js production build: failed with Turbopack module resolution error
+- **Verdict**: REQUEST_CHANGES
+- **Unverified claims**: Production build until client bundle boundary fix is applied.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - SQL injection in `verify_login` RPC → Defended (parameterized plpgsql returns 0 records)
-  - Cross-tenant data leakage between distinct schools → Zero leakage verified
-  - Composite unique constraint collisions → Verified independent storage per school
-  - Sorting degradation under shuffled dates → Verified strict ascending sequence
-- **Vulnerabilities found**: None in production codebase.
-- **Untested angles**: Extreme load scaling (>10,000 tenants).
-
-## Key Decisions Made
-- Confirmed full compliance with Milestone 7 requirements.
-- Issued verdict: APPROVE.
+  - Client component bundle boundary: FAILED (pushClient imports server-only vapid.ts).
+  - Attendance sync triggers: PASSED.
+  - Client canvas watermark manipulation: PASSED.
+  - Dynamic gradebook CRUD: PASSED.
+  - Bulk progression updates: PASSED.
+- **Vulnerabilities found**:
+  - Build-breaking module resolution in Next.js client bundle.
+- **Untested angles**:
+  - Google Apps Script webhook behavior with malformed emails.
 
 ## Artifact Index
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1\DISPATCH.md` — Ingested dispatch message
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1\BRIEFING.md` — Situational awareness
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1\progress.md` — Liveness heartbeat
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\tests\reviewer_m7_adversarial.test.ts` — Independent adversarial test suite (27 passed, 0 failed)
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1\handoff.md` — Final review report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1\handoff.md — Final review report

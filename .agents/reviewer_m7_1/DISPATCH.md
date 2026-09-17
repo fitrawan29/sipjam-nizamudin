@@ -1,27 +1,23 @@
-## 2026-09-12T10:11:57Z
-You are a Reviewer subagent for Milestone 7 (Full-Stack & Multi-Tenant Review).
+## 2026-09-17T15:29:34Z
+You are reviewer_m7_1, an independent high-reliability code reviewer.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1
 
-MANDATORY FIRST STEP:
-Read the authoritative user request and project scope:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\ORIGINAL_REQUEST.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m7_db\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m7_auth_ui\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m7_recap_sorting\handoff.md
+MANDATORY: Read ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md and PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md.
 
 YOUR MISSION:
-Review the complete Milestone 7 implementation across:
-1. Multi-tenant database migration (`supabase/migrations/20260912_multi_tenant_sekolah_rls.sql`) and PostgREST types (`src/types/database.ts`).
-2. Superadmin interface (`src/components/SuperadminView.tsx`) and route (`src/app/superadmin/page.tsx`).
-3. AppScreen role navigation isolation and dynamic school header (`src/components/AppScreen.tsx`).
-4. Modernized LoginScreen (`src/components/LoginScreen.tsx`).
-5. Tenant-scoped master views (`AdminConfigView.tsx`, `AdminDataView.tsx`, `AdminBackupView.tsx`, `PrintHeader.tsx`).
-6. Ascending date sorting in recap views (`RekapJurnalView.tsx`, `RekapSiswaView.tsx`, `AdminRekapView.tsx`, `PiketView.tsx`).
-7. Run `npx tsc --noEmit` and `npm run build` to verify 0 errors.
+Review the code changes across all milestones (M1 through M6):
+- R1: Attendance Synchronization & Wali Kelas (src/components/AdminDataView.tsx, RekapSiswaView.tsx, GuruJurnal.tsx, PiketView.tsx, scripts/test-attendance-sync.ts)
+- R2: Teacher Selfie Attendance & Watermark (src/lib/watermarkCanvas.ts, src/components/CameraSelfieCapture.tsx, src/components/GuruPresensi.tsx)
+- R3: Gradebook / Daftar Nilai (src/components/GradebookView.tsx, src/components/AppScreen.tsx)
+- R4: VAPID Push & Settings (public/sw.js, src/app/api/push/subscribe/route.ts, src/app/api/push/validate/route.ts, src/components/AccountSettingsModal.tsx, src/components/AdminConfigView.tsx, src/lib/workflow.ts, src/lib/driveUpload.ts)
+- R5: Advanced Master Data & Naik Kelas (src/components/AdminDataView.tsx, src/components/NaikKelasModal.tsx, src/components/RekapJurnalView.tsx)
+- R6: UI Polish (src/utils/textUtils.ts, src/components/PrintHeader.tsx, src/components/DokumenView.tsx)
 
-Evaluate correctness, completeness, code quality, error handling, and conformance to requirements.
-Render an explicit verdict: APPROVE or REQUEST_CHANGES.
-Write your full review report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1\handoff.md`.
-When done, message orchestrator parent (bedfb7f0-1cec-4949-8c24-27709173b6ec).
+Evaluate:
+1. Code quality, architecture, Next.js App Router rules in AGENTS.md, and React 19 standards.
+2. Zero native alert calls (all dialogues must use SweetAlert2).
+3. Contrast and responsiveness (light and dark mode legibility).
+4. Run `npx tsc --noEmit` to verify type safety.
+5. Provide an explicit verdict: APPROVE or REQUEST_CHANGES in your handoff.md at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\reviewer_m7_1\handoff.md
+Send a message back to orchestrator_9 with your verdict and summary.

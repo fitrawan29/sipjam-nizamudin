@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-12T17:16:30Z
+# BRIEFING — 2026-09-17T15:30:00Z
 
 ## Mission
-Adversarially and empirically stress-test multi-tenant isolation and hierarchy for Milestone 7 against live Supabase.
+Empirically execute and verify all existing test suites across the project (M1-M6, QoL) and perform boundary stress testing on Attendance Sync, Gradebook numeric limits, VAPID SW payload parsing, and Naik Kelas irregular cohort progression.
 
 ## 🔒 My Identity
 - Archetype: challenger
@@ -10,45 +10,53 @@ Adversarially and empirically stress-test multi-tenant isolation and hierarchy f
 - Original parent: bedfb7f0-1cec-4949-8c24-27709173b6ec
 - Milestone: Milestone 7 (Multi-Tenant & RLS Adversarial Challenger)
 - Instance: 1 of 1
+- Current Sub-Task: Comprehensive E2E Test Suite Execution & Boundary Stress Testing
 
 ## 🔒 Key Constraints
 - Review-only / challenger: write test suites and stress harnesses, do NOT modify application production code directly.
 - Empirical verification mandatory: write and run live tests against Supabase.
 - Store metadata only in .agents/challenger_m7_1. Place test scripts in tests/.
 - Render explicit verdict: APPROVE or REQUEST_CHANGES in handoff.md.
+- Document every command executed, exit code, test pass/fail counts, and provide an explicit verdict: APPROVE or REJECT in handoff.md.
 
 ## Current Parent
-- Conversation ID: bedfb7f0-1cec-4949-8c24-27709173b6ec
-- Updated: 2026-09-12T17:12:00Z
+- Conversation ID: 438061dd-8b26-44e8-acfe-051ab3586841
+- Updated: 2026-09-17T15:30:00Z
 
 ## Review Scope
-- **Files to review**: Supabase schemas, migrations, RLS policies, multi-tenant tables, auth/session APIs.
-- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md.
-- **Review criteria**: Cross-tenant isolation (School A vs School B CRUD), Superadmin privileges (create school, assign school admin), non-superadmin restrictions (blocked from creating schools/modifying platform settings).
+- **Suites to execute**:
+  1. `npx tsx scripts/verify-db-milestone1.ts`
+  2. `npx tsx scripts/test-attendance-sync.ts`
+  3. `npx tsx tests/m3_selfie_watermark.test.ts`
+  4. `npx tsx tests/m4_gradebook.test.ts`
+  5. `npx tsx tests/m5_push_settings.test.ts`
+  6. `npx tsx tests/m6_master_data_polish.test.ts`
+  7. `npx tsx tests/qolAudit.test.ts`
+- **Boundary stress testing**:
+  - Attendance sync with missing or legacy attendance fields.
+  - Gradebook numeric boundaries (<0, >100, decimals).
+  - VAPID keys and payload parsing in service worker sw.js.
+  - Naik Kelas cohort progression with irregular class names.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - H1: Superadmin can register schools and provision school admins (VERIFIED - PASS)
-  - H2: Non-superadmin users (School Admin, Guru, Anon) are blocked from registering/deleting schools (VERIFIED - PASS)
-  - H3: School A Admin cannot create users for School B or escalate to Superadmin (VERIFIED - PASS)
-  - H4: School A client cannot read (SELECT) data belonging to School B across master & transactional tables (VERIFIED - PASS)
-  - H5: School A client cannot inject (INSERT) records into School B (VERIFIED - PASS)
-  - H6: School A client cannot tamper (UPDATE) records belonging to School B (VERIFIED - PASS)
-  - H7: School A client cannot delete (DELETE) records belonging to School B (VERIFIED - PASS)
-  - H8: Identical keys across different schools coexist independently via composite unique constraints without collision (VERIFIED - PASS)
-- **Vulnerabilities found**:
-  - `users_select_policy` currently has permissive `OR true` for login fallback compatibility; passwords in production should be hashed or auth migrated strictly to `verify_login` RPC. (Documented as low-risk architectural note/caveat).
-- **Untested angles**: None within M7 scope.
+  - Existing M1-M6 and QoL test suites pass cleanly with exit code 0.
+  - Attendance sync gracefully handles null/undefined/legacy fields without crashing or corrupting data.
+  - Gradebook boundary validation correctly enforces/handles out-of-range (<0, >100) and fractional scores.
+  - `public/sw.js` push handler handles malformed payloads, missing fields, or empty text without unhandled exceptions.
+  - Naik Kelas cohort progression logic properly handles irregular class names (e.g. "XII TKJ 2", "X-1", "Alumni", "PAUD", custom naming).
+- **Vulnerabilities found**: TBD based on empirical tests.
+- **Untested angles**: TBD.
 
 ## Loaded Skills
 None
 
 ## Key Decisions Made
-- Authored 45-point comprehensive adversarial test suite in `tests/m7_challenger_rls.test.ts`.
-- Verified live Supabase execution: 45/45 assertions passed cleanly.
-- Rendered explicit verdict: APPROVE.
+- Executing all 7 baseline suites.
+- Authoring dedicated boundary testing script in `tests/m7_boundary_stress.test.ts`.
 
 ## Artifact Index
-- handoff.md — Final Challenger Handoff Report with verdict
+- handoff.md — Comprehensive Verification & Boundary Stress Testing Report
 - progress.md — Liveness heartbeat and milestone progress
-- tests/m7_challenger_rls.test.ts — Live empirical adversarial test suite
+- tests/m7_boundary_stress.test.ts — Boundary stress tests
+
