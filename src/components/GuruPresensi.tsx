@@ -6,6 +6,8 @@ import Swal from 'sweetalert2';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp } from '@/lib/wita';
+import CameraSelfieCapture from '@/components/CameraSelfieCapture';
+import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 
 export default function GuruPresensi({ user }: { user: any }) {
   const [tipeAbsen, setTipeAbsen] = useState('Datang');
@@ -13,7 +15,9 @@ export default function GuruPresensi({ user }: { user: any }) {
   const [detailIzin, setDetailIzin] = useState('Sakit');
   const [keterangan, setKeterangan] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [lokasi, setLokasi] = useState('Mendeteksi lokasi...');
+  const [userCoords, setUserCoords] = useState<WatermarkCoordinates | null>(null);
   const [loading, setLoading] = useState(false);
   const [gpsConfig, setGpsConfig] = useState({ lat: -6.200000, lng: 106.816666, radius: 100 });
   const [jarakAktual, setJarakAktual] = useState<number | null>(null);
@@ -40,12 +44,13 @@ export default function GuruPresensi({ user }: { user: any }) {
   };
 
   const fetchLocation = (config: any) => {
-    if (navigator.geolocation) {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
       setLokasi('Mendeteksi GPS...');
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
+          setUserCoords({ latitude: lat, longitude: lng });
           setLokasi(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
           
           const jarak = getDistanceFromLatLonInM(lat, lng, config.lat, config.lng);
@@ -69,7 +74,7 @@ export default function GuruPresensi({ user }: { user: any }) {
       let newConfig = { lat: -6.200000, lng: 106.816666, radius: 100 };
       let newJam = { ...jamPresensi };
       if (data) {
-        data.forEach(item => {
+        data.forEach((item: any) => {
           if (item.key === 'gps_lat') newConfig.lat = parseFloat(item.value);
           if (item.key === 'gps_lng') newConfig.lng = parseFloat(item.value);
           if (item.key === 'gps_radius') newConfig.radius = parseInt(item.value, 10);
@@ -88,14 +93,42 @@ export default function GuruPresensi({ user }: { user: any }) {
       setDailyState(state);
       if (state.presensiDatang && !state.presensiPulang) {
         setTipeAbsen('Pulang');
+        if (state.isDinasLuar) {
+          setJenisPresensi('Dinas Luar');
+        } else {
+          setJenisPresensi('Sekolah');
+        }
       }
     };
     initConfig();
-  }, [user.nama]);
+  }, [user.nama, user.username]);
 
   const togglePresensiFields = (val: string) => {
     setJenisPresensi(val);
+    setFile(null);
+    setPhotoPreviewUrl(null);
   };
+
+  const handleTipeAbsenChange = (val: string) => {
+    setTipeAbsen(val);
+    setFile(null);
+    setPhotoPreviewUrl(null);
+    if (val === 'Pulang') {
+      if (dailyState?.isDinasLuar) {
+        setJenisPresensi('Dinas Luar');
+      } else {
+        setJenisPresensi('Sekolah');
+      }
+    } else {
+      setJenisPresensi('Sekolah');
+    }
+  };
+
+  // Determine if selfie camera is required
+  // Required for:
+  // 1. Presensi Datang (Sekolah & Dinas Luar)
+  // 2. Presensi Pulang if Dinas Luar
+  const isSelfieRequired = (tipeAbsen === 'Datang' && jenisPresensi !== 'Izin') || jenisPresensi === 'Dinas Luar';
 
   const handlePresensiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,6 +146,26 @@ export default function GuruPresensi({ user }: { user: any }) {
     // Validasi Workflow Datang
     if (tipeAbsen === 'Datang' && dailyState?.presensiDatang) {
       return Swal.fire('Info', 'Anda sudah melakukan Presensi Datang hari ini.', 'info');
+    }
+
+    // Validasi Wajib Selfie jika dipersyaratkan
+    if (isSelfieRequired && !file) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Foto Selfie Diperlukan',
+        text: 'Silakan ambil dan konfirmasi foto selfie dengan watermark terlebih dahulu.',
+        confirmButtonColor: '#10B981',
+      });
+    }
+
+    // Validasi File Bukti Izin
+    if (jenisPresensi === 'Izin' && tipeAbsen === 'Datang' && !file) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Surat Keterangan Wajib',
+        text: 'Silakan lampirkan surat keterangan izin atau surat dokter.',
+        confirmButtonColor: '#10B981',
+      });
     }
 
     // Validasi Waktu Presensi (dinormalisasi ke WITA / Asia/Makassar)
@@ -173,20 +226,15 @@ export default function GuruPresensi({ user }: { user: any }) {
       Swal.fire('Di Luar Jangkauan', `Jarak Anda ${jarakAktual} meter dari sekolah. Maksimal radius adalah ${gpsConfig.radius} meter. Presensi akan masuk antrean verifikasi Admin.`, 'warning');
     }
 
-    // Upload to Google Drive if there's a file
-    let fileUrl = '';
-    if (file) {
-      try {
-        fileUrl = await uploadToDrive(file, user.nama, 'Presensi_Guru', 'Presensi');
-      } catch (err: any) {
-        setLoading(false);
-        return Swal.fire('Gagal Upload', err.message, 'error');
-      }
-    }
     const statusVerif = jenisPresensi === 'Sekolah' && (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu';
+    const presensiId = crypto.randomUUID();
 
-    const newPresensi = {
-      id: crypto.randomUUID(),
+    // Non-blocking Asynchronous GAS Upload:
+    // 1. Immediately insert presensi record into Supabase
+    // 2. Show instant UI feedback without waiting for GAS
+    // 3. Fire background uploadToDrive and update link_bukti upon completion
+    const newPresensi: any = {
+      id: presensiId,
       timestamp: getWitaTimestamp(),
       nama_guru: user.nama,
       tipe_absen: tipeAbsen,
@@ -194,30 +242,86 @@ export default function GuruPresensi({ user }: { user: any }) {
       detail_izin: jenisPresensi === 'Izin' ? detailIzin : '',
       lokasi: lokasi,
       jarak: jarakAktual !== null ? `${jarakAktual} m` : 'Unknown',
-      link_bukti: fileUrl,
+      link_bukti: file ? 'pending:uploading' : '',
       status_verifikasi: statusVerif,
-      keterlambatan_detik: keterlambatanDetik
+      keterlambatan_detik: keterlambatanDetik,
     };
+    if (user?.sekolah_id) {
+      newPresensi.sekolah_id = user.sekolah_id;
+    }
 
     const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
 
     if (error) {
-      Swal.fire('Error', 'Gagal menyimpan presensi', 'error');
-    } else {
-      Swal.fire('Berhasil', 'Presensi berhasil direkam!', 'success');
-      setJenisPresensi('Sekolah');
-      setKeterangan('');
-      setFile(null);
-      
-      // Update state
-      const state = await getGuruDailyState(user.nama, user.username);
-      setDailyState(state);
-      if (tipeAbsen === 'Datang') setTipeAbsen('Pulang');
+      setLoading(false);
+      return Swal.fire('Error', 'Gagal menyimpan data presensi: ' + error.message, 'error');
+    }
+
+    // Keep references for background upload task
+    const fileToUpload = file;
+    const currentTeacher = user.nama;
+    const isSelfie = isSelfieRequired;
+    const currentJenis = jenisPresensi;
+
+    // Instant UI Success Feedback
+    Swal.fire({
+      icon: 'success',
+      title: 'Presensi Berhasil Dicatat!',
+      text: fileToUpload 
+        ? 'Data kehadiran tersimpan. Foto sedang diunggah ke Google Drive di latar belakang.' 
+        : 'Presensi berhasil direkam!',
+      timer: 3000,
+      showConfirmButton: false,
+    });
+
+    // Reset Form & Update local states immediately
+    setJenisPresensi('Sekolah');
+    setKeterangan('');
+    setFile(null);
+    setPhotoPreviewUrl(null);
+    
+    // Refresh workflow state
+    const state = await getGuruDailyState(user.nama, user.username);
+    setDailyState(state);
+    if (tipeAbsen === 'Datang') {
+      setTipeAbsen('Pulang');
+      if (state.isDinasLuar) {
+        setJenisPresensi('Dinas Luar');
+      }
     }
     setLoading(false);
+
+    // Fire background upload to GAS webhook asynchronously
+    if (fileToUpload) {
+      (async () => {
+        try {
+          const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
+          const prefix = isSelfie ? 'Selfie' : 'Dokumen';
+          const driveUrl = await uploadToDrive(fileToUpload, currentTeacher, folderName, prefix);
+          
+          await supabase
+            .from('presensi_guru')
+            .update({ link_bukti: driveUrl })
+            .eq('id', presensiId);
+
+          console.log(`[GuruPresensi] Background GAS upload complete for presensi ${presensiId}:`, driveUrl);
+        } catch (uploadErr: any) {
+          console.error(`[GuruPresensi] Background GAS upload failed for presensi ${presensiId}:`, uploadErr);
+          await supabase
+            .from('presensi_guru')
+            .update({ link_bukti: 'gagal_upload' })
+            .eq('id', presensiId);
+        }
+      })();
+    }
   };
 
   const isPulangLocked = tipeAbsen === 'Pulang' && dailyState && !dailyState.canPresensiPulang;
+
+  // Pulang options for Dinas Luar:
+  // If teacher checked in as Dinas Luar (dailyState?.isDinasLuar is true), allow choosing between "Di Sekolah" and "Dinas Luar".
+  // Dropdown is only disabled if doing Pulang and NOT Dinas Luar.
+  const isJenisDropdownDisabled = tipeAbsen === 'Pulang' && !dailyState?.isDinasLuar;
 
   return (
     <section id="view-guru-presensi" className="view-section fade-in">
@@ -236,17 +340,37 @@ export default function GuruPresensi({ user }: { user: any }) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tipe Absen</label>
-                        <select value={tipeAbsen} onChange={e => setTipeAbsen(e.target.value)} required className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-nizamudin-green dark:text-nizamudin-gold">
+                        <select 
+                          value={tipeAbsen} 
+                          onChange={e => handleTipeAbsenChange(e.target.value)} 
+                          required 
+                          className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-nizamudin-green dark:text-nizamudin-gold"
+                        >
                             <option value="Datang" disabled={!!dailyState?.presensiDatang}>DATANG</option>
                             <option value="Pulang" disabled={!dailyState?.presensiDatang}>PULANG</option>
                         </select>
                     </div>
                     <div>
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kondisi / Sifat</label>
-                        <select value={jenisPresensi} onChange={e => togglePresensiFields(e.target.value)} disabled={tipeAbsen === 'Pulang'} required className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50 text-gray-900 dark:text-white">
-                            <option value="Sekolah">Hadir Sekolah</option>
-                            <option value="Dinas Luar">Dinas Luar</option>
-                            <option value="Izin">Izin / Sakit</option>
+                        <select 
+                          value={jenisPresensi} 
+                          onChange={e => togglePresensiFields(e.target.value)} 
+                          disabled={isJenisDropdownDisabled} 
+                          required 
+                          className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50 text-gray-900 dark:text-white"
+                        >
+                            {tipeAbsen === 'Pulang' && dailyState?.isDinasLuar ? (
+                              <>
+                                <option value="Sekolah">Di Sekolah</option>
+                                <option value="Dinas Luar">Dinas Luar</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="Sekolah">Hadir Sekolah</option>
+                                <option value="Dinas Luar">Dinas Luar</option>
+                                <option value="Izin">Izin / Sakit</option>
+                              </>
+                            )}
                         </select>
                     </div>
                 </div>
@@ -282,13 +406,72 @@ export default function GuruPresensi({ user }: { user: any }) {
                             placeholder="Jelaskan secara lengkap..."
                           ></textarea>
                       </div>
+
+                      {/* File upload for Izin / Sakit */}
+                      <div id="row-file-izin" className="fade-in pt-1">
+                          <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1">
+                            <i className="fa-solid fa-asterisk"></i> Wajib Upload Surat Keterangan / Sakit
+                          </label>
+                          <input 
+                            type="file" 
+                            accept="image/*,.pdf" 
+                            onChange={e => {
+                              setFile(e.target.files ? e.target.files[0] : null);
+                              setPhotoPreviewUrl(null);
+                            }} 
+                            required 
+                            className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
+                          />
+                      </div>
                   </div>
                 )}
 
-                {jenisPresensi !== 'Sekolah' && tipeAbsen === 'Datang' && (
-                  <div id="row-file" className="fade-in pt-1">
-                      <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1"><i className="fa-solid fa-asterisk"></i> Wajib Upload Surat Keterangan</label>
-                      <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                {/* Camera Selfie Capture for Datang and Dinas Luar */}
+                {isSelfieRequired && (
+                  <div id="row-camera-selfie" className="fade-in pt-1 space-y-2">
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white ml-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <i className="fa-solid fa-camera text-emerald-500"></i>
+                        Foto Selfie Kehadiran (Wajib dengan Watermark)
+                      </span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                        {file ? '✓ Foto Terpasang' : 'Kamera Aktif'}
+                      </span>
+                    </label>
+
+                    <CameraSelfieCapture
+                      key={`${tipeAbsen}-${jenisPresensi}`}
+                      initialCoordinates={userCoords}
+                      existingPhotoUrl={photoPreviewUrl}
+                      onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                        setFile(capturedFile);
+                        setPhotoPreviewUrl(previewUrl);
+                      }}
+                    />
+
+                    {file && (
+                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between transition-all">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
+                          <i className="fa-solid fa-circle-check text-emerald-500 text-base"></i>
+                          <div>
+                            <div>Foto selfie siap digunakan</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                              {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFile(null);
+                            setPhotoPreviewUrl(null);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                        >
+                          Ganti Foto
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -310,7 +493,7 @@ export default function GuruPresensi({ user }: { user: any }) {
 
                 <div className="pt-2">
                     <button type="submit" disabled={loading || isPulangLocked || dailyState?.isLibur} className="btn-click w-full bg-nizamudin-green text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-                        {loading ? 'Memproses...' : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
+                        {loading ? 'Menyimpan Presensi...' : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
                     </button>
                 </div>
             </form>
