@@ -230,6 +230,7 @@ body.fade-out {
   }
 
   /* Hide non-printable elements */
+  header, nav, aside, .swal2-container, .no-print { display: none !important; }
   header, nav, aside, .swal2-container, .no-print,
   .app-header, .page-transition > .no-print {
     display: none !important;

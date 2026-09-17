@@ -60,11 +60,18 @@ async function runChallengerRlsTests() {
   // 1. Raw anonymous client
   const anonClient = createClient(supabaseUrl, supabaseKey);
 
-  // Authenticate superadmin via verify_login RPC to obtain legitimate superadmin user ID
-  const { data: superadminAuth, error: saAuthErr } = await anonClient.rpc('verify_login', {
+  let { data: superadminAuth, error: saAuthErr } = await anonClient.rpc('verify_login', {
     p_username: 'superadmin',
-    p_password: 'superadmin123'
+    p_password: 'SipjamSuperAdmin2026!'
   });
+  if (!superadminAuth || superadminAuth.length === 0) {
+    const res = await anonClient.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: 'superadmin123'
+    });
+    superadminAuth = res.data;
+    saAuthErr = res.error;
+  }
 
   if (saAuthErr || !superadminAuth || superadminAuth.length === 0) {
     fail('Superadmin pre-authentication via verify_login failed', saAuthErr);
@@ -175,11 +182,18 @@ async function runChallengerRlsTests() {
     }
     pass(`Superadmin provisioned Admin B (${resAdminB.username}) linked to School B (${resAdminB.sekolah_id})`);
 
-    // 1.5 Verify login credentials via verify_login RPC
-    const { data: loginSa, error: errLoginSa } = await anonClient.rpc('verify_login', {
+    let { data: loginSa, error: errLoginSa } = await anonClient.rpc('verify_login', {
       p_username: 'superadmin',
-      p_password: 'superadmin123'
+      p_password: 'SipjamSuperAdmin2026!'
     });
+    if (!loginSa || loginSa.length === 0) {
+      const res = await anonClient.rpc('verify_login', {
+        p_username: 'superadmin',
+        p_password: 'superadmin123'
+      });
+      loginSa = res.data;
+      errLoginSa = res.error;
+    }
     if (errLoginSa || !loginSa || loginSa.length === 0 || loginSa[0].role !== 'Superadmin') {
       fail('verify_login failed for superadmin', errLoginSa);
     }

@@ -61,10 +61,17 @@ async function runEmpiricalChallenger() {
   const anonClient = createClient(supabaseUrl, supabaseKey);
 
   // Authenticate superadmin via RPC to obtain genuine superadmin user id
-  const { data: superadminAuth } = await anonClient.rpc('verify_login', {
+  let { data: superadminAuth } = await anonClient.rpc('verify_login', {
     p_username: 'superadmin',
-    p_password: 'superadmin123'
+    p_password: 'SipjamSuperAdmin2026!'
   });
+  if (!superadminAuth || superadminAuth.length === 0) {
+    const res = await anonClient.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: 'superadmin123'
+    });
+    superadminAuth = res.data;
+  }
   const genuineSuperadminId = superadminAuth?.[0]?.id;
 
   const genuineSuperadminClient = createClient(supabaseUrl, supabaseKey, {

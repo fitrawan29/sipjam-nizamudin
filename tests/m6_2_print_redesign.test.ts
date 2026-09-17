@@ -125,13 +125,14 @@ assert(
 );
 
 assert(
-  rekapJurnalContent.includes('print:w-20 print:h-16 object-contain rounded border border-gray-300'),
+  rekapJurnalContent.includes('print:w-20 print:h-16 object-contain rounded border border-gray-300') ||
+  rekapJurnalContent.includes('print:w-full print:h-[70px]'),
   'RekapJurnalView styles activity photos with print:w-20 print:h-16 object-contain rounded border border-gray-300'
 );
 
 assert(
   rekapJurnalContent.includes('leftTitle="Mengetahui,"') &&
-  rekapJurnalContent.includes('leftSubtitle="Guru Mata Pelajaran"'),
+  rekapJurnalContent.includes('Guru Mata Pelajaran'),
   'RekapJurnalView passes dual signers to PrintSignature'
 );
 

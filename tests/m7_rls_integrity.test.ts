@@ -94,10 +94,17 @@ async function runRlsIntegrityVerification() {
   const anonClient = createClient(supabaseUrl, supabaseKey);
 
   // Authenticate superadmin via verify_login RPC to obtain legitimate superadmin user ID
-  const { data: superadminAuth } = await anonClient.rpc('verify_login', {
+  let { data: superadminAuth } = await anonClient.rpc('verify_login', {
     p_username: 'superadmin',
-    p_password: 'superadmin123'
+    p_password: 'SipjamSuperAdmin2026!'
   });
+  if (!superadminAuth || superadminAuth.length === 0) {
+    const res = await anonClient.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: 'superadmin123'
+    });
+    superadminAuth = res.data;
+  }
   const superadminUserId = superadminAuth?.[0]?.id || '5dfbfc0a-8b4b-4c47-aeb9-bc1d2cbac438';
 
   // Authenticate school admin via verify_login RPC to obtain legitimate school admin user ID
@@ -336,10 +343,18 @@ async function runRlsIntegrityVerification() {
     pass('Direct query for password hashes returned 0 rows');
 
     // 2.4 Legitimate verify_login RPC Authentication
-    const { data: validLogin, error: errValidLogin } = await anonClient.rpc('verify_login', {
+    let { data: validLogin, error: errValidLogin } = await anonClient.rpc('verify_login', {
       p_username: 'superadmin',
-      p_password: 'superadmin123'
+      p_password: 'SipjamSuperAdmin2026!'
     });
+    if (!validLogin || validLogin.length === 0) {
+      const res = await anonClient.rpc('verify_login', {
+        p_username: 'superadmin',
+        p_password: 'superadmin123'
+      });
+      validLogin = res.data;
+      errValidLogin = res.error;
+    }
 
     if (errValidLogin || !validLogin || validLogin.length !== 1) {
       fail('verify_login RPC failed for valid superadmin credentials', errValidLogin);
