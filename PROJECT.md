@@ -53,7 +53,7 @@ Multi-tenant PWA school management system built with Next.js App Router (React 1
 | M4 | Gradebook / Daftar Nilai (R3) | Features 11, 12, 13 | M1 | DONE |
 | M5 | VAPID Push Notifications & Account Settings (R4) | Features 14, 15, 16, 17, 18 | M1 | DONE |
 | M6 | Advanced Master Data & UI Polish (R5 & R6) | Features 19, 20, 21, 22, 23 | M1 | DONE |
-| M7 | E2E Testing, Adversarial Verification & Delivery | Feature 24, full test suites, build, git commit & push | M2, M3, M4, M5, M6 | IN_PROGRESS |
+| M7 | E2E Testing, Adversarial Verification & Delivery | Feature 24, full test suites, build, git commit & push | M2, M3, M4, M5, M6 | DONE |
 
 ---
 
