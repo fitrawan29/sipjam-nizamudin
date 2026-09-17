@@ -276,7 +276,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         diubah_oleh: user?.nama || 'Guru Mapel',
         log_perubahan: [...prevLogs, logEntry],
         updated_at: new Date().toISOString()
-      }], { onConflict: 'sekolah_id, tanggal, nisn' }).catch(console.error);
+      }], { onConflict: 'sekolah_id, tanggal, nisn' }).then(null, console.error);
     }
   };
 

@@ -9,7 +9,7 @@ Last visited: 2026-09-17T10:44:45Z
 - [x] Milestone 1: Database Foundations & Migrations (completed & verified)
 - [ ] Milestone 2: Attendance Sync & Wali Kelas (R1) (worker_m2_attendance running)
 - [x] Milestone 3: Teacher Selfie Attendance & Watermark (R2) (completed & verified)
-- [ ] Milestone 4: Gradebook / Daftar Nilai (R3) (worker_m4_gradebook running)
+- [x] Milestone 4: Gradebook / Daftar Nilai (R3) (completed & verified)
 - [ ] Milestone 5: VAPID Push Notifications & Account Settings (R4) (worker_m5_push_settings running)
 - [ ] Milestone 6: Advanced Master Data & UI Polish (R5 & R6) (pending)
 - [ ] Milestone 7: E2E Testing, Adversarial Verification & Delivery (pending)

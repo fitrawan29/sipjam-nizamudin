@@ -55,7 +55,7 @@ Orchestrate the comprehensive feature additions and enhancements (R1 to R6) for 
 | worker_m1_db | teamwork_preview_worker | Milestone 1 (SQL Migrations, Tables, Triggers, RLS, Types) | completed | 2d88b62e-4eda-4725-a740-e189a9c1bf0e |
 | worker_m2_attendance | teamwork_preview_worker | Milestone 2 (Attendance Sync & Wali Kelas) | running | 502af5b7-420b-4e83-9f45-94354b3e7376 |
 | worker_m3_selfie | teamwork_preview_worker | Milestone 3 (Selfie Camera, Canvas Watermark, GAS Webhook) | completed | f0aaa612-b5b4-4577-90bd-da19a5d95e41 |
-| worker_m4_gradebook | teamwork_preview_worker | Milestone 4 (Gradebook CRUD & Matrix) | running | 3cc0198f-7f09-46e2-a92c-c9b89ad05a4f |
+| worker_m4_gradebook | teamwork_preview_worker | Milestone 4 (Gradebook CRUD & Matrix) | completed | 3cc0198f-7f09-46e2-a92c-c9b89ad05a4f |
 | worker_m5_push_settings | teamwork_preview_worker | Milestone 5 (VAPID Web Push & Account Settings) | running | 201279b0-583e-41f8-aa33-a1331c3b3e81 |
 
 ## Succession Status
