@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
+import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 
 export default function GuruJurnal({ user }: { user: any }) {
   const [tipeJurnal, setTipeJurnal] = useState('Jurnal KBM');
@@ -17,6 +18,7 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [catatanSiswa, setCatatanSiswa] = useState('');
   const [refleksi, setRefleksi] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
 
   // New R2 state variables
   const [pertemuanKe, setPertemuanKe] = useState('');
@@ -282,16 +284,24 @@ export default function GuruJurnal({ user }: { user: any }) {
 
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!file) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Foto Dokumentasi Wajib',
+        text: 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera langsung perangkat.',
+        confirmButtonColor: '#2563EB',
+      });
+    }
+
     setLoading(true);
 
     let fileUrl = '';
-    if (file) {
-      try {
-        fileUrl = await uploadToDrive(file, user.nama, tipeJurnal, 'Jurnal');
-      } catch (err: any) {
-        setLoading(false);
-        return Swal.fire('Gagal Upload', err.message, 'error');
-      }
+    try {
+      fileUrl = await uploadToDrive(file, user.nama, tipeJurnal, 'Jurnal');
+    } catch (err: any) {
+      setLoading(false);
+      return Swal.fire('Gagal Upload', err.message, 'error');
     }
 
     const computedKehadiran = tipeJurnal === 'Jurnal KBM'
@@ -379,6 +389,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         setCatatanSiswa('');
         setRefleksi('');
         setFile(null);
+        setPhotoPreviewUrl(null);
         setPertemuanKe('');
         setJamKe('');
         setTujuanPembelajaran('');
@@ -630,9 +641,50 @@ export default function GuruJurnal({ user }: { user: any }) {
                   </div>
                 )}
                 
-                <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Upload Foto / Dokumen <span className="text-red-500 dark:text-red-400">(Wajib)</span></label>
-                    <input type="file" accept="image/*,.pdf" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
+                        Foto Dokumentasi Pembelajaran <span className="text-red-500 dark:text-red-400">(Wajib Kamera Langsung)</span>
+                      </span>
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                        {file ? '✓ Foto Terpasang' : 'Kamera Aktif'}
+                      </span>
+                    </label>
+
+                    <CameraSelfieCapture
+                      key={`cam-jurnal-${tipeJurnal}`}
+                      initialFacingMode="environment"
+                      existingPhotoUrl={photoPreviewUrl}
+                      onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                        setFile(capturedFile);
+                        setPhotoPreviewUrl(previewUrl);
+                      }}
+                    />
+
+                    {file && (
+                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex items-center justify-between transition-all">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-blue-800 dark:text-blue-200">
+                          <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400 text-base"></i>
+                          <div>
+                            <div>Foto dokumentasi siap diunggah</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                              {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFile(null);
+                            setPhotoPreviewUrl(null);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                        >
+                          Ganti Foto
+                        </button>
+                      </div>
+                    )}
                 </div>
 
                 <div>

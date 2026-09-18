@@ -19,6 +19,7 @@ export default function AdminConfigView({ user }: { user: any }) {
     jam_datang_batas: '07:15',
     jam_datang_akhir: '08:00',
     jam_pulang_mulai: '11:00',
+    jam_pulang_jumat: '11:00',
     jam_pulang_akhir: '22:00',
     kop_yayasan: '',
     kop_sekolah: '',
@@ -35,6 +36,10 @@ export default function AdminConfigView({ user }: { user: any }) {
     gps_radius: '100'
   });
 
+  const [guruList, setGuruList] = useState<any[]>([]);
+  const [exemptTeacherIds, setExemptTeacherIds] = useState<string[]>([]);
+  const [teacherSearch, setTeacherSearch] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
 
@@ -48,6 +53,7 @@ export default function AdminConfigView({ user }: { user: any }) {
         const { data } = await query;
         if (data && data.length > 0) {
           const newConfig = { ...config };
+          const ghmList: string[] = [];
           data.forEach(item => {
             if (item.key in newConfig) {
               (newConfig as any)[item.key] = item.value;
@@ -60,6 +66,30 @@ export default function AdminConfigView({ user }: { user: any }) {
             if (item.email_tujuan_upload) {
               newConfig.email_tujuan_upload = item.email_tujuan_upload;
             }
+            if (item.jam_pulang_jumat) {
+              newConfig.jam_pulang_jumat = item.jam_pulang_jumat;
+            }
+            if (item.key === 'jam_pulang_jumat' && item.value) {
+              newConfig.jam_pulang_jumat = item.value;
+            }
+            if (item.key === 'guru_hanya_mengajar' && item.value) {
+              try {
+                const parsed = JSON.parse(item.value);
+                if (Array.isArray(parsed)) ghmList.push(...parsed);
+                else if (typeof parsed === 'string') ghmList.push(parsed);
+              } catch (_) {
+                ghmList.push(item.value);
+              }
+            }
+            if (item.guru_hanya_mengajar) {
+              try {
+                const parsed = JSON.parse(item.guru_hanya_mengajar);
+                if (Array.isArray(parsed)) ghmList.push(...parsed);
+                else if (typeof parsed === 'string') ghmList.push(parsed);
+              } catch (_) {
+                ghmList.push(item.guru_hanya_mengajar);
+              }
+            }
           });
           // Ensure bidirectional fallback between kota_kabupaten and kota_ttd
           if (!newConfig.kota_kabupaten && newConfig.kota_ttd) {
@@ -69,6 +99,22 @@ export default function AdminConfigView({ user }: { user: any }) {
             newConfig.kota_ttd = newConfig.kota_kabupaten;
           }
           setConfig(newConfig);
+
+          // Fetch teachers from data_guru
+          let guruQuery = supabase.from('data_guru').select('*').order('nama_guru', { ascending: true });
+          if (user?.sekolah_id) {
+            guruQuery = guruQuery.eq('sekolah_id', user.sekolah_id);
+          }
+          const { data: teachers } = await guruQuery;
+          if (teachers && teachers.length > 0) {
+            setGuruList(teachers);
+            const dbExempt = teachers
+              .filter(t => t.wajib_hadir_hanya_mengajar === true)
+              .map(t => t.id);
+            setExemptTeacherIds(Array.from(new Set([...ghmList, ...dbExempt])));
+          } else if (ghmList.length > 0) {
+            setExemptTeacherIds(Array.from(new Set(ghmList)));
+          }
         }
       } catch (err) {
         console.error('Config fetch error:', err);
@@ -136,18 +182,34 @@ export default function AdminConfigView({ user }: { user: any }) {
     const cityVal = config.kota_kabupaten || config.kota_ttd || '';
     const saveConfig = {
       ...config,
+      jam_pulang_jumat: config.jam_pulang_jumat || '11:00',
       kota_kabupaten: cityVal,
       kota_ttd: cityVal
     };
 
     const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+    const jsonExempt = JSON.stringify(exemptTeacherIds);
+
     const upsertData = Object.entries(saveConfig).map(([key, value]) => ({
       sekolah_id: targetSekolahId,
       key,
       value: value !== undefined && value !== null ? value.toString() : '',
       aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
-      email_tujuan_upload: saveConfig.email_tujuan_upload
+      email_tujuan_upload: saveConfig.email_tujuan_upload,
+      jam_pulang_jumat: saveConfig.jam_pulang_jumat,
+      guru_hanya_mengajar: jsonExempt
     }));
+
+    // Ensure guru_hanya_mengajar is also saved as a key-value row
+    upsertData.push({
+      sekolah_id: targetSekolahId,
+      key: 'guru_hanya_mengajar',
+      value: jsonExempt,
+      aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
+      email_tujuan_upload: saveConfig.email_tujuan_upload,
+      jam_pulang_jumat: saveConfig.jam_pulang_jumat,
+      guru_hanya_mengajar: jsonExempt
+    });
 
     try {
       const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'sekolah_id,key' });
@@ -155,8 +217,21 @@ export default function AdminConfigView({ user }: { user: any }) {
       // Also ensure column values are set on pengaturan rows for this school
       await supabase.from('pengaturan').update({
         aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
-        email_tujuan_upload: saveConfig.email_tujuan_upload
+        email_tujuan_upload: saveConfig.email_tujuan_upload,
+        jam_pulang_jumat: saveConfig.jam_pulang_jumat,
+        guru_hanya_mengajar: jsonExempt
       }).eq('sekolah_id', targetSekolahId);
+
+      // Also sync data_guru.wajib_hadir_hanya_mengajar
+      if (guruList.length > 0) {
+        for (const t of guruList) {
+          const isExempt = exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru));
+          await supabase
+            .from('data_guru')
+            .update({ wajib_hadir_hanya_mengajar: isExempt })
+            .eq('id', t.id);
+        }
+      }
 
       if (error) {
         Swal.fire('Error', 'Gagal menyimpan pengaturan: ' + error.message, 'error');
@@ -248,6 +323,110 @@ export default function AdminConfigView({ user }: { user: any }) {
                         </span>
                       </p>
                     </div>
+
+                    {/* Pengecualian Kehadiran Guru (Hanya wajib hadir saat hari mengajar) */}
+                    <div className="mt-4 pt-4 border-t border-indigo-200/60 dark:border-indigo-800/60">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div>
+                          <h4 className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                            <i className="fa-solid fa-user-gear text-xs text-indigo-600 dark:text-indigo-400"></i>
+                            Pengecualian Kehadiran Guru
+                          </h4>
+                          <p className="text-[10px] text-gray-600 dark:text-gray-300">
+                            Tentukan guru yang <strong>Hanya wajib hadir saat hari mengajar / piket</strong>. Guru yang tidak dipilih tetap wajib hadir setiap hari kerja.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExemptTeacherIds(guruList.map(g => g.id))}
+                            className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                          >
+                            Pilih Semua
+                          </button>
+                          <span className="text-gray-300 dark:text-gray-600">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setExemptTeacherIds([])}
+                            className="text-[10px] font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                          >
+                            Reset Semua
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mb-2">
+                        <input
+                          type="text"
+                          placeholder="Cari nama guru, NIP, atau mata pelajaran..."
+                          value={teacherSearch}
+                          onChange={e => setTeacherSearch(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 custom-scroll">
+                        {guruList.length === 0 ? (
+                          <div className="text-center py-4 text-[11px] text-gray-500 italic">
+                            Tidak ada data guru ditemukan.
+                          </div>
+                        ) : (
+                          guruList
+                            .filter(g => {
+                              if (!teacherSearch) return true;
+                              const s = teacherSearch.toLowerCase();
+                              return (
+                                (g.nama_guru && g.nama_guru.toLowerCase().includes(s)) ||
+                                (g.mata_pelajaran && g.mata_pelajaran.toLowerCase().includes(s)) ||
+                                (g.nip && g.nip.toLowerCase().includes(s))
+                              );
+                            })
+                            .map(g => {
+                              const isExempt = exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru));
+                              return (
+                                <label
+                                  key={g.id}
+                                  className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition ${
+                                    isExempt
+                                      ? 'bg-indigo-100/70 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700'
+                                      : 'bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <input
+                                      type="checkbox"
+                                      checked={isExempt}
+                                      onChange={e => {
+                                        if (e.target.checked) {
+                                          setExemptTeacherIds(prev => [...prev, g.id]);
+                                        } else {
+                                          setExemptTeacherIds(prev => prev.filter(id => id !== g.id && id !== g.nama_guru));
+                                        }
+                                      }}
+                                      className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 shrink-0"
+                                    />
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-gray-900 dark:text-white truncate">
+                                        {g.nama_guru}
+                                      </div>
+                                      <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                                        {g.mata_pelajaran ? `Mapel: ${g.mata_pelajaran}` : (g.nip ? `NIP: ${g.nip}` : 'Guru')}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                                    isExempt
+                                      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
+                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                  }`}>
+                                    {isExempt ? 'Hanya Hari Mengajar' : 'Setiap Hari Kerja'}
+                                  </span>
+                                </label>
+                              );
+                            })
+                        )}
+                      </div>
+                    </div>
                 </div>
                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4">
                     <h3 className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-3 uppercase flex items-center gap-2"><i className="fa-regular fa-clock text-xs"></i> Pengaturan Jam Presensi</h3>
@@ -256,8 +435,21 @@ export default function AdminConfigView({ user }: { user: any }) {
                         <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Batas Terlambat</label><input type="time" name="jam_datang_batas" value={config.jam_datang_batas || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
                         <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Datang Tutup</label><input type="time" name="jam_datang_akhir" value={config.jam_datang_akhir || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Pulang Buka</label><input type="time" name="jam_pulang_mulai" value={config.jam_pulang_mulai || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
+                            Jam Pulang Hari Jumat
+                          </label>
+                          <input 
+                            type="time" 
+                            name="jam_pulang_jumat" 
+                            value={config.jam_pulang_jumat || '11:00'} 
+                            onChange={handleChange} 
+                            required 
+                            className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium" 
+                          />
+                        </div>
                         <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Pulang Tutup</label><input type="time" name="jam_pulang_akhir" value={config.jam_pulang_akhir || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total 4 jam keterlambatan = 1 Hari Alpa otomatis.</p>

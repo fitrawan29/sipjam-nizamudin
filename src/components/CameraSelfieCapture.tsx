@@ -9,6 +9,7 @@ export interface CameraSelfieCaptureProps {
   onCancel?: () => void;
   initialCoordinates?: WatermarkCoordinates | null;
   existingPhotoUrl?: string | null;
+  initialFacingMode?: 'user' | 'environment';
 }
 
 export default function CameraSelfieCapture({
@@ -16,11 +17,12 @@ export default function CameraSelfieCapture({
   onCancel,
   initialCoordinates = null,
   existingPhotoUrl = null,
+  initialFacingMode = 'user',
 }: CameraSelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
   const [isStreaming, setIsStreaming] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(existingPhotoUrl || null);
@@ -42,7 +44,7 @@ export default function CameraSelfieCapture({
           setGpsStatus(`GPS OK (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
         },
         (err) => {
-          console.warn('[CameraSelfie] Geolocation warning:', err.message);
+          console.warn('[CameraCapture] Geolocation warning:', err.message);
           setGpsStatus('GPS tidak aktif / izin lokasi ditolak');
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -66,20 +68,20 @@ export default function CameraSelfieCapture({
     setIsStreaming(false);
   }, []);
 
-  // 3. Start camera stream
-  const startCamera = useCallback(async () => {
+  // 3. Start camera stream with specified facingMode
+  const startCamera = useCallback(async (mode: 'user' | 'environment' = facingMode) => {
     setCameraError(null);
     stopCamera();
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError('Browser ini tidak mendukung akses kamera langsung. Silakan gunakan opsi unggah foto.');
+      setCameraError('Browser ini tidak mendukung akses kamera langsung.');
       return;
     }
 
     try {
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: 'user', // Front selfie camera
+          facingMode: { ideal: mode },
           width: { ideal: 1280, max: 1920 },
           height: { ideal: 720, max: 1080 },
         },
@@ -97,7 +99,7 @@ export default function CameraSelfieCapture({
         };
       }
     } catch (err: any) {
-      console.error('[CameraSelfie] Camera access error:', err);
+      console.error('[CameraCapture] Camera access error:', err);
       let message = 'Gagal mengakses kamera.';
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         message = 'Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser.';
@@ -111,18 +113,25 @@ export default function CameraSelfieCapture({
       setCameraError(message);
       setIsStreaming(false);
     }
-  }, [stopCamera]);
+  }, [facingMode, stopCamera]);
+
+  // Toggle front/rear camera
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    startCamera(nextMode);
+  };
 
   // Initial mount: update GPS and start camera if no image captured yet
   useEffect(() => {
     requestLocation();
     if (!capturedImage) {
-      startCamera();
+      startCamera(facingMode);
     }
     return () => {
       stopCamera();
     };
-  }, [capturedImage, requestLocation, startCamera, stopCamera]);
+  }, [capturedImage, facingMode, requestLocation, startCamera, stopCamera]);
 
   // 4. Capture photo and draw watermark
   const handleCapturePhoto = () => {
@@ -130,14 +139,15 @@ export default function CameraSelfieCapture({
 
     try {
       const watermarkOpts = getDefaultWatermarkOptions(coordinates);
-      const dataUrl = drawWatermarkedCanvas(videoRef.current, watermarkOpts);
-      const file = dataUrlToFile(dataUrl, `selfie_presensi_${Date.now()}.jpg`);
+      const isMirror = facingMode === 'user';
+      const dataUrl = drawWatermarkedCanvas(videoRef.current, watermarkOpts, isMirror);
+      const file = dataUrlToFile(dataUrl, `foto_kamera_${Date.now()}.jpg`);
 
       setCapturedImage(dataUrl);
       setCapturedFile(file);
       stopCamera();
     } catch (err: any) {
-      console.error('[CameraSelfie] Error capturing frame:', err);
+      console.error('[CameraCapture] Error capturing frame:', err);
       Swal.fire({
         icon: 'error',
         title: 'Gagal Mengambil Foto',
@@ -151,15 +161,14 @@ export default function CameraSelfieCapture({
   const handleRetake = () => {
     setCapturedImage(null);
     setCapturedFile(null);
-    startCamera();
+    startCamera(facingMode);
     requestLocation();
   };
 
   // 6. Confirm and use photo
   const handleConfirmPhoto = () => {
     if (!capturedFile && capturedImage) {
-      // If capturedImage exists but capturedFile doesn't (e.g. from existing photo)
-      const file = dataUrlToFile(capturedImage, `selfie_presensi_${Date.now()}.jpg`);
+      const file = dataUrlToFile(capturedImage, `foto_kamera_${Date.now()}.jpg`);
       stopCamera();
       onPhotoConfirmed(file, capturedImage);
       return;
@@ -178,38 +187,6 @@ export default function CameraSelfieCapture({
     }
   };
 
-  // 7. Fallback file upload handling
-  const handleFallbackFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const watermarkOpts = getDefaultWatermarkOptions(coordinates);
-          const dataUrl = drawWatermarkedCanvas(img, watermarkOpts);
-          const watermarkedFile = dataUrlToFile(dataUrl, `selfie_upload_${Date.now()}.jpg`);
-
-          setCapturedImage(dataUrl);
-          setCapturedFile(watermarkedFile);
-          stopCamera();
-        } catch (canvasErr: any) {
-          console.error('[CameraSelfie] Fallback watermark error:', canvasErr);
-          Swal.fire({
-            icon: 'error',
-            title: 'Gagal Memproses Watermark',
-            text: 'Gagal memproses watermark pada foto yang dipilih.',
-            confirmButtonColor: '#10B981',
-          });
-        }
-      };
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(selectedFile);
-  };
-
   return (
     <div className="w-full bg-slate-50 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-700/60 p-4 shadow-sm transition-all">
       {/* Header status bar */}
@@ -217,7 +194,7 @@ export default function CameraSelfieCapture({
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
           <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-            {capturedImage ? 'Preview Foto Selfie (Watermarked)' : 'Kamera Selfie Presensi'}
+            {capturedImage ? 'Preview Foto Kamera (Watermarked)' : 'Kamera Langsung Perangkat'}
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
@@ -234,7 +211,7 @@ export default function CameraSelfieCapture({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={capturedImage}
-              alt="Preview Presensi"
+              alt="Preview Kamera"
               className="w-full h-full object-contain"
             />
             <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20">
@@ -249,16 +226,16 @@ export default function CameraSelfieCapture({
               playsInline
               autoPlay
               muted
-              className={`w-full h-full object-cover transform -scale-x-100 ${
-                isStreaming ? 'block' : 'hidden'
-              }`}
+              className={`w-full h-full object-cover transform ${
+                facingMode === 'user' ? '-scale-x-100' : ''
+              } ${isStreaming ? 'block' : 'hidden'}`}
             />
 
             {/* Video loading state */}
             {!isStreaming && !cameraError && (
               <div className="flex flex-col items-center justify-center text-slate-400 gap-2 p-4 text-center">
                 <i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-500"></i>
-                <span className="text-xs font-medium">Menghubungkan ke kamera selfie...</span>
+                <span className="text-xs font-medium">Menghubungkan ke kamera perangkat...</span>
               </div>
             )}
 
@@ -270,17 +247,17 @@ export default function CameraSelfieCapture({
                 <div className="flex flex-wrap gap-2 justify-center mt-1">
                   <button
                     type="button"
-                    onClick={startCamera}
+                    onClick={() => startCamera(facingMode)}
                     className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
                   >
                     <i className="fa-solid fa-rotate-right"></i> Coba Lagi
                   </button>
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={toggleFacingMode}
                     className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
                   >
-                    <i className="fa-solid fa-file-arrow-up"></i> Pilih Foto dari Perangkat
+                    <i className="fa-solid fa-camera-rotate"></i> Ganti Kamera ({facingMode === 'user' ? 'Belakang' : 'Depan'})
                   </button>
                 </div>
               </div>
@@ -293,28 +270,23 @@ export default function CameraSelfieCapture({
                   <span className="bg-black/50 backdrop-blur-sm text-[10px] text-white px-2 py-0.5 rounded-md border border-white/10 flex items-center gap-1">
                     <i className="fa-solid fa-circle-dot text-red-500 animate-pulse"></i> LIVE
                   </span>
-                  <span className="bg-black/50 backdrop-blur-sm text-[10px] text-slate-200 px-2 py-0.5 rounded-md border border-white/10">
-                    Kamera Depan
-                  </span>
+                  <button
+                    type="button"
+                    onClick={toggleFacingMode}
+                    className="pointer-events-auto bg-black/60 hover:bg-black/80 backdrop-blur-sm text-[11px] text-slate-100 px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 transition"
+                  >
+                    <i className="fa-solid fa-camera-rotate text-emerald-400"></i>
+                    <span>{facingMode === 'user' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
+                  </button>
                 </div>
-                <div className="text-center text-white/70 text-[11px] font-medium drop-shadow bg-black/40 backdrop-blur-sm py-1 rounded-md mx-auto px-3">
-                  Posisikan wajah Anda di tengah layar
+                <div className="text-center text-white/80 text-[11px] font-medium drop-shadow bg-black/50 backdrop-blur-sm py-1 rounded-md mx-auto px-3">
+                  {facingMode === 'user' ? 'Posisikan wajah Anda di tengah layar' : 'Arahkan kamera ke objek / aktivitas'}
                 </div>
               </div>
             )}
           </>
         )}
       </div>
-
-      {/* Hidden fallback file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        capture="user"
-        onChange={handleFallbackFileChange}
-        className="hidden"
-      />
 
       {/* Controls & Action Buttons */}
       <div className="mt-3.5">
@@ -341,14 +313,14 @@ export default function CameraSelfieCapture({
         ) : (
           /* Live Camera Controls */
           <div className="flex items-center justify-center gap-3">
-            {/* Fallback upload button */}
+            {/* Camera switch toggle button */}
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              title="Unggah foto manual"
-              className="p-2.5 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              onClick={toggleFacingMode}
+              title="Ganti Kamera Depan / Belakang"
+              className="p-3 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition shadow-sm flex items-center gap-1.5"
             >
-              <i className="fa-solid fa-upload text-sm"></i>
+              <i className="fa-solid fa-camera-rotate text-emerald-500 text-base"></i>
             </button>
 
             {/* Visual Capture Button */}
@@ -361,7 +333,7 @@ export default function CameraSelfieCapture({
               <span className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center">
                 <span className="w-2.5 h-2.5 rounded-full bg-white"></span>
               </span>
-              Ambil Foto Selfie
+              {facingMode === 'user' ? 'Ambil Foto Selfie' : 'Ambil Foto'}
             </button>
 
             {/* Refresh GPS button */}
@@ -369,9 +341,9 @@ export default function CameraSelfieCapture({
               type="button"
               onClick={requestLocation}
               title="Perbarui koordinat GPS"
-              className="p-2.5 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              className="p-3 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
             >
-              <i className="fa-solid fa-location-crosshairs text-sm text-emerald-500"></i>
+              <i className="fa-solid fa-location-crosshairs text-base text-emerald-500"></i>
             </button>
           </div>
         )}

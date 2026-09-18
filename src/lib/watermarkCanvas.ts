@@ -49,7 +49,8 @@ export function getDefaultWatermarkOptions(coordinates: WatermarkCoordinates | n
  */
 export function drawWatermarkedCanvas(
   videoElement: HTMLVideoElement | HTMLImageElement,
-  options: WatermarkOptions
+  options: WatermarkOptions,
+  mirror: boolean = false
 ): string {
   // Determine width and height based on element type
   let width = 640;
@@ -73,8 +74,8 @@ export function drawWatermarkedCanvas(
   }
 
   // Draw media frame
-  if (videoElement instanceof HTMLVideoElement) {
-    // Mirror horizontally for natural front-facing selfie camera experience
+  if (mirror) {
+    // Mirror horizontally for front-facing selfie camera
     ctx.save();
     ctx.translate(width, 0);
     ctx.scale(-1, 1);

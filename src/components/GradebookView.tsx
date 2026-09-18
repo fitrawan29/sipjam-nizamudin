@@ -21,8 +21,13 @@ interface StudentItem {
 
 export default function GradebookView({ user }: GradebookViewProps) {
   // Mode & Tenant Resolution
-  const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin';
+  const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
   const [sekolahId, setSekolahId] = useState<string | null>(user?.sekolah_id || null);
+
+  // Guru Pengampu & Sync State
+  const [isGuruPengampu, setIsGuruPengampu] = useState<boolean>(false);
+  const [syncedTahunAjaran, setSyncedTahunAjaran] = useState<string>('');
+  const [syncedSemester, setSyncedSemester] = useState<string>('');
 
   // Active Filters
   const [selectedGuru, setSelectedGuru] = useState<string>(user?.nama || '');
@@ -112,6 +117,49 @@ export default function GradebookView({ user }: GradebookViewProps) {
     };
     resolveSekolah();
   }, [user]);
+
+  // Academic Year & Semester Sync from pengaturan table for Guru accounts
+  useEffect(() => {
+    const fetchAcademicYearSettings = async () => {
+      try {
+        let query = supabase.from('pengaturan').select('*');
+        if (sekolahId) {
+          query = query.eq('sekolah_id', sekolahId);
+        }
+        const { data, error } = await query;
+        if (!error && data && data.length > 0) {
+          let tahunVal = '';
+          let semVal = '';
+          data.forEach((item: any) => {
+            const k = item.key?.toLowerCase();
+            if (k === 'tahun_ajaran') tahunVal = item.value;
+            if (k === 'semester') semVal = item.value;
+            if (item.tahun_ajaran) tahunVal = item.tahun_ajaran;
+            if (item.semester) semVal = item.semester;
+          });
+
+          if (tahunVal) {
+            setSyncedTahunAjaran(tahunVal);
+            if (!isAdmin) {
+              setSelectedTahunAjaran(tahunVal);
+              setTpForm(prev => ({ ...prev, tahun_ajaran: tahunVal }));
+            }
+          }
+          if (semVal && (semVal === 'Ganjil' || semVal === 'Genap')) {
+            setSyncedSemester(semVal);
+            if (!isAdmin) {
+              setSelectedSemester(semVal as 'Ganjil' | 'Genap');
+              setTpForm(prev => ({ ...prev, semester: semVal }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching academic year settings in GradebookView:', err);
+      }
+    };
+
+    fetchAcademicYearSettings();
+  }, [sekolahId, isAdmin]);
 
   // 1. Fetch Teachers, Mapel, and Classes
   useEffect(() => {
@@ -237,6 +285,82 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
     fetchMasterAssignments();
   }, [isAdmin, user]);
+
+  // Verify if current user is the assigned teacher (Guru Pengampu) for selectedMapel & selectedKelas
+  useEffect(() => {
+    const verifyGuruPengampu = async () => {
+      if (isAdmin) {
+        setIsGuruPengampu(false);
+        return;
+      }
+      if (!user || !selectedMapel || !selectedKelas) {
+        setIsGuruPengampu(false);
+        return;
+      }
+
+      // Check mapelList if already loaded teacher's assignments
+      const inMapelList = mapelList.some(
+        m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === selectedKelas)
+      );
+      if (inMapelList) {
+        setIsGuruPengampu(true);
+        return;
+      }
+
+      try {
+        let gmQuery = supabase
+          .from('guru_mapel')
+          .select('*')
+          .eq('nama_mapel', selectedMapel)
+          .eq('kelas', selectedKelas);
+
+        if (sekolahId) gmQuery = gmQuery.eq('sekolah_id', sekolahId);
+
+        if (user.username && user.nama) {
+          gmQuery = gmQuery.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
+        } else if (user.username) {
+          gmQuery = gmQuery.eq('nip', user.username);
+        } else if (user.nama) {
+          gmQuery = gmQuery.ilike('nama_guru', `%${user.nama}%`);
+        }
+
+        const { data: gmData } = await gmQuery;
+        if (gmData && gmData.length > 0) {
+          setIsGuruPengampu(true);
+          return;
+        }
+
+        if (user.nama) {
+          let jmQuery = supabase
+            .from('jadwal_pelajaran')
+            .select('*')
+            .eq('mata_pelajaran', selectedMapel)
+            .eq('kelas', selectedKelas)
+            .ilike('nama_guru', `%${user.nama}%`);
+
+          if (sekolahId) jmQuery = jmQuery.eq('sekolah_id', sekolahId);
+
+          const { data: jData } = await jmQuery;
+          if (jData && jData.length > 0) {
+            setIsGuruPengampu(true);
+            return;
+          }
+        }
+
+        if (selectedGuru && user.nama && selectedGuru.toLowerCase().trim() === user.nama.toLowerCase().trim() && mapelList.length === 0) {
+          setIsGuruPengampu(true);
+          return;
+        }
+
+        setIsGuruPengampu(false);
+      } catch (err) {
+        console.error('Error checking isGuruPengampu:', err);
+        setIsGuruPengampu(false);
+      }
+    };
+
+    verifyGuruPengampu();
+  }, [isAdmin, user, selectedMapel, selectedKelas, selectedGuru, mapelList, sekolahId]);
 
   // 2. Fetch Students for Selected Class
   useEffect(() => {
@@ -497,6 +621,14 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   // Batch Save Grades
   const handleSaveGrades = async () => {
+    if (isAdmin) {
+      return;
+    }
+    if (!isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menyimpan nilai.', 'warning');
+      return;
+    }
+
     if (!selectedTpId || !currentTP) {
       Swal.fire('Perhatian', 'Pilih atau buat Tujuan Pembelajaran terlebih dahulu.', 'warning');
       return;
@@ -565,6 +697,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   // --- CRUD: TUJUAN PEMBELAJARAN (TP) ---
   const handleOpenAddTpModal = () => {
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menambah Tujuan Pembelajaran (TP).', 'warning');
+      return;
+    }
     setEditingTp(null);
     setTpForm({
       kode_tp: `TP ${tpList.length + 1}`,
@@ -577,6 +713,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   const handleOpenEditTpModal = (tp: TujuanPembelajaran) => {
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak mengedit Tujuan Pembelajaran (TP).', 'warning');
+      return;
+    }
     setEditingTp(tp);
     setTpForm({
       kode_tp: tp.kode_tp,
@@ -590,6 +730,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   const handleSaveTp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menyimpan Tujuan Pembelajaran (TP).', 'warning');
+      return;
+    }
     if (!tpForm.kode_tp.trim() || !tpForm.deskripsi.trim()) {
       Swal.fire('Validasi Gagal', 'Kode TP dan Deskripsi wajib diisi.', 'warning');
       return;
@@ -691,6 +835,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   const handleDeleteTp = async (tp: TujuanPembelajaran) => {
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menghapus Tujuan Pembelajaran (TP).', 'warning');
+      return;
+    }
+
     const result = await Swal.fire({
       title: `Hapus ${tp.kode_tp}?`,
       text: `Menghapus TP ini akan menghapus seluruh kolom asesmen dan nilai siswa di bawahnya secara permanen.`,
@@ -722,6 +871,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   // --- CRUD: ASESMEN KOLOM ---
   const handleOpenAddColModal = (kategori: 'Formatif' | 'Sumatif') => {
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menambah kolom asesmen.', 'warning');
+      return;
+    }
     if (!selectedTpId) {
       Swal.fire('Perhatian', 'Pilih Tujuan Pembelajaran terlebih dahulu.', 'warning');
       return;
@@ -737,6 +890,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   const handleOpenEditColModal = (col: AsesmenKolom) => {
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak mengedit kolom asesmen.', 'warning');
+      return;
+    }
     setEditingCol(col);
     setColForm({
       kategori: col.kategori as 'Formatif' | 'Sumatif',
@@ -748,6 +905,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   const handleSaveCol = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menyimpan kolom asesmen.', 'warning');
+      return;
+    }
     if (!colForm.nama.trim()) {
       Swal.fire('Validasi', 'Nama asesmen wajib diisi.', 'warning');
       return;
@@ -794,6 +955,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   const handleDeleteCol = async (col: AsesmenKolom) => {
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menghapus kolom asesmen.', 'warning');
+      return;
+    }
     if (col.kategori === 'Diagnostik') {
       Swal.fire('Tidak Dapat Dihapus', 'Asesmen Diagnostik wajib ada tepat 1 per Tujuan Pembelajaran.', 'warning');
       return;
@@ -831,6 +996,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   // --- BULK FILL GRADES MODAL ---
   const handleOpenBulkFill = (colId?: string) => {
+    if (isAdmin || !isGuruPengampu) {
+      Swal.fire('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak mengisi nilai cepat.', 'warning');
+      return;
+    }
     const targetId = colId || (columnsList[0]?.id || '');
     setBulkFillColId(targetId);
     setBulkFillValue('80');
@@ -840,6 +1009,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   const handleExecuteBulkFill = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isAdmin || !isGuruPengampu) {
+      return;
+    }
     const val = parseFloat(bulkFillValue);
     if (isNaN(val) || val < 0 || val > 100) {
       Swal.fire('Nilai Tidak Valid', 'Masukkan angka antara 0 hingga 100.', 'warning');
@@ -1210,27 +1382,29 @@ export default function GradebookView({ user }: GradebookViewProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {unsavedCount > 0 && (
-              <span className="text-xs font-bold text-amber-600 dark:text-amber-400 animate-pulse bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800">
-                <i className="fa-solid fa-circle-exclamation mr-1.5"></i>
-                {unsavedCount} perubahan belum disimpan
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleSaveGrades}
-              disabled={isSaving || unsavedCount === 0}
-              className={`btn-click px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition ${
-                unsavedCount > 0
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <i className={`fa-solid ${isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
-              {isSaving ? 'Menyimpan...' : 'Simpan Semua Nilai'}
-            </button>
-          </div>
+          {!isAdmin && isGuruPengampu && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {unsavedCount > 0 && (
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 animate-pulse bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800">
+                  <i className="fa-solid fa-circle-exclamation mr-1.5"></i>
+                  {unsavedCount} perubahan belum disimpan
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={handleSaveGrades}
+                disabled={isSaving || unsavedCount === 0}
+                className={`btn-click px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition ${
+                  unsavedCount > 0
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <i className={`fa-solid ${isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
+                {isSaving ? 'Menyimpan...' : 'Simpan Semua Nilai'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* FILTER CONTROLS */}
@@ -1318,17 +1492,24 @@ export default function GradebookView({ user }: GradebookViewProps) {
           {/* Tahun Ajaran Filter */}
           <div>
             <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
-              Tahun Ajaran
+              Tahun Ajaran {!isAdmin && <span className="text-[10px] text-teal-600 dark:text-teal-400 font-normal lowercase">(sinkron admin)</span>}
             </label>
-            <select
-              value={selectedTahunAjaran}
-              onChange={e => setSelectedTahunAjaran(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
-            >
-              <option value="2024/2025">2024/2025</option>
-              <option value="2025/2026">2025/2026</option>
-              <option value="2026/2027">2026/2027</option>
-            </select>
+            {isAdmin ? (
+              <select
+                value={selectedTahunAjaran}
+                onChange={e => setSelectedTahunAjaran(e.target.value)}
+                className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              >
+                <option value="2024/2025">2024/2025</option>
+                <option value="2025/2026">2025/2026</option>
+                <option value="2026/2027">2026/2027</option>
+              </select>
+            ) : (
+              <div className="w-full bg-gray-100 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-white flex items-center justify-between">
+                <span>{selectedTahunAjaran}</span>
+                <i className="fa-solid fa-lock text-[10px] text-gray-400" title="Terkunci sesuai pengaturan admin"></i>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1376,7 +1557,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
         {/* Action Buttons: Export & Print */}
         <div className="flex items-center gap-2">
-          {activeTab === 'tp-matrix' && (
+          {!isAdmin && activeTab === 'tp-matrix' && (
             <button
               type="button"
               onClick={exportTpToCsv}
@@ -1385,7 +1566,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
               <i className="fa-solid fa-file-excel"></i> Export CSV
             </button>
           )}
-          {activeTab === 'rekap-semester' && (
+          {!isAdmin && activeTab === 'rekap-semester' && (
             <button
               type="button"
               onClick={exportSemesterToCsv}
@@ -1441,13 +1622,15 @@ export default function GradebookView({ user }: GradebookViewProps) {
                   {tpList.length} TP Tersedia
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={handleOpenAddTpModal}
-                className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
-              >
-                <i className="fa-solid fa-plus text-xs"></i> Tambah TP Baru
-              </button>
+              {!isAdmin && isGuruPengampu && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddTpModal}
+                  className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-plus text-xs"></i> Tambah TP Baru
+                </button>
+              )}
             </div>
 
             {/* Horizontal TP Pills */}
@@ -1471,7 +1654,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                     <span className="font-normal text-[11px] max-w-[140px] truncate text-gray-500 dark:text-gray-400">
                       {tp.deskripsi}
                     </span>
-                    {selectedTpId === tp.id && (
+                    {selectedTpId === tp.id && !isAdmin && isGuruPengampu && (
                       <div className="flex items-center gap-1 ml-1">
                         <button
                           type="button"
@@ -1532,27 +1715,31 @@ export default function GradebookView({ user }: GradebookViewProps) {
                 <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
                   <i className="fa-solid fa-check text-[10px]"></i> 1 Diagnostik (Wajib)
                 </span>
-                <button
-                  type="button"
-                  onClick={() => handleOpenAddColModal('Formatif')}
-                  className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 transition"
-                >
-                  <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Formatif
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenAddColModal('Sumatif')}
-                  className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 transition"
-                >
-                  <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Sumatif
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleOpenBulkFill()}
-                  className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1.5 transition"
-                >
-                  <i className="fa-solid fa-bolt text-[10px]"></i> Isi Nilai Cepat
-                </button>
+                {!isAdmin && isGuruPengampu && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAddColModal('Formatif')}
+                      className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 transition"
+                    >
+                      <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Formatif
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAddColModal('Sumatif')}
+                      className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 transition"
+                    >
+                      <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Sumatif
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBulkFill()}
+                      className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1.5 transition"
+                    >
+                      <i className="fa-solid fa-bolt text-[10px]"></i> Isi Nilai Cepat
+                    </button>
+                  </>
+                )}
               </div>
 
               <div className="w-full md:w-64">
@@ -1582,13 +1769,15 @@ export default function GradebookView({ user }: GradebookViewProps) {
               <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
                 Silakan buat Tujuan Pembelajaran (TP) terlebih dahulu untuk memulai pengisian asesmen Diagnostik, Formatif, dan Sumatif.
               </p>
-              <button
-                type="button"
-                onClick={handleOpenAddTpModal}
-                className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md inline-flex items-center gap-2"
-              >
-                <i className="fa-solid fa-plus"></i> Tambah TP Sekarang
-              </button>
+              {!isAdmin && isGuruPengampu && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddTpModal}
+                  className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md inline-flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-plus"></i> Tambah TP Sekarang
+                </button>
+              )}
             </div>
           ) : students.length === 0 ? (
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-10 text-center shadow-sm border border-gray-100 dark:border-gray-700">
@@ -1660,24 +1849,26 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           >
                             <div className="flex items-center justify-center gap-1">
                               <span className="truncate max-w-[70px]">{col.nama}</span>
-                              <div className="flex items-center gap-0.5 no-print">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditColModal(col)}
-                                  className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
-                                  title="Ubah Nama/Bobot"
-                                >
-                                  <i className="fa-solid fa-pen text-[9px]"></i>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCol(col)}
-                                  className="w-4 h-4 rounded text-red-400 hover:text-red-600"
-                                  title="Hapus Kolom"
-                                >
-                                  <i className="fa-solid fa-trash text-[9px]"></i>
-                                </button>
-                              </div>
+                              {!isAdmin && isGuruPengampu && (
+                                <div className="flex items-center gap-0.5 no-print">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditColModal(col)}
+                                    className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                    title="Ubah Nama/Bobot"
+                                  >
+                                    <i className="fa-solid fa-pen text-[9px]"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCol(col)}
+                                    className="w-4 h-4 rounded text-red-400 hover:text-red-600"
+                                    title="Hapus Kolom"
+                                  >
+                                    <i className="fa-solid fa-trash text-[9px]"></i>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </th>
                         ))
@@ -1696,24 +1887,26 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           >
                             <div className="flex items-center justify-center gap-1">
                               <span className="truncate max-w-[70px]">{col.nama}</span>
-                              <div className="flex items-center gap-0.5 no-print">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditColModal(col)}
-                                  className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
-                                  title="Ubah Nama/Bobot"
-                                >
-                                  <i className="fa-solid fa-pen text-[9px]"></i>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteCol(col)}
-                                  className="w-4 h-4 rounded text-red-400 hover:text-red-600"
-                                  title="Hapus Kolom"
-                                >
-                                  <i className="fa-solid fa-trash text-[9px]"></i>
-                                </button>
-                              </div>
+                              {!isAdmin && isGuruPengampu && (
+                                <div className="flex items-center gap-0.5 no-print">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditColModal(col)}
+                                    className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                    title="Ubah Nama/Bobot"
+                                  >
+                                    <i className="fa-solid fa-pen text-[9px]"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCol(col)}
+                                    className="w-4 h-4 rounded text-red-400 hover:text-red-600"
+                                    title="Hapus Kolom"
+                                  >
+                                    <i className="fa-solid fa-trash text-[9px]"></i>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </th>
                         ))
@@ -1755,20 +1948,26 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           {/* Diagnostik Cell */}
                           {diagnostikCol && (
                             <td className="p-1 text-center bg-blue-50/10 dark:bg-blue-950/10 border-r border-gray-200 dark:border-gray-700">
-                              <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.5"
-                                value={sGrades[diagnostikCol.id] ?? ''}
-                                onChange={e => handleGradeChange(student.nisn, diagnostikCol.id, e.target.value)}
-                                placeholder="-"
-                                className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                                  dirtyGrades[`${student.nisn}_${diagnostikCol.id}`]
-                                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                    : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
-                                }`}
-                              />
+                              {isAdmin || !isGuruPengampu ? (
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {sGrades[diagnostikCol.id] ?? '-'}
+                                </span>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.5"
+                                  value={sGrades[diagnostikCol.id] ?? ''}
+                                  onChange={e => handleGradeChange(student.nisn, diagnostikCol.id, e.target.value)}
+                                  placeholder="-"
+                                  className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                    dirtyGrades[`${student.nisn}_${diagnostikCol.id}`]
+                                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
+                                  }`}
+                                />
+                              )}
                             </td>
                           )}
 
@@ -1780,20 +1979,26 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                 key={col.id}
                                 className="p-1 text-center bg-emerald-50/10 dark:bg-emerald-950/10 border-r border-gray-200 dark:border-gray-700"
                               >
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.5"
-                                  value={sGrades[col.id] ?? ''}
-                                  onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
-                                  placeholder="-"
-                                  className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                                    isDirty
-                                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
-                                  }`}
-                                />
+                                {isAdmin || !isGuruPengampu ? (
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {sGrades[col.id] ?? '-'}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.5"
+                                    value={sGrades[col.id] ?? ''}
+                                    onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
+                                    placeholder="-"
+                                    className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                                      isDirty
+                                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
+                                    }`}
+                                  />
+                                )}
                               </td>
                             );
                           })}
@@ -1806,20 +2011,26 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                 key={col.id}
                                 className="p-1 text-center bg-purple-50/10 dark:bg-purple-950/10 border-r border-gray-200 dark:border-gray-700"
                               >
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="0.5"
-                                  value={sGrades[col.id] ?? ''}
-                                  onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
-                                  placeholder="-"
-                                  className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                                    isDirty
-                                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
-                                  }`}
-                                />
+                                {isAdmin || !isGuruPengampu ? (
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {sGrades[col.id] ?? '-'}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.5"
+                                    value={sGrades[col.id] ?? ''}
+                                    onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
+                                    placeholder="-"
+                                    className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                                      isDirty
+                                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
+                                    }`}
+                                  />
+                                )}
                               </td>
                             );
                           })}
@@ -2289,13 +2500,18 @@ export default function GradebookView({ user }: GradebookViewProps) {
                 </div>
                 <div>
                   <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Tahun Ajaran
+                    Tahun Ajaran {!isAdmin && <span className="text-[10px] text-teal-600 font-normal">(Sinkron Admin)</span>}
                   </label>
                   <input
                     type="text"
                     value={tpForm.tahun_ajaran}
-                    onChange={e => setTpForm({ ...tpForm, tahun_ajaran: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    onChange={e => !isAdmin ? null : setTpForm({ ...tpForm, tahun_ajaran: e.target.value })}
+                    readOnly={!isAdmin}
+                    className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none ${
+                      !isAdmin
+                        ? 'bg-gray-100 dark:bg-gray-800/80 cursor-not-allowed text-gray-500'
+                        : 'bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-teal-500'
+                    }`}
                   />
                 </div>
               </div>

@@ -1,15 +1,16 @@
-# Dispatch for Worker M2 (R1 & R3: Academic Year, Gradebook & Jurnal Kelas RBAC)
+# Dispatch for Worker M2 Gen2 (R1 & R3: Academic Year, Gradebook & Jurnal Kelas RBAC)
 
 ## Identity
-- Role: Worker
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m2
+- Role: Worker (Replacement Gen 2)
+- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m2_gen2
 - Parent: orchestrator_10
 
-## Scope: Milestone 2 (R1 & R3)
+## Scope: Milestone 2 (R1 & R3) - Resume from Interruption Point
+The previous worker started work on `src/components/GradebookView.tsx` before being interrupted. Inspect the current code first to see what was already applied.
 
 ### R1. Pengaturan Tahun Ajaran & Daftar Nilai
 1. **Academic Year Sync (`src/components/GradebookView.tsx`)**:
-   - Fetch `tahun_ajaran` and `semester` from `public.pengaturan` (or settings query) on mount.
+   - Fetch `tahun_ajaran` and `semester` from `public.pengaturan` on mount.
    - For guru accounts, automatically set `selectedTahunAjaran` and `tpForm.tahun_ajaran` to the synced value, and ensure the academic year selector reflects/locks to this value.
 2. **Admin Gradebook Lock (`src/components/GradebookView.tsx`)**:
    - When `user.role === 'admin'`:
@@ -38,8 +39,7 @@
    - Hide the "Rekapan Jurnal Per Kelas" tab in personal journal view for regular teachers.
 
 ## Verification
-- Run `npx tsc --noEmit` and any unit tests.
-- Verify that `npx tsc --noEmit` exits with 0 errors.
+- Run `npx tsc --noEmit`. Must exit with 0 errors.
 
 ## Git Workflow Rule
 - `git status`
@@ -48,21 +48,4 @@
 - `git push origin main`
 
 ## Output
-Write your full handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m2\handoff.md` and send a message when complete.
-
-## 2026-09-18T08:25:02Z
-You are Worker M2 for Milestone 2 (R1 & R3: Academic Year, Gradebook & Jurnal Kelas RBAC).
-Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\ORIGINAL_REQUEST.md and c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m2\DISPATCH.md before starting work.
-
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
-
-Your task:
-1. Academic Year sync in src/components/GradebookView.tsx (sync with pengaturan.tahun_ajaran for guru accounts).
-2. Lock Admin Gradebook to view-only mode in src/components/GradebookView.tsx (hide edit/save buttons, replace grade inputs with read-only text spans, show only 'Cetak' button).
-3. Restrict Tujuan Pembelajaran (TP) management to Guru Pengampu in src/components/GradebookView.tsx.
-4. Implement Jurnal Kelas RBAC in src/components/AppScreen.tsx and src/components/RekapJurnalView.tsx:
-   - Exclusively accessible by Admin (all classes) and assigned Wali Kelas (their assigned class only).
-   - Hidden from menu and blocked for regular teachers (guru biasa).
-5. Verify with `npx tsc --noEmit`.
-6. Follow Git Workflow Rule: `git status`, `git add .`, `git commit -m "feat(gradebook-jurnal): implement academic year sync, admin view-only gradebook, and jurnal kelas rbac"`, `git push origin main`.
-7. Write handoff report to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m2\handoff.md and notify with send_message.
+Write your full handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m2_gen2\handoff.md` and send a message when complete.

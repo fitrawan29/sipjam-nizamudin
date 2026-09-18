@@ -164,6 +164,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
 
     let hariSekolah = 6;
     let aturanKehadiran = 'Semua_Hari';
+    let guruHanyaMengajarList: string[] = [];
 
     if (pengaturanRows && pengaturanRows.length > 0) {
       const hsRow = pengaturanRows.find((p: any) => p.key === 'hari_sekolah');
@@ -175,8 +176,60 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
         aturanKehadiran =
           (akRow.key === 'aturan_kehadiran_guru' ? akRow.value : akRow.aturan_kehadiran_guru) || 'Semua_Hari';
       }
+      const ghmRow = pengaturanRows.find((p: any) => p.key === 'guru_hanya_mengajar');
+      if (ghmRow && ghmRow.value) {
+        try {
+          const parsed = JSON.parse(ghmRow.value);
+          if (Array.isArray(parsed)) {
+            guruHanyaMengajarList = parsed;
+          } else if (parsed && typeof parsed === 'object') {
+            if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
+            if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
+          }
+        } catch (e) {
+          guruHanyaMengajarList = [ghmRow.value];
+        }
+      }
     }
-    state.aturanKehadiran = aturanKehadiran as 'Semua_Hari' | 'Hari_Mengajar_Saja';
+
+    // Cek Pengecualian Kehadiran Guru:
+    // Guru yang dikecualikan (wajib hadir HANYA saat hari mengajar)
+    let isTeacherExempt = false;
+    try {
+      let tQ = supabase.from('data_guru').select('id, nama, username, wajib_hadir_hanya_mengajar');
+      if (username) {
+        tQ = tQ.or(`nama.eq."${namaGuru}",username.eq."${username}"`);
+      } else {
+        tQ = tQ.eq('nama', namaGuru);
+      }
+      const { data: tData } = await tQ;
+      if (tData && tData.length > 0) {
+        const teacher = tData[0];
+        if (teacher.wajib_hadir_hanya_mengajar === true) {
+          isTeacherExempt = true;
+        }
+        if (
+          guruHanyaMengajarList.includes(teacher.id) || 
+          guruHanyaMengajarList.includes(teacher.nama) || 
+          (teacher.username && guruHanyaMengajarList.includes(teacher.username))
+        ) {
+          isTeacherExempt = true;
+        }
+      }
+    } catch (tErr) {
+      console.warn('Error checking teacher exemption in data_guru:', tErr);
+    }
+
+    if (guruHanyaMengajarList.includes(namaGuru) || (username && guruHanyaMengajarList.includes(username))) {
+      isTeacherExempt = true;
+    }
+
+    // Global policy override
+    if (aturanKehadiran === 'Hari_Mengajar_Saja') {
+      isTeacherExempt = true;
+    }
+
+    state.aturanKehadiran = isTeacherExempt ? 'Hari_Mengajar_Saja' : 'Semua_Hari';
 
     const hariIni = getWitaDayName(now); // "Senin", "Selasa", ..., "Sabtu", "Minggu"
 
@@ -252,16 +305,24 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
 
     // Evaluasi kewajiban kehadiran & penentuan Alpa
     if (!state.presensiDatang) {
-      // Jika aturan adalah 'Hari_Mengajar_Saja' dan guru tidak memiliki jadwal KBM atau tugas piket hari ini
-      if (state.aturanKehadiran === 'Hari_Mengajar_Saja' && !hasTeachingObligation) {
-        state.isNonTeachingDay = true;
-        state.bebasAlpa = true;
-        state.isAlpa = false;
-        state.lockedReason = 'Hari ini tidak ada jadwal mengajar atau piket (Bebas Kehadiran).';
-        return state;
+      // Jika guru dikecualikan: hanya wajib hadir di hari mengajar / piket
+      if (isTeacherExempt) {
+        if (!hasTeachingObligation) {
+          state.isNonTeachingDay = true;
+          state.bebasAlpa = true;
+          state.isAlpa = false;
+          state.lockedReason = 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran).';
+          return state;
+        } else {
+          // Ada jadwal mengajar tapi belum melakukan presensi datang
+          state.isAlpa = true;
+          state.bebasAlpa = false;
+          state.lockedReason = 'Anda belum melakukan Presensi Datang hari ini.';
+          return state;
+        }
       }
 
-      // Wajib hadir (mode 'Semua_Hari' atau ada jadwal mengajar/piket) tapi belum presensi datang
+      // Default: Guru tanpa pengecualian wajib hadir setiap hari kerja
       state.isAlpa = true;
       state.bebasAlpa = false;
       state.lockedReason = 'Anda belum melakukan Presensi Datang hari ini.';
@@ -270,7 +331,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
 
     // Guru sudah melakukan presensi datang
     state.isAlpa = false;
-    if (state.aturanKehadiran === 'Hari_Mengajar_Saja' && !hasTeachingObligation) {
+    if (isTeacherExempt && !hasTeachingObligation) {
       state.isNonTeachingDay = true;
       state.bebasAlpa = true;
     }

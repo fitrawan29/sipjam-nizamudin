@@ -1,58 +1,54 @@
-# BRIEFING — 2026-09-11T10:15:00Z
+# BRIEFING — 2026-09-18T08:25:02Z
 
 ## Mission
-Implement Milestone 2 (R2): Student attendance recap parser, Admin tri-pillar recap with teacher seeding and piket, Journal recap display, and real analytics calculation.
+Implement Academic Year sync, Admin view-only gradebook, Guru Pengampu TP restriction, and Jurnal Kelas RBAC for Milestone 2 (R1 & R3).
 
 ## 🔒 My Identity
 - Archetype: worker
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m2
-- Original parent: 742c922b-4acf-4153-902f-de90d07d6ea8
-- Milestone: Milestone 2 (R2 - Recap Features)
+- Original parent: a21d5b87-ff2e-4b29-acfe-6e2543e24911
+- Milestone: Milestone 2 (R1 & R3: Academic Year, Gradebook & Jurnal Kelas RBAC)
 
 ## 🔒 Key Constraints
-- Exclusive write ownership:
-  - src/components/RekapSiswaView.tsx
-  - src/components/AdminRekapView.tsx
-  - src/components/RekapJurnalView.tsx
-  - src/components/AnalitikView.tsx
-- DO NOT modify any other files (specifically DO NOT touch AdminVerifView.tsx, PiketView.tsx, or AdminDataView.tsx).
-- No dummy/facade implementations or hardcoded values.
-- Verify with `npx tsc --noEmit` and `npm run build`.
-- Automatic Git commit and push according to GEMINI.md.
+- Sync Academic Year in `GradebookView.tsx` with `pengaturan.tahun_ajaran` for guru accounts.
+- Lock Admin Gradebook to view-only mode (hide edit/save/export buttons, replace grade inputs with read-only score text spans, show only 'Cetak').
+- Restrict Tujuan Pembelajaran (TP) management to Guru Pengampu in `GradebookView.tsx`.
+- Implement Jurnal Kelas RBAC in `AppScreen.tsx` and `RekapJurnalView.tsx`: accessible exclusively to Admin (all classes) and assigned Wali Kelas (their assigned class only); hidden and blocked for regular teachers.
+- Verify with `npx tsc --noEmit`.
+- No dummy/facade implementations or hardcoding.
+- Git Workflow Rule: `git status`, `git add .`, `git commit -m "feat(gradebook-jurnal): implement academic year sync, admin view-only gradebook, and jurnal kelas rbac"`, `git push origin main`.
 
 ## Current Parent
-- Conversation ID: 742c922b-4acf-4153-902f-de90d07d6ea8
-- Updated: 2026-09-11T10:15:00Z
+- Conversation ID: a21d5b87-ff2e-4b29-acfe-6e2543e24911
+- Updated: 2026-09-18T08:25:02Z
 
 ## Task Summary
 - **What to build**:
-  1. RekapSiswaView: Auto-select first class, parse modern JSON (`{"91255714":"A"}`) in absensi_siswa + legacy format in detail_absen, initialize student map with hadir: 0, add Hadir & % Kehadiran to table and CSV.
-  2. AdminRekapView: Query data_guru to seed all teachers into recap, fetch laporan_piket for piket duty counts, include Alpa and Keterlambatan in CSV, add teacher search filter, auto-fetch on mount.
-  3. RekapJurnalView: Parse absensi_siswa JSON to readable text summary, add metric cards, month selector dropdown and search input, auto-fetch on mount.
-  4. AnalitikView: Fetch and integrate laporan_piket into analytics, calculate real performance scores without dummy logic.
-- **Success criteria**: All 4 views fulfill specifications, 0 tsc errors, clean build, clean git push.
+  1. Academic Year sync in `src/components/GradebookView.tsx`: Fetch `tahun_ajaran` & `semester` from `pengaturan` (or settings query) on mount; for guru accounts, automatically sync `selectedTahunAjaran` and `tpForm.tahun_ajaran` and lock/reflect it.
+  2. Admin Gradebook lock in `src/components/GradebookView.tsx`: When `user.role === 'admin'`, hide save/edit/export buttons, replace grade inputs with `<span className="font-semibold text-gray-900 dark:text-white">{sGrades[col.id] ?? '-'}</span>`, show ONLY "Cetak" button, guard mutation handlers.
+  3. Restrict TP management in `src/components/GradebookView.tsx`: Check if `user.nama` or `user.id` matches assigned teacher for the selected subject and class (`isGuruPengampu`). Only allow create/edit/delete TP if `!isAdmin && isGuruPengampu`.
+  4. Jurnal Kelas RBAC in `src/components/AppScreen.tsx` & `src/components/RekapJurnalView.tsx`: Define view `view-jurnal-kelas`. Admin sees it (all classes). For guru, query `wali_kelas` for the teacher: if Wali Kelas, show menu and restrict class selection to their assigned class; if regular teacher, hide from menu and block route with alert. Hide "Rekapan Jurnal Per Kelas" tab in RekapJurnalView for regular teachers.
+- **Success criteria**: Strict adherence to specifications, 0 TypeScript errors on `npx tsc --noEmit`, automatic Git commit and push, comprehensive handoff report.
 
 ## Change Tracker
 - **Files modified**:
-  - `src/components/RekapSiswaView.tsx`: Auto-select class, multi-format JSON (NISN key) & parenthetical attendance parser, initialize hadir: 0, add Hadir & % Kehadiran to UI and CSV, search filter, summary metric cards.
-  - `src/components/AdminRekapView.tsx`: Seed teachers via `data_guru` outer join, integrate `laporan_piket`, add Alpa & Keterlambatan to CSV export, teacher search filter, auto-fetch on mount.
-  - `src/components/RekapJurnalView.tsx`: Parse raw JSON attendance into human-readable text, summary metric cards (Total, Disetujui, Menunggu, Ditolak), month selector & search input, auto-fetch on mount, UTF-8 BOM CSV.
-  - `src/components/AnalitikView.tsx`: Integrate `laporan_piket`, calculate real performance scores (`Hadir*10 + Piket*10 + Jurnal*5 + Dinas*5`), display updated global statistics and leaderboard.
-- **Build status**: `npx tsc --noEmit` passed with 0 errors; `npm run build` compiled successfully in Next.js 16.3.4 (Turbopack).
-- **Pending issues**: Git add/commit/push delegated to parent orchestrator per parent instruction.
+  - `src/components/GradebookView.tsx`: [Pending]
+  - `src/components/AppScreen.tsx`: [Pending]
+  - `src/components/RekapJurnalView.tsx`: [Pending]
+- **Build status**: Pending
+- **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: Pass (0 tsc errors, clean Turbopack production build)
-- **Lint status**: Clean
-- **Tests added/modified**: Verified builds and aggregations
+- **Build/test result**: Pending verification
+- **Lint status**: Pending
+- **Tests added/modified**: Pending
 
 ## Loaded Skills
 - None
 
 ## Artifact Index
-- .agents/worker_m2/DISPATCH.md
-- .agents/worker_m2/BRIEFING.md
-- .agents/worker_m2/progress.md
-- .agents/worker_m2/handoff.md
-
+- `.agents/worker_m2/DISPATCH.md` — Assignment and instructions
+- `.agents/worker_m2/BRIEFING.md` — Agent state and situational awareness
+- `.agents/worker_m2/progress.md` — Liveness and progress heartbeat
+- `.agents/worker_m2/handoff.md` — Final handoff report

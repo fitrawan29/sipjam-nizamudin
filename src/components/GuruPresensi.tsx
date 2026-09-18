@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
-import { getWitaTimestamp } from '@/lib/wita';
+import { getWitaTimestamp, getWitaDayName } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 
@@ -28,6 +28,7 @@ export default function GuruPresensi({ user }: { user: any }) {
     datangBatas: '07:15',
     datangAkhir: '08:00',
     pulangMulai: '11:00',
+    pulangJumat: '11:00',
     pulangAkhir: '22:00',
   });
 
@@ -70,7 +71,7 @@ export default function GuruPresensi({ user }: { user: any }) {
   // Fetch Supabase Config & State
   useEffect(() => {
     const initConfig = async () => {
-      const { data } = await supabase.from('pengaturan').select('*').in('key', ['gps_lat', 'gps_lng', 'gps_radius', 'jam_datang_mulai', 'jam_datang_batas', 'jam_datang_akhir', 'jam_pulang_mulai', 'jam_pulang_akhir']);
+      const { data } = await supabase.from('pengaturan').select('*').in('key', ['gps_lat', 'gps_lng', 'gps_radius', 'jam_datang_mulai', 'jam_datang_batas', 'jam_datang_akhir', 'jam_pulang_mulai', 'jam_pulang_jumat', 'jam_pulang_akhir']);
       let newConfig = { lat: -6.200000, lng: 106.816666, radius: 100 };
       let newJam = { ...jamPresensi };
       if (data) {
@@ -82,6 +83,7 @@ export default function GuruPresensi({ user }: { user: any }) {
           if (item.key === 'jam_datang_batas') newJam.datangBatas = item.value;
           if (item.key === 'jam_datang_akhir') newJam.datangAkhir = item.value;
           if (item.key === 'jam_pulang_mulai') newJam.pulangMulai = item.value;
+          if (item.key === 'jam_pulang_jumat') newJam.pulangJumat = item.value;
           if (item.key === 'jam_pulang_akhir') newJam.pulangAkhir = item.value;
         });
         setGpsConfig(newConfig);
@@ -126,9 +128,10 @@ export default function GuruPresensi({ user }: { user: any }) {
 
   // Determine if selfie camera is required
   // Required for:
-  // 1. Presensi Datang (Sekolah & Dinas Luar)
-  // 2. Presensi Pulang if Dinas Luar
-  const isSelfieRequired = (tipeAbsen === 'Datang' && jenisPresensi !== 'Izin') || jenisPresensi === 'Dinas Luar';
+  // 1. All Presensi Pulang
+  // 2. Presensi Datang (Sekolah & Dinas Luar)
+  // 3. Any Dinas Luar
+  const isSelfieRequired = tipeAbsen === 'Pulang' || (tipeAbsen === 'Datang' && jenisPresensi !== 'Izin') || jenisPresensi === 'Dinas Luar';
 
   const handlePresensiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,8 +155,8 @@ export default function GuruPresensi({ user }: { user: any }) {
     if (isSelfieRequired && !file) {
       return Swal.fire({
         icon: 'warning',
-        title: 'Foto Selfie Diperlukan',
-        text: 'Silakan ambil dan konfirmasi foto selfie dengan watermark terlebih dahulu.',
+        title: 'Foto Kamera Diperlukan',
+        text: 'Silakan ambil dan konfirmasi foto langsung dari kamera perangkat dengan watermark terlebih dahulu.',
         confirmButtonColor: '#10B981',
       });
     }
@@ -209,11 +212,13 @@ export default function GuruPresensi({ user }: { user: any }) {
         keterlambatanDetik = Math.max(0, currTotalSeconds - batasTotalSeconds);
       }
     } else if (tipeAbsen === 'Pulang') {
-      const startVal = parseTime(jamPresensi.pulangMulai);
+      const isJumat = getWitaDayName(now) === 'Jumat';
+      const effectivePulangMulai = isJumat ? (jamPresensi.pulangJumat || jamPresensi.pulangMulai) : jamPresensi.pulangMulai;
+      const startVal = parseTime(effectivePulangMulai);
       const akhirVal = parseTime(jamPresensi.pulangAkhir);
 
       if (currTimeVal < startVal) {
-        return Swal.fire('Belum Waktunya', `Presensi pulang baru dibuka jam ${jamPresensi.pulangMulai} WITA.`, 'warning');
+        return Swal.fire('Belum Waktunya', `Presensi pulang baru dibuka jam ${effectivePulangMulai} WITA${isJumat ? ' (Jadwal Khusus Hari Jumat)' : ''}.`, 'warning');
       }
       if (currTimeVal > akhirVal) {
         return Swal.fire('Ditutup', `Presensi pulang ditutup jam ${jamPresensi.pulangAkhir} WITA.`, 'error');
@@ -375,6 +380,31 @@ export default function GuruPresensi({ user }: { user: any }) {
                     </div>
                 </div>
 
+                {tipeAbsen === 'Pulang' && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 p-3 rounded-xl text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <i className="fa-regular fa-clock text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                      <div>
+                        <div className="font-bold">
+                          {getWitaDayName(new Date()) === 'Jumat'
+                            ? `Jadwal Pulang Khusus Jumat: ${jamPresensi.pulangJumat || jamPresensi.pulangMulai} - ${jamPresensi.pulangAkhir} WITA`
+                            : `Jadwal Pulang Hari Ini: ${jamPresensi.pulangMulai} - ${jamPresensi.pulangAkhir} WITA`}
+                        </div>
+                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                          {getWitaDayName(new Date()) === 'Jumat'
+                            ? 'Ketentuan jam buka presensi pulang hari Jumat diterapkan otomatis.'
+                            : 'Presensi pulang dibuka sesuai jam operasional sekolah.'}
+                        </div>
+                      </div>
+                    </div>
+                    {getWitaDayName(new Date()) === 'Jumat' && (
+                      <span className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0">
+                        Hari Jumat
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {isPulangLocked && (
                    <div className="bg-orange-50 text-orange-700 p-3 rounded-xl text-[11px] font-bold border border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
                      <i className="fa-solid fa-triangle-exclamation mr-1"></i> {dailyState.lockedReason}
@@ -426,13 +456,13 @@ export default function GuruPresensi({ user }: { user: any }) {
                   </div>
                 )}
 
-                {/* Camera Selfie Capture for Datang and Dinas Luar */}
+                {/* Camera Selfie Capture for Datang and Pulang */}
                 {isSelfieRequired && (
                   <div id="row-camera-selfie" className="fade-in pt-1 space-y-2">
                     <label className="block text-[11px] font-bold text-gray-900 dark:text-white ml-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <i className="fa-solid fa-camera text-emerald-500"></i>
-                        Foto Selfie Kehadiran (Wajib dengan Watermark)
+                        {tipeAbsen === 'Pulang' ? 'Foto Kamera Langsung Presensi Pulang (Wajib)' : 'Foto Selfie Kehadiran (Wajib dengan Watermark)'}
                       </span>
                       <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                         {file ? '✓ Foto Terpasang' : 'Kamera Aktif'}

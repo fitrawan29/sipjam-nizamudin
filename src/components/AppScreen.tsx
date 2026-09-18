@@ -32,6 +32,65 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
   const [schoolData, setSchoolData] = useState<any>(null);
   const { theme, toggleTheme } = useTheme();
 
+  const isAdmin = user?.role === 'Admin' || user?.role === 'admin' || user?.role === 'Superadmin' || user?.role === 'superadmin';
+  const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin);
+  const [assignedKelas, setAssignedKelas] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isAdmin) {
+      setIsWaliKelas(true);
+      return;
+    }
+
+    if (user?.wali_kelas) {
+      setIsWaliKelas(true);
+      setAssignedKelas(typeof user.wali_kelas === 'string' ? user.wali_kelas : (user.wali_kelas.kelas || null));
+      return;
+    }
+
+    const checkWaliKelas = async () => {
+      try {
+        let query = supabase.from('wali_kelas').select('*');
+        if (user?.sekolah_id) {
+          query = query.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data } = await query;
+        if (data && data.length > 0) {
+          const found = data.find(w => 
+            (user?.id && w.guru_id === user.id) ||
+            (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
+            (user?.username && w.nip && w.nip === user.username)
+          );
+          if (found) {
+            setIsWaliKelas(true);
+            setAssignedKelas(found.kelas);
+            return;
+          }
+        }
+
+        // Also check data_guru for wali_kelas field
+        if (user?.id || user?.nama) {
+          const { data: gData } = await supabase
+            .from('data_guru')
+            .select('*')
+            .or(`id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},nama.eq."${user.nama || ''}"`);
+          if (gData && gData.length > 0) {
+            const g = gData[0] as any;
+            if (g.wali_kelas) {
+              setIsWaliKelas(true);
+              setAssignedKelas(typeof g.wali_kelas === 'string' ? g.wali_kelas : (g.wali_kelas.kelas || null));
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[AppScreen] Error verifying wali kelas:', err);
+      }
+    };
+
+    checkWaliKelas();
+  }, [user, isAdmin]);
+
   useEffect(() => {
     if (user?.sekolah_id) {
       const fetchSchool = async () => {
@@ -67,6 +126,18 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       // Guru workflow checks
       const restrictedViews = ['view-guru-jurnal', 'view-piket', 'view-guru-presensi'];
       
+      if (targetId === 'view-jurnal-kelas') {
+        if (!isAdmin && !isWaliKelas) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Halaman Jurnal Kelas secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+      }
+
       if (restrictedViews.includes(targetId)) {
         Swal.fire({ title: 'Memeriksa Akses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const state = await getGuruDailyState(user.nama, user.username);
@@ -109,6 +180,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
     { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', label: 'Presensi Guru' },
     { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
+    ...(isWaliKelas ? [{ id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' }] : []),
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
     { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
@@ -121,6 +193,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
   const menuItemsAdmin = [
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
     { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
+    { id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' },
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Kelola Piket' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
     { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
@@ -233,6 +306,28 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
               {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
               {currentView === 'view-history' && <HistoryView user={user} />}
               {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
+              {currentView === 'view-jurnal-kelas' && (
+                isAdmin || isWaliKelas ? (
+                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Jurnal Kelas</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai <strong>Wali Kelas</strong>. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentView(defaultHomeView)}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
               {currentView === 'view-rekap-siswa' && <RekapSiswaView user={user} />}
               {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
               {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}

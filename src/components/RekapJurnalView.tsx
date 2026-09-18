@@ -5,16 +5,36 @@ import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr } from '@/lib/wita';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import Swal from 'sweetalert2';
 
-export default function RekapJurnalView({ user }: { user: any }) {
-  const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>('pribadi');
+export default function RekapJurnalView({ 
+  user,
+  initialMode = 'pribadi',
+  assignedKelas: propAssignedKelas = null
+}: { 
+  user: any;
+  initialMode?: 'pribadi' | 'kelas';
+  assignedKelas?: string | null;
+}) {
+  const isAdmin = user?.role === 'Admin' || user?.role === 'admin' || user?.role === 'Superadmin' || user?.role === 'superadmin';
+  const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>(initialMode);
+  const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin);
+  const [waliClasses, setWaliClasses] = useState<string[]>(() => {
+    if (propAssignedKelas) return [propAssignedKelas];
+    if (user?.wali_kelas) {
+      const k = typeof user.wali_kelas === 'string' ? user.wali_kelas : (user.wali_kelas.kelas || null);
+      if (k) return [k];
+    }
+    return [];
+  });
+
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [kelas, setKelas] = useState('');
+  const [kelas, setKelas] = useState(propAssignedKelas || '');
   const [mapel, setMapel] = useState('');
   const [search, setSearch] = useState('');
   
@@ -46,6 +66,46 @@ export default function RekapJurnalView({ user }: { user: any }) {
           const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[];
           setMapelList(uniqueMapel);
         }
+
+        // Fetch Wali Kelas assignments
+        let wQuery = supabase.from('wali_kelas').select('*');
+        if (user?.sekolah_id) wQuery = wQuery.eq('sekolah_id', user.sekolah_id);
+        const { data: wData } = await wQuery;
+
+        const assignedWalis: string[] = [...waliClasses];
+        if (wData && wData.length > 0) {
+          const userWalis = wData.filter(w => 
+            (user?.id && w.guru_id === user.id) ||
+            (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
+            (user?.username && w.nip && w.nip === user.username)
+          );
+          userWalis.forEach(w => {
+            if (w.kelas && !assignedWalis.includes(w.kelas)) assignedWalis.push(w.kelas);
+          });
+        }
+
+        // Check data_guru if not yet found
+        if (assignedWalis.length === 0 && (user?.id || user?.nama)) {
+          const { data: gData } = await supabase
+            .from('data_guru')
+            .select('*')
+            .or(`id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},nama.eq."${user.nama || ''}"`);
+          if (gData && gData.length > 0) {
+            const g = gData[0] as any;
+            if (g.wali_kelas) {
+              const wk = typeof g.wali_kelas === 'string' ? g.wali_kelas : (g.wali_kelas.kelas || null);
+              if (wk && !assignedWalis.includes(wk)) assignedWalis.push(wk);
+            }
+          }
+        }
+
+        if (isAdmin || assignedWalis.length > 0) {
+          setIsWaliKelas(true);
+          setWaliClasses(assignedWalis);
+          if (!isAdmin && assignedWalis.length > 0) {
+            setKelas(prev => prev || assignedWalis[0]);
+          }
+        }
       } catch (error) {
         console.error('Error fetching master data:', error);
       }
@@ -60,7 +120,23 @@ export default function RekapJurnalView({ user }: { user: any }) {
 
   const tarikRekap = async (overrideMode?: 'pribadi' | 'kelas', overrideKelas?: string) => {
     const activeMode = overrideMode || tabMode;
-    const activeKelas = overrideKelas !== undefined ? overrideKelas : kelas;
+    
+    // RBAC: If attempting to view kelas mode but user is regular teacher (not admin and not wali kelas)
+    if (activeMode === 'kelas' && !isAdmin && !isWaliKelas && waliClasses.length === 0) {
+      setJurnalData([]);
+      setLoading(false);
+      return;
+    }
+
+    let activeKelas = overrideKelas !== undefined ? overrideKelas : kelas;
+    // For Wali Kelas (non-admin), restrict strictly to assigned classes
+    if (activeMode === 'kelas' && !isAdmin && waliClasses.length > 0) {
+      if (!activeKelas || !waliClasses.includes(activeKelas)) {
+        activeKelas = waliClasses[0];
+        setKelas(activeKelas);
+      }
+    }
+
     setLoading(true);
     try {
       let query = supabase
@@ -90,7 +166,16 @@ export default function RekapJurnalView({ user }: { user: any }) {
         query = query.gte('tanggal', firstDay).lte('tanggal', lastDayStr);
       }
 
-      if (activeKelas) query = query.eq('kelas', activeKelas);
+      if (activeMode === 'kelas') {
+        if (!isAdmin && waliClasses.length > 0) {
+          query = query.eq('kelas', activeKelas || waliClasses[0]);
+        } else if (activeKelas) {
+          query = query.eq('kelas', activeKelas);
+        }
+      } else if (activeKelas) {
+        query = query.eq('kelas', activeKelas);
+      }
+
       if (mapel) query = query.eq('mapel', mapel);
 
       const { data } = await query;
@@ -103,11 +188,26 @@ export default function RekapJurnalView({ user }: { user: any }) {
   };
 
   const handleTabChange = (newMode: 'pribadi' | 'kelas') => {
+    if (newMode === 'kelas' && !isAdmin && !isWaliKelas && waliClasses.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Akses Terblokir',
+        text: 'Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
+        confirmButtonColor: '#4f46e5'
+      });
+      return;
+    }
+
     setTabMode(newMode);
     let targetKelas = kelas;
-    if (newMode === 'kelas' && !targetKelas && kelasList.length > 0) {
-      targetKelas = kelasList[0];
-      setKelas(targetKelas);
+    if (newMode === 'kelas') {
+      if (!isAdmin && waliClasses.length > 0) {
+        targetKelas = waliClasses[0];
+        setKelas(targetKelas);
+      } else if (!targetKelas && kelasList.length > 0) {
+        targetKelas = kelasList[0];
+        setKelas(targetKelas);
+      }
     }
     tarikRekap(newMode, targetKelas);
   };
@@ -198,30 +298,32 @@ export default function RekapJurnalView({ user }: { user: any }) {
               </h2>
 
               {/* Mode Toggle: Jurnal Guru Pribadi vs Rekapan Jurnal Per Kelas */}
-              <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
-                <button
-                  type="button"
-                  onClick={() => handleTabChange('pribadi')}
-                  className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                    tabMode === 'pribadi'
-                      ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  <i className="fa-solid fa-user text-[11px]"></i> Jurnal Guru Pribadi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleTabChange('kelas')}
-                  className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                    tabMode === 'kelas'
-                      ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-300 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  <i className="fa-solid fa-users text-[11px]"></i> Rekapan Jurnal Per Kelas
-                </button>
-              </div>
+              {(isAdmin || isWaliKelas || waliClasses.length > 0) && (
+                <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange('pribadi')}
+                    className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                      tabMode === 'pribadi'
+                        ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <i className="fa-solid fa-user text-[11px]"></i> Jurnal Guru Pribadi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange('kelas')}
+                    className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                      tabMode === 'kelas'
+                        ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-300 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <i className="fa-solid fa-users text-[11px]"></i> Rekapan Jurnal Per Kelas
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Summary Metric Cards */}
@@ -282,10 +384,29 @@ export default function RekapJurnalView({ user }: { user: any }) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">KELAS / ANGKATAN</label>
-                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800">
-                        <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Kelas</option>
-                        {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                        KELAS / ANGKATAN {tabMode === 'kelas' && !isAdmin && waliClasses.length > 0 ? '(Wali Kelas)' : ''}
+                      </label>
+                      <select 
+                        value={kelas} 
+                        onChange={e => setKelas(e.target.value)} 
+                        disabled={!isAdmin && tabMode === 'kelas' && waliClasses.length === 1}
+                        className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 disabled:opacity-80"
+                      >
+                        {isAdmin || tabMode === 'pribadi' ? (
+                          <>
+                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Kelas</option>
+                            {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
+                          </>
+                        ) : (
+                          <>
+                            {waliClasses.map((w, i) => (
+                              <option key={i} value={w} className="text-gray-900 dark:text-white dark:bg-gray-800">
+                                {w} (Kelas Anda)
+                              </option>
+                            ))}
+                          </>
+                        )}
                       </select>
                     </div>
                     <div className="flex-1">
@@ -350,9 +471,28 @@ export default function RekapJurnalView({ user }: { user: any }) {
             </div>
 
             <div id="hasil-rekap-jurnal-guru" className="min-h-[150px]">
-                {!jurnalData && !loading && (
-                  <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-[11px] italic col-span-full no-print">Silakan atur filter dan klik tampilkan.</div>
-                )}
+                {tabMode === 'kelas' && !isAdmin && !isWaliKelas && waliClasses.length === 0 ? (
+                  <div className="p-8 text-center bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl my-4 no-print">
+                    <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-3 text-xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">Akses Terblokir</h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
+                      Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange('pribadi')}
+                      className="btn-click px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow hover:bg-indigo-700 transition"
+                    >
+                      Buka Jurnal Pribadi
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {!jurnalData && !loading && (
+                      <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-[11px] italic col-span-full no-print">Silakan atur filter dan klik tampilkan.</div>
+                    )}
                 {jurnalData && filteredJurnal.length === 0 && (
                   <div className="text-center py-10 text-gray-500 dark:text-gray-400 text-[11px] italic col-span-full no-print">
                     {search ? 'Tidak ada jurnal yang sesuai dengan kata kunci pencarian.' : 'Tidak ada jurnal ditemukan untuk filter tersebut.'}
@@ -599,6 +739,8 @@ export default function RekapJurnalView({ user }: { user: any }) {
                       </table>
                     )}
                   </div>
+                )}
+                  </>
                 )}
             </div>
 

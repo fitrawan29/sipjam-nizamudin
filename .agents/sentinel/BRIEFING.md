@@ -25,7 +25,8 @@ Coordinate and monitor feature enhancements to SIPJAM: Academic year sync & view
 - Victory Auditor (previous): 4c73a732-e086-489e-9dfc-812ab1e37a27 (.agents/victory_auditor_7)
 - Cron 1 (Progress Reporting, previous): 407edddb-7195-47cd-ac4e-a320c4188b4f/task-32 (*/8 * * * *)
 - Cron 2 (Liveness Check, previous): 407edddb-7195-47cd-ac4e-a320c4188b4f/task-34 (*/10 * * * *)
-- Active Orchestrator: a21d5b87-ff2e-4b29-acfe-6e2543e24911 (.agents/orchestrator_10)
+- Active Orchestrator (previous): a21d5b87-ff2e-4b29-acfe-6e2543e24911 (.agents/orchestrator_10, interrupted by quota 429)
+- Active Orchestrator: d2dfd088-11e9-48f7-a9b6-d9a38d0c3b78 (.agents/orchestrator_11)
 - Victory Auditor: [TBD - to be spawned on victory claim]
 - Cron 1 (Progress Reporting): 5901617f-3b2b-467c-8abc-3a06ccc86505/task-34 (*/8 * * * *)
 - Cron 2 (Liveness Check): 5901617f-3b2b-467c-8abc-3a06ccc86505/task-36 (*/10 * * * *)

@@ -9,6 +9,7 @@ import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName } from
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { PenugasanPiket } from '@/types/database';
+import CameraSelfieCapture from './CameraSelfieCapture';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
@@ -39,6 +40,7 @@ export default function PiketView({ user }: { user: any }) {
   const [piketAbsensi, setPiketAbsensi] = useState<Record<string, string>>({});
   const [catatan, setCatatan] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
@@ -268,16 +270,19 @@ export default function PiketView({ user }: { user: any }) {
 
   const handlePiketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!file) {
+      return Swal.fire('Foto Wajib Diambil', 'Silakan ambil foto dokumentasi piket menggunakan kamera langsung.', 'warning');
+    }
+
     setLoading(true);
 
     let fileUrl = '';
-    if (file) {
-      try {
-        fileUrl = await uploadToDrive(file, user.nama, 'Laporan_Piket', 'Piket');
-      } catch (err: any) {
-        setLoading(false);
-        return Swal.fire('Gagal Upload', err.message, 'error');
-      }
+    try {
+      fileUrl = await uploadToDrive(file, user.nama, 'Laporan_Piket', 'Piket');
+    } catch (err: any) {
+      setLoading(false);
+      return Swal.fire('Gagal Upload', err.message, 'error');
     }
 
     const newLaporan = {
@@ -345,6 +350,7 @@ export default function PiketView({ user }: { user: any }) {
       Swal.fire('Berhasil', 'Laporan piket berhasil disimpan dan presensi disinkronkan!', 'success');
       setCatatan('');
       setFile(null);
+      setPhotoPreviewUrl(null);
       setActiveTab('beranda');
       fetchDataPiket(); // Refresh data
       if (user?.role === 'Guru') getGuruDailyState(user.nama, user.username).then(setDailyState).catch(console.error);
@@ -1134,9 +1140,50 @@ export default function PiketView({ user }: { user: any }) {
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Catatan Khusus</label>
                         <textarea value={catatan} onChange={e => setCatatan(e.target.value)} rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800" placeholder="Deskripsikan kejadian saat piket..."></textarea>
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Upload Foto Dokumentasi Piket <span className="text-red-500 dark:text-red-400">(Wajib)</span></label>
-                        <input type="file" accept="image/*" onChange={e => setFile(e.target.files ? e.target.files[0] : null)} required className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                      <div className="space-y-2">
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <i className="fa-solid fa-camera text-teal-600 dark:text-teal-400"></i>
+                            Foto Dokumentasi Piket <span className="text-red-500 dark:text-red-400">(Wajib Kamera Langsung)</span>
+                          </span>
+                          <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">
+                            {file ? 'Foto Terpasang' : 'Kamera Aktif'}
+                          </span>
+                        </label>
+
+                        <CameraSelfieCapture
+                          key="cam-piket"
+                          initialFacingMode="environment"
+                          existingPhotoUrl={photoPreviewUrl}
+                          onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                            setFile(capturedFile);
+                            setPhotoPreviewUrl(previewUrl);
+                          }}
+                        />
+
+                        {file && (
+                          <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80 flex items-center justify-between transition-all">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-teal-800 dark:text-teal-200">
+                              <i className="fa-solid fa-circle-check text-teal-600 dark:text-teal-400 text-base"></i>
+                              <div>
+                                <div>Foto dokumentasi piket siap diunggah</div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                  {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFile(null);
+                                setPhotoPreviewUrl(null);
+                              }}
+                              className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-bold px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="pt-2">
                         <button type="submit" disabled={loading} className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">

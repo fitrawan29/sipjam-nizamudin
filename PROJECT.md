@@ -51,9 +51,9 @@ SIPJAM is a Next.js (App Router) + Supabase application with multi-tenant RLS, r
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Database Schema & Migrations | Migration SQL for `pengaturan`, `data_guru`, `chat_messages`, `pengumuman_dibaca` + TS types | none | IN_PROGRESS |
-| M2 | R1 & R3: Academic Year, Gradebook & Jurnal Kelas RBAC | Sync year, Admin view-only gradebook, TP restriction, Jurnal Kelas RBAC | M1 | PLANNED |
-| M3 | R4 & R5: Attendance Rules & Direct Camera Integration | Admin settings, Friday pulang, workflow logic, camera capture on Pulang/Jurnal/Piket, front/back toggle | M1 | PLANNED |
+| M1 | Database Schema & Migrations | Migration SQL for `pengaturan`, `data_guru`, `chat_messages`, `pengumuman_dibaca` + TS types | none | DONE |
+| M2 | R1 & R3: Academic Year, Gradebook & Jurnal Kelas RBAC | Sync year, Admin view-only gradebook, TP restriction, Jurnal Kelas RBAC | M1 | IN_PROGRESS |
+| M3 | R4 & R5: Attendance Rules & Direct Camera Integration | Admin settings, Friday pulang, workflow logic, camera capture on Pulang/Jurnal/Piket, front/back toggle | M1 | IN_PROGRESS |
 | M4 | R2: Broadcast Bell, Real-time Chat & Web Push Reminders | Navbar bell animation & badge, `ChatView` realtime, push reminders API & permission dialog | M1 | PLANNED |
 | M5 | Final Acceptance, Forensic Audit & Git Delivery | End-to-end verification, forensic audit, build check, git commit & push | M2, M3, M4 | PLANNED |
 
