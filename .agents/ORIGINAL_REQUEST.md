@@ -300,3 +300,46 @@ Integrity mode: benchmark
 - [ ] Skrip fungsi getGuruDailyState() memiliki percabangan logika yang membebaskan perhitungan "Alpa" pada hari-hari tanpa jadwal mengajar jika guru ditandai sebagai "Wajib Hadir Hanya di Hari Mengajar".
 - [ ] Logika "Naik Kelas" berhasil memperbarui kolom kelas pada entitas data_siswa dalam operasi *batch/bulk update*.
 
+## 2026-09-18T07:34:50Z
+
+Implement several feature enhancements to the SIPJAM application, including real-time chat, strict live camera enforcement for attendance/journals, Web Push Notifications, role-based access, and admin configuration adjustments.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Pengaturan Tahun Ajaran & Daftar Nilai
+- Pada akun guru, Tahun Ajaran harus disinkronkan dengan pengaturan yang ditetapkan oleh admin di tabel pengaturan/konfigurasi.
+- Pada antarmuka admin, daftar nilai dikunci menjadi view-only dan hanya memiliki opsi untuk dicetak.
+- Input dan manajemen Tujuan Pembelajaran (TP) hanya dapat diakses melalui akun guru pengampu.
+
+### R2. Sistem Notifikasi & Chat Real-time
+- Implementasikan UI ikon bel notifikasi di navbar untuk pemberitahuan siaran (broadcast). Ikon harus memiliki animasi bergetar dan indikator merah jika ada unread broadcast.
+- Kembangkan fitur chat real-time antar guru menggunakan Supabase Realtime.
+- Integrasikan sistem Web Push Notifications (menggunakan Service Worker & VAPID keys) untuk memberikan peringatan otomatis kepada guru yang belum melakukan presensi, mengisi jurnal, atau piket.
+
+### R3. Hak Akses Jurnal Kelas
+- Modifikasi middleware atau routing agar Jurnal Kelas secara eksklusif hanya dapat dibuka oleh role Admin dan Wali Kelas dari kelas yang bersangkutan.
+
+### R4. Pengaturan Kehadiran & Jadwal (Admin)
+- Tambahkan konfigurasi di sisi Admin untuk mendefinisikan pengecualian kehadiran guru (hadir khusus hari mengajar). Guru tanpa pengecualian diwajibkan hadir setiap hari kerja.
+- Tambahkan konfigurasi jam presensi pulang spesifik untuk hari Jumat di panel Admin.
+
+### R5. Integrasi & Aturan Kamera Langsung
+- Presensi pulang, Jurnal, dan Laporan Piket wajib menggunakan input kamera langsung melalui browser (`navigator.mediaDevices`).
+- Opsi untuk upload file gambar (dari galeri) harus ditiadakan pada form-form tersebut.
+- Kamera harus mendukung pergantian antara kamera depan (user) dan kamera belakang (environment).
+
+## Acceptance Criteria
+
+### Verifikasi Manual & UI
+- [ ] Login sebagai Guru -> Tahun Ajaran sesuai dengan data di panel admin.
+- [ ] Login sebagai Admin -> Fitur edit pada daftar nilai tidak muncul, hanya tampil tombol "Cetak".
+- [ ] Ikon bel notifikasi memicu animasi getar ketika ada baris baru di tabel broadcast dengan status unread untuk user tersebut.
+- [ ] Chat antar guru dapat dilakukan secara dua arah, pesan baru muncul tanpa perlu me-refresh halaman.
+- [ ] Dialog izin "Kirim Notifikasi (Push)" muncul di browser, dan notifikasi simulasi dari sistem berhasil masuk.
+- [ ] Login sebagai Guru biasa -> Akses ke menu Jurnal Kelas terblokir atau disembunyikan.
+- [ ] Login sebagai Admin -> Terdapat antarmuka untuk memilih guru yang "Hanya wajib hadir saat hari mengajar" dan antarmuka untuk mengatur "Jam Pulang Hari Jumat".
+- [ ] Form Presensi Pulang, Jurnal, dan Piket -> Menampilkan viewfinder kamera langsung, terdapat tombol toggle kamera depan/belakang, dan fitur `<input type="file">` telah dihilangkan.
+
