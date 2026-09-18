@@ -53,12 +53,15 @@ Finalize Milestone 9 remediation, complete forensic audit and multi-agent review
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |---|---|---|---|---|
-| worker_m9_final | teamwork_preview_worker | Remediation & verification | in-progress | 8fc02ad5-9573-451a-8c3a-360d3292d2f5 |
+| worker_m9_final | teamwork_preview_worker | Remediation & verification | completed | 8fc02ad5-9573-451a-8c3a-360d3292d2f5 |
+| reviewer_m9_final | teamwork_preview_reviewer | Code review & contract check | completed | eb9c7203-9d55-4647-8231-98cd16ac28ff |
+| challenger_m9_final | teamwork_preview_challenger | Empirical & E2E verification | completed | ff0b17d7-56b0-446f-966b-d1f7ff5a0859 |
+| auditor_m9_final | teamwork_preview_auditor | Forensic integrity verification | completed | 85a4da8c-fc45-4ca3-979a-3280f4a9145b |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: 8fc02ad5-9573-451a-8c3a-360d3292d2f5
+- Spawn count: 4 / 16
+- Pending subagents: none
 - Predecessor: orchestrator_11
 - Successor: not yet spawned
 
