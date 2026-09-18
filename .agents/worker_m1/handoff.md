@@ -1,98 +1,136 @@
-# Handoff Report: Milestone 1 — Requirement R1 (Verification & Piket)
+# Handoff Report — Worker M1 (Milestone 1: Database Schema & Types)
 
-**Worker**: worker_m1 (Verification & Piket Implementer)  
-**Parent Orchestrator**: 742c922b-4acf-4153-902f-de90d07d6ea8  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m1`  
-**Date**: 2026-09-11  
+**Worker**: `worker_m1`  
+**Milestone**: Milestone 1 (Milestone 9 - Database Schema & TypeScript Types)  
+**Date**: 2026-09-18T08:22:00Z  
+**Recipient**: `orchestrator_10` (`a21d5b87-ff2e-4b29-acfe-6e2543e24911`)  
 
 ---
 
 ## 1. Observation
 
-1. **File Ownership**:
-   - `src/components/AdminVerifView.tsx`
-   - `src/components/PiketView.tsx`
-2. **Initial State of `src/components/AdminVerifView.tsx`**:
-   - Tab state was restricted to `'Presensi' | 'Jurnal'`, completely omitting `'Piket'`.
-   - Realtime subscription only subscribed to `presensi_guru` and `jurnal_pembelajaran`.
-   - Individual verification (`verifyItem`) used browser `alert()` on error and silent refresh, without optimistic state updates, SweetAlert2 toasts, or in-flight request button disabling.
-   - Bulk verification (`bulkVerifyCurrent`) used native browser `confirm()`, mapped to only 2 tables, and omitted error handling.
-   - Search filter only checked `nama_guru`, which fails for `laporan_piket` where the column is named `guru_pelapor`.
-   - Card rendering only handled Presensi and Jurnal attributes.
-3. **Initial State of `src/components/PiketView.tsx`**:
-   - "Laporan Terbaru" cards in `beranda` tab rendered reports without verification status badges (`status_verifikasi`) and had no action buttons for administrators.
-   - Only two tabs existed (`beranda` and `lapor`). There was no "Rekap Piket" tab to view, filter, summarize, or export historical Piket reports.
-4. **Database Schema & Table Verification**:
-   - Table `laporan_piket` verified via Supabase MCP `execute_sql`:
-     Columns: `id` (text), `timestamp` (text), `tanggal` (text), `guru_pelapor` (text), `rekap_absen_kelas` (text JSON), `catatan_apel` (text), `link_foto` (text), `status_verifikasi` (text), `kehadiran_guru_piket` (text).
-5. **Compilation and Build Results**:
-   - Command `npx tsc --noEmit` executed: Exited with code 0 (0 compilation errors).
-   - Command `npm run build` executed: Exited with code 0 (Next.js production build succeeded, 4/4 static pages generated cleanly).
+1. **Schema Migration Requirements**:
+   - `public.pengaturan`: Add `jam_pulang_jumat TEXT DEFAULT '11:00'`, `guru_hanya_mengajar TEXT DEFAULT '[]'`.
+   - `public.data_guru`: Add `wajib_hadir_hanya_mengajar BOOLEAN DEFAULT FALSE`.
+   - `public.chat_messages`: New table for teacher-to-teacher real-time messaging with columns (`id`, `sekolah_id`, `sender_id`, `sender_nama`, `recipient_id`, `recipient_nama`, `pesan`, `is_read`, `created_at`), Row Level Security enabled with tenant isolation policies, and added to publication `supabase_realtime`.
+   - `public.pengumuman_dibaca`: New table for announcement read tracking with columns (`id`, `sekolah_id`, `pengumuman_id`, `user_id`, `read_at`), unique constraint `(sekolah_id, pengumuman_id, user_id)`, and Row Level Security enabled with tenant isolation policies.
+
+2. **Created Migration File**:
+   - File: `supabase/migrations/20260918_milestone9_schema.sql`
+   - DDL statements implement:
+     ```sql
+     ALTER TABLE public.pengaturan ADD COLUMN IF NOT EXISTS jam_pulang_jumat TEXT DEFAULT '11:00';
+     ALTER TABLE public.pengaturan ADD COLUMN IF NOT EXISTS guru_hanya_mengajar TEXT DEFAULT '[]';
+     ALTER TABLE public.data_guru ADD COLUMN IF NOT EXISTS wajib_hadir_hanya_mengajar BOOLEAN DEFAULT FALSE;
+
+     CREATE TABLE IF NOT EXISTS public.chat_messages (
+         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+         sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE DEFAULT public.get_auth_user_sekolah_id(),
+         sender_id TEXT NOT NULL,
+         sender_nama TEXT NOT NULL,
+         recipient_id TEXT NOT NULL,
+         recipient_nama TEXT NOT NULL,
+         pesan TEXT NOT NULL,
+         is_read BOOLEAN DEFAULT FALSE,
+         created_at TIMESTAMPTZ DEFAULT now()
+     );
+
+     CREATE TABLE IF NOT EXISTS public.pengumuman_dibaca (
+         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+         sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE DEFAULT public.get_auth_user_sekolah_id(),
+         pengumuman_id UUID NOT NULL REFERENCES public.pengumuman(id) ON DELETE CASCADE,
+         user_id TEXT NOT NULL,
+         read_at TIMESTAMPTZ DEFAULT now(),
+         CONSTRAINT uq_pengumuman_dibaca_user UNIQUE(sekolah_id, pengumuman_id, user_id)
+     );
+     ```
+   - Realtime publication statement wrapped safely:
+     ```sql
+     DO $$
+     BEGIN
+         IF NOT EXISTS (
+             SELECT 1 FROM pg_publication_tables 
+             WHERE pubname = 'supabase_realtime' 
+               AND schemaname = 'public' 
+               AND tablename = 'chat_messages'
+         ) THEN
+             ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
+         END IF;
+     END $$;
+     ```
+   - RLS enabled and policies created for SELECT, INSERT, UPDATE, DELETE on both tables.
+   - Grants executed for `anon`, `authenticated`, and `service_role`.
+
+3. **Supabase Migration Execution**:
+   - Executed via Supabase MCP tool `apply_migration` targeting project `jicvvqxjyzntdrccnuyz` (`sipjam-nizamudin`).
+   - Result: `{"success": true}`.
+   - Verification via `information_schema.columns` returned all 17 target columns across the 4 tables.
+   - Publication verification via `SELECT pubname, tablename FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'chat_messages';` returned `{"pubname": "supabase_realtime", "tablename": "chat_messages"}`.
+
+4. **TypeScript Types Updated**:
+   - File: `src/types/database.ts`
+   - Added table `chat_messages` in `Database['public']['Tables']` with Row, Insert, Update, and Relationships.
+   - Added table `pengumuman_dibaca` in `Database['public']['Tables']` with Row, Insert, Update, and Relationships.
+   - Added `wajib_hadir_hanya_mengajar: boolean | null` to `data_guru` (Row, Insert, Update).
+   - Added `guru_hanya_mengajar: string | null` and `jam_pulang_jumat: string | null` to `pengaturan` (Row, Insert, Update).
+   - Exported convenience types: `ChatMessage`, `ChatMessageInsert`, `ChatMessageUpdate`, `PengumumanDibaca`, `PengumumanDibacaInsert`, `PengumumanDibacaUpdate`.
+
+5. **Typecheck & Automated Test Results**:
+   - Command: `npx tsc --noEmit` -> Exited with code 0 (zero errors).
+   - Test suite: `npx tsx tests/m9_1_database_and_types.test.ts` -> 17/17 tests passed.
+   - Full test suite: `npm test` -> 73/73 tests passed.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Premise**: Requirement R1 dictates that Admin verification actions (approving and rejecting Presensi, Jurnal, and Piket) must execute genuine mutations to Supabase `status_verifikasi` fields with real-time feedback, batch verification capabilities, and status badges.
-2. **From Observation 2**: In `AdminVerifView.tsx`:
-   - Added `'Piket'` to `activeTab` union type: `'Presensi' | 'Jurnal' | 'Piket'`.
-   - Added Postgres realtime channel subscription for `laporan_piket` alongside `presensi_guru` and `jurnal_pembelajaran`.
-   - In `loadData()`, added branch for `activeTab === 'Piket'` querying `laporan_piket`, filtered by `tanggal === date` if selected, and ordered by `timestamp` descending.
-   - Resolved table dynamically: `'presensi_guru' | 'jurnal_pembelajaran' | 'laporan_piket'`.
-   - Implemented `verifyItem(id, status)`: executes `supabase.from(table).update({ status_verifikasi: status }).eq('id', id)`, performs optimistic state update on the corresponding list (`presensiList`, `jurnalList`, or `piketList`), shows SweetAlert2 toast notification, and disables buttons during in-flight mutations via `processingId`.
-   - Implemented `bulkVerifyCurrent()`: collects pending items (`status_verifikasi !== 'Disetujui'`), prompts confirmation via `Swal.fire`, updates Supabase in batches of 100 via `.in('id', batchIds)`, handles errors gracefully, and shows feedback.
-   - Rendered Piket cards displaying `tanggal`, `guru_pelapor`, `catatan_apel`, and clickable `link_foto`.
-   - Extended search filter to match `guru_pelapor` and `catatan_apel` when on Piket tab.
-3. **From Observation 3**: In `PiketView.tsx`:
-   - In "Laporan Terbaru" cards, added `status_verifikasi` badges (`Disetujui`, `Ditolak`, `Menunggu`).
-   - For `user?.role === 'Admin'`, added direct "Setujui" and "Tolak" buttons executing `supabase.from('laporan_piket').update({ status_verifikasi: status }).eq('id', id)` with SweetAlert2 feedback and `processingId` loading state.
-   - Added a third tab `'rekap'` ("Rekap Piket") with:
-     - Month filter (`input type="month"` with "Semua" clear button)
-     - Teacher filter dropdown (`Semua Guru` or teacher from `data_guru`)
-     - Status filter dropdown (`Semua`, `Disetujui`, `Menunggu`, `Ditolak`)
-     - Search filter (guru pelapor, catatan apel, tanggal)
-     - Summary counters: Total Laporan, Disetujui, Menunggu, Ditolak
-     - Formatted student attendance summary parsed from `rekap_absen_kelas` JSON (`H: X | S: Y | I: Z | A: W`)
-     - Admin quick verification buttons in rekap cards
-     - CSV export with UTF-8 BOM (`\uFEFF`) and proper quoting
-     - Print support with `<PrintHeader />`, `<PrintSignature />`, and `.no-print` classes
-4. **From Observation 5**: Both `npx tsc --noEmit` and `npm run build` completed with exit code 0, confirming type-safety and build integrity.
+1. **Step 1: Multi-Tenant Schema Design**:
+   - R4 requires admin to configure Friday return time and teacher-specific attendance exemptions. `pengaturan` stores `jam_pulang_jumat` and JSON array `guru_hanya_mengajar`. `data_guru` stores flag `wajib_hadir_hanya_mengajar`.
+   - R2 requires real-time chat between teachers. Creating `public.chat_messages` with text IDs for sender and recipient allows flexible sender/recipient user linking while isolating by `sekolah_id`.
+   - R2 requires bell vibration and unread indicators for announcements. Since `pengumuman` is broadcasted school-wide, a junction table `pengumuman_dibaca` with unique `(sekolah_id, pengumuman_id, user_id)` cleanly tracks per-user read state.
+2. **Step 2: Realtime & RLS Enforcement**:
+   - Adding `chat_messages` to `supabase_realtime` publication allows Supabase JS client `.channel(...).on('postgres_changes', ...)` to receive row events instantly.
+   - RLS policies ensure that users from School A can never read or write messages or read-receipts belonging to School B.
+3. **Step 3: Type Safety & Developer Ergonomics**:
+   - Updating `src/types/database.ts` ensures workers implementing `ChatView.tsx`, `BroadcastBell.tsx`, `AdminConfigView.tsx`, and `workflow.ts` have full TypeScript autocompletion and compiler validation.
 
 ---
 
 ## 3. Caveats
 
-1. **Git Automation**: Command `git add .` prompted for user permission which timed out in headless subagent execution. All file modifications are cleanly present in the working tree ready for commit and push by the orchestrator.
-2. **No Backend Schema Changes**: All changes leverage the existing Supabase production tables (`presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`, `data_guru`, `data_siswa`) without requiring database migrations.
+- In the live database, `chat_messages` uses `sekolah_id` for multi-tenancy. When inserting records from the client, the caller should pass `user.sekolah_id` (defaulting to `public.get_auth_user_sekolah_id()`).
+- `pengumuman_dibaca` enforces unique `(sekolah_id, pengumuman_id, user_id)` to avoid duplicate records if an announcement is viewed multiple times; downstream workers should use `.upsert(...)` or handle conflict gracefully.
 
 ---
 
 ## 4. Conclusion
 
-Requirement R1 has been fully and genuinely implemented across `src/components/AdminVerifView.tsx` and `src/components/PiketView.tsx`:
-- Centralized Admin verification now covers Presensi, Jurnal, and Piket with realtime sync, optimistic updates, SweetAlert2 notifications, and batch verification.
-- Contextual Piket management in `PiketView.tsx` displays verification badges, direct Admin approval/rejection actions, and a full-featured "Rekap Piket" tab with comprehensive filtering, counters, and CSV export.
+Milestone 1 is completely satisfied:
+- Migration `supabase/migrations/20260918_milestone9_schema.sql` created and applied.
+- All new columns and tables live in Supabase PostgreSQL (`jicvvqxjyzntdrccnuyz`).
+- `supabase_realtime` publication active on `chat_messages`.
+- `src/types/database.ts` updated with types, table definitions, and convenience exports.
+- TypeScript compiler passes cleanly with zero errors (`npx tsc --noEmit`).
+- All 17 automated milestone verification tests passed.
 
 ---
 
 ## 5. Verification Method
 
-### 5.1 Static Verification
-Run in terminal:
-```bash
-npx tsc --noEmit
-npm run build
-```
-Both commands must exit with code 0.
+1. **TypeScript Typecheck**:
+   ```bash
+   npx tsc --noEmit
+   ```
+   Expect exit code 0.
 
-### 5.2 Functional UI Verification
-1. **Admin Verifikasi View**:
-   - Open Admin portal &rarr; Verifikasi Data (`view-admin-verif`).
-   - Switch between tabs: "Presensi", "Jurnal", and "Piket".
-   - Verify Piket tab displays reports with `guru_pelapor`, `catatan_apel`, and photo links.
-   - Click "Setujui" or "Tolak" on any record: observe spinner during in-flight request, instant optimistic status update, and SweetAlert2 toast.
-   - Test "Setujui Semua Tampil": confirm SweetAlert2 prompt appears and displayed pending records are approved.
-2. **Piket View**:
-   - Open Modul Piket (`view-piket`).
-   - On "Beranda Piket", observe status badges on "Laporan Terbaru". If logged in as Admin, observe "Setujui" and "Tolak" buttons.
-   - Click "Rekap Piket" tab: verify month filter, teacher filter, status filter, search, summary metric tiles, and "Export Excel (CSV)" button.
+2. **Automated Schema & Types Test**:
+   ```bash
+   npx tsx tests/m9_1_database_and_types.test.ts
+   ```
+   Expect 17/17 tests passing.
+
+3. **Regression Test Suite**:
+   ```bash
+   npm test
+   ```
+   Expect all existing tests passing.

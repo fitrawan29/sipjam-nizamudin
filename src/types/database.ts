@@ -174,6 +174,50 @@ export type Database = {
           },
         ]
       }
+      chat_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          pesan: string
+          recipient_id: string
+          recipient_nama: string
+          sekolah_id: string
+          sender_id: string
+          sender_nama: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          pesan: string
+          recipient_id: string
+          recipient_nama: string
+          sekolah_id?: string
+          sender_id: string
+          sender_nama: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          pesan?: string
+          recipient_id?: string
+          recipient_nama?: string
+          sekolah_id?: string
+          sender_id?: string
+          sender_nama?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_guru: {
         Row: {
           email: string | null
@@ -184,6 +228,7 @@ export type Database = {
           no_hp: string | null
           sekolah_id: string
           status: string | null
+          wajib_hadir_hanya_mengajar: boolean | null
         }
         Insert: {
           email?: string | null
@@ -194,6 +239,7 @@ export type Database = {
           no_hp?: string | null
           sekolah_id?: string
           status?: string | null
+          wajib_hadir_hanya_mengajar?: boolean | null
         }
         Update: {
           email?: string | null
@@ -204,6 +250,7 @@ export type Database = {
           no_hp?: string | null
           sekolah_id?: string
           status?: string | null
+          wajib_hadir_hanya_mengajar?: boolean | null
         }
         Relationships: [
           {
@@ -652,7 +699,9 @@ export type Database = {
         Row: {
           aturan_kehadiran_guru: string | null
           email_tujuan_upload: string | null
+          guru_hanya_mengajar: string | null
           id: string
+          jam_pulang_jumat: string | null
           key: string | null
           sekolah_id: string
           value: string | null
@@ -660,7 +709,9 @@ export type Database = {
         Insert: {
           aturan_kehadiran_guru?: string | null
           email_tujuan_upload?: string | null
+          guru_hanya_mengajar?: string | null
           id?: string
+          jam_pulang_jumat?: string | null
           key?: string | null
           sekolah_id?: string
           value?: string | null
@@ -668,7 +719,9 @@ export type Database = {
         Update: {
           aturan_kehadiran_guru?: string | null
           email_tujuan_upload?: string | null
+          guru_hanya_mengajar?: string | null
           id?: string
+          jam_pulang_jumat?: string | null
           key?: string | null
           sekolah_id?: string
           value?: string | null
@@ -729,6 +782,45 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pengumuman_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pengumuman_dibaca: {
+        Row: {
+          id: string
+          pengumuman_id: string
+          read_at: string | null
+          sekolah_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          pengumuman_id: string
+          read_at?: string | null
+          sekolah_id?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          pengumuman_id?: string
+          read_at?: string | null
+          sekolah_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pengumuman_dibaca_pengumuman_id_fkey"
+            columns: ["pengumuman_id"]
+            isOneToOne: false
+            referencedRelation: "pengumuman"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pengumuman_dibaca_sekolah_id_fkey"
             columns: ["sekolah_id"]
             isOneToOne: false
             referencedRelation: "sekolah"
@@ -1488,6 +1580,15 @@ export type NilaiSiswaUpdate = TablesUpdate<"nilai_siswa">;
 export type PushSubscription = Tables<"push_subscriptions">;
 export type PushSubscriptionInsert = TablesInsert<"push_subscriptions">;
 export type PushSubscriptionUpdate = TablesUpdate<"push_subscriptions">;
+
+// Feature Additions (Milestone 9)
+export type ChatMessage = Tables<"chat_messages">;
+export type ChatMessageInsert = TablesInsert<"chat_messages">;
+export type ChatMessageUpdate = TablesUpdate<"chat_messages">;
+
+export type PengumumanDibaca = Tables<"pengumuman_dibaca">;
+export type PengumumanDibacaInsert = TablesInsert<"pengumuman_dibaca">;
+export type PengumumanDibacaUpdate = TablesUpdate<"pengumuman_dibaca">;
 
 // Useful Enum / Literal Types for Components
 export type HariPiket = "Senin" | "Selasa" | "Rabu" | "Kamis" | "Jumat" | "Sabtu";

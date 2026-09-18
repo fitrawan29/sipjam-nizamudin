@@ -1,42 +1,71 @@
-## 2026-09-11T10:14:29Z
-You are the Verification & Piket Implementer worker subagent.
-Your assigned working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m1
+# Dispatch for Worker M1 (Database Schema & Types)
 
-MANDATORY FIRST STEP:
-Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\ORIGINAL_REQUEST.md. Do not skip this!
-Also read c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md and c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\explorer_r1_verification\handoff.md.
+## Identity
+- Role: Worker
+- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m1
+- Parent: orchestrator_10
 
-MANDATORY INTEGRITY WARNING:
+## Scope: Milestone 1 - Database Schema & TypeScript Types
+1. **Migration SQL**:
+   Create `supabase/migrations/20260918_milestone9_schema.sql` with:
+   - Columns in `public.pengaturan`:
+     - `jam_pulang_jumat TEXT DEFAULT '11:00'`
+     - `guru_hanya_mengajar TEXT DEFAULT '[]'`
+   - Columns in `public.data_guru`:
+     - `wajib_hadir_hanya_mengajar BOOLEAN DEFAULT FALSE`
+   - Table `public.chat_messages`:
+     - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
+     - `sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE`
+     - `sender_id TEXT NOT NULL`
+     - `sender_nama TEXT NOT NULL`
+     - `recipient_id TEXT NOT NULL`
+     - `recipient_nama TEXT NOT NULL`
+     - `pesan TEXT NOT NULL`
+     - `is_read BOOLEAN DEFAULT FALSE`
+     - `created_at TIMESTAMPTZ DEFAULT NOW()`
+     - Enable RLS + Policies for authenticated users belonging to the same `sekolah_id`.
+     - `ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;` (wrapped safely if already in publication).
+   - Table `public.pengumuman_dibaca`:
+     - `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
+     - `sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE`
+     - `pengumuman_id UUID NOT NULL REFERENCES public.pengumuman(id) ON DELETE CASCADE`
+     - `user_id TEXT NOT NULL`
+     - `read_at TIMESTAMPTZ DEFAULT NOW()`
+     - Enable RLS + Policies for authenticated users belonging to the same `sekolah_id`.
+2. **Apply Migration**:
+   Apply the SQL to Supabase.
+3. **Update TypeScript Types**:
+   Update `src/types/database.ts` so all new tables and columns are accurately typed in `Database['public']['Tables']`.
+4. **Verification**:
+   Run `npx tsc --noEmit` to ensure zero compilation errors.
+5. **Git Workflow**:
+   Run `git status`, `git add .`, `git commit -m "feat(db): add milestone 9 schema for attendance rules, chat, and read tracking"`, and `git push origin main`.
+
+## References
+Read:
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\ORIGINAL_REQUEST.md`
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md`
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\explorer_m9_2\handoff.md`
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\explorer_m9_3\handoff.md`
+
+## Output
+Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m1\handoff.md` and send a message when complete.
+
+## 2026-09-18T08:05:03Z
+You are Worker 1 for Milestone 1 (Database Schema & Types).
+Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\ORIGINAL_REQUEST.md and c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m1\DISPATCH.md before starting work.
+
 DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-File Ownership:
-You have exclusive write ownership of:
-- src/components/AdminVerifView.tsx
-- src/components/PiketView.tsx
-DO NOT modify any other files to avoid collisions with concurrent workers.
+Your task:
+1. Implement migration SQL file supabase/migrations/20260918_milestone9_schema.sql adding:
+   - pengaturan columns: jam_pulang_jumat TEXT, guru_hanya_mengajar TEXT
+   - data_guru column: wajib_hadir_hanya_mengajar BOOLEAN DEFAULT FALSE
+   - chat_messages table with RLS and publication supabase_realtime
+   - pengumuman_dibaca table with RLS
+2. Apply the migration using Supabase MCP tools or migration runner / SQL execution.
+3. Update src/types/database.ts to reflect all new tables and columns in Database['public']['Tables'].
+4. Verify by running `npx tsc --noEmit`.
+5. Comply with Git Workflow Rule: `git status`, `git add .`, `git commit -m "feat(db): add milestone 9 schema for attendance rules, chat, and read tracking"`, and `git push origin main`.
+6. Write full handoff report to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m1\handoff.md and notify with send_message.
 
-Your Mission (Milestone 1 — Requirement R1):
-1. In src/components/AdminVerifView.tsx:
-   - Add 'Piket' as third tab alongside 'Presensi' and 'Jurnal'.
-   - Add realtime Postgres subscription for table 'laporan_piket'.
-   - In loadData(), query 'laporan_piket' when activeTab === 'Piket' (with date filtering if selected, ordered by timestamp descending).
-   - Dynamically resolve table ('presensi_guru' | 'jurnal_pembelajaran' | 'laporan_piket') and teacher name column ('guru_pelapor' for piket, 'nama_guru' for presensi/jurnal).
-   - In verifyItem(id, status): execute `supabase.from(table).update({ status_verifikasi: status }).eq('id', id)`. Add optimistic state update, SweetAlert2 toast notification, and processingId state to disable buttons during in-flight requests.
-   - In bulkVerifyCurrent(): execute batch updates using `supabase.from(table).update({ status_verifikasi: 'Disetujui' }).in('id', batchIds)` with SweetAlert2 confirmation and error handling, supporting Presensi, Jurnal, and Piket.
-   - Render Piket cards showing tanggal, guru_pelapor, catatan_apel, and link_foto.
-   - Ensure search filter works for all three tabs.
-2. In src/components/PiketView.tsx:
-   - In "Laporan Terbaru" cards, display status_verifikasi badge (Disetujui, Ditolak, Menunggu).
-   - If user?.role === 'Admin', render direct "Setujui" and "Tolak" action buttons that execute `supabase.from('laporan_piket').update({ status_verifikasi: status }).eq('id', id)` with SweetAlert2 feedback.
-   - Add a third tab 'rekap' ("Rekap Piket") with month/date filter, search, summary counters, and CSV export per Explorer R2 specifications.
-3. Verification:
-   - Run `npx tsc --noEmit` to verify 0 TypeScript compilation errors.
-   - Run `npm run build` to confirm production build passes cleanly.
-4. Git Workflow (GEMINI.md):
-   - Check `git status`
-   - Stage changes: `git add .`
-   - Commit: `git commit -m "feat(verification): functionalize admin verification and piket actions with supabase"`
-   - Push: `git push origin main`
-5. Documentation:
-   - Write comprehensive handoff report to: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m1\handoff.md
-   - Update progress.md in your working directory and notify parent orchestrator via send_message.
