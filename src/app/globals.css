@@ -379,3 +379,21 @@ body.fade-out {
 @media screen {
   .print-only { display: none !important; }
 }
+
+/* Broadcast Bell Shake Animation */
+@keyframes bell-shake {
+  0% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(4deg); }
+  85% { transform: rotate(-2deg); }
+  100% { transform: rotate(0); }
+}
+
+.animate-bell-shake {
+  animation: bell-shake 0.8s ease-in-out infinite;
+  transform-origin: top center;
+  display: inline-block;
+}

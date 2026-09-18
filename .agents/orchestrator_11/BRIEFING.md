@@ -1,11 +1,11 @@
-# BRIEFING — 2026-09-18T12:45:00Z
+# BRIEFING — 2026-09-18T12:57:30Z
 
 ## Mission
 Orchestrate Milestone 9 enhancements of the SIPJAM application:
-- M2: R1 & R3 (Academic Year sync, Admin Gradebook lock, TP Guru Pengampu restriction, Jurnal Kelas RBAC).
-- M3: R4 & R5 (Admin attendance exception settings, Friday checkout time, live camera enforcement without file upload).
-- M4: R2 (Navbar broadcast bell with shake animation & red dot, Supabase Realtime teacher chat, Web Push notifications via Service Worker & VAPID keys).
-- M5: Verification, Tests, Build, Git commit & push, and handoff.
+- M2: R1 & R3 (Academic Year sync, Admin Gradebook lock, TP Guru Pengampu restriction, Jurnal Kelas RBAC). [DONE - committed b41c51a]
+- M3: R4 & R5 (Admin attendance exception settings, Friday checkout time, live camera enforcement without file upload). [DONE - committed b41c51a]
+- M4: R2 (Navbar broadcast bell with shake animation & red dot, Supabase Realtime teacher chat, Web Push notifications via Service Worker & VAPID keys). [IN-PROGRESS]
+- M5: Verification, Tests, Build, Git commit & push, and handoff. [PENDING]
 
 ## 🔒 My Identity
 - Archetype: orchestrator
@@ -31,11 +31,11 @@ Orchestrate Milestone 9 enhancements of the SIPJAM application:
 4. **Succession**: Self-succeed at 16 spawns.
 - **Work items**:
   1. Audit of working tree & M2/M3/M4 gaps [done]
-  2. M2 & M3 Completion: Gradebook, Jurnal Kelas RBAC, Admin Attendance Config, Piket Live Camera [in-progress]
-  3. M4: Broadcast Bell, Real-time Chat & Web Push Reminders [pending]
+  2. M2 & M3 Completion: Gradebook, Jurnal Kelas RBAC, Admin Attendance Config, Piket Live Camera [done - committed b41c51a]
+  3. M4: Broadcast Bell, Real-time Chat & Web Push Reminders [in-progress]
   4. M5: Final Acceptance, Forensic Audit & Git Delivery [pending]
-- **Current phase**: Phase 2 (Implementation & Verification of M2 & M3)
-- **Current focus**: worker_m9_m2m3 completing M2 and M3
+- **Current phase**: Phase 2 (Implementation of Milestone 4)
+- **Current focus**: worker_m9_m4 implementing R2 notification, chat, and push features
 
 ## 🔒 Key Constraints
 - Never write, modify, or create source code files directly.
@@ -52,32 +52,29 @@ Orchestrate Milestone 9 enhancements of the SIPJAM application:
 
 ## Key Decisions Made
 - Recovered from orchestrator_10; M1 is complete and pushed (`b161561`).
-- `explorer_m9_audit` completed audit:
-  * M1 is 100% verified.
-  * M2: GradebookView is ready; Jurnal Kelas RBAC in AppScreen.tsx and RekapJurnalView.tsx needs completion.
-  * M3: workflow.ts & GuruPresensi.tsx ready; AdminConfigView needs UI for Friday checkout & teacher exceptions; PiketView line 1141 still has `<input type="file">`.
-  * M4: Bell shake, realtime chat, and push reminders pending.
-- Dispatched `worker_m9_m2m3` (d41387da-d515-4f8f-9a5f-93839aacd48e) to complete M2 and M3.
+- `worker_m9_m2m3` completed M2 & M3, passed tests (20/20 PASS), committed (`b41c51a`), and pushed to origin.
+- Dispatched `worker_m9_m4` (986c88d5-0481-4f16-9fd6-ea64d7baf009) to implement Milestone 4.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
 | explorer_m9_audit | teamwork_preview_explorer | Audit working tree & gaps for M2-M5 | completed | 3e842eea-bdae-465f-bc9a-d6b75c734dda |
-| worker_m9_m2m3 | teamwork_preview_worker | Complete M2 & M3 (RBAC, Admin UI, Piket camera) | in-progress | d41387da-d515-4f8f-9a5f-93839aacd48e |
+| worker_m9_m2m3 | teamwork_preview_worker | Complete M2 & M3 (RBAC, Admin UI, Piket camera) | completed | d41387da-d515-4f8f-9a5f-93839aacd48e |
+| worker_m9_m4 | teamwork_preview_worker | Milestone 4 (Broadcast Bell, Realtime Chat, Web Push) | in-progress | 986c88d5-0481-4f16-9fd6-ea64d7baf009 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 2 / 16
-- Pending subagents: d41387da-d515-4f8f-9a5f-93839aacd48e
+- Spawn count: 3 / 16
+- Pending subagents: 986c88d5-0481-4f16-9fd6-ea64d7baf009
 - Predecessor: orchestrator_10
 - Successor: not yet spawned
 
 ## Active Timers
 - Heartbeat cron: d2dfd088-11e9-48f7-a9b6-d9a38d0c3b78/task-34
-- Safety timer: d2dfd088-11e9-48f7-a9b6-d9a38d0c3b78/task-74 (terminated on d41387da-d515-4f8f-9a5f-93839aacd48e)
+- Safety timer: d2dfd088-11e9-48f7-a9b6-d9a38d0c3b78/task-106 (terminated on 986c88d5-0481-4f16-9fd6-ea64d7baf009)
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_11\DISPATCH.md — Initial dispatch log
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_11\BRIEFING.md — Working memory index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_11\progress.md — Liveness & task tracking
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\explorer_m9_audit\handoff.md — Explorer audit findings
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\worker_m9_m2m3\handoff.md — M2 & M3 handoff report
