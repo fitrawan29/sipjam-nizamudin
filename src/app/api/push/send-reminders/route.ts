@@ -55,8 +55,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     let presensiQuery = supabase
       .from('presensi_guru')
       .select('*')
-      .eq('tanggal', todayStr)
-      .eq('jenis', 'Datang');
+      .ilike('timestamp', `${todayStr}%`)
+      .eq('tipe_absen', 'Datang');
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       presensiQuery = presensiQuery.eq('sekolah_id', sekolahId);
     }

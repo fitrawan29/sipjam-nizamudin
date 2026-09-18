@@ -6,12 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../src/types/database';
 import { NextRequest } from 'next/server';
 
-import { setServerTenantContext } from '../src/lib/supabaseClient';
-
 dotenv.config({ path: path.resolve(__dirname, '..', '.env.local') });
-
-// Enable Superadmin context for server-side testing of RLS tables
-setServerTenantContext({ role: 'Superadmin', sekolahId: 'a0000000-0000-0000-0000-000000000001' });
 
 let failureCount = 0;
 let totalTests = 0;
@@ -38,10 +33,12 @@ async function runVerification() {
   console.log('PART 1: EMPIRICAL TESTS FOR /api/push/send-reminders');
   console.log('----------------------------------------------------------------');
 
+  const defaultSchoolAId = 'a0000000-0000-0000-0000-000000000001';
+  const { setServerTenantContext } = await import('../src/lib/supabaseClient');
+  setServerTenantContext({ role: 'Superadmin', sekolahId: defaultSchoolAId });
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jicvvqxjyzntdrccnuyz.supabase.co';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-  const defaultSchoolAId = 'a0000000-0000-0000-0000-000000000001';
   const tenantClient = createClient<Database>(supabaseUrl, supabaseKey, {
     global: {
       headers: {
@@ -319,6 +316,11 @@ async function runVerification() {
       assert(datangReminder.url === '/?view=view-guru-presensi', 'Missing Datang reminder URL routes to view-guru-presensi');
     }
 
+    // Adversarial Check: A teacher who DID check in must NOT receive a Datang reminder
+    const checkedInTeacherReminder = reminders.find(r => r.guru_nama === teacherCompleteJournal && r.category === 'presensi');
+    assert(!checkedInTeacherReminder, 'Teacher who already checked in (Presensi Datang) receives NO Datang reminder',
+      checkedInTeacherReminder ? `BUG FOUND: Checked-in teacher ${teacherCompleteJournal} erroneously received Datang reminder because route.ts queries non-existent columns eq('tanggal', ...) and eq('jenis', 'Datang') instead of timestamp and tipe_absen!` : undefined);
+
     // Verification B: Exempt Teacher with No Schedule -> NO Reminder
     const exemptNoSchedReminder = reminders.find(r => r.guru_nama === teacherExemptNoSchedule && r.category === 'presensi');
     assert(!exemptNoSchedReminder, 'Exempt teacher with no teaching schedule today receives NO Datang reminder');
@@ -578,12 +580,12 @@ async function runVerification() {
   assert(textNotif.options.body === 'Pesan darurat dari sekolah.', 'Plain text content preserved as body');
 
   // Test 2.4: notificationclick event - Focusing an existing matching window
-  let notifClosed = false;
+  const clickState = { notifClosed: false, notifClosed2: false };
   let clickWaitPromise: Promise<any> | null = null;
   listeners['notificationclick']({
     notification: {
       close: () => {
-        notifClosed = true;
+        clickState.notifClosed = true;
       },
       data: { url: '/?view=view-guru-jurnal' }
     },
@@ -593,17 +595,16 @@ async function runVerification() {
   });
   if (clickWaitPromise) await clickWaitPromise;
 
-  assert(notifClosed === true, 'notificationclick calls event.notification.close()');
+  assert(clickState.notifClosed === true, 'notificationclick calls event.notification.close()');
   assert(focusCalls.length === 1 && focusCalls[0].includes('view-guru-jurnal'),
     'notificationclick focuses existing matching window');
 
   // Test 2.5: notificationclick event - Opening a new window when no match exists
-  let notifClosed2 = false;
   let clickWaitPromise2: Promise<any> | null = null;
   listeners['notificationclick']({
     notification: {
       close: () => {
-        notifClosed2 = true;
+        clickState.notifClosed2 = true;
       },
       data: { url: '/?view=view-piket' }
     },
@@ -613,7 +614,7 @@ async function runVerification() {
   });
   if (clickWaitPromise2) await clickWaitPromise2;
 
-  assert(notifClosed2 === true, 'Second notificationclick closes notification');
+  assert(clickState.notifClosed2 === true, 'Second notificationclick closes notification');
   assert(openWindowCalls.length === 1 && openWindowCalls[0] === '/?view=view-piket',
     'notificationclick calls self.clients.openWindow with targetUrl when client is not already open');
 

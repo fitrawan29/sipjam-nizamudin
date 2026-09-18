@@ -270,8 +270,10 @@ async function runTests() {
 
   const reminderContent = fs.readFileSync(reminderRoutePath, 'utf-8');
   assert(
-    reminderContent.includes("from('presensi_guru')") && reminderContent.includes("jenis', 'Datang'"),
-    'send-reminders checks teachers without Datang presensi'
+    reminderContent.includes("from('presensi_guru')") &&
+    reminderContent.includes("tipe_absen") &&
+    reminderContent.includes("timestamp"),
+    'send-reminders checks teachers without Datang presensi using timestamp and tipe_absen'
   );
   assert(
     reminderContent.includes("from('jurnal_pembelajaran')") && reminderContent.includes("from('jadwal_pelajaran')"),
@@ -287,14 +289,64 @@ async function runTests() {
   );
 
   // Directly execute checkMissingTasks logic to verify real output
-  console.log('\n--- Step 8: checkMissingTasks Functional Execution ---');
+  console.log('\n--- Step 8: checkMissingTasks Functional Execution & Empirical Presensi Verification ---');
   try {
+    const { setServerTenantContext } = await import('../src/lib/supabaseClient');
+    setServerTenantContext({ role: 'Superadmin', sekolahId: testSekolahId });
+
     const { checkMissingTasks } = await import('../src/app/api/push/send-reminders/route');
+
+    // Empirical verification: seed a checked-in teacher and an unchecked teacher
+    const suffix = Date.now();
+    const teacherUnchecked = `Guru Test Unchecked ${suffix}`;
+    const teacherChecked = `Guru Test CheckedIn ${suffix}`;
+
+    const teacherRows = [
+      {
+        id: crypto.randomUUID(),
+        sekolah_id: testSekolahId,
+        nama_guru: teacherUnchecked,
+        wajib_hadir_hanya_mengajar: false
+      },
+      {
+        id: crypto.randomUUID(),
+        sekolah_id: testSekolahId,
+        nama_guru: teacherChecked,
+        wajib_hadir_hanya_mengajar: false
+      }
+    ];
+
+    await tenantClient.from('data_guru').insert(teacherRows);
+
+    const presensiRow = {
+      id: crypto.randomUUID(),
+      sekolah_id: testSekolahId,
+      nama_guru: teacherChecked,
+      timestamp: '2026-09-18 07:15:00',
+      tipe_absen: 'Datang',
+      jenis_presensi: 'Sekolah',
+      status_verifikasi: 'Disetujui'
+    };
+
+    await tenantClient.from('presensi_guru').insert([presensiRow]);
+
     const taskResult = await checkMissingTasks('2026-09-18', 'Jumat', testSekolahId);
     assert(Array.isArray(taskResult.reminders), 'checkMissingTasks returns array of reminders');
     assert(typeof taskResult.todayStr === 'string', 'checkMissingTasks returns date string');
     assert(typeof taskResult.todayDay === 'string', 'checkMissingTasks returns day name');
     console.log(`ℹ️ Evaluated ${taskResult.reminders.length} automated task reminders for ${taskResult.todayDay} (${taskResult.todayStr}).`);
+
+    // Verify unchecked teacher got reminder
+    const uncheckReminder = taskResult.reminders.find(r => r.guru_nama === teacherUnchecked && r.category === 'presensi');
+    assert(!!uncheckReminder, 'Unchecked teacher receives Datang reminder');
+
+    // Verify checked-in teacher does NOT get reminder (verifies timestamp + tipe_absen contract)
+    const checkedReminder = taskResult.reminders.find(r => r.guru_nama === teacherChecked && r.category === 'presensi');
+    assert(!checkedReminder, 'Checked-in teacher (with tipe_absen=Datang and timestamp) receives NO Datang reminder');
+
+    // Clean up empirical test rows
+    await tenantClient.from('presensi_guru').delete().eq('id', presensiRow.id);
+    await tenantClient.from('data_guru').delete().in('id', [teacherRows[0].id, teacherRows[1].id]);
 
     // If there are reminders generated, spot check the payload format
     if (taskResult.reminders.length > 0) {

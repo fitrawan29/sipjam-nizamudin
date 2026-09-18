@@ -32,17 +32,31 @@ Empirically verify end-to-end acceptance criteria, API endpoints, Service Worker
 - **Review criteria**: Correctness, edge cases, payload validity, SW caching & push mechanics, shake animations & modal prompts, production build clean pass.
 
 ## Key Decisions Made
-- Initializing empirical testing plan targeting API endpoints, Service Worker listeners, UI animations & prompts, and production TypeScript/Next build.
+- Executed empirical test harness `tests/m9_challenger2_e2e_verification.test.ts` covering 88 distinct test assertions.
+- Verified Service Worker `public/sw.js` lifecycle, push parsing, and notificationclick window matching in sandboxed VM.
+- Verified UI states: `animate-bell-shake` keyframes, unread badge, realtime broadcast subscription, and `PushNotificationPrompt.tsx`.
+- Discovered critical schema mismatch and tenant RLS bypass bug in `/api/push/send-reminders`.
 
 ## Artifact Index
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\challenger_m9_2\BRIEFING.md` — Situational awareness
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\challenger_m9_2\progress.md` — Liveness heartbeat and milestone log
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\challenger_m9_2\handoff.md` — Final handoff report
+- `tests/m9_challenger2_e2e_verification.test.ts` — Empirical test suite
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD during verification]
-- **Vulnerabilities found**: [TBD during verification]
-- **Untested angles**: [TBD during verification]
+- **Hypotheses tested**:
+  1. Does `/api/push/send-reminders` correctly detect teachers who already checked in? Result: REJECTED (Bug discovered: queries `eq('jenis', 'Datang')` and `eq('tanggal', todayStr)` when `presensi_guru` stores `tipe_absen` and `timestamp`).
+  2. Does `/api/push/send-reminders` work in server-side HTTP context with RLS? Result: REJECTED (Missing Superadmin tenant context in Route Handler).
+  3. Does `public/sw.js` handle both rich JSON and plain text push events? Result: CONFIRMED.
+  4. Does `public/sw.js` focus open windows or open new window on click? Result: CONFIRMED.
+  5. Does `animate-bell-shake` trigger only on `unreadCount > 0`? Result: CONFIRMED.
+  6. Does `PushNotificationPrompt` provide permission requests and simulated push? Result: CONFIRMED.
+  7. Does the project compile and build with zero errors? Result: CONFIRMED (`tsc` and `next build` exit code 0).
+- **Vulnerabilities found**:
+  - `presensi_guru` schema mismatch in `src/app/api/push/send-reminders/route.ts`: PostgREST throws column error, treating all teachers as missing attendance.
+  - Server Route Handler lacks Superadmin context under PostgREST RLS in `send-reminders/route.ts`.
+- **Untested angles**:
+  - Real hardware browser push subscription tokens with live APNs/FCM servers (mocked with local standard VAPID verification).
 
 ## Loaded Skills
 - None required for this challenge.
