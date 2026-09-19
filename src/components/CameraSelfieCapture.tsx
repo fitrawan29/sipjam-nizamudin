@@ -2,12 +2,13 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
-import { drawWatermarkedCanvas, dataUrlToFile, getDefaultWatermarkOptions, WatermarkCoordinates } from '@/lib/watermarkCanvas';
+import { drawWatermarkedCanvas, dataUrlToFile, getDefaultWatermarkOptions, reverseGeocodeNominatim, WatermarkCoordinates } from '@/lib/watermarkCanvas';
 
 export interface CameraSelfieCaptureProps {
   onPhotoConfirmed: (file: File, previewUrl: string) => void;
   onCancel?: () => void;
   initialCoordinates?: WatermarkCoordinates | null;
+  initialLocationName?: string | null;
   existingPhotoUrl?: string | null;
   initialFacingMode?: 'user' | 'environment';
 }
@@ -16,6 +17,7 @@ export default function CameraSelfieCapture({
   onPhotoConfirmed,
   onCancel,
   initialCoordinates = null,
+  initialLocationName = null,
   existingPhotoUrl = null,
   initialFacingMode = 'user',
 }: CameraSelfieCaptureProps) {
@@ -28,7 +30,8 @@ export default function CameraSelfieCapture({
   const [capturedImage, setCapturedImage] = useState<string | null>(existingPhotoUrl || null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [coordinates, setCoordinates] = useState<WatermarkCoordinates | null>(initialCoordinates);
-  const [gpsStatus, setGpsStatus] = useState<string>('Mendeteksi GPS...');
+  const [locationName, setLocationName] = useState<string | null>(initialLocationName);
+  const [gpsStatus, setGpsStatus] = useState<string>(initialLocationName || 'Mendeteksi GPS...');
 
   // 1. Live Geolocation tracking
   const requestLocation = useCallback(() => {
@@ -42,6 +45,17 @@ export default function CameraSelfieCapture({
           };
           setCoordinates(coords);
           setGpsStatus(`GPS OK (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`);
+          // Reverse geocode via OpenStreetMap Nominatim
+          reverseGeocodeNominatim(coords.latitude, coords.longitude)
+            .then((locName) => {
+              if (locName) {
+                setLocationName(locName);
+                setGpsStatus(locName);
+              }
+            })
+            .catch((err) => {
+              console.warn('[CameraCapture] Nominatim error:', err);
+            });
         },
         (err) => {
           console.warn('[CameraCapture] Geolocation warning:', err.message);
@@ -138,7 +152,7 @@ export default function CameraSelfieCapture({
     if (!videoRef.current) return;
 
     try {
-      const watermarkOpts = getDefaultWatermarkOptions(coordinates);
+      const watermarkOpts = getDefaultWatermarkOptions(coordinates, locationName);
       const isMirror = facingMode === 'user';
       const dataUrl = drawWatermarkedCanvas(videoRef.current, watermarkOpts, isMirror);
       const file = dataUrlToFile(dataUrl, `foto_kamera_${Date.now()}.jpg`);
@@ -216,6 +230,7 @@ export default function CameraSelfieCapture({
             />
             <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20">
               <i className="fa-solid fa-check text-emerald-400"></i> Foto Terverifikasi
+              {locationName && <span className="text-slate-300 ml-1 max-w-[200px] truncate">| {locationName}</span>}
             </div>
           </div>
         ) : (

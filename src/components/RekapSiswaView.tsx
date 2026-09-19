@@ -232,7 +232,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
       // Fetch jurnal for this class & mapel within date
       let query = supabase
         .from('jurnal_pembelajaran')
-        .select('absensi_siswa, detail_absen, tanggal')
+        .select('absensi_siswa, detail_absen, tanggal, kehadiran_murid')
         .eq('kelas', kelas)
         .order('tanggal', { ascending: true });
 
@@ -242,6 +242,16 @@ export default function RekapSiswaView({ user }: { user: any }) {
       if (endDate) query = query.lte('tanggal', endDate);
 
       const { data: jurnal } = await query;
+
+      // Also fetch direct absensi (e.g. recorded by Wali Kelas)
+      let absensiQuery = supabase
+        .from('absensi')
+        .select('*')
+        .eq('kelas', kelas);
+      if (user?.sekolah_id) absensiQuery = absensiQuery.eq('sekolah_id', user.sekolah_id);
+      if (startDate) absensiQuery = absensiQuery.gte('tanggal', startDate);
+      if (endDate) absensiQuery = absensiQuery.lte('tanggal', endDate);
+      const { data: directAbsensi } = await absensiQuery;
 
       // Process rekap: initialize with hadir: 0
       const rekapMap: Record<string, any> = {};
@@ -257,7 +267,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
         };
       });
 
-      // Parse multi-format student attendance
+      // Parse multi-format student attendance from journals
       jurnal?.forEach(j => {
         let absensiJson: Record<string, string> | null = null;
         if (j.absensi_siswa && typeof j.absensi_siswa === 'string' && j.absensi_siswa.trim().startsWith('{')) {
@@ -268,67 +278,112 @@ export default function RekapSiswaView({ user }: { user: any }) {
           }
         }
 
-        siswa?.forEach(s => {
-          const nisn = s.nisn;
-          const nama = s.nama_siswa;
-          const target = rekapMap[nama];
-          if (!target) return;
+        const combinedText = `${j.kehadiran_murid || ''} ${j.absensi_siswa || ''} ${j.detail_absen || ''}`.toLowerCase();
+        const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
 
-          // 1. Check modern JSON by NISN key
-          if (absensiJson && nisn && absensiJson[nisn] !== undefined) {
-            const code = String(absensiJson[nisn]).trim().toUpperCase();
-            if (code === 'H' || code === 'HADIR') target.hadir++;
-            else if (code === 'S' || code === 'SAKIT') target.sakit++;
-            else if (code === 'I' || code === 'IZIN') target.izin++;
-            else if (code === 'A' || code === 'ALPA') target.alpa++;
+        if (isSemuaHadir) {
+          siswa?.forEach(s => {
+            const target = rekapMap[s.nama_siswa];
+            if (target) target.hadir++;
+          });
+          return;
+        }
+
+        // Check if JSON has explicit entries
+        if (absensiJson && Object.keys(absensiJson).length > 0) {
+          const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
+          const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
+
+          siswa?.forEach(s => {
+            const target = rekapMap[s.nama_siswa];
+            if (!target) return;
+            const val = s.nisn && absensiJson![s.nisn] !== undefined 
+              ? absensiJson![s.nisn] 
+              : absensiJson![s.nama_siswa];
+
+            if (val !== undefined) {
+              const code = String(val).trim().toUpperCase();
+              if (code === 'H' || code === 'HADIR') target.hadir++;
+              else if (code === 'S' || code === 'SAKIT') target.sakit++;
+              else if (code === 'I' || code === 'IZIN') target.izin++;
+              else if (code === 'A' || code === 'ALPA') target.alpa++;
+            } else if (!hasExplicitHadir) {
+              // If JSON only listed absentees, unlisted students were present
+              target.hadir++;
+            }
+          });
+          return;
+        }
+
+        // Parse detail_absen and keywords for absentees
+        const absentStatuses: Record<string, 'S' | 'I' | 'A' | 'H'> = {};
+        const detail = `${j.detail_absen || ''} ${j.kehadiran_murid || ''}`;
+
+        siswa?.forEach(s => {
+          const nama = s.nama_siswa;
+          const escaped = nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const match = detail.match(new RegExp(`${escaped}\\s*\\(([HSIAhsia])\\)`, 'i'));
+          if (match) {
+            absentStatuses[nama] = match[1].toUpperCase() as 'S' | 'I' | 'A' | 'H';
             return;
           }
 
-          // 2. Check detail_absen parenthetical format: "Nama Siswa (H)", "(S)", "(I)", "(A)"
-          const detail = j.detail_absen || '';
-          if (detail && typeof detail === 'string') {
-            const escaped = nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const match = detail.match(new RegExp(`${escaped}\\s*\\(([HSIAhsia])\\)`, 'i'));
-            if (match) {
-              const code = match[1].toUpperCase();
-              if (code === 'H') target.hadir++;
-              else if (code === 'S') target.sakit++;
-              else if (code === 'I') target.izin++;
-              else if (code === 'A') target.alpa++;
-              return;
-            }
-          }
-
-          // 3. Fallback: formatted with keywords "Sakit: Nama, Izin: Nama, Alpa: Nama"
-          const combined = `${j.absensi_siswa || ''} ${j.detail_absen || ''}`;
-          const combinedLower = combined.toLowerCase();
+          // Keyword check: "Sakit: Nama, Izin: Nama"
+          const detailLower = detail.toLowerCase();
           const namaLower = nama.toLowerCase();
-          if (combinedLower.includes(namaLower)) {
-            const idxNama = combinedLower.indexOf(namaLower);
-            const idxSakit = combinedLower.lastIndexOf('sakit', idxNama);
-            const idxIzin = combinedLower.lastIndexOf('izin', idxNama);
-            const idxAlpa = combinedLower.lastIndexOf('alpa', idxNama);
-            const idxHadir = combinedLower.lastIndexOf('hadir', idxNama);
+          if (detailLower.includes(namaLower)) {
+            const idxNama = detailLower.indexOf(namaLower);
+            const idxSakit = detailLower.lastIndexOf('sakit', idxNama);
+            const idxIzin = detailLower.lastIndexOf('izin', idxNama);
+            const idxAlpa = detailLower.lastIndexOf('alpa', idxNama);
+            const idxHadir = detailLower.lastIndexOf('hadir', idxNama);
 
             const maxIdx = Math.max(idxSakit, idxIzin, idxAlpa, idxHadir);
-            if (maxIdx === idxSakit && idxSakit !== -1) {
-              target.sakit++;
-            } else if (maxIdx === idxIzin && idxIzin !== -1) {
-              target.izin++;
-            } else if (maxIdx === idxAlpa && idxAlpa !== -1) {
-              target.alpa++;
-            } else if (maxIdx === idxHadir && idxHadir !== -1) {
-              target.hadir++;
-            } else {
-              target.alpa++;
-            }
+            if (maxIdx === idxSakit && idxSakit !== -1) absentStatuses[nama] = 'S';
+            else if (maxIdx === idxIzin && idxIzin !== -1) absentStatuses[nama] = 'I';
+            else if (maxIdx === idxAlpa && idxAlpa !== -1) absentStatuses[nama] = 'A';
+            else if (maxIdx === idxHadir && idxHadir !== -1) absentStatuses[nama] = 'H';
+          }
+        });
+
+        // Credit students based on resolved status for this session
+        siswa?.forEach(s => {
+          const target = rekapMap[s.nama_siswa];
+          if (!target) return;
+          const st = absentStatuses[s.nama_siswa];
+
+          if (st === 'S') target.sakit++;
+          else if (st === 'I') target.izin++;
+          else if (st === 'A') target.alpa++;
+          else if (st === 'H') target.hadir++;
+          else {
+            // Unmentioned student: absent students were accounted for, remaining students were present
+            target.hadir++;
           }
         });
       });
 
-      // Compute total sessions and attendance percentage per student
+      // Integrate direct absensi if journals are not present or for additional dates
+      if ((!jurnal || jurnal.length === 0) && directAbsensi && directAbsensi.length > 0) {
+        directAbsensi.forEach(a => {
+          siswa?.forEach(s => {
+            if (s.nisn === a.nisn || s.nama_siswa === a.nama_siswa) {
+              const target = rekapMap[s.nama_siswa];
+              if (!target) return;
+              const st = String(a.status).toLowerCase();
+              if (st === 'hadir') target.hadir++;
+              else if (st === 'sakit') target.sakit++;
+              else if (st === 'izin') target.izin++;
+              else if (st === 'alpa') target.alpa++;
+            }
+          });
+        });
+      }
+
+      // Compute total sessions and attendance percentage per student: (total_present / total_students) * 100
       const result = Object.values(rekapMap).map(s => {
         const total = s.hadir + s.sakit + s.izin + s.alpa;
+        // Formula: (total_present / total_students) * 100 with zero division guard
         const persentase = total > 0 ? Math.round((s.hadir / total) * 100) : 0;
         return {
           ...s,

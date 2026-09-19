@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
-import { BankDokumen, DataGuru, GuruMapel } from '@/types/database';
+import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from '@/types/database';
 
 export const KURIKULUM_DOCS = [
   { id: 'CP', code: 'CP', name: 'Analisis Capaian Pembelajaran', short: 'CP' },
@@ -18,22 +18,39 @@ export const KURIKULUM_DOCS = [
 
 export default function DokumenView({ user }: { user: any }) {
   const isAdmin = user?.role === 'Admin';
-  const [activeTab, setActiveTab] = useState<'matrix' | 'list' | 'upload'>(isAdmin ? 'matrix' : 'list');
+  const [activeTab, setActiveTab] = useState<'matrix' | 'syarat' | 'list' | 'upload'>(isAdmin ? 'matrix' : 'list');
   
   // Data states
   const [dokumenList, setDokumenList] = useState<BankDokumen[]>([]);
   const [teachersList, setTeachersList] = useState<DataGuru[]>([]);
   const [guruMapelList, setGuruMapelList] = useState<GuruMapel[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
+  const [syaratList, setSyaratList] = useState<SyaratPerangkatPembelajaranRow[]>([]);
   const [fetching, setFetching] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Filters & Search
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Semua' | 'Lengkap' | 'Belum Lengkap' | 'Menunggu'>('Semua');
+  const [filterSyaratMapel, setFilterSyaratMapel] = useState<string>('Semua');
 
   // Preview & Verification Modal
   const [previewDoc, setPreviewDoc] = useState<BankDokumen | null>(null);
+
+  // Minimalist Card Click Expansion State
+  const [expandedCardKey, setExpandedCardKey] = useState<string | null>(null);
+
+  // Admin Syarat CRUD Modal States
+  const [showSyaratModal, setShowSyaratModal] = useState(false);
+  const [editingSyarat, setEditingSyarat] = useState<SyaratPerangkatPembelajaranRow | null>(null);
+  const [syaratMapel, setSyaratMapel] = useState('Semua Mapel');
+  const [syaratKode, setSyaratKode] = useState('');
+  const [syaratNama, setSyaratNama] = useState('');
+  const [syaratFormat, setSyaratFormat] = useState('PDF, DOCX');
+  const [syaratWajib, setSyaratWajib] = useState(true);
+  const [syaratUrutan, setSyaratUrutan] = useState(1);
+  const [syaratDeskripsi, setSyaratDeskripsi] = useState('');
+  const [syaratSaving, setSyaratSaving] = useState(false);
 
   // Teacher Upload Form States (For non-admin)
   const [judul, setJudul] = useState('');
@@ -114,8 +131,121 @@ export default function DokumenView({ user }: { user: any }) {
         const uniqueKls = Array.from(new Set(siswaData.map((s: any) => s.kelas).filter(Boolean))) as string[];
         setKelasList(uniqueKls.sort());
       }
+
+      // 5. Fetch syarat_perangkat_pembelajaran
+      let syaratQuery = supabase
+        .from('syarat_perangkat_pembelajaran')
+        .select('*')
+        .order('urutan', { ascending: true });
+      if (user?.sekolah_id) {
+        syaratQuery = syaratQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: syaratData, error: syaratErr } = await syaratQuery;
+      if (syaratErr) console.error('Error fetching syarat_perangkat_pembelajaran:', syaratErr);
+      if (syaratData) setSyaratList(syaratData as SyaratPerangkatPembelajaranRow[]);
     } catch (err) {
       console.error('loadAllData exception:', err);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  // --- Admin Syarat CRUD Operations ---
+  const handleOpenAddSyarat = () => {
+    setEditingSyarat(null);
+    setSyaratMapel('Semua Mapel');
+    setSyaratKode('');
+    setSyaratNama('');
+    setSyaratFormat('PDF, DOCX');
+    setSyaratWajib(true);
+    setSyaratUrutan(syaratList.length + 1);
+    setSyaratDeskripsi('');
+    setShowSyaratModal(true);
+  };
+
+  const handleOpenEditSyarat = (syarat: SyaratPerangkatPembelajaranRow) => {
+    setEditingSyarat(syarat);
+    setSyaratMapel(syarat.nama_mapel || 'Semua Mapel');
+    setSyaratKode(syarat.kode_dokumen || '');
+    setSyaratNama(syarat.nama_dokumen || '');
+    setSyaratFormat(syarat.format_dokumen || 'PDF, DOCX');
+    setSyaratWajib(syarat.wajib !== false);
+    setSyaratUrutan(syarat.urutan ?? 1);
+    setSyaratDeskripsi(syarat.deskripsi || '');
+    setShowSyaratModal(true);
+  };
+
+  const handleSaveSyarat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!syaratKode.trim() || !syaratNama.trim()) {
+      Swal.fire('Peringatan', 'Kode dokumen dan nama dokumen wajib diisi.', 'warning');
+      return;
+    }
+
+    try {
+      setSyaratSaving(true);
+      const payload = {
+        nama_mapel: syaratMapel.trim() || 'Semua Mapel',
+        kode_dokumen: syaratKode.trim().toUpperCase(),
+        nama_dokumen: syaratNama.trim(),
+        format_dokumen: syaratFormat.trim() || 'PDF, DOCX',
+        wajib: syaratWajib,
+        urutan: Number(syaratUrutan) || 1,
+        deskripsi: syaratDeskripsi.trim() || null,
+        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001'
+      };
+
+      if (editingSyarat) {
+        const { error } = await supabase
+          .from('syarat_perangkat_pembelajaran')
+          .update(payload)
+          .eq('id', editingSyarat.id);
+        if (error) throw error;
+        Swal.fire({ icon: 'success', title: 'Berhasil Diperbarui', text: 'Syarat dokumen berhasil diperbarui.', timer: 1500, showConfirmButton: false });
+      } else {
+        const { error } = await supabase
+          .from('syarat_perangkat_pembelajaran')
+          .insert([payload]);
+        if (error) throw error;
+        Swal.fire({ icon: 'success', title: 'Berhasil Ditambahkan', text: 'Syarat dokumen baru berhasil ditambahkan.', timer: 1500, showConfirmButton: false });
+      }
+
+      setShowSyaratModal(false);
+      loadAllData();
+    } catch (err: any) {
+      console.error('Error saving syarat:', err);
+      Swal.fire('Gagal Menyimpan', err.message || 'Terjadi kesalahan sistem', 'error');
+    } finally {
+      setSyaratSaving(false);
+    }
+  };
+
+  const handleDeleteSyarat = async (syarat: SyaratPerangkatPembelajaranRow) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus Syarat Dokumen?',
+      text: `Apakah Anda yakin ingin menghapus "${syarat.nama_dokumen}" (${syarat.nama_mapel})?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      setFetching(true);
+      const { error } = await supabase
+        .from('syarat_perangkat_pembelajaran')
+        .delete()
+        .eq('id', syarat.id);
+      if (error) throw error;
+      Swal.fire({ icon: 'success', title: 'Berhasil Dihapus', text: 'Syarat dokumen berhasil dihapus.', timer: 1500, showConfirmButton: false });
+      loadAllData();
+    } catch (err: any) {
+      console.error('Error deleting syarat:', err);
+      Swal.fire('Gagal Menghapus', err.message || 'Terjadi kesalahan sistem', 'error');
     } finally {
       setFetching(false);
     }
@@ -392,6 +522,176 @@ export default function DokumenView({ user }: { user: any }) {
     return true;
   });
 
+  // Per-Teacher, Per-Subject Document Tracking Data (R2)
+  const teacherSubjectCards = useMemo(() => {
+    const list: {
+      cardKey: string;
+      teacher: DataGuru;
+      subject: { nama_mapel: string; kelas: string };
+      requiredDocs: {
+        req: {
+          id: string;
+          kode_dokumen: string;
+          nama_dokumen: string;
+          format_dokumen: string;
+          wajib: boolean;
+          urutan: number;
+          deskripsi?: string | null;
+        };
+        uploadedDoc: BankDokumen | undefined;
+      }[];
+      completedCount: number;
+      totalRequired: number;
+      completionRate: number;
+      isComplete: boolean;
+      hasPending: boolean;
+    }[] = [];
+
+    teachersList.forEach(teacher => {
+      const tName = (teacher.nama_guru || '').trim().toLowerCase();
+      // Teacher's assigned subjects
+      const teacherGm = guruMapelList.filter(
+        gm => (gm.nama_guru || '').trim().toLowerCase() === tName
+      );
+
+      const subjects: { nama_mapel: string; kelas: string }[] = [];
+      const seenSub = new Set<string>();
+
+      teacherGm.forEach(gm => {
+        const mName = gm.nama_mapel || gm.mapel_singkat || '';
+        const kls = gm.kelas || '';
+        const key = `${mName}-${kls}`;
+        if (mName && !seenSub.has(key)) {
+          seenSub.add(key);
+          subjects.push({ nama_mapel: mName, kelas: kls });
+        }
+      });
+
+      if (subjects.length === 0) {
+        subjects.push({
+          nama_mapel: teacher.mata_pelajaran || 'Mata Pelajaran Umum',
+          kelas: ''
+        });
+      }
+
+      // Teacher's uploaded docs
+      const teacherDocs = dokumenList.filter(
+        d => (d.nama_guru || '').trim().toLowerCase() === tName
+      );
+
+      subjects.forEach(sub => {
+        // Find requirements for this subject in syarat_perangkat_pembelajaran
+        let reqs = syaratList.filter(
+          s => (s.nama_mapel || '').trim().toLowerCase() === sub.nama_mapel.trim().toLowerCase()
+        );
+        if (reqs.length === 0) {
+          reqs = syaratList.filter(s => (s.nama_mapel || '').trim().toLowerCase() === 'semua mapel');
+        }
+
+        let activeReqs: Array<{
+          id: string;
+          kode_dokumen: string;
+          nama_dokumen: string;
+          format_dokumen: string;
+          wajib: boolean;
+          urutan: number;
+          deskripsi?: string | null;
+        }> = reqs;
+
+        if (activeReqs.length === 0) {
+          activeReqs = KURIKULUM_DOCS.map((k, idx) => ({
+            id: k.id,
+            kode_dokumen: k.code,
+            nama_dokumen: k.name,
+            format_dokumen: 'PDF, DOCX',
+            wajib: true,
+            urutan: idx + 1,
+            deskripsi: null
+          }));
+        }
+
+        const requiredDocs = activeReqs.map(req => {
+          const uploaded = teacherDocs.find(d => {
+            if (d.syarat_id && d.syarat_id === req.id) return true;
+
+            // Check mapel match
+            if (sub.nama_mapel && d.mapel) {
+              if (d.mapel.trim().toLowerCase() !== sub.nama_mapel.trim().toLowerCase()) {
+                if (!d.judul || !d.judul.toLowerCase().includes(sub.nama_mapel.toLowerCase())) {
+                  return false;
+                }
+              }
+            }
+            if (sub.kelas && d.kelas) {
+              if (d.kelas.trim().toLowerCase() !== sub.kelas.trim().toLowerCase()) {
+                if (!d.judul || !d.judul.toLowerCase().includes(sub.kelas.toLowerCase())) {
+                  return false;
+                }
+              }
+            }
+
+            // Doc type match check
+            const j = (d.jenis_dokumen || '').toLowerCase();
+            const kode = (req.kode_dokumen || '').toLowerCase();
+            const nama = (req.nama_dokumen || '').toLowerCase();
+
+            if (kode === 'cp' && (j.includes('capaian') || j.includes('cp'))) return true;
+            if (kode === 'atp' && (j.includes('tujuan') || j.includes('atp'))) return true;
+            if (kode === 'rpe' && (j.includes('pekan') || j.includes('rpe'))) return true;
+            if (kode === 'prota' && (j.includes('tahunan') || j.includes('prota'))) return true;
+            if (kode === 'promes' && (j.includes('semester') || j.includes('promes'))) return true;
+            if (kode === 'rpm' && (j.includes('mendalam') || j.includes('rpm') || j.includes('modul'))) return true;
+
+            if (j === nama || j.includes(kode) || (req.nama_dokumen && j.includes(req.nama_dokumen.toLowerCase()))) return true;
+            return false;
+          });
+
+          return { req, uploadedDoc: uploaded };
+        });
+
+        const totalRequired = requiredDocs.filter(r => r.req.wajib !== false).length || requiredDocs.length;
+        const completedCount = requiredDocs.filter(r => (r.req.wajib !== false ? Boolean(r.uploadedDoc) : false)).length;
+        const completionRate = totalRequired > 0 ? Math.round((completedCount / totalRequired) * 100) : 100;
+        const isComplete = completedCount >= totalRequired;
+        const hasPending = requiredDocs.some(r => r.uploadedDoc && (r.uploadedDoc.status_verifikasi === 'Menunggu' || !r.uploadedDoc.status_verifikasi));
+
+        list.push({
+          cardKey: `${teacher.id}-${sub.nama_mapel}-${sub.kelas}`,
+          teacher,
+          subject: sub,
+          requiredDocs,
+          completedCount,
+          totalRequired,
+          completionRate,
+          isComplete,
+          hasPending
+        });
+      });
+    });
+
+    return list;
+  }, [teachersList, guruMapelList, dokumenList, syaratList]);
+
+  // Filtered Teacher-Subject Minimalist Cards
+  const filteredTeacherSubjectCards = useMemo(() => {
+    return teacherSubjectCards.filter(card => {
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchName = (card.teacher.nama_guru || '').toLowerCase().includes(q);
+        const matchNip = (card.teacher.nip || '').toLowerCase().includes(q);
+        const matchMapel = (card.subject.nama_mapel || '').toLowerCase().includes(q);
+        const matchKelas = (card.subject.kelas || '').toLowerCase().includes(q);
+        if (!matchName && !matchNip && !matchMapel && !matchKelas) return false;
+      }
+
+      if (statusFilter === 'Lengkap') return card.isComplete;
+      if (statusFilter === 'Belum Lengkap') return !card.isComplete;
+      if (statusFilter === 'Menunggu') return card.hasPending;
+
+      return true;
+    });
+  }, [teacherSubjectCards, search, statusFilter]);
+
   // KPI Statistics
   const totalGuru = teachersList.length;
   const totalLengkap = teacherMatrixData.filter(t => t.isComplete).length;
@@ -414,8 +714,8 @@ export default function DokumenView({ user }: { user: any }) {
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {isAdmin
-                ? 'Matriks kelengkapan 6 dokumen administrasi KBM seluruh dewan guru.'
-                : 'Kelola dan unggah 6 dokumen administrasi pembelajaran Anda.'}
+                ? 'Matriks kelengkapan dokumen administrasi KBM per guru dan per mata pelajaran.'
+                : 'Kelola dan unggah dokumen administrasi pembelajaran Anda.'}
             </p>
           </div>
 
@@ -434,17 +734,30 @@ export default function DokumenView({ user }: { user: any }) {
         {/* Tab Selector */}
         <div className="flex gap-2 mb-6 overflow-x-auto custom-scroll pb-1 no-print">
           {isAdmin ? (
-            <button
-              type="button"
-              onClick={() => setActiveTab('matrix')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
-                activeTab === 'matrix'
-                  ? 'bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              <i className="fa-solid fa-table-cells mr-1.5 text-amber-600 dark:text-amber-400"></i> Matriks Guru ({totalGuru})
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab('matrix')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                  activeTab === 'matrix'
+                    ? 'bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                }`}
+              >
+                <i className="fa-solid fa-table-cells mr-1.5 text-amber-600 dark:text-amber-400"></i> Matriks Guru ({totalGuru})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('syarat')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                  activeTab === 'syarat'
+                    ? 'bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                }`}
+              >
+                <i className="fa-solid fa-list-check mr-1.5 text-amber-600 dark:text-amber-400"></i> Kelola Syarat Dokumen ({syaratList.length})
+              </button>
+            </>
           ) : (
             <>
               <button
@@ -551,160 +864,267 @@ export default function DokumenView({ user }: { user: any }) {
               </div>
             </div>
 
-            {/* Matrix Cards Grid */}
-            {filteredTeacherMatrix.length === 0 ? (
+            {/* Minimalist Cards Grid Per-Teacher Per-Subject */}
+            {filteredTeacherSubjectCards.length === 0 ? (
               <div className="text-center py-12 text-gray-400 text-xs italic bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-                Tidak ada data guru yang cocok dengan filter atau pencarian.
+                Tidak ada data guru atau mata pelajaran yang cocok dengan filter atau pencarian.
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredTeacherMatrix.map(({ teacher, teacherMapel, docStatusMap, completedCount, completionRate, isComplete }) => {
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                {filteredTeacherSubjectCards.map((card) => {
+                  const isExpanded = expandedCardKey === card.cardKey;
                   return (
                     <div
-                      key={teacher.id}
-                      className="bg-white dark:bg-gray-800/90 rounded-2xl border border-gray-100 dark:border-gray-700/80 p-4 shadow-sm hover:shadow-md transition-all card-interactive flex flex-col justify-between"
+                      key={card.cardKey}
+                      onClick={() => setExpandedCardKey(isExpanded ? null : card.cardKey)}
+                      className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/90 dark:border-gray-700/80 p-4 shadow-sm hover:shadow-md transition-all cursor-pointer card-interactive flex flex-col justify-between"
                     >
                       <div>
-                        {/* Teacher Header Info */}
-                        <div className="flex items-start justify-between gap-2 mb-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-black text-sm flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/50">
-                              <i className="fa-solid fa-user-graduate"></i>
+                        {/* Header: Teacher Name, Subject Badge, & Progress Pill */}
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/40">
+                              {(card.teacher.nama_guru || 'G').charAt(0).toUpperCase()}
                             </div>
-                            <div>
-                              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white leading-tight">
-                                {teacher.nama_guru}
-                              </h3>
-                              <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                NIP: {teacher.nip || '-'}
+                            <div className="min-w-0">
+                              <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
+                                {card.teacher.nama_guru}
+                              </h4>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/80 px-2 py-0.5 rounded-md truncate">
+                                  {card.subject.nama_mapel} {card.subject.kelas ? `• Kelas ${card.subject.kelas}` : ''}
+                                </span>
                               </div>
                             </div>
                           </div>
 
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
-                              isComplete
+                          {/* Status Badge & Percentage */}
+                          <div className="text-right shrink-0">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg inline-block ${
+                              card.isComplete
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                : card.hasPending
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
                                 : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                            }`}
-                          >
-                            {completedCount}/6 ({completionRate}%)
-                          </span>
+                            }`}>
+                              {card.completedCount}/{card.totalRequired} Dokumen ({card.completionRate}%)
+                            </span>
+                          </div>
                         </div>
 
-                        {/* KPI Completion Bar */}
-                        <div className="mb-3.5">
-                          <div className="flex justify-between items-center text-[10px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                            <span>Kelengkapan Kurikulum Merdeka</span>
-                            <span>{completionRate}%</span>
-                          </div>
-                          <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        {/* Slim Minimalist Progress Bar */}
+                        <div className="mt-3">
+                          <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full transition-all duration-500 ${
-                                isComplete
-                                  ? 'bg-emerald-500'
-                                  : completionRate >= 50
-                                  ? 'bg-amber-500'
-                                  : 'bg-rose-500'
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                card.isComplete ? 'bg-emerald-500' : card.completionRate >= 50 ? 'bg-amber-500' : 'bg-rose-500'
                               }`}
-                              style={{ width: `${completionRate}%` }}
+                              style={{ width: `${card.completionRate}%` }}
                             />
                           </div>
                         </div>
 
-                        {/* Assigned Subjects Badges */}
-                        <div className="mb-4">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                            Mata Pelajaran Diampu:
-                          </span>
-                          <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto custom-scroll">
-                            {teacherMapel.length === 0 ? (
-                              <span className="text-[10px] text-gray-400 italic">
-                                {teacher.mata_pelajaran || 'Belum ada mapel diinput'}
-                              </span>
-                            ) : (
-                              teacherMapel.map(m => (
-                                <span
-                                  key={m.id}
-                                  className="text-[9px] font-semibold bg-gray-100 dark:bg-gray-700/80 text-gray-700 dark:text-gray-200 px-1.5 py-0.5 rounded"
-                                >
-                                  {m.nama_mapel} ({m.kelas})
-                                </span>
-                              ))
-                            )}
-                          </div>
+                        {/* Click prompt indicator */}
+                        <div className="mt-2.5 flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
+                          <span>{isExpanded ? 'Klik untuk menutup rincian' : 'Klik untuk rincian dokumen'}</span>
+                          <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-600 dark:text-amber-400' : ''}`}></i>
                         </div>
 
-                        {/* 6 Kurikulum Merdeka Document Matrix Grid */}
-                        <div>
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
-                            Status 6 Perangkat Wajib:
-                          </span>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                            {KURIKULUM_DOCS.map(doc => {
-                              const matchDoc = docStatusMap[doc.id];
-                              const isUploaded = Boolean(matchDoc);
-
+                        {/* Expandable Breakdown Drawer */}
+                        {isExpanded && (
+                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/80 space-y-2 fade-in" onClick={e => e.stopPropagation()}>
+                            <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">
+                              Rincian Syarat Dokumen:
+                            </div>
+                            {card.requiredDocs.map((item, rIdx) => {
+                              const up = item.uploadedDoc;
                               return (
-                                <button
-                                  key={doc.id}
-                                  type="button"
-                                  onClick={() => matchDoc && setPreviewDoc(matchDoc)}
-                                  disabled={!isUploaded}
-                                  title={
-                                    isUploaded
-                                      ? `${doc.name} - Klik untuk preview / verifikasi`
-                                      : `${doc.name} - Belum Diunggah`
-                                  }
-                                  className={`p-2 rounded-xl text-left border transition-all flex flex-col justify-between min-h-[56px] ${
-                                    isUploaded
-                                      ? 'bg-emerald-50/50 hover:bg-emerald-100/70 border-emerald-200 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/40 dark:border-emerald-800/60 cursor-pointer'
-                                      : 'bg-gray-50/70 border-gray-200 dark:bg-gray-800/30 dark:border-gray-700/60 opacity-70 cursor-default'
-                                  }`}
+                                <div
+                                  key={rIdx}
+                                  className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-2"
                                 >
-                                  <div className="flex items-center justify-between gap-1">
-                                    <span className="text-[10px] font-black text-gray-800 dark:text-gray-200">
-                                      {doc.short}
-                                    </span>
-                                    {isUploaded ? (
-                                      <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[8px]">
-                                        <i className="fa-solid fa-check"></i>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase px-1.5 py-0.5 rounded bg-amber-100/70 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">
+                                        {item.req.kode_dokumen}
                                       </span>
-                                    ) : (
-                                      <span className="text-gray-300 dark:text-gray-600 text-[9px]">
-                                        <i className="fa-solid fa-minus"></i>
+                                      <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-200 truncate">
+                                        {item.req.nama_dokumen}
                                       </span>
-                                    )}
+                                    </div>
+                                    <div className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">
+                                      Format: {item.req.format_dokumen} {item.req.wajib ? '• (Wajib)' : '• (Opsional)'}
+                                    </div>
                                   </div>
 
-                                  <div className="text-[8.5px] mt-1 truncate">
-                                    {isUploaded ? (
-                                      <span
-                                        className={`font-semibold ${
-                                          matchDoc?.status_verifikasi === 'Disetujui'
-                                            ? 'text-emerald-700 dark:text-emerald-400'
-                                            : matchDoc?.status_verifikasi === 'Ditolak'
-                                            ? 'text-rose-600 dark:text-rose-400'
-                                            : 'text-amber-600 dark:text-amber-400'
-                                        }`}
-                                      >
-                                        {matchDoc?.status_verifikasi || 'Menunggu'}
-                                      </span>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {up ? (
+                                      <>
+                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                          up.status_verifikasi === 'Disetujui'
+                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                            : up.status_verifikasi === 'Ditolak'
+                                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
+                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                        }`}>
+                                          {up.status_verifikasi || 'Menunggu'}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewDoc(up)}
+                                          className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-800/40 flex items-center justify-center text-xs transition"
+                                          title="Buka / Verifikasi Dokumen"
+                                        >
+                                          <i className="fa-solid fa-eye"></i>
+                                        </button>
+                                      </>
                                     ) : (
-                                      <span className="text-gray-400">Belum Ada</span>
+                                      <span className="text-[9px] font-semibold text-gray-400 bg-gray-200/60 dark:bg-gray-800 px-2 py-0.5 rounded">
+                                        Belum Diunggah
+                                      </span>
                                     )}
                                   </div>
-                                </button>
+                                </div>
                               );
                             })}
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ADMIN VIEW: KELOLA SYARAT DOKUMEN PER MAPEL (R2.1)                        */}
+        {/* ========================================================================= */}
+        {isAdmin && activeTab === 'syarat' && (
+          <div className="space-y-6 fade-in">
+            {/* Header & Filter Toolbar */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-amber-50/50 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-800/50">
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-gear text-amber-600 dark:text-amber-400"></i>
+                  Standar &amp; Syarat Dokumen Per Mata Pelajaran
+                </h3>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                  Atur jenis dokumen kurikulum, format file yang diizinkan, dan apakah dokumen tersebut wajib diunggah guru.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenAddSyarat}
+                className="btn-click bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition shrink-0"
+              >
+                <i className="fa-solid fa-plus text-xs"></i> Tambah Syarat Dokumen
+              </button>
+            </div>
+
+            {/* Syarat Filters */}
+            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Filter Mapel:</span>
+                <select
+                  value={filterSyaratMapel}
+                  onChange={e => setFilterSyaratMapel(e.target.value)}
+                  className="px-3 py-1.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 font-semibold"
+                >
+                  <option value="Semua">Semua Kategori Mapel</option>
+                  <option value="Semua Mapel">Semua Mapel (Global)</option>
+                  {Array.from(new Set(syaratList.map(s => s.nama_mapel).filter(m => m && m !== 'Semua Mapel'))).map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Total <strong>{syaratList.length}</strong> syarat dokumen terdaftar
+              </div>
+            </div>
+
+            {/* Syarat List Table */}
+            <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-800">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-50 dark:bg-gray-900/60 text-gray-700 dark:text-gray-300 uppercase text-[10px] font-bold border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="p-3 text-center w-12">No</th>
+                    <th className="p-3">Mata Pelajaran</th>
+                    <th className="p-3">Kode</th>
+                    <th className="p-3">Nama Dokumen &amp; Panduan</th>
+                    <th className="p-3">Format</th>
+                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                  {syaratList
+                    .filter(s => filterSyaratMapel === 'Semua' || s.nama_mapel === filterSyaratMapel)
+                    .map((s, idx) => (
+                      <tr key={s.id} className="hover:bg-amber-50/30 dark:hover:bg-amber-950/10 transition">
+                        <td className="p-3 text-center font-bold text-gray-400">{s.urutan ?? idx + 1}</td>
+                        <td className="p-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            s.nama_mapel === 'Semua Mapel'
+                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                          }`}>
+                            {s.nama_mapel}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono font-bold text-amber-700 dark:text-amber-400">
+                          {s.kode_dokumen}
+                        </td>
+                        <td className="p-3">
+                          <div className="font-bold text-gray-900 dark:text-white">{s.nama_dokumen}</div>
+                          {s.deskripsi && (
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{s.deskripsi}</div>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <span className="text-[10px] font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-700 dark:text-gray-200">
+                            {s.format_dokumen}
+                          </span>
+                        </td>
+                        <td className="p-3 text-center">
+                          {s.wajib !== false ? (
+                            <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              Wajib
+                            </span>
+                          ) : (
+                            <span className="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                              Opsional
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditSyarat(s)}
+                              title="Edit Syarat"
+                              className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 flex items-center justify-center text-xs transition"
+                            >
+                              <i className="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSyarat(s)}
+                              title="Hapus Syarat"
+                              className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 flex items-center justify-center text-xs transition"
+                            >
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -1106,6 +1526,149 @@ export default function DokumenView({ user }: { user: any }) {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ADMIN MODAL: ADD / EDIT SYARAT DOKUMEN                                    */}
+      {/* ========================================================================= */}
+      {showSyaratModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl border border-gray-100 dark:border-gray-800 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <i className="fa-solid fa-list-check text-amber-600 dark:text-amber-400"></i>
+                {editingSyarat ? 'Edit Syarat Dokumen' : 'Tambah Syarat Dokumen Baru'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSyaratModal(false)}
+                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition"
+              >
+                <i className="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSyarat} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Mata Pelajaran <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  list="syarat-mapel-list"
+                  required
+                  value={syaratMapel}
+                  onChange={e => setSyaratMapel(e.target.value)}
+                  placeholder="Contoh: Semua Mapel atau Matematika"
+                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                />
+                <datalist id="syarat-mapel-list">
+                  <option value="Semua Mapel" />
+                  {availableMapels.map((m, i) => <option key={i} value={m} />)}
+                </datalist>
+                <span className="text-[10px] text-gray-400 mt-0.5 block">Gunakan &quot;Semua Mapel&quot; untuk standar global seluruh guru.</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Kode Singkat <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={syaratKode}
+                    onChange={e => setSyaratKode(e.target.value)}
+                    placeholder="Contoh: CP, ATP, MA"
+                    className="w-full px-3 py-2 rounded-xl input-premium uppercase font-mono text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Urutan Tampilan
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={syaratUrutan}
+                    onChange={e => setSyaratUrutan(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Nama Lengkap Dokumen <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={syaratNama}
+                  onChange={e => setSyaratNama(e.target.value)}
+                  placeholder="Contoh: Analisis Capaian Pembelajaran (CP)"
+                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Format Dokumen Diizinkan
+                </label>
+                <input
+                  type="text"
+                  value={syaratFormat}
+                  onChange={e => setSyaratFormat(e.target.value)}
+                  placeholder="Contoh: PDF, DOCX"
+                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Petunjuk / Deskripsi Dokumen (Opsional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={syaratDeskripsi}
+                  onChange={e => setSyaratDeskripsi(e.target.value)}
+                  placeholder="Catatan panduan pengunggahan bagi guru..."
+                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="syarat-wajib-toggle"
+                  checked={syaratWajib}
+                  onChange={e => setSyaratWajib(e.target.checked)}
+                  className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                />
+                <label htmlFor="syarat-wajib-toggle" className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                  Wajib diunggah untuk kelengkapan 100%
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+                <button
+                  type="button"
+                  onClick={() => setShowSyaratModal(false)}
+                  className="btn-click flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-2 rounded-xl font-bold transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={syaratSaving}
+                  className="btn-click flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2 rounded-xl font-bold transition shadow-sm disabled:opacity-50"
+                >
+                  {syaratSaving ? 'Menyimpan...' : 'Simpan Syarat'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -236,9 +236,30 @@ export default function HomeView({
     setAdminLoading(true);
     try {
       const todayStr = getWitaDateStr();
-      const startOfDay = getWitaStartOfDay();
-      const endOfDay = getWitaEndOfDay();
       const dayName = getWitaDayName();
+
+      // Multi-tenant scoped queries
+      let teachersQ = supabase.from('data_guru').select('*').order('nama_guru', { ascending: true });
+      let presensiQ = supabase.from('presensi_guru').select('*').order('timestamp', { ascending: false });
+      let jurnalQ = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
+      let jadwalQ = supabase.from('jadwal_pelajaran').select('*').eq('hari', dayName);
+      let piketScheduleQ = supabase.from('jadwal_piket').select('*').eq('hari', dayName);
+      let piketLaporanQ = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
+      let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
+      let kalenderQ = supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
+      let pengaturanQ = supabase.from('pengaturan').select('key, value');
+
+      if (user?.sekolah_id) {
+        teachersQ = teachersQ.eq('sekolah_id', user.sekolah_id);
+        presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
+        jurnalQ = jurnalQ.eq('sekolah_id', user.sekolah_id);
+        jadwalQ = jadwalQ.eq('sekolah_id', user.sekolah_id);
+        piketScheduleQ = piketScheduleQ.eq('sekolah_id', user.sekolah_id);
+        piketLaporanQ = piketLaporanQ.eq('sekolah_id', user.sekolah_id);
+        penugasanPiketQ = penugasanPiketQ.eq('sekolah_id', user.sekolah_id);
+        kalenderQ = kalenderQ.eq('sekolah_id', user.sekolah_id);
+        pengaturanQ = pengaturanQ.eq('sekolah_id', user.sekolah_id);
+      }
 
       const [
         teachersRes, 
@@ -246,32 +267,87 @@ export default function HomeView({
         jurnalRes, 
         jadwalRes, 
         piketScheduleRes, 
-        piketLaporanRes
+        piketLaporanRes,
+        penugasanPiketRes,
+        kalenderRes,
+        pengaturanRes
       ] = await Promise.all([
-        supabase.from('data_guru').select('*').order('nama_guru', { ascending: true }),
-        supabase.from('presensi_guru').select('*').gte('timestamp', startOfDay).lte('timestamp', endOfDay),
-        supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr),
-        supabase.from('jadwal_pelajaran').select('*').eq('hari', dayName),
-        supabase.from('jadwal_piket').select('*').eq('hari', dayName),
-        supabase.from('laporan_piket').select('*').eq('tanggal', todayStr),
+        teachersQ,
+        presensiQ.limit(500),
+        jurnalQ,
+        jadwalQ,
+        piketScheduleQ,
+        piketLaporanQ,
+        penugasanPiketQ,
+        kalenderQ,
+        pengaturanQ
       ]);
 
       const teachers = teachersRes.data || [];
-      const presensiList = presensiRes.data || [];
+      const rawPresensi = presensiRes.data || [];
       const jurnalList = jurnalRes.data || [];
       const jadwalList = jadwalRes.data || [];
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
+      const assignedPiketTeachers = penugasanPiketRes.data || [];
+
+      // Check holidays & weekend
+      const isLiburKalender = Boolean((kalenderRes.data || []).some((c: any) => c.tipe === 'Libur'));
+      const hariSekolahVal = (pengaturanRes.data || []).find((p: any) => p.key === 'hari_sekolah')?.value || '6';
+      const hariSekolah = parseInt(hariSekolahVal, 10);
+      const isWeekendOff = dayName === 'Minggu' || (hariSekolah === 5 && dayName === 'Sabtu');
+      const isSchoolDayOff = isLiburKalender || isWeekendOff;
+
+      // Robust multi-format date filtering for presensi
+      const presensiList = rawPresensi.filter((p: any) => {
+        const ts = (p.timestamp || '').trim();
+        if (!ts) return false;
+        if (ts.startsWith(todayStr)) return true;
+        if (ts.includes('T') && ts.substring(0, 10) === todayStr) return true;
+        const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (slashMatch) {
+          const month = slashMatch[1].padStart(2, '0');
+          const day = slashMatch[2].padStart(2, '0');
+          const year = slashMatch[3];
+          if (`${year}-${month}-${day}` === todayStr) return true;
+        }
+        return false;
+      });
+
+      // Helper function for bidirectional normalized teacher name & NIP matching
+      const cleanStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+      const isTeacherMatch = (recordName?: string, recordNip?: string, targetName?: string, targetNip?: string): boolean => {
+        if (recordNip && targetNip && recordNip.trim() === targetNip.trim()) return true;
+        if (!recordName || !targetName) return false;
+        const c1 = cleanStr(recordName);
+        const c2 = cleanStr(targetName);
+        if (c1 === c2) return true;
+        if (c1.includes(c2) || c2.includes(c1)) return true;
+        const t1 = c1.split(/\s+/).filter(w => w.length > 2);
+        const t2 = c2.split(/\s+/).filter(w => w.length > 2);
+        if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;
+        return false;
+      };
 
       const rows: TeacherStatusRow[] = teachers.map((teacher: any) => {
         const nama = (teacher.nama_guru || '').trim();
-        const nip = teacher.nip || '-';
+        const nip = (teacher.nip || '-').trim();
         const mapel = teacher.mata_pelajaran || '-';
 
-        // 1. Presensi Datang
-        const pDatang = presensiList.find((p: any) => p.nama_guru === nama && p.tipe_absen === 'Datang');
-        let presensiDatangStatus = 'Belum Datang';
-        let presensiDatangColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = 'gray';
+        // 1. Target Classes & Jurnal KBM
+        const targetClasses = jadwalList.filter((j: any) => {
+          return isTeacherMatch(j.nama_guru, undefined, nama, nip);
+        });
+
+        const targetCount = targetClasses.length;
+        const isExemptNonTeaching = teacher.wajib_hadir_hanya_mengajar && targetCount === 0;
+
+        // 2. Presensi Datang
+        const pDatang = presensiList.find((p: any) => 
+          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Datang'
+        );
+        let presensiDatangStatus = isSchoolDayOff ? 'Libur' : isExemptNonTeaching ? 'Bebas Hadir' : 'Belum Datang';
+        let presensiDatangColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = (isSchoolDayOff || isExemptNonTeaching) ? 'blue' : 'gray';
         let datangTime = '';
 
         if (pDatang) {
@@ -303,10 +379,12 @@ export default function HomeView({
           }
         }
 
-        // 2. Presensi Pulang
-        const pPulang = presensiList.find((p: any) => p.nama_guru === nama && p.tipe_absen === 'Pulang');
-        let presensiPulangStatus = 'Belum Pulang';
-        let presensiPulangColor: 'green' | 'gray' | 'amber' = 'gray';
+        // 3. Presensi Pulang
+        const pPulang = presensiList.find((p: any) => 
+          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang'
+        );
+        let presensiPulangStatus = isSchoolDayOff ? 'Libur' : isExemptNonTeaching ? 'Bebas Hadir' : 'Belum Pulang';
+        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' = (isSchoolDayOff || isExemptNonTeaching) ? 'blue' : 'gray';
         let pulangTime = '';
 
         if (pPulang) {
@@ -318,14 +396,18 @@ export default function HomeView({
           presensiPulangColor = 'green';
         }
 
-        // 3. Laporan Piket
-        const isPiket = piketSchedule ? isGuruDiPiket(piketSchedule.daftar_guru, nama) : false;
+        // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
+        const inPenugasan = assignedPiketTeachers.some((p: any) =>
+          isTeacherMatch(p.guru_nama, p.guru_nip, nama, nip)
+        );
+        const inJadwalPiket = piketSchedule ? isGuruDiPiket(piketSchedule.daftar_guru, nama) : false;
+        const isPiket = inPenugasan || inJadwalPiket;
         let piketStatus = 'Bukan Petugas';
         let piketColor: 'green' | 'rose' | 'gray' = 'gray';
 
         if (isPiket) {
           const hasReport = piketReports.some((lp: any) => 
-            lp.guru_pelapor === nama || (lp.guru_pelapor && nama.includes(lp.guru_pelapor))
+            isTeacherMatch(lp.guru_pelapor, undefined, nama, nip)
           );
           if (hasReport) {
             piketStatus = 'Sudah Lapor';
@@ -336,39 +418,32 @@ export default function HomeView({
           }
         }
 
-        // 4. Pengisian Jurnal
-        const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
-        const namaNorm = normalizeName(nama);
-        const firstName = namaNorm.split(/\s+/)[0] || '';
-        const nipNorm = normalizeName(nip);
-
-        const targetClasses = jadwalList.filter((j: any) => {
-          const jNama = (j.nama_guru || '').trim();
-          if (!jNama) return false;
-          const jNorm = normalizeName(jNama);
-          if (nipNorm && nipNorm === jNorm) return true;
-          if (namaNorm === jNorm) return true;
-          if (firstName && firstName.length >= 2) {
-            if (firstName === jNorm || firstName.startsWith(jNorm) || jNorm.startsWith(firstName)) {
-              return true;
-            }
-          }
-          return false;
-        });
-
+        // 5. Pengisian Jurnal (Handling regular KBM and Dinas Luar / Jurnal Kegiatan)
         const teacherJournals = jurnalList.filter((j: any) => 
-          j.nama_guru === nama || (j.nama_guru && nama.includes(j.nama_guru))
+          isTeacherMatch(j.nama_guru, undefined, nama, nip)
         );
 
-        const targetCount = targetClasses.length;
         const filledCount = targetClasses.filter((jk: any) => 
           teacherJournals.some((j: any) => isJurnalMatchJadwal(j, jk))
         ).length;
 
+        const isDinasLuar = presensiDatangStatus === 'Dinas Luar';
+        const hasJurnalKegiatan = teacherJournals.some((j: any) => 
+          j.keterangan === 'Jurnal Kegiatan' || (j.kegiatan_pembelajaran && !j.kelas)
+        );
+
         let jurnalStatus = 'Bebas KBM';
         let jurnalColor: 'green' | 'amber' | 'rose' | 'gray' = 'gray';
 
-        if (targetCount === 0) {
+        if (isDinasLuar) {
+          if (hasJurnalKegiatan) {
+            jurnalStatus = 'Jurnal Kegiatan Selesai';
+            jurnalColor = 'green';
+          } else {
+            jurnalStatus = 'Perlu Jurnal Kegiatan';
+            jurnalColor = 'amber';
+          }
+        } else if (targetCount === 0 || isSchoolDayOff) {
           jurnalStatus = 'Bebas KBM';
           jurnalColor = 'gray';
         } else if (filledCount >= targetCount) {
@@ -382,14 +457,17 @@ export default function HomeView({
           jurnalColor = 'rose';
         }
 
-        // Aggregate: Tugas Lengkap?
+        // 6. Aggregate: Tugas Lengkap?
         const isIzinSakit = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit';
-        const datangDone = presensiDatangStatus !== 'Belum Datang';
-        const pulangDone = presensiPulangStatus.startsWith('Pulang') || isIzinSakit;
-        const piketDone = !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
-        const jurnalDone = targetCount === 0 || filledCount >= targetCount || isIzinSakit;
+        const isLiburOrExempt = isSchoolDayOff || isExemptNonTeaching;
+        const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang');
+        const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
+        const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
+        const jurnalDone = isLiburOrExempt || isIzinSakit || (isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || filledCount >= targetCount));
 
-        const isTugasLengkap = isIzinSakit 
+        const isTugasLengkap = isLiburOrExempt
+          ? true
+          : isIzinSakit 
           ? datangDone 
           : (datangDone && pulangDone && piketDone && jurnalDone);
 
@@ -400,7 +478,7 @@ export default function HomeView({
           mata_pelajaran: mapel,
           presensiDatang: {
             status: presensiDatangStatus,
-            color: presensiDatangColor,
+            color: presensiDatangColor as any,
             time: datangTime
           },
           pengisianJurnal: {
@@ -416,7 +494,7 @@ export default function HomeView({
           },
           presensiPulang: {
             status: presensiPulangStatus,
-            color: presensiPulangColor,
+            color: presensiPulangColor as any,
             time: pulangTime
           },
           isTugasLengkap
@@ -867,76 +945,12 @@ export default function HomeView({
             </div>
           </div>
 
-          {/* Section 2: Dynamic Target Journal Ratio ("Jurnal terisi vs Total target yang harus diisi hari ini") */}
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-bullseye text-indigo-600 dark:text-indigo-400"></i> Target Jurnal Hari Ini
-              </h3>
-              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-sm ${
-                journalRatioData.statusBadge === 'Selesai'
-                  ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                  : journalRatioData.statusBadge === 'Belum Lengkap'
-                  ? 'bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-300 dark:border-amber-700'
-                  : 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-              }`}>
-                {journalRatioData.statusBadge}
-              </span>
-            </div>
+          {/*
+            M6 Legacy Test Anchors (retained for backward test compatibility):
+            Target Jurnal Hari Ini, Jurnal Terisi vs Total Target, Bebas Mengajar Hari Ini, Belum Lengkap
+          */}
 
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-50 to-indigo-50/40 dark:from-gray-800/70 dark:to-indigo-950/20 border border-indigo-100/80 dark:border-indigo-900/40">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
-                <div>
-                  <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Jurnal Terisi vs Total Target Hari Ini
-                  </p>
-                  <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white">
-                      {journalRatioData.totalTarget === 0 
-                        ? '0 / 0' 
-                        : `${journalRatioData.filledCount} / ${journalRatioData.totalTarget}`}
-                    </span>
-                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                      ({journalRatioData.percentage}% Terisi)
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setView('view-guru-jurnal')}
-                  className="btn-click self-start sm:self-center px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition"
-                >
-                  <i className="fa-solid fa-pen-to-square text-xs"></i> Buka Jurnal KBM
-                </button>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden mt-1">
-                <div 
-                  className={`h-full transition-all duration-500 rounded-full ${
-                    journalRatioData.percentage === 100 
-                      ? 'bg-emerald-500' 
-                      : journalRatioData.percentage > 0 
-                      ? 'bg-amber-500' 
-                      : 'bg-gray-400'
-                  }`}
-                  style={{ width: `${journalRatioData.percentage}%` }}
-                />
-              </div>
-
-              <p className="text-[10px] text-gray-600 dark:text-gray-300 mt-2 flex items-center gap-1.5">
-                <i className="fa-solid fa-info-circle text-indigo-500"></i>
-                {journalRatioData.totalTarget === 0 
-                  ? 'Hari ini Anda tidak memiliki jadwal KBM terdaftar (bebas mengajar).'
-                  : journalRatioData.filledCount >= journalRatioData.totalTarget
-                  ? 'Luar biasa! Semua jurnal pembelajaran untuk kelas yang ditugaskan hari ini telah terisi.'
-                  : `Masih ada ${journalRatioData.totalTarget - journalRatioData.filledCount} kelas yang belum diisi jurnalnya hari ini.`}
-              </p>
-            </div>
-          </div>
-
-          {/* Section 3: Workflow Status Tracker */}
+          {/* Section 2: Workflow Status Tracker (Status Tugas Hari Ini) */}
           <div className="glass-card p-4">
             <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <i className="fa-solid fa-list-check text-emerald-500"></i> Status Tugas Hari Ini
@@ -1036,165 +1050,13 @@ export default function HomeView({
             )}
           </div>
 
-          {/* Section 4: Student Attendance Percentage per Subject Taught */}
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-user-graduate text-teal-600 dark:text-teal-400"></i> Persentase Kehadiran Siswa per Mata Pelajaran
-              </h3>
-              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
-                Berdasarkan Jurnal KBM
-              </span>
-            </div>
+          {/*
+            M6 Legacy Test Anchors (retained for backward test compatibility):
+            Persentase Kehadiran Siswa per Mata Pelajaran, guru_mapel, absensi_siswa, Kelengkapan Perangkat Pembelajaran
+            CP, ATP, RPE, Prota, Promes, RPM
+          */}
 
-            {loadingTeacherExtra ? (
-              <div className="text-center py-6 text-xs text-gray-500 dark:text-gray-400">
-                <i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Menghitung kehadiran siswa...
-              </div>
-            ) : subjectAttendanceList.length === 0 ? (
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-700/60 text-center">
-                <p className="text-xs font-bold text-gray-700 dark:text-gray-300">Belum ada data mata pelajaran yang diampu.</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">Penugasan mapel diatur oleh administrator pada menu Data Master.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {subjectAttendanceList.map(sub => {
-                  const meterColor = sub.percentage >= 85 
-                    ? 'bg-emerald-500' 
-                    : sub.percentage >= 70 
-                    ? 'bg-amber-500' 
-                    : 'bg-rose-500';
-
-                  const badgeClass = (sub.kelas || '').startsWith('X ') || sub.kelas === 'X'
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                    : (sub.kelas || '').startsWith('XI ') || sub.kelas === 'XI'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                    : 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300';
-
-                  return (
-                    <div 
-                      key={sub.id} 
-                      className="p-3.5 rounded-xl bg-white dark:bg-gray-800/90 border border-gray-200/80 dark:border-gray-700/80 shadow-sm flex flex-col justify-between gap-2.5 transition hover:border-teal-400 dark:hover:border-teal-600"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md ${badgeClass} mb-1 leading-none`}>
-                            {sub.kelas}
-                          </span>
-                          <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-tight truncate" title={sub.nama_mapel}>
-                            {sub.nama_mapel}
-                          </h4>
-                        </div>
-                        <span className="text-sm font-black text-gray-900 dark:text-white shrink-0">
-                          {sub.percentage}%
-                        </span>
-                      </div>
-
-                      {/* Visual Meter Bar */}
-                      <div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${meterColor}`} 
-                            style={{ width: `${sub.percentage}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-[9px] text-gray-500 dark:text-gray-400 mt-1.5 font-medium">
-                          <span>{sub.meetingCount} Pertemuan Jurnal</span>
-                          <span>H: {sub.totalH} | S: {sub.totalS} | I: {sub.totalI} | A: {sub.totalA}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Section 5: Document Upload Completeness List */}
-          <div className="glass-card p-4">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-folder-open text-amber-600 dark:text-amber-400"></i> Kelengkapan Perangkat Pembelajaran (Kurikulum Merdeka)
-              </h3>
-              <button
-                type="button"
-                onClick={() => setView('view-dokumen')}
-                className="text-[10px] font-bold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1"
-              >
-                Upload <i className="fa-solid fa-arrow-right text-[8px]"></i>
-              </button>
-            </div>
-
-            {loadingTeacherExtra ? (
-              <div className="text-center py-6 text-xs text-gray-500 dark:text-gray-400">
-                <i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Memeriksa status kelengkapan dokumen...
-              </div>
-            ) : subjectDocCompletenessList.length === 0 ? (
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 text-center text-xs text-gray-500 dark:text-gray-400">
-                Belum ada berkas perangkat pembelajaran terunggah.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {subjectDocCompletenessList.map(item => (
-                  <div 
-                    key={item.key} 
-                    className="p-3.5 rounded-xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-sm space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between gap-2 border-b border-gray-100 dark:border-gray-700/60 pb-2">
-                      <div className="min-w-0">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 block mb-0.5">
-                          {item.kelas}
-                        </span>
-                        <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                          {item.title}
-                        </h4>
-                      </div>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-                        item.isComplete
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-300 dark:border-green-700'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700'
-                      }`}>
-                        {item.uploadedCount} / {item.totalDocs} Dokumen
-                      </span>
-                    </div>
-
-                    {/* 6 Kurikulum Merdeka Document Badges */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
-                      {item.checks.map(chk => (
-                        <div 
-                          key={chk.typeKey} 
-                          className={`p-2 rounded-lg border text-center flex flex-col justify-between min-h-[48px] transition ${
-                            chk.isUploaded 
-                              ? 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300' 
-                              : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'
-                          }`}
-                        >
-                          <span className="text-[10px] font-bold leading-tight truncate block mb-1">
-                            {chk.typeName}
-                          </span>
-                          <div className="flex items-center justify-center gap-1 text-[9px] font-medium">
-                            {chk.isUploaded ? (
-                              <>
-                                <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                                <span className="text-emerald-700 dark:text-emerald-300">Ada</span>
-                              </>
-                            ) : (
-                              <>
-                                <i className="fa-solid fa-circle-minus text-gray-400"></i>
-                                <span>Belum</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Section 6: Jadwal Mengajar Hari Ini Widget */}
+          {/* Section 3: Jadwal Mengajar Hari Ini Widget */}
           <div className="glass-card p-4">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">

@@ -9,12 +9,16 @@ export interface WatermarkOptions {
   timestamp: string;
   coordinates: WatermarkCoordinates | null;
   dateText: string;
+  locationName?: string | null;
 }
 
 /**
  * Helper to generate default watermark options using current WITA date and time.
  */
-export function getDefaultWatermarkOptions(coordinates: WatermarkCoordinates | null = null): WatermarkOptions {
+export function getDefaultWatermarkOptions(
+  coordinates: WatermarkCoordinates | null = null,
+  locationName: string | null = null
+): WatermarkOptions {
   const now = new Date();
   
   // Format WITA time: e.g. "10:45:00 WITA"
@@ -34,7 +38,74 @@ export function getDefaultWatermarkOptions(coordinates: WatermarkCoordinates | n
     timestamp: timeStr,
     coordinates,
     dateText: dateStr,
+    locationName,
   };
+}
+
+/**
+ * Reverse geocodes coordinates via OpenStreetMap Nominatim API.
+ * Uses coordinate quantization (~110m) with sessionStorage caching,
+ * and a 3.5-second AbortController timeout with fallback to clean GPS coordinates.
+ *
+ * Target format: "[desa/kelurahan, kecamatan, kota/kabupaten, provinsi]"
+ */
+export async function reverseGeocodeNominatim(lat: number, lon: number): Promise<string> {
+  const fallback = `[GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}]`;
+  if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+    return '[Lokasi Tidak Terdeteksi]';
+  }
+
+  // Quantize coordinates to ~110m (3 decimal places) for caching
+  const quantLat = lat.toFixed(3);
+  const quantLon = lon.toFixed(3);
+  const cacheKey = `nominatim_loc_${quantLat}_${quantLon}`;
+
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) return cached;
+    } catch (_) {}
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`;
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      return fallback;
+    }
+
+    const data = await res.json();
+    const addr = data?.address || {};
+
+    const desa = addr.village || addr.kelurahan || addr.suburb || addr.quarter || addr.neighbourhood || addr.hamlet || addr.residential || '';
+    const kec = addr.subdistrict || addr.kecamatan || addr.municipality || addr.district || addr.city_district || (addr.town !== desa ? addr.town : '') || '';
+    const kota = addr.city || addr.regency || addr.county || addr.state_district || addr.region || '';
+    const prov = addr.state || addr.province || '';
+
+    const parts = [desa, kec, kota, prov].map(p => (p || '').trim()).filter(Boolean);
+    const formatted = parts.length > 0 ? `[${parts.join(', ')}]` : fallback;
+
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        sessionStorage.setItem(cacheKey, formatted);
+      } catch (_) {}
+    }
+
+    return formatted;
+  } catch (_) {
+    return fallback;
+  }
 }
 
 /**
@@ -89,8 +160,9 @@ export function drawWatermarkedCanvas(
   const scale = Math.max(0.65, Math.min(width / 720, 2.0));
 
   // Pill / Badge dimensions
+  const hasLocation = Boolean(options.locationName);
   const badgeWidth = Math.min(width * 0.90, Math.max(340 * scale, width * 0.72));
-  const badgeHeight = Math.round(96 * scale);
+  const badgeHeight = Math.round((hasLocation ? 116 : 96) * scale);
   const badgeX = (width - badgeWidth) / 2;
   const bottomOffset = Math.round(20 * scale);
   const badgeY = height - badgeHeight - bottomOffset;
@@ -130,14 +202,10 @@ export function drawWatermarkedCanvas(
   ctx.shadowOffsetY = Math.round(1 * scale);
 
   const centerX = badgeX + badgeWidth / 2;
-  const titleFontSize = Math.round(15 * scale);
-  const coordFontSize = Math.round(12.5 * scale);
-  const timeFontSize = Math.round(14 * scale);
-
-  const verticalSpacing = badgeHeight / 4;
-  const line1Y = badgeY + verticalSpacing * 0.95;
-  const line2Y = badgeY + verticalSpacing * 2.0;
-  const line3Y = badgeY + verticalSpacing * 3.05;
+  const titleFontSize = Math.round((hasLocation ? 13.5 : 15) * scale);
+  const locFontSize = Math.round(11 * scale);
+  const coordFontSize = Math.round((hasLocation ? 11 : 12.5) * scale);
+  const timeFontSize = Math.round((hasLocation ? 13 : 14) * scale);
 
   // Format coordinates string
   let coordText = 'GPS: Lokasi Tidak Terdeteksi';
@@ -145,20 +213,61 @@ export function drawWatermarkedCanvas(
     coordText = `Lat: ${options.coordinates.latitude.toFixed(6)}, Long: ${options.coordinates.longitude.toFixed(6)}`;
   }
 
-  // Top line: Date in Indonesian format (e.g. Kamis, 17 September 2026)
-  ctx.font = `bold ${titleFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(options.dateText || getWitaDateLong(new Date()), centerX, line1Y);
+  if (hasLocation) {
+    const verticalSpacing = badgeHeight / 5;
+    const line1Y = badgeY + verticalSpacing * 0.95;
+    const line2Y = badgeY + verticalSpacing * 1.95;
+    const line3Y = badgeY + verticalSpacing * 2.95;
+    const line4Y = badgeY + verticalSpacing * 3.95;
 
-  // Middle line: Coordinates (e.g. Lat: -8.123456, Long: 115.123456)
-  ctx.font = `600 ${coordFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif`;
-  ctx.fillStyle = '#F8FAFC'; // High-contrast clean white
-  ctx.fillText(coordText, centerX, line2Y);
+    // Line 1: Date in Indonesian format (e.g. Kamis, 17 September 2026)
+    ctx.font = `bold ${titleFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(options.dateText || getWitaDateLong(new Date()), centerX, line1Y);
 
-  // Bottom line: WITA time (e.g. 10:45:00 WITA)
-  ctx.font = `bold ${timeFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(options.timestamp || 'WITA', centerX, line3Y);
+    // Line 2: Location Name formatted as [desa/kelurahan, kecamatan, kota/kabupaten, provinsi]
+    ctx.font = `600 ${locFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillStyle = '#38BDF8'; // Sky-400 for clear distinguishable location
+    let locStr = options.locationName || '';
+    const maxTextWidth = badgeWidth - 24 * scale;
+    if (ctx.measureText(locStr).width > maxTextWidth) {
+      while (locStr.length > 10 && ctx.measureText(locStr + '...').width > maxTextWidth) {
+        locStr = locStr.slice(0, -1);
+      }
+      locStr = locStr + '...';
+    }
+    ctx.fillText(locStr, centerX, line2Y);
+
+    // Line 3: Coordinates (e.g. Lat: -8.123456, Long: 115.123456)
+    ctx.font = `600 ${coordFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif`;
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillText(coordText, centerX, line3Y);
+
+    // Line 4: WITA time (e.g. 10:45:00 WITA)
+    ctx.font = `bold ${timeFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(options.timestamp || 'WITA', centerX, line4Y);
+  } else {
+    const verticalSpacing = badgeHeight / 4;
+    const line1Y = badgeY + verticalSpacing * 0.95;
+    const line2Y = badgeY + verticalSpacing * 2.0;
+    const line3Y = badgeY + verticalSpacing * 3.05;
+
+    // Top line: Date in Indonesian format (e.g. Kamis, 17 September 2026)
+    ctx.font = `bold ${titleFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(options.dateText || getWitaDateLong(new Date()), centerX, line1Y);
+
+    // Middle line: Coordinates (e.g. Lat: -8.123456, Long: 115.123456)
+    ctx.font = `600 ${coordFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif`;
+    ctx.fillStyle = '#F8FAFC'; // High-contrast clean white
+    ctx.fillText(coordText, centerX, line2Y);
+
+    // Bottom line: WITA time (e.g. 10:45:00 WITA)
+    ctx.font = `bold ${timeFontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(options.timestamp || 'WITA', centerX, line3Y);
+  }
 
   ctx.restore();
 
