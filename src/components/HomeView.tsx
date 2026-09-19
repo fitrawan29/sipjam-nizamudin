@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   getWitaDateLong, 
   getWitaTimeStr, 
@@ -95,7 +95,7 @@ export default function HomeView({
   // Load Teacher Data
   useEffect(() => {
     if (isGuru && user?.nama) {
-      setLoadingState(true);
+      setTimeout(() => setLoadingState(true), 0);
       getGuruDailyState(user.nama, user.username)
         .then(setDailyState)
         .catch(console.error)
@@ -226,13 +226,7 @@ export default function HomeView({
   }, [isGuru, user?.nama, user?.username]);
 
   // Load Admin Data (Daily Status Matrix)
-  useEffect(() => {
-    if (!isGuru) {
-      loadAdminMatrix();
-    }
-  }, [isGuru]);
-
-  const loadAdminMatrix = async () => {
+  const loadAdminMatrix = useCallback(async () => {
     setAdminLoading(true);
     try {
       const todayStr = getWitaDateStr();
@@ -507,7 +501,13 @@ export default function HomeView({
     } finally {
       setAdminLoading(false);
     }
-  };
+  }, [user?.sekolah_id]);
+
+  useEffect(() => {
+    if (!isGuru) {
+      loadAdminMatrix();
+    }
+  }, [isGuru, loadAdminMatrix]);
 
   // Filtered Admin Matrix
   const filteredMatrix = useMemo(() => {

@@ -36,7 +36,9 @@ export default function CameraSelfieCapture({
   // 1. Live Geolocation tracking
   const requestLocation = useCallback(() => {
     if (typeof navigator !== 'undefined' && navigator.geolocation) {
-      setGpsStatus('Mencari sinyal GPS...');
+      setTimeout(() => {
+        setGpsStatus('Mencari sinyal GPS...');
+      }, 0);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const coords = {
@@ -53,7 +55,7 @@ export default function CameraSelfieCapture({
                 setGpsStatus(locName);
               }
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
               console.warn('[CameraCapture] Nominatim error:', err);
             });
         },
@@ -64,7 +66,9 @@ export default function CameraSelfieCapture({
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      setGpsStatus('Browser tidak mendukung geolokasi');
+      setTimeout(() => {
+        setGpsStatus('Browser tidak mendukung geolokasi');
+      }, 0);
     }
   }, []);
 
@@ -112,17 +116,18 @@ export default function CameraSelfieCapture({
           setIsStreaming(true);
         };
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[CameraCapture] Camera access error:', err);
+      const e = err as { name?: string; message?: string };
       let message = 'Gagal mengakses kamera.';
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      if (e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError') {
         message = 'Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser.';
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      } else if (e?.name === 'NotFoundError' || e?.name === 'DevicesNotFoundError') {
         message = 'Kamera tidak ditemukan pada perangkat Anda.';
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      } else if (e?.name === 'NotReadableError' || e?.name === 'TrackStartError') {
         message = 'Kamera sedang digunakan oleh aplikasi lain.';
       } else {
-        message = `Akses kamera gagal: ${err.message || 'Error tidak diketahui'}`;
+        message = `Akses kamera gagal: ${e?.message || 'Error tidak diketahui'}`;
       }
       setCameraError(message);
       setIsStreaming(false);
@@ -160,12 +165,13 @@ export default function CameraSelfieCapture({
       setCapturedImage(dataUrl);
       setCapturedFile(file);
       stopCamera();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[CameraCapture] Error capturing frame:', err);
+      const e = err as { message?: string };
       Swal.fire({
         icon: 'error',
         title: 'Gagal Mengambil Foto',
-        text: err.message || 'Silakan coba lagi.',
+        text: e?.message || 'Silakan coba lagi.',
         confirmButtonColor: '#10B981',
       });
     }
@@ -211,9 +217,21 @@ export default function CameraSelfieCapture({
             {capturedImage ? 'Preview Foto Kamera (Watermarked)' : 'Kamera Langsung Perangkat'}
           </span>
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-          <i className="fa-solid fa-location-dot text-emerald-500"></i>
-          <span className="truncate max-w-[160px] sm:max-w-none">{gpsStatus}</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+            <i className="fa-solid fa-location-dot text-emerald-500"></i>
+            <span className="truncate max-w-[160px] sm:max-w-none">{gpsStatus}</span>
+          </div>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1.5 py-0.5 rounded transition"
+              title="Batal"
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          )}
         </div>
       </div>
 

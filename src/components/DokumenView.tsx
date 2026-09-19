@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { uploadToDrive } from '@/lib/driveUpload';
@@ -59,11 +59,7 @@ export default function DokumenView({ user }: { user: any }) {
   const [selectedKelas, setSelectedKelas] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    loadAllData();
-  }, [user]);
-
-  const loadAllData = async () => {
+  const loadAllData = useCallback(async () => {
     try {
       setFetching(true);
       // 1. Fetch bank_dokumen
@@ -148,7 +144,11 @@ export default function DokumenView({ user }: { user: any }) {
     } finally {
       setFetching(false);
     }
-  };
+  }, [isAdmin, user?.nama]);
+
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
 
   // --- Admin Syarat CRUD Operations ---
   const handleOpenAddSyarat = () => {

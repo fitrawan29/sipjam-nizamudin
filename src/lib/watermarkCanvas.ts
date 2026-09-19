@@ -64,7 +64,9 @@ export async function reverseGeocodeNominatim(lat: number, lon: number): Promise
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) return cached;
-    } catch (_) {}
+    } catch {
+      // ignore storage access errors
+    }
   }
 
   try {
@@ -99,11 +101,13 @@ export async function reverseGeocodeNominatim(lat: number, lon: number): Promise
     if (typeof window !== 'undefined' && window.sessionStorage) {
       try {
         sessionStorage.setItem(cacheKey, formatted);
-      } catch (_) {}
+      } catch {
+        // ignore storage write errors
+      }
     }
 
     return formatted;
-  } catch (_) {
+  } catch {
     return fallback;
   }
 }

@@ -226,7 +226,7 @@ assert(
 // ----------------------------------------------------
 console.log('\n--- Section 5: Unit Calculations & Nominatim Mapping Verification ---');
 
-function formatNominatimAddress(addr: any): string {
+function formatNominatimAddress(addr: Record<string, string | undefined>): string {
   const desa = addr.village || addr.kelurahan || addr.suburb || addr.quarter || addr.neighbourhood || addr.hamlet || addr.residential || '';
   const kec = addr.subdistrict || addr.kecamatan || addr.municipality || addr.district || addr.city_district || (addr.town !== desa ? addr.town : '') || '';
   const kota = addr.city || addr.regency || addr.county || addr.state_district || addr.region || '';
