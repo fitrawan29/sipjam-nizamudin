@@ -1,105 +1,95 @@
-# Project: SIPJAM Milestone 9 Enhancements
+# Project: SIPJAM Milestone 10 Enhancements
 
 ## Architecture
-SIPJAM is a Next.js (App Router) + Supabase application with multi-tenant RLS, role-based access (Superadmin, Admin, Guru, Wali Kelas), PWA push notifications, and client-side camera/watermark processing.
+SIPJAM is a Next.js (App Router) + Supabase application with multi-tenant RLS, role-based access (Superadmin, Admin, Guru, Wali Kelas), PWA capabilities, real-time sync, and client-side camera/watermark processing.
 
 ### Modules & Boundaries
-1. **Database & Types Layer (`supabase/migrations/`, `src/types/database.ts`)**:
-   - Multi-tenant tables with `sekolah_id` and RLS.
-   - Realtime publication `supabase_realtime` for instant updates.
-2. **Academic & Assessment Layer (`src/components/GradebookView.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/AppScreen.tsx`)**:
-   - Academic Year synchronization from `pengaturan`.
-   - Admin view-only lock for Gradebook with only 'Cetak' button.
-   - Teacher pengampu TP management restriction.
-   - Jurnal Kelas RBAC (Admin & Wali Kelas exclusive).
-3. **Attendance & Schedule Configuration Layer (`src/components/AdminConfigView.tsx`, `src/lib/workflow.ts`, `src/components/GuruPresensi.tsx`)**:
-   - Teacher attendance exception ("Hanya wajib hadir saat hari mengajar") vs default workdays.
-   - Friday checkout time ("Jam Pulang Hari Jumat").
-   - Daily workflow status calculation (`getGuruDailyState`).
-4. **Live Media & Camera Layer (`src/components/CameraSelfieCapture.tsx`, `src/lib/watermarkCanvas.ts`, `GuruJurnal.tsx`, `PiketView.tsx`, `GuruPresensi.tsx`)**:
-   - Direct camera enforcement (`navigator.mediaDevices.getUserMedia`).
-   - Front/rear camera toggle (`facingMode: "user" | "environment"`).
-   - Total elimination of gallery file upload (`<input type="file">`) on Pulang, Jurnal, and Piket.
-5. **Real-time Communication & Notification Layer (`src/components/ChatView.tsx`, `AppScreen.tsx`, `globals.css`, `public/sw.js`, `src/app/api/push/send-reminders/route.ts`)**:
-   - Navbar broadcast bell with shake animation and red unread counter.
-   - Supabase Realtime teacher-to-teacher chat.
-   - Web Push Notification automated reminders and permission dialog.
+1. **Database & Schema Layer (`supabase/migrations/`, `src/types/database.ts`)**:
+   - `syarat_perangkat_pembelajaran`: document requirements per subject (types, formats, wajib, urutan) with RLS.
+   - `catatan_admin` column additions on `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`.
+2. **Print Layout & Letterhead Layer (`src/components/PrintHeader.tsx`, `src/app/globals.css`, print views)**:
+   - Removal of forced `@page` orientation settings; reliance on browser print settings.
+   - Responsive print table styles, continuous pagination without vertical 600px clipping.
+   - Symmetric 3-column Kop Surat with reliable Google Drive thumbnail streaming (`lh3.googleusercontent.com/d/{id}=w800`), tenant logo resolution, and text overlap prevention.
+3. **Admin Perangkat Pembelajaran & Status Matrix (`src/components/DokumenView.tsx`, `src/components/HomeView.tsx`)**:
+   - Admin CRUD for document requirements and formats per subject.
+   - Teacher document completeness tracking by subject (`uploaded / required * 100%`).
+   - Minimalist progress cards with click-to-expand drawer.
+   - Accurate DB aggregation for Admin Daily Status Matrix in `HomeView.tsx` (resilient date filtering, direct `penugasan_piket` check, multi-tenant isolation, Dinas Luar / holiday support).
+4. **Teacher Dashboard, Camera Geolocation & Attendance (`src/components/HomeView.tsx`, `CameraSelfieCapture.tsx`, `watermarkCanvas.ts`, `RekapSiswaView.tsx`)**:
+   - Strict 3-section Teacher Dashboard: (1) Personal Stats, (2) Today's Task Status, (3) Teaching Schedule. Extraneous widgets removed.
+   - OpenStreetMap Nominatim reverse geocoding: `[desa/kelurahan, kecamatan, kota/kabupaten, provinsi]` on front and rear camera watermarks.
+   - Student attendance percentage formula fix: `(total_present / total_students) * 100`.
+5. **User Prompts & Rejection Feedback Flows (`src/components/PWAInstallPrompt.tsx`, `public/manifest.json`, `src/components/AdminVerifView.tsx`)**:
+   - PWA install prompt at application start, persistent dismissal / standalone mode detection.
+   - Mandatory admin rejection feedback modal blocking submission until reason is populated, saving to backend.
 
 ---
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
 |---|---------|-------------|-----------|--------|
-| 1 | DB Schema & Migrations | Add columns and tables for settings, teacher exemptions, chat, and read tracking | M1 | Survey |
-| 2 | Academic Year Sync | Sync Guru Gradebook year with Admin `pengaturan.tahun_ajaran` | M2 | R1 |
-| 3 | Admin Gradebook Lock | Admin is view-only, cannot edit/mutate, only has "Cetak" button | M2 | R1 |
-| 4 | TP Management Restriction | Only guru pengampu can create/edit/delete TP | M2 | R1 |
-| 5 | Jurnal Kelas RBAC | Exclusively accessible by Admin and the class's assigned Wali Kelas; hidden/blocked for regular teachers | M2 | R3 |
-| 6 | Admin Attendance Settings | UI to select teachers exempt from daily presence (teaching days only) & Friday checkout time | M3 | R4 |
-| 7 | Attendance Workflow Logic | `getGuruDailyState` exempts marked teachers on non-teaching days, defaults others to daily presence | M3 | R4 |
-| 8 | Friday Checkout Enforcement | `GuruPresensi.tsx` checks Friday and uses `jam_pulang_jumat` | M3 | R4 |
-| 9 | Direct Camera Enforcement | Presensi Pulang, Jurnal, and Piket require direct camera input; remove `<input type="file">` | M3 | R5 |
-| 10 | Camera Facing Toggle | Support switching front/rear camera (`user` vs `environment`) and correct mirroring | M3 | R5 |
-| 11 | Navbar Broadcast Bell | Bell icon in navbar with shake animation and red dot for unread broadcasts | M4 | R2 |
-| 12 | Real-time Teacher Chat | Two-way chat between teachers powered by Supabase Realtime without page reload | M4 | R2 |
-| 13 | Web Push Automated Reminders | Service Worker + VAPID notifications for missing attendance, journal, and picket | M4 | R2 |
-| 14 | Push Permission Dialog | Browser prompt on login/dashboard triggering simulated notification | M4 | R2 |
-| 15 | E2E Verification & Git Push | Comprehensive test verification, forensic audit, and automated git push to origin | M5 | Acceptance & Rules |
+| 1 | DB Migration & Types | `syarat_perangkat_pembelajaran` table, `catatan_admin` columns, TS types | M10.1 | R2, R4 |
+| 2 | Free Browser Print Orientation | Remove forced `@page size: A4 ${orientation} !important;` | M10.2 | R1 |
+| 3 | Print Table Responsive Pagination | Prevent vertical clipping (`max-height: none`, `overflow: visible`), prevent column cutoff | M10.2 | R1 |
+| 4 | Kop Surat Logo & Text Layout | High-res image streaming, tenant logos, balanced 3-column layout without text overlap | M10.2 | R1 |
+| 5 | PWA Install Prompt | First-load install prompt with standalone check & dismissal persistence | M10.2 | R4 |
+| 6 | Mandatory Admin Rejection Feedback | Require reason before rejecting presensi, jurnal, or piket, save to DB | M10.2 | R4 |
+| 7 | Perangkat Pembelajaran CRUD | Admin UI to manage document types and formats per subject | M10.3 | R2 |
+| 8 | Document Progress Cards | Minimalist cards per teacher per subject with click-to-expand details | M10.3 | R2 |
+| 9 | Admin Daily Status Matrix Fix | Resilient date queries, `penugasan_piket` sync, `sekolah_id`, Dinas Luar & holiday rules | M10.3 | R2 |
+| 10 | Teacher Dashboard Reordering | Strictly (1) Personal Stats, (2) Task Status, (3) Teaching Schedule | M10.3 | R3 |
+| 11 | OSM Nominatim Camera Location | Reverse geocode coordinates to `[desa, kecamatan, kota, provinsi]` on watermark | M10.3 | R3 |
+| 12 | Student Attendance Percentage Fix | Correct formula `(total_present / total_students) * 100` in RekapSiswa | M10.3 | R3 |
+| 13 | E2E Acceptance, Audit & Git Delivery | Comprehensive automated tests, Reviewers, Challengers, Forensic Auditor, Git commit & push | M10.4 | All |
 
 ---
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Database Schema & Migrations | Migration SQL for `pengaturan`, `data_guru`, `chat_messages`, `pengumuman_dibaca` + TS types | none | DONE |
-| M2 | R1 & R3: Academic Year, Gradebook & Jurnal Kelas RBAC | Sync year, Admin view-only gradebook, TP restriction, Jurnal Kelas RBAC | M1 | IN_PROGRESS |
-| M3 | R4 & R5: Attendance Rules & Direct Camera Integration | Admin settings, Friday pulang, workflow logic, camera capture on Pulang/Jurnal/Piket, front/back toggle | M1 | IN_PROGRESS |
-| M4 | R2: Broadcast Bell, Real-time Chat & Web Push Reminders | Navbar bell animation & badge, `ChatView` realtime, push reminders API & permission dialog | M1 | PLANNED |
-| M5 | Final Acceptance, Forensic Audit & Git Delivery | End-to-end verification, forensic audit, build check, git commit & push | M2, M3, M4 | PLANNED |
+| M10.1 | DB Schema & Migrations | Migration SQL for `syarat_perangkat_pembelajaran` & `catatan_admin` + TS types | none | PLANNED |
+| M10.2 | Print Layout, Logos, PWA & Rejection | R1 (Print orientation, tables, kop surat) & R4 (PWA prompt, rejection feedback) | M10.1 | PLANNED |
+| M10.3 | Perangkat, Matrix, Dashboard, Camera & Attendance | R2 (Perangkat CRUD, cards, admin matrix) & R3 (Teacher dashboard, OSM camera, attendance %) | M10.1 | PLANNED |
+| M10.4 | E2E Testing, Review, Forensic Audit & Git Delivery | Regression test suite, Reviewers, Challengers, Forensic Auditor, Git push | M10.2, M10.3 | PLANNED |
 
 ---
 
 ## Code Layout
-- `supabase/migrations/20260918_milestone9_schema.sql`: Database migration script
-- `src/types/database.ts`: Updated TypeScript definitions
-- `src/components/GradebookView.tsx`: Academic year sync, Admin lock, TP restrictions
-- `src/components/AppScreen.tsx`: Navbar broadcast bell, Jurnal Kelas navigation, Chat menu
-- `src/components/RekapJurnalView.tsx`: Wali Kelas filtering and Jurnal Kelas RBAC
-- `src/components/AdminConfigView.tsx`: Friday checkout time and teacher attendance exceptions
-- `src/lib/workflow.ts`: Attendance exemption calculation in `getGuruDailyState`
-- `src/components/GuruPresensi.tsx`: Friday pulang check, direct camera on Pulang
-- `src/components/GuruJurnal.tsx`: Direct camera integration, remove file input
-- `src/components/PiketView.tsx`: Direct camera integration, remove file input
-- `src/components/CameraSelfieCapture.tsx`: Camera toggle (front/back), remove gallery uploads
-- `src/lib/watermarkCanvas.ts`: Dynamic canvas mirroring based on `facingMode`
-- `src/components/ChatView.tsx`: Real-time teacher-to-teacher chat component
-- `src/app/api/push/send-reminders/route.ts`: Web push reminder dispatch endpoint
-- `src/app/globals.css`: Keyframe bell shake animation
+- `supabase/migrations/20260919_milestone10_schema.sql`: Migration script for `syarat_perangkat_pembelajaran` and `catatan_admin`
+- `src/types/database.ts`: TypeScript types for new tables and updated schema
+- `src/components/PrintHeader.tsx`: Browser-native print settings, Kop Surat logos & 3-column layout
+- `src/app/globals.css`: Print media styles for tables, overflow reset, and pagination
+- `src/components/GradebookView.tsx`: Print table responsive pagination
+- `src/components/PWAInstallPrompt.tsx`: PWA install prompt banner/modal
+- `public/manifest.json`: Web app manifest configuration
+- `src/components/AdminVerifView.tsx`: Mandatory rejection feedback dialog and backend mutation
+- `src/components/DokumenView.tsx`: Admin Perangkat Pembelajaran CRUD, teacher progress cards
+- `src/components/HomeView.tsx`: Admin Daily Status Matrix data aggregation fix & Teacher Dashboard reordering
+- `src/components/CameraSelfieCapture.tsx`: Geolocation reverse geocoding via Nominatim
+- `src/lib/watermarkCanvas.ts`: 4-line watermark badge with formatted location string
+- `src/components/RekapSiswaView.tsx`: Student attendance percentage calculation fix
+- `tests/m10_comprehensive.test.ts`: Milestone 10 automated test suite
 
 ---
 
 ## Interface Contracts
-### `public.chat_messages`
-- `id`: UUID (PK)
-- `sekolah_id`: UUID (FK to `sekolah.id`)
-- `sender_id`: TEXT
-- `sender_nama`: TEXT
-- `recipient_id`: TEXT
-- `recipient_nama`: TEXT
-- `pesan`: TEXT
-- `is_read`: BOOLEAN DEFAULT FALSE
-- `created_at`: TIMESTAMPTZ DEFAULT NOW()
+### `public.syarat_perangkat_pembelajaran`
+- `id`: UUID (PK, DEFAULT gen_random_uuid())
+- `sekolah_id`: UUID (FK to `sekolah.id`, NOT NULL)
+- `nama_mapel`: TEXT (DEFAULT 'Semua Mapel')
+- `kode_dokumen`: TEXT (NOT NULL)
+- `nama_dokumen`: TEXT (NOT NULL)
+- `format_dokumen`: TEXT (DEFAULT 'PDF, DOCX')
+- `wajib`: BOOLEAN (DEFAULT TRUE)
+- `urutan`: INTEGER (DEFAULT 0)
+- `created_at`: TIMESTAMPTZ (DEFAULT NOW())
 
-### `public.pengumuman_dibaca`
-- `id`: UUID (PK)
-- `sekolah_id`: UUID
-- `pengumuman_id`: UUID (FK to `pengumuman.id`)
-- `user_id`: TEXT
-- `read_at`: TIMESTAMPTZ DEFAULT NOW()
+### Rejection Feedback Column Additions
+- `public.presensi_guru`: `catatan_admin TEXT DEFAULT NULL`
+- `public.jurnal_pembelajaran`: `catatan_admin TEXT DEFAULT NULL`
+- `public.laporan_piket`: `catatan_admin TEXT DEFAULT NULL`
 
-### `public.pengaturan` Additions
-- `jam_pulang_jumat`: TEXT DEFAULT '11:00'
-- `guru_hanya_mengajar`: TEXT DEFAULT '[]' (JSON array of teacher IDs)
-
-### `public.data_guru` Additions
-- `wajib_hadir_hanya_mengajar`: BOOLEAN DEFAULT FALSE
+### Nominatim Reverse Geocoding Format
+- Format: `[desa/kelurahan, kecamatan, kota/kabupaten, provinsi]`
+- Fallback: `[Lat: X, Lng: Y]` if reverse geocoding fails or offline

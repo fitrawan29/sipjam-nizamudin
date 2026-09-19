@@ -136,6 +136,7 @@ export type Database = {
           nama_guru: string | null
           sekolah_id: string
           status_verifikasi: string | null
+          syarat_id?: string | null
           timestamp: string | null
         }
         Insert: {
@@ -149,6 +150,7 @@ export type Database = {
           nama_guru?: string | null
           sekolah_id?: string
           status_verifikasi?: string | null
+          syarat_id?: string | null
           timestamp?: string | null
         }
         Update: {
@@ -162,6 +164,7 @@ export type Database = {
           nama_guru?: string | null
           sekolah_id?: string
           status_verifikasi?: string | null
+          syarat_id?: string | null
           timestamp?: string | null
         }
         Relationships: [
@@ -170,6 +173,13 @@ export type Database = {
             columns: ["sekolah_id"]
             isOneToOne: false
             referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_dokumen_syarat_id_fkey"
+            columns: ["syarat_id"]
+            isOneToOne: false
+            referencedRelation: "syarat_perangkat_pembelajaran"
             referencedColumns: ["id"]
           },
         ]
@@ -460,6 +470,8 @@ export type Database = {
       jurnal_pembelajaran: {
         Row: {
           absensi_siswa: string | null
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           catatan_khusus_siswa: string | null
           catatan_refleksi: string | null
           detail_absen: string | null
@@ -485,6 +497,8 @@ export type Database = {
         }
         Insert: {
           absensi_siswa?: string | null
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           catatan_khusus_siswa?: string | null
           catatan_refleksi?: string | null
           detail_absen?: string | null
@@ -510,6 +524,8 @@ export type Database = {
         }
         Update: {
           absensi_siswa?: string | null
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           catatan_khusus_siswa?: string | null
           catatan_refleksi?: string | null
           detail_absen?: string | null
@@ -577,6 +593,8 @@ export type Database = {
       }
       laporan_piket: {
         Row: {
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           catatan_apel: string | null
           guru_pelapor: string | null
           id: string
@@ -589,6 +607,8 @@ export type Database = {
           timestamp: string | null
         }
         Insert: {
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           catatan_apel?: string | null
           guru_pelapor?: string | null
           id: string
@@ -601,6 +621,8 @@ export type Database = {
           timestamp?: string | null
         }
         Update: {
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           catatan_apel?: string | null
           guru_pelapor?: string | null
           id?: string
@@ -935,6 +957,8 @@ export type Database = {
       }
       presensi_guru: {
         Row: {
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           detail_izin: string | null
           id: string
           jarak: string | null
@@ -949,6 +973,8 @@ export type Database = {
           tipe_absen: string | null
         }
         Insert: {
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           detail_izin?: string | null
           id: string
           jarak?: string | null
@@ -963,6 +989,8 @@ export type Database = {
           tipe_absen?: string | null
         }
         Update: {
+          alasan_penolakan?: string | null
+          catatan_admin?: string | null
           detail_izin?: string | null
           id?: string
           jarak?: string | null
@@ -1140,6 +1168,56 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      syarat_perangkat_pembelajaran: {
+        Row: {
+          created_at: string
+          deskripsi: string | null
+          format_dokumen: string
+          id: string
+          kode_dokumen: string
+          nama_dokumen: string
+          nama_mapel: string
+          sekolah_id: string
+          updated_at: string | null
+          urutan: number
+          wajib: boolean
+        }
+        Insert: {
+          created_at?: string
+          deskripsi?: string | null
+          format_dokumen?: string
+          id?: string
+          kode_dokumen: string
+          nama_dokumen: string
+          nama_mapel?: string
+          sekolah_id?: string
+          updated_at?: string | null
+          urutan?: number
+          wajib?: boolean
+        }
+        Update: {
+          created_at?: string
+          deskripsi?: string | null
+          format_dokumen?: string
+          id?: string
+          kode_dokumen?: string
+          nama_dokumen?: string
+          nama_mapel?: string
+          sekolah_id?: string
+          updated_at?: string | null
+          urutan?: number
+          wajib?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "syarat_perangkat_pembelajaran_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tujuan_pembelajaran: {
         Row: {
@@ -1589,6 +1667,24 @@ export type ChatMessageUpdate = TablesUpdate<"chat_messages">;
 export type PengumumanDibaca = Tables<"pengumuman_dibaca">;
 export type PengumumanDibacaInsert = TablesInsert<"pengumuman_dibaca">;
 export type PengumumanDibacaUpdate = TablesUpdate<"pengumuman_dibaca">;
+
+// Feature Additions (Milestone 10)
+export interface SyaratPerangkatPembelajaran {
+  id: string;
+  sekolah_id: string;
+  nama_mapel: string;
+  kode_dokumen: string;
+  nama_dokumen: string;
+  format_dokumen: string;
+  deskripsi?: string | null;
+  wajib: boolean;
+  urutan: number;
+  created_at: string;
+  updated_at?: string | null;
+}
+export type SyaratPerangkatPembelajaranRow = Tables<"syarat_perangkat_pembelajaran">;
+export type SyaratPerangkatPembelajaranInsert = TablesInsert<"syarat_perangkat_pembelajaran">;
+export type SyaratPerangkatPembelajaranUpdate = TablesUpdate<"syarat_perangkat_pembelajaran">;
 
 // Useful Enum / Literal Types for Components
 export type HariPiket = "Senin" | "Selasa" | "Rabu" | "Kamis" | "Jumat" | "Sabtu";

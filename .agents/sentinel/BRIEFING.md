@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-18T07:34:50Z
+# BRIEFING — 2026-09-19T01:13:28Z
 
 ## Mission
-Coordinate and monitor feature enhancements to SIPJAM: Academic year sync & view-only gradebook for admin, Notification bell with vibration & Supabase Realtime chat & Web Push Notifications, Class Journal RBAC for Admin & Wali Kelas, Admin teacher attendance exception & Friday dismissal time, and strict live camera enforcement with front/rear toggle.
+Coordinate and monitor implementation of 11 UI/UX improvements, feature additions, and bug fixes for Next.js sipjam-app: R1 Print Layout & Document UI Adjustments (remove forced orientation, responsive print tables, fix kop surat logos), R2 Admin - Perangkat Pembelajaran & UI Fixes (CRUD document requirements per subject, teacher document completeness cards & detail view, fix daily status matrix), R3 Teacher Dashboard & Camera Location (reorder dashboard strictly to Stats/Task/Schedule, reverse geocode camera location to [Desa, Kecamatan, Kota, Provinsi], fix student attendance percentage formula), and R4 User Prompts & Feedback Flows (PWA install prompt, required rejection feedback flow).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -27,10 +27,14 @@ Coordinate and monitor feature enhancements to SIPJAM: Academic year sync & view
 - Cron 2 (Liveness Check, previous): 407edddb-7195-47cd-ac4e-a320c4188b4f/task-34 (*/10 * * * *)
 - Active Orchestrator (previous): a21d5b87-ff2e-4b29-acfe-6e2543e24911 (.agents/orchestrator_10, interrupted by quota 429)
 - Active Orchestrator (previous): d2dfd088-11e9-48f7-a9b6-d9a38d0c3b78 (.agents/orchestrator_11, interrupted by quota 429)
-- Active Orchestrator: 77440de0-b18f-47e9-940e-6e03666b5ec8 (.agents/orchestrator_12)
-- Victory Auditor: 397d76d7-4192-45bd-bcb4-950e7a950637 (.agents/victory_auditor_8)
-- Cron 1 (Progress Reporting): 5901617f-3b2b-467c-8abc-3a06ccc86505/task-34 (*/8 * * * *)
-- Cron 2 (Liveness Check): 5901617f-3b2b-467c-8abc-3a06ccc86505/task-36 (*/10 * * * *)
+- Active Orchestrator (previous): 77440de0-b18f-47e9-940e-6e03666b5ec8 (.agents/orchestrator_12)
+- Victory Auditor (previous): 397d76d7-4192-45bd-bcb4-950e7a950637 (.agents/victory_auditor_8)
+- Cron 1 (Progress Reporting, previous): 5901617f-3b2b-467c-8abc-3a06ccc86505/task-34 (*/8 * * * *)
+- Cron 2 (Liveness Check, previous): 5901617f-3b2b-467c-8abc-3a06ccc86505/task-36 (*/10 * * * *)
+- Active Orchestrator: e2b01d1e-ab0b-47a7-b1f2-7917ded697ce (.agents/orchestrator_13)
+- Victory Auditor: [To be spawned on victory claim]
+- Cron 1 (Progress Reporting): 12dc4d5b-ac2d-4830-af11-07505b7ae07f/task-32 (*/8 * * * *)
+- Cron 2 (Liveness Check): 12dc4d5b-ac2d-4830-af11-07505b7ae07f/task-34 (*/10 * * * *)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -44,18 +48,19 @@ Coordinate and monitor feature enhancements to SIPJAM: Academic year sync & view
 - Route decision milestone 7: General (teamwork_preview_orchestrator) — full team requested for Multi-Tenant Database Architecture & RLS, Superadmin & Admin Hierarchy, and Ascending Date Sorting.
 - Route decision milestone 8: General (teamwork_preview_orchestrator) — full team requested for attendance synchronization across roles, selfie attendance with auto-watermark, gradebook management, native VAPID PWA push notifications, and extensive administrative controls.
 - Route decision milestone 9: General (teamwork_preview_orchestrator) — Academic year sync & gradebook TP lock, notification bell UI & Supabase Realtime chat & Web Push, Class Journal RBAC, teacher attendance exception & Friday dismissal time, and strict live camera enforcement with front/rear toggle.
+- Route decision milestone 10: General (teamwork_preview_orchestrator) — 11 UI/UX improvements, feature additions, and bug fixes for document management (perangkat pembelajaran CRUD & cards), print layouts & kop surat logo fixes, camera reverse geocoding location appending, student attendance percentage fix, teacher dashboard reorder, PWA install prompt, and rejection feedback flow.
 
 ## User Context
-- **Last user request**: Implement feature enhancements to SIPJAM: R1 Academic Year sync & gradebook TP lock, R2 Notification bell UI & Supabase Realtime chat & Web Push, R3 Class Journal RBAC for Admin & Wali Kelas, R4 Admin teacher attendance exception & Friday dismissal time, R5 Strict live camera enforcement with front/rear toggle.
+- **Last user request**: Implement 11 UI/UX improvements, feature additions, and bug fixes: R1 Print Layout & Document UI Adjustments, R2 Admin - Perangkat Pembelajaran & UI Fixes, R3 Teacher Dashboard & Camera Location, R4 User Prompts & Feedback Flows.
 - **Pending clarifications**: none
-- **Delivered results**: Milestones 1-8 delivered and verified. Milestone 9 victory claimed; independent post-victory audit underway.
+- **Delivered results**: Milestones 1-9 delivered and verified. Milestone 10 in progress.
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
@@ -63,9 +68,9 @@ Coordinate and monitor feature enhancements to SIPJAM: Academic year sync & view
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\ORIGINAL_REQUEST.md — Verbatim user requests (.agents mirror)
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\sentinel\BRIEFING.md — Sentinel working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\sentinel\handoff.md — Sentinel handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_12\ — Active Orchestrator working directory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\victory_auditor_8\ — Post-Victory Auditor working directory
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\orchestrator_13\ — Active Orchestrator working directory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md — Master project documentation
+
 
 
 

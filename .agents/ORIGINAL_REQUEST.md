@@ -343,3 +343,53 @@ Integrity mode: development
 - [ ] Login sebagai Admin -> Terdapat antarmuka untuk memilih guru yang "Hanya wajib hadir saat hari mengajar" dan antarmuka untuk mengatur "Jam Pulang Hari Jumat".
 - [ ] Form Presensi Pulang, Jurnal, dan Piket -> Menampilkan viewfinder kamera langsung, terdapat tombol toggle kamera depan/belakang, dan fitur `<input type="file">` telah dihilangkan.
 
+## 2026-09-19T01:13:28Z
+
+Implement a series of 11 UI/UX improvements, feature additions, and bug fixes for the Next.js sipjam-app, focusing on document management, print layouts, and camera location features.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Print Layout & Document UI Adjustments
+- Remove forced portrait/landscape CSS/JS settings; the print layout should rely purely on the user's browser print settings.
+- Ensure tables in print preview fit the page responsively without getting cut off before the page is filled.
+- Fix the left and right logos on the letterhead (kop surat) to render correctly and be readable.
+
+### R2. Admin - Perangkat Pembelajaran & UI Fixes
+- Implement CRUD operations for document types and formats that teachers must upload per subject.
+- Create a view for admins to see documents per teacher per subject, and track completeness progress based on required documents per subject.
+- Display the teacher's document progress using minimalist cards that can be clicked to open for details.
+- Fix the teacher daily status matrix on the admin dashboard to display accurate and correct data.
+
+### R3. Teacher Dashboard & Camera Location
+- Reorder the teacher dashboard to show: (1) Personal data statistics, (2) Today's task status, (3) Teaching schedule. Remove any other sections.
+- When taking front and back camera photos for presensi, jurnal, and laporan piket, fetch and append the location name formatted as `[desa/kelurahan, kecamatan, kota/kabupaten, provinsi]`. Use OpenStreetMap (Nominatim) for reverse geocoding.
+- Fix the student attendance percentage calculation to accurately reflect real data.
+
+### R4. User Prompts & Feedback Flows
+- Add a PWA install prompt at the application start (assume PWA manifest/service worker is already configured). The prompt should not appear again if the app is already installed or dismissed.
+- When an admin rejects presensi, jurnal, or laporan piket, provide a required feedback text column to store the reason for rejection.
+
+## Acceptance Criteria
+
+### Print Layout & Document UI Adjustments
+- [ ] Browser print preview does not force orientation.
+- [ ] Tables do not overflow or cut off horizontally/vertically in print preview mode.
+- [ ] Both logos on the letterhead load successfully and do not overlap text.
+
+### Admin - Perangkat Pembelajaran & UI Fixes
+- [ ] Admin can create, read, update, and delete document requirements per subject.
+- [ ] Admin can view a grid of minimalist cards showing document completeness per teacher per subject.
+- [ ] Clicking a card expands or navigates to the detailed document view.
+- [ ] The teacher daily status matrix accurately reflects the aggregated daily data from the database.
+
+### Teacher Dashboard & Camera Location
+- [ ] Teacher dashboard top three sections are strictly: Personal Data Stats, Task Status, Teaching Schedule, in that order, with no extraneous widgets.
+- [ ] Uploaded photos for presensi/jurnal/piket contain a location string matching the format `[Desa, Kecamatan, Kota, Provinsi]`, successfully fetched from Nominatim.
+- [ ] The student attendance percentage formula equals `(total_present / total_students) * 100` and displays correctly on the UI.
+
+### User Prompts & Feedback Flows
+- [ ] PWA install prompt is displayed once. If accepted or already installed (e.g., matching a local storage flag or `window.matchMedia('(display-mode: standalone)')`), it is hidden.
+- [ ] Admin rejection flow blocks submission until the feedback text area is populated, and the feedback is saved to the backend.
