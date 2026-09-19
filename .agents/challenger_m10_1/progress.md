@@ -1,26 +1,18 @@
 # Progress - challenger_m10_1
 
-Last visited: 2026-09-19T01:51:42Z
+Last visited: 2026-09-19T01:59:15Z
 
 ## Status
-Starting adversarial challenge and empirical verification for M10.
+Empirical adversarial testing completed for Milestone 10 (R3 & R4).
 
-## Plan
-1. [x] Initialize briefing, dispatch, and progress tracking.
-2. [ ] Read `PROJECT.md`, `ORIGINAL_REQUEST.md`, and target files:
-   - `src/lib/watermarkCanvas.ts`
-   - `src/components/RekapSiswaView.tsx`
-   - `src/components/PWAInstallPrompt.tsx`
-   - `src/components/AdminVerifView.tsx`
-3. [ ] Check test environment (vitest, package.json scripts, etc.).
-4. [ ] Formulate empirical stress tests & test scenarios:
-   - Reverse geocoding & watermark canvas edge cases (NaN/extreme coords, timeouts > 3.5s, missing sub-keys, quantization cache, mirroring uprightness).
-   - Student attendance percentage (0 students division, all absent, all present, sakit only, partial logs, irregular names, formula check).
-   - PWA install prompt (standalone mode, dismissed flag, accepted prompt, missing beforeinstallprompt event).
-   - Admin rejection feedback (whitespace-only, multiline, XSS/special chars, cancelling prompt, blocking empty feedback).
-5. [ ] Write `tests/adversarial_m10_challenger_1.test.ts`.
-6. [ ] Execute test suite via vitest / npm test and inspect results.
-7. [ ] Document findings, determine verdict (APPROVE / FAIL), update BRIEFING.md.
-8. [ ] Write `handoff.md` following 5-component structure.
-9. [ ] Run git workflow (`git status`, `git add`, `git commit`, `git push`).
-10. [ ] Send message to parent agent.
+## Completed
+- [x] Read `ORIGINAL_REQUEST.md`, `PROJECT.md`, and target files:
+  - `src/lib/watermarkCanvas.ts`
+  - `src/components/RekapSiswaView.tsx`
+  - `src/components/PWAInstallPrompt.tsx`
+  - `src/components/AdminVerifView.tsx`
+- [x] Created empirical test suite in `tests/adversarial_m10_challenger_1.test.ts` covering all 4 core areas (24 test scenarios).
+- [x] Executed test suite via `npx tsx tests/adversarial_m10_challenger_1.test.ts`.
+- [x] Verified existing test suite via `npm test`.
+- [x] Documented critical empirical finding in `reverseGeocodeNominatim`: pre-guard `toFixed(4)` evaluation causes unhandled `TypeError` when input is `undefined` or `null`.
+- [x] Prepared 5-component handoff report with verdict: `FAIL`.
