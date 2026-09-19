@@ -143,12 +143,45 @@ export default function AdminVerifView({ user }: { user: any }) {
 
   const verifyItem = async (id: number | string, status: 'Disetujui' | 'Ditolak') => {
     const { table, label } = getActiveConfig();
+
+    let rejectionReason: string | null = null;
+    if (status === 'Ditolak') {
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: `Tolak ${label}?`,
+        input: 'textarea',
+        inputLabel: 'Alasan Penolakan (Wajib Diisi)',
+        inputPlaceholder: 'Tuliskan alasan penolakan atau perbaikan yang harus dilakukan oleh guru...',
+        showCancelButton: true,
+        confirmButtonText: 'Tolak Pengajuan',
+        confirmButtonColor: '#dc2626',
+        cancelButtonText: 'Batal',
+        cancelButtonColor: '#6b7280',
+        inputValidator: (val) => {
+          if (!val || !val.trim()) {
+            return 'Alasan penolakan wajib diisi';
+          }
+          return null;
+        }
+      });
+
+      if (!isConfirmed || !reason || !reason.trim()) {
+        return; // Admin cancelled or validation stopped
+      }
+      rejectionReason = reason.trim();
+    }
+
     setProcessingId(id);
 
     try {
+      const updatePayload: any = { status_verifikasi: status };
+      if (status === 'Ditolak' && rejectionReason) {
+        updatePayload.catatan_admin = rejectionReason;
+        updatePayload.alasan_penolakan = rejectionReason;
+      }
+
       const { error } = await supabase
         .from(table)
-        .update({ status_verifikasi: status })
+        .update(updatePayload)
         .eq('id', id);
 
       if (error) {
@@ -161,20 +194,21 @@ export default function AdminVerifView({ user }: { user: any }) {
       } else {
         // Optimistic update
         if (activeTab === 'Presensi') {
-          setPresensiList(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status } : item));
+          setPresensiList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
         } else if (activeTab === 'Jurnal') {
-          setJurnalList(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status } : item));
+          setJurnalList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
         } else {
-          setPiketList(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status } : item));
+          setPiketList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
         }
 
         Swal.fire({
           icon: status === 'Disetujui' ? 'success' : 'info',
           title: `${label} ${status}`,
+          text: status === 'Ditolak' ? `Alasan: ${rejectionReason}` : undefined,
           toast: true,
           position: 'top-end',
           showConfirmButton: false,
-          timer: 1800
+          timer: 2000
         });
       }
     } catch (err: any) {
@@ -791,6 +825,18 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                         </a>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {(item.catatan_admin || item.alasan_penolakan) && (
+                  <div className="mt-2.5 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl text-xs flex items-start gap-2">
+                    <i className="fa-solid fa-circle-exclamation text-red-600 dark:text-red-400 mt-0.5 shrink-0 text-xs"></i>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-bold text-red-800 dark:text-red-300 block text-[11px]">Alasan Penolakan:</span>
+                      <p className="text-red-700 dark:text-red-300/90 text-xs break-words italic">
+                        {item.catatan_admin || item.alasan_penolakan}
+                      </p>
+                    </div>
                   </div>
                 )}
 

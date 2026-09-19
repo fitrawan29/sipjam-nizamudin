@@ -1787,8 +1787,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
               </p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="overflow-x-auto max-h-[600px] custom-scroll relative">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
+              <div className="overflow-x-auto max-h-[600px] custom-scroll relative print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse">
                   {/* Table Header */}
                   <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
@@ -2175,8 +2175,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
               </p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="overflow-x-auto max-h-[600px] custom-scroll">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
+              <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
                     <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-[11px]">

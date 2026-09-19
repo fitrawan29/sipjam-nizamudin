@@ -76,8 +76,8 @@ assert(
 );
 
 assert(
-  printHeaderContent.includes('size: A4 ${orientation} !important;'),
-  'PrintOrientationToggle injects dynamic @page size based on selected orientation'
+  !printHeaderContent.includes('size: A4 ${orientation} !important;') && !printHeaderContent.includes('size: A4'),
+  'PrintOrientationToggle relies purely on browser print settings and does not force @page size (M10 requirement)'
 );
 
 assert(

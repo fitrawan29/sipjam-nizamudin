@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { transformGoogleDriveUrl } from '@/lib/imageUrl';
+import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
 import { formatKepalaSekolahTitle } from '@/utils/textUtils';
 
 export { formatKepalaSekolahTitle };
@@ -67,12 +67,17 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
     fetchConfig();
   }, [sekolahId, user?.sekolah_id]);
 
-  const logoYayasan = transformGoogleDriveUrl(config.logo_yayasan || config.logo_kiri || config.LOGO_KIRI_URL || schoolInfo?.logo_url || '');
-  const logoDinas = transformGoogleDriveUrl(config.logo_dinas || config.logo_kanan || config.LOGO_KANAN_URL || '');
+  const rawLogoYayasan = config.logo_yayasan || config.logo_kiri || config.LOGO_KIRI_URL || schoolInfo?.logo_kiri_url || schoolInfo?.logo_url || '';
+  const rawLogoDinas = config.logo_dinas || config.logo_kanan || config.LOGO_KANAN_URL || schoolInfo?.logo_kanan_url || '';
+
+  const logoYayasan = rawLogoYayasan ? (getGoogleDriveThumbnailUrl(rawLogoYayasan, 800) || transformGoogleDriveUrl(rawLogoYayasan)) : '';
+  const logoDinas = rawLogoDinas ? (getGoogleDriveThumbnailUrl(rawLogoDinas, 800) || transformGoogleDriveUrl(rawLogoDinas)) : '';
   const yayasan = config.kop_yayasan || config.NAMA_YAYASAN || '';
   const sekolah = config.kop_sekolah || config.NAMA_SEKOLAH || schoolInfo?.nama || 'SMA NIZAMUDIN';
   const alamat = config.kop_alamat || config.ALAMAT_SEKOLAH || schoolInfo?.alamat || '';
   const npsn = config.kop_npsn || config.NPSN || schoolInfo?.npsn || '';
+
+  const hasAnyLogo = Boolean(logoYayasan || logoDinas);
 
   // Dynamic font size scaling based on address length to ensure single-line fit without logo overlap
   const getAddressFontSize = (text: string) => {
@@ -88,15 +93,31 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
 
   return (
     <div className="print-header print-only mb-6 border-b-4 border-black pb-4 text-black font-medium leading-none">
-      <div className="flex items-center justify-center gap-4 sm:gap-8 max-w-4xl mx-auto">
-        {/* Left Logo Container (Yayasan) */}
-        {logoYayasan && (
+      <div className="flex items-center justify-center gap-4 sm:gap-6 max-w-4xl mx-auto">
+        {/* Left Logo Container (Yayasan) - Symmetric 3-column slot w-20 */}
+        {hasAnyLogo && (
           <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
-            <img src={logoYayasan} alt="Logo Yayasan" className="max-w-full max-h-full object-contain" />
+            {logoYayasan ? (
+              <img
+                src={logoYayasan}
+                alt="Logo Yayasan"
+                loading="eager"
+                referrerPolicy="no-referrer"
+                className="max-w-full max-h-full object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (rawLogoYayasan && target.src !== transformGoogleDriveUrl(rawLogoYayasan)) {
+                    target.src = transformGoogleDriveUrl(rawLogoYayasan);
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-full h-full invisible" aria-hidden="true" />
+            )}
           </div>
         )}
 
-        {/* Center Text Container */}
+        {/* Center Text Container - flex-1 perfectly centered between the 2 slots */}
         <div className="print-header-center flex-1 min-w-0 text-center px-2 overflow-hidden leading-none">
           {yayasan && (
             <h2 className="text-base sm:text-lg font-bold uppercase text-black leading-none tracking-wide mb-1">
@@ -127,10 +148,26 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
           )}
         </div>
 
-        {/* Right Logo Container (Dinas) */}
-        {logoDinas && (
+        {/* Right Logo Container (Dinas) - Symmetric 3-column slot w-20 */}
+        {hasAnyLogo && (
           <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
-            <img src={logoDinas} alt="Logo Dinas" className="max-w-full max-h-full object-contain" />
+            {logoDinas ? (
+              <img
+                src={logoDinas}
+                alt="Logo Dinas"
+                loading="eager"
+                referrerPolicy="no-referrer"
+                className="max-w-full max-h-full object-contain"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  if (rawLogoDinas && target.src !== transformGoogleDriveUrl(rawLogoDinas)) {
+                    target.src = transformGoogleDriveUrl(rawLogoDinas);
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-full h-full invisible" aria-hidden="true" />
+            )}
           </div>
         )}
       </div>
@@ -327,7 +364,6 @@ export function PrintOrientationToggle({
       <style>{`
         @media print {
           @page {
-            size: A4 ${orientation} !important;
             margin: ${orientation === 'landscape' ? '8mm 10mm' : '12mm 15mm'} !important;
           }
           header, nav, aside, .app-header, .no-print {

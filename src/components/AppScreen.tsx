@@ -21,6 +21,7 @@ import SuperadminView from './SuperadminView';
 import GradebookView from './GradebookView';
 import ChatView from './ChatView';
 import PushNotificationPrompt from './PushNotificationPrompt';
+import PWAInstallPrompt from './PWAInstallPrompt';
 import { Pengumuman } from '@/types/database';
 import { supabase } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
@@ -482,6 +483,9 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
 
       {/* Push Notification Permission & Test Prompt */}
       <PushNotificationPrompt user={user} />
+
+      {/* Native PWA Install Prompt */}
+      <PWAInstallPrompt />
 
       {/* Broadcast Modal / Drawer */}
       {broadcastModalOpen && (
