@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-19T01:52:00Z
+# BRIEFING — 2026-09-19T01:57:00Z
 
 ## Mission
 Forensic Integrity Audit for Milestone 10: Independently verify all code modifications, database schemas, calculations, UI constraints, build, and tests for authenticity and integrity.
@@ -19,7 +19,7 @@ Forensic Integrity Audit for Milestone 10: Independently verify all code modific
 
 ## Current Parent
 - Conversation ID: e2b01d1e-ab0b-47a7-b1f2-7917ded697ce
-- Updated: not yet
+- Updated: 2026-09-19T01:57:00Z
 
 ## Audit Scope
 - **Work product**: Milestone 10 code, schema, and tests
@@ -27,25 +27,34 @@ Forensic Integrity Audit for Milestone 10: Independently verify all code modific
 - **Audit type**: forensic integrity check
 
 ## Audit Progress
-- **Phase**: investigating
-- **Checks completed**: none
-- **Checks remaining**:
-  - Read ORIGINAL_REQUEST.md and PROJECT.md
-  - Phase 1: Source code analysis (hardcoded outputs, facade implementations, pre-populated artifacts, genuine persistence, reverse geocoding, percentage calculation, widget reordering, print orientation)
-  - Phase 2: Build and test execution (tsc, vitest/npm test, npm run build)
-  - Phase 3: Reporting (handoff.md with CLEAN / INTEGRITY VIOLATION verdict)
-- **Findings so far**: Under investigation
+- **Phase**: reporting
+- **Checks completed**:
+  - Read ORIGINAL_REQUEST.md and PROJECT.md ground truth
+  - Static Code Integrity Forensics (13 core components/files inspected)
+  - Prohibited Patterns Check (hardcoded test results, facade implementations, pre-populated artifacts)
+  - DB Schema & Types verification (syarat_perangkat_pembelajaran, catatan_admin, alasan_penolakan)
+  - UI/UX verification (print orientation free, kop surat 3-column symmetry, PWA prompt & dismissal, rejection modal)
+  - Logic verification (OSM Nominatim formatting [desa, kecamatan, kota, provinsi], student attendance %, teacher dashboard 3 widgets)
+  - Build & Test verification (`npx tsc --noEmit`, `npm test`, `npm run build`, `tests/m10_r1_r4.test.ts`, `tests/adversarial_m10_challenger_2.test.ts`)
+- **Checks remaining**: None
+- **Findings so far**: CLEAN — No integrity violations found
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD]
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+- **Hypotheses tested**:
+  - Forced `@page size` bypass: Verified removed in `PrintHeader.tsx` and `globals.css`.
+  - Rejection feedback bypass: Verified mandatory in SweetAlert validator and persisted to `catatan_admin` and `alasan_penolakan`.
+  - Fake Nominatim geocoding: Verified genuine fetch to Nominatim API with hierarchy extraction and coordinate caching.
+  - Student attendance formula: Verified `(total_present / total_students) * 100` with 0-division guards.
+  - Teacher dashboard layout: Verified strictly 3 widgets in exact order with extraneous widgets removed.
+- **Vulnerabilities found**: None.
+- **Untested angles**: None.
 
 ## Loaded Skills
 - None
 
 ## Key Decisions Made
-- Initialized forensic audit workspace and briefing.
+- Confirmed all M10 features are genuinely implemented and connected to database/DOM without facades or mocks.
+- Issued verdict: CLEAN.
 
 ## Artifact Index
 - DISPATCH.md — Assignment instructions

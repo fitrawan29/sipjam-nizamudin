@@ -50,10 +50,10 @@ export function getDefaultWatermarkOptions(
  * Target format: "[desa/kelurahan, kecamatan, kota/kabupaten, provinsi]"
  */
 export async function reverseGeocodeNominatim(lat: number, lon: number): Promise<string> {
-  const fallback = `[GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}]`;
   if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
     return '[Lokasi Tidak Terdeteksi]';
   }
+  const fallback = `[GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}]`;
 
   // Quantize coordinates to ~110m (3 decimal places) for caching
   const quantLat = lat.toFixed(3);
