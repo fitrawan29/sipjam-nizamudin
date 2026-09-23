@@ -146,8 +146,8 @@ export default function GuruPresensi({ user }: { user: any }) {
       }
     }
 
-    // Validasi Workflow Datang
-    if (tipeAbsen === 'Datang' && dailyState?.presensiDatang) {
+    // Validasi Workflow Datang - kecualikan jika presensi sebelumnya DITOLAK (perlu isi ulang)
+    if (tipeAbsen === 'Datang' && dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak) {
       return Swal.fire('Info', 'Anda sudah melakukan Presensi Datang hari ini.', 'info');
     }
 
@@ -262,6 +262,12 @@ export default function GuruPresensi({ user }: { user: any }) {
       return Swal.fire('Error', 'Gagal menyimpan data presensi: ' + error.message, 'error');
     }
 
+    // If this was a re-submission after rejection, delete the old rejected record
+    const rejectedRecord = tipeAbsen === 'Datang' ? dailyState?.presensiDatangDitolak : dailyState?.presensiPulangDitolak;
+    if (rejectedRecord?.id) {
+      await supabase.from('presensi_guru').delete().eq('id', rejectedRecord.id);
+    }
+
     // Keep references for background upload task
     const fileToUpload = file;
     const currentTeacher = user.nama;
@@ -340,6 +346,44 @@ export default function GuruPresensi({ user }: { user: any }) {
                 <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {dailyState.lockedReason}
               </div>
             )}
+
+            {/* Rejection Alert — Presensi Datang Ditolak */}
+            {dailyState?.presensiDatangDitolak && (
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+                  <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
+                  <span>Presensi Datang Anda Ditolak oleh Admin</span>
+                </div>
+                {(dailyState.presensiDatangDitolak.catatan_admin || dailyState.presensiDatangDitolak.alasan_penolakan) && (
+                  <div className="pl-6 text-xs text-red-700 dark:text-red-300/90 italic leading-relaxed">
+                    <span className="font-semibold not-italic">Alasan: </span>
+                    {dailyState.presensiDatangDitolak.catatan_admin || dailyState.presensiDatangDitolak.alasan_penolakan}
+                  </div>
+                )}
+                <div className="pl-6 text-xs text-red-600 dark:text-red-400 font-semibold">
+                  <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang presensi datang Anda di bawah.
+                </div>
+              </div>
+            )}
+
+            {/* Rejection Alert — Presensi Pulang Ditolak */}
+            {dailyState?.presensiPulangDitolak && (
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+                  <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
+                  <span>Presensi Pulang Anda Ditolak oleh Admin</span>
+                </div>
+                {(dailyState.presensiPulangDitolak.catatan_admin || dailyState.presensiPulangDitolak.alasan_penolakan) && (
+                  <div className="pl-6 text-xs text-red-700 dark:text-red-300/90 italic leading-relaxed">
+                    <span className="font-semibold not-italic">Alasan: </span>
+                    {dailyState.presensiPulangDitolak.catatan_admin || dailyState.presensiPulangDitolak.alasan_penolakan}
+                  </div>
+                )}
+                <div className="pl-6 text-xs text-red-600 dark:text-red-400 font-semibold">
+                  <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang presensi pulang Anda di bawah.
+                </div>
+              </div>
+            )}
             
             <form onSubmit={handlePresensiSubmit} className={`space-y-4 ${dailyState?.isLibur ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -351,8 +395,9 @@ export default function GuruPresensi({ user }: { user: any }) {
                           required 
                           className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-nizamudin-green dark:text-nizamudin-gold"
                         >
-                            <option value="Datang" disabled={!!dailyState?.presensiDatang}>DATANG</option>
-                            <option value="Pulang" disabled={!dailyState?.presensiDatang}>PULANG</option>
+                            {/* Allow re-selecting Datang if presensiDatang was rejected */}
+                            <option value="Datang" disabled={!!dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak}>DATANG</option>
+                            <option value="Pulang" disabled={!dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak}>PULANG</option>
                         </select>
                     </div>
                     <div>

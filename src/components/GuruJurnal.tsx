@@ -335,6 +335,12 @@ export default function GuruJurnal({ user }: { user: any }) {
     };
 
     try {
+      // If re-submitting after rejection: delete all rejected jurnal entries for today first
+      if (dailyState?.jurnalDitolak && dailyState.jurnalDitolak.length > 0) {
+        const rejectedIds = dailyState.jurnalDitolak.map((j: any) => j.id);
+        await supabase.from('jurnal_pembelajaran').delete().in('id', rejectedIds);
+      }
+
       const { error } = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
 
       if (error) {
@@ -437,7 +443,10 @@ export default function GuruJurnal({ user }: { user: any }) {
   };
 
   const hasNoKbmAssignments = tipeJurnal === 'Jurnal KBM' && !isFetchingAssignments && mapelList.length === 0 && user?.role !== 'Admin';
-  const isLocked = !!(dailyState?.isLibur || (dailyState && !dailyState.canOpenJurnal) || hasNoKbmAssignments);
+  // isLocked: locked if libur, or can't open jurnal, or no assignments
+  // BUT: if there are rejected journals, allow re-submission even if canOpenJurnal is normally false
+  const hasRejectedJurnal = (dailyState?.jurnalDitolak?.length ?? 0) > 0;
+  const isLocked = !!(dailyState?.isLibur || (dailyState && !dailyState.canOpenJurnal && !hasRejectedJurnal) || hasNoKbmAssignments);
   const lockedMessage = hasNoKbmAssignments 
     ? 'Belum ada mata pelajaran atau kelas yang ditugaskan kepada Anda. Hubungi Administrator.' 
     : dailyState?.lockedReason;
@@ -452,6 +461,31 @@ export default function GuruJurnal({ user }: { user: any }) {
             {isLocked && (
               <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
                 <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {lockedMessage}
+              </div>
+            )}
+
+            {/* Rejection Alert — Jurnal Ditolak */}
+            {(dailyState?.jurnalDitolak?.length ?? 0) > 0 && (
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+                  <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
+                  <span>Jurnal Anda Ditolak oleh Admin ({dailyState!.jurnalDitolak.length} entri)</span>
+                </div>
+                {dailyState!.jurnalDitolak.slice(0, 3).map((j: any) => (
+                  <div key={j.id} className="pl-6 space-y-0.5">
+                    <div className="text-xs font-semibold text-red-800 dark:text-red-300">
+                      {j.mapel || j.keterangan || 'Jurnal'} {j.kelas ? `— ${j.kelas}` : ''}
+                    </div>
+                    {(j.catatan_admin || j.alasan_penolakan) && (
+                      <div className="text-xs text-red-700 dark:text-red-300/90 italic">
+                        Alasan: {j.catatan_admin || j.alasan_penolakan}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div className="pl-6 text-xs text-red-600 dark:text-red-400 font-semibold">
+                  <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang jurnal Anda. Data lama yang ditolak akan dihapus otomatis saat Anda menyimpan.
+                </div>
               </div>
             )}
             

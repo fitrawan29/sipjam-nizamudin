@@ -199,11 +199,37 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   const updatePiketStatus = async (id: string, status: 'Disetujui' | 'Ditolak') => {
+    let catatan_admin = '';
+
+    if (status === 'Ditolak') {
+      const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'Alasan Penolakan',
+        input: 'textarea',
+        inputPlaceholder: 'Tuliskan alasan penolakan laporan piket...',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Tolak Laporan',
+        cancelButtonText: 'Batal',
+        inputValidator: (value) => {
+          if (!value || !value.trim()) return 'Alasan penolakan wajib diisi.';
+        }
+      });
+      if (!isConfirmed) return;
+      catatan_admin = reason?.trim() || '';
+    }
+
     setProcessingId(id);
     try {
+      const updatePayload: any = { status_verifikasi: status };
+      if (catatan_admin) {
+        updatePayload.catatan_admin = catatan_admin;
+        updatePayload.alasan_penolakan = catatan_admin;
+      }
+
       const { error } = await supabase
         .from('laporan_piket')
-        .update({ status_verifikasi: status })
+        .update(updatePayload)
         .eq('id', id);
 
       if (error) {
@@ -223,8 +249,8 @@ export default function PiketView({ user }: { user: any }) {
           timer: 1800
         });
         // Optimistic state updates
-        setLaporanPiket(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status } : item));
-        setRekapList(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status } : item));
+        setLaporanPiket(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status, catatan_admin } : item));
+        setRekapList(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status, catatan_admin } : item));
       }
     } catch (err: any) {
       Swal.fire('Error', err.message || 'Terjadi kesalahan jaringan', 'error');
@@ -303,6 +329,10 @@ export default function PiketView({ user }: { user: any }) {
     if (error) {
       Swal.fire('Error', 'Gagal menyimpan laporan piket: ' + error.message, 'error');
     } else {
+      // If re-submitting after rejection: delete the old rejected laporan
+      if (dailyState?.laporanPiketDitolak?.id) {
+        await supabase.from('laporan_piket').delete().eq('id', dailyState.laporanPiketDitolak.id);
+      }
       // Sync Piket student attendance to canonical public.absensi
       if (allStudents.length > 0) {
         try {
@@ -583,7 +613,11 @@ export default function PiketView({ user }: { user: any }) {
   const isGuru = user?.role === 'Guru';
   const isAdmin = user?.role === 'Admin';
   // Admin never conducts daily report; Guru conducts report if assigned and not on leave
-  const canReport = !isAdmin && isGuru && Boolean(dailyState && dailyState.isPiket && !dailyState.isLibur);
+  // Also allow reporting when laporan piket was rejected (teacher needs to re-submit)
+  const canReport = !isAdmin && isGuru && Boolean(
+    dailyState && dailyState.isPiket && !dailyState.isLibur && 
+    (!dailyState.laporanPiket || dailyState.laporanPiketDitolak)
+  );
 
   return (
     <section id="view-piket" className="view-section page-enter">
@@ -655,6 +689,37 @@ export default function PiketView({ user }: { user: any }) {
             {/* TAB 1: BERANDA PIKET */}
             {activeTab === 'beranda' && (
               <div id="piket-content-beranda" className="space-y-4 fade-in">
+
+                  {/* Rejection Alert — Laporan Piket Ditolak */}
+                  {isGuru && dailyState?.laporanPiketDitolak && (
+                    <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+                        <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
+                        <span>Laporan Piket Anda Ditolak oleh Admin</span>
+                      </div>
+                      {(dailyState.laporanPiketDitolak.catatan_admin || dailyState.laporanPiketDitolak.alasan_penolakan) && (
+                        <div className="pl-6 text-xs text-red-700 dark:text-red-300/90 italic leading-relaxed">
+                          <span className="font-semibold not-italic">Alasan: </span>
+                          {dailyState.laporanPiketDitolak.catatan_admin || dailyState.laporanPiketDitolak.alasan_penolakan}
+                        </div>
+                      )}
+                      <div className="pl-6 flex items-center gap-3">
+                        <span className="text-xs text-red-600 dark:text-red-400 font-semibold">
+                          <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang laporan piket Anda.
+                        </span>
+                        {canReport && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('lapor')}
+                            className="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg transition"
+                          >
+                            Isi Ulang Sekarang →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl">
                       <div className="flex justify-between items-center mb-3">
                         <h3 className="text-xs font-bold text-teal-800 dark:text-teal-400 flex items-center gap-1.5">

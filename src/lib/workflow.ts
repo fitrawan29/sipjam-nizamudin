@@ -31,6 +31,13 @@ export type GuruDailyState = {
   isNonTeachingDay?: boolean;
   bebasAlpa?: boolean;
   isAlpa?: boolean;
+
+  // Rejection tracking — when admin rejects a submission, these fields are set
+  // so the teacher knows they must re-submit (rejected records are excluded from "done" logic)
+  presensiDatangDitolak: any | null;
+  presensiPulangDitolak: any | null;
+  laporanPiketDitolak: any | null;
+  jurnalDitolak: any[];
 };
 
 /**
@@ -137,7 +144,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
     aturanKehadiran: 'Semua_Hari',
     isNonTeachingDay: false,
     bebasAlpa: false,
-    isAlpa: false
+    isAlpa: false,
+    // Rejection tracking
+    presensiDatangDitolak: null,
+    presensiPulangDitolak: null,
+    laporanPiketDitolak: null,
+    jurnalDitolak: [],
   };
 
   if (!namaGuru) return state;
@@ -297,8 +309,17 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
         return false;
       });
 
-      state.presensiDatang = todayPresensi.find((p: any) => p.tipe_absen === 'Datang') || null;
-      state.presensiPulang = todayPresensi.find((p: any) => p.tipe_absen === 'Pulang') || null;
+      // Separate accepted/pending and rejected records
+      // Rejected records are NOT counted as "done" — teacher must re-submit
+      const acceptedPresensi = todayPresensi.filter((p: any) => p.status_verifikasi !== 'Ditolak');
+      const rejectedPresensi = todayPresensi.filter((p: any) => p.status_verifikasi === 'Ditolak');
+
+      state.presensiDatang = acceptedPresensi.find((p: any) => p.tipe_absen === 'Datang') || null;
+      state.presensiPulang = acceptedPresensi.find((p: any) => p.tipe_absen === 'Pulang') || null;
+
+      // Store rejected records for UI notification (most recent rejection first)
+      state.presensiDatangDitolak = rejectedPresensi.find((p: any) => p.tipe_absen === 'Datang') || null;
+      state.presensiPulangDitolak = rejectedPresensi.find((p: any) => p.tipe_absen === 'Pulang') || null;
     }
 
     const hasTeachingObligation = state.jadwalKBM.length > 0 || state.isPiket;
@@ -357,7 +378,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
         .eq('tanggal', todayStr);
       
       if (lp && lp.length > 0) {
-        state.laporanPiket = lp[0];
+        // Rejected laporan piket: teacher must re-submit
+        const acceptedLaporan = lp.filter((l: any) => l.status_verifikasi !== 'Ditolak');
+        const rejectedLaporan = lp.filter((l: any) => l.status_verifikasi === 'Ditolak');
+
+        state.laporanPiket = acceptedLaporan.length > 0 ? acceptedLaporan[0] : null;
+        state.laporanPiketDitolak = rejectedLaporan.length > 0 ? rejectedLaporan[0] : null;
       }
     }
 
@@ -371,9 +397,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
       .eq('tanggal', todayStr);
 
     if (jurnal) {
+      // Separate rejected jurnal entries — they must be re-submitted
+      const rejectedJurnal = jurnal.filter((j: any) => j.status_verifikasi === 'Ditolak');
+      const acceptedJurnal = jurnal.filter((j: any) => j.status_verifikasi !== 'Ditolak');
+
+      state.jurnalDitolak = rejectedJurnal;
+
       // Handle legacy data: keterangan bisa "-" atau "Jurnal KBM" atau "Jurnal Kegiatan"
       // mapel bisa "Jurnal Kegiatan" untuk jurnal kegiatan legacy
-      state.jurnalKBM = jurnal.filter((j: any) => {
+      state.jurnalKBM = acceptedJurnal.filter((j: any) => {
         // Jurnal KBM jika keterangan === 'Jurnal KBM' ATAU (keterangan bukan 'Jurnal Kegiatan' DAN mapel bukan 'Jurnal Kegiatan')
         if (j.keterangan === 'Jurnal KBM') return true;
         if (j.mapel === 'Jurnal Kegiatan') return false;
@@ -383,7 +415,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
         return false;
       });
       
-      state.jurnalKegiatan = jurnal.find((j: any) => {
+      state.jurnalKegiatan = acceptedJurnal.find((j: any) => {
         return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan';
       }) || null;
     }

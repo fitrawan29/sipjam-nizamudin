@@ -734,7 +734,10 @@ export default function HomeView({
       return steps;
     }
 
-    if (dailyState.presensiDatang) {
+    if (dailyState.presensiDatangDitolak) {
+      // Presensi datang was rejected — show as needing re-submission
+      steps.push({ label: 'Presensi Datang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-to-bracket' });
+    } else if (dailyState.presensiDatang) {
       const jp = dailyState.presensiDatang.jenis_presensi;
       const ts = dailyState.presensiDatang.timestamp || '';
       const timeOnly = ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : '');
@@ -751,7 +754,9 @@ export default function HomeView({
 
     // Step 2: Piket
     if (dailyState.isPiket) {
-      if (dailyState.laporanPiket) {
+      if (dailyState.laporanPiketDitolak) {
+        steps.push({ label: 'Laporan Piket', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-shield-halved' });
+      } else if (dailyState.laporanPiket) {
         steps.push({ label: 'Laporan Piket', status: 'done', detail: 'Sudah diisi', icon: 'fa-shield-halved' });
       } else {
         steps.push({ label: 'Laporan Piket', status: 'active', detail: 'Belum mengisi laporan piket', icon: 'fa-shield-halved' });
@@ -759,8 +764,11 @@ export default function HomeView({
     }
 
     // Step 3: Jurnal
+    const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
     if (dailyState.isDinasLuar || dailyState.jadwalKBM.length === 0) {
-      if (dailyState.jurnalKegiatan) {
+      if (hasJurnalDitolak) {
+        steps.push({ label: 'Jurnal Kegiatan', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills' });
+      } else if (dailyState.jurnalKegiatan) {
         steps.push({ label: 'Jurnal Kegiatan', status: 'done', detail: 'Sudah diisi', icon: 'fa-book-journal-whills' });
       } else {
         const canOpen = dailyState.canOpenJurnal;
@@ -769,7 +777,9 @@ export default function HomeView({
     } else {
       const filled = dailyState.jurnalKBM.length;
       const total = dailyState.jadwalKBM.length;
-      if (filled >= total) {
+      if (hasJurnalDitolak) {
+        steps.push({ label: `Jurnal KBM`, status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri ditolak)`, icon: 'fa-book-journal-whills' });
+      } else if (filled >= total) {
         steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: 'done', detail: 'Semua jurnal KBM sudah diisi', icon: 'fa-book-journal-whills' });
       } else {
         const canOpen = dailyState.canOpenJurnal;
@@ -778,7 +788,9 @@ export default function HomeView({
     }
 
     // Step 4: Presensi Pulang
-    if (dailyState.presensiPulang) {
+    if (dailyState.presensiPulangDitolak) {
+      steps.push({ label: 'Presensi Pulang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-from-bracket' });
+    } else if (dailyState.presensiPulang) {
       const ts = dailyState.presensiPulang.timestamp || '';
       const timeOnly = ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : '');
       steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Pulang · ${timeOnly} WITA`, icon: 'fa-right-from-bracket' });
@@ -804,7 +816,12 @@ export default function HomeView({
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
+    // Rejection messages take high priority — teacher must know to re-submit
+    if (dailyState.presensiDatangDitolak) return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (!dailyState.presensiDatang) return { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
+    if (dailyState.isPiket && dailyState.laporanPiketDitolak) return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan isi ulang di menu Piket.', color: 'text-red-600 dark:text-red-400' };
+    if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${dailyState.jurnalDitolak.length} jurnal Anda ditolak admin. Silakan isi ulang di menu Jurnal.`, color: 'text-red-600 dark:text-red-400' };
+    if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
     if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-600 dark:text-amber-400' };
