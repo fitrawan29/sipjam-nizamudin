@@ -615,8 +615,11 @@ async function runAdversarialChallenge2() {
 
   if (failedTests > 0) {
     process.exit(1);
+  } else {
+    process.exit(0);
   }
 }
+
 
 runAdversarialChallenge2().catch(err => {
   console.error('Fatal execution error in Challenger 2 test suite:', err);
