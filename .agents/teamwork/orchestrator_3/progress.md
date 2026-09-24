@@ -23,8 +23,9 @@ Current iteration: 4 / 32
 - [x] Dispatch Reviewers for Milestone 4 (`reviewer_m4_1`: c447b7fa, `reviewer_m4_2`: cbafe930)
 - [x] Dispatch Challengers for Milestone 4 (`challenger_m4_1`: f87388e0, `challenger_m4_2`: ed2a713c)
 - [x] Dispatch Forensic Auditor for Milestone 4 (`auditor_m4_1`: 7539e5f1)
-- [ ] Gate Milestone 4 (Verify CLEAN audit, test pass, approvals)
-- [ ] Milestone 5: Run full E2E suite (`npm run test:e2e`), unit tests (`npm test`), build (`npm run build`)
+- [x] Gate Milestone 4 (UNANIMOUS APPROVE & CLEAN AUDIT PASS)
+- [x] Dispatch Worker M5 (`worker_m5_1` - 48a2170c-ec09-4fcd-b545-262ee1f18af1) for Final Acceptance Verification
+- [ ] Receive Worker M5 handoff report
 - [ ] Verify 12 Acceptance Criteria from `ORIGINAL_REQUEST.md`
 - [ ] Final git sync (commit and push per GEMINI.md)
 - [ ] Deliver Victory Report to Parent Sentinel (`74e8eec0-c580-41d8-b070-e23723ba22d4`)
