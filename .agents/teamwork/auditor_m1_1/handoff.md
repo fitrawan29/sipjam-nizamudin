@@ -26,6 +26,10 @@
   *Evidence*: All 4 tiers (Tier 1: Feature Coverage, Tier 2: Boundary Cases, Tier 3: Cross-Feature Interactions, Tier 4: Real-World Scenarios) passed with 100% success rate (0 failures).
 - **Phase 2.3: Production Build Compilation (`npm run build`)**: **PASS**  
   *Evidence*: `next build` executed with Turbopack, completed TypeScript compilation with 0 errors, generated all static and dynamic routes.
+- **Phase 2.4: Adversarial Challenger Stress Suites**: **PASS**  
+  *Evidence*: 
+  - Challenger 1 suite (`tests/adversarial_m1_challenger_1.test.ts`): 34/34 tests passed.
+  - Challenger 2 suite (`tests/adversarial_m1_challenger_2.test.ts`): 28/28 tests passed.
 
 ---
 
@@ -166,6 +170,8 @@ Direct observations from source code inspections, git diffs, and terminal execut
      Finished TypeScript in 2.5s ...
      ✓ Generating static pages using 9 workers (8/8) in 1071ms
      ```
+   - `tests/adversarial_m1_challenger_1.test.ts`: 34/34 passed.
+   - `tests/adversarial_m1_challenger_2.test.ts`: 28/28 passed.
 
 ---
 
@@ -184,6 +190,7 @@ Direct observations from source code inspections, git diffs, and terminal execut
    - The test suite `tests/m1_resubmission_and_verif.test.ts` was executed without mocks bypassing the code.
    - The complete E2E test suite (`tests/e2e/run_all_e2e.ts`) passed across feature coverage, boundary conditions, cross-feature workflows, and real-world scenarios.
    - The Next.js production build succeeded with zero compilation errors and zero TypeScript defects.
+   - 62 additional adversarial challenger tests passed with 0 failures across edge cases, race conditions, collision oracles, and stress matrices.
 
 ---
 
@@ -201,7 +208,7 @@ Direct observations from source code inspections, git diffs, and terminal execut
 Milestone 1 work product meets all forensic integrity criteria under Benchmark mode:
 1. Zero hardcoded test cheats or facade implementations.
 2. Authentic data layer mutations and UI state synchronization for Presensi, Jurnal, Piket resubmissions, and Admin Verification views.
-3. All empirical tests (`npm test`, `npm run test:e2e`, and `npm run build`) pass cleanly.
+3. All empirical tests (`npm test`, `npm run test:e2e`, `npm run build`, and adversarial challenger tests) pass cleanly.
 
 ---
 
@@ -217,5 +224,9 @@ npm run test:e2e
 
 # 3. Run production build
 npm run build
+
+# 4. Run adversarial challenger tests
+npx tsx tests/adversarial_m1_challenger_1.test.ts
+npx tsx tests/adversarial_m1_challenger_2.test.ts
 ```
 Verify that all tests report PASSED and Next.js Turbopack build finishes with code 0.
