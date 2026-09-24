@@ -38,22 +38,29 @@ export function calculateStreak(history: boolean[]): number {
 }
 
 /**
- * Builds the evaluation date window (past lookbackDays up to today) in WITA timezone.
+ * Builds the evaluation date window for the current month up to today in WITA timezone.
  * Properly excludes Sundays, Saturdays (for 5-day school weeks), and calendar holidays.
  */
 export function buildEvaluationDates(
   todayStr: string = getWitaDateStr(),
-  lookbackDays: number = 30,
+  _lookbackDays: number = 30, // Kept for backwards compatibility but not used
   hariSekolah: string = '6',
   holidaySet: Set<string> = new Set()
 ): { dateStr: string; dayName: string }[] {
   const evaluationDates: { dateStr: string; dayName: string }[] = [];
   // Anchor at noon WITA (+08:00) so adding/subtracting days never crosses midnight
   const dateObj = new Date(todayStr + 'T12:00:00+08:00');
+  
+  // Calculate how many days have passed in the current month
+  const currentDayOfMonth = parseInt(todayStr.split('-')[2], 10);
 
-  for (let i = lookbackDays - 1; i >= 0; i--) {
+  for (let i = currentDayOfMonth - 1; i >= 0; i--) {
     const d = new Date(dateObj.getTime() - i * 86400000);
     const dateStr = getWitaDateStr(d);
+    
+    // Only include dates from the current month (safety check)
+    if (dateStr.substring(0, 7) !== todayStr.substring(0, 7)) continue;
+    
     const dayName = getWitaDayName(d);
 
     // Exclude Sundays in WITA

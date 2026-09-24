@@ -102,9 +102,14 @@ export default function AdminMonitorView({ user }: { user: any }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <i className="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i>
-                  <h3 className="text-xs font-bold text-red-900 dark:text-red-200 uppercase tracking-wide">
-                    Peringatan Kedisiplinan
-                  </h3>
+                  <div>
+                    <h3 className="text-xs font-bold text-red-900 dark:text-red-200 uppercase tracking-wide">
+                      Peringatan Kedisiplinan
+                    </h3>
+                    <p className="text-[9px] text-red-700/80 dark:text-red-400 mt-0.5">
+                      (Evaluasi bulan ini)
+                    </p>
+                  </div>
                 </div>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                   warningsList.length > 0 

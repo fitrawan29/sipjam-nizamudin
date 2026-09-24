@@ -938,7 +938,7 @@ export default function HomeView({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <i className="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i>
-                  <span className="font-bold text-xs uppercase tracking-wide text-red-700 dark:text-red-400">Peringatan Kedisiplinan</span>
+                  <span className="font-bold text-xs uppercase tracking-wide text-red-700 dark:text-red-400">Peringatan Kedisiplinan <span className="text-[10px] font-medium normal-case">(Bulan Ini)</span></span>
                 </div>
                 <span className="text-[10px] bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-300 px-2 py-0.5 rounded-md font-semibold">Tindakan Diperlukan</span>
               </div>
