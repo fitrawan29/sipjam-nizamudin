@@ -83,7 +83,8 @@ export function buildEvaluationDates(
  */
 export async function getTeacherDisciplineWarnings(
   teacherName: string,
-  sekolahId?: string
+  sekolahId?: string,
+  targetMonth?: string
 ): Promise<TeacherWarningSummary> {
   const normName = (teacherName || '').trim();
   const normLower = normName.toLowerCase();
@@ -160,19 +161,29 @@ export async function getTeacherDisciplineWarnings(
   const isTeacherPiketOnDay = (day: string) => isAssignedPenugasan(day) || isAssignedLegacy(day);
 
   // 6. Build evaluation window
-  const todayStr = getWitaDateStr();
+  const currentWitaStr = getWitaDateStr();
+  let todayStr = currentWitaStr;
+  let maxDate = currentWitaStr + 'T23:59:59+08:00';
+
+  if (targetMonth && targetMonth !== currentWitaStr.substring(0, 7)) {
+    const [year, month] = targetMonth.split('-');
+    const lastDay = new Date(parseInt(year, 10), parseInt(month, 10), 0).getDate();
+    todayStr = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+    maxDate = todayStr + 'T23:59:59+08:00';
+  }
+
   const evaluationDates = buildEvaluationDates(todayStr, 30, hariSekolah, holidaySet);
 
   // 7. Query records for this teacher in the evaluation window
   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
-  const maxDate = todayStr + 'T23:59:59+08:00';
+  const minTimestamp = minDate + 'T00:00:00+08:00';
 
   const [presensiRes, jurnalRes, piketRes] = await Promise.all([
     supabase
       .from('presensi_guru')
       .select('*')
       .ilike('nama_guru', normName)
-      .gte('timestamp', minDate)
+      .gte('timestamp', minTimestamp)
       .lte('timestamp', maxDate),
     supabase
       .from('jurnal_pembelajaran')
@@ -418,7 +429,8 @@ export async function getTeacherDisciplineWarnings(
  * Useful for Admin Monitor and Pantauan views.
  */
 export async function getAllTeachersDisciplineWarnings(
-  sekolahId?: string
+  sekolahId?: string,
+  targetMonth?: string
 ): Promise<TeacherWarningSummary[]> {
   let guruQuery = supabase.from('data_guru').select('id, nama_guru, sekolah_id').order('nama_guru');
   if (sekolahId) {
@@ -434,7 +446,7 @@ export async function getAllTeachersDisciplineWarnings(
   for (const teacher of teachers) {
     if (!teacher.nama_guru) continue;
     try {
-      const summary = await getTeacherDisciplineWarnings(teacher.nama_guru, teacher.sekolah_id || sekolahId);
+      const summary = await getTeacherDisciplineWarnings(teacher.nama_guru, teacher.sekolah_id || sekolahId, targetMonth);
       summaries.push(summary);
     } catch (err: any) {
       console.error(`[warningSystem] Error evaluating warnings for ${teacher.nama_guru}:`, err.message);

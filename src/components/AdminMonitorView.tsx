@@ -38,7 +38,8 @@ export default function AdminMonitorView({ user }: { user: any }) {
   const loadWarnings = async () => {
     setWarningsLoading(true);
     try {
-      const summaries = await getAllTeachersDisciplineWarnings(user?.sekolah_id);
+      const targetMonth = date.substring(0, 7);
+      const summaries = await getAllTeachersDisciplineWarnings(user?.sekolah_id, targetMonth);
       setWarningsList(summaries.filter(s => s.hasWarning));
     } catch (err) {
       console.error('Error loading discipline warnings:', err);
@@ -107,7 +108,7 @@ export default function AdminMonitorView({ user }: { user: any }) {
                       Peringatan Kedisiplinan
                     </h3>
                     <p className="text-[9px] text-red-700/80 dark:text-red-400 mt-0.5">
-                      (Evaluasi bulan ini)
+                      (Evaluasi bulan {date.substring(0, 7)})
                     </p>
                   </div>
                 </div>

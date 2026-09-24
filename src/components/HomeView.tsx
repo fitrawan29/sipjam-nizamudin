@@ -82,6 +82,7 @@ export default function HomeView({
     izin: 0,
     sakit: 0,
   });
+  const [selectedMonth, setSelectedMonth] = useState(() => getWitaDateStr().substring(0, 7));
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
 
   const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
@@ -105,17 +106,15 @@ export default function HomeView({
         .catch(console.error)
         .finally(() => setLoadingState(false));
 
-      // Fetch 3x Absence Warnings (F7)
-      getTeacherDisciplineWarnings(user.nama, user.sekolah_id)
+      // Fetch 3x Absence Warnings (F7) for the selected month
+      getTeacherDisciplineWarnings(user.nama, user.sekolah_id, selectedMonth)
         .then(setTeacherWarnings)
         .catch(err => console.error('Error fetching discipline warnings:', err));
 
-      // Fetch Personal Attendance Stat Cards (Current Month in WITA)
+      // Fetch Personal Attendance Stat Cards (Selected Month in WITA)
       const fetchAttendanceStats = async () => {
         try {
-          const todayWita = getWitaDateStr();
-          const [currentYear, currentMonth] = todayWita.split('-');
-          const targetYearMonth = `${currentYear}-${currentMonth}`;
+          const targetYearMonth = selectedMonth;
 
           let query = supabase
             .from('presensi_guru')
@@ -264,7 +263,7 @@ export default function HomeView({
       fetchAttendanceStats();
       fetchTeacherDetails();
     }
-  }, [isGuru, user?.nama, user?.username]);
+  }, [isGuru, user?.nama, user?.username, selectedMonth]);
 
   // Load Admin Data (Daily Status Matrix)
   const loadAdminMatrix = useCallback(async () => {
@@ -938,7 +937,7 @@ export default function HomeView({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <i className="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i>
-                  <span className="font-bold text-xs uppercase tracking-wide text-red-700 dark:text-red-400">Peringatan Kedisiplinan <span className="text-[10px] font-medium normal-case">(Bulan Ini)</span></span>
+                  <span className="font-bold text-xs uppercase tracking-wide text-red-700 dark:text-red-400">Peringatan Kedisiplinan <span className="text-[10px] font-medium normal-case">({selectedMonth})</span></span>
                 </div>
                 <span className="text-[10px] bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-300 px-2 py-0.5 rounded-md font-semibold">Tindakan Diperlukan</span>
               </div>
@@ -955,14 +954,18 @@ export default function HomeView({
 
           {/* Section 1: Personal Attendance Stat Cards (H, TL, Izin, Sakit) */}
           <div className="glass-card p-4">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-chart-pie text-emerald-600 dark:text-emerald-400"></i> Statistik Presensi Pribadi
-              </h3>
-              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                Bulan Ini
-              </span>
-            </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-chart-pie text-emerald-600 dark:text-emerald-400"></i> Statistik Presensi Pribadi
+                </h3>
+                <input 
+                  type="month" 
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="text-[10px] font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full outline-none border border-gray-200 dark:border-gray-700 cursor-pointer"
+                  title="Pilih Bulan"
+                />
+              </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
               {/* Hadir (H) */}
