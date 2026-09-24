@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-25T00:41:00Z
+# BRIEFING — 2026-09-25T00:44:45Z
 
 ## Mission
 Verify, complete, and validate Milestone 2: Rejection notifications (F5), Auto-alpa cutoff evaluation (F6), and 3x absence warning feature (F7) with full verification, test passage, and automated git workflow.
@@ -22,14 +22,14 @@ Verify, complete, and validate Milestone 2: Rejection notifications (F5), Auto-a
   - `src/components/HomeView.tsx`
   - `src/components/AdminVerifView.tsx`
   - `src/components/PiketView.tsx`
-  - `src/lib/supabaseClient.ts` (safe fallback for test/node environments if necessary)
+  - `src/lib/supabaseClient.ts`
   - `tests/m2_notifications_alpa_warning.test.ts`
 - Git workflow rule: git status -> git add . -> git commit -m "..." -> git push origin main.
 - Write handoff.md and send completion message to parent (ce92c68c-fd07-4434-ab0c-266a7caa8d41).
 
 ## Current Parent
 - Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-25T00:41:00Z
+- Updated: 2026-09-25T00:44:45Z
 
 ## Task Summary
 - **What to build**: F5 (Rejection notifications), F6 (Auto-Alpa Cutoff), F7 (3x Absence Warning)
@@ -44,16 +44,29 @@ Verify, complete, and validate Milestone 2: Rejection notifications (F5), Auto-a
 - **Code layout**: PROJECT.md § Code Layout
 
 ## Key Decisions Made
-- Checking existing implementations of F5, F6, F7 and resolving the `supabaseClient.ts` test environment initialization issue.
+- Added placeholder fallback URLs to `src/lib/supabaseClient.ts` to allow testing in Node/ESM without crashing on missing env vars.
+- Verified all 27 tests in `tests/m2_notifications_alpa_warning.test.ts` pass with exit code 0.
+- Confirmed full build and typecheck pass cleanly with Next.js Turbopack.
 
 ## Change Tracker
-- **Files modified**: None yet
-- **Build status**: Pending
-- **Pending issues**: Test script fails on supabaseClient import because env vars are not set before static ESM import.
+- **Files modified**:
+  - `src/app/api/notifications/rejection/route.ts`: Rejection notification handler with Web Push & chat_messages.
+  - `src/lib/attendanceAlpa.ts`: Auto-alpa cutoff evaluation and DB mutation.
+  - `src/app/api/attendance/auto-alpa/route.ts`: Auto-alpa trigger endpoint.
+  - `src/lib/warningSystem.ts`: 3x absence warning calculation service.
+  - `src/components/AdminRekapView.tsx`: Explicit alpa aggregation.
+  - `src/components/AdminMonitorView.tsx`: Admin discipline warnings card.
+  - `src/components/HomeView.tsx`: Teacher discipline warning banner.
+  - `src/components/AdminVerifView.tsx`: Wired rejection notification endpoint.
+  - `src/components/PiketView.tsx`: Wired piket rejection notification endpoint.
+  - `src/lib/supabaseClient.ts`: Safe placeholder fallback for test/SSR runners.
+  - `tests/m2_notifications_alpa_warning.test.ts`: Milestone 2 test suite.
+- **Build status**: PASS (`npm run build` and `npx tsc --noEmit`)
+- **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: Pending
-- **Lint status**: Pending
+- **Build/test result**: PASS (27/27 M2 tests passed, Next.js build passed)
+- **Lint status**: 0 errors
 - **Tests added/modified**: `tests/m2_notifications_alpa_warning.test.ts`
 
 ## Loaded Skills
