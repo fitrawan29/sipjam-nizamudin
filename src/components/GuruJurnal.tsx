@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
-import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -331,14 +331,30 @@ export default function GuruJurnal({ user }: { user: any }) {
       materi_pembelajaran: materi,
       kehadiran_murid: computedKehadiran,
       catatan_refleksi: refleksi || '-',
-      foto_kegiatan: fileUrl
+      foto_kegiatan: fileUrl,
+      ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
     };
 
     try {
-      // If re-submitting after rejection: delete all rejected jurnal entries for today first
+      // If re-submitting after rejection: delete ONLY the matching rejected journal entry
       if (dailyState?.jurnalDitolak && dailyState.jurnalDitolak.length > 0) {
-        const rejectedIds = dailyState.jurnalDitolak.map((j: any) => j.id);
-        await supabase.from('jurnal_pembelajaran').delete().in('id', rejectedIds);
+        const matchingRejected = dailyState.jurnalDitolak.filter((j: any) => {
+          if (tipeJurnal === 'Jurnal Kegiatan') {
+            return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan';
+          }
+          if (tipeJurnal === 'Jurnal KBM') {
+            // Must match kelas
+            if (j.kelas !== kelas) return false;
+            // Match mapel directly or via fuzzy match
+            return j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel });
+          }
+          return false;
+        });
+
+        if (matchingRejected.length > 0) {
+          const matchingIds = matchingRejected.map((j: any) => j.id);
+          await supabase.from('jurnal_pembelajaran').delete().in('id', matchingIds);
+        }
       }
 
       const { error } = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
@@ -401,7 +417,12 @@ export default function GuruJurnal({ user }: { user: any }) {
         setTujuanPembelajaran('');
         setKehadiranMurid('');
         // Refresh state to update canPresensiPulang
-        getGuruDailyState(user.nama, user.username).then(setDailyState).catch(console.error);
+        try {
+          const updatedState = await getGuruDailyState(user.nama, user.username);
+          setDailyState(updatedState);
+        } catch (e) {
+          console.error(e);
+        }
       }
       setLoading(false);
     } catch (err: any) {

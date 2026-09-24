@@ -193,12 +193,23 @@ export default function AdminVerifView({ user }: { user: any }) {
         });
       } else {
         // Optimistic update
-        if (activeTab === 'Presensi') {
-          setPresensiList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
-        } else if (activeTab === 'Jurnal') {
-          setJurnalList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
+        if (status === 'Ditolak') {
+          // Immediately remove the rejected item from the active verification list
+          if (activeTab === 'Presensi') {
+            setPresensiList(prev => prev.filter(item => item.id !== id));
+          } else if (activeTab === 'Jurnal') {
+            setJurnalList(prev => prev.filter(item => item.id !== id));
+          } else {
+            setPiketList(prev => prev.filter(item => item.id !== id));
+          }
         } else {
-          setPiketList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
+          if (activeTab === 'Presensi') {
+            setPresensiList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
+          } else if (activeTab === 'Jurnal') {
+            setJurnalList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
+          } else {
+            setPiketList(prev => prev.map(item => item.id === id ? { ...item, ...updatePayload } : item));
+          }
         }
 
         Swal.fire({
@@ -221,7 +232,7 @@ export default function AdminVerifView({ user }: { user: any }) {
   const bulkVerifyCurrent = async () => {
     if (taskFilter === 'Belum') return;
     const { table, label } = getActiveConfig();
-    const pendingItems = displayList.filter(item => !item.isUnsubmitted && item.status_verifikasi !== 'Disetujui');
+    const pendingItems = displayList.filter(item => !item.isUnsubmitted && item.status_verifikasi !== 'Disetujui' && item.status_verifikasi !== 'Ditolak');
 
     if (pendingItems.length === 0) {
       return Swal.fire('Info', `Semua ${label} yang tampil sudah berstatus Disetujui.`, 'info');
@@ -460,6 +471,11 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
     // Filter submitted items by verification status and search
     const filteredSubmitted = submittedList.filter((item: any) => {
+      // Hide rejected items from active verification list unless explicitly filtered by 'Ditolak'
+      if (verifFilter !== 'Ditolak' && item.status_verifikasi === 'Ditolak') {
+        return false;
+      }
+
       // Verification status filter
       if (verifFilter !== 'Semua') {
         const status = item.status_verifikasi || 'Menunggu';
@@ -841,21 +857,23 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                 )}
 
                 <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                  <button 
-                    disabled={processingId === item.id || item.status_verifikasi === 'Disetujui'}
-                    onClick={() => verifyItem(item.id, 'Disetujui')} 
-                    className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
-                      item.status_verifikasi === 'Disetujui'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
-                        : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
-                    }`}
-                  >
-                    {processingId === item.id ? (
-                      <i className="fa-solid fa-spinner animate-spin"></i>
-                    ) : (
-                      <><i className="fa-solid fa-check"></i> Setujui</>
-                    )}
-                  </button>
+                  {item.status_verifikasi !== 'Ditolak' && (
+                    <button 
+                      disabled={processingId === item.id || item.status_verifikasi === 'Disetujui'}
+                      onClick={() => verifyItem(item.id, 'Disetujui')} 
+                      className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                        item.status_verifikasi === 'Disetujui'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
+                          : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
+                      }`}
+                    >
+                      {processingId === item.id ? (
+                        <i className="fa-solid fa-spinner animate-spin"></i>
+                      ) : (
+                        <><i className="fa-solid fa-check"></i> Setujui</>
+                      )}
+                    </button>
+                  )}
                   <button 
                     disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
                     onClick={() => verifyItem(item.id, 'Ditolak')} 

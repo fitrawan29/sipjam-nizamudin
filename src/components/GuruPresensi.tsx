@@ -93,12 +93,15 @@ export default function GuruPresensi({ user }: { user: any }) {
 
       const state = await getGuruDailyState(user.nama, user.username);
       setDailyState(state);
-      if (state.presensiDatang && !state.presensiPulang) {
+      if (state.presensiDatangDitolak) {
+        setTipeAbsen('Datang');
+        setJenisPresensi(state.presensiDatangDitolak.jenis_presensi || 'Sekolah');
+      } else if (state.presensiDatang && (!state.presensiPulang || state.presensiPulangDitolak)) {
         setTipeAbsen('Pulang');
         if (state.isDinasLuar) {
           setJenisPresensi('Dinas Luar');
         } else {
-          setJenisPresensi('Sekolah');
+          setJenisPresensi(state.presensiPulangDitolak?.jenis_presensi || 'Sekolah');
         }
       }
     };
@@ -138,6 +141,9 @@ export default function GuruPresensi({ user }: { user: any }) {
     
     // Validasi Workflow Pulang
     if (tipeAbsen === 'Pulang') {
+      if (dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak) {
+        return Swal.fire('Info', 'Anda sudah melakukan Presensi Pulang hari ini.', 'info');
+      }
       if (dailyState && !dailyState.canPresensiPulang) {
         return Swal.fire('Terkunci', dailyState.lockedReason || 'Anda belum menyelesaikan Jurnal/Piket.', 'error');
       }
@@ -397,7 +403,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                         >
                             {/* Allow re-selecting Datang if presensiDatang was rejected */}
                             <option value="Datang" disabled={!!dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak}>DATANG</option>
-                            <option value="Pulang" disabled={!dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak}>PULANG</option>
+                            <option value="Pulang" disabled={!dailyState?.presensiDatang || (!!dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak)}>PULANG</option>
                         </select>
                     </div>
                     <div>

@@ -333,6 +333,12 @@ export default function PiketView({ user }: { user: any }) {
       if (dailyState?.laporanPiketDitolak?.id) {
         await supabase.from('laporan_piket').delete().eq('id', dailyState.laporanPiketDitolak.id);
       }
+      // Also ensure any rejected piket report for this teacher today is cleanly cleaned up
+      await supabase.from('laporan_piket')
+        .delete()
+        .eq('guru_pelapor', user.nama)
+        .eq('tanggal', getWitaDateStr())
+        .eq('status_verifikasi', 'Ditolak');
       // Sync Piket student attendance to canonical public.absensi
       if (allStudents.length > 0) {
         try {
@@ -383,7 +389,14 @@ export default function PiketView({ user }: { user: any }) {
       setPhotoPreviewUrl(null);
       setActiveTab('beranda');
       fetchDataPiket(); // Refresh data
-      if (user?.role === 'Guru') getGuruDailyState(user.nama, user.username).then(setDailyState).catch(console.error);
+      if (user?.role === 'Guru') {
+        try {
+          const state = await getGuruDailyState(user.nama, user.username);
+          setDailyState(state);
+        } catch (e) {
+          console.error(e);
+        }
+      }
     }
     setLoading(false);
   };
