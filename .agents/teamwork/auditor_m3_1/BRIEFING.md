@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-24T16:44:17Z
+# BRIEFING — 2026-09-24T16:47:30Z
 
 ## Mission
 Perform comprehensive forensic integrity audit on Milestone 3 (UI/UX, Branding & Apple Compatibility) deliverables against ORIGINAL_REQUEST.md and Benchmark Integrity Mode.
@@ -35,26 +35,34 @@ Perform comprehensive forensic integrity audit on Milestone 3 (UI/UX, Branding &
 - **Audit type**: forensic integrity check
 
 ## Audit Progress
-- **Phase**: investigating
-- **Checks completed**: []
-- **Checks remaining**:
+- **Phase**: reporting
+- **Checks completed**:
   - Source code analysis (Hardcode, Facade, Pre-populated artifact detection)
-  - Behavioral verification & independent test execution
-  - Test suite authenticity analysis (Anti-cheat, mock inspection, tautology check)
+  - Behavioral verification & independent test execution (29/29 M3 tests passed)
+  - Full test regression execution (63/63 tests passed)
+  - Test suite authenticity analysis (zero mock bypasses or tautologies)
   - Layout & CSS Apple compatibility inspection
-  - Adversarial stress testing
-- **Findings so far**: Under investigation
+  - Production build verification (`npm run build` compiled successfully in 1872ms, exit 0)
+  - Adversarial stress testing (escape suppression, click capture, timer teardown)
+- **Checks remaining**:
+  - None
+- **Findings so far**: CLEAN — All Milestone 3 deliverables are genuine, robust, and verified.
 
 ## Attack Surface
-- **Hypotheses tested**: []
-- **Vulnerabilities found**: []
-- **Untested angles**: Backdrop click bypassing, keyboard escape handling, timer leak in splash screen, Safari CSS rendering constraints, test mock circumvention.
+- **Hypotheses tested**:
+  - Notification modal bypass via backdrop clicks or escape key: Confirmed blocked with `stopPropagation` and keydown event capture.
+  - Timer leak in PreLoginSplash: Confirmed all 5 timeouts cleanly cleared on unmount.
+  - Browser title and SaaS keyword presence: Confirmed title is "SIPJAM" and 0 occurrences of "saas".
+  - Apple iOS/Safari layout/scrolling clipping: Confirmed `viewportFit: 'cover'`, `--sat`, `--sab`, `-webkit-overflow-scrolling: touch`, `overscroll-behavior-y: contain`, 16px input font size.
+- **Vulnerabilities found**: None.
+- **Untested angles**: Hardware-specific camera stream negotiation (deferred to M4 dedicated camera ticket).
 
 ## Loaded Skills
 - None specified in dispatch
 
 ## Key Decisions Made
-- Initiated forensic integrity audit under Benchmark mode.
+- Confirmed binary verdict: CLEAN.
+- Generated comprehensive forensic evidence in `handoff.md`.
 
 ## Artifact Index
 - `handoff.md` — Final forensic audit verdict and report

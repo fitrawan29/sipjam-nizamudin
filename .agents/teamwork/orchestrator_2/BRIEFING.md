@@ -53,7 +53,7 @@ Orchestrate and deliver SIPJAM application enhancements across M2, M3, M4, and M
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| worker_m2_2 | teamwork_preview_worker | M2: Notifikasi Penolakan, Auto-Alpa, Warning 3x | in-progress | c6a92171-801d-47cb-b91c-5f2249c3ba02 |
+| worker_m2_2 | teamwork_preview_worker | M2: Notifikasi Penolakan, Auto-Alpa, Warning 3x | completed | c6a92171-801d-47cb-b91c-5f2249c3ba02 |
 | worker_m3_2 | teamwork_preview_worker | M3: UI/UX, Blocking Modal, Splash, Apple Compat | completed | 16a226b8-4aa5-40d5-8f9f-52df81324e04 |
 | explorer_m4_1 | teamwork_preview_explorer | M4: Investigation (F12-F15) | in-progress | 0712609f-104a-40f1-aa0d-4f8108822042 |
 | reviewer_m3_1 | teamwork_preview_reviewer | M3: Review 1 | in-progress | 97f7e35d-1afe-4dc1-9ba1-ac9655dcbaa2 |
@@ -61,11 +61,16 @@ Orchestrate and deliver SIPJAM application enhancements across M2, M3, M4, and M
 | challenger_m3_1 | teamwork_preview_challenger | M3: Challenger 1 | in-progress | c50031b2-de7e-400a-aa20-029b63b9cefd |
 | challenger_m3_2 | teamwork_preview_challenger | M3: Challenger 2 | in-progress | b30dc4b5-975c-4596-b0ca-95eae876f35d |
 | auditor_m3_1 | teamwork_preview_auditor | M3: Forensic Auditor | in-progress | 91cd77eb-c471-4b29-ab99-abc25917924c |
+| reviewer_m2_1 | teamwork_preview_reviewer | M2: Review 1 | in-progress | e3adfc12-e702-45a3-b5d4-6b0f66cae02e |
+| reviewer_m2_2 | teamwork_preview_reviewer | M2: Review 2 | in-progress | 1cb5e629-0cae-4b99-b781-60a850eb7ebc |
+| challenger_m2_1 | teamwork_preview_challenger | M2: Challenger 1 | in-progress | a01f73df-5d9c-45e8-aa15-85f62eb09bf2 |
+| challenger_m2_2 | teamwork_preview_challenger | M2: Challenger 2 | in-progress | 9a18235d-2d29-4e9d-8924-608468c17198 |
+| auditor_m2_1 | teamwork_preview_auditor | M2: Forensic Auditor | in-progress | 71d5266f-3ee9-4c6c-8a86-30c9797fd64b |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 8 / 16
-- Pending subagents: c6a92171-801d-47cb-b91c-5f2249c3ba02, 0712609f-104a-40f1-aa0d-4f8108822042, 97f7e35d-1afe-4dc1-9ba1-ac9655dcbaa2, baa9bb8c-f969-4274-9b88-34befe6d61be, c50031b2-de7e-400a-aa20-029b63b9cefd, b30dc4b5-975c-4596-b0ca-95eae876f35d, 91cd77eb-c471-4b29-ab99-abc25917924c
+- Spawn count: 13 / 16
+- Pending subagents: 0712609f-104a-40f1-aa0d-4f8108822042, 97f7e35d-1afe-4dc1-9ba1-ac9655dcbaa2, baa9bb8c-f969-4274-9b88-34befe6d61be, c50031b2-de7e-400a-aa20-029b63b9cefd, b30dc4b5-975c-4596-b0ca-95eae876f35d, 91cd77eb-c471-4b29-ab99-abc25917924c, e3adfc12-e702-45a3-b5d4-6b0f66cae02e, 1cb5e629-0cae-4b99-b781-60a850eb7ebc, a01f73df-5d9c-45e8-aa15-85f62eb09bf2, 9a18235d-2d29-4e9d-8924-608468c17198, 71d5266f-3ee9-4c6c-8a86-30c9797fd64b
 - Predecessor: orchestrator_1
 - Successor: not yet spawned
 

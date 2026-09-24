@@ -35,17 +35,37 @@ Review Milestone 3 (UI/UX, Branding & Apple Compatibility) implementation, run t
 - **Review criteria**: correctness, completeness, quality, adversarial robustness, integrity
 
 ## Review Checklist
-- **Items reviewed**: Initializing review
-- **Verdict**: PENDING
-- **Unverified claims**: All claims in worker_m3_2 handoff pending verification
+- **Items reviewed**:
+  - `src/components/NotificationPermissionModal.tsx` & `src/components/PushNotificationPrompt.tsx` (F8)
+  - `src/components/PreLoginSplash.tsx` (F9)
+  - `src/components/LoginScreen.tsx` (F10)
+  - `src/app/layout.tsx` (F10, F11)
+  - `public/manifest.json` (F10)
+  - `src/app/globals.css` (F11)
+  - `src/app/page.tsx` (F8, F9)
+  - `tests/m3_ui_ux_apple_compatibility.test.ts`
+- **Verdict**: APPROVE
+- **Unverified claims**: None (all verified via automated test suite and manual code audit)
 
 ## Attack Surface
-- **Hypotheses tested**: None yet
-- **Vulnerabilities found**: None yet
-- **Untested angles**: Full M3 scope pending stress-testing
+- **Hypotheses tested**:
+  - Notification unsupported browser/webview: verified non-blocking graceful fallback (`permission === 'unsupported' -> null`).
+  - Notification backdrop click bypass: verified backdrop click containment via `e.stopPropagation()` and `pointer-events-auto`.
+  - Notification Escape key bypass: verified keydown suppression with capture phase `true`.
+  - Notification denied recovery: verified step-by-step instructions, focus event re-checking, and reload button.
+  - Pre-login splash memory leak: verified all 5 timeout handles are cleared on unmount.
+  - Authenticated session splash delay: verified stored user bypasses splash immediately.
+  - SaaS branding residue: verified zero occurrences of 'SaaS' in LoginScreen.
+  - Safari viewport and home indicator occlusion: verified `viewportFit: 'cover'`, `--sat`, `--sab`, and `@supports` header/main insets.
+  - Safari iOS input auto-zoom: verified 16px minimum font size enforced on inputs <=768px.
+  - Safari video inline playback: verified `playsInline`, `autoPlay`, `muted` present on video element in CameraSelfieCapture.
+- **Vulnerabilities found**: None critical; noted minor redundancy where both NotificationPermissionModal and PushNotificationPrompt exist, but both behave consistently with strict blocking and zero conflict.
+- **Untested angles**: Hardware-specific camera sensors on older iOS devices (addressed separately in M4 F13).
 
 ## Key Decisions Made
-- Initialized review environment and briefing
+- Confirmed full integrity compliance: zero hardcoded mocks or facade logic.
+- Confirmed 29/29 M3 tests pass, 63/63 regression tests pass, and Next.js production build succeeds with zero errors.
+- Formulated verdict: APPROVE.
 
 ## Artifact Index
 - `.agents/teamwork/reviewer_m3_1/BRIEFING.md` — working memory
