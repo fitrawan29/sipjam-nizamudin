@@ -41,8 +41,8 @@ export default function AnalitikView({ user }: { user: any }) {
       const { data: jurnal } = await supabase
         .from('jurnal_pembelajaran')
         .select('nama_guru')
-        .gte('timestamp', start)
-        .lte('timestamp', end)
+        .gte('tanggal', startDateStr)
+        .lte('tanggal', endDateStr)
         .eq('status_verifikasi', 'Disetujui');
 
       // 3. Fetch Piket

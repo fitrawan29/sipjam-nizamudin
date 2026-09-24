@@ -80,25 +80,21 @@ export function getWitaTimestamp(date: Date = new Date()): string {
 }
 
 /**
- * Mendapatkan awal hari WITA (00:00:00) dalam ISO string UTC
- * Berguna untuk query range pada Supabase
+ * Mendapatkan awal hari WITA (00:00:00) dalam format timestamp WITA (+08:00)
+ * Berguna untuk query range pada Supabase (menghindari bug komparasi leksikal)
  */
 export function getWitaStartOfDay(dateStr?: string): string {
   const d = dateStr || getWitaDateStr();
-  // WITA 00:00:00 = UTC 16:00:00 hari sebelumnya (karena +8)
-  const utcDate = new Date(`${d}T00:00:00+08:00`);
-  return utcDate.toISOString();
+  return `${d}T00:00:00+08:00`;
 }
 
 /**
- * Mendapatkan akhir hari WITA (23:59:59.999) dalam ISO string UTC
+ * Mendapatkan akhir hari WITA (23:59:59) dalam format timestamp WITA (+08:00)
  * Berguna untuk query range pada Supabase
  */
 export function getWitaEndOfDay(dateStr?: string): string {
   const d = dateStr || getWitaDateStr();
-  // WITA 23:59:59.999 = UTC 15:59:59.999 hari berikutnya
-  const utcDate = new Date(`${d}T23:59:59.999+08:00`);
-  return utcDate.toISOString();
+  return `${d}T23:59:59+08:00`;
 }
 
 /**

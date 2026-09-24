@@ -73,10 +73,11 @@ export default function AdminRekapView({ user }: { user: any }) {
       let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')
-        .gte('timestamp', start)
-        .lte('timestamp', end)
+        .gte('tanggal', startDateStr)
+        .lte('tanggal', endDateStr)
         .eq('status_verifikasi', 'Disetujui')
-        .order('timestamp', { ascending: true });
+        .order('tanggal', { ascending: true })
+        .order('jam_ke', { ascending: true });
       if (user?.sekolah_id) {
         jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
       }
