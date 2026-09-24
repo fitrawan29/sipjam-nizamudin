@@ -116,10 +116,11 @@ export default function HomeView({
         try {
           const targetYearMonth = selectedMonth;
 
+          const searchName = `%${user.nama.split(',')[0].trim()}%`;
           let query = supabase
             .from('presensi_guru')
             .select('timestamp, keterlambatan_detik, jenis_presensi, detail_izin, tipe_absen, status_verifikasi, sekolah_id')
-            .eq('nama_guru', user.nama)
+            .ilike('nama_guru', searchName)
             .eq('tipe_absen', 'Datang');
 
           if (user?.sekolah_id) {
@@ -215,12 +216,12 @@ export default function HomeView({
             supabase
               .from('jurnal_pembelajaran')
               .select('id, tanggal, nama_guru, mapel, kelas, materi, absensi_siswa, detail_absen')
-              .eq('nama_guru', user.nama)
+              .ilike('nama_guru', `%${user.nama.split(',')[0].trim()}%`)
               .order('tanggal', { ascending: false }),
             supabase
               .from('bank_dokumen')
               .select('*')
-              .eq('nama_guru', user.nama)
+              .ilike('nama_guru', `%${user.nama.split(',')[0].trim()}%`)
               .order('timestamp', { ascending: false }),
           ]);
 
@@ -962,7 +963,7 @@ export default function HomeView({
                   type="month" 
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="text-[10px] font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full outline-none border border-gray-200 dark:border-gray-700 cursor-pointer"
+                  className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-full outline-none border border-gray-200 dark:border-gray-700 cursor-pointer shrink-0 max-w-[150px]"
                   title="Pilih Bulan"
                 />
               </div>

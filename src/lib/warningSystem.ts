@@ -90,7 +90,7 @@ export async function getTeacherDisciplineWarnings(
   const normLower = normName.toLowerCase();
 
   // 1. Fetch teacher info from data_guru
-  let guruQuery = supabase.from('data_guru').select('*').ilike('nama_guru', normName);
+  let guruQuery = supabase.from('data_guru').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`);
   if (sekolahId) {
     guruQuery = guruQuery.eq('sekolah_id', sekolahId);
   }
@@ -182,19 +182,19 @@ export async function getTeacherDisciplineWarnings(
     supabase
       .from('presensi_guru')
       .select('*')
-      .ilike('nama_guru', normName)
+      .ilike('nama_guru', `%${normName.split(',')[0].trim()}%`)
       .gte('timestamp', minTimestamp)
       .lte('timestamp', maxDate),
     supabase
       .from('jurnal_pembelajaran')
       .select('*')
-      .ilike('nama_guru', normName)
+      .ilike('nama_guru', `%${normName.split(',')[0].trim()}%`)
       .gte('tanggal', minDate)
       .lte('tanggal', todayStr),
     supabase
       .from('laporan_piket')
       .select('*')
-      .or(`guru_pelapor.ilike.%${normName}%,kehadiran_guru_piket.ilike.%${normName}%`)
+      .or(`guru_pelapor.ilike.%${normName.split(',')[0].trim()}%,kehadiran_guru_piket.ilike.%${normName.split(',')[0].trim()}%`)
       .gte('tanggal', minDate)
       .lte('tanggal', todayStr)
   ]);
