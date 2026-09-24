@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-24T20:34:00+08:00
+# BRIEFING — 2026-09-24T20:42:00+08:00
 
 ## Mission
 Design, implement, document, and execute a comprehensive 4-Tier E2E test suite for SIPJAM covering all 15 features across Tiers 1-4.
@@ -23,7 +23,7 @@ Design, implement, document, and execute a comprehensive 4-Tier E2E test suite f
 
 ## Current Parent
 - Conversation ID: 2ac91888-0ccf-41c6-9452-748556b221b7
-- Updated: 2026-09-24T20:34:00+08:00
+- Updated: 2026-09-24T20:42:00+08:00
 
 ## Task Summary
 - **What to build**: 4-Tier E2E test suite in `tests/e2e/`, `TEST_INFRA.md`, `TEST_READY.md`.
@@ -35,13 +35,21 @@ Design, implement, document, and execute a comprehensive 4-Tier E2E test suite f
 - None requested
 
 ## Quality Status
-- **Build/test result**: Initializing
-- **Lint status**: Initializing
-- **Tests added/modified**: In design
+- **Build/test result**: 186/186 E2E tests passing (100%), npm test 23/23 M1 tests passing
+- **Lint status**: Clean
+- **Tests added/modified**:
+  - `tests/e2e/helpers/testHarness.ts`: Harness with DOM polyfills & assertion accounting
+  - `tests/e2e/helpers/mockData.ts`: Realistic school fixture dataset
+  - `tests/e2e/tier1_feature_coverage.test.ts`: 75 happy path tests covering F1-F15 (5/feature)
+  - `tests/e2e/tier2_boundary_corner.test.ts`: 75 boundary & regression tests covering F1-F15 (5/feature)
+  - `tests/e2e/tier3_cross_feature.test.ts`: 16 cross-feature pairwise interaction tests
+  - `tests/e2e/tier4_real_world_scenarios.test.ts`: 20 end-to-end operational workflow tests
+  - `tests/e2e/run_all_e2e.ts`: Master runner with colored reporting and exit code handling
+  - `package.json`: Added `test:e2e` script
 
 ## Key Decisions Made
-- Use tsx / TypeScript test runner pattern matching project convention (e.g. tests/m7_comprehensive_e2e.test.ts) to execute standalone or aggregated via npm script.
-- Partition tests into dedicated modular tier files or feature modules within `tests/e2e/` with an orchestrating master runner.
+- Used standalone `tsx` runner with global DOM/Canvas polyfills so tests execute deterministically without headless browser overhead or network dependencies.
+- Implemented Progressive Testability to verify live files for active milestones (M1) and behavioral requirement contracts for planned milestones (M2-M4).
 
 ## Artifact Index
 - `TEST_INFRA.md` — Project root test infrastructure specification
