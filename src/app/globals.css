@@ -31,6 +31,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -38,7 +39,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
   -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
+  overflow-x: clip;
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   transition: background-color 0.4s ease, color 0.4s ease, opacity 0.5s ease;
   opacity: 1;
 }
@@ -50,7 +54,7 @@ body.fade-out {
 /* Custom Component Classes from original design */
 @layer components {
   .mobile-container {
-    @apply w-full mx-auto min-h-screen relative overflow-x-hidden;
+    @apply w-full mx-auto min-h-screen relative overflow-x-clip;
     max-width: 100%;
   }
   @media (min-width: 1024px) {
@@ -219,7 +223,6 @@ body.fade-out {
   .overflow-y-auto,
   .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
   }
 
   /* Safe Area Utility Classes */

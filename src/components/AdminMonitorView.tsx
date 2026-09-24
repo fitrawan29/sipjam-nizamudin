@@ -97,25 +97,18 @@ export default function AdminMonitorView({ user }: { user: any }) {
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama guru..." className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" />
             </div>
 
-            {/* Peringatan Kedisiplinan Guru (3x Pelanggaran) Card (F7) */}
-            <div className="bg-gradient-to-r from-red-50 to-amber-50 dark:from-red-950/20 dark:to-amber-950/20 border border-red-200 dark:border-red-900/40 p-4 rounded-2xl mb-4 shadow-sm">
-              <div className="flex items-center justify-between gap-2 mb-3">
+            {/* Peringatan Kedisiplinan Guru (3x Pelanggaran) Card (F7) - Redesigned */}
+            <div className="bg-red-50/50 dark:bg-red-950/20 border border-red-300/50 dark:border-red-900/40 p-3 rounded-xl mb-4 shadow-sm flex flex-col gap-2">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center text-sm shadow-sm">
-                    <i className="fa-solid fa-triangle-exclamation"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-red-900 dark:text-red-200">
-                      Peringatan Kedisiplinan Guru (3x Pelanggaran)
-                    </h3>
-                    <p className="text-[10px] text-red-700/80 dark:text-red-400">
-                      Pantauan guru yang tidak presensi, tidak mengisi jurnal, atau tidak lapor piket 3x berturut-turut/akumulasi
-                    </p>
-                  </div>
+                  <i className="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i>
+                  <h3 className="text-xs font-bold text-red-900 dark:text-red-200 uppercase tracking-wide">
+                    Peringatan Kedisiplinan
+                  </h3>
                 </div>
-                <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
+                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
                   warningsList.length > 0 
-                    ? 'bg-red-600 text-white shadow-sm' 
+                    ? 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300' 
                     : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
                 }`}>
                   {warningsList.length} Guru
@@ -123,36 +116,29 @@ export default function AdminMonitorView({ user }: { user: any }) {
               </div>
 
               {warningsLoading ? (
-                <div className="text-center py-4 text-xs text-gray-500 italic">
+                <div className="text-center py-2 text-[10px] text-gray-500 italic">
                   <i className="fa-solid fa-spinner animate-spin mr-1.5"></i> Memeriksa data kedisiplinan...
                 </div>
               ) : warningsList.length === 0 ? (
-                <div className="bg-white/80 dark:bg-gray-800/80 p-3 rounded-xl border border-green-200 dark:border-green-900/30 text-xs text-green-800 dark:text-green-300 flex items-center gap-2">
-                  <i className="fa-solid fa-circle-check text-green-600 text-sm"></i>
-                  <span>Tidak ada guru yang mencapai batas 3x pelanggaran kedisiplinan. Seluruh guru tertib.</span>
+                <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg text-[10px] text-green-700 dark:text-green-400 flex items-center gap-1.5 font-medium">
+                  <i className="fa-solid fa-circle-check"></i>
+                  <span>Tidak ada guru yang mencapai batas pelanggaran 3x.</span>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
                   {warningsList.map((tw) => (
-                    <div key={tw.teacherName} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-red-200 dark:border-red-900/50 shadow-xs">
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
-                          <i className="fa-solid fa-user-xmark text-red-500"></i>
+                    <div key={tw.teacherName} className="bg-white/80 dark:bg-gray-800/80 p-2 rounded-lg border border-red-100 dark:border-red-900/30">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-[11px] text-gray-900 dark:text-white flex items-center gap-1.5">
+                          <i className="fa-solid fa-user text-red-500/70"></i>
                           {tw.teacherName}
-                        </span>
-                        <span className="text-[10px] bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2 py-0.5 rounded-full font-bold">
-                          {tw.warnings.length} Pelanggaran
                         </span>
                       </div>
                       <div className="space-y-1">
                         {tw.warnings.map((w, wIdx) => (
-                          <div key={wIdx} className="text-[11px] bg-red-50/60 dark:bg-red-950/30 p-2 rounded-lg text-gray-800 dark:text-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                            <span className="font-medium">
-                              <strong className="text-red-700 dark:text-red-400">[{w.category}]</strong> {w.message}
-                            </span>
-                            <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono">
-                              Tanggal: {w.dates.slice(-3).join(', ')}
-                            </span>
+                          <div key={wIdx} className="text-[10px] flex justify-between items-center bg-red-50/50 dark:bg-red-900/10 p-1.5 rounded-md">
+                            <span className="text-gray-800 dark:text-gray-300"><strong className="text-red-700 dark:text-red-400">[{w.category}]</strong> {w.message}</span>
+                            <span className="text-[9px] text-gray-500 font-mono whitespace-nowrap">{w.dates.slice(-2).join(', ')}{w.dates.length > 2 ? '...' : ''}</span>
                           </div>
                         ))}
                       </div>

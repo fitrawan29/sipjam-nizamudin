@@ -264,7 +264,7 @@ export async function getTeacherDisciplineWarnings(
       type: 'berturut-turut',
       count: maxStreak,
       dates: streakDates,
-      message: `Peringatan: Guru tidak melakukan presensi sebanyak ${maxStreak} kali berturut-turut (${streakDates.join(', ')}).`
+      message: `Tidak absen ${maxStreak}x berturut-turut`
     });
   }
 
@@ -275,7 +275,7 @@ export async function getTeacherDisciplineWarnings(
       type: 'akumulasi',
       count: presensiViolationDates.length,
       dates: presensiViolationDates,
-      message: `Peringatan: Akumulasi tidak melakukan presensi sebanyak ${presensiViolationDates.length} kali (${presensiViolationDates.join(', ')}).`
+      message: `Akumulasi tidak absen ${presensiViolationDates.length}x`
     });
   }
 
@@ -325,7 +325,7 @@ export async function getTeacherDisciplineWarnings(
       type: 'berturut-turut',
       count: maxJStreak,
       dates: jStreakDates,
-      message: `Peringatan: Guru tidak mengisi jurnal pembelajaran sebanyak ${maxJStreak} hari mengajar berturut-turut (${jStreakDates.join(', ')}).`
+      message: `Tidak isi jurnal ${maxJStreak}x berturut-turut`
     });
   }
 
@@ -335,7 +335,7 @@ export async function getTeacherDisciplineWarnings(
       type: 'akumulasi',
       count: jurnalViolationDates.length,
       dates: jurnalViolationDates,
-      message: `Peringatan: Akumulasi tidak mengisi jurnal pembelajaran sebanyak ${jurnalViolationDates.length} kali (${jurnalViolationDates.join(', ')}).`
+      message: `Akumulasi tidak isi jurnal ${jurnalViolationDates.length}x`
     });
   }
 
@@ -384,7 +384,7 @@ export async function getTeacherDisciplineWarnings(
       type: 'berturut-turut',
       count: maxPStreak,
       dates: pStreakDates,
-      message: `Peringatan: Guru tidak mengisi laporan piket sebanyak ${maxPStreak} tugas piket berturut-turut (${pStreakDates.join(', ')}).`
+      message: `Tidak lapor piket ${maxPStreak}x berturut-turut`
     });
   }
 
@@ -394,7 +394,7 @@ export async function getTeacherDisciplineWarnings(
       type: 'akumulasi',
       count: piketViolationDates.length,
       dates: piketViolationDates,
-      message: `Peringatan: Akumulasi tidak mengisi laporan piket sebanyak ${piketViolationDates.length} kali (${piketViolationDates.join(', ')}).`
+      message: `Akumulasi tidak lapor piket ${piketViolationDates.length}x`
     });
   }
 

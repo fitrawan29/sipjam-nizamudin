@@ -932,46 +932,23 @@ export default function HomeView({
       {/* ========================================================= */}
       {isGuru && (
         <>
-          {/* Discipline Warning Banner (F7) */}
+          {/* Discipline Warning Banner (F7) - Redesigned to be compact */}
           {teacherWarnings?.hasWarning && (
-            <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-500/70 dark:border-red-600 rounded-2xl p-4 shadow-md text-red-900 dark:text-red-200 fade-in animate-pulse">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center text-lg shrink-0 shadow-sm">
-                  <i className="fa-solid fa-triangle-exclamation"></i>
+            <div className="bg-red-50 dark:bg-red-950/40 border border-red-400/50 rounded-xl p-3 shadow-sm text-red-900 dark:text-red-200 fade-in flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <i className="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i>
+                  <span className="font-bold text-xs uppercase tracking-wide text-red-700 dark:text-red-400">Peringatan Kedisiplinan</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
-                      PERINGATAN KEDISIPLINAN (3x)
-                    </span>
-                    <span className="text-xs font-bold text-red-800 dark:text-red-300">
-                      Tindakan Diperlukan
-                    </span>
+                <span className="text-[10px] bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-300 px-2 py-0.5 rounded-md font-semibold">Tindakan Diperlukan</span>
+              </div>
+              <div className="text-[11px] space-y-1">
+                {teacherWarnings.warnings.map((w, idx) => (
+                  <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-2 bg-white/50 dark:bg-black/20 p-1.5 rounded-lg">
+                    <span className="font-medium text-red-800 dark:text-red-300 truncate"><span className="font-bold opacity-70">[{w.category}]</span> {w.message}</span>
+                    <span className="text-[9px] text-red-600/70 dark:text-red-400/70 font-mono whitespace-nowrap">{w.dates.slice(-2).join(', ')} {w.dates.length > 2 && '...'}</span>
                   </div>
-                  <p className="text-xs text-red-800 dark:text-red-200 font-semibold mb-2">
-                    Sistem mendeteksi adanya pelanggaran kedisiplinan berulang (minimal 3 kali) pada akun Anda:
-                  </p>
-                  <div className="space-y-1.5">
-                    {teacherWarnings.warnings.map((w, idx) => (
-                      <div key={idx} className="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-xl border border-red-200 dark:border-red-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-red-700 dark:text-red-400">
-                            [{w.category}]
-                          </span>
-                          <span className="text-gray-800 dark:text-gray-200">
-                            {w.message}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
-                          {w.dates.slice(-3).join(', ')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-red-700 dark:text-red-300 mt-2 italic">
-                    * Harap segera melengkapi pengisian yang belum selesai atau konfirmasi ke Admin / Kepala Sekolah.
-                  </p>
-                </div>
+                ))}
               </div>
             </div>
           )}
