@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-24T16:44:17Z
+# BRIEFING — 2026-09-24T16:50:00Z
 
 ## Mission
 Conduct independent adversarial review of Milestone 3 files (F8, F9, F10, F11), stress-test assumptions and edge cases, run tests and build, and formulate an evidence-based verdict.
@@ -19,7 +19,7 @@ Conduct independent adversarial review of Milestone 3 files (F8, F9, F10, F11), 
 
 ## Current Parent
 - Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-24T16:44:17Z
+- Updated: 2026-09-24T16:50:00Z
 
 ## Review Scope
 - **Files to review**:
@@ -37,19 +37,39 @@ Conduct independent adversarial review of Milestone 3 files (F8, F9, F10, F11), 
 - **Review criteria**: Correctness, completeness, adversarial edge cases, integrity violation check, build & test verification.
 
 ## Review Checklist
-- **Items reviewed**: None yet
-- **Verdict**: pending
-- **Unverified claims**: Worker M3 handoff claims pending verification
+- **Items reviewed**:
+  - `NotificationPermissionModal.tsx` (F8): Verified event stopping, keydown suppression, denied state handling, focus listener, SSR guard.
+  - `PushNotificationPrompt.tsx` (F8): Verified absence of dismiss buttons.
+  - `PreLoginSplash.tsx` (F9): Verified timer cleanup, branding, authenticated session bypass in `page.tsx`.
+  - `LoginScreen.tsx` (F10): Verified total removal of "Multi-Tenant SaaS" and any "SaaS" occurrence.
+  - `layout.tsx` (F10, F11): Verified `title: 'SIPJAM'` and `viewportFit: 'cover'`.
+  - `manifest.json` (F10): Verified name and short_name are 'SIPJAM'.
+  - `globals.css` (F11): Verified safe area CSS vars/classes, momentum scrolling, overscroll containment, 16px mobile input rule.
+  - `CameraSelfieCapture.tsx` (F11): Verified `playsInline`, `autoPlay`, `muted`, and `{ ideal: mode }` constraints.
+- **Verdict**: APPROVE
+- **Unverified claims**: None. All worker claims independently reproduced and verified.
 
 ## Attack Surface
-- **Hypotheses tested**: None yet
-- **Vulnerabilities found**: None yet
-- **Untested angles**: Notification API unsupported / permission denied, backdrop dismissal, safe area rules, camera facingMode switch, SaaS term elimination
+- **Hypotheses tested**:
+  - Notification API unsupported: Modal returns null, gracefully preventing user soft-lock.
+  - Modal backdrop click: Clicks stopped at modal overlay (`stopPropagation`), underlying elements inaccessible.
+  - Escape key press: Captured in capture phase with `preventDefault` and `stopPropagation`.
+  - Permission denied: Modal transitions to recovery UI with 3 browser settings steps and recheck/reload triggers.
+  - Focus return: Focus event automatically re-queries `Notification.permission` without page refresh.
+  - Mobile inputs auto-zoom on iOS: Suppressed via CSS rule `font-size: 16px !important;`.
+  - Video inline playback on iOS: Suppressed fullscreen hijack via `playsInline`.
+- **Vulnerabilities found**: None.
+- **Untested angles**: All identified threat vectors and edge cases successfully tested.
 
 ## Key Decisions Made
-- Initiated independent review and adversarial evaluation of Milestone 3 deliverables.
+- Confirmed zero integrity violations across all Milestone 3 files.
+- Verified test suite `tests/m3_ui_ux_apple_compatibility.test.ts` (29/29 pass).
+- Verified challenger suite `tests/adversarial_m3_challenger_2.test.ts` (58/58 pass).
+- Verified production build `npm run build` (compiled in 2.0s, exit code 0).
+- Formulated final verdict: APPROVE.
 
 ## Artifact Index
 - DISPATCH.md — Dispatch instructions and history
 - BRIEFING.md — Persistent context & state
+- progress.md — Liveness & status tracking
 - handoff.md — Final review and verdict report

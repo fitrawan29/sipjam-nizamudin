@@ -27,9 +27,9 @@ Gate Result: **IN_PROGRESS**
 |---|---|---|---|
 | worker_m3 | teamwork_preview_worker | DONE (build passed, 29/29 tests pass) | handoff.md |
 | reviewer_m3_1 | teamwork_preview_reviewer | APPROVE | handoff.md |
-| reviewer_m3_2 | teamwork_preview_reviewer | PENDING | - |
-| challenger_m3_1 | teamwork_preview_challenger | PENDING | - |
+| reviewer_m3_2 | teamwork_preview_reviewer | APPROVE | handoff.md |
+| challenger_m3_1 | teamwork_preview_challenger | APPROVE | handoff.md |
 | challenger_m3_2 | teamwork_preview_challenger | APPROVE | handoff.md |
 | auditor_m3_1 | teamwork_preview_auditor | CLEAN | handoff.md |
 
-Gate Result: **IN_PROGRESS**
+Gate Result: **PASS**
