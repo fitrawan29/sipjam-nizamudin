@@ -19,10 +19,10 @@ Current iteration: 4 / 32
 - [x] Initialized orchestrator_3 working directory, BRIEFING.md, DISPATCH.md, PROJECT.md, GATE_STATUS.md, DEAD_ENDS.md
 - [x] Start recurring heartbeat cron (task-40)
 - [x] Dispatch Worker M4 (`worker_m4_3` - 95e783b7-396f-4c90-abf2-3df89aca689e) to verify implementations and run test suite
-- [ ] Receive Worker M4 handoff report with test passes and git commit/push
-- [ ] Dispatch Reviewers for Milestone 4
-- [ ] Dispatch Challengers for Milestone 4
-- [ ] Dispatch Forensic Auditor for Milestone 4
+- [x] Receive Worker M4 handoff report (35/35 M4 tests, 186/186 E2E pass, build code 0, git commit cb299d0 pushed)
+- [x] Dispatch Reviewers for Milestone 4 (`reviewer_m4_1`: c447b7fa, `reviewer_m4_2`: cbafe930)
+- [x] Dispatch Challengers for Milestone 4 (`challenger_m4_1`: f87388e0, `challenger_m4_2`: ed2a713c)
+- [x] Dispatch Forensic Auditor for Milestone 4 (`auditor_m4_1`: 7539e5f1)
 - [ ] Gate Milestone 4 (Verify CLEAN audit, test pass, approvals)
 - [ ] Milestone 5: Run full E2E suite (`npm run test:e2e`), unit tests (`npm test`), build (`npm run build`)
 - [ ] Verify 12 Acceptance Criteria from `ORIGINAL_REQUEST.md`

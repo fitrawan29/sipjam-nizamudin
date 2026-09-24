@@ -50,12 +50,17 @@ Complete verification and gate for Milestone 4 (F12-F15), execute Milestone 5 (F
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| worker_m4_3 | teamwork_preview_worker | M4 Verification & Commit | in-progress | 95e783b7-396f-4c90-abf2-3df89aca689e |
+| worker_m4_3 | teamwork_preview_worker | M4 Verification & Commit | completed | 95e783b7-396f-4c90-abf2-3df89aca689e |
+| reviewer_m4_1 | teamwork_preview_reviewer | M4 Independent Review 1 | in-progress | c447b7fa-adfd-40b6-979f-65b989b458e5 |
+| reviewer_m4_2 | teamwork_preview_reviewer | M4 Independent Review 2 | in-progress | cbafe930-4d9b-4520-a113-056dd7d3f76d |
+| challenger_m4_1 | teamwork_preview_challenger | M4 Stress Test & Challenge 1 | in-progress | f87388e0-c607-420f-b477-8d09681927bc |
+| challenger_m4_2 | teamwork_preview_challenger | M4 Empirical Verification 2 | in-progress | ed2a713c-974d-451b-9adf-9b6a6eca57d2 |
+| auditor_m4_1 | teamwork_preview_auditor | M4 Forensic Integrity Audit | in-progress | 7539e5f1-a435-4e10-9540-f288ccb9f3cb |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: 95e783b7-396f-4c90-abf2-3df89aca689e
+- Spawn count: 6 / 16
+- Pending subagents: c447b7fa-adfd-40b6-979f-65b989b458e5, cbafe930-4d9b-4520-a113-056dd7d3f76d, f87388e0-c607-420f-b477-8d09681927bc, ed2a713c-974d-451b-9adf-9b6a6eca57d2, 7539e5f1-a435-4e10-9540-f288ccb9f3cb
 - Predecessor: orchestrator_2
 - Successor: not yet spawned
 
