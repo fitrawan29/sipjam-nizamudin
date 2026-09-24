@@ -14,13 +14,13 @@ Gate Result: **PASS**
 | Agent | Role | Verdict | Source |
 |---|---|---|---|
 | worker_m2 | teamwork_preview_worker | DONE (build passed, 27/27 tests pass) | handoff.md |
-| reviewer_m2_1 | teamwork_preview_reviewer | PENDING | - |
-| reviewer_m2_2 | teamwork_preview_reviewer | PENDING | - |
-| challenger_m2_1 | teamwork_preview_challenger | PENDING | - |
-| challenger_m2_2 | teamwork_preview_challenger | PENDING | - |
-| auditor_m2_1 | teamwork_preview_auditor | PENDING | - |
+| reviewer_m2_1 | teamwork_preview_reviewer | REQUEST_CHANGES | handoff.md |
+| reviewer_m2_2 | teamwork_preview_reviewer | REQUEST_CHANGES | handoff.md |
+| challenger_m2_1 | teamwork_preview_challenger | REQUEST_CHANGES | handoff.md |
+| challenger_m2_2 | teamwork_preview_challenger | REQUEST_CHANGES | handoff.md |
+| auditor_m2_1 | teamwork_preview_auditor | INTEGRITY VIOLATION | handoff.md |
 
-Gate Result: **IN_PROGRESS**
+Gate Result: **FAIL** (INTEGRITY VIOLATION — Timezone skew, cutoff time comparison, query dropped Alpa)
 
 ## Gate — Iteration 3 (Milestone 3)
 | Agent | Role | Verdict | Source |

@@ -44,7 +44,7 @@ export function getWitaTimeStr(date: Date = new Date()): string {
     timeZone: WITA_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
-  });
+  }).replace('.', ':');
 }
 
 /**

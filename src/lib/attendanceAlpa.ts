@@ -25,6 +25,16 @@ export interface EvaluateAutoAlpaOptions {
 }
 
 /**
+ * Safely compares two time strings (HH:MM or HH.MM).
+ * Returns true if currentTime is strictly before cutoffTime.
+ */
+export function isBeforeCutoff(currentTime: string, cutoffTime: string): boolean {
+  const normCurrent = (currentTime || '').replace('.', ':').trim();
+  const normCutoff = (cutoffTime || '').replace('.', ':').trim();
+  return normCurrent < normCutoff;
+}
+
+/**
  * Evaluates attendance submissions for a given date against the school's jam_pulang_akhir cutoff.
  * If unresubmitted rejections are detected after cutoff, mutates their status in the database to 'Alpa'.
  */
@@ -48,8 +58,7 @@ export async function evaluateAndApplyAutoAlpa(
   // 2. Pre-cutoff early exit (F6-B2)
   // If target date is today and current time is before cutoff, exit without changes unless forced
   if (evaluatedDate === todayWita && !options?.force) {
-    // Compare times in HH:MM format
-    if (currentTimeWita < cutoffTime) {
+    if (isBeforeCutoff(currentTimeWita, cutoffTime)) {
       return {
         affectedCount: 0,
         details: [],
@@ -67,7 +76,8 @@ export async function evaluateAndApplyAutoAlpa(
   let query = supabase
     .from('presensi_guru')
     .select('*')
-    .or(`timestamp.gte.${startOfDay},timestamp.ilike.${evaluatedDate}%`);
+    .gte('timestamp', startOfDay)
+    .lte('timestamp', endOfDay);
 
   if (sekolahId) {
     query = query.eq('sekolah_id', sekolahId);
@@ -79,7 +89,10 @@ export async function evaluateAndApplyAutoAlpa(
     throw new Error(`Failed to query attendance for ${evaluatedDate}: ${error.message}`);
   }
 
-  const presensiRecords = records || [];
+  const presensiRecords = (records || []).filter(rec => {
+    const ts = rec.timestamp || '';
+    return ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
+  });
 
   // 4. Identify unresubmitted rejected records
   // Group all records by teacher name (normalized)

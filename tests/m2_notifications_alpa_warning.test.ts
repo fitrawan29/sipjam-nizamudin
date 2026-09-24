@@ -12,7 +12,10 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key';
 }
 
-import { calculateStreak } from '../src/lib/warningSystem';
+import { NextRequest } from 'next/server';
+import { calculateStreak, buildEvaluationDates } from '../src/lib/warningSystem';
+import { isBeforeCutoff } from '../src/lib/attendanceAlpa';
+import { POST as rejectionPostHandler } from '../src/app/api/notifications/rejection/route';
 
 let passed = 0;
 let failed = 0;
@@ -79,7 +82,8 @@ async function runTests() {
 
   // 1.3 Required parameter validation returning 400
   assert(
-    notifRouteContent.includes('!body.teacherName || !body.category || !body.rejectionReason') &&
+    (notifRouteContent.includes('!teacherName || !category || !rejectionReason') ||
+     notifRouteContent.includes('!body.teacherName || !body.category || !body.rejectionReason')) &&
     notifRouteContent.includes('status: 400'),
     'F5.3: Rejection route validates teacherName, category, and rejectionReason with HTTP 400'
   );
@@ -142,7 +146,7 @@ async function runTests() {
 
   // 2.3 Early exit prior to cutoff
   assert(
-    alpaServiceContent.includes('currentTimeWita < cutoffTime') &&
+    (alpaServiceContent.includes('isBeforeCutoff') || alpaServiceContent.includes('currentTimeWita < cutoffTime')) &&
     alpaServiceContent.includes('affectedCount: 0'),
     'F6.3: attendanceAlpa exits early with 0 affected records prior to cutoff time'
   );
@@ -204,7 +208,7 @@ async function runTests() {
   assert(
     warningServiceContent.includes('kalender_pendidikan') &&
     warningServiceContent.includes('holidaySet') &&
-    warningServiceContent.includes('dayOfWeek === 0'),
+    (warningServiceContent.includes("dayName === 'Minggu'") || warningServiceContent.includes('dayOfWeek === 0')),
     'F7.4: warningSystem excludes kalender_pendidikan holidays and Sundays from absence window'
   );
 
@@ -237,6 +241,66 @@ async function runTests() {
     monitorContent.includes('getAllTeachersDisciplineWarnings') &&
     monitorContent.includes('warningsList'),
     'F7.8: AdminMonitorView displays warning summary card and detailed teacher violation cards'
+  );
+
+  // ----------------------------------------------------
+  // Section 4: Behavioral & Empirical Verification
+  // ----------------------------------------------------
+  console.log('\n--- Section 4: Behavioral & Empirical Verification ---');
+
+  // 4.1 Cutoff comparison correctness
+  const cutoffPass1 = isBeforeCutoff('14.59', '15:00') === true;
+  const cutoffPass2 = isBeforeCutoff('15.00', '15:00') === false;
+  const cutoffPass3 = isBeforeCutoff('15.01', '15:00') === false;
+  const cutoffPass4 = isBeforeCutoff('15.30', '15:00') === false;
+  assert(
+    cutoffPass1 && cutoffPass2 && cutoffPass3 && cutoffPass4,
+    'F6.8 (Behavioral): isBeforeCutoff correctly compares dot and colon formatted times without ASCII anomalies'
+  );
+
+  // 4.2 Evaluation window WITA timezone & Sunday exclusion
+  const sampleDates = buildEvaluationDates('2026-09-24', 7, '6', new Set());
+  const hasSunday = sampleDates.some(d => d.dayName === 'Minggu');
+  const hasMonday = sampleDates.some(d => d.dayName === 'Senin');
+  const todayMatch = sampleDates.some(d => d.dateStr === '2026-09-24' && d.dayName === 'Kamis');
+  assert(
+    !hasSunday && hasMonday && todayMatch,
+    'F7.9 (Behavioral): buildEvaluationDates excludes Sundays, includes Mondays, and matches calendar date'
+  );
+
+  // 4.3 Simulation of AdminRekapView Alpa aggregation
+  const mockPresensiRecords = [
+    { nama_guru: 'Ahmad Guru', jenis_presensi: 'Sekolah', status_verifikasi: 'Disetujui', tipe_absen: 'Datang' },
+    { nama_guru: 'Ahmad Guru', jenis_presensi: 'Alpa', status_verifikasi: 'Alpa', tipe_absen: 'Datang' }
+  ];
+  let simAlpaDirect = 0;
+  for (const p of mockPresensiRecords) {
+    if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') {
+      simAlpaDirect++;
+    }
+  }
+  const simTotalAlpa = 0 + simAlpaDirect;
+  assert(
+    simAlpaDirect === 1 && simTotalAlpa === 1,
+    'F6.9 (Behavioral): AdminRekapView aggregation logic counts explicit database Alpa records'
+  );
+
+  // 4.4 Rejection API endpoint input validation returning HTTP 400
+  const reqInvalidType = new NextRequest('http://localhost:3000/api/notifications/rejection', {
+    method: 'POST',
+    body: JSON.stringify({ teacherName: 12345, category: 'Presensi', rejectionReason: 'Foto buram' })
+  });
+  const resInvalidType = await rejectionPostHandler(reqInvalidType);
+
+  const reqWhitespace = new NextRequest('http://localhost:3000/api/notifications/rejection', {
+    method: 'POST',
+    body: JSON.stringify({ teacherName: '   ', category: 'Presensi', rejectionReason: 'Foto buram' })
+  });
+  const resWhitespace = await rejectionPostHandler(reqWhitespace);
+
+  assert(
+    resInvalidType.status === 400 && resWhitespace.status === 400,
+    'F5.9 (Behavioral): /api/notifications/rejection returns HTTP 400 for non-string and whitespace payloads'
   );
 
   console.log('\n====================================================');

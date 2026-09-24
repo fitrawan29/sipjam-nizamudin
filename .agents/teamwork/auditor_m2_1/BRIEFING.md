@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-24T16:46:00Z
+# BRIEFING — 2026-09-24T16:53:00Z
 
 ## Mission
 Forensic integrity audit of Milestone 2 (Rejection Notifications, Auto-Alpa Cutoff, and 3x Absence Warning System).
@@ -18,7 +18,7 @@ Forensic integrity audit of Milestone 2 (Rejection Notifications, Auto-Alpa Cuto
 
 ## Current Parent
 - Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-24T16:46:00Z
+- Updated: 2026-09-24T16:53:00Z
 
 ## Audit Scope
 - **Work product**: Milestone 2 files (`src/app/api/notifications/rejection/route.ts`, `src/lib/attendanceAlpa.ts`, `src/app/api/attendance/auto-alpa/route.ts`, `src/lib/warningSystem.ts`, `src/components/AdminVerifView.tsx`, `src/components/PiketView.tsx`, `src/components/AdminRekapView.tsx`, `src/components/HomeView.tsx`, `src/components/AdminMonitorView.tsx`, `tests/m2_notifications_alpa_warning.test.ts`)
@@ -26,23 +26,29 @@ Forensic integrity audit of Milestone 2 (Rejection Notifications, Auto-Alpa Cuto
 - **Audit type**: forensic integrity check
 
 ## Audit Progress
-- **Phase**: investigating
-- **Checks completed**: [initialization]
-- **Checks remaining**: [Phase 1 source code analysis, Phase 1 facade & mock detection, Phase 1 pre-populated artifact check, Phase 2 test suite execution & verification, Phase 2 flagging]
-- **Findings so far**: Under investigation
+- **Phase**: reporting
+- **Checks completed**: [Phase 1 source code analysis, Phase 1 facade & mock detection, Phase 1 pre-populated artifact check, Phase 2 test suite execution & verification, Phase 2 flagging, Forensic flaw empirical verification]
+- **Checks remaining**: [None — Audit completed]
+- **Findings so far**: INTEGRITY VIOLATION detected (Façade Rekap query dropping Alpa records, Cutoff ASCII comparison bug, Date skew in warningSystem, Self-certifying static tests)
 
 ## Attack Surface
-- **Hypotheses tested**: None yet
-- **Vulnerabilities found**: None yet
-- **Untested angles**: Web Push payload & dispatch authenticity, Auto-Alpa cutoff boundary conditions & database mutations, Warning streak calculation truthfulness, Test assertion rigor vs facade passes
+- **Hypotheses tested**: 
+  - Time comparison in attendanceAlpa.ts: Confirmed dot (.) vs colon (:) ASCII comparison failure.
+  - Alpa presence in AdminRekapView: Confirmed query hard-filters status_verifikasi = 'Disetujui', making Alpa aggregation dead code.
+  - Date loop in warningSystem.ts: Confirmed toISOString() on UTC+8 date rolls back evaluation window by 1 day.
+  - Test rigor in m2_notifications_alpa_warning.test.ts: Confirmed static string matching masked query drop bug.
+- **Vulnerabilities found**: 
+  - AdminRekapView line 65 omits Alpa records.
+  - attendanceAlpa.ts lines 38, 52 fails cutoff comparison after 22:00.
+  - warningSystem.ts line 131 introduces -1 day timezone backward skew.
+- **Untested angles**: None.
 
 ## Loaded Skills
 - None
 
 ## Key Decisions Made
-- Evaluated ground-truth user requirements from ORIGINAL_REQUEST.md (R1.2, R1.3, R1.5).
-- Identified Benchmark integrity mode constraint.
-- Planned exhaustive independent verification.
+- Issued verdict: INTEGRITY VIOLATION.
+- Authored comprehensive handoff report with exact reproduction commands in handoff.md.
 
 ## Artifact Index
 - DISPATCH.md — Audit assignment instructions

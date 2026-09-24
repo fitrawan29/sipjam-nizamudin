@@ -38,6 +38,39 @@ export function calculateStreak(history: boolean[]): number {
 }
 
 /**
+ * Builds the evaluation date window (past lookbackDays up to today) in WITA timezone.
+ * Properly excludes Sundays, Saturdays (for 5-day school weeks), and calendar holidays.
+ */
+export function buildEvaluationDates(
+  todayStr: string = getWitaDateStr(),
+  lookbackDays: number = 30,
+  hariSekolah: string = '6',
+  holidaySet: Set<string> = new Set()
+): { dateStr: string; dayName: string }[] {
+  const evaluationDates: { dateStr: string; dayName: string }[] = [];
+  // Anchor at noon WITA (+08:00) so adding/subtracting days never crosses midnight
+  const dateObj = new Date(todayStr + 'T12:00:00+08:00');
+
+  for (let i = lookbackDays - 1; i >= 0; i--) {
+    const d = new Date(dateObj.getTime() - i * 86400000);
+    const dateStr = getWitaDateStr(d);
+    const dayName = getWitaDayName(d);
+
+    // Exclude Sundays in WITA
+    if (dayName === 'Minggu') continue;
+
+    // Exclude Saturdays if 5-day school week
+    if (hariSekolah === '5' && dayName === 'Sabtu') continue;
+
+    // Exclude calendar holidays
+    if (holidaySet.has(dateStr)) continue;
+
+    evaluationDates.push({ dateStr, dayName });
+  }
+  return evaluationDates;
+}
+
+/**
  * Evaluates discipline warnings for a single teacher across Presensi, Jurnal, and Piket.
  * Checks for 3x consecutive or 3x accumulated violations.
  */
@@ -119,48 +152,33 @@ export async function getTeacherDisciplineWarnings(
 
   const isTeacherPiketOnDay = (day: string) => isAssignedPenugasan(day) || isAssignedLegacy(day);
 
-  // 6. Build evaluation window: past 30 days up to yesterday (or today if after school hours)
+  // 6. Build evaluation window
   const todayStr = getWitaDateStr();
-  const evaluationDates: { dateStr: string; dayName: string }[] = [];
-  const dateObj = new Date(todayStr + 'T00:00:00+08:00');
-
-  // Look back up to 30 calendar days
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(dateObj);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    const dayOfWeek = d.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-    const dayName = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Makassar', weekday: 'long' });
-
-    // Exclude Sundays
-    if (dayOfWeek === 0) continue;
-    // Exclude Saturdays if 5-day school week
-    if (hariSekolah === '5' && dayOfWeek === 6) continue;
-    // Exclude calendar holidays (F7-B3)
-    if (holidaySet.has(dateStr)) continue;
-
-    evaluationDates.push({ dateStr, dayName });
-  }
+  const evaluationDates = buildEvaluationDates(todayStr, 30, hariSekolah, holidaySet);
 
   // 7. Query records for this teacher in the evaluation window
   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
+  const maxDate = todayStr + 'T23:59:59+08:00';
 
   const [presensiRes, jurnalRes, piketRes] = await Promise.all([
     supabase
       .from('presensi_guru')
       .select('*')
       .ilike('nama_guru', normName)
-      .gte('timestamp', minDate),
+      .gte('timestamp', minDate)
+      .lte('timestamp', maxDate),
     supabase
       .from('jurnal_pembelajaran')
       .select('*')
       .ilike('nama_guru', normName)
-      .gte('tanggal', minDate),
+      .gte('tanggal', minDate)
+      .lte('tanggal', todayStr),
     supabase
       .from('laporan_piket')
       .select('*')
       .or(`guru_pelapor.ilike.%${normName}%,kehadiran_guru_piket.ilike.%${normName}%`)
       .gte('tanggal', minDate)
+      .lte('tanggal', todayStr)
   ]);
 
   const presensiRecords = presensiRes.data || [];

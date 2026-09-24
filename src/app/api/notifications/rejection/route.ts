@@ -16,8 +16,8 @@ export interface RejectionNotificationRequest {
 /**
  * Sanitizes input text to strip HTML and script tags for push and in-app display.
  */
-function sanitizeText(str: string): string {
-  if (!str) return '';
+function sanitizeText(str: any): string {
+  if (typeof str !== 'string' || !str) return '';
   return str
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<[^>]+>/g, '')
@@ -42,19 +42,29 @@ function getCategoryDeepLink(category: 'Presensi' | 'Jurnal' | 'Piket'): string 
 
 export async function POST(req: NextRequest) {
   try {
-    const body: RejectionNotificationRequest = await req.json().catch(() => ({}));
+    const body: any = await req.json().catch(() => ({}));
 
     // 1. Validate required fields (F5-B1)
-    if (!body.teacherName || !body.category || !body.rejectionReason) {
+    const teacherName = typeof body.teacherName === 'string' ? body.teacherName.trim() : '';
+    const category = typeof body.category === 'string' ? body.category.trim() : '';
+    const rejectionReason = typeof body.rejectionReason === 'string' ? body.rejectionReason.trim() : '';
+
+    if (!teacherName || !category || !rejectionReason) {
       return NextResponse.json(
-        { success: false, error: 'Missing required parameters' },
+        { success: false, error: 'Missing or invalid required parameters' },
         { status: 400 }
       );
     }
 
-    const teacherName = body.teacherName.trim();
-    const category = body.category;
-    const cleanReason = sanitizeText(body.rejectionReason);
+    const validCategories = ['Presensi', 'Jurnal', 'Piket'];
+    if (!validCategories.includes(category)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid category. Must be Presensi, Jurnal, or Piket' },
+        { status: 400 }
+      );
+    }
+
+    const cleanReason = sanitizeText(rejectionReason);
     const detailInfo = sanitizeText(body.detailInfo || category);
     const adminName = body.adminName ? sanitizeText(body.adminName) : 'Admin Verifikasi';
     const adminId = body.adminId || '00000000-0000-0000-0000-000000000000';

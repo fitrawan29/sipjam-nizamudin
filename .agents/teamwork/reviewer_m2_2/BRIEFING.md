@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-24T16:47:00Z
+# BRIEFING — 2026-09-24T16:51:30Z
 
 ## Mission
 Conduct independent adversarial review of Milestone 2 (F5, F6, F7: Rejection Notification, Auto-Alpa Cutoff, 3x Absence Warning), stress-test assumptions and edge cases, execute automated verification, and formulate verdict.
@@ -19,7 +19,7 @@ Conduct independent adversarial review of Milestone 2 (F5, F6, F7: Rejection Not
 
 ## Current Parent
 - Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-24T16:47:00Z
+- Updated: 2026-09-24T16:51:30Z
 
 ## Review Scope
 - **Files to review**:
@@ -37,7 +37,9 @@ Conduct independent adversarial review of Milestone 2 (F5, F6, F7: Rejection Not
 - **Review criteria**: correctness, edge-case resilience, security/integrity, streak/calendar logic, WITA timezone handling, build/test health.
 
 ## Key Decisions Made
-- Initial setup and context acquisition complete. Beginning code inspection and test execution.
+- Verdict: **REQUEST_CHANGES**
+- Identified 3 Critical runtime logic bugs, 1 Major query bug, and 1 Test integrity / self-certification violation.
+- Confirmed issues empirically via Node.js execution simulations.
 
 ## Artifact Index
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_2\BRIEFING.md` — persistent working memory
@@ -46,21 +48,13 @@ Conduct independent adversarial review of Milestone 2 (F5, F6, F7: Rejection Not
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_2\handoff.md` — final handoff report
 
 ## Review Checklist
-- **Items reviewed**: Pending initial examination
-- **Verdict**: pending
-- **Unverified claims**:
-  - Rejection notification payload validation, escaping, dead push subscriptions handling
-  - Auto-alpa cutoff WITA timezone logic, Sakit/Izin/Dinas leave protection, active resubmission protection
-  - 3x absence warning logic (calendar holidays, weekend handling, streak reset on valid attendance, accumulation across month/year)
-  - AdminRekapView explicit Alpa vs late deduction Alpa aggregation
-  - AdminVerifView & PiketView rejection dispatch wiring
+- **Items reviewed**: All 10 files in scope
+- **Verdict**: REQUEST_CHANGES
+- **Unverified claims**: Resolved — claims of 100% test success were based on superficial string matching tests that masked critical timezone and query bugs.
 
 ## Attack Surface
-- **Hypotheses tested**: Pending adversarial stress-testing
-- **Vulnerabilities found**: None yet
-- **Untested angles**:
-  - Dead push subscription cleanup error handling / schema compatibility
-  - Cutoff time comparison when `jam_pulang_akhir` is malformed or null
-  - Timezone parsing differences (WITA vs local system vs UTC)
-  - Streak reset behavior with non-consecutive or out-of-order dates
-  - Teacher name matching (case sensitivity, whitespace, special characters)
+- **Hypotheses tested**:
+  - Time string comparison between `getWitaTimeStr()` (dot separator `HH.MM`) and `pengaturan.jam_pulang_akhir` (colon separator `HH:MM`). RESULT: FAILED. Due to ASCII `.` < `:`, cutoff never triggers on matching hours.
+  - Evaluation dates generation in `warningSystem.ts` with `d.toISOString().split('T')[0]` vs `timeZone: 'Asia/Makassar'`. RESULT: FAILED. 1-day date offset mismatches Thursday date with Friday schedule, and excludes Monday instead of Sunday.
+  - Supabase query in `AdminRekapView.tsx` with `.eq('status_verifikasi', 'Disetujui')`. RESULT: FAILED. Excludes all `status_verifikasi = 'Alpa'` records.
+  - Test suite depth in `tests/m2_notifications_alpa_warning.test.ts`. RESULT: 25/27 tests are purely checking `fileContent.includes(...)`.
