@@ -154,8 +154,8 @@ export default function AccountSettingsModal({
         return;
       }
 
-      if (newPassword.length < 4) {
-        Swal.fire('Validasi Gagal', 'Password baru minimal 4 karakter.', 'warning');
+      if (newPassword.length < 6) {
+        Swal.fire('Validasi Gagal', 'Password baru minimal 6 karakter.', 'warning');
         return;
       }
 
@@ -371,7 +371,7 @@ export default function AccountSettingsModal({
                       type={showPassword ? 'text' : 'password'}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimal 4 karakter"
+                      placeholder="Minimal 6 karakter"
                       required={changePassword}
                       className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />

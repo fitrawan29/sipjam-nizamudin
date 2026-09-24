@@ -23,6 +23,15 @@ export default function CameraSelfieCapture({
 }: CameraSelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isStartingRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -87,12 +96,23 @@ export default function CameraSelfieCapture({
   }, []);
 
   // 3. Start camera stream with specified facingMode
-  const startCamera = useCallback(async (mode: 'user' | 'environment' = facingMode) => {
+  const startCamera = useCallback(async (mode: 'user' | 'environment') => {
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
     setCameraError(null);
+
     stopCamera();
+
+    // Hardware sensor release pause (essential for iOS Safari)
+    await new Promise(r => setTimeout(r, 150));
+    if (!isMountedRef.current) {
+      isStartingRef.current = false;
+      return;
+    }
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraError('Browser ini tidak mendukung akses kamera langsung.');
+      isStartingRef.current = false;
       return;
     }
 
@@ -106,15 +126,37 @@ export default function CameraSelfieCapture({
         audio: false,
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err: unknown) {
+        const e = err as { name?: string };
+        // Fallback on OverconstrainedError for single-camera devices
+        if (e?.name === 'OverconstrainedError') {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        } else {
+          throw err;
+        }
+      }
+
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach(t => t.stop());
+        isStartingRef.current = false;
+        return;
+      }
+
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().catch((e) => console.warn('Video play error:', e));
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        try {
+          await videoRef.current.play();
           setIsStreaming(true);
-        };
+        } catch (e) {
+          console.warn('Video play error:', e);
+        }
       }
     } catch (err: unknown) {
       console.error('[CameraCapture] Camera access error:', err);
@@ -131,26 +173,30 @@ export default function CameraSelfieCapture({
       }
       setCameraError(message);
       setIsStreaming(false);
+    } finally {
+      isStartingRef.current = false;
     }
-  }, [facingMode, stopCamera]);
+  }, [stopCamera]);
 
   // Toggle front/rear camera
-  const toggleFacingMode = () => {
+  const toggleFacingMode = async () => {
+    if (isStartingRef.current) return;
     const nextMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(nextMode);
-    startCamera(nextMode);
+    await startCamera(nextMode);
   };
 
-  // Initial mount: update GPS and start camera if no image captured yet
+  // Initial mount: update GPS and start camera once if no image captured yet
   useEffect(() => {
     requestLocation();
     if (!capturedImage) {
-      startCamera(facingMode);
+      startCamera(initialFacingMode);
     }
     return () => {
       stopCamera();
     };
-  }, [capturedImage, facingMode, requestLocation, startCamera, stopCamera]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [capturedImage, requestLocation, stopCamera]);
 
   // 4. Capture photo and draw watermark
   const handleCapturePhoto = () => {

@@ -59,11 +59,13 @@ const KURIKULUM_DOC_TYPES = [
 export default function HomeView({ 
   user, 
   setView, 
-  menuItems = [] 
+  menuItems = [],
+  onOpenAccountSettings
 }: { 
   user: any; 
   setView: (view: string) => void; 
   menuItems?: any[];
+  onOpenAccountSettings?: () => void;
 }) {
   const dateStr = getWitaDateLong();
   const timeStr = getWitaTimeStr();
@@ -108,22 +110,48 @@ export default function HomeView({
         .then(setTeacherWarnings)
         .catch(err => console.error('Error fetching discipline warnings:', err));
 
-      // Fetch Personal Attendance Stat Cards (Current Month)
+      // Fetch Personal Attendance Stat Cards (Current Month in WITA)
       const fetchAttendanceStats = async () => {
         try {
-          const now = new Date();
-          const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-          const { data, error } = await supabase
+          const todayWita = getWitaDateStr();
+          const [currentYear, currentMonth] = todayWita.split('-');
+          const targetYearMonth = `${currentYear}-${currentMonth}`;
+
+          let query = supabase
             .from('presensi_guru')
-            .select('keterlambatan_detik, jenis_presensi, detail_izin, tipe_absen')
+            .select('timestamp, keterlambatan_detik, jenis_presensi, detail_izin, tipe_absen, status_verifikasi, sekolah_id')
             .eq('nama_guru', user.nama)
-            .gte('timestamp', firstDay)
             .eq('tipe_absen', 'Datang');
+
+          if (user?.sekolah_id) {
+            query = query.eq('sekolah_id', user.sekolah_id);
+          }
+
+          const { data, error } = await query;
 
           if (error) {
             console.error('Error fetching teacher attendance:', error);
             return;
           }
+
+          // Multi-format WITA current month matcher
+          const matchWitaMonth = (ts: string | null | undefined): boolean => {
+            if (!ts) return false;
+            if (ts.startsWith(targetYearMonth)) return true;
+            const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (slashMatch) {
+              const month = String(slashMatch[1]).padStart(2, '0');
+              const year = slashMatch[3];
+              return `${year}-${month}` === targetYearMonth;
+            }
+            try {
+              const d = new Date(ts);
+              if (!isNaN(d.getTime())) {
+                return getWitaDateStr(d).startsWith(targetYearMonth);
+              }
+            } catch (_) {}
+            return false;
+          };
 
           let h = 0;
           let tl = 0;
@@ -132,7 +160,13 @@ export default function HomeView({
           let totalDetik = 0;
 
           data?.forEach((p: any) => {
-            const detik = p.keterlambatan_detik || 0;
+            // 1. Exclude records outside current month in WITA
+            if (!matchWitaMonth(p.timestamp)) return;
+
+            // 2. Exclude rejected records from accumulation
+            if (p.status_verifikasi === 'Ditolak') return;
+
+            const detik = Number(p.keterlambatan_detik) || 0;
             totalDetik += detik;
             const jenis = (p.jenis_presensi || '').toLowerCase();
             const detail = (p.detail_izin || '').toLowerCase();
@@ -863,6 +897,18 @@ export default function HomeView({
               </p>
             </div>
           </div>
+
+          {onOpenAccountSettings && (
+            <button
+              type="button"
+              onClick={onOpenAccountSettings}
+              className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-xs border border-white/20 flex items-center gap-1.5 transition ml-auto shrink-0 shadow-sm cursor-pointer"
+              title="Ubah Username & Password"
+            >
+              <i className="fa-solid fa-gear text-xs"></i>
+              <span className="hidden sm:inline">Edit Akun</span>
+            </button>
+          )}
         </div>
 
         <div className="relative z-10 grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/10">

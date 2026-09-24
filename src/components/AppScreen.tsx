@@ -20,6 +20,7 @@ import AnalitikView from './AnalitikView';
 import SuperadminView from './SuperadminView';
 import GradebookView from './GradebookView';
 import ChatView from './ChatView';
+import AccountSettingsModal from './AccountSettingsModal';
 import PushNotificationPrompt from './PushNotificationPrompt';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import { Pengumuman } from '@/types/database';
@@ -46,6 +47,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
   const [allAnnouncements, setAllAnnouncements] = useState<Pengumuman[]>([]);
   const [unreadAnnouncements, setUnreadAnnouncements] = useState<Pengumuman[]>([]);
   const [readMap, setReadMap] = useState<Record<string, boolean>>({});
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -370,6 +372,14 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
                 </span>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => setIsAccountModalOpen(true)}
+              className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700"
+              title="Pengaturan Akun & Profil"
+            >
+              <i className="fa-solid fa-user-gear text-sm"></i>
+            </button>
             <button type="button" onClick={toggleTheme} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-sm`}></i>
             </button>
@@ -411,6 +421,13 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
                     <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
+                  className="w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800 border border-transparent transition-all"
+                >
+                  <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
+                </button>
               </div>
             </div>
           </div>
@@ -437,7 +454,14 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
             />
           ) : (
             <>
-              {currentView === 'view-home' && <HomeView user={user} setView={handleNavigation} menuItems={menuItems} />}
+              {currentView === 'view-home' && (
+                <HomeView 
+                  user={user} 
+                  setView={handleNavigation} 
+                  menuItems={menuItems} 
+                  onOpenAccountSettings={() => setIsAccountModalOpen(true)} 
+                />
+              )}
               {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
               {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
               {currentView === 'view-piket' && <PiketView user={user} />}
@@ -630,6 +654,21 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
           </div>
         </div>
       )}
+
+      {/* Account Settings Modal for Teachers and Staff (F14) */}
+      <AccountSettingsModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+        user={user}
+        onUserUpdated={(updatedUser) => {
+          try {
+            localStorage.setItem('sipjam_user', JSON.stringify(updatedUser));
+          } catch (e) {
+            console.warn('Failed to update localStorage:', e);
+          }
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

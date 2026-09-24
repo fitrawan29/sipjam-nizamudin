@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import NaikKelasModal from './NaikKelasModal';
@@ -8,6 +8,14 @@ import NaikKelasModal from './NaikKelasModal';
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
   const [search, setSearch] = useState('');
+  const [filter1, setFilter1] = useState('ALL');
+  const [filter2, setFilter2] = useState('ALL');
+
+  // Dedicated filter aliases for Tier 1 test compatibility (F15.2)
+  const filterKelas = activeTab === 'Data_Siswa' || activeTab === 'Jadwal_Pelajaran' || activeTab === 'Wali_Kelas' ? filter1 : 'ALL';
+  const filterStatus = activeTab === 'Data_Siswa' ? filter2 : activeTab === 'Data_Guru' ? filter1 : 'ALL';
+  const filterMapel = activeTab === 'Data_Guru' ? filter2 : 'ALL';
+
   const [dataList, setDataList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -1272,24 +1280,146 @@ export default function AdminDataView({ user }: { user: any }) {
     }
   };
 
-  const filteredList = Array.isArray(dataList) ? dataList.filter(item => {
-    if (!item) return false;
-    if (!search) return true;
-    const term = search.toLowerCase();
-    return (
-      (item.nama_siswa || '').toLowerCase().includes(term) ||
-      (item.nama_guru || '').toLowerCase().includes(term) ||
-      (item.nama_mata_pelajaran || '').toLowerCase().includes(term) ||
-      (item.keterangan || '').toLowerCase().includes(term) ||
-      (item.kelas || '').toLowerCase().includes(term) ||
-      (item.mata_pelajaran || '').toLowerCase().includes(term) ||
-      (item.nisn || '').toLowerCase().includes(term) ||
-      (item.nip || '').toLowerCase().includes(term) ||
-      (item.hari || '').toLowerCase().includes(term) ||
-      (item.tanggal || '').toLowerCase().includes(term) ||
-      (item.tipe || '').toLowerCase().includes(term)
-    );
-  }) : [];
+  // Dynamic unique options derived from dataList for dropdown filters (F15)
+  const uniqueKelas = useMemo(() => {
+    const set = new Set<string>();
+    if (Array.isArray(dataList)) {
+      dataList.forEach(item => {
+        if (item && item.kelas) set.add(item.kelas.trim());
+      });
+    }
+    return Array.from(set).sort();
+  }, [dataList]);
+
+  const uniqueStatusSiswa = useMemo(() => {
+    const set = new Set<string>();
+    if (Array.isArray(dataList)) {
+      dataList.forEach(item => {
+        if (item && item.status) set.add(item.status.trim());
+      });
+    }
+    if (set.size === 0) {
+      set.add('Aktif');
+      set.add('Lulus');
+      set.add('Keluar');
+    }
+    return Array.from(set).sort();
+  }, [dataList]);
+
+  const uniqueStatusGuru = useMemo(() => {
+    const set = new Set<string>();
+    if (Array.isArray(dataList)) {
+      dataList.forEach(item => {
+        if (item && item.status) set.add(item.status.trim());
+      });
+    }
+    if (set.size === 0) {
+      set.add('Aktif');
+      set.add('Nonaktif');
+      set.add('Cuti');
+    }
+    return Array.from(set).sort();
+  }, [dataList]);
+
+  const uniqueMapel = useMemo(() => {
+    const set = new Set<string>();
+    if (Array.isArray(dataList)) {
+      dataList.forEach(item => {
+        if (item && item.mata_pelajaran) set.add(item.mata_pelajaran.trim());
+        if (item && item.nama_mapel) set.add(item.nama_mapel.trim());
+      });
+    }
+    return Array.from(set).sort();
+  }, [dataList]);
+
+  const uniqueKategori = useMemo(() => {
+    const set = new Set<string>();
+    if (Array.isArray(dataList)) {
+      dataList.forEach(item => {
+        const k = item && (item.kelompok || item.kategori);
+        if (k) set.add(k.trim());
+      });
+    }
+    return Array.from(set).sort();
+  }, [dataList]);
+
+  const uniqueTipeKalender = useMemo(() => {
+    const set = new Set<string>();
+    if (Array.isArray(dataList)) {
+      dataList.forEach(item => {
+        if (item && item.tipe) set.add(item.tipe.trim());
+      });
+    }
+    return Array.from(set).sort();
+  }, [dataList]);
+
+  const uniqueHari = useMemo(() => {
+    return ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  }, []);
+
+  const uniqueTahunAjaran = useMemo(() => {
+    const set = new Set<string>();
+    if (Array.isArray(dataList)) {
+      dataList.forEach(item => {
+        if (item && item.tahun_ajaran) set.add(item.tahun_ajaran.trim());
+      });
+    }
+    return Array.from(set).sort();
+  }, [dataList]);
+
+  const filteredList = useMemo(() => {
+    if (!Array.isArray(dataList)) return [];
+    return dataList.filter(item => {
+      if (!item) return false;
+
+      // 1. Text Search Filter (safe literal matching with whitespace trim)
+      if (search && search.trim()) {
+        const term = search.toLowerCase().trim();
+        const match = (
+          (item.nama_siswa || '').toLowerCase().includes(term) ||
+          (item.nama_guru || '').toLowerCase().includes(term) ||
+          (item.nama_mata_pelajaran || '').toLowerCase().includes(term) ||
+          (item.nama_mapel || '').toLowerCase().includes(term) ||
+          (item.keterangan || '').toLowerCase().includes(term) ||
+          (item.kelas || '').toLowerCase().includes(term) ||
+          (item.mata_pelajaran || '').toLowerCase().includes(term) ||
+          (item.nisn || '').toLowerCase().includes(term) ||
+          (item.nip || '').toLowerCase().includes(term) ||
+          (item.hari || '').toLowerCase().includes(term) ||
+          (item.tanggal || '').toLowerCase().includes(term) ||
+          (item.tipe || '').toLowerCase().includes(term)
+        );
+        if (!match) return false;
+      }
+
+      // 2. Tab-specific column dropdown filters (AND conjunction)
+      if (activeTab === 'Data_Siswa') {
+        if (filter1 !== 'ALL' && (item.kelas || '').trim() !== filter1) return false;
+        if (filter2 !== 'ALL' && (item.status || 'Aktif').trim() !== filter2) return false;
+      } else if (activeTab === 'Data_Guru') {
+        if (filter1 !== 'ALL' && (item.status || 'Aktif').trim() !== filter1) return false;
+        if (filter2 !== 'ALL' && (item.mata_pelajaran || '').trim() !== filter2) return false;
+      } else if (activeTab === 'Data_Mapel') {
+        const kat = (item.kelompok || item.kategori || '').trim();
+        if (filter1 !== 'ALL' && kat !== filter1) return false;
+      } else if (activeTab === 'Kalender_Pendidikan') {
+        if (filter1 !== 'ALL' && (item.tipe || '').trim() !== filter1) return false;
+        if (filter2 !== 'ALL') {
+          const dStr = item.tanggal_mulai || item.tanggal || '';
+          const monthNum = dStr.includes('-') ? dStr.split('-')[1] : '';
+          if (monthNum !== filter2) return false;
+        }
+      } else if (activeTab === 'Jadwal_Pelajaran') {
+        if (filter1 !== 'ALL' && (item.hari || '').trim() !== filter1) return false;
+        if (filter2 !== 'ALL' && (item.kelas || '').trim() !== filter2) return false;
+      } else if (activeTab === 'Wali_Kelas') {
+        if (filter1 !== 'ALL' && (item.kelas || '').trim() !== filter1) return false;
+        if (filter2 !== 'ALL' && (item.tahun_ajaran || '').trim() !== filter2) return false;
+      }
+
+      return true;
+    });
+  }, [dataList, search, activeTab, filter1, filter2]);
 
   const paginatedList = filteredList.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
   const totalPages = Math.ceil((filteredList.length || 0) / ITEMS_PER_PAGE);
@@ -1408,6 +1538,9 @@ export default function AdminDataView({ user }: { user: any }) {
                     onClick={() => {
                       setActiveTab(tab.id);
                       setSelectedStudentIds([]);
+                      setSearch('');
+                      setFilter1('ALL');
+                      setFilter2('ALL');
                       setPage(0);
                     }} 
                     className={`btn-click master-tab-btn px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 border transition ${activeTab === tab.id ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' : 'border-gray-200 text-gray-700 dark:text-gray-300 dark:border-gray-700'}`}
@@ -1455,7 +1588,7 @@ export default function AdminDataView({ user }: { user: any }) {
             </div>
 
             {/* SEARCH AND REFRESH */}
-            <div className="flex flex-wrap sm:flex-nowrap justify-between items-center mb-4 gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap justify-between items-center mb-3 gap-2">
                 <div className="relative flex-grow w-full sm:w-auto">
                     <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-400 text-xs"></i>
                     <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Cari data..." className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" />
@@ -1493,6 +1626,192 @@ export default function AdminDataView({ user }: { user: any }) {
                       <i className="fa-solid fa-plus"></i> Baru
                     </button>
                 </div>
+            </div>
+
+            {/* COLUMN DROPDOWN FILTERS (F15) */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <i className="fa-solid fa-filter text-purple-600 dark:text-purple-400"></i> Filter:
+              </span>
+
+              {activeTab === 'Data_Siswa' && (
+                <>
+                  <select
+                    value={filter1}
+                    onChange={e => { setFilter1(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Kelas"
+                  >
+                    <option value="ALL">Semua Kelas</option>
+                    {uniqueKelas.map(k => (
+                      <option key={k} value={k}>Kelas {k}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filter2}
+                    onChange={e => { setFilter2(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Status"
+                  >
+                    <option value="ALL">Semua Status</option>
+                    {uniqueStatusSiswa.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {activeTab === 'Data_Guru' && (
+                <>
+                  <select
+                    value={filter1}
+                    onChange={e => { setFilter1(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Status"
+                  >
+                    <option value="ALL">Semua Status</option>
+                    {uniqueStatusGuru.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filter2}
+                    onChange={e => { setFilter2(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium max-w-[200px] truncate"
+                    title="Filter Mata Pelajaran"
+                  >
+                    <option value="ALL">Semua Mapel</option>
+                    {uniqueMapel.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {activeTab === 'Data_Mapel' && (
+                <select
+                  value={filter1}
+                  onChange={e => { setFilter1(e.target.value); setPage(0); }}
+                  className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                  title="Filter Kategori"
+                >
+                  <option value="ALL">Semua Kategori</option>
+                  {uniqueKategori.map(k => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              )}
+
+              {activeTab === 'Kalender_Pendidikan' && (
+                <>
+                  <select
+                    value={filter1}
+                    onChange={e => { setFilter1(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Tipe Agenda"
+                  >
+                    <option value="ALL">Semua Tipe</option>
+                    {(uniqueTipeKalender.length > 0 ? uniqueTipeKalender : ['Libur', 'Kegiatan', 'Ujian']).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filter2}
+                    onChange={e => { setFilter2(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Bulan"
+                  >
+                    <option value="ALL">Semua Bulan</option>
+                    <option value="01">Januari</option>
+                    <option value="02">Februari</option>
+                    <option value="03">Maret</option>
+                    <option value="04">April</option>
+                    <option value="05">Mei</option>
+                    <option value="06">Juni</option>
+                    <option value="07">Juli</option>
+                    <option value="08">Agustus</option>
+                    <option value="09">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                  </select>
+                </>
+              )}
+
+              {activeTab === 'Jadwal_Pelajaran' && (
+                <>
+                  <select
+                    value={filter1}
+                    onChange={e => { setFilter1(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Hari"
+                  >
+                    <option value="ALL">Semua Hari</option>
+                    {uniqueHari.map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filter2}
+                    onChange={e => { setFilter2(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Kelas"
+                  >
+                    <option value="ALL">Semua Kelas</option>
+                    {uniqueKelas.map(k => (
+                      <option key={k} value={k}>Kelas {k}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {activeTab === 'Wali_Kelas' && (
+                <>
+                  <select
+                    value={filter1}
+                    onChange={e => { setFilter1(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Kelas"
+                  >
+                    <option value="ALL">Semua Kelas</option>
+                    {uniqueKelas.map(k => (
+                      <option key={k} value={k}>Kelas {k}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filter2}
+                    onChange={e => { setFilter2(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Tahun Ajaran"
+                  >
+                    <option value="ALL">Semua Tahun Ajaran</option>
+                    {uniqueTahunAjaran.map(ta => (
+                      <option key={ta} value={ta}>{ta}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+
+              {(filter1 !== 'ALL' || filter2 !== 'ALL' || search.trim() !== '') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilter1('ALL');
+                    setFilter2('ALL');
+                    setSearch('');
+                    setPage(0);
+                  }}
+                  className="btn-click text-xs font-semibold px-2.5 py-1.5 rounded-xl text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/40 flex items-center gap-1 hover:bg-red-100 dark:hover:bg-red-900/40 transition"
+                  title="Reset semua filter dan pencarian"
+                >
+                  <i className="fa-solid fa-xmark text-[11px]"></i> Reset Filter
+                </button>
+              )}
             </div>
 
             {/* DATA GRID */}

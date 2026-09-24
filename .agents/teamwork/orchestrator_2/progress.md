@@ -12,9 +12,8 @@ Current iteration: 3 / 32
 - [x] Scheduled recurring heartbeat cron (task-40)
 - [x] Milestone 3 (F8-F11): **PASSED GATE** (Worker M3 pass, Reviewers 1 & 2 APPROVE, Challengers 1 & 2 APPROVE, Auditor CLEAN)
 - [x] Explorer M4 completed investigation report for F12-F15
-- [x] Explorer M2.2 completed forensic remediation blueprint for F5-F7
-- [/] Worker M2.3 (`d2428a38-8b0f-45bd-924a-3746a4bffeca`): Applying Patches 1-5 (Alpa Rekap query, cutoff '.' vs ':', warningSystem WITA dates, bounded queries, rejection validation)
-- [ ] Re-Gate Milestone 2 (Reviewers, Challengers, Forensic Auditor)
-- [ ] Milestone 4 Implementation & Gate (F12-F15)
+- [x] Milestone 2 (F5-F7): **PASSED GATE** (Forensic Re-Audit CLEAN in Iteration 3)
+- [/] Worker M4.2 (`1ed2eff4-09aa-4f0b-a170-d8134148b703`): Implementing F12 (Late accumulation fix), F13 (Camera switch facingMode fix), F14 (Teacher account username/password modal), F15 (Master menus search and column filters)
+- [ ] Gate Milestone 4 (Reviewers, Challengers, Forensic Auditor)
 - [ ] Milestone 5 Final Acceptance Gate & E2E Validation (F16)
 - [ ] Victory report to parent sentinel
