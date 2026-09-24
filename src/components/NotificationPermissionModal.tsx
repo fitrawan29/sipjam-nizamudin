@@ -1,28 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { isPushNotificationSupported, subscribeToPushNotifications, registerServiceWorker } from '@/lib/pushClient';
-import Swal from 'sweetalert2';
+import { subscribeToPushNotifications } from '@/lib/pushClient';
 
-interface PushNotificationPromptProps {
+interface NotificationPermissionModalProps {
   user?: any;
+  onPermissionGranted?: () => void;
 }
 
-export default function PushNotificationPrompt({ user }: PushNotificationPromptProps) {
+export default function NotificationPermissionModal({
+  user,
+  onPermissionGranted,
+}: NotificationPermissionModalProps) {
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>('granted');
   const [isProcessing, setIsProcessing] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window === 'undefined' || !isPushNotificationSupported()) {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
       setPermission('unsupported');
       return;
     }
 
     setPermission(Notification.permission);
 
-    // Suppress Escape key dismissals in strict blocking modal overlay
+    // Suppress Escape key dismissals in blocking mode
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -36,38 +39,52 @@ export default function PushNotificationPrompt({ user }: PushNotificationPromptP
     };
   }, []);
 
+  // Check again whenever window gains focus (e.g. user toggled settings in another tab/popover)
   useEffect(() => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
 
     const handleFocus = () => {
       setPermission(Notification.permission);
+      if (Notification.permission === 'granted' && onPermissionGranted) {
+        onPermissionGranted();
+      }
     };
 
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+  }, [onPermissionGranted]);
 
-  if (!mounted || permission === 'granted' || permission === 'unsupported') {
+  if (!mounted) {
+    // Zero flicker server-side or pre-mount
+    return null;
+  }
+
+  // Granted or Unsupported: completely suppressed, 0ms visual flicker
+  if (permission === 'granted' || permission === 'unsupported') {
     return null;
   }
 
   const handleRequestPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+
     setIsProcessing(true);
     try {
-      const result = await subscribeToPushNotifications(user);
-      const newPermission = Notification.permission;
-      setPermission(newPermission);
+      const result = await Notification.requestPermission();
+      setPermission(result);
 
-      if (newPermission === 'granted') {
-        Swal.fire({
-          icon: 'success',
-          title: 'Notifikasi Diaktifkan',
-          text: 'Anda akan menerima pengingat presensi datang, jurnal harian, dan tugas piket secara tepat waktu.',
-          confirmButtonColor: '#0B4619'
-        });
+      if (result === 'granted') {
+        if (onPermissionGranted) {
+          onPermissionGranted();
+        }
+        // Asynchronously register push subscription
+        try {
+          await subscribeToPushNotifications(user);
+        } catch (err) {
+          console.warn('[NotificationModal] Subscription error:', err);
+        }
       }
-    } catch (err: any) {
-      console.error('[PushPrompt] Subscription error:', err);
+    } catch (err) {
+      console.error('[NotificationModal] Error requesting permission:', err);
     } finally {
       setIsProcessing(false);
     }
@@ -75,7 +92,11 @@ export default function PushNotificationPrompt({ user }: PushNotificationPromptP
 
   const handleRecheckPermission = () => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPermission(Notification.permission);
+      const current = Notification.permission;
+      setPermission(current);
+      if (current === 'granted' && onPermissionGranted) {
+        onPermissionGranted();
+      }
     }
   };
 
@@ -89,9 +110,9 @@ export default function PushNotificationPrompt({ user }: PushNotificationPromptP
     <div
       id="notification-permission-modal"
       data-testid="notification-permission-modal"
-      className="fixed inset-0 z-[99999] w-screen h-screen bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto select-none overflow-y-auto"
+      className="fixed inset-0 z-[99999] w-screen h-screen bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto select-none overflow-y-auto"
       onClick={(e) => {
-        // Full blocking overlay captures all clicks
+        // Prevent click events from reaching underlying dashboard/form elements
         e.stopPropagation();
       }}
     >
@@ -100,7 +121,9 @@ export default function PushNotificationPrompt({ user }: PushNotificationPromptP
         onClick={(e) => e.stopPropagation()}
       >
         {permission === 'denied' ? (
-          /* Denied state with unblock instructions */
+          /* ========================================================
+             DENIED STATE: Display Browser Unlock Instructions
+             ======================================================== */
           <div>
             <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/70 text-amber-600 dark:text-amber-400 flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg border-2 border-amber-200 dark:border-amber-800">
               <i className="fa-solid fa-triangle-exclamation animate-pulse"></i>
@@ -131,7 +154,7 @@ export default function PushNotificationPrompt({ user }: PushNotificationPromptP
                 <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                   3
                 </span>
-                <span>Klik tombol di bawah untuk memeriksa ulang izin atau memuat ulang halaman.</span>
+                <span>Klik tombol di bawah untuk memverifikasi atau memuat ulang halaman.</span>
               </div>
             </div>
 
@@ -156,7 +179,9 @@ export default function PushNotificationPrompt({ user }: PushNotificationPromptP
             </div>
           </div>
         ) : (
-          /* Default state requesting permission */
+          /* ========================================================
+             DEFAULT STATE: Full Blocking Permission Prompt
+             ======================================================== */
           <div>
             <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg border-2 border-emerald-200 dark:border-emerald-800">
               <i className="fa-solid fa-bell animate-bounce"></i>
@@ -167,7 +192,7 @@ export default function PushNotificationPrompt({ user }: PushNotificationPromptP
             </h3>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-              Aplikasi SIPJAM mewajibkan izin notifikasi aktif untuk mengirimkan pengingat presensi datang, jurnal harian, tugas piket, serta notifikasi verifikasi dan penolakan secara langsung ke perangkat Anda.
+              Aplikasi SIPJAM mewajibkan izin notifikasi untuk mengirimkan pengingat presensi datang, jurnal harian, tugas piket, serta notifikasi verifikasi dan penolakan secara langsung ke perangkat Anda.
             </p>
 
             <button

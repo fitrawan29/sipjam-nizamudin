@@ -17,11 +17,20 @@
 :root {
   --background: #F8FAFC;
   --foreground: #1e293b;
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
 }
 
 .dark {
   --background: #121212;
   --foreground: #ffffff;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -203,6 +212,46 @@ body.fade-out {
   }
   .dark .custom-scroll::-webkit-scrollbar-thumb {
     @apply bg-slate-700;
+  }
+
+  /* iOS / Safari Momentum Scrolling & Overscroll Containment */
+  .custom-scroll,
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Safe Area Utility Classes */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+
+/* iOS Safe Area Padding for Fixed Header & Main Viewport Clearance */
+@supports (padding-top: env(safe-area-inset-top)) {
+  header.fixed.top-0 {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  }
+  main.pt-20 {
+    padding-top: calc(5rem + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* iOS Safari 16px Minimum Font Size to Prevent Unwanted Auto-Zoom */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }
 

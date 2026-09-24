@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import LoginScreen from '@/components/LoginScreen';
 import AppScreen from '@/components/AppScreen';
+import PreLoginSplash from '@/components/PreLoginSplash';
+import NotificationPermissionModal from '@/components/NotificationPermissionModal';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
@@ -38,10 +40,8 @@ export default function Home() {
     );
   }
 
-  // We are currently simulating login using the users table, not Supabase Auth directly yet
-  // If we want to use the users table for custom login:
   return (
-    <div className="mobile-container flex flex-col min-h-screen min-h-dvh">
+    <div className="mobile-container flex flex-col min-h-screen min-h-dvh relative">
       <MainApp />
     </div>
   );
@@ -49,17 +49,24 @@ export default function Home() {
 
 function MainApp() {
   const [user, setUser] = useState<any>(null);
+  const [isUserLoaded, setIsUserLoaded] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('sipjam_user');
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        // Authenticated sessions bypass pre-login splash cleanly
+        setShowSplash(false);
       }
     } catch (e) {
       console.error('Failed to parse stored user session:', e);
       localStorage.removeItem('sipjam_user');
       setUser(null);
+    } finally {
+      setIsUserLoaded(true);
     }
   }, []);
 
@@ -71,11 +78,26 @@ function MainApp() {
   const handleLogout = () => {
     localStorage.removeItem('sipjam_user');
     setUser(null);
+    setShowSplash(false);
   };
 
-  if (!user) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  if (!isUserLoaded) {
+    return null;
   }
 
-  return <AppScreen user={user} onLogout={handleLogout} />;
+  return (
+    <>
+      {/* Full blocking notification permission modal overlay on initial app open */}
+      <NotificationPermissionModal user={user} />
+
+      {/* Main flow: If authenticated -> AppScreen. If unauthenticated -> Splash then LoginScreen */}
+      {user ? (
+        <AppScreen user={user} onLogout={handleLogout} />
+      ) : showSplash ? (
+        <PreLoginSplash onFinish={() => setShowSplash(false)} />
+      ) : (
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      )}
+    </>
+  );
 }

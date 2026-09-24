@@ -219,6 +219,8 @@ export default function PiketView({ user }: { user: any }) {
       catatan_admin = reason?.trim() || '';
     }
 
+    const targetItem = laporanPiket.find(item => item.id === id) || rekapList.find(item => item.id === id);
+
     setProcessingId(id);
     try {
       const updatePayload: any = { status_verifikasi: status };
@@ -240,6 +242,27 @@ export default function PiketView({ user }: { user: any }) {
           confirmButtonColor: '#0B4619'
         });
       } else {
+        // Dispatch rejection notification (Web Push & in-app chat)
+        if (status === 'Ditolak' && catatan_admin) {
+          const teacherName = targetItem?.guru_pelapor || targetItem?.kehadiran_guru_piket || targetItem?.nama_guru || '';
+          const detailInfo = `Laporan Piket ${targetItem?.tanggal || ''}`.trim();
+          if (teacherName) {
+            fetch('/api/notifications/rejection', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                teacherName,
+                category: 'Piket',
+                detailInfo,
+                rejectionReason: catatan_admin,
+                adminName: user?.nama_lengkap || user?.nama || user?.username || 'Admin',
+                adminId: user?.id,
+                sekolahId: targetItem?.sekolah_id || user?.sekolah_id
+              })
+            }).catch(notifErr => console.error('Error dispatching piket rejection notification:', notifErr));
+          }
+        }
+
         Swal.fire({
           icon: status === 'Disetujui' ? 'success' : 'info',
           title: `Laporan Piket ${status}`,

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay, formatTimestampWita } from '@/lib/wita';
+import { getAllTeachersDisciplineWarnings, TeacherWarningSummary } from '@/lib/warningSystem';
 
 export default function AdminMonitorView({ user }: { user: any }) {
   const [date, setDate] = useState(() => {
@@ -11,10 +12,13 @@ export default function AdminMonitorView({ user }: { user: any }) {
   const [search, setSearch] = useState('');
   const [presensiList, setPresensiList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [warningsList, setWarningsList] = useState<TeacherWarningSummary[]>([]);
+  const [warningsLoading, setWarningsLoading] = useState(false);
 
   useEffect(() => {
     if (!date) return;
     loadData();
+    loadWarnings();
 
     // Subscribe to realtime changes
     const channel = supabase
@@ -22,6 +26,7 @@ export default function AdminMonitorView({ user }: { user: any }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru' }, payload => {
         // Reload data to ensure correctness with filters
         loadData();
+        loadWarnings();
       })
       .subscribe();
 
@@ -29,6 +34,18 @@ export default function AdminMonitorView({ user }: { user: any }) {
       supabase.removeChannel(channel);
     };
   }, [date]);
+
+  const loadWarnings = async () => {
+    setWarningsLoading(true);
+    try {
+      const summaries = await getAllTeachersDisciplineWarnings(user?.sekolah_id);
+      setWarningsList(summaries.filter(s => s.hasWarning));
+    } catch (err) {
+      console.error('Error loading discipline warnings:', err);
+    } finally {
+      setWarningsLoading(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -79,6 +96,72 @@ export default function AdminMonitorView({ user }: { user: any }) {
                 <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-gray-400 text-xs"></i>
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama guru..." className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" />
             </div>
+
+            {/* Peringatan Kedisiplinan Guru (3x Pelanggaran) Card (F7) */}
+            <div className="bg-gradient-to-r from-red-50 to-amber-50 dark:from-red-950/20 dark:to-amber-950/20 border border-red-200 dark:border-red-900/40 p-4 rounded-2xl mb-4 shadow-sm">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center text-sm shadow-sm">
+                    <i className="fa-solid fa-triangle-exclamation"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-red-900 dark:text-red-200">
+                      Peringatan Kedisiplinan Guru (3x Pelanggaran)
+                    </h3>
+                    <p className="text-[10px] text-red-700/80 dark:text-red-400">
+                      Pantauan guru yang tidak presensi, tidak mengisi jurnal, atau tidak lapor piket 3x berturut-turut/akumulasi
+                    </p>
+                  </div>
+                </div>
+                <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
+                  warningsList.length > 0 
+                    ? 'bg-red-600 text-white shadow-sm' 
+                    : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                }`}>
+                  {warningsList.length} Guru
+                </span>
+              </div>
+
+              {warningsLoading ? (
+                <div className="text-center py-4 text-xs text-gray-500 italic">
+                  <i className="fa-solid fa-spinner animate-spin mr-1.5"></i> Memeriksa data kedisiplinan...
+                </div>
+              ) : warningsList.length === 0 ? (
+                <div className="bg-white/80 dark:bg-gray-800/80 p-3 rounded-xl border border-green-200 dark:border-green-900/30 text-xs text-green-800 dark:text-green-300 flex items-center gap-2">
+                  <i className="fa-solid fa-circle-check text-green-600 text-sm"></i>
+                  <span>Tidak ada guru yang mencapai batas 3x pelanggaran kedisiplinan. Seluruh guru tertib.</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {warningsList.map((tw) => (
+                    <div key={tw.teacherName} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-red-200 dark:border-red-900/50 shadow-xs">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
+                          <i className="fa-solid fa-user-xmark text-red-500"></i>
+                          {tw.teacherName}
+                        </span>
+                        <span className="text-[10px] bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 px-2 py-0.5 rounded-full font-bold">
+                          {tw.warnings.length} Pelanggaran
+                        </span>
+                      </div>
+                      <div className="space-y-1">
+                        {tw.warnings.map((w, wIdx) => (
+                          <div key={wIdx} className="text-[11px] bg-red-50/60 dark:bg-red-950/30 p-2 rounded-lg text-gray-800 dark:text-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                            <span className="font-medium">
+                              <strong className="text-red-700 dark:text-red-400">[{w.category}]</strong> {w.message}
+                            </span>
+                            <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono">
+                              Tanggal: {w.dates.slice(-3).join(', ')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div id="monitor-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
                 {loading && presensiList.length === 0 ? (
                   <div className="col-span-full text-center py-10 text-gray-500 text-xs italic dark:text-gray-400">Memuat data...</div>

@@ -16,6 +16,7 @@ import {
   isGuruDiPiket 
 } from '@/lib/workflow';
 import { supabase } from '@/lib/supabaseClient';
+import { getTeacherDisciplineWarnings, TeacherWarningSummary } from '@/lib/warningSystem';
 
 interface TeacherStatusRow {
   id: string;
@@ -85,6 +86,7 @@ export default function HomeView({
   const [teacherJournals, setTeacherJournals] = useState<any[]>([]);
   const [teacherDocuments, setTeacherDocuments] = useState<any[]>([]);
   const [loadingTeacherExtra, setLoadingTeacherExtra] = useState(false);
+  const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
 
   // --- Admin States ---
   const [adminLoading, setAdminLoading] = useState(false);
@@ -100,6 +102,11 @@ export default function HomeView({
         .then(setDailyState)
         .catch(console.error)
         .finally(() => setLoadingState(false));
+
+      // Fetch 3x Absence Warnings (F7)
+      getTeacherDisciplineWarnings(user.nama, user.sekolah_id)
+        .then(setTeacherWarnings)
+        .catch(err => console.error('Error fetching discipline warnings:', err));
 
       // Fetch Personal Attendance Stat Cards (Current Month)
       const fetchAttendanceStats = async () => {
@@ -879,6 +886,50 @@ export default function HomeView({
       {/* ========================================================= */}
       {isGuru && (
         <>
+          {/* Discipline Warning Banner (F7) */}
+          {teacherWarnings?.hasWarning && (
+            <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-500/70 dark:border-red-600 rounded-2xl p-4 shadow-md text-red-900 dark:text-red-200 fade-in animate-pulse">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center text-lg shrink-0 shadow-sm">
+                  <i className="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-red-600 text-white text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+                      PERINGATAN KEDISIPLINAN (3x)
+                    </span>
+                    <span className="text-xs font-bold text-red-800 dark:text-red-300">
+                      Tindakan Diperlukan
+                    </span>
+                  </div>
+                  <p className="text-xs text-red-800 dark:text-red-200 font-semibold mb-2">
+                    Sistem mendeteksi adanya pelanggaran kedisiplinan berulang (minimal 3 kali) pada akun Anda:
+                  </p>
+                  <div className="space-y-1.5">
+                    {teacherWarnings.warnings.map((w, idx) => (
+                      <div key={idx} className="bg-white/80 dark:bg-gray-800/80 p-2.5 rounded-xl border border-red-200 dark:border-red-900/50 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-red-700 dark:text-red-400">
+                            [{w.category}]
+                          </span>
+                          <span className="text-gray-800 dark:text-gray-200">
+                            {w.message}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                          {w.dates.slice(-3).join(', ')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-red-700 dark:text-red-300 mt-2 italic">
+                    * Harap segera melengkapi pengisian yang belum selesai atau konfirmasi ke Admin / Kepala Sekolah.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Section 1: Personal Attendance Stat Cards (H, TL, Izin, Sakit) */}
           <div className="glass-card p-4">
             <div className="flex items-center justify-between gap-2 mb-3">

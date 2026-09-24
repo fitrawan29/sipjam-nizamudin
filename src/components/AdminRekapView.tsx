@@ -105,6 +105,7 @@ export default function AdminRekapView({ user }: { user: any }) {
             izin: 0,
             sakit: 0,
             dinasLuar: 0,
+            alpaDirect: 0,
             telatDetik: 0,
             piket: 0,
             jurnal: 0
@@ -123,6 +124,7 @@ export default function AdminRekapView({ user }: { user: any }) {
             izin: 0,
             sakit: 0,
             dinasLuar: 0,
+            alpaDirect: 0,
             telatDetik: 0,
             piket: 0,
             jurnal: 0
@@ -137,7 +139,11 @@ export default function AdminRekapView({ user }: { user: any }) {
           } else if (p.jenis_presensi === 'Izin') {
             if (p.detail_izin?.includes('Sakit')) pMap[nama].sakit++;
             else pMap[nama].izin++;
+          } else if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') {
+            pMap[nama].alpaDirect = (pMap[nama].alpaDirect || 0) + 1;
           }
+        } else if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') {
+          pMap[nama].alpaDirect = (pMap[nama].alpaDirect || 0) + 1;
         }
       });
 
@@ -162,10 +168,14 @@ export default function AdminRekapView({ user }: { user: any }) {
       const pArr = Object.keys(pMap).map(k => {
         const telat = pMap[k].telatDetik;
         const alpaOtomatis = Math.floor(telat / 14400); // 4 hours = 14400 seconds
+        const alpaDirect = pMap[k].alpaDirect || 0;
+        const totalAlpa = alpaOtomatis + alpaDirect;
         const hadirEfektif = Math.max(0, pMap[k].hadir - alpaOtomatis);
         return { 
           ...pMap[k],
-          alpa: alpaOtomatis,
+          alpa: totalAlpa,
+          alpaDirect,
+          alpaOtomatis,
           hadir: hadirEfektif
         };
       }).sort((a, b) => a.nama.localeCompare(b.nama));

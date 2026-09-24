@@ -170,6 +170,9 @@ export default function AdminVerifView({ user }: { user: any }) {
       rejectionReason = reason.trim();
     }
 
+    const currentList = activeTab === 'Presensi' ? presensiList : activeTab === 'Jurnal' ? jurnalList : piketList;
+    const targetItem = currentList.find(item => item.id === id);
+
     setProcessingId(id);
 
     try {
@@ -192,6 +195,34 @@ export default function AdminVerifView({ user }: { user: any }) {
           confirmButtonColor: '#0B4619'
         });
       } else {
+        // Dispatch rejection notification (Web Push & in-app chat)
+        if (status === 'Ditolak' && rejectionReason && targetItem) {
+          const teacherName = activeTab === 'Piket' 
+            ? (targetItem.guru_pelapor || targetItem.kehadiran_guru_piket || targetItem.nama_guru || '')
+            : (targetItem.nama_guru || '');
+          const detailInfo = activeTab === 'Presensi'
+            ? `Presensi ${targetItem.tipe_absen || 'Datang'}`
+            : activeTab === 'Jurnal'
+            ? `Jurnal ${targetItem.kelas || ''} ${targetItem.mapel ? `(${targetItem.mapel})` : (targetItem.keterangan || '')}`.trim()
+            : `Laporan Piket ${targetItem.tanggal || ''}`.trim();
+
+          if (teacherName) {
+            fetch('/api/notifications/rejection', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                teacherName,
+                category: activeTab,
+                detailInfo,
+                rejectionReason,
+                adminName: user?.nama_lengkap || user?.nama || user?.username || 'Admin',
+                adminId: user?.id,
+                sekolahId: targetItem.sekolah_id || user?.sekolah_id
+              })
+            }).catch(notifErr => console.error('Error dispatching rejection notification:', notifErr));
+          }
+        }
+
         // Optimistic update
         if (status === 'Ditolak') {
           // Immediately remove the rejected item from the active verification list
