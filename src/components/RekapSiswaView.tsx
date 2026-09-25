@@ -322,7 +322,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
         siswa?.forEach(s => {
           const nama = s.nama_siswa;
           const escaped = nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const match = detail.match(new RegExp(`${escaped}\\s*\\(([HSIAhsia])\\)`, 'i'));
+          const match = detail.match(new RegExp(`(?:\\b|^)${escaped}(?:\\b|$)\\s*\\(([HSIAhsia])\\)`, 'i'));
           if (match) {
             absentStatuses[nama] = match[1].toUpperCase() as 'S' | 'I' | 'A' | 'H';
             return;
