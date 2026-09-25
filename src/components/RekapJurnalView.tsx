@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr } from '@/lib/wita';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
-import Swal from 'sweetalert2';
+import { showToast } from '@/lib/toast';
 
 export default function RekapJurnalView({ 
   user,
@@ -189,12 +189,11 @@ export default function RekapJurnalView({
 
   const handleTabChange = (newMode: 'pribadi' | 'kelas') => {
     if (newMode === 'kelas' && !isAdmin && !isWaliKelas && waliClasses.length === 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Akses Terblokir',
-        text: 'Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
-        confirmButtonColor: '#4f46e5'
-      });
+      showToast(
+        'Akses Terblokir',
+        'Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
+        'warning'
+      );
       return;
     }
 

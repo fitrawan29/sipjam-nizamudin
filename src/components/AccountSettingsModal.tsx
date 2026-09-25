@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import Swal from 'sweetalert2';
+import { showToast } from '@/lib/toast';
 import { AVATAR_LIST, renderUserAvatar } from '@/lib/avatars';
 import {
   isPushNotificationSupported,
@@ -77,30 +77,19 @@ export default function AccountSettingsModal({
         const unsubscribed = await unsubscribeFromPushNotifications();
         if (unsubscribed) {
           setIsPushSubscribed(false);
-          Swal.fire({
-            icon: 'info',
-            title: 'Notifikasi Dinonaktifkan',
-            text: 'Perangkat ini tidak lagi menerima push notifikasi dari SIPJAM.',
-            timer: 2000,
-            showConfirmButton: false
-          });
+          showToast('Notifikasi Dinonaktifkan', 'Perangkat ini tidak lagi menerima push notifikasi dari SIPJAM.', 'info');
         }
       } else {
         const result = await subscribeToPushNotifications(user);
         if (result.success) {
           setIsPushSubscribed(true);
-          Swal.fire({
-            icon: 'success',
-            title: 'Push Notifikasi Aktif!',
-            text: 'Perangkat Anda berhasil didaftarkan untuk menerima push notifikasi sistem.',
-            confirmButtonColor: '#2563EB'
-          });
+          showToast('Push Notifikasi Aktif!', 'Perangkat Anda berhasil didaftarkan untuk menerima push notifikasi sistem.', 'success');
         } else {
-          Swal.fire('Gagal Mengaktifkan Notifikasi', result.error || 'Terjadi kesalahan.', 'error');
+          showToast('Gagal Mengaktifkan Notifikasi', result.error || 'Terjadi kesalahan.', 'error');
         }
       }
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Gagal mengubah status notifikasi', 'error');
+      showToast('Error', err.message || 'Gagal mengubah status notifikasi', 'error');
     } finally {
       setPushLoading(false);
     }
@@ -111,18 +100,12 @@ export default function AccountSettingsModal({
     try {
       const result = await sendTestNotification();
       if (result.success) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Notifikasi Uji Coba Terkirim',
-          text: 'Periksa baki notifikasi atau layar perangkat Anda.',
-          timer: 2500,
-          showConfirmButton: false
-        });
+        showToast('Notifikasi Uji Coba Terkirim', 'Periksa baki notifikasi atau layar perangkat Anda.', 'success');
       } else {
-        Swal.fire('Gagal Mengirim Uji Coba', result.error || 'Terjadi kesalahan.', 'error');
+        showToast('Gagal Mengirim Uji Coba', result.error || 'Terjadi kesalahan.', 'error');
       }
     } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
+      showToast('Error', err.message, 'error');
     } finally {
       setPushLoading(false);
     }
@@ -132,35 +115,35 @@ export default function AccountSettingsModal({
     e.preventDefault();
 
     if (!user?.id) {
-      Swal.fire('Error', 'Data pengguna tidak valid.', 'error');
+      showToast('Error', 'Data pengguna tidak valid.', 'error');
       return;
     }
 
     if (!username.trim()) {
-      Swal.fire('Validasi Gagal', 'Username tidak boleh kosong.', 'warning');
+      showToast('Validasi Gagal', 'Username tidak boleh kosong.', 'warning');
       return;
     }
 
     // Password validation if requested
     if (changePassword) {
       if (!currentPassword) {
-        Swal.fire('Validasi Gagal', 'Password saat ini harus diisi.', 'warning');
+        showToast('Validasi Gagal', 'Password saat ini harus diisi.', 'warning');
         return;
       }
 
       // Check current password matches existing password in user object if available
       if (user.password && currentPassword !== user.password) {
-        Swal.fire('Validasi Gagal', 'Password saat ini tidak cocok dengan password lama.', 'error');
+        showToast('Validasi Gagal', 'Password saat ini tidak cocok dengan password lama.', 'error');
         return;
       }
 
       if (newPassword.length < 6) {
-        Swal.fire('Validasi Gagal', 'Password baru minimal 6 karakter.', 'warning');
+        showToast('Validasi Gagal', 'Password baru minimal 6 karakter.', 'warning');
         return;
       }
 
       if (newPassword !== confirmPassword) {
-        Swal.fire('Validasi Gagal', 'Konfirmasi password baru tidak cocok.', 'warning');
+        showToast('Validasi Gagal', 'Konfirmasi password baru tidak cocok.', 'warning');
         return;
       }
     }
@@ -189,7 +172,7 @@ export default function AccountSettingsModal({
 
       const res = data as { success?: boolean; message?: string } | null;
       if (res && res.success === false) {
-        Swal.fire('Gagal Memperbarui', res.message || 'Terjadi kesalahan.', 'error');
+        showToast('Gagal Memperbarui', res.message || 'Terjadi kesalahan.', 'error');
         return;
       }
 
@@ -212,18 +195,12 @@ export default function AccountSettingsModal({
         onUserUpdated(updatedUser);
       }
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Profil Berhasil Disimpan',
-        text: 'Perubahan avatar, identitas, dan pengaturan akun telah disimpan.',
-        timer: 2000,
-        showConfirmButton: false
-      });
+      showToast('Profil Berhasil Disimpan', 'Perubahan avatar, identitas, dan pengaturan akun telah disimpan.', 'success');
 
       onClose();
     } catch (err: any) {
       console.error('Update profile error:', err);
-      Swal.fire('Error', err.message || 'Gagal menyimpan perubahan profil.', 'error');
+      showToast('Error', err.message || 'Gagal menyimpan perubahan profil.', 'error');
     } finally {
       setSaving(false);
     }

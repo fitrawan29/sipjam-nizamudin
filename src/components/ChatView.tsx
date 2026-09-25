@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { ChatMessage } from '@/types/database';
-import Swal from 'sweetalert2';
+import { showToast } from '@/lib/toast';
 
 interface ChatViewProps {
   user: any;
@@ -270,7 +270,7 @@ export default function ChatView({ user }: ChatViewProps) {
 
       if (error) {
         console.error('[ChatView] Send error:', error);
-        Swal.fire('Gagal Mengirim', error.message || 'Terjadi kesalahan saat mengirim pesan.', 'error');
+        showToast('Gagal Mengirim', error.message || 'Terjadi kesalahan saat mengirim pesan.', 'error');
         setInputText(messageText); // Restore on error
       } else if (data) {
         // Optimistically ensure message is in state if realtime has slight delay
@@ -286,7 +286,7 @@ export default function ChatView({ user }: ChatViewProps) {
       }
     } catch (err: any) {
       console.error('[ChatView] Send exception:', err);
-      Swal.fire('Error', err.message || 'Gagal mengirim pesan.', 'error');
+      showToast('Error', err.message || 'Gagal mengirim pesan.', 'error');
       setInputText(messageText);
     } finally {
       setSending(false);

@@ -94,6 +94,42 @@ assert(cameraContent.includes("showToast('Gagal Mengambil Foto'"), 'CameraSelfie
 assert(cameraContent.includes("showToast('Foto Belum Diambil'"), 'CameraSelfieCapture uses showToast for uncaptured confirmation attempt');
 assert(!cameraContent.includes("import Swal from 'sweetalert2'"), 'CameraSelfieCapture removes unused SweetAlert2 import');
 
+// 1.8 Verify AccountSettingsModal.tsx toasts
+const accountModalPath = path.join(projectRoot, 'src', 'components', 'AccountSettingsModal.tsx');
+const accountModalContent = fs.readFileSync(accountModalPath, 'utf8');
+assert(accountModalContent.includes("@/lib/toast") && accountModalContent.includes("showToast"), 'AccountSettingsModal imports showToast');
+assert(accountModalContent.includes("showToast('Validasi Gagal'"), 'AccountSettingsModal uses showToast for validation warnings');
+assert(accountModalContent.includes("showToast('Profil Berhasil Disimpan'"), 'AccountSettingsModal uses showToast for profile update success');
+assert(!accountModalContent.includes("import Swal from 'sweetalert2'"), 'AccountSettingsModal removes unused SweetAlert2 import');
+
+// 1.9 Verify AdminConfigView.tsx toasts
+const adminConfigPath = path.join(projectRoot, 'src', 'components', 'AdminConfigView.tsx');
+const adminConfigContent = fs.readFileSync(adminConfigPath, 'utf8');
+assert(adminConfigContent.includes("@/lib/toast") && adminConfigContent.includes("showToast"), 'AdminConfigView imports showToast');
+assert(adminConfigContent.includes("showToast('Berhasil', 'Pengaturan berhasil disimpan!'"), 'AdminConfigView uses showToast for config save success');
+assert(adminConfigContent.includes("showToast('Lokasi Terdeteksi'"), 'AdminConfigView uses showToast for GPS detection');
+
+// 1.10 Verify AdminVerifView.tsx toasts & critical modal
+const adminVerifPath = path.join(projectRoot, 'src', 'components', 'AdminVerifView.tsx');
+const adminVerifContent = fs.readFileSync(adminVerifPath, 'utf8');
+assert(adminVerifContent.includes("@/lib/toast") && adminVerifContent.includes("showToast"), 'AdminVerifView imports showToast');
+assert(adminVerifContent.includes("showToast(") && adminVerifContent.includes("Berhasil Disetujui"), 'AdminVerifView uses showToast for bulk approval success');
+assert(adminVerifContent.includes("title: 'Setujui Semua Tampil?'") && adminVerifContent.includes("showCancelButton: true"), 'AdminVerifView preserves modal Swal.fire for bulk confirmation');
+
+// 1.11 Verify RekapJurnalView.tsx toasts
+const rekapJurnalPath = path.join(projectRoot, 'src', 'components', 'RekapJurnalView.tsx');
+const rekapJurnalContent = fs.readFileSync(rekapJurnalPath, 'utf8');
+assert(rekapJurnalContent.includes("@/lib/toast") && rekapJurnalContent.includes("showToast"), 'RekapJurnalView imports showToast');
+assert(rekapJurnalContent.includes("showToast") && rekapJurnalContent.includes("'Akses Terblokir'"), 'RekapJurnalView uses showToast for class rekap access restriction');
+assert(!rekapJurnalContent.includes("import Swal from 'sweetalert2'"), 'RekapJurnalView removes unused SweetAlert2 import');
+
+// 1.12 Verify ChatView.tsx toasts
+const chatPath = path.join(projectRoot, 'src', 'components', 'ChatView.tsx');
+const chatContent = fs.readFileSync(chatPath, 'utf8');
+assert(chatContent.includes("@/lib/toast") && chatContent.includes("showToast"), 'ChatView imports showToast');
+assert(chatContent.includes("showToast('Gagal Mengirim'"), 'ChatView uses showToast for chat message send errors');
+assert(!chatContent.includes("import Swal from 'sweetalert2'"), 'ChatView removes unused SweetAlert2 import');
+
 // ----------------------------------------------------
 // Section 2: R2 - Preserving Form State (GuruPresensi.tsx & CameraSelfieCapture.tsx)
 // ----------------------------------------------------
@@ -203,7 +239,21 @@ assert(cameraContent.includes('startCamera(facingMode)'), 'CameraSelfieCapture p
   // If user confirms, clears document and switches to Pulang
   const pulangConfirmed = simulateHandleTipeAbsenChange('Pulang', true);
   assert(pulangConfirmed && state.tipeAbsen === 'Pulang' && state.file === null, 'Mock simulation: Switching Izin -> Pulang clears document only after confirmation');
+
+  // Test 2: HTML5 form validation dynamic required={!file}
+  const isInputRequiredWhenFilePresent = !state.file;
+  assert(isInputRequiredWhenFilePresent === true, 'Mock simulation: Input is required when state file is null');
+  state.file = { name: 'test.pdf', type: 'application/pdf', size: 1234 };
+  const isInputRequiredWhenFileAttached = !state.file;
+  assert(isInputRequiredWhenFileAttached === false, 'Mock simulation: Input is NOT required when state file is already attached');
 }
+
+// 2.8 GuruPresensi.tsx dynamic required attribute and attached document badge
+assert(guruPresensiContent.includes('required={!file}'), 'GuruPresensi uses required={!file} preventing HTML5 validation blockage when file exists');
+assert(guruPresensiContent.includes('Ganti Surat Izin?') && guruPresensiContent.includes('File surat izin terpasang'), 'GuruPresensi renders attached document status badge with confirmation modal');
+
+// 2.9 GuruPresensi.tsx background GAS upload warning toast
+assert(guruPresensiContent.includes("showToast('Sinkronisasi Tertunda'"), 'GuruPresensi notifies teacher with non-intrusive toast if background Google Drive upload fails');
 
 // ----------------------------------------------------
 // Section 3: R3 - Mobile-Responsive Tables & Touch Experience

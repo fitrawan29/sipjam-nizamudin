@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { showToast } from '@/lib/toast';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import AccountSettingsModal from './AccountSettingsModal';
 
@@ -136,7 +137,7 @@ export default function AdminConfigView({ user }: { user: any }) {
 
   const handleDetectGps = () => {
     if (!navigator.geolocation) {
-      Swal.fire('Error', 'Browser atau perangkat Anda tidak mendukung geolokasi GPS.', 'error');
+      showToast('Error', 'Browser atau perangkat Anda tidak mendukung geolokasi GPS.', 'error');
       return;
     }
 
@@ -149,6 +150,7 @@ export default function AdminConfigView({ user }: { user: any }) {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        Swal.close();
         const lat = pos.coords.latitude.toFixed(6);
         const lng = pos.coords.longitude.toFixed(6);
         setConfig(prev => ({
@@ -156,20 +158,15 @@ export default function AdminConfigView({ user }: { user: any }) {
           gps_lat: lat,
           gps_lng: lng
         }));
-        Swal.fire({
-          icon: 'success',
-          title: 'Lokasi Terdeteksi',
-          text: `Koordinat GPS berhasil diperbarui:\nLatitude: ${lat}\nLongitude: ${lng}`,
-          confirmButtonColor: '#059669',
-          timer: 3000
-        });
+        showToast('Lokasi Terdeteksi', `Latitude: ${lat}, Longitude: ${lng}`, 'success');
       },
       (err) => {
+        Swal.close();
         let msg = err.message || 'Gagal mendapatkan koordinat GPS.';
         if (err.code === 1) msg = 'Izin akses lokasi ditolak oleh pengguna atau browser.';
         else if (err.code === 2) msg = 'Posisi perangkat tidak dapat ditentukan (sinyal GPS lemah).';
         else if (err.code === 3) msg = 'Waktu permintaan GPS habis (timeout).';
-        Swal.fire('Gagal Deteksi Lokasi', msg, 'error');
+        showToast('Gagal Deteksi Lokasi', msg, 'error');
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
@@ -234,12 +231,12 @@ export default function AdminConfigView({ user }: { user: any }) {
       }
 
       if (error) {
-        Swal.fire('Error', 'Gagal menyimpan pengaturan: ' + error.message, 'error');
+        showToast('Error', 'Gagal menyimpan pengaturan: ' + error.message, 'error');
       } else {
-        Swal.fire('Berhasil', 'Pengaturan berhasil disimpan!', 'success');
+        showToast('Berhasil', 'Pengaturan berhasil disimpan!', 'success');
       }
     } catch (err) {
-      Swal.fire('Error', 'Gagal menyimpan: ' + (err as any).message, 'error');
+      showToast('Error', 'Gagal menyimpan: ' + (err as any).message, 'error');
     } finally {
       setLoading(false);
     }

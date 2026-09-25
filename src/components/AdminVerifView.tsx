@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { showToast } from '@/lib/toast';
 import { 
   getWitaStartOfDay, 
   getWitaEndOfDay, 
@@ -243,18 +244,14 @@ export default function AdminVerifView({ user }: { user: any }) {
           }
         }
 
-        Swal.fire({
-          icon: status === 'Disetujui' ? 'success' : 'info',
-          title: `${label} ${status}`,
-          text: status === 'Ditolak' ? `Alasan: ${rejectionReason}` : undefined,
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 2000
-        });
+        showToast(
+          `${label} ${status}`,
+          status === 'Ditolak' ? `Alasan: ${rejectionReason}` : undefined,
+          status === 'Disetujui' ? 'success' : 'info'
+        );
       }
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Terjadi kesalahan jaringan', 'error');
+      showToast('Error', err.message || 'Terjadi kesalahan jaringan', 'error');
     } finally {
       setProcessingId(null);
     }
@@ -266,7 +263,7 @@ export default function AdminVerifView({ user }: { user: any }) {
     const pendingItems = displayList.filter(item => !item.isUnsubmitted && item.status_verifikasi !== 'Disetujui' && item.status_verifikasi !== 'Ditolak');
 
     if (pendingItems.length === 0) {
-      return Swal.fire('Info', `Semua ${label} yang tampil sudah berstatus Disetujui.`, 'info');
+      return showToast('Info', `Semua ${label} yang tampil sudah berstatus Disetujui.`, 'info');
     }
 
     const result = await Swal.fire({
@@ -296,22 +293,17 @@ export default function AdminVerifView({ user }: { user: any }) {
 
         if (error) {
           hasError = true;
-          Swal.fire('Gagal Sebagian', error.message, 'error');
+          showToast('Gagal Sebagian', error.message, 'error');
           break;
         }
       }
 
       if (!hasError) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil Disetujui',
-          text: `${pendingIds.length} data ${label} berhasil disetujui.`,
-          confirmButtonColor: '#0B4619'
-        });
+        showToast('Berhasil Disetujui', `${pendingIds.length} data ${label} berhasil disetujui.`, 'success');
         loadData();
       }
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Gagal memproses persetujuan massal', 'error');
+      showToast('Error', err.message || 'Gagal memproses persetujuan massal', 'error');
     } finally {
       setLoading(false);
     }

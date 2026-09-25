@@ -411,6 +411,7 @@ export default function GuruPresensi({ user }: { user: any }) {
             .from('presensi_guru')
             .update({ link_bukti: 'gagal_upload' })
             .eq('id', presensiId);
+          showToast('Sinkronisasi Tertunda', 'Foto tersimpan di database lokal namun gagal diunggah ke Google Drive.', 'warning');
         }
       })();
     }
@@ -572,7 +573,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                       </div>
 
                       {/* File upload for Izin / Sakit */}
-                      <div id="row-file-izin" className="fade-in pt-1">
+                      <div id="row-file-izin" className="fade-in pt-1 space-y-2">
                           <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1">
                             <i className="fa-solid fa-asterisk"></i> Wajib Upload Surat Keterangan / Sakit
                           </label>
@@ -583,9 +584,44 @@ export default function GuruPresensi({ user }: { user: any }) {
                               setFile(e.target.files ? e.target.files[0] : null);
                               setPhotoPreviewUrl(null);
                             }} 
-                            required 
+                            required={!file} 
                             className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
                           />
+                          {file && (
+                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-between transition-all">
+                              <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                                <i className="fa-solid fa-file-lines text-amber-500 text-base"></i>
+                                <div>
+                                  <div>File surat izin terpasang</div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                    {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const result = await Swal.fire({
+                                    title: 'Ganti Surat Izin?',
+                                    text: 'File surat izin yang diunggah akan dihapus.',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#EF4444',
+                                    cancelButtonColor: '#6B7280',
+                                    confirmButtonText: 'Ya, Ganti',
+                                    cancelButtonText: 'Batal',
+                                  });
+                                  if (result.isConfirmed) {
+                                    setFile(null);
+                                    setPhotoPreviewUrl(null);
+                                  }
+                                }}
+                                className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                              >
+                                Ganti File
+                              </button>
+                            </div>
+                          )}
                       </div>
                   </div>
                 )}
