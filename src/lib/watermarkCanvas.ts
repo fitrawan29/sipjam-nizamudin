@@ -73,7 +73,7 @@ export async function reverseGeocodeNominatim(lat: number, lon: number): Promise
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&addressdetails=1`;
+    const url = `/api/geocode?lat=${lat}&lon=${lon}`;
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
