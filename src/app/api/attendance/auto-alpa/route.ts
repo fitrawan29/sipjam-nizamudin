@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { evaluateAndApplyAutoAlpa } from '@/lib/attendanceAlpa';
 
 export async function GET(req: NextRequest) {
   try {
+  const authHeader = req.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== 'Bearer ' + process.env.CRON_SECRET) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date') || undefined;
     const sekolahParam = searchParams.get('sekolah_id') || undefined;
@@ -25,6 +30,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+  const authHeader = req.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== 'Bearer ' + process.env.CRON_SECRET) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
     const body = await req.json().catch(() => ({}));
     const { date, sekolah_id, force } = body;
 
@@ -42,3 +52,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
