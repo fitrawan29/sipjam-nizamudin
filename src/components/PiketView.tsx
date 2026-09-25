@@ -236,12 +236,7 @@ export default function PiketView({ user }: { user: any }) {
         .eq('id', id);
 
       if (error) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal Memverifikasi',
-          text: error.message,
-          confirmButtonColor: '#0B4619'
-        });
+        showToast('Gagal Memverifikasi', error.message, 'error');
       } else {
         // Dispatch rejection notification (Web Push & in-app chat)
         if (status === 'Ditolak' && catatan_admin) {
@@ -264,20 +259,13 @@ export default function PiketView({ user }: { user: any }) {
           }
         }
 
-        Swal.fire({
-          icon: status === 'Disetujui' ? 'success' : 'info',
-          title: `Laporan Piket ${status}`,
-          toast: true,
-          position: 'top-end',
-          showConfirmButton: false,
-          timer: 1800
-        });
+        showToast(`Laporan Piket ${status}`, undefined, status === 'Disetujui' ? 'success' : 'info');
         // Optimistic state updates
         setLaporanPiket(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status, catatan_admin } : item));
         setRekapList(prev => prev.map(item => item.id === id ? { ...item, status_verifikasi: status, catatan_admin } : item));
       }
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Terjadi kesalahan jaringan', 'error');
+      showToast('Error', err.message || 'Terjadi kesalahan jaringan', 'error');
     } finally {
       setProcessingId(null);
     }
@@ -322,7 +310,7 @@ export default function PiketView({ user }: { user: any }) {
     e.preventDefault();
 
     if (!file) {
-      return Swal.fire('Foto Wajib Diambil', 'Silakan ambil foto dokumentasi piket menggunakan kamera langsung.', 'warning');
+      return showToast('Foto Wajib Diambil', 'Silakan ambil foto dokumentasi piket menggunakan kamera langsung.', 'warning');
     }
 
     setLoading(true);
@@ -332,7 +320,7 @@ export default function PiketView({ user }: { user: any }) {
       fileUrl = await uploadToDrive(file, user.nama, 'Laporan_Piket', 'Piket');
     } catch (err: any) {
       setLoading(false);
-      return Swal.fire('Gagal Upload', err.message, 'error');
+      return showToast('Gagal Upload', err.message, 'error');
     }
 
     const newLaporan = {
@@ -352,7 +340,7 @@ export default function PiketView({ user }: { user: any }) {
     const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
 
     if (error) {
-      Swal.fire('Error', 'Gagal menyimpan laporan piket: ' + error.message, 'error');
+      showToast('Error', 'Gagal menyimpan laporan piket: ' + error.message, 'error');
     } else {
       // If re-submitting after rejection: delete the old rejected laporan
       if (dailyState?.laporanPiketDitolak?.id) {
@@ -538,16 +526,10 @@ export default function PiketView({ user }: { user: any }) {
       await syncJadwalPiketForDay(selectedHariPiket);
       await fetchDataPiket();
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Guru Ditugaskan',
-        text: `${teacher.nama_guru} berhasil ditugaskan untuk piket hari ${selectedHariPiket}.`,
-        timer: 1500,
-        showConfirmButton: false
-      });
+      showToast('Guru Ditugaskan', `${teacher.nama_guru} berhasil ditugaskan untuk piket hari ${selectedHariPiket}.`, 'success');
       setSelectedTeacherId('');
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Gagal menambahkan guru piket', 'error');
+      showToast('Error', err.message || 'Gagal menambahkan guru piket', 'error');
     } finally {
       setAssignLoading(false);
     }
@@ -605,19 +587,13 @@ export default function PiketView({ user }: { user: any }) {
         setPenugasanList(prev => [...prev, data as PenugasanPiket]);
       }
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Siswa Ditugaskan',
-        text: `${nama} (${kelas}) berhasil ditugaskan untuk piket hari ${selectedHariPiket}.`,
-        timer: 1500,
-        showConfirmButton: false
-      });
+      showToast('Siswa Ditugaskan', `${nama} (${kelas}) berhasil ditugaskan untuk piket hari ${selectedHariPiket}.`, 'success');
       setSelectedSiswaNisn('');
       setManualSiswaNama('');
       setManualSiswaNisn('');
       setManualSiswaKelas('');
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Gagal menambahkan siswa piket', 'error');
+      showToast('Error', err.message || 'Gagal menambahkan siswa piket', 'error');
     } finally {
       setAssignLoading(false);
     }
@@ -646,14 +622,9 @@ export default function PiketView({ user }: { user: any }) {
           await fetchDataPiket();
         }
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Penugasan Dihapus',
-          timer: 1200,
-          showConfirmButton: false
-        });
+        showToast('Penugasan Dihapus', undefined, 'success');
       } catch (err: any) {
-        Swal.fire('Error', err.message || 'Gagal menghapus penugasan', 'error');
+        showToast('Error', err.message || 'Gagal menghapus penugasan', 'error');
       }
     }
   };

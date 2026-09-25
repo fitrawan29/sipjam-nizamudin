@@ -1498,11 +1498,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
       {/* VIEW TABS NAVIGATION */}
       <div className="flex items-center justify-between gap-3 flex-wrap no-print">
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-x-auto custom-scroll max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab('tp-matrix')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'tp-matrix'
                 ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
@@ -1514,7 +1514,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
           <button
             type="button"
             onClick={() => setActiveTab('rekap-semester')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'rekap-semester'
                 ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
@@ -1526,7 +1526,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
           <button
             type="button"
             onClick={() => setActiveTab('statistik')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
               activeTab === 'statistik'
                 ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'

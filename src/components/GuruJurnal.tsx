@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import Swal from 'sweetalert2';
 import { showToast, Toast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
@@ -287,12 +286,7 @@ export default function GuruJurnal({ user }: { user: any }) {
     e.preventDefault();
 
     if (!file) {
-      return Swal.fire({
-        icon: 'warning',
-        title: 'Foto Dokumentasi Wajib',
-        text: 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera langsung perangkat.',
-        confirmButtonColor: '#2563EB',
-      });
+      return showToast('Foto Dokumentasi Wajib', 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera langsung perangkat.', 'warning');
     }
 
     setLoading(true);
@@ -302,7 +296,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       fileUrl = await uploadToDrive(file, user.nama, tipeJurnal, 'Jurnal');
     } catch (err: any) {
       setLoading(false);
-      return Swal.fire('Gagal Upload', err.message, 'error');
+      return showToast('Gagal Upload', err.message, 'error');
     }
 
     const computedKehadiran = tipeJurnal === 'Jurnal KBM'
@@ -362,7 +356,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       const { error } = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
 
       if (error) {
-        Swal.fire('Error', 'Gagal menyimpan jurnal', 'error');
+        showToast('Error', 'Gagal menyimpan jurnal', 'error');
       } else {
         // Sync student attendance to canonical public.absensi
         if (tipeJurnal === 'Jurnal KBM' && students.length > 0) {
@@ -434,7 +428,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       setLoading(false);
     } catch (err: any) {
       setLoading(false);
-      return Swal.fire('Error', 'Gagal menyimpan jurnal: ' + (err as any).message, 'error');
+      return showToast('Error', 'Gagal menyimpan jurnal: ' + (err as any).message, 'error');
     }
   };
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import Swal from 'sweetalert2';
+import { showToast } from '@/lib/toast';
 import { drawWatermarkedCanvas, dataUrlToFile, getDefaultWatermarkOptions, reverseGeocodeNominatim, WatermarkCoordinates } from '@/lib/watermarkCanvas';
 
 export interface CameraSelfieCaptureProps {
@@ -38,6 +38,15 @@ export default function CameraSelfieCapture({
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(existingPhotoUrl || null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
+
+  // Synchronize internal capture state when existingPhotoUrl prop changes (e.g. form reset or Ganti Foto)
+  useEffect(() => {
+    setCapturedImage(existingPhotoUrl || null);
+    if (!existingPhotoUrl) {
+      setCapturedFile(null);
+    }
+  }, [existingPhotoUrl]);
+
   const [coordinates, setCoordinates] = useState<WatermarkCoordinates | null>(initialCoordinates);
   const [locationName, setLocationName] = useState<string | null>(initialLocationName);
   const [gpsStatus, setGpsStatus] = useState<string>(initialLocationName || 'Mendeteksi GPS...');
@@ -214,12 +223,7 @@ export default function CameraSelfieCapture({
     } catch (err: unknown) {
       console.error('[CameraCapture] Error capturing frame:', err);
       const e = err as { message?: string };
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal Mengambil Foto',
-        text: e?.message || 'Silakan coba lagi.',
-        confirmButtonColor: '#10B981',
-      });
+      showToast('Gagal Mengambil Foto', e?.message || 'Silakan coba lagi.', 'error');
     }
   };
 
@@ -244,12 +248,7 @@ export default function CameraSelfieCapture({
       stopCamera();
       onPhotoConfirmed(capturedFile, capturedImage);
     } else {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Foto Belum Diambil',
-        text: 'Harap ambil foto terlebih dahulu sebelum konfirmasi.',
-        confirmButtonColor: '#10B981',
-      });
+      showToast('Foto Belum Diambil', 'Harap ambil foto terlebih dahulu sebelum konfirmasi.', 'warning');
     }
   };
 

@@ -283,20 +283,18 @@ export default function AdminDataView({ user }: { user: any }) {
         if (error) throw error;
       }
 
-      Swal.fire({
-        icon: 'success',
-        title: 'Unggah Berhasil',
-        text: `Berhasil mengimpor dan memperbarui ${rows.length} data ke tabel ${tabObj.label}!`,
-        confirmButtonColor: '#0B4619'
-      });
+      showToast(
+        'Unggah Berhasil',
+        `Berhasil mengimpor dan memperbarui ${rows.length} data ke tabel ${tabObj.label}!`,
+        'success'
+      );
       loadData();
     } catch (err: any) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Gagal Impor CSV',
-        text: err.message || 'Terjadi kesalahan saat memproses file CSV.',
-        confirmButtonColor: '#dc2626'
-      });
+      showToast(
+        'Gagal Impor CSV',
+        err.message || 'Terjadi kesalahan saat memproses file CSV.',
+        'error'
+      );
     } finally {
       setLoading(false);
     }
@@ -371,7 +369,7 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await supabase.from('data_siswa').insert([formValues]);
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Menambah Data', error.message, 'error');
+          showToast('Gagal Menambah Data', error.message, 'error');
         } else {
           showToast('Berhasil', 'Data siswa berhasil disimpan!', 'success');
           loadData();
@@ -438,7 +436,7 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await supabase.from('data_guru').insert([formValues]);
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Menambah Data', error.message, 'error');
+          showToast('Gagal Menambah Data', error.message, 'error');
         } else {
           showToast('Berhasil', 'Data guru berhasil disimpan!', 'success');
           loadData();
@@ -491,7 +489,7 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await supabase.from('data_mapel').insert([formValues]);
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Menambah Data', error.message, 'error');
+          showToast('Gagal Menambah Data', error.message, 'error');
         } else {
           showToast('Berhasil', 'Mata Pelajaran berhasil disimpan!', 'success');
           loadData();
@@ -549,7 +547,7 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await supabase.from('kalender_pendidikan').insert([formValues]);
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Menambah Agenda', error.message, 'error');
+          showToast('Gagal Menambah Agenda', error.message, 'error');
         } else {
           showToast('Berhasil', 'Agenda kalender berhasil disimpan!', 'success');
           loadData();
@@ -616,7 +614,7 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await supabase.from('jadwal_pelajaran').insert([formValues]);
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Menambah Jadwal', error.message, 'error');
+          showToast('Gagal Menambah Jadwal', error.message, 'error');
         } else {
           showToast('Berhasil', 'Jadwal pelajaran berhasil disimpan!', 'success');
           loadData();
@@ -638,7 +636,7 @@ export default function AdminDataView({ user }: { user: any }) {
       setLoading(false);
 
       if (guruList.length === 0) {
-        Swal.fire('Peringatan', 'Belum ada data guru. Silakan tambahkan data guru terlebih dahulu.', 'warning');
+        showToast('Peringatan', 'Belum ada data guru. Silakan tambahkan data guru terlebih dahulu.', 'warning');
         return;
       }
 
@@ -704,15 +702,9 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await supabase.from('wali_kelas').upsert([formValues], { onConflict: 'sekolah_id, kelas' });
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Menetapkan Wali Kelas', error.message, 'error');
+          showToast('Gagal Menetapkan Wali Kelas', error.message, 'error');
         } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: `Guru ${formValues.nama_guru} berhasil ditetapkan sebagai Wali Kelas ${formValues.kelas}!`,
-            timer: 1600,
-            showConfirmButton: false
-          });
+          showToast('Berhasil', `Guru ${formValues.nama_guru} berhasil ditetapkan sebagai Wali Kelas ${formValues.kelas}!`, 'success');
           loadData();
         }
       }
@@ -799,21 +791,15 @@ export default function AdminDataView({ user }: { user: any }) {
         setLoading(false);
 
         if (error) {
-          Swal.fire('Gagal Mengubah Data', error.message, 'error');
+          showToast('Gagal Mengubah Data', error.message, 'error');
         } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: `Wali Kelas ${formValues.kelas} berhasil diperbarui!`,
-            timer: 1500,
-            showConfirmButton: false
-          });
+          showToast('Berhasil', `Wali Kelas ${formValues.kelas} berhasil diperbarui!`, 'success');
           loadData();
         }
       }
     } catch (err: any) {
       setLoading(false);
-      Swal.fire('Error', err.message || 'Gagal memuat data guru', 'error');
+      showToast('Error', err.message || 'Gagal memuat data guru', 'error');
     }
   };
 
@@ -913,15 +899,9 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await q;
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Mengubah Data', error.message, 'error');
+          showToast('Gagal Mengubah Data', error.message, 'error');
         } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: 'Data siswa berhasil diperbarui!',
-            timer: 1500,
-            showConfirmButton: false
-          });
+          showToast('Berhasil', 'Data siswa berhasil diperbarui!', 'success');
           loadData();
         }
       }
@@ -997,15 +977,9 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await q;
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Mengubah Data', error.message, 'error');
+          showToast('Gagal Mengubah Data', error.message, 'error');
         } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: 'Data guru berhasil diperbarui!',
-            timer: 1500,
-            showConfirmButton: false
-          });
+          showToast('Berhasil', 'Data guru berhasil diperbarui!', 'success');
           loadData();
         }
       }
@@ -1059,15 +1033,9 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await q;
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Mengubah Data', error.message, 'error');
+          showToast('Gagal Mengubah Data', error.message, 'error');
         } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: 'Mata pelajaran berhasil diperbarui!',
-            timer: 1500,
-            showConfirmButton: false
-          });
+          showToast('Berhasil', 'Mata pelajaran berhasil diperbarui!', 'success');
           loadData();
         }
       }
@@ -1132,15 +1100,9 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await q;
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Mengubah Agenda', error.message, 'error');
+          showToast('Gagal Mengubah Agenda', error.message, 'error');
         } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: 'Agenda kalender berhasil diperbarui!',
-            timer: 1500,
-            showConfirmButton: false
-          });
+          showToast('Berhasil', 'Agenda kalender berhasil diperbarui!', 'success');
           loadData();
         }
       }
@@ -1222,15 +1184,9 @@ export default function AdminDataView({ user }: { user: any }) {
         const { error } = await q;
         setLoading(false);
         if (error) {
-          Swal.fire('Gagal Mengubah Jadwal', error.message, 'error');
+          showToast('Gagal Mengubah Jadwal', error.message, 'error');
         } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Berhasil',
-            text: 'Jadwal pelajaran berhasil diperbarui!',
-            timer: 1500,
-            showConfirmButton: false
-          });
+          showToast('Berhasil', 'Jadwal pelajaran berhasil diperbarui!', 'success');
           loadData();
         }
       }
@@ -1269,15 +1225,9 @@ export default function AdminDataView({ user }: { user: any }) {
       setLoading(false);
 
       if (error) {
-        Swal.fire('Gagal Menghapus', error.message, 'error');
+        showToast('Gagal Menghapus', error.message, 'error');
       } else {
-        Swal.fire({
-          icon: 'success',
-          title: 'Terhapus',
-          text: 'Data berhasil dihapus dari database.',
-          timer: 1500,
-          showConfirmButton: false
-        });
+        showToast('Terhapus', 'Data berhasil dihapus dari database.', 'success');
         loadData();
       }
     }

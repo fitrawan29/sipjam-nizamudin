@@ -110,7 +110,7 @@ export default function GuruPresensi({ user }: { user: any }) {
   }, [user.nama, user.username]);
 
   const togglePresensiFields = async (val: string) => {
-    if (file && val !== 'Izin' && jenisPresensi === 'Izin' && !file.type.startsWith('image/')) {
+    if (file && val !== 'Izin' && jenisPresensi === 'Izin' && (!photoPreviewUrl || !file.type.startsWith('image/'))) {
       const result = await Swal.fire({
         title: 'Ganti Jenis Presensi?',
         text: 'File bukti izin tidak dapat digunakan sebagai foto selfie. Hapus file?',
