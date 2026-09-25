@@ -24,5 +24,5 @@
   - Rewrote tests/ui_ux_improvements_audit.test.ts with robust static checks and behavioral simulation
 - [x] Re-run all tests & verification (npm test and npm run test:e2e pass 100%)
 - [x] Build verification (npm run build succeeded with 0 errors)
-- [ ] Commit & push (as required by GEMINI.md)
+- [x] Commit & push (as required by GEMINI.md)
 - [x] Write handoff.md and final report
