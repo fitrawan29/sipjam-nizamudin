@@ -273,6 +273,8 @@ export default function AdminDataView({ user }: { user: any }) {
         const upsertOptions: any = { ignoreDuplicates: false };
         if (tabObj.table === 'wali_kelas') {
           upsertOptions.onConflict = 'sekolah_id, kelas';
+        } else {
+          upsertOptions.onConflict = 'id';
         }
         const { error } = await supabase
           .from(tabObj.table)
@@ -1906,3 +1908,5 @@ export default function AdminDataView({ user }: { user: any }) {
     </section>
   );
 }
+
+

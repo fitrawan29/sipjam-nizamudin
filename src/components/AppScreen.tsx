@@ -262,7 +262,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
 
       if (restrictedViews.includes(targetId)) {
         Swal.fire({ title: 'Memeriksa Akses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const state = await getGuruDailyState(user.nama, user.username);
+        const state = await getGuruDailyState(user.nama, user.username, user.id);
         Swal.close();
 
         if (state.isLibur) {
@@ -672,3 +672,4 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     </div>
   );
 }
+

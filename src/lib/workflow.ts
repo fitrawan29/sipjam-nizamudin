@@ -45,7 +45,7 @@ export type GuruDailyState = {
  * Contoh: jadwal_pelajaran punya "Ade", tapi user login punya "Ade Fitrawan Ibrahim"
  * Kita cari semua jadwal hari ini, lalu filter yang nama guru-nya COCOK (partial match).
  */
-export async function findJadwalForGuru(hari: string, namaGuru: string, username?: string): Promise<any[]> {
+export async function findJadwalForGuru(hari: string, namaGuru: string, username?: string, userId?: string): Promise<any[]> {
   // Ambil semua jadwal hari ini
   const { data: allJadwal } = await supabase
     .from('jadwal_pelajaran')
@@ -54,6 +54,12 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
     .order('kelas', { ascending: true });
   
   if (!allJadwal || allJadwal.length === 0) return [];
+
+  if (userId) {
+    const exactMatches = allJadwal.filter((j: any) => j.user_id === userId);
+    // If we find matches by UUID, trust them implicitly and skip fuzzy string matching
+    if (exactMatches.length > 0) return exactMatches;
+  }
 
   const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
 
@@ -121,7 +127,7 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   return false;
 }
 
-export async function getGuruDailyState(namaGuru: string, username?: string): Promise<GuruDailyState> {
+export async function getGuruDailyState(namaGuru: string, username?: string, userId?: string): Promise<GuruDailyState> {
   const now = new Date();
   const todayStr = getWitaDateStr(now);
   
@@ -266,7 +272,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
     const selectedHari = hariIni; // Reuse hariIni already computed above
 
     // Selalu muat jadwal KBM hari ini untuk guru (tidak ditekan oleh isDinasLuar ataupun presensi datang)
-    state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username);
+    state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username, userId);
 
     // 3. Cek Piket Hari Ini (case-insensitive matching)
     const { data: jpiket } = await supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
@@ -465,3 +471,5 @@ export async function getGuruDailyState(namaGuru: string, username?: string): Pr
 
   return state;
 }
+
+

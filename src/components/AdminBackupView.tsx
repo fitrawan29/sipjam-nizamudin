@@ -50,15 +50,26 @@ export default function AdminBackupView({ user }: { user: any }) {
 
     try {
       // 1. Fetch data scoped by user.sekolah_id
-      let presensiQuery = supabase.from('presensi_guru').select('*');
-      let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*');
-      if (user?.sekolah_id) {
-        presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
-        jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
-      }
-
-      const { data: presensi } = await presensiQuery;
-      const { data: jurnal } = await jurnalQuery;
+      // Fetch helpers
+      const fetchAllData = async (table: string) => {
+        let allData: any[] = [];
+        let from = 0;
+        const limit = 1000;
+        while (true) {
+          let q = supabase.from(table).select("*").range(from, from + limit - 1);
+          if (user?.sekolah_id) q = q.eq("sekolah_id", user.sekolah_id);
+          const { data } = await q;
+          if (!data || data.length === 0) break;
+          allData = allData.concat(data);
+          if (data.length < limit) break;
+          from += limit;
+        }
+        return allData;
+      };
+      
+      const presensi = await fetchAllData("presensi_guru");
+      const jurnal = await fetchAllData("jurnal_pembelajaran");
+      
 
       if ((!presensi || presensi.length === 0) && (!jurnal || jurnal.length === 0)) {
         Swal.fire('Info', 'Tidak ada data presensi atau jurnal untuk dibackup.', 'info');
@@ -86,19 +97,18 @@ export default function AdminBackupView({ user }: { user: any }) {
         if (!resJJson.success) throw new Error("Gagal mengirim jurnal ke spreadsheet");
       }
 
-      // 4. Hapus data dari Supabase (scoped strictly to active sekolah_id to prevent multi-tenant data wipe)
-      let delPresensi = supabase.from('presensi_guru').delete();
-      let delJurnal = supabase.from('jurnal_pembelajaran').delete();
-      if (user?.sekolah_id) {
-        delPresensi = delPresensi.eq('sekolah_id', user.sekolah_id);
-        delJurnal = delJurnal.eq('sekolah_id', user.sekolah_id);
-      } else {
-        delPresensi = delPresensi.neq('id', 'dummy');
-        delJurnal = delJurnal.neq('id', 'dummy');
-      }
-
-      await delPresensi;
-      await delJurnal;
+      // 4. Hapus data dari Supabase by ID in chunks to bypass PostgREST 1000-row limits
+      const deleteInChunks = async (table: string, items: any[]) => {
+        const ids = items.map(item => item.id);
+        const chunkSize = 200;
+        for (let i = 0; i < ids.length; i += chunkSize) {
+          const chunk = ids.slice(i, i + chunkSize);
+          await supabase.from(table).delete().in("id", chunk);
+        }
+      };
+      
+      await deleteInChunks("presensi_guru", presensi);
+      await deleteInChunks("jurnal_pembelajaran", jurnal);
 
       // 5. Catat riwayat backup sesuai skema riwayat_backup
       const newBackup = {
@@ -261,3 +271,5 @@ export default function AdminBackupView({ user }: { user: any }) {
     </section>
   );
 }
+
+

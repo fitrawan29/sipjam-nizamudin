@@ -80,31 +80,31 @@ BEGIN
         BEGIN
             UPDATE public.data_guru 
             SET nama_guru = v_new_nama, username = v_new_username 
-            WHERE nama_guru = v_old_nama OR username = v_old_username;
+            WHERE (nama_guru = v_old_nama OR username = v_old_username) AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN
             UPDATE public.presensi_guru 
             SET nama_guru = v_new_nama 
-            WHERE nama_guru = v_old_nama;
+            WHERE nama_guru = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN
             UPDATE public.jurnal_pembelajaran 
             SET nama_guru = v_new_nama 
-            WHERE nama_guru = v_old_nama;
+            WHERE nama_guru = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN
             UPDATE public.laporan_piket 
             SET nama_guru = v_new_nama 
-            WHERE nama_guru = v_old_nama;
+            WHERE nama_guru = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN
             UPDATE public.jadwal_pelajaran 
             SET nama_guru = v_new_nama, username_guru = v_new_username 
-            WHERE nama_guru = v_old_nama OR username_guru = v_old_username;
+            WHERE (nama_guru = v_old_nama OR username_guru = v_old_username) AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
     END IF;
 

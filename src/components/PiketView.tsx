@@ -106,7 +106,7 @@ export default function PiketView({ user }: { user: any }) {
     });
 
     if (user?.role === 'Guru') {
-      getGuruDailyState(user.nama, user.username).then(setDailyState).catch(console.error);
+      getGuruDailyState(user.nama, user.username, user.id).then(setDailyState).catch(console.error);
     }
   }, [user]);
 
@@ -414,7 +414,7 @@ export default function PiketView({ user }: { user: any }) {
       fetchDataPiket(); // Refresh data
       if (user?.role === 'Guru') {
         try {
-          const state = await getGuruDailyState(user.nama, user.username);
+          const state = await getGuruDailyState(user.nama, user.username, user.id);
           setDailyState(state);
         } catch (e) {
           console.error(e);
@@ -1524,3 +1524,4 @@ export default function PiketView({ user }: { user: any }) {
     </section>
   );
 }
+

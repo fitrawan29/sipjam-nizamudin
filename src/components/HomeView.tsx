@@ -101,7 +101,7 @@ export default function HomeView({
   useEffect(() => {
     if (isGuru && user?.nama) {
       setTimeout(() => setLoadingState(true), 0);
-      getGuruDailyState(user.nama, user.username)
+      getGuruDailyState(user.nama, user.username, user.id)
         .then(setDailyState)
         .catch(console.error)
         .finally(() => setLoadingState(false));
@@ -1561,3 +1561,4 @@ export default function HomeView({
     </section>
   );
 }
+
