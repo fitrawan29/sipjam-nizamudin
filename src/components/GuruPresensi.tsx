@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { showToast, Toast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, getWitaDayName } from '@/lib/wita';
@@ -108,16 +109,29 @@ export default function GuruPresensi({ user }: { user: any }) {
     initConfig();
   }, [user.nama, user.username]);
 
-  const togglePresensiFields = (val: string) => {
+  const togglePresensiFields = async (val: string) => {
+    if (file && val !== 'Izin' && jenisPresensi === 'Izin' && !file.type.startsWith('image/')) {
+      const result = await Swal.fire({
+        title: 'Ganti Jenis Presensi?',
+        text: 'File bukti izin tidak dapat digunakan sebagai foto selfie. Hapus file?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#6B7280',
+        confirmButtonText: 'Ya, Ganti',
+        cancelButtonText: 'Batal',
+      });
+      if (!result.isConfirmed) {
+        return;
+      }
+      setFile(null);
+      setPhotoPreviewUrl(null);
+    }
     setJenisPresensi(val);
-    setFile(null);
-    setPhotoPreviewUrl(null);
   };
 
   const handleTipeAbsenChange = (val: string) => {
     setTipeAbsen(val);
-    setFile(null);
-    setPhotoPreviewUrl(null);
     if (val === 'Pulang') {
       if (dailyState?.isDinasLuar) {
         setJenisPresensi('Dinas Luar');
@@ -142,39 +156,37 @@ export default function GuruPresensi({ user }: { user: any }) {
     // Validasi Workflow Pulang
     if (tipeAbsen === 'Pulang') {
       if (dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak) {
-        return Swal.fire('Info', 'Anda sudah melakukan Presensi Pulang hari ini.', 'info');
+        return showToast('Info', 'Anda sudah melakukan Presensi Pulang hari ini.', 'info');
       }
       if (dailyState && !dailyState.canPresensiPulang) {
-        return Swal.fire('Terkunci', dailyState.lockedReason || 'Anda belum menyelesaikan Jurnal/Piket.', 'error');
+        return showToast('Terkunci', dailyState.lockedReason || 'Anda belum menyelesaikan Jurnal/Piket.', 'error');
       }
       if (dailyState?.isIzinSakit) {
-        return Swal.fire('Info', 'Anda sedang Izin/Sakit hari ini, tidak perlu melakukan presensi pulang.', 'info');
+        return showToast('Info', 'Anda sedang Izin/Sakit hari ini, tidak perlu melakukan presensi pulang.', 'info');
       }
     }
 
     // Validasi Workflow Datang - kecualikan jika presensi sebelumnya DITOLAK (perlu isi ulang)
     if (tipeAbsen === 'Datang' && dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak) {
-      return Swal.fire('Info', 'Anda sudah melakukan Presensi Datang hari ini.', 'info');
+      return showToast('Info', 'Anda sudah melakukan Presensi Datang hari ini.', 'info');
     }
 
     // Validasi Wajib Selfie jika dipersyaratkan
     if (isSelfieRequired && !file) {
-      return Swal.fire({
-        icon: 'warning',
-        title: 'Foto Kamera Diperlukan',
-        text: 'Silakan ambil dan konfirmasi foto langsung dari kamera perangkat dengan watermark terlebih dahulu.',
-        confirmButtonColor: '#10B981',
-      });
+      return showToast(
+        'Foto Kamera Diperlukan',
+        'Silakan ambil dan konfirmasi foto langsung dari kamera perangkat dengan watermark terlebih dahulu.',
+        'warning'
+      );
     }
 
     // Validasi File Bukti Izin
     if (jenisPresensi === 'Izin' && tipeAbsen === 'Datang' && !file) {
-      return Swal.fire({
-        icon: 'warning',
-        title: 'Surat Keterangan Wajib',
-        text: 'Silakan lampirkan surat keterangan izin atau surat dokter.',
-        confirmButtonColor: '#10B981',
-      });
+      return showToast(
+        'Surat Keterangan Wajib',
+        'Silakan lampirkan surat keterangan izin atau surat dokter.',
+        'warning'
+      );
     }
 
     // Validasi Waktu Presensi (dinormalisasi ke WITA / Asia/Makassar)
@@ -206,10 +218,10 @@ export default function GuruPresensi({ user }: { user: any }) {
       const akhirVal = parseTime(jamPresensi.datangAkhir);
 
       if (currTimeVal < startVal) {
-        return Swal.fire('Belum Waktunya', `Presensi datang baru dibuka jam ${jamPresensi.datangMulai} WITA.`, 'warning');
+        return showToast('Belum Waktunya', `Presensi datang baru dibuka jam ${jamPresensi.datangMulai} WITA.`, 'warning');
       }
       if (currTimeVal > akhirVal) {
-        return Swal.fire('Ditutup', `Presensi datang sudah ditutup jam ${jamPresensi.datangAkhir} WITA. Silakan hubungi admin.`, 'error');
+        return showToast('Ditutup', `Presensi datang sudah ditutup jam ${jamPresensi.datangAkhir} WITA. Silakan hubungi admin.`, 'error');
       }
 
       if (currTimeVal > batasVal && jenisPresensi === 'Sekolah') {
@@ -224,17 +236,17 @@ export default function GuruPresensi({ user }: { user: any }) {
       const akhirVal = parseTime(jamPresensi.pulangAkhir);
 
       if (currTimeVal < startVal) {
-        return Swal.fire('Belum Waktunya', `Presensi pulang baru dibuka jam ${effectivePulangMulai} WITA${isJumat ? ' (Jadwal Khusus Hari Jumat)' : ''}.`, 'warning');
+        return showToast('Belum Waktunya', `Presensi pulang baru dibuka jam ${effectivePulangMulai} WITA${isJumat ? ' (Jadwal Khusus Hari Jumat)' : ''}.`, 'warning');
       }
       if (currTimeVal > akhirVal) {
-        return Swal.fire('Ditutup', `Presensi pulang ditutup jam ${jamPresensi.pulangAkhir} WITA.`, 'error');
+        return showToast('Ditutup', `Presensi pulang ditutup jam ${jamPresensi.pulangAkhir} WITA.`, 'error');
       }
     }
 
     setLoading(true);
     
     if (jenisPresensi === 'Sekolah' && jarakAktual !== null && jarakAktual > gpsConfig.radius) {
-      Swal.fire('Di Luar Jangkauan', `Jarak Anda ${jarakAktual} meter dari sekolah. Maksimal radius adalah ${gpsConfig.radius} meter. Presensi akan masuk antrean verifikasi Admin.`, 'warning');
+      showToast('Di Luar Jangkauan', `Jarak Anda ${jarakAktual} meter dari sekolah. Maksimal radius adalah ${gpsConfig.radius} meter. Presensi akan masuk antrean verifikasi Admin.`, 'warning');
     }
 
     const statusVerif = jenisPresensi === 'Sekolah' && (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu';
@@ -266,7 +278,7 @@ export default function GuruPresensi({ user }: { user: any }) {
 
     if (error) {
       setLoading(false);
-      return Swal.fire('Error', 'Gagal menyimpan data presensi: ' + error.message, 'error');
+      return showToast('Error', 'Gagal menyimpan data presensi: ' + error.message, 'error');
     }
 
     // If this was a re-submission after rejection, delete the old rejected record
@@ -281,16 +293,15 @@ export default function GuruPresensi({ user }: { user: any }) {
     const isSelfie = isSelfieRequired;
     const currentJenis = jenisPresensi;
 
-    // Instant UI Success Feedback
-    Swal.fire({
-      icon: 'success',
-      title: 'Presensi Berhasil Dicatat!',
-      text: fileToUpload 
+    // Instant UI Success Feedback (Non-blocking Toast)
+    showToast(
+      'Presensi Berhasil Dicatat!',
+      fileToUpload 
         ? 'Data kehadiran tersimpan. Foto sedang diunggah ke Google Drive di latar belakang.' 
         : 'Presensi berhasil direkam!',
-      timer: 3000,
-      showConfirmButton: false,
-    });
+      'success',
+      { toast: true, position: 'top-end', timer: 3000, showConfirmButton: false }
+    );
 
     // Reset Form & Update local states immediately
     setJenisPresensi('Sekolah');
@@ -522,7 +533,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                     </label>
 
                     <CameraSelfieCapture
-                      key={`${tipeAbsen}-${jenisPresensi}`}
+                      key="camera-selfie"
                       initialCoordinates={userCoords}
                       existingPhotoUrl={photoPreviewUrl}
                       onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
@@ -544,9 +555,21 @@ export default function GuruPresensi({ user }: { user: any }) {
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            setFile(null);
-                            setPhotoPreviewUrl(null);
+                          onClick={async () => {
+                            const result = await Swal.fire({
+                              title: 'Ganti Foto?',
+                              text: 'Foto selfie yang telah diambil akan dihapus dan kamera dibuka kembali.',
+                              icon: 'warning',
+                              showCancelButton: true,
+                              confirmButtonColor: '#EF4444',
+                              cancelButtonColor: '#6B7280',
+                              confirmButtonText: 'Ya, Ganti',
+                              cancelButtonText: 'Batal',
+                            });
+                            if (result.isConfirmed) {
+                              setFile(null);
+                              setPhotoPreviewUrl(null);
+                            }
                           }}
                           className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
                         >

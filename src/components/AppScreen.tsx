@@ -468,9 +468,16 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
                   : 'overview'
               }
               onNavigateTab={(tab) => {
-                if (tab === 'sekolah') { window.history.pushState(null, '', '?view=view-superadmin-sekolah'); setCurrentView('view-superadmin-sekolah'); };
-                else if (tab === 'admins') { window.history.pushState(null, '', '?view=view-superadmin-admins'); setCurrentView('view-superadmin-admins'); };
-                else { window.history.pushState(null, '', '?view=view-superadmin-overview'); setCurrentView('view-superadmin-overview'); };
+                if (tab === 'sekolah') {
+                  window.history.pushState(null, '', '?view=view-superadmin-sekolah');
+                  setCurrentView('view-superadmin-sekolah');
+                } else if (tab === 'admins') {
+                  window.history.pushState(null, '', '?view=view-superadmin-admins');
+                  setCurrentView('view-superadmin-admins');
+                } else {
+                  window.history.pushState(null, '', '?view=view-superadmin-overview');
+                  setCurrentView('view-superadmin-overview');
+                }
               }}
             />
           ) : (

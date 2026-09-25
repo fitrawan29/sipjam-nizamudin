@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { showToast, Toast } from '@/lib/toast';
 import NaikKelasModal from './NaikKelasModal';
 
 export default function AdminDataView({ user }: { user: any }) {
@@ -372,7 +373,7 @@ export default function AdminDataView({ user }: { user: any }) {
         if (error) {
           Swal.fire('Gagal Menambah Data', error.message, 'error');
         } else {
-          Swal.fire('Berhasil', 'Data siswa berhasil disimpan!', 'success');
+          showToast('Berhasil', 'Data siswa berhasil disimpan!', 'success');
           loadData();
         }
       }
@@ -439,7 +440,7 @@ export default function AdminDataView({ user }: { user: any }) {
         if (error) {
           Swal.fire('Gagal Menambah Data', error.message, 'error');
         } else {
-          Swal.fire('Berhasil', 'Data guru berhasil disimpan!', 'success');
+          showToast('Berhasil', 'Data guru berhasil disimpan!', 'success');
           loadData();
         }
       }
@@ -492,7 +493,7 @@ export default function AdminDataView({ user }: { user: any }) {
         if (error) {
           Swal.fire('Gagal Menambah Data', error.message, 'error');
         } else {
-          Swal.fire('Berhasil', 'Mata Pelajaran berhasil disimpan!', 'success');
+          showToast('Berhasil', 'Mata Pelajaran berhasil disimpan!', 'success');
           loadData();
         }
       }
@@ -550,7 +551,7 @@ export default function AdminDataView({ user }: { user: any }) {
         if (error) {
           Swal.fire('Gagal Menambah Agenda', error.message, 'error');
         } else {
-          Swal.fire('Berhasil', 'Agenda kalender berhasil disimpan!', 'success');
+          showToast('Berhasil', 'Agenda kalender berhasil disimpan!', 'success');
           loadData();
         }
       }
@@ -617,7 +618,7 @@ export default function AdminDataView({ user }: { user: any }) {
         if (error) {
           Swal.fire('Gagal Menambah Jadwal', error.message, 'error');
         } else {
-          Swal.fire('Berhasil', 'Jadwal pelajaran berhasil disimpan!', 'success');
+          showToast('Berhasil', 'Jadwal pelajaran berhasil disimpan!', 'success');
           loadData();
         }
       }
@@ -1516,7 +1517,7 @@ export default function AdminDataView({ user }: { user: any }) {
   };
 
   return (
-    <section id="view-admin-data" className="view-section fade-in">
+    <section id="view-admin-data" className="view-section fade-in w-full max-w-full overflow-x-auto">
         {/* Hidden file input for CSV upload */}
         <input 
           type="file" 
@@ -1526,13 +1527,13 @@ export default function AdminDataView({ user }: { user: any }) {
           className="hidden" 
         />
 
-        <div className="glass-card p-4">
+        <div className="glass-card p-4 w-full max-w-full overflow-hidden">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <i className="fa-solid fa-database text-purple-500 dark:text-purple-400"></i> Master Data
             </h2>
             
             {/* TABS */}
-            <div className="flex overflow-x-auto custom-scroll gap-2 mb-4 pb-1">
+            <div className="flex overflow-x-auto custom-scroll gap-2 mb-4 pb-1 max-w-full">
                 {tabs.map(tab => (
                   <button 
                     key={tab.id}
@@ -1567,9 +1568,9 @@ export default function AdminDataView({ user }: { user: any }) {
             )}
 
             <div className="bg-purple-50 dark:bg-purple-900/10 rounded-2xl p-3 border border-purple-100 dark:border-purple-900/30 mb-4">
-                <div className="flex justify-between items-center gap-2">
+                <div className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-2">
                     <span className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase truncate">Impor & Kelola Data</span>
-                    <div className="flex gap-1.5 shrink-0">
+                    <div className="flex flex-wrap sm:flex-nowrap gap-1.5 shrink-0 ml-auto sm:ml-0">
                         <button 
                           type="button" 
                           onClick={handleDownloadTemplate} 
@@ -1595,7 +1596,7 @@ export default function AdminDataView({ user }: { user: any }) {
                     <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-400 text-xs"></i>
                     <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Cari data..." className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" />
                 </div>
-                <div className="flex gap-1.5 shrink-0 ml-auto sm:ml-0 items-center">
+                <div className="flex flex-wrap sm:flex-nowrap gap-1.5 shrink-0 ml-auto sm:ml-0 items-center">
                     {activeTab === 'Data_Siswa' && (
                       <>
                         <button
@@ -1817,7 +1818,7 @@ export default function AdminDataView({ user }: { user: any }) {
             </div>
 
             {/* DATA GRID */}
-            <div id="master-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px] content-start">
+            <div id="master-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px] content-start w-full max-w-full overflow-hidden">
                 {loading ? (
                   <div className="col-span-full flex flex-col items-center justify-center py-10 text-gray-500 dark:text-gray-400">
                     <i className="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-purple-500 dark:text-purple-400"></i>

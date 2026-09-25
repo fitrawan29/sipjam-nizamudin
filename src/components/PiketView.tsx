@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { showToast, Toast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName } from '@/lib/wita';
@@ -406,13 +407,18 @@ export default function PiketView({ user }: { user: any }) {
             };
           }).filter(Boolean);
 
-          await supabase.from('absensi').upsert(absensiRows, { onConflict: 'sekolah_id, tanggal, nisn' });
+          await supabase.from('absensi').upsert(absensiRows as any[], { onConflict: 'sekolah_id, tanggal, nisn' });
         } catch (syncErr) {
           console.error('Error synchronizing piket attendance to public.absensi:', syncErr);
         }
       }
 
-      Swal.fire('Berhasil', 'Laporan piket berhasil disimpan dan presensi disinkronkan!', 'success');
+      showToast('Berhasil', 'Laporan piket berhasil disimpan dan presensi disinkronkan!', 'success', {
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        showConfirmButton: false,
+      });
       setCatatan('');
       setFile(null);
       setPhotoPreviewUrl(null);
@@ -420,7 +426,7 @@ export default function PiketView({ user }: { user: any }) {
       fetchDataPiket(); // Refresh data
       if (user?.role === 'Guru') {
         try {
-          const state = await getGuruDailyState(user.nama, user.username, user.id);
+          const state = user.id ? await getGuruDailyState(user.nama, user.username, user.id) : await getGuruDailyState(user.nama, user.username);
           setDailyState(state);
         } catch (e) {
           console.error(e);
@@ -466,7 +472,7 @@ export default function PiketView({ user }: { user: any }) {
 
   const exportRekapPiketCSV = () => {
     if (filteredRekap.length === 0) {
-      return Swal.fire('Info', 'Tidak ada data rekap piket untuk diekspor.', 'info');
+      return showToast('Info', 'Tidak ada data rekap piket untuk diekspor.', 'info');
     }
     const headers = ['No', 'Tanggal', 'Hari', 'Guru Pelapor', 'Catatan Apel / Kejadian', 'Status Verifikasi', 'Kehadiran Siswa', 'Link Foto'];
     const csvRows = [headers.join(',')];
@@ -496,7 +502,7 @@ export default function PiketView({ user }: { user: any }) {
   const handleAddGuruPiket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTeacherId) {
-      Swal.fire('Peringatan', 'Silakan pilih guru terlebih dahulu.', 'warning');
+      showToast('Peringatan', 'Silakan pilih guru terlebih dahulu.', 'warning');
       return;
     }
 
@@ -508,7 +514,7 @@ export default function PiketView({ user }: { user: any }) {
       p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru' && (p.guru_id === teacher.id || p.guru_nama === teacher.nama_guru)
     );
     if (already) {
-      Swal.fire('Perhatian', `${teacher.nama_guru} sudah terdaftar pada jadwal piket hari ${selectedHariPiket}.`, 'info');
+      showToast('Perhatian', `${teacher.nama_guru} sudah terdaftar pada jadwal piket hari ${selectedHariPiket}.`, 'info');
       return;
     }
 
@@ -556,7 +562,7 @@ export default function PiketView({ user }: { user: any }) {
     if (siswaAssignMode === 'select') {
       const student = allStudents.find(s => s.nisn === selectedSiswaNisn);
       if (!student) {
-        Swal.fire('Peringatan', 'Silakan pilih siswa dari daftar.', 'warning');
+        showToast('Peringatan', 'Silakan pilih siswa dari daftar.', 'warning');
         return;
       }
       nama = student.nama_siswa;
@@ -567,7 +573,7 @@ export default function PiketView({ user }: { user: any }) {
       nisn = manualSiswaNisn.trim();
       kelas = manualSiswaKelas.trim();
       if (!nama || !kelas) {
-        Swal.fire('Peringatan', 'Nama siswa dan kelas wajib diisi.', 'warning');
+        showToast('Peringatan', 'Nama siswa dan kelas wajib diisi.', 'warning');
         return;
       }
     }
@@ -577,7 +583,7 @@ export default function PiketView({ user }: { user: any }) {
       p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa' && p.siswa_nama?.toLowerCase() === nama.toLowerCase()
     );
     if (already) {
-      Swal.fire('Perhatian', `${nama} sudah terdaftar pada piket siswa hari ${selectedHariPiket}.`, 'info');
+      showToast('Perhatian', `${nama} sudah terdaftar pada piket siswa hari ${selectedHariPiket}.`, 'info');
       return;
     }
 
@@ -662,8 +668,8 @@ export default function PiketView({ user }: { user: any }) {
   );
 
   return (
-    <section id="view-piket" className="view-section page-enter">
-        <div className="glass-card p-4 sm:p-6">
+    <section id="view-piket" className="view-section page-enter w-full max-w-full overflow-x-auto">
+        <div className="glass-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
             <div className="flex justify-between items-center mb-4 no-print">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <span className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
@@ -1303,7 +1309,7 @@ export default function PiketView({ user }: { user: any }) {
 
             {/* TAB 3: REKAP PIKET */}
             {activeTab === 'rekap' && (
-              <div id="piket-content-rekap" className="space-y-4 fade-in">
+              <div id="piket-content-rekap" className="space-y-4 fade-in w-full max-w-full overflow-x-auto">
                   <PrintHeader />
 
                   {/* Filter Area (Hidden in Print) */}
@@ -1357,8 +1363,8 @@ export default function PiketView({ user }: { user: any }) {
                               </select>
                           </div>
                       </div>
-                      <div className="flex gap-2">
-                          <div className="relative flex-grow">
+                      <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                          <div className="relative flex-grow w-full sm:w-auto">
                               <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-400 text-xs"></i>
                               <input 
                                 type="text" 

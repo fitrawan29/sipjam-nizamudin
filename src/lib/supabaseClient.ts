@@ -131,7 +131,8 @@ export function getTenantSupabaseClient(
   sekolahId?: string | null,
   role?: string | null,
   userIdOrOptions?: string | null | SupabaseClientOptions<any>,
-  maybeOptions?: SupabaseClientOptions<any>
+  maybeOptions?: SupabaseClientOptions<any>,
+  sessionToken?: string | null
 ): SupabaseClient {
   let userId: string | null = null;
   let options: SupabaseClientOptions<any> | undefined = undefined;

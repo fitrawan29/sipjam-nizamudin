@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { showToast, Toast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
@@ -406,7 +407,12 @@ export default function GuruJurnal({ user }: { user: any }) {
           }
         }
 
-        Swal.fire('Berhasil', 'Jurnal berhasil disimpan dan presensi disinkronkan!', 'success');
+        showToast('Berhasil', 'Jurnal berhasil disimpan dan presensi disinkronkan!', 'success', {
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          showConfirmButton: false,
+        });
         setMateri('');
         setKegiatan('');
         setCatatanSiswa('');
