@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient, type SupabaseClientOptions } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
+// Use Service Role key on the server if available to bypass RLS for cron jobs, otherwise fallback to Anon key
+const supabaseKey = (typeof process !== 'undefined' && process.env.SUPABASE_SERVICE_ROLE_KEY) ? process.env.SUPABASE_SERVICE_ROLE_KEY : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder');
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   console.warn(
@@ -12,6 +13,7 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_A
 }
 
 export interface TenantContext {
+  sessionToken?: string | null;
   sekolahId?: string | null;
   role?: string | null;
   userId?: string | null;
@@ -48,6 +50,7 @@ export function getActiveTenantContext(): TenantContext {
           sekolahId: user?.sekolah_id ? String(user.sekolah_id).trim() : null,
           role: user?.role ? String(user.role).trim() : null,
           userId: user?.id ? String(user.id).trim() : null,
+          sessionToken: user?.session_token ? String(user.session_token).trim() : null,
         };
       }
     } catch (e) {
@@ -63,6 +66,7 @@ export function getActiveTenantContext(): TenantContext {
     role:
       serverTenantContext.role ??
       (typeof process !== 'undefined' ? process.env.DEFAULT_USER_ROLE ?? null : null),
+    sessionToken: serverTenantContext.sessionToken ?? null,
     userId:
       serverTenantContext.userId ??
       (typeof process !== 'undefined' ? process.env.DEFAULT_USER_ID ?? null : null),
@@ -86,7 +90,7 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
     });
   }
 
-  const { sekolahId, role, userId } = getActiveTenantContext();
+  const { sekolahId, role, userId, sessionToken } = getActiveTenantContext();
 
   // Inject headers only if not already explicitly provided by the caller
   if (sekolahId && !headers.has('x-sekolah-id')) {
@@ -97,6 +101,9 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
   }
   if (userId && !headers.has('x-user-id')) {
     headers.set('x-user-id', userId);
+  }
+  if (sessionToken && !headers.has('x-session-token')) {
+    headers.set('x-session-token', sessionToken);
   }
 
   return fetch(input, {
@@ -159,6 +166,9 @@ export function getTenantSupabaseClient(
         }
         if (userId && !headers.has('x-user-id')) {
           headers.set('x-user-id', String(userId).trim());
+        }
+        if (sessionToken && !headers.has('x-session-token')) {
+          headers.set('x-session-token', String(sessionToken).trim());
         }
 
         const customFetch = options?.global?.fetch || fetch;

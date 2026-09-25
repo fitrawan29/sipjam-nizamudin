@@ -199,7 +199,7 @@ export default function AccountSettingsModal({
         avatar: selectedAvatar,
         nama: nama.trim() || user.nama,
         username: username.trim(),
-        ...(changePassword ? { password: newPassword } : {})
+        
       };
 
       try {

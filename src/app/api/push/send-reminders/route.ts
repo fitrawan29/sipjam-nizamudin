@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 import { sendWebPush, PushNotificationPayload } from '@/lib/vapid';
 import { getWitaDateStr, getWitaDayName } from '@/lib/wita';
@@ -189,6 +189,11 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
 export async function GET(req: NextRequest) {
   try {
+  const authHeader = req.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== 'Bearer ' + process.env.CRON_SECRET) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date') || undefined;
     const dayParam = searchParams.get('day') || undefined;
@@ -288,6 +293,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+  const authHeader = req.headers.get('authorization');
+  if (process.env.CRON_SECRET && authHeader !== 'Bearer ' + process.env.CRON_SECRET) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
     const body = await req.json().catch(() => ({}));
     const { date, day, sekolah_id, dry_run } = body;
 
@@ -379,3 +389,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
