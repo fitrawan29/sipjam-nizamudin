@@ -113,48 +113,102 @@ const endTogglePresensi = guruPresensiContent.indexOf('const handleTipeAbsenChan
 assert(startTogglePresensi !== -1 && endTogglePresensi !== -1, 'togglePresensiFields function block exists');
 const togglePresensiFunc = guruPresensiContent.slice(startTogglePresensi, endTogglePresensi);
 assert(togglePresensiFunc.includes('Ganti Jenis Presensi?'), 'togglePresensiFields prompts confirmation modal before clearing Izin document');
+assert(togglePresensiFunc.includes('Ganti ke Izin / Sakit?'), 'togglePresensiFields prompts confirmation modal before discarding selfie when switching to Izin');
 assert(togglePresensiFunc.includes('isConfirmed'), 'togglePresensiFields only clears file if user confirms');
+assert(handleTipeAbsenFunc.includes('Ganti ke Presensi Pulang?'), 'handleTipeAbsenChange prompts confirmation before discarding Izin document when switching to Pulang');
 
-// 2.3 CameraSelfieCapture does not have key={tipeAbsen} causing unmount/reset
+// 2.3 Mutex and lifecycle guards
+assert(guruPresensiContent.includes('isSwitchingRef'), 'GuruPresensi uses isSwitchingRef mutex guard to prevent rapid toggle race conditions');
+assert(guruPresensiContent.includes('isMountedRef'), 'GuruPresensi uses isMountedRef to prevent unmounted component state updates');
+
+// 2.4 CameraSelfieCapture does not have key={tipeAbsen} causing unmount/reset
 assert(!guruPresensiContent.includes('key={tipeAbsen}'), 'CameraSelfieCapture does not remount on tipeAbsen toggle (preserves stream/capture)');
 
-// 2.4 Ganti Foto button requires confirmation before clearing selfie
+// 2.5 Ganti Foto button requires confirmation before clearing selfie
 assert(guruPresensiContent.includes('Ganti Foto?') && guruPresensiContent.includes('showCancelButton: true'), 'Ganti Foto button provides confirmation modal before discarding current selfie');
 
-// 2.5 CameraSelfieCapture synchronizes existingPhotoUrl to prevent UI lockup when photo is cleared
+// 2.6 CameraSelfieCapture synchronizes existingPhotoUrl to prevent UI lockup when photo is cleared
 assert(cameraContent.includes('setCapturedImage(existingPhotoUrl || null);'), 'CameraSelfieCapture synchronizes capturedImage when existingPhotoUrl changes');
+assert(cameraContent.includes('startCamera(facingMode)'), 'CameraSelfieCapture preserves chosen facingMode when restarting camera');
 
-// 2.6 Behavioral Simulation: State preservation on toggle
+// 2.7 Behavioral Simulation: Comprehensive state preservation and transition tests
 {
+  // Test 1: Datang <-> Pulang preserves selfie
   let state = {
     tipeAbsen: 'Datang',
     jenisPresensi: 'Sekolah',
-    file: { name: 'selfie.jpg', type: 'image/jpeg', size: 102400 },
-    photoPreviewUrl: 'data:image/jpeg;base64,mockpreviewdata'
+    file: { name: 'selfie.jpg', type: 'image/jpeg', size: 102400 } as any,
+    photoPreviewUrl: 'data:image/jpeg;base64,mockpreviewdata' as string | null
   };
 
-  // Simulating toggling between Datang and Pulang
-  function simulateHandleTipeAbsenChange(newTipe: string) {
+  function simulateHandleTipeAbsenChange(newTipe: string, userConfirmModal = false) {
+    if (state.file && newTipe === 'Pulang' && state.jenisPresensi === 'Izin') {
+      if (!userConfirmModal) return false;
+      state.file = null;
+      state.photoPreviewUrl = null;
+    }
     state.tipeAbsen = newTipe;
     if (newTipe === 'Pulang') {
       state.jenisPresensi = 'Sekolah';
     } else {
-      state.jenisPresensi = 'Sekolah';
+      if (state.jenisPresensi !== 'Izin') {
+        state.jenisPresensi = 'Sekolah';
+      }
     }
-    // Note: does NOT clear file or photoPreviewUrl!
+    return true;
   }
 
+  function simulateTogglePresensiFields(newJenis: string, userConfirmModal = false) {
+    if (state.file && newJenis === 'Izin' && state.jenisPresensi !== 'Izin') {
+      if (!userConfirmModal) return false;
+      state.file = null;
+      state.photoPreviewUrl = null;
+    } else if (state.file && newJenis !== 'Izin' && state.jenisPresensi === 'Izin') {
+      if (!userConfirmModal) return false;
+      state.file = null;
+      state.photoPreviewUrl = null;
+    }
+    state.jenisPresensi = newJenis;
+    return true;
+  }
+
+  // Toggling Datang -> Pulang with selfie preserves file
   simulateHandleTipeAbsenChange('Pulang');
   assert(state.tipeAbsen === 'Pulang' && state.file !== null && state.photoPreviewUrl !== null, 'Mock simulation: Toggling to Pulang preserves selfie file and preview');
 
+  // Toggling Pulang -> Datang preserves file
   simulateHandleTipeAbsenChange('Datang');
   assert(state.tipeAbsen === 'Datang' && state.file !== null && state.photoPreviewUrl !== null, 'Mock simulation: Toggling back to Datang preserves selfie file and preview');
+
+  // Switching Sekolah -> Dinas Luar preserves selfie without prompt
+  simulateTogglePresensiFields('Dinas Luar');
+  assert(state.jenisPresensi === 'Dinas Luar' && state.file !== null, 'Mock simulation: Switching Sekolah -> Dinas Luar preserves selfie without prompt');
+
+  // Switching Dinas Luar -> Izin requires confirmation; if rejected, state is untouched
+  const izinCanceled = simulateTogglePresensiFields('Izin', false);
+  assert(!izinCanceled && state.jenisPresensi === 'Dinas Luar' && state.file !== null, 'Mock simulation: Switching to Izin with selfie rejects switch when unconfirmed');
+
+  // If user confirms, clears selfie and switches to Izin
+  const izinConfirmed = simulateTogglePresensiFields('Izin', true);
+  assert(izinConfirmed && state.jenisPresensi === 'Izin' && state.file === null && state.photoPreviewUrl === null, 'Mock simulation: Switching to Izin clears selfie only after confirmation');
+
+  // User attaches medical certificate in Izin mode
+  state.file = { name: 'surat_dokter.pdf', type: 'application/pdf', size: 50000 };
+  state.photoPreviewUrl = null;
+
+  // Switching Izin -> Pulang requires confirmation; if rejected, remains on Datang
+  const pulangCanceled = simulateHandleTipeAbsenChange('Pulang', false);
+  assert(!pulangCanceled && state.tipeAbsen === 'Datang' && state.file !== null, 'Mock simulation: Switching Izin -> Pulang rejects switch when unconfirmed');
+
+  // If user confirms, clears document and switches to Pulang
+  const pulangConfirmed = simulateHandleTipeAbsenChange('Pulang', true);
+  assert(pulangConfirmed && state.tipeAbsen === 'Pulang' && state.file === null, 'Mock simulation: Switching Izin -> Pulang clears document only after confirmation');
 }
 
 // ----------------------------------------------------
-// Section 3: R3 - Mobile-Responsive Tables
+// Section 3: R3 - Mobile-Responsive Tables & Touch Experience
 // ----------------------------------------------------
-console.log('\n--- Section 3: R3 - Mobile-Responsive Tables ---');
+console.log('\n--- Section 3: R3 - Mobile-Responsive Tables & Touch Experience ---');
 
 // 3.1 AdminDataView.tsx responsiveness
 assert(adminDataContent.includes('id="view-admin-data" className="view-section fade-in w-full max-w-full overflow-x-auto"'), 'AdminDataView container has w-full max-w-full overflow-x-auto');
@@ -171,6 +225,14 @@ assert(piketContent.includes('flex flex-wrap sm:flex-nowrap gap-2') || piketCont
 assert(gradebookContent.includes('className="space-y-5 pb-12 w-full max-w-full overflow-x-auto"'), 'GradebookView container has w-full max-w-full overflow-x-auto');
 assert(gradebookContent.includes('table className="w-full text-left text-xs border-collapse whitespace-nowrap"'), 'GradebookView assessment table has whitespace-nowrap in scrollable container');
 assert(gradebookContent.includes('overflow-x-auto custom-scroll max-w-full') && gradebookContent.includes('whitespace-nowrap shrink-0'), 'GradebookView tab navigation is horizontally scrollable with non-breaking buttons');
+
+// 3.4 Momentum Scrolling & Touch Gestures in globals.css
+const globalsCssPath = path.join(projectRoot, 'src', 'app', 'globals.css');
+assert(fs.existsSync(globalsCssPath), 'src/app/globals.css exists');
+const globalsContent = fs.readFileSync(globalsCssPath, 'utf8');
+assert(globalsContent.includes('-webkit-overflow-scrolling: touch;'), 'globals.css enables iOS momentum scrolling (-webkit-overflow-scrolling: touch)');
+assert(globalsContent.includes('touch-action: pan-x pan-y;'), 'globals.css specifies touch-action: pan-x pan-y for horizontal touch scrolling');
+assert(globalsContent.includes('overscroll-behavior-x: contain;'), 'globals.css specifies overscroll-behavior-x: contain for horizontal scroll containers');
 
 console.log('\n====================================================');
 console.log('🎉 ALL UI/UX AUDIT VERIFICATION TESTS PASSED!');

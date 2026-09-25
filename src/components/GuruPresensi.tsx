@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast, Toast } from '@/lib/toast';
@@ -11,6 +11,16 @@ import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 
 export default function GuruPresensi({ user }: { user: any }) {
+  const isMountedRef = useRef(true);
+  const isSwitchingRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [tipeAbsen, setTipeAbsen] = useState('Datang');
   const [jenisPresensi, setJenisPresensi] = useState('Sekolah');
   const [detailIzin, setDetailIzin] = useState('Sakit');
@@ -110,27 +120,85 @@ export default function GuruPresensi({ user }: { user: any }) {
   }, [user.nama, user.username]);
 
   const togglePresensiFields = async (val: string) => {
-    if (file && val !== 'Izin' && jenisPresensi === 'Izin' && (!photoPreviewUrl || !file.type.startsWith('image/'))) {
-      const result = await Swal.fire({
-        title: 'Ganti Jenis Presensi?',
-        text: 'File bukti izin tidak dapat digunakan sebagai foto selfie. Hapus file?',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#10B981',
-        cancelButtonColor: '#6B7280',
-        confirmButtonText: 'Ya, Ganti',
-        cancelButtonText: 'Batal',
-      });
-      if (!result.isConfirmed) {
-        return;
+    if (isSwitchingRef.current) return;
+
+    // If teacher has a live selfie attached and attempts to switch to Izin (document upload required)
+    if (file && val === 'Izin' && jenisPresensi !== 'Izin') {
+      isSwitchingRef.current = true;
+      try {
+        const result = await Swal.fire({
+          title: 'Ganti ke Izin / Sakit?',
+          text: 'Foto selfie yang telah diambil tidak dapat digunakan sebagai surat izin. Hapus foto selfie?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#10B981',
+          cancelButtonColor: '#6B7280',
+          confirmButtonText: 'Ya, Ganti',
+          cancelButtonText: 'Batal',
+        });
+        if (!result.isConfirmed) {
+          return;
+        }
+        setFile(null);
+        setPhotoPreviewUrl(null);
+      } finally {
+        isSwitchingRef.current = false;
       }
-      setFile(null);
-      setPhotoPreviewUrl(null);
     }
+    // If teacher attached an Izin document and attempts to switch to Sekolah or Dinas Luar (camera selfie required)
+    else if (file && val !== 'Izin' && jenisPresensi === 'Izin') {
+      isSwitchingRef.current = true;
+      try {
+        const result = await Swal.fire({
+          title: 'Ganti Jenis Presensi?',
+          text: 'File bukti izin tidak dapat digunakan sebagai foto selfie. Hapus file?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#10B981',
+          cancelButtonColor: '#6B7280',
+          confirmButtonText: 'Ya, Ganti',
+          cancelButtonText: 'Batal',
+        });
+        if (!result.isConfirmed) {
+          return;
+        }
+        setFile(null);
+        setPhotoPreviewUrl(null);
+      } finally {
+        isSwitchingRef.current = false;
+      }
+    }
+    // Switching between Sekolah and Dinas Luar preserves the selfie seamlessly without prompt
     setJenisPresensi(val);
   };
 
-  const handleTipeAbsenChange = (val: string) => {
+  const handleTipeAbsenChange = async (val: string) => {
+    if (isSwitchingRef.current) return;
+
+    // If teacher attached an Izin document and attempts to switch to Pulang (which requires camera selfie)
+    if (file && val === 'Pulang' && jenisPresensi === 'Izin') {
+      isSwitchingRef.current = true;
+      try {
+        const result = await Swal.fire({
+          title: 'Ganti ke Presensi Pulang?',
+          text: 'File bukti izin tidak dapat digunakan untuk presensi pulang. Hapus file?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#10B981',
+          cancelButtonColor: '#6B7280',
+          confirmButtonText: 'Ya, Ganti',
+          cancelButtonText: 'Batal',
+        });
+        if (!result.isConfirmed) {
+          return;
+        }
+        setFile(null);
+        setPhotoPreviewUrl(null);
+      } finally {
+        isSwitchingRef.current = false;
+      }
+    }
+
     setTipeAbsen(val);
     if (val === 'Pulang') {
       if (dailyState?.isDinasLuar) {
@@ -139,7 +207,9 @@ export default function GuruPresensi({ user }: { user: any }) {
         setJenisPresensi('Sekolah');
       }
     } else {
-      setJenisPresensi('Sekolah');
+      if (jenisPresensi !== 'Izin') {
+        setJenisPresensi('Sekolah');
+      }
     }
   };
 
@@ -311,6 +381,7 @@ export default function GuruPresensi({ user }: { user: any }) {
     
     // Refresh workflow state
     const state = await getGuruDailyState(user.nama, user.username, user.id);
+    if (!isMountedRef.current) return;
     setDailyState(state);
     if (tipeAbsen === 'Datang') {
       setTipeAbsen('Pulang');
