@@ -289,12 +289,16 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     // Ambil SEMUA presensi guru ini (tanpa filter timestamp range yang bisa gagal karena format campuran)
     // Lalu filter manual berdasarkan tanggal
-    const { data: allPresensi } = await supabase
+    let presensiQuery = supabase
       .from('presensi_guru')
       .select('*')
-      .eq('nama_guru', namaGuru)
       .order('timestamp', { ascending: false })
       .limit(50);
+    
+    if (userId) presensiQuery = presensiQuery.eq('user_id', userId);
+    else presensiQuery = presensiQuery.eq('nama_guru', namaGuru);
+
+    const { data: allPresensi } = await presensiQuery;
 
     if (allPresensi) {
       // Filter presensi hari ini - handle berbagai format timestamp
@@ -377,11 +381,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     if (state.isPiket) {
       // Cek Laporan Piket - juga handle format timestamp campuran
-      const { data: lp } = await supabase
+      let piketQuery = supabase
         .from('laporan_piket')
         .select('*')
-        .eq('guru_pelapor', namaGuru)
         .eq('tanggal', todayStr);
+      
+      if (userId) piketQuery = piketQuery.eq('user_id', userId);
+      else piketQuery = piketQuery.eq('guru_pelapor', namaGuru);
+
+      const { data: lp } = await piketQuery;
       
       if (lp && lp.length > 0) {
         // Rejected laporan piket: teacher must re-submit
@@ -396,11 +404,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // 4. Jadwal KBM sudah dipopulasikan di awal untuk hari berjalan, tidak di-clear ketika isDinasLuar
 
     // 5. Cek Jurnal
-    const { data: jurnal } = await supabase
+    let jurnalQuery = supabase
       .from('jurnal_pembelajaran')
       .select('*')
-      .eq('nama_guru', namaGuru)
       .eq('tanggal', todayStr);
+    
+    if (userId) jurnalQuery = jurnalQuery.eq('user_id', userId);
+    else jurnalQuery = jurnalQuery.eq('nama_guru', namaGuru);
+
+    const { data: jurnal } = await jurnalQuery;
 
     if (jurnal) {
       // Separate rejected jurnal entries — they must be re-submitted

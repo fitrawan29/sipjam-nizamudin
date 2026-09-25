@@ -248,6 +248,7 @@ export default function GuruPresensi({ user }: { user: any }) {
       id: presensiId,
       timestamp: getWitaTimestamp(),
       nama_guru: user.nama,
+      user_id: user.id,
       tipe_absen: tipeAbsen,
       jenis_presensi: jenisPresensi,
       detail_izin: jenisPresensi === 'Izin' ? detailIzin : '',

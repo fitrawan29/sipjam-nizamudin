@@ -339,6 +339,7 @@ export default function PiketView({ user }: { user: any }) {
       timestamp: getWitaTimestamp(),
       tanggal: getWitaDateStr(),
       guru_pelapor: user.nama,
+      user_id: user.id,
       rekap_absen_kelas: JSON.stringify(piketAbsensi),
       catatan_apel: catatan,
       link_foto: fileUrl,

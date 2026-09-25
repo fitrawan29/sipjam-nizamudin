@@ -312,6 +312,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       id: crypto.randomUUID(),
       timestamp: getWitaTimestamp(),
       nama_guru: user.nama,
+      user_id: user.id,
       mapel: tipeJurnal === 'Jurnal KBM' ? mapel : '-',
       kelas: tipeJurnal === 'Jurnal KBM' ? kelas : '-',
       tanggal: tanggal,
