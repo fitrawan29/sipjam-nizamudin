@@ -374,15 +374,20 @@ export default function PiketView({ user }: { user: any }) {
           const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
           const todayDateStr = getWitaDateStr();
 
-          let aQ = supabase.from('absensi').select('nisn, log_perubahan').eq('tanggal', todayDateStr);
+          let aQ = supabase.from('absensi').select('nisn, status, log_perubahan').eq('tanggal', todayDateStr);
           if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
           const { data: existingAbs } = await aQ;
-          const existingMap = new Map(existingAbs?.map(a => [a.nisn, a.log_perubahan || []]));
+          const existingMap = new Map(existingAbs?.map(a => [a.nisn, a]));
 
           const absensiRows = allStudents.map(s => {
+            const existing = existingMap.get(s.nisn);
+            if (existing?.status === 'Tidak Hadir') {
+              return null;
+            }
+
             const statusCode = piketAbsensi[s.nisn] || 'H';
             const fullStatus = statusMap[statusCode] || 'Hadir';
-            const prevLogs = existingMap.get(s.nisn) || [];
+            const prevLogs = existing?.log_perubahan || [];
             const logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user?.nama || 'Piket'} (Piket)`;
 
             return {
@@ -398,7 +403,7 @@ export default function PiketView({ user }: { user: any }) {
               log_perubahan: [...prevLogs, logEntry],
               updated_at: new Date().toISOString()
             };
-          });
+          }).filter(Boolean);
 
           await supabase.from('absensi').upsert(absensiRows, { onConflict: 'sekolah_id, tanggal, nisn' });
         } catch (syncErr) {

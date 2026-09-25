@@ -24,32 +24,32 @@ export function computeCohortAdvancement(currentKelas: string): { targetKelas: s
   const k = (currentKelas || '').trim();
   if (!k) return { targetKelas: 'Lulus', isLulus: true };
 
-  // Check Grade 12 first (XII or 12)
-  if (/\bxii\b/i.test(k) || /\b12\b/.test(k)) {
-    return { targetKelas: 'Lulus', isLulus: true };
-  }
+  // SMA/SMK
+  if (/\bxii\b/i.test(k) || /\b12\b/.test(k)) return { targetKelas: 'Lulus', isLulus: true };
+  if (/\bxi\b/i.test(k)) return { targetKelas: k.replace(/\bxi\b/gi, 'XII'), isLulus: false };
+  if (/\b11\b/.test(k)) return { targetKelas: k.replace(/\b11\b/, '12'), isLulus: false };
+  if (/\bx\b/i.test(k)) return { targetKelas: k.replace(/\bx\b/gi, 'XI'), isLulus: false };
+  if (/\b10\b/.test(k)) return { targetKelas: k.replace(/\b10\b/, '11'), isLulus: false };
 
-  // Check Grade 11 (XI or 11)
-  if (/\bxi\b/i.test(k)) {
-    return { 
-      targetKelas: k.replace(/\bxi\b/gi, 'XII'), 
-      isLulus: false 
-    };
-  }
-  if (/\b11\b/.test(k)) {
-    return { targetKelas: k.replace(/\b11\b/, '12'), isLulus: false };
-  }
+  // SMP
+  if (/\bix\b/i.test(k) || /\b9\b/.test(k)) return { targetKelas: 'Lulus', isLulus: true };
+  if (/\bviii\b/i.test(k)) return { targetKelas: k.replace(/\bviii\b/gi, 'IX'), isLulus: false };
+  if (/\b8\b/.test(k)) return { targetKelas: k.replace(/\b8\b/, '9'), isLulus: false };
+  if (/\bvii\b/i.test(k)) return { targetKelas: k.replace(/\bvii\b/gi, 'VIII'), isLulus: false };
+  if (/\b7\b/.test(k)) return { targetKelas: k.replace(/\b7\b/, '8'), isLulus: false };
 
-  // Check Grade 10 (X or 10)
-  if (/\bx\b/i.test(k)) {
-    return { 
-      targetKelas: k.replace(/\bx\b/gi, 'XI'), 
-      isLulus: false 
-    };
-  }
-  if (/\b10\b/.test(k)) {
-    return { targetKelas: k.replace(/\b10\b/, '11'), isLulus: false };
-  }
+  // SD
+  if (/\bvi\b/i.test(k) || /\b6\b/.test(k)) return { targetKelas: 'Lulus', isLulus: true };
+  if (/\bv\b/i.test(k)) return { targetKelas: k.replace(/\bv\b/gi, 'VI'), isLulus: false };
+  if (/\b5\b/.test(k)) return { targetKelas: k.replace(/\b5\b/, '6'), isLulus: false };
+  if (/\biv\b/i.test(k)) return { targetKelas: k.replace(/\biv\b/gi, 'V'), isLulus: false };
+  if (/\b4\b/.test(k)) return { targetKelas: k.replace(/\b4\b/, '5'), isLulus: false };
+  if (/\biii\b/i.test(k)) return { targetKelas: k.replace(/\biii\b/gi, 'IV'), isLulus: false };
+  if (/\b3\b/.test(k)) return { targetKelas: k.replace(/\b3\b/, '4'), isLulus: false };
+  if (/\bii\b/i.test(k)) return { targetKelas: k.replace(/\bii\b/gi, 'III'), isLulus: false };
+  if (/\b2\b/.test(k)) return { targetKelas: k.replace(/\b2\b/, '3'), isLulus: false };
+  if (/\bi\b/i.test(k)) return { targetKelas: k.replace(/\bi\b/gi, 'II'), isLulus: false };
+  if (/\b1\b/.test(k)) return { targetKelas: k.replace(/\b1\b/, '2'), isLulus: false };
 
   return { targetKelas: `${k} (Lanjutan)`, isLulus: false };
 }
