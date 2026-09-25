@@ -1,18 +1,21 @@
-{
-  "name": "SIPJAM",
+﻿{
+  "name": "SIPJAM - Presensi & Jurnal",
   "short_name": "SIPJAM",
   "description": "Sistem Informasi Manajemen Presensi & Jurnal Mengajar",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "id": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0B4619",
   "theme_color": "#0B4619",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "sizes": "64x64 32x32 24x24 16x16 192x192 512x512",
+      "type": "image/x-icon",
+      "purpose": "any maskable"
     }
   ]
 }
