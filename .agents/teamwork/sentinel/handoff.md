@@ -1,87 +1,36 @@
-# Project Sentinel Final Handoff Report
+# Sentinel Final Handoff Report
 
-**Date**: 2026-09-25T06:02:15+08:00  
-**Project**: SIPJAM Next.js Application Enhancements  
-**Integrity Mode**: Benchmark  
-**Verdict**: **VICTORY CONFIRMED**  
+## Observation
+- The project request mandated three core UI/UX enhancements across the Sipjam application:
+  1. **R1. Non-Intrusive Notifications**: Replacing generic blocking `Swal.fire` modal alerts for success, info, and validation errors with non-intrusive toasts, while retaining modals for destructive operations.
+  2. **R2. Preserving Form State**: Preventing automatic deletion of captured selfies and uploaded files in `GuruPresensi.tsx` when switching attendance types (`tipeAbsen` or `jenisPresensi`), and requiring user confirmation before destructive resets.
+  3. **R3. Mobile-Responsive Tables**: Refactoring data-heavy tables in `AdminDataView.tsx`, `PiketView.tsx`, and `GradebookView.tsx` with responsive containers and horizontal scrolling without causing horizontal layout overflow on screens < 640px.
+- Execution was routed to the **SWE Light** path (`teamwork_preview_swe`) per the explicit "single self-contained fix; keep it small and focused" request.
+- The SWE loop executed four stages: Round 0 (Implementer), Round 1 (Reviewer R1), Round 2 (Reviewer R2), and Round 3 (Reviewer R3).
 
----
+## Logic Chain
+1. **Implementation**:
+   - Built a centralized, reusable toast utility `src/lib/toast.ts` using SweetAlert2 mixin (`toast: true`, top-end position, 3-second auto-timer, no confirm button).
+   - Replaced all non-critical blocking alerts across `GuruPresensi.tsx`, `PiketView.tsx`, `GuruJurnal.tsx`, `AdminDataView.tsx`, `GradebookView.tsx`, `AccountSettingsModal.tsx`, `AdminConfigView.tsx`, `AdminVerifView.tsx`, `ChatView.tsx`, and `RekapJurnalView.tsx`.
+   - In `GuruPresensi.tsx`, eliminated the destructive reset on `tipeAbsen` toggles, added confirmation warnings for mode switches, implemented an `isSwitchingRef` mutex to guard against rapid double-toggling, and synchronized camera capture props in `CameraSelfieCapture.tsx`.
+   - Encased table layouts in responsive wrappers (`w-full max-w-full overflow-x-auto whitespace-nowrap`) and added CSS momentum panning rules (`-webkit-overflow-scrolling: touch`, `overscroll-behavior-x: contain`) in `globals.css`.
+2. **Review Cycles**:
+   - 3 adversarial review rounds independently inspected the codebase, cleared ledger items, hardened concurrency and camera sensor handoffs, and expanded automated testing to 290 lines (61 test assertions).
+3. **Independent Verification**:
+   - Sentinel dispatched an independent `teamwork_preview_victory_auditor` without shared team context.
+   - The auditor confirmed clean commit history (Phase A), verified anti-cheating & code integrity (Phase B), and independently re-ran test suites and production builds (Phase C: 11/11 test suites pass, 186/186 E2E assertions pass, 0 type errors, clean Turbopack build).
+   - Final audit verdict: **VICTORY CONFIRMED**.
 
-## 1. Observation
+## Caveats
+- Production deployment requires standard environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) as documented in `.env.local`.
+- Real iOS Safari hardware handles horizontal scrolling with native momentum as configured; on ultra-narrow viewports (< 320px), Gradebook evaluation matrices utilize smooth horizontal swipe navigation to display wide assessment columns.
 
-All 12 user requirements across R1, R2, and R3 have been implemented, reviewed through multi-tier adversarial checks, and independently audited:
+## Conclusion
+All acceptance criteria have been achieved, verified by multiple review rounds, and confirmed by an independent forensic audit. The project is 100% complete and ready for production use.
 
-1. **R1: Alur Presensi, Jurnal, dan Laporan Piket**:
-   - `GuruPresensi.tsx`: Deletes prior rejected attendance upon resubmission; automatically selects appropriate Datang/Pulang types.
-   - `GuruJurnal.tsx`: Purges rejected journal entries targeting only the specific subject/class rather than wiping daily records; attaches `sekolah_id` tenant identifier.
-   - `PiketView.tsx`: Cleans up rejected piket report upon resubmission.
-   - `/api/notifications/rejection/route.ts`: Dispatches Web Push notifications and unread in-app messages to teachers upon rejection.
-   - `attendanceAlpa.ts`: Automatically mutates unresubmitted rejections to 'Alpa' at `jam_pulang_akhir` cutoff time in WITA timezone.
-   - `AdminVerifView.tsx`: Completely suppresses the "Setujui" button when an item is marked 'Ditolak', and removes rejected entries from the active verification queue.
-   - `warningSystem.ts`: Tracks 3x consecutive and accumulated absences across Presensi, Jurnal, and Piket, displaying warning banners on `HomeView.tsx` and `AdminMonitorView.tsx`.
-
-2. **R2: UI/UX dan Penyesuaian Tampilan**:
-   - `NotificationPermissionModal.tsx`: Displays a full-screen blocking overlay (`z-[99999]`) that intercepts clicks, touch, and keyboard interactions until notification permission is handled.
-   - `PreLoginSplash.tsx`: Delivers a pre-login branding animation before transitioning to `LoginScreen.tsx` (bypassed if already authenticated).
-   - `LoginScreen.tsx`: Removed the subtitle text `"Multi-Tenant SaaS • Superadmin, Admin Sekolah & Guru"`.
-   - `layout.tsx` & `public/manifest.json`: Document browser title and web app name updated to `"SIPJAM"`.
-   - Apple iOS / Safari Compatibility (`globals.css`, `layout.tsx`, `CameraSelfieCapture.tsx`): Enabled smooth touch momentum scrolling, overscroll containment, safe-area-inset padding, 16px minimum font size on mobile inputs to eliminate zoom, and added a 150ms hardware release pause and track teardown to prevent camera freeze on iPhone.
-
-3. **R3: Fungsionalitas Tambahan dan Bug Fixes**:
-   - `HomeView.tsx`: Fixed monthly delay accumulation calculation using resilient WITA date format parsing (ISO and slash dates), strictly excluding rejected attendance and converting >=14,400s to Alpa.
-   - `CameraSelfieCapture.tsx`: Resolved camera toggle bug between front and rear cameras using mutex guard (`isStartingRef`), clean track stop, fallback constraints, and decoupled effect hooks.
-   - `AccountSettingsModal.tsx`, `AppScreen.tsx`, `HomeView.tsx`: Enabled teachers to change their username and password directly with 6-character minimum validation via Supabase RPC.
-   - `AdminDataView.tsx`: Added general search bar and column-specific dropdown filters across all 6 master tabs with reactive AND conjunction and reset buttons.
-
-4. **Testing & Audit Outcomes**:
-   - Independent Victory Auditor (`victory_auditor_1`) certified **VICTORY CONFIRMED**.
-   - Git timeline: Linear, authentic commit history (`ebc6790` -> `0e2fd2c` -> `2ff3164` -> `3f996a0` -> `cb299d0` -> `2b5ee15`).
-   - `npm test`: 10/10 test suites passed (100%).
-   - `npm run test:e2e`: 186/186 assertions across Tiers 1-4 passed (100%).
-   - `npx tsc --noEmit`: 0 TypeScript errors.
-   - `npm run build`: Next.js 16.3.4 Turbopack production build succeeded cleanly.
-
----
-
-## 2. Logic Chain
-
-1. The project sentinel recorded user requirements verbatim in `ORIGINAL_REQUEST.md` and routed the task to the General SWE path (`teamwork_preview_orchestrator`).
-2. The orchestrator decomposed the 12 requirements into 5 milestones and executed dual-track implementation alongside an automated E2E testing track.
-3. Every milestone passed review, challenger verification, and independent forensic audits under Benchmark mode.
-4. When the orchestrator claimed completion, the Sentinel enforced mandatory independent verification by spawning `teamwork_preview_victory_auditor` with zero shared swarm context.
-5. The auditor performed timeline verification, AST cheating/facade inspection, and empirical test execution, confirming 100% genuine implementation and issuing `VICTORY CONFIRMED`.
-6. All crons and subagents were terminated per sentinel cleanup protocol.
-
----
-
-## 3. Caveats
-
-- Web Push notifications require client devices to support the Push API and have valid service workers registered; in environments without push support, in-app notifications serve as fallback.
-- Camera access in Safari iOS requires HTTPS (or localhost) and user consent per WebKit security specifications.
-
----
-
-## 4. Conclusion
-
-**Verdict: VICTORY CONFIRMED**  
-All 12 user requirements, sub-tasks, and acceptance criteria have been fully implemented, empirically tested, and pushed to `origin/main`.
-
----
-
-## 5. Verification Method
-
-To verify the deliverables independently:
-```bash
-# 1. Run all unit and regression test suites
-npm test
-
-# 2. Run the 4-tier E2E automated test suite
-npm run test:e2e
-
-# 3. Verify TypeScript types
-npx tsc --noEmit
-
-# 4. Run Next.js production build
-npm run build
-```
-Verify all commands exit with code 0 and reports show 100% pass rates.
+## Verification Method
+- **Automated Tests**: `npm test` -> 11/11 test suites passing (including `tests/ui_ux_improvements_audit.test.ts`).
+- **E2E Tests**: `npm run test:e2e` -> 186/186 assertions passing.
+- **Type Checking**: `npx tsc --noEmit` -> 0 type errors.
+- **Production Build**: `npm run build` -> Clean Next.js Turbopack build across all 11 routes.
+- **Audit Verdict**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_2\handoff.md` (VICTORY CONFIRMED).
