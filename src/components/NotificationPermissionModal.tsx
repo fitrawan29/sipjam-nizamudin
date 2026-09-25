@@ -110,7 +110,7 @@ export default function NotificationPermissionModal({
     <div
       id="notification-permission-modal"
       data-testid="notification-permission-modal"
-      className="fixed inset-0 z-[99999] w-screen h-screen bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto select-none overflow-y-auto"
+      className="fixed bottom-4 right-4 z-50 w-full max-w-sm pointer-events-auto shadow-2xl"
       onClick={(e) => {
         // Prevent click events from reaching underlying dashboard/form elements
         e.stopPropagation();
@@ -218,3 +218,4 @@ export default function NotificationPermissionModal({
     </div>
   );
 }
+

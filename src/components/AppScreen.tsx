@@ -30,9 +30,28 @@ import { useTheme } from '@/context/ThemeContext';
 
 export default function AppScreen({ user, onLogout }: { user: any, onLogout: () => void }) {
   const [currentView, setCurrentView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      if (view) return view;
+    }
     if (user?.role === 'Superadmin') return 'view-superadmin-overview';
     return 'view-home';
   });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      if (view) {
+        setCurrentView(view);
+      } else {
+        setCurrentView(user?.role === 'Superadmin' ? 'view-superadmin-overview' : 'view-home');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [user]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [schoolData, setSchoolData] = useState<any>(null);
   const { theme, toggleTheme } = useTheme();
@@ -240,8 +259,9 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     try {
       // Superadmin and Admin bypass all daily guru checks
       if (user?.role === 'Superadmin' || user?.role === 'Admin') {
-        setCurrentView(targetId);
-        setSidebarOpen(false);
+        window.history.pushState(null, '', `?view=${targetId}`);
+      setCurrentView(targetId);
+      setSidebarOpen(false);
         return;
       }
 
@@ -284,6 +304,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
         // If target is presensi, we let them open it so they can see the "locked" status for Pulang inside the component
       }
 
+      window.history.pushState(null, '', `?view=${targetId}`);
       setCurrentView(targetId);
       setSidebarOpen(false);
     } catch (err) {
@@ -447,9 +468,9 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
                   : 'overview'
               }
               onNavigateTab={(tab) => {
-                if (tab === 'sekolah') setCurrentView('view-superadmin-sekolah');
-                else if (tab === 'admins') setCurrentView('view-superadmin-admins');
-                else setCurrentView('view-superadmin-overview');
+                if (tab === 'sekolah') { window.history.pushState(null, '', '?view=view-superadmin-sekolah'); setCurrentView('view-superadmin-sekolah'); };
+                else if (tab === 'admins') { window.history.pushState(null, '', '?view=view-superadmin-admins'); setCurrentView('view-superadmin-admins'); };
+                else { window.history.pushState(null, '', '?view=view-superadmin-overview'); setCurrentView('view-superadmin-overview'); };
               }}
             />
           ) : (
@@ -485,7 +506,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
                     </p>
                     <button
                       type="button"
-                      onClick={() => setCurrentView(defaultHomeView)}
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
                       className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
