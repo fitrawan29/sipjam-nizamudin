@@ -1,31 +1,55 @@
-## 2026-09-24T21:56:22Z
+# Dispatch to Victory Auditor
 
-You are the Independent Victory Auditor for the SIPJAM project.
+## 2026-09-25T20:27:15Z
 
-## Mission & Authority
-The Project Orchestrator has claimed full project victory for all requirements and acceptance criteria in ORIGINAL_REQUEST.md.
-Conduct an independent 3-phase post-victory forensic audit to verify the work matches the original request with zero shared context from the implementation swarm.
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1
+Parent Orchestrator: swe_1 (Conversation ID: 9dd52156-c90d-404b-9593-7446ffab66bb)
 
-## Key Paths
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1
-- Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-- Original Request File: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+<original_task>
+# Teamwork Project Prompt — Draft
 
-## Audit Protocol (3 Phases)
-1. **Phase 1: Timeline & Version Control Forensics**:
-   - Inspect git log, git status, commit history, and branches. Verify all modifications are authentic, clean, and properly committed.
-2. **Phase 2: Cheating & Facade Detection**:
-   - Inspect source code across modified components for hardcoded bypasses, dummy implementations, unhandled corner cases, or mock-only test logic.
-   - Specifically verify:
-     - R1: Rejection reset in GuruPresensi, GuruJurnal, PiketView; rejection push notification & unread in-app chat; auto-alpa cutoff engine at jam_pulang_akhir; admin verification UI hiding "Setujui" and removing rejected records; 3x absence warning indicator.
-     - R2: Full blocking notification permission modal overlay (z-[99999]); pre-login splash animation; removal of SaaS subtitle text; browser tab title "SIPJAM" & manifest; Apple Safari iOS viewport/camera fixes.
-     - R3: Teacher dashboard delay accumulation calculation fix; camera facingMode switch stream teardown/mutex; teacher username & password change option; master menu search bar & column dropdown filters across all 6 master tabs.
-3. **Phase 3: Independent Test Execution**:
-   - Run unit test suites: `npm test`
-   - Run E2E test suite: `npm run test:e2e`
-   - Run typecheck: `npx tsc --noEmit`
-   - Run production build: `npm run build`
+> Status: Launched
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: Small, focused team
 
-## Deliverables
-Write your comprehensive audit report to `handoff.md` in your working directory and message the parent Sentinel with your final structured verdict:
-`VICTORY CONFIRMED` or `VICTORY REJECTED` (with exact findings).
+This is a single self-contained fix; keep it small and focused.
+
+This project involves implementing a series of UI/UX improvements across the Sipjam application based on a recent audit. The primary goals are replacing blocking SweetAlert modals with non-intrusive toasts, fixing destructive form resets in attendance, and making data tables responsive on mobile devices.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Non-Intrusive Notifications
+Replace generic blocking `Swal.fire` (SweetAlert2) calls for success, info, and validation errors with non-intrusive Toast notifications (e.g., using `react-hot-toast` or similar) across the application (especially in `GuruPresensi.tsx`). Critical alerts (like confirmation to delete) may still use modals.
+
+### R2. Preserving Form State
+In `GuruPresensi.tsx`, prevent the automatic deletion of the user's uploaded photo/selfie when they toggle between different attendance types (`tipeAbsen` or `jenisPresensi`). If state must be cleared, implement a confirmation warning first.
+
+### R3. Mobile-Responsive Tables
+Refactor data-heavy tables in `AdminDataView.tsx`, `PiketView.tsx`, and `GradebookView` to be mobile-friendly. Either wrap them in horizontally scrollable containers (`overflow-x-auto whitespace-nowrap`) or convert the rows into a stacked "Card" layout on small screens.
+
+## Acceptance Criteria
+
+### UI Behavior Validation
+- [ ] Programmatic/Visual Check: Submitting a successful attendance record triggers a non-blocking toast. The UI does not present a popup requiring an "OK" click to proceed.
+- [ ] Programmatic/Visual Check: Toggling between "Datang" and "Pulang" in `GuruPresensi.tsx` after attaching a mock file does not erase the file state without explicit user confirmation.
+- [ ] Programmatic/Visual Check: Tables in `PiketView.tsx` and `AdminDataView.tsx` scroll horizontally (or stack) when the viewport width is simulated to be < 640px, without causing horizontal layout overflow on the main body.
+</original_task>
+
+<audit_context>
+The implementation swarm has completed:
+- Implementer (c53b2e3)
+- Reviewer Round 1 (5757327)
+- Reviewer Round 2 (6028a3e)
+- Reviewer Round 3 (ee98313)
+
+Please conduct your independent 3-phase audit:
+1. Timeline & Commit Verification
+2. Anti-Cheating & Integrity Verification (ensure no tests were altered to pass artificially, real functionality implemented)
+3. Independent Test & Build Execution (`npm test`, `npm run test:e2e`, `npm run build`)
+
+Write your audit report and deliver your structured verdict (CONFIRMED or REJECTED).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1
+</audit_context>
