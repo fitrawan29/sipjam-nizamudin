@@ -18,6 +18,11 @@ export interface TeacherWarningSummary {
   teacherName: string;
   hasWarning: boolean;
   warnings: DisciplineWarning[];
+  stats?: {
+    presensi: { filled: number; required: number };
+    jurnal: { filled: number; required: number };
+    piket: { filled: number; required: number };
+  };
 }
 
 /**
@@ -205,6 +210,13 @@ export async function getTeacherDisciplineWarnings(
 
   const warnings: DisciplineWarning[] = [];
 
+  // Initialize stats for the dashboard
+  const monthlyStats = {
+    presensi: { filled: 0, required: 0 },
+    jurnal: { filled: 0, required: 0 },
+    piket: { filled: 0, required: 0 },
+  };
+
   // =========================================================================
   // CATEGORY 1: PRESENSI WARNING EVALUATION
   // =========================================================================
@@ -249,6 +261,8 @@ export async function getTeacherDisciplineWarnings(
       }
     }
 
+    monthlyStats.presensi.required++;
+    if (!isAbsent) monthlyStats.presensi.filled++;
     presensiOperationalDays.push({ dateStr, isViolation: isAbsent });
   }
 
@@ -313,6 +327,8 @@ export async function getTeacherDisciplineWarnings(
 
     // If teacher submitted fewer journals than required scheduled classes
     const isMissingJournal = dayJournals.length < scheduledOnDay.length;
+    monthlyStats.jurnal.required += scheduledOnDay.length;
+    monthlyStats.jurnal.filled += Math.min(dayJournals.length, scheduledOnDay.length);
     jurnalOperationalDays.push({ dateStr, isViolation: isMissingJournal });
   }
 
@@ -372,6 +388,8 @@ export async function getTeacherDisciplineWarnings(
     );
 
     const isMissingPiket = dayReports.length === 0;
+    monthlyStats.piket.required++;
+    if (!isMissingPiket) monthlyStats.piket.filled++;
     piketOperationalDays.push({ dateStr, isViolation: isMissingPiket });
   }
 
@@ -420,7 +438,8 @@ export async function getTeacherDisciplineWarnings(
     teacherId,
     teacherName: normName,
     hasWarning: warnings.length > 0,
-    warnings
+    warnings,
+    stats: monthlyStats
   };
 }
 

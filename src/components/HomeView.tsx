@@ -932,23 +932,20 @@ export default function HomeView({
       {/* ========================================================= */}
       {isGuru && (
         <>
-          {/* Discipline Warning Banner (F7) - Redesigned to be compact */}
-          {teacherWarnings?.hasWarning && (
-            <div className="bg-red-50 dark:bg-red-950/40 border border-red-400/50 rounded-xl p-3 shadow-sm text-red-900 dark:text-red-200 fade-in flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <i className="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i>
-                  <span className="font-bold text-xs uppercase tracking-wide text-red-700 dark:text-red-400">Peringatan Kedisiplinan <span className="text-[10px] font-medium normal-case">({selectedMonth})</span></span>
-                </div>
-                <span className="text-[10px] bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-300 px-2 py-0.5 rounded-md font-semibold">Tindakan Diperlukan</span>
+          {/* Monthly Stats Summary */}
+          {teacherWarnings?.stats && (
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
+              <div className="bg-emerald-50/80 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-900/30 flex flex-col items-center text-center shadow-sm">
+                <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">Presensi</span>
+                <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{teacherWarnings.stats.presensi.filled} <span className="text-[10px] sm:text-xs text-emerald-500 dark:text-emerald-600 font-bold">/ {teacherWarnings.stats.presensi.required}</span></span>
               </div>
-              <div className="text-[11px] space-y-1">
-                {teacherWarnings.warnings.map((w, idx) => (
-                  <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-x-2 bg-white/50 dark:bg-black/20 p-1.5 rounded-lg">
-                    <span className="font-medium text-red-800 dark:text-red-300 truncate"><span className="font-bold opacity-70">[{w.category}]</span> {w.message}</span>
-                    <span className="text-[9px] text-red-600/70 dark:text-red-400/70 font-mono whitespace-nowrap">{w.dates.slice(-2).join(', ')} {w.dates.length > 2 && '...'}</span>
-                  </div>
-                ))}
+              <div className="bg-indigo-50/80 dark:bg-indigo-950/20 p-2.5 rounded-xl border border-indigo-200/60 dark:border-indigo-900/30 flex flex-col items-center text-center shadow-sm">
+                <span className="text-[9px] sm:text-[10px] font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wide">Jurnal</span>
+                <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">{teacherWarnings.stats.jurnal.filled} <span className="text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-600 font-bold">/ {teacherWarnings.stats.jurnal.required}</span></span>
+              </div>
+              <div className="bg-teal-50/80 dark:bg-teal-950/20 p-2.5 rounded-xl border border-teal-200/60 dark:border-teal-900/30 flex flex-col items-center text-center shadow-sm">
+                <span className="text-[9px] sm:text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wide">Piket</span>
+                <span className="text-base sm:text-lg font-black text-teal-700 dark:text-teal-300 mt-0.5">{teacherWarnings.stats.piket.filled} <span className="text-[10px] sm:text-xs text-teal-500 dark:text-teal-600 font-bold">/ {teacherWarnings.stats.piket.required}</span></span>
               </div>
             </div>
           )}
@@ -963,7 +960,7 @@ export default function HomeView({
                   type="month" 
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-full outline-none border border-gray-200 dark:border-gray-700 cursor-pointer shrink-0 max-w-[150px]"
+                  className="text-[10px] sm:text-[11px] font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-full outline-none border border-gray-200 dark:border-gray-700 cursor-pointer shrink-0 max-w-[130px]"
                   title="Pilih Bulan"
                 />
               </div>

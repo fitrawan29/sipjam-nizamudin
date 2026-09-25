@@ -98,61 +98,7 @@ export default function AdminMonitorView({ user }: { user: any }) {
                 <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama guru..." className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" />
             </div>
 
-            {/* Peringatan Kedisiplinan Guru (3x Pelanggaran) Card (F7) - Redesigned */}
-            <div className="bg-red-50/50 dark:bg-red-950/20 border border-red-300/50 dark:border-red-900/40 p-3 rounded-xl mb-4 shadow-sm flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <i className="fa-solid fa-triangle-exclamation text-red-600 text-sm"></i>
-                  <div>
-                    <h3 className="text-xs font-bold text-red-900 dark:text-red-200 uppercase tracking-wide">
-                      Peringatan Kedisiplinan
-                    </h3>
-                    <p className="text-[9px] text-red-700/80 dark:text-red-400 mt-0.5">
-                      (Evaluasi bulan {date.substring(0, 7)})
-                    </p>
-                  </div>
-                </div>
-                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                  warningsList.length > 0 
-                    ? 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-300' 
-                    : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                }`}>
-                  {warningsList.length} Guru
-                </span>
-              </div>
 
-              {warningsLoading ? (
-                <div className="text-center py-2 text-[10px] text-gray-500 italic">
-                  <i className="fa-solid fa-spinner animate-spin mr-1.5"></i> Memeriksa data kedisiplinan...
-                </div>
-              ) : warningsList.length === 0 ? (
-                <div className="bg-white/50 dark:bg-black/20 p-2 rounded-lg text-[10px] text-green-700 dark:text-green-400 flex items-center gap-1.5 font-medium">
-                  <i className="fa-solid fa-circle-check"></i>
-                  <span>Tidak ada guru yang mencapai batas pelanggaran 3x.</span>
-                </div>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar">
-                  {warningsList.map((tw) => (
-                    <div key={tw.teacherName} className="bg-white/80 dark:bg-gray-800/80 p-2 rounded-lg border border-red-100 dark:border-red-900/30">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-[11px] text-gray-900 dark:text-white flex items-center gap-1.5">
-                          <i className="fa-solid fa-user text-red-500/70"></i>
-                          {tw.teacherName}
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        {tw.warnings.map((w, wIdx) => (
-                          <div key={wIdx} className="text-[10px] flex justify-between items-center bg-red-50/50 dark:bg-red-900/10 p-1.5 rounded-md">
-                            <span className="text-gray-800 dark:text-gray-300"><strong className="text-red-700 dark:text-red-400">[{w.category}]</strong> {w.message}</span>
-                            <span className="text-[9px] text-gray-500 font-mono whitespace-nowrap">{w.dates.slice(-2).join(', ')}{w.dates.length > 2 ? '...' : ''}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             <div id="monitor-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
                 {loading && presensiList.length === 0 ? (

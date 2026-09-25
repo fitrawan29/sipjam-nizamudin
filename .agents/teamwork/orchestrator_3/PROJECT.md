@@ -38,7 +38,7 @@ SIPJAM is a Next.js (App Router) + Supabase (PostgreSQL with RLS & RPCs) + Tailw
 | M2 | Notifikasi Penolakan, Auto-Alpa Cutoff & Warning 3x | F5, F6, F7 | M1 (interfaces) | DONE |
 | M3 | UI/UX, Branding & Apple Compatibility | F8, F9, F10, F11 | none | DONE |
 | M4 | Fungsionalitas Tambahan & Bug Fixes | F12, F13, F14, F15 | none | DONE |
-| M5 | Final Milestone: E2E Verification & Adversarial Hardening | F16 (All requirements) | M1, M2, M3, M4 | IN_PROGRESS |
+| M5 | Final Milestone: E2E Verification & Adversarial Hardening | F16 (All requirements) | M1, M2, M3, M4 | DONE |
 
 ---
 
