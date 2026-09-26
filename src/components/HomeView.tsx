@@ -202,13 +202,14 @@ export default function HomeView({
       const fetchTeacherDetails = async () => {
         setLoadingTeacherExtra(true);
         try {
+          const cleanNama = (user.nama || '').split(',')[0].trim();
           let mapelQuery = supabase.from('guru_mapel').select('*');
-          if (user.username && user.nama) {
-            mapelQuery = mapelQuery.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
+          if (user.username && cleanNama) {
+            mapelQuery = mapelQuery.or(`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`);
           } else if (user.username) {
             mapelQuery = mapelQuery.eq('nip', user.username);
-          } else if (user.nama) {
-            mapelQuery = mapelQuery.ilike('nama_guru', `%${user.nama}%`);
+          } else if (cleanNama) {
+            mapelQuery = mapelQuery.ilike('nama_guru', `%${cleanNama}%`);
           }
 
           const [mapelRes, journalRes, docRes] = await Promise.all([
@@ -216,20 +217,20 @@ export default function HomeView({
             supabase
               .from('jurnal_pembelajaran')
               .select('id, tanggal, nama_guru, mapel, kelas, materi, absensi_siswa, detail_absen')
-              .ilike('nama_guru', `%${user.nama.split(',')[0].trim()}%`)
+              .ilike('nama_guru', `%${cleanNama}%`)
               .order('tanggal', { ascending: false }),
             supabase
               .from('bank_dokumen')
               .select('*')
-              .ilike('nama_guru', `%${user.nama.split(',')[0].trim()}%`)
+              .ilike('nama_guru', `%${cleanNama}%`)
               .order('timestamp', { ascending: false }),
           ]);
 
           let teacherMapels = mapelRes.data || [];
-          if (teacherMapels.length === 0 && user.nama) {
+          if (teacherMapels.length === 0 && cleanNama) {
             const { data: jadwalData } = await supabase.from('jadwal_pelajaran')
               .select('*')
-              .ilike('nama_guru', `%${user.nama}%`);
+              .ilike('nama_guru', `%${cleanNama}%`);
             if (jadwalData && jadwalData.length > 0) {
               const uniqueMapels = new Map();
               jadwalData.forEach((j: any) => {

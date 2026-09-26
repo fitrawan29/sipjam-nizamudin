@@ -83,11 +83,24 @@ export default function AdminDataView({ user }: { user: any }) {
             if (user?.sekolah_id) {
               endpoint += `&sekolah_id=eq.${user.sekolah_id}`;
             }
+            const fallbackHeaders: Record<string, string> = {
+              'apikey': apiKey,
+              'Authorization': `Bearer ${apiKey}`,
+            };
+            if (user?.sekolah_id) {
+              fallbackHeaders['x-sekolah-id'] = user.sekolah_id;
+            }
+            if (user?.session_token) {
+              fallbackHeaders['x-session-token'] = user.session_token;
+            }
+            if (user?.role) {
+              fallbackHeaders['x-user-role'] = user.role;
+            }
+            if (user?.id) {
+              fallbackHeaders['x-user-id'] = user.id;
+            }
             const res = await fetch(endpoint, {
-              headers: {
-                'apikey': apiKey,
-                'Authorization': `Bearer ${apiKey}`,
-              },
+              headers: fallbackHeaders,
             });
             if (res.ok) {
               const fallbackData = await res.json();

@@ -57,9 +57,15 @@ function MainApp() {
       const storedUser = localStorage.getItem('sipjam_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        // Authenticated sessions bypass pre-login splash cleanly
-        setShowSplash(false);
+        if (!parsed || !parsed.session_token || typeof parsed.session_token !== 'string' || !parsed.session_token.trim()) {
+          console.warn('[MainApp] Stored user session lacks session_token. Clearing legacy session.');
+          localStorage.removeItem('sipjam_user');
+          setUser(null);
+        } else {
+          setUser(parsed);
+          // Authenticated sessions bypass pre-login splash cleanly
+          setShowSplash(false);
+        }
       }
     } catch (e) {
       console.error('Failed to parse stored user session:', e);

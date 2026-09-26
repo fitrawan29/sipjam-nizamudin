@@ -102,10 +102,11 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
 
         // Also check data_guru for wali_kelas field
         if (user?.id || user?.nama) {
+          const cleanNama = (user?.nama || '').split(',')[0].trim();
           const { data: gData } = await supabase
             .from('data_guru')
             .select('*')
-            .or(`id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},nama.eq."${user.nama || ''}"`);
+            .or(`user_id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},nama_guru.eq."${cleanNama}"`);
           if (gData && gData.length > 0) {
             const g = gData[0] as any;
             if (g.wali_kelas) {

@@ -56,7 +56,7 @@ export function getActiveTenantContext(): TenantContext {
     } catch (e) {
       console.warn('[supabaseClient] Failed to parse sipjam_user from localStorage:', e);
     }
-    return { sekolahId: null, role: null, userId: null };
+    return { sekolahId: null, role: null, userId: null, sessionToken: null };
   }
 
   return {
@@ -75,7 +75,7 @@ export function getActiveTenantContext(): TenantContext {
 
 /**
  * Custom fetch wrapper that intercepts every outgoing PostgREST / Storage / RPC request
- * and dynamically injects `x-sekolah-id`, `x-user-role`, and `x-user-id` headers according to the active
+ * and dynamically injects `x-sekolah-id`, `x-user-role`, `x-user-id`, and `x-session-token` headers according to the active
  * user session or context.
  */
 export const dynamicTenantFetch: typeof fetch = async (input, init) => {
@@ -124,25 +124,41 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
 
 /**
  * Helper factory to instantiate an explicitly scoped Supabase client for a specific
- * school (sekolahId), role, and userId. Useful for background workers, tests, or Superadmin
+ * school (sekolahId), role, userId, and sessionToken. Useful for background workers, tests, or Superadmin
  * school impersonation/maintenance scripts.
  */
 export function getTenantSupabaseClient(
   sekolahId?: string | null,
   role?: string | null,
   userIdOrOptions?: string | null | SupabaseClientOptions<any>,
-  maybeOptions?: SupabaseClientOptions<any>,
-  sessionToken?: string | null
+  maybeOptionsOrSessionToken?: SupabaseClientOptions<any> | string | null,
+  maybeSessionToken?: string | null
 ): SupabaseClient {
   let userId: string | null = null;
   let options: SupabaseClientOptions<any> | undefined = undefined;
+  let explicitSessionToken: string | null = null;
 
   if (userIdOrOptions && typeof userIdOrOptions === 'object') {
     options = userIdOrOptions as SupabaseClientOptions<any>;
   } else {
     userId = typeof userIdOrOptions === 'string' ? userIdOrOptions : null;
-    options = maybeOptions;
+    if (typeof maybeOptionsOrSessionToken === 'string') {
+      explicitSessionToken = maybeOptionsOrSessionToken;
+      options = undefined;
+    } else {
+      options = maybeOptionsOrSessionToken || undefined;
+      explicitSessionToken = maybeSessionToken ?? null;
+    }
   }
+
+  if (maybeSessionToken && !explicitSessionToken) {
+    explicitSessionToken = maybeSessionToken;
+  }
+
+  const sessionToken = explicitSessionToken || serverTenantContext.sessionToken || null;
+  const effectiveUserId = userId || serverTenantContext.userId || null;
+  const effectiveSekolahId = sekolahId || serverTenantContext.sekolahId || null;
+  const effectiveRole = role || serverTenantContext.role || null;
 
   return createClient(supabaseUrl, supabaseKey, {
     ...options,
@@ -159,14 +175,14 @@ export function getTenantSupabaseClient(
           });
         }
 
-        if (sekolahId && !headers.has('x-sekolah-id')) {
-          headers.set('x-sekolah-id', String(sekolahId).trim());
+        if (effectiveSekolahId && !headers.has('x-sekolah-id')) {
+          headers.set('x-sekolah-id', String(effectiveSekolahId).trim());
         }
-        if (role && !headers.has('x-user-role')) {
-          headers.set('x-user-role', String(role).trim());
+        if (effectiveRole && !headers.has('x-user-role')) {
+          headers.set('x-user-role', String(effectiveRole).trim());
         }
-        if (userId && !headers.has('x-user-id')) {
-          headers.set('x-user-id', String(userId).trim());
+        if (effectiveUserId && !headers.has('x-user-id')) {
+          headers.set('x-user-id', String(effectiveUserId).trim());
         }
         if (sessionToken && !headers.has('x-session-token')) {
           headers.set('x-session-token', String(sessionToken).trim());

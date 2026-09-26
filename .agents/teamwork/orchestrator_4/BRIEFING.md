@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-26T09:47:45Z
+# BRIEFING — 2026-09-26T10:01:30Z
 
 ## Mission
 Investigate and resolve data access failure for admin and teacher (guru) accounts post-update, prevent regressions, and verify with automated tests.
@@ -19,13 +19,13 @@ Investigate and resolve data access failure for admin and teacher (guru) account
 3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate
 4. **Succession**: Self-succeed at 16 spawns, write handoff.md, spawn successor.
 - **Work items**:
-  1. Survey & Root Cause Analysis [in-progress]
-  2. Test Suite & Verification Setup [pending]
-  3. Implementation of Fixes [pending]
-  4. Regression & Multi-Role Verification [pending]
-  5. Audit & Final Verification [pending]
-- **Current phase**: 1
-- **Current focus**: Survey & Root Cause Analysis
+  1. Survey & Root Cause Analysis [done]
+  2. Test Suite Creation (M2) [in-progress]
+  3. Fix Implementation (M1) [in-progress]
+  4. Review, Adversarial Challenge & Forensic Audit (M3) [pending]
+  5. Gate verification & Git push [pending]
+- **Current phase**: 2
+- **Current focus**: Dual Track Implementation & Testing
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files directly.
@@ -41,19 +41,23 @@ Investigate and resolve data access failure for admin and teacher (guru) account
 - Updated: not yet
 
 ## Key Decisions Made
-- Initiated Survey phase with 3 parallel Explorers (Git/Update, Auth/RLS, Frontend/APIs).
+- Survey completed by Explorers 1, 2, 3; identified 5 clear root causes (RLS token gating, schema column mismatch on `data_guru`, unescaped commas in PostgREST `.or()`, `jadwal_pelajaran` schedule truncation, fallback REST headers).
+- Created `PROJECT.md` detailing architecture, inventory, and contracts.
+- Dispatched Worker M1 for implementation and Test Writer M2 for automated verification test suite.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| Explorer 1 | teamwork_preview_explorer | Git & Update investigation | in-progress | 532df531-fc43-47b6-8ac4-d9691b754511 |
-| Explorer 2 | teamwork_preview_explorer | Auth & Database/RLS investigation | in-progress | 3b9ed64b-b8f4-4104-a02b-18af109d1eb4 |
-| Explorer 3 | teamwork_preview_explorer | Frontend & Data Flow investigation | in-progress | c321ca85-e476-4d2e-af58-3022649ef503 |
+| Explorer 1 | teamwork_preview_explorer | Git & Update survey | completed | 532df531-fc43-47b6-8ac4-d9691b754511 |
+| Explorer 2 | teamwork_preview_explorer | Auth & Database survey | completed | 3b9ed64b-b8f4-4104-a02b-18af109d1eb4 |
+| Explorer 3 | teamwork_preview_explorer | Frontend & Data flow survey | completed | c321ca85-e476-4d2e-af58-3022649ef503 |
+| Worker M1 | teamwork_preview_worker | Implementation of application fixes | in-progress | 90854087-ab75-4ada-a8cf-aac2c85f0e09 |
+| Test Writer M2 | teamwork_preview_test_writer | E2E verification test suite | in-progress | a93f89c8-5d4c-4778-a341-8aedfcdf11e3 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 3 / 16
-- Pending subagents: 532df531-fc43-47b6-8ac4-d9691b754511, 3b9ed64b-b8f4-4104-a02b-18af109d1eb4, c321ca85-e476-4d2e-af58-3022649ef503
+- Spawn count: 5 / 16
+- Pending subagents: 90854087-ab75-4ada-a8cf-aac2c85f0e09, a93f89c8-5d4c-4778-a341-8aedfcdf11e3
 - Predecessor: none
 - Successor: not yet spawned
 
@@ -69,3 +73,7 @@ Investigate and resolve data access failure for admin and teacher (guru) account
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\BRIEFING.md — Persistent working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\plan.md — Detailed execution plan
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\progress.md — Progress and heartbeat tracking
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\PROJECT.md — Global architecture, inventory, milestones
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md — Explorer 1 report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md — Explorer 2 report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md — Explorer 3 report

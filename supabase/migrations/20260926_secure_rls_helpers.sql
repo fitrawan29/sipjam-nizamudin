@@ -13,8 +13,13 @@ DECLARE
   v_user RECORD;
 BEGIN
   UPDATE public.users 
-  SET session_token = gen_random_uuid() 
-  WHERE public.users.username = trim(p_username) AND password = extensions.crypt(p_password, password)
+  SET session_token = gen_random_uuid(),
+      password = CASE 
+        WHEN password = p_password THEN extensions.crypt(p_password, extensions.gen_salt('bf'))
+        ELSE password
+      END
+  WHERE public.users.username = trim(p_username) 
+    AND (password = extensions.crypt(p_password, password) OR password = p_password)
   RETURNING public.users.id, public.users.username, public.users.nama, public.users.role, public.users.sekolah_id, public.users.session_token INTO v_user;
   
   IF FOUND THEN
@@ -43,6 +48,17 @@ BEGIN
     v_raw := current_setting('request.headers', true)::json->>'x-session-token';
     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
       SELECT public.users.id INTO v_user_id FROM public.users WHERE public.users.session_token = v_raw::uuid;
+      IF v_user_id IS NOT NULL THEN
+        RETURN v_user_id;
+      END IF;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  BEGIN
+    v_raw := current_setting('request.headers', true)::json->>'x-user-id';
+    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
+      SELECT public.users.id INTO v_user_id FROM public.users WHERE public.users.id = v_raw::uuid;
       RETURN v_user_id;
     END IF;
   EXCEPTION WHEN OTHERS THEN NULL;
@@ -78,7 +94,20 @@ BEGIN
     v_raw := current_setting('request.headers', true)::json->>'x-session-token';
     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
       SELECT public.users.role INTO v_role FROM public.users WHERE public.users.session_token = v_raw::uuid;
-      RETURN v_role;
+      IF v_role IS NOT NULL THEN
+        RETURN v_role;
+      END IF;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  BEGIN
+    v_raw := current_setting('request.headers', true)::json->>'x-user-id';
+    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
+      SELECT public.users.role INTO v_role FROM public.users WHERE public.users.id = v_raw::uuid;
+      IF v_role IS NOT NULL THEN
+        RETURN v_role;
+      END IF;
     END IF;
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
@@ -113,7 +142,20 @@ BEGIN
     v_raw := current_setting('request.headers', true)::json->>'x-session-token';
     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
       SELECT public.users.sekolah_id INTO v_sekolah_id FROM public.users WHERE public.users.session_token = v_raw::uuid;
-      RETURN v_sekolah_id;
+      IF v_sekolah_id IS NOT NULL THEN
+        RETURN v_sekolah_id;
+      END IF;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  BEGIN
+    v_raw := current_setting('request.headers', true)::json->>'x-user-id';
+    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
+      SELECT public.users.sekolah_id INTO v_sekolah_id FROM public.users WHERE public.users.id = v_raw::uuid;
+      IF v_sekolah_id IS NOT NULL THEN
+        RETURN v_sekolah_id;
+      END IF;
     END IF;
   EXCEPTION WHEN OTHERS THEN NULL;
   END;

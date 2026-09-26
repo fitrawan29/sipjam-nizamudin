@@ -100,13 +100,14 @@ export default function GuruJurnal({ user }: { user: any }) {
         }
 
         // Teacher role: query guru_mapel matching nip (user.username) or nama_guru (user.nama)
+        const cleanNama = (user.nama || '').split(',')[0].trim();
         let query = supabase.from('guru_mapel').select('*');
-        if (user.username && user.nama) {
-          query = query.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
+        if (user.username && cleanNama) {
+          query = query.or(`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`);
         } else if (user.username) {
           query = query.eq('nip', user.username);
-        } else if (user.nama) {
-          query = query.ilike('nama_guru', `%${user.nama}%`);
+        } else if (cleanNama) {
+          query = query.ilike('nama_guru', `%${cleanNama}%`);
         }
 
         let { data, error } = await query.order('nama_mapel', { ascending: true });
@@ -117,10 +118,10 @@ export default function GuruJurnal({ user }: { user: any }) {
         
         // Fallback to jadwal_pelajaran if guru_mapel is empty
         if (!data || data.length === 0) {
-          if (user.nama) {
+          if (cleanNama) {
             const { data: jadwalData } = await supabase.from('jadwal_pelajaran')
               .select('*')
-              .ilike('nama_guru', `%${user.nama}%`);
+              .ilike('nama_guru', `%${cleanNama}%`);
               
             if (jadwalData && jadwalData.length > 0) {
               const uniqueMapels = new Map();

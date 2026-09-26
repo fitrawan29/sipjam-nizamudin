@@ -55,11 +55,7 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
   
   if (!allJadwal || allJadwal.length === 0) return [];
 
-  if (userId) {
-    const exactMatches = allJadwal.filter((j: any) => j.user_id === userId);
-    // If we find matches by UUID, trust them implicitly and skip fuzzy string matching
-    if (exactMatches.length > 0) return exactMatches;
-  }
+  const uuidMatches = userId ? allJadwal.filter((j: any) => j.user_id === userId) : [];
 
   const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
 
@@ -67,7 +63,7 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
   const firstName = namaNorm.split(/\s+/)[0] || '';
   const userNorm = username ? normalizeName(username) : '';
 
-  return allJadwal.filter((j: any) => {
+  const nameMatches = allJadwal.filter((j: any) => {
     const jNama = (j.nama_guru || '').trim();
     if (!jNama) return false;
     const jNorm = normalizeName(jNama);
@@ -88,6 +84,16 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
 
     return false;
   });
+
+  // Combine and deduplicate by ID so unlinked schedules are preserved without duplicates
+  const map = new Map<string, any>();
+  [...uuidMatches, ...nameMatches].forEach((item: any) => {
+    if (item && item.id) {
+      map.set(item.id, item);
+    }
+  });
+
+  return Array.from(map.values());
 }
 
 /**
@@ -130,6 +136,7 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
 export async function getGuruDailyState(namaGuru: string, username?: string, userId?: string): Promise<GuruDailyState> {
   const now = new Date();
   const todayStr = getWitaDateStr(now);
+  const cleanTeacherName = (namaGuru || '').split(',')[0].trim();
   
   const state: GuruDailyState = {
     tanggal: todayStr,
@@ -214,11 +221,13 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // Guru yang dikecualikan (wajib hadir HANYA saat hari mengajar)
     let isTeacherExempt = false;
     try {
-      let tQ = supabase.from('data_guru').select('id, nama, username, wajib_hadir_hanya_mengajar');
-      if (username) {
-        tQ = tQ.or(`nama.eq."${namaGuru}",username.eq."${username}"`);
+      let tQ = supabase.from('data_guru').select('id, nama_guru, nip, wajib_hadir_hanya_mengajar');
+      if (userId) {
+        tQ = tQ.or(`user_id.eq.${userId},nama_guru.eq."${cleanTeacherName}"`);
+      } else if (username) {
+        tQ = tQ.or(`nama_guru.eq."${cleanTeacherName}",nip.eq."${username}"`);
       } else {
-        tQ = tQ.eq('nama', namaGuru);
+        tQ = tQ.eq('nama_guru', cleanTeacherName);
       }
       const { data: tData } = await tQ;
       if (tData && tData.length > 0) {
@@ -228,8 +237,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         }
         if (
           guruHanyaMengajarList.includes(teacher.id) || 
-          guruHanyaMengajarList.includes(teacher.nama) || 
-          (teacher.username && guruHanyaMengajarList.includes(teacher.username))
+          guruHanyaMengajarList.includes(teacher.nama_guru) || 
+          (teacher.nip && guruHanyaMengajarList.includes(teacher.nip))
         ) {
           isTeacherExempt = true;
         }
@@ -295,8 +304,11 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       .order('timestamp', { ascending: false })
       .limit(50);
     
-    if (userId) presensiQuery = presensiQuery.eq('user_id', userId);
-    else presensiQuery = presensiQuery.eq('nama_guru', namaGuru);
+    if (userId) {
+      presensiQuery = presensiQuery.or(`user_id.eq.${userId},nama_guru.ilike."%${cleanTeacherName}%"`);
+    } else {
+      presensiQuery = presensiQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+    }
 
     const { data: allPresensi } = await presensiQuery;
 
@@ -386,8 +398,11 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         .select('*')
         .eq('tanggal', todayStr);
       
-      if (userId) piketQuery = piketQuery.eq('user_id', userId);
-      else piketQuery = piketQuery.eq('guru_pelapor', namaGuru);
+      if (userId) {
+        piketQuery = piketQuery.or(`user_id.eq.${userId},guru_pelapor.ilike."%${cleanTeacherName}%"`);
+      } else {
+        piketQuery = piketQuery.ilike('guru_pelapor', `%${cleanTeacherName}%`);
+      }
 
       const { data: lp } = await piketQuery;
       
@@ -409,8 +424,11 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       .select('*')
       .eq('tanggal', todayStr);
     
-    if (userId) jurnalQuery = jurnalQuery.eq('user_id', userId);
-    else jurnalQuery = jurnalQuery.eq('nama_guru', namaGuru);
+    if (userId) {
+      jurnalQuery = jurnalQuery.or(`user_id.eq.${userId},nama_guru.ilike."%${cleanTeacherName}%"`);
+    } else {
+      jurnalQuery = jurnalQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+    }
 
     const { data: jurnal } = await jurnalQuery;
 
