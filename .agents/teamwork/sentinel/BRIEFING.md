@@ -1,13 +1,15 @@
-# BRIEFING — 2026-09-26T04:35:30+08:00
+# BRIEFING — 2026-09-26T17:47:00+08:00
 
 ## Mission
-Monitor and coordinate execution of Sipjam UI/UX improvements (toast notifications, attendance form state preservation, and mobile responsive tables) via SWE Light path.
+Investigate and resolve data access issue preventing admin and teacher (guru) roles from reading data following recent update, while preventing regression for other roles.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel
 - Orchestrator: 9dd52156-c90d-404b-9593-7446ffab66bb (completed & retired)
 - Victory Auditor: 756f0a2d-4a5d-4ed9-ad74-045c9d87d5f9 (completed & retired)
+- Active Orchestrator: f963fff1-816c-4a40-9daa-b44715a5d909 (orchestrator_4)
+- Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -16,25 +18,24 @@ Monitor and coordinate execution of Sipjam UI/UX improvements (toast notificatio
 - Cancel all crons and kill all subagents before final summary delivery
 
 ## User Context
-- **Last user request**: Sipjam UI/UX improvements: R1 (Non-intrusive notifications / toast), R2 (Preserving attendance form state / photo upload), R3 (Mobile-responsive tables in AdminDataView, PiketView, GradebookView).
+- **Last user request**: Investigate and fix issue where admin and teacher accounts cannot read their data after update. R1 Root Cause Analysis, R2 Implement Fix, R3 Regression Prevention. Automated tests/agent-as-judge required.
 - **Pending clarifications**: none
-- **Delivered results**: All requirements fully implemented, refined across 3 adversarial review rounds, and confirmed by independent Victory Auditor.
+- **Delivered results**: Dispatched Project Orchestrator (orchestrator_4).
 
 ## Project Status
-- **Phase**: complete
-- **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (task-22 and task-24 cancelled)
-- **Active Subagents**: none (kill_all executed)
+- **Phase**: in progress
+- **Route**: General (teamwork_preview_orchestrator)
+- **Active Crons**: Cron 1 Progress Reporting (789232ee-9f79-48ad-b99f-00268f7c3ea1/task-20), Cron 2 Liveness Check (789232ee-9f79-48ad-b99f-00268f7c3ea1/task-22)
+- **Active Subagents**: orchestrator_4 (f963fff1-816c-4a40-9daa-b44715a5d909)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
-- **Auditor ID**: 756f0a2d-4a5d-4ed9-ad74-045c9d87d5f9
+- **Auditor ID**: TBD
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original verbatim user request
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\BRIEFING.md — Sentinel persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\handoff.md — Sentinel final handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\handoff.md — SWE Light Orchestrator handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_2\handoff.md — Sentinel Victory Auditor handoff (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\handoff.md — Sentinel handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\ — Project Orchestrator directory
