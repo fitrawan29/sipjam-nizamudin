@@ -93,13 +93,6 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
 
   return (
     <>
-      <style>{`
-        @media print {
-          body {
-            --watermark-text: "DOKUMEN ASLI SIPJAM - ${sekolah.toUpperCase()}";
-          }
-        }
-      `}</style>
       <div className="print-header print-only mb-6 border-b-4 border-black pb-4 text-black font-medium leading-none">
         <div className="flex items-center justify-center gap-4 sm:gap-6 max-w-4xl mx-auto">
           {/* Left Logo Container (Yayasan) - Symmetric 3-column slot w-20 */}
@@ -180,7 +173,10 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
           )}
         </div>
       </div>
-      <PrintSecurityFooter user={user} />
+      <div className="fixed inset-0 pointer-events-none z-[9999] hidden print:flex flex-col items-center justify-center" style={{ transform: 'rotate(-45deg)', opacity: 0.08 }}>
+        <div className="text-[5rem] font-black whitespace-nowrap leading-none mb-4">DOKUMEN ASLI</div>
+        <div className="text-[3.5rem] font-black whitespace-nowrap leading-none">{sekolah}</div>
+      </div>
     </>
   );
 }
@@ -317,46 +313,65 @@ export function PrintSignature({
     ? { display: 'flex', justifyContent: 'flex-end', marginLeft: 'auto' }
     : { display: 'flex', justifyContent: 'space-between', width: '100%' };
 
+  let namaPencetak = user?.nama;
+  if (!namaPencetak && typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sipjam_user');
+      if (stored) {
+        namaPencetak = JSON.parse(stored).nama;
+      }
+    } catch (e) {}
+  }
+  const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
+
   return (
-    <div className={containerClass} style={containerStyle}>
-      {/* Left Signer: Guru Mata Pelajaran / Wali Kelas */}
-      {!singleColumn && (
-        <div className="text-center min-w-[200px] text-black">
+    <div className="w-full">
+      <div className={containerClass} style={containerStyle}>
+        {/* Left Signer: Guru Mata Pelajaran / Wali Kelas */}
+        {!singleColumn && (
+          <div className="text-center min-w-[200px] text-black">
+            <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
+              {leftTitle || 'Mengetahui,'}
+            </span>
+            <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
+              {leftSubtitle || 'Guru Mata Pelajaran'}
+            </span>
+            <div className="h-20 sm:h-24" />
+            <div className="inline-block text-left">
+              <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+                {leftName || '( ........................................ )'}
+              </span>
+              <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+                {leftNip && leftNip !== '-' ? `NIP. ${leftNip}` : 'NIP. -'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Right Signer: Kepala Sekolah with [Kabupaten/Kota], [Date] */}
+        <div className={`text-center min-w-[200px] text-black ${singleColumn ? 'w-64 ml-auto' : ''}`}>
           <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
-            {leftTitle || 'Mengetahui,'}
+            {region ? `${region}, ` : ''}{dateStr}
           </span>
           <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
-            {leftSubtitle || 'Guru Mata Pelajaran'}
+            {displayRightTitle}
           </span>
           <div className="h-20 sm:h-24" />
           <div className="inline-block text-left">
             <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
-              {leftName || '( ........................................ )'}
+              {kepsekNama}
             </span>
             <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
-              {leftNip && leftNip !== '-' ? `NIP. ${leftNip}` : 'NIP. -'}
+              {kepsekNip && kepsekNip !== '-' ? `NIP. ${kepsekNip}` : 'NIP. -'}
             </span>
           </div>
         </div>
-      )}
-
-      {/* Right Signer: Kepala Sekolah with [Kabupaten/Kota], [Date] */}
-      <div className={`text-center min-w-[200px] text-black ${singleColumn ? 'w-64 ml-auto' : ''}`}>
-        <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
-          {region ? `${region}, ` : ''}{dateStr}
-        </span>
-        <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
-          {displayRightTitle}
-        </span>
-        <div className="h-20 sm:h-24" />
-        <div className="inline-block text-left">
-          <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
-            {kepsekNama}
-          </span>
-          <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
-            {kepsekNip && kepsekNip !== '-' ? `NIP. ${kepsekNip}` : 'NIP. -'}
-          </span>
-        </div>
+      </div>
+      
+      {/* Security Footer (2 baris di bawah NIP) */}
+      <div className="print-only text-[9px] text-gray-500 mt-6 text-left max-w-4xl mx-auto">
+        Dicetak dari Sistem SIPJAM oleh {namaPencetak || 'Pengguna'} pada {timestamp} WITA.<br/>
+        Dokumen ini sah dan tidak untuk diedit.
       </div>
     </div>
   );
@@ -467,7 +482,7 @@ export function PrintSecurityFooter({ user }: { user?: any }) {
     } catch (e) {}
   }
   return (
-    <div className="hidden print:block fixed bottom-0 left-0 right-0 bg-white pt-1 pb-2 px-4 text-[8px] text-gray-500 z-[9999] border-t border-gray-100">
+    <div className="hidden print:block fixed bottom-2 left-4 text-[8px] text-gray-500 z-[9999]">
       Dicetak dari Sistem SIPJAM oleh {nama || 'Pengguna'} pada {timestamp} WITA.
       Dokumen ini sah dan tidak untuk diedit.
     </div>
