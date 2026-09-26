@@ -470,22 +470,5 @@ export function formatPeriodHeader(bulan?: string, startDate?: string, endDate?:
   return 'Periode: Semua Data';
 }
 
-export function PrintSecurityFooter({ user }: { user?: any }) {
-  const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-  let nama = user?.nama;
-  if (!nama && typeof window !== 'undefined') {
-    try {
-      const stored = localStorage.getItem('sipjam_user');
-      if (stored) {
-        nama = JSON.parse(stored).nama;
-      }
-    } catch (e) {}
-  }
-  return (
-    <div className="hidden print:block fixed bottom-2 left-4 text-[8px] text-gray-500 z-[9999]">
-      Dicetak dari Sistem SIPJAM oleh {nama || 'Pengguna'} pada {timestamp} WITA.
-      Dokumen ini sah dan tidak untuk diedit.
-    </div>
-  );
-}
+
 
