@@ -349,12 +349,10 @@ async function runTestSuite() {
     teacherUsers['Tika'] = tika;
 
     // Verify teacher in data_guru with titles ("Ade Fitrawan Ibrahim, M.Pd., Gr.")
-    const { data: adeGuru } = await anonClient
-      .rpc('verify_login', { p_username: 'admin', p_password: 'QWerty1334#' })
-      .then(async (adm) => {
-        const c = createTenantClient(adm.data[0]);
-        return c.from('data_guru').select('*').ilike('nama_guru', '%Ade Fitrawan%');
-      });
+    const { data: adeGuru } = await adminClient!
+      .from('data_guru')
+      .select('*')
+      .ilike('nama_guru', '%Ade Fitrawan%');
 
     if (!adeGuru || adeGuru.length === 0) {
       throw new Error('Could not find teacher Ade Fitrawan in data_guru');

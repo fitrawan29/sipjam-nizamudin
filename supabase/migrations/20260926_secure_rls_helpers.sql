@@ -55,15 +55,6 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 
-  BEGIN
-    v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-      SELECT public.users.id INTO v_user_id FROM public.users WHERE public.users.id = v_raw::uuid;
-      RETURN v_user_id;
-    END IF;
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-
   RETURN NULL;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
@@ -94,17 +85,6 @@ BEGIN
     v_raw := current_setting('request.headers', true)::json->>'x-session-token';
     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
       SELECT public.users.role INTO v_role FROM public.users WHERE public.users.session_token = v_raw::uuid;
-      IF v_role IS NOT NULL THEN
-        RETURN v_role;
-      END IF;
-    END IF;
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-
-  BEGIN
-    v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-      SELECT public.users.role INTO v_role FROM public.users WHERE public.users.id = v_raw::uuid;
       IF v_role IS NOT NULL THEN
         RETURN v_role;
       END IF;
@@ -149,17 +129,67 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
+
+CREATE OR REPLACE FUNCTION public.is_superadmin()
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_raw TEXT;
+  v_db_role TEXT;
+BEGIN
+  -- Service role always has superadmin privileges
+  IF current_setting('request.jwt.claim.role', true) = 'service_role' THEN
+    RETURN TRUE;
+  END IF;
+
+  -- 1. A Superadmin can NEVER be scoped to a specific school tenant
+  IF public.get_auth_user_sekolah_id() IS NOT NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  -- 2. Check JWT app_metadata (if using Supabase Auth JWT)
   BEGIN
-    v_raw := current_setting('request.headers', true)::json->>'x-user-id';
+    IF (auth.jwt() -> 'app_metadata' ->> 'role') = 'Superadmin' THEN
+      RETURN TRUE;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  -- 3. Check public.users by auth.uid() (if Supabase Auth authenticated)
+  IF auth.uid() IS NOT NULL THEN
+    SELECT u.role INTO v_db_role
+    FROM public.users u
+    WHERE u.id = auth.uid() AND u.sekolah_id IS NULL
+    LIMIT 1;
+
+    IF v_db_role = 'Superadmin' THEN
+      RETURN TRUE;
+    END IF;
+  END IF;
+
+  -- 4. Check x-session-token matching a Superadmin in public.users
+  BEGIN
+    v_raw := current_setting('request.headers', true)::json->>'x-session-token';
     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-      SELECT public.users.sekolah_id INTO v_sekolah_id FROM public.users WHERE public.users.id = v_raw::uuid;
-      IF v_sekolah_id IS NOT NULL THEN
-        RETURN v_sekolah_id;
+      SELECT u.role INTO v_db_role
+      FROM public.users u
+      WHERE u.session_token = v_raw::uuid AND u.sekolah_id IS NULL
+      LIMIT 1;
+
+      IF v_db_role = 'Superadmin' THEN
+        RETURN TRUE;
       END IF;
     END IF;
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 
-  RETURN NULL;
+  -- 5. NEVER fall back to raw x-user-role or x-user-id header. Missing or invalid identity ALWAYS returns FALSE.
+  RETURN FALSE;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
+
+REVOKE EXECUTE ON FUNCTION public.is_superadmin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_superadmin() TO anon, authenticated, service_role;
+
