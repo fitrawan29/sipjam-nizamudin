@@ -48,15 +48,13 @@ Adversarially challenge and stress-test Multi-Tenant Security and Role Isolation
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Modal overlay click containment: Can clicks leak or trigger underlying elements? Result: PROVEN CONTAINED via `e.stopPropagation()` and fixed fullscreen z-[99999] pointer-events-auto.
-  - Keyboard Escape dismissal: Does Escape close or bypass the blocking modal? Result: PROVEN INTERCEPTED in capture phase (`useCapture = true`).
-  - Dismissal bypass buttons: Are there any "Nanti", "Tutup", "Batal", "Lewati", "Skip", "Dismiss" buttons or handlers? Result: ZERO found across both notification modals.
-  - Denied state recovery: Does modal guide user to site settings? Result: Confirmed with 3-step guide and reload/recheck buttons.
-  - Splash screen timers: Are timers cleared on unmount or could they leak memory? Result: Confirmed all 5 timers are cleared in cleanup callback.
-  - Apple iOS / Safari: Viewport cover, safe-area variables, -webkit-overflow-scrolling: touch, overscroll containment, 16px minimum font size on mobile inputs, and playsInline camera constraints. Result: 100% compliant.
-  - Title and manifest: Exactly "SIPJAM", no SaaS terms in LoginScreen. Result: 100% compliant.
-- **Vulnerabilities found**: None.
-- **Untested angles**: All target angles for M3 thoroughly tested empirically.
+  - Teacher privilege escalation: Can authenticated teachers mutate `users`, `sekolah`, or `wali_kelas`? Result: PROVEN CONTAINED (RLS policies strictly block mutations).
+  - Unauthenticated access: Can anonymous requests without headers access `data_siswa`, `absensi`, or `users`? Result: PROVEN CONTAINED (0 rows returned, mutations rejected).
+  - Forged `x-sekolah-id` / `x-user-role`: Can spoofed headers bypass tenant isolation with anon key? Result: PROVEN CONTAINED (headers ignored for anon role).
+  - Forged `x-user-id`: Can spoofed `x-user-id` without session token impersonate users? Result: VULNERABILITY FOUND. `get_auth_user_role()`, `get_auth_user_sekolah_id()`, and `get_auth_user_id()` fall back to `x-user-id`, leaking data and granting mutation rights.
+- **Vulnerabilities found**:
+  - Critical: `x-user-id` header spoofing bypasses session token authentication and grants full Admin/Teacher/Superadmin tenant privileges.
+- **Untested angles**: None. All core tenant tables, role boundaries, and anti-spoofing vectors empirically verified.
 
 ## Loaded Skills
 - None requested for M3 verification.

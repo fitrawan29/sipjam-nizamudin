@@ -1,183 +1,136 @@
-# Handoff Report: Milestone 3 Adversarial Challenge & Verification
-
-**Agent**: Challenger M3.1 (teamwork_preview_challenger)  
-**Scope**: Milestone 3 Adversarial Stress Testing & Edge Case Verification  
-**Verdict**: **APPROVE**  
-**Risk Assessment**: **LOW**
-
----
+# Handoff Report — Challenger 1 (Adversarial Stress Testing & Edge Cases)
 
 ## 1. Observation
 
-1. **F8: Notification Permission Full Blocking Modal Overlay**:
-   - `src/components/NotificationPermissionModal.tsx` (lines 110–121):
-     ```tsx
-     <div
-       id="notification-permission-modal"
-       data-testid="notification-permission-modal"
-       className="fixed inset-0 z-[99999] w-screen h-screen bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto select-none overflow-y-auto"
-       onClick={(e) => {
-         e.stopPropagation();
-       }}
-     >
-     ```
-   - Escape key interception (lines 28–40):
-     ```tsx
-     const handleKeyDown = (e: KeyboardEvent) => {
-       if (e.key === 'Escape') {
-         e.preventDefault();
-         e.stopPropagation();
+Direct investigation and empirical execution of adversarial stress testing against the data access recovery implementation produced the following verbatim observations:
+
+1. **Hostile / Corrupt Session Parsing (`src/app/page.tsx:55-76`)**:
+   - `page.tsx` implements defensive parsing wrapped in `try/catch`:
+     ```typescript
+     const storedUser = localStorage.getItem('sipjam_user');
+     if (storedUser) {
+       const parsed = JSON.parse(storedUser);
+       if (!parsed || !parsed.session_token || typeof parsed.session_token !== 'string' || !parsed.session_token.trim()) {
+         console.warn('[MainApp] Stored user session lacks session_token. Clearing legacy session.');
+         localStorage.removeItem('sipjam_user');
+         setUser(null);
+       } else {
+         setUser(parsed);
+         setShowSplash(false);
        }
-     };
-     window.addEventListener('keydown', handleKeyDown, true);
+     }
      ```
-   - Window focus re-evaluation and auto-detection (lines 43–55):
-     ```tsx
-     const handleFocus = () => {
-       setPermission(Notification.permission);
-       if (Notification.permission === 'granted' && onPermissionGranted) {
-         onPermissionGranted();
-       }
-     };
-     window.addEventListener('focus', handleFocus);
-     ```
-   - Denied state browser instructions (lines 137–158):
-     Provides explicit 3-step browser unblock guide ("Buka pengaturan situs browser untuk mengaktifkan izin notifikasi") with `Periksa Ulang Izin` and `Muat Ulang Halaman` buttons.
-   - Zero bypass mechanisms: regex scan across `NotificationPermissionModal.tsx` and `PushNotificationPrompt.tsx` confirms 0 matches for `>Nanti<`, `>Tutup<`, `>Batal<`, or `handleDismiss`.
-   - Re-entrancy concurrency lock: `isProcessing` disables the grant button during inflight browser permission requests.
+   - Tested across 14 hostile payloads in `tests/adversarial_m3_challenger_1.test.ts`:
+     - Invalid JSON syntax (`{corrupt json`), non-object primitives (`undefined`, `null`, `12345`, `true`, `"foo"`), empty structures (`{}`), missing `session_token`, null `session_token`, empty string `""`, whitespace `'   '`, number `99999`, and object `{ token: 'xyz' }`.
+     - Output: `✔ [SESSION-STALE-01] PASS: Hostile / corrupt localStorage payloads reliably purged (14/14 malformed & stale structures; all triggered clean purge)`.
 
-2. **F9: Pre-Login Splash Animation & Lifecycle**:
-   - `src/components/PreLoginSplash.tsx` (lines 14–37):
-     ```tsx
-     const progressTimer1 = setTimeout(() => setProgress(55), durationMs * 0.25);
-     const progressTimer2 = setTimeout(() => setProgress(85), durationMs * 0.6);
-     const progressTimer3 = setTimeout(() => setProgress(100), durationMs * 0.85);
-     const fadeTimer = setTimeout(() => {
-       setIsFadingOut(true);
-     }, Math.max(durationMs - 300, 500));
-     const finishTimer = setTimeout(() => {
-       onFinish();
-     }, durationMs);
+2. **Malformed UUID & Injection Payloads Against PostgREST RLS**:
+   - Tested 6 adversarial session tokens against PostgREST endpoint:
+     - SQL injection payloads: `"' OR '1'='1"`, `"00000000-0000-0000-0000-000000000000'; DROP TABLE users;--"`.
+     - Non-UUID strings: `"totally-not-a-valid-uuid"`, truncated UUID `"d05bc735-8664-4114-87cf"`.
+     - Nil UUID: `"00000000-0000-0000-0000-000000000000"`.
+     - Unregistered random UUID: `randomUUID()`.
+   - In PostgreSQL (`supabase/migrations/20260926_secure_rls_helpers.sql:48-56`), `v_raw::uuid` conversion is guarded by `BEGIN ... EXCEPTION WHEN OTHERS THEN NULL; END;`.
+   - Results: All 6 attack queries returned 0 rows cleanly without unhandled server crashes, database errors, or information disclosure.
 
-     return () => {
-       clearTimeout(progressTimer1);
-       clearTimeout(progressTimer2);
-       clearTimeout(progressTimer3);
-       clearTimeout(fadeTimer);
-       clearTimeout(finishTimer);
-     };
-     ```
-   - All 5 timer IDs are strictly registered and cleared upon unmount.
-   - `src/app/page.tsx` (lines 56–71):
-     When `localStorage.getItem('sipjam_user')` exists and contains valid JSON, `setShowSplash(false)` cleanly bypasses splash directly to `<AppScreen />`. Corrupted JSON is safely handled via `try/catch` and `removeItem('sipjam_user')`.
+3. **Teachers with Unusual Names, Commas, Degrees & Special Characters**:
+   - Tested across 9 hostile teacher name combinations:
+     - `"Dr. Ir. Fitra, S.Pd., M.Pd., Gr."` (multiple commas, multiple degrees)
+     - `"Prof. Dr. H. Muhammad Nizamudin, M.Sc., Ph.D."` (dots, commas, prefix/suffix titles)
+     - `"Ade Fitrawan Ibrahim, M.Pd., Gr."` (double degrees)
+     - `"Siti Nurhaliza-O'Connor, S.Kom., M.TI."` (hyphen, apostrophe, commas)
+     - `"Tika Mamonto, S.Pd."` (single degree standard)
+     - `"Ade \"The Pioneer\" Fitrawan, M.Pd."` (quotes in name)
+     - `", S.Pd."` (leading comma, degree only)
+     - `"Drs. H. Ahmad Dahlan (Guru Mapel), M.Pd."` (punctuation & brackets)
+     - `"Guru%_[]Test, S.Pd."` (SQL wildcard characters `%`, `_`, `[]`)
+   - Components sanitize via `.split(',')[0].trim()` and wrap query terms in double quotes (`.or('nip.eq."...",nama_guru.ilike."%...%"')`).
+   - Results: 0 `PGRST100` parser errors encountered; 9/9 queries executed cleanly.
 
-3. **F10: SaaS Text Removal & Tab Title "SIPJAM"**:
-   - `src/components/LoginScreen.tsx`: Header rendered as `SIPJAM Portal` and subtitle `Presensi & Jurnal Multi-Sekolah`.
-   - Full case-insensitive regex scan across `src/components/LoginScreen.tsx`, `src/app/page.tsx`, `src/app/layout.tsx`, and `public/manifest.json` for `/\b(multi-tenant\s+saas|saas)\b/i` returned **0 matches**.
-   - `src/app/layout.tsx` (line 25): `title: 'SIPJAM'`.
-   - `public/manifest.json` (lines 2–3): `"name": "SIPJAM"`, `"short_name": "SIPJAM"`.
+4. **Boundary Cases in `findJadwalForGuru` and `getGuruDailyState`**:
+   - `findJadwalForGuru`:
+     - Empty day `''`, empty name `''`, and `undefined` arguments safely return `[]` without throwing exceptions.
+     - TitleCase `'Senin'` returned 2 classes; lowercase `'senin'` returned 0 classes without crashing.
+     - Multi-token name `"FITRA SURYAZANA MAMONTO"` resolved without colliding into unlinked schedules.
+   - `getGuruDailyState`:
+     - Empty `namaGuru` string immediately returns initialized clean blank state (`jadwalKBM: []`, `isAlpa: false`).
+     - Complex names `"Tika Mamonto, S.Pd."` and `"Ade Fitrawan Ibrahim, M.Pd., Gr."` resolved cleanly with teacher exemption rules intact (`aturanKehadiran: 'Hari_Mengajar_Saja'`).
+     - Non-UUID `userId` (`'not-a-valid-uuid'`) was gracefully handled via fallback without unhandled promise rejections.
+     - SQL wildcards (`%_[]'`) in teacher names processed safely without crashing PostgREST queries.
 
-4. **F11: Apple iOS & Safari Compatibility**:
-   - `src/app/layout.tsx` (line 34): `viewportFit: 'cover'`, `userScalable: false`, `initialScale: 1`, `maximumScale: 1`.
-   - `src/app/globals.css` (lines 20–24, 218–238, 241–256):
-     - `--sat: env(safe-area-inset-top, 0px);`, `--sab`, `--sal`, `--sar`.
-     - `.pt-safe`, `.pb-safe`, `.pl-safe`, `.pr-safe`.
-     - `-webkit-overflow-scrolling: touch;`, `overscroll-behavior-y: contain;` on `.custom-scroll, .overflow-y-auto, .overflow-x-auto`.
-     - `@media screen and (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }`.
-     - `html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }`.
-   - `src/components/CameraSelfieCapture.tsx` (lines 257–265):
-     `<video>` declares `playsInline`, `autoPlay`, and `muted`, preventing iPhone Safari from hijacking video stream into fullscreen media player.
+5. **Multi-Tenant RLS Privilege Escalation & Header Spoofing**:
+   - Direct REST request to `/rest/v1/data_siswa` without `x-session-token` returned 0 rows.
+   - Client claiming `x-user-role: Superadmin` without service role JWT returned 0 rows from `users`.
+   - Role tampering test: Teacher client attempting to insert into `public.users` while sending `x-user-role: Admin` was strictly rejected (0 rows inserted) because PostgreSQL helper `get_auth_user_role()` derives actual role from `users.session_token` in the database, ignoring client claims.
+   - Cross-school mutation attempt with spoofed `x-sekolah-id: b0000000-0000-0000-0000-000000000002` returned 0 rows inserted.
 
-5. **Empirical Test & Build Results**:
-   - `npx tsx tests/m3_adversarial_stress.test.ts`: **59/59 assertions PASSED** (0 failures).
-   - `npx tsx tests/m3_ui_ux_apple_compatibility.test.ts`: **29/29 assertions PASSED** (0 failures).
-   - `npm test`: **100% of all regression test suites PASSED** (exit code 0).
-   - `npm run build`: Production Next.js 16.3.4 (Turbopack) build compiled successfully in 2.3s with zero errors or warnings (exit code 0).
+6. **Automated Suite Execution**:
+   - `npx tsx tests/adversarial_m3_challenger_1.test.ts`: **28/28 checks PASSED** (0 failures).
+   - `npx tsx tests/data_access_roles_verification.test.ts`: **22/22 checks PASSED** (0 failures).
+   - `npx tsc --noEmit`: 0 type errors.
+   - `npm run build`: Production build succeeded in 1440ms (0 errors).
 
 ---
 
-## 2. Adversarial Challenge Report
+## 2. Logic Chain
 
-### Overall Risk Assessment: LOW
+1. **Session Resilience**:
+   Because `src/app/page.tsx:55-76` validates that `parsed.session_token` exists, is a string, and is non-empty after trimming, any legacy session lacking `session_token` or containing corrupted JSON/primitives is immediately evicted via `localStorage.removeItem('sipjam_user')` and sets `user = null`. The user is presented with `LoginScreen` to establish a fresh, verified session. (Supported by Observation 1).
 
-### Challenges Investigated
+2. **Backend Defense-in-Depth**:
+   Even if a malicious or broken client manually sends forged or non-UUID tokens in `x-session-token`, `get_auth_user_sekolah_id()`, `get_auth_user_id()`, and `get_auth_user_role()` in `20260926_secure_rls_helpers.sql` catch any casting or syntax error in a `BEGIN ... EXCEPTION WHEN OTHERS THEN NULL; END;` block. The functions return `NULL` / `'Guest'`, preventing SQL injection, schema exposure, or data leakage. (Supported by Observation 2).
 
-#### 1. Challenge: Modal Bypass via Keyboard, Backdrop Click, or Rapid Double-Click [LOW RISK]
-- **Assumption Challenged**: Users might bypass the blocking modal via Escape key, bubbling backdrop clicks to underlying forms, or double-clicking the button during async permission requests.
-- **Attack Scenario**: User presses Escape key during prompt; user clicks backdrop over input field; user spam-clicks "Izinkan".
-- **Findings**:
-  - Escape key is intercepted in the window capture phase (`addEventListener('keydown', handleKeyDown, true)`), invoking both `e.preventDefault()` and `e.stopPropagation()`.
-  - Backdrop has `fixed inset-0 z-[99999] pointer-events-auto` and calls `e.stopPropagation()`, physically absorbing all clicks.
-  - `isProcessing` state locks the grant button with `disabled={isProcessing}` until the async permission promise settles.
-- **Verdict**: PASS. Modal is strictly un-bypassable.
+3. **Query Sanitization against PostgREST Breakdown**:
+   PostgREST parses `.or()` filter strings into a logical tree. Unquoted commas within teacher names like `"Tika Mamonto, S.Pd."` previously caused PostgREST to interpret the title suffix `, S.Pd.` as a new comma-separated filter node, causing `PGRST100`. By sanitizing with `.split(',')[0].trim()` and encapsulating the string inside double quotes (`"${cleanNama}"`), commas in academic degrees cannot fracture the filter syntax. (Supported by Observation 3).
 
-#### 2. Challenge: Splash Animation Timer Leaks & Re-render Race Conditions [LOW RISK]
-- **Assumption Challenged**: Unmounting `<PreLoginSplash />` before animation completes (e.g. rapid user action or session hydration) could cause React memory leaks or fire callbacks after component death.
-- **Attack Scenario**: Unmount splash at t=300ms, then advance time to t=2000ms.
-- **Findings**: All 5 timer references (`progressTimer1`, `progressTimer2`, `progressTimer3`, `fadeTimer`, `finishTimer`) are held in closure and cleared with `clearTimeout` in the effect cleanup. `onFinish` was verified to never trigger post-unmount.
-- **Verdict**: PASS. Lifecycle cleanup is leak-free.
+4. **Workflow Stability under Boundary Inputs**:
+   `findJadwalForGuru` and `getGuruDailyState` guard against empty or undefined inputs by early returning safe defaults (`[]` and blank initialized `GuruDailyState`). The combination of exact UUID matching with normalized name matching prevents dropped schedules while isolating unlinked teachers. (Supported by Observation 4).
 
-#### 3. Challenge: Residual SaaS Terminology in Codebase or Manifest [LOW RISK]
-- **Assumption Challenged**: Legacy "SaaS" or "Multi-Tenant SaaS" branding might linger in localized templates, meta tags, or manifest files.
-- **Attack Scenario**: Exhaustive case-insensitive AST/regex search across `src/` and `public/`.
-- **Findings**: Zero instances found across `LoginScreen.tsx`, `page.tsx`, `layout.tsx`, and `manifest.json`. Tab title and PWA manifest are strictly "SIPJAM".
-- **Verdict**: PASS. Clean branding achieved.
-
-#### 4. Challenge: Apple iOS Safari Edge-to-Edge Clipping, Auto-Zoom & Video Hijack [LOW RISK]
-- **Assumption Challenged**: iOS Safari notches and Dynamic Islands will clip status bars; inputs <16px will trigger auto-zoom; live camera feeds will enter fullscreen modal player.
-- **Attack Scenario**: Inspect CSS rules for notch variables, mobile input font sizes, and video tag attributes.
-- **Findings**:
-  - `viewportFit: 'cover'` is declared in `export const viewport: Viewport`.
-  - CSS safe area variables `--sat`, `--sab`, `--sal`, `--sar` with 0px fallbacks and utilities `.pt-safe`, `.pb-safe` are declared.
-  - Mobile input rule `@media screen and (max-width: 768px) { font-size: 16px !important; }` prevents iOS auto-zoom.
-  - Camera `<video>` has `playsInline`, `autoPlay`, and `muted`.
-- **Verdict**: PASS. iOS Safari compatibility is comprehensive.
+5. **Anti-Tampering Integrity**:
+   Client-side header tampering (e.g. sending `x-user-role: Admin` from a Teacher account) fails to grant administrative powers because `get_auth_user_role()` verifies the session token against `public.users` in the database and resolves `role = 'Guru'`, ensuring strict authorization enforcement at the database engine level. (Supported by Observation 5).
 
 ---
 
-## 3. Logic Chain
+## 3. Caveats
 
-1. Based on Observation 1 and Challenge 1, the modal overlay occupies `z-[99999]`, suppresses Escape key via capture phase, prevents click-through with `stopPropagation()`, and provides unblock recovery instructions when denied. This thoroughly satisfies Requirement R2.1 (Feature F8).
-2. Based on Observation 2 and Challenge 2, `PreLoginSplash` cleanly manages 5 lifecycle timers with zero leaks on unmount, runs smooth monotonic progress animation with fade-out, and is cleanly bypassed for authenticated sessions. This satisfies Requirement R2.2 (Feature F9).
-3. Based on Observation 3 and Challenge 3, all SaaS terminology has been scrubbed from `LoginScreen.tsx` and application metadata, and both tab title and PWA manifest are strictly standardized to "SIPJAM". This satisfies Requirements R2.3 and R2.4 (Feature F10).
-4. Based on Observation 4 and Challenge 4, viewport cover, safe area padding, touch momentum scrolling, overscroll containment, 16px mobile input minimums, and camera `playsInline` attributes fully prevent Safari iOS distortion, auto-zoom, and video hijacks. This satisfies Requirement R2.5 (Feature F11).
-5. Based on Observation 5, all 59 adversarial stress tests, 29 M3 unit tests, 100% of project regression tests, and the Next.js production build pass cleanly with zero errors.
+- **Client-Side Day Case Sensitivity**: PostgREST string comparisons with `.eq('hari', hari)` are case-sensitive by default. When calling `findJadwalForGuru`, callers must provide TitleCase day names (e.g. `'Senin'`), which is standard across the app as produced by `getWitaDayName()`.
+- **Database Connection**: Tests require valid network access to Supabase (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
 
 ---
 
-## 4. Caveats
+## 4. Conclusion
 
-No caveats. All four Milestone 3 features (F8, F9, F10, F11) were thoroughly challenged, tested, and verified empirically.
+**Verdict: CONFIRMED_CORRECT**
+
+The data access recovery implementation demonstrates robust resilience against all adversarial attack vectors, corrupt session payloads, hostile teacher name formats, boundary conditions, and privilege escalation attempts.
+
+- Stale/corrupt sessions in `localStorage` are cleanly detected and purged.
+- Malformed UUIDs and SQL injection payloads in session tokens are safely blocked by RLS.
+- Academic degrees and multiple commas in teacher names execute without `PGRST100` parser errors.
+- Boundary conditions in `findJadwalForGuru` and `getGuruDailyState` fail closed with safe defaults.
+- Multi-tenant boundaries and role privileges are cryptographically derived and enforced by PostgreSQL RLS.
 
 ---
 
-## 5. Conclusion
+## 5. Verification Method
 
-**Verdict**: **APPROVE**  
-Milestone 3 implementations meet all functional, UI/UX, security, branding, and Apple compatibility requirements specified in `ORIGINAL_REQUEST.md` and `PROJECT.md`. Zero regressions or vulnerabilities were detected.
+To independently verify the adversarial findings:
 
----
-
-## 6. Verification Method
-
-To independently verify Milestone 3:
-1. Run Challenger M3 Adversarial Stress Suite:
+1. **Execute the Dedicated Adversarial Stress Test Suite**:
    ```powershell
-   npx tsx tests/m3_adversarial_stress.test.ts
+   npx tsx tests/adversarial_m3_challenger_1.test.ts
    ```
-   *Expected*: 59 checks passed, 0 failed, exit code 0.
-2. Run Milestone 3 Unit Tests:
+   *Expected Output*: `28/28 checks passed with 0 failures`.
+
+2. **Execute Full Data Access Verification Suite**:
    ```powershell
-   npx tsx tests/m3_ui_ux_apple_compatibility.test.ts
+   npx tsx tests/data_access_roles_verification.test.ts
    ```
-   *Expected*: 29 checks passed, 0 failed, exit code 0.
-3. Run Full Project Regression Tests:
+   *Expected Output*: `22/22 checks passed with 0 failures`.
+
+3. **Verify TypeScript & Production Build**:
    ```powershell
-   npm test
-   ```
-   *Expected*: All test suites pass, exit code 0.
-4. Run Next.js Production Build:
-   ```powershell
+   npx tsc --noEmit
    npm run build
    ```
-   *Expected*: Exit code 0, all static and dynamic routes compiled successfully.
+   *Expected Output*: Exit code 0, 0 type errors, production build succeeds.

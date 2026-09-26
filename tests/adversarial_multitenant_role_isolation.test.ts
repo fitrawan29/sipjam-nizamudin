@@ -562,7 +562,35 @@ async function runAdversarialIsolationStressTests() {
     fail('SPOOF-03', 'Header-Spoofing', 'Exception during spoofed Admin test', err);
   }
 
+  // Test 3.3a: Forged `x-user-id` of Admin WITHOUT `x-session-token` attempting SELECT
+  try {
+    const spoofUserIdClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          'x-user-id': adminUser.id
+        }
+      }
+    });
+
+    const [uRes, sRes] = await Promise.all([
+      spoofUserIdClient.from('users').select('*'),
+      spoofUserIdClient.from('data_siswa').select('*')
+    ]);
+
+    const uCount = uRes.data?.length ?? 0;
+    const sCount = sRes.data?.length ?? 0;
+
+    if (uCount > 0 || sCount > 0) {
+      fail('SPOOF-03a', 'Header-Spoofing', `VULNERABILITY: Spoofed x-user-id allowed unauthenticated data read! Users: ${uCount}, Siswa: ${sCount}`);
+    } else {
+      pass('SPOOF-03a', 'Header-Spoofing', 'Spoofed x-user-id alone rejected on SELECT (0 rows across users and data_siswa)');
+    }
+  } catch (err) {
+    fail('SPOOF-03a', 'Header-Spoofing', 'Exception during spoofed x-user-id read test', err);
+  }
+
   // Test 3.3b: Forged `x-user-id` of Admin WITHOUT `x-session-token` cannot mutate users table
+  let insertedUserIdToClean: string | null = null;
   try {
     const spoofUserIdClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
@@ -573,11 +601,12 @@ async function runAdversarialIsolationStressTests() {
       }
     });
 
+    const newTestUid = randomUUID();
     // Attempt mutation: insert user
     const { data: insertData, error: insertError } = await spoofUserIdClient
       .from('users')
       .insert({
-        id: randomUUID(),
+        id: newTestUid,
         username: `spoofed_uid_${Date.now()}`,
         password: 'Password123!',
         nama: 'Spoofed User ID Test',
@@ -585,6 +614,10 @@ async function runAdversarialIsolationStressTests() {
         sekolah_id: DEFAULT_SEKOLAH_ID
       })
       .select();
+
+    if (insertData && insertData.length > 0) {
+      insertedUserIdToClean = newTestUid;
+    }
 
     if (insertError) {
       pass('SPOOF-03b', 'Header-Spoofing', 'Spoofed x-user-id without session token rejected on user creation', insertError.message);
@@ -595,6 +628,11 @@ async function runAdversarialIsolationStressTests() {
     }
   } catch (err) {
     pass('SPOOF-03b', 'Header-Spoofing', 'Spoofed x-user-id mutation blocked by exception', String(err));
+  } finally {
+    if (insertedUserIdToClean) {
+      // Clean up the created test row using adminClient
+      await adminClient.from('users').delete().eq('id', insertedUserIdToClean);
+    }
   }
 
   // Test 3.3c: Forged random `x-user-id` (non-existent UUID) returns 0 rows

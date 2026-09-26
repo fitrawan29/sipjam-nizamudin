@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-24T16:48:30Z
+# BRIEFING — 2026-09-26T10:22:00Z
 
 ## Mission
-Conduct adversarial review and stress-testing on Milestone 3 features (F8: Notification Permission Full Blocking Modal, F9: Pre-Login Splash Animation, F10: Login SaaS Text Removal & Tab Title, F11: Apple iOS/Safari Compatibility) to detect flaws, edge cases, and regressions, then deliver verdict (APPROVE or REQUEST_CHANGES).
+Conduct empirical adversarial stress testing on data access recovery (stale/corrupt localStorage sessions, teachers with complex academic titles/commas, boundary conditions in findJadwalForGuru and getGuruDailyState, and RLS tampering resilience), then deliver verdict (CONFIRMED_CORRECT or FAILED).
 
 ## 🔒 My Identity
 - Archetype: EMPIRICAL CHALLENGER
@@ -10,50 +10,46 @@ Conduct adversarial review and stress-testing on Milestone 3 features (F8: Notif
 - Original parent: ce92c68c-fd07-4434-ab0c-266a7caa8d41
 - Milestone: Milestone 3 (UI/UX, Branding & Apple Compatibility)
 - Instance: 1 of 1
+- Current parent: f963fff1-816c-4a40-9daa-b44715a5d909
+- Current milestone: Data Access Recovery — Challenger 1 (Adversarial Stress Testing & Edge Cases)
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
 - Challenge and stress-test all M3 implementations empirically
 - Write tests in project tests directory (NOT in .agents/teamwork/)
 - Provide verdict in handoff.md and notify parent via send_message
+- Empirically verify: stale/corrupt localStorage, teachers with unusual names/commas, boundary cases in findJadwalForGuru and getGuruDailyState
 
 ## Current Parent
-- Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-24T16:48:30Z
+- Conversation ID: f963fff1-816c-4a40-9daa-b44715a5d909
+- Updated: 2026-09-26T10:22:00Z
 
 ## Review Scope
-- **Files to review**:
-  - `src/components/NotificationPermissionModal.tsx`
-  - `src/components/PushNotificationPrompt.tsx`
-  - `src/components/PreLoginSplash.tsx`
-  - `src/components/LoginScreen.tsx`
-  - `src/app/page.tsx`
-  - `src/app/layout.tsx`
-  - `src/app/globals.css`
-  - `public/manifest.json`
-- **Interface contracts**: PROJECT.md Milestone 3
-- **Review criteria**: Adversarial stress testing, bypass vectors, lifecycle leaks, browser edge cases, Apple iOS/Safari specs.
+- **Files to review**: `src/app/page.tsx`, `src/lib/workflow.ts`, `src/lib/supabaseClient.ts`, `src/components/GuruJurnal.tsx`, `src/components/HomeView.tsx`, `src/components/AppScreen.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/AdminDataView.tsx`.
+- **Interface contracts**: `PROJECT.md` at `.agents/teamwork/orchestrator_4/PROJECT.md`.
+- **Review criteria**: Adversarial robustness against corrupted state, unlinked schedules, special character injections, and RLS bypass attempts.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - H1: NotificationPermissionModal can be bypassed via Escape, backdrop click, or unhandled permission states -> REFUTED (Escape suppressed via capture phase preventDefault/stopPropagation; backdrop stops propagation with pointer-events-auto; all 4 permission states handled).
-  - H2: PreLoginSplash leaks timers or hangs on early unmount -> REFUTED (5/5 timers cleanly cleared on unmount; onFinish never called on early unmount; authenticated sessions cleanly bypass).
-  - H3: Residual "saas" terminology remains in LoginScreen or app metadata -> REFUTED (0 case-insensitive occurrences found in src/ and public/; tab title and manifest strictly "SIPJAM").
-  - H4: Apple iOS viewport or mobile inputs suffer from clipping, auto-zoom, or rubber-band scrolling -> REFUTED (viewportFit: cover, safe-area variables, -webkit-overflow-scrolling: touch, overscroll-behavior-y: contain, 16px mobile inputs all strictly enforced).
-- **Vulnerabilities found**: None. All components demonstrate defense-in-depth and strict compliance with acceptance criteria.
-- **Untested angles**: Hardware-level native push service workers (requires physical APNs device / FCM credentials; simulated via client mocks).
+  - H1: Hostile/corrupt localStorage JSON or missing session_token crashes app or bypasses auth -> REFUTED. Tested 14 edge case payloads; all 14 trigger clean purge and redirect to LoginScreen.
+  - H2: Malformed UUID session tokens or SQL injection payloads bypass RLS or crash PostgREST -> REFUTED. 6/6 malicious tokens safely rejected (0 rows returned, no leak, no crash).
+  - H3: Teachers with multiple commas, degrees, or quotes break PostgREST logic tree parser (PGRST100) -> REFUTED. Tested 9 complex name patterns; all sanitize cleanNama and quote queries safely.
+  - H4: Boundary cases in findJadwalForGuru and getGuruDailyState cause crashes or infinite loops -> REFUTED. Handled safely with defensive defaults.
+  - H5: Role tampering (Teacher sending x-user-role: Admin header) escalates privileges -> REFUTED. PostgreSQL functions resolve role from verified session_token, blocking unauthorized mutations.
+- **Vulnerabilities found**: None. RLS and client-side sanitization withstand hostile payloads.
+- **Untested angles**: Native mobile biometric storage (client is standard Next.js Web/PWA).
 
 ## Loaded Skills
-- Source: None requested / specified for M3.
+- Source: None requested / specified.
 
 ## Key Decisions Made
-- Executed `tests/m3_adversarial_stress.test.ts`: 59/59 assertions passed.
-- Executed `npm test`: 100% regression tests passed.
-- Executed `npm run build`: Production Next.js build compiled cleanly in 2.3s with 0 errors.
-- Formulated final verdict: APPROVE.
+- Built and ran `tests/adversarial_m3_challenger_1.test.ts` (28/28 checks passed).
+- Executed `tests/data_access_roles_verification.test.ts` (22/22 checks passed).
+- Executed `npx tsc --noEmit` and `npm run build` (compiled cleanly, 0 errors).
+- Formulated final verdict: CONFIRMED_CORRECT.
 
 ## Artifact Index
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_1\BRIEFING.md` — persistent memory
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_1\progress.md` — liveness heartbeat
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_1\handoff.md` — final assessment & verdict
-- `tests/m3_adversarial_stress.test.ts` — empirical challenge test suite
+- `.agents/teamwork/challenger_m3_1/BRIEFING.md` — persistent memory
+- `.agents/teamwork/challenger_m3_1/progress.md` — liveness heartbeat
+- `.agents/teamwork/challenger_m3_1/handoff.md` — final assessment & verdict
+- `tests/adversarial_m3_challenger_1.test.ts` — empirical challenge test suite
