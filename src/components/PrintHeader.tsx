@@ -93,6 +93,13 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
 
   return (
     <>
+      <style>{`
+        @media print {
+          body {
+            --watermark-text: "DOKUMEN ASLI SIPJAM - ${sekolah.toUpperCase()}";
+          }
+        }
+      `}</style>
       <div className="print-header print-only mb-6 border-b-4 border-black pb-4 text-black font-medium leading-none">
         <div className="flex items-center justify-center gap-4 sm:gap-6 max-w-4xl mx-auto">
           {/* Left Logo Container (Yayasan) - Symmetric 3-column slot w-20 */}
@@ -460,7 +467,7 @@ export function PrintSecurityFooter({ user }: { user?: any }) {
     } catch (e) {}
   }
   return (
-    <div className="hidden print:block fixed bottom-2 left-4 text-[8px] text-gray-500 z-[9999]">
+    <div className="hidden print:block fixed bottom-0 left-0 right-0 bg-white pt-1 pb-2 px-4 text-[8px] text-gray-500 z-[9999] border-t border-gray-100">
       Dicetak dari Sistem SIPJAM oleh {nama || 'Pengguna'} pada {timestamp} WITA.
       Dokumen ini sah dan tidak untuk diedit.
     </div>

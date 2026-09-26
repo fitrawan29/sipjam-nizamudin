@@ -264,7 +264,7 @@ body.fade-out {
 }
 
 /* Print Styles */
-@media print { body::after { content: "DOKUMEN ASLI SIPJAM"; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 5rem; font-weight: 900; color: rgba(0, 0, 0, 0.08); z-index: 9999; pointer-events: none; white-space: nowrap; } 
+@media print { body::after { content: var(--watermark-text, "DOKUMEN ASLI SIPJAM"); position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 5rem; font-weight: 900; color: rgba(0, 0, 0, 0.08); z-index: 9999; pointer-events: none; white-space: nowrap; } 
   /* NOTE: Do NOT set @page here — PrintOrientationToggle injects it dynamically.
      If no toggle is present, fallback to browser default (usually portrait). */
 
