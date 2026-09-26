@@ -92,86 +92,89 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
   };
 
   return (
-    <div className="print-header print-only mb-6 border-b-4 border-black pb-4 text-black font-medium leading-none">
-      <div className="flex items-center justify-center gap-4 sm:gap-6 max-w-4xl mx-auto">
-        {/* Left Logo Container (Yayasan) - Symmetric 3-column slot w-20 */}
-        {hasAnyLogo && (
-          <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
-            {logoYayasan ? (
-              <img
-                src={logoYayasan}
-                alt="Logo Yayasan"
-                loading="eager"
-                referrerPolicy="no-referrer"
-                className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (rawLogoYayasan && target.src !== transformGoogleDriveUrl(rawLogoYayasan)) {
-                    target.src = transformGoogleDriveUrl(rawLogoYayasan);
-                  }
+    <>
+      <div className="print-header print-only mb-6 border-b-4 border-black pb-4 text-black font-medium leading-none">
+        <div className="flex items-center justify-center gap-4 sm:gap-6 max-w-4xl mx-auto">
+          {/* Left Logo Container (Yayasan) - Symmetric 3-column slot w-20 */}
+          {hasAnyLogo && (
+            <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+              {logoYayasan ? (
+                <img
+                  src={logoYayasan}
+                  alt="Logo Yayasan"
+                  loading="eager"
+                  referrerPolicy="no-referrer"
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (rawLogoYayasan && target.src !== transformGoogleDriveUrl(rawLogoYayasan)) {
+                      target.src = transformGoogleDriveUrl(rawLogoYayasan);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full invisible" aria-hidden="true" />
+              )}
+            </div>
+          )}
+
+          {/* Center Text Container - flex-1 perfectly centered between the 2 slots */}
+          <div className="print-header-center flex-1 min-w-0 text-center px-2 overflow-hidden leading-none">
+            {yayasan && (
+              <h2 className="text-base sm:text-lg font-bold uppercase text-black leading-none tracking-wide mb-1">
+                {yayasan}
+              </h2>
+            )}
+            <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-black leading-none mb-1.5">
+              {sekolah}
+            </h1>
+            {alamat && (
+              <p
+                className="print-address text-black whitespace-nowrap leading-none tracking-tight overflow-hidden"
+                style={{
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                  fontSize: getAddressFontSize(alamat),
+                  ['--address-font-size' as any]: getAddressFontSize(alamat)
                 }}
-              />
-            ) : (
-              <div className="w-full h-full invisible" aria-hidden="true" />
+                title={alamat}
+              >
+                {alamat}
+              </p>
+            )}
+            {npsn && (
+              <p className="text-xs sm:text-sm font-bold mt-1.5 text-black leading-none">
+                NPSN: {npsn}
+              </p>
             )}
           </div>
-        )}
 
-        {/* Center Text Container - flex-1 perfectly centered between the 2 slots */}
-        <div className="print-header-center flex-1 min-w-0 text-center px-2 overflow-hidden leading-none">
-          {yayasan && (
-            <h2 className="text-base sm:text-lg font-bold uppercase text-black leading-none tracking-wide mb-1">
-              {yayasan}
-            </h2>
-          )}
-          <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-black leading-none mb-1.5">
-            {sekolah}
-          </h1>
-          {alamat && (
-            <p
-              className="print-address text-black whitespace-nowrap leading-none tracking-tight overflow-hidden"
-              style={{
-                whiteSpace: 'nowrap',
-                lineHeight: 1,
-                fontSize: getAddressFontSize(alamat),
-                ['--address-font-size' as any]: getAddressFontSize(alamat)
-              }}
-              title={alamat}
-            >
-              {alamat}
-            </p>
-          )}
-          {npsn && (
-            <p className="text-xs sm:text-sm font-bold mt-1.5 text-black leading-none">
-              NPSN: {npsn}
-            </p>
+          {/* Right Logo Container (Dinas) - Symmetric 3-column slot w-20 */}
+          {hasAnyLogo && (
+            <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+              {logoDinas ? (
+                <img
+                  src={logoDinas}
+                  alt="Logo Dinas"
+                  loading="eager"
+                  referrerPolicy="no-referrer"
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (rawLogoDinas && target.src !== transformGoogleDriveUrl(rawLogoDinas)) {
+                      target.src = transformGoogleDriveUrl(rawLogoDinas);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full invisible" aria-hidden="true" />
+              )}
+            </div>
           )}
         </div>
-
-        {/* Right Logo Container (Dinas) - Symmetric 3-column slot w-20 */}
-        {hasAnyLogo && (
-          <div className="shrink-0 w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
-            {logoDinas ? (
-              <img
-                src={logoDinas}
-                alt="Logo Dinas"
-                loading="eager"
-                referrerPolicy="no-referrer"
-                className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  if (rawLogoDinas && target.src !== transformGoogleDriveUrl(rawLogoDinas)) {
-                    target.src = transformGoogleDriveUrl(rawLogoDinas);
-                  }
-                }}
-              />
-            ) : (
-              <div className="w-full h-full invisible" aria-hidden="true" />
-            )}
-          </div>
-        )}
       </div>
-    </div>
+      <PrintSecurityFooter user={user} />
+    </>
   );
 }
 
@@ -444,3 +447,23 @@ export function formatPeriodHeader(bulan?: string, startDate?: string, endDate?:
   }
   return 'Periode: Semua Data';
 }
+
+export function PrintSecurityFooter({ user }: { user?: any }) {
+  const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
+  let nama = user?.nama;
+  if (!nama && typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('sipjam_user');
+      if (stored) {
+        nama = JSON.parse(stored).nama;
+      }
+    } catch (e) {}
+  }
+  return (
+    <div className="hidden print:block fixed bottom-2 left-4 text-[8px] text-gray-500 z-[9999]">
+      Dicetak dari Sistem SIPJAM oleh {nama || 'Pengguna'} pada {timestamp} WITA.
+      Dokumen ini sah dan tidak untuk diedit.
+    </div>
+  );
+}
+
