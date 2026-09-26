@@ -7,20 +7,38 @@ UPDATE public.users
 SET password = extensions.crypt(password, extensions.gen_salt('bf'))
 WHERE password NOT LIKE '$2%';
 
--- Fix verify_login RPC to use extensions.crypt()
+-- Fix verify_login RPC to use extensions.crypt() and session_token
 CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
 RETURNS TABLE (
   id UUID,
   username TEXT,
   nama TEXT,
   role TEXT,
-  sekolah_id UUID
+  sekolah_id UUID,
+  session_token UUID
 ) AS $$
+DECLARE
+  v_user RECORD;
 BEGIN
-  RETURN QUERY
-  SELECT u.id, u.username, u.nama, u.role, u.sekolah_id
-  FROM public.users u
-  WHERE u.username = trim(p_username) AND u.password = extensions.crypt(p_password, u.password);
+  UPDATE public.users 
+  SET session_token = gen_random_uuid(),
+      password = CASE 
+        WHEN password = p_password THEN extensions.crypt(p_password, extensions.gen_salt('bf'))
+        ELSE password
+      END
+  WHERE public.users.username = trim(p_username) 
+    AND (password = extensions.crypt(p_password, password) OR password = p_password)
+  RETURNING public.users.id, public.users.username, public.users.nama, public.users.role, public.users.sekolah_id, public.users.session_token INTO v_user;
+  
+  IF FOUND THEN
+    id := v_user.id;
+    username := v_user.username;
+    nama := v_user.nama;
+    role := v_user.role;
+    sekolah_id := v_user.sekolah_id;
+    session_token := v_user.session_token;
+    RETURN NEXT;
+  END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
