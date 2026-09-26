@@ -1,73 +1,63 @@
-# BRIEFING — 2026-09-24T16:44:16Z
+# BRIEFING — 2026-09-26T18:18:40+08:00
 
 ## Mission
-Review Milestone 3 (UI/UX, Branding & Apple Compatibility) implementation, run tests and build, adversarial stress-test, and issue verdict.
+Conduct comprehensive code quality, interface conformance, build verification, and adversarial integrity review for Milestone 3.
 
 ## 🔒 My Identity
-- Archetype: reviewer_and_adversarial_critic
+- Archetype: reviewer_critic
 - Roles: reviewer, critic
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_1\
-- Original parent: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Milestone: M3 (UI/UX, Branding & Apple Compatibility)
-- Instance: 1 of 1
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_1
+- Original parent: f963fff1-816c-4a40-9daa-b44715a5d909
+- Milestone: milestone_3_review
+- Instance: 1 of 2
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Actively check for integrity violations: hardcoded test results, facade implementations, shortcuts, fabricated verification outputs, self-certifying work without genuine independent verification
-- Issue clear verdict: APPROVE or REQUEST_CHANGES
-- Provide 5-component handoff report
+- Evidence-based verdicts: APPROVE or REQUEST_CHANGES
+- Actively check for integrity violations (hardcoded test results, facade logic, shortcuts, self-certifying work)
 
 ## Current Parent
-- Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-24T16:44:16Z
+- Conversation ID: f963fff1-816c-4a40-9daa-b44715a5d909
+- Updated: 2026-09-26T18:18:40+08:00
 
 ## Review Scope
-- **Files to review**:
-  - `src/components/NotificationPermissionModal.tsx` & `src/components/PushNotificationPrompt.tsx`
-  - `src/components/PreLoginSplash.tsx`
-  - `src/components/LoginScreen.tsx`
-  - `src/app/layout.tsx`
-  - `public/manifest.json`
-  - `src/app/globals.css`
-  - `src/app/page.tsx`
-  - `tests/m3_ui_ux_apple_compatibility.test.ts`
-- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\PROJECT.md`
-- **Review criteria**: correctness, completeness, quality, adversarial robustness, integrity
+- **Files to review**: `src/app/page.tsx`, `src/lib/workflow.ts`, `src/components/AppScreen.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/GuruJurnal.tsx`, `src/components/HomeView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/supabaseClient.ts`
+- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
+- **Review criteria**: correctness, style, interface conformance, clean error handling, absence of syntax errors, proper TypeScript types, adversarial integrity check
 
 ## Review Checklist
 - **Items reviewed**:
-  - `src/components/NotificationPermissionModal.tsx` & `src/components/PushNotificationPrompt.tsx` (F8)
-  - `src/components/PreLoginSplash.tsx` (F9)
-  - `src/components/LoginScreen.tsx` (F10)
-  - `src/app/layout.tsx` (F10, F11)
-  - `public/manifest.json` (F10)
-  - `src/app/globals.css` (F11)
-  - `src/app/page.tsx` (F8, F9)
-  - `tests/m3_ui_ux_apple_compatibility.test.ts`
+  - `src/app/page.tsx`: Session checking & stale session purge
+  - `src/lib/workflow.ts`: Column realignment (`nama_guru`, `nip`), combined schedule matching, safe PostgREST `.or()` queries
+  - `src/components/AppScreen.tsx`: Schema alignment for `data_guru` query (`nama_guru`), defensive nil UUID fallback
+  - `src/components/RekapJurnalView.tsx`: Schema alignment for `data_guru` query (`nama_guru`), defensive nil UUID fallback
+  - `src/components/GuruJurnal.tsx`: Academic title sanitization and double quoting in PostgREST `.or()` filters
+  - `src/components/HomeView.tsx`: Academic title sanitization and double quoting in PostgREST `.or()` filters
+  - `src/components/AdminDataView.tsx`: Direct REST fallback header injection (`x-session-token`, `x-sekolah-id`, `x-user-role`, `x-user-id`)
+  - `src/lib/supabaseClient.ts`: Tenant context extraction, `dynamicTenantFetch` header injection, `getTenantSupabaseClient` factory
+  - `tests/data_access_roles_verification.test.ts`: E2E verification test suite (22/22 checks passing)
+  - `tests/ui_ux_improvements_audit.test.ts`: UI/UX regression audit test suite (94/94 checks passing)
 - **Verdict**: APPROVE
-- **Unverified claims**: None (all verified via automated test suite and manual code audit)
+- **Unverified claims**: 0 unverified claims. All claims independently reproduced and verified.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Notification unsupported browser/webview: verified non-blocking graceful fallback (`permission === 'unsupported' -> null`).
-  - Notification backdrop click bypass: verified backdrop click containment via `e.stopPropagation()` and `pointer-events-auto`.
-  - Notification Escape key bypass: verified keydown suppression with capture phase `true`.
-  - Notification denied recovery: verified step-by-step instructions, focus event re-checking, and reload button.
-  - Pre-login splash memory leak: verified all 5 timeout handles are cleared on unmount.
-  - Authenticated session splash delay: verified stored user bypasses splash immediately.
-  - SaaS branding residue: verified zero occurrences of 'SaaS' in LoginScreen.
-  - Safari viewport and home indicator occlusion: verified `viewportFit: 'cover'`, `--sat`, `--sab`, and `@supports` header/main insets.
-  - Safari iOS input auto-zoom: verified 16px minimum font size enforced on inputs <=768px.
-  - Safari video inline playback: verified `playsInline`, `autoPlay`, `muted` present on video element in CameraSelfieCapture.
-- **Vulnerabilities found**: None critical; noted minor redundancy where both NotificationPermissionModal and PushNotificationPrompt exist, but both behave consistently with strict blocking and zero conflict.
-- **Untested angles**: Hardware-specific camera sensors on older iOS devices (addressed separately in M4 F13).
+  - Academic titles with commas causing PostgREST logic tree breakdown (PGRST100): Confirmed fixed via `.split(',')[0].trim()` and double quotes.
+  - Undefined `user.id` breaking PostgREST `.or()` filter: Confirmed handled via defensive fallback to nil UUID.
+  - Legacy sessions bypassing RLS without `session_token`: Confirmed rejected by RLS (0 rows) and purged by client in `page.tsx`.
+  - Schedule truncation when foreign keys are partially populated: Confirmed fixed via union of `uuidMatches` and `nameMatches` deduplicated by ID.
+  - Direct REST fallback in `AdminDataView` lacking headers: Confirmed headers injected.
+  - Integrity violation / hardcoded mock data: Checked all source files; no mock or fake bypass data exists in production code.
+- **Vulnerabilities found**: None.
+- **Untested angles**: None within milestone scope.
 
 ## Key Decisions Made
-- Confirmed full integrity compliance: zero hardcoded mocks or facade logic.
-- Confirmed 29/29 M3 tests pass, 63/63 regression tests pass, and Next.js production build succeeds with zero errors.
-- Formulated verdict: APPROVE.
+- All builds, typechecks, and automated tests passed with exit code 0.
+- Work product satisfies all requirements (R1, R2, R3) and acceptance criteria.
+- Issuing APPROVE verdict.
 
 ## Artifact Index
-- `.agents/teamwork/reviewer_m3_1/BRIEFING.md` — working memory
-- `.agents/teamwork/reviewer_m3_1/progress.md` — liveness heartbeat
-- `.agents/teamwork/reviewer_m3_1/handoff.md` — final review & challenge report
+- DISPATCH.md — incoming dispatch instructions
+- BRIEFING.md — persistent working memory
+- progress.md — liveness heartbeat
+- handoff.md — final review report and verdict

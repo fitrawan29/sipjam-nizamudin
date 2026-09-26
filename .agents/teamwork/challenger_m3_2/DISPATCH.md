@@ -1,25 +1,24 @@
-# Dispatch: Challenger M3.2
+# Dispatch: Challenger 2 (Multi-Tenant & Role Isolation Stress Testing)
 
-## Identity
-- Role: teamwork_preview_challenger
-- Assigned Scope: Milestone 3 Empirical Verification & Browser Simulation
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\
-- Parent Orchestrator: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\
+## Assigned Task
+Adversarially challenge multi-tenant security and cross-role data boundaries:
+- Attempt cross-tenant data access (accessing School A data with a School B token or header).
+- Verify that student data (`data_siswa`, `absensi`, `nilai_siswa`) cannot be accessed anonymously or mutated without authorization.
+- Verify teacher data cannot be accessed or manipulated by unauthorized roles.
+- Write and execute empirical tests.
 
-## Mandatory Context
-- ORIGINAL_REQUEST: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-- PROJECT: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\PROJECT.md
-- Worker Handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3_2\handoff.md
+## 2026-09-26T10:16:04Z
+You are Challenger 2 (Multi-Tenant & Role Isolation Stress Testing).
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2
+Workspace root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-## Objectives
-1. Construct and execute independent empirical checks:
-   - Verify modal blocking prevents click propagation through to simulated underlying DOM elements.
-   - Verify that no dismiss button ("Nanti") exists anywhere in NotificationPermissionModal or PushNotificationPrompt.
-   - Check mobile Safari viewport configuration, -webkit-overflow-scrolling, safe-area-inset rules, and mobile input font-size constraints.
-   - Verify that layout title is exactly "SIPJAM" and manifest name is "SIPJAM".
-2. Run automated test suite or build verification.
-3. Record test logs and provide verdict in `handoff.md`: APPROVE or REQUEST_CHANGES.
-4. Notify parent orchestrator via `send_message`.
+MANDATORY FIRST STEP: Read ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md and PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\PROJECT.md.
 
-## 2026-09-24T16:44:17Z
-User / Parent invocation: Perform empirical validation of Milestone 3 features, formulate verdict (APPROVE or REQUEST_CHANGES), write handoff.md, and notify parent with send_message.
+Tasks:
+1. Empirically test multi-tenant security and cross-role boundaries:
+   - Can an authenticated teacher access admin-only data or mutate unauthorized tables?
+   - Can unauthenticated requests read or write to `data_siswa`, `absensi`, `users`?
+   - Can forged headers (`x-sekolah-id`, `x-user-role`, `x-user-id`) spoof tenant isolation when using anon key?
+2. Construct and run an empirical adversarial test script using `npx tsx`.
+3. Report empirical findings in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\handoff.md`.
+4. State your verdict (CONFIRMED_CORRECT or FAILED) and send a completion message.

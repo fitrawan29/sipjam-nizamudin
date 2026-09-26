@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-24T16:47:30Z
+# BRIEFING — 2026-09-26T10:18:00Z
 
 ## Mission
-Empirically validate Milestone 3 features (UI/UX, Branding, Apple Compatibility, Blocking Modals), formulate verdict (APPROVE or REQUEST_CHANGES), and report to parent orchestrator.
+Adversarially challenge and stress-test Multi-Tenant Security and Role Isolation: empirically verify teacher vs admin boundaries, unauthenticated access denials on data_siswa/absensi/users, and spoofed header rejection. Deliver empirical verdict in handoff.md.
 
 ## 🔒 My Identity
 - Archetype: EMPIRICAL CHALLENGER
@@ -10,6 +10,8 @@ Empirically validate Milestone 3 features (UI/UX, Branding, Apple Compatibility,
 - Original parent: ce92c68c-fd07-4434-ab0c-266a7caa8d41
 - Milestone: M3 (UI/UX, Branding & Apple Compatibility)
 - Instance: 2 of 2
+- Milestone (Current): M3 Gate (Multi-Tenant & Role Isolation Stress Testing)
+- Parent (Current): f963fff1-816c-4a40-9daa-b44715a5d909
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
@@ -19,45 +21,30 @@ Empirically validate Milestone 3 features (UI/UX, Branding, Apple Compatibility,
 - Do not trust claims or logs from worker without running tests directly
 
 ## Current Parent
-- Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-24T16:47:30Z
+- Conversation ID: f963fff1-816c-4a40-9daa-b44715a5d909
+- Updated: 2026-09-26T10:18:00Z
 
 ## Review Scope
-- **Files to review**:
-  - `src/components/NotificationPermissionModal.tsx`
-  - `src/components/PushNotificationPrompt.tsx`
-  - `src/components/PreLoginSplash.tsx`
-  - `src/components/LoginScreen.tsx`
-  - `src/app/layout.tsx`
-  - `src/app/globals.css`
-  - `public/manifest.json`
-  - `src/components/CameraSelfieCapture.tsx`
-  - `src/components/AppScreen.tsx`
-  - `tests/m3_ui_ux_apple_compatibility.test.ts`
-  - `tests/adversarial_m3_challenger_2.test.ts`
-- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\PROJECT.md`
-- **Review criteria**:
-  - Fullscreen blocking modal overlay prevents click propagation & escape dismissal
-  - Elimination of dismiss / bypass buttons ("Nanti", "Tutup")
-  - Mobile Safari viewport configuration (`viewportFit: 'cover'`), `-webkit-overflow-scrolling: touch;`, safe-area insets, 16px mobile input font-size
-  - Layout title is "SIPJAM" and manifest name is "SIPJAM"
-  - Absence of "Multi-Tenant SaaS • Superadmin, Admin Sekolah & Guru" on login screen
-  - Pre-login animation and splash screen rendering & lifecycle cleanup
+- **Target verification**: Multi-Tenant & Role Isolation across all core tables (`data_siswa`, `absensi`, `users`, `sekolah`, `wali_kelas`, `pengaturan`, etc.)
+- **Security dimensions**:
+  1. Authenticated Teacher privilege escalation & unauthorized mutation (users, sekolah, wali_kelas, pengaturan).
+  2. Unauthenticated reads & writes (data_siswa, absensi, users).
+  3. Header spoofing & anti-tampering (x-sekolah-id, x-user-role, x-user-id, x-session-token with anon key).
+  4. Cross-tenant isolation (School A vs School B).
+- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\PROJECT.md`
+- **Review criteria**: Zero data leak, strict RLS enforcement, zero privilege escalation.
 
 ## Key Decisions Made
-- Executed existing tests `tests/m3_ui_ux_apple_compatibility.test.ts` (29/29 pass).
-- Executed existing suite `tests/m3_adversarial_stress.test.ts` (59/59 pass).
-- Executed production Next.js build: verified zero compilation or TypeScript errors.
-- Created and executed independent empirical adversarial suite `tests/adversarial_m3_challenger_2.test.ts` (58/58 pass).
-- Executed full E2E test suite `tests/e2e/run_all_e2e.ts` (100% all tiers pass).
-- Formulated verdict: APPROVE.
+- Investigated PostgreSQL RLS policies in `pg_policies` and security helper functions in `pg_proc`.
+- Verified existing baseline verification tests (`tests/data_access_roles_verification.test.ts` - 22/22 pass).
+- Designed standalone empirical adversarial test suite `tests/adversarial_multitenant_role_isolation.test.ts` covering all dimensions.
 
 ## Artifact Index
-- `.agents/teamwork/challenger_m3_2/DISPATCH.md` — Dispatch instructions
-- `.agents/teamwork/challenger_m3_2/BRIEFING.md` — Situational awareness and identity
-- `.agents/teamwork/challenger_m3_2/progress.md` — Progress tracker and heartbeat
-- `.agents/teamwork/challenger_m3_2/handoff.md` — Final verdict and empirical challenge report
-- `tests/adversarial_m3_challenger_2.test.ts` — Independent adversarial test suite
+- `.agents/teamwork/challenger_m3_2/DISPATCH.md` — Dispatch history
+- `.agents/teamwork/challenger_m3_2/BRIEFING.md` — Active briefing and state
+- `.agents/teamwork/challenger_m3_2/progress.md` — Heartbeat and test progress
+- `.agents/teamwork/challenger_m3_2/handoff.md` — Final empirical handoff report
+- `tests/adversarial_multitenant_role_isolation.test.ts` — Independent adversarial test suite
 
 ## Attack Surface
 - **Hypotheses tested**:

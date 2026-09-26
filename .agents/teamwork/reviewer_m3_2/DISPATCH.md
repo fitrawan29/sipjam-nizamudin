@@ -1,32 +1,20 @@
-# Dispatch: Reviewer M3.2
+## 2026-09-26T10:16:04Z
+You are Reviewer 2 (Role Access Security & Regression Verification).
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_2
+Workspace root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-## Identity
-- Role: teamwork_preview_reviewer
-- Assigned Scope: Milestone 3 Independent Review (F8, F9, F10, F11)
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_2\
-- Parent Orchestrator: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\
+MANDATORY FIRST STEP: Read ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md and PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\PROJECT.md.
+Also read worker handoff at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md and test writer handoff at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\test_writer_m2\handoff.md.
 
-## Mandatory Context
-- ORIGINAL_REQUEST: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-- PROJECT: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\PROJECT.md
-- Worker Handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3_2\handoff.md
-- Test Suite: tests/m3_ui_ux_apple_compatibility.test.ts
-
-## Review Requirements
-1. Perform an independent, adversarial code review of Milestone 3 files:
-   - Check edge cases: What happens if Notification API is not supported?
-   - Check modal dismissal attempts (clicking outside, hitting Esc).
-   - Check CSS safe area rules for iOS devices with notch / dynamic island.
-   - Verify that all traces of "SaaS" or "Multi-Tenant SaaS" are eliminated from LoginScreen.tsx.
-   - Verify layout metadata and manifest naming.
-2. Run automated verification:
-   - `npx tsx tests/m3_ui_ux_apple_compatibility.test.ts`
-   - `npm run build`
-3. Provide structured verdict in `handoff.md`: APPROVE or REQUEST_CHANGES.
-4. Notify parent orchestrator via `send_message`.
-
-## 2026-09-24T16:44:17Z
-You are Reviewer M3.2. Your working directory is c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_2\.
-Read your dispatch instructions at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_2\DISPATCH.md.
-Also read ORIGINAL_REQUEST at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md and PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\PROJECT.md.
-Conduct independent adversarial review of Milestone 3 files, run tests and build, formulate verdict (APPROVE or REQUEST_CHANGES), write handoff.md, and notify parent with send_message.
+Tasks:
+1. Examine multi-role security:
+   - Does Admin data access function correctly across all school entities?
+   - Does Teacher (Guru) data access function correctly (daily state, schedules, journals)?
+   - Is Siswa (Student) data retrieval intact and properly scoped?
+   - Is unauthenticated access strictly blocked?
+2. Run tests:
+   - `npx tsx tests/data_access_roles_verification.test.ts`
+   - `npx tsx tests/ui_ux_improvements_audit.test.ts`
+3. Verify no regressions occurred against user requirements R1, R2, R3.
+4. Write your detailed review to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_2\handoff.md`.
+5. Your verdict MUST be either `APPROVE` or `REQUEST_CHANGES`. Clearly state it in your handoff and send a completion message.
