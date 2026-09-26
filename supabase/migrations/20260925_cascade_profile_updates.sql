@@ -97,8 +97,8 @@ BEGIN
 
         BEGIN
             UPDATE public.laporan_piket 
-            SET nama_guru = v_new_nama 
-            WHERE nama_guru = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
+            SET guru_pelapor = v_new_nama 
+            WHERE guru_pelapor = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN

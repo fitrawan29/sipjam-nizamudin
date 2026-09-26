@@ -11,5 +11,5 @@ ALTER TABLE public.data_guru ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES pu
 UPDATE public.jadwal_pelajaran jp SET user_id = u.id FROM public.users u WHERE jp.nama_guru = u.nama AND jp.sekolah_id = u.sekolah_id;
 UPDATE public.jurnal_pembelajaran jp SET user_id = u.id FROM public.users u WHERE jp.nama_guru = u.nama AND jp.sekolah_id = u.sekolah_id;
 UPDATE public.presensi_guru jp SET user_id = u.id FROM public.users u WHERE jp.nama_guru = u.nama AND jp.sekolah_id = u.sekolah_id;
-UPDATE public.laporan_piket jp SET user_id = u.id FROM public.users u WHERE jp.nama_guru = u.nama AND jp.sekolah_id = u.sekolah_id;
+UPDATE public.laporan_piket jp SET user_id = u.id FROM public.users u WHERE jp.guru_pelapor = u.nama AND jp.sekolah_id = u.sekolah_id;
 UPDATE public.data_guru dg SET user_id = u.id FROM public.users u WHERE dg.nama_guru = u.nama AND dg.sekolah_id = u.sekolah_id;
