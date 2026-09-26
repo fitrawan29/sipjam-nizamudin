@@ -1,4 +1,4 @@
-﻿ALTER TABLE public.users ADD COLUMN IF NOT EXISTS session_token UUID DEFAULT gen_random_uuid();
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS session_token UUID DEFAULT gen_random_uuid();
 
 CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
 RETURNS TABLE (
@@ -14,7 +14,7 @@ DECLARE
 BEGIN
   UPDATE public.users 
   SET session_token = gen_random_uuid() 
-  WHERE public.users.username = trim(p_username) AND password = crypt(p_password, password)
+  WHERE public.users.username = trim(p_username) AND password = extensions.crypt(p_password, password)
   RETURNING public.users.id, public.users.username, public.users.nama, public.users.role, public.users.sekolah_id, public.users.session_token INTO v_user;
   
   IF FOUND THEN

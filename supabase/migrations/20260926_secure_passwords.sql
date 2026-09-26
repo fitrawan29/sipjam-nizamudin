@@ -1,13 +1,13 @@
-﻿-- Enable pgcrypto extension for hashing passwords
+-- Enable pgcrypto extension for hashing passwords
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Hash all existing plaintext passwords in public.users
 -- Only update if it doesn't already look like a bcrypt hash (starts with $2a$ or $2b$)
 UPDATE public.users 
-SET password = crypt(password, gen_salt('bf'))
+SET password = extensions.crypt(password, extensions.gen_salt('bf'))
 WHERE password NOT LIKE '$2%';
 
--- Fix verify_login RPC to use crypt()
+-- Fix verify_login RPC to use extensions.crypt()
 CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
 RETURNS TABLE (
   id UUID,
@@ -20,7 +20,7 @@ BEGIN
   RETURN QUERY
   SELECT u.id, u.username, u.nama, u.role, u.sekolah_id
   FROM public.users u
-  WHERE u.username = trim(p_username) AND u.password = crypt(p_password, u.password);
+  WHERE u.username = trim(p_username) AND u.password = extensions.crypt(p_password, u.password);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
 
@@ -51,38 +51,48 @@ BEGIN
 
     -- 2. Verify target user exists
     SELECT * INTO v_target_user FROM public.users WHERE id = p_user_id;
-    IF NOT FOUND THEN
+    IF v_target_user.id IS NULL THEN
         RETURN json_build_object('success', false, 'message', 'Pengguna tidak ditemukan.');
     END IF;
 
-    -- 3. Check permissions (Superadmin or self)
+    -- 3. Authorization check
     v_is_sa := public.is_superadmin();
-    IF NOT v_is_sa AND v_caller_id <> p_user_id THEN
-        RETURN json_build_object('success', false, 'message', 'Anda tidak memiliki akses untuk mengubah profil ini.');
+    IF NOT v_is_sa THEN
+        -- Prevent arbitrary takeover of superadmin accounts
+        IF v_target_user.role = 'Superadmin' THEN
+            RETURN json_build_object('success', false, 'message', 'Tidak memiliki izin untuk memodifikasi akun Superadmin.');
+        END IF;
+
+        -- Prevent modifying other users' accounts
+        IF v_caller_id <> p_user_id THEN
+            RETURN json_build_object('success', false, 'message', 'Anda hanya diizinkan untuk memperbarui profil akun Anda sendiri.');
+        END IF;
     END IF;
 
-    -- Store old values
+    -- 4. Check username uniqueness if changed
+    IF p_username IS NOT NULL AND trim(p_username) <> '' AND trim(p_username) <> v_target_user.username THEN
+        SELECT id INTO v_existing_id
+        FROM public.users
+        WHERE username = trim(p_username) AND id <> p_user_id
+        LIMIT 1;
+
+        IF v_existing_id IS NOT NULL THEN
+            RETURN json_build_object('success', false, 'message', 'Username sudah digunakan oleh akun lain.');
+        END IF;
+    END IF;
+
     v_old_nama := v_target_user.nama;
     v_old_username := v_target_user.username;
 
-    -- Determine new names
-    v_new_nama := COALESCE(NULLIF(trim(p_nama), ''), v_old_nama);
-    v_new_username := COALESCE(NULLIF(trim(p_username), ''), v_old_username);
-
-    -- 4. Check username uniqueness if changed
-    IF v_new_username <> v_old_username THEN
-        SELECT id INTO v_existing_id FROM public.users WHERE username = v_new_username;
-        IF FOUND THEN
-            RETURN json_build_object('success', false, 'message', 'Username sudah digunakan oleh pengguna lain.');
-        END IF;
-    END IF;
+    v_new_nama := CASE WHEN p_nama IS NOT NULL AND trim(p_nama) <> '' THEN trim(p_nama) ELSE v_target_user.nama END;
+    v_new_username := CASE WHEN p_username IS NOT NULL AND trim(p_username) <> '' THEN trim(p_username) ELSE v_target_user.username END;
 
     -- 5. Update user profile
     UPDATE public.users
     SET 
         avatar = COALESCE(NULLIF(trim(p_avatar), ''), avatar),
         username = v_new_username,
-        password = CASE WHEN p_password IS NOT NULL AND trim(p_password) <> '' THEN crypt(trim(p_password), gen_salt('bf')) ELSE password END,
+        password = CASE WHEN p_password IS NOT NULL AND trim(p_password) <> '' THEN extensions.crypt(trim(p_password), extensions.gen_salt('bf')) ELSE password END,
         nama = v_new_nama
     WHERE id = p_user_id;
 
@@ -91,19 +101,31 @@ BEGIN
         BEGIN
             UPDATE public.data_guru 
             SET nama_guru = v_new_nama, username = v_new_username 
-            WHERE nama_guru = v_old_nama OR username = v_old_username;
+            WHERE (nama_guru = v_old_nama OR username = v_old_username) AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN
             UPDATE public.presensi_guru 
             SET nama_guru = v_new_nama 
-            WHERE nama_guru = v_old_nama;
+            WHERE nama_guru = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
 
         BEGIN
             UPDATE public.jurnal_pembelajaran 
             SET nama_guru = v_new_nama 
-            WHERE nama_guru = v_old_nama;
+            WHERE nama_guru = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
+
+        BEGIN
+            UPDATE public.laporan_piket 
+            SET guru_pelapor = v_new_nama 
+            WHERE guru_pelapor = v_old_nama AND sekolah_id = v_target_user.sekolah_id;
+        EXCEPTION WHEN OTHERS THEN NULL; END;
+
+        BEGIN
+            UPDATE public.jadwal_pelajaran 
+            SET nama_guru = v_new_nama, username_guru = v_new_username 
+            WHERE (nama_guru = v_old_nama OR username_guru = v_old_username) AND sekolah_id = v_target_user.sekolah_id;
         EXCEPTION WHEN OTHERS THEN NULL; END;
     END IF;
 
