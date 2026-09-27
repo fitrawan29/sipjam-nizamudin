@@ -119,8 +119,8 @@ export const ADMIN_STEPS: TourStep[] = [
 /**
  * Normalize role string to handle capitalization and spacing variations
  */
-export function normalizeRole(role?: string | null): 'superadmin' | 'admin' | 'guru' | 'unknown' {
-  if (!role) return 'unknown';
+export function normalizeRole(role?: unknown): 'superadmin' | 'admin' | 'guru' | 'unknown' {
+  if (!role || typeof role !== 'string') return 'unknown';
   const clean = role.toLowerCase().replace(/[\s_-]+/g, '');
   if (clean === 'superadmin') return 'superadmin';
   if (clean === 'admin') return 'admin';

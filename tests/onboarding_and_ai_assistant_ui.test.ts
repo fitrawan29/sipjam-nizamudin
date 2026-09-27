@@ -14,6 +14,7 @@ import {
   resetTutorial,
   OnboardingTutorial,
 } from '../src/components/Onboarding';
+import { AIAssistant } from '../src/components/AIAssistant';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -48,6 +49,8 @@ assert(normalizeRole('Superadmin') === 'superadmin', 'Normalizes "Superadmin" to
 assert(normalizeRole('super admin') === 'superadmin', 'Normalizes "super admin" to "superadmin"');
 assert(normalizeRole(null) === 'unknown', 'Normalizes null to "unknown"');
 assert(normalizeRole(undefined) === 'unknown', 'Normalizes undefined to "unknown"');
+assert(normalizeRole(123 as any) === 'unknown', 'Normalizes numeric role to "unknown" without throwing');
+assert(normalizeRole({} as any) === 'unknown', 'Normalizes object role to "unknown" without throwing');
 
 // ----------------------------------------------------
 // Section 3: Guru Flow Steps Verification (Minimum 5 steps)
@@ -209,6 +212,20 @@ assert(adminHtml.includes('Langkah 1 dari 6'), 'Admin HTML includes "Langkah 1 d
 assert(adminHtml.includes('Menu Verifikasi'), 'Admin HTML includes Step 1 title "Menu Verifikasi"');
 assert(adminHtml.includes('Lewati'), 'Admin HTML includes "Lewati" skip action');
 assert(adminHtml.includes('Lanjut'), 'Admin HTML includes "Lanjut" next action');
+
+// ----------------------------------------------------
+// Section 8: AIAssistant Component Props & Styling
+// ----------------------------------------------------
+console.log('\n--- Section 8: AIAssistant Props & Styling ---');
+const assistantHtml = renderToString(
+  React.createElement(AIAssistant, {
+    currentView: 'view-guru-presensi',
+    userRole: 'guru',
+    userName: 'Ahmad Dahlan',
+  })
+);
+assert(assistantHtml.includes('z-[45]'), 'AIAssistant button has valid arbitrary class z-[45]');
+assert(assistantHtml.includes('data-tour="ai-assistant-btn"'), 'AIAssistant has data-tour="ai-assistant-btn"');
 
 console.log('\n====================================================');
 console.log('🎉 ALL ONBOARDING UI & LOGIC TESTS PASSED (100%)');

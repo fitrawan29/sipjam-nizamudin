@@ -11,6 +11,8 @@ import {
 
 export interface AIAssistantProps {
   currentView?: string;
+  userRole?: string;
+  userName?: string;
   user?: {
     nama?: string;
     role?: string;
@@ -31,16 +33,25 @@ interface ChatMessage {
   secondaryMatches?: ScoredFAQItem[];
 }
 
-export function AIAssistant({ currentView = 'view-home', user, className = '' }: AIAssistantProps) {
+export function AIAssistant({
+  currentView = 'view-home',
+  userRole,
+  userName,
+  user,
+  className = '',
+}: AIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  const isTeacher = userRole !== 'admin' && userRole !== 'superadmin';
+
   const getGreeting = () => {
-    const userName = user?.nama ? user.nama.split(' ')[0] : 'Bapak/Ibu Guru';
-    return `Halo, ${userName}! 👋 Saya Asisten AI SIPJAM siap membantu Anda memahami dan menggunakan seluruh fitur aplikasi (presensi, jurnal, piket, nilai, dll). Sistem ini 100% offline & cepat.`;
+    const effectiveName = userName || (user?.nama ? user.nama.split(' ')[0] : undefined);
+    const displayName = effectiveName ? `Bapak/Ibu ${effectiveName}` : (isTeacher ? 'Bapak/Ibu Guru' : 'Admin');
+    return `Halo, ${displayName}! 👋 Saya Asisten AI SIPJAM siap membantu Anda memahami dan menggunakan seluruh fitur aplikasi (presensi, jurnal, piket, nilai, dll). Sistem ini 100% offline & cepat.`;
   };
 
   // Initialize or reset chat
@@ -58,7 +69,7 @@ export function AIAssistant({ currentView = 'view-home', user, className = '' }:
 
   useEffect(() => {
     initChat();
-  }, [currentView, user?.nama]);
+  }, [currentView, userRole, userName, user?.nama]);
 
   useEffect(() => {
     if (isOpen) {
@@ -138,7 +149,7 @@ export function AIAssistant({ currentView = 'view-home', user, className = '' }:
         aria-label="Buka Asisten AI SIPJAM"
         title="Tanya Asisten AI SIPJAM"
         onClick={() => setIsOpen(prev => !prev)}
-        className="fixed bottom-5 right-5 z-45 w-14 h-14 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white shadow-xl shadow-emerald-900/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none focus:ring-4 focus:ring-emerald-400/50"
+        className="fixed bottom-5 right-5 z-[45] w-14 h-14 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white shadow-xl shadow-emerald-900/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none focus:ring-4 focus:ring-emerald-400/50"
       >
         <i className="fa-solid fa-wand-magic-sparkles text-2xl text-amber-300 drop-shadow group-hover:rotate-12 transition-transform duration-300"></i>
 
@@ -159,7 +170,7 @@ export function AIAssistant({ currentView = 'view-home', user, className = '' }:
         <div
           role="dialog"
           aria-label="Panel Asisten AI SIPJAM"
-          className="fixed bottom-20 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[75vh] h-[480px] z-45 flex flex-col bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5"
+          className="fixed bottom-20 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[75vh] h-[480px] z-[45] flex flex-col bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-emerald-950 text-white px-4 py-3 flex items-center justify-between shadow-md border-b border-emerald-700/40">

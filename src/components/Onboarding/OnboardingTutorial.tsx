@@ -37,6 +37,13 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
   const [isMeasuring, setIsMeasuring] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
+  // Reset step index to 0 whenever the tutorial opens
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStepIndex(0);
+    }
+  }, [isOpen]);
+
   const currentStep: TourStep | undefined = steps[currentStepIndex];
 
   // Measure and update the target element's bounding rect
@@ -130,6 +137,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 
   const handleSkip = () => {
     setTutorialCompleted(userRole);
+    setCurrentStepIndex(0);
     onEnsureSidebarOpen?.(false);
     onClose();
   };
@@ -150,6 +158,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 
   const handleComplete = () => {
     setTutorialCompleted(userRole);
+    setCurrentStepIndex(0);
     onEnsureSidebarOpen?.(false);
     onComplete();
   };
