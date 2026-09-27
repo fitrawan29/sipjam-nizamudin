@@ -64,12 +64,17 @@ Implement AI Assistant rule-based chatbot and Interactive Onboarding Tutorial fo
 | explorer_survey_3 | teamwork_preview_explorer | Knowledge Base & UI Spec Mapping | completed | b24ea824-624a-4e32-ad7b-52eb74bdd42e |
 | worker_ai_assistant | teamwork_preview_worker | AI Assistant & Knowledge Base Implementation | completed | 9891428a-e75d-491c-b263-959fb008ddce |
 | worker_onboarding | teamwork_preview_worker | Interactive Onboarding Tutorial Implementation | completed | e16b2836-f25a-4e22-bb65-9abafdcc231d |
-| worker_integration | teamwork_preview_worker | AppScreen Integration & Full Test Suites | in-progress | 86b3c4b5-28a7-4088-8e80-526bc4404a30 |
+| worker_integration | teamwork_preview_worker | AppScreen Integration & Full Test Suites | completed | 86b3c4b5-28a7-4088-8e80-526bc4404a30 |
+| reviewer_1 | teamwork_preview_reviewer | AI Assistant Code Review | in-progress | 8f39c567-29d7-460f-8ba4-0e91b5bab1ca |
+| reviewer_2 | teamwork_preview_reviewer | Onboarding & Integration Review | in-progress | b925ccda-a073-4f07-b7b9-6f0fd3a68bd4 |
+| challenger_1 | teamwork_preview_challenger | AI Assistant Adversarial Testing | in-progress | 23e9cb55-eb80-4e56-9db2-bd185b04cbe8 |
+| challenger_2 | teamwork_preview_challenger | Onboarding Tour Adversarial Testing | in-progress | 87159a49-d4af-4a9b-9ba1-29049f58ccd6 |
+| auditor_1 | teamwork_preview_auditor | Forensic Integrity Audit | in-progress | 395a6894-9c9b-409c-8cc4-519b4a7c65de |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 6 / 16
-- Pending subagents: 86b3c4b5-28a7-4088-8e80-526bc4404a30
+- Spawn count: 11 / 16
+- Pending subagents: 8f39c567-29d7-460f-8ba4-0e91b5bab1ca, b925ccda-a073-4f07-b7b9-6f0fd3a68bd4, 23e9cb55-eb80-4e56-9db2-bd185b04cbe8, 87159a49-d4af-4a9b-9ba1-29049f58ccd6, 395a6894-9c9b-409c-8cc4-519b4a7c65de
 - Predecessor: none
 - Successor: not yet spawned
 
