@@ -370,6 +370,129 @@ async function runTests() {
   );
 
   // ====================================================
+  // Section 5: Adversarial Edge Cases & Open Issues Ledger QA
+  // ====================================================
+  console.log('\n--- Section 5: Adversarial Edge Cases & Open Issues Ledger QA ---');
+
+  // 5.1 Multi-tenant cross-school isolation test
+  console.log('\n[5.1] Multi-tenant cross-school isolation:');
+  const tenantBlockId = '00000000-0000-0000-0000-00000000b10d';
+  const schoolA = defaultSekolahId;
+  const schoolB = 'b0000000-0000-0000-0000-000000000002';
+
+  try {
+    await supabase.from('sistem_blok').delete().eq('id', tenantBlockId);
+    const { error: tInsertErr } = await supabase.from('sistem_blok').insert([{
+      id: tenantBlockId,
+      sekolah_id: schoolA,
+      nama_kegiatan: 'School A Exlusive Block',
+      tanggal_mulai: today,
+      tanggal_selesai: tomorrow,
+    }]);
+
+    assert(!tInsertErr, 'Multi-tenant: Successfully inserted block for School A', tInsertErr?.message);
+
+    // Query for School B — MUST be null (no cross-tenant leakage)
+    const schoolBResult = await getActiveSistemBlok(today, schoolB);
+    assert(schoolBResult === null, 'Multi-tenant: School B does NOT see School A block period (zero cross-tenant leak)');
+
+    // Query for School A — MUST find School A's block
+    const schoolAResult = await getActiveSistemBlok(today, schoolA);
+    assert(schoolAResult !== null && schoolAResult.id === tenantBlockId, 'Multi-tenant: School A accurately sees its own block period');
+
+    // Clean up
+    await supabase.from('sistem_blok').delete().eq('id', tenantBlockId);
+  } catch (err: any) {
+    assert(false, 'Multi-tenant isolation test encountered error', err.message);
+  }
+
+  // 5.2 Single-day block & ISO format date handling
+  console.log('\n[5.2] Single-day block boundary & ISO format date handling:');
+  const singleDayId = '00000000-0000-0000-0000-00000000b10e';
+  const singleDate = '2099-07-20';
+
+  try {
+    await supabase.from('sistem_blok').delete().eq('id', singleDayId);
+    const { error: sInsertErr } = await supabase.from('sistem_blok').insert([{
+      id: singleDayId,
+      sekolah_id: defaultSekolahId,
+      nama_kegiatan: 'Single Day Special Event',
+      tanggal_mulai: singleDate,
+      tanggal_selesai: singleDate,
+    }]);
+
+    assert(!sInsertErr, 'Single-day: Successfully created 1-day block where mulai == selesai', sInsertErr?.message);
+
+    // Query exactly on that date
+    const exactMatch = await getActiveSistemBlok(singleDate, defaultSekolahId);
+    assert(exactMatch !== null && exactMatch.id === singleDayId, 'Single-day: Block active on the exact specified single date');
+
+    // Query with ISO string (e.g. 2099-07-20T08:00:00.000Z)
+    const isoQuery = await getActiveSistemBlok(`${singleDate}T14:30:00.000Z`, defaultSekolahId);
+    assert(isoQuery !== null && isoQuery.id === singleDayId, 'Date boundary: Query with ISO datetime string sanitizes seamlessly to date');
+
+    // Query day before and day after
+    const dayBefore = await getActiveSistemBlok('2099-07-19', defaultSekolahId);
+    const dayAfter = await getActiveSistemBlok('2099-07-21', defaultSekolahId);
+    assert(dayBefore === null, 'Date boundary: Day before single-day block returns null');
+    assert(dayAfter === null, 'Date boundary: Day after single-day block returns null');
+
+    // Clean up
+    await supabase.from('sistem_blok').delete().eq('id', singleDayId);
+  } catch (err: any) {
+    assert(false, 'Single-day test encountered error', err.message);
+  }
+
+  // 5.3 Exempt teacher obligation & Admin Matrix integrity
+  console.log('\n[5.3] Exempt teacher obligation during Sistem Blok:');
+  assert(
+    workflowContent.includes('const hasTeachingObligation = state.isBlok || state.jadwalKBM.length > 0 || state.isPiket;'),
+    'workflow.ts: hasTeachingObligation includes state.isBlok so exempt teachers are not locked out on block days'
+  );
+
+  assert(
+    homeViewContent.includes('const isExemptNonTeaching = !isBlokToday && teacher.wajib_hadir_hanya_mengajar && targetCount === 0;'),
+    'HomeView.tsx: isExemptNonTeaching is disabled during isBlokToday, requiring all teachers to submit Jurnal Kegiatan'
+  );
+
+  // 5.4 Push Notification Reminder Cron during Sistem Blok
+  console.log('\n[5.4] Push Reminder Cron during Sistem Blok:');
+  const pushRoutePath = path.join(projectRoot, 'src', 'app', 'api', 'push', 'send-reminders', 'route.ts');
+  assert(fs.existsSync(pushRoutePath), 'send-reminders route.ts exists');
+  const pushRouteContent = fs.readFileSync(pushRoutePath, 'utf8');
+
+  assert(
+    pushRouteContent.includes(".from('sistem_blok')") &&
+    pushRouteContent.includes('const activeBlok = activeBloks && activeBloks.length > 0 ? activeBloks[0] : null;'),
+    'send-reminders cron queries active sistem_blok for school and date'
+  );
+
+  assert(
+    pushRouteContent.includes('if (activeBlok) {') &&
+    pushRouteContent.includes("title: 'Pengingat Jurnal Kegiatan (Sistem Blok)'") &&
+    pushRouteContent.includes('hari ini berlaku Sistem Blok'),
+    'send-reminders cron reminds teachers specifically about Jurnal Kegiatan (Sistem Blok) during active blocks'
+  );
+
+  assert(
+    pushRouteContent.includes('hasSubmittedBlokJurnal') &&
+    pushRouteContent.includes("j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan'"),
+    'send-reminders cron suppresses reminders once Jurnal Kegiatan is submitted'
+  );
+
+  // 5.5 Disciplinary Warning System during Sistem Blok
+  console.log('\n[5.5] Disciplinary Warning System during Sistem Blok:');
+  const warningPath = path.join(projectRoot, 'src', 'lib', 'warningSystem.ts');
+  assert(fs.existsSync(warningPath), 'warningSystem.ts exists');
+  const warningContent = fs.readFileSync(warningPath, 'utf8');
+
+  assert(
+    warningContent.includes('hasJurnalKegiatan') &&
+    warningContent.includes("j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan'"),
+    'warningSystem.ts credits Jurnal Kegiatan, preventing false missing journal violations during block periods'
+  );
+
+  // ====================================================
   // Summary
   // ====================================================
   console.log('\n====================================================');

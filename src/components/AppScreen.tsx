@@ -403,7 +403,7 @@ export default function AppScreen({
 
       if (restrictedViews.includes(targetId)) {
         Swal.fire({ title: 'Memeriksa Akses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        const state = await getGuruDailyState(user.nama, user.username, user.id);
+        const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
         Swal.close();
 
         if (state.isLibur) {

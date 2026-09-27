@@ -150,7 +150,7 @@ export default function SistemBlokView({ user }: { user: any }) {
 
     setEditSubmitting(true);
     try {
-      const { error } = await supabase
+      let updateQ = supabase
         .from('sistem_blok')
         .update({
           nama_kegiatan: editNama.trim(),
@@ -160,6 +160,12 @@ export default function SistemBlokView({ user }: { user: any }) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', editingItem.id);
+
+      if (user?.sekolah_id) {
+        updateQ = updateQ.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const { error } = await updateQ;
 
       if (error) {
         showToast('Gagal Memperbarui', error.message, 'error');
@@ -191,7 +197,11 @@ export default function SistemBlokView({ user }: { user: any }) {
 
     if (result.isConfirmed) {
       try {
-        const { error } = await supabase.from('sistem_blok').delete().eq('id', item.id);
+        let deleteQ = supabase.from('sistem_blok').delete().eq('id', item.id);
+        if (user?.sekolah_id) {
+          deleteQ = deleteQ.eq('sekolah_id', user.sekolah_id);
+        }
+        const { error } = await deleteQ;
         if (error) {
           showToast('Gagal Menghapus', error.message, 'error');
         } else {

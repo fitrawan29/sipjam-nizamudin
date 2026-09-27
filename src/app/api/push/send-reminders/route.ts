@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 import { sendWebPush, PushNotificationPayload } from '@/lib/vapid';
 import { getWitaDateStr, getWitaDayName } from '@/lib/wita';
@@ -92,6 +92,19 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       (piketReports || []).map(r => (r.guru_pelapor || r.kehadiran_guru_piket || '').toLowerCase().trim())
     );
 
+    // F. Fetch active sistem_blok for this school and today
+    let blokQuery = supabase
+      .from('sistem_blok')
+      .select('*')
+      .lte('tanggal_mulai', todayStr)
+      .gte('tanggal_selesai', todayStr)
+      .order('created_at', { ascending: false });
+    if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
+      blokQuery = blokQuery.eq('sekolah_id', sekolahId);
+    }
+    const { data: activeBloks } = await blokQuery;
+    const activeBlok = activeBloks && activeBloks.length > 0 ? activeBloks[0] : null;
+
     // -------------------------------------------------------------
     // Task 1: Check Datang Presensi
     // -------------------------------------------------------------
@@ -102,7 +115,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
       if (!hasCheckedIn) {
         // If teacher is exempt on non-teaching days, check if they have schedule today
-        if (teacher.wajib_hadir_hanya_mengajar) {
+        // Note: during activeBlok, all teachers participate in block activities
+        if (teacher.wajib_hadir_hanya_mengajar && !activeBlok) {
           const hasTeachingToday = scheduleList.some(s => {
             const sName = (s.nama_guru || '').toLowerCase().trim();
             return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
@@ -126,35 +140,60 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     }
 
     // -------------------------------------------------------------
-    // Task 2: Check KBM Journals
+    // Task 2: Check Journals (KBM vs Sistem Blok)
     // -------------------------------------------------------------
     for (const teacher of teachers) {
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
 
-      // Find scheduled classes for this teacher today
-      const teacherSchedules = scheduleList.filter(s => {
-        const sName = (s.nama_guru || '').toLowerCase().trim();
-        return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
-      });
-
-      if (teacherSchedules.length > 0) {
-        // Teacher has classes today! Check if journals exist
-        const submittedCount = journalList.filter(j => {
+      if (activeBlok) {
+        // On a block day, regular KBM is replaced with special activity.
+        // Teacher needs to submit 1 Jurnal Kegiatan.
+        const hasSubmittedBlokJurnal = journalList.some(j => {
           const jName = (j.nama_guru || '').toLowerCase().trim();
-          return jName === tNameLower || tNameLower.includes(jName) || jName.includes(tNameLower);
-        }).length;
+          const isThisTeacher = jName === tNameLower || tNameLower.includes(jName) || jName.includes(tNameLower);
+          if (!isThisTeacher) return false;
+          if (j.status_verifikasi === 'Ditolak') return false;
+          return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (!j.kelas || j.kelas === '-');
+        });
 
-        if (submittedCount < teacherSchedules.length) {
+        if (!hasSubmittedBlokJurnal) {
           reminders.push({
             guru_id: teacher.id,
             guru_nama: tName,
             sekolah_id: sekolahId,
             category: 'jurnal',
-            title: 'Pengingat Jurnal Mengajar',
-            body: `Halo ${tName}, Anda memiliki ${teacherSchedules.length} jam mengajar hari ini (${submittedCount} selesai). Mohon lengkapi jurnal KBM Anda.`,
+            title: 'Pengingat Jurnal Kegiatan (Sistem Blok)',
+            body: `Halo ${tName}, hari ini berlaku Sistem Blok (${activeBlok.nama_kegiatan}). Mohon lengkapi Jurnal Kegiatan Anda.`,
             url: '/?view=view-guru-jurnal'
           });
+        }
+      } else {
+        // Find scheduled classes for this teacher today
+        const teacherSchedules = scheduleList.filter(s => {
+          const sName = (s.nama_guru || '').toLowerCase().trim();
+          return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+        });
+
+        if (teacherSchedules.length > 0) {
+          // Teacher has classes today! Check if journals exist
+          const submittedCount = journalList.filter(j => {
+            const jName = (j.nama_guru || '').toLowerCase().trim();
+            if (j.status_verifikasi === 'Ditolak') return false;
+            return jName === tNameLower || tNameLower.includes(jName) || jName.includes(tNameLower);
+          }).length;
+
+          if (submittedCount < teacherSchedules.length) {
+            reminders.push({
+              guru_id: teacher.id,
+              guru_nama: tName,
+              sekolah_id: sekolahId,
+              category: 'jurnal',
+              title: 'Pengingat Jurnal Mengajar',
+              body: `Halo ${tName}, Anda memiliki ${teacherSchedules.length} jam mengajar hari ini (${submittedCount} selesai). Mohon lengkapi jurnal KBM Anda.`,
+              url: '/?view=view-guru-jurnal'
+            });
+          }
         }
       }
     }

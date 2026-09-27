@@ -102,7 +102,7 @@ export default function GuruPresensi({ user }: { user: any }) {
       }
       fetchLocation(newConfig);
 
-      const state = await getGuruDailyState(user.nama, user.username, user.id);
+      const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
       setDailyState(state);
       if (state.presensiDatangDitolak) {
         setTipeAbsen('Datang');
@@ -380,7 +380,7 @@ export default function GuruPresensi({ user }: { user: any }) {
     setPhotoPreviewUrl(null);
     
     // Refresh workflow state
-    const state = await getGuruDailyState(user.nama, user.username, user.id);
+    const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
     if (!isMountedRef.current) return;
     setDailyState(state);
     if (tipeAbsen === 'Datang') {

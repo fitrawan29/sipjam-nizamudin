@@ -55,7 +55,8 @@ export type GuruDailyState = {
  */
 export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string): Promise<any | null> {
   try {
-    const targetDate = dateStr || getWitaDateStr();
+    const rawDate = dateStr || getWitaDateStr();
+    const targetDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.trim();
     let query = supabase
       .from('sistem_blok')
       .select('*')
@@ -170,7 +171,7 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   return false;
 }
 
-export async function getGuruDailyState(namaGuru: string, username?: string, userId?: string): Promise<GuruDailyState> {
+export async function getGuruDailyState(namaGuru: string, username?: string, userId?: string, sekolahId?: string): Promise<GuruDailyState> {
   const now = new Date();
   const todayStr = getWitaDateStr(now);
   const cleanTeacherName = (namaGuru || '').split(',')[0].trim();
@@ -209,7 +210,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
   try {
     // 0. Cek Sistem Blok aktif hari ini
     try {
-      const activeBlok = await getActiveSistemBlok(todayStr);
+      const activeBlok = await getActiveSistemBlok(todayStr, sekolahId);
       if (activeBlok) {
         state.isBlok = true;
         state.blokInfo = {
@@ -400,7 +401,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       state.presensiPulangDitolak = rejectedPresensi.find((p: any) => p.tipe_absen === 'Pulang') || null;
     }
 
-    const hasTeachingObligation = state.jadwalKBM.length > 0 || state.isPiket;
+    const hasTeachingObligation = state.isBlok || state.jadwalKBM.length > 0 || state.isPiket;
 
     // Evaluasi kewajiban kehadiran & penentuan Alpa
     if (!state.presensiDatang) {

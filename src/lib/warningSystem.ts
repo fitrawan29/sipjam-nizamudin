@@ -226,9 +226,18 @@ export function evaluateTeacherWarningsSync(
       j => j.tanggal === dateStr && j.status_verifikasi !== 'Ditolak'
     );
 
-    const isMissingJournal = dayJournals.length < scheduledOnDay.length;
-    monthlyStats.jurnal.required += scheduledOnDay.length;
-    monthlyStats.jurnal.filled += Math.min(dayJournals.length, scheduledOnDay.length);
+    const hasJurnalKegiatan = dayJournals.some(
+      j => j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (!j.kelas || j.kelas === '-')
+    );
+
+    const isMissingJournal = hasJurnalKegiatan ? false : dayJournals.length < scheduledOnDay.length;
+    if (hasJurnalKegiatan) {
+      monthlyStats.jurnal.required += 1;
+      monthlyStats.jurnal.filled += 1;
+    } else {
+      monthlyStats.jurnal.required += scheduledOnDay.length;
+      monthlyStats.jurnal.filled += Math.min(dayJournals.length, scheduledOnDay.length);
+    }
     jurnalOperationalDays.push({ dateStr, isViolation: isMissingJournal });
   }
 

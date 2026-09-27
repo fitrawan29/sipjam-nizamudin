@@ -102,7 +102,7 @@ export default function HomeView({
   useEffect(() => {
     if (isGuru && user?.nama) {
       setTimeout(() => setLoadingState(true), 0);
-      getGuruDailyState(user.nama, user.username, user.id)
+      getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id)
         .then(setDailyState)
         .catch(console.error)
         .finally(() => setLoadingState(false));
@@ -285,7 +285,7 @@ export default function HomeView({
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
       let kalenderQ = supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
       let pengaturanQ = supabase.from('pengaturan').select('key, value');
-      let blokQ = supabase.from('sistem_blok').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', todayStr);
+      let blokQ = supabase.from('sistem_blok').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', todayStr).order('created_at', { ascending: false });
 
       if (user?.sekolah_id) {
         teachersQ = teachersQ.eq('sekolah_id', user.sekolah_id);
@@ -384,7 +384,7 @@ export default function HomeView({
         });
 
         const targetCount = targetClasses.length;
-        const isExemptNonTeaching = teacher.wajib_hadir_hanya_mengajar && targetCount === 0;
+        const isExemptNonTeaching = !isBlokToday && teacher.wajib_hadir_hanya_mengajar && targetCount === 0;
 
         // 2. Presensi Datang
         const pDatang = presensiList.find((p: any) => 
@@ -476,7 +476,7 @@ export default function HomeView({
 
         const isDinasLuar = presensiDatangStatus === 'Dinas Luar';
         const hasJurnalKegiatan = acceptedTeacherJournals.some((j: any) => 
-          j.keterangan === 'Jurnal Kegiatan' || (j.kegiatan_pembelajaran && !j.kelas)
+          j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (j.kegiatan_pembelajaran && (!j.kelas || j.kelas === '-'))
         );
 
         let jurnalStatus = 'Bebas KBM';
