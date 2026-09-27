@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast, Toast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -34,6 +34,7 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [absensi, setAbsensi] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
+  const [dateBlok, setDateBlok] = useState<any | null>(null);
 
   const calculateKehadiranSummary = (abs: Record<string, string>, stList: any[]): string => {
     if (!stList || stList.length === 0) return 'Semua Hadir';
@@ -192,7 +193,13 @@ export default function GuruJurnal({ user }: { user: any }) {
       setDailyState(state);
       
       // Auto-select Tipe Jurnal based on workflow
-      if (state.isDinasLuar) {
+      if (state.isBlok) {
+        setTipeJurnal('Jurnal Kegiatan');
+        setDateBlok(state.blokInfo);
+        if (state.blokInfo?.nama_kegiatan) {
+          setMateri(state.blokInfo.nama_kegiatan);
+        }
+      } else if (state.isDinasLuar) {
         setTipeJurnal('Jurnal Kegiatan');
       } else if (state.jadwalKBM && state.jadwalKBM.length > 0) {
         setTipeJurnal('Jurnal KBM');
@@ -203,6 +210,34 @@ export default function GuruJurnal({ user }: { user: any }) {
     
     checkState();
   }, [user?.nama]);
+
+  // Check if chosen date is inside a block period
+  useEffect(() => {
+    const checkDateBlok = async () => {
+      if (!tanggal) return;
+      try {
+        const blok = await getActiveSistemBlok(tanggal, user?.sekolah_id);
+        setDateBlok(blok);
+        if (blok) {
+          setTipeJurnal('Jurnal Kegiatan');
+          if (!materi || materi === dailyState?.blokInfo?.nama_kegiatan) {
+            setMateri(blok.nama_kegiatan);
+          }
+        } else if (!dailyState?.isBlok) {
+          if (dailyState?.isDinasLuar) {
+            setTipeJurnal('Jurnal Kegiatan');
+          } else if (dailyState?.jadwalKBM && dailyState.jadwalKBM.length > 0) {
+            setTipeJurnal('Jurnal KBM');
+          } else {
+            setTipeJurnal('Jurnal Kegiatan');
+          }
+        }
+      } catch (err) {
+        console.warn('Error checking block period for date:', err);
+      }
+    };
+    checkDateBlok();
+  }, [tanggal, dailyState?.isBlok, dailyState?.isDinasLuar, user?.sekolah_id]);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -512,11 +547,29 @@ export default function GuruJurnal({ user }: { user: any }) {
               </div>
             )}
             
+            {/* Sistem Blok Alert Banner */}
+            {dateBlok && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl p-3.5 mb-4 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
+                <i className="fa-solid fa-layer-group text-amber-600 dark:text-amber-400 text-sm mt-0.5 shrink-0"></i>
+                <div>
+                  <div className="font-bold">Periode Sistem Blok Aktif: {dateBlok.nama_kegiatan}</div>
+                  <div className="text-[11px] mt-0.5 text-amber-700 dark:text-amber-300 leading-relaxed">
+                    Jadwal KBM reguler ditiadakan sementara dan digantikan oleh kegiatan khusus ini. Anda hanya perlu mengisi form <strong>Jurnal Kegiatan</strong> di bawah ini (tidak perlu mengisi jurnal absensi kelas reguler).
+                  </div>
+                  {dateBlok.deskripsi && (
+                    <div className="text-[11px] mt-1.5 italic bg-amber-100/60 dark:bg-amber-900/40 p-2 rounded-lg text-amber-900 dark:text-amber-200">
+                      Petunjuk: {dateBlok.deskripsi}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
             <form onSubmit={handleJurnalSubmit} className={`space-y-4 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div>
                     <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Jenis Jurnal</label>
                     <select value={tipeJurnal} disabled className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
-                        <option value={tipeJurnal}>{tipeJurnal} {dailyState?.isDinasLuar ? '(Dinas Luar)' : ''}</option>
+                        <option value={tipeJurnal}>{tipeJurnal} {dateBlok ? `(Sistem Blok: ${dateBlok.nama_kegiatan})` : dailyState?.isDinasLuar ? '(Dinas Luar)' : ''}</option>
                     </select>
                     <p className="text-[9px] text-gray-500 dark:text-white/80 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
                 </div>

@@ -19,6 +19,16 @@ export type GuruDailyState = {
   jurnalKBM: any[];
   jurnalKegiatan: any | null;
 
+  // Sistem Blok (waktu diblokir untuk kegiatan khusus)
+  isBlok: boolean;
+  blokInfo: {
+    id: string;
+    nama_kegiatan: string;
+    deskripsi: string | null;
+    tanggal_mulai: string;
+    tanggal_selesai: string;
+  } | null;
+
   // Status flags
   canOpenPiket: boolean;
   canOpenJurnal: boolean;
@@ -39,6 +49,31 @@ export type GuruDailyState = {
   laporanPiketDitolak: any | null;
   jurnalDitolak: any[];
 };
+
+/**
+ * Helper: Ambil data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
+ */
+export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string): Promise<any | null> {
+  try {
+    const targetDate = dateStr || getWitaDateStr();
+    let query = supabase
+      .from('sistem_blok')
+      .select('*')
+      .lte('tanggal_mulai', targetDate)
+      .gte('tanggal_selesai', targetDate);
+
+    if (sekolahId) {
+      query = query.eq('sekolah_id', sekolahId);
+    }
+
+    const { data, error } = await query;
+    if (error || !data || data.length === 0) return null;
+    return data[0];
+  } catch (err) {
+    console.warn('Error fetching active sistem_blok:', err);
+    return null;
+  }
+}
 
 /**
  * Helper: Mencari nama guru di jadwal_pelajaran yang mungkin menggunakan nama pendek.
@@ -150,6 +185,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     jadwalKBM: [],
     jurnalKBM: [],
     jurnalKegiatan: null,
+    isBlok: false,
+    blokInfo: null,
     canOpenPiket: false,
     canOpenJurnal: false,
     canPresensiPulang: false,
@@ -168,6 +205,23 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
   if (!namaGuru) return state;
 
   try {
+    // 0. Cek Sistem Blok aktif hari ini
+    try {
+      const activeBlok = await getActiveSistemBlok(todayStr);
+      if (activeBlok) {
+        state.isBlok = true;
+        state.blokInfo = {
+          id: activeBlok.id,
+          nama_kegiatan: activeBlok.nama_kegiatan,
+          deskripsi: activeBlok.deskripsi,
+          tanggal_mulai: activeBlok.tanggal_mulai,
+          tanggal_selesai: activeBlok.tanggal_selesai,
+        };
+      }
+    } catch (bErr) {
+      console.warn('Error checking sistem_blok in workflow:', bErr);
+    }
+
     // 1. Cek Hari Libur dari kalender_pendidikan
     const { data: cal } = await supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
     if (cal && cal.length > 0) {
@@ -471,7 +525,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     // Untuk Presensi Pulang
     let isJurnalDone = false;
-    if (state.isDinasLuar || state.jadwalKBM.length === 0) {
+    if (state.isBlok || state.isDinasLuar || state.jadwalKBM.length === 0) {
       if (state.jurnalKegiatan) isJurnalDone = true;
     } else {
       // Harus isi KBM sejumlah jadwal - gunakan fuzzy matching
@@ -491,7 +545,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     } else {
       const missing = [];
       if (!isPiketDone) missing.push('Laporan Piket');
-      if (!isJurnalDone) missing.push('Jurnal (KBM/Kegiatan)');
+      if (!isJurnalDone) missing.push(state.isBlok ? 'Jurnal Kegiatan (Sistem Blok)' : 'Jurnal (KBM/Kegiatan)');
       state.lockedReason = `Anda belum menyelesaikan: ${missing.join(', ')}`;
     }
 

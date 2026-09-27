@@ -96,6 +96,7 @@ export default function HomeView({
   const [matrixList, setMatrixList] = useState<TeacherStatusRow[]>([]);
   const [matrixSearch, setMatrixSearch] = useState('');
   const [matrixFilter, setMatrixFilter] = useState<'Semua' | 'Tugas Lengkap' | 'Belum Lengkap'>('Semua');
+  const [activeBlokToday, setActiveBlokToday] = useState<any | null>(null);
 
   // Load Teacher Data
   useEffect(() => {
@@ -284,6 +285,7 @@ export default function HomeView({
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
       let kalenderQ = supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
       let pengaturanQ = supabase.from('pengaturan').select('key, value');
+      let blokQ = supabase.from('sistem_blok').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', todayStr);
 
       if (user?.sekolah_id) {
         teachersQ = teachersQ.eq('sekolah_id', user.sekolah_id);
@@ -295,6 +297,7 @@ export default function HomeView({
         penugasanPiketQ = penugasanPiketQ.eq('sekolah_id', user.sekolah_id);
         kalenderQ = kalenderQ.eq('sekolah_id', user.sekolah_id);
         pengaturanQ = pengaturanQ.eq('sekolah_id', user.sekolah_id);
+        blokQ = blokQ.eq('sekolah_id', user.sekolah_id);
       }
 
       const [
@@ -306,7 +309,8 @@ export default function HomeView({
         piketLaporanRes,
         penugasanPiketRes,
         kalenderRes,
-        pengaturanRes
+        pengaturanRes,
+        blokRes
       ] = await Promise.all([
         teachersQ,
         presensiQ.limit(500),
@@ -316,7 +320,8 @@ export default function HomeView({
         piketLaporanQ,
         penugasanPiketQ,
         kalenderQ,
-        pengaturanQ
+        pengaturanQ,
+        blokQ
       ]);
 
       const teachers = teachersRes.data || [];
@@ -326,6 +331,9 @@ export default function HomeView({
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
       const assignedPiketTeachers = penugasanPiketRes.data || [];
+      const activeBlok = (blokRes.data && blokRes.data[0]) || null;
+      setActiveBlokToday(activeBlok);
+      const isBlokToday = Boolean(activeBlok);
 
       // Check holidays & weekend
       const isLiburKalender = Boolean((kalenderRes.data || []).some((c: any) => c.tipe === 'Libur'));
@@ -471,7 +479,15 @@ export default function HomeView({
         let jurnalStatus = 'Bebas KBM';
         let jurnalColor: 'green' | 'amber' | 'rose' | 'gray' = 'gray';
 
-        if (isDinasLuar) {
+        if (isBlokToday) {
+          if (hasJurnalKegiatan || teacherJournals.length > 0) {
+            jurnalStatus = 'Jurnal Kegiatan Selesai';
+            jurnalColor = 'green';
+          } else {
+            jurnalStatus = 'Perlu Jurnal Kegiatan';
+            jurnalColor = 'amber';
+          }
+        } else if (isDinasLuar) {
           if (hasJurnalKegiatan) {
             jurnalStatus = 'Jurnal Kegiatan Selesai';
             jurnalColor = 'green';
@@ -499,7 +515,7 @@ export default function HomeView({
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
-        const jurnalDone = isLiburOrExempt || isIzinSakit || (isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || filledCount >= targetCount));
+        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? (hasJurnalKegiatan || teacherJournals.length > 0) : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || filledCount >= targetCount));
 
         const isTugasLengkap = isLiburOrExempt
           ? true
@@ -520,8 +536,8 @@ export default function HomeView({
           pengisianJurnal: {
             status: jurnalStatus,
             color: jurnalColor,
-            filled: filledCount,
-            total: targetCount
+            filled: isBlokToday ? ((hasJurnalKegiatan || teacherJournals.length > 0) ? 1 : 0) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount,
+            total: isBlokToday ? 1 : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount
           },
           laporanPiket: {
             status: piketStatus,
@@ -807,7 +823,16 @@ export default function HomeView({
 
     // Step 3: Jurnal
     const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
-    if (dailyState.isDinasLuar || dailyState.jadwalKBM.length === 0) {
+    if (dailyState.isBlok) {
+      if (hasJurnalDitolak) {
+        steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills' });
+      } else if (dailyState.jurnalKegiatan) {
+        steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: 'done', detail: 'Jurnal kegiatan blok selesai diisi', icon: 'fa-book-journal-whills' });
+      } else {
+        const canOpen = dailyState.canOpenJurnal;
+        steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: canOpen ? 'active' : 'locked', detail: canOpen ? `Kegiatan: ${dailyState.blokInfo?.nama_kegiatan || 'Sistem Blok'}` : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
+      }
+    } else if (dailyState.isDinasLuar || dailyState.jadwalKBM.length === 0) {
       if (hasJurnalDitolak) {
         steps.push({ label: 'Jurnal Kegiatan', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills' });
       } else if (dailyState.jurnalKegiatan) {
@@ -865,6 +890,9 @@ export default function HomeView({
     if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${dailyState.jurnalDitolak.length} jurnal Anda ditolak admin. Silakan isi ulang di menu Jurnal.`, color: 'text-red-600 dark:text-red-400' };
     if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
+    if (dailyState.isBlok && !dailyState.jurnalKegiatan) {
+      return { text: `Periode Sistem Blok: Silakan isi Jurnal Kegiatan (${dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'}).`, color: 'text-amber-600 dark:text-amber-400' };
+    }
     if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.canPresensiPulang && !dailyState.presensiPulang) return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-green-600 dark:text-green-400' };
@@ -1167,12 +1195,16 @@ export default function HomeView({
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
-                {dailyState?.isDinasLuar && (
+                {dailyState?.isBlok ? (
+                  <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                    <i className="fa-solid fa-layer-group text-[9px]"></i> Sistem Blok
+                  </span>
+                ) : dailyState?.isDinasLuar ? (
                   <span className="bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200 dark:border-sky-800">
                     <i className="fa-solid fa-briefcase mr-1 text-[8px]"></i> Dinas Luar
                   </span>
-                )}
-                {dailyState && dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0 && (
+                ) : null}
+                {!dailyState?.isBlok && dailyState && dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0 && (
                   <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                     {dailyState.jadwalKBM.length} Kelas
                   </span>
@@ -1194,6 +1226,70 @@ export default function HomeView({
                 <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
                   Selamat menikmati hari libur Anda.
                 </p>
+              </div>
+            ) : dailyState?.isBlok ? (
+              <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200/80 dark:border-amber-800/60">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center text-sm shadow-sm shrink-0">
+                      <i className="fa-solid fa-layer-group"></i>
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 dark:bg-amber-900 dark:text-amber-200 leading-none">
+                          Sistem Blok Aktif
+                        </span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                          {dailyState.blokInfo?.tanggal_mulai} s/d {dailyState.blokInfo?.tanggal_selesai}
+                        </span>
+                      </div>
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">
+                        {dailyState.blokInfo?.nama_kegiatan}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <span className="self-start sm:self-auto text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-1 rounded-full border border-amber-300 dark:border-amber-700">
+                    <i className="fa-solid fa-calendar-xmark mr-1"></i> KBM Reguler Ditiadakan
+                  </span>
+                </div>
+
+                {dailyState.blokInfo?.deskripsi && (
+                  <p className="text-xs text-gray-700 dark:text-gray-300 bg-white/80 dark:bg-gray-800/80 p-3 rounded-xl border border-amber-200/60 dark:border-amber-800/40 leading-relaxed">
+                    {dailyState.blokInfo.deskripsi}
+                  </p>
+                )}
+
+                <div className="p-3 rounded-xl bg-amber-100/50 dark:bg-amber-900/30 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                  <i className="fa-solid fa-circle-info text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"></i>
+                  <span className="leading-relaxed">
+                    Selama periode sistem blok ini, jadwal mengajar reguler disembunyikan. Anda hanya bertugas melaksanakan kegiatan khusus dan mengisi <strong>Jurnal Kegiatan</strong>.
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    Status Jurnal: {dailyState.jurnalKegiatan ? (
+                      <strong className="text-emerald-600 dark:text-emerald-400">Sudah Diisi ✓</strong>
+                    ) : (
+                      <strong className="text-amber-600 dark:text-amber-400">Belum Diisi</strong>
+                    )}
+                  </span>
+
+                  {dailyState.jurnalKegiatan ? (
+                    <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700">
+                      <i className="fa-solid fa-circle-check"></i> Jurnal Kegiatan Selesai
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setView('view-guru-jurnal')}
+                      className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
+                    >
+                      <i className="fa-solid fa-pen-to-square"></i> Isi Jurnal Kegiatan Sekarang
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0) ? (
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center">
@@ -1359,6 +1455,43 @@ export default function HomeView({
               </div>
             </div>
           </div>
+
+          {/* Active Blok Alert for Admin */}
+          {activeBlokToday && (
+            <div className="glass-card p-4 border-l-4 border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                  <i className="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                      Sistem Blok Aktif
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {activeBlokToday.tanggal_mulai} s/d {activeBlokToday.tanggal_selesai}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">
+                    {activeBlokToday.nama_kegiatan}
+                  </h4>
+                  {activeBlokToday.deskripsi && (
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                      {activeBlokToday.deskripsi}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setView('view-sistem-blok')}
+                className="btn-click self-start sm:self-auto px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm flex items-center gap-1.5 transition"
+              >
+                <i className="fa-solid fa-gear text-[11px]"></i> Kelola Sistem Blok
+              </button>
+            </div>
+          )}
 
           {/* Matrix Controls: Search & Filter Pills */}
           <div className="glass-card p-4 space-y-3">

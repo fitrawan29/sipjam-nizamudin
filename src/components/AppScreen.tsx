@@ -20,6 +20,7 @@ import AnalitikView from './AnalitikView';
 import SuperadminView from './SuperadminView';
 import GradebookView from './GradebookView';
 import ChatView from './ChatView';
+import SistemBlokView from './SistemBlokView';
 import AccountSettingsModal from './AccountSettingsModal';
 import PushNotificationPrompt from './PushNotificationPrompt';
 import PWAInstallPrompt from './PWAInstallPrompt';
@@ -445,6 +446,7 @@ export default function AppScreen({
   const menuItemsAdmin = [
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
     { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
+    { id: 'view-sistem-blok', icon: 'fa-layer-group', label: 'Sistem Blok' },
     { id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' },
     { id: 'view-piket', icon: 'fa-shield-halved', label: 'Kelola Piket' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
@@ -635,6 +637,7 @@ export default function AppScreen({
               {currentView === 'view-admin-data' && <AdminDataView user={user} />}
               {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
               {currentView === 'view-admin-config' && <AdminConfigView user={user} />}
+              {currentView === 'view-sistem-blok' && <SistemBlokView user={user} />}
               {currentView === 'view-analitik' && <AnalitikView user={user} />}
             </>
           )}

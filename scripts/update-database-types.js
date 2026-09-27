@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const srcJsonPath = 'C:/Users/Fitra/.gemini/antigravity/brain/2d88b62e-4eda-4725-a740-e189a9c1bf0e/.system_generated/steps/110/output.txt';
+const srcJsonPath = 'C:/Users/Fitra/.gemini/antigravity/brain/3daae40c-3175-4460-b569-364e23b119bc/.system_generated/steps/132/output.txt';
 const targetFilePath = path.join(__dirname, '..', 'src', 'types', 'database.ts');
 
 const generatedJson = JSON.parse(fs.readFileSync(srcJsonPath, 'utf8'));
@@ -14,6 +14,10 @@ const additionalDomainTypes = `
 export type Sekolah = Tables<"sekolah">;
 export type SekolahInsert = TablesInsert<"sekolah">;
 export type SekolahUpdate = TablesUpdate<"sekolah">;
+
+export type SistemBlok = Tables<"sistem_blok">;
+export type SistemBlokInsert = TablesInsert<"sistem_blok">;
+export type SistemBlokUpdate = TablesUpdate<"sistem_blok">;
 
 export type PenugasanPiket = Tables<"penugasan_piket">;
 export type PenugasanPiketInsert = TablesInsert<"penugasan_piket">;
@@ -109,6 +113,33 @@ export type NilaiSiswaUpdate = TablesUpdate<"nilai_siswa">;
 export type PushSubscription = Tables<"push_subscriptions">;
 export type PushSubscriptionInsert = TablesInsert<"push_subscriptions">;
 export type PushSubscriptionUpdate = TablesUpdate<"push_subscriptions">;
+
+// Feature Additions (Milestone 9)
+export type ChatMessage = Tables<"chat_messages">;
+export type ChatMessageInsert = TablesInsert<"chat_messages">;
+export type ChatMessageUpdate = TablesUpdate<"chat_messages">;
+
+export type PengumumanDibaca = Tables<"pengumuman_dibaca">;
+export type PengumumanDibacaInsert = TablesInsert<"pengumuman_dibaca">;
+export type PengumumanDibacaUpdate = TablesUpdate<"pengumuman_dibaca">;
+
+// Feature Additions (Milestone 10)
+export interface SyaratPerangkatPembelajaran {
+  id: string;
+  sekolah_id: string;
+  nama_mapel: string;
+  kode_dokumen: string;
+  nama_dokumen: string;
+  format_dokumen: string;
+  deskripsi?: string | null;
+  wajib: boolean;
+  urutan: number;
+  created_at: string;
+  updated_at?: string | null;
+}
+export type SyaratPerangkatPembelajaranRow = Tables<"syarat_perangkat_pembelajaran">;
+export type SyaratPerangkatPembelajaranInsert = TablesInsert<"syarat_perangkat_pembelajaran">;
+export type SyaratPerangkatPembelajaranUpdate = TablesUpdate<"syarat_perangkat_pembelajaran">;
 
 // Useful Enum / Literal Types for Components
 export type HariPiket = "Senin" | "Selasa" | "Rabu" | "Kamis" | "Jumat" | "Sabtu";

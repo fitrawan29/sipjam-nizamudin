@@ -136,7 +136,7 @@ export type Database = {
           nama_guru: string | null
           sekolah_id: string
           status_verifikasi: string | null
-          syarat_id?: string | null
+          syarat_id: string | null
           timestamp: string | null
         }
         Insert: {
@@ -238,6 +238,7 @@ export type Database = {
           no_hp: string | null
           sekolah_id: string
           status: string | null
+          user_id: string | null
           wajib_hadir_hanya_mengajar: boolean | null
         }
         Insert: {
@@ -249,6 +250,7 @@ export type Database = {
           no_hp?: string | null
           sekolah_id?: string
           status?: string | null
+          user_id?: string | null
           wajib_hadir_hanya_mengajar?: boolean | null
         }
         Update: {
@@ -260,6 +262,7 @@ export type Database = {
           no_hp?: string | null
           sekolah_id?: string
           status?: string | null
+          user_id?: string | null
           wajib_hadir_hanya_mengajar?: boolean | null
         }
         Relationships: [
@@ -270,24 +273,40 @@ export type Database = {
             referencedRelation: "sekolah"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "data_guru_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
         ]
       }
       data_mapel: {
         Row: {
           id: string
           kategori: string | null
+          kelompok: string | null
+          kode_mapel: string | null
+          nama_mapel: string | null
           nama_mata_pelajaran: string | null
           sekolah_id: string
         }
         Insert: {
           id: string
           kategori?: string | null
+          kelompok?: string | null
+          kode_mapel?: string | null
+          nama_mapel?: string | null
           nama_mata_pelajaran?: string | null
           sekolah_id?: string
         }
         Update: {
           id?: string
           kategori?: string | null
+          kelompok?: string | null
+          kode_mapel?: string | null
+          nama_mapel?: string | null
           nama_mata_pelajaran?: string | null
           sekolah_id?: string
         }
@@ -407,26 +426,38 @@ export type Database = {
         Row: {
           hari: string | null
           id: string
+          jam_mulai: string | null
+          jam_selesai: string | null
           kelas: string | null
+          mapel: string | null
           mata_pelajaran: string | null
           nama_guru: string | null
           sekolah_id: string
+          user_id: string | null
         }
         Insert: {
           hari?: string | null
           id: string
+          jam_mulai?: string | null
+          jam_selesai?: string | null
           kelas?: string | null
+          mapel?: string | null
           mata_pelajaran?: string | null
           nama_guru?: string | null
           sekolah_id?: string
+          user_id?: string | null
         }
         Update: {
           hari?: string | null
           id?: string
+          jam_mulai?: string | null
+          jam_selesai?: string | null
           kelas?: string | null
+          mapel?: string | null
           mata_pelajaran?: string | null
           nama_guru?: string | null
           sekolah_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -434,6 +465,13 @@ export type Database = {
             columns: ["sekolah_id"]
             isOneToOne: false
             referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jadwal_pelajaran_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -470,8 +508,8 @@ export type Database = {
       jurnal_pembelajaran: {
         Row: {
           absensi_siswa: string | null
-          alasan_penolakan?: string | null
-          catatan_admin?: string | null
+          alasan_penolakan: string | null
+          catatan_admin: string | null
           catatan_khusus_siswa: string | null
           catatan_refleksi: string | null
           detail_absen: string | null
@@ -494,6 +532,7 @@ export type Database = {
           tanggal: string | null
           timestamp: string | null
           tujuan_pembelajaran: string | null
+          user_id: string | null
         }
         Insert: {
           absensi_siswa?: string | null
@@ -521,6 +560,7 @@ export type Database = {
           tanggal?: string | null
           timestamp?: string | null
           tujuan_pembelajaran?: string | null
+          user_id?: string | null
         }
         Update: {
           absensi_siswa?: string | null
@@ -548,6 +588,7 @@ export type Database = {
           tanggal?: string | null
           timestamp?: string | null
           tujuan_pembelajaran?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -555,6 +596,13 @@ export type Database = {
             columns: ["sekolah_id"]
             isOneToOne: false
             referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jurnal_pembelajaran_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -565,6 +613,8 @@ export type Database = {
           keterangan: string | null
           sekolah_id: string
           tanggal: string | null
+          tanggal_mulai: string | null
+          tanggal_selesai: string | null
           tipe: string | null
         }
         Insert: {
@@ -572,6 +622,8 @@ export type Database = {
           keterangan?: string | null
           sekolah_id?: string
           tanggal?: string | null
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
           tipe?: string | null
         }
         Update: {
@@ -579,6 +631,8 @@ export type Database = {
           keterangan?: string | null
           sekolah_id?: string
           tanggal?: string | null
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
           tipe?: string | null
         }
         Relationships: [
@@ -593,8 +647,8 @@ export type Database = {
       }
       laporan_piket: {
         Row: {
-          alasan_penolakan?: string | null
-          catatan_admin?: string | null
+          alasan_penolakan: string | null
+          catatan_admin: string | null
           catatan_apel: string | null
           guru_pelapor: string | null
           id: string
@@ -605,6 +659,7 @@ export type Database = {
           status_verifikasi: string | null
           tanggal: string | null
           timestamp: string | null
+          user_id: string | null
         }
         Insert: {
           alasan_penolakan?: string | null
@@ -619,6 +674,7 @@ export type Database = {
           status_verifikasi?: string | null
           tanggal?: string | null
           timestamp?: string | null
+          user_id?: string | null
         }
         Update: {
           alasan_penolakan?: string | null
@@ -633,6 +689,7 @@ export type Database = {
           status_verifikasi?: string | null
           tanggal?: string | null
           timestamp?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -640,6 +697,13 @@ export type Database = {
             columns: ["sekolah_id"]
             isOneToOne: false
             referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "laporan_piket_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -957,8 +1021,8 @@ export type Database = {
       }
       presensi_guru: {
         Row: {
-          alasan_penolakan?: string | null
-          catatan_admin?: string | null
+          alasan_penolakan: string | null
+          catatan_admin: string | null
           detail_izin: string | null
           id: string
           jarak: string | null
@@ -971,6 +1035,7 @@ export type Database = {
           status_verifikasi: string | null
           timestamp: string | null
           tipe_absen: string | null
+          user_id: string | null
         }
         Insert: {
           alasan_penolakan?: string | null
@@ -987,6 +1052,7 @@ export type Database = {
           status_verifikasi?: string | null
           timestamp?: string | null
           tipe_absen?: string | null
+          user_id?: string | null
         }
         Update: {
           alasan_penolakan?: string | null
@@ -1003,6 +1069,7 @@ export type Database = {
           status_verifikasi?: string | null
           timestamp?: string | null
           tipe_absen?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1010,6 +1077,13 @@ export type Database = {
             columns: ["sekolah_id"]
             isOneToOne: false
             referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presensi_guru_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -1169,6 +1243,47 @@ export type Database = {
         }
         Relationships: []
       }
+      sistem_blok: {
+        Row: {
+          created_at: string
+          deskripsi: string | null
+          id: string
+          nama_kegiatan: string
+          sekolah_id: string
+          tanggal_mulai: string
+          tanggal_selesai: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deskripsi?: string | null
+          id?: string
+          nama_kegiatan: string
+          sekolah_id?: string
+          tanggal_mulai: string
+          tanggal_selesai: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deskripsi?: string | null
+          id?: string
+          nama_kegiatan?: string
+          sekolah_id?: string
+          tanggal_mulai?: string
+          tanggal_selesai?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sistem_blok_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syarat_perangkat_pembelajaran: {
         Row: {
           created_at: string
@@ -1179,7 +1294,7 @@ export type Database = {
           nama_dokumen: string
           nama_mapel: string
           sekolah_id: string
-          updated_at: string | null
+          updated_at: string
           urutan: number
           wajib: boolean
         }
@@ -1192,7 +1307,7 @@ export type Database = {
           nama_dokumen: string
           nama_mapel?: string
           sekolah_id?: string
-          updated_at?: string | null
+          updated_at?: string
           urutan?: number
           wajib?: boolean
         }
@@ -1205,7 +1320,7 @@ export type Database = {
           nama_dokumen?: string
           nama_mapel?: string
           sekolah_id?: string
-          updated_at?: string | null
+          updated_at?: string
           urutan?: number
           wajib?: boolean
         }
@@ -1293,6 +1408,7 @@ export type Database = {
           password: string | null
           role: string | null
           sekolah_id: string | null
+          session_token: string | null
           username: string | null
         }
         Insert: {
@@ -1302,6 +1418,7 @@ export type Database = {
           password?: string | null
           role?: string | null
           sekolah_id?: string | null
+          session_token?: string | null
           username?: string | null
         }
         Update: {
@@ -1311,6 +1428,7 @@ export type Database = {
           password?: string | null
           role?: string | null
           sekolah_id?: string | null
+          session_token?: string | null
           username?: string | null
         }
         Relationships: [
@@ -1400,6 +1518,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_auth_user_id: { Args: never; Returns: string }
       get_auth_user_role: { Args: never; Returns: string }
       get_auth_user_sekolah_id: { Args: never; Returns: string }
       is_superadmin: { Args: never; Returns: boolean }
@@ -1420,6 +1539,7 @@ export type Database = {
           nama: string
           role: string
           sekolah_id: string
+          session_token: string
           username: string
         }[]
       }
@@ -1563,6 +1683,10 @@ export const Constants = {
 export type Sekolah = Tables<"sekolah">;
 export type SekolahInsert = TablesInsert<"sekolah">;
 export type SekolahUpdate = TablesUpdate<"sekolah">;
+
+export type SistemBlok = Tables<"sistem_blok">;
+export type SistemBlokInsert = TablesInsert<"sistem_blok">;
+export type SistemBlokUpdate = TablesUpdate<"sistem_blok">;
 
 export type PenugasanPiket = Tables<"penugasan_piket">;
 export type PenugasanPiketInsert = TablesInsert<"penugasan_piket">;
