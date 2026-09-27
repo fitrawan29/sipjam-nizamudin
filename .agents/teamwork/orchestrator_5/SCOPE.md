@@ -37,9 +37,9 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M0 | Survey & Exploration | Map AppScreen, sidebar DOM, test harness | none | IN_PROGRESS |
-| M1 | AI Assistant Implementation | KB (30+ Q&As), matcher, UI component | M0 | PLANNED |
-| M2 | Onboarding Implementation | Steps definition, highlight overlay UI, localStorage | M0 | PLANNED |
+| M0 | Survey & Exploration | Map AppScreen, sidebar DOM, test harness | none | DONE |
+| M1 | AI Assistant Implementation | KB (42 Q&As), matcher, AIAssistant UI | M0 | IN_PROGRESS |
+| M2 | Onboarding Implementation | Steps definition, highlight overlay UI, localStorage | M0 | IN_PROGRESS |
 | M3 | AppScreen Integration & Tests | Mount in AppScreen, add data-tour, write tests | M1, M2 | PLANNED |
 | M4 | Review, Audit & Git Push | Reviewers, Challengers, Auditor, Git push | M3 | PLANNED |
 

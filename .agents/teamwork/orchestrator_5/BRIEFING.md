@@ -59,14 +59,16 @@ Implement AI Assistant rule-based chatbot and Interactive Onboarding Tutorial fo
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| explorer_survey_1 | teamwork_preview_explorer | AppScreen Architecture Mapping | in-progress | 9c3798cb-82ae-4466-a21a-97e8191032f2 |
-| explorer_survey_2 | teamwork_preview_explorer | Test and Build Pipeline Setup | in-progress | e9b48269-80c2-450a-95b2-e50afd45fed6 |
-| explorer_survey_3 | teamwork_preview_explorer | Knowledge Base & UI Spec Mapping | in-progress | b24ea824-624a-4e32-ad7b-52eb74bdd42e |
+| explorer_survey_1 | teamwork_preview_explorer | AppScreen Architecture Mapping | completed | 9c3798cb-82ae-4466-a21a-97e8191032f2 |
+| explorer_survey_2 | teamwork_preview_explorer | Test and Build Pipeline Setup | completed | e9b48269-80c2-450a-95b2-e50afd45fed6 |
+| explorer_survey_3 | teamwork_preview_explorer | Knowledge Base & UI Spec Mapping | completed | b24ea824-624a-4e32-ad7b-52eb74bdd42e |
+| worker_ai_assistant | teamwork_preview_worker | AI Assistant & Knowledge Base Implementation | in-progress | 9891428a-e75d-491c-b263-959fb008ddce |
+| worker_onboarding | teamwork_preview_worker | Interactive Onboarding Tutorial Implementation | in-progress | e16b2836-f25a-4e22-bb65-9abafdcc231d |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 3 / 16
-- Pending subagents: 9c3798cb-82ae-4466-a21a-97e8191032f2, e9b48269-80c2-450a-95b2-e50afd45fed6, b24ea824-624a-4e32-ad7b-52eb74bdd42e
+- Spawn count: 5 / 16
+- Pending subagents: 9891428a-e75d-491c-b263-959fb008ddce, e16b2836-f25a-4e22-bb65-9abafdcc231d
 - Predecessor: none
 - Successor: not yet spawned
 
