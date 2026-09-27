@@ -52,6 +52,37 @@ function MainApp() {
   const [isUserLoaded, setIsUserLoaded] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
 
+  // ponytail: minimal session validator against live database to prevent stale state
+  const validateSessionWithDb = async (storedUserObj: any) => {
+    try {
+      const { data: dbUser, error } = await supabase
+        .from('users')
+        .select('id, username, nama, role, sekolah_id, session_token')
+        .eq('id', storedUserObj.id)
+        .single();
+
+      if (error || !dbUser || dbUser.session_token !== storedUserObj.session_token) {
+        console.warn('[MainApp] Stale or expired session token detected. Purging cache.');
+        localStorage.removeItem('sipjam_user');
+        setUser(null);
+        setShowSplash(false);
+        return;
+      }
+
+      // Sync fresh user data from database into state & storage
+      const synced = { ...storedUserObj, ...dbUser };
+      localStorage.setItem('sipjam_user', JSON.stringify(synced));
+      setUser(synced);
+      setShowSplash(false);
+    } catch (err) {
+      console.warn('[MainApp] Error verifying session with database, falling back to cached session:', err);
+      setUser(storedUserObj);
+      setShowSplash(false);
+    } finally {
+      setIsUserLoaded(true);
+    }
+  };
+
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('sipjam_user');
@@ -61,19 +92,45 @@ function MainApp() {
           console.warn('[MainApp] Stored user session lacks session_token. Clearing legacy session.');
           localStorage.removeItem('sipjam_user');
           setUser(null);
+          setIsUserLoaded(true);
         } else {
-          setUser(parsed);
-          // Authenticated sessions bypass pre-login splash cleanly
-          setShowSplash(false);
+          // Re-validate session with database to ensure freshness
+          validateSessionWithDb(parsed);
+          return;
         }
+      } else {
+        setIsUserLoaded(true);
       }
     } catch (e) {
       console.error('Failed to parse stored user session:', e);
       localStorage.removeItem('sipjam_user');
       setUser(null);
-    } finally {
       setIsUserLoaded(true);
     }
+  }, []);
+
+  // Native window focus & visibilitychange listener to auto-refresh session after idle
+  useEffect(() => {
+    const handleRevalidateOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        const stored = localStorage.getItem('sipjam_user');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed?.id && parsed?.session_token) {
+              validateSessionWithDb(parsed);
+            }
+          } catch (_) {}
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleRevalidateOnFocus);
+    document.addEventListener('visibilitychange', handleRevalidateOnFocus);
+    return () => {
+      window.removeEventListener('focus', handleRevalidateOnFocus);
+      document.removeEventListener('visibilitychange', handleRevalidateOnFocus);
+    };
   }, []);
 
   const handleLoginSuccess = (userData: any) => {

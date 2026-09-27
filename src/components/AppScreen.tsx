@@ -29,15 +29,72 @@ import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
 
 export default function AppScreen({ user, onLogout }: { user: any, onLogout: () => void }) {
+  const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
+
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const view = params.get('view');
       if (view) return view;
     }
-    if (user?.role === 'Superadmin') return 'view-superadmin-overview';
+    if (isSuperadmin) return 'view-superadmin-overview';
     return 'view-home';
   });
+
+  // ponytail: native visibilitychange + focus listener re-syncs state after idle period (prevents stale data)
+  const [syncKey, setSyncKey] = useState(0);
+
+  useEffect(() => {
+    let lastActive = Date.now();
+
+    const handleSyncOnResume = async () => {
+      const now = Date.now();
+      const elapsed = now - lastActive;
+      lastActive = now;
+
+      // When tab becomes active or after idle (>30s)
+      if (elapsed > 30000 || document.visibilityState === 'visible') {
+        try {
+          if (!user?.id || !user?.session_token) return;
+
+          // Re-validate session token against database
+          const { data: dbUser, error } = await supabase
+            .from('users')
+            .select('id, username, nama, role, sekolah_id, session_token')
+            .eq('id', user.id)
+            .single();
+
+          if (error || !dbUser || dbUser.session_token !== user.session_token) {
+            console.warn('[AppScreen] Session invalidated or expired after idle. Logging out.');
+            onLogout();
+            return;
+          }
+
+          // Invalidate view state to force fresh fetch from database
+          setSyncKey(k => k + 1);
+        } catch (err) {
+          console.error('[AppScreen] Re-sync error on resume:', err);
+        }
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleSyncOnResume();
+      } else {
+        lastActive = Date.now();
+      }
+    };
+
+    window.addEventListener('focus', handleSyncOnResume);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleSyncOnResume);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user?.id, user?.session_token, onLogout]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -46,17 +103,16 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       if (view) {
         setCurrentView(view);
       } else {
-        setCurrentView(user?.role === 'Superadmin' ? 'view-superadmin-overview' : 'view-home');
+        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : 'view-home');
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [user]);
+  }, [isSuperadmin]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [schoolData, setSchoolData] = useState<any>(null);
   const { theme, toggleTheme } = useTheme();
 
-  const isAdmin = user?.role === 'Admin' || user?.role === 'admin' || user?.role === 'Superadmin' || user?.role === 'superadmin';
   const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin);
   const [assignedKelas, setAssignedKelas] = useState<string | null>(null);
 
@@ -259,10 +315,10 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
   const handleNavigation = async (targetId: string) => {
     try {
       // Superadmin and Admin bypass all daily guru checks
-      if (user?.role === 'Superadmin' || user?.role === 'Admin') {
+      if (isSuperadmin || isAdmin) {
         window.history.pushState(null, '', `?view=${targetId}`);
-      setCurrentView(targetId);
-      setSidebarOpen(false);
+        setCurrentView(targetId);
+        setSidebarOpen(false);
         return;
       }
 
@@ -353,13 +409,13 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
   ];
 
   let menuItems = menuItemsGuru;
-  if (user?.role === 'Superadmin') {
+  if (isSuperadmin) {
     menuItems = menuItemsSuperadmin;
-  } else if (user?.role === 'Admin') {
+  } else if (isAdmin) {
     menuItems = menuItemsAdmin;
   }
 
-  const defaultHomeView = user?.role === 'Superadmin' ? 'view-superadmin-overview' : 'view-home';
+  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : 'view-home';
 
   return (
     <div className="flex-col h-full w-full flex">
@@ -370,7 +426,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
             </button>
             <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
               SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">
-                {user?.role === 'Superadmin' ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
+                {isSuperadmin ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
               </span>
             </div>
         </div>
@@ -419,10 +475,10 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
               <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
-                        <i className={`fa-solid ${user?.role === 'Superadmin' ? 'fa-crown' : 'fa-mosque'}`}></i>
+                        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : 'fa-mosque'}`}></i>
                     </div>
                     <span className="font-bold text-sm text-gray-900 dark:text-white">
-                      {user?.role === 'Superadmin' ? 'Portal Superadmin' : 'SIPJAM Menu'}
+                      {isSuperadmin ? 'Portal Superadmin' : 'SIPJAM Menu'}
                     </span>
                 </div>
                 <button type="button" onClick={toggleSidebar} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
@@ -457,8 +513,8 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       )}
 
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
-        <div key={currentView} className="page-transition">
-          {user?.role === 'Superadmin' ? (
+        <div key={`${currentView}-${syncKey}`} className="page-transition">
+          {isSuperadmin ? (
             <SuperadminView
               user={user}
               initialTab={

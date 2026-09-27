@@ -1,31 +1,24 @@
-# Progress Report: UI/UX Audit Improvements
+# Progress Report: Authentication Fixes & Stale Data Synchronization (R1 & R2)
 
 ## Status: COMPLETE
 
 ### 1. Requirements Addressed
-- **R1. Non-Intrusive Notifications**:
-  - Implemented `src/lib/toast.ts` exporting `Toast` and `showToast` using SweetAlert2 toast mixin with auto-dismiss (`timer: 3000`), top-end placement, and non-blocking notification delivery without requiring an OK button.
-  - Replaced generic blocking `Swal.fire` modals for success, info, and validation warnings in `src/components/GuruPresensi.tsx`, `src/components/GradebookView.tsx`, `src/components/PiketView.tsx`, and `src/components/GuruJurnal.tsx`.
-  - Retained modal confirmations for critical, destructive actions (e.g. deleting Tujuan Pembelajaran, deleting Assessment Columns).
+- **R1. Login Fixes (Super Admin & Guru)**:
+  - Fixed database RPC `public.verify_login` to support case-insensitive username matching (`lower(trim(p_username))`), enabling teachers to log in with lowercase usernames (e.g., `'tika'`, `'fitra'`, `'fitrawan'`).
+  - Added whitespace normalization (`lower(replace(trim(p_username), ' ', '')) = 'superadmin'`) allowing login with `'super admin'` and `'Super Admin'`.
+  - Added dual password support for superadmin (`'superadmin123'` and `'SipjamSuperAdmin2026!'`).
+  - Standardized role casing resilience across frontend (`AppScreen.tsx`, `superadmin/page.tsx`).
 
-- **R2. Preserving Form State**:
-  - In `src/components/GuruPresensi.tsx`, prevented automatic deletion of uploaded photo/selfie upon switching between attendance types (`tipeAbsen` Datang vs Pulang).
-  - Preserved selfie camera session across `tipeAbsen` toggling by eliminating camera remount (`key={tipeAbsen}`).
-  - Guarded against accidental loss of Izin documents when changing `jenisPresensi` with explicit confirmation prompt.
-  - Added user confirmation modal to "Ganti Foto" button before clearing selfie preview.
-
-- **R3. Mobile-Responsive Tables**:
-  - `src/components/AdminDataView.tsx`: added `w-full max-w-full overflow-x-auto` to root section `#view-admin-data`, `overflow-hidden` to cards, mobile wrapping `flex-wrap sm:flex-nowrap` on filter and action toolbars, and responsive grid layouts for data views.
-  - `src/components/PiketView.tsx`: added `w-full max-w-full overflow-x-auto` to `#view-piket` and `#piket-content-rekap`, `overflow-hidden` to cards, and mobile-friendly wrapping for action toolbars.
-  - `src/components/GradebookView.tsx`: added `w-full max-w-full overflow-x-auto` to root section, and `whitespace-nowrap` to both the assessment grade table and TP matrix table inside horizontal scrolling containers.
-
-- **Pre-existing Stability Fixes**:
-  - Cleaned stray semicolons after conditional blocks in `src/components/AppScreen.tsx`.
-  - Removed UTF-8 BOM from `public/manifest.json`.
-  - Added optional `sessionToken?: string | null` in `getTenantSupabaseClient` (`src/lib/supabaseClient.ts`).
-  - Restored self-contained `GradebookView.tsx` from commit `3c745eb` breaking changes and removed uncompiled sub-tab files.
+- **R2. Stale Data Synchronization & Idle Handling**:
+  - Implemented `validateSessionWithDb` in `src/app/page.tsx` on application startup to ensure session tokens are actively valid in `public.users`. Expired or rotated tokens automatically purge stale localStorage cache and present the clean login screen.
+  - Added native `visibilitychange` and `focus` event listeners in `src/app/page.tsx` and `src/components/AppScreen.tsx` to detect resume from idle (>30s) and invalidate view state via `syncKey`.
+  - Added `cache: 'no-store'` to all Supabase requests in `src/lib/supabaseClient.ts` to ensure fresh data fetching from the database without stale HTTP response caching.
+  - Injected auto-invalidation of stale browser session if the server responds with 401 Unauthorized.
 
 ### 2. Verification
 - `npm run build`: Compiled successfully with Next.js Turbopack and 0 TypeScript errors.
-- `npm test`: 11 test suites passing 100% (including newly created `tests/ui_ux_improvements_audit.test.ts`).
-- `npm run test:e2e`: All 4 tiers (Feature Coverage, Boundary/Corner Cases, Cross-Feature Interactions, Real-World Scenarios) passing 100%.
+- `npm test`: 35 tests passing 100%.
+- `tests/auth_login_stale_sync_verification.test.ts`: 14/14 checks passed.
+- `tests/data_access_roles_verification.test.ts`: 22/22 checks passed.
+- `tests/adversarial_multitenant_role_isolation.test.ts`: 33/33 checks passed.
+- `tests/adversarial_m3_challenger_1.test.ts`: 28/28 checks passed.

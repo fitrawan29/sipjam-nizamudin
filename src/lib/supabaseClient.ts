@@ -106,10 +106,21 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
     headers.set('x-session-token', sessionToken);
   }
 
-  return fetch(input, {
+  // ponytail: native fetch cache: 'no-store' prevents stale cached responses after idle
+  const res = await fetch(input, {
     ...init,
+    cache: 'no-store',
     headers,
   });
+
+  // Invalidate stale browser session if server returns 401 Unauthorized
+  if (res.status === 401 && typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('sipjam_user');
+    } catch (_) {}
+  }
+
+  return res;
 };
 
 /**
@@ -191,6 +202,7 @@ export function getTenantSupabaseClient(
         const customFetch = options?.global?.fetch || fetch;
         return customFetch(input, {
           ...init,
+          cache: 'no-store',
           headers,
         });
       },

@@ -393,3 +393,28 @@ Integrity mode: development
 ### User Prompts & Feedback Flows
 - [ ] PWA install prompt is displayed once. If accepted or already installed (e.g., matching a local storage flag or `window.matchMedia('(display-mode: standalone)')`), it is hidden.
 - [ ] Admin rejection flow blocks submission until the feedback text area is populated, and the feedback is saved to the backend.
+
+## 2026-09-27T11:26:31Z
+
+This is a single self-contained fix; keep it small and focused.
+Identifikasi dan perbaiki bug login untuk akun super admin dan guru, serta perbaiki masalah sinkronisasi data yang tidak update (tidak sesuai dengan database) setelah sesi dibiarkan idle/tidak login dalam waktu lama. Terapkan prinsip Ponytail (pilih solusi paling sederhana dan minimal, utamakan fitur bawaan framework tanpa dependensi baru).
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+
+## Requirements
+
+### R1. Perbaikan Login (Super Admin & Guru)
+Baca dan pahami alur autentikasi yang ada saat ini. Identifikasi penyebab gagal login untuk role 'super admin' dan 'guru', lalu terapkan perbaikan yang paling sederhana dan minimal (Ponytail mode).
+
+### R2. Perbaikan Sinkronisasi Data (Stale Data)
+Selidiki akar masalah mengapa data yang ditampilkan tidak sesuai dengan database setelah pengguna dibiarkan idle/tidak login dalam waktu lama. Terapkan mekanisme yang tepat (misalnya pembersihan cache, invalidasi state, atau penanganan token expired) dengan memanfaatkan fitur bawaan framework.
+
+## Acceptance Criteria
+
+### Verifikasi Fungsional (Agent-as-judge)
+- [ ] Agen memverifikasi bahwa login sebagai 'super admin' berhasil dilakukan setelah perbaikan.
+- [ ] Agen memverifikasi bahwa login sebagai 'guru' berhasil dilakukan setelah perbaikan.
+- [ ] Agen memverifikasi bahwa setelah sesi berakhir atau di-simulate idle dalam waktu lama, aplikasi mengambil data terbaru dari database (tidak menampilkan data lama dari cache).
+- [ ] Perbaikan dievaluasi berdasarkan kesederhanaan (tidak ada boilerplate berlebihan atau dependensi baru).
+

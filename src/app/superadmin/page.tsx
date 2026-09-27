@@ -10,27 +10,32 @@ export default function SuperadminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('sipjam_user');
-      if (!stored) {
-        router.replace('/');
-        return;
-      }
+    const checkSession = async () => {
+      try {
+        const stored = localStorage.getItem('sipjam_user');
+        if (!stored) {
+          router.replace('/');
+          return;
+        }
 
-      const parsed = JSON.parse(stored);
-      if (parsed?.role !== 'Superadmin') {
-        // Not a superadmin, kick back to root
-        router.replace('/');
-        return;
-      }
+        const parsed = JSON.parse(stored);
+        const isSa = (parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+        if (!isSa || !parsed.session_token) {
+          localStorage.removeItem('sipjam_user');
+          router.replace('/');
+          return;
+        }
 
-      setUser(parsed);
-    } catch (err) {
-      console.error('Error checking superadmin session:', err);
-      router.replace('/');
-    } finally {
-      setLoading(false);
-    }
+        setUser(parsed);
+      } catch (err) {
+        console.error('Error checking superadmin session:', err);
+        localStorage.removeItem('sipjam_user');
+        router.replace('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkSession();
   }, [router]);
 
   const handleLogout = () => {
@@ -52,7 +57,8 @@ export default function SuperadminPage() {
     );
   }
 
-  if (!user || user.role !== 'Superadmin') {
+  const isSaUser = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+  if (!user || !isSaUser) {
     return null;
   }
 
