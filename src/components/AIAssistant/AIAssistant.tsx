@@ -141,7 +141,7 @@ export function AIAssistant({
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <>
       {/* Floating Trigger Button */}
       <button
         type="button"
@@ -344,7 +344,7 @@ export function AIAssistant({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 export default AIAssistant;
