@@ -24,10 +24,19 @@ import SistemBlokView from './SistemBlokView';
 import AccountSettingsModal from './AccountSettingsModal';
 import PushNotificationPrompt from './PushNotificationPrompt';
 import PWAInstallPrompt from './PWAInstallPrompt';
+import AIAssistant from '@/components/AIAssistant';
+import { OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN } from '@/components/Onboarding';
 import { Pengumuman } from '@/types/database';
 import { supabase } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
+
+declare module '@/components/AIAssistant' {
+  interface AIAssistantProps {
+    userRole?: string;
+    userName?: string;
+  }
+}
 
 export default function AppScreen({
   user: initialUser,
@@ -162,6 +171,22 @@ export default function AppScreen({
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isSuperadmin]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!isSuperadmin) {
+      if (isAdmin) {
+        if (localStorage.getItem(STORAGE_KEY_ADMIN) !== 'true') {
+          setTourOpen(true);
+        }
+      } else {
+        if (localStorage.getItem(STORAGE_KEY_GURU) !== 'true') {
+          setTourOpen(true);
+        }
+      }
+    }
+  }, [isAdmin, isSuperadmin]);
   const [schoolData, setSchoolData] = useState<any>(null);
   const { theme, toggleTheme } = useTheme();
 
@@ -486,7 +511,7 @@ export default function AppScreen({
     <div className="flex-col h-full w-full flex">
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
         <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
+            <button type="button" data-tour="hamburger-btn" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className="fa-solid fa-bars text-sm"></i>
             </button>
             <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
@@ -554,6 +579,7 @@ export default function AppScreen({
                 {menuItems.map(item => (
                   <button 
                     key={item.id}
+                    data-tour={item.id}
                     onClick={() => handleNavigation(item.id)}
                     className={`w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
                       currentView === item.id 
@@ -571,6 +597,17 @@ export default function AppScreen({
                 >
                   <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
                 </button>
+                {!isSuperadmin && (
+                  <button
+                    type="button"
+                    onClick={() => { setTourOpen(true); setSidebarOpen(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all border border-amber-200/60 dark:border-amber-800/40 mt-1 mb-2 cursor-pointer"
+                    title="Buka kembali panduan tutorial interaktif"
+                  >
+                    <i className="fa-solid fa-graduation-cap text-sm"></i>
+                    <span>Lihat Tutorial Lagi</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -840,6 +877,18 @@ export default function AppScreen({
           }
           window.location.reload();
         }}
+      />
+      <AIAssistant
+        currentView={currentView}
+        userRole={isSuperadmin ? 'superadmin' : isAdmin ? 'admin' : 'guru'}
+        userName={user?.nama || user?.name}
+      />
+      <OnboardingTutorial
+        userRole={isSuperadmin ? 'superadmin' : isAdmin ? 'admin' : 'guru'}
+        isOpen={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onComplete={() => setTourOpen(false)}
+        onEnsureSidebarOpen={(open) => setSidebarOpen(open)}
       />
     </div>
   );
