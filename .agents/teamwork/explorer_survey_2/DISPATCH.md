@@ -1,21 +1,13 @@
-## 2026-09-26T09:47:39Z
-You are Explorer 2 (Auth, Roles & Database/RLS).
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2
-Workspace root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+## 2026-09-27T21:48:10Z
+Investigate the testing and build setup of the repository:
+1. Check what test framework/runner is configured in `package.json` (Vitest, Jest, React Testing Library, etc.). Look for existing tests in `src/` or `tests/` or `__tests__/`.
+2. Determine how tests can be run (e.g. `npm test`, `npx vitest run`, `npx jest`, etc.).
+3. Check `tsconfig.json` and TypeScript setup: what commands run type checking (e.g., `npx tsc --noEmit`)?
+4. Check the production build command (`npm run build`). Are there any special build configurations or Next.js 16 conventions to be aware of?
+5. Formulate recommendations for structuring new tests for:
+   - `knowledgeBase.ts` and `faqMatcher.ts` (unit tests for >= 30 Q&As, keyword scoring, context-awareness, fallback).
+   - `OnboardingTutorial.tsx` and `AIAssistant.tsx` (component rendering, step transitions, localStorage persistence).
 
-MANDATORY FIRST STEP: Read ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md before starting any work.
-
-Objective:
-Investigate authentication flow, user session handling, user roles/profiles fetching, Supabase client configurations (SSR, client, middleware), and database queries/RLS policies in c:\Users\Fitra\OneDrive\Documents\sipjam-app.
-
-Tasks:
-1. Locate where user roles (admin, guru/teacher, siswa/student) are defined, stored, and checked.
-2. Check how Supabase clients are initialized across server components, server actions, route handlers, middleware, and client components (e.g. cookies, service role vs anon key, createClient).
-3. Check database schema, tables, and RLS policies (or SQL migration files, supabase directory, schema definitions).
-4. Analyze how admin and teacher roles query data compared to siswa. Are RLS policies or queries filtering out admin/teacher or expecting specific session metadata/profile columns that fail?
-5. Identify the exact root cause of why admin and teacher accounts cannot retrieve or view data.
-
-Output:
-Write a comprehensive report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md`.
-Update `progress.md` in your working directory.
-When finished, send a message to caller with a summary and confirmation of handoff.md path.
+Write a comprehensive report to:
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md`
+and send a completion message with summary when finished.

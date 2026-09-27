@@ -20,3 +20,28 @@ Output:
 Write a comprehensive report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md`.
 Update `progress.md` in your working directory.
 When finished, send a message to caller with a summary and confirmation of handoff.md path.
+
+## 2026-09-27T21:48:10Z
+You are explorer_survey_1.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1
+
+Please read:
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-09-27T21:46:18Z)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_5\DISPATCH.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\src\components\AppScreen.tsx
+
+Your task:
+Thoroughly examine `src/components/AppScreen.tsx`:
+1. Analyze the overall structure, active view state management (how `currentView` or equivalent is tracked), role handling (`role`, `userRole`), sidebar open/close state (`isSidebarOpen`, mobile vs desktop).
+2. Inspect the header bar: where is the hamburger button rendered? What is its JSX structure, classes, and how can it be uniquely identified (e.g., adding `data-tour="hamburger-btn"`)?
+3. Inspect the sidebar menu rendering: how are navigation items defined and rendered? What are the exact view keys for:
+   - Guru: Presensi Datang, Jurnal Mengajar, Piket
+   - Admin: Verifikasi, Sistem Blok, Master Data, Analitik, Sistem (Konfigurasi)
+4. Identify where to place a new "Lihat Tutorial Lagi" button in the sidebar (or bottom of sidebar/user profile section).
+5. Identify where to mount the `AIAssistant` floating component and `OnboardingTutorial` overlay component so they stay on top without interfering with existing views.
+6. Note any mobile responsiveness considerations (e.g., sidebar auto-closing on mobile, z-index layering).
+
+Write a comprehensive report to:
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md`
+and send a completion message with summary when finished.
+

@@ -1,14 +1,11 @@
-# Progress — Explorer 3 (Frontend Data Retrieval & Role Flows)
+# Progress Tracker — explorer_survey_3
 
-Last visited: 2026-09-26T10:00:00Z
+Last visited: 2026-09-28T05:48:40+08:00
 
-## Status
 - [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Read ORIGINAL_REQUEST.md
-- [x] Map pages and components for Admin, Guru, Siswa (SPA architecture mapped)
-- [x] Trace exact data fetching mechanisms (direct supabase client, dynamicTenantFetch, PostgREST headers)
-- [x] Compare queries and error handling across roles (identified root causes for empty results)
-- [x] Empirically proved failure modes (verify_failure_modes.ts: legacy session = 0 rows, fresh login = full data)
-- [x] Document affected models, APIs, pages and testable flows
-- [x] Write handoff.md following 5-component protocol
-- [x] Send completion message to parent coordinator
+- [ ] Investigate `src/components/AppScreen.tsx` and all menu items, views, roles, and icons
+- [ ] Catalog all 19 main menu items with Indonesian titles, descriptions, and user questions
+- [ ] Formulate 30+ Q&A pairs with keywords and context awareness mapping
+- [ ] Analyze Font Awesome usage and Tailwind color palette across `src/`
+- [ ] Detail the spotlight highlight overlay & tooltip positioning mechanics for mobile and desktop
+- [ ] Synthesize findings into comprehensive `handoff.md` and notify parent agent

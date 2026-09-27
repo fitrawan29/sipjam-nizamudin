@@ -454,3 +454,69 @@ Gunakan komponen UI dan styling yang sudah ada di dalam project (jangan install 
 ### Jurnal Kegiatan (R3)
 - [ ] Terdapat form atau penyesuaian UI agar guru dapat mengisi jurnal kegiatan (bukan jurnal reguler) pada hari yang masuk dalam periode blok.
 
+## 2026-09-27T21:46:18Z
+
+Tambahkan dua fitur ke aplikasi SIPJAM (Next.js 16 + Supabase, `c:\Users\Fitra\OneDrive\Documents\sipjam-app`):
+1. **AI Assistant rule-based** — tombol chatbot terapung yang muncul di semua halaman setelah login, menjawab pertanyaan user berdasarkan halaman aktif dan kata kunci dengan jawaban statis (Bahasa Indonesia).
+2. **Tutorial onboarding interaktif** — highlight overlay step-by-step yang muncul otomatis saat login pertama untuk akun admin dan akun guru (masing-masing punya alur berbeda). Status "sudah lihat" disimpan di `localStorage`. User bisa membuka ulang tutorial dari sidebar atau menu bantuan.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. AI Assistant (Chatbot FAQ Rule-Based)
+Tambahkan komponen floating button (ikon tanda tanya / bintang AI) yang muncul di semua halaman setelah login. Saat diklik, muncul panel chat kecil. User mengetik pertanyaan; sistem mencocokkan kata kunci dengan basis pengetahuan statis (hard-coded) yang mencakup semua halaman utama aplikasi (Dashboard, Presensi, Jurnal, Piket, Dokumen, Daftar Nilai, Chat, Informasi, Rekap, Admin Verifikasi, Master Data, dll). Tidak boleh menggunakan API eksternal atau library AI — murni string matching / keyword lookup. Jawaban dalam Bahasa Indonesia. Jika tidak ada jawaban yang cocok, tampilkan pesan ramah dan daftar topik yang tersedia.
+
+### R2. Tutorial Onboarding — Akun Guru
+Saat guru pertama kali login (belum ada flag `sipjam_onboarding_guru_done` di localStorage), tampilkan tutorial overlay step-by-step yang menyoroti elemen UI nyata di layar: (1) tombol hamburger menu, (2) menu Presensi Datang, (3) menu Jurnal Mengajar, (4) menu Piket, (5) tombol AI Assistant. Setiap step memiliki tooltip/callout dengan teks penjelasan singkat. User bisa skip atau klik "Lanjut" antar step. Setelah selesai, set flag `sipjam_onboarding_guru_done = true` di localStorage. Ada tombol "Lihat Tutorial Lagi" di sidebar.
+
+### R3. Tutorial Onboarding — Akun Admin
+Saat admin pertama kali login (belum ada flag `sipjam_onboarding_admin_done` di localStorage), tampilkan tutorial overlay terpisah khusus admin yang menyoroti: (1) menu Verifikasi, (2) menu Sistem Blok, (3) menu Master Data, (4) menu Analitik, (5) menu Sistem (Konfigurasi), (6) tombol AI Assistant. Format dan behavior sama dengan tutorial guru (skip, lanjut, flag localStorage).
+
+### R4. Integrasi Halus
+Tidak boleh memodifikasi logika bisnis yang ada (workflow presensi, jurnal, dll). Komponen AI Assistant dan tutorial overlay ditambahkan sebagai lapisan UI baru di `AppScreen.tsx` atau sebagai komponen terpisah yang dimount di sana. Gunakan Tailwind CSS dan Font Awesome yang sudah ada — tidak boleh menambahkan dependency npm baru.
+
+## Acceptance Criteria
+
+### AI Assistant
+- [ ] Floating button AI tampil di semua halaman setelah login (guru maupun admin)
+- [ ] Panel chatbot terbuka saat button diklik dan bisa ditutup
+- [ ] Setidaknya 30 pertanyaan/jawaban mencakup semua menu utama tersedia di knowledge base
+- [ ] Jawaban berubah relevan sesuai konteks halaman aktif (misal: jika di halaman Presensi, topik presensi diprioritaskan)
+- [ ] Jika tidak ada jawaban cocok, muncul pesan ramah + daftar topik tersedia
+- [ ] Tidak ada API call eksternal sama sekali; bisa berjalan offline
+
+### Tutorial Onboarding Guru
+- [ ] Tutorial muncul otomatis saat guru pertama login (localStorage flag belum ada)
+- [ ] Tutorial punya minimal 5 step dengan highlight overlay pada elemen UI nyata
+- [ ] User bisa skip keseluruhan atau klik "Lanjut" per step
+- [ ] Setelah selesai/skip, flag `sipjam_onboarding_guru_done` tersimpan di localStorage
+- [ ] Tutorial bisa dibuka ulang melalui sidebar
+
+### Tutorial Onboarding Admin
+- [ ] Tutorial muncul otomatis saat admin pertama login (localStorage flag belum ada)
+- [ ] Tutorial punya minimal 6 step dengan highlight overlay pada elemen UI nyata admin
+- [ ] User bisa skip keseluruhan atau klik "Lanjut" per step
+- [ ] Setelah selesai/skip, flag `sipjam_onboarding_admin_done` tersimpan di localStorage
+- [ ] Tutorial bisa dibuka ulang melalui sidebar
+
+### Integrasi & Kualitas
+- [ ] Tidak ada dependency npm baru di package.json
+- [ ] Tidak ada error TypeScript baru (tsc --noEmit lulus)
+- [ ] Tidak ada regresi pada fitur yang sudah ada (build berhasil: npm run build)
+- [ ] Semua teks UI dalam Bahasa Indonesia
+- [ ] Tampilan responsif di mobile (lebar 320px-428px) dan desktop
+
+## Konteks Teknis Penting
+
+- Stack: Next.js 16.3.4, React 19, TypeScript, Tailwind CSS, Font Awesome 6 (CDN), SweetAlert2, Supabase
+- Roles: superadmin, admin, guru. Superadmin tidak perlu tutorial.
+- File kunci: `src/components/AppScreen.tsx` (848 baris) — orkestrasi utama, mount semua view, sidebar navigasi, header
+- Menu guru: Dashboard, Presensi Datang/Pulang, Jurnal Mengajar, Piket, Perangkat Pembelajaran, Daftar Nilai, Chat Guru, Informasi, Riwayat, Rekap Jurnal, Presensi Siswa
+- Menu admin: semua menu guru + Verifikasi, Sistem Blok, Jurnal Kelas, Analitik, Rekap Akhir, Master Data, Akses Data/Backup, Sistem
+- Sidebar di AppScreen sudah ada, pakai `data-tour` attribute untuk targeting elemen dari tutorial overlay
+- Git workflow: setelah selesai, wajib `git add . && git commit -m "..." && git push origin main`
+- AGENTS.md: baca `node_modules/next/dist/docs/` sebelum menulis kode Next.js apapun
+
+

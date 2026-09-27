@@ -1,15 +1,10 @@
-# Progress
+# Progress — explorer_survey_2
+Last visited: 2026-09-27T21:52:00Z
 
-Last visited: 2026-09-26T10:02:00Z
-Status: Completed
-
-- [x] Read ORIGINAL_REQUEST.md
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Check recent git commit history to see what was changed in "the recent update"
-- [x] Explore auth flow, user roles, session management, middleware
-- [x] Check Supabase client initialization (client, server, middleware, service role)
-- [x] Check database migrations / schema / RLS policies
-- [x] Compare data querying for admin/teacher vs siswa
-- [x] Identify root causes of why admin and teacher accounts cannot retrieve or view data
-- [x] Compile comprehensive handoff.md report
-- [x] Send summary message to orchestrator/parent
+- [x] Initialized workspace and briefing
+- [x] Inspect package.json, tsconfig.json, next.config, AGENTS.md, GEMINI.md
+- [x] Inspect ORIGINAL_REQUEST.md and orchestrator_5/DISPATCH.md
+- [x] Search for existing test frameworks/files in repo (verified tsx runner, no vitest/jest, 62 tests in tests/)
+- [x] Verify type checking (`npx tsc --noEmit` passed) and build command (`npm run build` passed with Next.js 16 Turbopack)
+- [x] Formulate test recommendations for knowledgeBase, faqMatcher, OnboardingTutorial, AIAssistant
+- [ ] Write handoff.md and send completion message to parent

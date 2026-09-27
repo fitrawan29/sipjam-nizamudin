@@ -1,263 +1,378 @@
-# Handoff Report — Explorer 1: Git History & Recent Updates Investigation
+# Handoff Report: AppScreen Architecture & Onboarding/AI Assistant Integration Survey
+
+**Agent**: `explorer_survey_1`  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1`  
+**Date**: 2026-09-28T05:50:00+08:00 (UTC: 2026-09-27T21:50:00Z)  
+**Target File Analyzed**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\src\components\AppScreen.tsx` (848 lines)  
+**Parent / Caller**: `orchestrator_5` (`3b364431-4af8-4ed9-9a8c-b79b77d58fbe`)  
+
+---
 
 ## 1. Observation
 
-### 1.1 Git Commit History & Recent Changes Overview
-Direct examination of `git log` reveals several recent updates that altered authentication, multi-tenant RLS helper functions, relational foreign keys, profile updates, and UI data fetching:
-- **`5c7a25c`** (`fix: update local migrations for pgcrypto extensions schema prefix`): Modified `supabase/migrations/20260926_secure_passwords.sql` and `20260926_secure_rls_helpers.sql`.
-- **`4eeaa3d`** (`fix: correct column names in local migrations to align with schema`): Modified `20260925_cascade_profile_updates.sql` and `20260926_add_uuid_fkeys.sql`.
-- **`ee98313`**, **`6028a3e`**, **`5757327`**, **`c53b2e3`**: UI/UX audit commits modifying `GuruPresensi.tsx`, `GuruJurnal.tsx`, `AdminDataView.tsx`, `AppScreen.tsx`, `PiketView.tsx`, `RekapJurnalView.tsx`, `GradebookView.tsx`, and `supabaseClient.ts`.
-- **`6f68e0b`** (`fix: resolve relational loss on profile update by fully adopting user_id for presensi, jurnal, piket`): Switched `workflow.ts` (`getGuruDailyState`) and submission components to query strictly by `user_id` when present.
-- **`7824858` / `9ccb279`** (`Fix security vulnerabilities: secure passwords, RLS helpers, and API routes`): Added bcrypt password hashing, session tokens (`session_token UUID`), and replaced header-based RLS resolution (`x-sekolah-id`) with session token header lookup (`x-session-token`).
-- **`2462652`** (`Fix data integrity and architecture issues`): Added `user_id` foreign keys to operational tables (`jadwal_pelajaran`, `jurnal_pembelajaran`, `presensi_guru`, `laporan_piket`, `data_guru`) and modified `findJadwalForGuru` in `src/lib/workflow.ts` to favor UUID matching.
+Direct observations from examining `src/components/AppScreen.tsx`:
 
----
+### 1.1 Root Layout and Outer DOM Hierarchy
+- **File & Line**: `src/components/AppScreen.tsx:486-845`
+- **Outer Shell**:
+  ```tsx
+  return (
+    <div className="flex-col h-full w-full flex">
+      {/* 1. Fixed Header (lines 487-533) */}
+      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
+        ...
+      </header>
 
-### 1.2 Verbatim Observations & Tool Verifications
+      {/* 2. Sidebar Modal/Drawer Overlay (lines 536-578) */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" onClick={toggleSidebar}>
+          <div className="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
+            ...
+          </div>
+        </div>
+      )}
 
-#### Observation O1: Missing `x-session-token` Locks Out All Tenant Data (RLS Returns 0 Rows)
-- **File**: `supabase/migrations/20260926_secure_rls_helpers.sql` lines 90–123:
-  ```sql
-  CREATE OR REPLACE FUNCTION public.get_auth_user_sekolah_id()
-  RETURNS UUID AS $$
-  DECLARE
-    v_sekolah_id UUID;
-    v_raw TEXT;
-  BEGIN
-    IF current_setting('request.jwt.claim.role', true) = 'service_role' THEN
-      v_raw := current_setting('request.headers', true)::json->>'x-sekolah-id';
-      IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-        RETURN v_raw::uuid;
-      END IF;
-      RETURN NULL;
-    END IF;
+      {/* 3. Main View Container (lines 580-678) */}
+      <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
+        <div key={`${currentView}-${syncKey}`} className="page-transition">
+          {/* View rendering */}
+        </div>
+      </main>
 
-    BEGIN
-      v_raw := current_setting('request.jwt.claim.sekolah_id', true);
-      IF v_raw IS NOT NULL AND v_raw <> '' THEN
-        RETURN v_raw::uuid;
-      END IF;
-    EXCEPTION WHEN OTHERS THEN NULL;
-    END;
-
-    BEGIN
-      v_raw := current_setting('request.headers', true)::json->>'x-session-token';
-      IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-        SELECT public.users.sekolah_id INTO v_sekolah_id FROM public.users WHERE public.users.session_token = v_raw::uuid;
-        RETURN v_sekolah_id;
-      END IF;
-    EXCEPTION WHEN OTHERS THEN NULL;
-    END;
-
-    RETURN NULL;
-  END;
-  $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
+      {/* 4. Peripheral Modals & Prompts (lines 680-843) */}
+      <PushNotificationPrompt user={user} />
+      <PWAInstallPrompt />
+      {broadcastModalOpen && ( ... )}
+      <AccountSettingsModal ... />
+    </div>
+  );
   ```
-- **Observed Behavior**: The frontend client connects using `NEXT_PUBLIC_SUPABASE_ANON_KEY` (`request.jwt.claim.role = 'anon'`). For anonymous connections, `get_auth_user_sekolah_id()` ignores `x-sekolah-id` and depends 100% on `request.headers ->> 'x-session-token'`.
-- **Empirical Test Result**:
-  - Request with only `x-sekolah-id`, `x-user-role`, `x-user-id` (no `x-session-token`):
-    `users` returned **0 rows**, `data_guru` returned **0 rows**, `error: undefined`.
-  - Request with valid `x-session-token`:
-    `users` returned **14 rows**, `data_guru` returned **12 rows**, `presensi_guru` returned **321 rows**, `jurnal_pembelajaran` returned **202 rows**.
-- **Impact on Pre-Existing Sessions (`src/app/page.tsx:55-71`)**:
-  `page.tsx` reads `localStorage.getItem('sipjam_user')` on load and immediately renders `AppScreen`. If a user (Admin or Teacher) logged in before commit `9ccb279`, their `sipjam_user` JSON object lacks `session_token`. The app loads, bypasses the login screen, but `dynamicTenantFetch` never sends `x-session-token`. Consequently, **all** Supabase queries for that user return 0 rows silently.
 
----
+### 1.2 Active View State Management & Role Handling
+- **State Definition** (`lines 51-59`):
+  ```tsx
+  const [currentView, setCurrentView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      if (view) return view;
+    }
+    if (isSuperadmin) return 'view-superadmin-overview';
+    return 'view-home';
+  });
+  ```
+- **Navigation Handler** (`lines 367-435`):
+  `handleNavigation = async (targetId: string)`:
+  - If `isSuperadmin` or `isAdmin`, pushes URL state `window.history.pushState(null, '', '?view=' + targetId); setCurrentView(targetId); setSidebarOpen(false);`.
+  - For Guru, checks permissions against daily state (`getGuruDailyState`), then executes `window.history.pushState(null, '', '?view=' + targetId); setCurrentView(targetId); setSidebarOpen(false);`.
+- **Browser History Integration** (`lines 151-163`):
+  Listens to window `popstate` to update `currentView` when the user navigates back/forward in browser history.
+- **Role Detection** (`lines 48-50`):
+  ```tsx
+  const user = currentUser || initialUser;
+  const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
+  ```
+  - `user.role` values: `'Superadmin'`, `'Admin'`, `'Guru'`.
+  - Teacher is identified when `!isAdmin && !isSuperadmin` (or `user?.role?.toLowerCase() === 'guru'`).
+  - School Admin is identified when `isAdmin && !isSuperadmin` (or `user?.role?.toLowerCase() === 'admin'`).
+  - Per specifications, Superadmin is exempt from onboarding tutorials.
 
-#### Observation O2: Schema Mismatch — Non-Existent Column `nama` on `data_guru`
-- **File**: `src/components/AppScreen.tsx` lines 105–108:
-  ```ts
-  const { data: gData } = await supabase
-    .from('data_guru')
-    .select('*')
-    .or(`id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},nama.eq."${user.nama || ''}"`);
+### 1.3 Sidebar Open/Close State (Mobile vs Desktop)
+- **State Definition** (`line 164`):
+  ```tsx
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
   ```
-- **File**: `src/components/RekapJurnalView.tsx` lines 89–92:
-  ```ts
-  const { data: gData } = await supabase
-    .from('data_guru')
-    .select('*')
-    .or(`id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},nama.eq."${user.nama || ''}"`);
-  ```
-- **File**: `src/lib/workflow.ts` lines 217–222:
-  ```ts
-  let tQ = supabase.from('data_guru').select('id, nama, username, wajib_hadir_hanya_mengajar');
-  if (username) {
-    tQ = tQ.or(`nama.eq."${namaGuru}",username.eq."${username}"`);
-  } else {
-    tQ = tQ.eq('nama', namaGuru);
-  }
-  ```
-- **Empirical Execution Result**:
-  ```json
-  {
-    "code": "42703",
-    "details": null,
-    "hint": null,
-    "message": "column data_guru.nama does not exist"
-  }
-  ```
-- **Database Schema of `data_guru`**: The actual columns are `['id', 'nip', 'nama_guru', 'mata_pelajaran', 'no_hp', 'status', 'email', 'sekolah_id', 'wajib_hadir_hanya_mengajar', 'user_id']`. There is no `nama` column and no `username` column. In `data_guru`, the teacher's name is `nama_guru` and the username/NIP is stored under `nip`. In addition, `data_guru.id` is the table's own primary key, not `users.id` (which is stored in `data_guru.user_id`).
+- **Drawer Behavior** (`lines 536-578`):
+  - Notice: In `AppScreen.tsx`, there is **no persistent/split desktop sidebar**. On both desktop and mobile, navigation is hidden by default and opens as an off-canvas drawer overlay (`fixed inset-0 bg-black/60 z-50`) when `sidebarOpen === true`.
+  - Clicking any navigation item executes `setSidebarOpen(false)` inside `handleNavigation`.
+  - Clicking the backdrop executes `toggleSidebar()` (`line 537`).
+  - **Critical DOM Lifecycle Detail**: The sidebar is conditionally rendered: `{sidebarOpen && ( <div className="fixed inset-0 ..."> ... </div> )}` (`line 536`). When `sidebarOpen` is `false`, sidebar menu items do **not** exist in the DOM!
 
----
+### 1.4 Header Bar & Hamburger Button Structure
+- **File & Line**: `src/components/AppScreen.tsx:487-497`
+- **Verbatim Code**:
+  ```tsx
+  <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
+    <div className="flex items-center gap-2 sm:gap-3">
+        <button type="button" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
+            <i className="fa-solid fa-bars text-sm"></i>
+        </button>
+        <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
+          SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">
+            {isSuperadmin ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
+          </span>
+        </div>
+    </div>
+  ```
+- **Hamburger Button Attributes**:
+  - `type="button"`
+  - `onClick={toggleSidebar}`
+  - `className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700"`
+  - Icon: `<i className="fa-solid fa-bars text-sm"></i>`
+  - Current identifier: **None**.
+  - Target identifier recommendation: `data-tour="hamburger-btn"`.
 
-#### Observation O3: Broken Relational Matching and Truncated Jadwal in `workflow.ts`
-- **File**: `src/lib/workflow.ts` lines 58–62:
-  ```ts
-  if (userId) {
-    const exactMatches = allJadwal.filter((j: any) => j.user_id === userId);
-    // If we find matches by UUID, trust them implicitly and skip fuzzy string matching
-    if (exactMatches.length > 0) return exactMatches;
-  }
-  ```
-- **File**: `supabase/migrations/20260926_add_uuid_fkeys.sql` line 11:
-  ```sql
-  UPDATE public.jadwal_pelajaran jp SET user_id = u.id FROM public.users u WHERE jp.nama_guru = u.nama AND jp.sekolah_id = u.sekolah_id;
-  ```
-- **Empirical Database Audit of `user_id` Column State**:
-  - `jadwal_pelajaran`: **51 total rows**, **48 rows with `user_id = NULL`**, only **3 rows with `user_id NOT NULL`**.
-  - `data_guru`: **12 total rows**, **2 rows with `user_id = NULL`**, **10 rows with `user_id NOT NULL`**.
-  - `presensi_guru`: **321 total rows**, **1 row with `user_id = NULL`**, **320 rows with `user_id NOT NULL`**.
-- **Failure Mechanism**: In `jadwal_pelajaran`, `nama_guru` often holds abbreviated names (e.g., "Ade", "Riski") while `public.users.nama` holds full names (e.g., "FITRA SURYAZANA MAMONTO", "Riski Candra Mamangkai"). The migration backfill failed on 48 out of 51 rows. When a teacher with even a single partial UUID match logs in, `findJadwalForGuru` returns **only** the UUID matches and discards all remaining classes for that teacher.
-- **Filtering by `user_id` in `workflow.ts` lines 298–301, 388–391, 412–415**:
-  ```ts
-  if (userId) presensiQuery = presensiQuery.eq('user_id', userId);
-  else presensiQuery = presensiQuery.eq('nama_guru', namaGuru);
-  ```
-  If any existing presensi, jurnal, or piket record has `user_id IS NULL`, querying with `eq('user_id', userId)` completely ignores those rows.
+### 1.5 Sidebar Navigation Menu Items & View Keys
+- **Menu Array Definitions** (`lines 437-481`):
+  ```tsx
+  const menuItemsGuru = [
+    { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
+    { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', label: 'Presensi Guru' },
+    { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
+    ...(isWaliKelas ? [{ id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' }] : []),
+    { id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' },
+    { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
+    { id: 'view-chat', icon: 'fa-comments', label: 'Chat Guru' },
+    { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
+    { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
+    { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' },
+    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }
+  ];
 
----
+  const menuItemsAdmin = [
+    { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
+    { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
+    { id: 'view-sistem-blok', icon: 'fa-layer-group', label: 'Sistem Blok' },
+    { id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' },
+    { id: 'view-piket', icon: 'fa-shield-halved', label: 'Kelola Piket' },
+    { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
+    { id: 'view-chat', icon: 'fa-comments', label: 'Chat Guru' },
+    { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
+    { id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik' },
+    { id: 'view-admin-rekap', icon: 'fa-file-invoice', label: 'Rekap Akhir' },
+    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' },
+    { id: 'view-admin-data', icon: 'fa-database', label: 'Master' },
+    { id: 'view-admin-backup', icon: 'fa-hard-drive', label: 'Akses Data / Backup' },
+    { id: 'view-admin-config', icon: 'fa-gears', label: 'Sistem' }
+  ];
+  ```
 
-#### Observation O4: Discrepancy Between `verify_login` Migrations
-- **File**: `supabase/migrations/20260926_secure_passwords.sql` lines 11–25:
-  ```sql
-  CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
-  RETURNS TABLE (
-    id UUID,
-    username TEXT,
-    nama TEXT,
-    role TEXT,
-    sekolah_id UUID
-  ) AS $$
-  BEGIN
-    RETURN QUERY
-    SELECT u.id, u.username, u.nama, u.role, u.sekolah_id
-    FROM public.users u
-    WHERE u.username = trim(p_username) AND u.password = extensions.crypt(p_password, u.password);
-  END;
-  $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+- **Exact View Keys Required for Onboarding**:
+  | Role | Menu Item Name | Label in Sidebar | Exact `id` (View Key) | Icon |
+  |---|---|---|---|---|
+  | **Guru** | Presensi Datang | Presensi Guru | `view-guru-presensi` | `fa-right-to-bracket` |
+  | **Guru** | Jurnal Mengajar | Jurnal Pembelajaran | `view-guru-jurnal` | `fa-book-journal-whills` |
+  | **Guru** | Piket | Modul Piket | `view-piket` | `fa-shield-halved` |
+  | **Admin** | Verifikasi | Verifikasi | `view-admin-verif` | `fa-clipboard-check` |
+  | **Admin** | Sistem Blok | Sistem Blok | `view-sistem-blok` | `fa-layer-group` |
+  | **Admin** | Master Data | Master | `view-admin-data` | `fa-database` |
+  | **Admin** | Analitik | Analitik | `view-analitik` | `fa-chart-pie` |
+  | **Admin** | Sistem (Konfigurasi) | Sistem | `view-admin-config` | `fa-gears` |
+
+- **Sidebar Rendering Loop** (`lines 554-566`):
+  ```tsx
+  {menuItems.map(item => (
+    <button 
+      key={item.id}
+      onClick={() => handleNavigation(item.id)}
+      className={`w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
+        currentView === item.id 
+          ? 'bg-green-50 text-nizamudin-green border border-green-200 dark:bg-green-900/20 dark:text-nizamudin-gold dark:border-green-800/50' 
+          : 'text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800 border border-transparent'
+      }`}
+    >
+      <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
+    </button>
+  ))}
   ```
-- **File**: `supabase/migrations/20260926_secure_rls_helpers.sql` lines 3–29:
-  ```sql
-  CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
-  RETURNS TABLE (
-    id UUID,
-    username TEXT,
-    nama TEXT,
-    role TEXT,
-    sekolah_id UUID,
-    session_token UUID
-  ) AS $$
-  ...
-  ```
-- **Conflict**: If `20260926_secure_passwords.sql` is run after `20260926_secure_rls_helpers.sql`, `verify_login` is redefined to omit `session_token`.
-- **Plaintext vs Hashed Passwords**: Newly inserted users (such as those inserted in `tests/m7_challenger_rls.test.ts` or via direct admin user creation) have plaintext passwords. Since `verify_login` requires `extensions.crypt(p_password, u.password)`, plaintext users fail authentication:
-  `❌ FAIL [6]: verify_login failed for Admin A or wrong sekolah_id null`
+  - **Key Finding**: Adding `data-tour={item.id}` onto this `<button>` effortlessly tags each menu item with `data-tour="view-guru-presensi"`, `data-tour="view-guru-jurnal"`, `data-tour="view-piket"`, `data-tour="view-admin-verif"`, `data-tour="view-sistem-blok"`, `data-tour="view-admin-data"`, `data-tour="view-analitik"`, `data-tour="view-admin-config"`.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Step 1 (O1 -> Data Invisibility)**:
-   - Commit `9ccb279` locked down `get_auth_user_sekolah_id()` to strictly require `request.headers ->> 'x-session-token'`.
-   - Any user (Admin or Teacher) whose session in `localStorage` was created before this change (or whose login did not persist `session_token`) does not send `x-session-token`.
-   - `get_auth_user_sekolah_id()` returns `NULL`.
-   - All RLS policies check `sekolah_id = public.get_auth_user_sekolah_id()`.
-   - All queries return `[]` (0 rows). The user perceives that their data has disappeared or cannot be read.
+### 2.1 Logic Step 1: Sidebar Lifecycle & Tutorial Target Visibility
+1. In Step 1 of Guru Tutorial, the target is `data-tour="hamburger-btn"` on the header. The sidebar is closed.
+2. In Step 2 of Guru Tutorial, the target is `data-tour="view-guru-presensi"`. If `sidebarOpen` remains `false`, this element does not exist in the DOM (Observation 1.3: `{sidebarOpen && ...}`).
+3. Therefore, the tutorial controller (`OnboardingTutorial`) must interact with `sidebarOpen`:
+   - Either `AppScreen` passes `onEnsureSidebarOpen: (open: boolean) => void` or `isSidebarOpen: boolean, setSidebarOpen: (v: boolean) => void`.
+   - When advancing to steps targeting sidebar menu items (Steps 2-4 for Guru, Steps 1-5 for Admin), the tutorial calls `setSidebarOpen(true)`.
+   - When advancing to the final step (AI Assistant button at bottom-right), the tutorial calls `setSidebarOpen(false)` so the sidebar drawer does not obscure the floating AI Assistant button.
 
-2. **Step 2 (O2 -> Component Crash & False Alpa)**:
-   - Recent changes in `AppScreen.tsx` line 108 and `RekapJurnalView.tsx` line 92 attempted to resolve Wali Kelas data by querying `data_guru` using `.or('id.eq...,nama.eq...')`.
-   - Because `data_guru` has no `nama` column, PostgREST returns error `42703 (column data_guru.nama does not exist)`.
-   - In `workflow.ts` line 217, the attendance exemption check queries `select('id, nama, username, wajib_hadir_hanya_mengajar')`. This query fails with `42703`.
-   - The failure is caught by an empty `catch`, leaving `isTeacherExempt = false`. On days when teachers have no scheduled classes, they are erroneously marked `isAlpa = true`.
+### 2.2 Logic Step 2: Placement of "Lihat Tutorial Lagi" Button
+1. Look at lines 538-577:
+   The sidebar drawer has `className="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between transform transition-transform"`.
+   Currently, all items are enclosed in a single top `<div>`.
+   Inside this `<div>`, lines 567-574 render the "Pengaturan Akun" button right after `{menuItems.map(...)}`.
+2. Directly below "Pengaturan Akun" (or in a dedicated bottom footer container of the drawer):
+   ```tsx
+   {!isSuperadmin && (
+     <button
+       type="button"
+       data-tour="restart-tutorial-btn"
+       onClick={() => {
+         setSidebarOpen(false);
+         setShowTutorial(true);
+       }}
+       className="w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40 border border-transparent transition-all"
+     >
+       <i className="fa-solid fa-circle-question w-5 text-center text-emerald-600 dark:text-emerald-400"></i> Lihat Tutorial Lagi
+     </button>
+   )}
+   ```
+3. This is clean, intuitive, matches the visual hierarchy of the sidebar, and hides itself for `isSuperadmin`.
 
-3. **Step 3 (O3 -> Missing Schedules & Truncated Operational Data)**:
-   - Commits `2462652` and `6f68e0b` assumed all operational tables had `user_id` populated.
-   - Empirical query of the database revealed 48 out of 51 rows in `jadwal_pelajaran` have `user_id = NULL` because the backfill query performed strict string matching (`jp.nama_guru = u.nama`) against abbreviated names.
-   - In `workflow.ts`, `findJadwalForGuru` was updated so that if any `user_id` matches exist, it skips fuzzy matching and returns only the UUID matches. Teachers therefore lose visibility over the rest of their class schedules.
-   - Strict `eq('user_id', userId)` queries on `presensi_guru`, `jurnal_pembelajaran`, and `laporan_piket` drop any records that have `user_id = NULL`.
+### 2.3 Logic Step 3: Placement & Mounting of AIAssistant & OnboardingTutorial
+1. In `src/components/AppScreen.tsx`, bottom overlays are mounted at lines 680-843:
+   - `<PushNotificationPrompt user={user} />`
+   - `<PWAInstallPrompt />`
+   - Broadcast Modal (`{broadcastModalOpen && ...}`)
+   - `<AccountSettingsModal ... />`
+2. Mounting `AIAssistant` and `OnboardingTutorial` directly after `<AccountSettingsModal ... />` (lines 843-844) keeps them at the top-level of `AppScreen`'s render tree.
+3. Component Props & Signatures:
+   ```tsx
+   {/* Rule-Based AI Chatbot Assistant */}
+   <AIAssistant
+     currentView={currentView}
+     userRole={user?.role}
+   />
 
-4. **Step 4 (O4 -> Re-login and New User Creation Failure)**:
-   - `20260926_secure_passwords.sql` in commit `5c7a25c` defines `verify_login` without `session_token`, clashing with `20260926_secure_rls_helpers.sql`.
-   - When new users or tests create accounts without bcrypt hashing, `verify_login` rejects them because `extensions.crypt()` cannot verify against plaintext passwords.
+   {/* Interactive Onboarding Spotlight Tutorial */}
+   {!isSuperadmin && (
+     <OnboardingTutorial
+       userRole={user?.role}
+       isOpen={showTutorial}
+       onClose={() => setShowTutorial(false)}
+       onEnsureSidebarOpen={(open) => setSidebarOpen(open)}
+     />
+   )}
+   ```
+4. Layering and Z-Index Hierarchy:
+   - View content in `<main>`: `z-10`
+   - Fixed Header: `z-40`
+   - Floating AI Trigger Button: `fixed bottom-5 right-5 z-40 sm:bottom-6 sm:right-6` (or `z-[45]`)
+   - AI Chatbot Expanded Window: `z-50`
+   - Sidebar Drawer & Overlay: `z-50`
+   - Onboarding Tutorial Backdrop & Spotlight: `z-[60]`
+   - Onboarding Tutorial Tooltip Box: `z-[70]`
+   - This ensures the onboarding highlight and tooltip box always float above both the header and the sidebar without being clipped or hidden.
+
+### 2.4 Logic Step 4: First-Login Detection & LocalStorage Flags
+1. Keys required:
+   - Guru: `'sipjam_onboarding_guru_done'`
+   - Admin: `'sipjam_onboarding_admin_done'`
+2. Automatic check on mount:
+   ```tsx
+   const isGuruRole = !isAdmin && !isSuperadmin;
+   const isAdminRole = isAdmin && !isSuperadmin;
+   const [showTutorial, setShowTutorial] = useState(false);
+
+   useEffect(() => {
+     if (typeof window === 'undefined') return;
+     if (isGuruRole) {
+       const done = localStorage.getItem('sipjam_onboarding_guru_done');
+       if (!done) setShowTutorial(true);
+     } else if (isAdminRole) {
+       const done = localStorage.getItem('sipjam_onboarding_admin_done');
+       if (!done) setShowTutorial(true);
+     }
+   }, [isGuruRole, isAdminRole]);
+   ```
+3. When user completes or clicks "Lewati" (Skip):
+   - Set corresponding localStorage flag to `'true'`.
+   - Set `showTutorial(false)`.
+4. When user clicks "Lihat Tutorial Lagi":
+   - Set `showTutorial(true)`. (Does not require clearing localStorage unless desired, but setting `showTutorial(true)` opens it immediately).
+
+### 2.5 Logic Step 5: Mobile Responsiveness Considerations
+1. Mobile viewport widths in scope: 320px – 428px (iPhone SE, iPhone 14/15, Android standard).
+2. Floating AI Button:
+   - Size: `w-12 h-12` or `w-13 h-13` (48px - 52px). Meets WCAG minimum touch target (44x44px).
+   - Position: `fixed bottom-5 right-5 z-40`.
+3. AI Chatbot Dialog Box on Mobile:
+   - Instead of fixed 400px width (which would overflow 320px screens), use:
+     `fixed inset-x-4 bottom-20 sm:inset-auto sm:right-6 sm:bottom-20 sm:w-96 max-h-[75vh] h-[480px]`.
+   - On mobile, it stays centered with 16px horizontal margins (`inset-x-4`) and comfortable height.
+4. Onboarding Spotlight on Mobile:
+   - Sidebar scroll: The sidebar menu list has `max-h-[calc(100vh-180px)] overflow-y-auto custom-scroll`.
+   - Elements near the bottom of the list (e.g. `view-admin-config`) are scrolled offscreen on smaller devices.
+   - **Crucial Rule**: Before reading `getBoundingClientRect()` to position the highlight box and tooltip, the tutorial code must call:
+     ```ts
+     targetElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+     ```
+   - Tooltip width and clamping: Tooltip card should have `max-w-[calc(100vw-32px)]` and horizontal clamping:
+     ```ts
+     const left = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetRect.left));
+     ```
+     This prevents tooltips from overflowing offscreen to the right or left.
 
 ---
 
 ## 3. Caveats
 
-- **External Services**: Google Drive upload webhook and Web Push services were not tested live as they depend on external endpoints (`script.google.com`).
-- **Superadmin Immunity**: Superadmin accounts (`sekolah_id IS NULL`, `role = 'Superadmin'`) bypass tenant RLS via `is_superadmin()` using `x-user-id`, which is why Superadmin was able to see data while school Admins and Teachers could not.
-- **Student Role**: Students (`siswa`) do not log in directly with user accounts; student data (`data_siswa`, `absensi`, `nilai_siswa`) is accessed by Admins and Teachers (Wali Kelas / Guru Mapel). Restoring Admin and Teacher RLS and query integrity directly restores student data retrieval.
+1. **Superadmin Scope**:
+   Superadmin (`isSuperadmin === true`) uses a completely different view structure (`SuperadminView`) and different sidebar menu items (`menuItemsSuperadmin`). Per specifications and requirements, Superadmin does not participate in the onboarding tutorial. The "Lihat Tutorial Lagi" button and automatic tutorial launch must be guarded by `!isSuperadmin`.
+2. **Offline Keyword Matching in AIAssistant**:
+   The requirement strictly states: "Tidak boleh menggunakan API eksternal atau library AI — murni string matching / keyword lookup. Jawaban dalam Bahasa Indonesia. Jika tidak ada jawaban yang cocok, tampilkan pesan ramah dan daftar topik yang tersedia."
+   This means the FAQ knowledge base (at least 30 Q&A items) should be cleanly defined in a separate data/utility file (e.g. `src/data/aiAssistantKnowledge.ts` or `src/lib/aiAssistantKnowledge.ts`), keeping `AppScreen.tsx` uncluttered.
+3. **No External Library for Tour/Overlay**:
+   Requirements state: "Gunakan Tailwind CSS dan Font Awesome yang sudah ada — tidak boleh menambahkan dependency npm baru."
+   Do NOT install `shepherd.js`, `driver.js`, or `intro.js`. The tutorial overlay must be a lightweight custom React component utilizing SVG cutout / CSS spotlight with Tailwind classes.
+4. **DOM Rendering Asynchrony during Tour**:
+   When toggling `sidebarOpen = true` between steps, allow a brief delay (e.g., `setTimeout(..., 100)` or `requestAnimationFrame`) before querying `document.querySelector('[data-tour="..."]')` to ensure the sidebar transition has mounted and laid out in the DOM.
 
 ---
 
 ## 4. Conclusion
 
-The inability of Admin and Teacher accounts to read their data following the recent update is caused by four interrelated root causes:
-1. **RLS Lockdown vs Legacy Client Sessions**: RLS helper `get_auth_user_sekolah_id()` was hardened to require `x-session-token`, but pre-existing sessions in `localStorage` have no `session_token`, causing all tenant queries to return 0 rows.
-2. **PostgREST Column Name Crashes**: Queries in `AppScreen.tsx` (line 108), `RekapJurnalView.tsx` (line 92), and `workflow.ts` (line 217) query `data_guru.nama` and `data_guru.username`, which do not exist in PostgreSQL (the columns are `nama_guru` and `nip`).
-3. **Incomplete `user_id` Backfill in `jadwal_pelajaran` & Premature Fuzzy Fallback Bypass**: 48 of 51 rows in `jadwal_pelajaran` have `user_id = NULL`. `findJadwalForGuru` and daily state queries in `workflow.ts` prematurely bypass fuzzy matching and drop unlinked rows.
-4. **`verify_login` Migration Conflict & Plaintext Fallback**: `20260926_secure_passwords.sql` omits `session_token` from `verify_login`, and lacks fallback for plaintext passwords during login verification.
+1. **Architecture Ready for Integration**:
+   `src/components/AppScreen.tsx` is cleanly architected. The active view is tracked via `currentView` (default `'view-home'` for non-superadmin, with URL query string sync). Role detection cleanly distinguishes Guru (`!isAdmin && !isSuperadmin`), Admin (`isAdmin && !isSuperadmin`), and Superadmin (`isSuperadmin`).
+2. **Identification of UI Targets**:
+   - Header Hamburger Button (`lines 489-491`): Add `data-tour="hamburger-btn"`.
+   - Sidebar Navigation Items (`lines 554-566`): Add `data-tour={item.id}` in the `.map()`.
+   - Floating AI Button: Add `data-tour="ai-assistant-btn"`.
+3. **Exact View Keys Confirmed**:
+   - Guru: `view-guru-presensi`, `view-guru-jurnal`, `view-piket`
+   - Admin: `view-admin-verif`, `view-sistem-blok`, `view-admin-data`, `view-analitik`, `view-admin-config`
+4. **Placement of "Lihat Tutorial Lagi"**:
+   Placed directly below "Pengaturan Akun" in the sidebar menu list (around line 574) and conditioned on `!isSuperadmin`.
+5. **Mounting Strategy**:
+   Both `AIAssistant` and `OnboardingTutorial` should be mounted at the end of `AppScreen.tsx` (adjacent to `AccountSettingsModal`), passing `currentView`, `userRole`, and sidebar open/close controllers.
+6. **Mobile Support**:
+   Full support for mobile (320px–428px) requires auto-scrolling (`scrollIntoView`), dynamic viewport clamping for tooltips, and responsive width for the chat window (`inset-x-4 sm:inset-auto sm:w-96`).
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce and verify each observation:
+To verify these findings and any future implementation:
 
-1. **Verify RLS Failure on Missing Session Token**:
-   Run a test client with only `x-sekolah-id`, `x-user-role`, and `x-user-id` (no `x-session-token`):
-   ```bash
-   npx tsx -e "
-     import { createClient } from '@supabase/supabase-js';
-     import * as dotenv from 'dotenv';
-     dotenv.config({ path: '.env.local' });
-     const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-       global: { headers: { 'x-sekolah-id': 'a0000000-0000-0000-0000-000000000001', 'x-user-role': 'Admin', 'x-user-id': 'd23141e4-2116-4946-8094-895ef21a50e5' } }
-     });
-     c.from('data_guru').select('*').then(r => console.log('Rows returned without session token:', r.data?.length));
-   "
-   ```
-   *Expected Result*: Returns `Rows returned without session token: 0`.
+1. **DOM Attribute Verification**:
+   Inspect `src/components/AppScreen.tsx` to verify:
+   - Header button contains `data-tour="hamburger-btn"`.
+   - Sidebar buttons contain `data-tour={item.id}`.
+   - Sidebar contains "Lihat Tutorial Lagi" button with `data-tour="restart-tutorial-btn"`.
+   - Bottom of `AppScreen` mounts `<AIAssistant ... />` and `<OnboardingTutorial ... />`.
 
-2. **Verify Column `nama` Error on `data_guru`**:
-   Execute the query from `AppScreen.tsx:108`:
+2. **TypeScript & Build Checks**:
+   Run the following terminal commands:
    ```bash
-   npx tsx -e "
-     import { createClient } from '@supabase/supabase-js';
-     import * as dotenv from 'dotenv';
-     dotenv.config({ path: '.env.local' });
-     const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-     c.from('data_guru').select('*').or('id.eq.00000000-0000-0000-0000-000000000000,nama.eq.Test').then(r => console.log('Error:', r.error));
-   "
+   npx tsc --noEmit
+   npm run build
    ```
-   *Expected Result*: Returns `code: '42703', message: 'column data_guru.nama does not exist'`.
+   Both must pass without errors or regressions.
 
-3. **Verify `jadwal_pelajaran` Unlinked Row Count**:
-   Execute:
+3. **Step Mapping Verification**:
+   - Guru Steps (5 steps):
+     1. `[data-tour="hamburger-btn"]`
+     2. `[data-tour="view-guru-presensi"]`
+     3. `[data-tour="view-guru-jurnal"]`
+     4. `[data-tour="view-piket"]`
+     5. `[data-tour="ai-assistant-btn"]`
+   - Admin Steps (6 steps):
+     1. `[data-tour="view-admin-verif"]`
+     2. `[data-tour="view-sistem-blok"]`
+     3. `[data-tour="view-admin-data"]`
+     4. `[data-tour="view-analitik"]`
+     5. `[data-tour="view-admin-config"]`
+     6. `[data-tour="ai-assistant-btn"]`
+
+4. **Automated Unit / Integration Test**:
+   Execute the project test command:
    ```bash
-   npx tsx -e "
-     import { createClient } from '@supabase/supabase-js';
-     import * as dotenv from 'dotenv';
-     dotenv.config({ path: '.env.local' });
-     const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-     c.rpc('verify_login', { p_username: 'superadmin', p_password: 'SipjamSuperAdmin2026!' }).then(async ({ data }) => {
-       const sc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-         global: { headers: { 'x-user-role': 'Superadmin', 'x-user-id': data[0].id, 'x-session-token': data[0].session_token } }
-       });
-       const { data: jp } = await sc.from('jadwal_pelajaran').select('id, user_id');
-       console.log('Total:', jp.length, 'NULL user_id:', jp.filter(r => !r.user_id).length);
-     });
-   "
+   npm test
    ```
-   *Expected Result*: `Total: 51 NULL user_id: 48`.
