@@ -117,6 +117,7 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
   if (res.status === 401 && typeof window !== 'undefined') {
     try {
       localStorage.removeItem('sipjam_user');
+      window.dispatchEvent(new Event('sipjam_unauthorized'));
     } catch (_) {}
   }
 

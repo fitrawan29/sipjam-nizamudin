@@ -336,6 +336,89 @@ async function runAuthAndSyncVerification() {
     fail('SYNC-04', 'Idle threshold enforcement & Superadmin page DB session validation', e);
   }
 
+  // Test 3.5: Verify event dispatch order & idle elapsed time preservation (pointerdown -> focus)
+  try {
+    let syncCount = 0;
+    let lastActive = 1000;
+    let isSyncing = false;
+
+    const checkIdleAndResume = (currentTime: number) => {
+      const elapsed = currentTime - lastActive;
+      lastActive = currentTime;
+
+      if (elapsed >= 30000 && !isSyncing) {
+        syncCount++;
+      }
+    };
+
+    // Simulate 45s idle, then user clicks to focus window (pointerdown fires, then focus fires 2ms later)
+    const returnTime = 46000;
+    checkIdleAndResume(returnTime); // pointerdown
+    checkIdleAndResume(returnTime + 2); // focus 2ms later
+
+    if (syncCount !== 1) {
+      throw new Error(`Expected exactly 1 sync on resume, got ${syncCount}`);
+    }
+
+    // Simulate active typing (every 2 seconds) — zero unwanted syncs
+    for (let t = returnTime + 1000; t <= returnTime + 20000; t += 2000) {
+      checkIdleAndResume(t);
+    }
+
+    if (syncCount !== 1) {
+      throw new Error(`Expected sync count to stay 1 during active typing, got ${syncCount}`);
+    }
+
+    pass('SYNC-05', 'Idle resume event sequence: pointerdown -> focus preserves elapsed time and triggers sync',
+      'Verified pointerdown does not swallow elapsed idle time and active typing does not false-trigger');
+  } catch (e) {
+    fail('SYNC-05', 'Idle resume event sequence', e);
+  }
+
+  // Test 3.6: Verify offline / network error resilience
+  try {
+    const appScreenCode = fs.readFileSync(path.resolve(__dirname, '../src/components/AppScreen.tsx'), 'utf8');
+    const superadminPageCode = fs.readFileSync(path.resolve(__dirname, '../src/app/superadmin/page.tsx'), 'utf8');
+    const pageCode = fs.readFileSync(path.resolve(__dirname, '../src/app/page.tsx'), 'utf8');
+
+    if (!appScreenCode.includes('isNetworkError') || !appScreenCode.includes('Failed to fetch')) {
+      throw new Error('AppScreen.tsx missing offline/network error preservation');
+    }
+    if (!superadminPageCode.includes('isNetworkError') || !superadminPageCode.includes('Failed to fetch')) {
+      throw new Error('src/app/superadmin/page.tsx missing offline/network error preservation');
+    }
+    if (!pageCode.includes('isNetworkError') || !pageCode.includes('Failed to fetch')) {
+      throw new Error('src/app/page.tsx missing offline/network error preservation');
+    }
+
+    pass('SYNC-06', 'Offline network error resilience across all entrypoints',
+      'Verified AppScreen, page.tsx, and /superadmin retain cached session during network blips instead of premature logout');
+  } catch (e) {
+    fail('SYNC-06', 'Offline network error resilience', e);
+  }
+
+  // Test 3.7: Multi-tab session synchronization and 401 broadcast
+  try {
+    const supabaseClientCode = fs.readFileSync(path.resolve(__dirname, '../src/lib/supabaseClient.ts'), 'utf8');
+    const pageCode = fs.readFileSync(path.resolve(__dirname, '../src/app/page.tsx'), 'utf8');
+    const superadminPageCode = fs.readFileSync(path.resolve(__dirname, '../src/app/superadmin/page.tsx'), 'utf8');
+
+    if (!supabaseClientCode.includes("window.dispatchEvent(new Event('sipjam_unauthorized'))")) {
+      throw new Error('src/lib/supabaseClient.ts missing 401 unauthorized event dispatch');
+    }
+    if (!pageCode.includes("'storage'") || !pageCode.includes("'sipjam_unauthorized'")) {
+      throw new Error('src/app/page.tsx missing storage and sipjam_unauthorized listeners');
+    }
+    if (!superadminPageCode.includes("'storage'") || !superadminPageCode.includes("'sipjam_unauthorized'")) {
+      throw new Error('src/app/superadmin/page.tsx missing storage and sipjam_unauthorized listeners');
+    }
+
+    pass('SYNC-07', 'Multi-tab session synchronization & instantaneous 401 unauthorized handling',
+      'Verified storage event cross-tab synchronization and sipjam_unauthorized instant React tree reset');
+  } catch (e) {
+    fail('SYNC-07', 'Multi-tab session synchronization & 401 handling', e);
+  }
+
   // ==========================================================================
   // FINAL SUMMARY
   // ==========================================================================

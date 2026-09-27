@@ -61,6 +61,17 @@ function MainApp() {
         .eq('id', storedUserObj.id)
         .single();
 
+      const isNetworkError =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        (error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || (error as any).name === 'AbortError'));
+
+      if (isNetworkError) {
+        console.warn('[MainApp] Network offline, retaining cached session.');
+        setUser(storedUserObj);
+        setShowSplash(false);
+        return;
+      }
+
       if (error || !dbUser || dbUser.session_token !== storedUserObj.session_token) {
         console.warn('[MainApp] Stale or expired session token detected. Purging cache.');
         localStorage.removeItem('sipjam_user');
@@ -146,6 +157,38 @@ function MainApp() {
     return () => {
       window.removeEventListener('focus', handleRevalidateOnFocus);
       document.removeEventListener('visibilitychange', handleRevalidateOnFocus);
+    };
+  }, []);
+
+  // Native multi-tab session synchronization & 401 unauthorized listener
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sipjam_user') {
+        if (!e.newValue) {
+          setUser(null);
+          setShowSplash(false);
+        } else {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed?.id && parsed?.session_token) {
+              setUser(parsed);
+            }
+          } catch (_) {}
+        }
+      }
+    };
+
+    const handleUnauthorized = () => {
+      localStorage.removeItem('sipjam_user');
+      setUser(null);
+      setShowSplash(false);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('sipjam_unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sipjam_unauthorized', handleUnauthorized);
     };
   }, []);
 

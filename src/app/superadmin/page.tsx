@@ -34,6 +34,16 @@ export default function SuperadminPage() {
           .eq('id', parsed.id)
           .single();
 
+        const isNetworkError =
+          (typeof navigator !== 'undefined' && !navigator.onLine) ||
+          (error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || (error as any).name === 'AbortError'));
+
+        if (isNetworkError) {
+          console.warn('[SuperadminPage] Network offline, retaining cached session.');
+          setUser(parsed);
+          return;
+        }
+
         const isSaDb = (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
         if (error || !dbUser || !isSaDb || dbUser.session_token !== parsed.session_token) {
           console.warn('[SuperadminPage] Stale or invalid session. Purging cache.');
@@ -54,6 +64,41 @@ export default function SuperadminPage() {
       }
     };
     checkSession();
+  }, [router]);
+
+  // Native multi-tab session synchronization & 401 unauthorized listener
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sipjam_user') {
+        if (!e.newValue) {
+          setUser(null);
+          router.replace('/');
+        } else {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            const isSa = (parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+            if (!isSa || !parsed.session_token) {
+              router.replace('/');
+            } else {
+              setUser(parsed);
+            }
+          } catch (_) {}
+        }
+      }
+    };
+
+    const handleUnauthorized = () => {
+      localStorage.removeItem('sipjam_user');
+      setUser(null);
+      router.replace('/');
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('sipjam_unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('sipjam_unauthorized', handleUnauthorized);
+    };
   }, [router]);
 
   const handleLogout = () => {
