@@ -69,10 +69,22 @@ function MainApp() {
         return;
       }
 
-      // Sync fresh user data from database into state & storage
-      const synced = { ...storedUserObj, ...dbUser };
-      localStorage.setItem('sipjam_user', JSON.stringify(synced));
-      setUser(synced);
+      // Sync fresh user data from database into state & storage only when modified
+      setUser((prevUser: any) => {
+        const isChanged = !prevUser ||
+          prevUser.nama !== dbUser.nama ||
+          prevUser.role !== dbUser.role ||
+          prevUser.sekolah_id !== dbUser.sekolah_id ||
+          prevUser.username !== dbUser.username ||
+          prevUser.session_token !== dbUser.session_token;
+
+        if (isChanged) {
+          const synced = { ...storedUserObj, ...dbUser };
+          localStorage.setItem('sipjam_user', JSON.stringify(synced));
+          return synced;
+        }
+        return prevUser;
+      });
       setShowSplash(false);
     } catch (err) {
       console.warn('[MainApp] Error verifying session with database, falling back to cached session:', err);
@@ -109,10 +121,14 @@ function MainApp() {
     }
   }, []);
 
-  // Native window focus & visibilitychange listener to auto-refresh session after idle
+  // Native window focus & visibilitychange listener to auto-refresh session after idle (>15s debounce)
   useEffect(() => {
+    let lastValidated = Date.now();
+
     const handleRevalidateOnFocus = () => {
-      if (document.visibilityState === 'visible') {
+      const now = Date.now();
+      if (document.visibilityState === 'visible' && (now - lastValidated >= 15000)) {
+        lastValidated = now;
         const stored = localStorage.getItem('sipjam_user');
         if (stored) {
           try {

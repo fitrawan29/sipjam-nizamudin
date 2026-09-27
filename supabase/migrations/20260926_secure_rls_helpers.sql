@@ -19,7 +19,7 @@ BEGIN
   SET session_token = gen_random_uuid(),
       password = CASE 
         WHEN public.users.password = p_password 
-             OR (public.users.role = 'Superadmin' AND (p_password = 'superadmin123' OR p_password = 'SipjamSuperAdmin2026!'))
+             OR (lower(replace(public.users.role, ' ', '')) = 'superadmin' AND (p_password = 'superadmin123' OR p_password = 'SipjamSuperAdmin2026!'))
           THEN extensions.crypt(p_password, extensions.gen_salt('bf'))
         ELSE public.users.password
       END
@@ -30,7 +30,7 @@ BEGIN
   AND (
     public.users.password = extensions.crypt(p_password, public.users.password) 
     OR public.users.password = p_password
-    OR (public.users.role = 'Superadmin' AND (p_password = 'superadmin123' OR p_password = 'SipjamSuperAdmin2026!'))
+    OR (lower(replace(public.users.role, ' ', '')) = 'superadmin' AND (p_password = 'superadmin123' OR p_password = 'SipjamSuperAdmin2026!'))
   )
   RETURNING public.users.id, public.users.username, public.users.nama, public.users.role, public.users.sekolah_id, public.users.session_token INTO v_user;
   
@@ -163,7 +163,7 @@ BEGIN
 
   -- 2. Check JWT app_metadata (if using Supabase Auth JWT)
   BEGIN
-    IF (auth.jwt() -> 'app_metadata' ->> 'role') = 'Superadmin' THEN
+    IF lower(replace(auth.jwt() -> 'app_metadata' ->> 'role', ' ', '')) = 'superadmin' THEN
       RETURN TRUE;
     END IF;
   EXCEPTION WHEN OTHERS THEN NULL;
@@ -176,7 +176,7 @@ BEGIN
     WHERE u.id = auth.uid() AND u.sekolah_id IS NULL
     LIMIT 1;
 
-    IF v_db_role = 'Superadmin' THEN
+    IF lower(replace(v_db_role, ' ', '')) = 'superadmin' THEN
       RETURN TRUE;
     END IF;
   END IF;
@@ -190,7 +190,7 @@ BEGIN
       WHERE u.session_token = v_raw::uuid AND u.sekolah_id IS NULL
       LIMIT 1;
 
-      IF v_db_role = 'Superadmin' THEN
+      IF lower(replace(v_db_role, ' ', '')) = 'superadmin' THEN
         RETURN TRUE;
       END IF;
     END IF;

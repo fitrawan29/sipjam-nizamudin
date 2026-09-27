@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 import AppScreen from '@/components/AppScreen';
 
 export default function SuperadminPage() {
@@ -20,13 +21,30 @@ export default function SuperadminPage() {
 
         const parsed = JSON.parse(stored);
         const isSa = (parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-        if (!isSa || !parsed.session_token) {
+        if (!isSa || !parsed.session_token || !parsed.id) {
           localStorage.removeItem('sipjam_user');
           router.replace('/');
           return;
         }
 
-        setUser(parsed);
+        // Validate session token with live database
+        const { data: dbUser, error } = await supabase
+          .from('users')
+          .select('id, username, nama, role, session_token')
+          .eq('id', parsed.id)
+          .single();
+
+        const isSaDb = (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+        if (error || !dbUser || !isSaDb || dbUser.session_token !== parsed.session_token) {
+          console.warn('[SuperadminPage] Stale or invalid session. Purging cache.');
+          localStorage.removeItem('sipjam_user');
+          router.replace('/');
+          return;
+        }
+
+        const synced = { ...parsed, ...dbUser };
+        localStorage.setItem('sipjam_user', JSON.stringify(synced));
+        setUser(synced);
       } catch (err) {
         console.error('Error checking superadmin session:', err);
         localStorage.removeItem('sipjam_user');

@@ -47,14 +47,17 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
 
   useEffect(() => {
     let lastActive = Date.now();
+    const updateActive = () => {
+      lastActive = Date.now();
+    };
 
     const handleSyncOnResume = async () => {
       const now = Date.now();
       const elapsed = now - lastActive;
       lastActive = now;
 
-      // When tab becomes active or after idle (>30s)
-      if (elapsed > 30000 || document.visibilityState === 'visible') {
+      // Re-sync only when returning after actual idle (>=30s) and document is visible
+      if (elapsed >= 30000 && document.visibilityState === 'visible') {
         try {
           if (!user?.id || !user?.session_token) return;
 
@@ -89,10 +92,14 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
 
     window.addEventListener('focus', handleSyncOnResume);
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pointerdown', updateActive, { passive: true });
+    window.addEventListener('keydown', updateActive, { passive: true });
 
     return () => {
       window.removeEventListener('focus', handleSyncOnResume);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pointerdown', updateActive);
+      window.removeEventListener('keydown', updateActive);
     };
   }, [user?.id, user?.session_token, onLogout]);
 

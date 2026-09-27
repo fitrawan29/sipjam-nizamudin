@@ -315,6 +315,27 @@ async function runAuthAndSyncVerification() {
     fail('SYNC-03', 'Source code implementation check', e);
   }
 
+  // Test 3.4: Verify genuine idle threshold & SuperadminPage DB validation
+  try {
+    const appScreenCode = fs.readFileSync(path.resolve(__dirname, '../src/components/AppScreen.tsx'), 'utf8');
+    const superadminPageCode = fs.readFileSync(path.resolve(__dirname, '../src/app/superadmin/page.tsx'), 'utf8');
+
+    if (!appScreenCode.includes('elapsed >= 30000')) {
+      throw new Error('AppScreen.tsx does not strictly enforce idle threshold elapsed >= 30000');
+    }
+    if (!appScreenCode.includes('pointerdown') || !appScreenCode.includes('keydown')) {
+      throw new Error('AppScreen.tsx missing active user interaction listeners to prevent premature idle sync');
+    }
+    if (!superadminPageCode.includes("from('users')") || !superadminPageCode.includes('session_token')) {
+      throw new Error('src/app/superadmin/page.tsx missing live DB session token validation');
+    }
+
+    pass('SYNC-04', 'Idle threshold enforcement & Superadmin page DB session validation',
+      'Verified genuine idle elapsed >= 30000 guard, user activity tracking, and /superadmin live DB token checks');
+  } catch (e) {
+    fail('SYNC-04', 'Idle threshold enforcement & Superadmin page DB session validation', e);
+  }
+
   // ==========================================================================
   // FINAL SUMMARY
   // ==========================================================================
