@@ -214,7 +214,7 @@ function MainApp() {
 
       {/* Main flow: If authenticated -> AppScreen. If unauthenticated -> Splash then LoginScreen */}
       {user ? (
-        <AppScreen user={user} onLogout={handleLogout} />
+        <AppScreen user={user} onLogout={handleLogout} onUserUpdate={setUser} />
       ) : showSplash ? (
         <PreLoginSplash onFinish={() => setShowSplash(false)} />
       ) : (

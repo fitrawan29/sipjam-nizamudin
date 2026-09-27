@@ -21,7 +21,13 @@ export default function SuperadminPage() {
 
         const parsed = JSON.parse(stored);
         const isSa = (parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-        if (!isSa || !parsed.session_token || !parsed.id) {
+        if (!isSa) {
+          // Legitimate non-superadmin session (e.g. Guru/Admin) - redirect home without wiping session
+          router.replace('/');
+          return;
+        }
+
+        if (!parsed.session_token || !parsed.id) {
           localStorage.removeItem('sipjam_user');
           router.replace('/');
           return;
@@ -44,10 +50,18 @@ export default function SuperadminPage() {
           return;
         }
 
-        const isSaDb = (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-        if (error || !dbUser || !isSaDb || dbUser.session_token !== parsed.session_token) {
+        if (error || !dbUser || dbUser.session_token !== parsed.session_token) {
           console.warn('[SuperadminPage] Stale or invalid session. Purging cache.');
           localStorage.removeItem('sipjam_user');
+          router.replace('/');
+          return;
+        }
+
+        const isSaDb = (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+        if (!isSaDb) {
+          console.warn('[SuperadminPage] User role in DB is not superadmin. Redirecting.');
+          const synced = { ...parsed, ...dbUser };
+          localStorage.setItem('sipjam_user', JSON.stringify(synced));
           router.replace('/');
           return;
         }
@@ -127,7 +141,7 @@ export default function SuperadminPage() {
 
   return (
     <div className="mobile-container flex flex-col min-h-screen min-h-dvh">
-      <AppScreen user={user} onLogout={handleLogout} />
+      <AppScreen user={user} onLogout={handleLogout} onUserUpdate={setUser} />
     </div>
   );
 }

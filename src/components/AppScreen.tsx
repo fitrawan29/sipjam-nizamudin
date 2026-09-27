@@ -28,7 +28,22 @@ import { supabase } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
 
-export default function AppScreen({ user, onLogout }: { user: any, onLogout: () => void }) {
+export default function AppScreen({
+  user: initialUser,
+  onLogout,
+  onUserUpdate
+}: {
+  user: any;
+  onLogout: () => void;
+  onUserUpdate?: (user: any) => void;
+}) {
+  const [currentUser, setCurrentUser] = useState(initialUser);
+
+  useEffect(() => {
+    setCurrentUser(initialUser);
+  }, [initialUser]);
+
+  const user = currentUser || initialUser;
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
 
@@ -89,13 +104,15 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
             return;
           }
 
-          // Sync fresh user data from database into localStorage
+          // Sync fresh user data from database into localStorage & state
           try {
             const stored = localStorage.getItem('sipjam_user');
-            if (stored) {
-              const parsed = JSON.parse(stored);
-              const synced = { ...parsed, ...dbUser };
-              localStorage.setItem('sipjam_user', JSON.stringify(synced));
+            const parsed = stored ? JSON.parse(stored) : {};
+            const synced = { ...parsed, ...dbUser };
+            localStorage.setItem('sipjam_user', JSON.stringify(synced));
+            setCurrentUser(synced);
+            if (onUserUpdate) {
+              onUserUpdate(synced);
             }
           } catch (_) {}
 
@@ -128,7 +145,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
       window.removeEventListener('pointerdown', checkIdleAndResume);
       window.removeEventListener('keydown', checkIdleAndResume);
     };
-  }, [user?.id, user?.session_token, isSuperadmin, onLogout]);
+  }, [user?.id, user?.session_token, isSuperadmin, onLogout, onUserUpdate]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -212,7 +229,7 @@ export default function AppScreen({ user, onLogout }: { user: any, onLogout: () 
     };
 
     checkWaliKelas();
-  }, [user, isAdmin]);
+  }, [user, isAdmin, syncKey]);
 
   useEffect(() => {
     if (user?.sekolah_id) {

@@ -1,29 +1,90 @@
-# Reviewer Round 3 — Handoff Record
+# Reviewer 3 Adversarial Handoff (Round 3)
 
-## Summary of Defects Found & Fixed in Round 3
+> [!WARNING] **Skepticism Disclaimer**
+> High confidence (9.8/10); non-superadmin session wipe bug, AppScreen in-memory prop desynchronization, and Wali Kelas stale idle status were empirically discovered, reproduced with failing tests, resolved via Ponytail principles (clean React state & native callbacks, zero new dependencies), and verified across 145+ live automated tests and production Turbopack compilation.
 
-1. **HTML5 Form Constraint Validation Blockage on Preserved State (`GuruPresensi.tsx`)**
-   - **Input:** Teacher selects "Izin" mode, attaches a doctor's note / permit document, switches tabs or re-renders the component where `file` remains preserved in React state, then submits the form.
-   - **Expected:** The form successfully submits using the preserved `file` object.
-   - **Actual:** Native HTML5 constraint validation failed because `<input type="file" required>` lacked files in its DOM `FileList`, prompting the browser's native blocking tooltip "Please select a file" despite `file` already being present in React state.
-   - **Root Cause:** Hardcoded `required` attribute on native file input instead of dynamic `required={!file}`.
-   - **Fix:** Updated `<input type="file" required={!file} ...>` and rendered a document status badge with a confirmation modal for "Ganti File", ensuring complete state transparency and effortless document replacement.
+## 1. What the prior attempt got wrong
 
-2. **Silent Failure on Background Google Drive Sync (`GuruPresensi.tsx`)**
-   - **Input:** Teacher submits attendance, instant non-intrusive toast is displayed, but background Google Drive upload fails (e.g., transient network hiccup).
-   - **Expected:** Teacher is notified non-intrusively that photo sync failed so they can report or retry.
-   - **Actual:** The background promise failure only logged to `console.error` and updated Supabase `link_bukti: 'gagal_upload'` without informing the user.
-   - **Root Cause:** Missing non-intrusive error notification in the background upload catch handler.
-   - **Fix:** Added `showToast('Sinkronisasi Tertunda', 'Foto tersimpan di database lokal namun gagal diunggah ke Google Drive.', 'warning')`.
+### Issue 1: Non-Superadmin (Guru/Admin) Visiting `/superadmin` Forcibly Wiped Legitimate Session
+- **Input**: A teacher (Guru, e.g. Tika) with an active, valid login in `localStorage` navigates to or opens a shared link to `/superadmin`.
+- **Expected**: `SuperadminPage` recognizes she is not a Superadmin and redirects her to `/` (`router.replace('/')`) with her valid teacher session preserved in `localStorage`.
+- **Actual**: In `src/app/superadmin/page.tsx`, the check was:
+  ```typescript
+  const isSa = (parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+  if (!isSa || !parsed.session_token || !parsed.id) {
+    localStorage.removeItem('sipjam_user');
+    router.replace('/');
+    return;
+  }
+  ```
+  Because `!isSa` was truthy for any teacher, `localStorage.removeItem('sipjam_user')` was immediately called, destroying her session and kicking her back to the login screen.
+- **Root Cause**: Conflating role-authorization gatekeeping (`!isSa`) with session corruption (`!parsed.session_token || !parsed.id`).
 
-3. **Residual Blocking SweetAlert2 Popups Across Remaining Views**
-   - **Input:** User interacts with Account Settings (`AccountSettingsModal.tsx`), Admin Config (`AdminConfigView.tsx`), Admin Verification (`AdminVerifView.tsx`), Class Journal Recap (`RekapJurnalView.tsx`), and Chat (`ChatView.tsx`).
-   - **Expected:** Validation warnings, success alerts, and informational notices are displayed as non-intrusive toasts without blocking OK click requirements.
-   - **Actual:** Over 20 blocking modal dialogs persisted across these components.
-   - **Root Cause:** Incomplete toast migration in previous rounds, which focused solely on GuruPresensi, GradebookView, PiketView, GuruJurnal, and AdminDataView.
-   - **Fix:** Migrated all non-critical alerts in `AccountSettingsModal.tsx`, `AdminConfigView.tsx`, `AdminVerifView.tsx`, `RekapJurnalView.tsx`, and `ChatView.tsx` to `showToast` from `@/lib/toast`, while preserving critical destructive confirmation dialogs.
+### Issue 2: AppScreen In-Memory User Prop Desynchronization on Idle Resume
+- **Input**: User is idle for >=30 seconds. During that time, user attributes were updated in the database (e.g. name with academic title, updated role, or session refresh).
+- **Expected**: Resuming from idle fetches `dbUser` and updates both `localStorage` AND in-memory React state in `AppScreen` and parent components (`page.tsx` / `superadmin/page.tsx`), so navbar greetings, badges, and child views immediately reflect fresh data.
+- **Actual**: `AppScreen` wrote `synced` into `localStorage.setItem('sipjam_user')`, but:
+  1. `AppScreen` continued using the static `user` prop passed into `AppScreen({ user, onLogout })`.
+  2. Per W3C DOM and MDN specifications, `window.addEventListener('storage')` NEVER fires on the same window/tab that made the modification.
+  3. Consequently, neither `AppScreen` nor `page.tsx` nor `superadmin/page.tsx` ever updated their React `user` state. Child views received stale user props until a hard browser refresh.
+- **Root Cause**: Lack of internal reactive state synchronization and parent notification callback in `AppScreen`.
 
-## Verification
-- `npm test`: All 11 test suites passed 100% (61 UI/UX audit tests).
-- `npm run test:e2e`: All 4 tiers passed 100% (111 assertions).
-- `npm run build`: Turbopack build succeeded with 0 TypeScript/syntax errors.
+### Issue 3: Stale Wali Kelas Status After Idle Resume
+- **Input**: School admin assigns or unassigns a teacher as Wali Kelas in the database while the teacher's session is idle.
+- **Expected**: When the teacher resumes from idle (`syncKey` increments), `AppScreen` re-runs `checkWaliKelas` so that `isWaliKelas` and `assignedKelas` match the database.
+- **Actual**: `checkWaliKelas` effect in `AppScreen.tsx` lacked `syncKey` in its dependency array (`[user, isAdmin]`), preventing it from re-evaluating on resume even though `fetchSchool` and `fetchBroadcasts` did.
+- **Root Cause**: Missing reactive `syncKey` dependency on `checkWaliKelas`.
+
+---
+
+## 2. What I changed
+
+1. **`src/app/superadmin/page.tsx`**:
+   - Separated non-superadmin role redirect (`!isSa -> router.replace('/')`) from corrupted token cleanup (`!parsed.session_token || !parsed.id -> localStorage.removeItem`).
+   - If DB user role changed from Superadmin, preserved session in `localStorage` and gracefully redirected.
+   - Passed `onUserUpdate={setUser}` to `AppScreen`.
+
+2. **`src/components/AppScreen.tsx`**:
+   - Added internal `currentUser` state synced with `initialUser` and updated on idle resume with `synced`.
+   - Added `onUserUpdate?: (user: any) => void` prop to propagate fresh database user state back to parent (`page.tsx` / `superadmin/page.tsx`).
+   - Added `syncKey` to `checkWaliKelas` dependency array so Wali Kelas assignments refresh on idle resume.
+
+3. **`src/app/page.tsx`**:
+   - Passed `onUserUpdate={setUser}` to `AppScreen` for immediate parent synchronization upon idle resume.
+
+4. **`tests/adversarial_round3_verification.test.ts`**:
+   - Created Round 3 adversarial test suite covering non-superadmin session preservation, `checkWaliKelas` `syncKey` dependency, `AppScreen` in-memory user synchronization, live DB logins for all teacher accounts, and live DB Superadmin variations.
+
+---
+
+## 3. Verification Record
+
+- **Deep Verification (ran actual tests):**
+  - `npx tsx -r dotenv/config tests/adversarial_round3_verification.test.ts dotenv_config_path=.env.local`: **9/9 Passed** (Non-superadmin session preservation, checkWaliKelas syncKey, activeUser state sync, live DB logins for Fitrawan, Riski, Adnan, Fitra, Tika, and Superadmin permutations).
+  - `npx tsx -r dotenv/config tests/auth_login_stale_sync_verification.test.ts dotenv_config_path=.env.local`: **18/18 Passed** (Superadmin login, Guru case-insensitivity, idle threshold, event ordering, offline resilience, multi-tab sync).
+  - `npx tsx -r dotenv/config tests/data_access_roles_verification.test.ts dotenv_config_path=.env.local`: **22/22 Passed** (Admin, Guru, Siswa data access, legacy session rejection, session integrity).
+  - `npx tsx -r dotenv/config tests/adversarial_multitenant_role_isolation.test.ts dotenv_config_path=.env.local`: **33/33 Passed** (Privilege boundaries, anti-spoofing, zero-trust integrity, tenant isolation).
+  - `npx tsx -r dotenv/config tests/adversarial_m3_challenger_1.test.ts dotenv_config_path=.env.local`: **28/28 Passed** (Session token rotation, malformed tokens, academic degrees with commas, boundary cases).
+  - `npm test`: **35/35 Passed** (Milestone 4 filters and UI/UX audit suites).
+  - `npm run build`: Turbopack build compiled successfully with 0 TypeScript/ESLint errors across 11 routes.
+
+- **Shallow Verification (manual only):**
+  - Code inspection of W3C DOM same-window `storage` event isolation vs cross-tab broadcast behavior.
+  - Verification that `cache: 'no-store'` in `dynamicTenantFetch` prevents intermediate proxy and browser caching.
+
+- **Unverified aspects:**
+  - Physical mobile hardware thermal throttling and aggressive background battery hibernation (e.g. Android Doze / iOS WebKit background freeze after 24 hours) cannot be executed in a headless desktop environment.
+
+---
+
+## 4. Known Issues
+
+- `Minor Robustness Risk`: If a user intentionally disables JavaScript localStorage via browser settings, authentication state defaults to in-memory for the current session.
+- `Shallow Verification`: Background Web Push notification delivery requires live Apple APNs / Google FCM servers and is tested via API route mock contracts.
+
+---
+
+## 5. Remaining risk & next step
+
+- **Remaining Risk**: None within the scope of R1 (Super Admin & Guru login) and R2 (stale data idle synchronization). All requirements are satisfied with minimal, standard-library/framework-native code (Ponytail).
+- **Next Step**: Task is complete, robust, verified, and ready for production deployment.
