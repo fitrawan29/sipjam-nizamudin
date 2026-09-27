@@ -64,6 +64,7 @@ export default function HistoryView({ user }: { user: any }) {
       return (item.mapel || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.kelas || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.materi || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.keterangan || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase());
     }
   });
@@ -193,7 +194,11 @@ export default function HistoryView({ user }: { user: any }) {
                       <>
                         <div className="space-y-1.5">
                           <div className="flex justify-between items-start mb-1">
-                            <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate pr-2">{item.mapel}</h3>
+                            <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate pr-2">
+                              {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan'
+                                ? 'Jurnal Kegiatan (Sistem Blok)'
+                                : (item.mapel || '-')}
+                            </h3>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                                 item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                 item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
@@ -202,8 +207,12 @@ export default function HistoryView({ user }: { user: any }) {
                           </div>
                           <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
                             <p><span className="font-semibold text-gray-900 dark:text-white">Tanggal:</span> {item.tanggal}</p>
-                            <p><span className="font-semibold text-gray-900 dark:text-white">Kelas:</span> {item.kelas}</p>
-                            <p className="truncate"><span className="font-semibold text-gray-900 dark:text-white">Materi:</span> {item.materi}</p>
+                            {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? (
+                              <p><span className="font-semibold text-gray-900 dark:text-white">Jenis:</span> Jurnal Kegiatan</p>
+                            ) : (
+                              <p><span className="font-semibold text-gray-900 dark:text-white">Kelas:</span> {item.kelas}</p>
+                            )}
+                            <p className="truncate"><span className="font-semibold text-gray-900 dark:text-white">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
                           </div>
                           {item.catatan_admin && (
                             <div className="mt-1 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-[9px] border border-gray-100 dark:border-gray-700">

@@ -52,12 +52,13 @@ Orchestrate SWE Light refinement loop (verification, review rounds 1-3, victory 
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
 | reviewer_blok_r1 | teamwork_preview_reviewer | Review Round 1 & Test Suite | completed | 7ee63531-b764-4b17-85e2-2c4662639917 |
-| reviewer_blok_r2 | teamwork_preview_reviewer | Review Round 2 & Adversarial QA | running | 1a8c50f9-20f9-4bb6-aa79-813a7e224125 |
+| reviewer_blok_r2 | teamwork_preview_reviewer | Review Round 2 & Adversarial QA | completed | 1a8c50f9-20f9-4bb6-aa79-813a7e224125 |
+| reviewer_blok_r3 | teamwork_preview_reviewer | Review Round 3 & Final Polish | running | a2e23775-f4d1-4d45-acea-bb0b5f97a947 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 2 / 16
-- Pending subagents: 1a8c50f9-20f9-4bb6-aa79-813a7e224125
+- Spawn count: 3 / 16
+- Pending subagents: a2e23775-f4d1-4d45-acea-bb0b5f97a947
 - Predecessor: swe_3
 - Successor: not yet spawned
 

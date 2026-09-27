@@ -204,7 +204,9 @@ export default function AdminVerifView({ user }: { user: any }) {
           const detailInfo = activeTab === 'Presensi'
             ? `Presensi ${targetItem.tipe_absen || 'Datang'}`
             : activeTab === 'Jurnal'
-            ? `Jurnal ${targetItem.kelas || ''} ${targetItem.mapel ? `(${targetItem.mapel})` : (targetItem.keterangan || '')}`.trim()
+            ? (targetItem.keterangan === 'Jurnal Kegiatan' || targetItem.mapel === 'Jurnal Kegiatan'
+                ? `Jurnal Kegiatan (${targetItem.materi || targetItem.kegiatan || 'Sistem Blok'})`
+                : `Jurnal ${targetItem.kelas && targetItem.kelas !== '-' ? targetItem.kelas : ''} ${targetItem.mapel && targetItem.mapel !== '-' ? `(${targetItem.mapel})` : ''}`.trim())
             : `Laporan Piket ${targetItem.tanggal || ''}`.trim();
 
           if (teacherName) {
@@ -830,8 +832,12 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                 ) : activeTab === 'Jurnal' ? (
                   <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
                     <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>
-                    <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
-                    <p className="line-clamp-2"><span className="font-semibold">Materi:</span> {item.materi}</p>
+                    {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? (
+                      <p><span className="font-semibold">Tipe:</span> <span className="text-amber-600 dark:text-amber-400 font-bold">Jurnal Kegiatan (Sistem Blok)</span></p>
+                    ) : (
+                      <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
+                    )}
+                    <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
                     {item.link_bukti_foto && item.link_bukti_foto !== '-' && (
                       <div className="mt-2 flex items-center gap-2">
                         <img 

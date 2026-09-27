@@ -552,13 +552,17 @@ export default function RekapJurnalView({
 
                                 {/* 4. Mapel */}
                                 <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-semibold text-blue-600 dark:text-blue-400 print:text-black">
-                                  {j.mapel || '-'}
+                                  {j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' ? (
+                                    <span className="text-amber-700 dark:text-amber-400 font-bold">Kegiatan Khusus (Sistem Blok)</span>
+                                  ) : (
+                                    j.mapel || '-'
+                                  )}
                                 </td>
 
                                 {/* 5. Jam KBM */}
                                 <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-medium">
-                                  <div>{jamKbmStr}</div>
-                                  {j.pertemuan_ke && j.jam_ke && (
+                                  <div>{j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' ? 'Sistem Blok' : jamKbmStr}</div>
+                                  {j.pertemuan_ke && j.jam_ke && j.keterangan !== 'Jurnal Kegiatan' && j.mapel !== 'Jurnal Kegiatan' && (
                                     <div className="text-[10px] text-gray-500 dark:text-gray-400 print:text-black">
                                       Pertemuan {j.pertemuan_ke}
                                     </div>

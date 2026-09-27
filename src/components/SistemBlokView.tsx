@@ -7,6 +7,41 @@ import Swal from 'sweetalert2';
 import { getWitaDateStr } from '@/lib/wita';
 import { SistemBlok } from '@/types/database';
 
+/**
+ * Sanitasi string tanggal untuk memastikan format murni YYYY-MM-DD
+ * dan membuang komponen waktu (misal: '2026-09-28T00:00:00.000Z' -> '2026-09-28')
+ */
+export function sanitizeDateStr(d?: string | null): string {
+  if (!d) return '';
+  const clean = d.includes('T') ? d.split('T')[0] : d.split(' ')[0];
+  return clean.trim();
+}
+
+/**
+ * Evaluasi status periode blok secara deterministik
+ */
+export function getBlokStatus(mulai: string, selesai: string, todayStr: string): 'Aktif' | 'Akan Datang' | 'Selesai' {
+  const m = sanitizeDateStr(mulai);
+  const s = sanitizeDateStr(selesai);
+  const t = sanitizeDateStr(todayStr);
+  if (t >= m && t <= s) return 'Aktif';
+  if (t < m) return 'Akan Datang';
+  return 'Selesai';
+}
+
+/**
+ * Hitung durasi hari secara akurat tanpa terpengaruh perbedaan zona waktu atau jam
+ */
+export function getBlokDurationDays(mulai: string, selesai: string): number {
+  const m = sanitizeDateStr(mulai);
+  const s = sanitizeDateStr(selesai);
+  if (!m || !s) return 1;
+  const d1 = new Date(m);
+  const d2 = new Date(s);
+  const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(1, isNaN(diff) ? 1 : diff);
+}
+
 export default function SistemBlokView({ user }: { user: any }) {
   const [blokList, setBlokList] = useState<SistemBlok[]>([]);
   const [loading, setLoading] = useState(false);
@@ -66,19 +101,15 @@ export default function SistemBlokView({ user }: { user: any }) {
   }, [loadBlokData]);
 
   // Determine period status
-  const getStatus = (mulai: string, selesai: string): 'Aktif' | 'Akan Datang' | 'Selesai' => {
-    if (todayStr >= mulai && todayStr <= selesai) return 'Aktif';
-    if (todayStr < mulai) return 'Akan Datang';
-    return 'Selesai';
-  };
+  const getStatus = useCallback((mulai: string, selesai: string): 'Aktif' | 'Akan Datang' | 'Selesai' => {
+    // Determine period status: todayStr >= mulai && todayStr <= selesai
+    return getBlokStatus(mulai, selesai, todayStr);
+  }, [todayStr]);
 
   // Calculate day difference
-  const getDurationDays = (mulai: string, selesai: string): number => {
-    const d1 = new Date(mulai);
-    const d2 = new Date(selesai);
-    const diff = Math.round((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    return Math.max(1, isNaN(diff) ? 1 : diff);
-  };
+  const getDurationDays = useCallback((mulai: string, selesai: string): number => {
+    return getBlokDurationDays(mulai, selesai);
+  }, []);
 
   // Add block period
   const handleAddSubmit = async (e: React.FormEvent) => {
@@ -99,8 +130,8 @@ export default function SistemBlokView({ user }: { user: any }) {
       const payload = {
         id: crypto.randomUUID(),
         nama_kegiatan: namaKegiatan.trim(),
-        tanggal_mulai: tanggalMulai,
-        tanggal_selesai: tanggalSelesai,
+        tanggal_mulai: sanitizeDateStr(tanggalMulai),
+        tanggal_selesai: sanitizeDateStr(tanggalSelesai),
         deskripsi: deskripsi.trim() || null,
         sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
       };
@@ -127,8 +158,8 @@ export default function SistemBlokView({ user }: { user: any }) {
   const openEditModal = (item: SistemBlok) => {
     setEditingItem(item);
     setEditNama(item.nama_kegiatan);
-    setEditMulai(item.tanggal_mulai);
-    setEditSelesai(item.tanggal_selesai);
+    setEditMulai(sanitizeDateStr(item.tanggal_mulai));
+    setEditSelesai(sanitizeDateStr(item.tanggal_selesai));
     setEditDeskripsi(item.deskripsi || '');
     setIsEditModalOpen(true);
   };
@@ -154,8 +185,8 @@ export default function SistemBlokView({ user }: { user: any }) {
         .from('sistem_blok')
         .update({
           nama_kegiatan: editNama.trim(),
-          tanggal_mulai: editMulai,
-          tanggal_selesai: editSelesai,
+          tanggal_mulai: sanitizeDateStr(editMulai),
+          tanggal_selesai: sanitizeDateStr(editSelesai),
           deskripsi: editDeskripsi.trim() || null,
           updated_at: new Date().toISOString(),
         })
@@ -224,15 +255,17 @@ export default function SistemBlokView({ user }: { user: any }) {
         const q = search.toLowerCase();
         const nama = (item.nama_kegiatan || '').toLowerCase();
         const desc = (item.deskripsi || '').toLowerCase();
-        return nama.includes(q) || desc.includes(q) || item.tanggal_mulai.includes(q) || item.tanggal_selesai.includes(q);
+        const m = sanitizeDateStr(item.tanggal_mulai);
+        const s = sanitizeDateStr(item.tanggal_selesai);
+        return nama.includes(q) || desc.includes(q) || m.includes(q) || s.includes(q);
       }
       return true;
     });
-  }, [blokList, filterStatus, search, todayStr]);
+  }, [blokList, filterStatus, search, getStatus]);
 
   const activeCount = useMemo(() => {
     return blokList.filter(item => getStatus(item.tanggal_mulai, item.tanggal_selesai) === 'Aktif').length;
-  }, [blokList, todayStr]);
+  }, [blokList, getStatus]);
 
   const userRole = (user?.role || '').toLowerCase();
   const isAdminOrSuperadmin = userRole === 'admin' || userRole === 'superadmin';
@@ -519,7 +552,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                   <div className="flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-100 dark:border-gray-700/60">
                     <span className="flex items-center gap-1.5">
                       <i className="fa-regular fa-calendar text-amber-500"></i>
-                      <span><strong>{item.tanggal_mulai}</strong> s/d <strong>{item.tanggal_selesai}</strong></span>
+                      <span><strong>{sanitizeDateStr(item.tanggal_mulai)}</strong> s/d <strong>{sanitizeDateStr(item.tanggal_selesai)}</strong></span>
                     </span>
                     <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">
                       {duration} Hari

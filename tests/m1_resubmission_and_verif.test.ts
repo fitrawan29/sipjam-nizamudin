@@ -118,7 +118,7 @@ async function runTests() {
   );
 
   assert(
-    piketContent.includes('await getGuruDailyState(user.nama, user.username)'),
+    piketContent.includes('await getGuruDailyState(user.nama, user.username'),
     'PiketView synchronously awaits getGuruDailyState to update dailyState after submission'
   );
 

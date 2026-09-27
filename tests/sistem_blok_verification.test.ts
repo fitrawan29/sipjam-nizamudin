@@ -24,6 +24,7 @@ async function runTests() {
   const { supabase, setServerTenantContext } = await import('../src/lib/supabaseClient');
   const { getActiveSistemBlok, getGuruDailyState } = await import('../src/lib/workflow');
   const { getWitaDateStr } = await import('../src/lib/wita');
+  const { sanitizeDateStr, getBlokStatus, getBlokDurationDays } = await import('../src/components/SistemBlokView');
 
   const defaultSekolahId = 'a0000000-0000-0000-0000-000000000001';
   setServerTenantContext({
@@ -43,6 +44,10 @@ async function runTests() {
   const appScreenPath = path.join(projectRoot, 'src', 'components', 'AppScreen.tsx');
   const homeViewPath = path.join(projectRoot, 'src', 'components', 'HomeView.tsx');
   const guruJurnalPath = path.join(projectRoot, 'src', 'components', 'GuruJurnal.tsx');
+  const piketPath = path.join(projectRoot, 'src', 'components', 'PiketView.tsx');
+  const adminVerifPath = path.join(projectRoot, 'src', 'components', 'AdminVerifView.tsx');
+  const historyPath = path.join(projectRoot, 'src', 'components', 'HistoryView.tsx');
+  const rekapJurnalPath = path.join(projectRoot, 'src', 'components', 'RekapJurnalView.tsx');
   const workflowPath = path.join(projectRoot, 'src', 'lib', 'workflow.ts');
   const typesPath = path.join(projectRoot, 'src', 'types', 'database.ts');
   const migrationPath = path.join(projectRoot, 'supabase', 'migrations', '20260927_sistem_blok_schema.sql');
@@ -52,6 +57,10 @@ async function runTests() {
   assert(fs.existsSync(appScreenPath), 'AppScreen.tsx exists');
   assert(fs.existsSync(homeViewPath), 'HomeView.tsx exists');
   assert(fs.existsSync(guruJurnalPath), 'GuruJurnal.tsx exists');
+  assert(fs.existsSync(piketPath), 'PiketView.tsx exists');
+  assert(fs.existsSync(adminVerifPath), 'AdminVerifView.tsx exists');
+  assert(fs.existsSync(historyPath), 'HistoryView.tsx exists');
+  assert(fs.existsSync(rekapJurnalPath), 'RekapJurnalView.tsx exists');
   assert(fs.existsSync(workflowPath), 'workflow.ts exists');
   assert(fs.existsSync(typesPath), 'types/database.ts exists');
   assert(fs.existsSync(migrationPath), 'Migration 20260927_sistem_blok_schema.sql exists');
@@ -60,6 +69,10 @@ async function runTests() {
   const appScreenContent = fs.readFileSync(appScreenPath, 'utf8');
   const homeViewContent = fs.readFileSync(homeViewPath, 'utf8');
   const guruJurnalContent = fs.readFileSync(guruJurnalPath, 'utf8');
+  const piketContent = fs.readFileSync(piketPath, 'utf8');
+  const adminVerifContent = fs.readFileSync(adminVerifPath, 'utf8');
+  const historyContent = fs.readFileSync(historyPath, 'utf8');
+  const rekapJurnalContent = fs.readFileSync(rekapJurnalPath, 'utf8');
   const workflowContent = fs.readFileSync(workflowPath, 'utf8');
   const typesContent = fs.readFileSync(typesPath, 'utf8');
   const pkgContent = fs.readFileSync(pkgPath, 'utf8');
@@ -490,6 +503,70 @@ async function runTests() {
     warningContent.includes('hasJurnalKegiatan') &&
     warningContent.includes("j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan'"),
     'warningSystem.ts credits Jurnal Kegiatan, preventing false missing journal violations during block periods'
+  );
+
+  // 5.6 Date Sanitization & ISO Format Resilience
+  console.log('\n[5.6] Date Sanitization & ISO Format Resilience:');
+  assert(sanitizeDateStr('2026-09-28T00:00:00.000Z') === '2026-09-28', 'sanitizeDateStr cleans ISO datetime to YYYY-MM-DD');
+  assert(sanitizeDateStr('2026-09-28 08:30:00') === '2026-09-28', 'sanitizeDateStr cleans space-separated datetime to YYYY-MM-DD');
+  assert(sanitizeDateStr('2026-09-28') === '2026-09-28', 'sanitizeDateStr preserves standard YYYY-MM-DD');
+  assert(sanitizeDateStr(null) === '', 'sanitizeDateStr safely handles null');
+  assert(sanitizeDateStr(undefined) === '', 'sanitizeDateStr safely handles undefined');
+
+  // getBlokStatus with ISO string on active day
+  const isoStatus = getBlokStatus('2026-09-28T00:00:00Z', '2026-09-28T23:59:59Z', '2026-09-28');
+  assert(isoStatus === 'Aktif', 'getBlokStatus correctly evaluates Aktif even when dates contain ISO timestamp');
+
+  // getBlokStatus upcoming vs past
+  assert(getBlokStatus('2026-10-01', '2026-10-05', '2026-09-28') === 'Akan Datang', 'getBlokStatus returns Akan Datang for future dates');
+  assert(getBlokStatus('2026-09-01', '2026-09-10', '2026-09-28') === 'Selesai', 'getBlokStatus returns Selesai for elapsed dates');
+
+  // 5.7 Cross-Month, Cross-Year, and Leap Year Boundary Handling
+  console.log('\n[5.7] Cross-Month, Cross-Year & Leap Year Boundary Handling:');
+  // Cross-month: Sept 28 to Oct 5
+  assert(getBlokStatus('2026-09-28', '2026-10-05', '2026-09-30') === 'Aktif', 'Cross-month: active on last day of month');
+  assert(getBlokStatus('2026-09-28', '2026-10-05', '2026-10-01') === 'Aktif', 'Cross-month: active on first day of next month');
+  assert(getBlokDurationDays('2026-09-28', '2026-10-05') === 8, 'Cross-month: duration is exactly 8 days');
+
+  // Cross-year: Dec 28, 2026 to Jan 5, 2027
+  assert(getBlokStatus('2026-12-28', '2027-01-05', '2027-01-02') === 'Aktif', 'Cross-year: active in new calendar year');
+  assert(getBlokDurationDays('2026-12-28', '2027-01-05') === 9, 'Cross-year: duration is exactly 9 days');
+
+  // Leap year: Feb 28, 2028 to Mar 1, 2028
+  assert(getBlokStatus('2028-02-28', '2028-03-01', '2028-02-29') === 'Aktif', 'Leap year: active on Feb 29 leap day');
+  assert(getBlokDurationDays('2028-02-28', '2028-03-01') === 3, 'Leap year: duration across Feb 29 is 3 days');
+
+  // 5.8 PiketView Multi-Tenant Context Retention
+  console.log('\n[5.8] PiketView Multi-Tenant Context Retention:');
+  assert(
+    piketContent.includes('const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);'),
+    'PiketView retains user.id and user.sekolah_id upon post-submit refresh, preventing tenant context drop'
+  );
+
+  // 5.9 Jurnal Kegiatan Verification, History, and Rekap UI Display
+  console.log('\n[5.9] Jurnal Kegiatan Verification, History, and Rekap UI Display:');
+  assert(
+    adminVerifContent.includes("Jurnal Kegiatan (${targetItem.materi || targetItem.kegiatan || 'Sistem Blok'})"),
+    'AdminVerifView formats Jurnal Kegiatan rejection notification clearly without displaying "Jurnal - (-)"'
+  );
+  assert(
+    adminVerifContent.includes("item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? (") &&
+    adminVerifContent.includes('Jurnal Kegiatan (Sistem Blok)'),
+    'AdminVerifView card identifies Jurnal Kegiatan with dedicated badge instead of "- - -"'
+  );
+  assert(
+    historyContent.includes("(item.keterangan || '').toLowerCase().includes(search.toLowerCase())"),
+    'HistoryView includes item.keterangan in search filter'
+  );
+  assert(
+    historyContent.includes("item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan'") &&
+    historyContent.includes('Jurnal Kegiatan (Sistem Blok)'),
+    'HistoryView renders Jurnal Kegiatan title properly instead of "-"'
+  );
+  assert(
+    rekapJurnalContent.includes("j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan'") &&
+    rekapJurnalContent.includes('Kegiatan Khusus (Sistem Blok)'),
+    'RekapJurnalView displays Kegiatan Khusus (Sistem Blok) in Mapel column for Jurnal Kegiatan'
   );
 
   // ====================================================
