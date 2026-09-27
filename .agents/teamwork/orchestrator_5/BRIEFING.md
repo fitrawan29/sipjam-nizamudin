@@ -70,12 +70,15 @@ Implement AI Assistant rule-based chatbot and Interactive Onboarding Tutorial fo
 | challenger_1 | teamwork_preview_challenger | AI Assistant Adversarial Testing | completed | 23e9cb55-eb80-4e56-9db2-bd185b04cbe8 |
 | challenger_2 | teamwork_preview_challenger | Onboarding Tour Adversarial Testing | completed | 87159a49-d4af-4a9b-9ba1-29049f58ccd6 |
 | auditor_1 | teamwork_preview_auditor | Forensic Integrity Audit | completed | 395a6894-9c9b-409c-8cc4-519b4a7c65de |
-| worker_remediation | teamwork_preview_worker | Onboarding Step Reset & UI Polish | in-progress | da483455-de05-4e49-907c-306355d0093e |
+| worker_remediation | teamwork_preview_worker | Onboarding Step Reset & UI Polish | completed | da483455-de05-4e49-907c-306355d0093e |
+| reviewer_final | teamwork_preview_reviewer | Final Verification Code Review | in-progress | 925fe49c-b370-4939-9598-3d11705ca2a2 |
+| challenger_final | teamwork_preview_challenger | Final Adversarial Challenge & Stress Tests | in-progress | 9d021261-47cd-449d-b39e-b71248449722 |
+| auditor_final | teamwork_preview_auditor | Final Forensic Integrity Audit | in-progress | 68019796-021e-406c-9f7b-651b687e0e38 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 12 / 16
-- Pending subagents: da483455-de05-4e49-907c-306355d0093e
+- Spawn count: 15 / 16
+- Pending subagents: 925fe49c-b370-4939-9598-3d11705ca2a2, 9d021261-47cd-449d-b39e-b71248449722, 68019796-021e-406c-9f7b-651b687e0e38
 - Predecessor: none
 - Successor: not yet spawned
 
