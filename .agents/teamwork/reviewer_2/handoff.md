@@ -174,6 +174,19 @@ Direct observations from codebase inspection and execution:
   ```
   And/or reset `setCurrentStepIndex(0)` inside `handleSkip` and `handleComplete`.
 
+### [Minor] Finding 2: `normalizeRole` Non-String Type Guard
+
+- **What**: If `role` is passed as a non-string truthy value (e.g. numeric ID `123` or an object), `role.toLowerCase()` throws an unhandled `TypeError: role.toLowerCase is not a function`.
+- **Where**: `src/components/Onboarding/tutorialSteps.ts`, line 122.
+- **Why**: `if (!role) return 'unknown';` does not check `typeof role !== 'string'`.
+- **Suggestion**: Update guard to:
+  ```ts
+  export function normalizeRole(role?: unknown): 'superadmin' | 'admin' | 'guru' | 'unknown' {
+    if (!role || typeof role !== 'string') return 'unknown';
+    const clean = role.toLowerCase().replace(/[\s_-]+/g, '');
+    ...
+  ```
+
 ---
 
 ## 4. Verified Claims
