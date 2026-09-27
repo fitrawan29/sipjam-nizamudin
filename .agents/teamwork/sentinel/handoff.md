@@ -1,43 +1,43 @@
-# Sentinel Handoff Report — Milestone ## 2026-09-27T11:26:31Z
+# Sentinel Handoff Report: Fitur Sistem Blok
 
 ## 1. Observation
-- User submitted request to fix login issues for `super admin` and `guru` roles, and resolve stale data synchronization when sessions are idle for an extended period, adhering to Ponytail principles (minimal code, native framework capabilities, zero new dependencies).
-- Sentinel routed the task to SWE Light (`teamwork_preview_swe`, instance `swe_2`), dispatching sequential refinement loops (Implementer + 3 Reviewers).
-- Implementation identified and addressed:
-  - Role casing/whitespace mismatch in Postgres RPC `verify_login` and client routing.
-  - Multi-tab session synchronization and storage listener coordination.
-  - Idle state recovery threshold (`elapsed >= 30000 && visible`) and active user tracking (`pointerdown`, `keydown`) in `AppScreen.tsx`.
-  - Live PostgreSQL session token validation on `/superadmin` direct navigation.
-  - Native browser `cache: 'no-store'` and explicit cache-busting on query headers.
-- Independent Victory Auditor (`victory_auditor_4`) executed a 3-phase audit and confirmed victory (`VICTORY CONFIRMED`).
+- Received user request for "Fitur Sistem Blok" (CRUD management, schedule masking with DB preservation, teacher activity log adjustment, minimalist implementation with 0 new dependencies).
+- Recorded request to `ORIGINAL_REQUEST.md` under `## 2026-09-27T14:28:20Z`.
+- Evaluated Routing Decision Table: detected request for a small, focused team and isolated scope -> routed to SWE Light (`teamwork_preview_swe`).
+- Dispatched initial orchestrator `swe_3`. When `swe_3` stalled due to upstream quota exhaustion after base commit `9a1eaaf`, Sentinel liveness monitor intervened, cleanly killed `swe_3`, and re-spawned `swe_4`.
+- `swe_4` executed 3 sequential adversarial review rounds:
+  - Commit `9a1eaaf`: Feat implementation of `SistemBlokView.tsx`, schedule masking in `HomeView.tsx`, activity logging in `GuruJurnal.tsx`, migration `20260927_sistem_blok_schema.sql`.
+  - Commit `77ad0f0`: Review Round 1 fixed DB privileges, date toggles, admin matrix, and created `tests/sistem_blok_verification.test.ts` (44 assertions).
+  - Commit `d7a9246`: Review Round 2 resolved exempt teacher lockouts, enforced multi-tenant isolation, and suppressed teaching push notifications during active block periods (60 assertions).
+  - Commit `954afed`: Review Round 3 hardened ISO date parsing, preserved PiketView tenant context, and adapted history/rekap views (85 assertions).
+  - Commit `4e86542`: SWE Light documentation and audit handoff.
+- Orchestrator claimed victory. Sentinel refused to accept at face value and dispatched independent Victory Auditor (`victory_auditor_5`, conv ID: `9e5eb9cc-c65f-4b8a-a20e-f19df23a1cc0`).
+- Auditor performed 3-phase audit:
+  - Phase A (Timeline & Git forensics): PASS (5 authentic sequential commits).
+  - Phase B (Anti-cheating & integrity): PASS (real Supabase queries, 0 fake mocks, original 51 schedule records completely intact in DB, 0 new dependencies in `package.json`).
+  - Phase C (Independent test execution): PASS (`npx tsx tests/sistem_blok_verification.test.ts` 85/85 PASS, `npm test` 12/12 suites PASS, `npm run build` 0 errors, git status clean and pushed).
+- Verdict: **VICTORY CONFIRMED**.
 
 ## 2. Logic Chain
-1. User request evaluated against Routing Decision Table: single self-contained focused fix with explicit lightness/Ponytail directive -> routed to `teamwork_preview_swe`.
-2. SWE Light Orchestrator executed four iterative worker rounds:
-   - Round 0 (Implementer, `e37d310`): Initial login fix & stale data recovery suite.
-   - Round 1 (Reviewer 1, `265bb54`): Idle resume threshold, active typing tracking, `/superadmin` live DB validation.
-   - Round 2 (Reviewer 2, `005c4e5`): Resolved DOM event race conditions, offline error differentiation, cross-tab synchronization.
-   - Round 3 (Reviewer 3, `6cd409b`): Preserved non-superadmin sessions, synchronized in-memory state, and validated wali kelas attributes.
-3. Orchestrator verified all test suites passed cleanly.
-4. Sentinel received victory claim and dispatched independent Victory Auditor (`victory_auditor_4`) with zero shared swarm context.
-5. Victory Auditor executed independent test runs, type checks, build checks, timeline analysis, and anti-cheating verification, returning `VICTORY CONFIRMED`.
-6. Sentinel terminated all crons and subagents per shutdown protocol.
+1. Accurately captured user intent and recorded verbatim in `ORIGINAL_REQUEST.md`.
+2. Routed to `teamwork_preview_swe` per SWE Light criteria (one self-contained feature, explicit request for small focused team).
+3. Maintained monitoring via 2 crons (Progress Reporting `*/8 * * * *`, Liveness Check `*/10 * * * *`).
+4. Re-spawned orchestrator when upstream quota exhaustion threatened liveness, preserving all committed code.
+5. Enforced mandatory blocking independent victory audit before reporting to human.
+6. Received verified VICTORY CONFIRMED verdict.
+7. Cancelled background cron tasks and killed all subagents.
 
 ## 3. Caveats
-- Background push notification delivery requires active external network connections to Google FCM / Apple APNs and was verified via API route contracts.
-- Physical mobile OS aggressive memory-reclaim hibernation (e.g., iOS Safari suspension after 24+ hours in background) is handled via browser visibility and focus events, which execute cleanly upon tab resumption.
+- Browser camera capture during teacher activity logging requires user-granted media permissions.
+- In multi-tenant deployments, block periods created by an admin are automatically scoped to that admin's school tenant (`sekolah_id`).
 
 ## 4. Conclusion
-- All acceptance criteria for Milestone `2026-09-27T11:26:31Z` have been fully met.
-- Login for `super admin` and `guru` is verified, resilient, and backwards-compatible with other roles.
-- Idle session stale data is eliminated; waking after idle triggers live database revalidation and fresh data retrieval.
-- Ponytail compliance is 100%: zero new packages added to `package.json`.
+Fitur Sistem Blok has been fully implemented, rigorously reviewed across 3 adversarial rounds, independently audited with zero cheating detected, and confirmed working. All git changes are committed and pushed to `origin/main`.
+
+Final Verdict: **VICTORY CONFIRMED**.
 
 ## 5. Verification Method
-- `npx tsx tests/auth_login_stale_sync_verification.test.ts` (18/18 PASS)
-- `npx tsx tests/adversarial_round3_verification.test.ts` (9/9 PASS)
-- `npx tsx tests/data_access_roles_verification.test.ts` (22/22 PASS)
-- `npx tsx tests/adversarial_multitenant_role_isolation.test.ts` (33/33 PASS)
-- `npm test` (35/35 PASS)
-- `npx tsc --noEmit` (0 errors)
-- `npm run build` (11/11 routes compiled cleanly in Turbopack)
+1. `npx tsx tests/sistem_blok_verification.test.ts` (85/85 assertions pass).
+2. `npm test` (all 12 repository test suites pass).
+3. `npm run build` (Turbopack builds 11 routes cleanly with 0 TypeScript errors).
+4. `git status` (clean working directory, pushed to origin/main).
