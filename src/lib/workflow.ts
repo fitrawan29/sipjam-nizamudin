@@ -66,6 +66,8 @@ export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string):
       query = query.eq('sekolah_id', sekolahId);
     }
 
+    query = query.order('created_at', { ascending: false });
+
     const { data, error } = await query;
     if (error || !data || data.length === 0) return null;
     return data[0];

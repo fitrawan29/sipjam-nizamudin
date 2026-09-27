@@ -42,3 +42,6 @@ BEGIN
       USING (is_superadmin() OR sekolah_id = public.get_auth_user_sekolah_id() OR (public.get_auth_user_sekolah_id() IS NULL AND true));
   END IF;
 END $$;
+
+-- Table privilege grants
+GRANT ALL ON TABLE public.sistem_blok TO anon, authenticated, service_role;

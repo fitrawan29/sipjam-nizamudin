@@ -220,10 +220,13 @@ export default function GuruJurnal({ user }: { user: any }) {
         setDateBlok(blok);
         if (blok) {
           setTipeJurnal('Jurnal Kegiatan');
-          if (!materi || materi === dailyState?.blokInfo?.nama_kegiatan) {
+          if (!materi || materi === dateBlok?.nama_kegiatan || materi === dailyState?.blokInfo?.nama_kegiatan) {
             setMateri(blok.nama_kegiatan);
           }
-        } else if (!dailyState?.isBlok) {
+        } else {
+          if (materi && (materi === dateBlok?.nama_kegiatan || materi === dailyState?.blokInfo?.nama_kegiatan)) {
+            setMateri('');
+          }
           if (dailyState?.isDinasLuar) {
             setTipeJurnal('Jurnal Kegiatan');
           } else if (dailyState?.jadwalKBM && dailyState.jadwalKBM.length > 0) {

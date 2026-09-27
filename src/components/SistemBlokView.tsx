@@ -224,6 +224,25 @@ export default function SistemBlokView({ user }: { user: any }) {
     return blokList.filter(item => getStatus(item.tanggal_mulai, item.tanggal_selesai) === 'Aktif').length;
   }, [blokList, todayStr]);
 
+  const userRole = (user?.role || '').toLowerCase();
+  const isAdminOrSuperadmin = userRole === 'admin' || userRole === 'superadmin';
+
+  if (!isAdminOrSuperadmin) {
+    return (
+      <section id="view-sistem-blok" className="fade-in">
+        <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+            <i className="fa-solid fa-lock"></i>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+            Halaman <strong>Manajemen Sistem Blok</strong> secara eksklusif hanya dapat diakses oleh Administrator.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="view-sistem-blok" className="fade-in space-y-5">
       {/* Header Banner */}

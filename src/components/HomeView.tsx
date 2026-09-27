@@ -467,12 +467,15 @@ export default function HomeView({
           isTeacherMatch(j.nama_guru, undefined, nama, nip)
         );
 
+        const acceptedTeacherJournals = teacherJournals.filter((j: any) => j.status_verifikasi !== 'Ditolak');
+        const hasRejectedJournal = teacherJournals.some((j: any) => j.status_verifikasi === 'Ditolak');
+
         const filledCount = targetClasses.filter((jk: any) => 
-          teacherJournals.some((j: any) => isJurnalMatchJadwal(j, jk))
+          acceptedTeacherJournals.some((j: any) => isJurnalMatchJadwal(j, jk))
         ).length;
 
         const isDinasLuar = presensiDatangStatus === 'Dinas Luar';
-        const hasJurnalKegiatan = teacherJournals.some((j: any) => 
+        const hasJurnalKegiatan = acceptedTeacherJournals.some((j: any) => 
           j.keterangan === 'Jurnal Kegiatan' || (j.kegiatan_pembelajaran && !j.kelas)
         );
 
@@ -480,9 +483,12 @@ export default function HomeView({
         let jurnalColor: 'green' | 'amber' | 'rose' | 'gray' = 'gray';
 
         if (isBlokToday) {
-          if (hasJurnalKegiatan || teacherJournals.length > 0) {
+          if (hasJurnalKegiatan) {
             jurnalStatus = 'Jurnal Kegiatan Selesai';
             jurnalColor = 'green';
+          } else if (hasRejectedJournal) {
+            jurnalStatus = 'Ditolak (Perlu Revisi)';
+            jurnalColor = 'rose';
           } else {
             jurnalStatus = 'Perlu Jurnal Kegiatan';
             jurnalColor = 'amber';
@@ -491,6 +497,9 @@ export default function HomeView({
           if (hasJurnalKegiatan) {
             jurnalStatus = 'Jurnal Kegiatan Selesai';
             jurnalColor = 'green';
+          } else if (hasRejectedJournal) {
+            jurnalStatus = 'Ditolak (Perlu Revisi)';
+            jurnalColor = 'rose';
           } else {
             jurnalStatus = 'Perlu Jurnal Kegiatan';
             jurnalColor = 'amber';
@@ -504,6 +513,9 @@ export default function HomeView({
         } else if (filledCount > 0) {
           jurnalStatus = `${filledCount}/${targetCount} Belum Lengkap`;
           jurnalColor = 'amber';
+        } else if (hasRejectedJournal) {
+          jurnalStatus = 'Ditolak (Perlu Revisi)';
+          jurnalColor = 'rose';
         } else {
           jurnalStatus = 'Belum Mengisi';
           jurnalColor = 'rose';
@@ -515,7 +527,7 @@ export default function HomeView({
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
-        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? (hasJurnalKegiatan || teacherJournals.length > 0) : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || filledCount >= targetCount));
+        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? hasJurnalKegiatan : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || filledCount >= targetCount));
 
         const isTugasLengkap = isLiburOrExempt
           ? true
@@ -536,7 +548,7 @@ export default function HomeView({
           pengisianJurnal: {
             status: jurnalStatus,
             color: jurnalColor,
-            filled: isBlokToday ? ((hasJurnalKegiatan || teacherJournals.length > 0) ? 1 : 0) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount,
+            filled: isBlokToday ? (hasJurnalKegiatan ? 1 : 0) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount,
             total: isBlokToday ? 1 : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount
           },
           laporanPiket: {
