@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-28T06:01:00+08:00
+# BRIEFING — 2026-09-28T06:05:00+08:00
 
 ## Mission
 Adversarial stress-testing and empirical verification of OnboardingTutorial integration (`OnboardingTutorial.tsx`, `tutorialSteps.ts`, `AppScreen.tsx`).
@@ -19,7 +19,7 @@ Adversarial stress-testing and empirical verification of OnboardingTutorial inte
 
 ## Current Parent
 - Conversation ID: 3b364431-4af8-4ed9-9a8c-b79b77d58fbe
-- Updated: not yet
+- Updated: 2026-09-28T06:05:00+08:00
 
 ## Review Scope
 - **Files to review**:
@@ -35,18 +35,31 @@ Adversarial stress-testing and empirical verification of OnboardingTutorial inte
   5. Sidebar drawer state transitions & callback interactions
 
 ## Key Decisions Made
-- Plan to write a Vitest / Jest / ts-node / node adversarial test suite in the standard test directory to execute tests empirically.
+- Created automated test harness `tests/adversarial_onboarding_stress.test.ts` executing 161 empirical assertions.
+- Evaluated build status with `npm run build` (successful compilation and SSG).
+- Identified 1 critical regression bug (Tour Reopening Index Retention Bug) and 1 runtime type vulnerability in `normalizeRole`.
+- Issued verdict: REJECT due to acceptance criteria failure on "Lihat Tutorial Lagi".
 
 ## Artifact Index
 - `.agents/teamwork/challenger_2/DISPATCH.md` — Incoming task dispatch
 - `.agents/teamwork/challenger_2/BRIEFING.md` — Agent state and briefing
 - `.agents/teamwork/challenger_2/progress.md` — Progress heartbeat
 - `.agents/teamwork/challenger_2/handoff.md` — Final handoff report
+- `tests/adversarial_onboarding_stress.test.ts` — Empirical test harness
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD]
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+- **Hypotheses tested**:
+  - Missing DOM elements gracefully fallback to screen-center modal (VERIFIED PASS)
+  - Corrupted localStorage values ('false', 'null', 'undefined', random strings) do not bypass tour (VERIFIED PASS)
+  - 336 screen size / position permutations do not cause horizontal or vertical overflow (VERIFIED PASS)
+  - Reopening tour via "Lihat Tutorial Lagi" resets step index to 0 (HYPOTHESIS FAILED: Index retained at final step)
+  - Non-string inputs to normalizeRole handled gracefully without throw (HYPOTHESIS FAILED: Throws TypeError)
+- **Vulnerabilities found**:
+  1. Tour Reopening Index Retention (High): Reopening tutorial opens on final step ("Selesai") rather than restarting at step 1.
+  2. Runtime Type Crash in normalizeRole (Medium): Calling normalizeRole with non-string throws unhandled TypeError.
+- **Untested angles**:
+  - Real touch gesture collisions on actual mobile devices (partially covered by screen simulation).
+  - Rapid multi-click debounce on navigation buttons.
 
 ## Loaded Skills
 - None requested specifically

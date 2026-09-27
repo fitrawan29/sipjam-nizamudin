@@ -1,4 +1,4 @@
-# BRIEFING — 2026-09-27T22:02:00Z
+# BRIEFING — 2026-09-27T22:04:30Z
 
 ## Mission
 Review and adversarially challenge the Interactive Onboarding Tutorial implementation and integration in Sipjam (Next.js 16 + React 19).
@@ -19,11 +19,11 @@ Review and adversarially challenge the Interactive Onboarding Tutorial implement
 
 ## Current Parent
 - Conversation ID: 3b364431-4af8-4ed9-9a8c-b79b77d58fbe
-- Updated: not yet
+- Updated: 2026-09-27T22:04:30Z
 
 ## Review Scope
 - **Files to review**:
-  - `src/components/Onboarding/` (`tutorialSteps.ts`, `OnboardingTutorial.tsx`, etc.)
+  - `src/components/Onboarding/` (`tutorialSteps.ts`, `OnboardingTutorial.tsx`, `index.ts`)
   - `src/components/AppScreen.tsx`
   - `tests/onboarding_and_ai_assistant_ui.test.ts`
   - `tests/app_screen_integration.test.ts`
@@ -31,17 +31,35 @@ Review and adversarially challenge the Interactive Onboarding Tutorial implement
 - **Review criteria**: correctness, logical completeness, quality, adversarial robustness, mobile responsiveness, viewport clamping, localStorage persistence, non-destructive integration
 
 ## Review Checklist
-- **Items reviewed**: pending
-- **Verdict**: pending
-- **Unverified claims**: pending
+- **Items reviewed**:
+  - `src/components/Onboarding/tutorialSteps.ts` (VERIFIED: GURU_STEPS 5, ADMIN_STEPS 6, persistence keys, normalizeRole)
+  - `src/components/Onboarding/OnboardingTutorial.tsx` (VERIFIED: SVG mask, spotlight box, tooltip clamping, keyboard nav)
+  - `src/components/AppScreen.tsx` (VERIFIED: auto-trigger, hamburger target, menu loop target, "Lihat Tutorial Lagi" button, mounting)
+  - `tests/onboarding_and_ai_assistant_ui.test.ts` (VERIFIED: 24/24 passed)
+  - `tests/app_screen_integration.test.ts` (VERIFIED: 24/24 passed)
+  - `npm run build` (VERIFIED: Turbopack compiled successfully in 868ms)
+  - `npx tsc --noEmit` (VERIFIED: 0 errors)
+- **Verdict**: REQUEST_CHANGES (due to Step Index Retention on "Lihat Tutorial Lagi" re-open)
+- **Unverified claims**: Physical touch momentum on real iOS hardware.
 
 ## Attack Surface
-- **Hypotheses tested**: pending
-- **Vulnerabilities found**: pending
-- **Untested angles**: pending
+- **Hypotheses tested**:
+  - Null target DOM element handling -> PASSED (gracefully falls back to centered tooltip, spotlight hidden)
+  - Mobile viewport clamping at 320px -> PASSED (width clamped to 288px, left 16px, collision detection working)
+  - Desktop edge collision -> PASSED (flips placement if right/bottom edge breached)
+  - Superadmin role isolation -> PASSED (returns 0 steps, returns null)
+  - Corrupted localStorage values -> PASSED (strictly requires 'true')
+  - Re-opening tutorial via "Lihat Tutorial Lagi" -> FAILED (retains last step index; opens on Step 5/5 or 6/6 instead of Step 1)
+- **Vulnerabilities found**:
+  - `currentStepIndex` state is retained across closed/open transitions in `OnboardingTutorial.tsx`
+- **Untested angles**:
+  - Physical camera handoff under low-memory Android devices (unrelated to tutorial)
 
 ## Key Decisions Made
-- Initialized review environment and briefing
+- Executed both automated test suites (`onboarding_and_ai_assistant_ui.test.ts` and `app_screen_integration.test.ts`).
+- Confirmed zero integrity violations (no hardcoded test mocks, genuine implementation).
+- Identified step retention bug on "Lihat Tutorial Lagi".
+- Decided on verdict: REQUEST_CHANGES with targeted 3-line fix recommendation for `OnboardingTutorial.tsx`.
 
 ## Artifact Index
 - `.agents/teamwork/reviewer_2/DISPATCH.md` — Inbound instructions
