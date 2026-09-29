@@ -87,7 +87,7 @@ export default function AdminRekapView({ user }: { user: any }) {
         .select('*')
         .gte('timestamp', start)
         .lte('timestamp', end)
-        .in('status_verifikasi', ['Disetujui', 'Alpa'])
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi'])
         .order('timestamp', { ascending: true });
       if (user?.sekolah_id) {
         presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
