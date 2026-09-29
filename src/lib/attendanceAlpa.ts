@@ -35,8 +35,17 @@ export function isBeforeCutoff(currentTime: string, cutoffTime: string): boolean
 }
 
 /**
+ * Mendapatkan nama hari Indonesia dari string YYYY-MM-DD (WITA-aware, pakai jam 12:00).
+ */
+function getDayNameFromDate(dateStr: string): string {
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  return days[new Date(dateStr + 'T12:00:00+08:00').getDay()];
+}
+
+/**
  * Evaluates attendance submissions for a given date against the school's jam_pulang_akhir cutoff.
- * If unresubmitted rejections are detected after cutoff, mutates their status in the database to 'Alpa'.
+ * - Converts rejected-but-unresubmitted records to 'Alpa'.
+ * - Inserts new 'Alpa' records for teachers with no attendance record at all on that day.
  */
 export async function evaluateAndApplyAutoAlpa(
   targetDateStr?: string,
@@ -153,6 +162,96 @@ export async function evaluateAndApplyAutoAlpa(
           sekolah_id: rejectedRec.sekolah_id
         });
       }
+    }
+  }
+
+  // 5. INSERT Alpa untuk guru yang tidak punya record sama sekali hari ini
+  const hariEvaluasi = getDayNameFromDate(evaluatedDate);
+
+  // Guard: skip Minggu
+  if (hariEvaluasi === 'Minggu') {
+    return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
+  }
+
+  // Guard: skip hari libur dari kalender_pendidikan
+  const kalenderQuery = supabase
+    .from('kalender_pendidikan')
+    .select('id')
+    .eq('tanggal', evaluatedDate)
+    .eq('tipe', 'Libur')
+    .limit(1);
+  // ponytail: no sekolah_id filter here — libur nasional tidak perlu scope sekolah
+  const { data: kalenderLibur } = await kalenderQuery;
+  if (kalenderLibur && kalenderLibur.length > 0) {
+    return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
+  }
+
+  // Guard: skip Sabtu jika sekolah 5 hari kerja
+  const { data: hsCfg } = await supabase
+    .from('pengaturan')
+    .select('value')
+    .eq('key', 'hari_sekolah')
+    .maybeSingle();
+  if (parseInt(hsCfg?.value || '6', 10) === 5 && hariEvaluasi === 'Sabtu') {
+    return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
+  }
+
+  // Fetch semua guru aktif
+  let guruQuery = supabase
+    .from('data_guru')
+    .select('nama_guru, user_id, wajib_hadir_hanya_mengajar, sekolah_id')
+    .eq('status', 'Aktif');
+  if (sekolahId) {
+    guruQuery = guruQuery.eq('sekolah_id', sekolahId);
+  }
+  const { data: guruList } = await guruQuery;
+
+  for (const guru of guruList || []) {
+    if (!guru.nama_guru) continue;
+
+    const namaNorm = guru.nama_guru.toLowerCase().trim();
+
+    // Skip jika sudah ada record hari ini (match by nama atau user_id)
+    const hasRecord = presensiRecords.some(r =>
+      (r.nama_guru || '').toLowerCase().trim() === namaNorm
+      || (guru.user_id && r.user_id === guru.user_id)
+    );
+    if (hasRecord) continue;
+
+    // Guru wajib_hadir_hanya_mengajar: cek apakah ada jadwal hari ini
+    if (guru.wajib_hadir_hanya_mengajar) {
+      const { data: jadwal } = await supabase
+        .from('jadwal_pelajaran')
+        .select('id')
+        .eq('hari', hariEvaluasi)
+        .ilike('nama_guru', `%${guru.nama_guru}%`)
+        .limit(1);
+      if (!jadwal || jadwal.length === 0) continue; // Tidak wajib hadir, bebas Alpa
+    }
+
+    // INSERT record Alpa baru
+    const { error: insErr } = await supabase.from('presensi_guru').insert({
+      id: crypto.randomUUID(),
+      timestamp: `${evaluatedDate}T23:59:00+08:00`,
+      nama_guru: guru.nama_guru,
+      user_id: guru.user_id || null,
+      tipe_absen: 'Datang',
+      jenis_presensi: 'Alpa',
+      status_verifikasi: 'Alpa',
+      catatan_admin: 'Alpa otomatis: tidak melakukan presensi datang hingga batas waktu.',
+      sekolah_id: guru.sekolah_id,
+    });
+
+    if (insErr) {
+      console.error(`[attendanceAlpa] Failed to insert Alpa for ${guru.nama_guru}:`, insErr.message);
+    } else {
+      details.push({
+        id: '(inserted)',
+        nama_guru: guru.nama_guru,
+        previousStatus: 'Tidak Ada Record',
+        newStatus: 'Alpa',
+        sekolah_id: guru.sekolah_id,
+      });
     }
   }
 
