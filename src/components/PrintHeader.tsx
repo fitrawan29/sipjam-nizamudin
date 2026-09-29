@@ -173,9 +173,10 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
           )}
         </div>
       </div>
-      <div className="fixed inset-0 pointer-events-none z-[9999] hidden print:flex flex-col items-center justify-center" style={{ transform: 'rotate(-45deg)', opacity: 0.08 }}>
-        <div className="text-[5rem] font-black whitespace-nowrap leading-none mb-4">DOKUMEN ASLI</div>
-        <div className="text-[3.5rem] font-black whitespace-nowrap leading-none">{sekolah}</div>
+      {/* Watermark cetak — CSS defined in globals.css, muncul di setiap halaman print */}
+      <div className="sipjam-print-watermark" aria-hidden="true">
+        <span>DOKUMEN ASLI</span>
+        <span>{sekolah}</span>
       </div>
     </>
   );

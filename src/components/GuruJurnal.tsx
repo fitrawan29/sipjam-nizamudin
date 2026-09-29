@@ -233,6 +233,61 @@ export default function GuruJurnal({ user }: { user: any }) {
     checkState();
   }, [user?.nama]);
 
+  // Auto-fill mapel & kelas & jam ke- saat mapelList + dailyState sudah ready
+  useEffect(() => {
+    if (
+      tipeJurnal !== 'Jurnal KBM' ||
+      isInval ||
+      isFetchingAssignments ||
+      mapelList.length === 0 ||
+      !dailyState?.jadwalKBM
+    ) return;
+
+    const jadwalHariIni = dailyState.jadwalKBM;
+    if (jadwalHariIni.length !== 1) return; // hanya auto-fill jika tepat 1 jadwal hari ini
+
+    const j = jadwalHariIni[0];
+    const matchedMapel = mapelList.find(m => {
+      const mName = (m.nama_mapel || m.nama_mata_pelajaran || '').toLowerCase();
+      const jMapel = (j.mata_pelajaran || '').toLowerCase();
+      return mName.includes(jMapel) || jMapel.includes(mName) || m.kelas === j.kelas;
+    });
+    if (matchedMapel) {
+      setMapel(prev => prev || (matchedMapel.nama_mata_pelajaran || matchedMapel.nama_mapel));
+      setKelas(prev => prev || (matchedMapel.kelas || j.kelas || ''));
+    }
+    // Auto-fill jam ke-
+    if (j.jam_mulai && !jamKe) {
+      setJamKe(j.jam_selesai ? `${j.jam_mulai} - ${j.jam_selesai}` : j.jam_mulai);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapelList, dailyState, tipeJurnal, isInval]);
+
+  // Auto-fill pertemuan ke- berdasarkan jurnal terakhir untuk mapel+kelas ini
+  useEffect(() => {
+    if (!mapel || !kelas || tipeJurnal !== 'Jurnal KBM' || isInval) return;
+    const fetchLastPertemuan = async () => {
+      let q = supabase
+        .from('jurnal_pembelajaran')
+        .select('pertemuan_ke')
+        .eq('mapel', mapel)
+        .eq('kelas', kelas)
+        .eq('nama_guru', user?.nama || '')
+        .not('pertemuan_ke', 'is', null)
+        .order('tanggal', { ascending: false })
+        .limit(1);
+      if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+      const { data } = await q;
+      if (data && data[0]?.pertemuan_ke) {
+        const last = parseInt(data[0].pertemuan_ke, 10);
+        if (!isNaN(last)) setPertemuanKe(String(last + 1));
+      } else {
+        setPertemuanKe('1');
+      }
+    };
+    fetchLastPertemuan();
+  }, [mapel, kelas, tipeJurnal, isInval, user?.nama, user?.sekolah_id]);
+
   // Check if chosen date is inside a block period
   useEffect(() => {
     const checkDateBlok = async () => {
@@ -760,8 +815,9 @@ export default function GuruJurnal({ user }: { user: any }) {
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center gap-1">
                           Pertemuan Ke- <span className="text-red-500">*</span>
+                          {pertemuanKe && <span className="text-[9px] text-green-600 dark:text-green-400 font-normal">(terisi otomatis)</span>}
                         </label>
                         <input
                           type="text"
@@ -773,15 +829,16 @@ export default function GuruJurnal({ user }: { user: any }) {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center gap-1">
                           Jam Ke- <span className="text-red-500">*</span>
+                          {jamKe && <span className="text-[9px] text-green-600 dark:text-green-400 font-normal">(terisi otomatis)</span>}
                         </label>
                         <input
                           type="text"
                           value={jamKe}
                           onChange={e => setJamKe(e.target.value)}
                           required={tipeJurnal === 'Jurnal KBM'}
-                          placeholder="Contoh: 1 - 2 (07.15 - 08.35)"
+                          placeholder="Contoh: 07.15 - 08.35"
                           className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
                         />
                       </div>
