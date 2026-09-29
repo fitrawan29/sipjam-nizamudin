@@ -5,6 +5,31 @@ import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
 
+/**
+ * Hitung jumlah hari kerja dalam rentang startDateStr..endDateStr (inklusif, WITA-aware).
+ * Hari Minggu selalu dikecualikan. Hari Sabtu dikecualikan jika hariSekolah = 5.
+ * Tanggal yang ada di liburDates juga dikecualikan.
+ * ponytail: loop sederhana — maks ~31 iterasi per bulan, tidak perlu optimasi
+ */
+function countWorkdays(
+  startDateStr: string,
+  endDateStr: string,
+  hariSekolah: number,
+  liburDates: Set<string>
+): number {
+  let count = 0;
+  const cur = new Date(startDateStr + 'T12:00:00+08:00');
+  const end = new Date(endDateStr + 'T12:00:00+08:00');
+  while (cur <= end) {
+    const dow = cur.getDay(); // 0=Minggu, 6=Sabtu
+    const dateStr = cur.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
+    const isWeekend = dow === 0 || (hariSekolah === 5 && dow === 6);
+    if (!isWeekend && !liburDates.has(dateStr)) count++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+}
+
 export default function AdminRekapView({ user }: { user: any }) {
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [bulan, setBulan] = useState(() => {
@@ -96,6 +121,19 @@ export default function AdminRekapView({ user }: { user: any }) {
       }
       const { data: piket } = await piketQuery;
 
+      // 5. Hitung total hari kerja wajib hadir untuk periode ini
+      const [{ data: hsCfg }, { data: kalenderLibur }] = await Promise.all([
+        supabase.from('pengaturan').select('value').eq('key', 'hari_sekolah').maybeSingle(),
+        supabase.from('kalender_pendidikan')
+          .select('tanggal')
+          .eq('tipe', 'Libur')
+          .gte('tanggal', startDateStr)
+          .lte('tanggal', endDateStr),
+      ]);
+      const hariSekolah = parseInt((hsCfg as any)?.value || '6', 10);
+      const liburDates = new Set<string>((kalenderLibur || []).map((k: any) => k.tanggal as string));
+      const totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates);
+
       // Seed map with all teachers from data_guru
       const pMap: Record<string, any> = {};
       guruList?.forEach(g => {
@@ -106,7 +144,6 @@ export default function AdminRekapView({ user }: { user: any }) {
             izin: 0,
             sakit: 0,
             dinasLuar: 0,
-            alpaDirect: 0,
             telatDetik: 0,
             piket: 0,
             jurnal: 0
@@ -125,7 +162,6 @@ export default function AdminRekapView({ user }: { user: any }) {
             izin: 0,
             sakit: 0,
             dinasLuar: 0,
-            alpaDirect: 0,
             telatDetik: 0,
             piket: 0,
             jurnal: 0
@@ -140,11 +176,8 @@ export default function AdminRekapView({ user }: { user: any }) {
           } else if (p.jenis_presensi === 'Izin') {
             if (p.detail_izin?.includes('Sakit')) pMap[nama].sakit++;
             else pMap[nama].izin++;
-          } else if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') {
-            pMap[nama].alpaDirect = (pMap[nama].alpaDirect || 0) + 1;
           }
-        } else if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') {
-          pMap[nama].alpaDirect = (pMap[nama].alpaDirect || 0) + 1;
+          // Record Alpa dari DB tidak dijumlah langsung — Alpa dihitung dari selisih
         }
       });
 
@@ -167,17 +200,17 @@ export default function AdminRekapView({ user }: { user: any }) {
       });
 
       const pArr = Object.keys(pMap).map(k => {
-        const telat = pMap[k].telatDetik;
-        const alpaOtomatis = Math.floor(telat / 14400); // 4 hours = 14400 seconds
-        const alpaDirect = pMap[k].alpaDirect || 0;
-        const totalAlpa = alpaOtomatis + alpaDirect;
-        const hadirEfektif = Math.max(0, pMap[k].hadir - alpaOtomatis);
-        return { 
+        const { hadir, dinasLuar, sakit, izin, telatDetik } = pMap[k];
+        // Keterlambatan >= 4 jam (14400 detik) dihitung sebagai 1 alpa otomatis
+        const alpaOtomatis = Math.floor((telatDetik || 0) / 14400);
+        const hadirEfektif = Math.max(0, hadir - alpaOtomatis);
+        // Alpa = Total Wajib Hadir − Hadir − Dinas Luar − Sakit − Izin
+        const alpa = Math.max(0, totalHariKerja - hadirEfektif - dinasLuar - sakit - izin);
+        return {
           ...pMap[k],
-          alpa: totalAlpa,
-          alpaDirect,
-          alpaOtomatis,
-          hadir: hadirEfektif
+          hadir: hadirEfektif,
+          alpa,
+          totalWajib: totalHariKerja,
         };
       }).sort((a, b) => a.nama.localeCompare(b.nama));
 
@@ -201,6 +234,7 @@ export default function AdminRekapView({ user }: { user: any }) {
   const totalHadirSemua = rekapData?.presensi?.reduce((acc, curr) => acc + (curr.hadir || 0), 0) || 0;
   const totalJurnalSemua = rekapData?.jurnal?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
   const totalPiketSemua = rekapData?.piket?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
+  const totalHariKerjaBadge = rekapData?.presensi?.[0]?.totalWajib ?? 0;
 
   return (
     <section id="view-admin-rekap" className="view-section fade-in">
@@ -209,7 +243,7 @@ export default function AdminRekapView({ user }: { user: any }) {
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
-                Rekapitulasi Akhir Presensi, Jurnal & Piket Guru
+                Rekapitulasi Akhir Presensi, Jurnal &amp; Piket Guru
               </h3>
               <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
                 <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
@@ -250,10 +284,14 @@ export default function AdminRekapView({ user }: { user: any }) {
             {rekapData ? (
               <div id="hasil-rekap" className="space-y-5 fade-in">
                   {/* Summary Metric Badges */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 p-3 rounded-xl text-center">
                           <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Total Guru</div>
                           <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalGuru}</div>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800/50 p-3 rounded-xl text-center">
+                          <div className="text-xs font-bold text-slate-800 dark:text-slate-300">Hari Kerja</div>
+                          <div className="text-xl font-black text-slate-600 dark:text-slate-400">{totalHariKerjaBadge}</div>
                       </div>
                       <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/50 p-3 rounded-xl text-center">
                           <div className="text-xs font-bold text-green-800 dark:text-green-300">Total Hadir</div>
@@ -293,13 +331,14 @@ export default function AdminRekapView({ user }: { user: any }) {
                       <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
                   </div>
 
-                  {/* 10-Column Professional Recap Table */}
+                  {/* 11-Column Professional Recap Table */}
                   <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
                     <table className="w-full text-left text-xs border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
                       <thead>
                         <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Guru</th>
+                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">Wajib</th>
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">Hadir</th>
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">Dinas Luar</th>
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
@@ -319,6 +358,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                             <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
                               <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
                               <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
+                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
                               <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
                               <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
                               <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
@@ -332,7 +372,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                         })}
                         {filteredPresensi.length === 0 && (
                           <tr>
-                            <td colSpan={10} className="text-center py-8 text-gray-500 dark:text-gray-400 text-xs italic">
+                            <td colSpan={11} className="text-center py-8 text-gray-500 dark:text-gray-400 text-xs italic">
                               <div className="flex flex-col items-center justify-center gap-2">
                                 <i className="fa-solid fa-user-slash text-2xl text-gray-400 dark:text-gray-500"></i>
                                 <span>
@@ -365,13 +405,14 @@ export default function AdminRekapView({ user }: { user: any }) {
                   <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">
                       <button type="button" onClick={() => {
                         if (!rekapData || rekapData.presensi.length === 0) return;
-                        const headers = ['No', 'Nama Guru', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
+                        const headers = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
                         const csvRows = [headers.join(',')];
                         rekapData.presensi.forEach((r: any, i: number) => {
                           const telatStr = `"${Math.floor((r.telatDetik||0) / 3600)}j ${Math.floor(((r.telatDetik||0) % 3600) / 60)}m"`;
                           csvRows.push([
                             i + 1,
                             `"${r.nama}"`,
+                            r.totalWajib ?? 0,
                             r.hadir || 0,
                             r.dinasLuar || 0,
                             r.sakit || 0,
@@ -406,4 +447,3 @@ export default function AdminRekapView({ user }: { user: any }) {
     </section>
   );
 }
-
