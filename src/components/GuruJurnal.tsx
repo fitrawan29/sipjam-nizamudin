@@ -36,6 +36,13 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
   const [dateBlok, setDateBlok] = useState<any | null>(null);
 
+  // Guru Inval state
+  const [isInval, setIsInval] = useState(false);
+  const [guruDigantikan, setGuruDigantikan] = useState<{ id: string; nama: string } | null>(null);
+  const [allGuruList, setAllGuruList] = useState<any[]>([]);
+  const [myAssignments, setMyAssignments] = useState<any[]>([]); // store original assignments for reset
+
+
   const calculateKehadiranSummary = (abs: Record<string, string>, stList: any[]): string => {
     if (!stList || stList.length === 0) return 'Semua Hadir';
     const counts = { H: 0, S: 0, I: 0, A: 0 };
@@ -157,6 +164,7 @@ export default function GuruJurnal({ user }: { user: any }) {
             mapel_singkat: d.mapel_singkat
           }));
           setMapelList(assignedMapel);
+          setMyAssignments(assignedMapel); // ponytail: store for inval reset
 
           const assignedKelas = [...new Set(data.map(d => d.kelas).filter(Boolean))].sort();
           setKelasList(assignedKelas as string[]);
@@ -169,6 +177,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         } else {
           setAssignments([]);
           setMapelList([]);
+          setMyAssignments([]);
           setKelasList([]);
         }
       } catch (err) {
@@ -179,9 +188,22 @@ export default function GuruJurnal({ user }: { user: any }) {
     };
 
     fetchMasterData();
+
+    // Fetch all guru for Inval dropdown (fire-and-forget)
+    const fetchAllGuru = async () => {
+      if (!user?.sekolah_id) return;
+      const { data } = await supabase
+        .from('data_guru')
+        .select('id, nama_guru, user_id')
+        .eq('sekolah_id', user.sekolah_id)
+        .order('nama_guru', { ascending: true });
+      if (data) setAllGuruList(data.filter(g => g.nama_guru));
+    };
+    fetchAllGuru();
     
     // Set default date
     setTanggal(getWitaDateStr());
+
   }, [user?.username, user?.nama, user?.role]);
 
   useEffect(() => {
@@ -342,6 +364,11 @@ export default function GuruJurnal({ user }: { user: any }) {
       ? (kehadiranMurid || calculateKehadiranSummary(absensi, students))
       : 'Hadir';
 
+    // ponytail: prefix keterangan with INVAL marker — no schema change needed
+    const invalPrefix = isInval && guruDigantikan
+      ? `[INVAL - Menggantikan: ${guruDigantikan.nama}] `
+      : '';
+
     const newJurnal = {
       id: crypto.randomUUID(),
       timestamp: getWitaTimestamp(),
@@ -353,7 +380,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       materi: materi,
       kegiatan: kegiatan,
       absensi_siswa: JSON.stringify(absensi),
-      keterangan: tipeJurnal,
+      keterangan: `${invalPrefix}${tipeJurnal}`,
       refleksi: refleksi,
       detail_absen: '',
       link_bukti_foto: fileUrl,
@@ -456,6 +483,14 @@ export default function GuruJurnal({ user }: { user: any }) {
         setJamKe('');
         setTujuanPembelajaran('');
         setKehadiranMurid('');
+        // Reset inval mode
+        setIsInval(false);
+        setGuruDigantikan(null);
+        setMapelList(myAssignments);
+        setAssignments(myAssignments);
+        const origKelas = [...new Set(myAssignments.map(m => m.kelas).filter(Boolean))].sort() as string[];
+        setKelasList(origKelas);
+
         // Refresh state to update canPresensiPulang
         try {
           const updatedState = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
@@ -468,6 +503,54 @@ export default function GuruJurnal({ user }: { user: any }) {
     } catch (err: any) {
       setLoading(false);
       return showToast('Error', 'Gagal menyimpan jurnal: ' + (err as any).message, 'error');
+    }
+  };
+
+  // --- Guru Inval Handlers ---
+  const handleInvalToggle = (checked: boolean) => {
+    setIsInval(checked);
+    if (!checked) {
+      // Restore original teacher assignments
+      setGuruDigantikan(null);
+      setMapelList(myAssignments);
+      const origKelas = [...new Set(myAssignments.map(m => m.kelas).filter(Boolean))].sort() as string[];
+      setKelasList(origKelas);
+      setAssignments(myAssignments);
+      setMapel('');
+      setKelas('');
+    }
+  };
+
+  const handleGuruDigantikanChange = async (guruId: string) => {
+    const selected = allGuruList.find(g => g.id === guruId);
+    if (!selected) return;
+    setGuruDigantikan({ id: selected.id, nama: selected.nama_guru });
+    setMapel('');
+    setKelas('');
+
+    // Fetch jadwal of the selected guru
+    const { data } = await supabase
+      .from('guru_mapel')
+      .select('*')
+      .eq('guru_id', guruId)
+      .order('nama_mapel', { ascending: true });
+
+    if (data && data.length > 0) {
+      const mapels = data.map(d => ({
+        id: d.mapel_id || d.id,
+        nama_mata_pelajaran: d.nama_mapel,
+        nama_mapel: d.nama_mapel,
+        kelas: d.kelas,
+        mapel_singkat: d.mapel_singkat,
+      }));
+      setMapelList(mapels);
+      setAssignments(data);
+      const kelas = [...new Set(data.map(d => d.kelas).filter(Boolean))].sort() as string[];
+      setKelasList(kelas);
+    } else {
+      setMapelList([]);
+      setAssignments([]);
+      setKelasList([]);
     }
   };
 
@@ -568,6 +651,54 @@ export default function GuruJurnal({ user }: { user: any }) {
               </div>
             )}
             
+            {/* Guru Inval Toggle — opsional untuk Guru */}
+            {user?.role === 'Guru' && !dateBlok && (
+              <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3.5 mb-4">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isInval}
+                    onChange={e => handleInvalToggle(e.target.checked)}
+                    className="w-4 h-4 rounded accent-indigo-600"
+                  />
+                  <div>
+                    <span className="text-sm font-bold text-indigo-800 dark:text-indigo-200">
+                      <i className="fa-solid fa-person-chalkboard mr-1.5" />
+                      Saya sebagai Guru Inval
+                    </span>
+                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5">
+                      Aktifkan jika Anda menggantikan guru lain yang berhalangan hadir.
+                    </p>
+                  </div>
+                </label>
+
+                {isInval && (
+                  <div className="mt-3 fade-in">
+                    <label className="block text-[11px] font-bold text-indigo-900 dark:text-indigo-200 mb-1.5 ml-1">
+                      Guru yang Digantikan <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={guruDigantikan?.id ?? ''}
+                      onChange={e => handleGuruDigantikanChange(e.target.value)}
+                      className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                      required={isInval}
+                    >
+                      <option value="" disabled>Pilih guru yang digantikan...</option>
+                      {allGuruList.map(g => (
+                        <option key={g.id} value={g.id}>{g.nama_guru}</option>
+                      ))}
+                    </select>
+                    {guruDigantikan && (
+                      <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 ml-1">
+                        <i className="fa-solid fa-circle-check mr-1" />
+                        Mapel &amp; Kelas di bawah diisi berdasarkan jadwal {guruDigantikan.nama}.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <form onSubmit={handleJurnalSubmit} className={`space-y-4 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div>
                     <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Jenis Jurnal</label>
