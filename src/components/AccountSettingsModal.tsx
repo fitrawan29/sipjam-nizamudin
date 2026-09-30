@@ -288,13 +288,21 @@ export default function AccountSettingsModal({
               <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1">
                 Username (Login)
               </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
+              {user?.role === 'Admin' || user?.role === 'Superadmin' ? (
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed flex items-center gap-2">
+                  <i className="fa-solid fa-lock text-[10px]"></i>
+                  <span>{username}</span>
+                  <span className="ml-auto text-[10px] text-gray-400">(Hanya Admin yang bisa mengubah)</span>
+                </div>
+              )}
             </div>
           </div>
 

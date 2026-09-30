@@ -864,7 +864,6 @@ export default function AppScreen({
         </div>
       )}
 
-      {/* Account Settings Modal for Teachers and Staff (F14) */}
       <AccountSettingsModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
@@ -875,7 +874,9 @@ export default function AppScreen({
           } catch (e) {
             console.warn('Failed to update localStorage:', e);
           }
-          window.location.reload();
+          setCurrentUser(updatedUser);
+          if (onUserUpdate) onUserUpdate(updatedUser);
+          setIsAccountModalOpen(false);
         }}
       />
       <AIAssistant

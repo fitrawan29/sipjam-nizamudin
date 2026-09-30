@@ -216,7 +216,7 @@ export default function GuruPresensi({ user }: { user: any }) {
   // Determine if selfie camera is required
   // Required for:
   // 1. All Presensi Pulang
-  // 2. Presensi Datang (Sekolah & Dinas Luar)
+  // 2. Presensi Datang (Sekolah, Dinas Luar, Terlambat)
   // 3. Any Dinas Luar
   const isSelfieRequired = tipeAbsen === 'Pulang' || (tipeAbsen === 'Datang' && jenisPresensi !== 'Izin') || jenisPresensi === 'Dinas Luar';
 
@@ -319,7 +319,9 @@ export default function GuruPresensi({ user }: { user: any }) {
       showToast('Di Luar Jangkauan', `Jarak Anda ${jarakAktual} meter dari sekolah. Maksimal radius adalah ${gpsConfig.radius} meter. Presensi akan masuk antrean verifikasi Admin.`, 'warning');
     }
 
-    const statusVerif = jenisPresensi === 'Sekolah' && (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu';
+    const statusVerif = jenisPresensi === 'Terlambat'
+      ? 'Menunggu' // Izin Terlambat always requires admin verification
+      : (jenisPresensi === 'Sekolah' && (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu');
     const presensiId = crypto.randomUUID();
 
     // Non-blocking Asynchronous GAS Upload:
@@ -508,6 +510,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                               <>
                                 <option value="Sekolah">Hadir Sekolah</option>
                                 <option value="Dinas Luar">Dinas Luar</option>
+                                <option value="Terlambat">Izin Datang Terlambat</option>
                                 <option value="Izin">Izin / Sakit</option>
                               </>
                             )}

@@ -7,6 +7,7 @@ import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistem
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
+import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 
 export default function GuruJurnal({ user }: { user: any }) {
   const [tipeJurnal, setTipeJurnal] = useState('Jurnal KBM');
@@ -35,6 +36,8 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
   const [dateBlok, setDateBlok] = useState<any | null>(null);
+  // R4: GPS coords for journal photo watermark
+  const [jurnalCoords, setJurnalCoords] = useState<WatermarkCoordinates | null>(null);
 
   // Guru Inval state
   const [isInval, setIsInval] = useState(false);
@@ -205,6 +208,17 @@ export default function GuruJurnal({ user }: { user: any }) {
     setTanggal(getWitaDateStr());
 
   }, [user?.username, user?.nama, user?.role]);
+
+  // R4: Get GPS once on mount for journal photo watermark
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setJurnalCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    }
+  }, []);
 
   useEffect(() => {
     // Check Workflow State
@@ -956,6 +970,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                     <CameraSelfieCapture
                       key={`cam-jurnal-${tipeJurnal}`}
                       initialFacingMode="environment"
+                      initialCoordinates={jurnalCoords}
                       existingPhotoUrl={photoPreviewUrl}
                       onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
                         setFile(capturedFile);
