@@ -1,12 +1,14 @@
 # Progress Tracking — Orchestrator 6
 
-Last visited: 2026-10-01T11:10:10Z
+Last visited: 2026-10-01T11:20:10Z
 
 ## Iteration Status
-Current iteration: 1 / 32
+Current iteration: 2 / 32
 
-## Subagent Status (Heartbeat 2)
-- `df3e9b11-e52d-4117-89e7-38a57e6fe9b2` (Worker M1 - DB & Account Merge): Running (initializing and preparing files)
+## Subagent Status (Heartbeat 3)
+- `b49e31df-7923-4ccf-a6a7-3bcdbdcf3705` (Worker M2 - Avatar & Username): Running (implementing avatar reactivity & username guards)
+- `687285b7-36e5-4707-918b-8bd0b90f0936` (Worker M3 - Presensi "Izin Terlambat"): Running (type-checking compilation status)
+- `f4d62085-1872-4c17-bd1c-306aeffba5c1` (Worker M4 - Jurnal & School Setting): Running (updating review views with location badges)
 
 ## Checklist
 - [x] Initialized orchestrator briefing, plan, and progress files.
@@ -18,9 +20,9 @@ Current iteration: 1 / 32
 - [x] Phase 0: Merge Explorer reports into `PROJECT.md` Feature Inventory & Architecture.
 - [x] Phase 1: Milestone Decomposition and interface contracts.
 - [ ] Phase 2: Execution of Milestones (R1 - R6).
-  - [ ] M1: Database Foundation & Account Merge (Worker df3e9b11-e52d-4117-89e7-38a57e6fe9b2) [In-Progress]
-  - [ ] M2: Profile, Avatar Reactivity & Username Lock (R2 + R5) [Pending M1]
-  - [ ] M3: Presensi "Izin Terlambat" UI & Backend (R3) [Pending M1]
-  - [ ] M4: Jurnal Upload, GPS Geolocation & School Setting (R4 + R6) [Pending M1]
+  - [x] M1: Database Foundation & Account Merge (Worker df3e9b11-e52d-4117-89e7-38a57e6fe9b2) [DONE]
+  - [ ] M2: Profile, Avatar Reactivity & Username Lock (Worker b49e31df-7923-4ccf-a6a7-3bcdbdcf3705) [In-Progress]
+  - [ ] M3: Presensi "Izin Terlambat" UI & Backend (Worker 687285b7-36e5-4707-918b-8bd0b90f0936) [In-Progress]
+  - [ ] M4: Jurnal Upload, GPS Geolocation & School Setting (Worker f4d62085-1872-4c17-bd1c-306aeffba5c1) [In-Progress]
 - [ ] Phase 3: Comprehensive Test Suite, Type Check, and Build verification (M5).
 - [ ] Phase 4: Git Workflow (commit & push) and Victory Claim reporting to Sentinel.

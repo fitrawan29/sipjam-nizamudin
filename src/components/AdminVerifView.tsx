@@ -838,17 +838,33 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                       <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
                     )}
                     <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
-                    {item.link_bukti_foto && item.link_bukti_foto !== '-' && (
+                    {(item.link_bukti_foto || item.foto_kegiatan) && (item.link_bukti_foto !== '-' || item.foto_kegiatan !== '-') && (
                       <div className="mt-2 flex items-center gap-2">
                         <img 
-                          src={transformGoogleDriveUrl(item.link_bukti_foto)} 
+                          src={transformGoogleDriveUrl(item.link_bukti_foto || item.foto_kegiatan)} 
                           alt="Bukti Jurnal" 
                           className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
                           onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                         />
-                        <a href={item.link_bukti_foto} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                        <a href={item.link_bukti_foto || item.foto_kegiatan} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
                           <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
                         </a>
+                      </div>
+                    )}
+                    {(item.lokasi || (item.latitude && item.longitude) || item.waktu_upload) && (
+                      <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                        {(item.lokasi || (item.latitude && item.longitude)) && (
+                          <span className="flex items-center gap-1">
+                            <i className="fa-solid fa-location-dot text-red-500"></i>
+                            <span>{item.lokasi || `GPS: ${item.latitude?.toFixed(5)}, ${item.longitude?.toFixed(5)}`}</span>
+                          </span>
+                        )}
+                        {item.waktu_upload && (
+                          <span>
+                            {(item.lokasi || (item.latitude && item.longitude)) ? '• ' : ''}
+                            {item.waktu_upload}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>

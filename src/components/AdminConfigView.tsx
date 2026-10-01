@@ -7,7 +7,13 @@ import { showToast } from '@/lib/toast';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import AccountSettingsModal from './AccountSettingsModal';
 
-export default function AdminConfigView({ user }: { user: any }) {
+export default function AdminConfigView({
+  user,
+  onUserUpdated
+}: {
+  user: any;
+  onUserUpdated?: (updatedUser: any) => void;
+}) {
   const [config, setConfig] = useState({
     tahun_ajaran: '2024/2025',
     semester: 'Ganjil',
@@ -572,6 +578,7 @@ export default function AdminConfigView({ user }: { user: any }) {
           isOpen={accountModalOpen} 
           onClose={() => setAccountModalOpen(false)} 
           user={user} 
+          onUserUpdated={(updated) => onUserUpdated && onUserUpdated(updated)}
         />
     </section>
   );

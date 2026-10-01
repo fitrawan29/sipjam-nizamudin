@@ -111,6 +111,35 @@ export default function AccountSettingsModal({
     }
   };
 
+  const isAdmin =
+    user?.role === 'admin' ||
+    user?.role === 'Admin' ||
+    user?.role === 'superadmin' ||
+    user?.role === 'Superadmin' ||
+    (user?.role || '').toLowerCase() === 'admin';
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Format Salah', 'File yang diunggah harus berupa file gambar.', 'warning');
+      return;
+    }
+
+    if (file.size > 1024 * 1024) {
+      showToast('File Terlalu Besar', 'Maksimal ukuran foto adalah 1MB.', 'warning');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setSelectedAvatar(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,7 +148,7 @@ export default function AccountSettingsModal({
       return;
     }
 
-    if (!username.trim()) {
+    if (isAdmin && !username.trim()) {
       showToast('Validasi Gagal', 'Username tidak boleh kosong.', 'warning');
       return;
     }
@@ -159,7 +188,7 @@ export default function AccountSettingsModal({
       } = {
         p_user_id: user.id,
         p_avatar: selectedAvatar,
-        p_username: username.trim(),
+        p_username: isAdmin ? username.trim() : user.username,
         p_password: changePassword ? newPassword : null,
         p_nama: nama.trim() || user.nama
       };
@@ -181,8 +210,7 @@ export default function AccountSettingsModal({
         ...user,
         avatar: selectedAvatar,
         nama: nama.trim() || user.nama,
-        username: username.trim(),
-        
+        username: isAdmin ? username.trim() : user.username,
       };
 
       try {
@@ -233,14 +261,45 @@ export default function AccountSettingsModal({
 
         {/* Form Body */}
         <form onSubmit={handleSave} className="p-5 space-y-5 overflow-y-auto flex-1">
-          {/* Section 1: Avatar Picker (12 Stylish Default Avatars) */}
+          {/* Section 1: Avatar Picker (12 Stylish Default Avatars + Custom Upload) */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white mb-2 flex items-center justify-between">
-              <span>Pilih Avatar Profil (12 Karakter Keren)</span>
-              <span className="text-[11px] font-normal text-blue-600 dark:text-blue-400">
-                {AVATAR_LIST.find((a) => a.id === selectedAvatar)?.name || 'Default'}
-              </span>
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+                Pilih Avatar Profil (12 Karakter Keren)
+              </label>
+              <label className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/40 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 transition">
+                <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
+                <span>Unggah Foto</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Custom Avatar preview card if image data URL or URL */}
+            {selectedAvatar && (selectedAvatar.startsWith('data:image') || selectedAvatar.startsWith('http://') || selectedAvatar.startsWith('https://') || selectedAvatar.startsWith('/')) && (
+              <div className="mb-2.5 p-2 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-blue-500 shadow-sm shrink-0">
+                    <img src={selectedAvatar} alt="Avatar Kustom" className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1">
+                      <i className="fa-solid fa-check-circle text-blue-600 dark:text-blue-400 text-xs"></i> Foto Kustom Terpilih
+                    </span>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Foto profil kustom Anda siap disimpan.</p>
+                  </div>
+                </div>
+                <label className="cursor-pointer text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline px-2 py-1 rounded bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700">
+                  Ganti
+                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </div>
+            )}
+
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-xl">
               {AVATAR_LIST.map((item) => {
                 const isSelected = selectedAvatar === item.id;
@@ -288,7 +347,7 @@ export default function AccountSettingsModal({
               <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1">
                 Username (Login)
               </label>
-              {user?.role === 'Admin' || user?.role === 'Superadmin' ? (
+              {isAdmin ? (
                 <input
                   type="text"
                   value={username}
@@ -299,7 +358,7 @@ export default function AccountSettingsModal({
               ) : (
                 <div className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed flex items-center gap-2">
                   <i className="fa-solid fa-lock text-[10px]"></i>
-                  <span>{username}</span>
+                  <span>{user?.username || username}</span>
                   <span className="ml-auto text-[10px] text-gray-400">(Hanya Admin yang bisa mengubah)</span>
                 </div>
               )}

@@ -45,6 +45,16 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [allGuruList, setAllGuruList] = useState<any[]>([]);
   const [myAssignments, setMyAssignments] = useState<any[]>([]); // store original assignments for reset
 
+  // R4 & R6: School Mode & Gallery Upload GPS state
+  const [schoolModeJurnal, setSchoolModeJurnal] = useState<string>('camera_upload');
+  const [uploadMode, setUploadMode] = useState<'camera' | 'gallery'>('camera');
+  const [uploadLatitude, setUploadLatitude] = useState<number | null>(null);
+  const [uploadLongitude, setUploadLongitude] = useState<number | null>(null);
+  const [uploadLokasi, setUploadLokasi] = useState<string | null>(null);
+  const [uploadWaktu, setUploadWaktu] = useState<string | null>(null);
+
+  const isUploadAllowed = schoolModeJurnal !== 'camera_only';
+
 
   const calculateKehadiranSummary = (abs: Record<string, string>, stList: any[]): string => {
     if (!stList || stList.length === 0) return 'Semua Hadir';
@@ -219,6 +229,29 @@ export default function GuruJurnal({ user }: { user: any }) {
       );
     }
   }, []);
+
+  // R6: Fetch school configuration for mode_jurnal
+  useEffect(() => {
+    const fetchSchoolConfig = async () => {
+      if (!user?.sekolah_id) return;
+      try {
+        const { data, error } = await supabase
+          .from('sekolah')
+          .select('mode_jurnal')
+          .eq('id', user.sekolah_id)
+          .single();
+        if (data?.mode_jurnal) {
+          setSchoolModeJurnal(data.mode_jurnal);
+          if (data.mode_jurnal === 'camera_only') {
+            setUploadMode('camera');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch school mode_jurnal:', err);
+      }
+    };
+    fetchSchoolConfig();
+  }, [user?.sekolah_id]);
 
   useEffect(() => {
     // Check Workflow State
@@ -412,11 +445,41 @@ export default function GuruJurnal({ user }: { user: any }) {
     }
   };
 
+  // R4: Capture GPS Geolocation on gallery upload
+  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    const nowWita = getWitaTimestamp();
+    setUploadWaktu(nowWita);
+
+    // Capture GPS Geolocation via browser API
+    if (typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUploadLatitude(lat);
+          setUploadLongitude(lng);
+          setUploadLokasi(`GPS: ${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+        },
+        (err) => {
+          console.warn('Geolocation capture failed on gallery upload:', err);
+          setUploadLokasi('Lokasi tidak terdeteksi');
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    setFile(selectedFile);
+    setPhotoPreviewUrl(URL.createObjectURL(selectedFile));
+  };
+
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!file) {
-      return showToast('Foto Dokumentasi Wajib', 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera langsung perangkat.', 'warning');
+      return showToast('Foto Dokumentasi Wajib', 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera atau unggah dari galeri.', 'warning');
     }
 
     setLoading(true);
@@ -463,6 +526,10 @@ export default function GuruJurnal({ user }: { user: any }) {
       kehadiran_murid: computedKehadiran,
       catatan_refleksi: refleksi || '-',
       foto_kegiatan: fileUrl,
+      latitude: uploadLatitude ?? (jurnalCoords?.latitude || null),
+      longitude: uploadLongitude ?? (jurnalCoords?.longitude || null),
+      lokasi: uploadLokasi || (jurnalCoords ? `GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}` : '-'),
+      waktu_upload: uploadWaktu || getWitaTimestamp(),
       ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
     };
 
@@ -960,23 +1027,133 @@ export default function GuruJurnal({ user }: { user: any }) {
                     <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
-                        Foto Dokumentasi Pembelajaran <span className="text-red-500 dark:text-red-400">(Wajib Kamera Langsung)</span>
+                        Foto Dokumentasi Pembelajaran{' '}
+                        {isUploadAllowed ? (
+                          <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera / Upload Galeri)</span>
+                        ) : (
+                          <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Langsung)</span>
+                        )}
                       </span>
                       <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                        {file ? '✓ Foto Terpasang' : 'Kamera Aktif'}
+                        {file ? '✓ Foto Terpasang' : uploadMode === 'camera' || !isUploadAllowed ? 'Kamera Aktif' : 'Galeri Aktif'}
                       </span>
                     </label>
 
-                    <CameraSelfieCapture
-                      key={`cam-jurnal-${tipeJurnal}`}
-                      initialFacingMode="environment"
-                      initialCoordinates={jurnalCoords}
-                      existingPhotoUrl={photoPreviewUrl}
-                      onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
-                        setFile(capturedFile);
-                        setPhotoPreviewUrl(previewUrl);
-                      }}
-                    />
+                    {/* Mode selector if school allows upload */}
+                    {isUploadAllowed && (
+                      <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 gap-1 text-xs mb-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadMode('camera');
+                            setFile(null);
+                            setPhotoPreviewUrl(null);
+                            setUploadLokasi(null);
+                            setUploadWaktu(null);
+                          }}
+                          className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                            uploadMode === 'camera'
+                              ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                          }`}
+                        >
+                          <i className="fa-solid fa-camera"></i> Kamera Langsung
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadMode('gallery');
+                            setFile(null);
+                            setPhotoPreviewUrl(null);
+                            setUploadLokasi(null);
+                            setUploadWaktu(null);
+                          }}
+                          className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                            uploadMode === 'gallery'
+                              ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                          }`}
+                        >
+                          <i className="fa-solid fa-images"></i> Upload Galeri / File
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Camera view (if not allowed or camera mode selected) */}
+                    {(!isUploadAllowed || uploadMode === 'camera') && (
+                      <CameraSelfieCapture
+                        key={`cam-jurnal-${tipeJurnal}`}
+                        initialFacingMode="environment"
+                        initialCoordinates={jurnalCoords}
+                        existingPhotoUrl={photoPreviewUrl}
+                        onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                          setFile(capturedFile);
+                          setPhotoPreviewUrl(previewUrl);
+                          setUploadWaktu(getWitaTimestamp());
+                          if (jurnalCoords) {
+                            setUploadLatitude(jurnalCoords.latitude);
+                            setUploadLongitude(jurnalCoords.longitude);
+                            setUploadLokasi(`GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}`);
+                          }
+                        }}
+                      />
+                    )}
+
+                    {/* Gallery upload input - ONLY rendered if isUploadAllowed is true and uploadMode is gallery */}
+                    {isUploadAllowed && uploadMode === 'gallery' && (
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="jurnal-gallery-file-input"
+                          className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[140px]"
+                        >
+                          <input
+                            id="jurnal-gallery-file-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleGalleryUpload}
+                            className="hidden"
+                          />
+                          {photoPreviewUrl ? (
+                            <div className="space-y-2 w-full">
+                              <img
+                                src={photoPreviewUrl}
+                                alt="Preview Foto Galeri"
+                                className="w-full max-h-48 object-cover rounded-xl shadow-sm mx-auto"
+                              />
+                              <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                Klik untuk memilih foto lain dari perangkat
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5 py-3">
+                              <div className="w-10 h-10 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center text-lg">
+                                <i className="fa-solid fa-cloud-arrow-up"></i>
+                              </div>
+                              <div className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                Pilih Foto Dokumentasi dari Perangkat
+                              </div>
+                              <div className="text-[10px] text-gray-400">
+                                Format gambar JPG, PNG, atau JPEG (GPS otomatis direkam)
+                              </div>
+                            </div>
+                          )}
+                        </label>
+
+                        {uploadLokasi && (
+                          <div className="p-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 flex items-center justify-between text-[11px]">
+                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                              <i className="fa-solid fa-location-dot text-red-500"></i>
+                              <span>{uploadLokasi}</span>
+                            </span>
+                            {uploadWaktu && (
+                              <span className="text-gray-400 font-mono text-[10px]">
+                                {uploadWaktu}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {file && (
                       <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex items-center justify-between transition-all">
@@ -994,6 +1171,10 @@ export default function GuruJurnal({ user }: { user: any }) {
                           onClick={() => {
                             setFile(null);
                             setPhotoPreviewUrl(null);
+                            setUploadLatitude(null);
+                            setUploadLongitude(null);
+                            setUploadLokasi(null);
+                            setUploadWaktu(null);
                           }}
                           className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
                         >

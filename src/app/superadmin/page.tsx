@@ -36,7 +36,7 @@ export default function SuperadminPage() {
         // Validate session token with live database
         const { data: dbUser, error } = await supabase
           .from('users')
-          .select('id, username, nama, role, session_token')
+          .select('id, username, nama, role, session_token, avatar')
           .eq('id', parsed.id)
           .single();
 

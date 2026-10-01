@@ -299,6 +299,15 @@ export const AVATAR_LIST: AvatarItem[] = [
 ];
 
 export function renderUserAvatar(avatarId?: string | null, className: string = 'w-10 h-10'): React.ReactNode {
+  if (
+    avatarId &&
+    (avatarId.startsWith('data:image') ||
+      avatarId.startsWith('http://') ||
+      avatarId.startsWith('https://') ||
+      avatarId.startsWith('/'))
+  ) {
+    return <img src={avatarId} alt="Avatar" className={`${className} rounded-full object-cover`} />;
+  }
   const match = AVATAR_LIST.find((a) => a.id === avatarId) || AVATAR_LIST[0];
   return match.svg(className);
 }

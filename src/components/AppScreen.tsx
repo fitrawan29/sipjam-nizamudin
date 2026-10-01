@@ -22,6 +22,7 @@ import GradebookView from './GradebookView';
 import ChatView from './ChatView';
 import SistemBlokView from './SistemBlokView';
 import AccountSettingsModal from './AccountSettingsModal';
+import { renderUserAvatar } from '@/lib/avatars';
 import PushNotificationPrompt from './PushNotificationPrompt';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import AIAssistant from '@/components/AIAssistant';
@@ -88,7 +89,7 @@ export default function AppScreen({
           // Re-validate session token against database
           const { data: dbUser, error } = await supabase
             .from('users')
-            .select('id, username, nama, role, sekolah_id, session_token')
+            .select('id, username, nama, role, sekolah_id, session_token, avatar')
             .eq('id', user.id)
             .single();
 
@@ -543,10 +544,10 @@ export default function AppScreen({
             <button
               type="button"
               onClick={() => setIsAccountModalOpen(true)}
-              className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700"
+              className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden p-0.5"
               title="Pengaturan Akun & Profil"
             >
-              <i className="fa-solid fa-user-gear text-sm"></i>
+              {renderUserAvatar(currentUser?.avatar, 'w-7 h-7')}
             </button>
             <button type="button" onClick={toggleTheme} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-sm`}></i>
@@ -685,7 +686,20 @@ export default function AppScreen({
               {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
               {currentView === 'view-admin-data' && <AdminDataView user={user} />}
               {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
-              {currentView === 'view-admin-config' && <AdminConfigView user={user} />}
+              {currentView === 'view-admin-config' && (
+                <AdminConfigView
+                  user={user}
+                  onUserUpdated={(updatedUser: any) => {
+                    try {
+                      localStorage.setItem('sipjam_user', JSON.stringify(updatedUser));
+                    } catch (e) {
+                      console.warn('Failed to update localStorage:', e);
+                    }
+                    setCurrentUser(updatedUser);
+                    if (onUserUpdate) onUserUpdate(updatedUser);
+                  }}
+                />
+              )}
               {currentView === 'view-sistem-blok' && (
                 isAdmin || isSuperadmin ? (
                   <SistemBlokView user={user} />

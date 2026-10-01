@@ -57,7 +57,7 @@ function MainApp() {
     try {
       const { data: dbUser, error } = await supabase
         .from('users')
-        .select('id, username, nama, role, sekolah_id, session_token')
+        .select('id, username, nama, role, sekolah_id, session_token, avatar')
         .eq('id', storedUserObj.id)
         .single();
 
@@ -87,6 +87,7 @@ function MainApp() {
           prevUser.role !== dbUser.role ||
           prevUser.sekolah_id !== dbUser.sekolah_id ||
           prevUser.username !== dbUser.username ||
+          prevUser.avatar !== dbUser.avatar ||
           prevUser.session_token !== dbUser.session_token;
 
         if (isChanged) {

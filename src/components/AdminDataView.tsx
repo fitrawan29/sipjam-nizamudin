@@ -924,7 +924,7 @@ export default function AdminDataView({ user }: { user: any }) {
         html: `
           <div class="text-left space-y-2 text-xs">
             <div>
-              <label class="font-bold text-gray-700 block mb-1">NIP</label>
+              <label class="font-bold text-gray-700 block mb-1">NIP (Username Login)</label>
               <input id="swal-edit-nip" class="swal2-input !mt-0 !w-full text-xs" value="${item.nip || ''}" placeholder="Contoh: 198501012010011001">
             </div>
             <div>
@@ -988,10 +988,23 @@ export default function AdminDataView({ user }: { user: any }) {
         let q = supabase.from('data_guru').update(formValues).eq(pkField, pkVal);
         if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
         const { error } = await q;
-        setLoading(false);
         if (error) {
+          setLoading(false);
           showToast('Gagal Mengubah Data', error.message, 'error');
         } else {
+          // Sync users.username so teacher's login username is updated by the Admin
+          if (formValues.nip && formValues.nip !== '-') {
+            try {
+              if (item.user_id) {
+                await supabase.from('users').update({ username: formValues.nip }).eq('id', item.user_id);
+              } else if (item.nip && item.nip !== '-') {
+                await supabase.from('users').update({ username: formValues.nip }).eq('username', item.nip);
+              }
+            } catch (syncErr) {
+              console.warn('[AdminDataView] Failed to sync users.username:', syncErr);
+            }
+          }
+          setLoading(false);
           showToast('Berhasil', 'Data guru berhasil diperbarui!', 'success');
           loadData();
         }

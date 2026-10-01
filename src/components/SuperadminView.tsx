@@ -209,6 +209,13 @@ export default function SuperadminView({
               <option value="nonaktif">Nonaktif</option>
             </select>
           </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Mode Jurnal Pembelajaran</label>
+            <select id="swal-sch-mode-jurnal" class="swal2-select !mt-0 !w-full text-xs">
+              <option value="camera_upload" selected>Live Camera + Upload Foto</option>
+              <option value="camera_only">Live Camera Langsung</option>
+            </select>
+          </div>
         </div>
       `,
       focusConfirm: false,
@@ -226,6 +233,7 @@ export default function SuperadminView({
         const nip_kepala_sekolah = (document.getElementById('swal-sch-nip') as HTMLInputElement)?.value?.trim() || null;
         const logo_url = (document.getElementById('swal-sch-logo') as HTMLInputElement)?.value?.trim() || null;
         const status = (document.getElementById('swal-sch-status') as HTMLSelectElement)?.value || 'aktif';
+        const mode_jurnal = (document.getElementById('swal-sch-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
 
         if (!nama || !npsn || !kota_kabupaten) {
           Swal.showValidationMessage('Nama Sekolah, NPSN, dan Kota/Kabupaten wajib diisi!');
@@ -241,7 +249,8 @@ export default function SuperadminView({
           nama_kepala_sekolah,
           nip_kepala_sekolah,
           logo_url,
-          status
+          status,
+          mode_jurnal
         };
       }
     });
@@ -317,6 +326,13 @@ export default function SuperadminView({
               <option value="nonaktif" ${school.status === 'nonaktif' ? 'selected' : ''}>Nonaktif</option>
             </select>
           </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Mode Jurnal Pembelajaran</label>
+            <select id="swal-edit-mode-jurnal" class="swal2-select !mt-0 !w-full text-xs">
+              <option value="camera_only" ${(school as any).mode_jurnal === 'camera_only' ? 'selected' : ''}>Live Camera Langsung</option>
+              <option value="camera_upload" ${(school as any).mode_jurnal === 'camera_upload' || !(school as any).mode_jurnal ? 'selected' : ''}>Live Camera + Upload Foto</option>
+            </select>
+          </div>
         </div>
       `,
       focusConfirm: false,
@@ -334,6 +350,7 @@ export default function SuperadminView({
         const nip_kepala_sekolah = (document.getElementById('swal-edit-nip') as HTMLInputElement)?.value?.trim() || null;
         const logo_url = (document.getElementById('swal-edit-logo') as HTMLInputElement)?.value?.trim() || null;
         const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'aktif';
+        const mode_jurnal = (document.getElementById('swal-edit-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
 
         if (!nama || !npsn || !kota_kabupaten) {
           Swal.showValidationMessage('Nama Sekolah, NPSN, dan Kota/Kabupaten wajib diisi!');
@@ -350,6 +367,7 @@ export default function SuperadminView({
           nip_kepala_sekolah,
           logo_url,
           status,
+          mode_jurnal,
           updated_at: new Date().toISOString()
         };
       }
@@ -1053,8 +1071,16 @@ export default function SuperadminView({
                         <td className="p-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
                         <td className="p-3">
                           <div className="font-bold text-gray-900 dark:text-white">{s.nama}</div>
-                          <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
-                            NPSN: {s.npsn}
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono flex items-center gap-1.5 flex-wrap">
+                            <span>NPSN: {s.npsn}</span>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+                              (s as any).mode_jurnal === 'camera_only'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                            }`}>
+                              <i className={`fa-solid ${(s as any).mode_jurnal === 'camera_only' ? 'fa-camera' : 'fa-camera-rotate'} mr-1`}></i>
+                              {(s as any).mode_jurnal === 'camera_only' ? 'Kamera Langsung' : 'Kamera + Upload'}
+                            </span>
                           </div>
                           {s.alamat && (
                             <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-xs">

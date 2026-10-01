@@ -281,6 +281,7 @@ export default function GuruPresensi({ user }: { user: any }) {
     };
 
     let keterlambatanDetik = 0;
+    const isTerlambat = jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
 
     if (tipeAbsen === 'Datang') {
       const startVal = parseTime(jamPresensi.datangMulai);
@@ -290,11 +291,11 @@ export default function GuruPresensi({ user }: { user: any }) {
       if (currTimeVal < startVal) {
         return showToast('Belum Waktunya', `Presensi datang baru dibuka jam ${jamPresensi.datangMulai} WITA.`, 'warning');
       }
-      if (currTimeVal > akhirVal) {
+      if (currTimeVal > akhirVal && !isTerlambat) {
         return showToast('Ditutup', `Presensi datang sudah ditutup jam ${jamPresensi.datangAkhir} WITA. Silakan hubungi admin.`, 'error');
       }
 
-      if (currTimeVal > batasVal && jenisPresensi === 'Sekolah') {
+      if (currTimeVal > batasVal && (jenisPresensi === 'Sekolah' || isTerlambat)) {
         const currTotalSeconds = currH * 3600 + currM * 60 + currS;
         const batasTotalSeconds = batasVal * 60;
         keterlambatanDetik = Math.max(0, currTotalSeconds - batasTotalSeconds);
@@ -319,7 +320,7 @@ export default function GuruPresensi({ user }: { user: any }) {
       showToast('Di Luar Jangkauan', `Jarak Anda ${jarakAktual} meter dari sekolah. Maksimal radius adalah ${gpsConfig.radius} meter. Presensi akan masuk antrean verifikasi Admin.`, 'warning');
     }
 
-    const statusVerif = jenisPresensi === 'Terlambat'
+    const statusVerif = isTerlambat
       ? 'Menunggu' // Izin Terlambat always requires admin verification
       : (jenisPresensi === 'Sekolah' && (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu');
     const presensiId = crypto.randomUUID();
@@ -335,7 +336,7 @@ export default function GuruPresensi({ user }: { user: any }) {
       user_id: user.id,
       tipe_absen: tipeAbsen,
       jenis_presensi: jenisPresensi,
-      detail_izin: jenisPresensi === 'Izin' ? detailIzin : '',
+      detail_izin: jenisPresensi === 'Izin' ? detailIzin : (isTerlambat ? (keterangan || 'Izin Datang Terlambat') : ''),
       lokasi: lokasi,
       jarak: jarakAktual !== null ? `${jarakAktual} m` : 'Unknown',
       link_bukti: file ? 'pending:uploading' : '',
@@ -510,7 +511,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                               <>
                                 <option value="Sekolah">Hadir Sekolah</option>
                                 <option value="Dinas Luar">Dinas Luar</option>
-                                <option value="Terlambat">Izin Datang Terlambat</option>
+                                <option value="Izin Terlambat">Izin Terlambat</option>
                                 <option value="Izin">Izin / Sakit</option>
                               </>
                             )}
@@ -626,6 +627,22 @@ export default function GuruPresensi({ user }: { user: any }) {
                             </div>
                           )}
                       </div>
+                  </div>
+                )}
+
+                {(jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat') && tipeAbsen === 'Datang' && (
+                  <div id="row-keterangan-terlambat" className="fade-in space-y-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-4 rounded-2xl">
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white flex justify-between items-center">
+                      <span><i className="fa-solid fa-clock mr-1 text-amber-600 dark:text-amber-400"></i> Alasan Keterlambatan (Opsional)</span>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Menunggu Verifikasi Admin</span>
+                    </label>
+                    <textarea 
+                      value={keterangan}
+                      onChange={e => setKeterangan(e.target.value)}
+                      rows={2} 
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-nizamudin-green/20 outline-none transition resize-none placeholder-gray-400 dark:placeholder-gray-500" 
+                      placeholder="Tuliskan keterangan/alasan keterlambatan jika diperlukan..."
+                    ></textarea>
                   </div>
                 )}
 

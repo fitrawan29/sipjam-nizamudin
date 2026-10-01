@@ -608,6 +608,19 @@ export default function RekapJurnalView({
                                       >
                                         <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
                                       </a>
+                                      {(j.lokasi || (j.latitude && j.longitude)) && (
+                                        <div className="text-[8px] print:text-[6pt] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5 max-w-[100px] text-center leading-tight">
+                                          <i className="fa-solid fa-location-dot text-red-500 text-[8px]"></i>
+                                          <span className="truncate" title={j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}>
+                                            {j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {j.waktu_upload && (
+                                        <div className="text-[7px] text-gray-400 font-mono text-center">
+                                          {j.waktu_upload}
+                                        </div>
+                                      )}
                                     </div>
                                   ) : (
                                     <span className="text-gray-400 text-[10px] italic">-</span>
@@ -731,6 +744,19 @@ export default function RekapJurnalView({
                                       >
                                         <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
                                       </a>
+                                      {(j.lokasi || (j.latitude && j.longitude)) && (
+                                        <div className="text-[8px] print:text-[6pt] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5 max-w-[100px] text-center leading-tight">
+                                          <i className="fa-solid fa-location-dot text-red-500 text-[8px]"></i>
+                                          <span className="truncate" title={j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}>
+                                            {j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {j.waktu_upload && (
+                                        <div className="text-[7px] text-gray-400 font-mono text-center">
+                                          {j.waktu_upload}
+                                        </div>
+                                      )}
                                     </div>
                                   ) : (
                                     <span className="text-gray-400 text-[10px] italic">-</span>
