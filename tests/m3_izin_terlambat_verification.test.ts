@@ -83,7 +83,7 @@ async function runTests() {
     lokasi: 'GPS: -5.14767, 119.43273',
     jarak: '15 m',
     keterlambatan_detik: 1200,
-    sekolah_id: '9211c470-3882-4aa8-9f37-14ce21be4a86',
+    sekolah_id: 'a0000000-0000-0000-0000-000000000001',
   };
 
   const postReq = new NextRequest('http://localhost:3000/api/attendance', {
