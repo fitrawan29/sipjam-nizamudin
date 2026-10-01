@@ -190,7 +190,7 @@ export default function AccountSettingsModal({
       } = {
         p_user_id: user.id,
         p_avatar: selectedAvatar,
-        p_username: isAdmin ? username.trim() : user.username,
+        p_username: isAdmin ? username.trim() : (user.username || username || ''),
         p_password: changePassword ? newPassword : null,
         p_nama: nama.trim() || user.nama
       };
