@@ -44,18 +44,19 @@ Orchestrate SWE Light loop for Sipjam follow-up fixes (merge accounts script, la
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
 | implementer_1 | teamwork_preview_implementer | Whole task (R1, R2, R3) | completed | 6ae28178-14f3-4d4d-93a6-e86eb20f5e54 |
-| reviewer_1 | teamwork_preview_reviewer | Adversarial Review Round 1 | in-progress | f584b8ce-a5fa-4640-adfd-24d3dbc0c9c5 |
+| reviewer_1 | teamwork_preview_reviewer | Adversarial Review Round 1 | completed | f584b8ce-a5fa-4640-adfd-24d3dbc0c9c5 |
+| reviewer_2 | teamwork_preview_reviewer | Adversarial Review Round 2 | in-progress | 281ba5d1-03b5-4a68-b508-ae0029ce1709 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 2 / 16
-- Pending subagents: f584b8ce-a5fa-4640-adfd-24d3dbc0c9c5
+- Spawn count: 3 / 16
+- Pending subagents: 281ba5d1-03b5-4a68-b508-ae0029ce1709
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
 - Heartbeat cron: task-10
-- Safety timer: task-72 (reviewer_1)
+- Safety timer: task-120 (reviewer_2)
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_6\DISPATCH.md — Dispatch instructions

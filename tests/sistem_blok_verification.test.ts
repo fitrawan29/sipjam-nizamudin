@@ -27,11 +27,24 @@ async function runTests() {
   const { sanitizeDateStr, getBlokStatus, getBlokDurationDays } = await import('../src/components/SistemBlokView');
 
   const defaultSekolahId = 'a0000000-0000-0000-0000-000000000001';
+  let sessionToken = 'deb40d1b-ce7f-4424-9d58-b98d47d62edf';
+  try {
+    const { data: loginData } = await supabase.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: 'SipjamSuperAdmin2026!'
+    });
+    if (loginData && loginData[0]?.session_token) {
+      sessionToken = loginData[0].session_token;
+    }
+  } catch (err) {
+    console.warn('verify_login fallback in sistem_blok_verification:', err);
+  }
+
   setServerTenantContext({
     sekolahId: defaultSekolahId,
     role: 'Admin',
     userId: 'd23141e4-2116-4946-8094-895ef21a50e5',
-    sessionToken: 'deb40d1b-ce7f-4424-9d58-b98d47d62edf'
+    sessionToken
   });
 
   console.log('====================================================');
