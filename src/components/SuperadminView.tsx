@@ -1129,6 +1129,98 @@ export default function SuperadminView({
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
+                              onClick={() => {
+                                Swal.fire({
+                                  title: 'Tagihan / Invoice',
+                                  text: `Tindakan untuk ${s.nama}`,
+                                  icon: 'question',
+                                  showCancelButton: true,
+                                  showDenyButton: true,
+                                  confirmButtonText: '<i class="fa-brands fa-whatsapp"></i> Kirim WA',
+                                  denyButtonText: '<i class="fa-solid fa-file-pdf"></i> Cetak PDF',
+                                  cancelButtonText: 'Batal',
+                                  confirmButtonColor: '#25D366',
+                                  denyButtonColor: '#0B4619'
+                                }).then((result) => {
+                                  if (result.isConfirmed) {
+                                    const phone = prompt('Masukkan nomor WhatsApp (contoh: 62812...):', '628');
+                                    if (phone && phone.trim() !== '') {
+                                      const text = `Halo Admin ${s.nama},
+Kami mengingatkan bahwa tagihan tahunan sistem SIPJAM sebesar *Rp 3.000.000* sudah jatuh tempo. Mohon segera melakukan pembayaran agar akses sistem Anda tidak dibekukan.
+
+Terima kasih,
+Superadmin SIPJAM`;
+                                      window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                                    }
+                                  } else if (result.isDenied) {
+                                    // Generate simple PDF layout via window.print
+                                    const printWindow = window.open('', '_blank');
+                                    if (printWindow) {
+                                      printWindow.document.write(`
+                                        <html>
+                                          <head>
+                                            <title>Invoice - ${s.nama}</title>
+                                            <style>
+                                              body { font-family: sans-serif; padding: 40px; color: #333; }
+                                              .header { border-bottom: 2px solid #0B4619; padding-bottom: 20px; margin-bottom: 40px; }
+                                              .title { font-size: 24px; font-weight: bold; color: #0B4619; }
+                                              .details { margin-bottom: 40px; line-height: 1.6; }
+                                              .table { w-full border-collapse: collapse; width: 100%; margin-bottom: 40px; }
+                                              .table th, .table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                                              .table th { background: #f9fafb; }
+                                              .total { font-weight: bold; font-size: 18px; text-align: right; }
+                                              .footer { margin-top: 60px; font-size: 14px; text-align: center; color: #666; }
+                                            </style>
+                                          </head>
+                                          <body>
+                                            <div class="header">
+                                              <div class="title">INVOICE TAHUNAN SIPJAM</div>
+                                              <div>Sistem Informasi Presensi & Jurnal Multi-Sekolah</div>
+                                            </div>
+                                            <div class="details">
+                                              <strong>Kepada Yth:</strong><br/>
+                                              Kepala Sekolah / Admin<br/>
+                                              ${s.nama}<br/>
+                                              ${s.alamat || ''}<br/>
+                                              ${s.kota_kabupaten} - ${s.provinsi || ''}
+                                            </div>
+                                            <table class="table">
+                                              <thead>
+                                                <tr>
+                                                  <th>Deskripsi</th>
+                                                  <th>Periode</th>
+                                                  <th>Jumlah</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                <tr>
+                                                  <td>Biaya Maintenance & Server SIPJAM</td>
+                                                  <td>1 Tahun</td>
+                                                  <td>Rp 3.000.000</td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                            <div class="total">Total Tagihan: Rp 3.000.000</div>
+                                            <div class="footer">
+                                              Harap simpan halaman ini sebagai PDF (Cetak -> Simpan sebagai PDF) lalu kirim ke WhatsApp admin sekolah.<br/>
+                                              Dicetak pada: ${new Date().toLocaleDateString('id-ID')}
+                                            </div>
+                                            <script>window.print(); setTimeout(() => window.close(), 500);</script>
+                                          </body>
+                                        </html>
+                                      `);
+                                      printWindow.document.close();
+                                    }
+                                  }
+                                });
+                              }}
+                              className="btn-click w-7 h-7 rounded-lg bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800 text-green-700 dark:text-green-400 flex items-center justify-center"
+                              title="Tagihan / Invoice"
+                            >
+                              <i className="fa-solid fa-file-invoice-dollar text-xs"></i>
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleEditSchool(s)}
                               className="btn-click w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 flex items-center justify-center"
                               title="Edit Data Sekolah"

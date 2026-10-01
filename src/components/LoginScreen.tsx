@@ -22,6 +22,17 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
 
       if (rpcError) {
         console.error('[LoginScreen] RPC Error:', rpcError);
+        
+        if (rpcError.message && rpcError.message.includes('Sekolah nonaktif')) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Diblokir',
+            text: 'Akun sekolah Anda telah dinonaktifkan (kemungkinan karena keterlambatan administrasi). Silakan hubungi Superadmin.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+
         Swal.fire({
           icon: 'error',
           title: 'Koneksi Gagal',
