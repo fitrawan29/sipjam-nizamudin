@@ -380,10 +380,17 @@ export default function HomeView({
         const mapel = teacher.mata_pelajaran || '-';
 
         // 1. Target Classes & Jurnal KBM
-        const targetClasses = jadwalList.filter((j: any) => {
+        let targetClasses = jadwalList.filter((j: any) => {
           return isTeacherMatch(j.nama_guru, undefined, nama, nip);
         });
-
+        
+        // Dedup to find real target count
+        const uniqueTargetsMap = new Map();
+        targetClasses.forEach((j: any) => {
+          uniqueTargetsMap.set(`${j.kelas}_${j.mata_pelajaran}`, j);
+        });
+        targetClasses = Array.from(uniqueTargetsMap.values());
+        
         const targetCount = targetClasses.length;
         const isExemptNonTeaching = !isBlokToday && teacher.wajib_hadir_hanya_mengajar && targetCount === 0;
 
@@ -622,24 +629,53 @@ export default function HomeView({
   // Admin KPI metrics
   const adminKPIs = useMemo(() => {
     const totalGuru = matrixList.length;
-    const sudahDatang = matrixList.filter(r => r.presensiDatang.status !== 'Belum Datang').length;
-    const jurnalLengkap = matrixList.filter(r => r.pengisianJurnal.color === 'green' || r.pengisianJurnal.status === 'Bebas KBM').length;
+    
+    // Wajib Datang = Yang tidak Libur dan tidak Bebas Hadir
+    const wajibDatang = matrixList.filter(r => r.presensiDatang.status !== 'Libur' && r.presensiDatang.status !== 'Bebas Hadir').length;
+    const sudahDatang = matrixList.filter(r => r.presensiDatang.status !== 'Libur' && r.presensiDatang.status !== 'Bebas Hadir' && r.presensiDatang.status !== 'Belum Datang' && r.presensiDatang.status !== 'Ditolak').length;
+    
+    // Wajib Jurnal = Yang tidak Bebas KBM
+    const wajibJurnal = matrixList.filter(r => r.pengisianJurnal.status !== 'Bebas KBM' && r.pengisianJurnal.status !== 'Libur').length;
+    const jurnalLengkap = matrixList.filter(r => r.pengisianJurnal.color === 'green').length;
+    
     const totalPiket = matrixList.filter(r => r.laporanPiket.isPiket).length;
     const piketSelesai = matrixList.filter(r => r.laporanPiket.isPiket && r.laporanPiket.status === 'Sudah Lapor').length;
+    
+    const wajibPulang = wajibDatang;
     const sudahPulang = matrixList.filter(r => r.presensiPulang.status.startsWith('Pulang')).length;
 
-    return { totalGuru, sudahDatang, jurnalLengkap, totalPiket, piketSelesai, sudahPulang };
+    return { totalGuru, wajibDatang, sudahDatang, wajibJurnal, jurnalLengkap, totalPiket, piketSelesai, wajibPulang, sudahPulang };
   }, [matrixList]);
 
   // Dynamic Target Journal Ratio Calculation (Teacher)
   const journalRatioData = useMemo(() => {
-    if (!dailyState || !dailyState.jadwalKBM) {
+    if (!dailyState) {
       return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };
     }
-    const totalTarget = dailyState.jadwalKBM.length;
-    const filledCount = dailyState.jadwalKBM.filter(jk => 
-      dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk))
-    ).length;
+    
+    // Jika sistem blok atau dinas luar, target cukup 1 jurnal kegiatan
+    if (dailyState.isBlok || dailyState.isDinasLuar) {
+      const isDone = !!dailyState.jurnalKegiatan;
+      return { 
+        totalTarget: 1, 
+        filledCount: isDone ? 1 : 0, 
+        percentage: isDone ? 100 : 0, 
+        statusBadge: isDone ? 'Selesai' : 'Belum Lengkap' 
+      };
+    }
+    
+    if (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0) {
+      return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };
+    }
+    
+    const uniqueTargets = new Set(dailyState.jadwalKBM.map((j: any) => `${j.kelas}_${j.mata_pelajaran}`));
+    const totalTarget = uniqueTargets.size;
+    
+    const filledCount = Array.from(uniqueTargets).filter(target => {
+       const [kelas, mapel] = target.split('_');
+       return dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel }));
+    }).length;
+    
     const percentage = totalTarget > 0 ? Math.round((filledCount / totalTarget) * 100) : 100;
     
     let statusBadge = 'Bebas Mengajar Hari Ini';
@@ -1440,7 +1476,7 @@ export default function HomeView({
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Presensi Datang</p>
                 <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {adminKPIs.sudahDatang} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.totalGuru}</span>
+                  {adminKPIs.sudahDatang} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.wajibDatang}</span>
                 </p>
                 <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Hadir / Izin / TL</p>
               </div>
@@ -1454,9 +1490,9 @@ export default function HomeView({
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Jurnal Lengkap</p>
                 <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {adminKPIs.jurnalLengkap} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.totalGuru}</span>
+                  {adminKPIs.jurnalLengkap} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.wajibJurnal}</span>
                 </p>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Selesai / Bebas KBM</p>
+                <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Selesai / Mengisi Penuh</p>
               </div>
             </div>
 
@@ -1482,7 +1518,7 @@ export default function HomeView({
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Presensi Pulang</p>
                 <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {adminKPIs.sudahPulang} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.totalGuru}</span>
+                  {adminKPIs.sudahPulang} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.wajibPulang}</span>
                 </p>
                 <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Sudah checkout</p>
               </div>
