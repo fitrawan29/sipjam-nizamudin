@@ -139,26 +139,52 @@ export function drawWatermarkedCanvas(
     height = videoElement.naturalHeight || videoElement.height || 480;
   }
 
+  // Calculate 16:9 crop dimensions (landscape)
+  const targetRatio = 16 / 9;
+  const srcRatio = width / height;
+
+  let drawWidth = width;
+  let drawHeight = height;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (srcRatio > targetRatio) {
+    // Source is wider than 16:9 (e.g., 21:9)
+    drawWidth = height * targetRatio;
+    drawHeight = height;
+    offsetX = (width - drawWidth) / 2;
+  } else if (srcRatio < targetRatio) {
+    // Source is taller than 16:9 (e.g., Portrait 9:16 or 4:3)
+    drawWidth = width;
+    drawHeight = width / targetRatio;
+    offsetY = (height - drawHeight) / 2;
+  }
+
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  // Canvas dimensions are always landscape 16:9
+  canvas.width = drawWidth;
+  canvas.height = drawHeight;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     throw new Error('Canvas 2D context is not available');
   }
 
-  // Draw media frame
+  // Draw media frame with crop (simulating CSS object-cover)
   if (mirror) {
     // Mirror horizontally for front-facing selfie camera
     ctx.save();
-    ctx.translate(width, 0);
+    ctx.translate(drawWidth, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(videoElement, 0, 0, width, height);
+    ctx.drawImage(videoElement, offsetX, offsetY, drawWidth, drawHeight, 0, 0, drawWidth, drawHeight);
     ctx.restore();
   } else {
-    ctx.drawImage(videoElement, 0, 0, width, height);
+    ctx.drawImage(videoElement, offsetX, offsetY, drawWidth, drawHeight, 0, 0, drawWidth, drawHeight);
   }
+
+  // Re-assign width and height to cropped dimensions for watermark positioning
+  width = drawWidth;
+  height = drawHeight;
 
   // Calculate proportional scaling
   const scale = Math.max(0.65, Math.min(width / 720, 2.0));

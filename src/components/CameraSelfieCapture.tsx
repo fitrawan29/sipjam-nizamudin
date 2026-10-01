@@ -281,7 +281,7 @@ export default function CameraSelfieCapture({
       </div>
 
       {/* Main View Area */}
-      <div className="relative w-full aspect-[4/3] sm:aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700">
+      <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700">
         {/* Captured Image Preview */}
         {capturedImage ? (
           <div className="relative w-full h-full">

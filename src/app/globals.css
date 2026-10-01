@@ -309,7 +309,8 @@ body.fade-out {
   }
 
   /* Hide non-printable elements */
-  header, nav, aside, .swal2-container, .no-print { display: none !important; }
+  header, nav, aside, .swal2-container, .no-print,
+  #gemini-chat, #antigravity, #sidecar, [class*="ai-"], [id*="ai-"], [id*="gemini-"] { display: none !important; }
   header, nav, aside, .swal2-container, .no-print,
   .app-header, .page-transition > .no-print {
     display: none !important;
