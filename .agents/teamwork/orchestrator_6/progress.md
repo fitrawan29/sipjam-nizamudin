@@ -1,14 +1,9 @@
 # Progress Tracking — Orchestrator 6
 
-Last visited: 2026-10-01T11:20:10Z
+Last visited: 2026-10-01T11:30:30Z
 
 ## Iteration Status
-Current iteration: 2 / 32
-
-## Subagent Status (Heartbeat 3)
-- `b49e31df-7923-4ccf-a6a7-3bcdbdcf3705` (Worker M2 - Avatar & Username): Running (implementing avatar reactivity & username guards)
-- `687285b7-36e5-4707-918b-8bd0b90f0936` (Worker M3 - Presensi "Izin Terlambat"): Running (type-checking compilation status)
-- `f4d62085-1872-4c17-bd1c-306aeffba5c1` (Worker M4 - Jurnal & School Setting): Running (updating review views with location badges)
+Current iteration: 3 / 32
 
 ## Checklist
 - [x] Initialized orchestrator briefing, plan, and progress files.
@@ -19,10 +14,15 @@ Current iteration: 2 / 32
   - Survey 3 (2bf3f930-fd5f-4a9d-a38f-0d75b58bc3b8): GuruPresensi (R3), GuruJurnal GPS (R4), School Settings (R6) [Completed]
 - [x] Phase 0: Merge Explorer reports into `PROJECT.md` Feature Inventory & Architecture.
 - [x] Phase 1: Milestone Decomposition and interface contracts.
-- [ ] Phase 2: Execution of Milestones (R1 - R6).
+- [x] Phase 2: Execution of Milestones (R1 - R6).
   - [x] M1: Database Foundation & Account Merge (Worker df3e9b11-e52d-4117-89e7-38a57e6fe9b2) [DONE]
-  - [ ] M2: Profile, Avatar Reactivity & Username Lock (Worker b49e31df-7923-4ccf-a6a7-3bcdbdcf3705) [In-Progress]
-  - [ ] M3: Presensi "Izin Terlambat" UI & Backend (Worker 687285b7-36e5-4707-918b-8bd0b90f0936) [In-Progress]
-  - [ ] M4: Jurnal Upload, GPS Geolocation & School Setting (Worker f4d62085-1872-4c17-bd1c-306aeffba5c1) [In-Progress]
+  - [x] M2: Profile, Avatar Reactivity & Username Lock (Worker b49e31df-7923-4ccf-a6a7-3bcdbdcf3705) [DONE]
+  - [x] M3: Presensi "Izin Terlambat" UI & Backend (Worker 687285b7-36e5-4707-918b-8bd0b90f0936) [DONE]
+  - [x] M4: Jurnal Upload, GPS Geolocation & School Setting (Worker f4d62085-1872-4c17-bd1c-306aeffba5c1) [DONE]
 - [ ] Phase 3: Comprehensive Test Suite, Type Check, and Build verification (M5).
+  - [ ] Test Writer (ed7bd25c-eb0f-4c0d-9dc7-dfc521da8394) [In-Progress]
+  - [ ] Reviewers (2) [Pending]
+  - [ ] Challengers (2) [Pending]
+  - [ ] Forensic Auditor [Pending]
+  - [ ] Gate Verification [Pending]
 - [ ] Phase 4: Git Workflow (commit & push) and Victory Claim reporting to Sentinel.
