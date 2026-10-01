@@ -507,14 +507,14 @@ export default function RekapJurnalView({
                       <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
                         <thead>
                           <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Guru</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Tanggal & Waktu</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Mapel</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Jam KBM</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Materi</th>
-                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Foto</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterangan kehadiran guru</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[5%]">No</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold print:w-[15%]">Nama Guru</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[15%]">Tanggal & Waktu</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Mapel</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Jam KBM</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold print:w-[15%]">Materi</th>
+                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[20%]">Foto</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Keterangan kehadiran guru</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -590,7 +590,7 @@ export default function RekapJurnalView({
                                         alt="Foto Kegiatan"
                                         loading="eager"
                                         referrerPolicy="no-referrer"
-                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[70px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[120px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
@@ -651,14 +651,14 @@ export default function RekapJurnalView({
                       <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
                         <thead>
                           <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Hari, tanggal bulan tahun</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kelas, pertemuan dan jam ke-</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Tujuan pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Materi pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kegiatan pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Kehadiran murid</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Catatan refleksi</th>
-                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Foto kegiatan</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[15%]">Hari, tanggal bulan tahun</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[15%]">Kelas, pertemuan dan jam ke-</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Tujuan pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Materi pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Kegiatan pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Kehadiran murid</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Catatan refleksi</th>
+                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[20%]">Foto kegiatan</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -726,7 +726,7 @@ export default function RekapJurnalView({
                                         alt="Foto Kegiatan"
                                         loading="eager"
                                         referrerPolicy="no-referrer"
-                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[70px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[120px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
