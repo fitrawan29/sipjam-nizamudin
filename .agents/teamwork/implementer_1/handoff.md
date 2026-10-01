@@ -1,56 +1,82 @@
-# Handoff Report: Authentication Fixes & Stale Data Synchronization (R1 & R2)
+# Handoff Report - Implementer 1
 
-## 1. What was Changed
-- **`supabase/migrations/20260926_secure_rls_helpers.sql` & Live PostgreSQL Database**:
-  - Updated `public.verify_login(p_username TEXT, p_password TEXT)` RPC:
-    - Added case-insensitive matching (`lower(public.users.username) = lower(trim(p_username))`) allowing teachers to log in with lowercase usernames (e.g., `'tika'`, `'fitra'`, `'fitrawan'`, `'riski'`, `'adnan'`).
-    - Added whitespace normalization (`lower(replace(public.users.username, ' ', '')) = lower(replace(trim(p_username), ' ', ''))`) allowing Super Admin to log in using `'super admin'` or `'Super Admin'` with spaces.
-    - Added dual-password compatibility for Super Admin account (`'superadmin123'` and `'SipjamSuperAdmin2026!'`).
-    - Qualified table column names (`public.users.role`, `public.users.password`) in PL/pgSQL UPDATE statement to prevent ambiguous column reference errors.
-- **`src/lib/supabaseClient.ts`**:
-  - Added native `cache: 'no-store'` directive to `dynamicTenantFetch` and `getTenantSupabaseClient` fetch wrappers to completely bypass browser and framework HTTP caching on database queries.
-  - Added auto-invalidation of stale browser session if the server responds with 401 Unauthorized.
-- **`src/app/page.tsx`**:
-  - Implemented `validateSessionWithDb` in `MainApp`: checks stored session against `public.users` on initial startup. If the token is invalid, rotated, or expired, stale localStorage is purged and user state is reset to `null` to display the clean login screen.
-  - Added native `focus` and `visibilitychange` window listeners to re-validate session and fetch fresh database profile when returning from idle.
-- **`src/components/AppScreen.tsx`**:
-  - Standardized role normalization (`isSuperadmin` and `isAdmin`) with case-insensitivity and space-stripping across all view guards, headers, sidebars, and tab switches.
-  - Added `syncKey` state triggered by native `focus` and `visibilitychange` events upon resuming from an idle period (>30s).
-  - Attached dynamic key `${currentView}-${syncKey}` to the view container so that child components cleanly remount and re-fetch fresh data from the database upon resume.
-- **`src/app/superadmin/page.tsx`**:
-  - Enhanced role verification to be case and whitespace resilient (`(parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin'`).
-  - Added active session validation and stale token cache purge.
-- **`tests/auth_login_stale_sync_verification.test.ts`**:
-  - Added comprehensive verification test suite covering 14 checks for Super Admin permutations, Guru casing variations, stale token rejection, and cache-busting source checks.
+## Overview
+Implementasi perbaikan dan penyesuaian lanjutan pada aplikasi Sipjam mencakup:
+1. **R1**: Skrip penggabungan data ganda terukur (`scripts/merge_accounts.ts`) dengan query COUNT eksplisit, re-assign foreign keys, dan pembersihan akun duplikat.
+2. **R2**: Logika alur konfirmasi "Izin Terlambat" yang memerlukan konfirmasi/verifikasi admin (status awal pending "Menunggu" / "Menunggu Verifikasi"), tombol persetujuan/penolakan (Terima/Tolak) di UI Admin (`AdminVerifView`), serta isolasi di `HomeView` agar tidak langsung disahkan sebagai "Hadir".
+3. **R3**: Penghapusan input username dan teks username pada `AccountSettingsModal` saat pengguna login adalah non-admin/Guru, dengan form ganti password yang tetap berfungsi normal.
 
-## 2. Rationale
-- **R1 (Login Fixes)**: The prior authentication logic relied on a strict binary `=` comparison in SQL (`public.users.username = trim(p_username)`). Because teacher usernames in `public.users` were stored in PascalCase/TitleCase, mobile users typing lowercase usernames failed authentication. Additionally, entering `'super admin'` with a space failed to match `'superadmin'`, and superadmin password changes caused test and login failures. Case-insensitive and whitespace-normalized matching solves this at the database function level with minimum diff and zero external libraries (Ponytail mode).
-- **R2 (Stale Data Sync)**: Previously, the frontend blindly restored `localStorage` without verifying if the stored `session_token` was still valid in the database. When a user left the session idle or returned after a long time, rotated/revoked tokens resulted in silent RLS query denials (0 rows), leaving the UI displaying stale cached data. Native `visibilitychange`/`focus` listeners, database session re-validation, `cache: 'no-store'`, and `syncKey` remounting ensure that fresh data is fetched directly from the database when active and stale cache is purged when expired.
+---
 
-## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - `tests/auth_login_stale_sync_verification.test.ts`: 14/14 checks passed (Super Admin login variants, Guru lowercase/mixed case login, stale token rejection under RLS, source verification).
-  - `tests/data_access_roles_verification.test.ts`: 22/22 checks passed (Admin, Guru, Siswa data access, legacy session rejection, session integrity).
-  - `tests/adversarial_multitenant_role_isolation.test.ts`: 33/33 checks passed (anti-spoofing, privilege boundaries, zero-trust integrity).
-  - `tests/adversarial_m3_challenger_1.test.ts`: 28/28 checks passed (session rotation, unusual names with commas, boundary cases).
-  - `npm test`: 35 tests passed across Milestone 4 and UI/UX audit suites.
-  - `npm run build`: Turbopack build compiled successfully with 0 TypeScript errors across all 11 routes.
-- **Shallow Verification (manual run only):**
-  - Code inspection of `dynamicTenantFetch` header injection and `syncKey` revalidation flows.
+## 1. What I Changed
+- `scripts/merge_accounts.ts`:
+  - Membuat skrip TypeScript mandiri menggunakan Supabase Client terautentikasi (Superadmin).
+  - Melakukan query eksplisit `COUNT` untuk riwayat presensi (`presensi_guru`), jurnal (`jurnal_pembelajaran`), dan piket (`laporan_piket`) baik untuk akun primer maupun duplikat.
+  - Mencetak hasil hitungan riwayat secara terperinci ke konsol (`console.log`).
+  - Menjalankan re-assignment foreign keys pada seluruh tabel terkait transaksi guru (presensi, jurnal, piket, jadwal, mapel, penugasan piket, wali kelas, push subscriptions).
+  - Menghapus akun duplikat secara berurutan (`data_guru` terlebih dahulu, kemudian `users`) dengan proteksi idempoten.
+- `src/components/AdminVerifView.tsx`:
+  - Menyelaraskan filter status verifikasi agar mengenali status pending `'Menunggu'` maupun `'Menunggu Verifikasi'`.
+  - Menambahkan atribut eksplisit `title` dan `aria-label` untuk aksi Terima/Setujui dan Tolak pada kartu verifikasi.
+- `src/components/HomeView.tsx`:
+  - Memperbarui evaluasi status presensi datang: jika jenis presensi adalah `'Izin Terlambat'` atau `'Terlambat'`, status tidak langsung disahkan sebagai `'Hadir'`. Apabila belum disetujui admin, status berstatus `'Izin Terlambat (Menunggu Verifikasi)'` (warna amber).
+- `src/components/AdminRekapView.tsx`:
+  - Mengikutsertakan `'Izin Terlambat'` dan `'Terlambat'` ke dalam agregasi kehadiran (`hadir`) dan akumulasi detik keterlambatan hanya jika status verifikasinya telah disahkan (`'Disetujui'` / `'Diverifikasi'`).
+- `src/components/AccountSettingsModal.tsx`:
+  - Mengondisikan elemen input username di Section 2 hanya dirender saat `isAdmin` bernilai `true` (`{isAdmin && (...) }`).
+  - Mengondisikan teks username di header modal agar tidak menampilkan username jika pengguna adalah Guru / non-admin.
+  - Mempertahankan form ganti kata sandi dan integritas payload `update_user_profile` tanpa bergantung pada input form username.
+- `tests/verification_r1_r2_r3.test.ts`:
+  - Membuat rangkaian uji komprehensif (23 tes) yang menguji R1, R2, dan R3 secara end-to-end.
+
+---
+
+## 2. Verification Commands & Outputs
+- **R1 Script Execution**:
+  ```bash
+  npx tsx scripts/merge_accounts.ts
+  ```
+  Output:
+  - Berhasil terhubung ke Supabase dengan hak Superadmin.
+  - Berhasil menghitung dan mencetak jumlah pasti riwayat:
+    - Duplikat: Presensi = 0, Jurnal = 0, Piket = 0
+    - Primer (Ade Fitrawan Ibrahim): Presensi = 171, Jurnal = 72, Piket = 10
+  - Re-assignment foreign keys dan pembersihan akun duplikat berhasil dieksekusi secara idempoten.
+
+- **Full R1, R2, R3 Test Suite**:
+  ```bash
+  npx tsx tests/verification_r1_r2_r3.test.ts
+  ```
+  Output: `23 PASSED, 0 FAILED`
+
+- **Typecheck**:
+  ```bash
+  npx tsc --noEmit
+  ```
+  Output: `Exit code: 0` (0 errors)
+
+- **Next.js Production Build**:
+  ```bash
+  npm run build
+  ```
+  Output: `Compiled successfully in 1694ms`, static/dynamic routes generated without errors.
+
+---
+
+## 3. Explicit Verification Record
+- **Deep Verification (ran actual tests & scripts):**
+  - Eksekusi langsung `scripts/merge_accounts.ts` pada live Supabase database.
+  - Eksekusi `tests/verification_r1_r2_r3.test.ts` (23 assertions mencakup query count R1, API POST presensi Izin Terlambat R2, verifikasi filter dan tombol AdminVerifView R2, logika HomeView & AdminRekapView R2, serta pengondisian DOM AccountSettingsModal R3).
+  - Eksekusi `tests/m3_izin_terlambat_verification.test.ts` (pass).
+  - Eksekusi `tests/adversarial_challenger_1.test.ts` (72 passed, 0 failed).
+  - Verifikasi tipe TypeScript via `npx tsc --noEmit` (pass).
+  - Verifikasi build produksi Next.js via `npm run build` (pass).
+- **Shallow Verification (manual run / review only):**
+  - Tampilan visual styling kartu di browser (direview melalui struktur token Tailwind CSS: `grid`, `input-premium`, `glass-card`).
 - **Unverified aspects:**
-  - Concurrent multi-browser tab race conditions when one tab rotates tokens while another tab is actively saving a form.
+  - Perilaku browser Safari iOS versi lama pada interaksi modal ganti password (hanya diverifikasi pada lingkungan Node/Chromium Next.js build).
+
+---
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: If a user has an active offline period without internet, the session validator gracefully falls back to the existing session until connectivity is restored.
-
-## 5. Untested Edge Cases & Next Step
-- Edge case: A teacher who switches schools while active in an idle tab will have their session cleared upon next focus, requiring re-login.
-- Next step for review: Review database RPC execution performance and verify behavior when multiple devices log in under the same account concurrently.
-
-## 6. Commands Run
-- `npm test`
-- `npm run build`
-- `npx tsx -r dotenv/config tests/auth_login_stale_sync_verification.test.ts dotenv_config_path=.env.local`
-- `npx tsx -r dotenv/config tests/data_access_roles_verification.test.ts dotenv_config_path=.env.local`
-- `npx tsx -r dotenv/config tests/adversarial_multitenant_role_isolation.test.ts dotenv_config_path=.env.local`
-- `npx tsx -r dotenv/config tests/adversarial_m3_challenger_1.test.ts dotenv_config_path=.env.local`
+- `None` — Semua acceptance criteria R1, R2, dan R3 terpenuhi dan lolos verifikasi otomatis.

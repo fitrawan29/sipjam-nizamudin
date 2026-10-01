@@ -411,6 +411,26 @@ export default function HomeView({
           } else if (jp === 'Dinas Luar') {
             presensiDatangStatus = 'Dinas Luar';
             presensiDatangColor = 'blue';
+          } else if (jp === 'Izin Terlambat' || jp === 'Terlambat') {
+            const stVerif = pDatang.status_verifikasi;
+            if (stVerif === 'Disetujui' || stVerif === 'Diverifikasi') {
+              const telatDetik = pDatang.keterlambatan_detik || 0;
+              if (telatDetik > 0) {
+                const menit = Math.ceil(telatDetik / 60);
+                presensiDatangStatus = `Terlambat ${menit}m (${datangTime})`;
+                presensiDatangColor = 'amber';
+              } else {
+                presensiDatangStatus = `Hadir [${datangTime}]`;
+                presensiDatangColor = 'green';
+              }
+            } else if (stVerif === 'Ditolak') {
+              presensiDatangStatus = 'Ditolak';
+              presensiDatangColor = 'rose';
+            } else {
+              // Izin Terlambat belum diverifikasi: tidak langsung disahkan sebagai Hadir
+              presensiDatangStatus = 'Izin Terlambat (Menunggu Verifikasi)';
+              presensiDatangColor = 'amber';
+            }
           } else {
             const telatDetik = pDatang.keterlambatan_detik || 0;
             if (telatDetik > 0) {

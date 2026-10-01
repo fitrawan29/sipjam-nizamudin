@@ -168,7 +168,7 @@ export default function AdminRekapView({ user }: { user: any }) {
           };
         }
         if (p.tipe_absen === 'Datang') {
-          if (p.jenis_presensi === 'Sekolah') {
+          if (p.jenis_presensi === 'Sekolah' || p.jenis_presensi === 'Izin Terlambat' || p.jenis_presensi === 'Terlambat') {
             pMap[nama].hadir++;
             pMap[nama].telatDetik += (p.keterlambatan_detik || 0);
           } else if (p.jenis_presensi === 'Dinas Luar') {

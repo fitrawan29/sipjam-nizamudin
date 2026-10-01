@@ -570,5 +570,40 @@ Tambahkan opsi (checkbox/dropdown) langsung di halaman "Edit Sekolah" yang sudah
 - [ ] UI form Edit Sekolah memiliki input untuk mode Jurnal (Live Camera / Camera + Upload).
 - [ ] Halaman Jurnal membaca konfigurasi sekolah pengguna yang sedang login dan merender input file upload HANYA JIKA konfigurasinya mengizinkan.
 
+## 2026-10-01T18:10:59Z
+
+This is a single self-contained set of fixes; keep it small and focused.
+Penyesuaian lanjutan pada aplikasi Sipjam: perhitungan dan penggabungan presisi untuk data ganda, pengubahan alur izin terlambat agar memerlukan konfirmasi admin, dan penghapusan kolom username pada profil guru.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+Verification Resources: Agent-as-judge (Gunakan Acceptance Criteria di bawah sebagai rubrik objektif)
+
+## Requirements
+
+### R1. Penggabungan Data Ganda Terukur
+Buatkan skrip TypeScript/Node.js (misal `scripts/merge_accounts.ts`) yang menggunakan Supabase Client untuk mengambil, menghitung, dan mencetak jumlah pasti riwayat (presensi, jurnal, piket) dari akun "Ade Fitrawan Ibrahim, M.Pd., Gr." di terminal. Setelah dihitung, skrip harus mengeksekusi perpindahan data ke akun "Ade Fitrawan Ibrahim" dan menghapus akun duplikat.
+
+### R2. Alur Konfirmasi Izin Terlambat
+Ubah logika presensi "Izin Terlambat". Saat guru memilih status ini, data tidak boleh langsung disahkan sebagai "Hadir". Data harus masuk ke halaman verifikasi Admin (`AdminVerifView` atau setara) dengan status awal "Menunggu Verifikasi" (sama seperti proses pengajuan Sakit/Izin), sehingga Admin dapat mengonfirmasi atau menolaknya.
+
+### R3. Penghapusan Input Username Guru
+Pada antarmuka pengaturan akun (`AccountSettingsModal`), hilangkan sepenuhnya elemen form input *username* jika pengguna yang login adalah *Guru*. Pastikan form untuk mengubah *password* tetap dipertahankan dan berfungsi normal tanpa *username*.
+
+## Acceptance Criteria
+
+### Verifikasi R1 (Merge Data Script)
+- [ ] Terdapat file skrip `scripts/merge_accounts.ts` yang dapat dieksekusi.
+- [ ] Skrip memiliki kode yang secara eksplisit melakukan query `COUNT` atau mengambil jumlah data dari tabel presensi, jurnal, dan piket, lalu mencetaknya ke konsol (`console.log`).
+- [ ] Skrip memiliki logika perpindahan *foreign keys* dan penghapusan *user/data_guru* lama di Supabase.
+
+### Verifikasi R2 (Izin Terlambat Verifikasi)
+- [ ] Pengiriman presensi "Izin Terlambat" menghasilkan status database yang dikenali oleh UI Admin sebagai *pending* (misal: "Menunggu" atau masuk ke *tab* Verifikasi).
+- [ ] Terdapat tombol persetujuan/penolakan (Terima/Tolak) untuk status "Izin Terlambat" di antarmuka verifikasi Admin.
+
+### Verifikasi R3 (Hapus Input Username)
+- [ ] Tidak ada elemen `<input>` atau teks untuk *username* yang dirender (atau dirender secara kasat mata) saat *state* `user.role` bernilai non-admin/Guru.
+- [ ] Elemen form ganti *password* (input kata sandi lama & baru) tetap bisa diakses dan tidak mengalami *error* validasi meskipun input *username* dihilangkan.
+
 
 

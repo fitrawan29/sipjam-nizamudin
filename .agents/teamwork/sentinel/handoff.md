@@ -1,26 +1,40 @@
-# Sentinel Handoff — Dispatch of orchestrator_6
+# Sentinel Handoff — Project Completion (Requirements R1 - R6)
 
-## Observation
-- Permintaan baru diterima pada `2026-10-01T10:56:44Z` untuk implementasi 6 kebutuhan (R1: Duplicate Account Merge, R2: Avatar Live Update, R3: Izin Terlambat, R4: Journal Photo Upload + GPS, R5: Username Edit Admin Restriction, R6: Per-School Journal Mode Setting).
-- Permintaan mencakup multi-komponen (database SQL, frontend UI reactive state, attendance backend/frontend, GPS geolocation API, role authorization checks, multi-tenant per-school settings).
+## 1. Observation
+- Permintaan pengguna diterima pada `2026-10-01T10:56:44Z` untuk menyelesaikan 6 kebutuhan:
+  - R1: Script SQL merge data akun duplikat "Ade Fitrawan Ibrahim" vs "Ade Fitrawan Ibrahim, M.Pd., Gr".
+  - R2: Perbaikan avatar kustom / data URL dan reaktivitas pembaruan profil instan di UI tanpa reload.
+  - R3: Opsi status absensi "Izin Terlambat" di UI guru dan backend endpoint presensi.
+  - R4: Upload foto Jurnal Pembelajaran dengan penangkapan koordinat GPS device via `navigator.geolocation`.
+  - R5: Pembatasan perubahan username milik guru (hanya admin yang dapat mengedit).
+  - R6: Pengaturan mode Jurnal per sekolah oleh Superadmin dan penegakan kondisional di UI jurnal guru.
+- Orkestrator (`orchestrator_6`) memimpin tim (Surveyors, Implementers M1-M4, Test Writer M5, Reviewer Gen2, Challenger Gen2, Forensic Auditor Gen2).
+- Orkestrator mengajukan klaim kemenangan.
+- Sentinel men-spawn `victory_auditor_7` secara independen untuk melakukan audit blocking 3 fase.
+- `victory_auditor_7` menerbitkan vonis: **`VICTORY CONFIRMED`**.
 
-## Logic Chain
-- Routing Decision: Karena permintaan terdiri dari 6 kebutuhan terpisah di lintas domain dan komponen sistem, ini tidak memenuhi kriteria SWE Light (satu perubahan terisolasi). Oleh karena itu diarahkan ke jalur **General** menggunakan `teamwork_preview_orchestrator` (`orchestrator_6`).
-- Pre-flight audit tidak disyaratkan untuk jalur General.
-- `ORIGINAL_REQUEST.md` diperbarui dengan permintaan baru verbatim.
-- File instruksi dispatch dibuat di `.agents/teamwork/orchestrator_6/DISPATCH.md`.
-- `orchestrator_6` di-spawn dengan conversation ID `99cc2021-9546-433d-8867-c45dc0860a07`.
-- Crons monitoring diaktifkan: Cron 1 (progress reporting, `task-40`, */8) dan Cron 2 (liveness check, `task-42`, */10).
+## 2. Logic Chain
+- Routing: Jalur General Path (`teamwork_preview_orchestrator`) dipilih karena pekerjaan mencakup 6 fitur lintas sistem (DB, auth, profil, presensi, jurnal, geolokasi, multi-tenant per-school).
+- Eksekusi: Dibagi ke dalam Milestone M1 (DB & SQL Merge), M2 (Avatar & Username Lock), M3 (Presensi Izin Terlambat), M4 (Jurnal GPS & School Mode), dan M5 (Automated Test Suite & Build).
+- Verifikasi Gerbang: Reviewer, Challenger, dan Forensic Auditor memberikan status lulus tanpa facade/mocking.
+- Audit Pasca-Kemenangan: `victory_auditor_7` memverifikasi commit history, keaslian kode sumber, eksekusi tes mandiri (143/143 passing, tsc bersih, build berhasil), dan remote git push.
+- Pembersihan: Semua cron monitoring dibatalkan (`task-40`, `task-42`) dan seluruh subagent diterminasi (`kill_all`) sesuai prosedur wajib Sentinel.
 
-## Caveats
-- Orkestrator harus memastikan skrip SQL R1 menangani foreign key constraint dengan urutan yang tepat dan mempertahankan data akun dengan riwayat terbanyak.
-- Izin GPS browser memerlukan handling graceful jika user menolak akses lokasi.
-- Aturan git workflow di GEMINI.md wajib dijalankan setelah verifikasi selesai.
+## 3. Caveats
+- Script SQL `merge_accounts.sql` dirancang aman dan idempoten; saat ini database live telah memegang akun utama dengan 197 transaksi utuh.
+- Penangkapan GPS pada upload foto jurnal memerlukan izin akses lokasi dari browser pengguna. Jika ditolak, sistem telah menyediakan fallback aman `'Lokasi tidak terdeteksi'` tanpa menyebabkan crash.
+- Mode jurnal `camera_only` secara ketat tidak merender elemen input file di DOM guru, menjaga kepatuhan kebijakan sekolah.
 
-## Conclusion
-- `orchestrator_6` telah aktif berjalan di latar belakang.
-- Sentinel memantau progres dan siap menerima klaim kemenangan untuk dilanjutkan ke Victory Auditor independen.
+## 4. Conclusion
+- Seluruh 6 Acceptance Criteria tuntas 100%.
+- Proyek telah di-commit dan di-push ke branch `origin/main` sesuai ketentuan `GEMINI.md`.
+- Status akhir: **SELESAI (VICTORY CONFIRMED)**.
 
-## Verification Method
-- Sentinel memantau `progress.md` dari `orchestrator_6` dan berkala melaporkan ke pemanggil/user.
-- Saat klaim kemenangan diterima, Sentinel akan men-spawn `teamwork_preview_victory_auditor` untuk audit blocking sebelum melaporkan penyelesaian.
+## 5. Verification Method
+- Independent Post-Victory Audit oleh `victory_auditor_7` (Conversation ID: `6ea507cb-89c7-47f5-a1d6-a67deb8af043`).
+- Hasil audit:
+  - `npx tsx tests/all_requirements_r1_r6_verification.test.ts`: 71 passed, 0 failed.
+  - `npx tsx tests/adversarial_challenger_1.test.ts`: 72 passed, 0 failed.
+  - `npx tsc --noEmit`: 0 errors.
+  - `npm run build`: Exit code 0 (12 static/dynamic routes compiled).
+  - Git status: Clean, up-to-date with `origin/main`.

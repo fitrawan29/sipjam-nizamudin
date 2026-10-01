@@ -9,32 +9,32 @@
   - School-scoped multitenancy: users belong to a `sekolah_id`.
 
 ## Feature Inventory
-| # | Feature | Description | Milestone | Source |
-|---|---------|-------------|-----------|--------|
-| 1 | R1: Merge Account SQL Script | Safe, idempotent SQL script (`merge_accounts.sql`) merging "Ade Fitrawan Ibrahim" accounts, re-assigning foreign keys before deletion, preserving 197 transaction records | M1 | Survey 1 |
-| 2 | R1: Database Schema Migrations | Add columns `latitude, longitude, lokasi, waktu_upload` to `jurnal_pembelajaran`, `mode_jurnal` to `sekolah`, update `verify_login` and `update_user_profile` RPCs | M1 | Survey 1 & 3 |
-| 3 | R2: Avatar Image/File Upload & SVG Catalog | Support image data URLs in `renderUserAvatar` (`src/lib/avatars.tsx`) and add file upload input in `AccountSettingsModal.tsx` | M2 | Survey 2 |
-| 4 | R2: Immediate Reactive Avatar UI | Update React state immediately upon upload success without reload; render avatar in `HomeView.tsx` banner and `AppScreen.tsx` top navbar | M2 | Survey 2 |
-| 5 | R2: Session Query Avatar Inclusion | Include `avatar` in `verify_login` RPC and session validation queries (`src/app/page.tsx`, `src/components/AppScreen.tsx`, etc.) | M2 | Survey 2 |
-| 6 | R5: Username Locking UI | Lock username field in `AccountSettingsModal.tsx` for teachers, only editable when `role === 'admin'` or `'Admin'` or `'superadmin'` | M2 | Survey 2 |
-| 7 | R5: Backend Username Edit Guard | Guard `update_user_profile` RPC so non-admin teachers cannot alter their username; sync teacher username when Admin edits teacher in `AdminDataView.tsx` | M2 | Survey 2 |
-| 8 | R3: Presensi Dropdown "Izin Terlambat" | Update select option in `GuruPresensi.tsx` to `<option value="Izin Terlambat">Izin Terlambat</option>` and adjust late calculation & verification status | M3 | Survey 1 & 3 |
-| 9 | R3: Presensi Backend Route Handler | Create `src/app/api/attendance/route.ts` to receive and store "Izin Terlambat" attendance records in `presensi_guru` | M3 | Survey 1 & 3 |
-| 10 | R6: Superadmin Edit Sekolah Journal Mode | Add input in `SuperadminView.tsx` for Journal Mode (`camera_only` vs `camera_upload`) and persist to `sekolah.mode_jurnal` | M4 | Survey 3 |
-| 11 | R6: Guru Jurnal Conditional Upload Rendering | `GuruJurnal.tsx` fetches school `mode_jurnal` and renders gallery file upload input ONLY IF configuration allows it (`mode_jurnal !== 'camera_only'`) | M4 | Survey 3 |
-| 12 | R4: Guru Jurnal Photo Upload & GPS Geolocation | In `GuruJurnal.tsx`, capture GPS via `navigator.geolocation.getCurrentPosition` upon gallery upload, sending `latitude, longitude, lokasi, waktu_upload` | M4 | Survey 3 |
-| 13 | R4: Jurnal Review Location Display | In `AdminVerifView.tsx` and `RekapJurnalView.tsx`, display GPS location badge and upload timestamp for uploaded photos | M4 | Survey 3 |
-| 14 | E2E & Unit Test Suite | Comprehensive automated tests verifying R1 through R6 acceptance criteria | M5 | Dispatch |
-| 15 | Build & Git Delivery | Type check (`npx tsc --noEmit`), build (`npm run build`), stage, commit, and push (`origin main`) | M5 | Dispatch & GEMINI.md |
+| # | Feature | Description | Milestone | Source | Status |
+|---|---------|-------------|-----------|--------|--------|
+| 1 | R1: Merge Account SQL Script | Safe, idempotent SQL script (`merge_accounts.sql`) merging "Ade Fitrawan Ibrahim" accounts, re-assigning foreign keys before deletion, preserving 197 transaction records | M1 | Survey 1 | DONE |
+| 2 | R1: Database Schema Migrations | Add columns `latitude, longitude, lokasi, waktu_upload` to `jurnal_pembelajaran`, `mode_jurnal` to `sekolah`, update `verify_login` and `update_user_profile` RPCs | M1 | Survey 1 & 3 | DONE |
+| 3 | R2: Avatar Image/File Upload & SVG Catalog | Support image data URLs in `renderUserAvatar` (`src/lib/avatars.tsx`) and add file upload input in `AccountSettingsModal.tsx` | M2 | Survey 2 | DONE |
+| 4 | R2: Immediate Reactive Avatar UI | Update React state immediately upon upload success without reload; render avatar in `HomeView.tsx` banner and `AppScreen.tsx` top navbar | M2 | Survey 2 | DONE |
+| 5 | R2: Session Query Avatar Inclusion | Include `avatar` in `verify_login` RPC and session validation queries (`src/app/page.tsx`, `src/components/AppScreen.tsx`, etc.) | M2 | Survey 2 | DONE |
+| 6 | R5: Username Locking UI | Lock username field in `AccountSettingsModal.tsx` for teachers, only editable when `role === 'admin'` or `'Admin'` or `'superadmin'` | M2 | Survey 2 | DONE |
+| 7 | R5: Backend Username Edit Guard | Guard `update_user_profile` RPC so non-admin teachers cannot alter their username; sync teacher username when Admin edits teacher in `AdminDataView.tsx` | M2 | Survey 2 | DONE |
+| 8 | R3: Presensi Dropdown "Izin Terlambat" | Update select option in `GuruPresensi.tsx` to `<option value="Izin Terlambat">Izin Terlambat</option>` and adjust late calculation & verification status | M3 | Survey 1 & 3 | DONE |
+| 9 | R3: Presensi Backend Route Handler | Create `src/app/api/attendance/route.ts` to receive and store "Izin Terlambat" attendance records in `presensi_guru` | M3 | Survey 1 & 3 | DONE |
+| 10 | R6: Superadmin Edit Sekolah Journal Mode | Add input in `SuperadminView.tsx` for Journal Mode (`camera_only` vs `camera_upload`) and persist to `sekolah.mode_jurnal` | M4 | Survey 3 | DONE |
+| 11 | R6: Guru Jurnal Conditional Upload Rendering | `GuruJurnal.tsx` fetches school `mode_jurnal` and renders gallery file upload input ONLY IF configuration allows it (`mode_jurnal !== 'camera_only'`) | M4 | Survey 3 | DONE |
+| 12 | R4: Guru Jurnal Photo Upload & GPS Geolocation | In `GuruJurnal.tsx`, capture GPS via `navigator.geolocation.getCurrentPosition` upon gallery upload, sending `latitude, longitude, lokasi, waktu_upload` | M4 | Survey 3 | DONE |
+| 13 | R4: Jurnal Review Location Display | In `AdminVerifView.tsx` and `RekapJurnalView.tsx`, display GPS location badge and upload timestamp for uploaded photos | M4 | Survey 3 | DONE |
+| 14 | E2E & Unit Test Suite | Comprehensive automated tests verifying R1 through R6 acceptance criteria | M5 | Dispatch | DONE |
+| 15 | Build & Git Delivery | Type check (`npx tsc --noEmit`), build (`npm run build`), stage, commit, and push (`origin main`) | M5 | Dispatch & GEMINI.md | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Database Foundation & Account Merge (R1 + Migrations) | `merge_accounts.sql` script, schema additions (`jurnal_pembelajaran`, `sekolah`, RPCs) | none | PLANNED |
-| M2 | Profile, Avatar Reactivity & Username Lock (R2 + R5) | `renderUserAvatar`, `AccountSettingsModal.tsx`, `HomeView.tsx`, `AppScreen.tsx`, session queries | M1 | PLANNED |
-| M3 | Presensi "Izin Terlambat" UI & Backend (R3) | `GuruPresensi.tsx` option and state, `src/app/api/attendance/route.ts` | M1 | PLANNED |
-| M4 | Jurnal Upload, GPS Geolocation & School Setting (R4 + R6) | `SuperadminView.tsx`, `GuruJurnal.tsx`, `AdminVerifView.tsx`, `RekapJurnalView.tsx` | M1 | PLANNED |
-| M5 | Comprehensive Testing, Build & Git Delivery | Automated test suite, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | PLANNED |
+| M1 | Database Foundation & Account Merge (R1 + Migrations) | `merge_accounts.sql` script, schema additions (`jurnal_pembelajaran`, `sekolah`, RPCs) | none | DONE |
+| M2 | Profile, Avatar Reactivity & Username Lock (R2 + R5) | `renderUserAvatar`, `AccountSettingsModal.tsx`, `HomeView.tsx`, `AppScreen.tsx`, session queries | M1 | DONE |
+| M3 | Presensi "Izin Terlambat" UI & Backend (R3) | `GuruPresensi.tsx` option and state, `src/app/api/attendance/route.ts` | M1 | DONE |
+| M4 | Jurnal Upload, GPS Geolocation & School Setting (R4 + R6) | `SuperadminView.tsx`, `GuruJurnal.tsx`, `AdminVerifView.tsx`, `RekapJurnalView.tsx` | M1 | DONE |
+| M5 | Comprehensive Testing, Build & Git Delivery | Automated test suite, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | DONE |
 
 ## Interface Contracts
 

@@ -503,8 +503,13 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
       // Verification status filter
       if (verifFilter !== 'Semua') {
-        const status = item.status_verifikasi || 'Menunggu';
-        if (status !== verifFilter) return false;
+        const rawStatus = item.status_verifikasi || 'Menunggu';
+        const isPending = rawStatus === 'Menunggu' || rawStatus === 'Menunggu Verifikasi';
+        if (verifFilter === 'Menunggu') {
+          if (!isPending) return false;
+        } else if (rawStatus !== verifFilter) {
+          return false;
+        }
       }
 
       // Search filter
@@ -906,6 +911,8 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                     <button 
                       disabled={processingId === item.id || item.status_verifikasi === 'Disetujui'}
                       onClick={() => verifyItem(item.id, 'Disetujui')} 
+                      title="Terima / Setujui Pengajuan"
+                      aria-label="Terima / Setujui"
                       className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
                         item.status_verifikasi === 'Disetujui'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
@@ -922,6 +929,8 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                   <button 
                     disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
                     onClick={() => verifyItem(item.id, 'Ditolak')} 
+                    title="Tolak Pengajuan"
+                    aria-label="Tolak"
                     className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
                       item.status_verifikasi === 'Ditolak'
                         ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 cursor-default opacity-80'
