@@ -555,7 +555,7 @@ export default function HomeView({
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
-        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? hasJurnalKegiatan : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || filledCount >= targetCount));
+        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? hasJurnalKegiatan : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 ? hasJurnalKegiatan : filledCount >= targetCount));
 
         const isTugasLengkap = isLiburOrExempt
           ? true

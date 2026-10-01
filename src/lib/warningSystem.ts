@@ -220,7 +220,17 @@ export function evaluateTeacherWarningsSync(
 
   for (const { dateStr, dayName } of evaluationDates) {
     const scheduledOnDay = teacherJadwal.filter(j => j.hari === dayName);
-    if (scheduledOnDay.length === 0) continue;
+    const isPiketDay = isTeacherPiketOnDay(dayName);
+
+    if (aturanKehadiran === 'Hari_Mengajar_Saja' || isExemptNonTeaching) {
+      if (scheduledOnDay.length === 0 && !isPiketDay) {
+        continue;
+      }
+    }
+
+    const uniqueTargets = new Set(scheduledOnDay.map(j => `${j.kelas}_${j.mata_pelajaran}`));
+    const targetCount = uniqueTargets.size;
+    const requiredJournals = targetCount > 0 ? targetCount : 1;
 
     const dayJournals = jurnalRecords.filter(
       j => j.tanggal === dateStr && j.status_verifikasi !== 'Ditolak'
@@ -230,14 +240,27 @@ export function evaluateTeacherWarningsSync(
       j => j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (!j.kelas || j.kelas === '-')
     );
 
-    const isMissingJournal = hasJurnalKegiatan ? false : dayJournals.length < scheduledOnDay.length;
-    if (hasJurnalKegiatan) {
-      monthlyStats.jurnal.required += 1;
-      monthlyStats.jurnal.filled += 1;
+    let filledCount = 0;
+    if (targetCount === 0) {
+      if (hasJurnalKegiatan) filledCount = 1;
     } else {
-      monthlyStats.jurnal.required += scheduledOnDay.length;
-      monthlyStats.jurnal.filled += Math.min(dayJournals.length, scheduledOnDay.length);
+      if (hasJurnalKegiatan) {
+        filledCount = requiredJournals;
+      } else {
+        const uniqueFilled = new Set();
+        dayJournals.forEach(j => {
+          if (j.kelas && j.mapel && j.kelas !== '-') {
+            uniqueFilled.add(`${j.kelas}_${j.mapel}`);
+          }
+        });
+        filledCount = Math.min(uniqueFilled.size, requiredJournals);
+      }
     }
+
+    const isMissingJournal = filledCount < requiredJournals;
+    
+    monthlyStats.jurnal.required += requiredJournals;
+    monthlyStats.jurnal.filled += filledCount;
     jurnalOperationalDays.push({ dateStr, isViolation: isMissingJournal });
   }
 
