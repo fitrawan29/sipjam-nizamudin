@@ -545,7 +545,7 @@ export default function HomeView({
         // 6. Aggregate: Tugas Lengkap?
         const isIzinSakit = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit';
         const isLiburOrExempt = isSchoolDayOff || isExemptNonTeaching;
-        const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang');
+        const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
         const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? hasJurnalKegiatan : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || filledCount >= targetCount));

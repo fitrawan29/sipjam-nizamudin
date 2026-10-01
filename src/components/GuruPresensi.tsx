@@ -347,11 +347,44 @@ export default function GuruPresensi({ user }: { user: any }) {
       newPresensi.sekolah_id = user.sekolah_id;
     }
 
-    const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
+    let insertSuccess = false;
+    let insertErrorMsg = '';
 
-    if (error) {
+    try {
+      const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
+      if (!error) {
+        insertSuccess = true;
+      } else {
+        insertErrorMsg = error.message;
+      }
+    } catch (netErr: any) {
+      insertErrorMsg = netErr.message || 'Koneksi jaringan terputus';
+    }
+
+    // Fallback: If client direct insert fails (e.g. temporary network drop or client RLS issue), try server route
+    if (!insertSuccess) {
+      try {
+        const fallbackRes = await fetch('/api/attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newPresensi)
+        });
+        if (fallbackRes.ok) {
+          const resData = await fallbackRes.json();
+          if (resData.success) {
+            insertSuccess = true;
+          } else {
+            insertErrorMsg = resData.message || insertErrorMsg;
+          }
+        }
+      } catch (fallbackErr: any) {
+        insertErrorMsg = fallbackErr.message || insertErrorMsg;
+      }
+    }
+
+    if (!insertSuccess) {
       setLoading(false);
-      return showToast('Error', 'Gagal menyimpan data presensi: ' + error.message, 'error');
+      return showToast('Error', 'Gagal menyimpan data presensi. Periksa koneksi internet Anda: ' + insertErrorMsg, 'error');
     }
 
     // If this was a re-submission after rejection, delete the old rejected record

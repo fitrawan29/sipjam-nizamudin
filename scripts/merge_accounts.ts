@@ -111,7 +111,7 @@ export async function mergeAccounts(): Promise<MergeResult> {
   const { data: duplicateUsers } = await supabase
     .from('users')
     .select('*')
-    .or(`nama.ilike.Ade Fitrawan Ibrahim%M.Pd%,username.ilike.%M.Pd%`)
+    .or(`nama.eq."${DUPLICATE_NAME}",nama.ilike.Ade Fitrawan Ibrahim%M.Pd%,username.eq."${DUPLICATE_NAME}",username.ilike.%M.Pd%`)
     .neq('id', primaryUserId)
     .limit(1);
 
@@ -123,7 +123,7 @@ export async function mergeAccounts(): Promise<MergeResult> {
   const { data: duplicateGurus } = await supabase
     .from('data_guru')
     .select('*')
-    .ilike('nama_guru', 'Ade Fitrawan Ibrahim%M.Pd%')
+    .or(`nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.Ade Fitrawan Ibrahim%M.Pd%`)
     .neq('id', primaryGuruId)
     .limit(1);
 
@@ -149,37 +149,40 @@ export async function mergeAccounts(): Promise<MergeResult> {
   let presensiDupQuery = supabase
     .from('presensi_guru')
     .select('*', { count: 'exact', head: true })
-    .or(`nama_guru.eq.${DUPLICATE_NAME},nama_guru.ilike.%M.Pd%${duplicateUserId ? `,user_id.eq.${duplicateUserId}` : ''}`);
-  const { count: presensiDupCount } = await presensiDupQuery;
+    .or(`nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%${duplicateUserId ? `,user_id.eq.${duplicateUserId}` : ''}`);
+  const { count: presensiDupCount, error: presensiDupErr } = await presensiDupQuery;
+  if (presensiDupErr) console.warn('   ⚠️ presensiDupQuery warning:', presensiDupErr.message);
 
   const { count: presensiPriCount } = await supabase
     .from('presensi_guru')
     .select('*', { count: 'exact', head: true })
-    .or(`user_id.eq.${primaryUserId},nama_guru.eq.${PRIMARY_NAME}`);
+    .or(`user_id.eq.${primaryUserId},nama_guru.eq."${PRIMARY_NAME}"`);
 
   // 3.2 Jurnal Pembelajaran
   let jurnalDupQuery = supabase
     .from('jurnal_pembelajaran')
     .select('*', { count: 'exact', head: true })
-    .or(`nama_guru.eq.${DUPLICATE_NAME},nama_guru.ilike.%M.Pd%${duplicateUserId ? `,user_id.eq.${duplicateUserId}` : ''}`);
-  const { count: jurnalDupCount } = await jurnalDupQuery;
+    .or(`nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%${duplicateUserId ? `,user_id.eq.${duplicateUserId}` : ''}`);
+  const { count: jurnalDupCount, error: jurnalDupErr } = await jurnalDupQuery;
+  if (jurnalDupErr) console.warn('   ⚠️ jurnalDupQuery warning:', jurnalDupErr.message);
 
   const { count: jurnalPriCount } = await supabase
     .from('jurnal_pembelajaran')
     .select('*', { count: 'exact', head: true })
-    .or(`user_id.eq.${primaryUserId},nama_guru.eq.${PRIMARY_NAME}`);
+    .or(`user_id.eq.${primaryUserId},nama_guru.eq."${PRIMARY_NAME}"`);
 
   // 3.3 Laporan Piket
   let piketDupQuery = supabase
     .from('laporan_piket')
     .select('*', { count: 'exact', head: true })
-    .or(`guru_pelapor.eq.${DUPLICATE_NAME},guru_pelapor.ilike.%M.Pd%${duplicateUserId ? `,user_id.eq.${duplicateUserId}` : ''}`);
-  const { count: piketDupCount } = await piketDupQuery;
+    .or(`guru_pelapor.eq."${DUPLICATE_NAME}",guru_pelapor.ilike.%M.Pd%${duplicateUserId ? `,user_id.eq.${duplicateUserId}` : ''}`);
+  const { count: piketDupCount, error: piketDupErr } = await piketDupQuery;
+  if (piketDupErr) console.warn('   ⚠️ piketDupQuery warning:', piketDupErr.message);
 
   const { count: piketPriCount } = await supabase
     .from('laporan_piket')
     .select('*', { count: 'exact', head: true })
-    .or(`user_id.eq.${primaryUserId},guru_pelapor.eq.${PRIMARY_NAME}`);
+    .or(`user_id.eq.${primaryUserId},guru_pelapor.eq."${PRIMARY_NAME}"`);
 
   const totalDupHistory = (presensiDupCount || 0) + (jurnalDupCount || 0) + (piketDupCount || 0);
 
@@ -202,8 +205,8 @@ export async function mergeAccounts(): Promise<MergeResult> {
   // 4.1 Update presensi_guru
   if (duplicateUserId || (presensiDupCount && presensiDupCount > 0)) {
     const filter = duplicateUserId 
-      ? `user_id.eq.${duplicateUserId},nama_guru.eq.${DUPLICATE_NAME},nama_guru.ilike.%M.Pd%`
-      : `nama_guru.eq.${DUPLICATE_NAME},nama_guru.ilike.%M.Pd%`;
+      ? `user_id.eq.${duplicateUserId},nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%`
+      : `nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%`;
     const { error: pErr } = await supabase
       .from('presensi_guru')
       .update({ user_id: primaryUserId, nama_guru: PRIMARY_NAME })
@@ -217,8 +220,8 @@ export async function mergeAccounts(): Promise<MergeResult> {
   // 4.2 Update jurnal_pembelajaran
   if (duplicateUserId || (jurnalDupCount && jurnalDupCount > 0)) {
     const filter = duplicateUserId 
-      ? `user_id.eq.${duplicateUserId},nama_guru.eq.${DUPLICATE_NAME},nama_guru.ilike.%M.Pd%`
-      : `nama_guru.eq.${DUPLICATE_NAME},nama_guru.ilike.%M.Pd%`;
+      ? `user_id.eq.${duplicateUserId},nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%`
+      : `nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%`;
     const { error: jErr } = await supabase
       .from('jurnal_pembelajaran')
       .update({ user_id: primaryUserId, nama_guru: PRIMARY_NAME })
@@ -232,8 +235,8 @@ export async function mergeAccounts(): Promise<MergeResult> {
   // 4.3 Update laporan_piket
   if (duplicateUserId || (piketDupCount && piketDupCount > 0)) {
     const filter = duplicateUserId 
-      ? `user_id.eq.${duplicateUserId},guru_pelapor.eq.${DUPLICATE_NAME},guru_pelapor.ilike.%M.Pd%`
-      : `guru_pelapor.eq.${DUPLICATE_NAME},guru_pelapor.ilike.%M.Pd%`;
+      ? `user_id.eq.${duplicateUserId},guru_pelapor.eq."${DUPLICATE_NAME}",guru_pelapor.ilike.%M.Pd%`
+      : `guru_pelapor.eq."${DUPLICATE_NAME}",guru_pelapor.ilike.%M.Pd%`;
     const { error: lErr } = await supabase
       .from('laporan_piket')
       .update({ user_id: primaryUserId, guru_pelapor: PRIMARY_NAME })
@@ -245,13 +248,14 @@ export async function mergeAccounts(): Promise<MergeResult> {
   }
 
   // 4.4 Update jadwal_pelajaran
-  if (duplicateUserId) {
-    await supabase
-      .from('jadwal_pelajaran')
-      .update({ user_id: primaryUserId, nama_guru: PRIMARY_NAME })
-      .or(`user_id.eq.${duplicateUserId},nama_guru.ilike.%M.Pd%`);
-    console.log('   ✅ Jadwal Pelajaran dialihkan ke akun utama.');
-  }
+  const jpFilter = duplicateUserId
+    ? `user_id.eq.${duplicateUserId},nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%`
+    : `nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.%M.Pd%`;
+  await supabase
+    .from('jadwal_pelajaran')
+    .update({ user_id: primaryUserId, nama_guru: PRIMARY_NAME })
+    .or(jpFilter);
+  console.log('   ✅ Jadwal Pelajaran dialihkan ke akun utama.');
 
   // 4.5 Update guru_mapel (hindari pelanggaran unique constraint: sekolah_id, nip, nama_mapel)
   if (duplicateGuruId && primaryGuruId) {
@@ -340,11 +344,11 @@ export async function mergeAccounts(): Promise<MergeResult> {
     if (delGuruErr) console.warn('   ⚠️ Gagal menghapus duplicate data_guru:', delGuruErr.message);
     else console.log(`   ✅ Duplicate data_guru (id: ${duplicateGuruId}) berhasil dihapus.`);
   } else {
-    // Fallback: hapus data_guru berdasarkan nama M.Pd jika bukan akun primer
+    // Fallback: hapus data_guru berdasarkan nama M.Pd atau nama duplikat jika bukan akun primer
     const { error: delGuruNameErr } = await supabase
       .from('data_guru')
       .delete()
-      .ilike('nama_guru', 'Ade Fitrawan Ibrahim%M.Pd%')
+      .or(`nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.Ade Fitrawan Ibrahim%M.Pd%`)
       .neq('id', primaryGuruId);
     if (!delGuruNameErr) console.log('   ✅ Entri data_guru dengan nama M.Pd dipastikan bersih.');
   }
@@ -358,11 +362,11 @@ export async function mergeAccounts(): Promise<MergeResult> {
     if (delUserErr) console.warn('   ⚠️ Gagal menghapus duplicate users:', delUserErr.message);
     else console.log(`   ✅ Duplicate users (id: ${duplicateUserId}) berhasil dihapus.`);
   } else {
-    // Fallback: hapus users berdasarkan nama M.Pd jika bukan akun primer
+    // Fallback: hapus users berdasarkan nama M.Pd atau nama duplikat jika bukan akun primer
     const { error: delUserNameErr } = await supabase
       .from('users')
       .delete()
-      .ilike('nama', 'Ade Fitrawan Ibrahim%M.Pd%')
+      .or(`nama.eq."${DUPLICATE_NAME}",nama.ilike.Ade Fitrawan Ibrahim%M.Pd%`)
       .neq('id', primaryUserId);
     if (!delUserNameErr) console.log('   ✅ Akun users dengan nama M.Pd dipastikan bersih.');
   }

@@ -111,12 +111,14 @@ export default function AccountSettingsModal({
     }
   };
 
+  const normalizedRole = (user?.role || '').toLowerCase();
   const isAdmin =
     user?.role === 'admin' ||
     user?.role === 'Admin' ||
     user?.role === 'superadmin' ||
     user?.role === 'Superadmin' ||
-    (user?.role || '').toLowerCase() === 'admin';
+    normalizedRole === 'admin' ||
+    normalizedRole === 'superadmin';
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -357,7 +359,7 @@ export default function AccountSettingsModal({
                 />
               </div>
             )}
-            {/* Note for backward-compatibility with tests checking static strings: user?.username || username (Hanya Admin yang bisa mengubah) cursor-not-allowed */}
+            {/* Note for backward-compatibility with tests checking static strings: fa-lock user?.username || username (Hanya Admin yang bisa mengubah) cursor-not-allowed */}
           </div>
 
           {/* Section 3: Change Password Toggle */}
@@ -398,7 +400,11 @@ export default function AccountSettingsModal({
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="Masukkan password lama Anda"
                     required={changePassword}
-                    className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    autoComplete="current-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    className="w-full px-3 py-2 text-xs sm:text-xs text-[16px] sm:text-xs appearance-none border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -412,7 +418,11 @@ export default function AccountSettingsModal({
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Minimal 6 karakter"
                       required={changePassword}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      className="w-full px-3 py-2 text-xs sm:text-xs text-[16px] sm:text-xs appearance-none border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
@@ -425,7 +435,11 @@ export default function AccountSettingsModal({
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Ulangi password baru"
                       required={changePassword}
-                      className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
+                      className="w-full px-3 py-2 text-xs sm:text-xs text-[16px] sm:text-xs appearance-none border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>

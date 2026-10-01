@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     // Status verifikasi default:
     // If 'Izin Terlambat' or 'Terlambat', requires admin approval -> 'Menunggu'
     // Otherwise use provided status or 'Diverifikasi'
-    const status_verifikasi = body.status_verifikasi || (isTerlambat ? 'Menunggu' : 'Diverifikasi');
+    const status_verifikasi = isTerlambat ? 'Menunggu' : (body.status_verifikasi || 'Diverifikasi');
 
     const presensiRecord: any = {
       id: body.id || crypto.randomUUID(),

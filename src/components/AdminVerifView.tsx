@@ -820,6 +820,9 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                     <p><span className="font-semibold">Waktu:</span> {formatTimestampWita(item.timestamp)}</p>
                     <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-nizamudin-green dark:text-green-400">{item.tipe_absen}</span></p>
                     <p><span className="font-semibold">Jenis:</span> {item.jenis_presensi} {item.detail_izin && `(${item.detail_izin})`}</p>
+                    {item.keterlambatan_detik > 0 && (
+                      <p><span className="font-semibold">Terlambat:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{Math.ceil(item.keterlambatan_detik / 60)} menit</span></p>
+                    )}
                     {item.link_bukti && item.link_bukti !== '-' && (
                       <div className="mt-2 flex items-center gap-2">
                         <img 
