@@ -53,7 +53,9 @@ export async function POST(req: NextRequest) {
     const lokasi = body.lokasi || '';
     const jarak = body.jarak ? String(body.jarak) : '';
     const link_bukti = body.link_bukti || body.foto_url || '';
-    const keterlambatan_detik = typeof body.keterlambatan_detik === 'number' ? body.keterlambatan_detik : 0;
+    const rawKeterlambatan = typeof body.keterlambatan_detik === 'number' ? body.keterlambatan_detik : 0;
+    // ponytail: naive cap to prevent negative or > 12h test values, tighten if people bypass it
+    const keterlambatan_detik = Math.max(0, Math.min(rawKeterlambatan, 43200));
     const sekolah_id = body.sekolah_id || body.sekolahId || null;
 
     // Status verifikasi default:
