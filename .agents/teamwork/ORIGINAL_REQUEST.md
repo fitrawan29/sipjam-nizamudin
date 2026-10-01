@@ -182,3 +182,55 @@ Saat form disubmit dalam mode Inval, sisipkan teks `[INVAL - Menggantikan: {Nama
 
 ### Verifikasi Objektif (Forcing Function)
 - [ ] Agen verifikator harus dapat login sebagai seorang Guru, mengaktifkan toggle Inval, memilih guru lain, mensubmit jurnal, dan memverifikasi secara langsung (lewat query Supabase atau UI) bahwa baris baru di `jurnal_pembelajaran` memiliki awalan `[INVAL - Menggantikan:` pada keterangannya.
+
+## 2026-10-01T10:56:44Z
+
+Implementasi perbaikan bug dan penambahan fitur pada aplikasi Sipjam, meliputi: perbaikan data pengguna ganda, perbaikan upload avatar, penambahan izin terlambat, opsi upload foto jurnal, pembatasan edit username, dan pengaturan fitur per-sekolah oleh superadmin. Menerapkan prinsip *Ponytail* (solusi paling sederhana dan efisien).
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+Verification Resources: Agent-as-judge (Gunakan Acceptance Criteria di bawah sebagai rubrik objektif)
+
+## Requirements
+
+### R1. Perbaikan Data Ganda (Merge Account)
+Gunakan script SQL satu kali jalan (one-off) untuk menggabungkan data akun "Ade Fitrawan Ibrahim" dan "Ade Fitrawan Ibrahim, M.Pd., Gr" secara langsung di database. Pertahankan akun dengan riwayat transaksi (presensi, jurnal, dll) terbanyak, dan re-assign data dari akun duplikat ke akun utama sebelum menghapus akun duplikat.
+
+### R2. Perbaikan Avatar
+Pastikan fitur pemilihan avatar berfungsi dengan benar: saat avatar dipilih/diubah, gambar profil harus langsung diperbarui dan terlihat pada UI akun pengguna.
+
+### R3. Izin Datang Terlambat (Guru)
+Tambahkan opsi status "Izin Terlambat" pada pilihan/tombol absensi yang sudah ada di halaman presensi guru.
+
+### R4. Upload Foto Jurnal Pembelajaran
+Sediakan opsi tambahan pada Jurnal Pembelajaran untuk mengunggah foto dari file/galeri. Sistem harus menangkap lokasi dari GPS device (melalui browser) saat upload dilakukan, dan menyimpan data lokasi beserta waktu upload ke database untuk ditampilkan di UI.
+
+### R5. Pembatasan Pengaturan Username
+Kunci kemampuan untuk mengubah username milik guru di aplikasi; pastikan hanya pengguna dengan role Admin yang dapat melakukan perubahan ini.
+
+### R6. Pengaturan Fitur Per-Sekolah (Superadmin)
+Tambahkan opsi (checkbox/dropdown) langsung di halaman "Edit Sekolah" yang sudah ada, agar Superadmin dapat mengatur mode Jurnal Pembelajaran ("Live Camera Langsung" saja, atau "Live Camera + Upload Foto"). Pastikan pengaturan ini diaplikasikan saat guru di sekolah tersebut membuka halaman jurnal.
+
+## Acceptance Criteria
+
+### Verifikasi R1 (Merge Account)
+- [ ] Terdapat file script SQL (misal: `merge_accounts.sql`) yang berisi query UPDATE untuk memindahkan foreign keys dan query DELETE untuk menghapus akun duplikat.
+
+### Verifikasi R2 (Avatar)
+- [ ] Terdapat kode di komponen profil yang memperbarui state (React/Vue dll) segera setelah respon sukses dari upload avatar, sehingga gambar langsung berubah tanpa reload halaman.
+
+### Verifikasi R3 (Izin Terlambat)
+- [ ] Tombol/opsi absensi memiliki pilihan bernilai "Izin Terlambat".
+- [ ] Backend endpoint presensi dapat menerima dan menyimpan status "Izin Terlambat".
+
+### Verifikasi R4 (Upload Jurnal GPS)
+- [ ] Terdapat penggunaan API `navigator.geolocation.getCurrentPosition` pada fungsi upload jurnal via galeri.
+- [ ] Payload request ke backend menyertakan latitude dan longitude.
+
+### Verifikasi R5 (Username Edit Limit)
+- [ ] Terdapat pengecekan kondisi `role === 'admin'` (atau setara) sebelum form edit username dirender di UI ATAU sebelum update dieksekusi di backend.
+
+### Verifikasi R6 (Pengaturan Sekolah)
+- [ ] UI form Edit Sekolah memiliki input untuk mode Jurnal (Live Camera / Camera + Upload).
+- [ ] Halaman Jurnal membaca konfigurasi sekolah pengguna yang sedang login dan merender input file upload HANYA JIKA konfigurasinya mengizinkan.
+

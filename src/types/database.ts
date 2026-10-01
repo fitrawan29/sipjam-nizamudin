@@ -520,7 +520,10 @@ export type Database = {
           kehadiran_murid: string | null
           kelas: string | null
           keterangan: string | null
+          latitude: number | null
           link_bukti_foto: string | null
+          lokasi: string | null
+          longitude: number | null
           mapel: string | null
           materi: string | null
           materi_pembelajaran: string | null
@@ -533,6 +536,7 @@ export type Database = {
           timestamp: string | null
           tujuan_pembelajaran: string | null
           user_id: string | null
+          waktu_upload: string | null
         }
         Insert: {
           absensi_siswa?: string | null
@@ -542,13 +546,16 @@ export type Database = {
           catatan_refleksi?: string | null
           detail_absen?: string | null
           foto_kegiatan?: string | null
-          id: string
+          id?: string
           jam_ke?: string | null
           kegiatan?: string | null
           kehadiran_murid?: string | null
           kelas?: string | null
           keterangan?: string | null
+          latitude?: number | null
           link_bukti_foto?: string | null
+          lokasi?: string | null
+          longitude?: number | null
           mapel?: string | null
           materi?: string | null
           materi_pembelajaran?: string | null
@@ -561,6 +568,7 @@ export type Database = {
           timestamp?: string | null
           tujuan_pembelajaran?: string | null
           user_id?: string | null
+          waktu_upload?: string | null
         }
         Update: {
           absensi_siswa?: string | null
@@ -576,7 +584,10 @@ export type Database = {
           kehadiran_murid?: string | null
           kelas?: string | null
           keterangan?: string | null
+          latitude?: number | null
           link_bukti_foto?: string | null
+          lokasi?: string | null
+          longitude?: number | null
           mapel?: string | null
           materi?: string | null
           materi_pembelajaran?: string | null
@@ -589,6 +600,7 @@ export type Database = {
           timestamp?: string | null
           tujuan_pembelajaran?: string | null
           user_id?: string | null
+          waktu_upload?: string | null
         }
         Relationships: [
           {
@@ -1193,6 +1205,7 @@ export type Database = {
           logo_kanan_url: string | null
           logo_kiri_url: string | null
           logo_url: string | null
+          mode_jurnal: string | null
           nama: string
           nama_kepala_sekolah: string | null
           nip_kepala_sekolah: string | null
@@ -1212,6 +1225,7 @@ export type Database = {
           logo_kanan_url?: string | null
           logo_kiri_url?: string | null
           logo_url?: string | null
+          mode_jurnal?: string | null
           nama: string
           nama_kepala_sekolah?: string | null
           nip_kepala_sekolah?: string | null
@@ -1231,6 +1245,7 @@ export type Database = {
           logo_kanan_url?: string | null
           logo_kiri_url?: string | null
           logo_url?: string | null
+          mode_jurnal?: string | null
           nama?: string
           nama_kepala_sekolah?: string | null
           nip_kepala_sekolah?: string | null
@@ -1535,6 +1550,7 @@ export type Database = {
       verify_login: {
         Args: { p_password: string; p_username: string }
         Returns: {
+          avatar: string | null
           id: string
           nama: string
           role: string
