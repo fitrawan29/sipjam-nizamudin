@@ -1,40 +1,69 @@
-# Sentinel Handoff — Project Completion (Requirements R1 - R6)
+# Sentinel Final Handoff Report: Sipjam Follow-Up Requirements (R1, R2, R3)
 
 ## 1. Observation
-- Permintaan pengguna diterima pada `2026-10-01T10:56:44Z` untuk menyelesaikan 6 kebutuhan:
-  - R1: Script SQL merge data akun duplikat "Ade Fitrawan Ibrahim" vs "Ade Fitrawan Ibrahim, M.Pd., Gr".
-  - R2: Perbaikan avatar kustom / data URL dan reaktivitas pembaruan profil instan di UI tanpa reload.
-  - R3: Opsi status absensi "Izin Terlambat" di UI guru dan backend endpoint presensi.
-  - R4: Upload foto Jurnal Pembelajaran dengan penangkapan koordinat GPS device via `navigator.geolocation`.
-  - R5: Pembatasan perubahan username milik guru (hanya admin yang dapat mengedit).
-  - R6: Pengaturan mode Jurnal per sekolah oleh Superadmin dan penegakan kondisional di UI jurnal guru.
-- Orkestrator (`orchestrator_6`) memimpin tim (Surveyors, Implementers M1-M4, Test Writer M5, Reviewer Gen2, Challenger Gen2, Forensic Auditor Gen2).
-- Orkestrator mengajukan klaim kemenangan.
-- Sentinel men-spawn `victory_auditor_7` secara independen untuk melakukan audit blocking 3 fase.
-- `victory_auditor_7` menerbitkan vonis: **`VICTORY CONFIRMED`**.
+
+1. **User Request & Routing**:
+   - The user requested follow-up adjustments to the Sipjam application:
+     - **R1**: Measured duplicate account merge script (`scripts/merge_accounts.ts`) counting and logging exact records from `presensi_guru`, `jurnal_pembelajaran`, and `laporan_piket`, reassigning foreign keys to "Ade Fitrawan Ibrahim", and deleting duplicate accounts.
+     - **R2**: Late permission ("Izin Terlambat") verification workflow requiring admin confirmation/approval (`AdminVerifView`) with initial "Menunggu" status rather than auto-marking "Hadir".
+     - **R3**: Removal of teacher username input in `AccountSettingsModal` for Guru role, while retaining password update functionality.
+   - User explicitly requested: "This is a single self-contained set of fixes; keep it small and focused."
+   - Routed to SWE Light (`teamwork_preview_swe`) as `swe_6`.
+
+2. **Execution & Adversarial Review**:
+   - `swe_6` ran the SWE Light loop: 1 implementer round followed by 3 mandatory reviewer rounds:
+     - `a541424`: Initial implementation of R1, R2, R3 and `tests/verification_r1_r2_r3.test.ts`.
+     - `f33a5e4`: Round 1 fixes (PostgREST comma parsing in merge script, attendance API server-side Menunggu enforcement, iOS Safari password input attributes, and `tests/adversarial_round1_reviewer.test.ts`).
+     - `eeda186`: Round 2 fixes (session token handling in sistem blok tests, `tests/adversarial_round2_reviewer.test.ts`).
+     - `1397bf0`: Round 3 fixes (scoped M.Pd query filter to `Ade Fitrawan Ibrahim%M.Pd%` avoiding collisions with other teachers, safe username fallback in RPC payload, and `tests/adversarial_round3_verification.test.ts`).
+     - `ec08372`: Git workflow sync and test confirmation.
+
+3. **Independent Victory Audit**:
+   - Sentinel dispatched independent auditor `victory_auditor_10` (`c3707d87-71e6-4a4c-a5e7-625c6c3841ee`).
+   - Audit Phases:
+     - Phase A (Timeline & Provenance): Clean, organic commit history without anomalies.
+     - Phase B (Integrity Forensics): Genuine logic across `scripts/merge_accounts.ts`, `src/app/api/attendance/route.ts`, `src/components/AdminVerifView.tsx`, `src/components/HomeView.tsx`, and `src/components/AccountSettingsModal.tsx`. No facades or stubs.
+     - Phase C (Independent Test Execution): 8/8 test suites passed cleanly with exit code 0 (`npm test` 85/85, `npx tsx scripts/merge_accounts.ts`, `tests/verification_r1_r2_r3.test.ts` 23/23, `tests/adversarial_round3_verification.test.ts` 17/17, `tests/adversarial_round2_reviewer.test.ts` 27/27, `tests/adversarial_round1_reviewer.test.ts` 14/14, `npx tsc --noEmit` 0 errors, `npm run build` compiled 12 routes in 1697ms).
+   - Verdict: **VICTORY CONFIRMED**.
 
 ## 2. Logic Chain
-- Routing: Jalur General Path (`teamwork_preview_orchestrator`) dipilih karena pekerjaan mencakup 6 fitur lintas sistem (DB, auth, profil, presensi, jurnal, geolokasi, multi-tenant per-school).
-- Eksekusi: Dibagi ke dalam Milestone M1 (DB & SQL Merge), M2 (Avatar & Username Lock), M3 (Presensi Izin Terlambat), M4 (Jurnal GPS & School Mode), dan M5 (Automated Test Suite & Build).
-- Verifikasi Gerbang: Reviewer, Challenger, dan Forensic Auditor memberikan status lulus tanpa facade/mocking.
-- Audit Pasca-Kemenangan: `victory_auditor_7` memverifikasi commit history, keaslian kode sumber, eksekusi tes mandiri (143/143 passing, tsc bersih, build berhasil), dan remote git push.
-- Pembersihan: Semua cron monitoring dibatalkan (`task-40`, `task-42`) dan seluruh subagent diterminasi (`kill_all`) sesuai prosedur wajib Sentinel.
+
+1. Requirements R1, R2, and R3 were captured verbatim in `ORIGINAL_REQUEST.md` and routed per routing protocol.
+2. The implementation was iteratively developed and stress-tested through 3 adversarial review rounds.
+3. Independent post-victory audit verified that:
+   - Duplicate account data counting and reassignment are executed via live Supabase client.
+   - Izin Terlambat status cannot be bypassed by client requests and routes through admin verification with functional approval/rejection actions.
+   - Guru users cannot see or edit username in account settings, while password changes function without validation errors.
+4. All test suites pass and production build succeeds.
+5. All background crons and subagents were terminated in accordance with the mandatory cleanup rule.
 
 ## 3. Caveats
-- Script SQL `merge_accounts.sql` dirancang aman dan idempoten; saat ini database live telah memegang akun utama dengan 197 transaksi utuh.
-- Penangkapan GPS pada upload foto jurnal memerlukan izin akses lokasi dari browser pengguna. Jika ditolak, sistem telah menyediakan fallback aman `'Lokasi tidak terdeteksi'` tanpa menyebabkan crash.
-- Mode jurnal `camera_only` secara ketat tidak merender elemen input file di DOM guru, menjaga kepatuhan kebijakan sekolah.
+
+- Live Supabase operations require valid credentials in `.env.local` (present in project environment).
+- Hardware-specific browser sensor triggers (physical GPS satellite acquisition, camera hardware) were verified through automated DOM and headless test harnesses.
 
 ## 4. Conclusion
-- Seluruh 6 Acceptance Criteria tuntas 100%.
-- Proyek telah di-commit dan di-push ke branch `origin/main` sesuai ketentuan `GEMINI.md`.
-- Status akhir: **SELESAI (VICTORY CONFIRMED)**.
+
+All requirements (R1, R2, R3) and acceptance criteria have been implemented, reviewed, tested, and independently verified. The project milestone is complete with **VICTORY CONFIRMED**.
 
 ## 5. Verification Method
-- Independent Post-Victory Audit oleh `victory_auditor_7` (Conversation ID: `6ea507cb-89c7-47f5-a1d6-a67deb8af043`).
-- Hasil audit:
-  - `npx tsx tests/all_requirements_r1_r6_verification.test.ts`: 71 passed, 0 failed.
-  - `npx tsx tests/adversarial_challenger_1.test.ts`: 72 passed, 0 failed.
-  - `npx tsc --noEmit`: 0 errors.
-  - `npm run build`: Exit code 0 (12 static/dynamic routes compiled).
-  - Git status: Clean, up-to-date with `origin/main`.
+
+To reproduce verification:
+```powershell
+# 1. Execute account merge script
+npx tsx scripts/merge_accounts.ts
+
+# 2. Run acceptance criteria test suite
+npx tsx tests/verification_r1_r2_r3.test.ts
+
+# 3. Run adversarial stress suites
+npx tsx tests/adversarial_round1_reviewer.test.ts
+npx tsx tests/adversarial_round2_reviewer.test.ts
+npx tsx tests/adversarial_round3_verification.test.ts
+
+# 4. Run full test suite, typecheck, and production build
+npm test
+npx tsc --noEmit
+npm run build
+```
+All commands terminate with exit code 0.
