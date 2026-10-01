@@ -396,10 +396,10 @@ body.fade-out {
   tfoot {
     display: table-footer-group !important;
   }
-  /* Allow table rows to break across pages so content isn't pushed to new page */
+  /* Prevent table rows from breaking across pages so content isn't pushed to new page or cut off */
   tr {
-    page-break-inside: auto !important;
-    break-inside: auto !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Keep signature and header together on same page */
@@ -418,6 +418,8 @@ body.fade-out {
   /* Images in print */
   img {
     max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }

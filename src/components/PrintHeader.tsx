@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
 import { formatKepalaSekolahTitle } from '@/utils/textUtils';
@@ -174,10 +175,13 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
         </div>
       </div>
       {/* Watermark cetak — CSS defined in globals.css, muncul di setiap halaman print */}
-      <div className="sipjam-print-watermark" aria-hidden="true">
-        <span>DOKUMEN ASLI</span>
-        <span>{sekolah}</span>
-      </div>
+      {typeof document !== 'undefined' ? createPortal(
+        <div className="sipjam-print-watermark" aria-hidden="true">
+          <span>DOKUMEN ASLI</span>
+          <span>{sekolah}</span>
+        </div>,
+        document.body
+      ) : null}
     </>
   );
 }
