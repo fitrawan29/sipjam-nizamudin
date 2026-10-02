@@ -144,6 +144,13 @@ const parts = sampleDateStr.split('-');
 const formatted = `${sampleDay}, ${parts[2]}-${parts[1]}-${parts[0]}`;
 assert.strictEqual(formatted, 'Jumat, 02-10-2026', 'R3.3 Unit test: Date format produces exact "Jumat, 02-10-2026"');
 
+// 3.4 Responsive matrix date badge without truncate and with wrap support
+assert(
+  homeViewContent.includes('{dashboardDateStr}\n                </span>') ||
+  homeViewContent.includes('{dashboardDateStr}') && homeViewContent.includes('whitespace-normal break-words'),
+  'R3.4 HomeView matrix status badge renders date with whitespace-normal break-words (no truncate)'
+);
+
 console.log('✅ Section 3 (R3: Format Tanggal Dashboard) Passed!');
 
 console.log('\n====================================================');

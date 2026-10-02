@@ -43,18 +43,19 @@ Deliver three fixes for SIPJAM: (1) Block system exemption for teachers based on
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |---|---|---|---|---|
-| implementer_r1 | teamwork_preview_implementer | R1, R2, R3 implementation | in-progress | 68582ef8-5ef2-4b06-8f93-4889160be2f3 |
+| implementer_r1 | teamwork_preview_implementer | R1, R2, R3 implementation | completed | 68582ef8-5ef2-4b06-8f93-4889160be2f3 |
+| reviewer_r2 | teamwork_preview_reviewer | Adversarial Review 1 | in-progress | f85925f0-0e98-4078-85b9-855e98458862 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: 68582ef8-5ef2-4b06-8f93-4889160be2f3
+- Spawn count: 2 / 16
+- Pending subagents: f85925f0-0e98-4078-85b9-855e98458862
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
 - Heartbeat cron: b91e8024-c4f4-4a35-9c87-7d547c9151cc/task-10
-- Safety timer: b91e8024-c4f4-4a35-9c87-7d547c9151cc/task-56
+- Safety timer: b91e8024-c4f4-4a35-9c87-7d547c9151cc/task-92
 
 ## Artifact Index
 - DISPATCH.md — Task dispatch information
