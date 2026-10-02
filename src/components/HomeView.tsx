@@ -288,7 +288,7 @@ export default function HomeView({
       let piketLaporanQ = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
       let kalenderQ = supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
-      let pengaturanQ = supabase.from('pengaturan').select('key, value');
+      let pengaturanQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru');
       let blokQ = supabase.from('sistem_blok').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', todayStr).order('created_at', { ascending: false });
 
       if (user?.sekolah_id) {
@@ -345,6 +345,23 @@ export default function HomeView({
       const hariSekolah = parseInt(hariSekolahVal, 10);
       const isWeekendOff = dayName === 'Minggu' || (hariSekolah === 5 && dayName === 'Sabtu');
       const isSchoolDayOff = isLiburKalender || isWeekendOff;
+
+      const aturanGlobal = (pengaturanRes.data || []).find((p: any) => p.key === 'aturan_kehadiran_guru')?.value || 
+                           (pengaturanRes.data || []).find((p: any) => p.aturan_kehadiran_guru)?.aturan_kehadiran_guru;
+      const ghmRow = (pengaturanRes.data || []).find((p: any) => p.key === 'guru_hanya_mengajar');
+      let guruHanyaMengajarList: string[] = [];
+      if (ghmRow && ghmRow.value) {
+        try {
+          const parsed = JSON.parse(ghmRow.value);
+          if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
+          else if (parsed && typeof parsed === 'object') {
+            if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
+            if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
+          }
+        } catch {
+          guruHanyaMengajarList = [ghmRow.value];
+        }
+      }
 
       // Robust multi-format date filtering for presensi
       const presensiList = rawPresensi.filter((p: any) => {
@@ -539,9 +556,14 @@ export default function HomeView({
             jurnalStatus = 'Perlu Jurnal Kegiatan';
             jurnalColor = 'amber';
           }
-        } else if (targetCount === 0 || isSchoolDayOff) {
-          jurnalStatus = 'Bebas KBM';
-          jurnalColor = 'gray';
+        } else if (isExemptNonTeaching || targetCount === 0 || isSchoolDayOff) {
+          if (hasJurnalKegiatan) {
+            jurnalStatus = 'Jurnal Kegiatan Selesai';
+            jurnalColor = 'green';
+          } else {
+            jurnalStatus = 'Bebas KBM';
+            jurnalColor = 'gray';
+          }
         } else if (filledCount >= targetCount) {
           jurnalStatus = `${targetCount}/${targetCount} Selesai`;
           jurnalColor = 'green';
@@ -562,7 +584,7 @@ export default function HomeView({
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
-        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? (isExemptNonTeaching || hasJurnalKegiatan) : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 ? hasJurnalKegiatan : filledCount >= targetCount));
+        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? (isExemptNonTeaching || hasJurnalKegiatan) : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || isExemptNonTeaching ? true : filledCount >= targetCount));
 
         const isTugasLengkap = isLiburOrExempt
           ? true
@@ -874,8 +896,10 @@ export default function HomeView({
     }
 
     if (dailyState.isNonTeachingDay) {
-      steps.push({ label: 'Bebas Presensi', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran)', icon: 'fa-calendar-check' });
-      return steps;
+      if (!dailyState.presensiDatang) {
+        steps.push({ label: 'Bebas Presensi', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran)', icon: 'fa-calendar-check' });
+        return steps;
+      }
     }
 
     if (dailyState.presensiDatangDitolak) {
@@ -909,7 +933,9 @@ export default function HomeView({
 
     // Step 3: Jurnal
     const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
-    if (dailyState.isBlok) {
+    if (dailyState.isNonTeachingDay) {
+      steps.push({ label: 'Bebas Jurnal', status: 'skipped', detail: 'Tidak ada jadwal mengajar hari ini', icon: 'fa-book-journal-whills' });
+    } else if (dailyState.isBlok) {
       if (hasJurnalDitolak) {
         steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills' });
       } else if (dailyState.jurnalKegiatan) {
@@ -968,7 +994,7 @@ export default function HomeView({
   const getNextAction = () => {
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
-    if (dailyState.isNonTeachingDay) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
+    if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
     // Rejection messages take high priority — teacher must know to re-submit
     if (dailyState.presensiDatangDitolak) return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
@@ -1320,10 +1346,12 @@ export default function HomeView({
                   <i className="fa-solid fa-calendar-check"></i>
                 </div>
                 <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
-                  Bebas Kehadiran & Jurnal
+                  {dailyState.presensiDatang ? 'Kehadiran Sukarela · Bebas Jurnal' : 'Bebas Kehadiran & Jurnal'}
                 </p>
                 <p className="text-[11px] text-blue-700 dark:text-blue-300">
-                  Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.
+                  {dailyState.presensiDatang
+                    ? 'Hari ini Anda hadir sukarela tanpa jadwal mengajar wajib, sehingga dibebaskan dari pengisian jurnal dan tugas piket.'
+                    : 'Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.'}
                 </p>
               </div>
             ) : dailyState?.isBlok ? (

@@ -94,6 +94,14 @@ assert(
   'R1.10 send-reminders: Jurnal and piket reminders skip exempt teachers during block periods'
 );
 
+// 1.8 HomeView.tsx: Voluntary check-in support for exempt teachers
+assert(
+  homeViewContent.includes('if (!dailyState.presensiDatang) {') &&
+  homeViewContent.includes("steps.push({ label: 'Bebas Jurnal', status: 'skipped'") &&
+  homeViewContent.includes("if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return"),
+  'R1.11 HomeView.tsx: Voluntary check-in allows exempt teachers to complete workflow and presensi pulang'
+);
+
 console.log('✅ Section 1 (R1: Pengecualian Sistem Blok) Passed!');
 
 // ----------------------------------------------------
