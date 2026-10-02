@@ -43,6 +43,38 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     const { data: teachers } = await guruQuery;
     if (!teachers || teachers.length === 0) continue;
 
+    // Query school attendance policy & exempt teachers list from pengaturan
+    let pengaturanQuery = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru');
+    if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
+      pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
+    }
+    const { data: pengaturanRows } = await pengaturanQuery;
+    const isGlobalHariMengajarSaja = (pengaturanRows || []).some(
+      (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
+    );
+    const ghmRow = (pengaturanRows || []).find((p: any) => p.key === 'guru_hanya_mengajar');
+    let guruHanyaMengajarList: string[] = [];
+    if (ghmRow && ghmRow.value) {
+      try {
+        const parsed = JSON.parse(ghmRow.value);
+        if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
+        else if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
+          if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
+        }
+      } catch {
+        guruHanyaMengajarList = [ghmRow.value];
+      }
+    }
+
+    const isExemptTeacher = (t: any) => {
+      if (!t) return false;
+      if (t.wajib_hadir_hanya_mengajar) return true;
+      if (isGlobalHariMengajarSaja) return true;
+      if (guruHanyaMengajarList.includes(t.id) || guruHanyaMengajarList.includes(t.nama_guru) || (t.nip && guruHanyaMengajarList.includes(t.nip))) return true;
+      return false;
+    };
+
     // B. Fetch schedule for today
     let scheduleQuery = supabase.from('jadwal_pelajaran').select('*').eq('hari', todayDay);
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
@@ -124,6 +156,14 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
             // Teacher is exempt today, skip reminder
             continue;
           }
+        } else if (isExemptTeacher(teacher)) {
+          const hasTeachingToday = scheduleList.some(s => {
+            const sName = (s.nama_guru || '').toLowerCase().trim();
+            return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+          });
+          if (!hasTeachingToday) {
+            continue;
+          }
         }
 
         reminders.push({
@@ -148,6 +188,14 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       if (activeBlok) {
         // Teachers exempt on non-teaching days do not need to fill block journals if they have no classes today
         if (teacher.wajib_hadir_hanya_mengajar) {
+          const hasTeachingToday = scheduleList.some(s => {
+            const sName = (s.nama_guru || '').toLowerCase().trim();
+            return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+          });
+          if (!hasTeachingToday) {
+            continue;
+          }
+        } else if (isExemptTeacher(teacher)) {
           const hasTeachingToday = scheduleList.some(s => {
             const sName = (s.nama_guru || '').toLowerCase().trim();
             return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
@@ -222,7 +270,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       if (!hasReported) {
         if (activeBlok) {
           const teacherObj = teachers.find(t => (t.nama_guru || '').toLowerCase().trim() === pNameLower);
-          if (teacherObj?.wajib_hadir_hanya_mengajar) {
+          if (teacherObj?.wajib_hadir_hanya_mengajar || (teacherObj && isExemptTeacher(teacherObj))) {
             const hasTeachingToday = scheduleList.some(s => {
               const sName = (s.nama_guru || '').toLowerCase().trim();
               return sName === pNameLower || pNameLower.includes(sName) || sName.includes(pNameLower);

@@ -412,7 +412,12 @@ export default function HomeView({
         targetClasses = Array.from(uniqueTargetsMap.values());
         
         const targetCount = targetClasses.length;
-        const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar) && targetCount === 0;
+        const isTeacherExempt = Boolean(teacher.wajib_hadir_hanya_mengajar) ||
+          aturanGlobal === 'Hari_Mengajar_Saja' ||
+          guruHanyaMengajarList.includes(teacher.id) ||
+          guruHanyaMengajarList.includes(nama) ||
+          (teacher.nip && guruHanyaMengajarList.includes(teacher.nip));
+        const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
 
         // 2. Presensi Datang
         const pDatang = presensiList.find((p: any) => 
@@ -1003,7 +1008,7 @@ export default function HomeView({
     if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${dailyState.jurnalDitolak.length} jurnal Anda ditolak admin. Silakan isi ulang di menu Jurnal.`, color: 'text-red-600 dark:text-red-400' };
     if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
-    if (dailyState.isBlok && !dailyState.jurnalKegiatan) {
+    if (dailyState.isBlok && !dailyState.isNonTeachingDay && !dailyState.jurnalKegiatan) {
       return { text: `Periode Sistem Blok: Silakan isi Jurnal Kegiatan (${dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'}).`, color: 'text-amber-600 dark:text-amber-400' };
     }
     if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };

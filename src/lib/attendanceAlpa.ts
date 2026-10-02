@@ -186,14 +186,36 @@ export async function evaluateAndApplyAutoAlpa(
     return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
   }
 
-  // Guard: skip Sabtu jika sekolah 5 hari kerja
-  const { data: hsCfg } = await supabase
+  // Guard: skip Sabtu jika sekolah 5 hari kerja, dan load aturan kehadiran guru
+  let pengaturanQuery = supabase
     .from('pengaturan')
-    .select('value')
-    .eq('key', 'hari_sekolah')
-    .maybeSingle();
+    .select('key, value, aturan_kehadiran_guru');
+  if (sekolahId) {
+    pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
+  }
+  const { data: pengaturanRows } = await pengaturanQuery;
+
+  const hsCfg = (pengaturanRows || []).find((p: any) => p.key === 'hari_sekolah');
   if (parseInt(hsCfg?.value || '6', 10) === 5 && hariEvaluasi === 'Sabtu') {
     return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
+  }
+
+  const isGlobalHariMengajarSaja = (pengaturanRows || []).some(
+    (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
+  );
+  const ghmRow = (pengaturanRows || []).find((p: any) => p.key === 'guru_hanya_mengajar');
+  let guruHanyaMengajarList: string[] = [];
+  if (ghmRow && ghmRow.value) {
+    try {
+      const parsed = JSON.parse(ghmRow.value);
+      if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
+      else if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
+        if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
+      }
+    } catch {
+      guruHanyaMengajarList = [ghmRow.value];
+    }
   }
 
   // Fetch semua guru aktif
@@ -218,8 +240,13 @@ export async function evaluateAndApplyAutoAlpa(
     );
     if (hasRecord) continue;
 
-    // Guru wajib_hadir_hanya_mengajar: cek apakah ada jadwal hari ini
-    if (guru.wajib_hadir_hanya_mengajar) {
+    // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini
+    const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar) ||
+      isGlobalHariMengajarSaja ||
+      guruHanyaMengajarList.includes(guru.nama_guru) ||
+      (guru.user_id && guruHanyaMengajarList.includes(guru.user_id));
+
+    if (isTeacherExempt) {
       const { data: jadwal } = await supabase
         .from('jadwal_pelajaran')
         .select('id')

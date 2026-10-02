@@ -49,7 +49,9 @@ assert(
 
 // 1.4 HomeView.tsx: isExemptNonTeaching applies during block days
 assert(
-  homeViewContent.includes('const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar) && targetCount === 0;'),
+  (homeViewContent.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;') ||
+   homeViewContent.includes('const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar) && targetCount === 0;')) &&
+  homeViewContent.includes('targetCount === 0'),
   'R1.4 HomeView.tsx: isExemptNonTeaching is active for exempt teachers with targetCount === 0 even during block system'
 );
 
@@ -100,6 +102,18 @@ assert(
   homeViewContent.includes("steps.push({ label: 'Bebas Jurnal', status: 'skipped'") &&
   homeViewContent.includes("if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return"),
   'R1.11 HomeView.tsx: Voluntary check-in allows exempt teachers to complete workflow and presensi pulang'
+);
+
+// 1.9 HomeView.tsx: Matrix exempt integration & getNextAction block journal exclusion
+assert(
+  homeViewContent.includes("aturanGlobal === 'Hari_Mengajar_Saja'") &&
+  homeViewContent.includes('guruHanyaMengajarList.includes'),
+  'R1.12 HomeView.tsx: Admin Matrix integrates global and custom exempt teacher configuration'
+);
+
+assert(
+  homeViewContent.includes('if (dailyState.isBlok && !dailyState.isNonTeachingDay && !dailyState.jurnalKegiatan)'),
+  'R1.13 HomeView.tsx: getNextAction does not demand Jurnal Kegiatan from exempt non-teaching teachers during block days'
 );
 
 console.log('✅ Section 1 (R1: Pengecualian Sistem Blok) Passed!');

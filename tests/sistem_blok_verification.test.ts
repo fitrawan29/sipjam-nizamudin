@@ -478,6 +478,7 @@ async function runTests() {
   );
 
   assert(
+    homeViewContent.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;') ||
     homeViewContent.includes('const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar) && targetCount === 0;') ||
     homeViewContent.includes('teacher.wajib_hadir_hanya_mengajar && targetCount === 0'),
     'HomeView.tsx: isExemptNonTeaching applies for teachers without schedule during active block system'
