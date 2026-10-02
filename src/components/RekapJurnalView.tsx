@@ -590,7 +590,7 @@ export default function RekapJurnalView({
                                         alt="Foto Kegiatan"
                                         loading="eager"
                                         referrerPolicy="no-referrer"
-                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[120px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-auto print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
@@ -726,7 +726,7 @@ export default function RekapJurnalView({
                                         alt="Foto Kegiatan"
                                         loading="eager"
                                         referrerPolicy="no-referrer"
-                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-[120px] print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-auto print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           if (target.src !== transformGoogleDriveUrl(fotoUrl)) {

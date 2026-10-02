@@ -401,7 +401,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       state.presensiPulangDitolak = rejectedPresensi.find((p: any) => p.tipe_absen === 'Pulang') || null;
     }
 
-    const hasTeachingObligation = state.isBlok || state.jadwalKBM.length > 0 || state.isPiket;
+    const hasTeachingObligation = (state.isBlok && !isTeacherExempt) || state.jadwalKBM.length > 0 || state.isPiket;
 
     // Evaluasi kewajiban kehadiran & penentuan Alpa
     if (!state.presensiDatang) {
@@ -528,7 +528,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     // Untuk Presensi Pulang
     let isJurnalDone = false;
-    if (state.isBlok || state.isDinasLuar || state.jadwalKBM.length === 0) {
+    if (state.isNonTeachingDay) {
+      isJurnalDone = true;
+    } else if (state.isBlok || state.isDinasLuar || state.jadwalKBM.length === 0) {
       if (state.jurnalKegiatan) isJurnalDone = true;
     } else {
       // Harus isi KBM sejumlah jadwal - gunakan fuzzy matching

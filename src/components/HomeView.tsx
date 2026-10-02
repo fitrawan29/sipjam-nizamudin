@@ -71,6 +71,9 @@ export default function HomeView({
   const dateStr = getWitaDateLong();
   const timeStr = getWitaTimeStr();
   const hariIni = getWitaDayName();
+  
+  const dateParts = getWitaDateStr().split('-'); // [YYYY, MM, DD]
+  const dashboardDateStr = `${hariIni}, ${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
 
   const isGuru = user?.role !== 'Admin';
 
@@ -1016,7 +1019,7 @@ export default function HomeView({
           </div>
           <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
             <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white truncate">{dateStr.split(',')[0]}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-white leading-tight">{dashboardDateStr}</p>
           </div>
           <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
             <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Jam</p>
@@ -1258,7 +1261,7 @@ export default function HomeView({
                     Jadwal Mengajar Hari Ini
                   </h3>
                   <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                    {hariIni}, {dateStr.split(',')[1]?.trim() || dateStr}
+                    {dashboardDateStr}
                   </p>
                 </div>
               </div>
@@ -1570,7 +1573,7 @@ export default function HomeView({
                   <i className="fa-solid fa-table-cells text-emerald-600 dark:text-emerald-400"></i> Matriks Status Harian Guru
                 </h3>
                 <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                  {hariIni}, {dateStr.split(',')[0]}
+                  {dashboardDateStr}
                 </span>
               </div>
 
