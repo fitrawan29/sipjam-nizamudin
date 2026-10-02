@@ -164,7 +164,7 @@ assert(
 
 // 5. Mirroring coordinate space restoration
 assert(
-  watermarkContent.includes('ctx.translate(width, 0)') &&
+  (watermarkContent.includes('ctx.translate(width, 0)') || watermarkContent.includes('ctx.translate(drawWidth, 0)')) &&
   watermarkContent.includes('ctx.scale(-1, 1)') &&
   watermarkContent.includes('ctx.restore()'),
   'drawWatermarkedCanvas restores coordinate space before drawing badge and text (upright on all cameras)'

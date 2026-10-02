@@ -37,12 +37,12 @@ interface TeacherStatusRow {
   };
   laporanPiket: {
     status: string;
-    color: 'green' | 'rose' | 'gray';
+    color: 'green' | 'rose' | 'gray' | 'blue';
     isPiket: boolean;
   };
   presensiPulang: {
     status: string;
-    color: 'green' | 'gray' | 'amber';
+    color: 'green' | 'gray' | 'amber' | 'blue';
     time?: string;
   };
   isTugasLengkap: boolean;
@@ -395,7 +395,7 @@ export default function HomeView({
         targetClasses = Array.from(uniqueTargetsMap.values());
         
         const targetCount = targetClasses.length;
-        const isExemptNonTeaching = !isBlokToday && teacher.wajib_hadir_hanya_mengajar && targetCount === 0;
+        const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar) && targetCount === 0;
 
         // 2. Presensi Datang
         const pDatang = presensiList.find((p: any) => 
@@ -476,9 +476,10 @@ export default function HomeView({
           isTeacherMatch(p.guru_nama, p.guru_nip, nama, nip)
         );
         const inJadwalPiket = piketSchedule ? isGuruDiPiket(piketSchedule.daftar_guru, nama) : false;
-        const isPiket = inPenugasan || inJadwalPiket;
-        let piketStatus = 'Bukan Petugas';
-        let piketColor: 'green' | 'rose' | 'gray' = 'gray';
+        const isAssignedPiket = inPenugasan || inJadwalPiket;
+        const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
+        let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';
+        let piketColor: 'green' | 'rose' | 'gray' | 'blue' = isExemptNonTeaching && isAssignedPiket ? 'blue' : 'gray';
 
         if (isPiket) {
           const hasReport = piketReports.some((lp: any) => 
@@ -514,7 +515,10 @@ export default function HomeView({
         let jurnalColor: 'green' | 'amber' | 'rose' | 'gray' = 'gray';
 
         if (isBlokToday) {
-          if (hasJurnalKegiatan) {
+          if (isExemptNonTeaching) {
+            jurnalStatus = 'Bebas KBM';
+            jurnalColor = 'gray';
+          } else if (hasJurnalKegiatan) {
             jurnalStatus = 'Jurnal Kegiatan Selesai';
             jurnalColor = 'green';
           } else if (hasRejectedJournal) {
@@ -558,7 +562,7 @@ export default function HomeView({
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
-        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? hasJurnalKegiatan : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 ? hasJurnalKegiatan : filledCount >= targetCount));
+        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? (isExemptNonTeaching || hasJurnalKegiatan) : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 ? hasJurnalKegiatan : filledCount >= targetCount));
 
         const isTugasLengkap = isLiburOrExempt
           ? true
@@ -579,7 +583,7 @@ export default function HomeView({
           pengisianJurnal: {
             status: jurnalStatus,
             color: jurnalColor,
-            filled: isBlokToday ? (hasJurnalKegiatan ? 1 : 0) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount,
+            filled: isBlokToday ? (isExemptNonTeaching ? 0 : (hasJurnalKegiatan ? 1 : 0)) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount,
             total: isBlokToday ? 1 : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount
           },
           laporanPiket: {
@@ -656,6 +660,11 @@ export default function HomeView({
       return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };
     }
     
+    // Jika guru exempt dan tidak mengajar hari ini, ratio jurnal bebas
+    if (dailyState.isNonTeachingDay || (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0) && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja') {
+      return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };
+    }
+
     // Jika sistem blok atau dinas luar, target cukup 1 jurnal kegiatan
     if (dailyState.isBlok || dailyState.isDinasLuar) {
       const isDone = !!dailyState.jurnalKegiatan;
@@ -864,6 +873,11 @@ export default function HomeView({
       return steps;
     }
 
+    if (dailyState.isNonTeachingDay) {
+      steps.push({ label: 'Bebas Presensi', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran)', icon: 'fa-calendar-check' });
+      return steps;
+    }
+
     if (dailyState.presensiDatangDitolak) {
       // Presensi datang was rejected — show as needing re-submission
       steps.push({ label: 'Presensi Datang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-to-bracket' });
@@ -954,6 +968,7 @@ export default function HomeView({
   const getNextAction = () => {
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
+    if (dailyState.isNonTeachingDay) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
     // Rejection messages take high priority — teacher must know to re-submit
     if (dailyState.presensiDatangDitolak) return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
@@ -1019,7 +1034,7 @@ export default function HomeView({
           </div>
           <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
             <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white leading-tight">{dashboardDateStr}</p>
+            <p className="text-[10px] sm:text-xs font-bold text-white leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
           </div>
           <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
             <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Jam</p>
@@ -1297,6 +1312,18 @@ export default function HomeView({
                 </p>
                 <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
                   Selamat menikmati hari libur Anda.
+                </p>
+              </div>
+            ) : dailyState?.isNonTeachingDay ? (
+              <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
+                  <i className="fa-solid fa-calendar-check"></i>
+                </div>
+                <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                  Bebas Kehadiran & Jurnal
+                </p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                  Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.
                 </p>
               </div>
             ) : dailyState?.isBlok ? (

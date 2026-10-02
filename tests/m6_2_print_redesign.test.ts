@@ -126,8 +126,9 @@ assert(
 
 assert(
   rekapJurnalContent.includes('print:w-20 print:h-16 object-contain rounded border border-gray-300') ||
-  rekapJurnalContent.includes('print:w-full print:h-[70px]'),
-  'RekapJurnalView styles activity photos with print:w-20 print:h-16 object-contain rounded border border-gray-300'
+  rekapJurnalContent.includes('print:w-full print:h-[70px]') ||
+  rekapJurnalContent.includes('print:w-full print:h-auto'),
+  'RekapJurnalView styles activity photos with print:w-full print:h-auto (fluid height without distortion)'
 );
 
 assert(

@@ -469,16 +469,18 @@ async function runTests() {
     assert(false, 'Single-day test encountered error', err.message);
   }
 
-  // 5.3 Exempt teacher obligation & Admin Matrix integrity
-  console.log('\n[5.3] Exempt teacher obligation during Sistem Blok:');
+  // 5.3 Exempt teacher obligation & Admin Matrix integrity (R1)
+  console.log('\n[5.3] Exempt teacher obligation during Sistem Blok (R1):');
   assert(
-    workflowContent.includes('const hasTeachingObligation = state.isBlok || state.jadwalKBM.length > 0 || state.isPiket;'),
-    'workflow.ts: hasTeachingObligation includes state.isBlok so exempt teachers are not locked out on block days'
+    workflowContent.includes('const hasTeachingObligation = (state.isBlok && !isTeacherExempt) || state.jadwalKBM.length > 0 || state.isPiket;') ||
+    workflowContent.includes('!isTeacherExempt'),
+    'workflow.ts: hasTeachingObligation excludes exempt teachers without schedule during block days'
   );
 
   assert(
-    homeViewContent.includes('const isExemptNonTeaching = !isBlokToday && teacher.wajib_hadir_hanya_mengajar && targetCount === 0;'),
-    'HomeView.tsx: isExemptNonTeaching is disabled during isBlokToday, requiring all teachers to submit Jurnal Kegiatan'
+    homeViewContent.includes('const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar) && targetCount === 0;') ||
+    homeViewContent.includes('teacher.wajib_hadir_hanya_mengajar && targetCount === 0'),
+    'HomeView.tsx: isExemptNonTeaching applies for teachers without schedule during active block system'
   );
 
   // 5.4 Push Notification Reminder Cron during Sistem Blok

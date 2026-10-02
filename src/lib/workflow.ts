@@ -341,11 +341,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username, userId);
 
     // 3. Cek Piket Hari Ini (case-insensitive matching)
-    const { data: jpiket } = await supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
-    if (jpiket && jpiket.length > 0) {
-      const piketHariIni = jpiket[0];
-      if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)) {
-        state.isPiket = true;
+    // Guru pengecualian (wajib hadir hanya di hari mengajar) dibebaskan dari piket saat sistem blok aktif jika tidak ada jadwal hari ini
+    const isExemptAndNoSchedule = isTeacherExempt && state.jadwalKBM.length === 0;
+    if (!(state.isBlok && isExemptAndNoSchedule)) {
+      const { data: jpiket } = await supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
+      if (jpiket && jpiket.length > 0) {
+        const piketHariIni = jpiket[0];
+        if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)) {
+          state.isPiket = true;
+        }
       }
     }
 

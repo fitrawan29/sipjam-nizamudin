@@ -115,8 +115,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
       if (!hasCheckedIn) {
         // If teacher is exempt on non-teaching days, check if they have schedule today
-        // Note: during activeBlok, all teachers participate in block activities
-        if (teacher.wajib_hadir_hanya_mengajar && !activeBlok) {
+        if (teacher.wajib_hadir_hanya_mengajar) {
           const hasTeachingToday = scheduleList.some(s => {
             const sName = (s.nama_guru || '').toLowerCase().trim();
             return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
@@ -147,6 +146,17 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       const tNameLower = tName.toLowerCase();
 
       if (activeBlok) {
+        // Teachers exempt on non-teaching days do not need to fill block journals if they have no classes today
+        if (teacher.wajib_hadir_hanya_mengajar) {
+          const hasTeachingToday = scheduleList.some(s => {
+            const sName = (s.nama_guru || '').toLowerCase().trim();
+            return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+          });
+          if (!hasTeachingToday) {
+            continue;
+          }
+        }
+
         // On a block day, regular KBM is replaced with special activity.
         // Teacher needs to submit 1 Jurnal Kegiatan.
         const hasSubmittedBlokJurnal = journalList.some(j => {
@@ -210,6 +220,19 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       );
 
       if (!hasReported) {
+        if (activeBlok) {
+          const teacherObj = teachers.find(t => (t.nama_guru || '').toLowerCase().trim() === pNameLower);
+          if (teacherObj?.wajib_hadir_hanya_mengajar) {
+            const hasTeachingToday = scheduleList.some(s => {
+              const sName = (s.nama_guru || '').toLowerCase().trim();
+              return sName === pNameLower || pNameLower.includes(sName) || sName.includes(pNameLower);
+            });
+            if (!hasTeachingToday) {
+              continue;
+            }
+          }
+        }
+
         reminders.push({
           guru_id: assigned.guru_id || assigned.id,
           guru_nama: pName,
