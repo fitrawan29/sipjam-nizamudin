@@ -300,3 +300,37 @@ Tanggal di dashboard harus berformat `[hari, tanggal-bulan-tahun]` (contoh: Juma
 - [ ] Sistem tidak memblokir atau memaksa presensi bagi guru pengecualian di hari tanpa jadwal, meskipun periode blok aktif (mereka akan terbaca bebas presensi, bebas jurnal, dan bebas piket).
 - [ ] Foto di mode cetak (`print` CSS) memenuhi kolom (`w-full` dan `h-auto` atau setara) tanpa merusak baris.
 - [ ] Tanggal di dashboard menampilkan hari dan tanggal penuh (misal: DD-MM-YYYY) dan menyesuaikan ruang di mobile (bisa wrap jika perlu, tapi tidak `truncate`).
+
+
+## 2026-10-03T00:45:54Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched.
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: small focused team
+
+This is a single self-contained fix; keep it small and focused.
+Ubah `CameraSelfieCapture` agar menerima prop orientasi, lalu gunakan orientasi potret untuk fitur Presensi, dan lanskap untuk Jurnal serta Laporan Piket.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+
+## Requirements
+
+### R1. Prop Orientasi
+Tambahkan prop `orientation` ('portrait' | 'landscape') opsional ke `src/components/CameraSelfieCapture.tsx`. Jika 'portrait', gunakan constraint tinggi > lebar (misal `width: 720, height: 1280`). Jika 'landscape', gunakan lebar > tinggi (misal `width: 1280, height: 720`).
+
+### R2. Terapkan ke Komponen
+Teruskan prop yang sesuai dari:
+- `src/components/GuruPresensi.tsx` (portrait)
+- `src/components/GuruJurnal.tsx` (landscape)
+- `src/components/PiketView.tsx` (landscape)
+
+## Acceptance Criteria
+
+### Verifikasi Kode (Programmatic / Statis)
+- [ ] File `CameraSelfieCapture.tsx` mengecek nilai prop `orientation` untuk mengatur `constraints.video`.
+- [ ] File `GuruPresensi.tsx` meneruskan prop `orientation="portrait"`.
+- [ ] File `GuruJurnal.tsx` meneruskan prop `orientation="landscape"`.
+- [ ] File `PiketView.tsx` meneruskan prop `orientation="landscape"`.

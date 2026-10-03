@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-02T08:33:00Z
+# BRIEFING — 2026-10-03T00:47:00Z
 
 ## Mission
-Route and monitor implementation of Sipjam follow-up fixes (R1: Block system exemption based on teaching schedule, R2: Print document photo size fitting column, R3: Responsive dashboard date format [hari, tanggal-bulan-tahun]) per ORIGINAL_REQUEST.md (2026-10-02T08:30:41Z).
+Route and monitor implementation of CameraSelfieCapture orientation prop ('portrait' | 'landscape') for GuruPresensi (portrait), GuruJurnal (landscape), and PiketView (landscape) per ORIGINAL_REQUEST.md (2026-10-03T00:45:54Z).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -22,8 +22,10 @@ Route and monitor implementation of Sipjam follow-up fixes (R1: Block system exe
 - Victory Auditor 7: 6ea507cb-89c7-47f5-a1d6-a67deb8af043 (victory_auditor_7 - VICTORY CONFIRMED & retired)
 - Active SWE Orchestrator (swe_6): b682bce7-11f6-4c9b-8a9e-1ed563a26ff1 (completed & retired)
 - Sentinel Victory Auditor (victory_auditor_10): c3707d87-71e6-4a4c-a5e7-625c6c3841ee (VICTORY CONFIRMED & retired)
-- Active SWE Orchestrator (swe_7): b91e8024-c4f4-4a35-9c87-7d547c9151cc
-- Sentinel Victory Auditor (victory_auditor_11): TBD (to be spawned on victory claim)
+- Active SWE Orchestrator (swe_7): b91e8024-c4f4-4a35-9c87-7d547c9151cc (completed & retired)
+- Sentinel Victory Auditor (victory_auditor_11): a32434f0-78e8-40ce-9e7e-43a8a716dc5f (VICTORY CONFIRMED & retired)
+- Active SWE Orchestrator (swe_8): 2d51c71e-140c-4d66-bfef-463c2e93c931
+- Victory Auditor (victory_auditor_12): [TBD]
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -32,23 +34,24 @@ Route and monitor implementation of Sipjam follow-up fixes (R1: Block system exe
 - Cancel all crons and kill all subagents before final summary delivery
 
 ## User Context
-- **Last user request**: Tiga perbaikan bug/fitur kecil: (1) Pengecualian presensi/jurnal/piket untuk guru saat sistem blok berdasarkan jadwal mengajar, (2) Penyesuaian ukuran foto pada hasil cetak dokumen agar memenuhi kolom, (3) Pembaruan format tanggal dashboard menjadi [hari, tanggal-bulan-tahun] yang responsif.
+- **Last user request**: Ubah `CameraSelfieCapture` agar menerima prop orientasi, lalu gunakan orientasi potret untuk fitur Presensi, dan lanskap untuk Jurnal serta Laporan Piket.
 - **Pending clarifications**: none
-- **Delivered results**: in progress
+- **Delivered results**: none yet (swe_8 in progress)
 
 ## Project Status
 - **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: task-28 (Progress Reporting: */8 * * * *), task-30 (Liveness Check: */10 * * * *)]
-- **Active Subagents**: b91e8024-c4f4-4a35-9c87-7d547c9151cc (swe_7)
+- **Active Crons**: task-20 (progress reporting), task-22 (liveness check)
+- **Active Subagents**: 2d51c71e-140c-4d66-bfef-463c2e93c931 (swe_8)
 
 ## Victory Audit Status
 - **Triggered**: no
 - **Verdict**: pending
 - **Retry count**: 0
-- **Auditor ID**: TBD
+- **Auditor ID**: [TBD]
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original verbatim user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\BRIEFING.md — Sentinel persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_7\init.md — Initial dispatch note for swe_7
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\handoff.md — Sentinel final handoff
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_8\handoff.md — Orchestrator handoff report [TBD]

@@ -1083,6 +1083,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                     {(!isUploadAllowed || uploadMode === 'camera') && (
                       <CameraSelfieCapture
                         key={`cam-jurnal-${tipeJurnal}`}
+                        orientation="landscape"
                         initialFacingMode="environment"
                         initialCoordinates={jurnalCoords}
                         existingPhotoUrl={photoPreviewUrl}

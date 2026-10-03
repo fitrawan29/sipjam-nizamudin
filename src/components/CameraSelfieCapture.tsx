@@ -11,6 +11,7 @@ export interface CameraSelfieCaptureProps {
   initialLocationName?: string | null;
   existingPhotoUrl?: string | null;
   initialFacingMode?: 'user' | 'environment';
+  orientation?: 'portrait' | 'landscape';
 }
 
 export default function CameraSelfieCapture({
@@ -20,6 +21,7 @@ export default function CameraSelfieCapture({
   initialLocationName = null,
   existingPhotoUrl = null,
   initialFacingMode = 'user',
+  orientation = 'landscape',
 }: CameraSelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -126,11 +128,12 @@ export default function CameraSelfieCapture({
     }
 
     try {
+      const isPortrait = orientation === 'portrait';
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: { ideal: mode },
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
+          width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 },
+          height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 },
         },
         audio: false,
       };
@@ -185,7 +188,7 @@ export default function CameraSelfieCapture({
     } finally {
       isStartingRef.current = false;
     }
-  }, [stopCamera]);
+  }, [stopCamera, orientation]);
 
   // Toggle front/rear camera
   const toggleFacingMode = async () => {
