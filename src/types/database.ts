@@ -520,9 +520,12 @@ export type Database = {
           kehadiran_murid: string | null
           kelas: string | null
           keterangan: string | null
+          kktp: string | null
+          konten: string | null
           latitude: number | null
           link_bukti_foto: string | null
           lokasi: string | null
+          lokasi_kbm: string | null
           longitude: number | null
           mapel: string | null
           materi: string | null
@@ -552,9 +555,12 @@ export type Database = {
           kehadiran_murid?: string | null
           kelas?: string | null
           keterangan?: string | null
+          kktp?: string | null
+          konten?: string | null
           latitude?: number | null
           link_bukti_foto?: string | null
           lokasi?: string | null
+          lokasi_kbm?: string | null
           longitude?: number | null
           mapel?: string | null
           materi?: string | null
@@ -584,9 +590,12 @@ export type Database = {
           kehadiran_murid?: string | null
           kelas?: string | null
           keterangan?: string | null
+          kktp?: string | null
+          konten?: string | null
           latitude?: number | null
           link_bukti_foto?: string | null
           lokasi?: string | null
+          lokasi_kbm?: string | null
           longitude?: number | null
           mapel?: string | null
           materi?: string | null

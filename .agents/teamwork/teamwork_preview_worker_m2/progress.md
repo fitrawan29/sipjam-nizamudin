@@ -1,20 +1,18 @@
-# Progress Log - Worker Milestone 2
+# Progress Tracker - Worker M2
 
-Last visited: 2026-10-01T11:25:40Z
+Last visited: 2026-10-03T07:31:30Z
 
-## Current Status
-- Milestone 2 (Avatar Reactivity R2 & Username Locking R5) implementation completed and verified.
-- TypeScript validation (`tsc --noEmit`) passed with code 0.
-- All 8 assigned files modified strictly within exclusive ownership.
+## Status
+Milestone 2 implementation complete and verified. Ready for commit & push.
 
 ## Steps
-- [x] Step 1: Initialize briefing and progress tracking
-- [x] Step 2: Read Survey 2 report and inspect target files
-- [x] Step 3: Implement R2 in `src/lib/avatars.tsx` (support data URLs & image URLs in `renderUserAvatar`)
-- [x] Step 4: Implement R2 & R5 in `src/components/AccountSettingsModal.tsx` (photo upload, reactive state update, `role === 'admin'` check, username locking, safe payload)
-- [x] Step 5: Implement R2 in `src/components/HomeView.tsx` (dashboard banner avatar) & `src/components/AppScreen.tsx` (navbar avatar & session query)
-- [x] Step 6: Update `AdminConfigView.tsx` callback for avatar reactivity
-- [x] Step 7: Update session queries in `src/app/page.tsx` & `src/app/superadmin/page.tsx` (include `avatar`)
-- [x] Step 8: Implement teacher username sync in `src/components/AdminDataView.tsx`
-- [x] Step 9: Verify build & types (`tsc --noEmit` code 0)
-- [x] Step 10: Final handoff, git commit & push, message parent
+- [x] Read DISPATCH.md and initialize workspace tracking (BRIEFING, DISPATCH, progress).
+- [x] Read ORIGINAL_REQUEST.md, PROJECT.md, and Explorers 1, 2, 3 handoffs.
+- [x] Check Next.js docs in `node_modules/next/dist/docs/`.
+- [x] Implement Scope 1: Migration file `supabase/migrations/20261003_add_kktp_konten_lokasi_kbm.sql` & update `src/types/database.ts`.
+- [x] Implement Scope 2: Camera orientation in `src/components/GuruPresensi.tsx` (verified landscape in GuruJurnal & PiketView).
+- [x] Implement Scope 3: Restructure Jurnal KBM form in `src/components/GuruJurnal.tsx` (12 fields, date DD-MM-YYYY read-only display, state kktp/konten/lokasiKbm, dual-write to materi/materi_pembelajaran, validations, reset, Jurnal Kegiatan preserved).
+- [x] Implement Scope 4: Update Rekap Jurnal Pribadi table & print document in `src/components/RekapJurnalView.tsx` (11 columns with fallbacks, aspect-video photo, CSV sync, tabMode kelas untouched).
+- [x] Verify build with `npx tsc --noEmit` (exit code 0) and `npm run build` (exit code 0).
+- [ ] Git commit & push (`git status`, `git add .`, `git commit -m "feat: restrukturisasi form Jurnal KBM dan orientasi kamera"`, `git push origin main`).
+- [ ] Write handoff.md and report to parent orchestrator.

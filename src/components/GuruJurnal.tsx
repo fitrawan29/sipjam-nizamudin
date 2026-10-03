@@ -26,6 +26,9 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [jamKe, setJamKe] = useState('');
   const [tujuanPembelajaran, setTujuanPembelajaran] = useState('');
   const [kehadiranMurid, setKehadiranMurid] = useState('');
+  const [kktp, setKktp] = useState('');
+  const [konten, setKonten] = useState('');
+  const [lokasiKbm, setLokasiKbm] = useState('');
   
   const [mapelList, setMapelList] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
@@ -54,6 +57,15 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [uploadWaktu, setUploadWaktu] = useState<string | null>(null);
 
   const isUploadAllowed = schoolModeJurnal !== 'camera_only';
+
+  const formatDisplayDate = (dStr: string) => {
+    if (!dStr) return '';
+    const parts = dStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dStr;
+  };
 
 
   const calculateKehadiranSummary = (abs: Record<string, string>, stList: any[]): string => {
@@ -478,6 +490,40 @@ export default function GuruJurnal({ user }: { user: any }) {
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (tipeJurnal === 'Jurnal KBM') {
+      if (!pertemuanKe || !pertemuanKe.trim()) {
+        return showToast('No. Pertemuan Wajib', 'Silakan isi nomor pertemuan KBM.', 'warning');
+      }
+      if (!tujuanPembelajaran || !tujuanPembelajaran.trim()) {
+        return showToast('Tujuan Pembelajaran Wajib', 'Silakan isi tujuan pembelajaran.', 'warning');
+      }
+      if (!kktp || !kktp.trim()) {
+        return showToast('KKTP Wajib', 'Silakan isi kriteria ketercapaian tujuan pembelajaran (KKTP).', 'warning');
+      }
+      if (!konten || !konten.trim()) {
+        return showToast('Konten Wajib', 'Silakan isi konten pembelajaran.', 'warning');
+      }
+      if (!kegiatan || !kegiatan.trim()) {
+        return showToast('Kegiatan Pembelajaran Wajib', 'Silakan isi kegiatan pembelajaran.', 'warning');
+      }
+      if (!mapel || !mapel.trim()) {
+        return showToast('Mata Pelajaran Wajib', 'Silakan pilih mata pelajaran.', 'warning');
+      }
+      if (!kelas || !kelas.trim()) {
+        return showToast('Kelas Wajib', 'Silakan pilih kelas.', 'warning');
+      }
+      if (!lokasiKbm || !lokasiKbm.trim()) {
+        return showToast('Lokasi KBM Wajib', 'Silakan isi lokasi KBM (contoh: Ruang Kelas 7A, Lab IPA).', 'warning');
+      }
+    } else {
+      if (!materi || !materi.trim()) {
+        return showToast('Nama Kegiatan Wajib', 'Silakan isi nama kegiatan.', 'warning');
+      }
+      if (!kegiatan || !kegiatan.trim()) {
+        return showToast('Uraian / Deskripsi Wajib', 'Silakan isi uraian kegiatan.', 'warning');
+      }
+    }
+
     if (!file) {
       return showToast('Foto Dokumentasi Wajib', 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera atau unggah dari galeri.', 'warning');
     }
@@ -496,6 +542,8 @@ export default function GuruJurnal({ user }: { user: any }) {
       ? (kehadiranMurid || calculateKehadiranSummary(absensi, students))
       : 'Hadir';
 
+    const finalKonten = tipeJurnal === 'Jurnal KBM' ? konten : materi;
+
     // ponytail: prefix keterangan with INVAL marker — no schema change needed
     const invalPrefix = isInval && guruDigantikan
       ? `[INVAL - Menggantikan: ${guruDigantikan.nama}] `
@@ -509,7 +557,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       mapel: tipeJurnal === 'Jurnal KBM' ? mapel : '-',
       kelas: tipeJurnal === 'Jurnal KBM' ? kelas : '-',
       tanggal: tanggal,
-      materi: materi,
+      materi: finalKonten,
       kegiatan: kegiatan,
       absensi_siswa: JSON.stringify(absensi),
       keterangan: `${invalPrefix}${tipeJurnal}`,
@@ -519,16 +567,19 @@ export default function GuruJurnal({ user }: { user: any }) {
       status_verifikasi: 'Menunggu',
       catatan_khusus_siswa: catatanSiswa,
       // Dual-write new R2 columns
+      kktp: tipeJurnal === 'Jurnal KBM' ? (kktp || null) : null,
+      konten: tipeJurnal === 'Jurnal KBM' ? finalKonten : null,
+      lokasi_kbm: tipeJurnal === 'Jurnal KBM' ? (lokasiKbm || null) : null,
       pertemuan_ke: tipeJurnal === 'Jurnal KBM' ? (pertemuanKe || '1') : '-',
       jam_ke: tipeJurnal === 'Jurnal KBM' ? (jamKe || '1-2') : '-',
       tujuan_pembelajaran: tipeJurnal === 'Jurnal KBM' ? (tujuanPembelajaran || '-') : '-',
-      materi_pembelajaran: materi,
+      materi_pembelajaran: finalKonten,
       kehadiran_murid: computedKehadiran,
       catatan_refleksi: refleksi || '-',
       foto_kegiatan: fileUrl,
       latitude: uploadLatitude ?? (jurnalCoords?.latitude || null),
       longitude: uploadLongitude ?? (jurnalCoords?.longitude || null),
-      lokasi: uploadLokasi || (jurnalCoords ? `GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}` : '-'),
+      lokasi: uploadLokasi || (jurnalCoords ? `GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}` : (lokasiKbm || '-')),
       waktu_upload: uploadWaktu || getWitaTimestamp(),
       ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
     };
@@ -619,6 +670,9 @@ export default function GuruJurnal({ user }: { user: any }) {
         setJamKe('');
         setTujuanPembelajaran('');
         setKehadiranMurid('');
+        setKktp('');
+        setKonten('');
+        setLokasiKbm('');
         // Reset inval mode
         setIsInval(false);
         setGuruDigantikan(null);
@@ -844,8 +898,101 @@ export default function GuruJurnal({ user }: { user: any }) {
                     <p className="text-[9px] text-gray-500 dark:text-white/80 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
                 </div>
 
-                {tipeJurnal === 'Jurnal KBM' && (
+                {tipeJurnal === 'Jurnal KBM' ? (
                   <>
+                    {/* 1. No. & 2. Hari/Tanggal */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center gap-1">
+                          No. <span className="text-red-500">*</span>
+                          {pertemuanKe && <span className="text-[9px] text-green-600 dark:text-green-400 font-normal">(terisi otomatis)</span>}
+                        </label>
+                        <input
+                          type="text"
+                          value={pertemuanKe}
+                          onChange={e => setPertemuanKe(e.target.value)}
+                          required
+                          placeholder="Contoh: 1 atau 1-2"
+                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                          Hari/Tanggal
+                        </label>
+                        <input
+                          type="text"
+                          value={formatDisplayDate(tanggal)}
+                          readOnly
+                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 3. Tujuan Pembelajaran */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        Tujuan Pembelajaran <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={tujuanPembelajaran}
+                        onChange={e => setTujuanPembelajaran(e.target.value)}
+                        required
+                        rows={2}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                        placeholder="Tuliskan capaian/tujuan pembelajaran..."
+                      />
+                    </div>
+
+                    {/* 4. KKTP */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        KKTP (Kriteria Ketercapaian Tujuan Pembelajaran) <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={kktp}
+                        onChange={e => setKktp(e.target.value)}
+                        required
+                        rows={2}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                        placeholder="Tuliskan kriteria ketercapaian tujuan pembelajaran..."
+                      />
+                    </div>
+
+                    {/* 5. Konten (replaces Materi Pembelajaran) */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        Konten <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={konten}
+                        onChange={e => {
+                          setKonten(e.target.value);
+                          setMateri(e.target.value);
+                        }}
+                        required
+                        rows={2}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                        placeholder="Tuliskan materi/topik konten pembelajaran..."
+                      />
+                    </div>
+
+                    {/* 6. Kegiatan Pembelajaran */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        Kegiatan Pembelajaran <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={kegiatan}
+                        onChange={e => setKegiatan(e.target.value)}
+                        required
+                        rows={2}
+                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                        placeholder="Deskripsikan kegiatan pembelajaran selengkapnya..."
+                      />
+                    </div>
+
+                    {/* 7. Mapel & 8. Kelas */}
                     {!isFetchingAssignments && mapelList.length === 0 && user?.role !== 'Admin' ? (
                       <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 p-4 rounded-xl text-xs flex items-center gap-3">
                         <i className="fa-solid fa-circle-exclamation text-lg shrink-0 text-amber-600 dark:text-amber-400"></i>
@@ -858,180 +1005,151 @@ export default function GuruJurnal({ user }: { user: any }) {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
-                          <div>
-                              <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                                Mata Pelajaran {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
-                              </label>
-                              <select 
-                                value={mapel} 
-                                onChange={e => handleMapelChange(e.target.value)} 
-                                required 
-                                className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                              >
-                                <option value="" disabled>Pilih Mapel...</option>
-                                {mapelList.map(m => (
-                                  <option key={m.id || m.nama_mata_pelajaran} value={m.nama_mata_pelajaran}>
-                                    {m.nama_mata_pelajaran}
-                                  </option>
-                                ))}
-                              </select>
-                          </div>
-                          <div>
-                              <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                                Kelas {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
-                              </label>
-                              <select 
-                                value={kelas} 
-                                onChange={e => handleKelasChange(e.target.value)} 
-                                required 
-                                className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                              >
-                                <option value="" disabled>Pilih Kelas...</option>
-                                {kelasList.map(k => (
-                                  <option key={k} value={k}>{k}</option>
-                                ))}
-                              </select>
-                          </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Mata Pelajaran <span className="text-red-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
+                          </label>
+                          <select 
+                            value={mapel} 
+                            onChange={e => handleMapelChange(e.target.value)} 
+                            required 
+                            className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                          >
+                            <option value="" disabled>Pilih Mapel...</option>
+                            {mapelList.map(m => (
+                              <option key={m.id || m.nama_mata_pelajaran} value={m.nama_mata_pelajaran}>
+                                {m.nama_mata_pelajaran}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Kelas <span className="text-red-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
+                          </label>
+                          <select 
+                            value={kelas} 
+                            onChange={e => handleKelasChange(e.target.value)} 
+                            required 
+                            className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                          >
+                            <option value="" disabled>Pilih Kelas...</option>
+                            {kelasList.map(k => (
+                              <option key={k} value={k}>{k}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
+
+                    {/* 9. Absensi Murid */}
+                    <div className="space-y-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center gap-1">
-                          Pertemuan Ke- <span className="text-red-500">*</span>
-                          {pertemuanKe && <span className="text-[9px] text-green-600 dark:text-green-400 font-normal">(terisi otomatis)</span>}
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                          Absensi Murid <span className="text-gray-500 dark:text-gray-400 font-normal">(Tersinkronisasi Otomatis)</span>
                         </label>
                         <input
                           type="text"
-                          value={pertemuanKe}
-                          onChange={e => setPertemuanKe(e.target.value)}
-                          required={tipeJurnal === 'Jurnal KBM'}
-                          placeholder="Contoh: 1 atau 1-2"
+                          value={kehadiranMurid}
+                          onChange={e => setKehadiranMurid(e.target.value)}
+                          placeholder="Contoh: Semua Hadir (29 siswa) atau Hadir: 28, Sakit: 1"
                           className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
                         />
                       </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center gap-1">
-                          Jam Ke- <span className="text-red-500">*</span>
-                          {jamKe && <span className="text-[9px] text-green-600 dark:text-green-400 font-normal">(terisi otomatis)</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={jamKe}
-                          onChange={e => setJamKe(e.target.value)}
-                          required={tipeJurnal === 'Jurnal KBM'}
-                          placeholder="Contoh: 07.15 - 08.35"
-                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tanggal</label>
-                        <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" />
-                    </div>
-                    <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">{tipeJurnal === 'Jurnal KBM' ? 'Materi Pembelajaran' : 'Nama Kegiatan'}</label>
-                        <input type="text" value={materi} onChange={e => setMateri(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" placeholder="..." />
-                    </div>
-                </div>
 
-                {tipeJurnal === 'Jurnal KBM' && (
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                      Tujuan Pembelajaran <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={tujuanPembelajaran}
-                      onChange={e => setTujuanPembelajaran(e.target.value)}
-                      required={tipeJurnal === 'Jurnal KBM'}
-                      rows={2}
-                      className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                      placeholder="Tuliskan capaian/tujuan pembelajaran..."
-                    />
-                  </div>
-                )}
-
-                <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                      {tipeJurnal === 'Jurnal KBM' ? 'Kegiatan Pembelajaran' : 'Uraian / Deskripsi'}
-                    </label>
-                    <textarea value={kegiatan} onChange={e => setKegiatan(e.target.value)} required rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white" placeholder="Deskripsikan selengkapnya..."></textarea>
-                </div>
-
-                {tipeJurnal === 'Jurnal KBM' && (
-                  <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                      Kehadiran Murid <span className="text-gray-500 dark:text-gray-400 font-normal">(Tersinkronisasi Otomatis)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={kehadiranMurid}
-                      onChange={e => setKehadiranMurid(e.target.value)}
-                      placeholder="Contoh: Semua Hadir (29 siswa) atau Hadir: 28, Sakit: 1"
-                      className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                    />
-                  </div>
-                )}
-
-                {tipeJurnal === 'Jurnal KBM' && (
-                  <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
-                      <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
-                      <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
-                  </div>
-                )}
-                
-                {tipeJurnal === 'Jurnal KBM' && students.length > 0 && (
-                  <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
-                    <h3 className="text-[11px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                      <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
-                    </h3>
-                    <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
-                      {students.map((siswa, idx) => (
-                        <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4">{idx + 1}.</span>
-                            <div>
-                              <div className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</div>
-                              <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
-                            </div>
-                          </div>
-                          <div className="flex gap-1 shrink-0">
-                            {['H', 'S', 'I', 'A'].map(status => (
-                              <button 
-                                key={status}
-                                type="button"
-                                onClick={() => handleAbsensiChange(siswa.nisn, status)}
-                                className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
-                                  absensi[siswa.nisn] === status 
-                                  ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
-                                     status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
-                                     status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
-                                     'bg-red-500 text-white shadow-sm') 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                }`}
-                              >
-                                {status}
-                              </button>
+                      {students.length > 0 && (
+                        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
+                          <h3 className="text-[11px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                            <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
+                          </h3>
+                          <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
+                            {students.map((siswa, idx) => (
+                              <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4">{idx + 1}.</span>
+                                  <div>
+                                    <div className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</div>
+                                    <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                                  </div>
+                                </div>
+                                <div className="flex gap-1 shrink-0">
+                                  {['H', 'S', 'I', 'A'].map(status => (
+                                    <button 
+                                      key={status}
+                                      type="button"
+                                      onClick={() => handleAbsensiChange(siswa.nisn, status)}
+                                      className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
+                                        absensi[siswa.nisn] === status 
+                                        ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
+                                           status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
+                                           status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
+                                           'bg-red-500 text-white shadow-sm') 
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                      }`}
+                                    >
+                                      {status}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </div>
-                      ))}
+                      )}
+
+                      <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
+                        <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
+                        <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
+                      </div>
                     </div>
-                  </div>
+
+                    {/* 10. Lokasi KBM */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        Lokasi KBM <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={lokasiKbm}
+                        onChange={e => setLokasiKbm(e.target.value)}
+                        required
+                        placeholder="contoh: Ruang Kelas 7A, Lab IPA"
+                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Jurnal Kegiatan Fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tanggal</label>
+                        <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Nama Kegiatan</label>
+                        <input type="text" value={materi} onChange={e => setMateri(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" placeholder="..." />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        Uraian / Deskripsi
+                      </label>
+                      <textarea value={kegiatan} onChange={e => setKegiatan(e.target.value)} required rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white" placeholder="Deskripsikan selengkapnya..."></textarea>
+                    </div>
+                  </>
                 )}
                 
                 <div className="space-y-2">
                     <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
-                        Foto Dokumentasi Pembelajaran{' '}
+                        {tipeJurnal === 'Jurnal KBM' ? 'Dokumentasi KBM' : 'Foto Dokumentasi Kegiatan'}{' '}
                         {isUploadAllowed ? (
-                          <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera / Upload Galeri)</span>
+                          <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera Lanskap / Upload Galeri)</span>
                         ) : (
-                          <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Langsung)</span>
+                          <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Lanskap Langsung)</span>
                         )}
                       </span>
                       <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
@@ -1186,8 +1304,10 @@ export default function GuruJurnal({ user }: { user: any }) {
                 </div>
 
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Catatan Refleksi (Opsional)</label>
-                    <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={1} className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                      {tipeJurnal === 'Jurnal KBM' ? 'Catatan (Opsional)' : 'Catatan Refleksi (Opsional)'}
+                    </label>
+                    <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={2} placeholder="Tuliskan catatan refleksi atau kendala..." className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
                 </div>
                 
                 <div className="pt-2">

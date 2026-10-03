@@ -266,6 +266,9 @@ export default function RekapJurnalView({
       const s = search.toLowerCase();
       return (
         (j.nama_guru && j.nama_guru.toLowerCase().includes(s)) ||
+        (j.konten && j.konten.toLowerCase().includes(s)) ||
+        (j.kktp && j.kktp.toLowerCase().includes(s)) ||
+        (j.lokasi_kbm && j.lokasi_kbm.toLowerCase().includes(s)) ||
         (j.materi && j.materi.toLowerCase().includes(s)) ||
         (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(s)) ||
         (j.tujuan_pembelajaran && j.tujuan_pembelajaran.toLowerCase().includes(s)) ||
@@ -651,14 +654,17 @@ export default function RekapJurnalView({
                       <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
                         <thead>
                           <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[15%]">Hari, tanggal bulan tahun</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[15%]">Kelas, pertemuan dan jam ke-</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Tujuan pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Materi pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Kegiatan pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Kehadiran murid</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Catatan refleksi</th>
-                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[20%]">Foto kegiatan</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[3%]">No</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[10%]">Hari/Tanggal</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Tujuan Pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">KKTP</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Konten</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Kegiatan Pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-16 print:w-[6%]">Kelas</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Absensi Murid (H/I/S/A)</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Lokasi KBM</th>
+                            <th className="p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[10%]">Foto Dokumentasi</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[7%]">Catatan</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -671,20 +677,39 @@ export default function RekapJurnalView({
                                 key={j.id || index}
                                 className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 print:hover:bg-transparent"
                               >
-                                {/* 1. Hari, tanggal bulan tahun */}
+                                {/* 1. No */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
+                                  {index + 1}
+                                </td>
+
+                                {/* 2. Hari/Tanggal */}
                                 <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
                                   {formatHariTanggal(j.tanggal)}
                                 </td>
 
-                                {/* 2. Kelas, pertemuan dan jam ke- */}
+                                {/* 3. Tujuan Pembelajaran */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                  {j.tujuan_pembelajaran || '-'}
+                                </td>
+
+                                {/* 4. KKTP */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                  {j.kktp || '-'}
+                                </td>
+
+                                {/* 5. Konten */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
+                                  {j.konten || j.materi_pembelajaran || j.materi || '-'}
+                                </td>
+
+                                {/* 6. Kegiatan Pembelajaran */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                  {j.kegiatan_pembelajaran || j.kegiatan || '-'}
+                                </td>
+
+                                {/* 7. Kelas */}
                                 <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
                                   <div className="font-bold text-gray-900 dark:text-white print:text-black">{j.kelas || '-'}</div>
-                                  <div className="text-[11px] print:text-[8pt] text-gray-600 dark:text-gray-300 print:text-black">
-                                    {j.pertemuan_ke ? `Pertemuan ke-${j.pertemuan_ke}` : '-'}
-                                  </div>
-                                  <div className="text-[10px] print:text-[7pt] text-gray-500 dark:text-gray-400 print:text-black">
-                                    {j.jam_ke ? `Jam ke-${j.jam_ke}` : '-'}
-                                  </div>
                                   {j.mapel && j.mapel !== '-' && (
                                     <div className="text-[10px] print:text-[7pt] font-semibold text-blue-600 dark:text-blue-400 print:text-black mt-0.5">
                                       ({j.mapel})
@@ -692,41 +717,26 @@ export default function RekapJurnalView({
                                   )}
                                 </td>
 
-                                {/* 3. Tujuan pembelajaran */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                  {j.tujuan_pembelajaran || '-'}
-                                </td>
-
-                                {/* 4. Materi pembelajaran */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
-                                  {j.materi_pembelajaran || j.materi || '-'}
-                                </td>
-
-                                {/* 5. Kegiatan pembelajaran */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                  {j.kegiatan || '-'}
-                                </td>
-
-                                {/* 6. Kehadiran murid */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top">
+                                {/* 8. Absensi Murid (H/I/S/A) */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center sm:text-left">
                                   {j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen)}
                                 </td>
 
-                                {/* 7. Catatan refleksi */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
-                                  {j.catatan_refleksi || j.refleksi || '-'}
+                                {/* 9. Lokasi KBM */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                  {j.lokasi_kbm || j.lokasi || '-'}
                                 </td>
 
-                                {/* 8. Foto kegiatan */}
+                                {/* 10. Foto Dokumentasi */}
                                 <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
                                   {hasFoto ? (
                                     <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
                                       <img
                                         src={getGoogleDriveThumbnailUrl(fotoUrl, 800) || transformGoogleDriveUrl(fotoUrl)}
-                                        alt="Foto Kegiatan"
+                                        alt="Foto Dokumentasi"
                                         loading="eager"
                                         referrerPolicy="no-referrer"
-                                        className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-auto print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                        className="w-24 aspect-video object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:aspect-video print:object-cover print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
@@ -744,16 +754,8 @@ export default function RekapJurnalView({
                                       >
                                         <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
                                       </a>
-                                      {(j.lokasi || (j.latitude && j.longitude)) && (
-                                        <div className="text-[8px] print:text-[6pt] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5 max-w-[100px] text-center leading-tight">
-                                          <i className="fa-solid fa-location-dot text-red-500 text-[8px]"></i>
-                                          <span className="truncate" title={j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}>
-                                            {j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}
-                                          </span>
-                                        </div>
-                                      )}
                                       {j.waktu_upload && (
-                                        <div className="text-[7px] text-gray-400 font-mono text-center">
+                                        <div className="text-[7px] text-gray-400 font-mono text-center no-print">
                                           {j.waktu_upload}
                                         </div>
                                       )}
@@ -761,6 +763,11 @@ export default function RekapJurnalView({
                                   ) : (
                                     <span className="text-gray-400 text-[10px] italic">-</span>
                                   )}
+                                </td>
+
+                                {/* 11. Catatan */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
+                                  {j.catatan_refleksi || j.refleksi || '-'}
                                 </td>
                               </tr>
                             );
@@ -824,26 +831,32 @@ export default function RekapJurnalView({
                       });
                     } else {
                       headers = [
-                        'Hari, tanggal bulan tahun',
-                        'Kelas, pertemuan dan jam ke-',
-                        'Tujuan pembelajaran',
-                        'Materi pembelajaran',
-                        'Kegiatan pembelajaran',
-                        'Kehadiran murid',
-                        'Catatan refleksi',
-                        'Foto kegiatan',
+                        'No',
+                        'Hari/Tanggal',
+                        'Tujuan Pembelajaran',
+                        'KKTP',
+                        'Konten',
+                        'Kegiatan Pembelajaran',
+                        'Kelas',
+                        'Absensi Murid (H/I/S/A)',
+                        'Lokasi KBM',
+                        'Foto Dokumentasi',
+                        'Catatan',
                         'Status Verifikasi'
                       ];
                       csvRows = [headers.map(h => `"${h}"`).join(',')];
-                      filteredJurnal.forEach((j: any) => {
-                        const col1 = formatHariTanggal(j.tanggal);
-                        const col2 = `${j.kelas || '-'}${j.pertemuan_ke ? ` | Pertemuan: ${j.pertemuan_ke}` : ''}${j.jam_ke ? ` | Jam: ${j.jam_ke}` : ''}${j.mapel ? ` (${j.mapel})` : ''}`;
+                      filteredJurnal.forEach((j: any, index: number) => {
+                        const col1 = String(index + 1);
+                        const col2 = formatHariTanggal(j.tanggal);
                         const col3 = j.tujuan_pembelajaran || '-';
-                        const col4 = j.materi_pembelajaran || j.materi || '-';
-                        const col5 = j.kegiatan || '-';
-                        const col6 = j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen);
-                        const col7 = j.catatan_refleksi || j.refleksi || '-';
-                        const col8 = j.foto_kegiatan || j.link_bukti_foto || '-';
+                        const col4 = j.kktp || '-';
+                        const col5 = j.konten || j.materi_pembelajaran || j.materi || '-';
+                        const col6 = j.kegiatan_pembelajaran || j.kegiatan || '-';
+                        const col7 = `${j.kelas || '-'}${j.mapel ? ` (${j.mapel})` : ''}`;
+                        const col8 = j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen);
+                        const col9 = j.lokasi_kbm || j.lokasi || '-';
+                        const col10 = j.foto_kegiatan || j.link_bukti_foto || '-';
+                        const col11 = j.catatan_refleksi || j.refleksi || '-';
                         const status = j.status_verifikasi || 'Menunggu';
 
                         csvRows.push([
@@ -855,6 +868,9 @@ export default function RekapJurnalView({
                           `"${col6.replace(/"/g, '""')}"`,
                           `"${col7.replace(/"/g, '""')}"`,
                           `"${col8.replace(/"/g, '""')}"`,
+                          `"${col9.replace(/"/g, '""')}"`,
+                          `"${col10.replace(/"/g, '""')}"`,
+                          `"${col11.replace(/"/g, '""')}"`,
                           `"${status.replace(/"/g, '""')}"`
                         ].join(','));
                       });

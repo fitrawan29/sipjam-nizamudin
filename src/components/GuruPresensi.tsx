@@ -695,6 +695,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                     <CameraSelfieCapture
                       key="camera-selfie"
                       orientation="portrait"
+                      initialFacingMode="user"
                       initialCoordinates={userCoords}
                       existingPhotoUrl={photoPreviewUrl}
                       onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {

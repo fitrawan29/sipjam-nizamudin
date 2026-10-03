@@ -393,3 +393,97 @@ Integrity mode: development
 ### User Prompts & Feedback Flows
 - [ ] PWA install prompt is displayed once. If accepted or already installed (e.g., matching a local storage flag or `window.matchMedia('(display-mode: standalone)')`), it is hidden.
 - [ ] Admin rejection flow blocks submission until the feedback text area is populated, and the feedback is saved to the backend.
+
+
+## 2026-10-03T07:10:50Z
+
+Modifikasi aplikasi SIPJAM (Next.js + Supabase) di `c:\Users\Fitra\OneDrive\Documents\sipjam-app` untuk menyesuaikan orientasi kamera per fitur dan merestrukturisasi form Jurnal KBM beserta dokumen cetaknya. Gunakan pendekatan minimal (ponytail): ubah hanya yang perlu, jangan tambahkan abstraksi baru, fewest files changed wins.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+
+ATENSI: Baca `node_modules/next/dist/docs/` sebelum menulis kode Next.js apapun.
+
+## Requirements
+
+### R1. Orientasi Kamera per Fitur
+Pastikan setiap fitur menggunakan orientasi kamera yang benar pada komponen `CameraSelfieCapture` (src/components/CameraSelfieCapture.tsx):
+- **Presensi** (`src/components/GuruPresensi.tsx`): orientasi **potret** (`orientation="portrait"`, `initialFacingMode="user"`)
+- **Jurnal KBM** (`src/components/GuruJurnal.tsx`): orientasi **lanskap** (`orientation="landscape"`, `initialFacingMode="environment"`)
+- **Piket** (`src/components/PiketView.tsx`): orientasi **lanskap** (`orientation="landscape"`, `initialFacingMode="environment"`)
+
+Sesuaikan juga tampilan thumbnail/preview foto di tabel cetak (`src/components/RekapJurnalView.tsx`) agar rasio gambar sesuai:
+- Foto dari jurnal/piket: rasio lanskap (mis. `aspect-video` atau `w-full h-24 object-cover`)
+- Foto dari presensi (jika ada di rekap): rasio potret
+
+Catatan: Cek kondisi existing. GuruPresensi sudah portrait, GuruJurnal sudah landscape, PiketView sudah landscape. Jika sudah benar, skip — hanya sesuaikan yang belum benar.
+
+### R2. Restrukturisasi Form Jurnal KBM
+Ubah form pengisian Jurnal KBM di `src/components/GuruJurnal.tsx` (hanya section `tipeJurnal === 'Jurnal KBM'`) menggunakan urutan field berikut:
+
+1. **No.** — nomor urut pertemuan (`pertemuan_ke`), terisi otomatis, bisa diedit manual
+2. **Hari/Tanggal** — otomatis dari tanggal hari ini, ditampilkan dalam format "Sabtu, 4 Oktober 2026" (read-only display). Nilai `tanggal` tetap disimpan sebagai YYYY-MM-DD
+3. **Tujuan Pembelajaran** — textarea, **wajib diisi**
+4. **KKTP** (Kriteria Ketercapaian Tujuan Pembelajaran) — textarea, **wajib diisi**; simpan ke kolom `kktp` di tabel `jurnal_pembelajaran`
+5. **Konten** — textarea, **wajib diisi**; ini TERPISAH dari Materi Pembelajaran dan Kegiatan Pembelajaran (keduanya tetap ada di form tapi bisa di-collapse atau dijadikan secondary). Simpan Konten ke kolom `konten` di tabel `jurnal_pembelajaran`. Materi dan Kegiatan tetap tersimpan ke kolom masing-masing untuk backward-compatibility.
+6. **Kelas** — dropdown pilih kelas (pertahankan logika auto-fill bestehende)
+7. **Absensi Murid** — tombol H/I/S/A per siswa (pertahankan live absensi + sync ke tabel `absensi`)
+8. **Lokasi KBM** — text input, **wajib diisi** (contoh: "Ruang Kelas 7A", "Lab IPA"); simpan ke kolom `lokasi_kbm` di tabel `jurnal_pembelajaran`
+9. **Dokumentasi KBM** — kamera lanskap (pertahankan komponen CameraSelfieCapture landscape)
+10. **Catatan** — textarea opsional; simpan ke `catatan_refleksi`
+
+Field Mapel, Jam ke- tetap ada (untuk logika dan penyimpanan data) tapi bisa diposisikan sebagai secondary/collapsed. Jangan hapus logika auto-fill yang sudah ada.
+
+### R3. Restrukturisasi Dokumen Cetak Rekap Jurnal Pribadi
+Sesuaikan tabel cetak di `src/components/RekapJurnalView.tsx` (mode `pribadi` / `tabMode === 'pribadi'`) agar kolomnya:
+
+| No | Hari/Tanggal | Tujuan Pembelajaran | KKTP | Konten | Kelas | Absensi Murid (H/I/S/A) | Lokasi KBM | Foto Dokumentasi | Catatan |
+
+- Kolom "Absensi Murid" menampilkan ringkasan H/I/S/A (gunakan fungsi `formatAbsensi` yang sudah ada atau `j.kehadiran_murid`)
+- Kolom "Konten" menampilkan `j.konten || j.materi_pembelajaran || j.materi || '-'` (fallback untuk data lama)
+- Kolom "KKTP" menampilkan `j.kktp || '-'`
+- Kolom "Lokasi KBM" menampilkan `j.lokasi_kbm || j.lokasi || '-'`
+- Kolom "Catatan" menampilkan `j.catatan_refleksi || j.refleksi || '-'`
+- Foto ditampilkan dalam rasio lanskap (aspect-video)
+- **Mode rekap per kelas** (`tabMode === 'kelas'`) TIDAK berubah
+
+### R4. Migrasi Database (Supabase)
+Tambahkan kolom baru ke tabel `jurnal_pembelajaran` menggunakan Supabase MCP (`apply_migration`):
+
+```sql
+ALTER TABLE jurnal_pembelajaran 
+  ADD COLUMN IF NOT EXISTS kktp TEXT,
+  ADD COLUMN IF NOT EXISTS konten TEXT,
+  ADD COLUMN IF NOT EXISTS lokasi_kbm TEXT;
+```
+
+Pastikan kolom nullable agar tidak merusak data lama.
+
+Project Supabase ID: lihat dari `src/lib/supabaseClient.ts` atau `.env.local`.
+
+## Acceptance Criteria
+
+### Orientasi Kamera
+- [ ] `GuruPresensi.tsx` menggunakan `orientation="portrait"` pada `CameraSelfieCapture`
+- [ ] `GuruJurnal.tsx` menggunakan `orientation="landscape"` pada `CameraSelfieCapture`
+- [ ] `PiketView.tsx` menggunakan `orientation="landscape"` pada `CameraSelfieCapture`
+- [ ] Foto di tabel rekap jurnal ditampilkan dalam rasio lanskap
+
+### Form Jurnal KBM
+- [ ] Form menampilkan 10 field sesuai urutan baru: No., Hari/Tanggal, Tujuan Pembelajaran, KKTP, Konten, Kelas, Absensi Murid, Lokasi KBM, Dokumentasi KBM, Catatan
+- [ ] KKTP wajib diisi; tidak bisa submit tanpa KKTP
+- [ ] Lokasi KBM wajib diisi; tidak bisa submit tanpa Lokasi KBM
+- [ ] Field KKTP, Konten, Lokasi KBM tersimpan ke kolom yang sesuai di `jurnal_pembelajaran`
+- [ ] Live absensi murid (H/I/S/A per siswa) tetap berfungsi dan tersinkronisasi ke tabel `absensi`
+- [ ] Hari/Tanggal ditampilkan otomatis dalam format Indonesia ("Sabtu, 4 Oktober 2026")
+
+### Dokumen Cetak Rekap Jurnal Pribadi
+- [ ] Tabel rekap jurnal pribadi memiliki 10 kolom sesuai format baru
+- [ ] Kolom baru (KKTP, Konten, Lokasi KBM) menampilkan data dari kolom baru, dengan fallback ke kolom lama untuk backward-compatibility
+- [ ] Tabel rekap per kelas tidak berubah
+
+### Database
+- [ ] Kolom `kktp`, `konten`, `lokasi_kbm` tersedia di tabel `jurnal_pembelajaran` (nullable)
+- [ ] Tidak ada runtime error saat menyimpan jurnal baru maupun membaca entri lama
+
+## Setelah Selesai
+Jalankan git workflow: `git status` → `git add .` → `git commit -m "feat: restrukturisasi form Jurnal KBM dan orientasi kamera"` → `git push origin main`

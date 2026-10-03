@@ -1,128 +1,104 @@
-# Handoff Report: Worker Milestone 2 (Avatar Reactivity R2 & Username Locking R5)
+# Handoff Report: Milestone 2 Implementation
 
-**Worker**: `teamwork_preview_worker_m2`  
-**Milestone**: M2 (R2 Avatar Reactivity & R5 Username Lock)  
-**Date**: 2026-10-01  
-**Target Recipient**: `orchestrator_6` (`99cc2021-9546-433d-8867-c45dc0860a07`)  
+**Agent**: Worker (teamwork_preview_worker)  
+**Date**: 2026-10-03T07:32:00Z  
+**Type**: Hard Handoff  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2`
 
 ---
 
 ## 1. Observation
 
-Direct code examination and execution results:
-
-1. **`src/lib/avatars.tsx` (lines 301–312)**:
-   Previously only supported matching predefined string IDs from `AVATAR_LIST` (`avatar_1` to `avatar_12`). Passing any image data URL (`data:image/*`) or web URL resulted in fallback to `AVATAR_LIST[0]`.
-   Enhanced with image data URL and URL detection:
-   ```tsx
-   if (avatarId && (avatarId.startsWith('data:image') || avatarId.startsWith('http://') || avatarId.startsWith('https://') || avatarId.startsWith('/'))) {
-     return <img src={avatarId} alt="Avatar" className={`${className} rounded-full object-cover`} />;
-   }
-   ```
-
-2. **`src/components/AccountSettingsModal.tsx`**:
-   - File upload: Added custom file input `<input type="file" accept="image/*">` via `handleFileUpload` with client-side 1MB validation check (`file.size > 1024 * 1024`), converted to Data URL via `FileReader.readAsDataURL()`, and setting `selectedAvatar`. A preview banner renders when a custom image is active.
-   - Username edit check (R5): Added explicit check:
-     ```tsx
-     const isAdmin =
-       user?.role === 'admin' ||
-       user?.role === 'Admin' ||
-       user?.role === 'superadmin' ||
-       user?.role === 'Superadmin' ||
-       (user?.role || '').toLowerCase() === 'admin';
+1. **Database Schema & Types**:
+   - Migration created at `supabase/migrations/20261003_add_kktp_konten_lokasi_kbm.sql`:
+     ```sql
+     ALTER TABLE public.jurnal_pembelajaran 
+       ADD COLUMN IF NOT EXISTS kktp TEXT,
+       ADD COLUMN IF NOT EXISTS konten TEXT,
+       ADD COLUMN IF NOT EXISTS lokasi_kbm TEXT;
      ```
-     For non-admins, username is locked in a disabled container with padlock icon `<i className="fa-solid fa-lock">` and label `(Hanya Admin yang bisa mengubah)`.
-   - In `handleSave`: Non-admins are prevented from sending modified username (`p_username: isAdmin ? username.trim() : user.username`).
-   - Reactivity (R2): Immediately after successful RPC `update_user_profile`, `updatedUser` is constructed with `selectedAvatar`, saved to `localStorage.setItem('sipjam_user', ...)`, and `onUserUpdated(updatedUser)` is triggered directly.
+   - In `src/types/database.ts`: added `kktp`, `konten`, `lokasi_kbm` to `Row`, `Insert`, and `Update` interfaces for `jurnal_pembelajaran`.
 
-3. **`src/components/HomeView.tsx` (lines 923–928)**:
-   Replaced hardcoded static icon `<i className="fa-solid fa-user-tie">` in dashboard banner with:
-   ```tsx
-   <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 shrink-0 overflow-hidden">
-     {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
-   </div>
-   ```
+2. **Camera Orientation & Facing Mode**:
+   - `src/components/GuruPresensi.tsx`: Updated `CameraSelfieCapture` invocation to explicitly include `orientation="portrait"` and `initialFacingMode="user"`.
+   - `src/components/GuruJurnal.tsx`: Verified `CameraSelfieCapture` uses `orientation="landscape"` and `initialFacingMode="environment"`.
+   - `src/components/PiketView.tsx`: Verified `CameraSelfieCapture` uses `orientation="landscape"` and `initialFacingMode="environment"`.
 
-4. **`src/components/AppScreen.tsx`**:
-   - In the top header profile button (line 544–551), replaced static `<i className="fa-solid fa-user-gear">` with:
-     ```tsx
-     {renderUserAvatar(currentUser?.avatar, 'w-7 h-7')}
-     ```
-   - In `checkIdleAndResume` (line 91), included `avatar` in `.select('id, username, nama, role, sekolah_id, session_token, avatar')`.
-   - Forwarded `onUserUpdated` to `<AdminConfigView>`.
+3. **Restrukturisasi Form Jurnal KBM (`src/components/GuruJurnal.tsx`)**:
+   - Isolated to `tipeJurnal === 'Jurnal KBM'`; `tipeJurnal === 'Jurnal Kegiatan'` remains fully intact with its original fields (Tanggal, Nama Kegiatan, Uraian/Deskripsi, Foto, Refleksi).
+   - Added states: `kktp`, `konten`, `lokasiKbm`.
+   - Added date formatter `formatDisplayDate(tanggal)` rendering `DD-MM-YYYY` read-only in the UI, while keeping `tanggal` state as `YYYY-MM-DD`.
+   - Rendered 12 form fields in the exact specified sequence:
+     1. `No.` (`pertemuanKe`, auto-filled from query, editable)
+     2. `Hari/Tanggal` (read-only input displaying `DD-MM-YYYY`)
+     3. `Tujuan Pembelajaran` (textarea, required)
+     4. `KKTP` (textarea, required, saved to `kktp`)
+     5. `Konten` (textarea, required, replaces Materi Pembelajaran, saved to `konten`, dual-written to `materi` & `materi_pembelajaran`)
+     6. `Kegiatan Pembelajaran` (textarea, required, saved to `kegiatan`)
+     7. `Mapel` (dropdown, remains in form)
+     8. `Kelas` (dropdown, auto-fill logic preserved)
+     9. `Absensi Murid` (Kehadiran murid, live absensi student buttons `['H', 'S', 'I', 'A']` synced to `public.absensi`, and catatan khusus siswa)
+     10. `Lokasi KBM` (text input, required, placeholder `"contoh: Ruang Kelas 7A, Lab IPA"`, saved to `lokasi_kbm`)
+     11. `Dokumentasi KBM` (`CameraSelfieCapture` landscape, environment, with gallery upload support)
+     12. `Catatan` (optional textarea, saved to `catatan_refleksi`)
+   - Removed standalone `Pertemuan ke-` and `Jam ke-` inputs from the old grid UI while preserving `jamKe` state and auto-fill in the background for `newJurnal.jam_ke`.
+   - In `handleJurnalSubmit`: added validation checks for `pertemuanKe`, `tujuanPembelajaran`, `kktp`, `konten`, `kegiatan`, `mapel`, `kelas`, `lokasiKbm`, and `file`.
+   - In `newJurnal` payload: assigned `kktp`, `konten`, `lokasi_kbm`, and dual-wrote `konten` to `materi` and `materi_pembelajaran`.
+   - Reset: Added `setKktp('')`, `setKonten('')`, `setLokasiKbm('')` upon successful submission.
 
-5. **`src/components/AdminConfigView.tsx`**:
-   Added `onUserUpdated?: (updatedUser: any) => void` to props and passed `onUserUpdated={(updated) => onUserUpdated && onUserUpdated(updated)}` to `<AccountSettingsModal>`.
+4. **Rekap Jurnal Pribadi (`src/components/RekapJurnalView.tsx`)**:
+   - Isolated strictly to `tabMode === 'pribadi'`; `tabMode === 'kelas'` was left 100% untouched.
+   - Updated the table headers and cells to 11 columns:
+     `No` | `Hari/Tanggal` | `Tujuan Pembelajaran` | `KKTP` | `Konten` | `Kegiatan Pembelajaran` | `Kelas` | `Absensi Murid (H/I/S/A)` | `Lokasi KBM` | `Foto Dokumentasi` | `Catatan`
+   - Added fallbacks:
+     - Konten: `j.konten || j.materi_pembelajaran || j.materi || '-'`
+     - Kegiatan Pembelajaran: `j.kegiatan_pembelajaran || j.kegiatan || '-'`
+     - KKTP: `j.kktp || '-'`
+     - Lokasi KBM: `j.lokasi_kbm || j.lokasi || '-'`
+     - Catatan: `j.catatan_refleksi || j.refleksi || '-'`
+     - Absensi Murid: `j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen)`
+     - Foto: `w-24 aspect-video object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:aspect-video print:object-cover print:rounded-none print:border-none print:bg-transparent print:m-0 print:block`
+   - Updated CSV / Excel export for `tabMode === 'pribadi'` with synchronized headers and columns.
+   - Added `konten`, `kktp`, and `lokasi_kbm` to client-side search filter.
 
-6. **Session Queries (`src/app/page.tsx` & `src/app/superadmin/page.tsx`)**:
-   - `src/app/page.tsx` line 60: `.select('id, username, nama, role, sekolah_id, session_token, avatar')` and included `avatar` in `isChanged` comparison.
-   - `src/app/superadmin/page.tsx` line 39: `.select('id, username, nama, role, session_token, avatar')`.
-
-7. **`src/components/AdminDataView.tsx` (lines 924–998)**:
-   - In Edit Teacher modal, updated label to `NIP (Username Login)`.
-   - In save handler, added synchronization to `users.username` matching `item.user_id` or `item.nip`:
-     ```ts
-     if (item.user_id) {
-       await supabase.from('users').update({ username: formValues.nip }).eq('id', item.user_id);
-     } else if (item.nip && item.nip !== '-') {
-       await supabase.from('users').update({ username: formValues.nip }).eq('username', item.nip);
-     }
-     ```
+5. **Typecheck & Build**:
+   - `npx tsc --noEmit` exited with code 0 (zero errors).
+   - `npm run build` exited with code 0 (all static and dynamic routes compiled successfully).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Avatar Reactivity (R2)**:
-   - When a user uploads a custom photo or picks an avatar in `AccountSettingsModal`, `selectedAvatar` holds the string (either preset ID or Data URL).
-   - Upon submitting, the RPC `update_user_profile` persists `avatar` in the database `users` table.
-   - Immediately following success, `onUserUpdated(updatedUser)` is called, which updates `currentUser` state in `AppScreen` and `user` state in `MainApp`.
-   - Because `HomeView` and `AppScreen` header button both invoke `renderUserAvatar` reading `user?.avatar` / `currentUser?.avatar`, the new avatar displays instantly without requiring a page reload.
-   - Because `renderUserAvatar` handles both presets and Data URLs / web URLs, both custom photo uploads and preset avatar SVGs render properly.
-   - When the user refreshes or resumes from idle, the database query includes `avatar`, ensuring the avatar is never lost or reverted.
-
-2. **Username Locking (R5)**:
-   - The condition `user?.role === 'admin' || user?.role === 'Admin' || user?.role === 'superadmin' || user?.role === 'Superadmin' || (user?.role || '').toLowerCase() === 'admin'` guarantees case-insensitive validation for admin roles.
-   - Non-admin teachers receive a locked container with padlock icon `<i className="fa-solid fa-lock">` and `(Hanya Admin yang bisa mengubah)`.
-   - In the frontend form submission payload, non-admins are forced to submit `p_username: user.username`, preventing unauthorized username tampering.
-   - Administrators editing teacher NIP in `AdminDataView` automatically synchronize `users.username` with the updated NIP, providing the intended admin management flow.
+- **State & Schema Symmetry**: By adding `kktp`, `konten`, and `lokasi_kbm` to Supabase types and the migration file, the frontend payload directly maps to canonical columns in `jurnal_pembelajaran`.
+- **Backward Compatibility via Dual-Write**: Because legacy views and reports query `materi` and `materi_pembelajaran`, `konten` is dual-written to `materi` and `materi_pembelajaran`, eliminating any regression risks across existing code paths.
+- **Form Usability & Compliance**: Splitting `tipeJurnal === 'Jurnal KBM'` into its dedicated 12-field layout ensures user corrections (read-only DD-MM-YYYY display, Konten replacing Materi Pembelajaran, Kegiatan Pembelajaran separate and required, Lokasi KBM required, Pertemuan/Jam removed from form UI) are fulfilled cleanly without impacting Jurnal Kegiatan.
+- **Print Optimization**: Applying `w-24 aspect-video` on screen and `print:w-full print:aspect-video print:object-cover` in print preview ensures photos maintain 16:9 landscape aspect ratio without distortion or clipping. The print column percentages total exactly 100%.
 
 ---
 
 ## 3. Caveats
 
-- Backend RPC `update_user_profile` modification is handled in M1 migration scripts, as M2 is constrained to frontend files exclusively.
-- Image uploads exceeding 1MB are rejected client-side with a warning toast to protect database storage and keep Base64 payloads compact.
+- In `GuruJurnal.tsx`, `tipeJurnal === 'Jurnal Kegiatan'` continues to use the existing `materi` and `kegiatan` fields as intended by the school block system workflow.
+- In `RekapJurnalView.tsx`, the print layout is styled for standard landscape orientation (`@media print` settings).
 
 ---
 
 ## 4. Conclusion
 
-Milestone 2 (Avatar Reactivity R2 and Username Locking R5) is completely implemented according to specifications and passes type-checking (`npx tsc --noEmit` code 0) without any regressions.
+All requirements and corrections for Milestone 2 have been fully implemented, verified, and validated against TypeScript typechecker and Next.js compiler. All targets compile with zero errors.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify:
-
-1. **TypeScript Typecheck**:
+1. **Typecheck**:
    ```bash
    npx tsc --noEmit
    ```
-   Expected result: exit code 0.
+   *Result*: Code 0, zero errors.
 
-2. **Existing Avatar Test**:
+2. **Production Build**:
    ```bash
-   npx tsx tests/m5_push_settings.test.ts
+   npm run build
    ```
-   Expected result: 37/37 checks pass.
-
-3. **Inspect Modified Files**:
-   - `src/lib/avatars.tsx`: check `renderUserAvatar` handles `data:image`, `http://`, `https://`, `/`.
-   - `src/components/AccountSettingsModal.tsx`: check `handleFileUpload`, `isAdmin` check with `role === 'admin'`, locked input for non-admins, `onUserUpdated` callback invocation.
-   - `src/components/HomeView.tsx`: line 926 renders `renderUserAvatar(user?.avatar, ...)`.
-   - `src/components/AppScreen.tsx`: line 91 query has `avatar`, line 549 renders `renderUserAvatar(currentUser?.avatar, 'w-7 h-7')`.
-   - `src/app/page.tsx`: line 60 query has `avatar`.
-   - `src/app/superadmin/page.tsx`: line 39 query has `avatar`.
-   - `src/components/AdminDataView.tsx`: teacher NIP edit synchronizes `users.username`.
+   *Result*: Code 0, optimized production build generated with all routes valid.

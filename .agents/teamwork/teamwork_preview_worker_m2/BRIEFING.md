@@ -1,68 +1,67 @@
-# BRIEFING — 2026-10-01T11:26:00Z
+# BRIEFING — 2026-10-03T07:31:45Z
 
 ## Mission
-Implement Avatar Reactivity (R2) and Username Locking (R5) for Sipjam app across specified components without page reloads.
+Implement Milestone 2: Form Jurnal KBM restructuring, camera orientation updates, Rekap Jurnal Pribadi table & print document update, Supabase migration & types, followed by verification and git push.
 
 ## 🔒 My Identity
-- Archetype: teamwork_preview_worker
+- Archetype: worker
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2
-- Original parent: 99cc2021-9546-433d-8867-c45dc0860a07
-- Milestone: M2 (Avatar Reactivity R2 & Username Locking R5)
+- Original parent: 9158af2a-a31a-4d06-bc79-2701bb3d1192
+- Milestone: Milestone 2 (Jurnal KBM Restructuring & Camera Orientation)
 
 ## 🔒 Key Constraints
-- Exclusively modify only allowed files: `src/lib/avatars.tsx`, `src/components/AccountSettingsModal.tsx`, `src/components/HomeView.tsx`, `src/components/AppScreen.tsx`, `src/components/AdminConfigView.tsx`, `src/components/AdminDataView.tsx`, `src/app/page.tsx`, `src/app/superadmin/page.tsx`.
-- DO NOT modify `GuruPresensi.tsx`, `GuruJurnal.tsx`, `SuperadminView.tsx`, or any migration files.
-- DO NOT CHEAT: genuine implementation only, real state, real behavior. No hardcoded test results.
-- Git Workflow: git status, git add ., git commit -m "...", git push origin main automatically upon completion.
+- Baca node_modules/next/dist/docs/ sebelum menulis kode Next.js apapun.
+- Git Workflow Rule (GEMINI.md): git status, git add ., git commit -m "...", git push origin main.
+- Ponytail philosophy: Minimal changes, standard libraries, no over-engineering. Fewest files changed wins.
+- Apply form changes ONLY to tipeJurnal === 'Jurnal KBM'. Keep 'Jurnal Kegiatan' intact.
+- Apply table & print changes in RekapJurnalView ONLY to tabMode === 'pribadi'. Do NOT touch tabMode === 'kelas'.
 
 ## Current Parent
-- Conversation ID: 99cc2021-9546-433d-8867-c45dc0860a07
-- Updated: 2026-10-01T11:26:00Z
+- Conversation ID: 9158af2a-a31a-4d06-bc79-2701bb3d1192
+- Updated: 2026-10-03T07:31:45Z
 
 ## Task Summary
-- **What to build**: Avatar Reactivity R2 & Username Locking R5
-- **Success criteria**:
-  1. Avatar upload support (Data URL / custom photo upload) + instant reactive update in React state without reload.
-  2. HomeView banner and AppScreen navbar render user avatar.
-  3. Session queries in page.tsx and superadmin/page.tsx include avatar.
-  4. Username locked for non-admins; only admin/superadmin can edit username in UI and backend guard.
-  5. Admin editing teacher nip/username syncs to users.username in AdminDataView.tsx.
-  6. tsc --noEmit passes.
-- **Interface contracts**: PROJECT.md § Interface Contracts
-- **Code layout**: PROJECT.md § Code Layout
+- **What to build**:
+  1. Migration file `supabase/migrations/20261003_add_kktp_konten_lokasi_kbm.sql` & update `src/types/database.ts`
+  2. GuruPresensi orientation: portrait / user
+  3. GuruJurnal: Restructure Jurnal KBM form to 12 fields order, state for kktp, konten, lokasiKbm, validation, dual-write to materi/materi_pembelajaran, date DD-MM-YYYY read-only display.
+  4. RekapJurnalView: Pribadi tab table & print document columns (No, Hari/Tanggal, TP, KKTP, Konten, Kegiatan, Kelas, Absensi, Lokasi KBM, Foto, Catatan), fallbacks, sync Excel/CSV export.
+  5. Verification: `npx tsc --noEmit` & `npm run build`.
+  6. Git commit & push.
+- **Success criteria**: Zero TypeScript errors, build succeeds, git push succeeds, clean handoff.
+- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_8\PROJECT.md`
+- **Code layout**: Next.js App Router / React client components in `src/components/`.
 
 ## Key Decisions Made
-- `renderUserAvatar`: Detects data URLs (`data:image/*`) and URLs (`http://`, `https://`, `/`) and renders `<img>` with `rounded-full object-cover`.
-- `AccountSettingsModal`: Added file input `<input type="file" accept="image/*">`, FileReader to Data URL, 1MB size validation, custom avatar active indicator.
-- Immediate reactivity: In `handleSave`, after successful profile RPC, `localStorage` is updated immediately and `onUserUpdated(updatedUser)` is triggered directly.
-- R5 Username locking: `const isAdmin = user?.role === 'admin' || user?.role === 'Admin' || user?.role === 'superadmin' || user?.role === 'Superadmin' || (user?.role || '').toLowerCase() === 'admin';` explicitly enforces `role === 'admin'` check. For non-admins, username input is locked with padlock and label `(Hanya Admin yang bisa mengubah)`, and `p_username` payload retains `user.username`.
-- `AdminConfigView`: Props enhanced with `onUserUpdated` and forwarded to `AccountSettingsModal`, synced in `AppScreen`.
-- `AdminDataView`: Labeled NIP field as `NIP (Username Login)` and automatically synchronizes `users.username` for `item.user_id` or `item.nip` upon teacher data save.
+- Maintained exact 12-field order for Jurnal KBM while preserving Jurnal Kegiatan form cleanly.
+- Implemented robust fallback logic in RekapJurnalView table and CSV export.
+- Formatted date display as DD-MM-YYYY read-only input while storing YYYY-MM-DD in state.
+- Dual-wrote `konten` to `materi` and `materi_pembelajaran` for backward compatibility.
 
 ## Artifact Index
-- DISPATCH.md — Assignment instructions
-- BRIEFING.md — Situational awareness
-- progress.md — Liveness & status log
-- handoff.md — Final handoff report
+- `DISPATCH.md` — assignment dispatch
+- `BRIEFING.md` — persistent memory
+- `progress.md` — liveness heartbeat
+- `handoff.md` — final handoff report
+- `ponytail_skill.md` — local skill reference
 
 ## Change Tracker
 - **Files modified**:
-  - `src/lib/avatars.tsx`: Support image data URLs and URLs in `renderUserAvatar`
-  - `src/components/AccountSettingsModal.tsx`: Custom photo upload, 1MB limit, immediate state update, `role === 'admin'` username lock
-  - `src/components/HomeView.tsx`: Dashboard banner renders `renderUserAvatar(user?.avatar, ...)`
-  - `src/components/AppScreen.tsx`: Top navbar profile button renders `renderUserAvatar(currentUser?.avatar, 'w-7 h-7')`, session query includes `avatar`, forwards `onUserUpdated` to `AdminConfigView`
-  - `src/components/AdminConfigView.tsx`: Accept and forward `onUserUpdated` to `AccountSettingsModal`
-  - `src/components/AdminDataView.tsx`: Label NIP as `NIP (Username Login)` and sync `users.username` when Admin updates teacher
-  - `src/app/page.tsx`: Session validation query and state diff include `avatar`
-  - `src/app/superadmin/page.tsx`: Session validation query includes `avatar`
-- **Build status**: `npx tsc --noEmit` passed with exit code 0.
-- **Pending issues**: none
+  - `supabase/migrations/20261003_add_kktp_konten_lokasi_kbm.sql` (created)
+  - `src/types/database.ts` (added kktp, konten, lokasi_kbm to Row, Insert, Update)
+  - `src/components/GuruPresensi.tsx` (explicit initialFacingMode="user")
+  - `src/components/GuruJurnal.tsx` (12 fields restuctured, states, validations, payload, resets)
+  - `src/components/RekapJurnalView.tsx` (11 columns for tabMode pribadi, fallbacks, aspect-video photo, CSV sync)
+- **Build status**: PASS (`tsc --noEmit` exit code 0, `npm run build` exit code 0)
+- **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: Typecheck passed (`npx tsc --noEmit` code 0)
-- **Lint status**: No type or syntax errors
-- **Tests added/modified**: Verified against m5_push_settings (37/37 passed)
+- **Build/test result**: PASS (zero errors)
+- **Lint status**: Clean
+- **Tests added/modified**: Verified through TypeScript typecheck and Next.js production build
 
 ## Loaded Skills
-- none
+- **Source**: C:\Users\Fitra\.gemini\config\plugins\ponytail\skills\ponytail\SKILL.md
+- **Local copy**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2\ponytail_skill.md
+- **Core methodology**: Simplest, minimal solution, standard libraries, fewest files changed.

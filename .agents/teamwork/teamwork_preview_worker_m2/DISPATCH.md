@@ -1,79 +1,78 @@
-# Task Assignment: Worker Milestone 2 (Avatar Reactivity R2 & Username Locking R5)
+## 2026-10-03T07:22:24Z
+You are Worker (teamwork_preview_worker) implementing Milestone 2 for sipjam-app.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2
 
-## Identity
-- Archetype: teamwork_preview_worker
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2
-- Parent: orchestrator_6 (99cc2021-9546-433d-8867-c45dc0860a07)
-- Scope Document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
-- Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-10-01T10:56:44Z)
-
-## Survey References
-- Explorer Survey 2 Report: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\survey_report.md`
-- Survey 2 Handoff: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\handoff.md`
-
-## Write Ownership (Strictly Exclusive)
-You exclusively own and may modify ONLY these files:
-- `src/lib/avatars.tsx`
-- `src/components/AccountSettingsModal.tsx`
-- `src/components/HomeView.tsx`
-- `src/components/AppScreen.tsx`
-- `src/components/AdminConfigView.tsx`
-- `src/components/AdminDataView.tsx`
-- `src/app/page.tsx`
-- `src/app/superadmin/page.tsx`
-
-DO NOT modify `GuruPresensi.tsx`, `GuruJurnal.tsx`, `SuperadminView.tsx`, or any migration files.
-
-## Mission & Detailed Requirements
-
-### 1. R2: Avatar Upload & Immediate Reactive State
-1. **`src/lib/avatars.tsx`**:
-   - Enhance `renderUserAvatar(avatarId?: string | null, className?: string)` so it supports:
-     - Preset avatar IDs in `AVATAR_LIST`
-     - Image data URLs (e.g. `data:image/*`)
-     - Image URLs (`http://`, `https://`, `/`)
-     - If it's an image/data URL, render `<img src={avatarId} alt="Avatar" className={`${className} rounded-full object-cover`} />`.
-2. **`src/components/AccountSettingsModal.tsx`**:
-   - Provide custom photo upload (file input `<input type="file" accept="image/*">`) alongside preset avatar selection.
-   - When a file is chosen, read it as Data URL (with client-side size check e.g. < 1MB) and set it to `selectedAvatar`.
-   - On successful save (`update_user_profile` RPC), construct `updatedUser` with the new avatar and:
-     - Update `localStorage.setItem('sipjam_user', ...)`
-     - Call `onUserUpdated(updatedUser)` immediately so parent React state updates without page reload.
-3. **`src/components/HomeView.tsx`**:
-   - In the dashboard banner (lines 924-927), replace the hardcoded `<i className="fa-solid fa-user-tie">` with `renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')`.
-4. **`src/components/AppScreen.tsx`**:
-   - In the top header profile button (lines 543-550), render `renderUserAvatar(currentUser?.avatar, 'w-7 h-7')` or avatar preview instead of static gear icon.
-   - In `checkIdleAndResume` (line 91), include `avatar` in the Supabase `.select('id, username, nama, role, sekolah_id, session_token, avatar')`.
-5. **`src/components/AdminConfigView.tsx`**:
-   - Pass `onUserUpdated={(updated) => onUserUpdated && onUserUpdated(updated)}` or similar callback to `<AccountSettingsModal>` so changing avatar from admin config also updates immediately.
-6. **Session Queries**:
-   - In `src/app/page.tsx` line 60 and `src/app/superadmin/page.tsx` line 39, include `avatar` in the `.select(...)` query.
-
-### 2. R5: Username Edit Limitation (Admin Only)
-1. **`src/components/AccountSettingsModal.tsx`**:
-   - Ensure the condition checking if user can edit username checks:
-     `const isAdmin = user?.role === 'admin' || user?.role === 'Admin' || user?.role === 'superadmin' || user?.role === 'Superadmin' || (user?.role || '').toLowerCase() === 'admin';`
-   - Explicitly include condition `role === 'admin'`.
-   - For non-admins:
-     - Keep the username input disabled / locked.
-     - Show padlock and label `(Hanya Admin yang bisa mengubah)`.
-     - In `handleSave`, ensure non-admins cannot send a modified username: `p_username: isAdmin ? username.trim() : user.username`.
-2. **`src/components/AdminDataView.tsx`**:
-   - In `handleSaveGuru` (or teacher edit modal), when Admin edits a teacher's `nip` or username, also update `users.username` so the teacher's login username is updated by the Admin.
-
-## Mandatory Integrity Warning
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
-
-## Verification
-- Verify TypeScript types (`npx tsc --noEmit`).
-- Document all changes and verification in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2\handoff.md`.
-- Report back via `send_message` to orchestrator_6.
-
-## 2026-10-01T11:17:37Z
-You are assigned as Worker Milestone 2 (Avatar Reactivity R2 & Username Locking R5). Read your task assignment at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2\DISPATCH.md, PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md, and ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md.
 MANDATORY INTEGRITY WARNING:
 DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-Implement R2 (Avatar upload, immediate reactive update in React state, HomeView avatar, AppScreen navbar avatar, session queries) and R5 (Username locking UI with role === 'admin' check, backend parameter guard, AdminDataView sync).
-Verify with tsc --noEmit.
-Write handoff.md in your working directory and notify orchestrator_6 via send_message when done.
+MANDATORY RULES & CONSTRAINTS:
+1. ATENSI: Baca `node_modules/next/dist/docs/` sebelum menulis kode Next.js apapun.
+2. Git Workflow Rule (GEMINI.md): Setiap kali selesai modifikasi/penambahan/penghapusan file (menyelesaikan tugas/fitur), otomatis cek status git (`git status`), staging (`git add .`), commit pesan deskriptif (`git commit -m "..."`), dan push ke origin branch aktif (`git push origin main`).
+3. Ponytail philosophy: Minimal changes, standard libraries, no over-engineering. Fewest files changed wins.
+
+YOU MUST READ THESE FILES BEFORE DOING ANY WORK:
+- ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+- DISPATCH.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2\DISPATCH.md
+- PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_8\PROJECT.md
+- Explorer 1 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_o8_1\handoff.md
+- Explorer 2 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_o8_2\handoff.md
+- Explorer 3 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_o8_3\handoff.md
+
+DETAILED WORK SCOPE:
+1. Migration File & Database Types:
+   - Create `supabase/migrations/20261003_add_kktp_konten_lokasi_kbm.sql` containing:
+     ALTER TABLE public.jurnal_pembelajaran 
+       ADD COLUMN IF NOT EXISTS kktp TEXT,
+       ADD COLUMN IF NOT EXISTS konten TEXT,
+       ADD COLUMN IF NOT EXISTS lokasi_kbm TEXT;
+     (Note: this DDL has already been applied to the live database by orchestrator, but the migration file must be saved in repo).
+   - Update `src/types/database.ts` lines 508-585: add `kktp: string | null; konten: string | null; lokasi_kbm: string | null;` to Row, Insert, and Update for `jurnal_pembelajaran`.
+
+2. R1: Camera Orientation & Thumbnails:
+   - In `src/components/GuruPresensi.tsx`: ensure `<CameraSelfieCapture orientation="portrait" initialFacingMode="user" ... />`.
+   - Verify `src/components/GuruJurnal.tsx` and `src/components/PiketView.tsx` already use `orientation="landscape"` and `initialFacingMode="environment"`.
+
+3. R2: Restrukturisasi Form Jurnal KBM (`src/components/GuruJurnal.tsx`):
+   Apply ONLY to `tipeJurnal === 'Jurnal KBM'`. Keep `tipeJurnal === 'Jurnal Kegiatan'` intact!
+   - State: `kktp`, `konten`, `lokasiKbm`.
+   - Date display: Format `tanggal` (YYYY-MM-DD) as `DD-MM-YYYY` read-only display. Value stored remains YYYY-MM-DD.
+   - Form field order (12 fields in exact sequence):
+     1. No. (`pertemuanKe`, auto-filled from query, editable)
+     2. Hari/Tanggal (read-only input displaying DD-MM-YYYY)
+     3. Tujuan Pembelajaran (textarea, required)
+     4. KKTP (textarea, required, saved to `kktp`)
+     5. Konten (textarea, required, replaces Materi Pembelajaran, saved to `konten`, dual-written to `materi` & `materi_pembelajaran`)
+     6. Kegiatan Pembelajaran (textarea, required, saved to `kegiatan`)
+     7. Mapel (dropdown, remains in form)
+     8. Kelas (dropdown, auto-fill logic preserved)
+     9. Absensi Murid (H/I/S/A buttons per student, live sync to `absensi` preserved)
+     10. Lokasi KBM (text input, required, placeholder e.g. "contoh: Ruang Kelas 7A, Lab IPA", saved to `lokasi_kbm`)
+     11. Dokumentasi KBM (`CameraSelfieCapture` landscape, environment)
+     12. Catatan (optional textarea, saved to `catatan_refleksi`)
+   - Remove `Pertemuan ke-` and `Jam ke-` inputs from form UI (keep `jamKe` state/autofill in background so `newJurnal.jam_ke` is stored).
+   - Validations: In `handleJurnalSubmit`, validate `tujuanPembelajaran`, `kktp`, `konten`, `kegiatan`, `mapel`, `kelas`, `lokasiKbm`, and `file`.
+   - Payload: In `newJurnal`, assign `kktp`, `konten`, `lokasi_kbm`, and dual-write `konten` to `materi` and `materi_pembelajaran`.
+   - Reset: Clear `kktp`, `konten`, `lokasiKbm` on submit.
+
+4. R3: Dokumen Cetak Rekap Jurnal Pribadi (`src/components/RekapJurnalView.tsx`):
+   Apply ONLY to `tabMode === 'pribadi'`. Do NOT touch `tabMode === 'kelas'`!
+   - Table columns:
+     No | Hari/Tanggal | Tujuan Pembelajaran | KKTP | Konten | Kegiatan Pembelajaran | Kelas | Absensi Murid (H/I/S/A) | Lokasi KBM | Foto Dokumentasi | Catatan
+   - Fallbacks:
+     - Konten: `j.konten || j.materi_pembelajaran || j.materi || '-'`
+     - Kegiatan: `j.kegiatan_pembelajaran || j.kegiatan || '-'`
+     - KKTP: `j.kktp || '-'`
+     - Lokasi KBM: `j.lokasi_kbm || j.lokasi || '-'`
+     - Catatan: `j.catatan_refleksi || j.refleksi || '-'`
+     - Absensi Murid: `j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen)`
+     - Foto: `w-24 aspect-video object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:aspect-video print:object-cover print:rounded-none print:border-none print:bg-transparent print:m-0 print:block`
+   - Sync Excel/CSV export for `tabMode === 'pribadi'`.
+
+5. Verification & Testing:
+   - Run `npx tsc --noEmit` and `npm run build` using run_command.
+   - Verify that there are zero build or type errors.
+
+6. Git Workflow (GEMINI.md):
+   - Run `git status`, `git add .`, `git commit -m "feat: restrukturisasi form Jurnal KBM dan orientasi kamera"`, and `git push origin main`.
+
+Write your full report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2\handoff.md` and message the parent orchestrator when complete.
