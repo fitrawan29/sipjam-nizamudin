@@ -1,111 +1,90 @@
-# Dispatch to Reviewer (Round 1 - Replacement)
+# Task Dispatch for Reviewer 1 (Round 2)
 
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1
-Parent Orchestrator: swe_1 (Conversation ID: 9dd52156-c90d-404b-9593-7446ffab66bb)
+Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1
+Project Root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
 <original_task>
 # Teamwork Project Prompt — Draft
 
-> Status: Launched
+> Status: Launched.
 > Goal: Craft prompt → get user approval → delegate to teamwork_preview
-> Requested team: Small, focused team
+> Requested team: small focused team
 
 This is a single self-contained fix; keep it small and focused.
-
-This project involves implementing a series of UI/UX improvements across the Sipjam application based on a recent audit. The primary goals are replacing blocking SweetAlert modals with non-intrusive toasts, fixing destructive form resets in attendance, and making data tables responsive on mobile devices.
+Pastikan kamera yang digunakan di aplikasi tidak terlihat men-zoom (terpotong atau membesar) saat mengambil gambar.
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-Integrity mode: development
+Integrity mode: demo
 
 ## Requirements
 
-### R1. Non-Intrusive Notifications
-Replace generic blocking `Swal.fire` (SweetAlert2) calls for success, info, and validation errors with non-intrusive Toast notifications (e.g., using `react-hot-toast` or similar) across the application (especially in `GuruPresensi.tsx`). Critical alerts (like confirmation to delete) may still use modals.
-
-### R2. Preserving Form State
-In `GuruPresensi.tsx`, prevent the automatic deletion of the user's uploaded photo/selfie when they toggle between different attendance types (`tipeAbsen` or `jenisPresensi`). If state must be cleared, implement a confirmation warning first.
-
-### R3. Mobile-Responsive Tables
-Refactor data-heavy tables in `AdminDataView.tsx`, `PiketView.tsx`, and `GradebookView` to be mobile-friendly. Either wrap them in horizontally scrollable containers (`overflow-x-auto whitespace-nowrap`) or convert the rows into a stacked "Card" layout on small screens.
+### R1. Nonaktifkan Zoom/Crop di Kamera
+Periksa komponen `src/components/CameraSelfieCapture.tsx`. Kemungkinan besar masalah zoom disebabkan oleh CSS `object-fit: cover` yang memotong (crop) video stream sehingga terlihat membesar, atau batasan (constraints) resolusi yang memaksa crop dari sisi hardware. Sesuaikan styling CSS (misalnya menggunakan `object-contain` atau mencocokkan aspect-ratio container secara presisi) atau sesuaikan `MediaStreamConstraints` agar tampilan kamera pas dan tidak terpotong/zoom.
 
 ## Acceptance Criteria
 
-### UI Behavior Validation
-- [ ] Programmatic/Visual Check: Submitting a successful attendance record triggers a non-blocking toast. The UI does not present a popup requiring an "OK" click to proceed.
-- [ ] Programmatic/Visual Check: Toggling between "Datang" and "Pulang" in `GuruPresensi.tsx` after attaching a mock file does not erase the file state without explicit user confirmation.
-- [ ] Programmatic/Visual Check: Tables in `PiketView.tsx` and `AdminDataView.tsx` scroll horizontally (or stack) when the viewport width is simulated to be < 640px, without causing horizontal layout overflow on the main body.
+### Verifikasi Kode (Programmatic / Statis)
+- [ ] CSS atau constraints pada elemen `<video>` di `CameraSelfieCapture.tsx` telah disesuaikan untuk menghindari efek "zoom" atau crop yang berlebihan.
+- [ ] Tampilan kamera tetap rapi dan proposional (tidak penyok/distorsi).
 </original_task>
 
 <prior_attempt>
+# Handoff Report: Implementer R1
+
 > [!WARNING] **Skepticism Disclaimer**
-> I am moderately confident because all 11 automated test suites and Next.js Turbopack production builds pass with zero errors, but physical touchscreen swipe gestures and real camera hardware lifecycle were only verified programmatically rather than on real mobile devices.
+> Moderate-to-high confidence based on passing full test suite (15 test suites) and Next.js Turbopack build with 0 errors; however, live physical optical sensors across various phone models were verified via automated CSS/DOM inspection and stream assertions rather than physical hands-on phone hardware.
 
 ## 1. What I changed
-- **`src/lib/toast.ts`**: Implemented a unified lightweight toast notification module using SweetAlert2 toast mixin (`Toast`, `showToast`) with `toast: true`, top-end positioning, 3-second auto dismiss timer, and disabled confirm button.
-- **`src/components/GuruPresensi.tsx`**:
-  - Replaced blocking `Swal.fire` modals for success, info, and validation alerts with non-intrusive `showToast`.
-  - Removed destructive `setFile(null)` and `setPhotoPreviewUrl(null)` from `handleTipeAbsenChange` when toggling between Datang and Pulang.
-  - Added warning confirmation dialog before clearing documents in `togglePresensiFields` if toggling away from Izin mode.
-  - Added confirmation modal to "Ganti Foto" button before clearing selfie preview.
-  - Removed `key={tipeAbsen}` from `CameraSelfieCapture` so camera stream and captured photo state persist across attendance type toggles.
-- **`src/components/GradebookView.tsx`**:
-  - Replaced non-critical alerts with `showToast` for grade saves, TP create/update, column create/update, and bulk fill operations.
-  - Retained modal `Swal.fire` confirmations for destructive operations (`Hapus TP?` and `Hapus Kolom?`).
-  - Added `w-full max-w-full overflow-x-auto` to root section to avoid layout blowout.
-  - Added `whitespace-nowrap` to assessment table and TP matrix table inside horizontal scrolling containers.
-- **`src/components/AdminDataView.tsx`**:
-  - Added `w-full max-w-full overflow-x-auto` to root `#view-admin-data` section and `max-w-full overflow-hidden` to glass card container.
-  - Added `flex-wrap sm:flex-nowrap` on action toolbars to make action buttons responsive on small mobile screens (< 640px).
-- **`src/components/PiketView.tsx`**:
-  - Added `w-full max-w-full overflow-x-auto` to `#view-piket` and `#piket-content-rekap`.
-  - Replaced submission success modal with `showToast`.
-  - Added `flex-wrap sm:flex-nowrap` on filter bars and action controls.
-- **`src/components/GuruJurnal.tsx`**:
-  - Replaced journal submission success modal with `showToast`.
-- **`tests/ui_ux_improvements_audit.test.ts` & `package.json`**:
-  - Added automated test suite verifying R1 (toast usage), R2 (state preservation), and R3 (responsive table wrappers and classes). Included in `npm test`.
-- **System Stability Fixes**:
-  - Cleaned stray semicolons after conditional blocks in `src/components/AppScreen.tsx`.
-  - Stripped UTF-8 BOM from `public/manifest.json`.
-  - Added optional `sessionToken?: string | null` in `src/lib/supabaseClient.ts`.
-  - Restored self-contained `GradebookView.tsx` from commit `3c745eb` breaking changes and removed uncompiled sub-tab files.
+1. `src/components/CameraSelfieCapture.tsx`:
+   - Updated the `<video>` element styling from `object-cover` to `object-contain` (`className="w-full h-full object-contain transform ..."`).
+   - Eliminated video feed cropping and unwanted zoom-in effect caused by `object-fit: cover`.
+   - Maintained visual symmetry with preview `<img>` which also uses `object-contain`.
+2. `tests/camera_zoom_fix.test.ts`:
+   - Created dedicated unit and regression verification test checking that `<video>` strictly uses `object-contain`, does not contain `object-cover`, occupies container bounds (`w-full h-full`), and preserves selfie flip mirroring (`-scale-x-100`) as well as `MediaStreamConstraints`.
+3. `package.json`:
+   - Added `tests/camera_zoom_fix.test.ts` into the `test` command pipeline so it is continuously executed on `npm test`.
 
 ## 2. Why
-- **R1 (Non-Intrusive Notifications)**: Routine actions (recording attendance, saving marks, submitting reports) previously blocked the user with intrusive popups that demanded an extra "OK" click. Moving these to toast alerts allows smoother workflows.
-- **R2 (Preserving Form State)**: Teachers often take a selfie first before deciding whether to mark Datang or Pulang, or accidentally toggle the switch. Discarding the selfie or document caused data loss and frustration.
-- **R3 (Mobile-Responsive Tables)**: Wide tables in Admin Data, Piket, and Gradebook caused parent viewport horizontal overflow on mobile screens (< 640px). Horizontally scrollable wrappers and `whitespace-nowrap` ensure tables scroll within their containers without breaking page layout.
+- **R1 (Nonaktifkan Zoom/Crop di Kamera)**: The user reported that the camera stream appeared zoomed-in / cropped when taking pictures. In `CameraSelfieCapture.tsx`, `<video>` had CSS `object-cover`, which caused the browser to scale up and cut off 25%–40% of the stream whenever the camera sensor aspect ratio (such as 4:3) differed from the container aspect ratio (such as 16:9 or 3:4). Changing this to `object-contain` preserves the natural aspect ratio without cropping, distortion, or zoom.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npm run build`: Compiled with Next.js Turbopack with 0 TypeScript/syntax errors.
-  - `npm test`: All 11 test suites passed 100% (including the new `ui_ux_improvements_audit.test.ts`).
-  - `npm run test:e2e`: All 4 tiers (Feature Coverage, Boundary Cases, Cross-Feature Interactions, Real-World Scenarios) passed 100% (111 assertions total).
+  - Ran `npm test` covering all 15 suites (all passed with 0 failures):
+    - `tests/imageUrl.test.ts`
+    - `tests/printHeader.test.ts`
+    - `tests/qolAudit.test.ts`
+    - `tests/m6_1_database_and_types.test.ts`
+    - `tests/m6_2_print_redesign.test.ts`
+    - `tests/m6_3_dashboards_and_verif.test.ts`
+    - `tests/m6_4_piket_perangkat_broadcast.test.ts`
+    - `tests/m10_r2_r3.test.ts`
+    - `tests/m1_resubmission_and_verif.test.ts`
+    - `tests/m4_features_verification.test.ts`
+    - `tests/ui_ux_improvements_audit.test.ts`
+    - `tests/sistem_blok_verification.test.ts`
+    - `tests/three_fixes_verification.test.ts`
+    - `tests/camera_orientation.test.ts`
+    - `tests/camera_zoom_fix.test.ts` (All 4 sections passed)
+  - Ran `npm run build`: Next.js 16.3.4 (Turbopack) production build compiled successfully with 0 TypeScript and 0 bundling errors.
 - **Shallow Verification (manual run only):**
-  - Eyeballed visual positioning, Tailwind CSS classes (`whitespace-nowrap`, `overflow-x-auto`), and toast animation timing configs.
+  - Eyeballed `<video>` Tailwind class composition ensuring mirror transform (`-scale-x-100`) and overlay controls align neatly.
 - **Unverified aspects:**
-  - Physical touch responsiveness (momentum scrolling on real iOS Safari and Android Chrome hardware).
-  - Toast behavior when network requests fail while the user is rapidly navigating away from the page.
+  - Physical camera hardware tests across diverse physical smartphones (e.g. foldables, multi-lens hardware with unusual native aspect ratios) — tested via automated headless browser DOM checks and mock streams.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: On ultra-narrow screens (< 320px width), complex Gradebook header columns rely on horizontal panning; text is not dynamically truncated or converted to card layout.
-- `Shallow Verification`: Background upload progress for attendance photo is confirmed via toast, but visual in-flight spinner for background Drive upload depends on the existing drive worker queue.
+- `Minor Robustness Risk` — Camera feeds whose hardware aspect ratio does not match the container's 16:9 (landscape) or 3:4 (portrait) will display letterboxing / pillarboxing black bars against the `bg-black` container rather than stretching or cropping to fill. This is standard and expected behavior to avoid distorting or cropping the image.
 
 ## 5. Untested Edge Cases & Next Step
-- Reviewer should test taking a selfie on real mobile hardware, toggling `tipeAbsen` from "Datang" to "Pulang", and submitting with slow 3G network simulation to verify toast persistence and absence of modal interruptions.
+- Reviewer should test on a mobile device running iOS Safari and Android Chrome to verify that live stream and photo confirmation render uncropped and proportional across both front and rear cameras.
 </prior_attempt>
 
 <additional_context>
 Open Issues Ledger:
-- [Implementer] Physical touch responsiveness (momentum scrolling on real iOS Safari and Android Chrome hardware).
-- [Implementer] Toast behavior when network requests fail while the user is rapidly navigating away from the page.
-- [Implementer] Minor Robustness Risk: On ultra-narrow screens (< 320px width), complex Gradebook header columns rely on horizontal panning; text is not dynamically truncated or converted to card layout.
-- [Implementer] Shallow Verification: Background upload progress for attendance photo is confirmed via toast, but visual in-flight spinner for background Drive upload depends on the existing drive worker queue.
-- [Implementer] Reviewer should test taking a selfie on real mobile hardware, toggling tipeAbsen from "Datang" to "Pulang", and submitting with slow 3G network simulation to verify toast persistence and absence of modal interruptions.
+- [Item 1] Physical camera hardware tests across diverse physical smartphones (e.g. foldables, multi-lens hardware with unusual native aspect ratios) — tested via automated headless browser DOM checks and mock streams (Raised by Round 1)
+- [Item 2] Camera feeds whose hardware aspect ratio does not match the container's 16:9 (landscape) or 3:4 (portrait) will display letterboxing / pillarboxing black bars against the bg-black container rather than stretching or cropping to fill (Raised by Round 1)
+- [Item 3] Reviewer should test on a mobile device running iOS Safari and Android Chrome to verify that live stream and photo confirmation render uncropped and proportional across both front and rear cameras (Raised by Round 1)
 
-Reviewer Instructions:
-- Re-derive the requirements independently.
-- Actively try to BREAK the existing diff and implementation by running tests, adding boundary/edge-case tests, or inspecting edge conditions.
-- If you find issues or improvements (e.g. mobile responsiveness, unhandled Swal calls, edge cases in form state toggling), fix them directly, re-run tests, and verify.
-- Follow GEMINI.md git workflow rules: git status, git add ., git commit -m "...", git push origin.
-- Maintain your own progress.md and handoff.md in your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1.
+Critical Rules:
+1. GEMINI.md Git Workflow Rule: Upon completing modifications/additions/deletions, check git status, stage changes (`git add .`), commit with descriptive message, and push to origin main automatically.
+2. AGENTS.md Rule: Check Next.js rules in node_modules/next/dist/docs/ if writing any Next.js specific code.
 </additional_context>

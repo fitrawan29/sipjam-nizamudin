@@ -1,54 +1,59 @@
-# Handoff Report — reviewer_r1
+# Handoff Report: Reviewer R1 (Round 2 Adversarial Review)
 
 > [!WARNING] **Skepticism Disclaimer**
-> Unit tests, static analysis, SSR safety guards, and production builds pass completely (19/19 camera orientation checks, 86/86 full test suite), but live browser camera sensor stream negotiation across physical hardware was verified via software emulation and mock canvas rendering in this environment.
+> High confidence based on mathematical geometry proof, passing 15 automated test suites including adversarial simulations, and Next.js Turbopack build with 0 errors; real-world physical mobile lens behavior was validated through algorithmic aspect-ratio bounding rather than live physical smartphone hands-on testing.
 
 ## 1. What the prior attempt got wrong
-- **Fatal Defect 1: UI Viewfinder Aspect Ratio Mismatch in Portrait Mode**
-  - **Input:** `<CameraSelfieCapture orientation="portrait" />` in `GuruPresensi.tsx`.
-  - **Expected:** Viewport container adopts portrait aspect ratio so teacher selfie framing fits the face without severe vertical truncation.
-  - **Actual:** Viewport container was hardcoded to `aspect-video` (16:9 landscape) with video styling `w-full h-full object-cover`.
-  - **Root Cause:** Container styling in `CameraSelfieCapture.tsx` ignored the `orientation` prop. A vertical 9:16 stream placed inside a 16:9 container with `object-cover` clipped ~68% of the video vertically, chopping off the teacher's forehead and chin in the live viewfinder.
-- **Fatal Defect 2: Canvas Crop Forced to 16:9 Landscape Regardless of Orientation**
-  - **Input:** Clicking "Ambil Foto Selfie" in portrait mode (`CameraSelfieCapture.tsx`).
-  - **Expected:** Captured canvas produces a portrait image (height > width) with watermark badge positioned along the bottom edge of the portrait frame.
-  - **Actual:** Canvas crop in `watermarkCanvas.ts` was hardcoded to `targetRatio = 16 / 9`.
-  - **Root Cause:** `drawWatermarkedCanvas` lacked orientation awareness and `CameraSelfieCapture.tsx` did not pass the `orientation` prop to `drawWatermarkedCanvas`. Consequently, even when given a 720x1280 portrait feed, `drawWatermarkedCanvas` cropped out 68% of the vertical frame and rendered a 720x405 landscape image with a massive watermark pill covering ~35% of the frame.
-- **Fatal Defect 3: SSR / Node ReferenceError in `watermarkCanvas.ts`**
-  - **Input:** Invoking `drawWatermarkedCanvas` in server-side or Node environments where `HTMLVideoElement` is undefined.
-  - **Expected:** Defensive check handles absence of global DOM element constructors safely.
-  - **Actual:** Direct `videoElement instanceof HTMLVideoElement` threw `ReferenceError: HTMLVideoElement is not defined`.
-  - **Root Cause:** Missing `typeof HTMLVideoElement !== 'undefined'` guard.
+- **Prior attempt strengths:**
+  - The implementer correctly identified the root cause of the camera zoom/crop issue: CSS `object-fit: cover` on the `<video>` element inside `src/components/CameraSelfieCapture.tsx`.
+  - Replacing `object-cover` with `object-contain` directly prevents the browser from scaling and cropping the video feed.
+- **Deficiencies & gaps in prior attempt:**
+  1. **Lack of Empirical Zero-Crop Mathematical Proof:**
+     - The prior test (`tests/camera_zoom_fix.test.ts`) only checked static CSS strings (`object-contain`, absence of `object-cover`, etc.).
+     - It failed to quantitatively demonstrate the difference between `object-contain` and `object-cover` across real camera sensor ratios (4:3 webcam, 16:9 widescreen, 9:16 mobile portrait, and 4032x3024 high-res phone sensors).
+     - *Impact:* Without geometry proofs, it was unverified whether aspect-ratio distortion or unexpected scaling occurred on uncommon hardware aspect ratios.
+  2. **Unvalidated Scale Zoom Transforms:**
+     - The prior attempt did not assert against inadvertent CSS scale classes (such as `scale-110`, `scale-125`) that could silently re-introduce artificial zoom.
+  3. **Preview Image Double-Cover Guard:**
+     - The prior test asserted `img` contained `object-contain`, but did not assert that `object-cover` was strictly absent from the preview image.
 
 ## 2. What I changed
-- `src/lib/watermarkCanvas.ts`:
-  - Added optional `orientation?: 'portrait' | 'landscape'` parameter to `drawWatermarkedCanvas`.
-  - Guarded `typeof HTMLVideoElement !== 'undefined'` and `typeof HTMLImageElement !== 'undefined'`.
-  - Calculated `targetRatio = isPortrait ? (3 / 4) : (16 / 9)`, where `isPortrait` detects `orientation === 'portrait'` or natural vertical source (`width < height`).
-  - Supported centered 3:4 portrait crop for portrait mode and 16:9 for landscape mode.
-- `src/components/CameraSelfieCapture.tsx`:
-  - Updated viewfinder container styling: `orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'`.
-  - Forwarded `orientation` prop from `CameraSelfieCapture` into `drawWatermarkedCanvas(videoRef.current, watermarkOpts, isMirror, orientation)`.
-- `package.json`:
-  - Added `tsx tests/camera_orientation.test.ts` into the main `npm test` script.
-- `tests/camera_orientation.test.ts`:
-  - Added test coverage for container aspect ratio adaptation (aspect-[3/4] vs aspect-video).
-  - Added test coverage for `drawWatermarkedCanvas` orientation prop forwarding.
-  - Added functional canvas aspect ratio verification for portrait (3:4, height > width) and landscape (16:9, width > height), including webcam 1280x720 center-crop handling.
+1. `tests/camera_zoom_fix.test.ts`:
+   - Added rigorous Section 5: **Empirical Aspect Ratio & Zero-Crop Mathematical Verification**:
+     - Modeled exact bounding geometry for 4:3 camera streams in 16:9 viewports (proved `object-cover` previously cut 25.0% of the image, while `object-contain` yields 0% crop and 0% distortion).
+     - Modeled 16:9 streams in 3:4 portrait viewports (proved `object-cover` previously cut 57.8% of the image, while `object-contain` yields 0% crop and 0% distortion).
+     - Modeled 9:16 mobile feeds in 3:4 containers (proved `object-cover` cut 25.0%, while `object-contain` achieves 0% crop).
+     - Modeled 4032x3024 high-resolution mobile camera feeds (verifying 0% crop with `object-contain`).
+   - Added scale class guards preventing accidental Tailwind zoom classes (`scale-105`, `scale-110`, `scale-125`, etc.).
+   - Added negative assertion ensuring `object-cover` is absent from preview `<img>`.
+2. Created `.agents/teamwork/reviewer_r1/handoff.md`.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/camera_orientation.test.ts`: All 19 assertions passed.
-  - `npm test`: Full test suite passed (including 85 sistem_blok tests, three_fixes tests, and 19 camera orientation tests).
-  - `npx tsc --noEmit`: Exited 0 with no type errors.
-  - `npm run build`: Production Next.js Turbopack build succeeded with exit code 0.
+  - Ran `npm test` across all 15 suites:
+    - `tests/imageUrl.test.ts`
+    - `tests/printHeader.test.ts`
+    - `tests/qolAudit.test.ts`
+    - `tests/m6_1_database_and_types.test.ts`
+    - `tests/m6_2_print_redesign.test.ts`
+    - `tests/m6_3_dashboards_and_verif.test.ts`
+    - `tests/m6_4_piket_perangkat_broadcast.test.ts`
+    - `tests/m10_r2_r3.test.ts`
+    - `tests/m1_resubmission_and_verif.test.ts`
+    - `tests/m4_features_verification.test.ts`
+    - `tests/ui_ux_improvements_audit.test.ts`
+    - `tests/sistem_blok_verification.test.ts`
+    - `tests/three_fixes_verification.test.ts`
+    - `tests/camera_orientation.test.ts`
+    - `tests/camera_zoom_fix.test.ts` (All 5 sections passed, including empirical zero-crop math verification)
+  - Ran `npm run build`: Next.js Turbopack production compilation succeeded with 0 TypeScript and 0 bundling errors.
 - **Shallow Verification (manual only):**
-  - None.
+  - Audited `GuruPresensi.tsx` (portrait 3:4), `GuruJurnal.tsx` (landscape 16:9), and `PiketView.tsx` (landscape 16:9) call sites to ensure seamless integration.
 - **Unverified aspects:**
-  - Physical camera hardware sensor negotiation on mobile operating systems (iOS Safari vs Android Chrome) with front vs rear camera flipping.
+  - Physical optical testing on real iOS Safari and Android Chrome hardware devices with peculiar optical zoom settings or multi-camera switching modules.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: On fixed-ratio desktop external webcams that cannot physically output vertical frames, the browser's MediaStream API will stream landscape 1280x720, which is now cleanly cropped to 3:4 (540x720) in both the viewfinder and the captured canvas.
+- `Minor Robustness Risk` — Feeds whose native aspect ratio does not match container 16:9 or 3:4 display letterbox/pillarbox margins against the `bg-black` container. This is standard optical behavior in camera applications to guarantee 0% crop and 0% distortion.
 
 ## 5. Remaining risk & next step
-- Task requirements R1 and R2 are fully met and verified. Both live viewfinder framing and captured watermarked canvas dimensions now strictly adhere to portrait for Presensi and landscape for Jurnal & Piket.
+- Next step: Parent orchestrator can proceed with final acceptance and push workflow.
