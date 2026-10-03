@@ -572,3 +572,47 @@ ATENSI: Baca node_modules/next/dist/docs/ sebelum menulis kode Next.js apapun.
 - [ ] Terdapat kolom Kelas dan Mata Pelajaran di tabel rekap cetak pribadi.
 - [ ] Lulus pengecekan `npx tsc --noEmit` dan `npm run build`.
 - [ ] Otomatis di commit dengan pesan deskriptif dan di push ke origin/main.
+
+## 2026-10-03T20:06:51Z
+
+Modifikasi aplikasi SIPJAM (Next.js + Supabase, multi-tenant, role-based): (1) hapus fitur Chat Guru sepenuhnya, (2) tambah fitur presensi siswa QR code yang dioperasikan guru piket, mendukung scan kamera browser maupun hardware scanner eksternal hingga 10 unit, dengan laporan ke piket & wali kelas dan sinkronisasi ke guru mapel hari tersebut.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+
+Integrity mode: development
+
+## Requirements
+
+### R1. Hapus Fitur Chat Guru
+Hapus `ChatView` component dan semua referensinya: import di `AppScreen.tsx`, menu item `view-chat` dari `menuItemsGuru` dan `menuItemsAdmin`, route render `{currentView === 'view-chat' && <ChatView .../>}`, dan file `src/components/ChatView.tsx`. Tabel `chat_messages` di Supabase tidak perlu dihapus (cukup dari UI). Pastikan tidak ada broken import atau dead reference yang tertinggal.
+
+### R2. QR Code Siswa — Generate & Scan
+Setiap siswa memiliki QR code unik yang di-generate sistem SIPJAM, disimpan di database Supabase (cek tabel yang sudah ada; jika belum ada kolom/tabel yang memadai, buat migration SQL yang sesuai). QR berisi identifier siswa (misal NIS atau UUID siswa). Guru piket dapat membuka halaman scan di modul Piket (`PiketView`) yang mendukung dua mode input: (a) kamera browser via Web API, (b) hardware QR/barcode scanner eksternal (USB HID — input teks otomatis ke input field, akhiri Enter). Maksimal 10 scanner eksternal dapat digunakan bersamaan (masing-masing buka tab/window halaman scan yang sama). Scan menghasilkan presensi `datang` atau `pulang` siswa sesuai pilihan mode yang dipilih guru piket.
+
+### R3. Laporan Presensi ke Piket & Wali Kelas
+Hasil scan QR tersimpan ke tabel presensi siswa di Supabase (buat migration jika belum ada: minimal kolom siswa_id, kelas, tanggal, status datang/pulang, timestamp, sekolah_id). Laporan presensi harian siswa tampil di modul Piket dan di tampilan Wali Kelas (jika sudah ada view Rekap Siswa `RekapSiswaView`, tambahkan data dari tabel baru ini; jika belum, cukup tampilkan di Piket). Data presensi ini melengkapi fitur yang sudah ada — tidak menggantikan alur lama.
+
+### R4. Sinkronisasi ke Guru Mapel
+Presensi datang siswa pada hari tersebut tersinkron ke tampilan guru mapel saat mereka membuka jurnal pembelajaran (`GuruJurnal`) — guru mapel dapat melihat daftar siswa yang sudah hadir di kelas mereka pada hari itu. Cek jadwal mengajar guru mapel untuk hari tersebut (cek tabel yang ada, misal `jadwal_pelajaran` atau serupa); tampilkan status hadir/tidak sesuai data presensi piket.
+
+## Acceptance Criteria
+
+### Hapus Chat
+- [ ] File `src/components/ChatView.tsx` dihapus
+- [ ] Tidak ada import `ChatView` yang tersisa di codebase
+- [ ] Menu "Chat Guru" tidak muncul di sidebar guru maupun admin
+- [ ] Build `next build` (atau `tsc --noEmit`) lulus tanpa error terkait ChatView
+
+### QR Generate & Scan
+- [ ] Ada mekanisme generate QR per siswa yang tersimpan di DB
+- [ ] Halaman scan di PiketView dapat membaca QR via kamera browser
+- [ ] Input hardware scanner (teks + Enter) juga memicu pencatatan presensi
+- [ ] Scan berhasil mencatat presensi siswa (datang atau pulang) ke DB
+
+### Laporan
+- [ ] Daftar presensi siswa hari ini tampil di modul Piket
+- [ ] Wali kelas dapat melihat laporan presensi siswa kelasnya
+- [ ] Data multi-tenant terisolasi per `sekolah_id`
+
+### Sinkronisasi Guru Mapel
+- [ ] Guru mapel dapat melihat status hadir siswa di GuruJurnal pada hari mengajar mereka

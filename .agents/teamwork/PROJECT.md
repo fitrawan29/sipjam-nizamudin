@@ -1,94 +1,92 @@
-# Project: Sipjam Bug Fixes & Feature Enhancements (R1 - R6)
+# Project: SIPJAM — Chat Removal, QR Siswa Presensi, Piket/Wali Kelas Reporting & Guru Mapel Sync
 
 ## Architecture
 - **Stack**: Next.js 16.3.4 (App Router), React 19, TypeScript, Tailwind CSS, Font Awesome 6 (CDN), SweetAlert2, Supabase (PostgreSQL + PostgREST).
 - **Authentication & Roles**: Roles are `'superadmin'`, `'admin'`, and `'guru'`. User identity maintained in `users` and `data_guru`.
-- **Data Flow**:
-  - Direct Supabase client calls (`@/lib/supabaseClient`) + Next.js route handlers (`src/app/api/...`).
-  - RPC functions for sensitive operations (`verify_login`, `update_user_profile`).
-  - School-scoped multitenancy: users belong to a `sekolah_id`.
+- **Multi-tenant Data Flow**: All operational queries are strictly partitioned by `sekolah_id`.
+- **Database Schema Additions**:
+  - `data_siswa`: Column `qr_code TEXT` storing unique QR identifier (fallback to NISN or UUID).
+  - `presensi_siswa`: New attendance table tracking gate check-ins (datang / pulang) by Piket with unique constraint `(sekolah_id, tanggal, siswa_id, status)`.
+- **Scanner Kiosk Architecture**:
+  - `PiketView.tsx` with dedicated Scan tab.
+  - Native Web API `BarcodeDetector` / camera stream for browser scanning.
+  - External USB HID barcode/QR scanner via auto-focused text input listening to Enter key event.
+  - Concurrent operation: supports up to 10 independent kiosks/tabs concurrently via idempotent PostgreSQL upserts and Supabase realtime synchronization.
+- **Reporting & Sync**:
+  - `PiketView.tsx`: Live daily gate attendance log and summary.
+  - `RekapSiswaView.tsx`: Wali Kelas filtered view for assigned class daily gate attendance.
+  - `GuruJurnal.tsx`: Synchronization showing students who checked in with Piket (`Hadir di Sekolah`) when teacher opens active class journal.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | R1: Merge Account SQL Script | Safe, idempotent SQL script (`merge_accounts.sql`) merging "Ade Fitrawan Ibrahim" accounts, re-assigning foreign keys before deletion, preserving 197 transaction records | M1 | Survey 1 | DONE |
-| 2 | R1: Database Schema Migrations | Add columns `latitude, longitude, lokasi, waktu_upload` to `jurnal_pembelajaran`, `mode_jurnal` to `sekolah`, update `verify_login` and `update_user_profile` RPCs | M1 | Survey 1 & 3 | DONE |
-| 3 | R2: Avatar Image/File Upload & SVG Catalog | Support image data URLs in `renderUserAvatar` (`src/lib/avatars.tsx`) and add file upload input in `AccountSettingsModal.tsx` | M2 | Survey 2 | DONE |
-| 4 | R2: Immediate Reactive Avatar UI | Update React state immediately upon upload success without reload; render avatar in `HomeView.tsx` banner and `AppScreen.tsx` top navbar | M2 | Survey 2 | DONE |
-| 5 | R2: Session Query Avatar Inclusion | Include `avatar` in `verify_login` RPC and session validation queries (`src/app/page.tsx`, `src/components/AppScreen.tsx`, etc.) | M2 | Survey 2 | DONE |
-| 6 | R5: Username Locking UI | Lock username field in `AccountSettingsModal.tsx` for teachers, only editable when `role === 'admin'` or `'Admin'` or `'superadmin'` | M2 | Survey 2 | DONE |
-| 7 | R5: Backend Username Edit Guard | Guard `update_user_profile` RPC so non-admin teachers cannot alter their username; sync teacher username when Admin edits teacher in `AdminDataView.tsx` | M2 | Survey 2 | DONE |
-| 8 | R3: Presensi Dropdown "Izin Terlambat" | Update select option in `GuruPresensi.tsx` to `<option value="Izin Terlambat">Izin Terlambat</option>` and adjust late calculation & verification status | M3 | Survey 1 & 3 | DONE |
-| 9 | R3: Presensi Backend Route Handler | Create `src/app/api/attendance/route.ts` to receive and store "Izin Terlambat" attendance records in `presensi_guru` | M3 | Survey 1 & 3 | DONE |
-| 10 | R6: Superadmin Edit Sekolah Journal Mode | Add input in `SuperadminView.tsx` for Journal Mode (`camera_only` vs `camera_upload`) and persist to `sekolah.mode_jurnal` | M4 | Survey 3 | DONE |
-| 11 | R6: Guru Jurnal Conditional Upload Rendering | `GuruJurnal.tsx` fetches school `mode_jurnal` and renders gallery file upload input ONLY IF configuration allows it (`mode_jurnal !== 'camera_only'`) | M4 | Survey 3 | DONE |
-| 12 | R4: Guru Jurnal Photo Upload & GPS Geolocation | In `GuruJurnal.tsx`, capture GPS via `navigator.geolocation.getCurrentPosition` upon gallery upload, sending `latitude, longitude, lokasi, waktu_upload` | M4 | Survey 3 | DONE |
-| 13 | R4: Jurnal Review Location Display | In `AdminVerifView.tsx` and `RekapJurnalView.tsx`, display GPS location badge and upload timestamp for uploaded photos | M4 | Survey 3 | DONE |
-| 14 | E2E & Unit Test Suite | Comprehensive automated tests verifying R1 through R6 acceptance criteria | M5 | Dispatch | DONE |
-| 15 | Build & Git Delivery | Type check (`npx tsc --noEmit`), build (`npm run build`), stage, commit, and push (`origin main`) | M5 | Dispatch & GEMINI.md | DONE |
+| 1 | R1: Hapus ChatView Component & File | Delete `src/components/ChatView.tsx` without leaving broken references | M1 | Survey 1 | PLANNED |
+| 2 | R1: Hapus ChatView References di AppScreen | Remove import, `view-chat` menu item in `menuItemsGuru` & `menuItemsAdmin`, and route render in `src/components/AppScreen.tsx` | M1 | Survey 1 | PLANNED |
+| 3 | R1: Audit Test Guard for ChatView | Update `tests/ui_ux_improvements_audit.test.ts` to guard or adapt `ChatView.tsx` existence check so `npm test` passes cleanly | M1 | Survey 1 | PLANNED |
+| 4 | R2: Database Migration Siswa QR & Presensi | Migration SQL adding `qr_code` to `data_siswa` and creating table `presensi_siswa` with multi-tenant RLS & unique constraint | M2 | Survey 2 | PLANNED |
+| 5 | R2: Student QR Generation & Export Mechanism | Mechanism to generate/populate unique QR identifiers (`data_siswa.qr_code`) and display/print student QR codes in Admin/Piket | M2 | Survey 2 | PLANNED |
+| 6 | R2: PiketView Scanner UI & Multi-Input | Dedicated Scan tab in `PiketView.tsx` with Datang/Pulang toggle, camera Web API scanner, and USB HID scanner input (text + Enter) | M3 | Survey 2 | PLANNED |
+| 7 | R2: 10-Unit Hardware Scanner Concurrency | Robust concurrency handling for up to 10 simultaneous kiosk scanner windows with idempotent upsert and audio/visual feedback | M3 | Survey 2 | PLANNED |
+| 8 | R3: Piket Attendance Daily Log & Summary | Real-time table and status summary of today's scanned students in `PiketView.tsx` | M3 | Survey 2 & 3 | PLANNED |
+| 9 | R3: Wali Kelas Attendance Report | Daily gate attendance report by class in `RekapSiswaView.tsx` for teachers assigned as Wali Kelas | M4 | Survey 3 | PLANNED |
+| 10 | R4: Guru Mapel Attendance Sync | In `GuruJurnal.tsx`, display gate arrival status (`Hadir di Sekolah` vs `Belum Scan`) in student list for today's teaching schedule | M4 | Survey 3 | PLANNED |
+| 11 | Multi-Tenant Data Isolation Guard | Ensure all queries for `presensi_siswa`, `data_siswa`, and schedules strictly filter by `sekolah_id` | M2, M3, M4 | Dispatch | PLANNED |
+| 12 | Comprehensive Verification, Build & Git Delivery | Automated test suite verification, `npx tsc --noEmit`, `npm run build`, and automatic git commit & push per GEMINI.md | M5 | Dispatch & GEMINI.md | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Database Foundation & Account Merge (R1 + Migrations) | `merge_accounts.sql` script, schema additions (`jurnal_pembelajaran`, `sekolah`, RPCs) | none | DONE |
-| M2 | Profile, Avatar Reactivity & Username Lock (R2 + R5) | `renderUserAvatar`, `AccountSettingsModal.tsx`, `HomeView.tsx`, `AppScreen.tsx`, session queries | M1 | DONE |
-| M3 | Presensi "Izin Terlambat" UI & Backend (R3) | `GuruPresensi.tsx` option and state, `src/app/api/attendance/route.ts` | M1 | DONE |
-| M4 | Jurnal Upload, GPS Geolocation & School Setting (R4 + R6) | `SuperadminView.tsx`, `GuruJurnal.tsx`, `AdminVerifView.tsx`, `RekapJurnalView.tsx` | M1 | DONE |
-| M5 | Comprehensive Testing, Build & Git Delivery | Automated test suite, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | DONE |
+| M1 | Hapus Fitur Chat Guru & Test Fix | Delete `ChatView.tsx`, remove references from `AppScreen.tsx`, adjust `ui_ux_improvements_audit.test.ts` | none | IN_PROGRESS |
+| M2 | Database Migrations & QR Code Siswa Mechanism | Migration SQL (`data_siswa.qr_code`, `presensi_siswa`), QR generation/display helper | M1 | PLANNED |
+| M3 | PiketView QR Scanner (Camera + USB HID 10-Unit) & Piket Daily Report | `PiketView.tsx` Scan tab, camera & USB HID handler, multi-kiosk concurrency, daily scan log | M2 | PLANNED |
+| M4 | Laporan Wali Kelas & Sinkronisasi Guru Mapel | `RekapSiswaView.tsx` Wali Kelas reporting, `GuruJurnal.tsx` student arrival status sync | M2, M3 | PLANNED |
+| M5 | E2E Testing, Build & Git Delivery | Comprehensive automated tests, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | PLANNED |
 
 ## Interface Contracts
 
-### 1. Account Merge (`merge_accounts.sql`)
-- Preserves primary account: "Ade Fitrawan Ibrahim" (`user_id = 'fff9d836-b034-4a66-be96-1c1b7cfad277'`).
-- Migrates FKs in `presensi_guru`, `jurnal_pembelajaran`, `jadwal_pelajaran`, `laporan_piket`, `guru_mapel`, `penugasan_piket`, `wali_kelas`, `push_subscriptions`.
-- Deletes duplicate record from `data_guru` and `users`.
-- Idempotent: checks for existence before updating/deleting.
+### 1. Database Schema (`presensi_siswa`)
+- Columns:
+  - `id`: UUID PRIMARY KEY DEFAULT gen_random_uuid()
+  - `sekolah_id`: UUID NOT NULL REFERENCES sekolah(id)
+  - `siswa_id`: UUID NOT NULL REFERENCES data_siswa(id) ON DELETE CASCADE
+  - `nisn`: TEXT
+  - `nama_siswa`: TEXT NOT NULL
+  - `kelas`: TEXT NOT NULL
+  - `tanggal`: DATE NOT NULL DEFAULT CURRENT_DATE
+  - `status`: TEXT NOT NULL CHECK (status IN ('datang', 'pulang'))
+  - `jam`: TIME NOT NULL DEFAULT CURRENT_TIME
+  - `timestamp`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  - `device_id`: TEXT DEFAULT 'kiosk-default'
+- Constraint:
+  - `UNIQUE (sekolah_id, tanggal, siswa_id, status)`
+- RLS Policy:
+  - Select/Insert/Update enabled for authenticated users where `sekolah_id` matches user session `sekolah_id`.
 
-### 2. Avatar & Profile (`AccountSettingsModal.tsx` <-> `AppScreen.tsx`)
-- `onUserUpdated(updatedUser: User)` called immediately upon successful save.
-- `renderUserAvatar(avatarIdOrDataUrl: string | null, className?: string)` handles data URLs (`data:image/*`), HTTP URLs, and preset IDs.
-- Session queries include `avatar` column.
+### 2. Student QR Identifier (`data_siswa.qr_code`)
+- Value format: string identifier (e.g. NISN or UUID or `QR-SISWA-${id}`).
+- Resolution query:
+  `.or(\`qr_code.eq.\${code},nisn.eq.\${code},id.eq.\${code}\`)` scoped by `.eq('sekolah_id', sekolah_id)`.
 
-### 3. Username Lock Guard
-- UI check: `const isAdmin = role?.toLowerCase() === 'admin' || role?.toLowerCase() === 'superadmin';`
-- If not admin: username input is disabled / locked with message `(Hanya Admin yang bisa mengubah)`.
-- Backend guard in `update_user_profile`: non-admin cannot alter username if role is teacher.
+### 3. Piket Scanner Input Contract
+- Input modes:
+  1. Camera: HTML5 Video + `BarcodeDetector` API (or fallback canvas scanning).
+  2. Hardware USB HID: Text input field auto-focused; on `keydown (Enter)`, read string value, trim, trigger scan handler, clear input, and re-focus.
+- Upsert logic:
+  - Check mode (`datang` or `pulang`).
+  - Upsert into `presensi_siswa` on conflict `(sekolah_id, tanggal, siswa_id, status)` DO UPDATE SET `jam = EXCLUDED.jam, timestamp = EXCLUDED.timestamp`.
 
-### 4. Presensi API (`src/app/api/attendance/route.ts`)
-- Method: `POST`
-- Payload:
-  ```json
-  {
-    "user_id": "uuid",
-    "nama_guru": "string",
-    "tipe_absen": "Datang",
-    "jenis_presensi": "Izin Terlambat",
-    "detail_izin": "Alasan terlambat...",
-    "lokasi": "string",
-    "jarak": "string",
-    "sekolah_id": "uuid"
-  }
-  ```
-- Response: `201 Created` with JSON `{ success: true, data: { ... } }`.
-
-### 5. School Mode Jurnal & Geolocation
-- Table `sekolah`: column `mode_jurnal TEXT DEFAULT 'camera_upload'` (`'camera_only'` | `'camera_upload'`).
-- Table `jurnal_pembelajaran`: columns `latitude DOUBLE PRECISION`, `longitude DOUBLE PRECISION`, `lokasi TEXT`, `waktu_upload TEXT`.
-- `GuruJurnal.tsx`:
-  - `isUploadAllowed = schoolModeJurnal !== 'camera_only'`.
-  - File input rendered conditionally: `{isUploadAllowed && uploadMode === 'gallery' && <input type="file" ... />}`.
-  - File upload triggers `navigator.geolocation.getCurrentPosition`.
+### 4. Guru Mapel Sync Contract (`GuruJurnal.tsx`)
+- When active class is selected for today:
+  - Query: `supabase.from('presensi_siswa').select('siswa_id, status, jam').eq('sekolah_id', user.sekolah_id).eq('tanggal', todayDate).eq('kelas', activeKelas).eq('status', 'datang')`
+  - Map results by `siswa_id`:
+    - If present: show badge `✓ Hadir di Sekolah (Jam ${jam})`
+    - If not present: show badge `Belum Scan Piket`
 
 ## Code Layout
-- `merge_accounts.sql`: Root script for one-off account merge.
-- `supabase/migrations/`: Database migrations.
-- `src/lib/avatars.tsx`: Avatar SVG catalog and `renderUserAvatar` renderer.
-- `src/components/AccountSettingsModal.tsx`: User profile, avatar file upload, username locking.
-- `src/components/HomeView.tsx`: Dashboard header, avatar display.
-- `src/components/AppScreen.tsx`: Top navbar avatar, session sync, view routing.
-- `src/components/GuruPresensi.tsx`: Teacher attendance options and submission.
-- `src/app/api/attendance/route.ts`: Attendance backend endpoint.
-- `src/components/GuruJurnal.tsx`: Teacher journal, gallery upload, GPS capture.
-- `src/components/SuperadminView.tsx`: School configuration modal.
-- `src/components/AdminVerifView.tsx` & `src/components/RekapJurnalView.tsx`: Location and upload time display.
-- `tests/`: Automated unit & integration tests.
+- `supabase/migrations/`: Migration scripts (`20261003_qr_presensi_siswa.sql`).
+- `src/components/AppScreen.tsx`: Top layout, navigation menu items, view switcher.
+- `src/components/PiketView.tsx`: Piket management, Scan kiosk tab, daily gate attendance log.
+- `src/components/RekapSiswaView.tsx`: Student attendance recap, Wali Kelas gate attendance view.
+- `src/components/GuruJurnal.tsx`: Teacher journal, class selection, live attendance sync with gate scan.
+- `src/lib/`: Helpers for QR generation and Supabase client queries.
+- `tests/`: Automated unit & E2E tests verifying all requirements.

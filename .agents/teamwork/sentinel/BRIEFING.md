@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-03T12:37:11Z
+# BRIEFING — 2026-10-03T20:06:51Z
 
 ## Mission
-Route and monitor execution of SIPJAM app Jurnal KBM form & print document improvements (R1: remove pertemuan/jam fields, R2: exact attendance format, R3: explicit Kelas & Mapel columns).
+Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) add student QR code presensi operated by guru piket (browser camera & up to 10 external USB HID hardware scanners), (3) attendance reporting to piket & wali kelas, and (4) sync attendance to guru mapel teaching schedule on the day.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -33,7 +33,8 @@ Route and monitor execution of SIPJAM app Jurnal KBM form & print document impro
 - Active Orchestrator (orchestrator_7): 7e84420a-2cde-4423-8413-5104d66482dd (completed & retired)
 - Sentinel Victory Auditor (victory_auditor_15): 2d4b3b3d-b2b8-4f8d-96de-73d15c83ab53 (VICTORY CONFIRMED & retired)
 - Active Orchestrator (orchestrator_8): 9158af2a-a31a-4d06-bc79-2701bb3d1192 (completed & retired)
-- Active Orchestrator (orchestrator_9): 39ee7d4d-26ad-4d48-ad3e-07ef312a4b5b
+- Active Orchestrator (orchestrator_9): 39ee7d4d-26ad-4d48-ad3e-07ef312a4b5b (completed & retired)
+- Active Orchestrator (orchestrator_10): 149f0279-6b23-4179-9bd4-edcb251f34f1
 - Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
@@ -43,15 +44,15 @@ Route and monitor execution of SIPJAM app Jurnal KBM form & print document impro
 - Cancel all crons and kill all subagents before final summary delivery
 
 ## User Context
-- **Last user request**: Tiga perbaikan lanjutan form Jurnal KBM dan dokumen cetak rekap (R1, R2, R3).
+- **Last user request**: Hapus Chat Guru, QR Code Siswa scan (browser camera + hardware scanner up to 10), Laporan ke Piket & Wali Kelas, Sinkronisasi ke Guru Mapel di GuruJurnal.
 - **Pending clarifications**: none
-- **Delivered results**: Dispatched to orchestrator_9.
+- **Delivered results**: Routed to General path; dispatched orchestrator_10 (149f0279-6b23-4179-9bd4-edcb251f34f1).
 
 ## Project Status
 - **Phase**: in progress
 - **Route**: General (teamwork_preview_orchestrator)
-- **Active Crons**: task-32 (Cron 1: Progress Reporting, */8 * * * *), task-34 (Cron 2: Liveness Check, */10 * * * *)
-- **Active Subagents**: orchestrator_9 (39ee7d4d-26ad-4d48-ad3e-07ef312a4b5b)
+- **Active Crons**: task-26 (Cron 1: Progress Reporting, */8 * * * *), task-28 (Cron 2: Liveness Check, */10 * * * *)
+- **Active Subagents**: orchestrator_10 (149f0279-6b23-4179-9bd4-edcb251f34f1)
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -62,4 +63,4 @@ Route and monitor execution of SIPJAM app Jurnal KBM form & print document impro
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original verbatim user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\BRIEFING.md — Sentinel persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_9\DISPATCH.md — Orchestrator 9 dispatch brief
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\DISPATCH.md — Orchestrator 10 dispatch brief
