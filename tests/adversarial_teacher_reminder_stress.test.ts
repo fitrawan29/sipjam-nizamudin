@@ -7,7 +7,8 @@ import {
   evaluateReminderConditions,
   parseTimeToMinutes,
   ReminderConfig,
-  TeacherReminderManager
+  TeacherReminderManager,
+  computeRoleFlags,
 } from '../src/components/TeacherReminderManager';
 import { GuruDailyState } from '../src/lib/workflow';
 import { getWitaTimeStr, getWitaDayName } from '../src/lib/wita';
@@ -522,13 +523,7 @@ assert(
 // ============================================================================
 console.log('\n--- SECTION 5: Adversarial Role Restrictions & Isolation ---');
 
-// Helper to evaluate TeacherReminderManager role computation
-function computeRoleFlags(user: any) {
-  const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
-  const isGuru = Boolean(user && !isAdmin && !isSuperadmin);
-  return { isSuperadmin, isAdmin, isGuru };
-}
+// Role computation helper imported from TeacherReminderManager.tsx
 
 // 5.1 Admin Role: MUST NOT evaluate or trigger reminders
 const adminUser = { id: 'u-admin', role: 'admin', nama: 'Administrator' };

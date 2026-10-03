@@ -113,7 +113,7 @@ export function evaluateReminderConditions(
     } else if (hasClassesToday) {
       // Regular teaching day: verify if all scheduled classes have matching journals
       const missingSchedules = dailyState.jadwalKBM.filter(
-        jk => !dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk))
+        jk => !(dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk))
       );
       if (missingSchedules.length > 0) {
         const total = dailyState.jadwalKBM.length;
@@ -168,16 +168,28 @@ export function evaluateReminderConditions(
   return reminders;
 }
 
+/**
+ * Positive role verification helper: Active ONLY for teachers (guru / teacher)
+ */
+export function computeRoleFlags(user?: { role?: string; [key: string]: unknown } | null) {
+  const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const isSuperadmin = normRole === 'superadmin';
+  const isAdmin = isSuperadmin || normRole === 'admin' || normRole === 'administrator';
+  const isGuru = Boolean(user && !isAdmin && !isSuperadmin && (normRole === 'guru' || normRole === 'teacher'));
+  return { isSuperadmin, isAdmin, isGuru };
+}
+
 export function TeacherReminderManager({ user, onNavigate }: TeacherReminderManagerProps) {
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
   const lastCheckTimestampRef = useRef<number>(0);
 
-  // Role verification: Active ONLY for teachers (guru)
-  const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
-  const isGuru = Boolean(user && !isAdmin && !isSuperadmin);
+  // Positive role verification: Active ONLY for teachers (guru / teacher)
+  const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const isSuperadmin = normRole === 'superadmin';
+  const isAdmin = isSuperadmin || normRole === 'admin' || normRole === 'administrator';
+  const isGuru = Boolean(user && !isAdmin && !isSuperadmin && (normRole === 'guru' || normRole === 'teacher'));
 
   const checkReminders = useCallback(async () => {
     if (!isGuru || !user) return;
