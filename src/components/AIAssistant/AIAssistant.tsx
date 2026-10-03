@@ -19,6 +19,19 @@ export interface AIAssistantProps {
     [key: string]: any;
   } | null;
   className?: string;
+  initialOpen?: boolean;
+}
+
+export function getAIAssistantGreeting(
+  role?: string,
+  name?: string,
+  user?: { nama?: string; role?: string; [key: string]: any } | null
+): string {
+  const normalizedRole = (role || user?.role || '').toLowerCase().trim();
+  const isTeacher = normalizedRole !== 'admin' && normalizedRole !== 'superadmin';
+  const effectiveName = name || (user?.nama ? user.nama.split(' ')[0] : undefined);
+  const displayName = effectiveName ? `Bapak/Ibu ${effectiveName}` : (isTeacher ? 'Bapak/Ibu Guru' : 'Admin');
+  return `Halo, ${displayName}! 👋 Saya Asisten AI SIPJAM siap membantu Anda memahami dan menggunakan seluruh fitur aplikasi (presensi, jurnal, piket, nilai, dll). Sistem ini 100% offline & cepat.`;
 }
 
 interface ChatMessage {
@@ -39,20 +52,23 @@ export function AIAssistant({
   userName,
   user,
   className = '',
+  initialOpen = false,
 }: AIAssistantProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initialOpen);
   const [inputText, setInputText] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    return [
+      {
+        id: 'welcome-init',
+        sender: 'assistant',
+        text: getAIAssistantGreeting(userRole, userName, user),
+        time: '',
+        suggestions: getContextSuggestions(currentView, 3)
+      }
+    ];
+  });
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-
-  const isTeacher = userRole !== 'admin' && userRole !== 'superadmin';
-
-  const getGreeting = () => {
-    const effectiveName = userName || (user?.nama ? user.nama.split(' ')[0] : undefined);
-    const displayName = effectiveName ? `Bapak/Ibu ${effectiveName}` : (isTeacher ? 'Bapak/Ibu Guru' : 'Admin');
-    return `Halo, ${displayName}! 👋 Saya Asisten AI SIPJAM siap membantu Anda memahami dan menggunakan seluruh fitur aplikasi (presensi, jurnal, piket, nilai, dll). Sistem ini 100% offline & cepat.`;
-  };
 
   // Initialize or reset chat
   const initChat = () => {
@@ -60,7 +76,7 @@ export function AIAssistant({
     const welcomeMsg: ChatMessage = {
       id: 'welcome-' + Date.now(),
       sender: 'assistant',
-      text: getGreeting(),
+      text: getAIAssistantGreeting(userRole, userName, user),
       time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       suggestions
     };

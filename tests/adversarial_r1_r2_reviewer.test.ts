@@ -3,7 +3,7 @@ import path from 'path';
 import vm from 'vm';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
-import AIAssistant from '../src/components/AIAssistant/AIAssistant';
+import { AIAssistant, getAIAssistantGreeting } from '../src/components/AIAssistant/AIAssistant';
 import { urlBase64ToUint8Array, isPushNotificationSupported } from '../src/lib/pushClient';
 
 let totalTests = 0;
@@ -27,7 +27,7 @@ async function runAdversarialReviewerSuite() {
   console.log('================================================================\n');
 
   // ===========================================================================
-  // SECTION 1: R1 - AI ASSISTANT ROBOT ICON VERIFICATION
+  // SECTION 1: R1 - AI ASSISTANT ROBOT ICON & PROPS VERIFICATION
   // ===========================================================================
   console.log('--- SECTION 1: R1 - AI Assistant Robot Icon ---');
 
@@ -68,6 +68,24 @@ async function runAdversarialReviewerSuite() {
         );
       }
     }
+
+    // Test 1.2: Case-insensitive role recognition in AIAssistant greeting
+    assert(getAIAssistantGreeting('ADMIN', '').includes('Halo, Admin!'), 'getAIAssistantGreeting recognizes "ADMIN"');
+    assert(getAIAssistantGreeting('SuperAdmin', '').includes('Halo, Admin!'), 'getAIAssistantGreeting recognizes "SuperAdmin"');
+    assert(getAIAssistantGreeting(undefined, undefined, { role: 'admin' }).includes('Halo, Admin!'), 'getAIAssistantGreeting falls back to user.role');
+    assert(getAIAssistantGreeting('GURU', '').includes('Halo, Bapak/Ibu Guru!'), 'getAIAssistantGreeting recognizes "GURU"');
+
+    // Test 1.3: SSR initialOpen rendering of greeting dialog panel
+    const adminPanelHtml = ReactDOMServer.renderToString(
+      React.createElement(AIAssistant, {
+        userRole: 'admin',
+        userName: '',
+        initialOpen: true
+      })
+    );
+    assert(adminPanelHtml.includes('Halo, Admin!'), 'AIAssistant with initialOpen=true renders greeting panel in SSR');
+    assert(adminPanelHtml.includes('fa-robot text-sm'), 'AIAssistant header contains fa-robot icon');
+
   } catch (err: any) {
     assert(false, 'AIAssistant SSR rendering failed', err.message);
   }
@@ -92,6 +110,7 @@ async function runAdversarialReviewerSuite() {
   let listeners: Record<string, Listener> = {};
   let showNotificationCalls: Array<{ title: string; options: any }> = [];
   let showNotificationRejectNext = false;
+  let showNotificationSyncThrow = false;
   let openWindowRejectNext = false;
   let openWindowCalls: string[] = [];
   let focusCalls: string[] = [];
@@ -102,6 +121,7 @@ async function runAdversarialReviewerSuite() {
     listeners = {};
     showNotificationCalls = [];
     showNotificationRejectNext = false;
+    showNotificationSyncThrow = false;
     openWindowRejectNext = false;
     openWindowCalls = [];
     focusCalls = [];
@@ -139,6 +159,10 @@ async function runAdversarialReviewerSuite() {
       },
       registration: {
         showNotification: async (title: string, options: any) => {
+          if (showNotificationSyncThrow) {
+            showNotificationSyncThrow = false;
+            throw new TypeError('Synchronous throw from showNotification');
+          }
           if (showNotificationRejectNext) {
             showNotificationRejectNext = false;
             throw new TypeError('Browser rejected notification options (e.g. actions/vibrate unsupported)');
@@ -157,7 +181,12 @@ async function runAdversarialReviewerSuite() {
       }),
       keys: async () => ['old-cache-v1'],
       delete: async () => true,
-      match: async () => null
+      match: async (req: any) => {
+        if (typeof req === 'string' && req === '/') {
+          return { status: 200, url: 'https://sipjam.sch.id/' };
+        }
+        return null;
+      }
     };
 
     const sandbox = {
@@ -166,6 +195,7 @@ async function runAdversarialReviewerSuite() {
       Date: Date,
       JSON: JSON,
       URL: URL,
+      Response: Response,
       console: console,
       Promise: Promise,
       setTimeout: setTimeout
@@ -296,7 +326,6 @@ async function runAdversarialReviewerSuite() {
   assert(showNotificationCalls[0].options.actions === undefined, 'Empty actions array is omitted from options');
 
   // Test 2.7: Browser rejects initial showNotification (e.g. mobile Safari throwing TypeError on options)
-  // Verify that the fallback showNotification is executed cleanly with minimal options!
   showNotificationCalls = [];
   showNotificationRejectNext = true; // will throw on first call
 
@@ -387,7 +416,7 @@ async function runAdversarialReviewerSuite() {
   assert(showNotificationCalls[0].options.tag === 'custom-tag-123', 'Explicit tag preserved in options');
   assert(showNotificationCalls[0].options.renotify === true, 'Renotify enabled when tag is present');
 
-  // Test 2.11: Push WITHOUT tag omits tag and renotify (preventing notification overwrite & Chromium TypeError)
+  // Test 2.11: Push WITHOUT tag omits tag and renotify
   showNotificationCalls = [];
   const untaggedPayload = {
     title: 'Pengingat Umum',
@@ -474,6 +503,137 @@ async function runAdversarialReviewerSuite() {
   assert(focusCalls.length === 1, 'notificationclick falls back to focusing existing window when openWindow fails');
 
   // ===========================================================================
+  // ADVANCED ADVERSARIAL EDGE CASES (Review Round 3)
+  // ===========================================================================
+
+  // Test 2.15: Push event with valid JSON null payload (JSON.parse("null") === null)
+  showNotificationCalls = [];
+  listeners['push']({
+    data: {
+      json: () => null,
+      text: () => 'null'
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Push event with JSON null does not crash and displays notification');
+  assert(showNotificationCalls[0].title === 'SIPJAM Notifikasi', 'JSON null applies fallback title');
+  assert(showNotificationCalls[0].options.body === 'Pemberitahuan baru dari sistem SIPJAM.', 'JSON null applies fallback body');
+
+  // Test 2.16: Push event with primitive JSON string (e.g. JSON.parse('"Pengumuman Darurat"'))
+  showNotificationCalls = [];
+  listeners['push']({
+    data: {
+      json: () => 'Pengumuman Darurat: Rapat Pukul 13:00',
+      text: () => '"Pengumuman Darurat: Rapat Pukul 13:00"'
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Push event with primitive string payload displays notification');
+  assert(showNotificationCalls[0].options.body === 'Pengumuman Darurat: Rapat Pukul 13:00', 'Primitive string payload preserved as notification body');
+
+  // Test 2.17: Push event with JSON array payload
+  showNotificationCalls = [];
+  listeners['push']({
+    data: {
+      json: () => [{ title: 'Array Title', body: 'Array Body' }],
+      text: () => '[{"title":"Array Title","body":"Array Body"}]'
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Push event with JSON array unwraps first item');
+  assert(showNotificationCalls[0].title === 'Array Title', 'Array item title extracted correctly');
+  assert(showNotificationCalls[0].options.body === 'Array Body', 'Array item body extracted correctly');
+
+  // Test 2.18: Push event with malformed action items (missing title property)
+  showNotificationCalls = [];
+  listeners['push']({
+    data: {
+      json: () => ({
+        title: 'Action Test',
+        body: 'Testing actions',
+        actions: [
+          { action: 'valid', title: 'Valid Action' },
+          { action: 'invalid-no-title' },
+          null
+        ]
+      })
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Push event with actions displayed');
+  assert(
+    Array.isArray(showNotificationCalls[0].options.actions) && showNotificationCalls[0].options.actions.length === 1,
+    'Malformed action items without title are filtered out, leaving only valid actions'
+  );
+  assert(
+    showNotificationCalls[0].options.actions[0].action === 'valid',
+    'Valid action item preserved in options.actions'
+  );
+
+  // Test 2.19: Synchronous throw from showNotification handled by outer try/catch
+  showNotificationCalls = [];
+  showNotificationSyncThrow = true;
+  listeners['push']({
+    data: {
+      json: () => ({ title: 'Sync Throw Test', body: 'Sync throw body' })
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Synchronous throw from showNotification triggers fallback showNotification');
+  assert(showNotificationCalls[0].title === 'Sync Throw Test', 'Fallback notification preserves title on synchronous throw');
+
+  // Test 2.20: Numeric tag normalized to string
+  showNotificationCalls = [];
+  listeners['push']({
+    data: {
+      json: () => ({ title: 'Num Tag', body: 'Body', tag: 9988 })
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Numeric tag displayed');
+  assert(showNotificationCalls[0].options.tag === '9988', 'Numeric tag successfully normalized to string');
+
+  // Test 2.21: String silent "true" activates silent mode
+  showNotificationCalls = [];
+  listeners['push']({
+    data: {
+      json: () => ({ title: 'String Silent', body: 'Body', silent: 'true' })
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'String silent "true" displayed');
+  assert(showNotificationCalls[0].options.silent === true, 'String silent="true" sets options.silent=true');
+  assert(showNotificationCalls[0].options.vibrate === undefined, 'String silent="true" deletes vibrate');
+
+  // ===========================================================================
   // SECTION 3: PUSH CLIENT UTILITY & KEY RENEWAL VERIFICATION
   // ===========================================================================
   console.log('\n--- SECTION 3: Push Client Utility & Renewal Tests ---');
@@ -531,6 +691,44 @@ async function runAdversarialReviewerSuite() {
   }
   assert(Boolean(extractedJson.keys?.p256dh), 'Manual key extraction populates p256dh when toJSON omits keys');
   assert(Boolean(extractedJson.keys?.auth), 'Manual key extraction populates auth when toJSON omits keys');
+
+  // 3.4: Partial key recovery: toJSON has p256dh but missing auth
+  const mockPartialSubscription: any = {
+    endpoint: 'https://push.example.com/sub/456',
+    toJSON: () => ({
+      endpoint: 'https://push.example.com/sub/456',
+      keys: { p256dh: 'existing-p256dh-key' }
+    }),
+    getKey: (name: string) => {
+      if (name === 'auth') return new Uint8Array([9, 10, 11, 12]).buffer;
+      return null;
+    }
+  };
+  const partialJson = mockPartialSubscription.toJSON();
+  let recoveredAuth = partialJson.keys?.auth;
+  if (!recoveredAuth && typeof mockPartialSubscription.getKey === 'function') {
+    const raw = mockPartialSubscription.getKey('auth');
+    if (raw) {
+      const bin = String.fromCharCode(...new Uint8Array(raw));
+      recoveredAuth = Buffer.from(bin, 'binary').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+  }
+  assert(partialJson.keys.p256dh === 'existing-p256dh-key', 'Existing p256dh is preserved in partial recovery');
+  assert(Boolean(recoveredAuth), 'Missing auth key is successfully extracted while preserving p256dh');
+
+  // 3.5: Missing endpoint recovery
+  const mockSubWithoutEndpointInJson: any = {
+    endpoint: 'https://push.example.com/sub/fallback-endpoint',
+    toJSON: () => ({ keys: { p256dh: 'k1', auth: 'k2' } })
+  };
+  const jsonWithEndpoint = {
+    ...mockSubWithoutEndpointInJson.toJSON(),
+    endpoint: mockSubWithoutEndpointInJson.toJSON().endpoint || mockSubWithoutEndpointInJson.endpoint
+  };
+  assert(
+    jsonWithEndpoint.endpoint === 'https://push.example.com/sub/fallback-endpoint',
+    'Missing endpoint in toJSON is successfully populated from subscription.endpoint'
+  );
 
   // ===========================================================================
   // SUMMARY

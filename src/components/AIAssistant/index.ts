@@ -1,4 +1,4 @@
-export { AIAssistant, default } from './AIAssistant';
+export { AIAssistant, getAIAssistantGreeting, default } from './AIAssistant';
 export type { AIAssistantProps } from './AIAssistant';
 
 export {

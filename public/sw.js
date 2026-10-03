@@ -81,7 +81,11 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => {
-        // Offline fallback if needed
+        // Safe offline fallback: return cached root for navigate, or 503 response (never resolve undefined)
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
+        return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
       });
     })
   );
@@ -91,12 +95,23 @@ self.addEventListener('push', (event) => {
   let payload = {};
   if (event.data) {
     try {
-      payload = event.data.json();
-    } catch (err) {
-      try {
+      const parsed = event.data.json();
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        payload = parsed;
+      } else if (typeof parsed === 'string' && parsed.trim().length > 0) {
         payload = {
           title: 'SIPJAM Notifikasi',
-          body: event.data.text()
+          body: parsed
+        };
+      } else if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
+        payload = parsed[0];
+      }
+    } catch (err) {
+      try {
+        const text = event.data.text();
+        payload = {
+          title: 'SIPJAM Notifikasi',
+          body: text || 'Pemberitahuan baru dari sistem SIPJAM.'
         };
       } catch (textErr) {
         payload = {
@@ -107,7 +122,15 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = payload.title || 'SIPJAM Notifikasi';
+  // Ensure payload is always a non-null object
+  if (!payload || typeof payload !== 'object') {
+    payload = {};
+  }
+
+  const title = (typeof payload.title === 'string' && payload.title.trim().length > 0)
+    ? payload.title.trim()
+    : 'SIPJAM Notifikasi';
+
   const targetUrl =
     (typeof payload.url === 'string' && payload.url) ||
     (payload.data && typeof payload.data.url === 'string' && payload.data.url) ||
@@ -116,9 +139,11 @@ self.addEventListener('push', (event) => {
     '/';
 
   const options = {
-    body: payload.body || 'Pemberitahuan baru dari sistem SIPJAM.',
-    icon: payload.icon || '/favicon.ico',
-    badge: payload.badge || '/favicon.ico',
+    body: (typeof payload.body === 'string' && payload.body.trim().length > 0)
+      ? payload.body
+      : 'Pemberitahuan baru dari sistem SIPJAM.',
+    icon: (typeof payload.icon === 'string' && payload.icon.length > 0) ? payload.icon : '/favicon.ico',
+    badge: (typeof payload.badge === 'string' && payload.badge.length > 0) ? payload.badge : '/favicon.ico',
     data: {
       timestamp: Date.now(),
       ...(typeof payload.data === 'object' && payload.data !== null && !Array.isArray(payload.data) ? payload.data : {}),
@@ -129,11 +154,11 @@ self.addEventListener('push', (event) => {
   // Vibration support: only add if silent mode is not explicitly enabled
   if (Array.isArray(payload.vibrate) && payload.vibrate.length > 0) {
     options.vibrate = payload.vibrate;
-  } else if (!payload.silent) {
+  } else if (!payload.silent && payload.silent !== 'true') {
     options.vibrate = [100, 50, 100];
   }
 
-  if (payload.silent === true) {
+  if (payload.silent === true || payload.silent === 'true') {
     options.silent = true;
     delete options.vibrate;
   }
@@ -144,38 +169,62 @@ self.addEventListener('push', (event) => {
   // If NO tag was provided, we strictly omit both tag and renotify because:
   // 1) In Chromium / WebKit, setting { renotify: true } without a tag throws TypeError ("The renotify option requires a non-empty tag.")
   // 2) Setting a static hardcoded tag (e.g. 'sipjam-push-notification') causes every subsequent notification to overwrite and wipe out previous notifications from the user's notification drawer!
-  if (typeof payload.tag === 'string' && payload.tag.trim().length > 0) {
-    options.tag = payload.tag.trim();
-    options.renotify = typeof payload.renotify === 'boolean' ? payload.renotify : true;
+  const rawTag = payload.tag != null ? String(payload.tag).trim() : '';
+  if (rawTag.length > 0) {
+    options.tag = rawTag;
+    if (typeof payload.renotify === 'boolean') {
+      options.renotify = payload.renotify;
+    } else if (payload.renotify === 'false') {
+      options.renotify = false;
+    } else {
+      options.renotify = true;
+    }
   }
 
-  // Only attach actions if provided and non-empty (some mobile browsers throw TypeError on empty actions array)
+  // Only attach actions if provided and non-empty with valid action & title
   if (Array.isArray(payload.actions) && payload.actions.length > 0) {
-    options.actions = payload.actions;
+    const validActions = payload.actions.filter(
+      (a) => a && typeof a === 'object' && typeof a.action === 'string' && typeof a.title === 'string'
+    );
+    if (validActions.length > 0) {
+      options.actions = validActions;
+    }
   }
 
   event.waitUntil(
-    self.registration.showNotification(title, options).catch((err) => {
-      console.warn('[SW] showNotification with full options failed, falling back to minimal options:', err);
-      // Fallback with minimal universal options so no error blocks notification from appearing
-      return self.registration.showNotification(title, {
-        body: options.body || 'Pemberitahuan baru dari sistem SIPJAM.',
-        icon: options.icon || '/favicon.ico',
-        data: {
-          url: targetUrl,
-          timestamp: Date.now()
+    (async () => {
+      if (!self.registration || typeof self.registration.showNotification !== 'function') {
+        console.warn('[SW] self.registration.showNotification is not available');
+        return;
+      }
+      try {
+        await self.registration.showNotification(title, options);
+      } catch (err) {
+        console.warn('[SW] showNotification with full options failed, falling back to minimal options:', err);
+        // Fallback with minimal universal options so no error blocks notification from appearing
+        try {
+          await self.registration.showNotification(title, {
+            body: options.body || 'Pemberitahuan baru dari sistem SIPJAM.',
+            icon: options.icon || '/favicon.ico',
+            data: {
+              url: targetUrl,
+              timestamp: Date.now()
+            }
+          });
+        } catch (fallbackErr) {
+          console.error('[SW] Fallback showNotification also failed:', fallbackErr);
         }
-      }).catch((fallbackErr) => {
-        console.error('[SW] Fallback showNotification also failed:', fallbackErr);
-      });
-    })
+      }
+    })()
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+  if (event.notification && typeof event.notification.close === 'function') {
+    event.notification.close();
+  }
 
-  const data = event.notification.data || {};
+  const data = (event.notification && event.notification.data) || {};
   const targetUrl =
     (typeof data === 'string' && data) ||
     (typeof data.url === 'string' && data.url) ||
@@ -183,22 +232,23 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
+      const clients = clientList || [];
+      for (const client of clients) {
         if ('focus' in client) {
           if (client.url.includes(targetUrl) || targetUrl === '/') {
             return client.focus();
           }
         }
       }
-      if (self.clients.openWindow) {
+      if (self.clients && self.clients.openWindow) {
         return self.clients.openWindow(targetUrl).catch((err) => {
           console.warn('[SW] clients.openWindow failed, falling back to client focus:', err);
-          if (clientList.length > 0 && 'focus' in clientList[0]) {
-            return clientList[0].focus();
+          if (clients.length > 0 && 'focus' in clients[0]) {
+            return clients[0].focus();
           }
         });
-      } else if (clientList.length > 0 && 'focus' in clientList[0]) {
-        return clientList[0].focus();
+      } else if (clients.length > 0 && 'focus' in clients[0]) {
+        return clients[0].focus();
       }
     })
   );

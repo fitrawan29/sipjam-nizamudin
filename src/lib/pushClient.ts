@@ -73,6 +73,58 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 /**
+ * Helper to ensure push subscription keys are fully populated with fallback to getKey()
+ */
+function normalizeSubscriptionJson(subscription: PushSubscription): any {
+  let subJson: any = {};
+  try {
+    subJson = subscription.toJSON() || {};
+  } catch {
+    subJson = {};
+  }
+
+  const existingKeys = (subJson && subJson.keys) ? subJson.keys : {};
+  let p256dh = existingKeys.p256dh;
+  let auth = existingKeys.auth;
+
+  if (typeof (subscription as any).getKey === 'function') {
+    const b64url = (buf: ArrayBuffer) => {
+      const bin = String.fromCharCode(...new Uint8Array(buf));
+      const b64 = typeof window !== 'undefined' ? window.btoa(bin) : atob(bin);
+      return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+
+    if (!p256dh) {
+      try {
+        const rawP256dh = (subscription as any).getKey('p256dh');
+        if (rawP256dh) p256dh = b64url(rawP256dh);
+      } catch (keyErr) {
+        console.warn('[PushClient] Error extracting p256dh manually:', keyErr);
+      }
+    }
+
+    if (!auth) {
+      try {
+        const rawAuth = (subscription as any).getKey('auth');
+        if (rawAuth) auth = b64url(rawAuth);
+      } catch (keyErr) {
+        console.warn('[PushClient] Error extracting auth manually:', keyErr);
+      }
+    }
+  }
+
+  return {
+    ...subJson,
+    endpoint: subJson.endpoint || subscription.endpoint,
+    keys: {
+      ...(subJson.keys || {}),
+      ...(p256dh ? { p256dh } : {}),
+      ...(auth ? { auth } : {})
+    }
+  };
+}
+
+/**
  * Subscribes the current browser to Web Push notifications using VAPID
  */
 export async function subscribeToPushNotifications(user?: {
@@ -159,29 +211,7 @@ export async function subscribeToPushNotifications(user?: {
     }
 
     // 5. Send subscription to backend
-    let subJson: any = subscription.toJSON();
-    if ((!subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) && typeof (subscription as any).getKey === 'function') {
-      try {
-        const rawP256dh = (subscription as any).getKey('p256dh');
-        const rawAuth = (subscription as any).getKey('auth');
-        if (rawP256dh && rawAuth) {
-          const b64url = (buf: ArrayBuffer) => {
-            const bin = String.fromCharCode(...new Uint8Array(buf));
-            const b64 = typeof window !== 'undefined' ? window.btoa(bin) : atob(bin);
-            return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-          };
-          subJson = {
-            ...subJson,
-            keys: {
-              p256dh: b64url(rawP256dh),
-              auth: b64url(rawAuth)
-            }
-          };
-        }
-      } catch (keyExtractErr) {
-        console.warn('[PushClient] Error extracting keys manually:', keyExtractErr);
-      }
-    }
+    const subJson = normalizeSubscriptionJson(subscription);
 
     const saveRes = await fetch('/api/push/subscribe', {
       method: 'POST',
@@ -209,7 +239,11 @@ export async function subscribeToPushNotifications(user?: {
     return { success: true, subscription };
   } catch (err: any) {
     console.error('Push subscription failed:', err);
-    return { success: false, error: err.message || 'Terjadi kesalahan saat mengaktifkan notifikasi.' };
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    const errorMessage = isOffline
+      ? 'Koneksi internet terputus. Pastikan perangkat Anda terhubung ke internet.'
+      : (err.message || 'Terjadi kesalahan saat mengaktifkan notifikasi.');
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -240,29 +274,7 @@ export async function sendTestNotification(): Promise<{ success: boolean; error?
       return { success: false, error: 'Perangkat belum terdaftar untuk menerima notifikasi.' };
     }
 
-    let subJson: any = sub.toJSON();
-    if ((!subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) && typeof (sub as any).getKey === 'function') {
-      try {
-        const rawP256dh = (sub as any).getKey('p256dh');
-        const rawAuth = (sub as any).getKey('auth');
-        if (rawP256dh && rawAuth) {
-          const b64url = (buf: ArrayBuffer) => {
-            const bin = String.fromCharCode(...new Uint8Array(buf));
-            const b64 = typeof window !== 'undefined' ? window.btoa(bin) : atob(bin);
-            return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-          };
-          subJson = {
-            ...subJson,
-            keys: {
-              p256dh: b64url(rawP256dh),
-              auth: b64url(rawAuth)
-            }
-          };
-        }
-      } catch (keyExtractErr) {
-        console.warn('[PushClient] Error extracting keys manually for test:', keyExtractErr);
-      }
-    }
+    const subJson = normalizeSubscriptionJson(sub);
 
     const res = await fetch('/api/push/validate', {
       method: 'POST',
@@ -290,6 +302,10 @@ export async function sendTestNotification(): Promise<{ success: boolean; error?
 
     return { success: true };
   } catch (err: any) {
-    return { success: false, error: err.message || 'Gagal menghubungi server uji coba.' };
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+    const errorMessage = isOffline
+      ? 'Koneksi internet terputus. Periksa jaringan Anda.'
+      : (err.message || 'Gagal menghubungi server uji coba.');
+    return { success: false, error: errorMessage };
   }
 }
