@@ -10,7 +10,12 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   if (typeof caches !== 'undefined') {
     event.waitUntil(
-      caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+      caches.open(CACHE_NAME)
+        .then((cache) => cache.addAll(STATIC_ASSETS))
+        .catch((err) => {
+          // Pre-caching failure should never block service worker installation or push notifications
+          console.warn('[SW] Pre-caching static assets failed (non-fatal):', err);
+        })
     );
   }
 });
@@ -19,15 +24,19 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
   if (typeof caches !== 'undefined') {
     event.waitUntil(
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
-              return caches.delete(cacheName);
-            }
-          })
-        );
-      })
+      caches.keys()
+        .then((cacheNames) => {
+          return Promise.all(
+            cacheNames.map((cacheName) => {
+              if (cacheName !== CACHE_NAME) {
+                return caches.delete(cacheName);
+              }
+            })
+          );
+        })
+        .catch((err) => {
+          console.warn('[SW] Cache cleanup failed (non-fatal):', err);
+        })
     );
   }
 });
@@ -51,9 +60,10 @@ self.addEventListener('fetch', (event) => {
         // Return from cache, but update cache in background
         event.waitUntil(
           fetch(event.request).then((response) => {
-            if (response && response.status === 200) {
+            if (response && response.status === 200 && response.type === 'basic') {
+              const responseClone = response.clone();
               caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, response);
+                cache.put(event.request, responseClone);
               });
             }
           }).catch(() => {})
@@ -103,14 +113,18 @@ self.addEventListener('push', (event) => {
     badge: payload.badge || '/favicon.ico',
     data: {
       timestamp: Date.now(),
-      ...(typeof payload.data === 'object' && payload.data !== null ? payload.data : {}),
+      ...(typeof payload.data === 'object' && payload.data !== null && !Array.isArray(payload.data) ? payload.data : {}),
       url: targetUrl
     },
     vibrate: Array.isArray(payload.vibrate) ? payload.vibrate : [100, 50, 100],
     tag: payload.tag || 'sipjam-push-notification',
-    renotify: true,
-    actions: Array.isArray(payload.actions) ? payload.actions : []
+    renotify: true
   };
+
+  // Only attach actions if provided and non-empty (some mobile browsers throw on empty actions array)
+  if (Array.isArray(payload.actions) && payload.actions.length > 0) {
+    options.actions = payload.actions;
+  }
 
   event.waitUntil(
     self.registration.showNotification(title, options).catch((err) => {
@@ -149,7 +163,9 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow(targetUrl);
+        return self.clients.openWindow(targetUrl).catch((err) => {
+          console.warn('[SW] clients.openWindow failed:', err);
+        });
       }
     })
   );

@@ -274,8 +274,8 @@ async function runTests() {
       'Rendered HTML includes data-tour="ai-assistant-btn" attribute'
     );
     assert(
-      html.includes('fa-robot') || html.includes('fa-wand-magic-sparkles'),
-      'Rendered HTML includes Font Awesome robot icon'
+      html.includes('fa-robot') && !html.includes('fa-wand-magic-sparkles'),
+      'Rendered HTML strictly includes Font Awesome robot icon and no wand-magic-sparkles icon'
     );
   } catch (err: any) {
     assert(false, 'Component SSR render failed', err?.message);

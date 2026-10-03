@@ -1,9 +1,13 @@
+const DEFAULT_VAPID_PUBLIC_KEY =
+  'BIdO5BNM7SzkETjiTVS7-ZaxRAL93A9uAD8mDJDK6PQqvdQmeJen49sziz7x4917PY2S8-Fl1OWHnfet3iCkOMU';
+
 /**
  * Utility for converting VAPID public key string to Uint8Array for browser PushManager.subscribe
  */
 export function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
+  const cleanBase64 = (base64String || '').trim();
+  const padding = '='.repeat((4 - (cleanBase64.length % 4)) % 4);
+  const base64 = (cleanBase64 + padding)
     .replace(/-/g, '+')
     .replace(/_/g, '/');
 
@@ -94,21 +98,45 @@ export async function subscribeToPushNotifications(user?: {
       return { success: false, error: 'Gagal mengaktifkan Service Worker.' };
     }
 
-    // 3. Get Public VAPID Key from API
+    // 3. Get Public VAPID Key from API with fallback
     let publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!publicKey) {
-      const res = await fetch('/api/push/validate');
-      const data = await res.json();
-      publicKey = data.publicKey;
+      try {
+        const res = await fetch('/api/push/validate');
+        if (res.ok) {
+          const data = await res.json();
+          publicKey = data.publicKey;
+        }
+      } catch (keyErr) {
+        console.warn('[PushClient] Error fetching public VAPID key from API:', keyErr);
+      }
     }
 
     if (!publicKey) {
-      return { success: false, error: 'Kunci publik VAPID tidak ditemukan.' };
+      publicKey = DEFAULT_VAPID_PUBLIC_KEY;
     }
 
     // 4. Subscribe via PushManager
     let subscription = await registration.pushManager.getSubscription();
     const convertedVapidKey = urlBase64ToUint8Array(publicKey);
+
+    // If a subscription already exists, verify its applicationServerKey matches the current VAPID key
+    if (subscription && subscription.options?.applicationServerKey) {
+      try {
+        const existingKeyArr = new Uint8Array(subscription.options.applicationServerKey);
+        const isMatch =
+          existingKeyArr.length === convertedVapidKey.length &&
+          existingKeyArr.every((byte, idx) => byte === convertedVapidKey[idx]);
+        if (!isMatch) {
+          console.warn('[PushClient] Existing subscription key differs from active VAPID key; renewing subscription...');
+          await subscription.unsubscribe();
+          subscription = null;
+        }
+      } catch (verifyErr) {
+        console.warn('[PushClient] Could not verify existing key:', verifyErr);
+      }
+    }
+
     if (!subscription) {
       try {
         subscription = await registration.pushManager.subscribe({
