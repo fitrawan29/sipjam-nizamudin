@@ -152,8 +152,9 @@ assert(
 
 assert(
   watermarkContent.includes("const isPortrait = orientation === 'portrait' || (!orientation && width < height);") &&
-  watermarkContent.includes("const targetRatio = isPortrait ? (3 / 4) : (16 / 9);"),
-  'watermarkCanvas computes targetRatio 3/4 for portrait and 16/9 for landscape'
+  watermarkContent.includes("drawWidth = width") &&
+  watermarkContent.includes("drawHeight = height"),
+  'watermarkCanvas preserves 1x scale without artificial crop for matching orientations'
 );
 
 // --- Section 8: Functional Canvas Aspect Ratio Verification ---
@@ -209,18 +210,18 @@ mockImg.height = 1280;
 
 const opts = getDefaultWatermarkOptions({ latitude: -8.12, longitude: 115.12 }, 'Denpasar, Bali');
 
-// 8.1 Portrait capture
+// 8.1 Portrait capture with vertical stream: 1x uncropped scale
 drawWatermarkedCanvas(mockImg, opts, true, 'portrait');
 assert(
   Boolean(lastCreatedCanvas && lastCreatedCanvas.height > lastCreatedCanvas.width),
   `Portrait mode produces vertical canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
 );
 assert(
-  Math.abs((lastCreatedCanvas.width / lastCreatedCanvas.height) - (3 / 4)) < 0.01,
-  `Portrait canvas matches 3:4 target aspect ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
+  lastCreatedCanvas?.width === 720 && lastCreatedCanvas?.height === 1280,
+  `Portrait canvas retains uncropped 1x scale without artificial crop (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
 );
 
-// 8.2 Landscape capture
+// 8.2 Landscape capture on vertical feed (crops to 16:9 landscape)
 drawWatermarkedCanvas(mockImg, opts, false, 'landscape');
 assert(
   Boolean(lastCreatedCanvas && lastCreatedCanvas.width > lastCreatedCanvas.height),
@@ -231,6 +232,20 @@ assert(
   `Landscape canvas matches 16:9 target aspect ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
 );
 
+// 8.2b Landscape capture on horizontal feed: 1x uncropped scale
+const landscapeFeedImg = new (global as any).HTMLImageElement();
+landscapeFeedImg.width = 1280;
+landscapeFeedImg.height = 720;
+drawWatermarkedCanvas(landscapeFeedImg, opts, false, 'landscape');
+assert(
+  Boolean(lastCreatedCanvas && lastCreatedCanvas.width >= lastCreatedCanvas.height),
+  `Landscape mode produces horizontal canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
+);
+assert(
+  lastCreatedCanvas?.width === 1280 && lastCreatedCanvas?.height === 720,
+  `Landscape canvas retains uncropped 1x scale without artificial crop (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
+);
+
 // 8.3 Landscape feed with portrait mode (e.g. desktop webcam 1280x720 in GuruPresensi)
 const webcamImg = new (global as any).HTMLImageElement();
 webcamImg.width = 1280;
@@ -239,6 +254,10 @@ drawWatermarkedCanvas(webcamImg, opts, true, 'portrait');
 assert(
   Boolean(lastCreatedCanvas && lastCreatedCanvas.height > lastCreatedCanvas.width),
   `Webcam 1280x720 in portrait mode is cropped to vertical 3:4 canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
+);
+assert(
+  Math.abs((lastCreatedCanvas.width / lastCreatedCanvas.height) - (3 / 4)) < 0.01,
+  `Webcam portrait canvas matches 3:4 target aspect ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
 );
 
 // --- Section 9: Adversarial Edge Cases & Mobile Responsiveness ---

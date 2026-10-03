@@ -1,43 +1,39 @@
-# Sentinel Final Handoff Report — AI Assistant Robot Logo & Web Push Notification Robustness
+# Sentinel Handoff Report: Camera Zoom/Crop Fix (swe_10)
 
 ## 1. Observation
-- **User Request**: Change the AI Assistant logo to a robot icon (`fa-robot`) and ensure Web Push notifications display reliably on users' devices without logical/runtime errors in `/sw.js` and `src/lib/pushClient.ts`.
-- **Execution Path**: SWE Light (`teamwork_preview_swe`, instance `swe_9`).
-- **Implementer & Review Rounds**: 1 initial implementation pass followed by 3 rounds of adversarial review & hardening (`r1`, `r2`, `r3`).
-- **Independent Audit**: Conducted by Sentinel Victory Auditor (`victory_auditor_13`, conversation ID: `ed73e6cf-9db7-4b70-b5a4-f2b1fa906d0a`).
-- **Audit Verdict**: `VICTORY CONFIRMED`.
-- **Code & Test Integrity**:
-  - `src/components/AIAssistant/AIAssistant.tsx` successfully updated to `fa-robot` on floating trigger button and modal header; `fa-wand-magic-sparkles` completely removed.
-  - `public/sw.js` hardened with payload normalization, universal fallback notification options, conditional tag assignment preventing notification tray clobbering, offline asset caching safety, and window focus fallback on `notificationclick`.
-  - `src/lib/pushClient.ts` hardened with VAPID key recovery fallbacks (`getKey('p256dh')`, `getKey('auth')`), key mismatch auto-renewal, and offline error handling.
-  - All 124 adversarial unit/sandboxed tests passed.
-  - Canonical `npm test` passed 85/85 tests across 14 test suites.
-  - `npx tsc --noEmit` exited cleanly with 0 errors.
-  - `npm run build` Turbopack production build succeeded.
-  - Git workflow rule in `GEMINI.md` fulfilled across 4 committed and pushed commits on `origin/main`.
+- **User Request**: Disable camera zoom/crop in `CameraSelfieCapture.tsx` so that preview/capture is not cropped or unnaturally magnified, while remaining neat and proportional without distortion (`ORIGINAL_REQUEST.md`, header `## 2026-10-03T04:24:17Z`).
+- **Route Chosen**: SWE Light (`teamwork_preview_swe`).
+- **Subagent Dispatched**: `swe_10` (Conv ID: `6c7808af-def6-413e-841d-07594d748435`).
+- **Subagents Lifecycle**:
+  - `implementer_r1`: Replaced `object-cover` with `object-contain` in `src/components/CameraSelfieCapture.tsx`.
+  - `reviewer_r1`: Conducted adversarial review, added zero-crop mathematical tests (`tests/camera_zoom_geometry.test.ts`).
+  - `reviewer_r2`: Conducted adversarial review across hardware zoom constraints & 8 sensor aspect ratios (`tests/camera_adversarial_constraints.test.ts`).
+  - `reviewer_r3`: Conducted final adversarial review checking exotic aspect ratios and DOM zoom prevention (`tests/camera_zoom_exotic_viewport.test.ts`).
+  - `swe_10`: Ran orchestrator verification, confirmed 15/15 test suites and build pass, committed and pushed to `origin/main`.
+- **Independent Victory Audit**:
+  - Dispatched `victory_auditor_14` (`283cfec6-cd2a-4af9-ac59-3f305ac31c51`).
+  - Verdict: **VICTORY CONFIRMED** across Phase A (Timeline/Git), Phase B (Integrity/Anti-cheating), and Phase C (Independent Test Execution).
+  - All test suites passed (`15/15`), all e2e assertions passed (`111/111`), TypeScript clean (`0 errors`), Next.js Turbopack production build succeeded.
 
 ## 2. Logic Chain
-1. Task matched SWE Light criteria (single self-contained UI & service worker fix with explicit lightness cue).
-2. The orchestrator executed sequential refinement with a minimum floor of 3 adversarial review rounds.
-3. Upon victory claim, Sentinel dispatched an independent Victory Auditor with zero shared context from the implementation swarm.
-4. The auditor performed Phase A (Timeline/Diff Inspection), Phase B (Cheating & Integrity Detection), and Phase C (Independent Test Execution).
-5. The auditor verified that all requirements and acceptance criteria were authentically met and returned a `VICTORY CONFIRMED` verdict.
-6. Sentinel performed mandatory cleanup: cancelled all scheduled background tasks and terminated all subagents before delivering the final report.
+1. CSS class `object-cover` forced the `<video>` element to zoom in and crop between 25% and 57.8% of the stream when camera aspect ratios did not perfectly match the container's 16:9 or 3:4 aspect ratio.
+2. Changing `object-cover` to `object-contain` on `<video>` allows the complete uncropped camera feed to be visible with 0% distortion.
+3. The surrounding container uses `bg-black flex items-center justify-center` with adaptive aspect ratio (`aspect-[3/4]` for portrait, `aspect-video` for landscape), providing neat letterboxing/pillarboxing for mismatched sensor ratios.
+4. Preview `<img>` also uses `object-contain`, ensuring 100% visual fidelity between the live camera viewfinder and the captured selfie.
+5. Independent Victory Auditor independently confirmed git cleanliness, genuine implementation without cheats/mocks, and 100% test pass rate.
 
 ## 3. Caveats
-- Real push notification delivery to locked physical mobile devices is dependent on device push service gateways (Google FCM / Apple APNs) and the user granting notification permissions in the browser.
-- On iOS devices, Web Push notifications require the web application to be saved to the Home Screen as a standalone PWA (Apple platform constraint).
+- Sensor feeds with aspect ratios differing from container ratios (e.g., 4:3 camera on 16:9 screen) will display subtle black bars (pillarbox/letterbox) on either side against the `bg-black` container; this is expected behavior to avoid stretching, cropping, or artificial zooming.
 
 ## 4. Conclusion
-The task is 100% complete, fully verified by independent post-victory audit, cleanly committed and pushed to `origin/main`, with all background processes and subagents terminated.
+The task has been successfully and cleanly completed. Camera zoom and crop have been eliminated in `CameraSelfieCapture.tsx`. All criteria verified and confirmed by independent post-victory audit.
 
 ## 5. Verification Method
-To reproduce the verification results:
 ```bash
-npx tsx tests/adversarial_r1_r2_reviewer.test.ts
-npx tsx tests/ai_assistant_faq.test.ts
 npm test
+npm run test:e2e
 npx tsc --noEmit
 npm run build
 git status
+git diff origin/main..main
 ```

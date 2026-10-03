@@ -141,25 +141,46 @@ export function drawWatermarkedCanvas(
   }
 
   // Calculate crop dimensions based on requested orientation or source aspect ratio
+  // Anti-zoom 1x scale: If orientation matches the source stream, preserve full 1x scale without artificial crop.
+  // Only center-crop when orientation mismatches (e.g., desktop horizontal webcam in portrait mode).
   const isPortrait = orientation === 'portrait' || (!orientation && width < height);
-  const targetRatio = isPortrait ? (3 / 4) : (16 / 9);
-  const srcRatio = width / height;
 
   let drawWidth = width;
   let drawHeight = height;
   let offsetX = 0;
   let offsetY = 0;
 
-  if (srcRatio > targetRatio) {
-    // Source is wider than target ratio
-    drawWidth = height * targetRatio;
-    drawHeight = height;
-    offsetX = (width - drawWidth) / 2;
-  } else if (srcRatio < targetRatio) {
-    // Source is taller than target ratio
-    drawWidth = width;
-    drawHeight = width / targetRatio;
-    offsetY = (height - drawHeight) / 2;
+  if (isPortrait) {
+    if (width >= height) {
+      // Orientation mismatch: source is landscape (e.g. desktop webcam) but portrait requested
+      // Center-crop width to achieve vertical portrait orientation (3:4 ratio)
+      const targetRatio = 3 / 4;
+      drawWidth = height * targetRatio;
+      drawHeight = height;
+      offsetX = (width - drawWidth) / 2;
+    } else {
+      // Source is already vertical/portrait: preserve full 1x scale without artificial zoom/crop
+      drawWidth = width;
+      drawHeight = height;
+      offsetX = 0;
+      offsetY = 0;
+    }
+  } else {
+    // Landscape mode requested
+    if (width < height) {
+      // Orientation mismatch: source is portrait but landscape requested
+      // Center-crop height to achieve horizontal landscape orientation (16:9 ratio)
+      const targetRatio = 16 / 9;
+      drawWidth = width;
+      drawHeight = width / targetRatio;
+      offsetY = (height - drawHeight) / 2;
+    } else {
+      // Source is already horizontal/landscape: preserve full 1x scale without artificial zoom/crop
+      drawWidth = width;
+      drawHeight = height;
+      offsetX = 0;
+      offsetY = 0;
+    }
   }
 
   const canvas = document.createElement('canvas');

@@ -27,6 +27,7 @@ import PushNotificationPrompt from './PushNotificationPrompt';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import AIAssistant from '@/components/AIAssistant';
 import { OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN } from '@/components/Onboarding';
+import TeacherReminderManager from './TeacherReminderManager';
 import { Pengumuman } from '@/types/database';
 import { supabase } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
@@ -904,6 +905,10 @@ export default function AppScreen({
         onClose={() => setTourOpen(false)}
         onComplete={() => setTourOpen(false)}
         onEnsureSidebarOpen={(open) => setSidebarOpen(open)}
+      />
+      <TeacherReminderManager
+        user={user}
+        onNavigate={handleNavigation}
       />
     </div>
   );

@@ -177,12 +177,6 @@ export function AIAssistant({
       >
         <i className="fa-solid fa-robot text-2xl text-amber-300 drop-shadow group-hover:rotate-12 transition-transform duration-300"></i>
 
-        {/* Pulsing notification badge */}
-        <span className="absolute -top-1 -right-1 flex h-4 w-4">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 border-2 border-white dark:border-gray-900"></span>
-        </span>
-
         {/* Hover tooltip for desktop */}
         <span className="hidden sm:block absolute right-16 px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-xl shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
           🤖 Bantuan AI SIPJAM

@@ -7,7 +7,7 @@ export interface ReminderItem {
   guru_id: string;
   guru_nama: string;
   sekolah_id: string;
-  category: 'presensi' | 'jurnal' | 'piket';
+  category: 'presensi' | 'jurnal' | 'piket' | 'presensi_pulang';
   title: string;
   body: string;
   url: string;
@@ -83,17 +83,25 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     const { data: schedules } = await scheduleQuery;
     const scheduleList = schedules || [];
 
-    // C. Fetch presensi for today (Datang)
+    // C. Fetch presensi for today (Datang & Pulang)
     let presensiQuery = supabase
       .from('presensi_guru')
       .select('*')
-      .ilike('timestamp', `${todayStr}%`)
-      .eq('tipe_absen', 'Datang');
+      .ilike('timestamp', `${todayStr}%`);
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       presensiQuery = presensiQuery.eq('sekolah_id', sekolahId);
     }
     const { data: presensiList } = await presensiQuery;
-    const checkedInSet = new Set((presensiList || []).map(p => (p.nama_guru || '').toLowerCase().trim()));
+    const checkedInSet = new Set(
+      (presensiList || [])
+        .filter(p => p.tipe_absen === 'Datang')
+        .map(p => (p.nama_guru || '').toLowerCase().trim())
+    );
+    const checkedOutSet = new Set(
+      (presensiList || [])
+        .filter(p => p.tipe_absen === 'Pulang')
+        .map(p => (p.nama_guru || '').toLowerCase().trim())
+    );
 
     // D. Fetch journals for today
     let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
@@ -289,6 +297,28 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
           title: 'Pengingat Laporan Piket',
           body: `Halo ${pName}, Anda bertugas piket hari ini (${todayDay}). Mohon lengkapi dan kirimkan laporan piket harian Anda.`,
           url: '/?view=view-piket'
+        });
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Task 4: Check Pulang Presensi
+    // -------------------------------------------------------------
+    for (const teacher of teachers) {
+      const tName = (teacher.nama_guru || '').trim();
+      const tNameLower = tName.toLowerCase();
+      const hasCheckedIn = checkedInSet.has(tNameLower);
+      const hasCheckedOut = checkedOutSet.has(tNameLower);
+
+      if (hasCheckedIn && !hasCheckedOut) {
+        reminders.push({
+          guru_id: teacher.id,
+          guru_nama: tName,
+          sekolah_id: sekolahId,
+          category: 'presensi_pulang',
+          title: 'Pengingat Presensi Pulang',
+          body: `Halo ${tName}, Anda belum melakukan Presensi Pulang untuk hari ${todayDay}. Harap segera melakukan presensi selfie sebelum meninggalkan sekolah.`,
+          url: '/?view=view-guru-presensi'
         });
       }
     }

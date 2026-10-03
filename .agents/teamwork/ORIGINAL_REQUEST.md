@@ -388,3 +388,39 @@ Periksa komponen `src/components/CameraSelfieCapture.tsx`. Kemungkinan besar mas
 ### Verifikasi Kode (Programmatic / Statis)
 - [ ] CSS atau constraints pada elemen `<video>` di `CameraSelfieCapture.tsx` telah disesuaikan untuk menghindari efek "zoom" atau crop yang berlebihan.
 - [ ] Tampilan kamera tetap rapi dan proposional (tidak penyok/distorsi).
+## 2026-10-03T05:27:01Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched.
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: full team
+
+Proyek perbaikan komprehensif: Memperbaiki rasio kamera agar 1:1 tanpa zoom, menghilangkan notifikasi oranye pada AI, serta membangun sistem pengingat otomatis (notifikasi) setiap 5 menit untuk kelengkapan absensi dan jurnal.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+
+## Requirements
+
+### R1. Kamera Anti-Zoom dan Orientasi Akurat
+Pastikan pengambilan gambar melalui `CameraSelfieCapture.tsx` tidak men-zoom (skala 1x). Jika kamera dalam mode potret, maka foto yang dihasilkan (baik di `<canvas>` maupun di data akhir) berorientasi potret. Jika lanskap, hasilkan gambar lanskap.
+
+### R2. Penghapusan Indikator Oranye pada AI
+Hilangkan elemen visual "tanda oranye bulat" (badge/dot notifikasi) yang menempel pada ikon robot AI di komponen `AIAssistant.tsx`.
+
+### R3. Sistem Notifikasi Pengingat (Reminder) Otomatis
+Buat mekanisme untuk mengirim notifikasi push (atau in-app jika push tidak memungkinkan secara interval) setiap 5 menit untuk mengingatkan guru apabila:
+- Belum melakukan presensi datang (memperhatikan jam masuk/terlambat).
+- Belum mengisi jurnal mengajar.
+- Belum mengisi laporan piket (khusus bagi yang mendapat jadwal piket hari itu).
+- Belum melakukan presensi pulang (memperhatikan jam pulang).
+
+*Catatan implementasi: Gunakan mekanisme berbasis frontend / Service Worker (berjalan saat aplikasi dibuka di depan atau latar belakang) sesuai preferensi pengguna.*
+
+## Acceptance Criteria
+
+### Fungsional
+- [ ] Pengambilan foto di mode potret menghasilkan gambar berdimensi vertikal (tinggi > lebar), tanpa cropping buatan/zoom.
+- [ ] Ikon robot AI tampil bersih tanpa bulatan oranye di sudutnya.
+- [ ] Terdapat logika yang mendeteksi kekurangan kelengkapan harian (presensi datang, pulang, jurnal, piket) berdasarkan waktu/jam sekolah, dan memicu notifikasi peringatan berulang.
