@@ -159,7 +159,30 @@ export async function subscribeToPushNotifications(user?: {
     }
 
     // 5. Send subscription to backend
-    const subJson = subscription.toJSON();
+    let subJson: any = subscription.toJSON();
+    if ((!subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) && typeof (subscription as any).getKey === 'function') {
+      try {
+        const rawP256dh = (subscription as any).getKey('p256dh');
+        const rawAuth = (subscription as any).getKey('auth');
+        if (rawP256dh && rawAuth) {
+          const b64url = (buf: ArrayBuffer) => {
+            const bin = String.fromCharCode(...new Uint8Array(buf));
+            const b64 = typeof window !== 'undefined' ? window.btoa(bin) : atob(bin);
+            return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          };
+          subJson = {
+            ...subJson,
+            keys: {
+              p256dh: b64url(rawP256dh),
+              auth: b64url(rawAuth)
+            }
+          };
+        }
+      } catch (keyExtractErr) {
+        console.warn('[PushClient] Error extracting keys manually:', keyExtractErr);
+      }
+    }
+
     const saveRes = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -172,7 +195,13 @@ export async function subscribeToPushNotifications(user?: {
       })
     });
 
-    const saveResult = await saveRes.json();
+    let saveResult: any = {};
+    try {
+      saveResult = await saveRes.json();
+    } catch {
+      saveResult = { success: false, error: `Server HTTP ${saveRes.status}: ${saveRes.statusText}` };
+    }
+
     if (!saveRes.ok || !saveResult.success) {
       return { success: false, error: saveResult.error || 'Gagal menyimpan subscription ke server.' };
     }
@@ -211,11 +240,35 @@ export async function sendTestNotification(): Promise<{ success: boolean; error?
       return { success: false, error: 'Perangkat belum terdaftar untuk menerima notifikasi.' };
     }
 
+    let subJson: any = sub.toJSON();
+    if ((!subJson.keys || !subJson.keys.p256dh || !subJson.keys.auth) && typeof (sub as any).getKey === 'function') {
+      try {
+        const rawP256dh = (sub as any).getKey('p256dh');
+        const rawAuth = (sub as any).getKey('auth');
+        if (rawP256dh && rawAuth) {
+          const b64url = (buf: ArrayBuffer) => {
+            const bin = String.fromCharCode(...new Uint8Array(buf));
+            const b64 = typeof window !== 'undefined' ? window.btoa(bin) : atob(bin);
+            return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          };
+          subJson = {
+            ...subJson,
+            keys: {
+              p256dh: b64url(rawP256dh),
+              auth: b64url(rawAuth)
+            }
+          };
+        }
+      } catch (keyExtractErr) {
+        console.warn('[PushClient] Error extracting keys manually for test:', keyExtractErr);
+      }
+    }
+
     const res = await fetch('/api/push/validate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        subscription: sub.toJSON(),
+        subscription: subJson,
         payload: {
           title: 'SIPJAM - Tes Push Notifikasi',
           body: 'Notifikasi VAPID berhasil diterima! Sistem siap mengirim notifikasi secara berkala.',
@@ -224,7 +277,13 @@ export async function sendTestNotification(): Promise<{ success: boolean; error?
       })
     });
 
-    const data = await res.json();
+    let data: any = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = { success: false, error: `Server HTTP ${res.status}: ${res.statusText}` };
+    }
+
     if (!res.ok || !data.success) {
       return { success: false, error: data.error || 'Gagal mengirim pesan uji coba.' };
     }

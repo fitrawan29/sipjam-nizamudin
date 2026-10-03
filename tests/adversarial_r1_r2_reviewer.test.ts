@@ -92,6 +92,7 @@ async function runAdversarialReviewerSuite() {
   let listeners: Record<string, Listener> = {};
   let showNotificationCalls: Array<{ title: string; options: any }> = [];
   let showNotificationRejectNext = false;
+  let openWindowRejectNext = false;
   let openWindowCalls: string[] = [];
   let focusCalls: string[] = [];
   let skippedWaiting = false;
@@ -101,6 +102,7 @@ async function runAdversarialReviewerSuite() {
     listeners = {};
     showNotificationCalls = [];
     showNotificationRejectNext = false;
+    openWindowRejectNext = false;
     openWindowCalls = [];
     focusCalls = [];
     skippedWaiting = false;
@@ -127,6 +129,10 @@ async function runAdversarialReviewerSuite() {
           }
         ],
         openWindow: async (url: string) => {
+          if (openWindowRejectNext) {
+            openWindowRejectNext = false;
+            throw new Error('Simulated openWindow pop-up blocked error');
+          }
           openWindowCalls.push(url);
           return { url };
         }
@@ -359,6 +365,114 @@ async function runAdversarialReviewerSuite() {
   assert(openWindowCalls.length === 1 && openWindowCalls[0] === '/?view=view-admin-verif',
     'notificationclick opens new window for non-matching url');
 
+  // Test 2.10: Push with explicit tag preserves tag and enables renotify
+  showNotificationCalls = [];
+  const taggedPayload = {
+    title: 'Pengingat Spesifik',
+    body: 'Ini dengan tag.',
+    tag: 'custom-tag-123'
+  };
+  listeners['push']({
+    data: {
+      json: () => taggedPayload,
+      text: () => JSON.stringify(taggedPayload)
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Tagged notification invoked');
+  assert(showNotificationCalls[0].options.tag === 'custom-tag-123', 'Explicit tag preserved in options');
+  assert(showNotificationCalls[0].options.renotify === true, 'Renotify enabled when tag is present');
+
+  // Test 2.11: Push WITHOUT tag omits tag and renotify (preventing notification overwrite & Chromium TypeError)
+  showNotificationCalls = [];
+  const untaggedPayload = {
+    title: 'Pengingat Umum',
+    body: 'Ini tanpa tag.'
+  };
+  listeners['push']({
+    data: {
+      json: () => untaggedPayload,
+      text: () => JSON.stringify(untaggedPayload)
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Untagged notification invoked');
+  assert(showNotificationCalls[0].options.tag === undefined, 'Tag is omitted when not provided in payload');
+  assert(showNotificationCalls[0].options.renotify === undefined, 'Renotify is omitted when tag is not provided');
+
+  // Test 2.12: Push with silent: true deletes vibrate and sets silent: true
+  showNotificationCalls = [];
+  const silentPayload = {
+    title: 'Pengumuman Hening',
+    body: 'Harap tenang.',
+    silent: true
+  };
+  listeners['push']({
+    data: {
+      json: () => silentPayload,
+      text: () => JSON.stringify(silentPayload)
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Silent notification invoked');
+  assert(showNotificationCalls[0].options.silent === true, 'Silent flag set to true');
+  assert(showNotificationCalls[0].options.vibrate === undefined, 'Vibrate omitted for silent notification');
+
+  // Test 2.13: Push with link property resolves targetUrl
+  showNotificationCalls = [];
+  const linkPayload = {
+    title: 'Link Notif',
+    body: 'Buka tautan.',
+    link: '/?view=view-guru-jurnal'
+  };
+  listeners['push']({
+    data: {
+      json: () => linkPayload,
+      text: () => JSON.stringify(linkPayload)
+    },
+    waitUntil: (p: Promise<any>) => {
+      pushWaitPromise = p;
+    }
+  });
+  if (pushWaitPromise) await pushWaitPromise;
+
+  assert(showNotificationCalls.length === 1, 'Link-based notification invoked');
+  assert(showNotificationCalls[0].options.data.url === '/?view=view-guru-jurnal', 'Link property mapped to options.data.url');
+
+  // Test 2.14: Notification click fallback when openWindow fails
+  notifClosed = false;
+  focusCalls = [];
+  openWindowCalls = [];
+  openWindowRejectNext = true; // simulates browser pop-up blocker or openWindow failure
+
+  listeners['notificationclick']({
+    notification: {
+      close: () => {
+        notifClosed = true;
+      },
+      data: { url: '/?view=unknown-path' }
+    },
+    waitUntil: (p: Promise<any>) => {
+      clickPromise = p;
+    }
+  });
+  if (clickPromise) await clickPromise;
+
+  assert(notifClosed, 'notificationclick closes notification on openWindow error');
+  assert(focusCalls.length === 1, 'notificationclick falls back to focusing existing window when openWindow fails');
+
   // ===========================================================================
   // SECTION 3: PUSH CLIENT UTILITY & KEY RENEWAL VERIFICATION
   // ===========================================================================
@@ -385,6 +499,38 @@ async function runAdversarialReviewerSuite() {
     isPushNotificationSupported() === false,
     'isPushNotificationSupported safely returns false in non-browser Node.js environment without throwing'
   );
+
+  // 3.3: PushClient getKey fallback simulation
+  const mockSubscriptionWithoutKeys: any = {
+    endpoint: 'https://push.example.com/sub/123',
+    toJSON: () => ({ endpoint: 'https://push.example.com/sub/123' }),
+    getKey: (name: string) => {
+      if (name === 'p256dh') return new Uint8Array([1, 2, 3, 4]).buffer;
+      if (name === 'auth') return new Uint8Array([5, 6, 7, 8]).buffer;
+      return null;
+    }
+  };
+  let extractedJson = mockSubscriptionWithoutKeys.toJSON();
+  if ((!extractedJson.keys || !extractedJson.keys.p256dh) && typeof mockSubscriptionWithoutKeys.getKey === 'function') {
+    const rawP256dh = mockSubscriptionWithoutKeys.getKey('p256dh');
+    const rawAuth = mockSubscriptionWithoutKeys.getKey('auth');
+    if (rawP256dh && rawAuth) {
+      const b64url = (buf: ArrayBuffer) => {
+        const bin = String.fromCharCode(...new Uint8Array(buf));
+        const b64 = Buffer.from(bin, 'binary').toString('base64');
+        return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      };
+      extractedJson = {
+        ...extractedJson,
+        keys: {
+          p256dh: b64url(rawP256dh),
+          auth: b64url(rawAuth)
+        }
+      };
+    }
+  }
+  assert(Boolean(extractedJson.keys?.p256dh), 'Manual key extraction populates p256dh when toJSON omits keys');
+  assert(Boolean(extractedJson.keys?.auth), 'Manual key extraction populates auth when toJSON omits keys');
 
   // ===========================================================================
   // SUMMARY

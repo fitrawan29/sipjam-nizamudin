@@ -63,8 +63,8 @@ self.addEventListener('fetch', (event) => {
             if (response && response.status === 200 && response.type === 'basic') {
               const responseClone = response.clone();
               caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseClone);
-              });
+                cache.put(event.request, responseClone).catch(() => {});
+              }).catch(() => {});
             }
           }).catch(() => {})
         );
@@ -76,8 +76,8 @@ self.addEventListener('fetch', (event) => {
         if (response && response.status === 200 && response.type === 'basic') {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
+            cache.put(event.request, responseClone).catch(() => {});
+          }).catch(() => {});
         }
         return response;
       }).catch(() => {
@@ -93,10 +93,17 @@ self.addEventListener('push', (event) => {
     try {
       payload = event.data.json();
     } catch (err) {
-      payload = {
-        title: 'SIPJAM Notifikasi',
-        body: event.data.text()
-      };
+      try {
+        payload = {
+          title: 'SIPJAM Notifikasi',
+          body: event.data.text()
+        };
+      } catch (textErr) {
+        payload = {
+          title: 'SIPJAM Notifikasi',
+          body: 'Pemberitahuan baru dari sistem SIPJAM.'
+        };
+      }
     }
   }
 
@@ -105,6 +112,7 @@ self.addEventListener('push', (event) => {
     (typeof payload.url === 'string' && payload.url) ||
     (payload.data && typeof payload.data.url === 'string' && payload.data.url) ||
     (typeof payload.data === 'string' && payload.data) ||
+    (typeof payload.link === 'string' && payload.link) ||
     '/';
 
   const options = {
@@ -115,13 +123,33 @@ self.addEventListener('push', (event) => {
       timestamp: Date.now(),
       ...(typeof payload.data === 'object' && payload.data !== null && !Array.isArray(payload.data) ? payload.data : {}),
       url: targetUrl
-    },
-    vibrate: Array.isArray(payload.vibrate) ? payload.vibrate : [100, 50, 100],
-    tag: payload.tag || 'sipjam-push-notification',
-    renotify: true
+    }
   };
 
-  // Only attach actions if provided and non-empty (some mobile browsers throw on empty actions array)
+  // Vibration support: only add if silent mode is not explicitly enabled
+  if (Array.isArray(payload.vibrate) && payload.vibrate.length > 0) {
+    options.vibrate = payload.vibrate;
+  } else if (!payload.silent) {
+    options.vibrate = [100, 50, 100];
+  }
+
+  if (payload.silent === true) {
+    options.silent = true;
+    delete options.vibrate;
+  }
+
+  // Tag & renotify handling:
+  // ONLY set options.tag if an explicit non-empty tag was provided in the payload!
+  // If a tag is specified, renotify defaults to true (so updated notifications re-alert the user).
+  // If NO tag was provided, we strictly omit both tag and renotify because:
+  // 1) In Chromium / WebKit, setting { renotify: true } without a tag throws TypeError ("The renotify option requires a non-empty tag.")
+  // 2) Setting a static hardcoded tag (e.g. 'sipjam-push-notification') causes every subsequent notification to overwrite and wipe out previous notifications from the user's notification drawer!
+  if (typeof payload.tag === 'string' && payload.tag.trim().length > 0) {
+    options.tag = payload.tag.trim();
+    options.renotify = typeof payload.renotify === 'boolean' ? payload.renotify : true;
+  }
+
+  // Only attach actions if provided and non-empty (some mobile browsers throw TypeError on empty actions array)
   if (Array.isArray(payload.actions) && payload.actions.length > 0) {
     options.actions = payload.actions;
   }
@@ -164,8 +192,13 @@ self.addEventListener('notificationclick', (event) => {
       }
       if (self.clients.openWindow) {
         return self.clients.openWindow(targetUrl).catch((err) => {
-          console.warn('[SW] clients.openWindow failed:', err);
+          console.warn('[SW] clients.openWindow failed, falling back to client focus:', err);
+          if (clientList.length > 0 && 'focus' in clientList[0]) {
+            return clientList[0].focus();
+          }
         });
+      } else if (clientList.length > 0 && 'focus' in clientList[0]) {
+        return clientList[0].focus();
       }
     })
   );
