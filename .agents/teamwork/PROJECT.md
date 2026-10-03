@@ -23,23 +23,23 @@
 | 1 | R1: Hapus ChatView Component & File | Delete `src/components/ChatView.tsx` without leaving broken references | M1 | Survey 1 | DONE |
 | 2 | R1: Hapus ChatView References di AppScreen | Remove import, `view-chat` menu item in `menuItemsGuru` & `menuItemsAdmin`, and route render in `src/components/AppScreen.tsx` | M1 | Survey 1 | DONE |
 | 3 | R1: Audit Test Guard for ChatView | Update `tests/ui_ux_improvements_audit.test.ts` to guard or adapt `ChatView.tsx` existence check so `npm test` passes cleanly | M1 | Survey 1 | DONE |
-| 4 | R2: Database Migration Siswa QR & Presensi | Migration SQL adding `qr_code` to `data_siswa` and creating table `presensi_siswa` with multi-tenant RLS & unique constraint | M2 | Survey 2 | PLANNED |
-| 5 | R2: Student QR Generation & Export Mechanism | Mechanism to generate/populate unique QR identifiers (`data_siswa.qr_code`) and display/print student QR codes in Admin/Piket | M2 | Survey 2 | PLANNED |
-| 6 | R2: PiketView Scanner UI & Multi-Input | Dedicated Scan tab in `PiketView.tsx` with Datang/Pulang toggle, camera Web API scanner, and USB HID scanner input (text + Enter) | M3 | Survey 2 | PLANNED |
-| 7 | R2: 10-Unit Hardware Scanner Concurrency | Robust concurrency handling for up to 10 simultaneous kiosk scanner windows with idempotent upsert and audio/visual feedback | M3 | Survey 2 | PLANNED |
-| 8 | R3: Piket Attendance Daily Log & Summary | Real-time table and status summary of today's scanned students in `PiketView.tsx` | M3 | Survey 2 & 3 | PLANNED |
+| 4 | R2: Database Migration Siswa QR & Presensi | Migration SQL adding `qr_code` to `data_siswa` and creating table `presensi_siswa` with multi-tenant RLS & unique constraint | M2 | Survey 2 | DONE |
+| 5 | R2: Student QR Generation & Export Mechanism | Mechanism to generate/populate unique QR identifiers (`data_siswa.qr_code`) and display/print student QR codes in Admin/Piket | M2 | Survey 2 | DONE |
+| 6 | R2: PiketView Scanner UI & Multi-Input | Dedicated Scan tab in `PiketView.tsx` with Datang/Pulang toggle, camera Web API scanner, and USB HID scanner input (text + Enter) | M3 | Survey 2 | DONE |
+| 7 | R2: 10-Unit Hardware Scanner Concurrency | Robust concurrency handling for up to 10 simultaneous kiosk scanner windows with idempotent upsert and audio/visual feedback | M3 | Survey 2 | DONE |
+| 8 | R3: Piket Attendance Daily Log & Summary | Real-time table and status summary of today's scanned students in `PiketView.tsx` | M3 | Survey 2 & 3 | DONE |
 | 9 | R3: Wali Kelas Attendance Report | Daily gate attendance report by class in `RekapSiswaView.tsx` for teachers assigned as Wali Kelas | M4 | Survey 3 | PLANNED |
 | 10 | R4: Guru Mapel Attendance Sync | In `GuruJurnal.tsx`, display gate arrival status (`Hadir di Sekolah` vs `Belum Scan`) in student list for today's teaching schedule | M4 | Survey 3 | PLANNED |
-| 11 | Multi-Tenant Data Isolation Guard | Ensure all queries for `presensi_siswa`, `data_siswa`, and schedules strictly filter by `sekolah_id` | M2, M3, M4 | Dispatch | PLANNED |
+| 11 | Multi-Tenant Data Isolation Guard | Ensure all queries for `presensi_siswa`, `data_siswa`, and schedules strictly filter by `sekolah_id` | M2, M3, M4 | Dispatch | IN_PROGRESS |
 | 12 | Comprehensive Verification, Build & Git Delivery | Automated test suite verification, `npx tsc --noEmit`, `npm run build`, and automatic git commit & push per GEMINI.md | M5 | Dispatch & GEMINI.md | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | M1 | Hapus Fitur Chat Guru & Test Fix | Delete `ChatView.tsx`, remove references from `AppScreen.tsx`, adjust `ui_ux_improvements_audit.test.ts` | none | DONE |
-| M2 | Database Migrations & QR Code Siswa Mechanism | Migration SQL (`data_siswa.qr_code`, `presensi_siswa`), QR generation/display helper | M1 | IN_PROGRESS |
-| M3 | PiketView QR Scanner (Camera + USB HID 10-Unit) & Piket Daily Report | `PiketView.tsx` Scan tab, camera & USB HID handler, multi-kiosk concurrency, daily scan log | M2 | PLANNED |
-| M4 | Laporan Wali Kelas & Sinkronisasi Guru Mapel | `RekapSiswaView.tsx` Wali Kelas reporting, `GuruJurnal.tsx` student arrival status sync | M2, M3 | PLANNED |
+| M2 | Database Migrations & QR Code Siswa Mechanism | Migration SQL (`data_siswa.qr_code`, `presensi_siswa`), QR generation/display helper | M1 | DONE |
+| M3 | PiketView QR Scanner (Camera + USB HID 10-Unit) & Piket Daily Report | `PiketView.tsx` Scan tab, camera & USB HID handler, multi-kiosk concurrency, daily scan log | M2 | DONE |
+| M4 | Laporan Wali Kelas & Sinkronisasi Guru Mapel | `RekapSiswaView.tsx` Wali Kelas reporting, `GuruJurnal.tsx` student arrival status sync | M2, M3 | IN_PROGRESS |
 | M5 | E2E Testing, Build & Git Delivery | Comprehensive automated tests, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | PLANNED |
 
 ## Interface Contracts

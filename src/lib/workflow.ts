@@ -83,13 +83,15 @@ export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string):
  * Contoh: jadwal_pelajaran punya "Ade", tapi user login punya "Ade Fitrawan Ibrahim"
  * Kita cari semua jadwal hari ini, lalu filter yang nama guru-nya COCOK (partial match).
  */
-export async function findJadwalForGuru(hari: string, namaGuru: string, username?: string, userId?: string): Promise<any[]> {
+export async function findJadwalForGuru(hari: string, namaGuru: string, username?: string, userId?: string, sekolahId?: string): Promise<any[]> {
   // Ambil semua jadwal hari ini
-  const { data: allJadwal } = await supabase
+  let query = supabase
     .from('jadwal_pelajaran')
     .select('*')
     .eq('hari', hari)
     .order('kelas', { ascending: true });
+  if (sekolahId) query = query.eq('sekolah_id', sekolahId);
+  const { data: allJadwal } = await query;
   
   if (!allJadwal || allJadwal.length === 0) return [];
 
@@ -338,13 +340,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     const selectedHari = hariIni; // Reuse hariIni already computed above
 
     // Selalu muat jadwal KBM hari ini untuk guru (tidak ditekan oleh isDinasLuar ataupun presensi datang)
-    state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username, userId);
+    state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username, userId, sekolahId);
 
     // 3. Cek Piket Hari Ini (case-insensitive matching)
     // Guru pengecualian (wajib hadir hanya di hari mengajar) dibebaskan dari piket saat sistem blok aktif jika tidak ada jadwal hari ini
     const isExemptAndNoSchedule = isTeacherExempt && state.jadwalKBM.length === 0;
     if (!(state.isBlok && isExemptAndNoSchedule)) {
-      const { data: jpiket } = await supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
+      let jpQuery = supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
+      if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
+      const { data: jpiket } = await jpQuery;
       if (jpiket && jpiket.length > 0) {
         const piketHariIni = jpiket[0];
         if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)) {
@@ -365,6 +369,10 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       .order('timestamp', { ascending: false })
       .limit(50);
     
+    if (sekolahId) {
+      presensiQuery = presensiQuery.eq('sekolah_id', sekolahId);
+    }
+
     if (userId) {
       presensiQuery = presensiQuery.or(`user_id.eq.${userId},nama_guru.ilike."%${cleanTeacherName}%"`);
     } else {
@@ -459,6 +467,10 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         .select('*')
         .eq('tanggal', todayStr);
       
+      if (sekolahId) {
+        piketQuery = piketQuery.eq('sekolah_id', sekolahId);
+      }
+      
       if (userId) {
         piketQuery = piketQuery.or(`user_id.eq.${userId},guru_pelapor.ilike."%${cleanTeacherName}%"`);
       } else {
@@ -484,6 +496,10 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       .from('jurnal_pembelajaran')
       .select('*')
       .eq('tanggal', todayStr);
+    
+    if (sekolahId) {
+      jurnalQuery = jurnalQuery.eq('sekolah_id', sekolahId);
+    }
     
     if (userId) {
       jurnalQuery = jurnalQuery.or(`user_id.eq.${userId},nama_guru.ilike."%${cleanTeacherName}%"`);

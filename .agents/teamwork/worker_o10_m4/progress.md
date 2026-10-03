@@ -1,0 +1,21 @@
+# Progress — Worker o10_m4 (Milestone 4)
+
+- Last visited: 2026-10-04T05:28:30Z
+- Status: Verification passed, completing git push & handoff
+- Completed steps:
+  - [x] Received dispatch message and created DISPATCH.md
+  - [x] Initialized BRIEFING.md
+  - [x] Read ORIGINAL_REQUEST.md, PROJECT.md, and explorer_o10_3 report
+  - [x] Examined `src/components/RekapSiswaView.tsx`
+  - [x] Examined `src/components/GuruJurnal.tsx`
+  - [x] Checked `workflow.ts` multi-tenant query locations
+  - [x] Implemented RekapSiswaView updates: Presensi Gerbang Piket tab, 4 stat cards, auto-filter wali kelas, admin selector, student table with timestamps/badges, modal gate badges
+  - [x] Implemented GuruJurnal updates: `piketAttendance` state, gate indicator badges (`✓ Hadir di Sekolah (Piket ${jam})` vs `Belum Scan Piket`), "Terapkan Presensi Piket" action button, multi-tenant scoping
+  - [x] Added automated tests for M4 (`tests/m4_wali_kelas_guru_sync.test.ts`) with 31 checks
+  - [x] Ran `npx tsc --noEmit` (0 errors)
+  - [x] Ran `npm test` (all 19 suites passed, including M4 with 31 assertions)
+  - [x] Ran `npm run build` (Turbopack production build succeeded)
+- Next steps:
+  - [x] Write handoff.md
+  - [ ] Stage and commit changes via git (`git add .`, `git commit -m "feat(attendance): add Wali Kelas gate attendance report and sync to GuruJurnal"`, `git push origin main`)
+  - [ ] Send completion message to orchestrator via send_message

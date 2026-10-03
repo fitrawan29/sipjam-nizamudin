@@ -36,6 +36,7 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [isFetchingAssignments, setIsFetchingAssignments] = useState(true);
   const [students, setStudents] = useState<any[]>([]);
   const [absensi, setAbsensi] = useState<Record<string, string>>({});
+  const [piketAttendance, setPiketAttendance] = useState<Record<string, { jam: string }>>({});
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
   const [dateBlok, setDateBlok] = useState<any | null>(null);
@@ -96,10 +97,12 @@ export default function GuruJurnal({ user }: { user: any }) {
 
         // Admin role: full access to all mapel and kelas
         if (user.role === 'Admin') {
-          const { data: mapelData } = await supabase
+          let mapelQuery = supabase
             .from('data_mapel')
             .select('*')
             .order('nama_mata_pelajaran', { ascending: true });
+          if (user?.sekolah_id) mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
+          const { data: mapelData } = await mapelQuery;
           if (mapelData) {
             const formatted = mapelData.map(m => ({
               id: m.id,
@@ -111,9 +114,11 @@ export default function GuruJurnal({ user }: { user: any }) {
             setAssignments(formatted);
           }
 
-          const { data: siswaData } = await supabase
+          let siswaQuery = supabase
             .from('data_siswa')
             .select('kelas');
+          if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
+          const { data: siswaData } = await siswaQuery;
           if (siswaData) {
             const uniqueKelas = [...new Set(siswaData.map(s => s.kelas).filter(Boolean))].sort();
             setKelasList(uniqueKelas as string[]);
@@ -125,6 +130,9 @@ export default function GuruJurnal({ user }: { user: any }) {
         // Teacher role: query guru_mapel matching nip (user.username) or nama_guru (user.nama)
         const cleanNama = (user.nama || '').split(',')[0].trim();
         let query = supabase.from('guru_mapel').select('*');
+        if (user?.sekolah_id) {
+          query = query.eq('sekolah_id', user.sekolah_id);
+        }
         if (user.username && cleanNama) {
           query = query.or(`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`);
         } else if (user.username) {
@@ -142,9 +150,11 @@ export default function GuruJurnal({ user }: { user: any }) {
         // Fallback to jadwal_pelajaran if guru_mapel is empty
         if (!data || data.length === 0) {
           if (cleanNama) {
-            const { data: jadwalData } = await supabase.from('jadwal_pelajaran')
+            let jdwlQuery = supabase.from('jadwal_pelajaran')
               .select('*')
               .ilike('nama_guru', `%${cleanNama}%`);
+            if (user?.sekolah_id) jdwlQuery = jdwlQuery.eq('sekolah_id', user.sekolah_id);
+            const { data: jadwalData } = await jdwlQuery;
               
             if (jadwalData && jadwalData.length > 0) {
               const uniqueMapels = new Map();
@@ -373,6 +383,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       if (!kelas || tipeJurnal !== 'Jurnal KBM') {
         setStudents([]);
         setAbsensi({});
+        setPiketAttendance({});
         setKehadiranMurid('');
         return;
       }
@@ -387,6 +398,27 @@ export default function GuruJurnal({ user }: { user: any }) {
         let aQuery = supabase.from('absensi').select('*').eq('tanggal', tgl).eq('kelas', kelas);
         if (user?.sekolah_id) aQuery = aQuery.eq('sekolah_id', user.sekolah_id);
         const { data: absData } = await aQuery;
+
+        // Query gate attendance from presensi_siswa for today and this class (status = 'datang')
+        let pQuery = supabase
+          .from('presensi_siswa')
+          .select('siswa_id, nisn, nama_siswa, jam, status')
+          .eq('kelas', kelas)
+          .eq('tanggal', tgl)
+          .eq('status', 'datang');
+        if (user?.sekolah_id) pQuery = pQuery.eq('sekolah_id', user.sekolah_id);
+        const { data: pData } = await pQuery;
+
+        const pMap: Record<string, { jam: string }> = {};
+        if (pData) {
+          pData.forEach((p: any) => {
+            const rawJam = p.jam ? String(p.jam).trim() : '';
+            const jamStr = rawJam.length > 5 ? rawJam.slice(0, 5) : rawJam;
+            if (p.nisn) pMap[p.nisn] = { jam: jamStr };
+            if (p.siswa_id) pMap[p.siswa_id] = { jam: jamStr };
+          });
+        }
+        setPiketAttendance(pMap);
 
         const initialAbsensi: Record<string, string> = {};
         data.forEach(s => {
@@ -407,6 +439,22 @@ export default function GuruJurnal({ user }: { user: any }) {
     };
     fetchStudents();
   }, [kelas, tipeJurnal, tanggal, user?.sekolah_id]);
+
+  const handleApplyPiketAttendance = () => {
+    if (students.length === 0) return;
+    const newAbsensi = { ...absensi };
+    let syncedCount = 0;
+    students.forEach(s => {
+      const isPresentAtGate = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
+      if (isPresentAtGate) {
+        newAbsensi[s.nisn] = 'H';
+        syncedCount++;
+      }
+    });
+    setAbsensi(newAbsensi);
+    setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
+    showToast(`Presensi piket berhasil diterapkan: ${syncedCount} siswa ditandai Hadir.`, 'success');
+  };
 
   const handleAbsensiChange = async (nisn: string, status: string) => {
     const newAbsensi = { ...absensi, [nisn]: status };
@@ -1031,40 +1079,64 @@ export default function GuruJurnal({ user }: { user: any }) {
 
                       {students.length > 0 && (
                         <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
-                          <h3 className="text-[11px] font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                            <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
-                          </h3>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                            <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                              <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={handleApplyPiketAttendance}
+                              className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
+                              title="Tandai siswa yang sudah scan di gerbang piket sebagai Hadir"
+                            >
+                              <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Piket
+                            </button>
+                          </div>
                           <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
-                            {students.map((siswa, idx) => (
-                              <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4">{idx + 1}.</span>
-                                  <div>
-                                    <div className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</div>
-                                    <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                            {students.map((siswa, idx) => {
+                              const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
+                              return (
+                                <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4 shrink-0">{idx + 1}.</span>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
+                                        {pRec ? (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+                                            <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Piket {pRec.jam})
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
+                                            <i className="fa-solid fa-clock text-[8px]"></i> Belum Scan Piket
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1 shrink-0">
+                                    {['H', 'S', 'I', 'A'].map(status => (
+                                      <button 
+                                        key={status}
+                                        type="button"
+                                        onClick={() => handleAbsensiChange(siswa.nisn, status)}
+                                        className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
+                                          absensi[siswa.nisn] === status 
+                                          ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
+                                             status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
+                                             status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
+                                             'bg-red-500 text-white shadow-sm') 
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                        }`}
+                                      >
+                                        {status}
+                                      </button>
+                                    ))}
                                   </div>
                                 </div>
-                                <div className="flex gap-1 shrink-0">
-                                  {['H', 'S', 'I', 'A'].map(status => (
-                                    <button 
-                                      key={status}
-                                      type="button"
-                                      onClick={() => handleAbsensiChange(siswa.nisn, status)}
-                                      className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
-                                        absensi[siswa.nisn] === status 
-                                        ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
-                                           status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
-                                           status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
-                                           'bg-red-500 text-white shadow-sm') 
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                      }`}
-                                    >
-                                      {status}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}

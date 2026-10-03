@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-03T21:08:35Z
+# BRIEFING — 2026-10-03T21:13:50Z
 
 ## Mission
 Lead and orchestrate SIPJAM feature modifications: Chat removal, QR siswa generate & scan, attendance reports for Piket & Wali Kelas, and sync to Guru Mapel.
@@ -28,11 +28,11 @@ Lead and orchestrate SIPJAM feature modifications: Chat removal, QR siswa genera
   1. Survey & Architecture Assessment [completed]
   2. M1: Hapus Fitur Chat Guru [DONE - Gate Passed]
   3. M2: QR Code Siswa — Generate & Scan [DONE - Gate Passed]
-  4. M3: PiketView Scanner UI & Laporan Piket [gating in progress]
-  5. M4: Laporan Wali Kelas & Sinkronisasi Guru Mapel [pending]
+  4. M3: PiketView Scanner UI & Laporan Piket [DONE - Gate Passed]
+  5. M4: Laporan Wali Kelas & Sinkronisasi Guru Mapel [in-progress]
   6. M5: Final Verification, Build & Delivery [pending]
-- **Current phase**: 3 (M3 Verification Gate)
-- **Current focus**: Milestone 3: PiketView Scanner UI & Laporan Piket Gate
+- **Current phase**: 4 (M4 Execution)
+- **Current focus**: Milestone 4: Laporan Wali Kelas & Sinkronisasi Guru Mapel
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files directly.
@@ -50,23 +50,18 @@ Lead and orchestrate SIPJAM feature modifications: Chat removal, QR siswa genera
 ## Key Decisions Made
 - M1 Gate passed unanimously.
 - M2 Gate passed (Remediation verified).
-- Worker 3 completed M3 implementation in `src/components/PiketView.tsx` (Scan tab, dual input modes, 10-station concurrency, audio synthesis, live attendance log, 37/37 checks pass).
-- Dispatched 2 Reviewers, 2 Challengers, and 1 Auditor for M3 Gate.
+- M3 Gate passed unanimously (2 Reviewers, 2 Challengers, Forensic Auditor clean).
+- Dispatched worker_o10_m4 to implement Milestone 4 (Wali Kelas daily gate attendance panel in `RekapSiswaView.tsx` and teacher journal arrival sync in `GuruJurnal.tsx`).
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| worker_o10_m3 | teamwork_preview_worker | M3 Implementation | completed | 331b590a-37dd-41ca-861d-4d041f12725d |
-| reviewer_o10_m3_1 | teamwork_preview_reviewer | M3 Review | in-progress | ec114c26-ea5e-4967-b517-cfbb1c66d00b |
-| reviewer_o10_m3_2 | teamwork_preview_reviewer | M3 Review | in-progress | 21b0f8cb-a894-4689-b7f4-87c7085463b6 |
-| challenger_o10_m3_1 | teamwork_preview_challenger | M3 Empirical Challenge | in-progress | 6c72c3b9-2007-4717-8b03-ad85d59b7dc7 |
-| challenger_o10_m3_2 | teamwork_preview_challenger | M3 Empirical Challenge | in-progress | 5fae61a6-a210-4a4a-a262-ac9da76df8df |
-| auditor_o10_m3_1 | teamwork_preview_auditor | M3 Forensic Integrity Audit | in-progress | c1357238-c100-423c-803c-5d31ed3abb66 |
+| worker_o10_m4 | teamwork_preview_worker | M4 Implementation: Wali Kelas & Guru Mapel Sync | in-progress | 3c48ee12-c1e8-47e2-bdd8-1f08f0eb46ee |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 22
-- Pending subagents: ec114c26-ea5e-4967-b517-cfbb1c66d00b, 21b0f8cb-a894-4689-b7f4-87c7085463b6, 6c72c3b9-2007-4717-8b03-ad85d59b7dc7, 5fae61a6-a210-4a4a-a262-ac9da76df8df, c1357238-c100-423c-803c-5d31ed3abb66
+- Spawn count: 23
+- Pending subagents: 3c48ee12-c1e8-47e2-bdd8-1f08f0eb46ee
 - Predecessor: none
 - Successor: none
 
