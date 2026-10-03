@@ -20,9 +20,9 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | R1: Hapus ChatView Component & File | Delete `src/components/ChatView.tsx` without leaving broken references | M1 | Survey 1 | PLANNED |
-| 2 | R1: Hapus ChatView References di AppScreen | Remove import, `view-chat` menu item in `menuItemsGuru` & `menuItemsAdmin`, and route render in `src/components/AppScreen.tsx` | M1 | Survey 1 | PLANNED |
-| 3 | R1: Audit Test Guard for ChatView | Update `tests/ui_ux_improvements_audit.test.ts` to guard or adapt `ChatView.tsx` existence check so `npm test` passes cleanly | M1 | Survey 1 | PLANNED |
+| 1 | R1: Hapus ChatView Component & File | Delete `src/components/ChatView.tsx` without leaving broken references | M1 | Survey 1 | DONE |
+| 2 | R1: Hapus ChatView References di AppScreen | Remove import, `view-chat` menu item in `menuItemsGuru` & `menuItemsAdmin`, and route render in `src/components/AppScreen.tsx` | M1 | Survey 1 | DONE |
+| 3 | R1: Audit Test Guard for ChatView | Update `tests/ui_ux_improvements_audit.test.ts` to guard or adapt `ChatView.tsx` existence check so `npm test` passes cleanly | M1 | Survey 1 | DONE |
 | 4 | R2: Database Migration Siswa QR & Presensi | Migration SQL adding `qr_code` to `data_siswa` and creating table `presensi_siswa` with multi-tenant RLS & unique constraint | M2 | Survey 2 | PLANNED |
 | 5 | R2: Student QR Generation & Export Mechanism | Mechanism to generate/populate unique QR identifiers (`data_siswa.qr_code`) and display/print student QR codes in Admin/Piket | M2 | Survey 2 | PLANNED |
 | 6 | R2: PiketView Scanner UI & Multi-Input | Dedicated Scan tab in `PiketView.tsx` with Datang/Pulang toggle, camera Web API scanner, and USB HID scanner input (text + Enter) | M3 | Survey 2 | PLANNED |
@@ -36,8 +36,8 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Hapus Fitur Chat Guru & Test Fix | Delete `ChatView.tsx`, remove references from `AppScreen.tsx`, adjust `ui_ux_improvements_audit.test.ts` | none | IN_PROGRESS |
-| M2 | Database Migrations & QR Code Siswa Mechanism | Migration SQL (`data_siswa.qr_code`, `presensi_siswa`), QR generation/display helper | M1 | PLANNED |
+| M1 | Hapus Fitur Chat Guru & Test Fix | Delete `ChatView.tsx`, remove references from `AppScreen.tsx`, adjust `ui_ux_improvements_audit.test.ts` | none | DONE |
+| M2 | Database Migrations & QR Code Siswa Mechanism | Migration SQL (`data_siswa.qr_code`, `presensi_siswa`), QR generation/display helper | M1 | IN_PROGRESS |
 | M3 | PiketView QR Scanner (Camera + USB HID 10-Unit) & Piket Daily Report | `PiketView.tsx` Scan tab, camera & USB HID handler, multi-kiosk concurrency, daily scan log | M2 | PLANNED |
 | M4 | Laporan Wali Kelas & Sinkronisasi Guru Mapel | `RekapSiswaView.tsx` Wali Kelas reporting, `GuruJurnal.tsx` student arrival status sync | M2, M3 | PLANNED |
 | M5 | E2E Testing, Build & Git Delivery | Comprehensive automated tests, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | PLANNED |

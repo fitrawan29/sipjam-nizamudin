@@ -328,6 +328,7 @@ export type Database = {
           nama_siswa: string | null
           nisn: string | null
           no_hp_ortu: string | null
+          qr_code: string | null
           sekolah_id: string
           status: string | null
         }
@@ -338,6 +339,7 @@ export type Database = {
           nama_siswa?: string | null
           nisn?: string | null
           no_hp_ortu?: string | null
+          qr_code?: string | null
           sekolah_id?: string
           status?: string | null
         }
@@ -348,6 +350,7 @@ export type Database = {
           nama_siswa?: string | null
           nisn?: string | null
           no_hp_ortu?: string | null
+          qr_code?: string | null
           sekolah_id?: string
           status?: string | null
         }
@@ -1109,6 +1112,66 @@ export type Database = {
           },
         ]
       }
+      presensi_siswa: {
+        Row: {
+          created_at: string
+          device_id: string | null
+          id: string
+          jam: string
+          kelas: string
+          nama_siswa: string
+          nisn: string | null
+          sekolah_id: string
+          siswa_id: string
+          status: string
+          tanggal: string
+          timestamp: string
+        }
+        Insert: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          jam?: string
+          kelas: string
+          nama_siswa: string
+          nisn?: string | null
+          sekolah_id: string
+          siswa_id: string
+          status: string
+          tanggal?: string
+          timestamp?: string
+        }
+        Update: {
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          jam?: string
+          kelas?: string
+          nama_siswa?: string
+          nisn?: string | null
+          sekolah_id?: string
+          siswa_id?: string
+          status?: string
+          tanggal?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "presensi_siswa_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presensi_siswa_siswa_id_fkey"
+            columns: ["siswa_id"]
+            isOneToOne: false
+            referencedRelation: "data_siswa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -1772,6 +1835,10 @@ export type PengaturanUpdate = TablesUpdate<"pengaturan">;
 export type PresensiGuru = Tables<"presensi_guru">;
 export type PresensiGuruInsert = TablesInsert<"presensi_guru">;
 export type PresensiGuruUpdate = TablesUpdate<"presensi_guru">;
+
+export type PresensiSiswa = Tables<"presensi_siswa">;
+export type PresensiSiswaInsert = TablesInsert<"presensi_siswa">;
+export type PresensiSiswaUpdate = TablesUpdate<"presensi_siswa">;
 
 export type RiwayatBackup = Tables<"riwayat_backup">;
 export type RiwayatBackupInsert = TablesInsert<"riwayat_backup">;

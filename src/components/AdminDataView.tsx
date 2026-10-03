@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast, Toast } from '@/lib/toast';
 import NaikKelasModal from './NaikKelasModal';
+import { getStudentQrIdentifier, generateStudentQrSvg } from '@/lib/qrSiswa';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
@@ -372,7 +373,8 @@ export default function AdminDataView({ user }: { user: any }) {
             kelas,
             gender,
             status: 'Aktif',
-            no_hp_ortu
+            no_hp_ortu,
+            qr_code: nisn || crypto.randomUUID()
           };
         }
       });
@@ -831,6 +833,150 @@ export default function AdminDataView({ user }: { user: any }) {
     }
   };
 
+  // Student QR Code display and single card print
+  const printStudentQrCard = (student: any, qrSvg: string, qrIdentifier: string) => {
+    const printWindow = window.open('', '_blank', 'width=650,height=650');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Kartu Presensi Siswa - ${student.nama_siswa || 'Siswa'}</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
+          .card { width: 340px; background: white; border: 2px solid #0B4619; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+          .header { font-size: 13px; font-weight: 800; color: #0B4619; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+          .sub { font-size: 11px; color: #6b7280; margin-bottom: 16px; }
+          .qr { margin: 12px auto; display: flex; justify-content: center; }
+          .name { font-size: 15px; font-weight: 800; margin-top: 12px; color: #111827; }
+          .meta { font-size: 12px; color: #374151; margin-top: 4px; }
+          .badge { display: inline-block; font-size: 10px; font-weight: 700; color: #0B4619; background: #e8f5e9; padding: 2px 8px; border-radius: 9999px; margin-top: 8px; }
+          .code { font-size: 10px; font-family: monospace; color: #6b7280; margin-top: 8px; }
+          @media print {
+            body { background: white; }
+            .card { box-shadow: none; border: 1.5px solid #0B4619; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">KARTU PRESENSI SISWA</div>
+          <div class="sub">SIPJAM Digital Attendance Kiosk</div>
+          <div class="qr">${qrSvg}</div>
+          <div class="name">${student.nama_siswa || '-'}</div>
+          <div class="meta">Kelas: <b>${student.kelas || '-'}</b> &bull; NISN: <b>${student.nisn || '-'}</b></div>
+          <div class="badge">STATUS: ${student.status || 'Aktif'}</div>
+          <div class="code">ID: ${qrIdentifier}</div>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        <\/script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleShowStudentQr = (student: any) => {
+    const qrIdentifier = getStudentQrIdentifier(student);
+    const qrSvg = generateStudentQrSvg(qrIdentifier, { size: 180, fgColor: '#0B4619' });
+
+    Swal.fire({
+      title: `<span class="text-base font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2"><i class="fa-solid fa-qrcode text-purple-600"></i> QR Presensi Siswa</span>`,
+      html: `
+        <div class="flex flex-col items-center justify-center space-y-3 p-2">
+          <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-200 inline-block">
+            ${qrSvg}
+          </div>
+          <div class="text-center space-y-1">
+            <h4 class="font-bold text-sm text-gray-900 dark:text-gray-100">${student.nama_siswa || 'Siswa'}</h4>
+            <p class="text-xs text-gray-600 dark:text-gray-300">Kelas: <span class="font-bold text-purple-700 dark:text-purple-400">${student.kelas || '-'}</span></p>
+            <p class="text-xs text-gray-600 dark:text-gray-300">NISN: <span class="font-mono font-bold">${student.nisn || '-'}</span></p>
+            <p class="text-[10px] text-gray-500 font-mono bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full inline-block mt-1">ID Scan: ${qrIdentifier}</p>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: '<i class="fa-solid fa-print mr-1"></i> Cetak Kartu',
+      confirmButtonColor: '#0B4619',
+      cancelButtonText: 'Tutup',
+      cancelButtonColor: '#6B7280',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        printStudentQrCard(student, qrSvg, qrIdentifier);
+      }
+    });
+  };
+
+  // Batch Print QR Cards for all selected students or all filtered students
+  const handlePrintBatchQrCards = () => {
+    const targetStudents = selectedStudentIds.length > 0
+      ? filteredList.filter(s => selectedStudentIds.includes(s.id))
+      : filteredList;
+
+    if (targetStudents.length === 0) {
+      showToast('Peringatan', 'Tidak ada data siswa untuk dicetak.', 'warning');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
+
+    const cardsHtml = targetStudents.map(student => {
+      const qrIdentifier = getStudentQrIdentifier(student);
+      const qrSvg = generateStudentQrSvg(qrIdentifier, { size: 140, fgColor: '#0B4619' });
+      return `
+        <div class="card">
+          <div class="header">KARTU PRESENSI</div>
+          <div class="sub">SIPJAM Kiosk</div>
+          <div class="qr">${qrSvg}</div>
+          <div class="name">${student.nama_siswa || '-'}</div>
+          <div class="meta">Kelas: <b>${student.kelas || '-'}</b> &bull; NISN: <b>${student.nisn || '-'}</b></div>
+          <div class="code">${qrIdentifier}</div>
+        </div>
+      `;
+    }).join('\n');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Cetak Kartu QR Siswa (${targetStudents.length} Siswa)</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { font-family: system-ui, -apple-system, sans-serif; margin: 20px; background: #fff; }
+          .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+          .card { border: 1.5px solid #0B4619; border-radius: 12px; padding: 14px; text-align: center; page-break-inside: avoid; }
+          .header { font-size: 11px; font-weight: 800; color: #0B4619; letter-spacing: 0.5px; }
+          .sub { font-size: 9px; color: #6b7280; margin-bottom: 8px; }
+          .qr { margin: 6px auto; display: flex; justify-content: center; }
+          .name { font-size: 13px; font-weight: 700; color: #111827; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .meta { font-size: 10px; color: #374151; margin-top: 2px; }
+          .code { font-size: 9px; font-family: monospace; color: #6b7280; margin-top: 4px; }
+          @media print {
+            body { margin: 0; }
+            .grid { gap: 12px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="grid">
+          ${cardsHtml}
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+          };
+        <\/script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   // Master Data Edit Modal Handler (Dispatches genuine Supabase UPDATE queries)
   const handleOpenEditModal = async (item: any) => {
     const tabObj = tabs.find(t => t.id === activeTab);
@@ -898,7 +1044,8 @@ export default function AdminDataView({ user }: { user: any }) {
             kelas,
             gender,
             status,
-            no_hp_ortu
+            no_hp_ortu,
+            qr_code: item.qr_code || nisn || item.id
           };
         }
       });
@@ -1406,14 +1553,21 @@ export default function AdminDataView({ user }: { user: any }) {
   const renderCard = (item: any) => {
     if (!item) return null;
     if (activeTab === 'Data_Siswa') {
+      const qrId = item.qr_code || item.nisn || (item.id ? item.id.slice(0, 8) : '-');
       return (
         <>
           <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.nama_siswa || 'Tanpa Nama'}</h3>
-          <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
+          <div className="text-xs text-gray-700 dark:text-gray-200 mt-1 space-y-0.5">
             <p><span className="font-semibold">NISN:</span> {item.nisn || '-'}</p>
             <p><span className="font-semibold">Kelas:</span> {item.kelas || '-'}</p>
             <p><span className="font-semibold">Gender:</span> {item.gender || '-'}</p>
             {item.no_hp_ortu && <p><span className="font-semibold">HP Ortu:</span> {item.no_hp_ortu}</p>}
+            <p className="flex items-center gap-1.5 pt-0.5">
+              <span className="font-semibold text-purple-700 dark:text-purple-400">QR Code:</span>
+              <span className="font-mono text-[10px] bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                {qrId}
+              </span>
+            </p>
           </div>
           <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">{item.status || 'Aktif'}</div>
         </>
@@ -1590,6 +1744,14 @@ export default function AdminDataView({ user }: { user: any }) {
                           className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
                         >
                           <i className="fa-solid fa-arrow-up-right-dots"></i> Naik Kelas {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handlePrintBatchQrCards}
+                          className="btn-click bg-purple-600 hover:bg-purple-700 text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+                          title="Cetak Kartu QR Siswa"
+                        >
+                          <i className="fa-solid fa-qrcode"></i> Cetak QR {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
                         </button>
                       </>
                     )}
@@ -1831,6 +1993,16 @@ export default function AdminDataView({ user }: { user: any }) {
                           {renderCard(item)}
                         </div>
                         <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 gap-2">
+                          {activeTab === 'Data_Siswa' && (
+                            <button 
+                              type="button" 
+                              onClick={() => handleShowStudentQr(item)} 
+                              className="btn-click text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 flex items-center gap-1 transition"
+                              title="Lihat & Cetak QR Code Siswa"
+                            >
+                              <i className="fa-solid fa-qrcode text-[10px]"></i> QR Code
+                            </button>
+                          )}
                           <button 
                             type="button" 
                             onClick={() => handleOpenEditModal(item)} 
