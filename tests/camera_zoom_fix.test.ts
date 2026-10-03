@@ -182,6 +182,86 @@ assert(
   'High-res 4032x3024 mobile camera feed in 16:9 container has 0% crop with object-contain'
 );
 
+// Test case 5: 1:1 square camera (1080x1080) inside 16:9 container (1920x1080)
+const feed1_1_in_16_9_contain = calculateFitGeometry(1920, 1080, 1080, 1080, 'contain');
+const feed1_1_in_16_9_cover = calculateFitGeometry(1920, 1080, 1080, 1080, 'cover');
+assert(
+  feed1_1_in_16_9_contain.cropPercentage === 0 && !feed1_1_in_16_9_contain.isDistorted,
+  '1:1 square camera feed in 16:9 container with object-contain has 0% crop and 0% distortion'
+);
+assert(
+  feed1_1_in_16_9_cover.cropPercentage > 40,
+  `Empirical proof: object-cover previously cropped ${feed1_1_in_16_9_cover.cropPercentage}% of 1:1 camera feed in 16:9 container`
+);
+
+// Test case 6: 1:1 square camera (1080x1080) inside 3:4 portrait container (720x960)
+const feed1_1_in_3_4_contain = calculateFitGeometry(720, 960, 1080, 1080, 'contain');
+const feed1_1_in_3_4_cover = calculateFitGeometry(720, 960, 1080, 1080, 'cover');
+assert(
+  feed1_1_in_3_4_contain.cropPercentage === 0 && !feed1_1_in_3_4_contain.isDistorted,
+  '1:1 square camera feed in 3:4 container with object-contain has 0% crop and 0% distortion'
+);
+assert(
+  feed1_1_in_3_4_cover.cropPercentage === 25,
+  'Empirical proof: object-cover previously cropped 25.0% of 1:1 camera feed in 3:4 container'
+);
+
+// Test case 7: Modern ultra-tall smartphone sensor (19.5:9 portrait 1080x2340) in 3:4 container
+const feed19_5_9_contain = calculateFitGeometry(720, 960, 1080, 2340, 'contain');
+const feed19_5_9_cover = calculateFitGeometry(720, 960, 1080, 2340, 'cover');
+assert(
+  feed19_5_9_contain.cropPercentage === 0 && !feed19_5_9_contain.isDistorted,
+  'Ultra-tall 19.5:9 mobile feed in 3:4 container with object-contain has 0% crop and 0% distortion'
+);
+assert(
+  feed19_5_9_cover.cropPercentage > 35,
+  `Empirical proof: object-cover previously cropped ${feed19_5_9_cover.cropPercentage}% of ultra-tall feed in 3:4 container`
+);
+
+// Test case 8: Tablet 3:2 camera sensor (2160x1440) in 16:9 container
+const feed3_2_contain = calculateFitGeometry(1920, 1080, 2160, 1440, 'contain');
+const feed3_2_cover = calculateFitGeometry(1920, 1080, 2160, 1440, 'cover');
+assert(
+  feed3_2_contain.cropPercentage === 0 && !feed3_2_contain.isDistorted,
+  'Tablet 3:2 sensor feed in 16:9 container with object-contain has 0% crop and 0% distortion'
+);
+assert(
+  feed3_2_cover.cropPercentage > 15,
+  `Empirical proof: object-cover previously cropped ${feed3_2_cover.cropPercentage}% of 3:2 feed in 16:9 container`
+);
+
+// 6. Adversarial Robustness & Hardware Zoom Constraints Guard
+console.log('\n--- 6. Adversarial Robustness & Hardware Zoom Constraints Guard ---');
+
+// Ensure no hardware digital zoom constraint is requested in MediaStreamConstraints
+const constraintsMatch = cameraContent.match(/const constraints:\s*MediaStreamConstraints\s*=\s*\{[\s\S]*?\};/);
+assert(Boolean(constraintsMatch), 'MediaStreamConstraints definition found in CameraSelfieCapture.tsx');
+if (constraintsMatch) {
+  assert(
+    !constraintsMatch[0].includes('zoom:'),
+    'MediaStreamConstraints does NOT request hardware digital zoom constraint'
+  );
+}
+
+// Ensure preview image has no unintended scale zoom transform classes
+if (imgTagMatch) {
+  const imgSnippet = imgTagMatch[0];
+  assert(
+    !imgSnippet.match(/\bscale-(?:105|110|125|150|200)\b/),
+    'Preview <img> element has no unintended scale zoom transform classes'
+  );
+}
+
+// Ensure no inline style overrides forcing objectFit: cover or CSS zoom
+assert(
+  !cameraContent.includes("objectFit: 'cover'") && !cameraContent.includes('objectFit: "cover"'),
+  'No inline style objectFit: cover overrides present in CameraSelfieCapture.tsx'
+);
+assert(
+  !cameraContent.match(/style=\{[^}]*?\bzoom\s*:/),
+  'No inline CSS zoom style overrides present in CameraSelfieCapture.tsx'
+);
+
 console.log('\n====================================================');
 if (failed === 0) {
   console.log('🎉 ALL CAMERA ZOOM / CROP FIX CHECKS PASSED!');
