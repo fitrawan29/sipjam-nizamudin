@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast, Toast } from '@/lib/toast';
@@ -11,11 +11,20 @@ import { PrintHeader, PrintSignature } from './PrintHeader';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { PenugasanPiket } from '@/types/database';
 import CameraSelfieCapture from './CameraSelfieCapture';
+import {
+  resolveStudentByCode,
+  recordPresensiSiswa,
+  getTodayPresensiSummary,
+  getRecentPresensiSiswa,
+  getLocalTodayDate,
+  getLocalCurrentTime,
+  StudentReference
+} from '@/lib/qrSiswa';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
 export default function PiketView({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState<'beranda' | 'lapor' | 'penugasan' | 'rekap'>('beranda');
+  const [activeTab, setActiveTab] = useState<'beranda' | 'scan' | 'lapor' | 'penugasan' | 'rekap'>('beranda');
   const [jadwalPiket, setJadwalPiket] = useState<any[]>([]);
   const [penugasanList, setPenugasanList] = useState<PenugasanPiket[]>([]);
   const [laporanPiket, setLaporanPiket] = useState<any[]>([]);
@@ -54,6 +63,383 @@ export default function PiketView({ user }: { user: any }) {
   const [rekapList, setRekapList] = useState<any[]>([]);
   const [rekapLoading, setRekapLoading] = useState(false);
   const [guruOptions, setGuruOptions] = useState<string[]>([]);
+
+  // States for Scan QR Siswa Kiosk
+  const [scanMode, setScanMode] = useState<'datang' | 'pulang'>('datang');
+  const [deviceId, setDeviceId] = useState<string>('kiosk-1');
+  const [usbInputVal, setUsbInputVal] = useState('');
+  const [isUsbInputFocused, setIsUsbInputFocused] = useState(false);
+  const [scanProcessing, setScanProcessing] = useState(false);
+  const [lastScanResult, setLastScanResult] = useState<{
+    student: StudentReference | null;
+    status: 'datang' | 'pulang';
+    success: boolean;
+    alreadyExists?: boolean;
+    message: string;
+    jam?: string;
+    timestamp?: string;
+  } | null>(null);
+
+  // Camera scanner states
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const isDetectingRef = useRef(false);
+  const lastCameraScannedRef = useRef<{ code: string; time: number } | null>(null);
+  const usbInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Live Attendance Log & Summary
+  const [scanSummary, setScanSummary] = useState({ totalDatang: 0, totalPulang: 0, totalUnik: 0 });
+  const [todayScans, setTodayScans] = useState<any[]>([]);
+  const [scanFilterKelas, setScanFilterKelas] = useState('Semua');
+  const [scanSearchQuery, setScanSearchQuery] = useState('');
+
+  // Audio feedback synthesizer via Web Audio API
+  const playAudioFeedback = (type: 'success' | 'warning' | 'error') => {
+    try {
+      if (typeof window === 'undefined') return;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+
+      const now = ctx.currentTime;
+      if (type === 'success') {
+        // High, cheerful ascending chime: D5 (587Hz) -> A5 (880Hz)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880.00, now + 0.12);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      } else if (type === 'warning') {
+        // Two short mid-frequency warning beeps: 440Hz -> 440Hz
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'triangle';
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.frequency.setValueAtTime(440, now);
+        gain1.gain.setValueAtTime(0.3, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc1.start(now);
+        osc1.stop(now + 0.1);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.frequency.setValueAtTime(440, now + 0.15);
+        gain2.gain.setValueAtTime(0.3, now + 0.15);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+        osc2.start(now + 0.15);
+        osc2.stop(now + 0.28);
+      } else if (type === 'error') {
+        // Low frequency buzzer sound: 220Hz -> 140Hz sawtooth
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(140, now + 0.3);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+    } catch {
+      // AudioContext unavailable or blocked by autoplay
+    }
+  };
+
+  // Device ID initialization for multi-kiosk operation
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sipjam_piket_kiosk_id');
+      if (saved) {
+        setDeviceId(saved);
+      } else {
+        const initial = 'kiosk-1';
+        localStorage.setItem('sipjam_piket_kiosk_id', initial);
+        setDeviceId(initial);
+      }
+    }
+  }, []);
+
+  const handleDeviceIdChange = (newId: string) => {
+    setDeviceId(newId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sipjam_piket_kiosk_id', newId);
+    }
+  };
+
+  // Fetch today's scans and summary counts
+  const fetchTodayScanData = async () => {
+    if (!user?.sekolah_id) return;
+    const todayStr = getLocalTodayDate();
+    try {
+      const summary = await getTodayPresensiSummary(supabase, user.sekolah_id, todayStr);
+      setScanSummary(summary);
+
+      const recent = await getRecentPresensiSiswa(supabase, user.sekolah_id, todayStr, 150);
+      setTodayScans(recent);
+    } catch (e) {
+      console.error('Error fetching today scan data:', e);
+    }
+  };
+
+  // Realtime subscription and short polling for live multi-kiosk concurrency
+  useEffect(() => {
+    if (activeTab === 'scan') {
+      fetchTodayScanData();
+
+      // Realtime subscription to presensi_siswa table
+      const channelName = `presensi_kiosk_${user?.sekolah_id || 'all'}_${Date.now()}`;
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'presensi_siswa'
+          },
+          (payload: any) => {
+            if (!user?.sekolah_id || payload.new?.sekolah_id === user.sekolah_id || payload.old?.sekolah_id === user.sekolah_id) {
+              fetchTodayScanData();
+            }
+          }
+        )
+        .subscribe();
+
+      // Short polling fallback (8 seconds) for maximum multi-kiosk sync reliability
+      const pollTimer = setInterval(() => {
+        fetchTodayScanData();
+      }, 8000);
+
+      return () => {
+        supabase.removeChannel(channel);
+        clearInterval(pollTimer);
+      };
+    }
+  }, [activeTab, user?.sekolah_id]);
+
+  // USB Scanner Auto-Focus mechanism
+  useEffect(() => {
+    if (activeTab === 'scan') {
+      const timer = setTimeout(() => {
+        usbInputRef.current?.focus();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
+
+  const handleUsbInputBlur = () => {
+    setIsUsbInputFocused(false);
+    // Auto refocus unless activeElement is another input/select
+    setTimeout(() => {
+      if (activeTab === 'scan') {
+        const activeEl = document.activeElement;
+        const isOtherInteractive = activeEl && (
+          activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'SELECT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.getAttribute('role') === 'button'
+        );
+        if (!isOtherInteractive && usbInputRef.current) {
+          usbInputRef.current.focus();
+        }
+      }
+    }, 250);
+  };
+
+  // Camera start / stop functions
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraActive(true);
+    } catch (err: any) {
+      setCameraError(err.message || 'Gagal mengakses kamera browser. Pastikan izin kamera telah diberikan.');
+      setCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'scan' && cameraActive) {
+      stopCamera();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
+  // Frame detection loop with native BarcodeDetector
+  useEffect(() => {
+    let intervalId: any = null;
+    if (cameraActive) {
+      const BarcodeDetectorClass = typeof window !== 'undefined' ? (window as any).BarcodeDetector : undefined;
+      let detector: any = null;
+      if (BarcodeDetectorClass) {
+        try {
+          detector = new BarcodeDetectorClass({ formats: ['qr_code', 'code_128', 'ean_13', 'code_39'] });
+        } catch (e) {
+          console.warn('BarcodeDetector format init error:', e);
+        }
+      }
+
+      intervalId = setInterval(async () => {
+        if (!videoRef.current || videoRef.current.readyState < 2 || isDetectingRef.current) return;
+        isDetectingRef.current = true;
+        try {
+          if (detector) {
+            const barcodes = await detector.detect(videoRef.current);
+            if (barcodes && barcodes.length > 0) {
+              const rawVal = barcodes[0].rawValue;
+              if (rawVal) {
+                const now = Date.now();
+                if (!lastCameraScannedRef.current || lastCameraScannedRef.current.code !== rawVal || (now - lastCameraScannedRef.current.time > 3000)) {
+                  lastCameraScannedRef.current = { code: rawVal, time: now };
+                  handleProcessScan(rawVal);
+                }
+              }
+            }
+          }
+        } catch {
+          // Ignore transient detection errors
+        } finally {
+          isDetectingRef.current = false;
+        }
+      }, 250);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [cameraActive, scanMode]);
+
+  // Main scan processor: resolves student and records attendance
+  const handleProcessScan = async (code: string) => {
+    if (!code || scanProcessing) return;
+    setScanProcessing(true);
+
+    try {
+      // 1. Resolve student by code
+      const { data: student, error: resolveErr } = await resolveStudentByCode(
+        supabase,
+        code,
+        user?.sekolah_id
+      );
+
+      if (resolveErr || !student) {
+        playAudioFeedback('error');
+        setLastScanResult({
+          student: null,
+          status: scanMode,
+          success: false,
+          message: resolveErr?.message || `Siswa dengan kode "${code}" tidak ditemukan.`,
+          jam: getLocalCurrentTime()
+        });
+        return;
+      }
+
+      // 2. Record attendance
+      const res = await recordPresensiSiswa(supabase, {
+        siswa: student,
+        status: scanMode,
+        sekolahId: user?.sekolah_id,
+        deviceId: deviceId
+      });
+
+      if (res.success) {
+        playAudioFeedback('success');
+        const jamStr = res.data?.jam ? res.data.jam.slice(0, 8) : getLocalCurrentTime();
+        setLastScanResult({
+          student,
+          status: scanMode,
+          success: true,
+          alreadyExists: false,
+          message: res.message,
+          jam: jamStr,
+          timestamp: res.data?.timestamp || new Date().toISOString()
+        });
+        await fetchTodayScanData();
+      } else if (res.alreadyExists) {
+        playAudioFeedback('warning');
+        const jamStr = res.data?.jam ? res.data.jam.slice(0, 8) : undefined;
+        setLastScanResult({
+          student,
+          status: scanMode,
+          success: false,
+          alreadyExists: true,
+          message: res.message,
+          jam: jamStr
+        });
+      } else {
+        playAudioFeedback('error');
+        setLastScanResult({
+          student,
+          status: scanMode,
+          success: false,
+          message: res.message,
+          jam: getLocalCurrentTime()
+        });
+      }
+    } catch (err: any) {
+      playAudioFeedback('error');
+      setLastScanResult({
+        student: null,
+        status: scanMode,
+        success: false,
+        message: err.message || 'Terjadi kesalahan sistem saat pemrosesan scan.',
+        jam: getLocalCurrentTime()
+      });
+    } finally {
+      setScanProcessing(false);
+      setTimeout(() => {
+        usbInputRef.current?.focus();
+      }, 100);
+    }
+  };
+
+  const filteredTodayScans = todayScans.filter(item => {
+    const matchKelas = scanFilterKelas === 'Semua' || item.kelas === scanFilterKelas;
+    const matchSearch = !scanSearchQuery.trim() || 
+      (item.nama_siswa?.toLowerCase() || '').includes(scanSearchQuery.toLowerCase()) ||
+      (item.nisn?.toLowerCase() || '').includes(scanSearchQuery.toLowerCase());
+    return matchKelas && matchSearch;
+  });
 
   useEffect(() => {
     fetchDataPiket();
@@ -653,6 +1039,7 @@ export default function PiketView({ user }: { user: any }) {
                   onClick={() => {
                     fetchDataPiket();
                     if (activeTab === 'rekap') fetchRekapPiket();
+                    if (activeTab === 'scan') fetchTodayScanData();
                   }} 
                   className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
                 >
@@ -674,6 +1061,14 @@ export default function PiketView({ user }: { user: any }) {
                 className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'beranda' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
               >
                 Beranda Piket
+              </button>
+
+              <button 
+                type="button"
+                onClick={() => setActiveTab('scan')} 
+                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'scan' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+              >
+                <i className="fa-solid fa-qrcode mr-1.5 text-teal-600 dark:text-teal-400"></i> Scan QR Siswa
               </button>
 
               {isAdmin && (
@@ -863,6 +1258,482 @@ export default function PiketView({ user }: { user: any }) {
                         ))}
                       </div>
                   </div>
+              </div>
+            )}
+
+            {/* TAB: SCAN QR SISWA (KIOSK SCANNER) */}
+            {activeTab === 'scan' && (
+              <div id="piket-content-scan" className="space-y-6 fade-in">
+                {/* 1. Kiosk Station & Mode Switcher Controls */}
+                <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 p-4 sm:p-5 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div>
+                      <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
+                        <i className="fa-solid fa-qrcode text-teal-600 dark:text-teal-400"></i>
+                        Kios Scanner Presensi Siswa (10-Unit Concurrency)
+                      </h3>
+                      <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
+                        Mendukung scanner USB HID barcode eksternal dan kamera browser secara bersamaan di multi-kios.
+                      </p>
+                    </div>
+
+                    {/* Kiosk Device ID Selector */}
+                    <div className="flex items-center gap-2 self-stretch sm:self-auto bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-teal-200 dark:border-teal-800">
+                      <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 pl-2 whitespace-nowrap">
+                        <i className="fa-solid fa-desktop mr-1 text-teal-600"></i> Stasiun Kios:
+                      </span>
+                      <select
+                        value={deviceId}
+                        onChange={(e) => handleDeviceIdChange(e.target.value)}
+                        className="text-xs font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-700/50 py-1.5 px-2.5 rounded-lg border-0 focus:ring-2 focus:ring-teal-500 cursor-pointer"
+                      >
+                        <option value="kiosk-1">Kios 1 (Gerbang Utama)</option>
+                        <option value="kiosk-2">Kios 2 (Gerbang Barat)</option>
+                        <option value="kiosk-3">Kios 3 (Gerbang Timur)</option>
+                        <option value="kiosk-4">Kios 4 (Pintu Belakang)</option>
+                        <option value="kiosk-5">Kios 5 (Pos Piket 1)</option>
+                        <option value="kiosk-6">Kios 6 (Pos Piket 2)</option>
+                        <option value="kiosk-7">Kios 7 (Lobi Depan)</option>
+                        <option value="kiosk-8">Kios 8 (Gedung A)</option>
+                        <option value="kiosk-9">Kios 9 (Gedung B)</option>
+                        <option value="kiosk-10">Kios 10 (Cadangan / Mobile)</option>
+                      </select>
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 px-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Live
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mode Toggle: Datang vs Pulang */}
+                  <div>
+                    <label className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide block mb-2">
+                      Pilih Mode Presensi:
+                    </label>
+                    <div className="grid grid-cols-2 gap-3 max-w-xl">
+                      <button
+                        type="button"
+                        onClick={() => setScanMode('datang')}
+                        className={`py-3 px-4 rounded-xl text-left transition-all border flex items-center gap-3 ${
+                          scanMode === 'datang'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-400/50'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                          scanMode === 'datang' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
+                        }`}>
+                          <i className="fa-solid fa-right-to-bracket text-lg"></i>
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs sm:text-sm">PRESENSI DATANG</div>
+                          <div className={`text-[10px] ${scanMode === 'datang' ? 'text-emerald-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                            Scan masuk kedatangan siswa
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setScanMode('pulang')}
+                        className={`py-3 px-4 rounded-xl text-left transition-all border flex items-center gap-3 ${
+                          scanMode === 'pulang'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/50'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                        }`}
+                      >
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                          scanMode === 'pulang' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400'
+                        }`}>
+                          <i className="fa-solid fa-right-from-bracket text-lg"></i>
+                        </div>
+                        <div>
+                          <div className="font-bold text-xs sm:text-sm">PRESENSI PULANG</div>
+                          <div className={`text-[10px] ${scanMode === 'pulang' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                            Scan pulang saat keluar sekolah
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Scanner Station & Real-Time Student Feedback Card */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Left Column: Input Modes (USB HID + Camera) */}
+                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <i className="fa-solid fa-barcode text-teal-600"></i> Mode Input Scanner
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                        isUsbInputFocused
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-400'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isUsbInputFocused ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                        {isUsbInputFocused ? 'USB Scanner Fokus Aktif' : 'Klik Input untuk Fokus'}
+                      </span>
+                    </div>
+
+                    {/* Hardware USB HID Scanner Input */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const code = usbInputVal.trim();
+                        if (code) {
+                          setUsbInputVal('');
+                          handleProcessScan(code);
+                        }
+                      }}
+                      className="space-y-2"
+                    >
+                      <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 block">
+                        Scanner Barcode / QR Eksternal (USB HID):
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-teal-600 dark:text-teal-400">
+                          <i className="fa-solid fa-qrcode text-base"></i>
+                        </div>
+                        <input
+                          ref={usbInputRef}
+                          type="text"
+                          value={usbInputVal}
+                          onChange={(e) => setUsbInputVal(e.target.value)}
+                          onFocus={() => setIsUsbInputFocused(true)}
+                          onBlur={handleUsbInputBlur}
+                          disabled={scanProcessing}
+                          placeholder="Arahkan scanner ke QR Code atau ketik NISN lalu Enter..."
+                          className="w-full pl-10 pr-28 py-3 text-sm bg-gray-50 dark:bg-gray-900 border-2 border-teal-500 dark:border-teal-600 rounded-xl focus:outline-none focus:ring-4 focus:ring-teal-500/20 text-gray-900 dark:text-white font-mono placeholder:font-sans placeholder:text-gray-400"
+                          autoFocus
+                          autoComplete="off"
+                        />
+                        <button
+                          type="submit"
+                          disabled={scanProcessing || !usbInputVal.trim()}
+                          className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1"
+                        >
+                          {scanProcessing ? <i className="fa-solid fa-spinner animate-spin"></i> : <>Scan <i className="fa-solid fa-arrow-turn-down text-[10px]"></i></>}
+                        </button>
+                      </div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-between">
+                        <span><i className="fa-solid fa-circle-info mr-1 text-teal-600"></i> Auto re-focus aktif untuk scan berkelanjutan tanpa mouse</span>
+                        <button
+                          type="button"
+                          onClick={() => usbInputRef.current?.focus()}
+                          className="text-teal-600 dark:text-teal-400 hover:underline font-semibold"
+                        >
+                          Fokus Ulang
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* Divider & Browser Camera Scanner Option */}
+                    <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+                          Kamera Browser (Webcam / HP):
+                        </span>
+                        {!cameraActive ? (
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-teal-200 dark:border-teal-800"
+                          >
+                            <i className="fa-solid fa-camera"></i> Buka Kamera
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={stopCamera}
+                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-red-200 dark:border-red-800"
+                          >
+                            <i className="fa-solid fa-video-slash"></i> Tutup Kamera
+                          </button>
+                        )}
+                      </div>
+
+                      {cameraError && (
+                        <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                          <i className="fa-solid fa-triangle-exclamation"></i>
+                          <span>{cameraError}</span>
+                        </div>
+                      )}
+
+                      {cameraActive && (
+                        <div className="relative rounded-xl overflow-hidden bg-black aspect-video border-2 border-teal-500 shadow-inner">
+                          <video
+                            ref={videoRef}
+                            playsInline
+                            autoPlay
+                            muted
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Scanner Reticle Overlay */}
+                          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                            <div className="w-48 h-48 sm:w-56 sm:h-56 border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
+                              <span className="text-[10px] text-teal-200 bg-black/60 px-2 py-0.5 rounded-full font-bold">
+                                Arahkan QR ke Sini
+                              </span>
+                            </div>
+                          </div>
+                          <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs p-1.5 rounded-lg text-center text-[10px] text-white">
+                            <i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Visual Feedback Student Card */}
+                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between min-h-[300px]">
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <i className="fa-solid fa-id-card text-teal-600"></i> Kartu Hasil Scan Terakhir
+                        </span>
+                        {lastScanResult && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                            lastScanResult.success
+                              ? lastScanResult.status === 'datang'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                              : lastScanResult.alreadyExists
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                          }`}>
+                            {lastScanResult.success
+                              ? `Presensi ${lastScanResult.status} Berhasil`
+                              : lastScanResult.alreadyExists
+                              ? `Duplikat ${lastScanResult.status}`
+                              : 'Gagal / Tidak Ditemukan'}
+                          </span>
+                        )}
+                      </div>
+
+                      {lastScanResult?.student ? (
+                        <div className={`p-4 rounded-xl border-2 space-y-3 transition-all ${
+                          lastScanResult.success
+                            ? lastScanResult.status === 'datang'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500'
+                              : 'bg-blue-50 dark:bg-blue-950/20 border-blue-500'
+                            : lastScanResult.alreadyExists
+                            ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500'
+                            : 'bg-red-50 dark:bg-red-950/20 border-red-500'
+                        }`}>
+                          <div className="flex items-center gap-4">
+                            {/* Avatar */}
+                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-md shrink-0 ${
+                              lastScanResult.status === 'datang'
+                                ? 'bg-gradient-to-tr from-emerald-600 to-teal-500'
+                                : 'bg-gradient-to-tr from-blue-600 to-indigo-500'
+                            }`}>
+                              {lastScanResult.student.nama_siswa.charAt(0).toUpperCase()}
+                            </div>
+
+                            {/* Details */}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">
+                                {lastScanResult.student.nama_siswa}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-700 shadow-2xs">
+                                  Kelas {lastScanResult.student.kelas}
+                                </span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                  NISN: {lastScanResult.student.nisn || '-'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Message and Timestamp */}
+                          <div className="pt-2 border-t border-black/10 dark:border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs">
+                            <span className="font-semibold text-gray-800 dark:text-gray-200">
+                              {lastScanResult.message}
+                            </span>
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400 font-mono shrink-0">
+                              pk. {lastScanResult.jam || '-'} WITA
+                            </span>
+                          </div>
+                        </div>
+                      ) : lastScanResult && !lastScanResult.student ? (
+                        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border-2 border-red-500 space-y-2">
+                          <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+                            <i className="fa-solid fa-circle-xmark text-lg"></i>
+                            <span>Siswa Tidak Ditemukan</span>
+                          </div>
+                          <p className="text-xs text-red-600 dark:text-red-300">
+                            {lastScanResult.message}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-8 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center text-center space-y-3 text-gray-400 dark:text-gray-500">
+                          <div className="w-16 h-16 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center text-2xl shadow-inner">
+                            <i className="fa-solid fa-qrcode animate-pulse"></i>
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-gray-700 dark:text-gray-300">Menunggu Scan Siswa...</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              Arahkan kartu QR siswa ke scanner USB atau kamera browser
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                      <span>Stasiun: {deviceId}</span>
+                      <span>Audio Feedback: Suara Aktif (Web Audio)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Real-Time Stat Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 shadow-xs flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                      <i className="fa-solid fa-right-to-bracket"></i>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+                        {scanSummary.totalDatang}
+                      </div>
+                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Hadir Datang</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/50 shadow-xs flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl shrink-0">
+                      <i className="fa-solid fa-right-from-bracket"></i>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-black text-blue-700 dark:text-blue-400">
+                        {scanSummary.totalPulang}
+                      </div>
+                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Pulang</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/50 shadow-xs flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xl shrink-0">
+                      <i className="fa-solid fa-users"></i>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-black text-teal-700 dark:text-teal-400">
+                        {scanSummary.totalUnik}
+                      </div>
+                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Unik Siswa</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Live Attendance Log Table */}
+                <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                      <i className="fa-solid fa-clock-rotate-left text-teal-600"></i>
+                      Log Presensi Siswa Hari Ini ({filteredTodayScans.length} Scan)
+                    </h3>
+
+                    {/* Filter & Search Controls */}
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                      {/* Filter Kelas */}
+                      <select
+                        value={scanFilterKelas}
+                        onChange={(e) => setScanFilterKelas(e.target.value)}
+                        className="text-xs bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+                      >
+                        <option value="Semua">Semua Kelas</option>
+                        {kelasList.map(k => (
+                          <option key={k} value={k}>{k}</option>
+                        ))}
+                      </select>
+
+                      {/* Search Student */}
+                      <div className="relative flex-1 sm:w-56">
+                        <input
+                          type="text"
+                          value={scanSearchQuery}
+                          onChange={(e) => setScanSearchQuery(e.target.value)}
+                          placeholder="Cari siswa / NISN..."
+                          className="w-full pl-8 pr-3 py-2 text-xs bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                        <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-gray-400"></i>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={fetchTodayScanData}
+                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                      >
+                        <i className="fa-solid fa-rotate text-xs"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div className="overflow-x-auto custom-scroll">
+                    <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200 border-collapse">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                          <th className="py-2.5 px-3">No</th>
+                          <th className="py-2.5 px-3">Waktu</th>
+                          <th className="py-2.5 px-3">Nama Siswa</th>
+                          <th className="py-2.5 px-3">Kelas</th>
+                          <th className="py-2.5 px-3">NISN</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3">Kios</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                        {filteredTodayScans.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-gray-400 dark:text-gray-500 text-xs">
+                              Belum ada catatan presensi siswa hari ini.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredTodayScans.map((item, idx) => (
+                            <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                              <td className="py-2.5 px-3 text-gray-400 text-[11px]">{idx + 1}</td>
+                              <td className="py-2.5 px-3 font-mono font-semibold text-gray-900 dark:text-white">
+                                {item.jam ? item.jam.slice(0, 8) : '-'}
+                              </td>
+                              <td className="py-2.5 px-3 font-bold text-gray-900 dark:text-white">
+                                {item.nama_siswa}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-bold text-[10px]">
+                                  {item.kelas}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-[11px] text-gray-500 dark:text-gray-400">
+                                {item.nisn || '-'}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {item.status === 'datang' ? (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1">
+                                    <i className="fa-solid fa-right-to-bracket text-[9px]"></i> Datang
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1">
+                                    <i className="fa-solid fa-right-from-bracket text-[9px]"></i> Pulang
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 font-mono text-[10px] text-gray-500 dark:text-gray-400">
+                                <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                  {item.device_id || 'kiosk-default'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 
