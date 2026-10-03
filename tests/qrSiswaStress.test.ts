@@ -360,6 +360,75 @@ async function runStressTests() {
   });
   assert(raceResult.success === false && raceResult.alreadyExists === true, 'Postgres 23505 race condition gracefully handled as alreadyExists');
 
+  // --------------------------------------------------------------------------
+  // SECTION 5: Adversarial SQL Injection & DB Error Resilience
+  // --------------------------------------------------------------------------
+  console.log('\n--- 5. SQL Injection & DB Error Resilience ---');
+
+  // Test 5.1: SQL Injection attempts in scanned code
+  const sqlInjections = [
+    "' OR '1'='1",
+    "'; DROP TABLE data_siswa; --",
+    "admin'--",
+    "1' UNION SELECT * FROM users --",
+    "\\x00\\x1a"
+  ];
+  for (const sqli of sqlInjections) {
+    const sqliRes = await resolveStudentByCode(tenantClient, sqli, 'tenant-school-a');
+    assert(sqliRes.data === null, `SQL injection string "${sqli}" safely resolves to null without matching records`);
+  }
+
+  // Test 5.2: DB Error simulation during student lookup
+  const errorDbClient = {
+    from: () => ({
+      select: () => ({
+        eq: function () { return this; },
+        ilike: function () { return this; },
+        maybeSingle: async () => {
+          throw new Error('Connection timeout');
+        }
+      })
+    })
+  };
+  const errRes = await resolveStudentByCode(errorDbClient, '114367407', 'tenant-school-a');
+  assert(errRes.data === null && errRes.error.message === 'Connection timeout', 'DB connection error in resolveStudentByCode is safely caught and returned');
+
+  // Test 5.3: ensureStudentQrCode with DB update failure
+  const failUpdateClient = {
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: { id: 'test-id', nisn: '12345', qr_code: null } })
+        })
+      }),
+      update: () => ({
+        eq: async () => ({ error: new Error('Permission denied') })
+      })
+    })
+  };
+  const ensureFailRes = await ensureStudentQrCode(failUpdateClient, 'test-id');
+  assert(ensureFailRes.qr_code === '12345' && ensureFailRes.error !== null, 'ensureStudentQrCode reports update error while maintaining fallback identifier');
+
+  // Test 5.4: Helpers handle DB error gracefully returning empty sets / zeroes
+  const failAllClient = {
+    from: () => ({
+      select: () => ({
+        eq: function () { return this; },
+        order: function () { return this; },
+        limit: function () { return this; },
+        then: (resolve: any) => resolve({ data: null, error: new Error('DB Error') })
+      })
+    })
+  };
+  const summaryFail = await getTodayPresensiSummary(failAllClient, 'school-a');
+  assert(summaryFail.totalDatang === 0 && summaryFail.totalPulang === 0 && summaryFail.totalUnik === 0, 'getTodayPresensiSummary gracefully defaults on DB error');
+
+  const kelasFail = await getPresensiSiswaByKelas(failAllClient, 'school-a', 'VII-A');
+  assert(Array.isArray(kelasFail) && kelasFail.length === 0, 'getPresensiSiswaByKelas returns empty array on DB error');
+
+  const recentFail = await getRecentPresensiSiswa(failAllClient, 'school-a');
+  assert(Array.isArray(recentFail) && recentFail.length === 0, 'getRecentPresensiSiswa returns empty array on DB error');
+
   console.log(`\n====================================================`);
   console.log(`🎉 ALL ${passedTests}/${totalTests} ADVERSARIAL STRESS TESTS PASSED!`);
   console.log(`====================================================\n`);

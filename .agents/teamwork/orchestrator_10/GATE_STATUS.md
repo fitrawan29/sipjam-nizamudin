@@ -19,7 +19,7 @@ Gate Result: **PASS**
 | reviewer_o10_m2_1 | teamwork_preview_reviewer | PENDING | - |
 | reviewer_o10_m2_2 | teamwork_preview_reviewer | PENDING | - |
 | challenger_o10_m2_1 | teamwork_preview_challenger | PENDING | - |
-| challenger_o10_m2_2 | teamwork_preview_challenger | PENDING | - |
+| challenger_o10_m2_2 | teamwork_preview_challenger | APPROVE | handoff.md |
 | auditor_o10_m2_1 | teamwork_preview_auditor | PENDING | - |
 
 Gate Result: **IN_PROGRESS**
