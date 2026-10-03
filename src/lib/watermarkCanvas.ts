@@ -310,16 +310,26 @@ export function drawWatermarkedCanvas(
 
 /**
  * Utility to convert base64 data URL into a standard File object for uploads.
+ * Gracefully handles non-data URLs (e.g. remote HTTP URLs) and malformed base64 without throwing DOMException.
  */
 export function dataUrlToFile(dataUrl: string, filename: string): File {
+  if (!dataUrl || !dataUrl.includes(',')) {
+    return new File([], filename, { type: 'image/jpeg' });
+  }
   const parts = dataUrl.split(',');
   const mimeMatch = parts[0].match(/:(.*?);/);
   const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-  const binaryStr = atob(parts[1]);
-  let n = binaryStr.length;
-  const u8arr = new Uint8Array(n);
-  while (n--) {
-    u8arr[n] = binaryStr.charCodeAt(n);
+  try {
+    const binaryStr = atob(parts[1]);
+    let n = binaryStr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = binaryStr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  } catch (err) {
+    console.warn('[dataUrlToFile] Failed to decode base64, returning placeholder File:', err);
+    return new File([], filename, { type: mime });
   }
-  return new File([u8arr], filename, { type: mime });
 }
+

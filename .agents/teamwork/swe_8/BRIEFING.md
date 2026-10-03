@@ -49,12 +49,13 @@ Orchestrate SWE Light refinement for CameraSelfieCapture orientation prop and co
 |-------|------|-----------|--------|---------|
 | implementer_r0 | teamwork_preview_implementer | CameraSelfieCapture orientation prop & integration | completed | 09348b25-0551-4edd-891b-2319838ae1bd |
 | reviewer_r1 | teamwork_preview_reviewer | Adversarial Review Round 1 | completed | b7e61e37-451b-4aec-aed7-8246d0c76eef |
-| reviewer_r2 | teamwork_preview_reviewer | Adversarial Review Round 2 | in-progress | f0bdc437-288d-4b1f-b74f-6674dc8e5d5e |
+| reviewer_r2 | teamwork_preview_reviewer | Adversarial Review Round 2 | completed | f0bdc437-288d-4b1f-b74f-6674dc8e5d5e |
+| reviewer_r3 | teamwork_preview_reviewer | Adversarial Review Round 3 | in-progress | b8bcb9f8-4f76-4f77-a376-b0bf2ea63de8 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 3 / 16
-- Pending subagents: f0bdc437-288d-4b1f-b74f-6674dc8e5d5e
+- Spawn count: 4 / 16
+- Pending subagents: b8bcb9f8-4f76-4f77-a376-b0bf2ea63de8
 - Predecessor: none
 - Successor: not yet spawned
 

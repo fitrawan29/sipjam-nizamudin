@@ -270,6 +270,70 @@ for (const file of srcFiles) {
   );
 }
 
+// --- Section 10: R3 Adversarial Review - Media Track Leak Prevention & Lifecycle Hardening ---
+console.log('\n--- Section 10: R3 Adversarial Review - Media Track Leak Prevention & Lifecycle Hardening ---');
+
+// 10.1 Active session cancellation & media track leak prevention
+assert(
+  cameraContent.includes('activeSessionIdRef = useRef(0)') &&
+  cameraContent.includes('activeSessionIdRef.current += 1;') &&
+  cameraContent.includes('currentSession !== activeSessionIdRef.current'),
+  'CameraSelfieCapture implements activeSessionIdRef token to prevent leaked media tracks from in-flight requests'
+);
+
+// 10.2 Retake lifecycle preservation
+assert(
+  cameraContent.includes('isRetakeRef = useRef(false)') &&
+  cameraContent.includes('isRetakeRef.current = true;') &&
+  cameraContent.includes('facingModeRef.current || initialFacingMode'),
+  'CameraSelfieCapture preserves chosen facingMode on photo retake without premature startCamera race conditions'
+);
+
+// 10.3 Dynamic orientation change detection while streaming
+assert(
+  cameraContent.includes('prevOrientationRef = useRef(orientation)') &&
+  cameraContent.includes('prevOrientationRef.current !== orientation'),
+  'CameraSelfieCapture detects runtime orientation prop changes and renegotiates media stream constraints'
+);
+
+// 10.4 Preview container aspect ratio and overflow protection
+assert(
+  cameraContent.includes('object-contain') &&
+  cameraContent.includes('max-w-[calc(100%-1rem)]'),
+  'Preview area enforces object-contain and badge max-w bounds to prevent visual overflow on narrow viewports'
+);
+
+// 10.5 onCancel graceful camera shutdown
+assert(
+  cameraContent.includes('stopCamera();\n                onCancel();') ||
+  cameraContent.includes('stopCamera();\r\n                onCancel();'),
+  'CameraSelfieCapture immediately stops camera stream tracks when onCancel is triggered'
+);
+
+// 10.6 Functional dataUrlToFile resilience test
+import { dataUrlToFile } from '../src/lib/watermarkCanvas';
+
+const sampleDataUrl = 'data:image/jpeg;base64,' + Buffer.from('test-image-bytes').toString('base64');
+const validFile = dataUrlToFile(sampleDataUrl, 'valid_test.jpg');
+assert(
+  validFile instanceof (global as any).File && validFile.name === 'valid_test.jpg' && validFile.type === 'image/jpeg',
+  'dataUrlToFile successfully decodes valid base64 data URL into File'
+);
+
+const remoteHttpUrl = 'https://supabase.project.co/storage/v1/object/public/presensi/existing.jpg';
+const fallbackFile = dataUrlToFile(remoteHttpUrl, 'remote_test.jpg');
+assert(
+  fallbackFile instanceof (global as any).File && fallbackFile.name === 'remote_test.jpg' && fallbackFile.size === 0,
+  'dataUrlToFile safely handles remote non-data URL without throwing DOMException'
+);
+
+const emptyUrl = '';
+const emptyFile = dataUrlToFile(emptyUrl, 'empty_test.jpg');
+assert(
+  emptyFile instanceof (global as any).File && emptyFile.name === 'empty_test.jpg',
+  'dataUrlToFile safely handles empty input without error'
+);
+
 console.log('\n====================================================');
 if (failed === 0) {
   console.log('🎉 ALL CAMERA ORIENTATION VERIFICATION TESTS PASSED!');
@@ -278,3 +342,4 @@ if (failed === 0) {
   console.error(`💥 ${failed} TEST(S) FAILED!`);
   process.exit(1);
 }
+

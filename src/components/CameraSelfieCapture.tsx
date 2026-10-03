@@ -27,6 +27,10 @@ export default function CameraSelfieCapture({
   const streamRef = useRef<MediaStream | null>(null);
   const isStartingRef = useRef(false);
   const isMountedRef = useRef(true);
+  const activeSessionIdRef = useRef(0);
+  const facingModeRef = useRef<'user' | 'environment'>(initialFacingMode);
+  const isRetakeRef = useRef(false);
+  const prevOrientationRef = useRef(orientation);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -94,6 +98,8 @@ export default function CameraSelfieCapture({
 
   // 2. Stop camera stream gracefully
   const stopCamera = useCallback(() => {
+    // Invalidate in-flight camera start requests
+    activeSessionIdRef.current += 1;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => {
         track.stop();
@@ -110,13 +116,15 @@ export default function CameraSelfieCapture({
   const startCamera = useCallback(async (mode: 'user' | 'environment') => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
+    const currentSession = ++activeSessionIdRef.current;
     setCameraError(null);
 
     stopCamera();
+    activeSessionIdRef.current = currentSession;
 
     // Hardware sensor release pause (essential for iOS Safari)
     await new Promise(r => setTimeout(r, 150));
-    if (!isMountedRef.current) {
+    if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {
       isStartingRef.current = false;
       return;
     }
@@ -152,7 +160,7 @@ export default function CameraSelfieCapture({
         }
       }
 
-      if (!isMountedRef.current) {
+      if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {
         stream.getTracks().forEach(t => t.stop());
         isStartingRef.current = false;
         return;
@@ -195,15 +203,31 @@ export default function CameraSelfieCapture({
   const toggleFacingMode = async () => {
     if (isStartingRef.current) return;
     const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    facingModeRef.current = nextMode;
     setFacingMode(nextMode);
     await startCamera(nextMode);
   };
+
+  // Re-negotiate camera stream if orientation prop changes dynamically while streaming
+  useEffect(() => {
+    if (prevOrientationRef.current !== orientation) {
+      prevOrientationRef.current = orientation;
+      if (!capturedImage && isStreaming) {
+        startCamera(facingModeRef.current || facingMode);
+      }
+    }
+  }, [orientation, capturedImage, isStreaming, facingMode, startCamera]);
 
   // Initial mount: update GPS and start camera once if no image captured yet
   useEffect(() => {
     requestLocation();
     if (!capturedImage) {
-      startCamera(initialFacingMode);
+      if (isRetakeRef.current) {
+        isRetakeRef.current = false;
+        startCamera(facingModeRef.current || initialFacingMode);
+      } else {
+        startCamera(initialFacingMode);
+      }
     }
     return () => {
       stopCamera();
@@ -237,9 +261,9 @@ export default function CameraSelfieCapture({
 
   // 5. Retake photo
   const handleRetake = () => {
+    isRetakeRef.current = true;
     setCapturedImage(null);
     setCapturedFile(null);
-    startCamera(facingMode);
     requestLocation();
   };
 
@@ -278,7 +302,10 @@ export default function CameraSelfieCapture({
           {onCancel && (
             <button
               type="button"
-              onClick={onCancel}
+              onClick={() => {
+                stopCamera();
+                onCancel();
+              }}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1.5 py-0.5 rounded transition shrink-0"
               title="Batal"
             >
@@ -294,16 +321,17 @@ export default function CameraSelfieCapture({
       } rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}>
         {/* Captured Image Preview */}
         {capturedImage ? (
-          <div className="relative w-full h-full">
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={capturedImage}
               alt="Preview Kamera"
               className="w-full h-full object-contain"
             />
-            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20">
-              <i className="fa-solid fa-check text-emerald-400"></i> Foto Terverifikasi
-              {locationName && <span className="text-slate-300 ml-1 max-w-[200px] truncate">| {locationName}</span>}
+            <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
+              <i className="fa-solid fa-check text-emerald-400 shrink-0"></i>
+              <span className="shrink-0">Foto Terverifikasi</span>
+              {locationName && <span className="text-slate-300 ml-1 max-w-[120px] sm:max-w-[200px] truncate">| {locationName}</span>}
             </div>
           </div>
         ) : (
