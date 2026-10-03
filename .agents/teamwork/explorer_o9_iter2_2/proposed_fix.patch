@@ -1,0 +1,32 @@
+--- a/src/components/RekapJurnalView.tsx
++++ b/src/components/RekapJurnalView.tsx
+@@ -252,10 +252,10 @@ export default function RekapJurnalView({
+         const total = parseInt(semuaHadirMatch[1], 10);
+         return `Total murid: ${total}, Hadir: ${total}, Izin: 0, Sakit: 0, Alpa: 0`;
+       }
+-      const hadirMatch = km.match(/(?:Hadir|Hadir siswa)(?:\s*:|\s+)(\d+)/i);
+-      const izinMatch = km.match(/Izin(?:\s*:|\s+)(\d+)/i);
+-      const sakitMatch = km.match(/Sakit(?:\s*:|\s+)(\d+)/i);
+-      const alpaMatch = km.match(/Alpa(?:\s*:|\s+)(\d+)/i);
++      const hadirMatch = km.match(/(?:Hadir siswa|Hadir)(?:\s*:\s*|\s+)(\d+)/i);
++      const izinMatch = km.match(/Izin(?:\s*:\s*|\s+)(\d+)/i);
++      const sakitMatch = km.match(/Sakit(?:\s*:\s*|\s+)(\d+)/i);
++      const alpaMatch = km.match(/Alpa(?:\s*:\s*|\s+)(\d+)/i);
+       if (hadirMatch || izinMatch || sakitMatch || alpaMatch) {
+         const h = hadirMatch ? parseInt(hadirMatch[1], 10) : 0;
+         const i = izinMatch ? parseInt(izinMatch[1], 10) : 0;
+@@ -284,10 +284,10 @@ export default function RekapJurnalView({
+         } catch (_) {}
+       }
+       if (raw.includes('|')) {
+-        const h = parseInt(raw.match(/H:(\d+)/i)?.[1] || '0', 10);
+-        const i = parseInt(raw.match(/I:(\d+)/i)?.[1] || '0', 10);
+-        const s = parseInt(raw.match(/S:(\d+)/i)?.[1] || '0', 10);
+-        const a = parseInt(raw.match(/A:(\d+)/i)?.[1] || '0', 10);
++        const h = parseInt(raw.match(/H\s*:\s*(\d+)/i)?.[1] || '0', 10);
++        const i = parseInt(raw.match(/I\s*:\s*(\d+)/i)?.[1] || '0', 10);
++        const s = parseInt(raw.match(/S\s*:\s*(\d+)/i)?.[1] || '0', 10);
++        const a = parseInt(raw.match(/A\s*:\s*(\d+)/i)?.[1] || '0', 10);
+         const total = h + i + s + a;
+         return `Total murid: ${total}, Hadir: ${h}, Izin: ${i}, Sakit: ${s}, Alpa: ${a}`;
+       }

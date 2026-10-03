@@ -50,16 +50,20 @@ Lead and execute improvements on form Jurnal KBM and dokumen cetak rekap (R1, R2
 | explorer_o9_2 | teamwork_preview_explorer | RekapJurnalView.tsx investigation (R1, R2, R3) | completed | 83147756-2f37-45cb-8acf-e8cf1e89ec96 |
 | explorer_o9_3 | teamwork_preview_explorer | Integration & verification investigation | completed | de0b5edf-1b20-41e6-9fdf-45781d16bec1 |
 | worker_o9_1 | teamwork_preview_worker | Implementation of R1, R2, R3, builds, git push | completed | ef2f811e-19f8-4f9e-944d-3e476ebdfb90 |
-| reviewer_o9_1 | teamwork_preview_reviewer | Code Review 1 - R1, R2, R3 verification | in-progress | 7a174da5-7102-40cc-8299-eb96dc79f743 |
-| reviewer_o9_2 | teamwork_preview_reviewer | Code Review 2 - styling, layout, edge cases | in-progress | 27565bcc-fd05-4fc7-b04e-ac5ed222df8f |
-| challenger_o9_1 | teamwork_preview_challenger | Adversarial verification 1 - stress test cases | in-progress | 38c4e969-702f-49d6-9232-2b25d9ef00bf |
-| challenger_o9_2 | teamwork_preview_challenger | Adversarial verification 2 - layout, regressions | in-progress | 17cc5164-c201-49a2-98e6-a3d954517083 |
-| auditor_o9_1 | teamwork_preview_auditor | Forensic integrity audit - genuine logic verification | in-progress | 9cd77074-fa02-4438-832d-8c18c486759a |
+| reviewer_o9_1 | teamwork_preview_reviewer | Code Review 1 - R1, R2, R3 verification | completed | 7a174da5-7102-40cc-8299-eb96dc79f743 |
+| reviewer_o9_2 | teamwork_preview_reviewer | Code Review 2 - styling, layout, edge cases | completed | 27565bcc-fd05-4fc7-b04e-ac5ed222df8f |
+| challenger_o9_1 | teamwork_preview_challenger | Adversarial verification 1 - stress test cases | completed | 38c4e969-702f-49d6-9232-2b25d9ef00bf |
+| challenger_o9_2 | teamwork_preview_challenger | Adversarial verification 2 - layout, regressions | completed | 17cc5164-c201-49a2-98e6-a3d954517083 |
+| auditor_o9_1 | teamwork_preview_auditor | Forensic integrity audit - genuine logic verification | completed | 9cd77074-fa02-4438-832d-8c18c486759a |
+| explorer_o9_iter2_1 | teamwork_preview_explorer | Iteration 2 Explorer 1 - Regex Fix | completed | b027b0de-fc2c-4722-bd14-70c9b5088062 |
+| explorer_o9_iter2_2 | teamwork_preview_explorer | Iteration 2 Explorer 2 - Consistency Check | completed | 01ade442-dd56-4e73-a358-3db4c1a595ac |
+| explorer_o9_iter2_3 | teamwork_preview_explorer | Iteration 2 Explorer 3 - Test Suite Check | completed | 9d88e013-47ee-40e4-bda4-79a9a14d8d36 |
+| worker_o9_iter2 | teamwork_preview_worker | Remediation Worker - Regex Fix | in-progress | b0ae0797-784a-4e65-87c2-07693e2ea85b |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 9 / 16
-- Pending subagents: 7a174da5-7102-40cc-8299-eb96dc79f743, 27565bcc-fd05-4fc7-b04e-ac5ed222df8f, 38c4e969-702f-49d6-9232-2b25d9ef00bf, 17cc5164-c201-49a2-98e6-a3d954517083, 9cd77074-fa02-4438-832d-8c18c486759a
+- Spawn count: 13 / 16
+- Pending subagents: b0ae0797-784a-4e65-87c2-07693e2ea85b
 - Predecessor: none
 - Successor: not yet spawned
 
