@@ -61,12 +61,17 @@ Modifikasi aplikasi SIPJAM (Next.js + Supabase) untuk menyesuaikan orientasi kam
 | explorer_survey_1 | teamwork_preview_explorer | Survey R1 (Camera) & R4 (DB Migration) | completed | 644b496f-f65f-4741-baee-c46210e1ea3f |
 | explorer_survey_2 | teamwork_preview_explorer | Survey R2 (GuruJurnal Form Restructuring) | completed | cde156e7-d11f-4476-8855-76a060d16640 |
 | explorer_survey_3 | teamwork_preview_explorer | Survey R3 (RekapJurnalView Print Table) | completed | 93b75af9-b712-4372-a192-ffe6ca3d3049 |
-| worker_m2 | teamwork_preview_worker | Implementation R1, R2, R3, Migration file & Types | in-progress | 9e08916d-6768-4c92-a4d0-d0b19749837a |
+| worker_m2 | teamwork_preview_worker | Implementation R1, R2, R3, Migration file & Types | completed | 9e08916d-6768-4c92-a4d0-d0b19749837a |
+| reviewer_1 | teamwork_preview_reviewer | Review GuruPresensi, GuruJurnal, Types, Build | in-progress | a716ea87-77d7-468e-94e6-4cda94ea58c2 |
+| reviewer_2 | teamwork_preview_reviewer | Review RekapJurnalView, Aspect-video, Class isolation | in-progress | c315a43b-9ca4-478d-8e3b-1d6927cac0c3 |
+| challenger_1 | teamwork_preview_challenger | Empirical test camera orientation & date display | in-progress | 4b017748-60cd-4b1d-af38-55578df1205b |
+| challenger_2 | teamwork_preview_challenger | Empirical test payload, validations, fallbacks | in-progress | a85cf597-5758-4566-a4c7-6e48c411c709 |
+| auditor_1 | teamwork_preview_auditor | Forensic Integrity Audit | in-progress | bd07f160-84d2-409c-a9c4-28ad094d0062 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 4 / 16
-- Pending subagents: worker_m2
+- Spawn count: 9 / 16
+- Pending subagents: reviewer_1, reviewer_2, challenger_1, challenger_2, auditor_1
 - Predecessor: none
 - Successor: not yet spawned
 
