@@ -58,12 +58,17 @@ Lead and execute improvements on form Jurnal KBM and dokumen cetak rekap (R1, R2
 | explorer_o9_iter2_1 | teamwork_preview_explorer | Iteration 2 Explorer 1 - Regex Fix | completed | b027b0de-fc2c-4722-bd14-70c9b5088062 |
 | explorer_o9_iter2_2 | teamwork_preview_explorer | Iteration 2 Explorer 2 - Consistency Check | completed | 01ade442-dd56-4e73-a358-3db4c1a595ac |
 | explorer_o9_iter2_3 | teamwork_preview_explorer | Iteration 2 Explorer 3 - Test Suite Check | completed | 9d88e013-47ee-40e4-bda4-79a9a14d8d36 |
-| worker_o9_iter2 | teamwork_preview_worker | Remediation Worker - Regex Fix | in-progress | b0ae0797-784a-4e65-87c2-07693e2ea85b |
+| worker_o9_iter2 | teamwork_preview_worker | Remediation Worker - Regex Fix | completed | b0ae0797-784a-4e65-87c2-07693e2ea85b |
+| reviewer_o9_iter2_1 | teamwork_preview_reviewer | Iteration 2 Reviewer 1 - Regex Fix Review | in-progress | 83f3c506-fb82-47e9-bcb5-5a7dd33f0592 |
+| reviewer_o9_iter2_2 | teamwork_preview_reviewer | Iteration 2 Reviewer 2 - Formatting & Layout Review | in-progress | 30fa643b-8e67-4105-b1cb-4ba07eb91255 |
+| challenger_o9_iter2_1 | teamwork_preview_challenger | Iteration 2 Challenger 1 - Stress Test Suite | in-progress | e126526d-4faf-456b-b17f-f70fb420df85 |
+| challenger_o9_iter2_2 | teamwork_preview_challenger | Iteration 2 Challenger 2 - Regression & CSV Check | in-progress | 87835264-d59f-4d31-8ed7-5e24096cf5e8 |
+| auditor_o9_iter2 | teamwork_preview_auditor | Iteration 2 Forensic Auditor - Genuine Logic Verification | in-progress | 9f884771-3036-49d6-8a93-f6963d780a74 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 13 / 16
-- Pending subagents: b0ae0797-784a-4e65-87c2-07693e2ea85b
+- Spawn count: 18 / 16
+- Pending subagents: 83f3c506-fb82-47e9-bcb5-5a7dd33f0592, 30fa643b-8e67-4105-b1cb-4ba07eb91255, e126526d-4faf-456b-b17f-f70fb420df85, 87835264-d59f-4d31-8ed7-5e24096cf5e8, 9f884771-3036-49d6-8a93-f6963d780a74
 - Predecessor: none
 - Successor: not yet spawned
 
