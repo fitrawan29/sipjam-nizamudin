@@ -1,7 +1,7 @@
-# BRIEFING — 2026-09-27T22:04:30Z
+# BRIEFING — 2026-10-03T05:50:00Z
 
 ## Mission
-Review and adversarially challenge the Interactive Onboarding Tutorial implementation and integration in Sipjam (Next.js 16 + React 19).
+Independently review and adversarially challenge R1 (Camera anti-zoom & orientation), R2 (AI Assistant orange badge removal), and R3 (5-minute automated teacher reminder system).
 
 ## 🔒 My Identity
 - Archetype: reviewer / critic
@@ -10,6 +10,8 @@ Review and adversarially challenge the Interactive Onboarding Tutorial implement
 - Original parent: 3b364431-4af8-4ed9-9a8c-b79b77d58fbe
 - Milestone: Onboarding Tutorial & AI Assistant UI Integration
 - Instance: 2 of 2
+- Milestone: R1-R3 Camera, AI Badge, 5-Min Teacher Reminder System
+- Current Parent: 7e84420a-2cde-4423-8413-5104d66482dd
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
@@ -18,48 +20,37 @@ Review and adversarially challenge the Interactive Onboarding Tutorial implement
 - Adhere to system prompt protection and confidentiality rules
 
 ## Current Parent
-- Conversation ID: 3b364431-4af8-4ed9-9a8c-b79b77d58fbe
-- Updated: 2026-09-27T22:04:30Z
+- Conversation ID: 7e84420a-2cde-4423-8413-5104d66482dd
+- Updated: 2026-10-03T05:50:00Z
 
 ## Review Scope
 - **Files to review**:
-  - `src/components/Onboarding/` (`tutorialSteps.ts`, `OnboardingTutorial.tsx`, `index.ts`)
-  - `src/components/AppScreen.tsx`
-  - `tests/onboarding_and_ai_assistant_ui.test.ts`
-  - `tests/app_screen_integration.test.ts`
-- **Interface contracts**: `ORIGINAL_REQUEST.md`, `orchestrator_5/DISPATCH.md`
-- **Review criteria**: correctness, logical completeness, quality, adversarial robustness, mobile responsiveness, viewport clamping, localStorage persistence, non-destructive integration
+  - `src/lib/watermarkCanvas.ts` (R1)
+  - `src/components/CameraSelfieCapture.tsx` (R1)
+  - `src/components/AIAssistant/AIAssistant.tsx` (R2)
+  - `src/components/TeacherReminderManager.tsx` (R3)
+  - `src/components/AppScreen.tsx` (R3 integration)
+  - `src/app/api/push/send-reminders/route.ts` (R3 push parity)
+  - `tests/camera_orientation.test.ts`
+  - `tests/teacher_reminder_r3.test.ts`
+- **Interface contracts**: `ORIGINAL_REQUEST.md` (2026-10-03T05:27:01Z prompt)
+- **Review criteria**: Integrity, correctness, edge cases, error handling, CSS layouts, interval cleanup, anti-spam, regressions.
 
 ## Review Checklist
-- **Items reviewed**:
-  - `src/components/Onboarding/tutorialSteps.ts` (VERIFIED: GURU_STEPS 5, ADMIN_STEPS 6, persistence keys, normalizeRole)
-  - `src/components/Onboarding/OnboardingTutorial.tsx` (VERIFIED: SVG mask, spotlight box, tooltip clamping, keyboard nav)
-  - `src/components/AppScreen.tsx` (VERIFIED: auto-trigger, hamburger target, menu loop target, "Lihat Tutorial Lagi" button, mounting)
-  - `tests/onboarding_and_ai_assistant_ui.test.ts` (VERIFIED: 24/24 passed)
-  - `tests/app_screen_integration.test.ts` (VERIFIED: 24/24 passed)
-  - `npm run build` (VERIFIED: Turbopack compiled successfully in 868ms)
-  - `npx tsc --noEmit` (VERIFIED: 0 errors)
-- **Verdict**: REQUEST_CHANGES (due to Step Index Retention on "Lihat Tutorial Lagi" re-open)
-- **Unverified claims**: Physical touch momentum on real iOS hardware.
+- **Items reviewed**: Pending deep-dive
+- **Verdict**: pending
+- **Unverified claims**: Worker 1 claims for R1, R2, R3
 
 ## Attack Surface
-- **Hypotheses tested**:
-  - Null target DOM element handling -> PASSED (gracefully falls back to centered tooltip, spotlight hidden)
-  - Mobile viewport clamping at 320px -> PASSED (width clamped to 288px, left 16px, collision detection working)
-  - Desktop edge collision -> PASSED (flips placement if right/bottom edge breached)
-  - Superadmin role isolation -> PASSED (returns 0 steps, returns null)
-  - Corrupted localStorage values -> PASSED (strictly requires 'true')
-  - Re-opening tutorial via "Lihat Tutorial Lagi" -> FAILED (retains last step index; opens on Step 5/5 or 6/6 instead of Step 1)
-- **Vulnerabilities found**:
-  - `currentStepIndex` state is retained across closed/open transitions in `OnboardingTutorial.tsx`
-- **Untested angles**:
-  - Physical camera handoff under low-memory Android devices (unrelated to tutorial)
+- **Hypotheses to test**:
+  - R1: Does watermarkCanvas distort, crop, or flip dimensions on mobile vertical streams? Does it handle aspect ratio matching vs non-matching?
+  - R2: Is the orange badge completely gone from DOM and CSS? Does the robot icon and chat remain intact?
+  - R3: Does `TeacherReminderManager` leak intervals or spam notifications? Does it clean up on unmount? What if `pengaturan` is null/empty? What about time boundary comparisons (e.g. string vs time, Sunday/holidays)? What about user roles (admin vs guru)?
+- **Vulnerabilities found**: TBD
+- **Untested angles**: TBD
 
 ## Key Decisions Made
-- Executed both automated test suites (`onboarding_and_ai_assistant_ui.test.ts` and `app_screen_integration.test.ts`).
-- Confirmed zero integrity violations (no hardcoded test mocks, genuine implementation).
-- Identified step retention bug on "Lihat Tutorial Lagi".
-- Decided on verdict: REQUEST_CHANGES with targeted 3-line fix recommendation for `OnboardingTutorial.tsx`.
+- Initiated independent review and adversarial evaluation.
 
 ## Artifact Index
 - `.agents/teamwork/reviewer_2/DISPATCH.md` — Inbound instructions

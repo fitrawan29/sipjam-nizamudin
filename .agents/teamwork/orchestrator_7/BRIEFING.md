@@ -45,12 +45,17 @@ Orchestrate end-to-end implementation and verification of R1 (Camera anti-zoom a
 | explorer_1 | teamwork_preview_explorer | R1 Camera Anti-Zoom & Orientation | completed | dccb35d1-3d0a-4302-97e6-7f90d0982998 |
 | explorer_2 | teamwork_preview_explorer | R2 AI Assistant Badge Removal | completed | f70f3f6f-f6d1-4cdf-9e81-9ec32f0a4ea7 |
 | explorer_3 | teamwork_preview_explorer | R3 Automated 5-Min Reminder System | completed | 48e97e4f-c419-4a9a-8a98-5feb83ed3f8c |
-| worker_1 | teamwork_preview_worker | Implementation of R1, R2, R3 & Tests | in-progress | c2a4f6e1-1b6a-43e8-921c-4eba9883d9cf |
+| worker_1 | teamwork_preview_worker | Implementation of R1, R2, R3 & Tests | completed | c2a4f6e1-1b6a-43e8-921c-4eba9883d9cf |
+| reviewer_1 | teamwork_preview_reviewer | Code & Tests Reviewer 1 | completed (APPROVE) | eca54382-1ae1-4d51-a14a-e0f05e897ba5 |
+| reviewer_2 | teamwork_preview_reviewer | Code & Tests Reviewer 2 | in-progress | fc14ce55-6aa3-4c4d-8a52-a6a1ba177457 |
+| challenger_1 | teamwork_preview_challenger | Adversarial Camera & AI Challenger | in-progress | 8197a1b4-7b96-49a0-8052-118c4c60def2 |
+| challenger_2 | teamwork_preview_challenger | Adversarial Reminder Challenger | in-progress | 1c7b9a86-e105-4a01-a1da-0d193defd582 |
+| auditor_1 | teamwork_preview_auditor | Forensic Integrity Auditor | completed (CLEAN) | 16cb2300-bf7d-4583-aa95-14e5c875ad2e |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 4 / 16
-- Pending subagents: c2a4f6e1-1b6a-43e8-921c-4eba9883d9cf
+- Spawn count: 9 / 16
+- Pending subagents: fc14ce55-6aa3-4c4d-8a52-a6a1ba177457, 8197a1b4-7b96-49a0-8052-118c4c60def2, 1c7b9a86-e105-4a01-a1da-0d193defd582
 - Predecessor: none
 - Successor: not yet spawned
 

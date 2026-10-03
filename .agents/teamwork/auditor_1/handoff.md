@@ -1,180 +1,164 @@
-# Forensic Audit Report & Handoff
+# Forensic Audit Report: R1, R2, R3 Integrity Verification
 
-**Work Product**: Milestone 5: Offline AI Assistant & Interactive Onboarding Tutorial (`src/components/AIAssistant/`, `src/components/Onboarding/`, `src/components/AppScreen.tsx`, `tests/`)  
-**Profile**: General Project  
-**Verdict**: **CLEAN**  
+**Work Product**: R1 (Camera Anti-Zoom & Orientation), R2 (AI Orange Badge Removal), R3 (5-Minute Automated Teacher Reminder System)  
+**Profile**: General Project (Integrity Mode: Demo)  
+**Auditor**: Forensic Auditor 1 (`teamwork_preview_auditor`)  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1`  
+**Verdict**: **CLEAN**
 
 ---
 
 ### Phase Results
 
-| Phase / Check | Description | Status | Evidence Summary |
-|---|---|:---:|---|
-| **Check 1: Genuine Implementation** | Verifies `AIAssistant` and `OnboardingTutorial` are authentic, complete components rather than mocks or facades. | **PASS** | 44 structured Indonesian Q&As across all 19 menus + general; multi-signal keyword & token matching algorithm with context boost (+15 pts); SVG spotlight mask overlay, 5-step Guru & 6-step Admin flows with real DOM selector targeting. |
-| **Check 2: Offline & Network Purity** | Verifies zero external API calls (`fetch`, `axios`, `XMLHttpRequest`, WebSocket, external AI endpoints like OpenAI/Gemini, analytics). | **PASS** | Automated codebase inspection confirmed 0 network calls; test suite intercepted `globalThis.fetch` to ensure zero runtime network calls; 0 new npm dependencies in `package.json`. |
-| **Check 3: Hardcoding & Anti-Cheating** | Verifies tests execute genuine assertions against real logic/SSR rendering and `data-tour` tags link to real UI elements. | **PASS** | No trivial `expect(true).toBe(true)` facades; 93 comprehensive programmatic assertions across 3 suites; `data-tour="hamburger-btn"`, `data-tour={item.id}`, and `data-tour="ai-assistant-btn"` attached to real interactive DOM elements. |
-| **Check 4: Build & Typecheck Validation** | Verifies `npx tsc --noEmit`, `npm run build`, and milestone test suites execute cleanly with zero errors. | **PASS** | `npx tsc --noEmit` exited code 0; `npm run build` compiled clean in 1342ms with Turbopack (code 0); all 3 test suites passed 100%. |
+- **Check 1: Source Code Anti-Cheating & Bypass Analysis**: **PASS** — Zero hardcoded mock bypasses, zero test environment conditionals (`process.env.NODE_ENV === 'test'`), zero stub functions returning constants.
+- **Check 2: Authentic Business Logic & Facade Analysis (R1, R2, R3)**: **PASS** — Authentic uncropped 1x scale preservation in `watermarkCanvas.ts`, genuine complete deletion of orange badge DOM nodes in `AIAssistant.tsx`, and authentic 5-minute recurring interval (`300_000 ms`) with full lifecycle cleanup and workflow state evaluation in `TeacherReminderManager.tsx`.
+- **Check 3: Git History & Working Tree Integrity**: **PASS** — Commit `f361eed46a190397f231cfcaad511ecab7c32dbf` cleanly captures all changes with descriptive commit messages, and the local working tree is clean and up to date with `origin/main`.
+- **Check 4: Build, Typecheck, and Test Suite Independent Execution**: **PASS** — `npx tsc --noEmit` (0 errors), `tests/camera_orientation.test.ts` (PASS), `tests/teacher_reminder_r3.test.ts` (PASS), `npm test` (16/16 suites PASS), `npm run build` (Next.js 16.3.4 Turbopack build succeeded).
 
 ---
 
 ## 1. Observation
 
-### File Inspections
-- **`src/components/AIAssistant/knowledgeBase.ts`** (487 lines, 31,815 bytes):
-  - Catalog of 44 fully fleshed-out Q&A items (`FAQ_ITEMS`) in Indonesian.
-  - Complete mapping covering 20 categories (`MENU_CATEGORIES`) including all 19 views: Dashboard (`view-home`), Presensi Guru (`view-guru-presensi`), Jurnal Pembelajaran (`view-guru-jurnal`), Modul Piket (`view-piket`), Perangkat Pembelajaran (`view-dokumen`), Daftar Nilai (`view-gradebook`), Chat Guru (`view-chat`), Informasi (`view-informasi`), Riwayat (`view-history`), Rekap Jurnal (`view-guru-rekap-jurnal`), Presensi Siswa (`view-rekap-siswa`), Verifikasi Admin (`view-admin-verif`), Sistem Blok (`view-sistem-blok`), Jurnal Kelas (`view-jurnal-kelas`), Analitik (`view-analitik`), Rekap Akhir (`view-admin-rekap`), Master Data (`view-admin-data`), Akses Data/Backup (`view-admin-backup`), Sistem Konfigurasi (`view-admin-config`), and Umum & Bantuan.
-  - Each item defines `id`, `category`, `question`, `answer`, `keywords`, `relatedViews`, and `userRoles`.
+1. **R1: Camera Anti-Zoom & Accurate Orientation**:
+   - In `src/lib/watermarkCanvas.ts` (lines 146–185):
+     ```typescript
+     const isPortrait = orientation === 'portrait' || (!orientation && width < height);
 
-- **`src/components/AIAssistant/faqMatcher.ts`** (207 lines, 5,687 bytes):
-  - `tokenize(text)`: Unicode-aware regex `[^\p{L}\p{N}\s]/gu` lowercase token extraction.
-  - `calculateMatchScore(item, query, currentView)`: Multi-signal scoring engine:
-    - Exact phrase in question/query: +50 pts
-    - Full keyword phrase match: +25 pts
-    - Keyword token overlap: +15 * ratio pts
-    - Question token overlap: +12 pts per token
-    - Answer token overlap: +3 pts per token
-    - Context-aware boost: +15 pts when `currentView` matches `item.relatedViews`
-  - `MIN_MATCH_SCORE_THRESHOLD`: Filter threshold set to 18 pts.
-  - `getFallbackResponse(query, currentView)`: Friendly Indonesian message listing available categories and context suggestions when query doesn't match knowledge base.
+     let drawWidth = width;
+     let drawHeight = height;
+     let offsetX = 0;
+     let offsetY = 0;
 
-- **`src/components/AIAssistant/AIAssistant.tsx`** (340 lines, 14,798 bytes):
-  - Floating trigger button at bottom-right with `data-tour="ai-assistant-btn"`, pulse badge, and accessible aria-labels.
-  - Interactive chat modal featuring header with offline status indicator, scrollable messages stream, suggestion chips, category pills, secondary match buttons, reset button, and message input with Enter key handler.
+     if (isPortrait) {
+       if (width >= height) {
+         const targetRatio = 3 / 4;
+         drawWidth = height * targetRatio;
+         drawHeight = height;
+         offsetX = (width - drawWidth) / 2;
+       } else {
+         drawWidth = width;
+         drawHeight = height;
+         offsetX = 0;
+         offsetY = 0;
+       }
+     } else {
+       if (width < height) {
+         const targetRatio = 16 / 9;
+         drawWidth = width;
+         drawHeight = width / targetRatio;
+         offsetY = (height - drawHeight) / 2;
+       } else {
+         drawWidth = width;
+         drawHeight = height;
+         offsetX = 0;
+         offsetY = 0;
+       }
+     }
+     ```
+   - In `src/components/CameraSelfieCapture.tsx` (lines 139–148, 246–250, 319–321):
+     `orientation` prop ('portrait' | 'landscape') dynamically specifies `MediaStreamConstraints` (`height: 1280, width: 720` for portrait, and `width: 1280, height: 720` for landscape), container viewport framing (`aspect-[3/4]` for portrait vs `aspect-video` for landscape), and forwards `orientation` into `drawWatermarkedCanvas`.
+   - Inspection of `tests/camera_orientation.test.ts` confirmed empirical canvas dimension checks: 720x1280 mobile portrait feed retains 100% uncropped canvas dimensions (720x1280).
 
-- **`src/components/Onboarding/tutorialSteps.ts`** (188 lines, 5,998 bytes):
-  - Storage keys: `STORAGE_KEY_GURU = 'sipjam_onboarding_guru_done'`, `STORAGE_KEY_ADMIN = 'sipjam_onboarding_admin_done'`.
-  - `GURU_STEPS` (5 steps):
-    1. `hamburger-btn` ("Menu Navigasi", requiresSidebarOpen: false)
-    2. `view-guru-presensi` ("Presensi Datang & Pulang", requiresSidebarOpen: true)
-    3. `view-guru-jurnal` ("Jurnal Pembelajaran", requiresSidebarOpen: true)
-    4. `view-piket` ("Modul Piket", requiresSidebarOpen: true)
-    5. `ai-assistant-btn` ("Asisten AI SIPJAM", requiresSidebarOpen: false)
-  - `ADMIN_STEPS` (6 steps):
-    1. `view-admin-verif` ("Menu Verifikasi", requiresSidebarOpen: true)
-    2. `view-sistem-blok` ("Menu Sistem Blok", requiresSidebarOpen: true)
-    3. `view-admin-data` ("Menu Master Data", requiresSidebarOpen: true)
-    4. `view-analitik` ("Menu Analitik", requiresSidebarOpen: true)
-    5. `view-admin-config` ("Menu Sistem (Konfigurasi)", requiresSidebarOpen: true)
-    6. `ai-assistant-btn` ("Asisten AI SIPJAM", requiresSidebarOpen: false)
-  - Superadmin role receives empty steps (exempt from onboarding).
+2. **R2: Removal of Orange Notification Badge on AI Robot Icon**:
+   - In `src/components/AIAssistant/AIAssistant.tsx` (lines 170–185):
+     The previous pulsing span badge (`<span className="absolute -top-1 -right-1 flex h-4 w-4">...</span>`) was deleted from source code completely.
+     No dummy hiding techniques (such as `opacity: 0`, `display: none`, or `visibility: hidden`) were used; the element is absent from the DOM.
+     The `fa-robot` icon is cleanly rendered within the button without obstruction.
 
-- **`src/components/Onboarding/OnboardingTutorial.tsx`** (414 lines, 13,788 bytes):
-  - Spotlight overlay rendered via SVG `<mask id="sipjam-onboarding-mask">` with cut-out hole.
-  - Dynamic highlight frame box with gold border and glowing ring (`[data-testid="spotlight-box"]`).
-  - Tooltip card (`[data-testid="tooltip-card"]`) with responsive positioning and collision avoidance (mobile 320px–428px vs desktop).
-  - Synchronizes with sidebar drawer via `onEnsureSidebarOpen(open)`.
-  - Keyboard navigation: Escape (skip), ArrowRight (next), ArrowLeft (back).
+3. **R3: 5-Minute Automated Teacher Reminder System**:
+   - In `src/components/TeacherReminderManager.tsx`:
+     * Line 8: `export const REMINDER_INTERVAL_MS = 300_000; // 5 minutes in milliseconds`
+     * Lines 178–180: Role gating ensures execution strictly for teachers (`Boolean(user && !isAdmin && !isSuperadmin)`).
+     * Lines 267–270: Genuine interval scheduling:
+       ```typescript
+       const intervalId = setInterval(() => {
+         checkReminders();
+       }, REMINDER_INTERVAL_MS);
+       ```
+     * Lines 282–286: Complete lifecycle cleanup on unmount:
+       ```typescript
+       return () => {
+         clearTimeout(initialTimer);
+         clearInterval(intervalId);
+         document.removeEventListener('visibilitychange', handleVisibilityChange);
+       };
+       ```
+     * Lines 51–169: Pure condition evaluator `evaluateReminderConditions` evaluates all 4 conditions:
+       - Condition 1: Presensi Datang (`jam_datang_mulai` to `jam_datang_akhir`, warning after `jam_datang_batas`).
+       - Condition 2: Jurnal Mengajar (regular schedule checking or block system Jurnal Kegiatan).
+       - Condition 3: Laporan Piket (`dailyState.isPiket` and lacking submitted piket report).
+       - Condition 4: Presensi Pulang (`jam_pulang_mulai` / Friday `jam_pulang_jumat` to `jam_pulang_akhir`).
+     * Lines 228–251: Multi-channel delivery invokes native `navigator.serviceWorker.ready -> reg.showNotification()` when permission is granted.
+     * Lines 312–374: Responsive floating in-app banner with direct `onNavigate` action button ("Buka Menu"), pagination ("Lanjut"), and snooze ("Nanti").
+   - Mounted in `src/components/AppScreen.tsx` (lines 909–912):
+     ```tsx
+     <TeacherReminderManager
+       user={user}
+       onNavigate={handleNavigation}
+     />
+     ```
+   - Parity in `src/app/api/push/send-reminders/route.ts` (lines 86–105, 307–324): Added Task 4 `presensi_pulang` checking.
 
-- **`src/components/AppScreen.tsx`** (897 lines):
-  - Lines 27-28: Imports `AIAssistant` and `{ OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN }`.
-  - Lines 174-189: Auto-trigger effect inspecting localStorage flags on first login for guru and admin, excluding superadmin.
-  - Line 514: `data-tour="hamburger-btn"` on header menu button.
-  - Line 582: `data-tour={item.id}` dynamically rendered on all sidebar navigation buttons.
-  - Lines 600-610: "Lihat Tutorial Lagi" action button in sidebar to replay tutorial anytime.
-  - Lines 881-892: Mounts `AIAssistant` and `OnboardingTutorial` with required props and sidebar sync handler.
-
-### Network Purity Inspection
-- Search across `src/components/AIAssistant/` and `src/components/Onboarding/` for `fetch`, `axios`, `XMLHttpRequest`, `WebSocket`, `http`, `api`, `openai`, `gemini`, `huggingface` returned ZERO network calls.
-- `package.json` contains ZERO new npm packages.
-
-### Test Execution Commands & Outputs
-1. **`npx tsc --noEmit`**:
-   - Exit code: 0 (No TypeScript compilation errors).
-2. **`npm run build`**:
-   - Exit code: 0 (Next.js 16.3.4 Turbopack build succeeded, static & dynamic routes generated clean).
-3. **`npx tsx tests/ai_assistant_faq.test.ts`**:
-   - Exit code: 0 (24 passed, 0 failed).
-   - Validated FAQ count (44 items), 19-menu coverage, tokenization, search accuracy across 6 query types, +15 pts context boost, fallback generation, fetch interception, and SSR rendering.
-4. **`npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`**:
-   - Exit code: 0 (45 passed, 0 failed).
-   - Validated storage keys, role normalization, 5 guru steps, 6 admin steps, superadmin exemption, localStorage simulation, and SSR rendering across 4 states.
-5. **`npx tsx tests/app_screen_integration.test.ts`**:
-   - Exit code: 0 (24 passed, 0 failed).
-   - Validated non-destructive AppScreen integration, data-tour attribute placements, auto-trigger logic, and step target alignment.
+4. **Independent Execution Outputs**:
+   - `npx tsc --noEmit`: Exited code 0 (0 errors).
+   - `npx tsx tests/camera_orientation.test.ts`: Exited code 0 (All sections passed).
+   - `npx tsx tests/teacher_reminder_r3.test.ts`: Exited code 0 (All 7 sections passed).
+   - `npm test`: Exited code 0 (All 16 test suites passed).
+   - `npm run build`: Exited code 0 (Compiled successfully with Turbopack, all static & dynamic routes generated).
+   - `git log -n 1 --stat`: Clean commit `f361eed46a190397f231cfcaad511ecab7c32dbf` on `origin/main`.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Genuine Implementation**:
-   - The user requested a rule-based AI Assistant with at least 30 Q&As in Indonesian covering all main menus, and an interactive onboarding tutorial with 5 Guru steps and 6 Admin steps.
-   - The code delivers 44 comprehensive Q&A items covering all 19 menus with real multi-signal scoring in `faqMatcher.ts` (token overlap, exact phrases, and +15 context boost).
-   - The onboarding component implements real DOM element query (`document.querySelector`), bounding rect calculation (`getBoundingClientRect`), SVG mask spotlight cutout, responsive collision clamping, and automated sidebar drawer opening.
-   - Neither component is a facade or stub; both provide fully functioning, interactive features.
+1. **R1 Integrity**:
+   - Observation: When orientation matches stream aspect ratio (e.g. mobile vertical feed in portrait mode), `drawWidth = width` and `drawHeight = height` without offsets (`offsetX = 0, offsetY = 0`).
+   - Inference: The canvas takes 100% of sensor pixels without cutting or digital zoom. Sensor-mismatch fallback (e.g. horizontal desktop webcam in portrait mode) legitimately center-crops width to 3:4.
+   - Conclusion: R1 is genuine, mathematically sound, and free of artificial zooming hacks.
 
-2. **Zero External Network Calls & Offline Purity**:
-   - The request strictly prohibited external API/AI endpoints.
-   - The inspection verified that no networking libraries or network calls exist in the new components.
-   - The test suite in `ai_assistant_faq.test.ts` explicitly intercepted `globalThis.fetch` to ensure no network calls are triggered during inference, context suggestion, or fallback generation.
-   - No new dependencies were introduced into `package.json`.
+2. **R2 Integrity**:
+   - Observation: The diff of `src/components/AIAssistant/AIAssistant.tsx` shows the deletion of lines containing `animate-ping` and `bg-amber-400`.
+   - Inference: The badge was eliminated at the JSX AST level, eliminating false notifications without dummy CSS tricks.
+   - Conclusion: R2 is clean.
 
-3. **Anti-Cheating & Test Integrity**:
-   - The test suites do not contain trivial or self-certifying `expect(true).toBe(true)` facades.
-   - The tests perform deep algorithmic verification (tokenization, score arithmetic, score delta on context match), schema compliance, SSR rendering assertions, and source file inspections.
-   - `data-tour` attributes are mapped to live, interactive DOM elements in `AppScreen.tsx`.
-
-4. **Build & Typecheck Execution**:
-   - Independent runs of `npx tsc --noEmit` and `npm run build` confirmed zero compile errors and zero regressions.
-   - All 3 milestone test suites passed 100% (93/93 total assertions passed).
+3. **R3 Integrity**:
+   - Observation: `TeacherReminderManager.tsx` instantiates a real `setInterval` with constant `300_000`, queries Supabase `pengaturan` and `getGuruDailyState`, tests all 4 required conditions against live time, invokes `reg.showNotification`, and unmounts cleanly with `clearInterval`.
+   - Inference: The system is not a mock or facade; it runs on the client every 5 minutes and triggers notifications or in-app alerts based on real workflow state.
+   - Conclusion: R3 is fully genuine and operational.
 
 ---
 
 ## 3. Caveats
 
-- In the pre-existing test suite (`sistem_blok_verification.test.ts` from Milestone 3), one assertion expects live database records in `jadwal_pelajaran` (`Live DB: Original jadwal_pelajaran table has 0 records`), which failed because the live database table currently has 0 seeded records. This is unrelated to Milestone 5 and does not affect the AI Assistant or Onboarding Tutorial components.
-- No caveats regarding Milestone 5 deliverables.
+No caveats. All files and implementations were inspected at the source level and independently tested with zero errors.
 
 ---
 
 ## 4. Conclusion
 
-The work product strictly satisfies all criteria specified in the user request (`2026-09-27T21:46:18Z`) and orchestrator dispatch:
-- 100% genuine implementation with 44 Q&A items in Indonesian, multi-signal scoring, and active page context awareness.
-- 100% offline, zero network or API dependencies.
-- Authentic interactive tutorial overlay with SVG spotlight masking and responsive tooltip placement for Guru (5 steps) and Admin (6 steps).
-- Clean, non-destructive integration in `AppScreen.tsx` with working `data-tour` target attributes and replay functionality.
-- TypeScript compiles clean (`tsc --noEmit`), production build succeeds (`npm run build`), and all test suites pass with 100% success.
+**Verdict: CLEAN**
 
-**Final Verdict**: **CLEAN**.
+No integrity violations, dummy facades, hardcoded test bypasses, or shortcuts exist. All three deliverables R1, R2, and R3 are authentic, robust, cleanly integrated, and fully verified.
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce and verify this audit verdict:
+To independently re-verify:
 
-1. **TypeScript Typecheck**:
-   ```bash
-   npx tsc --noEmit
-   ```
-   *Expected*: Exits with code 0, no errors.
+```bash
+# 1. Typecheck
+npx tsc --noEmit
 
-2. **Production Build**:
-   ```bash
-   npm run build
-   ```
-   *Expected*: Exits with code 0, builds successfully with Turbopack.
+# 2. Camera orientation test
+npx tsx tests/camera_orientation.test.ts
 
-3. **AI Assistant FAQ & Matcher Test**:
-   ```bash
-   npx tsx tests/ai_assistant_faq.test.ts
-   ```
-   *Expected*: 24 passed, 0 failed.
+# 3. Teacher 5-minute reminder test
+npx tsx tests/teacher_reminder_r3.test.ts
 
-4. **Onboarding Tutorial Logic & UI Test**:
-   ```bash
-   npx tsx tests/onboarding_and_ai_assistant_ui.test.ts
-   ```
-   *Expected*: 45 passed, 0 failed.
+# 4. Full test suite (16 suites)
+npm test
 
-5. **AppScreen Integration Test**:
-   ```bash
-   npx tsx tests/app_screen_integration.test.ts
-   ```
-   *Expected*: 24 passed, 0 failed.
-
-6. **Network Purity Check**:
-   ```powershell
-   Select-String -Path "src\components\AIAssistant\*.*", "src\components\Onboarding\*.*" -Pattern "fetch", "axios", "XMLHttpRequest", "WebSocket"
-   ```
-   *Expected*: No network calls found.
+# 5. Production build
+npm run build
+```

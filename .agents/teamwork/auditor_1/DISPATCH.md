@@ -1,30 +1,44 @@
-## 2026-09-27T22:00:50Z
-You are auditor_1.
+# Auditor 1 Dispatch: Forensic Integrity Audit
+
+## Context & Role
+You are Forensic Auditor 1 (`teamwork_preview_auditor`).
+Working directory: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1`
+Original request path: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (read this first!).
+
+Worker 1 handoff report: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_1\handoff.md`.
+
+## Mandatory Integrity Audit Scope
+Perform an exhaustive forensic audit across all files modified or added for R1, R2, and R3:
+- `src/lib/watermarkCanvas.ts`
+- `src/components/CameraSelfieCapture.tsx`
+- `src/components/AIAssistant/AIAssistant.tsx`
+- `src/components/TeacherReminderManager.tsx`
+- `src/components/AppScreen.tsx`
+- `src/app/api/push/send-reminders/route.ts`
+- `tests/camera_orientation.test.ts`
+- `tests/teacher_reminder_r3.test.ts`
+
+### Integrity Checks
+1. **No Hardcoded Test Bypasses**: Verify there are no hardcoded conditionals matching test runner environments, mocked strings, or fake return values designed to fool tests.
+2. **Authentic Business Logic**:
+   - R1: Confirm the canvas scaling and orientation logic authentically computes aspect ratios, draws full video frames without artificial digital crop on matching orientations, and handles camera orientations genuine to device inputs.
+   - R2: Confirm the orange badge was genuinely removed and not just hidden using opacity 0 or dummy CSS hacks.
+   - R3: Confirm `TeacherReminderManager.tsx` actually evaluates teacher attendance, journals, and piket duties from real workflow state and settings, with genuine 5-minute interval scheduling (`setInterval`) and real notification/fallback mechanisms.
+3. **No Facades or Dummy Implementations**: All components must be fully integrated and operational.
+4. **Git History & Tree Cleanliness**: Confirm git log and changes are authentic and cleanly committed.
+
+## Output Requirements
+Deliver a binary verdict in `handoff.md`:
+- `CLEAN` (No integrity violations detected)
+- `INTEGRITY VIOLATION` (Cheating, mock bypasses, or dummy facades detected, with full evidence)
+Notify parent orchestrator.
+
+
+## 2026-10-03T05:48:52Z
+[Message] timestamp=2026-10-03T05:48:52Z sender=7e84420a-2cde-4423-8413-5104d66482dd priority=MESSAGE_PRIORITY_HIGH content=You are Forensic Auditor 1 (teamwork_preview_auditor).
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1
+First read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\DISPATCH.md, ORIGINAL_REQUEST.md, and worker_1 handoff.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_1\handoff.md.
 
-Please read:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-09-27T21:46:18Z)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_5\DISPATCH.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\src\components\AIAssistant\
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\src\components\Onboarding\
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\src\components\AppScreen.tsx
-- All test files in `tests/`
-
-Forensic Audit Tasks:
-Conduct a strict, binary forensic integrity audit:
-1. **Genuine Implementation Check**:
-   - Verify that `AIAssistant` is not a mock or facade. Does it actually contain a working static knowledge base with 40+ Q&As in Indonesian? Does the matching algorithm genuinely compute relevance scores?
-   - Verify that `OnboardingTutorial` is not a dummy component. Does it actually contain spotlight overlay logic, step definitions for Guru (5 steps) and Admin (6 steps), and real DOM selector targeting?
-2. **Offline & Network Purity Check**:
-   - Inspect all new files for any `fetch`, `axios`, `XMLHttpRequest`, WebSocket, external AI endpoints (OpenAI, Gemini, HuggingFace, etc.), or external analytics. Confirm zero external network calls.
-3. **Hardcoding & Anti-Cheating Check**:
-   - Inspect tests in `tests/`. Are the tests asserting real component functionality and real matching logic, or are they trivial no-op / `expect(true).toBe(true)` facades?
-   - Are `data-tour` attributes attached to real interactive UI elements in `AppScreen.tsx`?
-4. **Build & Typecheck Execution Validation**:
-   - Execute `npx tsc --noEmit` and `npm run build` independently to verify they actually compile clean without errors or suppressed warnings.
-   - Run all test suites: `npx tsx tests/ai_assistant_faq.test.ts`, `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`, `npx tsx tests/app_screen_integration.test.ts`.
-5. Deliver your binary verdict: CLEAN or INTEGRITY VIOLATION.
-
-Write your full forensic audit report to:
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\handoff.md`
-and send a completion message with summary.
+Conduct a strict forensic integrity audit across all modified and created files for R1, R2, and R3.
+Verify genuine implementation, zero test bypasses, zero dummy facades, authentic 5-minute interval scheduling, real notification dispatch, and authentic git commits.
+Deliver a binary verdict (CLEAN or INTEGRITY VIOLATION) in handoff.md and notify your caller (orchestrator_7).

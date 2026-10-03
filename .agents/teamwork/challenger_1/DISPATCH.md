@@ -1,22 +1,35 @@
-## 2026-09-28T06:00:50+08:00
-You are challenger_1.
+# Challenger 1 Dispatch: Adversarial Testing of R1 & R2
+
+## Context & Role
+You are Challenger 1 (`teamwork_preview_challenger`).
+Working directory: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_1`
+Original request path: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (read this first!).
+
+Worker 1 handoff report: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_1\handoff.md`.
+
+## Adversarial Challenge Objectives
+1. **R1 Stress & Geometry Testing**:
+   - Write an adversarial test harness for `src/lib/watermarkCanvas.ts` (or `drawWatermarkedCanvas` logic).
+   - Test extreme resolutions and sensor ratios:
+     * 720x1280 (9:16 mobile portrait) -> assert uncropped 1x scale (`720x1280`, `height > width`).
+     * 1080x1920 (9:16 high-res portrait) -> assert uncropped 1x scale (`1080x1920`).
+     * 1080x1440 (3:4 portrait) -> assert uncropped 1x scale.
+     * 1920x1080 (16:9 landscape) in landscape mode -> assert uncropped 1x scale (`1920x1080`, `width >= height`).
+     * 1280x720 (16:9 desktop webcam) in portrait mode -> assert vertical output (`height > width`) with centered crop.
+     * Non-standard ratios (e.g. 1:1 square sensor, 4:3, ultra-wide).
+   - Ensure scale factor is strictly 1x (no artificial zoom).
+2. **R2 Badge Absence Verification**:
+   - Verify `AIAssistant.tsx` and all AI components contain no orange indicator, `animate-ping`, `bg-amber-400`, `bg-amber-500`, or orange badges.
+   - Verify the robot icon (`fa-robot`) and chat interface remain fully operational.
+3. Deliver a clear verdict (`APPROVE` or `REJECT`) in `handoff.md` and notify parent orchestrator.
+
+
+## 2026-10-03T05:48:52Z
+You are Challenger 1 (teamwork_preview_challenger).
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_1
+First read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_1\DISPATCH.md, ORIGINAL_REQUEST.md, and worker_1 handoff.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_1\handoff.md.
 
-Please read:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-09-27T21:46:18Z)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_5\DISPATCH.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\src\components\AIAssistant\
-
-Challenger Tasks:
-1. Empirically challenge and stress-test `faqMatcher.ts` and `knowledgeBase.ts`.
-2. Write and execute an adversarial test script that tests:
-   - Extreme inputs: empty query, whitespace, very long query (1000+ chars), SQL injection / XSS strings (`<script>`, `' OR 1=1`), pure emojis, random punctuation.
-   - Case sensitivity and Indonesian accent normalization.
-   - Context boost accuracy: verify that when two entries share common words (e.g. "rekap"), having `currentView: 'view-guru-rekap-jurnal'` vs `'view-admin-rekap'` correctly ranks the current page's Q&A higher!
-   - Fallback robustness: ensure unrecognized queries return a valid fallback structure with categories and suggestions without crashing or throwing errors.
-   - Performance: verify that matching across 44 Q&As executes in < 5ms per query.
-3. Report your findings and deliver an empirical verdict: APPROVE or REJECT.
-
-Write your report and test results to:
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_1\handoff.md`
-and send a completion message with summary.
+Adversarially challenge R1 and R2:
+- Write stress and geometry tests for camera 1x uncropped scale, portrait/landscape orientation aspect ratios, and extreme resolutions.
+- Verify complete absence of orange badges on AI components.
+Deliver your verdict (APPROVE or REJECT) in handoff.md and notify your caller (orchestrator_7).
