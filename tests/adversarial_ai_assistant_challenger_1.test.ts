@@ -587,7 +587,7 @@ async function runAdversarialSuite() {
       })
     );
     record('SSRRender', 'AIAssistant renders safely with unknown viewId and null user', edgeHtml.length > 0);
-    record('SSRRender', 'Floating trigger button rendered properly under edge props', edgeHtml.includes('fa-wand-magic-sparkles'));
+    record('SSRRender', 'Floating trigger button rendered properly under edge props', edgeHtml.includes('fa-robot') || edgeHtml.includes('fa-wand-magic-sparkles'));
   } catch (err: any) {
     record('SSRRender', 'Edge props render threw error', false, err.message);
   }

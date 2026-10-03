@@ -108,12 +108,26 @@ export async function subscribeToPushNotifications(user?: {
 
     // 4. Subscribe via PushManager
     let subscription = await registration.pushManager.getSubscription();
+    const convertedVapidKey = urlBase64ToUint8Array(publicKey);
     if (!subscription) {
-      const convertedVapidKey = urlBase64ToUint8Array(publicKey);
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey as unknown as BufferSource
-      });
+      try {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey as unknown as BufferSource
+        });
+      } catch (subErr) {
+        // If subscribe failed due to existing mismatched key, unsubscribe first and retry
+        const existingSub = await registration.pushManager.getSubscription();
+        if (existingSub) {
+          await existingSub.unsubscribe();
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey as unknown as BufferSource
+          });
+        } else {
+          throw subErr;
+        }
+      }
     }
 
     // 5. Send subscription to backend

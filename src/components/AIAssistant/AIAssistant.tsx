@@ -151,7 +151,7 @@ export function AIAssistant({
         onClick={() => setIsOpen(prev => !prev)}
         className="fixed bottom-5 right-5 z-[45] w-14 h-14 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white shadow-xl shadow-emerald-900/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none focus:ring-4 focus:ring-emerald-400/50"
       >
-        <i className="fa-solid fa-wand-magic-sparkles text-2xl text-amber-300 drop-shadow group-hover:rotate-12 transition-transform duration-300"></i>
+        <i className="fa-solid fa-robot text-2xl text-amber-300 drop-shadow group-hover:rotate-12 transition-transform duration-300"></i>
 
         {/* Pulsing notification badge */}
         <span className="absolute -top-1 -right-1 flex h-4 w-4">
@@ -161,7 +161,7 @@ export function AIAssistant({
 
         {/* Hover tooltip for desktop */}
         <span className="hidden sm:block absolute right-16 px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-xl shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          ✨ Bantuan AI SIPJAM
+          🤖 Bantuan AI SIPJAM
         </span>
       </button>
 
@@ -176,7 +176,7 @@ export function AIAssistant({
           <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-emerald-950 text-white px-4 py-3 flex items-center justify-between shadow-md border-b border-emerald-700/40">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-amber-300 border border-amber-300/30">
-                <i className="fa-solid fa-wand-magic-sparkles text-sm"></i>
+                <i className="fa-solid fa-robot text-sm"></i>
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight text-white flex items-center gap-1.5">

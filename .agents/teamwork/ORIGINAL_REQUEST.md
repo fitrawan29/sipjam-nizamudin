@@ -334,3 +334,31 @@ Teruskan prop yang sesuai dari:
 - [ ] File `GuruPresensi.tsx` meneruskan prop `orientation="portrait"`.
 - [ ] File `GuruJurnal.tsx` meneruskan prop `orientation="landscape"`.
 - [ ] File `PiketView.tsx` meneruskan prop `orientation="landscape"`.
+
+## 2026-10-03T02:56:59Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched.
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: small focused team
+
+This is a single self-contained fix; keep it small and focused.
+Ubah logo Asisten AI menjadi robot dan pastikan fitur notifikasi push (Web Push) berfungsi dengan baik agar muncul di gawai pengguna.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+
+## Requirements
+
+### R1. Logo Robot AI
+Ubah ikon Asisten AI dari `fa-wand-magic-sparkles` (atau ikon terkait) menjadi `fa-robot` di `src/components/AIAssistant/AIAssistant.tsx`.
+
+### R2. Audit & Perbaikan Notifikasi
+Sistem saat ini sudah memiliki `/sw.js` dan `src/lib/pushClient.ts`. Verifikasi dan pastikan bahwa notifikasi push (`push` event di service worker) tidak memiliki error logika yang mencegah notifikasi muncul ke perangkat. Perbaiki jika ditemukan bug.
+
+## Acceptance Criteria
+
+### Kode dan Fungsionalitas
+- [ ] Di dalam `AIAssistant.tsx`, ikon yang digunakan adalah `fa-robot`.
+- [ ] Logika `self.addEventListener('push')` dan `showNotification` pada `sw.js` telah diaudit/diperbaiki, dan tidak ada pemanggilan yang memblokir notifikasi tampil.
