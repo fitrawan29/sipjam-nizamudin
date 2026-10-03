@@ -52,19 +52,19 @@ Orchestrate end-to-end implementation and verification of R1 (Camera anti-zoom a
 | challenger_2 | teamwork_preview_challenger | Adversarial Reminder Challenger | completed (REJECT) | 1c7b9a86-e105-4a01-a1da-0d193defd582 |
 | auditor_1 | teamwork_preview_auditor | Forensic Integrity Auditor | completed (CLEAN) | 16cb2300-bf7d-4583-aa95-14e5c875ad2e |
 | worker_2 | teamwork_preview_worker | Remediation Worker (Iteration 2) | completed | 271ff592-2a3b-492e-918c-5ebc80bf4b19 |
-| reviewer_3 | teamwork_preview_reviewer | Iteration 2 Code Reviewer | in-progress | 503d4be6-4f94-4cdb-a544-695cf1823ace |
-| challenger_3 | teamwork_preview_challenger | Iteration 2 Adversarial Challenger | in-progress | 02edd678-50ae-4404-b89b-74776b9723bd |
-| auditor_2 | teamwork_preview_auditor | Iteration 2 Forensic Auditor | in-progress | 5813ecdf-2116-4993-bb24-fac5bbe6a29b |
+| reviewer_3 | teamwork_preview_reviewer | Iteration 2 Code Reviewer | completed (APPROVE) | 503d4be6-4f94-4cdb-a544-695cf1823ace |
+| challenger_3 | teamwork_preview_challenger | Iteration 2 Adversarial Challenger | completed (APPROVE) | 02edd678-50ae-4404-b89b-74776b9723bd |
+| auditor_2 | teamwork_preview_auditor | Iteration 2 Forensic Auditor | completed (CLEAN) | 5813ecdf-2116-4993-bb24-fac5bbe6a29b |
 
 ## Succession Status
 - Succession required: no
 - Spawn count: 13 / 16
-- Pending subagents: 503d4be6-4f94-4cdb-a544-695cf1823ace, 02edd678-50ae-4404-b89b-74776b9723bd, 5813ecdf-2116-4993-bb24-fac5bbe6a29b
+- Pending subagents: none
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: 7e84420a-2cde-4423-8413-5104d66482dd/task-12
+- Heartbeat cron: killed (task-12)
 - Safety timer: none
 
 ## Artifact Index
