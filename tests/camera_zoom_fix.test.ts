@@ -262,6 +262,77 @@ assert(
   'No inline CSS zoom style overrides present in CameraSelfieCapture.tsx'
 );
 
+// 7. Exotic Sensor Aspect Ratios (21:9 Ultra-Wide, 5:4 Legacy CCD, 4:5 Portrait)
+console.log('\n--- 7. Exotic Sensor Aspect Ratios & Zero-Crop Mathematical Verification ---');
+
+// Test case 9: Ultra-wide cinematic sensor (21:9 aspect ratio, 2560x1080) in 16:9 container
+const feed21_9_contain = calculateFitGeometry(1920, 1080, 2560, 1080, 'contain');
+const feed21_9_cover = calculateFitGeometry(1920, 1080, 2560, 1080, 'cover');
+assert(
+  feed21_9_contain.cropPercentage === 0 && !feed21_9_contain.isDistorted,
+  'Ultra-wide 21:9 feed in 16:9 container with object-contain has 0% crop and 0% distortion'
+);
+assert(
+  feed21_9_cover.cropPercentage === 25,
+  'Empirical proof: object-cover previously cropped 25.0% of 21:9 ultra-wide feed in 16:9 container'
+);
+
+// Test case 10: Legacy 5:4 CCD sensor (1280x1024) in 16:9 container
+const feed5_4_contain = calculateFitGeometry(1920, 1080, 1280, 1024, 'contain');
+const feed5_4_cover = calculateFitGeometry(1920, 1080, 1280, 1024, 'cover');
+assert(
+  feed5_4_contain.cropPercentage === 0 && !feed5_4_contain.isDistorted,
+  'Legacy 5:4 sensor feed in 16:9 container with object-contain has 0% crop and 0% distortion'
+);
+assert(
+  feed5_4_cover.cropPercentage > 25,
+  `Empirical proof: object-cover previously cropped ${feed5_4_cover.cropPercentage}% of 5:4 feed in 16:9 container`
+);
+
+// Test case 11: 4:5 portrait mobile sensor (1080x1350) in 3:4 portrait container
+const feed4_5_contain = calculateFitGeometry(720, 960, 1080, 1350, 'contain');
+const feed4_5_cover = calculateFitGeometry(720, 960, 1080, 1350, 'cover');
+assert(
+  feed4_5_contain.cropPercentage === 0 && !feed4_5_contain.isDistorted,
+  '4:5 portrait feed in 3:4 container with object-contain has 0% crop and 0% distortion'
+);
+assert(
+  feed4_5_cover.cropPercentage > 5,
+  `Empirical proof: object-cover previously cropped ${feed4_5_cover.cropPercentage}% of 4:5 feed in 3:4 container`
+);
+
+// 8. DOM Element Attribute Hardening & Viewport Zoom Prevention Guard
+console.log('\n--- 8. DOM Element Attribute Hardening & Viewport Zoom Prevention Guard ---');
+
+// Verify <video> does not have static pixel width/height attributes that would override responsive object-contain
+if (videoTagMatch) {
+  const videoSnippet = videoTagMatch[0];
+  assert(
+    !videoSnippet.match(/\bwidth=["']\d+["']/) && !videoSnippet.match(/\bheight=["']\d+["']/),
+    '<video> element avoids static HTML pixel width/height attributes that could override CSS object-contain'
+  );
+}
+
+// Verify camera container viewport wrapper has no accidental scale transform classes
+const containerMatch = cameraContent.match(/aspect-\[3\/4\][^>]*>/);
+if (containerMatch) {
+  assert(
+    !containerMatch[0].match(/\bscale-(?:105|110|125|150|200)\b/),
+    'Camera container viewport has no accidental scale transform classes'
+  );
+}
+
+// Verify app layout enforces viewport meta tag preventing mobile browser zoom hijacking
+const layoutPath = path.join(rootDir, 'src', 'app', 'layout.tsx');
+assert(fs.existsSync(layoutPath), 'src/app/layout.tsx exists');
+const layoutContent = fs.readFileSync(layoutPath, 'utf-8');
+assert(
+  layoutContent.includes("userScalable: false") &&
+  layoutContent.includes("initialScale: 1") &&
+  layoutContent.includes("maximumScale: 1"),
+  'App layout enforces strict viewport constraints preventing mobile browser auto/pinch zoom'
+);
+
 console.log('\n====================================================');
 if (failed === 0) {
   console.log('🎉 ALL CAMERA ZOOM / CROP FIX CHECKS PASSED!');
@@ -270,3 +341,4 @@ if (failed === 0) {
   console.error(`💥 ${failed} TEST(S) FAILED!`);
   process.exit(1);
 }
+

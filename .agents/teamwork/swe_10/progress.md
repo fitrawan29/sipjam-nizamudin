@@ -1,20 +1,20 @@
 # Progress
 
-Last visited: 2026-10-03T04:40:10Z
+Last visited: 2026-10-03T04:50:10Z
 
 ## Iteration Status
-Current iteration: 3 / 32
+Current iteration: 4 / 32
 
 ## Open Issues Ledger
-- [Item 1] Physical optical testing on real iOS Safari and Android Chrome hardware devices with peculiar optical zoom settings or multi-camera switching modules (Raised by Round 1 & Round 2)
-- [Item 2] Feeds whose native aspect ratio does not match container 16:9 or 3:4 display letterbox/pillarbox margins against the bg-black container (Raised by Round 1 & Round 2)
+- [Item 1] Physical optical testing on live physical iOS Safari and Android Chrome hardware devices with multi-camera lenses (Raised by Round 1, 2, 3)
+- [Item 2] Camera feeds whose hardware sensor aspect ratio does not match the container aspect ratio (16:9 or 3:4) will display black letterboxing/pillarboxing margins against the bg-black container (Raised by Round 1, 2, 3)
 - [Item 3] Physical camera hardware tests across diverse physical smartphones (e.g. foldables, multi-lens hardware with unusual native aspect ratios) — tested via automated headless browser DOM checks and mock streams (Raised by Round 1)
 
 ## Current Status
 - [x] Round 1: Implementer (teamwork_preview_implementer) - COMPLETED
 - [x] Round 2: Reviewer 1 (teamwork_preview_reviewer) - COMPLETED
-- [ ] Round 3: Reviewer 2 (teamwork_preview_reviewer) - RUNNING (Conv ID: 0c0c32b3-3ef4-48da-a791-b31e595f7117, state: inspecting CameraSelfieCapture.tsx)
-- [ ] Round 4: Reviewer 3 (teamwork_preview_reviewer)
+- [x] Round 3: Reviewer 2 (teamwork_preview_reviewer) - COMPLETED
+- [ ] Round 4: Reviewer 3 (teamwork_preview_reviewer) - RUNNING (Conv ID: cffb36ae-0c13-4506-a171-25468fc9efc2)
 - [ ] Orchestrator verification & test re-run
 - [ ] Victory Audit (teamwork_preview_victory_auditor)
 - [ ] Git commit & push to origin main
