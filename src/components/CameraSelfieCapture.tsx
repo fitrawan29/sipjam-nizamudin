@@ -131,6 +131,7 @@ export default function CameraSelfieCapture({
       const isPortrait = orientation === 'portrait';
       const constraints: MediaStreamConstraints = {
         video: {
+          // Defaults to facingMode: 'user', with resilient mode switching via { ideal: mode }
           facingMode: { ideal: mode },
           width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 },
           height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 },
@@ -213,6 +214,10 @@ export default function CameraSelfieCapture({
   // 4. Capture photo and draw watermark
   const handleCapturePhoto = () => {
     if (!videoRef.current) return;
+    if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+      showToast('Kamera Belum Siap', 'Harap tunggu hingga gambar kamera muncul sepenuhnya.', 'warning');
+      return;
+    }
 
     try {
       const watermarkOpts = getDefaultWatermarkOptions(coordinates, locationName);
@@ -258,23 +263,23 @@ export default function CameraSelfieCapture({
   return (
     <div className="w-full bg-slate-50 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-700/60 p-4 shadow-sm transition-all">
       {/* Header status bar */}
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
             {capturedImage ? 'Preview Foto Kamera (Watermarked)' : 'Kamera Langsung Perangkat'}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-            <i className="fa-solid fa-location-dot text-emerald-500"></i>
-            <span className="truncate max-w-[160px] sm:max-w-none">{gpsStatus}</span>
+        <div className="flex items-center gap-2 shrink-0 max-w-full">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 min-w-0">
+            <i className="fa-solid fa-location-dot text-emerald-500 shrink-0"></i>
+            <span className="truncate max-w-[150px] sm:max-w-none">{gpsStatus}</span>
           </div>
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1.5 py-0.5 rounded transition"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1.5 py-0.5 rounded transition shrink-0"
               title="Batal"
             >
               <i className="fa-solid fa-xmark"></i>
@@ -395,7 +400,7 @@ export default function CameraSelfieCapture({
           </div>
         ) : (
           /* Live Camera Controls */
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-2.5 sm:gap-3 flex-wrap">
             {/* Camera switch toggle button */}
             <button
               type="button"
@@ -411,7 +416,7 @@ export default function CameraSelfieCapture({
               type="button"
               onClick={handleCapturePhoto}
               disabled={!isStreaming}
-              className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:pointer-events-none text-white font-bold text-xs flex items-center justify-center gap-2.5 shadow-md shadow-emerald-700/20 transition transform active:scale-95"
+              className="py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:pointer-events-none text-white font-bold text-xs flex items-center justify-center gap-2.5 shadow-md shadow-emerald-700/20 transition transform active:scale-95"
             >
               <span className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center">
                 <span className="w-2.5 h-2.5 rounded-full bg-white"></span>

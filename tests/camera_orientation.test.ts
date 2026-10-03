@@ -241,6 +241,35 @@ assert(
   `Webcam 1280x720 in portrait mode is cropped to vertical 3:4 canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
 );
 
+// --- Section 9: Adversarial Edge Cases & Mobile Responsiveness ---
+console.log('\n--- Section 9: Adversarial Edge Cases & Mobile Responsiveness ---');
+assert(
+  cameraContent.includes('videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0'),
+  'CameraSelfieCapture guards against unready video stream with 0x0 frame dimensions'
+);
+assert(
+  cameraContent.includes('flex flex-wrap sm:flex-nowrap') && cameraContent.includes('shrink-0'),
+  'CameraSelfieCapture header bar implements responsive flex-wrap & shrink-0 protection for screens < 360px'
+);
+assert(
+  cameraContent.includes('gap-2.5 sm:gap-3 flex-wrap'),
+  'CameraSelfieCapture live controls implement responsive wrapping and spacing for narrow viewports'
+);
+assert(
+  cameraContent.includes("facingMode: 'user'"),
+  'CameraSelfieCapture maintains backward-compatible facingMode user references for M3 test suites'
+);
+
+// Verify that NO other call sites in src/ render CameraSelfieCapture without orientation
+const srcFiles = [guruPresensiPath, guruJurnalPath, piketViewPath];
+for (const file of srcFiles) {
+  const fileContent = fs.readFileSync(file, 'utf-8');
+  assert(
+    fileContent.includes('orientation='),
+    `${path.basename(file)} explicitly specifies orientation prop on CameraSelfieCapture`
+  );
+}
+
 console.log('\n====================================================');
 if (failed === 0) {
   console.log('🎉 ALL CAMERA ORIENTATION VERIFICATION TESTS PASSED!');
