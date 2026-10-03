@@ -125,22 +125,24 @@ export async function reverseGeocodeNominatim(lat: number, lon: number): Promise
 export function drawWatermarkedCanvas(
   videoElement: HTMLVideoElement | HTMLImageElement,
   options: WatermarkOptions,
-  mirror: boolean = false
+  mirror: boolean = false,
+  orientation?: 'portrait' | 'landscape'
 ): string {
   // Determine width and height based on element type
   let width = 640;
   let height = 480;
 
-  if (videoElement instanceof HTMLVideoElement) {
+  if (typeof HTMLVideoElement !== 'undefined' && videoElement instanceof HTMLVideoElement) {
     width = videoElement.videoWidth || videoElement.clientWidth || 640;
     height = videoElement.videoHeight || videoElement.clientHeight || 480;
-  } else if (videoElement instanceof HTMLImageElement) {
+  } else if (typeof HTMLImageElement !== 'undefined' && videoElement instanceof HTMLImageElement) {
     width = videoElement.naturalWidth || videoElement.width || 640;
     height = videoElement.naturalHeight || videoElement.height || 480;
   }
 
-  // Calculate 16:9 crop dimensions (landscape)
-  const targetRatio = 16 / 9;
+  // Calculate crop dimensions based on requested orientation or source aspect ratio
+  const isPortrait = orientation === 'portrait' || (!orientation && width < height);
+  const targetRatio = isPortrait ? (3 / 4) : (16 / 9);
   const srcRatio = width / height;
 
   let drawWidth = width;
@@ -149,21 +151,23 @@ export function drawWatermarkedCanvas(
   let offsetY = 0;
 
   if (srcRatio > targetRatio) {
-    // Source is wider than 16:9 (e.g., 21:9)
+    // Source is wider than target ratio
     drawWidth = height * targetRatio;
     drawHeight = height;
     offsetX = (width - drawWidth) / 2;
   } else if (srcRatio < targetRatio) {
-    // Source is taller than 16:9 (e.g., Portrait 9:16 or 4:3)
+    // Source is taller than target ratio
     drawWidth = width;
     drawHeight = width / targetRatio;
     offsetY = (height - drawHeight) / 2;
   }
 
   const canvas = document.createElement('canvas');
-  // Canvas dimensions are always landscape 16:9
-  canvas.width = drawWidth;
-  canvas.height = drawHeight;
+  // Canvas dimensions conform to target ratio (3:4 portrait or 16:9 landscape)
+  canvas.width = Math.round(drawWidth);
+  canvas.height = Math.round(drawHeight);
+  drawWidth = canvas.width;
+  drawHeight = canvas.height;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) {
@@ -174,7 +178,7 @@ export function drawWatermarkedCanvas(
   if (mirror) {
     // Mirror horizontally for front-facing selfie camera
     ctx.save();
-    ctx.translate(drawWidth, 0);
+    ctx.translate(drawWidth, 0); // ctx.translate(width, 0)
     ctx.scale(-1, 1);
     ctx.drawImage(videoElement, offsetX, offsetY, drawWidth, drawHeight, 0, 0, drawWidth, drawHeight);
     ctx.restore();

@@ -127,6 +127,120 @@ assert(
   'Default (undefined) orientation constraint defaults to landscape (width > height)'
 );
 
+// --- Section 6: UI Viewfinder Container Aspect Ratio Adaptation ---
+console.log('\n--- Section 6: UI Viewfinder Container Aspect Ratio Adaptation ---');
+assert(
+  cameraContent.includes("orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'"),
+  'CameraSelfieCapture viewport dynamically applies aspect-[3/4] for portrait and aspect-video for landscape'
+);
+
+assert(
+  cameraContent.includes('drawWatermarkedCanvas(videoRef.current, watermarkOpts, isMirror, orientation)'),
+  'CameraSelfieCapture forwards orientation prop into drawWatermarkedCanvas'
+);
+
+// --- Section 7: watermarkCanvas.ts Orientation & Crop Calculation ---
+console.log('\n--- Section 7: watermarkCanvas.ts Orientation & Crop Calculation ---');
+const watermarkCompPath = path.join(rootDir, 'src', 'lib', 'watermarkCanvas.ts');
+assert(fs.existsSync(watermarkCompPath), 'watermarkCanvas.ts exists');
+const watermarkContent = fs.readFileSync(watermarkCompPath, 'utf-8');
+
+assert(
+  watermarkContent.includes("orientation?: 'portrait' | 'landscape'"),
+  'drawWatermarkedCanvas accepts optional orientation parameter'
+);
+
+assert(
+  watermarkContent.includes("const isPortrait = orientation === 'portrait' || (!orientation && width < height);") &&
+  watermarkContent.includes("const targetRatio = isPortrait ? (3 / 4) : (16 / 9);"),
+  'watermarkCanvas computes targetRatio 3/4 for portrait and 16/9 for landscape'
+);
+
+// --- Section 8: Functional Canvas Aspect Ratio Verification ---
+console.log('\n--- Section 8: Functional Canvas Aspect Ratio Verification ---');
+let lastCreatedCanvas: any = null;
+if (typeof (global as any).document === 'undefined') {
+  (global as any).document = {
+    createElement: (tag: string) => {
+      if (tag === 'canvas') {
+        const c = {
+          width: 0,
+          height: 0,
+          getContext: () => ({
+            save: () => {},
+            translate: () => {},
+            scale: () => {},
+            drawImage: () => {},
+            beginPath: () => {},
+            roundRect: () => {},
+            moveTo: () => {},
+            arcTo: () => {},
+            closePath: () => {},
+            fill: () => {},
+            stroke: () => {},
+            fillText: () => {},
+            measureText: (txt: string) => ({ width: txt.length * 8 }),
+            restore: () => {},
+          }),
+          toDataURL: () => 'data:image/jpeg;base64,mock',
+        };
+        lastCreatedCanvas = c;
+        return c;
+      }
+      return {};
+    },
+  };
+}
+
+if (typeof (global as any).HTMLVideoElement === 'undefined') {
+  (global as any).HTMLVideoElement = class {};
+}
+if (typeof (global as any).HTMLImageElement === 'undefined') {
+  (global as any).HTMLImageElement = class {};
+}
+
+// Dynamically import watermark functions for functional test
+import { drawWatermarkedCanvas, getDefaultWatermarkOptions } from '../src/lib/watermarkCanvas';
+
+const mockImg = new (global as any).HTMLImageElement();
+// Simulate standard phone camera feed 720x1280
+mockImg.width = 720;
+mockImg.height = 1280;
+
+const opts = getDefaultWatermarkOptions({ latitude: -8.12, longitude: 115.12 }, 'Denpasar, Bali');
+
+// 8.1 Portrait capture
+drawWatermarkedCanvas(mockImg, opts, true, 'portrait');
+assert(
+  Boolean(lastCreatedCanvas && lastCreatedCanvas.height > lastCreatedCanvas.width),
+  `Portrait mode produces vertical canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
+);
+assert(
+  Math.abs((lastCreatedCanvas.width / lastCreatedCanvas.height) - (3 / 4)) < 0.01,
+  `Portrait canvas matches 3:4 target aspect ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
+);
+
+// 8.2 Landscape capture
+drawWatermarkedCanvas(mockImg, opts, false, 'landscape');
+assert(
+  Boolean(lastCreatedCanvas && lastCreatedCanvas.width > lastCreatedCanvas.height),
+  `Landscape mode produces horizontal canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
+);
+assert(
+  Math.abs((lastCreatedCanvas.width / lastCreatedCanvas.height) - (16 / 9)) < 0.05,
+  `Landscape canvas matches 16:9 target aspect ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
+);
+
+// 8.3 Landscape feed with portrait mode (e.g. desktop webcam 1280x720 in GuruPresensi)
+const webcamImg = new (global as any).HTMLImageElement();
+webcamImg.width = 1280;
+webcamImg.height = 720;
+drawWatermarkedCanvas(webcamImg, opts, true, 'portrait');
+assert(
+  Boolean(lastCreatedCanvas && lastCreatedCanvas.height > lastCreatedCanvas.width),
+  `Webcam 1280x720 in portrait mode is cropped to vertical 3:4 canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
+);
+
 console.log('\n====================================================');
 if (failed === 0) {
   console.log('🎉 ALL CAMERA ORIENTATION VERIFICATION TESTS PASSED!');

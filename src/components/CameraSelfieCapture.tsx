@@ -217,7 +217,7 @@ export default function CameraSelfieCapture({
     try {
       const watermarkOpts = getDefaultWatermarkOptions(coordinates, locationName);
       const isMirror = facingMode === 'user';
-      const dataUrl = drawWatermarkedCanvas(videoRef.current, watermarkOpts, isMirror);
+      const dataUrl = drawWatermarkedCanvas(videoRef.current, watermarkOpts, isMirror, orientation);
       const file = dataUrlToFile(dataUrl, `foto_kamera_${Date.now()}.jpg`);
 
       setCapturedImage(dataUrl);
@@ -284,7 +284,9 @@ export default function CameraSelfieCapture({
       </div>
 
       {/* Main View Area */}
-      <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700">
+      <div className={`relative w-full ${
+        orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'
+      } rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}>
         {/* Captured Image Preview */}
         {capturedImage ? (
           <div className="relative w-full h-full">
