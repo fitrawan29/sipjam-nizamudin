@@ -833,6 +833,17 @@ export default function AdminDataView({ user }: { user: any }) {
     }
   };
 
+  // Helper to escape HTML entities when rendering strings in HTML templates
+  const escapeHtml = (str: any): string => {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
   // Student QR Code display and single card print
   const printStudentQrCard = (student: any, qrSvg: string, qrIdentifier: string) => {
     const printWindow = window.open('', '_blank', 'width=650,height=650');
@@ -841,7 +852,7 @@ export default function AdminDataView({ user }: { user: any }) {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Kartu Presensi Siswa - ${student.nama_siswa || 'Siswa'}</title>
+        <title>Kartu Presensi Siswa - ${escapeHtml(student.nama_siswa || 'Siswa')}</title>
         <style>
           * { box-sizing: border-box; }
           body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
@@ -864,10 +875,10 @@ export default function AdminDataView({ user }: { user: any }) {
           <div class="header">KARTU PRESENSI SISWA</div>
           <div class="sub">SIPJAM Digital Attendance Kiosk</div>
           <div class="qr">${qrSvg}</div>
-          <div class="name">${student.nama_siswa || '-'}</div>
-          <div class="meta">Kelas: <b>${student.kelas || '-'}</b> &bull; NISN: <b>${student.nisn || '-'}</b></div>
-          <div class="badge">STATUS: ${student.status || 'Aktif'}</div>
-          <div class="code">ID: ${qrIdentifier}</div>
+          <div class="name">${escapeHtml(student.nama_siswa || '-')}</div>
+          <div class="meta">Kelas: <b>${escapeHtml(student.kelas || '-')}</b> &bull; NISN: <b>${escapeHtml(student.nisn || '-')}</b></div>
+          <div class="badge">STATUS: ${escapeHtml(student.status || 'Aktif')}</div>
+          <div class="code">ID: ${escapeHtml(qrIdentifier)}</div>
         </div>
         <script>
           window.onload = function() {
@@ -892,10 +903,10 @@ export default function AdminDataView({ user }: { user: any }) {
             ${qrSvg}
           </div>
           <div class="text-center space-y-1">
-            <h4 class="font-bold text-sm text-gray-900 dark:text-gray-100">${student.nama_siswa || 'Siswa'}</h4>
-            <p class="text-xs text-gray-600 dark:text-gray-300">Kelas: <span class="font-bold text-purple-700 dark:text-purple-400">${student.kelas || '-'}</span></p>
-            <p class="text-xs text-gray-600 dark:text-gray-300">NISN: <span class="font-mono font-bold">${student.nisn || '-'}</span></p>
-            <p class="text-[10px] text-gray-500 font-mono bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full inline-block mt-1">ID Scan: ${qrIdentifier}</p>
+            <h4 class="font-bold text-sm text-gray-900 dark:text-gray-100">${escapeHtml(student.nama_siswa || 'Siswa')}</h4>
+            <p class="text-xs text-gray-600 dark:text-gray-300">Kelas: <span class="font-bold text-purple-700 dark:text-purple-400">${escapeHtml(student.kelas || '-')}</span></p>
+            <p class="text-xs text-gray-600 dark:text-gray-300">NISN: <span class="font-mono font-bold">${escapeHtml(student.nisn || '-')}</span></p>
+            <p class="text-[10px] text-gray-500 font-mono bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full inline-block mt-1">ID Scan: ${escapeHtml(qrIdentifier)}</p>
           </div>
         </div>
       `,
@@ -933,9 +944,9 @@ export default function AdminDataView({ user }: { user: any }) {
           <div class="header">KARTU PRESENSI</div>
           <div class="sub">SIPJAM Kiosk</div>
           <div class="qr">${qrSvg}</div>
-          <div class="name">${student.nama_siswa || '-'}</div>
-          <div class="meta">Kelas: <b>${student.kelas || '-'}</b> &bull; NISN: <b>${student.nisn || '-'}</b></div>
-          <div class="code">${qrIdentifier}</div>
+          <div class="name">${escapeHtml(student.nama_siswa || '-')}</div>
+          <div class="meta">Kelas: <b>${escapeHtml(student.kelas || '-')}</b> &bull; NISN: <b>${escapeHtml(student.nisn || '-')}</b></div>
+          <div class="code">${escapeHtml(qrIdentifier)}</div>
         </div>
       `;
     }).join('\n');

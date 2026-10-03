@@ -266,10 +266,10 @@ export function generateQrMatrix(text: string): boolean[][] {
     goingUp = !goingUp;
   }
 
-  // 7. Format Information (Level L, Mask 0: 0x77a5)
-  const formatBits = 0x77a5;
+  // 7. Format Information (Level L, Mask 0: 0x77c4)
+  const formatBits = 0x77c4;
   for (let i = 0; i < 15; i++) {
-    const bit = ((formatBits >> (14 - i)) & 1) === 1;
+    const bit = ((formatBits >> i) & 1) === 1;
     if (i < 6) {
       matrix[8][i] = bit;
     } else if (i === 6) {
@@ -396,16 +396,19 @@ export async function resolveStudentByCode(
       }
     }
 
-    // 4. Case-insensitive / trimmed fallback on qr_code or nisn
-    let queryIl = supabaseClient
-      .from('data_siswa')
-      .select('*')
-      .ilike('nisn', cleanCode);
-    if (sekolahId) queryIl = queryIl.eq('sekolah_id', sekolahId);
-    const { data: byIl } = await queryIl.maybeSingle();
+    // 4. Case-insensitive / trimmed fallback on nisn (sanitizing SQL wildcards % and _)
+    const sanitizedNisn = cleanCode.replace(/[%_\\]/g, '').trim();
+    if (sanitizedNisn) {
+      let queryIl = supabaseClient
+        .from('data_siswa')
+        .select('*')
+        .ilike('nisn', sanitizedNisn);
+      if (sekolahId) queryIl = queryIl.eq('sekolah_id', sekolahId);
+      const { data: byIl } = await queryIl.maybeSingle();
 
-    if (byIl) {
-      return { data: byIl as StudentReference, error: null };
+      if (byIl) {
+        return { data: byIl as StudentReference, error: null };
+      }
     }
 
     return {

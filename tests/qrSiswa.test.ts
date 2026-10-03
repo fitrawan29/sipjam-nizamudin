@@ -55,6 +55,44 @@ async function runTests() {
   assert(Array.isArray(matrixNisn) && matrixNisn.length === 21, 'NISN matrix is 21x21 (Version 1)');
   assert(matrixNisn[0][0] === true && matrixNisn[0][6] === true, 'Top-left finder pattern corner is dark');
 
+  // 2b. ISO/IEC 18004 Format Bits Encoding Verification (Level L, Mask 0: 0x77c4)
+  const formatCoords = [
+    [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5],
+    [8, 7], [8, 8], [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8]
+  ];
+  let recoveredBits = 0;
+  for (let i = 0; i < 15; i++) {
+    const [r, c] = formatCoords[i];
+    if (matrixNisn[r][c]) {
+      recoveredBits |= (1 << i);
+    }
+  }
+  assert(recoveredBits === 0x77c4, `Format bits around top-left finder match ISO/IEC 18004 Level L Mask 0 (0x77c4, got 0x${recoveredBits.toString(16)})`);
+
+  // Unmask with 0x5412 (101010000010010) to verify BCH error correction & Level L Mask 0 payload
+  const unmaskedFormat = recoveredBits ^ 0x5412;
+  const formatPayload = unmaskedFormat >> 10;
+  // Level L = 01 (1), Mask 0 = 000 (0) -> 01000 binary = 8
+  assert(formatPayload === 0b01000, `Unmasked format information payload matches Level L + Mask 0 (0b01000, got 0b${formatPayload.toString(2).padStart(5, '0')})`);
+
+  // Verify secondary format information copy (bottom-left and top-right)
+  let recoveredCopy = 0;
+  const size = matrixNisn.length;
+  for (let i = 0; i < 15; i++) {
+    let r: number, c: number;
+    if (i < 8) {
+      r = size - 1 - i;
+      c = 8;
+    } else {
+      r = 8;
+      c = size - 15 + i;
+    }
+    if (matrixNisn[r][c]) {
+      recoveredCopy |= (1 << i);
+    }
+  }
+  assert(recoveredCopy === 0x77c4, `Secondary format bits (bottom-left/top-right) match 0x77c4`);
+
   const matrixUuid = generateQrMatrix('680584c6-0e5a-48c6-8a5c-d63515be6354');
   assert(Array.isArray(matrixUuid) && matrixUuid.length === 29, 'UUID matrix is 29x29 (Version 3)');
 
@@ -210,6 +248,16 @@ async function runTests() {
   // 10. resolveStudentByCode: empty input
   const resEmpty = await resolveStudentByCode(mockClient, '   ');
   assert(resEmpty.data === null && resEmpty.error !== null, 'resolveStudentByCode returns error on empty input');
+
+  // 10b. resolveStudentByCode: wildcard sanitization (% and _)
+  const resWildcardPercent = await resolveStudentByCode(mockClient, '%', 'school-a');
+  assert(resWildcardPercent.data === null, 'resolveStudentByCode rejects pure % wildcard query');
+
+  const resWildcardUnderscore = await resolveStudentByCode(mockClient, '___', 'school-a');
+  assert(resWildcardUnderscore.data === null, 'resolveStudentByCode rejects pure _ wildcard query');
+
+  const resWildcardPattern = await resolveStudentByCode(mockClient, '1143%407', 'school-a');
+  assert(resWildcardPattern.data === null, 'resolveStudentByCode neutralizes embedded % wildcard pattern');
 
   // 11. recordPresensiSiswa: datang recording
   const presensiDatang1 = await recordPresensiSiswa(mockClient, {
