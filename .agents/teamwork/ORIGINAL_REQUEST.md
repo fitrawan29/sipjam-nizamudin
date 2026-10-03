@@ -362,3 +362,29 @@ Sistem saat ini sudah memiliki `/sw.js` dan `src/lib/pushClient.ts`. Verifikasi 
 ### Kode dan Fungsionalitas
 - [ ] Di dalam `AIAssistant.tsx`, ikon yang digunakan adalah `fa-robot`.
 - [ ] Logika `self.addEventListener('push')` dan `showNotification` pada `sw.js` telah diaudit/diperbaiki, dan tidak ada pemanggilan yang memblokir notifikasi tampil.
+
+
+## 2026-10-03T04:24:17Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched.
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: small focused team
+
+This is a single self-contained fix; keep it small and focused.
+Pastikan kamera yang digunakan di aplikasi tidak terlihat men-zoom (terpotong atau membesar) saat mengambil gambar.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+
+## Requirements
+
+### R1. Nonaktifkan Zoom/Crop di Kamera
+Periksa komponen `src/components/CameraSelfieCapture.tsx`. Kemungkinan besar masalah zoom disebabkan oleh CSS `object-fit: cover` yang memotong (crop) video stream sehingga terlihat membesar, atau batasan (constraints) resolusi yang memaksa crop dari sisi hardware. Sesuaikan styling CSS (misalnya menggunakan `object-contain` atau mencocokkan aspect-ratio container secara presisi) atau sesuaikan `MediaStreamConstraints` agar tampilan kamera pas dan tidak terpotong/zoom.
+
+## Acceptance Criteria
+
+### Verifikasi Kode (Programmatic / Statis)
+- [ ] CSS atau constraints pada elemen `<video>` di `CameraSelfieCapture.tsx` telah disesuaikan untuk menghindari efek "zoom" atau crop yang berlebihan.
+- [ ] Tampilan kamera tetap rapi dan proposional (tidak penyok/distorsi).

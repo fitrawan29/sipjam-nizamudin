@@ -342,7 +342,7 @@ export default function CameraSelfieCapture({
               playsInline
               autoPlay
               muted
-              className={`w-full h-full object-cover transform ${
+              className={`w-full h-full object-contain transform ${
                 facingMode === 'user' ? '-scale-x-100' : ''
               } ${isStreaming ? 'block' : 'hidden'}`}
             />
