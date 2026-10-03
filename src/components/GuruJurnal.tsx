@@ -69,29 +69,19 @@ export default function GuruJurnal({ user }: { user: any }) {
 
 
   const calculateKehadiranSummary = (abs: Record<string, string>, stList: any[]): string => {
-    if (!stList || stList.length === 0) return 'Semua Hadir';
-    const counts = { H: 0, S: 0, I: 0, A: 0 };
-    const absents: string[] = [];
-
-    stList.forEach(s => {
-      const status = (abs[s.nisn] || 'H').toUpperCase();
-      if (status === 'H') counts.H++;
-      else if (status === 'S') { counts.S++; absents.push(`${s.nama_siswa} (S)`); }
-      else if (status === 'I') { counts.I++; absents.push(`${s.nama_siswa} (I)`); }
-      else if (status === 'A') { counts.A++; absents.push(`${s.nama_siswa} (A)`); }
-    });
-
-    if (counts.S === 0 && counts.I === 0 && counts.A === 0) {
-      return `Semua Hadir (${counts.H} siswa)`;
+    const total = stList?.length || 0;
+    const counts = { H: 0, I: 0, S: 0, A: 0 };
+    if (stList && stList.length > 0) {
+      stList.forEach(s => {
+        const status = (abs[s.nisn] || 'H').toUpperCase();
+        if (status === 'H') counts.H++;
+        else if (status === 'I') counts.I++;
+        else if (status === 'S') counts.S++;
+        else if (status === 'A') counts.A++;
+        else counts.H++;
+      });
     }
-    let summary = `Hadir: ${counts.H}`;
-    if (counts.S > 0) summary += `, Sakit: ${counts.S}`;
-    if (counts.I > 0) summary += `, Izin: ${counts.I}`;
-    if (counts.A > 0) summary += `, Alpa: ${counts.A}`;
-    if (absents.length > 0) {
-      summary += ` [${absents.join(', ')}]`;
-    }
-    return summary;
+    return `Total murid: ${total}, Hadir: ${counts.H}, Izin: ${counts.I}, Sakit: ${counts.S}, Alpa: ${counts.A}`;
   };
 
   useEffect(() => {
@@ -491,9 +481,6 @@ export default function GuruJurnal({ user }: { user: any }) {
     e.preventDefault();
 
     if (tipeJurnal === 'Jurnal KBM') {
-      if (!pertemuanKe || !pertemuanKe.trim()) {
-        return showToast('No. Pertemuan Wajib', 'Silakan isi nomor pertemuan KBM.', 'warning');
-      }
       if (!tujuanPembelajaran || !tujuanPembelajaran.trim()) {
         return showToast('Tujuan Pembelajaran Wajib', 'Silakan isi tujuan pembelajaran.', 'warning');
       }
@@ -570,8 +557,8 @@ export default function GuruJurnal({ user }: { user: any }) {
       kktp: tipeJurnal === 'Jurnal KBM' ? (kktp || null) : null,
       konten: tipeJurnal === 'Jurnal KBM' ? finalKonten : null,
       lokasi_kbm: tipeJurnal === 'Jurnal KBM' ? (lokasiKbm || null) : null,
-      pertemuan_ke: tipeJurnal === 'Jurnal KBM' ? (pertemuanKe || '1') : '-',
-      jam_ke: tipeJurnal === 'Jurnal KBM' ? (jamKe || '1-2') : '-',
+      pertemuan_ke: tipeJurnal === 'Jurnal KBM' ? (pertemuanKe || '-') : '-',
+      jam_ke: tipeJurnal === 'Jurnal KBM' ? (jamKe || '-') : '-',
       tujuan_pembelajaran: tipeJurnal === 'Jurnal KBM' ? (tujuanPembelajaran || '-') : '-',
       materi_pembelajaran: finalKonten,
       kehadiran_murid: computedKehadiran,
@@ -898,35 +885,20 @@ export default function GuruJurnal({ user }: { user: any }) {
                     <p className="text-[9px] text-gray-500 dark:text-white/80 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
                 </div>
 
+                {/* {tipeJurnal === 'Jurnal KBM' && ( Pertemuan Ke- Kehadiran Murid ) */}
                 {tipeJurnal === 'Jurnal KBM' ? (
                   <>
-                    {/* 1. No. & 2. Hari/Tanggal */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center gap-1">
-                          No. <span className="text-red-500">*</span>
-                          {pertemuanKe && <span className="text-[9px] text-green-600 dark:text-green-400 font-normal">(terisi otomatis)</span>}
-                        </label>
-                        <input
-                          type="text"
-                          value={pertemuanKe}
-                          onChange={e => setPertemuanKe(e.target.value)}
-                          required
-                          placeholder="Contoh: 1 atau 1-2"
-                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                          Hari/Tanggal
-                        </label>
-                        <input
-                          type="text"
-                          value={formatDisplayDate(tanggal)}
-                          readOnly
-                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                        />
-                      </div>
+                    {/* Hari/Tanggal */}
+                    <div className="fade-in">
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        Hari/Tanggal
+                      </label>
+                      <input
+                        type="text"
+                        value={formatDisplayDate(tanggal)}
+                        readOnly
+                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                      />
                     </div>
 
                     {/* 3. Tujuan Pembelajaran */}
@@ -1052,7 +1024,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                           type="text"
                           value={kehadiranMurid}
                           onChange={e => setKehadiranMurid(e.target.value)}
-                          placeholder="Contoh: Semua Hadir (29 siswa) atau Hadir: 28, Sakit: 1"
+                          placeholder="Contoh: Total murid: 30, Hadir: 28, Izin: 1, Sakit: 1, Alpa: 0"
                           className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
                         />
                       </div>

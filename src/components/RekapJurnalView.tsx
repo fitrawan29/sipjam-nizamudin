@@ -241,23 +241,70 @@ export default function RekapJurnalView({
     return dateStr;
   }
 
-  function formatAbsensi(rawAbsensi?: string, detailAbsen?: string): string {
-    if (!rawAbsensi && !detailAbsen) return 'Semua Hadir';
-    if (rawAbsensi && typeof rawAbsensi === 'string' && rawAbsensi.trim().startsWith('{')) {
-      try {
-        const parsed = JSON.parse(rawAbsensi);
-        const counts = { H: 0, S: 0, I: 0, A: 0 };
-        Object.values(parsed).forEach((v: any) => {
-          const code = String(v).trim().toUpperCase() as 'H' | 'S' | 'I' | 'A';
-          if (counts[code] !== undefined) counts[code]++;
-        });
-        return `Hadir: ${counts.H}, Sakit: ${counts.S}, Izin: ${counts.I}, Alpa: ${counts.A}`;
-      } catch (_) {}
+  function formatAbsensi(rawAbsensi?: string, detailAbsen?: string, kehadiranMurid?: string): string {
+    if (kehadiranMurid && typeof kehadiranMurid === 'string' && kehadiranMurid.trim()) {
+      const km = kehadiranMurid.trim();
+      if (/^Total murid:\s*\d+,\s*Hadir:\s*\d+,\s*Izin:\s*\d+,\s*Sakit:\s*\d+,\s*Alpa:\s*\d+$/i.test(km)) {
+        return km;
+      }
+      const semuaHadirMatch = km.match(/Semua Hadir \((\d+)\s*siswa\)/i);
+      if (semuaHadirMatch) {
+        const total = parseInt(semuaHadirMatch[1], 10);
+        return `Total murid: ${total}, Hadir: ${total}, Izin: 0, Sakit: 0, Alpa: 0`;
+      }
+      const hadirMatch = km.match(/(?:Hadir|Hadir siswa)(?:\s*:|\s+)(\d+)/i);
+      const izinMatch = km.match(/Izin(?:\s*:|\s+)(\d+)/i);
+      const sakitMatch = km.match(/Sakit(?:\s*:|\s+)(\d+)/i);
+      const alpaMatch = km.match(/Alpa(?:\s*:|\s+)(\d+)/i);
+      if (hadirMatch || izinMatch || sakitMatch || alpaMatch) {
+        const h = hadirMatch ? parseInt(hadirMatch[1], 10) : 0;
+        const i = izinMatch ? parseInt(izinMatch[1], 10) : 0;
+        const s = sakitMatch ? parseInt(sakitMatch[1], 10) : 0;
+        const a = alpaMatch ? parseInt(alpaMatch[1], 10) : 0;
+        const total = h + i + s + a;
+        return `Total murid: ${total}, Hadir: ${h}, Izin: ${i}, Sakit: ${s}, Alpa: ${a}`;
+      }
     }
-    if (rawAbsensi && rawAbsensi.includes('|')) {
-      return rawAbsensi.replace(/\|/g, ' · ');
+
+    if (rawAbsensi && typeof rawAbsensi === 'string') {
+      const raw = rawAbsensi.trim();
+      if (raw.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(raw);
+          const counts = { H: 0, I: 0, S: 0, A: 0 };
+          Object.values(parsed).forEach((v: any) => {
+            const val = String(v).trim().toUpperCase();
+            if (val.startsWith('H')) counts.H++;
+            else if (val.startsWith('I')) counts.I++;
+            else if (val.startsWith('S')) counts.S++;
+            else if (val.startsWith('A')) counts.A++;
+          });
+          const total = counts.H + counts.I + counts.S + counts.A;
+          return `Total murid: ${total}, Hadir: ${counts.H}, Izin: ${counts.I}, Sakit: ${counts.S}, Alpa: ${counts.A}`;
+        } catch (_) {}
+      }
+      if (raw.includes('|')) {
+        const h = parseInt(raw.match(/H:(\d+)/i)?.[1] || '0', 10);
+        const i = parseInt(raw.match(/I:(\d+)/i)?.[1] || '0', 10);
+        const s = parseInt(raw.match(/S:(\d+)/i)?.[1] || '0', 10);
+        const a = parseInt(raw.match(/A:(\d+)/i)?.[1] || '0', 10);
+        const total = h + i + s + a;
+        return `Total murid: ${total}, Hadir: ${h}, Izin: ${i}, Sakit: ${s}, Alpa: ${a}`;
+      }
     }
-    return detailAbsen || rawAbsensi || 'Semua Hadir';
+
+    if (detailAbsen && typeof detailAbsen === 'string') {
+      const h = (detailAbsen.match(/\(H\)/gi) || []).length;
+      const i = (detailAbsen.match(/\(I\)/gi) || []).length;
+      const s = (detailAbsen.match(/\(S\)/gi) || []).length;
+      const a = (detailAbsen.match(/\(A\)/gi) || []).length;
+      const total = h + i + s + a;
+      if (total > 0) {
+        return `Total murid: ${total}, Hadir: ${h}, Izin: ${i}, Sakit: ${s}, Alpa: ${a}`;
+      }
+    }
+
+    return 'Total murid: 0, Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0';
   }
 
   const filteredJurnal = (jurnalData || [])
@@ -655,16 +702,17 @@ export default function RekapJurnalView({
                         <thead>
                           <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
                             <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[3%]">No</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[10%]">Hari/Tanggal</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Tujuan Pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">KKTP</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Konten</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[12%]">Kegiatan Pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-16 print:w-[6%]">Kelas</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[9%]">Hari/Tanggal</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Tujuan Pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[9%]">KKTP</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Konten</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Kegiatan Pembelajaran</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-14 print:w-[5%]">Kelas</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Mata Pelajaran</th>
                             <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Absensi Murid (H/I/S/A)</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Lokasi KBM</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[7%]">Lokasi KBM</th>
                             <th className="p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[10%]">Foto Dokumentasi</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[7%]">Catatan</th>
+                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[6%]">Catatan</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -708,26 +756,26 @@ export default function RekapJurnalView({
                                 </td>
 
                                 {/* 7. Kelas */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
-                                  <div className="font-bold text-gray-900 dark:text-white print:text-black">{j.kelas || '-'}</div>
-                                  {j.mapel && j.mapel !== '-' && (
-                                    <div className="text-[10px] print:text-[7pt] font-semibold text-blue-600 dark:text-blue-400 print:text-black mt-0.5">
-                                      ({j.mapel})
-                                    </div>
-                                  )}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-bold text-gray-900 dark:text-white print:text-black">
+                                  {j.kelas || '-'}
                                 </td>
 
-                                {/* 8. Absensi Murid (H/I/S/A) */}
+                                {/* 8. Mata Pelajaran */}
+                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-semibold text-blue-600 dark:text-blue-400 print:text-black">
+                                  {j.mapel || '-'}
+                                </td>
+
+                                {/* 9. Absensi Murid (H/I/S/A) */}
                                 <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center sm:text-left">
-                                  {j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen)}
+                                  {formatAbsensi(j.absensi_siswa, j.detail_absen, j.kehadiran_murid)}
                                 </td>
 
-                                {/* 9. Lokasi KBM */}
+                                {/* 10. Lokasi KBM */}
                                 <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   {j.lokasi_kbm || j.lokasi || '-'}
                                 </td>
 
-                                {/* 10. Foto Dokumentasi */}
+                                {/* 11. Foto Dokumentasi */}
                                 <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
                                   {hasFoto ? (
                                     <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
@@ -765,7 +813,7 @@ export default function RekapJurnalView({
                                   )}
                                 </td>
 
-                                {/* 11. Catatan */}
+                                {/* 12. Catatan */}
                                 <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
                                   {j.catatan_refleksi || j.refleksi || '-'}
                                 </td>
@@ -838,6 +886,7 @@ export default function RekapJurnalView({
                         'Konten',
                         'Kegiatan Pembelajaran',
                         'Kelas',
+                        'Mata Pelajaran',
                         'Absensi Murid (H/I/S/A)',
                         'Lokasi KBM',
                         'Foto Dokumentasi',
@@ -852,11 +901,12 @@ export default function RekapJurnalView({
                         const col4 = j.kktp || '-';
                         const col5 = j.konten || j.materi_pembelajaran || j.materi || '-';
                         const col6 = j.kegiatan_pembelajaran || j.kegiatan || '-';
-                        const col7 = `${j.kelas || '-'}${j.mapel ? ` (${j.mapel})` : ''}`;
-                        const col8 = j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen);
-                        const col9 = j.lokasi_kbm || j.lokasi || '-';
-                        const col10 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                        const col11 = j.catatan_refleksi || j.refleksi || '-';
+                        const col7 = j.kelas || '-';
+                        const col8 = j.mapel || '-';
+                        const col9 = formatAbsensi(j.absensi_siswa, j.detail_absen, j.kehadiran_murid);
+                        const col10 = j.lokasi_kbm || j.lokasi || '-';
+                        const col11 = j.foto_kegiatan || j.link_bukti_foto || '-';
+                        const col12 = j.catatan_refleksi || j.refleksi || '-';
                         const status = j.status_verifikasi || 'Menunggu';
 
                         csvRows.push([
@@ -871,6 +921,7 @@ export default function RekapJurnalView({
                           `"${col9.replace(/"/g, '""')}"`,
                           `"${col10.replace(/"/g, '""')}"`,
                           `"${col11.replace(/"/g, '""')}"`,
+                          `"${col12.replace(/"/g, '""')}"`,
                           `"${status.replace(/"/g, '""')}"`
                         ].join(','));
                       });
