@@ -5,7 +5,8 @@
 - Gate Result: **PASS**
 
 ## Milestone M2: Superadmin Configuration UI
-- Gate Result: PENDING
+- Worker: DONE (SuperadminView modals, table badges, quick toggle, tsc & build passed)
+- Gate Result: **PASS**
 
 ## Milestone M3: Piket View QR vs Manual
 - Gate Result: PENDING

@@ -38,7 +38,7 @@ Both modes write to the exact same `presensi_siswa` schema, allowing downstream 
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | 1 | M1: Database Migration & Types | Migration SQL file, apply migration to remote Supabase, update `src/types/database.ts` | none | DONE |
-| 2 | M2: Superadmin Configuration UI | `SuperadminView.tsx` add/edit form, save handlers, badges, quick toggle | M1 | PLANNED |
+| 2 | M2: Superadmin Configuration UI | `SuperadminView.tsx` add/edit form, save handlers, badges, quick toggle | M1 | DONE |
 | 3 | M3: Piket View QR vs Manual | `PiketView.tsx` school mode fetch, manual class checklist UI, record saving via `recordPresensiSiswa` | M1, M2 | PLANNED |
 | 4 | M4: Downstream Alignment & Verification | `RekapSiswaView.tsx`, `GuruJurnal.tsx`, multi-tenant isolation, build and test gates | M3 | PLANNED |
 

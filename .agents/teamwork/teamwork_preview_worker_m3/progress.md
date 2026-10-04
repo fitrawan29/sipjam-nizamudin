@@ -1,20 +1,17 @@
-# Progress — Worker Milestone 3
+# Progress — Worker Milestone 3 (Piket View QR vs Manual)
 
-**Last visited**: 2026-10-01T11:29:00Z
+**Last visited**: 2026-10-04T01:43:00Z
 **Status**: COMPLETED
 
 ## Tasks
-- [x] Initial dispatch & requirements review
-- [x] Set up BRIEFING.md and progress.md
-- [x] Inspect existing `src/components/GuruPresensi.tsx`
-- [x] Inspect `src/lib/workflow.ts`
-- [x] Inspect existing routes in `src/app/api/attendance/`
-- [x] Implement changes in `src/components/GuruPresensi.tsx`
-- [x] Implement `src/app/api/attendance/route.ts`
-- [x] Verify TypeScript types (`npx tsc --noEmit`)
-- [x] Verify build (`npm run build`)
-- [x] Automated test verification (`npx tsx tests/m3_izin_terlambat_verification.test.ts`)
-- [x] Regression testing (`npx tsx tests/m3_selfie_watermark.test.ts`)
+- [x] Initial dispatch & requirements review (DISPATCH.md, ORIGINAL_REQUEST.md, PROJECT.md)
+- [x] Initialize BRIEFING.md and progress.md
+- [x] Inspect `src/components/PiketView.tsx` and `src/lib/qrSiswa.ts`
+- [x] Implement school `mode_presensi_siswa` fetching in `PiketView.tsx`
+- [x] Implement conditional rendering in `PiketView.tsx` (Manual Attendance Roster vs QR Kiosk)
+- [x] Implement class filter, search, and Datang/Pulang marking using `recordPresensiSiswa`
+- [x] Verify build: `npx tsc --noEmit` (Exit 0)
+- [x] Verify build: `npm run build` (Exit 0)
 - [x] Create handoff report `handoff.md`
-- [ ] Commit & push git changes per GEMINI.md
-- [ ] Notify parent orchestrator via `send_message`
+- [ ] Check git status, stage, commit, and push per GEMINI.md
+- [ ] Send completion message to parent orchestrator

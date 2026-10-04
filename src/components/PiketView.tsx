@@ -95,6 +95,12 @@ export default function PiketView({ user }: { user: any }) {
   const [scanFilterKelas, setScanFilterKelas] = useState('Semua');
   const [scanSearchQuery, setScanSearchQuery] = useState('');
 
+  // Mode Presensi Siswa ('qr' | 'manual') per-sekolah & Manual Attendance state
+  const [modePresensiSiswa, setModePresensiSiswa] = useState<'qr' | 'manual'>('qr');
+  const [manualKelasFilter, setManualKelasFilter] = useState('Semua');
+  const [manualSearchQuery, setManualSearchQuery] = useState('');
+  const [manualMarkLoading, setManualMarkLoading] = useState<string | null>(null);
+
   // Audio feedback synthesizer via Web Audio API
   const playAudioFeedback = (type: 'success' | 'warning' | 'error') => {
     try {
@@ -183,6 +189,49 @@ export default function PiketView({ user }: { user: any }) {
     }
   };
 
+  // Fetch school attendance mode ('qr' | 'manual') and listen for realtime updates
+  useEffect(() => {
+    const fetchSchoolMode = async () => {
+      if (!user?.sekolah_id) return;
+      try {
+        const { data, error } = await supabase
+          .from('sekolah')
+          .select('mode_presensi_siswa')
+          .eq('id', user.sekolah_id)
+          .single();
+        if (data?.mode_presensi_siswa) {
+          setModePresensiSiswa(data.mode_presensi_siswa as 'qr' | 'manual');
+        }
+      } catch (e) {
+        console.error('Error fetching mode_presensi_siswa:', e);
+      }
+    };
+    fetchSchoolMode();
+
+    const channelName = `sekolah_mode_${user?.sekolah_id || 'all'}_${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'sekolah',
+          filter: user?.sekolah_id ? `id=eq.${user.sekolah_id}` : undefined
+        },
+        (payload: any) => {
+          if (payload.new?.mode_presensi_siswa) {
+            setModePresensiSiswa(payload.new.mode_presensi_siswa as 'qr' | 'manual');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.sekolah_id]);
+
   // Fetch today's scans and summary counts
   const fetchTodayScanData = async () => {
     if (!user?.sekolah_id) return;
@@ -191,7 +240,7 @@ export default function PiketView({ user }: { user: any }) {
       const summary = await getTodayPresensiSummary(supabase, user.sekolah_id, todayStr);
       setScanSummary(summary);
 
-      const recent = await getRecentPresensiSiswa(supabase, user.sekolah_id, todayStr, 150);
+      const recent = await getRecentPresensiSiswa(supabase, user.sekolah_id, todayStr, 1000);
       setTodayScans(recent);
     } catch (e) {
       console.error('Error fetching today scan data:', e);
@@ -234,18 +283,19 @@ export default function PiketView({ user }: { user: any }) {
     }
   }, [activeTab, user?.sekolah_id]);
 
-  // USB Scanner Auto-Focus mechanism
+  // USB Scanner Auto-Focus mechanism (only in QR mode)
   useEffect(() => {
-    if (activeTab === 'scan') {
+    if (activeTab === 'scan' && modePresensiSiswa === 'qr') {
       const timer = setTimeout(() => {
         usbInputRef.current?.focus();
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [activeTab]);
+  }, [activeTab, modePresensiSiswa]);
 
   const handleUsbInputBlur = () => {
     setIsUsbInputFocused(false);
+    if (modePresensiSiswa !== 'qr') return;
     // Auto refocus unless activeElement is another input/select
     setTimeout(() => {
       if (activeTab === 'scan') {
@@ -441,6 +491,81 @@ export default function PiketView({ user }: { user: any }) {
     return matchKelas && matchSearch;
   });
 
+  // Manual attendance marking for Piket
+  const handleManualMark = async (student: any, status: 'datang' | 'pulang') => {
+    const opKey = `${student.id}-${status}`;
+    setManualMarkLoading(opKey);
+    try {
+      const res = await recordPresensiSiswa(supabase, {
+        siswa: {
+          id: student.id,
+          nisn: student.nisn,
+          nama_siswa: student.nama_siswa,
+          kelas: student.kelas,
+          sekolah_id: user?.sekolah_id || student.sekolah_id,
+          gender: student.gender
+        },
+        status,
+        sekolahId: user?.sekolah_id,
+        deviceId: 'manual'
+      });
+
+      if (res.success) {
+        showToast(res.message, 'success');
+        playAudioFeedback('success');
+        await fetchTodayScanData();
+      } else if (res.alreadyExists) {
+        showToast(res.message, 'info');
+        playAudioFeedback('warning');
+        await fetchTodayScanData();
+      } else {
+        showToast(res.message, 'error');
+        playAudioFeedback('error');
+      }
+    } catch (err: any) {
+      console.error('Error marking manual presensi:', err);
+      showToast(err.message || 'Gagal menandai presensi', 'error');
+      playAudioFeedback('error');
+    } finally {
+      setManualMarkLoading(null);
+    }
+  };
+
+  const handleCancelManualPresensi = async (recordId: string, namaSiswa: string, status: 'datang' | 'pulang') => {
+    const result = await Swal.fire({
+      title: 'Batalkan Presensi?',
+      text: `Hapus status presensi ${status} untuk ${namaSiswa}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Batalkan',
+      cancelButtonText: 'Kembali'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        let q = supabase.from('presensi_siswa').delete().eq('id', recordId);
+        if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        const { error } = await q;
+        if (error) throw error;
+        showToast(`Presensi ${status} ${namaSiswa} berhasil dibatalkan`, 'info');
+        await fetchTodayScanData();
+      } catch (e: any) {
+        console.error('Error cancelling presensi:', e);
+        showToast('Gagal membatalkan presensi: ' + e.message, 'error');
+      }
+    }
+  };
+
+  const filteredManualStudents = allStudents.filter(s => {
+    const matchKelas = manualKelasFilter === 'Semua' || s.kelas === manualKelasFilter;
+    const matchSearch = !manualSearchQuery.trim() || 
+      (s.nama_siswa?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) ||
+      (s.nisn?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase());
+    return matchKelas && matchSearch;
+  });
+
   useEffect(() => {
     fetchDataPiket();
 
@@ -455,6 +580,7 @@ export default function PiketView({ user }: { user: any }) {
         if (uniqueKelas.length > 0) {
           setActiveKelas(uniqueKelas[0] as string);
           setSelectedSiswaFilterKelas(uniqueKelas[0] as string);
+          setManualKelasFilter(prev => prev === 'Semua' ? (uniqueKelas[0] as string) : prev);
         }
         
         // Initialize default attendance, checking canonical public.absensi first
@@ -1068,7 +1194,11 @@ export default function PiketView({ user }: { user: any }) {
                 onClick={() => setActiveTab('scan')} 
                 className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'scan' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
               >
-                <i className="fa-solid fa-qrcode mr-1.5 text-teal-600 dark:text-teal-400"></i> Scan QR Siswa
+                {modePresensiSiswa === 'manual' ? (
+                  <><i className="fa-solid fa-clipboard-user mr-1.5 text-teal-600 dark:text-teal-400"></i> Presensi Manual Siswa</>
+                ) : (
+                  <><i className="fa-solid fa-qrcode mr-1.5 text-teal-600 dark:text-teal-400"></i> Scan QR Siswa</>
+                )}
               </button>
 
               {isAdmin && (
@@ -1264,7 +1394,226 @@ export default function PiketView({ user }: { user: any }) {
             {/* TAB: SCAN QR SISWA (KIOSK SCANNER) */}
             {activeTab === 'scan' && (
               <div id="piket-content-scan" className="space-y-6 fade-in">
-                {/* 1. Kiosk Station & Mode Switcher Controls */}
+                {modePresensiSiswa === 'manual' ? (
+                  <>
+                    {/* 1. Header Banner & Filter Roster (Mode Manual) */}
+                    <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 p-4 sm:p-5 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm space-y-4">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                          <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
+                            <i className="fa-solid fa-clipboard-user text-teal-600 dark:text-teal-400"></i>
+                            Presensi Manual Siswa
+                          </h3>
+                          <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
+                            Pemeriksaan dan pencatatan presensi kehadiran dan kepulangan siswa secara manual per kelas.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 self-stretch sm:self-auto bg-white dark:bg-gray-800 py-1.5 px-3 rounded-xl border border-teal-200 dark:border-teal-800 text-xs font-semibold text-teal-800 dark:text-teal-200">
+                          <i className="fa-solid fa-school text-teal-600"></i>
+                          <span>Mode Presensi: <strong className="font-bold text-teal-700 dark:text-teal-300">Manual</strong></span>
+                        </div>
+                      </div>
+
+                      {/* Filter & Search Bar */}
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-teal-200/50 dark:border-teal-800/50">
+                        {/* Filter Kelas */}
+                        <div className="flex-1 sm:max-w-xs">
+                          <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                            Pilih Kelas:
+                          </label>
+                          <select
+                            value={manualKelasFilter}
+                            onChange={(e) => setManualKelasFilter(e.target.value)}
+                            className="w-full text-xs font-semibold bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-2.5 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                          >
+                            <option value="Semua">Semua Kelas</option>
+                            {kelasList.map(k => (
+                              <option key={k} value={k}>{k}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Search Student */}
+                        <div className="flex-1">
+                          <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                            Cari Siswa:
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={manualSearchQuery}
+                              onChange={(e) => setManualSearchQuery(e.target.value)}
+                              placeholder="Cari berdasarkan nama siswa atau NISN..."
+                              className="w-full pl-9 pr-8 py-2.5 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
+                            />
+                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
+                            {manualSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setManualSearchQuery('')}
+                                className="absolute right-2.5 top-2.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                              >
+                                <i className="fa-solid fa-xmark"></i>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Manual Student Roster Table Card */}
+                    <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <i className="fa-solid fa-users text-teal-600"></i>
+                            Daftar Siswa {manualKelasFilter !== 'Semua' ? `Kelas ${manualKelasFilter}` : '(Semua Kelas)'}
+                          </h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            Menampilkan {filteredManualStudents.length} siswa
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={fetchTodayScanData}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+                        >
+                          <i className="fa-solid fa-rotate text-xs"></i>
+                          <span>Segarkan Status</span>
+                        </button>
+                      </div>
+
+                      {/* Table */}
+                      <div className="overflow-x-auto custom-scroll">
+                        <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200 border-collapse">
+                          <thead>
+                            <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">
+                              <th className="py-3 px-3 w-12 text-center">No</th>
+                              <th className="py-3 px-3">Nama Siswa</th>
+                              <th className="py-3 px-3">NISN</th>
+                              <th className="py-3 px-3">Kelas</th>
+                              <th className="py-3 px-3 text-center min-w-[140px]">Presensi Datang</th>
+                              <th className="py-3 px-3 text-center min-w-[140px]">Presensi Pulang</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                            {filteredManualStudents.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="py-10 text-center text-gray-400 dark:text-gray-500 text-xs">
+                                  <div className="flex flex-col items-center justify-center space-y-2">
+                                    <i className="fa-solid fa-user-slash text-2xl text-gray-300 dark:text-gray-600"></i>
+                                    <span>Tidak ada siswa ditemukan sesuai filter / pencarian.</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : (
+                              filteredManualStudents.map((s, idx) => {
+                                const datangRecord = todayScans.find(
+                                  scan => (scan.siswa_id === s.id || (s.nisn && scan.nisn === s.nisn)) && scan.status === 'datang'
+                                );
+                                const pulangRecord = todayScans.find(
+                                  scan => (scan.siswa_id === s.id || (s.nisn && scan.nisn === s.nisn)) && scan.status === 'pulang'
+                                );
+
+                                return (
+                                  <tr key={s.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                                    <td className="py-3 px-3 text-center text-gray-400 text-[11px] font-mono">
+                                      {idx + 1}
+                                    </td>
+                                    <td className="py-3 px-3">
+                                      <div className="font-bold text-gray-900 dark:text-white">
+                                        {s.nama_siswa}
+                                      </div>
+                                      {s.gender && (
+                                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                          {s.gender === 'L' ? 'Laki-laki' : s.gender === 'P' ? 'Perempuan' : s.gender}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-3 font-mono text-[11px] text-gray-500 dark:text-gray-400">
+                                      {s.nisn || '-'}
+                                    </td>
+                                    <td className="py-3 px-3">
+                                      <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-bold text-[10px]">
+                                        {s.kelas}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-3 text-center">
+                                      {datangRecord ? (
+                                        <div className="inline-flex items-center gap-1.5">
+                                          <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
+                                            <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
+                                            <span>Datang {datangRecord.jam ? datangRecord.jam.slice(0, 5) : ''}</span>
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCancelManualPresensi(datangRecord.id, s.nama_siswa, 'datang')}
+                                            title="Batalkan presensi datang"
+                                            className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                          >
+                                            <i className="fa-solid fa-xmark"></i>
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          disabled={manualMarkLoading === `${s.id}-datang`}
+                                          onClick={() => handleManualMark(s, 'datang')}
+                                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                        >
+                                          {manualMarkLoading === `${s.id}-datang` ? (
+                                            <i className="fa-solid fa-spinner animate-spin"></i>
+                                          ) : (
+                                            <i className="fa-solid fa-right-to-bracket text-[10px]"></i>
+                                          )}
+                                          <span>Tandai Datang</span>
+                                        </button>
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-3 text-center">
+                                      {pulangRecord ? (
+                                        <div className="inline-flex items-center gap-1.5">
+                                          <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
+                                            <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
+                                            <span>Pulang {pulangRecord.jam ? pulangRecord.jam.slice(0, 5) : ''}</span>
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleCancelManualPresensi(pulangRecord.id, s.nama_siswa, 'pulang')}
+                                            title="Batalkan presensi pulang"
+                                            className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                          >
+                                            <i className="fa-solid fa-xmark"></i>
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          disabled={manualMarkLoading === `${s.id}-pulang`}
+                                          onClick={() => handleManualMark(s, 'pulang')}
+                                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                        >
+                                          {manualMarkLoading === `${s.id}-pulang` ? (
+                                            <i className="fa-solid fa-spinner animate-spin"></i>
+                                          ) : (
+                                            <i className="fa-solid fa-right-from-bracket text-[10px]"></i>
+                                          )}
+                                          <span>Tandai Pulang</span>
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* 1. Kiosk Station & Mode Switcher Controls */}
                 <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 p-4 sm:p-5 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
@@ -1588,6 +1937,8 @@ export default function PiketView({ user }: { user: any }) {
                     </div>
                   </div>
                 </div>
+                  </>
+                )}
 
                 {/* 3. Real-Time Stat Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1633,7 +1984,7 @@ export default function PiketView({ user }: { user: any }) {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                       <i className="fa-solid fa-clock-rotate-left text-teal-600"></i>
-                      Log Presensi Siswa Hari Ini ({filteredTodayScans.length} Scan)
+                      Log Presensi Siswa Hari Ini ({filteredTodayScans.length} {modePresensiSiswa === 'manual' ? 'Presensi' : 'Scan'})
                     </h3>
 
                     {/* Filter & Search Controls */}
