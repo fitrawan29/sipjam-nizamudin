@@ -49,12 +49,13 @@ Fix teacher attendance camera to portrait mode only and disable auto-zoom/croppi
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| implementer_r0 | teamwork_preview_implementer | Primary Implementation | in-progress | a5fa1521-b67e-45e7-b0b3-a4c7296c4007 |
+| implementer_r0 | teamwork_preview_implementer | Primary Implementation | completed | a5fa1521-b67e-45e7-b0b3-a4c7296c4007 |
+| reviewer_r1 | teamwork_preview_reviewer | Adversarial Review Round 1 | in-progress | 753e4490-4112-441c-b73b-2ca1536e8e39 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: a5fa1521-b67e-45e7-b0b3-a4c7296c4007
+- Spawn count: 2 / 16
+- Pending subagents: 753e4490-4112-441c-b73b-2ca1536e8e39
 - Predecessor: none
 - Successor: not yet spawned
 
@@ -63,7 +64,11 @@ Fix teacher attendance camera to portrait mode only and disable auto-zoom/croppi
 - Safety timer: none
 
 ## Open Issues Ledger
-- (none yet)
+- Physical camera hardware on real Android/iOS smartphones with custom OEM camera vendor drivers. [implementer_r0]
+- Device-level optical or digital hardware zoom toggled at the OS camera firmware layer. [implementer_r0]
+- Minor Robustness Risk — When using a desktop webcam with a fixed 16:9 landscape aspect ratio in portrait mode, the canvas crops the horizontal feed to 3:4 portrait to ensure the attendance record is upright. [implementer_r0]
+- Shallow Verification — Viewfinder letterboxing presentation on ultra-narrow mobile viewports (< 320px width). [implementer_r0]
+- Untested Edge Cases & Next Step — Reviewers should test the flow on physical iOS Safari and Android Chrome devices: navigate to Presensi Guru, verify the camera opens in portrait mode, capture a selfie, and confirm the resulting preview image matches the viewfinder without auto-zoom or unexpected cropping. [implementer_r0]
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_13\DISPATCH.md — Dispatch instructions from parent

@@ -1,11 +1,12 @@
 # Progress
 
 ## Current Status
-Last visited: 2026-10-04T22:23:05Z
-- Dispatched implementer_r0 (conv ID: a5fa1521-b67e-45e7-b0b3-a4c7296c4007)
+Last visited: 2026-10-04T22:30:05Z
+- implementer_r0 completed and reported passing verification across 20 test files, camera tests, and tsc/build.
+- reviewer_r1 is actively running adversarial review.
 
 ## Iteration Status
-Current iteration: 1 / 32
+Current iteration: 2 / 32
 
 ## Checklist
 - [x] Round 0: Dispatch teamwork_preview_implementer
