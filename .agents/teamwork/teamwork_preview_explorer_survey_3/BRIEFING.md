@@ -1,45 +1,46 @@
-# BRIEFING — 2026-10-01T11:06:00Z
+# BRIEFING — 2026-10-04T01:21:00Z
 
 ## Mission
-Investigate and survey R3 (GuruPresensi - Izin Datang Terlambat), R4 (GuruJurnal photo upload + geolocation), and R6 (Superadmin School Settings & per-school journal config).
+Investigate student attendance handling across views: PiketView, RekapSiswaView, and GuruJurnal, focusing on mode_presensi_siswa ('qr' vs 'manual') per-school configuration, data flow, multi-tenant isolation, and UI requirements.
 
 ## 🔒 My Identity
 - Archetype: teamwork_preview_explorer
 - Roles: investigator, analyzer, synthesizer
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_3
-- Original parent: 99cc2021-9546-433d-8867-c45dc0860a07
-- Milestone: Explorer Survey Phase
+- Original parent: 60f11d0f-3028-47d5-a4c0-af2902baf3f1
+- Milestone: Explorer Survey Phase (Student Attendance Mode: QR vs Manual)
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement or modify source code
-- Ponytail principle (simplest minimal solution, framework-native, no extra deps)
+- Read-only investigation — do NOT implement or modify application source code
 - Write only to my own folder: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_3`
+- Ponytail principle (simplest minimal solution, framework-native, no extra deps)
 
 ## Current Parent
-- Conversation ID: 99cc2021-9546-433d-8867-c45dc0860a07
-- Updated: 2026-10-01T11:06:00Z
+- Conversation ID: 60f11d0f-3028-47d5-a4c0-af2902baf3f1
+- Updated: 2026-10-04T01:21:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `src/components/GuruPresensi.tsx` (R3 status options, submit handler, validation)
-  - `src/app/api/attendance/` (surveyed existing routes, found only auto-alpa)
-  - `src/components/GuruJurnal.tsx` (R4 camera vs gallery upload, GPS capture, insert payload)
-  - `src/components/SuperadminView.tsx` (R6 handleEditSchool modal and school state)
-  - Supabase database schema via `list_tables` & `execute_sql` for `sekolah`, `jurnal_pembelajaran`, `presensi_guru`
-  - `src/types/database.ts`
+  - `src/components/PiketView.tsx` (school data, mode acquisition, student/class loading, existing QR scanner, manual checklist UI design)
+  - `src/components/RekapSiswaView.tsx` (gate and wali attendance reading, multi-tenant isolation, absence of QR-only constraints)
+  - `src/components/GuruJurnal.tsx` (piket attendance syncing, absensi integration, multi-tenant isolation, UI badges)
+  - `src/components/SuperadminView.tsx` (per-school configuration pattern from mode_jurnal, modal forms, table badges)
+  - `src/lib/qrSiswa.ts` (`recordPresensiSiswa`, `getTodayPresensiSummary`, `getRecentPresensiSiswa`, parameters & payload)
+  - `supabase/migrations/20261003_qr_presensi_siswa.sql` (table schema of `presensi_siswa`, constraints, RLS policies)
+  - `src/types/database.ts` (`presensi_siswa` and `sekolah` definitions)
 - **Key findings**:
-  - R3: `GuruPresensi.tsx:513` uses `value="Terlambat"`, needs update to `value="Izin Terlambat"`. Need `src/app/api/attendance/route.ts` to satisfy backend endpoint acceptance criteria.
-  - R4: `GuruJurnal.tsx` lacks gallery upload and GPS capture in upload handler. Table `jurnal_pembelajaran` needs `latitude, longitude, lokasi, waktu_upload` columns.
-  - R6: `SuperadminView.tsx` Edit Sekolah modal needs `mode_jurnal` input. `public.sekolah` needs `mode_jurnal` column. `GuruJurnal.tsx` must conditionally render upload file input based on teacher's school config.
-- **Unexplored areas**: None within assigned scope.
+  - PiketView receives `user.sekolah_id` and can fetch `mode_presensi_siswa` from `sekolah`, defaulting to `'qr'`.
+  - Manual mode in PiketView can render students per class from existing `allStudents` state, with one-by-one "Datang" and "Pulang" marking saving to `presensi_siswa` via `recordPresensiSiswa(..., deviceId: 'manual')`.
+  - QR mode in PiketView cleanly retains camera + USB HID kiosk scanner.
+  - RekapSiswaView and GuruJurnal query `presensi_siswa` without requiring QR codes and are immediately compatible with manual records. Multi-tenant isolation by `sekolah_id` is verified across all components.
+- **Unexplored areas**: None.
 
 ## Key Decisions Made
-- Produced detailed survey report `survey_report.md` with complete technical specifications, line numbers, schema migrations, and implementation steps.
-- Produced 5-component `handoff.md`.
+- Completed detailed investigation and produced comprehensive 5-component `handoff.md`.
+- Verified type check `npx tsc --noEmit` exits with 0 errors.
 
 ## Artifact Index
 - `DISPATCH.md` — Task assignment and incoming messages
 - `BRIEFING.md` — Persistent context & state
 - `progress.md` — Liveness & step updates
-- `survey_report.md` — Detailed survey findings and technical proposal
 - `handoff.md` — 5-component handoff report

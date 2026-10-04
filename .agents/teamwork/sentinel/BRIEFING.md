@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-04T00:40:00Z
+# BRIEFING — 2026-10-04T01:14:00Z
 
 ## Mission
-Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) add student QR code presensi operated by guru piket (browser camera & up to 10 external USB HID hardware scanners), (3) attendance reporting to piket & wali kelas, and (4) sync attendance to guru mapel teaching schedule on the day.
+Route and monitor execution of SIPJAM app: Add per-school student attendance mode configuration (QR Code vs Manual) configurable by Superadmin in SuperadminView, updating PiketView attendance flow and ensuring seamless multi-tenant propagation across related views.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -35,8 +35,10 @@ Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) ad
 - Active Orchestrator (orchestrator_8): 9158af2a-a31a-4d06-bc79-2701bb3d1192 (completed & retired)
 - Active Orchestrator (orchestrator_9): 39ee7d4d-26ad-4d48-ad3e-07ef312a4b5b (completed & retired)
 - Active Orchestrator (orchestrator_10): 149f0279-6b23-4179-9bd4-edcb251f34f1 (stale/429 killed)
-- Active Orchestrator (orchestrator_11): 71224a06-b69c-4ce9-8bfe-d2e6923181fe
-- Victory Auditor: to be spawned on victory claim
+- Active Orchestrator (orchestrator_11): 71224a06-b69c-4ce9-8bfe-d2e6923181fe (completed & retired)
+- Sentinel Victory Auditor (victory_auditor_16): 589ece42-3a6c-4906-b066-5202d42ec9a7 (VICTORY CONFIRMED & retired)
+- Active Orchestrator (orchestrator_12): 60f11d0f-3028-47d5-a4c0-af2902baf3f1
+- Victory Auditor: [to be spawned on victory claim]
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -45,15 +47,15 @@ Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) ad
 - Cancel all crons and kill all subagents before final summary delivery
 
 ## User Context
-- **Last user request**: Hapus Chat Guru, QR Code Siswa scan (browser camera + hardware scanner up to 10), Laporan ke Piket & Wali Kelas, Sinkronisasi ke Guru Mapel di GuruJurnal.
+- **Last user request**: Tambahkan konfigurasi mode presensi siswa per-sekolah (QR vs Manual) diatur oleh Superadmin, mengubah modul Piket (daftar siswa per kelas + checklist datang/pulang untuk mode manual vs QR scanner untuk mode QR), dan memastikan kompatibilitas multi-tenant serta alur presensi.
 - **Pending clarifications**: none
-- **Delivered results**: M1, M2, M3 passed gate in orchestrator_10; M4 code implemented; orchestrator_11 dispatched to complete M4 verification, full test suite/build, and git workflow.
+- **Delivered results**: Dispatched to orchestrator_12 (60f11d0f-3028-47d5-a4c0-af2902baf3f1).
 
 ## Project Status
 - **Phase**: in progress
 - **Route**: General (teamwork_preview_orchestrator)
-- **Active Crons**: task-26 (Cron 1: Progress Reporting, */8 * * * *), task-28 (Cron 2: Liveness Check, */10 * * * *)
-- **Active Subagents**: orchestrator_11 (71224a06-b69c-4ce9-8bfe-d2e6923181fe)
+- **Active Crons**: task-34 (progress reporting), task-36 (liveness check)
+- **Active Subagents**: orchestrator_12 (60f11d0f-3028-47d5-a4c0-af2902baf3f1)
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -64,5 +66,4 @@ Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) ad
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original verbatim user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\BRIEFING.md — Sentinel persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\GATE_STATUS.md — M1-M3 Gate records
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_11\DISPATCH.md — Orchestrator 11 dispatch brief
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\ — Active Orchestrator working directory

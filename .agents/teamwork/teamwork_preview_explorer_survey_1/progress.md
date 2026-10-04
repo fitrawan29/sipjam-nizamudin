@@ -1,11 +1,13 @@
-# Progress — Explorer Survey 1
+# Progress — Explorer 1 (Database & Supabase Schema Survey)
 
-Last visited: 2026-10-01T11:06:00Z
-Status: Survey completed
+Last visited: 2026-10-04T01:22:15Z
 
-- [x] Initialized BRIEFING and DISPATCH
-- [x] Surveyed database schema, migrations, tables, foreign keys for R1
-- [x] Surveyed attendance status backend and schema for R3
-- [x] Drafted survey_report.md
-- [x] Producing handoff.md
-- [ ] Notifying orchestrator_6
+## Status
+- [x] Initialized BRIEFING.md and progress.md
+- [x] Investigate migration management and existing SQL migrations in repo
+- [x] Inspect Supabase schema for `public.sekolah` and `public.presensi_siswa`
+- [x] Investigate TypeScript types and schemas in codebase (`src/types/database.ts`, `src/lib/`, etc.)
+- [x] Trace how `sekolah_id` is propagated and enforced across multi-tenant queries
+- [x] Synthesize findings and write SQL migration recommendation
+- [x] Wrote `handoff.md` report
+- [x] Finalize and notify parent agent

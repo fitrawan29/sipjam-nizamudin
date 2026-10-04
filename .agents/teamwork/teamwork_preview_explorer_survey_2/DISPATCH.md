@@ -1,25 +1,44 @@
-# Task Assignment: Explorer Survey 2 (Profile, R2 Avatar Reactive State, R5 Username Edit Limitation)
+# Dispatch: Explorer 2 (Superadmin School Management Survey)
 
-## Identity
-- Archetype: teamwork_preview_explorer
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2
-- Parent: orchestrator_6 (99cc2021-9546-433d-8867-c45dc0860a07)
-- Scope Document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_6\DISPATCH.md
-- Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-10-01T10:56:44Z)
+## Role
+You are an Explorer agent (`teamwork_preview_explorer`).
 
-## Mission
-Investigate the user profile, avatar handling, and username edit flows across UI and backend:
-1. R2 (Avatar Reactive Update): Find where avatar is uploaded, stored, and displayed (Profile modal/page, Header, Sidebar, `AppScreen.tsx`, user contexts/state hooks). Trace why changing an avatar currently requires a page reload. Propose the exact minimal, reactive solution so changing avatar updates UI immediately.
-2. R5 (Username Edit Limitation): Trace where username can be edited (Profile, Guru Management, Admin settings). Check where `role === 'admin'` checks exist or are missing. Propose UI input locking (disabled/hidden) and backend guards so only users with role Admin can modify teacher usernames.
+## Working Directory
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2`
 
-## Output
-Write your comprehensive analysis and recommendations to:
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\survey_report.md`
-And a standard `handoff.md` in your directory.
-Report back via send_message to orchestrator_6.
+## Reference Files
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (MUST read first)
+- Project Root: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
+- Target Component: `src/components/SuperadminView.tsx` (and any related subcomponents/types)
 
-## 2026-10-01T10:59:30Z
-You are assigned to Explorer Survey 2. Read your task assignment at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\DISPATCH.md and ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md.
-Investigate user profile, avatar upload & reactive state (R2), and username editing permissions / admin checks (R5).
-Produce a detailed survey report at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\survey_report.md and handoff.md.
-Notify orchestrator_6 when finished.
+## Objective
+Investigate how Superadmin manages schools:
+1. Examine `src/components/SuperadminView.tsx` (and any related modals or components like `EditSekolahModal`, etc.):
+   - How list of schools is fetched from Supabase.
+   - What data/interface types represent `Sekolah`.
+   - Where the edit/manage school UI is located (modal, drawer, table action, form fields).
+   - How updates to school settings are currently handled and persisted to DB (e.g. `mode_jurnal` was previously added in R6 earlier, see how it's handled!).
+2. Identify exact lines/sections where the "Mode Presensi Siswa: QR Code / Manual" toggle/dropdown needs to be added in Superadmin UI.
+3. Check state management, form validation, and save handlers.
+
+## Deliverable
+Write your findings to:
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\handoff.md`
+Then call `send_message` to report completion.
+
+
+## 2026-10-04T01:15:26Z
+You are an Explorer agent.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2
+Read your task description in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\DISPATCH.md
+Also read ORIGINAL_REQUEST.md at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Investigate Superadmin school management:
+1. Examine src/components/SuperadminView.tsx (and any related modals or components):
+   - How list of schools is fetched from Supabase.
+   - What data/interface types represent Sekolah.
+   - Where the edit/manage school UI is located (modal, drawer, table action, form fields).
+   - How updates to school settings are currently handled and persisted to DB (e.g. check how mode_jurnal was added earlier).
+2. Identify exact lines/sections where the "Mode Presensi Siswa: QR Code / Manual" toggle/dropdown needs to be added in Superadmin UI.
+3. Check state management, form validation, and save handlers.
+Write your detailed report to: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_explorer_survey_2\handoff.md
+Then send a completion message back.

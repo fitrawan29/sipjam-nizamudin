@@ -31,7 +31,7 @@
 | 9 | R3: Wali Kelas Attendance Report | Daily gate attendance report by class in `RekapSiswaView.tsx` for teachers assigned as Wali Kelas | M4 | Survey 3 | DONE |
 | 10 | R4: Guru Mapel Attendance Sync | In `GuruJurnal.tsx`, display gate arrival status (`Hadir di Sekolah` vs `Belum Scan`) in student list for today's teaching schedule | M4 | Survey 3 | DONE |
 | 11 | Multi-Tenant Data Isolation Guard | Ensure all queries for `presensi_siswa`, `data_siswa`, and schedules strictly filter by `sekolah_id` | M2, M3, M4 | Dispatch | DONE |
-| 12 | Comprehensive Verification, Build & Git Delivery | Automated test suite verification, `npx tsc --noEmit`, `npm run build`, and automatic git commit & push per GEMINI.md | M5 | Dispatch & GEMINI.md | IN_PROGRESS |
+| 12 | Comprehensive Verification, Build & Git Delivery | Automated test suite verification, `npx tsc --noEmit`, `npm run build`, and automatic git commit & push per GEMINI.md | M5 | Dispatch & GEMINI.md | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -40,7 +40,7 @@
 | M2 | Database Migrations & QR Code Siswa Mechanism | Migration SQL (`data_siswa.qr_code`, `presensi_siswa`), QR generation/display helper | M1 | DONE |
 | M3 | PiketView QR Scanner (Camera + USB HID 10-Unit) & Piket Daily Report | `PiketView.tsx` Scan tab, camera & USB HID handler, multi-kiosk concurrency, daily scan log | M2 | DONE |
 | M4 | Laporan Wali Kelas & Sinkronisasi Guru Mapel | `RekapSiswaView.tsx` Wali Kelas reporting, `GuruJurnal.tsx` student arrival status sync | M2, M3 | DONE |
-| M5 | E2E Testing, Build & Git Delivery | Comprehensive automated tests, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | IN_PROGRESS |
+| M5 | E2E Testing, Build & Git Delivery | Comprehensive automated tests, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | DONE |
 
 ## Interface Contracts
 

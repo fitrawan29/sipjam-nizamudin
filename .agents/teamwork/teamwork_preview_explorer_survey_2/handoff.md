@@ -1,84 +1,322 @@
-# Handoff Report: Explorer Survey 2 (R2 Avatar & R5 Username Edit Limitation)
+# Handoff Report: Superadmin School Management Survey (Mode Presensi Siswa)
 
 ## 1. Observation
-1. **`src/components/HomeView.tsx` lines 924–927**:
-   ```tsx
-   <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 shrink-0">
-     <i className="fa-solid fa-user-tie text-lg sm:text-xl text-white"></i>
-   </div>
-   ```
-   Renders a static icon `<i className="fa-solid fa-user-tie"></i>` instead of invoking `renderUserAvatar(user?.avatar)`.
-2. **`src/components/AppScreen.tsx` lines 543–550**:
-   ```tsx
-   <button
-     type="button"
-     onClick={() => setIsAccountModalOpen(true)}
-     className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700"
-     title="Pengaturan Akun & Profil"
-   >
-     <i className="fa-solid fa-user-gear text-sm"></i>
-   </button>
-   ```
-   Renders a static gear icon `<i className="fa-solid fa-user-gear"></i>` rather than user avatar.
-3. **`src/components/AdminConfigView.tsx` lines 571–575**:
-   ```tsx
-   <AccountSettingsModal 
-     isOpen={accountModalOpen} 
-     onClose={() => setAccountModalOpen(false)} 
-     user={user} 
-   />
-   ```
-   Omits `onUserUpdated` prop, preventing `AppScreen` user state from receiving updates when opened from the config view.
-4. **`supabase/migrations/20260926_secure_passwords.sql` lines 11–19**:
+
+### 1.1 Data Fetching in `SuperadminView.tsx`
+- **File**: `src/components/SuperadminView.tsx`, lines 59–73.
+- **Fetching Function**:
+  ```typescript
+  // 1. Fetch schools
+  const { data: schools, error: schoolErr } = await supabase
+    .from('sekolah')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (schoolErr) {
+    console.error('Error fetching sekolah:', schoolErr);
+  } else if (schools) {
+    setSekolahList(schools);
+  }
+  ```
+- **State Storage**:
+  - Line 33: `const [sekolahList, setSekolahList] = useState<Sekolah[]>([]);`
+- **Reactivity & Trigger Points**:
+  - Mounted via `useEffect` (lines 115–117): `useEffect(() => { fetchAllData(); }, [fetchAllData]);`
+  - Refreshed immediately following:
+    - Adding school: line 271 (`fetchAllData()`)
+    - Editing school: line 388 (`fetchAllData()`)
+    - Toggling school status: line 425 (`fetchAllData()`)
+    - Deleting school: line 461 (`fetchAllData()`)
+    - Manual header button click: line 716 (`onClick={fetchAllData}`)
+
+### 1.2 Data / Interface Types for `Sekolah`
+- **File**: `src/types/database.ts`
+- **Table Definition**: Lines 1270–1332 defines `sekolah` entity schema for Supabase:
+  - `Row`: contains `id: string`, `nama: string`, `npsn: string | null`, `status: string`, `mode_jurnal: string | null`, etc.
+  - `Insert`: optional fields with defaults (`mode_jurnal?: string | null`, etc.).
+  - `Update`: optional fields for update payload (`mode_jurnal?: string | null`, etc.).
+- **Type Aliases**:
+  - Line 1771–1773:
+    ```typescript
+    export type Sekolah = Tables<"sekolah">;
+    export type SekolahInsert = TablesInsert<"sekolah">;
+    export type SekolahUpdate = TablesUpdate<"sekolah">;
+    ```
+  - Line 1920: `export type StatusSekolah = "aktif" | "nonaktif";`
+
+### 1.3 UI Structure for School Management in `SuperadminView.tsx`
+- **Tab Selection**: Rendered under `activeTab === 'sekolah'` (lines 984–1248).
+- **Header & Action**:
+  - Lines 995–1001: Button "Daftarkan Sekolah Baru" triggers `onClick={handleOpenAddSchoolModal}`.
+- **Search & Filters**:
+  - Lines 1004–1043: Search bar (`sekolahSearch`), Kota/Kabupaten dropdown (`cityFilter`), Status filter (`statusFilter`).
+- **School Table**:
+  - Lines 1046–1246: Table headers: `No`, `Nama Lembaga & NPSN`, `Wilayah`, `Kepala Sekolah`, `Admin`, `Status`, `Aksi`.
+  - Column `Nama Lembaga & NPSN` (lines 1072–1089): Shows school name, NPSN, address, and current feature badges.
+  - Column `Status` (lines 1113–1127): Toggle button via `onClick={() => handleToggleSchoolStatus(s)}`.
+  - Column `Aksi` (lines 1128–1239): Contains Invoice WhatsApp/PDF button, Edit button (`onClick={() => handleEditSchool(s)}`, lines 1222–1229), and Delete button (`onClick={() => handleDeleteSchool(s)}`, lines 1230–1237).
+- **Modal Architecture**:
+  - SIPJAM does NOT use separate React component files (no `EditSekolahModal.tsx` or drawer).
+  - All school add/edit modals are built using **SweetAlert2 (`Swal.fire`)** with custom HTML templates.
+
+### 1.4 Precedent Pattern: How `mode_jurnal` was Added and Handled
+1. **Database Migration** (`supabase/migrations/20261001_features_r1_r6.sql`, line 10):
    ```sql
-   CREATE OR REPLACE FUNCTION public.verify_login(p_username TEXT, p_password TEXT)
-   RETURNS TABLE (
-     id UUID,
-     username TEXT,
-     nama TEXT,
-     role TEXT,
-     sekolah_id UUID,
-     session_token UUID
-   )
+   ALTER TABLE public.sekolah
+     ADD COLUMN IF NOT EXISTS mode_jurnal TEXT DEFAULT 'camera_upload';
    ```
-   Omit `avatar` from the return columns.
-5. **`src/app/page.tsx` line 60 & `src/components/AppScreen.tsx` line 91**:
-   Query `.select('id, username, nama, role, sekolah_id, session_token')` without selecting `avatar`.
-6. **`src/components/AccountSettingsModal.tsx` line 291**:
+2. **Type Definition** (`src/types/database.ts`, lines 1280, 1300, 1320):
+   Added `mode_jurnal: string | null` to `Row`, `Insert`, and `Update`.
+3. **Add School Modal (`handleOpenAddSchoolModal`)**:
+   - HTML field (lines 213–218):
+     ```html
+     <div>
+       <label class="font-bold text-gray-700 block mb-1">Mode Jurnal Pembelajaran</label>
+       <select id="swal-sch-mode-jurnal" class="swal2-select !mt-0 !w-full text-xs">
+         <option value="camera_upload" selected>Live Camera + Upload Foto</option>
+         <option value="camera_only">Live Camera Langsung</option>
+       </select>
+     </div>
+     ```
+   - Extraction in `preConfirm` (line 236):
+     ```typescript
+     const mode_jurnal = (document.getElementById('swal-sch-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
+     ```
+   - Returned in object (line 253): `mode_jurnal`
+   - Inserted into DB (line 261): `await supabase.from('sekolah').insert([formValues]);`
+4. **Edit School Modal (`handleEditSchool`)**:
+   - HTML field (lines 330–335):
+     ```html
+     <div>
+       <label class="font-bold text-gray-700 block mb-1">Mode Jurnal Pembelajaran</label>
+       <select id="swal-edit-mode-jurnal" class="swal2-select !mt-0 !w-full text-xs">
+         <option value="camera_only" ${(school as any).mode_jurnal === 'camera_only' ? 'selected' : ''}>Live Camera Langsung</option>
+         <option value="camera_upload" ${(school as any).mode_jurnal === 'camera_upload' || !(school as any).mode_jurnal ? 'selected' : ''}>Live Camera + Upload Foto</option>
+       </select>
+     </div>
+     ```
+   - Extraction in `preConfirm` (line 353):
+     ```typescript
+     const mode_jurnal = (document.getElementById('swal-edit-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
+     ```
+   - Returned in object (line 370): `mode_jurnal, updated_at: new Date().toISOString()`
+   - Updated in DB (lines 379–382):
+     ```typescript
+     const { error } = await supabase
+       .from('sekolah')
+       .update(formValues)
+       .eq('id', school.id);
+     ```
+5. **Table Badge Display** (lines 1076–1083):
    ```tsx
-   {user?.role === 'Admin' || user?.role === 'Superadmin' ? (
+   <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
+     (s as any).mode_jurnal === 'camera_only'
+       ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+       : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+   }`}>
+     <i className={`fa-solid ${(s as any).mode_jurnal === 'camera_only' ? 'fa-camera' : 'fa-camera-rotate'} mr-1`}></i>
+     {(s as any).mode_jurnal === 'camera_only' ? 'Kamera Langsung' : 'Kamera + Upload'}
+   </span>
    ```
-   Checks uppercase `'Admin'` and does not explicitly include `role === 'admin'`. Non-admin users see the locked input with message `(Hanya Admin yang bisa mengubah)`.
-7. **`supabase/migrations/20260926_secure_passwords.sql` lines 46–115 (`update_user_profile`)**:
-   Contains no role check on whether `v_target_user.role = 'Guru'` before updating `username`.
+6. **Consumer View (`src/components/GuruJurnal.tsx`, lines 245–266)**:
+   Queries `mode_jurnal` from `sekolah` by `user.sekolah_id` and adjusts the view accordingly.
+
+---
 
 ## 2. Logic Chain
-1. Based on Observation 1 and 2, even though `AccountSettingsModal` dispatches `onUserUpdated` to `AppScreen`, the visual representations of the profile (the user card in `HomeView` and navbar button in `AppScreen`) do not render `user.avatar`. Therefore, changes appear invisible to the user on screen.
-2. Based on Observation 4 and 5, whenever a user refreshes the page or returns after an idle session, the app re-validates the session against `public.users` or `verify_login`. Because these queries do not retrieve `avatar`, `avatar` is dropped from the session object, preventing persistence across reloads.
-3. Based on Observation 3, when an admin changes their profile from `AdminConfigView`, the missing `onUserUpdated` callback causes the state to remain stale until a reload.
-4. Based on Observation 6, while `AccountSettingsModal` locks the username input for non-Admins, the condition `user?.role === 'Admin'` is vulnerable to role casing (`'admin'`) and does not literally match `role === 'admin'`.
-5. Based on Observation 7, any direct call to `update_user_profile` RPC allows teachers to update their username in the database without authorization checks.
+
+1. **Database Schema & Constraints**:
+   - Per Requirement R1, `public.sekolah` needs a new column `mode_presensi_siswa` with allowed values `'qr'` or `'manual'`, defaulting to `'qr'`.
+   - Adding a check constraint `CHECK (mode_presensi_siswa IN ('qr', 'manual'))` ensures DB integrity.
+   - Updating `src/types/database.ts` ensures TypeScript type safety across the entire application without any `any` casting regressions.
+
+2. **UI Implementation Strategy (Ponytail Mode)**:
+   - Rather than creating complex new subcomponents, the established pattern in `SuperadminView.tsx` uses SweetAlert2 HTML strings.
+   - Adding `mode_presensi_siswa` to `handleOpenAddSchoolModal` and `handleEditSchool` mirrors `mode_jurnal` exactly.
+   - Adding a visual badge in the table column `Nama Lembaga & NPSN` alongside the `mode_jurnal` badge gives Superadmin instant visibility over which mode each school is running.
+   - Adding a quick-toggle handler `handleTogglePresensiMode(school: Sekolah)` (or making the badge/table action clickable) gives Superadmin the option to toggle between QR Code and Manual with a single click, satisfying both the "toggle" and "dropdown" specifications in Requirement R2.
+
+3. **State Management & Form Validation**:
+   - `SuperadminView.tsx` uses React `useState` (`sekolahList`).
+   - On submission, `preConfirm` validates mandatory fields (`nama`, `npsn`, `kota_kabupaten`).
+   - Default fallback: `(document.getElementById('...') as HTMLSelectElement)?.value || 'qr'` ensures that if the field is missing or omitted, it gracefully falls back to `'qr'`.
+   - On successful `update` or `insert`, `fetchAllData()` is invoked, immediately syncing the UI state from the database.
+
+---
 
 ## 3. Caveats
-- No custom file storage bucket (e.g. Supabase Storage `avatars`) is currently configured in the migrations; avatars should either use the 12 preset vector IDs or Base64 Data URLs (<1MB) stored in `users.avatar (TEXT)` to avoid schema migration overhead.
-- In `AdminDataView.tsx`, teacher data is primarily referenced through `data_guru.nip`. Updating `data_guru.nip` should cascade or update `users.username` for matching `user_id`.
 
-## 4. Conclusion
-To resolve R2 and R5 completely:
-1. **R2**:
-   - Render `renderUserAvatar(user?.avatar)` in `HomeView.tsx` (header banner) and `AppScreen.tsx` (navbar profile button).
-   - Support image URLs/data URLs in `src/lib/avatars.tsx`.
-   - Add file upload option in `AccountSettingsModal.tsx` that updates local and parent state immediately upon upload/save.
-   - Include `avatar` in `verify_login` RPC and in `.select()` queries in `page.tsx` and `AppScreen.tsx`.
-   - Forward `onUserUpdated` from `AppScreen` to `AdminConfigView`.
-2. **R5**:
-   - In `AccountSettingsModal.tsx`, normalize the role check to explicitly check `role === 'admin'` along with case-insensitive checks.
-   - Guard `p_username` in `handleSave` so non-admin users cannot submit altered usernames.
-   - In `update_user_profile` RPC, add a guard rejecting username updates for teacher accounts when the caller is not an Admin or Superadmin.
+1. **Existing Schools Migration**: Any existing rows in `public.sekolah` may currently have `mode_presensi_siswa` as NULL until the migration runs. The migration script MUST include `DEFAULT 'qr'` and backfill existing NULL records with `'qr'`.
+2. **Casting in SuperadminView**: Currently `(s as any).mode_jurnal` was casted with `as any`. When adding `mode_presensi_siswa` to `src/types/database.ts`, developers can either access `s.mode_presensi_siswa` directly or use `(s as any).mode_presensi_siswa` as fallback.
+3. **Multi-Tenant Context**: Superadmin is the only role that manages `public.sekolah` globally. School admins and teachers do NOT access `SuperadminView.tsx`. Their components (`PiketView.tsx`, `RekapSiswaView.tsx`, `GuruJurnal.tsx`) only read their school's configured `mode_presensi_siswa` via `user.sekolah_id`.
+
+---
+
+## 4. Conclusion & Actionable Implementation Plan
+
+### Exact Insertion Points for Builder
+
+#### Step A: Database Migration (`supabase/migrations/20261004_mode_presensi_siswa.sql`)
+```sql
+ALTER TABLE public.sekolah 
+  ADD COLUMN IF NOT EXISTS mode_presensi_siswa TEXT DEFAULT 'qr';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'check_mode_presensi_siswa'
+  ) THEN
+    ALTER TABLE public.sekolah
+      ADD CONSTRAINT check_mode_presensi_siswa 
+      CHECK (mode_presensi_siswa IN ('qr', 'manual'));
+  END IF;
+END $$;
+
+UPDATE public.sekolah 
+SET mode_presensi_siswa = 'qr' 
+WHERE mode_presensi_siswa IS NULL;
+```
+
+#### Step B: Types Definition (`src/types/database.ts`)
+1. In `sekolah.Row` (line 1280):
+   ```typescript
+   mode_presensi_siswa: 'qr' | 'manual' | string | null
+   ```
+2. In `sekolah.Insert` (line 1300):
+   ```typescript
+   mode_presensi_siswa?: 'qr' | 'manual' | string | null
+   ```
+3. In `sekolah.Update` (line 1320):
+   ```typescript
+   mode_presensi_siswa?: 'qr' | 'manual' | string | null
+   ```
+4. Export type alias around line 1921:
+   ```typescript
+   export type ModePresensiSiswa = 'qr' | 'manual';
+   ```
+
+#### Step C: Superadmin UI (`src/components/SuperadminView.tsx`)
+
+1. **In `handleOpenAddSchoolModal`**:
+   - **HTML Field** (around line 218, immediately after `swal-sch-mode-jurnal`):
+     ```html
+     <div>
+       <label class="font-bold text-gray-700 block mb-1">Mode Presensi Siswa</label>
+       <select id="swal-sch-mode-presensi-siswa" class="swal2-select !mt-0 !w-full text-xs">
+         <option value="qr" selected>QR Code (Scan Kamera / Scanner Eksternal)</option>
+         <option value="manual">Manual (Ceklis Hadir / Pulang per Siswa)</option>
+       </select>
+     </div>
+     ```
+   - **DOM Extraction** (around line 237):
+     ```typescript
+     const mode_presensi_siswa = (document.getElementById('swal-sch-mode-presensi-siswa') as HTMLSelectElement)?.value || 'qr';
+     ```
+   - **Payload** (around line 254):
+     ```typescript
+     return {
+       ...
+       mode_jurnal,
+       mode_presensi_siswa
+     };
+     ```
+
+2. **In `handleEditSchool`**:
+   - **HTML Field** (around line 335, immediately after `swal-edit-mode-jurnal`):
+     ```html
+     <div>
+       <label class="font-bold text-gray-700 block mb-1">Mode Presensi Siswa</label>
+       <select id="swal-edit-mode-presensi-siswa" class="swal2-select !mt-0 !w-full text-xs">
+         <option value="qr" ${(school as any).mode_presensi_siswa === 'qr' || !(school as any).mode_presensi_siswa ? 'selected' : ''}>QR Code (Scan Kamera / Scanner Eksternal)</option>
+         <option value="manual" ${(school as any).mode_presensi_siswa === 'manual' ? 'selected' : ''}>Manual (Ceklis Hadir / Pulang per Siswa)</option>
+       </select>
+     </div>
+     ```
+   - **DOM Extraction** (around line 354):
+     ```typescript
+     const mode_presensi_siswa = (document.getElementById('swal-edit-mode-presensi-siswa') as HTMLSelectElement)?.value || 'qr';
+     ```
+   - **Payload** (around line 371):
+     ```typescript
+     return {
+       ...
+       mode_jurnal,
+       mode_presensi_siswa,
+       updated_at: new Date().toISOString()
+     };
+     ```
+
+3. **In School Table Badge** (around line 1084):
+   Add a badge right next to the `mode_jurnal` badge:
+   ```tsx
+   <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold flex items-center gap-1 ${
+     (s as any).mode_presensi_siswa === 'manual'
+       ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
+       : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+   }`}>
+     <i className={`fa-solid ${(s as any).mode_presensi_siswa === 'manual' ? 'fa-list-check' : 'fa-qrcode'}`}></i>
+     {(s as any).mode_presensi_siswa === 'manual' ? 'Presensi Manual' : 'Presensi QR'}
+   </span>
+   ```
+
+4. **Add Quick Toggle Function `handleTogglePresensiMode`** (around line 433):
+   ```typescript
+   const handleTogglePresensiMode = async (school: Sekolah) => {
+     const currentMode = (school as any).mode_presensi_siswa || 'qr';
+     const newMode = currentMode === 'manual' ? 'qr' : 'manual';
+     const modeLabel = newMode === 'manual' ? 'Manual (Ceklis)' : 'QR Code (Scanner)';
+
+     const confirm = await Swal.fire({
+       title: 'Ubah Mode Presensi Siswa?',
+       text: `Ubah mode presensi siswa untuk "${school.nama}" menjadi ${modeLabel}?`,
+       icon: 'question',
+       showCancelButton: true,
+       confirmButtonText: `Ya, Ubah ke ${modeLabel}`,
+       confirmButtonColor: newMode === 'manual' ? '#7e22ce' : '#0B4619',
+       cancelButtonText: 'Batal'
+     });
+
+     if (!confirm.isConfirmed) return;
+
+     setLoading(true);
+     try {
+       const { error } = await supabase
+         .from('sekolah')
+         .update({ mode_presensi_siswa: newMode, updated_at: new Date().toISOString() })
+         .eq('id', school.id);
+
+       if (error) {
+         Swal.fire('Gagal Mengubah Mode', error.message, 'error');
+       } else {
+         Swal.fire('Berhasil', `Mode presensi siswa berhasil diubah menjadi ${modeLabel}.`, 'success');
+         fetchAllData();
+       }
+     } catch (err: any) {
+       Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
+     } finally {
+       setLoading(false);
+     }
+   };
+   ```
+   Can be wired as an `onClick={() => handleTogglePresensiMode(s)}` on the badge or as a quick action button.
+
+---
 
 ## 5. Verification Method
-1. Check code matching:
-   - Run: `grep -n "renderUserAvatar" src/components/HomeView.tsx` to verify avatar rendering in dashboard banner.
-   - Run: `grep -n "role === 'admin'" src/components/AccountSettingsModal.tsx` to verify AC compliance.
-2. Run TypeScript check: `npx tsc --noEmit`
-3. Inspect `survey_report.md` for full component diffs and architectural plans.
+
+1. **TypeScript Validation**:
+   - Run: `npx tsc --noEmit`
+   - Invalidation condition: Any compiler error in `src/types/database.ts` or `src/components/SuperadminView.tsx`.
+2. **Build Validation**:
+   - Run: `npm run build`
+   - Invalidation condition: Build failure or bundle compilation error.
+3. **Database Verification via Supabase MCP / SQL**:
+   - Query schema: `SELECT column_name, data_type, column_default FROM information_schema.columns WHERE table_name = 'sekolah' AND column_name = 'mode_presensi_siswa';`
+   - Verify constraint: `SELECT conname FROM pg_constraint WHERE conname = 'check_mode_presensi_siswa';`
+4. **Functional UI Flow Verification**:
+   - Login as Superadmin (`/superadmin` or navigate to Tab "Kelola Sekolah").
+   - Click "Edit Data Sekolah" (pencil icon) on any school row.
+   - Verify the dropdown "Mode Presensi Siswa" appears with options "QR Code" and "Manual", pre-selecting the current school value.
+   - Change mode from "QR Code" to "Manual" and click "Simpan Perubahan".
+   - Verify success modal appears, `fetchAllData()` refreshes the table, and the school badge reflects "Presensi Manual".
+   - Check Supabase `public.sekolah` table: ensure the row's `mode_presensi_siswa` column is updated to `'manual'`.
