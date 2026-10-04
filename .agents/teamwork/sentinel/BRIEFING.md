@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-03T20:06:51Z
+# BRIEFING — 2026-10-04T00:40:00Z
 
 ## Mission
 Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) add student QR code presensi operated by guru piket (browser camera & up to 10 external USB HID hardware scanners), (3) attendance reporting to piket & wali kelas, and (4) sync attendance to guru mapel teaching schedule on the day.
@@ -34,7 +34,8 @@ Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) ad
 - Sentinel Victory Auditor (victory_auditor_15): 2d4b3b3d-b2b8-4f8d-96de-73d15c83ab53 (VICTORY CONFIRMED & retired)
 - Active Orchestrator (orchestrator_8): 9158af2a-a31a-4d06-bc79-2701bb3d1192 (completed & retired)
 - Active Orchestrator (orchestrator_9): 39ee7d4d-26ad-4d48-ad3e-07ef312a4b5b (completed & retired)
-- Active Orchestrator (orchestrator_10): 149f0279-6b23-4179-9bd4-edcb251f34f1
+- Active Orchestrator (orchestrator_10): 149f0279-6b23-4179-9bd4-edcb251f34f1 (stale/429 killed)
+- Active Orchestrator (orchestrator_11): 71224a06-b69c-4ce9-8bfe-d2e6923181fe
 - Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
@@ -46,13 +47,13 @@ Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) ad
 ## User Context
 - **Last user request**: Hapus Chat Guru, QR Code Siswa scan (browser camera + hardware scanner up to 10), Laporan ke Piket & Wali Kelas, Sinkronisasi ke Guru Mapel di GuruJurnal.
 - **Pending clarifications**: none
-- **Delivered results**: Routed to General path; dispatched orchestrator_10 (149f0279-6b23-4179-9bd4-edcb251f34f1).
+- **Delivered results**: M1, M2, M3 passed gate in orchestrator_10; M4 code implemented; orchestrator_11 dispatched to complete M4 verification, full test suite/build, and git workflow.
 
 ## Project Status
 - **Phase**: in progress
 - **Route**: General (teamwork_preview_orchestrator)
 - **Active Crons**: task-26 (Cron 1: Progress Reporting, */8 * * * *), task-28 (Cron 2: Liveness Check, */10 * * * *)
-- **Active Subagents**: orchestrator_10 (149f0279-6b23-4179-9bd4-edcb251f34f1)
+- **Active Subagents**: orchestrator_11 (71224a06-b69c-4ce9-8bfe-d2e6923181fe)
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -63,4 +64,5 @@ Route and monitor execution of SIPJAM app: (1) remove Chat Guru entirely, (2) ad
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original verbatim user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\BRIEFING.md — Sentinel persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\DISPATCH.md — Orchestrator 10 dispatch brief
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\GATE_STATUS.md — M1-M3 Gate records
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_11\DISPATCH.md — Orchestrator 11 dispatch brief

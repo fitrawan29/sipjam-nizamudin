@@ -1,35 +1,31 @@
 # Dispatch Log
 
-## 2026-10-03T20:56:30Z
-You are the Project Orchestrator (orchestrator_11, successor to orchestrator_10) for sipjam-app.
+## 2026-10-04T00:40:00Z
+You are the Project Orchestrator (orchestrator_11) for sipjam-app.
 
 Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_11
 Project Root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-Parent Conversation ID: 4313b7e6-a775-4fdc-a5fc-d12a9f6fb15f
-Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-Previous Orchestrator Handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\handoff.md
-Previous Orchestrator Briefing: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\BRIEFING.md
-Project Scope & Feature Inventory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
+Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (Request timestamp: 2026-10-03T20:06:51Z)
+Predecessor Handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\handoff.md
+Predecessor Gate Status: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_10\GATE_STATUS.md
 
-Current State:
-- Phase 0 (Survey): Complete
-- Milestone 1 (Hapus Fitur Chat Guru): Gate PASSED
-- Milestone 2 (Database Migrations & QR Code Siswa Mechanism): Complete & Remediated (ISO format bits verified, 35/35 tests passing)
-- Milestone 3 (PiketView Scanner UI & Laporan Piket): NEXT TASK TO DISPATCH
-- Milestone 4 (Laporan Wali Kelas & Sinkronisasi Guru Mapel): PLANNED
-- Milestone 5 (Comprehensive Verification, Build & Delivery): PLANNED
+## Context & Current Milestone Progress
+Predecessor orchestrator_10 completed major work across all 4 requirements:
+- M1 (Hapus Chat Guru): Fully excised, verified, and gated. `ChatView.tsx` deleted, imports and menu routes cleanly removed.
+- M2 (DB & QR Siswa): Live Supabase migration applied (`20261003_qr_presensi_siswa.sql`), `data_siswa.qr_code`, `presensi_siswa` table with unique constraint and RLS, `src/lib/qrSiswa.ts` generator & resolver, `AdminDataView.tsx` QR preview/printing. Gated and approved.
+- M3 (PiketView Scanner UI & Laporan Piket): Implemented dedicated 'scan' tab in `PiketView.tsx` supporting dual input (camera Web API + USB HID scanner text+Enter), 10 kiosk concurrency (`device_id`), audio feedback, and live attendance log. Gated and approved.
+- M4 (Wali Kelas & Guru Mapel Sync): Worker 4 implemented gate attendance tab in `src/components/RekapSiswaView.tsx`, gate arrival badges and roll call sync in `src/components/GuruJurnal.tsx`, tenant scoping in `src/lib/workflow.ts`, and test suite `tests/m4_wali_kelas_guru_sync.test.ts`.
 
-Your mission is to continue orchestrating sipjam-app from Milestone 3 onwards:
-1. Dispatch Worker for Milestone 3:
-   - In `src/components/PiketView.tsx`: add Scan tab alongside existing tabs.
-   - Support Datang / Pulang mode toggle.
-   - Camera browser scanner via native `BarcodeDetector` Web API (with video stream fallback).
-   - External USB HID hardware barcode/QR scanner input (auto-focused text input listening to Enter key event).
-   - Concurrency for up to 10 kiosks (independent tabs/windows with idempotent PostgreSQL upsert and audio feedback).
-   - Live daily gate attendance log and summary table in PiketView.
-2. Run M3 verification gate (Reviewers, Challengers, Auditor).
-3. Dispatch Worker for Milestone 4:
-   - In `src/components/RekapSiswaView.tsx`: add daily gate attendance view for Wali Kelas.
-   - In `src/components/GuruJurnal.tsx`: sync today's arrival status badges in class student list (`Hadir di Sekolah` vs `Belum Scan`).
-4. Run M4 verification gate.
-5. Final verification (M5): `npx tsc --noEmit`, `npm run build`, automated tests, git commit & push per GEMINI.md, and send completion message back to Sentinel.
+## Your Mission
+1. Take over the project cleanly.
+2. Verify Milestone 4 implementation and execute final end-to-end verification (M5):
+   - Run tests (`npm test` including all M1-M4 test suites).
+   - Run `npx tsc --noEmit` and `npm run build` to verify 0 errors.
+   - Verify all acceptance criteria from ORIGINAL_REQUEST.md:
+     - Hapus Chat: ChatView.tsx deleted, no imports remain, sidebar menu removed, build passes.
+     - QR Generate & Scan: mechanism generates QR per student stored in DB, PiketView reads QR via camera, hardware USB HID scanner (text + Enter) works, records attendance to DB.
+     - Laporan: Piket daily attendance list displays, Wali Kelas sees class attendance report, multi-tenant per sekolah_id.
+     - Sinkronisasi: Guru mapel sees student presence on teaching day in GuruJurnal.
+3. Automatically execute Git Workflow per GEMINI.md:
+   `git status` -> `git add .` -> `git commit -m "..."` -> `git push origin main`.
+4. Produce `handoff.md` and declare completion to Sentinel so independent Victory Audit can run.
