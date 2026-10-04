@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-04T01:52:41Z
+# BRIEFING — 2026-10-04T01:58:30Z
 
 ## Mission
 Empirically test attendance flow and downstream simulation (recordPresensiSiswa with deviceId: 'manual', duplicate prevention, and ingestion by GuruJurnal/RekapSiswaView), verify npm run build, and deliver verdict (APPROVE or FAIL).
@@ -40,19 +40,28 @@ Empirically test attendance flow and downstream simulation (recordPresensiSiswa 
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Does `recordPresensiSiswa` handle `deviceId: 'manual'` properly and populate all required columns (`sekolah_id`, `siswa_id`, `nisn`, `nama_siswa`, `kelas`, `tanggal`, `status`, `jam`, `device_id`)?
-  - Does duplicate mark attempt (same student, same date, same status) get handled gracefully without throw/crash?
-  - Do `GuruJurnal.tsx` and `RekapSiswaView.tsx` query `presensi_siswa` in a way that respects `deviceId: 'manual'` or are there assumptions filtering only QR devices?
-  - Can cross-tenant data bleed occur between schools?
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+  - `recordPresensiSiswa` handles `deviceId: 'manual'` and populates all columns: CONFIRMED (Tested unit, mock, and live Supabase).
+  - Soft duplicate check returns `alreadyExists: true` and 0 extra rows: CONFIRMED.
+  - Race condition with PostgreSQL code `23505` (`uq_presensi_siswa_status`) caught without throwing: CONFIRMED.
+  - Student with `nisn: null` recorded properly: CONFIRMED.
+  - Missing `sekolah_id` safely rejected: CONFIRMED.
+  - `GuruJurnal.tsx` arrival query ingests manual records: CONFIRMED.
+  - `RekapSiswaView.tsx` gate query ingests manual records and renders correct badges: CONFIRMED.
+  - Multi-tenant tenant boundary isolation strictly prevents cross-school data access: CONFIRMED.
+- **Vulnerabilities found**:
+  - Legacy test `tests/m4_wali_kelas_guru_sync.test.ts` has 3 outdated string checks looking for the pre-M4 phrase "Belum Scan", whereas M4 purposefully neutralized the UI wording to "Belum Presensi". This causes `npm test` to fail even though production code and `npm run build` are completely intact and working.
+- **Untested angles**: None within specified scope.
 
 ## Loaded Skills
 - None specified in dispatch
 
 ## Key Decisions Made
-- Write an empirical test harness in `tests/` to execute real test scenarios against the attendance functions and downstream query simulation.
+- Authored and ran `tests/adversarial_challenger_2.test.ts` (81/81 passed).
+- Ran Next.js production build (`npm run build`) which succeeded cleanly.
+- Verified live Supabase database with temporary test record on future date `2099-01-01` followed by clean rollback.
+- Recommended APPROVE verdict with clear caveat on legacy test assertion drift.
 
 ## Artifact Index
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2\progress.md` — Liveness & progress tracking
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2\handoff.md` — Final handoff report
+- `tests/adversarial_challenger_2.test.ts` — Comprehensive adversarial & empirical test suite
+- `progress.md` — Liveness & progress tracking
+- `handoff.md` — Final handoff report

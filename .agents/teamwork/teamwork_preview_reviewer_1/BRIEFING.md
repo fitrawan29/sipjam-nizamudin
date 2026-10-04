@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-04T01:54:00Z
+# BRIEFING — 2026-10-04T01:58:30Z
 
 ## Mission
 Objective review and adversarial challenge of frontend UI & component changes (SuperadminView.tsx, PiketView.tsx, RekapSiswaView.tsx, GuruJurnal.tsx, database.ts) for per-school student attendance mode (QR vs Manual).
@@ -36,17 +36,26 @@ Objective review and adversarial challenge of frontend UI & component changes (S
 - **Review criteria**: correctness, completeness, UI quality, adversarial challenge, integrity, multi-tenancy
 
 ## Review Checklist
-- **Items reviewed**: pending
-- **Verdict**: pending
-- **Unverified claims**: all M1-M4 claims need verification
+- **Items reviewed**: SuperadminView.tsx, PiketView.tsx, RekapSiswaView.tsx, GuruJurnal.tsx, database.ts, migrations
+- **Verdict**: REQUEST_CHANGES
+- **Unverified claims**: none (verified all code and execution outputs)
 
 ## Attack Surface
-- **Hypotheses tested**: none yet
-- **Vulnerabilities found**: none yet
-- **Untested angles**: UI edge cases, network errors, empty student roster, concurrent clicks, multi-tenant leakage
+- **Hypotheses tested**:
+  - Test suite regression via `npm test` -> Confirmed failure in `tests/m4_wali_kelas_guru_sync.test.ts`
+  - Toast icon parameter alignment in `PiketView.tsx` -> Confirmed bug (passes icon as text, displays green checkmark on error)
+  - Camera hardware release when switching mode on active scan tab -> Confirmed unclosed stream bug
+  - Multi-tenant data leakage -> Tested and confirmed strict tenant isolation per `sekolah_id`
+  - Double submit / concurrent clicks -> Prevented via disabled button and DB unique constraint
+- **Vulnerabilities found**:
+  - Regression in `npm test` (`m4_wali_kelas_guru_sync.test.ts`)
+  - Misaligned parameters in `showToast` causing green checkmark on error
+  - Camera stream leak when school mode changes dynamically on active tab
+- **Untested angles**: none
 
 ## Key Decisions Made
-- Dispatched for Frontend UI & Component Flow Review
+- Concluded review with REQUEST_CHANGES due to broken `npm test` and toast icon bug.
+- Generated comprehensive handoff report at `.agents/teamwork/teamwork_preview_reviewer_1/handoff.md`.
 
 ## Artifact Index
 - DISPATCH.md — Task assignment
