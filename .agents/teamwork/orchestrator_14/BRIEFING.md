@@ -46,12 +46,13 @@ Analyze sipjam-app codebase, map application flow & menu hierarchy, build compre
 | explorer_nav_r1 | teamwork_preview_explorer | Map application flow & menu hierarchy | completed | 1f45fe7e-295b-4851-9cb4-b031754df243 |
 | explorer_feat_r1 | teamwork_preview_explorer | Map feature inventory & file paths | completed | 254b2a21-d0cd-4dea-87b8-e5863aefe5f8 |
 | explorer_arch_r1 | teamwork_preview_explorer | Architecture, UX & Improvement proposals | completed | eb2fce81-eba9-4514-ae52-1c822c84ab98 |
-| reviewer_r1 | teamwork_preview_reviewer | Audit report, verify Mermaid, paths & suggestions | in-progress | 4850b585-702a-49e4-88d3-cd4777071d22 |
+| reviewer_r1 | teamwork_preview_reviewer | Audit report, verify Mermaid, paths & suggestions | completed | 4850b585-702a-49e4-88d3-cd4777071d22 |
+| worker_git_r1 | teamwork_preview_worker | Execute Git workflow per GEMINI.md | in-progress | e284f259-f8ce-49a8-9dfc-909b155c719b |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 4 / 16
-- Pending subagents: 4850b585-702a-49e4-88d3-cd4777071d22
+- Spawn count: 5 / 16
+- Pending subagents: e284f259-f8ce-49a8-9dfc-909b155c719b
 - Predecessor: none
 - Successor: not yet spawned
 
