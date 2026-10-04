@@ -1,73 +1,61 @@
-# BRIEFING — 2026-10-03T05:56:00Z
+# BRIEFING — 2026-10-04T07:48:00Z
 
 ## Mission
-Adversarially challenge R3 (5-Minute Automated Teacher Reminder System) evaluation logic for all 4 tasks under boundary time windows, role restrictions, 5-minute interval throttling, and fallback mechanisms.
+Empirically verify R3 (Print layout CSS rules & watermark preservation) and R4 (Student QR card generation, download, and print) via automated tests and stress harnesses. Explicit verdict required.
 
 ## 🔒 My Identity
-- Archetype: challenger / critic
+- Archetype: Empirical Challenger
 - Roles: critic, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_2
-- Original parent: 3b364431-4af8-4ed9-9a8c-b79b77d58fbe
-- Milestone: Onboarding Tutorial Feature Verification
-- Instance: 2 of 2
-- Milestone (2026-10-03): R3 Automated Teacher Reminder System Adversarial Verification
-- Original parent (current milestone): 7e84420a-2cde-4423-8413-5104d66482dd (orchestrator_7)
+- Original parent: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
+- Milestone: Verification of R3 & R4
 - Instance: 2 of 2
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code.
-- Verification must be EMPIRICAL: write and execute tests (generators, oracles, stress harnesses).
-- Report findings and deliver empirical verdict: APPROVE or REJECT.
-- Test files must NOT be saved in `.agents/teamwork/`.
-- Do not trust worker claims without direct empirical reproduction.
+- Review-only — do NOT modify implementation code
+- Report failures as findings — do not fix them yourself
+- Verification must be empirical: write and execute tests, do not rely on claims
 
 ## Current Parent
-- Conversation ID: 7e84420a-2cde-4423-8413-5104d66482dd
-- Updated: 2026-10-03T05:56:00Z
+- Conversation ID: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
+- Updated: 2026-10-04T07:48:00Z
 
 ## Review Scope
 - **Files to review**:
-  - `src/components/TeacherReminderManager.tsx`
-  - `src/lib/workflow.ts`
-  - `src/app/api/push/send-reminders/route.ts`
-  - `src/components/AppScreen.tsx`
-- **Stress-test domains**:
-  1. Condition 1 (Presensi Datang): Arrival time boundaries (1s before/after start, limit, deadline), present vs absent, rejected re-attendance, exemption logic, holiday/sick leave suppression.
-  2. Condition 2 (Jurnal Mengajar): Scheduled class count vs submitted, partial vs full completion, Sistem Blok mode Jurnal Kegiatan, exemption in block mode.
-  3. Condition 3 (Laporan Piket): Assigned vs unassigned, submitted vs missing, rejected reports, block mode exemption.
-  4. Condition 4 (Presensi Pulang): Departure window boundaries, Friday special hours (`jam_pulang_jumat`), departure deadline, checked out vs missing, rejected checkout.
-  5. Role restrictions: Admin, superadmin, guru, non-teachers (siswa, student, guest, wali_murid, empty role).
-  6. Throttling & interval: 5-minute (300,000 ms) recurring timer, OS notification tag deduplication, dismissal reset, visibility throttle.
-  7. Fallback mechanisms: Blocked / denied Notification API, Service Worker unavailable, try/catch error containment.
+  - `src/app/globals.css` (@media print & @media screen rules)
+  - `src/components/AIAssistant/AIAssistant.tsx` (floating trigger & dialog print hiding)
+  - `src/components/DokumenView.tsx` (PrintHeader, subheader, PrintSignature, print-only table)
+  - `src/components/RekapJurnalView.tsx` (header bg, cell padding, GPS coords hiding)
+  - `src/lib/qrSiswa.ts` (`generateStudentCardCanvas`, `downloadStudentCardPng`, `printStudentQrCardWithSchool`)
+  - `src/components/AdminDataView.tsx` (Download Kartu button, dual action modal, batch print)
+- **Interface contracts**: PROJECT.md at orchestrator_13, ORIGINAL_REQUEST.md
+- **Review criteria**: Empirical correctness, layout rules, error handling, edge cases, zero-dependency canvas generation
 
 ## Key Decisions Made
-- Authored empirical test suite `tests/adversarial_teacher_reminder_stress.test.ts` running 57 comprehensive test assertions.
-- Verified project test suite (`npm test`), TypeScript check (`npx tsc --noEmit`), and production build (`npm run build`).
-- Identified 1 critical vulnerability: Negative role inference privilege escalation (`!isAdmin && !isSuperadmin`) treating non-teachers (`siswa`, `student`, `guest`, `wali_murid`, `administrator`) as teachers.
-- Identified 1 robustness vulnerability: Unhandled `TypeError` when `dailyState.jurnalKBM` is undefined.
-- Delivered verdict: **REJECT** due to non-teacher role restriction failure violating explicit dispatch criteria.
-
-## Artifact Index
-- `.agents/teamwork/challenger_2/DISPATCH.md` — Incoming task dispatch
-- `.agents/teamwork/challenger_2/BRIEFING.md` — Persistent briefing state
-- `.agents/teamwork/challenger_2/progress.md` — Progress heartbeat
-- `.agents/teamwork/challenger_2/handoff.md` — Formal 5-component handoff report
-- `tests/adversarial_teacher_reminder_stress.test.ts` — Empirical test harness (57 assertions)
+- Created and executed comprehensive adversarial test harness in `tests/adversarial_r3_r4_challenger_2.test.ts`.
+- Executed 102 automated tests covering AST CSS rules, canvas DOM rendering simulation, XSS escaping, filename sanitization, popup blocker resilience, tainted canvas handling, identifier prioritization, and multi-tenant isolation.
+- Verified TypeScript compilation (`npx tsc --noEmit`) passes with 0 errors.
+- Verified test suite (`npm test`) passes with 0 failures across all 19 test files.
+- Verified production build (`npm run build`) succeeds in 1717ms.
+- Explicit Verdict: **APPROVE**.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Presensi Datang boundary windows (05:59:59, 06:00:00, 07:15:00, 07:16:00, 12:00:00, 12:01:00) enforce strict time gates (VERIFIED PASS)
-  - Jurnal Mengajar calculates exact missing count and respects Sistem Blok (VERIFIED PASS)
-  - Laporan Piket alerts only assigned duty teachers and honors block exemptions (VERIFIED PASS)
-  - Presensi Pulang enforces Friday schedule (11:00) vs regular (14:00) (VERIFIED PASS)
-  - 5-minute interval timer (300,000 ms) and tag deduplication prevent notification spam (VERIFIED PASS)
-  - Non-teachers (admins, superadmins, students, guests) never trigger reminder evaluations or popups (HYPOTHESIS FAILED: students/guests treated as teachers)
-  - `evaluateReminderConditions` defensively handles undefined array fields (HYPOTHESIS FAILED: throws TypeError on undefined `jurnalKBM`)
-- **Vulnerabilities found**:
-  1. Negative Role Inference Privilege Escalation (High): `isGuru = Boolean(user && !isAdmin && !isSuperadmin)` allows students, guests, parents, and unrecognized roles to trigger teacher reminder evaluation intervals, Supabase queries, and popup warnings.
-  2. Unhandled TypeError on Undefined `jurnalKBM` (Medium): `dailyState.jurnalKBM.some(...)` lacks optional chaining or fallback array, crashing on undefined `jurnalKBM`.
-- **Untested angles**:
-  - Device clock drift / timezone desynchronization between device local clock and WITA timezone server time.
+  - Hypothesis 1: CSS rule `div.fixed` might inadvertently hide `.sipjam-print-watermark`. -> REFUTED: `div.fixed:not(.sipjam-print-watermark)` properly protects it, and `.sipjam-print-watermark` has `display: flex !important;`.
+  - Hypothesis 2: Watermark might be visible on normal digital screens. -> REFUTED: `@media screen { .sipjam-print-watermark { display: none !important; } }` cleanly hides it.
+  - Hypothesis 3: `generateStudentCardCanvas` might crash in Node.js or when student attributes are missing/malformed. -> REFUTED: Graceful Node.js fallback and robust default fallbacks ('Siswa', '-', 'SIPJAM') prevent crashes.
+  - Hypothesis 4: `downloadStudentCardPng` might fail or corrupt file system when name contains illegal characters or canvas is tainted. -> REFUTED: Strict regex sanitizer `/[/\\?%*:|"<>]/g` strips forbidden characters and catches `SecurityError` safely.
+  - Hypothesis 5: `printStudentQrCardWithSchool` might allow XSS via unescaped student or school names. -> REFUTED: HTML entity escaping (`escapeHtml`) properly neutralizes `<script>`, `<img>`, quotes, and angle brackets.
+  - Hypothesis 6: Floating button (`[data-tour="ai-assistant-btn"]`) or AI modal might appear in print. -> REFUTED: Protected by both CSS `@media print` rules and inline Tailwind classes `no-print print:hidden`.
+- **Vulnerabilities found**: None. All edge cases, XSS attempts, popup blocker null responses, and tainted canvas states are safely mitigated.
+- **Untested angles**: Native mobile printer hardware spoolers (covered by HTML5 standard print emulation).
 
 ## Loaded Skills
-- None requested specifically
+- None requested.
+
+## Artifact Index
+- `DISPATCH.md` — Dispatch log
+- `BRIEFING.md` — Working memory and attack surface
+- `progress.md` — Heartbeat and status
+- `tests/adversarial_r3_r4_challenger_2.test.ts` — 102-test empirical challenge suite
+- `handoff.md` — Formal 5-Component Handoff Report with explicit APPROVE verdict
