@@ -264,7 +264,15 @@ export function drawWatermarkedCanvas(
 
   // Format coordinates string
   let coordText = 'GPS: Lokasi Tidak Terdeteksi';
-  if (options.coordinates && typeof options.coordinates.latitude === 'number' && typeof options.coordinates.longitude === 'number') {
+  if (
+    options.coordinates &&
+    typeof options.coordinates.latitude === 'number' &&
+    typeof options.coordinates.longitude === 'number' &&
+    isFinite(options.coordinates.latitude) &&
+    isFinite(options.coordinates.longitude) &&
+    !isNaN(options.coordinates.latitude) &&
+    !isNaN(options.coordinates.longitude)
+  ) {
     coordText = `Lat: ${options.coordinates.latitude.toFixed(6)}, Long: ${options.coordinates.longitude.toFixed(6)}`;
   }
 

@@ -12,6 +12,7 @@ export interface CameraSelfieCaptureProps {
   existingPhotoUrl?: string | null;
   initialFacingMode?: 'user' | 'environment';
   orientation?: 'portrait' | 'landscape';
+  onRetake?: () => void;
 }
 
 export default function CameraSelfieCapture({
@@ -22,6 +23,7 @@ export default function CameraSelfieCapture({
   existingPhotoUrl = null,
   initialFacingMode = 'user',
   orientation = 'landscape',
+  onRetake,
 }: CameraSelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -152,8 +154,8 @@ export default function CameraSelfieCapture({
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err: unknown) {
         const e = err as { name?: string };
-        // Fallback on OverconstrainedError for single-camera devices
-        if (e?.name === 'OverconstrainedError') {
+        // Fallback on OverconstrainedError / ConstraintNotSatisfiedError for single-camera devices
+        if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError') {
           stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         } else {
           throw err;
@@ -172,11 +174,15 @@ export default function CameraSelfieCapture({
         videoRef.current.srcObject = stream;
         videoRef.current.setAttribute('playsinline', 'true');
         videoRef.current.setAttribute('webkit-playsinline', 'true');
+        videoRef.current.muted = true;
         try {
           await videoRef.current.play();
           setIsStreaming(true);
-        } catch (e) {
+        } catch (e: unknown) {
           console.warn('Video play error:', e);
+          const playErr = e as { message?: string };
+          setCameraError(`Gagal memutar video kamera: ${playErr?.message || 'Autoplay diblokir browser'}. Harap ketuk tombol Coba Lagi.`);
+          setIsStreaming(false);
         }
       }
     } catch (err: unknown) {
@@ -264,6 +270,7 @@ export default function CameraSelfieCapture({
     isRetakeRef.current = true;
     setCapturedImage(null);
     setCapturedFile(null);
+    onRetake?.();
     requestLocation();
   };
 

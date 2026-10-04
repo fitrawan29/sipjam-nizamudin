@@ -50,12 +50,13 @@ Fix teacher attendance camera to portrait mode only and disable auto-zoom/croppi
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
 | implementer_r0 | teamwork_preview_implementer | Primary Implementation | completed | a5fa1521-b67e-45e7-b0b3-a4c7296c4007 |
-| reviewer_r1 | teamwork_preview_reviewer | Adversarial Review Round 1 | in-progress | 753e4490-4112-441c-b73b-2ca1536e8e39 |
+| reviewer_r1 | teamwork_preview_reviewer | Adversarial Review Round 1 | completed | 753e4490-4112-441c-b73b-2ca1536e8e39 |
+| reviewer_r2 | teamwork_preview_reviewer | Adversarial Review Round 2 | in-progress | 7b2d8ebb-3e79-4da7-9978-56fd4f872d9f |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 2 / 16
-- Pending subagents: 753e4490-4112-441c-b73b-2ca1536e8e39
+- Spawn count: 3 / 16
+- Pending subagents: 7b2d8ebb-3e79-4da7-9978-56fd4f872d9f
 - Predecessor: none
 - Successor: not yet spawned
 

@@ -1,76 +1,63 @@
-# Adversarial Review & QA Report: Round 2 Review & Hardening
+# Handoff Report — Review Round 2 (Kamera Portrait & Anti Auto-Zoom)
 
 > [!WARNING] **Skepticism Disclaimer**
-> Moderate-to-high confidence in core resilience, offline queue stability, and print CSS layout. Browser sandbox variations in extreme offline storage constraints and mobile camera device access lifecycles remain partially reliant on physical mobile device behavior.
+> Deep programmatic verification confirms strict portrait enforcement, CSS `object-contain` 1x uncropped scale across 6 smartphone aspect ratios, synchronized retake state clearing, and WebKit autoplay resilience; however, hardware-level camera driver variations across obscure vendor ROMs remain unverified without physical device execution.
 
 ## 1. What the prior attempt got wrong
-
-### Issue 1: GuruJurnal Student Attendance Overwrite on Draft Reload
-- **Input:** Teacher drafts a KBM entry, marks 3 students in the class with custom attendance statuses (e.g. Sakit, Izin, Alpa), and reloads the page or experiences an unexpected browser restart.
-- **Expected:** When the form restores from `localStorage.getItem('sipjam_jurnal_autosave')`, the teacher's manually assigned student attendance statuses (`absensi`) are preserved.
-- **Actual:** The draft restoration mounted first, but as soon as `fetchStudents` resolved data from Supabase for that class, line 583 executed `setAbsensi(initialAbsensi)`, wiping out the teacher's draft marks and resetting all students to default 'Hadir'.
-- **Root Cause:** `fetchStudents` unconditionally called `setAbsensi(initialAbsensi)` instead of checking whether `prevAbsensi` already contained valid draft marks for matching students in the class.
-
-### Issue 2: Unhandled Corrupted JSON in Presensi Offline Queue Crash
-- **Input:** `localStorage.getItem('sipjam_offline_presensi_queue')` contains malformed or corrupted JSON text (e.g. caused by an abrupt browser crash or partial write during storage pressure).
-- **Expected:** Submission offline fallback and reconnect sync gracefully detect invalid JSON, recover single item fallback or clean the corrupted key, without crashing.
-- **Actual:** `saveToLocalStorage` called `JSON.parse(rawQueue)` without a try/catch guard. When this threw a `SyntaxError`, the outer `catch (quotaErr)` caught it and attempted `saveToLocalStorage(itemWithoutPhoto)`, which threw `SyntaxError` again, dropping all the way to `catch (offlineErr)` and completely aborting the teacher's check-in. In `syncOfflinePresensi`, parsing error caused an early `return`, permanently leaving the corrupt string in `localStorage` and locking offline sync.
-- **Root Cause:** Missing try/catch around `JSON.parse(rawQueue)` in `saveToLocalStorage` and absence of corrupt queue recovery in `syncOfflinePresensi`.
-
-### Issue 3: Offline Queue Bloat from Repeated Offline Submissions
-- **Input:** Teacher is in an area with no internet connection, clicks "Simpan Presensi", receives the "Tersimpan Offline" notice, and then clicks submit again (or double clicks) believing it did not register.
-- **Expected:** Duplicate submissions with the identical presensi ID update the existing queued record rather than duplicating base64 photos in `localStorage`.
-- **Actual:** Prior attempt used `queue.push(itemToSave)`, causing duplicate 50KB data URLs to accumulate in `localStorage` and rapidly filling the 5MB browser domain quota.
-- **Root Cause:** Absence of ID deduplication in `saveToLocalStorage`.
-
-### Issue 4: Document Uploads (Surat Sakit PDF) Dropped in Offline Presensi
-- **Input:** Teacher submits "Izin / Sakit" while offline, attaching a doctor's note in `.pdf` format (<= 500 KB).
-- **Expected:** PDF document is preserved in the offline queue via base64 data URL if storage permits.
-- **Actual:** `compressPhotoForStorage` only supported images (`Image()` object). Loading `.pdf` into `Image().src` triggered `img.onerror` and resolved to `''`, completely discarding the uploaded doctor's note document.
-- **Root Cause:** Lack of `file.type === 'application/pdf'` base64 encoding support in `handleSubmit` offline fallback.
-
----
+The prior review (Round 1) verified primary constraints but left several latent defects and robustness hazards unaddressed:
+1. **Camera Retake State Desynchronization**:
+   - `input`: Teacher took a photo, clicked "Gunakan Foto", then clicked "Foto Ulang" within the camera component.
+   - `expected`: Parent form (`GuruPresensi.tsx`) resets its confirmed `file` and `photoPreviewUrl` state so that stale/discarded photos cannot be submitted.
+   - `actual`: `CameraSelfieCapture` had no callback to notify the parent on retake. `GuruPresensi` retained the old `file` object and green "Foto selfie siap digunakan" card while the live video camera streamed. Submitting would send the old discarded photo.
+   - `root cause`: Missing `onRetake` prop in `CameraSelfieCaptureProps` and lack of caller hook invocation inside `handleRetake`.
+2. **WebKit Autoplay Lockup & Silent Playback Rejection**:
+   - `input`: Device or browser (e.g. iOS WebKit in Low Power Mode or autoplay restricted tab) rejects `videoRef.current.play()`.
+   - `expected`: Browser error is surfaced to the user with a retry button and front/back toggle.
+   - `actual`: The error was swallowed with `console.warn` without setting `setCameraError`. `isStreaming` remained `false`, leaving the user permanently trapped on a loading spinner with no error message and no retry buttons.
+   - `root cause`: Missing error handling on `play()` promise rejection and missing explicit `videoRef.current.muted = true` DOM property assignment required by WebKit autoplay policies.
+3. **Overconstrained Hardware Fallback**:
+   - `input`: Single-camera devices or strict WebKit drivers throwing `ConstraintNotSatisfiedError`.
+   - `expected`: Fallback to unconstrained `{ video: true, audio: false }`.
+   - `actual`: Only `OverconstrainedError` was caught; `ConstraintNotSatisfiedError` propagated and aborted camera startup.
+   - `root cause`: Over-specific error name check in `startCamera`.
+4. **Watermark Badge GPS Coordinate Sanitization**:
+   - `input`: Geolocation lookup providing non-finite or `NaN` coordinate values.
+   - `expected`: Fallback to `[GPS: Lokasi Tidak Terdeteksi]`.
+   - `actual`: `typeof NaN === 'number'` evaluated to `true`, rendering `Lat: NaN, Long: NaN` onto attendance proof badge.
+   - `root cause`: Missing `isFinite` and `!isNaN` guard in `watermarkCanvas.ts`.
 
 ## 2. What I changed
-
-- **`src/components/GuruJurnal.tsx`**:
-  - Fixed `fetchStudents`: when setting `setAbsensi`, inspects `prevAbsensi` to see if it contains draft marks for matching students in the class (`data.some(...)`). If matching students exist, merges `{ ...initialAbsensi, ...prevAbsensi }` and updates `calculateKehadiranSummary`, safeguarding the teacher's drafted student attendance across reloads.
+- **`src/components/CameraSelfieCapture.tsx`**:
+  - Added optional `onRetake?: () => void` to `CameraSelfieCaptureProps` and invoked `onRetake?.()` inside `handleRetake()`.
+  - Added explicit `videoRef.current.muted = true;` before `play()`.
+  - Handled `play()` promise rejection by catching the error, calling `setCameraError`, and resetting `isStreaming` so recovery action buttons are rendered.
+  - Expanded `getUserMedia` constraint fallback to catch both `OverconstrainedError` and `ConstraintNotSatisfiedError`.
 - **`src/components/GuruPresensi.tsx`**:
-  - Hardened `saveToLocalStorage`: added try/catch around `JSON.parse(rawQueue)` and implemented ID deduplication (`queue.findIndex(...)`), preventing offline queue bloat and syntax crash cascades.
-  - Hardened `syncOfflinePresensi`: added recovery for corrupt queue JSON by clearing corrupt keys and falling back to `sipjam_offline_presensi`.
-  - Added base64 encoding for small PDF document attachments (<= 500 KB) in offline fallback, ensuring Surat Sakit/Izin documents survive offline submission.
-- **`src/app/globals.css`**:
-  - Added explicit `.break-before-page`, `.break-after-page`, `.page-break-before-always`, and `.page-break-after-always` utility classes under `@media print`.
-- **`tests/four_ponytail_improvements.test.ts`**:
-  - Added comprehensive adversarial unit tests covering offline queue deduplication, corrupt JSON recovery, draft student attendance preservation during student list sync, and page break utilities.
-
----
+  - Bound `onRetake={() => { setFile(null); setPhotoPreviewUrl(null); }}` to `<CameraSelfieCapture>` to cleanly flush stale confirmed photos when a retake is initiated.
+- **`src/components/GuruJurnal.tsx`** & **`src/components/PiketView.tsx`**:
+  - Bound `onRetake={() => { setFile(null); setPhotoPreviewUrl(null); }}` for consistent retake hygiene across all camera interfaces.
+- **`src/lib/watermarkCanvas.ts`**:
+  - Hardened GPS coordinate formatting with `isFinite` and `!isNaN` guards.
+- **`tests/reviewer_adversarial_camera.test.ts`**:
+  - Expanded test suite from 38 to 46 adversarial checks including Section 6 covering `onRetake` lifecycle synchronization, WebKit autoplay muted property, constraint fallback, and non-finite coordinate handling.
 
 ## 3. Verification Record
-
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/four_ponytail_improvements.test.ts`: 11/11 tests PASSED.
-  - `npm test`: Full 20-file test suite passed cleanly (100% pass, 0 failed).
-  - `npx tsx tests/m6_2_print_redesign.test.ts`: 27/27 PASSED.
-  - `npx tsx tests/m10_r1_r4.test.ts`: 23/23 PASSED.
-  - `npx tsc --noEmit`: Strict TypeScript typecheck passed with 0 errors.
-  - `npm run build`: Turbopack production build succeeded in 2.2s generating 12 static/dynamic routes with 0 errors.
-
+  - `npx tsx tests/reviewer_adversarial_camera.test.ts`: PASSED (46/46 checks passed, 0 failures).
+  - `npm test`: PASSED (all 21 test suites passed cleanly with 0 errors).
+  - `npx tsc --noEmit`: PASSED (0 TypeScript compilation errors).
+  - `npm run build`: PASSED (Turbopack production build compiled cleanly across all 12 routes in 2.2s).
 - **Shallow Verification (manual only):**
-  - Verified Next.js dynamic chunk imports in `AppScreen.tsx` for all 18 sub-views.
-  - Verified print CSS unification in `globals.css` with page-break avoidance and explicit break utilities.
-
+  - Inspected CSS styling on `<video>` and `<img>` elements for `object-contain`, `w-full`, and `h-full`.
+  - Verified dark backdrop letterbox/pillarbox container framing (`aspect-[3/4] max-w-sm mx-auto`).
 - **Unverified aspects:**
-  - Physical mobile device battery-saver aggressive process termination during offline state transitions.
-  - Mobile web browser storage quota exhaustion across Safari Private Browsing mode where `localStorage` quota can be 0 MB.
-
----
+  - Physical mobile smartphone cameras running OEM custom camera drivers (e.g., Samsung Camera, Xiaomi MIUI Camera, iOS WebKit AVFoundation).
+  - Operating system level digital/optical zoom toggles activated outside the browser DOM.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: In Safari Private Browsing (or browsers with storage completely blocked), `localStorage` operations throw security errors; UI alerts the teacher via toast.
-- `Shallow Verification`: Background Google Drive upload performance on severely throttled 2G cellular connections.
-
----
+- `Minor Robustness Risk` — Desktop 16:9 horizontal webcams are center-cropped to 3:4 in portrait mode to ensure presensi photos conform to upright vertical dimensions.
+- `Shallow Verification` — Viewfinder letterboxing on ultra-narrow viewports (< 320px width).
 
 ## 5. Remaining risk & next step
-The 4 Ponytail improvements are fully implemented, zero-dependency, verified against all test suites, and hardened against queue corruption, offline bloat, and draft data loss. The task is complete.
+- The implementation strictly adheres to R1 (kamera khusus mode portrait) and R2 (gambar tidak auto-zoom saat diambil), with full retake state synchronization and WebKit autoplay fault-tolerance.
+- Next step: Physical device testing on mobile browsers (iOS Safari / Android Chrome) to perform end-to-end attendance flow with selfie capture and photo verification.

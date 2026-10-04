@@ -951,6 +951,10 @@ export default function GuruPresensi({ user }: { user: any }) {
                         setFile(capturedFile);
                         setPhotoPreviewUrl(previewUrl);
                       }}
+                      onRetake={() => {
+                        setFile(null);
+                        setPhotoPreviewUrl(null);
+                      }}
                     />
 
                     {file && (

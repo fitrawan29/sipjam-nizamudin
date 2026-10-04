@@ -43,6 +43,7 @@ if (cameraCalls.length > 0) {
   assert(!call.includes('orientation="landscape"'), 'GuruPresensi camera call does NOT set orientation="landscape"');
   assert(call.includes('initialFacingMode="user"'), 'GuruPresensi sets initialFacingMode="user" for front selfie camera');
   assert(call.includes('existingPhotoUrl={photoPreviewUrl}'), 'GuruPresensi binds photoPreviewUrl for synchronized state');
+  assert(call.includes('onRetake='), 'GuruPresensi binds onRetake callback to eliminate stale file state on retake');
 }
 
 // Verify attendance types requiring selfie in GuruPresensi
@@ -193,6 +194,47 @@ const validCoordsOpts = getDefaultWatermarkOptions({ latitude: -8.123456, longit
 assert(
   validCoordsOpts.coordinates?.latitude === -8.123456 && validCoordsOpts.coordinates?.longitude === 115.654321,
   'Watermark options preserves full coordinate precision'
+);
+
+// --- Section 6: Camera Lifecycle, Retake Synchronization & WebKit Autoplay ---
+console.log('\n--- Section 6: Camera Lifecycle, Retake Sync & WebKit Autoplay Resilience ---');
+
+// Re-read latest file contents
+const currentCameraCode = fs.readFileSync(cameraCompPath, 'utf-8');
+const currentPresensiCode = fs.readFileSync(guruPresensiPath, 'utf-8');
+const currentWatermarkCode = fs.readFileSync(watermarkPath, 'utf-8');
+
+assert(
+  currentCameraCode.includes('onRetake?: () => void;'),
+  'CameraSelfieCaptureProps declares optional onRetake?: () => void;'
+);
+assert(
+  currentCameraCode.includes('onRetake?.();'),
+  'CameraSelfieCapture triggers onRetake?.() inside handleRetake to alert parent form'
+);
+assert(
+  currentPresensiCode.includes('onRetake={() => {') &&
+  currentPresensiCode.includes('setFile(null);') &&
+  currentPresensiCode.includes('setPhotoPreviewUrl(null);'),
+  'GuruPresensi cleanly flushes confirmed file & preview URL when retake is triggered'
+);
+assert(
+  currentCameraCode.includes('videoRef.current.muted = true;'),
+  'CameraSelfieCapture explicitly sets muted=true on DOM node to prevent WebKit autoplay lockup'
+);
+assert(
+  currentCameraCode.includes("e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError'"),
+  'CameraSelfieCapture handles ConstraintNotSatisfiedError in addition to OverconstrainedError'
+);
+assert(
+  currentCameraCode.includes('setCameraError(') &&
+  currentCameraCode.includes('Gagal memutar video kamera'),
+  'CameraSelfieCapture surfaces video play errors to user instead of hanging on infinite spinner'
+);
+assert(
+  currentWatermarkCode.includes('isFinite(options.coordinates.latitude)') &&
+  currentWatermarkCode.includes('!isNaN(options.coordinates.latitude)'),
+  'watermarkCanvas guards against NaN/Infinite coordinates to prevent badge distortion'
 );
 
 console.log('\n========================================================================');

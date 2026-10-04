@@ -1432,6 +1432,10 @@ export default function GuruJurnal({ user }: { user: any }) {
                             setUploadLokasi(`GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}`);
                           }
                         }}
+                        onRetake={() => {
+                          setFile(null);
+                          setPhotoPreviewUrl(null);
+                        }}
                       />
                     )}
 
