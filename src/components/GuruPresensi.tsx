@@ -8,7 +8,7 @@ import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, getWitaDayName } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
-import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
+import { WatermarkCoordinates, dataUrlToFile } from '@/lib/watermarkCanvas';
 
 export default function GuruPresensi({ user }: { user: any }) {
   const isMountedRef = useRef(true);
@@ -118,6 +118,99 @@ export default function GuruPresensi({ user }: { user: any }) {
     };
     initConfig();
   }, [user.nama, user.username]);
+
+  // ponytail: sync queued offline presensi records on reconnect
+  const syncOfflinePresensi = async () => {
+    if (typeof window === 'undefined') return;
+    const queueStr = localStorage.getItem('sipjam_offline_presensi_queue') || localStorage.getItem('sipjam_offline_presensi');
+    if (!queueStr) return;
+
+    let items: any[] = [];
+    try {
+      const parsed = JSON.parse(queueStr);
+      items = Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      return;
+    }
+    if (items.length === 0) return;
+
+    const remaining: any[] = [];
+    let syncedCount = 0;
+
+    for (const item of items) {
+      try {
+        let sent = false;
+        const { error } = await supabase.from('presensi_guru').insert([item.payload]);
+        if (!error) {
+          sent = true;
+        } else {
+          const fallbackRes = await fetch('/api/attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item.payload)
+          });
+          if (fallbackRes.ok) {
+            const resData = await fallbackRes.json();
+            if (resData.success) sent = true;
+          }
+        }
+
+        if (sent) {
+          syncedCount++;
+          if (item.photo) {
+            (async () => {
+              try {
+                const fileObj = dataUrlToFile(item.photo, item.photoName || 'selfie.jpg');
+                const driveUrl = await uploadToDrive(fileObj, item.payload.nama_guru, item.folderName, item.prefix);
+                await supabase.from('presensi_guru').update({ link_bukti: driveUrl }).eq('id', item.id);
+              } catch (e) {
+                console.warn('[GuruPresensi] Background GAS upload failed for offline presensi:', e);
+              }
+            })();
+          }
+        } else {
+          remaining.push(item);
+        }
+      } catch {
+        remaining.push(item);
+      }
+    }
+
+    if (syncedCount > 0) {
+      if (remaining.length === 0) {
+        localStorage.removeItem('sipjam_offline_presensi');
+        localStorage.removeItem('sipjam_offline_presensi_queue');
+      } else {
+        localStorage.setItem('sipjam_offline_presensi', JSON.stringify(remaining[0]));
+        localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(remaining));
+      }
+
+      showToast(
+        'Presensi Tersinkron!',
+        `${syncedCount} data presensi offline berhasil dikirim ke server.`,
+        'success',
+        { toast: true, position: 'top-end', timer: 4000, showConfirmButton: false }
+      );
+
+      try {
+        const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
+        if (isMountedRef.current) setDailyState(state);
+      } catch {}
+    }
+  };
+
+  useEffect(() => {
+    const handleOnline = () => {
+      syncOfflinePresensi();
+    };
+    window.addEventListener('online', handleOnline);
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      syncOfflinePresensi();
+    }
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [user?.nama, user?.username, user?.id, user?.sekolah_id]);
 
   const togglePresensiFields = async (val: string) => {
     if (isSwitchingRef.current) return;
@@ -349,42 +442,90 @@ export default function GuruPresensi({ user }: { user: any }) {
 
     let insertSuccess = false;
     let insertErrorMsg = '';
+    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
 
-    try {
-      const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
-      if (!error) {
-        insertSuccess = true;
-      } else {
-        insertErrorMsg = error.message;
-      }
-    } catch (netErr: any) {
-      insertErrorMsg = netErr.message || 'Koneksi jaringan terputus';
-    }
-
-    // Fallback: If client direct insert fails (e.g. temporary network drop or client RLS issue), try server route
-    if (!insertSuccess) {
+    if (!isOffline) {
       try {
-        const fallbackRes = await fetch('/api/attendance', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newPresensi)
-        });
-        if (fallbackRes.ok) {
-          const resData = await fallbackRes.json();
-          if (resData.success) {
-            insertSuccess = true;
-          } else {
-            insertErrorMsg = resData.message || insertErrorMsg;
-          }
+        const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
+        if (!error) {
+          insertSuccess = true;
+        } else {
+          insertErrorMsg = error.message;
         }
-      } catch (fallbackErr: any) {
-        insertErrorMsg = fallbackErr.message || insertErrorMsg;
+      } catch (netErr: any) {
+        insertErrorMsg = netErr.message || 'Koneksi jaringan terputus';
+      }
+
+      // Fallback: If client direct insert fails (e.g. temporary network drop or client RLS issue), try server route
+      if (!insertSuccess) {
+        try {
+          const fallbackRes = await fetch('/api/attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newPresensi)
+          });
+          if (fallbackRes.ok) {
+            const resData = await fallbackRes.json();
+            if (resData.success) {
+              insertSuccess = true;
+            } else {
+              insertErrorMsg = resData.message || insertErrorMsg;
+            }
+          }
+        } catch (fallbackErr: any) {
+          insertErrorMsg = fallbackErr.message || insertErrorMsg;
+        }
       }
     }
 
     if (!insertSuccess) {
-      setLoading(false);
-      return showToast('Error', 'Gagal menyimpan data presensi. Periksa koneksi internet Anda: ' + insertErrorMsg, 'error');
+      // Offline fallback: catch network error / offline status and queue in localStorage
+      try {
+        let photoDataUrl = photoPreviewUrl || '';
+        if (!photoDataUrl && file) {
+          photoDataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
+        }
+
+        const offlineItem = {
+          id: presensiId,
+          payload: newPresensi,
+          photo: photoDataUrl || null,
+          photoName: file?.name || 'selfie.jpg',
+          isSelfie: isSelfieRequired,
+          folderName: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru',
+          prefix: isSelfieRequired ? 'Selfie' : 'Dokumen',
+          timestamp: new Date().toISOString()
+        };
+
+        localStorage.setItem('sipjam_offline_presensi', JSON.stringify(offlineItem));
+        const rawQueue = localStorage.getItem('sipjam_offline_presensi_queue');
+        const queue = rawQueue ? JSON.parse(rawQueue) : [];
+        queue.push(offlineItem);
+        localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(queue));
+
+        showToast(
+          'Tersimpan Offline',
+          'Koneksi internet terputus. Data presensi dan foto disimpan di perangkat dan akan dikirim otomatis saat koneksi kembali.',
+          'info',
+          { toast: true, position: 'top-end', timer: 4000, showConfirmButton: false }
+        );
+
+        setJenisPresensi('Sekolah');
+        setKeterangan('');
+        setFile(null);
+        setPhotoPreviewUrl(null);
+        setLoading(false);
+        return;
+      } catch (offlineErr) {
+        console.error('Failed saving to localStorage offline fallback:', offlineErr);
+        setLoading(false);
+        return showToast('Error', 'Gagal menyimpan data presensi. Periksa koneksi internet Anda: ' + insertErrorMsg, 'error');
+      }
     }
 
     // If this was a re-submission after rejection, delete the old rejected record

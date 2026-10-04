@@ -776,3 +776,34 @@ Provide concrete, actionable suggestions for improving the architecture, codebas
 - [ ] Report includes a syntactically valid Mermaid flowchart covering the full app flow.
 - [ ] Feature inventory maps directly to existing codebase directories/files.
 - [ ] Includes at least 3 distinct, actionable improvement suggestions.
+
+
+## 2026-10-04T21:14:15Z
+
+This is a single self-contained fix; keep it small and focused. Implement 4 minimal, Ponytail-style improvements to the `sipjam-app` codebase: dynamic imports in `AppScreen.tsx`, `localStorage` offline queue for Presensi, `localStorage` auto-save + canvas image compression for Jurnal KBM, and unified print CSS in `globals.css`. Do NOT add any new external dependencies.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. AppScreen Dynamic Imports
+Wrap heavy views in `src/components/AppScreen.tsx` using `next/dynamic`. Do not rewrite the layout or context structure.
+
+### R2. Presensi Offline Fallback
+In `GuruPresensi.tsx`, catch network errors, save the payload + photo to `localStorage`, and use the `window.addEventListener('online', ...)` event to automatically retry sending when the connection returns. 
+
+### R3. Jurnal Auto-Save & Compression
+In `GuruJurnal.tsx`, save the form state to `localStorage` on change so it survives reloads. Use native HTML `<canvas>` to compress uploaded photos before sending.
+
+### R4. Unified Print CSS
+Move scattered print styles into `@media print` inside `globals.css` (e.g., `break-inside: avoid;`). Remove custom `<style>` blocks from print components. Do not create new wrapper components.
+
+## Acceptance Criteria
+
+### Verification Rubric
+- [ ] No new dependencies are added to `package.json`.
+- [ ] `AppScreen.tsx` uses `next/dynamic` for sub-views.
+- [ ] Disconnecting the network and submitting Presensi saves data to `localStorage`; reconnecting triggers the sync logic.
+- [ ] Refreshing the `GuruJurnal` page restores previously entered form data.
+- [ ] The app builds successfully (`npm run build` or `tsc --noEmit`) without type errors.

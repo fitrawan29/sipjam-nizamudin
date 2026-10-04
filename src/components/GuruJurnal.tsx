@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast, Toast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok } from '@/lib/workflow';
@@ -58,6 +58,124 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [uploadWaktu, setUploadWaktu] = useState<string | null>(null);
 
   const isUploadAllowed = schoolModeJurnal !== 'camera_only';
+
+  // ponytail: native HTML <canvas> image compression — zero external dependencies
+  const compressImageWithCanvas = async (imageFile: File, maxWidth = 1280, maxHeight = 1280, quality = 0.75): Promise<File> => {
+    if (!imageFile || !imageFile.type.startsWith('image/')) {
+      return imageFile;
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(imageFile);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        let { width, height } = img;
+        if (width > maxWidth || height > maxHeight) {
+          if (width / height > maxWidth / maxHeight) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(imageFile);
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) return resolve(imageFile);
+            const compressed = new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressed);
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(imageFile);
+      };
+      img.src = objectUrl;
+    });
+  };
+
+  const isRestoredRef = useRef(false);
+
+  // Auto-restore draft from localStorage on initial mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('sipjam_jurnal_autosave');
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.tipeJurnal !== undefined) setTipeJurnal(draft.tipeJurnal);
+        if (draft.mapel !== undefined) setMapel(draft.mapel);
+        if (draft.kelas !== undefined) setKelas(draft.kelas);
+        if (draft.tanggal !== undefined) setTanggal(draft.tanggal);
+        if (draft.materi !== undefined) setMateri(draft.materi);
+        if (draft.kegiatan !== undefined) setKegiatan(draft.kegiatan);
+        if (draft.catatanSiswa !== undefined) setCatatanSiswa(draft.catatanSiswa);
+        if (draft.refleksi !== undefined) setRefleksi(draft.refleksi);
+        if (draft.pertemuanKe !== undefined) setPertemuanKe(draft.pertemuanKe);
+        if (draft.jamKe !== undefined) setJamKe(draft.jamKe);
+        if (draft.tujuanPembelajaran !== undefined) setTujuanPembelajaran(draft.tujuanPembelajaran);
+        if (draft.kehadiranMurid !== undefined) setKehadiranMurid(draft.kehadiranMurid);
+        if (draft.kktp !== undefined) setKktp(draft.kktp);
+        if (draft.konten !== undefined) setKonten(draft.konten);
+        if (draft.lokasiKbm !== undefined) setLokasiKbm(draft.lokasiKbm);
+        if (draft.absensi !== undefined) setAbsensi(draft.absensi);
+      }
+    } catch (err) {
+      console.warn('[GuruJurnal] Failed restoring auto-saved draft:', err);
+    } finally {
+      isRestoredRef.current = true;
+    }
+  }, []);
+
+  // Auto-save form state to localStorage on change
+  useEffect(() => {
+    if (!isRestoredRef.current) return;
+    const hasContent = Boolean(
+      materi || kegiatan || catatanSiswa || refleksi ||
+      tujuanPembelajaran || kktp || konten || lokasiKbm ||
+      pertemuanKe || jamKe || mapel || kelas
+    );
+    if (hasContent) {
+      const draft = {
+        tipeJurnal,
+        mapel,
+        kelas,
+        tanggal,
+        materi,
+        kegiatan,
+        catatanSiswa,
+        refleksi,
+        pertemuanKe,
+        jamKe,
+        tujuanPembelajaran,
+        kehadiranMurid,
+        kktp,
+        konten,
+        lokasiKbm,
+        absensi
+      };
+      try {
+        localStorage.setItem('sipjam_jurnal_autosave', JSON.stringify(draft));
+      } catch (err) {
+        console.warn('[GuruJurnal] Auto-save error:', err);
+      }
+    }
+  }, [
+    tipeJurnal, mapel, kelas, tanggal, materi, kegiatan, catatanSiswa,
+    refleksi, pertemuanKe, jamKe, tujuanPembelajaran, kehadiranMurid,
+    kktp, konten, lokasiKbm, absensi
+  ]);
 
   const formatDisplayDate = (dStr: string) => {
     if (!dStr) return '';
@@ -496,7 +614,7 @@ export default function GuruJurnal({ user }: { user: any }) {
   };
 
   // R4: Capture GPS Geolocation on gallery upload
-  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
@@ -521,8 +639,9 @@ export default function GuruJurnal({ user }: { user: any }) {
       );
     }
 
-    setFile(selectedFile);
-    setPhotoPreviewUrl(URL.createObjectURL(selectedFile));
+    const compressed = await compressImageWithCanvas(selectedFile);
+    setFile(compressed);
+    setPhotoPreviewUrl(URL.createObjectURL(compressed));
   };
 
   const handleJurnalSubmit = async (e: React.FormEvent) => {
@@ -567,7 +686,8 @@ export default function GuruJurnal({ user }: { user: any }) {
 
     let fileUrl = '';
     try {
-      fileUrl = await uploadToDrive(file, user.nama, tipeJurnal, 'Jurnal');
+      const compressedFile = await compressImageWithCanvas(file);
+      fileUrl = await uploadToDrive(compressedFile, user.nama, tipeJurnal, 'Jurnal');
     } catch (err: any) {
       setLoading(false);
       return showToast('Gagal Upload', err.message, 'error');
@@ -695,6 +815,9 @@ export default function GuruJurnal({ user }: { user: any }) {
           timer: 3000,
           showConfirmButton: false,
         });
+        try {
+          localStorage.removeItem('sipjam_jurnal_autosave');
+        } catch {}
         setMateri('');
         setKegiatan('');
         setCatatanSiswa('');

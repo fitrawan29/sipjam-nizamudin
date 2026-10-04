@@ -405,10 +405,22 @@ body.fade-out {
   tfoot {
     display: table-footer-group !important;
   }
-  /* Prevent table rows from breaking across pages so content isn't pushed to new page or cut off */
-  tr {
+  /* Prevent table rows and card elements from breaking across pages */
+  tr,
+  .page-break-inside-avoid,
+  .break-inside-avoid,
+  .print-avoid-break,
+  .print-card,
+  .card,
+  figure,
+  blockquote {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
   }
 
   /* Keep signature and header together on same page */
