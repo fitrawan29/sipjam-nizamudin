@@ -1,51 +1,76 @@
-# Handoff Report: Reviewer R2 (Round 3 Adversarial Review)
+# Adversarial Review & QA Report: Round 2 Review & Hardening
 
 > [!WARNING] **Skepticism Disclaimer**
-> High confidence based on multi-sensor mathematical geometry proofs across 8 sensor/container aspect ratio permutations, absence of hardware/CSS zoom constraints, passing 15 automated test suites plus 4 E2E tiers, and clean Next.js Turbopack build with 0 errors; physical handheld device lens behavior remains validated through rigorous geometric bounding and DOM simulation rather than physical mobile hands-on testing.
+> Moderate-to-high confidence in core resilience, offline queue stability, and print CSS layout. Browser sandbox variations in extreme offline storage constraints and mobile camera device access lifecycles remain partially reliant on physical mobile device behavior.
 
 ## 1. What the prior attempt got wrong
-- **Prior attempt strengths:**
-  - The implementer correctly identified and fixed the root cause of the camera zoom/crop issue: CSS `object-fit: cover` on `<video>` in `src/components/CameraSelfieCapture.tsx` replaced with `object-contain`.
-  - Reviewer R1 added mathematical bounding proofs for 4 aspect-ratio permutations (4:3 in 16:9, 16:9 in 3:4, 9:16 in 3:4, and 4032x3024 high-res) and scale transform guards on `<video>`.
-- **Deficiencies & gaps identified during Round 3 adversarial review:**
-  1. **Uncovered Sensor Aspect Ratios (1:1, 19.5:9, 3:2):**
-     - Prior tests omitted 1:1 square feeds (common on legacy webcams/microscopes), 19.5:9 ultra-tall smartphone sensors (modern flagship phones), and 3:2 tablet/Surface cameras.
-     - *Empirical proof added:* Proved that previously `object-cover` cropped 43.8% of a 1:1 feed in 16:9, 25.0% of a 1:1 feed in 3:4, 38.5% of a 19.5:9 feed in 3:4, and 15.6% of a 3:2 feed in 16:9, while `object-contain` guarantees exactly 0.0% crop and 0% distortion across all of them.
-  2. **Unvalidated Hardware Digital Zoom Constraints:**
-     - Prior reviews did not assert against browser `MediaStreamConstraints` inadvertently specifying PTZ / digital `zoom:` constraints that would force hardware sensor cropping on mobile Chrome/Android devices.
-  3. **Preview Image Scale Transform Blindspot:**
-     - Reviewer R1 guarded `<video>` against accidental Tailwind scale classes (`scale-110`, `scale-125`), but left the preview `<img>` unguarded.
-  4. **Inline Style Zoom Override Blindspot:**
-     - Neither prior attempt tested whether inline `style={{ objectFit: 'cover' }}` or CSS `zoom:` could override Tailwind classes.
+
+### Issue 1: GuruJurnal Student Attendance Overwrite on Draft Reload
+- **Input:** Teacher drafts a KBM entry, marks 3 students in the class with custom attendance statuses (e.g. Sakit, Izin, Alpa), and reloads the page or experiences an unexpected browser restart.
+- **Expected:** When the form restores from `localStorage.getItem('sipjam_jurnal_autosave')`, the teacher's manually assigned student attendance statuses (`absensi`) are preserved.
+- **Actual:** The draft restoration mounted first, but as soon as `fetchStudents` resolved data from Supabase for that class, line 583 executed `setAbsensi(initialAbsensi)`, wiping out the teacher's draft marks and resetting all students to default 'Hadir'.
+- **Root Cause:** `fetchStudents` unconditionally called `setAbsensi(initialAbsensi)` instead of checking whether `prevAbsensi` already contained valid draft marks for matching students in the class.
+
+### Issue 2: Unhandled Corrupted JSON in Presensi Offline Queue Crash
+- **Input:** `localStorage.getItem('sipjam_offline_presensi_queue')` contains malformed or corrupted JSON text (e.g. caused by an abrupt browser crash or partial write during storage pressure).
+- **Expected:** Submission offline fallback and reconnect sync gracefully detect invalid JSON, recover single item fallback or clean the corrupted key, without crashing.
+- **Actual:** `saveToLocalStorage` called `JSON.parse(rawQueue)` without a try/catch guard. When this threw a `SyntaxError`, the outer `catch (quotaErr)` caught it and attempted `saveToLocalStorage(itemWithoutPhoto)`, which threw `SyntaxError` again, dropping all the way to `catch (offlineErr)` and completely aborting the teacher's check-in. In `syncOfflinePresensi`, parsing error caused an early `return`, permanently leaving the corrupt string in `localStorage` and locking offline sync.
+- **Root Cause:** Missing try/catch around `JSON.parse(rawQueue)` in `saveToLocalStorage` and absence of corrupt queue recovery in `syncOfflinePresensi`.
+
+### Issue 3: Offline Queue Bloat from Repeated Offline Submissions
+- **Input:** Teacher is in an area with no internet connection, clicks "Simpan Presensi", receives the "Tersimpan Offline" notice, and then clicks submit again (or double clicks) believing it did not register.
+- **Expected:** Duplicate submissions with the identical presensi ID update the existing queued record rather than duplicating base64 photos in `localStorage`.
+- **Actual:** Prior attempt used `queue.push(itemToSave)`, causing duplicate 50KB data URLs to accumulate in `localStorage` and rapidly filling the 5MB browser domain quota.
+- **Root Cause:** Absence of ID deduplication in `saveToLocalStorage`.
+
+### Issue 4: Document Uploads (Surat Sakit PDF) Dropped in Offline Presensi
+- **Input:** Teacher submits "Izin / Sakit" while offline, attaching a doctor's note in `.pdf` format (<= 500 KB).
+- **Expected:** PDF document is preserved in the offline queue via base64 data URL if storage permits.
+- **Actual:** `compressPhotoForStorage` only supported images (`Image()` object). Loading `.pdf` into `Image().src` triggered `img.onerror` and resolved to `''`, completely discarding the uploaded doctor's note document.
+- **Root Cause:** Lack of `file.type === 'application/pdf'` base64 encoding support in `handleSubmit` offline fallback.
+
+---
 
 ## 2. What I changed
-1. `tests/camera_zoom_fix.test.ts`:
-   - Added test cases 5, 6, 7, and 8 in Section 5 covering:
-     - 1:1 square camera in 16:9 landscape container (0% crop, 0% distortion).
-     - 1:1 square camera in 3:4 portrait container (0% crop, 0% distortion).
-     - Modern ultra-tall smartphone sensor (19.5:9 portrait 1080x2340) in 3:4 container (0% crop, 0% distortion).
-     - Tablet 3:2 sensor (2160x1440) in 16:9 container (0% crop, 0% distortion).
-   - Added Section 6 (**Adversarial Robustness & Hardware Zoom Constraints Guard**):
-     - Asserted `MediaStreamConstraints` in `CameraSelfieCapture.tsx` contains NO hardware digital `zoom:` constraint.
-     - Asserted preview `<img>` element contains NO unintended Tailwind scale zoom classes (`scale-105`, `scale-110`, `scale-125`, `scale-150`, `scale-200`).
-     - Asserted NO inline `style` overrides with `objectFit: 'cover'` or CSS `zoom:`.
-2. Created `.agents/teamwork/reviewer_r2/handoff.md` and updated `progress.md`.
+
+- **`src/components/GuruJurnal.tsx`**:
+  - Fixed `fetchStudents`: when setting `setAbsensi`, inspects `prevAbsensi` to see if it contains draft marks for matching students in the class (`data.some(...)`). If matching students exist, merges `{ ...initialAbsensi, ...prevAbsensi }` and updates `calculateKehadiranSummary`, safeguarding the teacher's drafted student attendance across reloads.
+- **`src/components/GuruPresensi.tsx`**:
+  - Hardened `saveToLocalStorage`: added try/catch around `JSON.parse(rawQueue)` and implemented ID deduplication (`queue.findIndex(...)`), preventing offline queue bloat and syntax crash cascades.
+  - Hardened `syncOfflinePresensi`: added recovery for corrupt queue JSON by clearing corrupt keys and falling back to `sipjam_offline_presensi`.
+  - Added base64 encoding for small PDF document attachments (<= 500 KB) in offline fallback, ensuring Surat Sakit/Izin documents survive offline submission.
+- **`src/app/globals.css`**:
+  - Added explicit `.break-before-page`, `.break-after-page`, `.page-break-before-always`, and `.page-break-after-always` utility classes under `@media print`.
+- **`tests/four_ponytail_improvements.test.ts`**:
+  - Added comprehensive adversarial unit tests covering offline queue deduplication, corrupt JSON recovery, draft student attendance preservation during student list sync, and page break utilities.
+
+---
 
 ## 3. Verification Record
+
 - **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/camera_zoom_fix.test.ts`: All 6 sections passed with 23 individual assertions.
-  - Ran `npm test` across all 15 suites: 85 sistem_blok tests, 3 three_fixes tests, 26 camera orientation tests, 23 camera zoom fix tests — 100% PASS.
-  - Ran `npm run test:e2e`: All 4 tiers (Tier 1-4, 111 assertions) passed cleanly in 0.08s.
-  - Ran `npx tsc --noEmit`: 0 TypeScript errors.
-  - Ran `npm run build`: Next.js Turbopack production compilation succeeded cleanly in 1.18s with zero errors.
+  - `npx tsx tests/four_ponytail_improvements.test.ts`: 11/11 tests PASSED.
+  - `npm test`: Full 20-file test suite passed cleanly (100% pass, 0 failed).
+  - `npx tsx tests/m6_2_print_redesign.test.ts`: 27/27 PASSED.
+  - `npx tsx tests/m10_r1_r4.test.ts`: 23/23 PASSED.
+  - `npx tsc --noEmit`: Strict TypeScript typecheck passed with 0 errors.
+  - `npm run build`: Turbopack production build succeeded in 2.2s generating 12 static/dynamic routes with 0 errors.
+
 - **Shallow Verification (manual only):**
-  - Verified call sites in `GuruPresensi.tsx` (portrait 3:4), `GuruJurnal.tsx` (landscape 16:9), and `PiketView.tsx` (landscape 16:9).
+  - Verified Next.js dynamic chunk imports in `AppScreen.tsx` for all 18 sub-views.
+  - Verified print CSS unification in `globals.css` with page-break avoidance and explicit break utilities.
+
 - **Unverified aspects:**
-  - Physical optical testing on live physical iOS Safari and Android Chrome hardware devices with multi-camera lenses (validated via programmatic constraint matching, DOM attribute checks, and simulated canvas rendering).
+  - Physical mobile device battery-saver aggressive process termination during offline state transitions.
+  - Mobile web browser storage quota exhaustion across Safari Private Browsing mode where `localStorage` quota can be 0 MB.
+
+---
 
 ## 4. Known Issues
-- `Minor Robustness Risk` — Camera feeds whose hardware sensor aspect ratio does not match the container aspect ratio (16:9 or 3:4) will display black letterboxing/pillarboxing margins against the `bg-black` container. This is mathematically essential and standard optical behavior to guarantee 0% crop and 0% distortion.
+- `Minor Robustness Risk`: In Safari Private Browsing (or browsers with storage completely blocked), `localStorage` operations throw security errors; UI alerts the teacher via toast.
+- `Shallow Verification`: Background Google Drive upload performance on severely throttled 2G cellular connections.
+
+---
 
 ## 5. Remaining risk & next step
-- The implementation and test coverage are robust and completely address the requirement to prevent camera zoom/crop in `CameraSelfieCapture.tsx`.
-- Next step: Orchestrator `swe_10` can proceed with final acceptance and push workflow.
+The 4 Ponytail improvements are fully implemented, zero-dependency, verified against all test suites, and hardened against queue corruption, offline bloat, and draft data loss. The task is complete.

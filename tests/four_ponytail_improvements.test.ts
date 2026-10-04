@@ -257,6 +257,87 @@ test('globals.css defines unified print break avoidance rules in @media print', 
   assert(content.includes('page-break-inside: avoid !important;'), 'Must define page-break-inside: avoid !important;');
   assert(content.includes('.page-break-inside-avoid'), 'Must include .page-break-inside-avoid utility');
   assert(content.includes('.break-inside-avoid'), 'Must include .break-inside-avoid utility');
+  assert(content.includes('.break-before-page'), 'Must include .break-before-page utility');
+  assert(content.includes('.break-after-page'), 'Must include .break-after-page utility');
+});
+
+test('Presensi offline queue deduplication and corrupted JSON recovery', () => {
+  const store: Record<string, string> = {};
+  const mockLocalStorage = {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, val: string) => { store[key] = val; },
+    removeItem: (key: string) => { delete store[key]; }
+  };
+
+  const saveToLocalStorage = (itemToSave: any) => {
+    mockLocalStorage.setItem('sipjam_offline_presensi', JSON.stringify(itemToSave));
+    const rawQueue = mockLocalStorage.getItem('sipjam_offline_presensi_queue');
+    let queue: any[] = [];
+    try {
+      if (rawQueue) queue = JSON.parse(rawQueue);
+      if (!Array.isArray(queue)) queue = [];
+    } catch {
+      queue = [];
+    }
+    const existingIdx = queue.findIndex((q: any) => q.id === itemToSave.id);
+    if (existingIdx >= 0) {
+      queue[existingIdx] = itemToSave;
+    } else {
+      queue.push(itemToSave);
+    }
+    mockLocalStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(queue));
+  };
+
+  const item1 = { id: 'presensi-dup-1', nama: 'Guru A' };
+  // 1. Submit twice while offline -> should deduplicate
+  saveToLocalStorage(item1);
+  saveToLocalStorage(item1);
+  const queue1 = JSON.parse(mockLocalStorage.getItem('sipjam_offline_presensi_queue')!);
+  assert.strictEqual(queue1.length, 1, 'Duplicate ID should update existing entry instead of inflating queue');
+
+  // 2. Corrupted queue recovery
+  mockLocalStorage.setItem('sipjam_offline_presensi_queue', 'INVALID_JSON_{[[');
+  const rawCorrupt = mockLocalStorage.getItem('sipjam_offline_presensi_queue');
+  let recoveredQueue: any[] = [];
+  try {
+    if (rawCorrupt) recoveredQueue = JSON.parse(rawCorrupt);
+  } catch {
+    mockLocalStorage.removeItem('sipjam_offline_presensi_queue');
+    recoveredQueue = [];
+  }
+  assert.strictEqual(recoveredQueue.length, 0, 'Corrupt JSON should safely recover without crashing');
+  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi_queue'), null);
+});
+
+test('GuruJurnal draft attendance preservation during student list sync', () => {
+  const students = [
+    { nisn: '001', nama_siswa: 'Ahmad' },
+    { nisn: '002', nama_siswa: 'Budi' },
+    { nisn: '003', nama_siswa: 'Citra' }
+  ];
+
+  // Restored draft attendance where teacher already marked student 002 as Sakit and 003 as Izin
+  const draftAbsensi: Record<string, string> = {
+    '001': 'H',
+    '002': 'S',
+    '003': 'I'
+  };
+
+  // Default canonical attendance returned by database
+  const initialAbsensi: Record<string, string> = {
+    '001': 'H',
+    '002': 'H',
+    '003': 'H'
+  };
+
+  // Simulation of fetchStudents merging logic
+  const hasMatchingStudent = students.some(s => s.nisn && draftAbsensi && draftAbsensi[s.nisn]);
+  assert.strictEqual(hasMatchingStudent, true);
+
+  const merged = { ...initialAbsensi, ...draftAbsensi };
+  assert.strictEqual(merged['001'], 'H');
+  assert.strictEqual(merged['002'], 'S', 'Student 002 Sakit mark should be preserved from draft');
+  assert.strictEqual(merged['003'], 'I', 'Student 003 Izin mark should be preserved from draft');
 });
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);

@@ -179,7 +179,17 @@ export default function GuruPresensi({ user }: { user: any }) {
         const parsed = JSON.parse(queueStr);
         items = Array.isArray(parsed) ? parsed : [parsed];
       } catch {
-        return;
+        localStorage.removeItem('sipjam_offline_presensi_queue');
+        const fallbackSingle = localStorage.getItem('sipjam_offline_presensi');
+        if (fallbackSingle) {
+          try {
+            const singleParsed = JSON.parse(fallbackSingle);
+            items = Array.isArray(singleParsed) ? singleParsed : [singleParsed];
+          } catch {
+            localStorage.removeItem('sipjam_offline_presensi');
+          }
+        }
+        if (items.length === 0) return;
       }
       if (items.length === 0) return;
 
@@ -542,7 +552,18 @@ export default function GuruPresensi({ user }: { user: any }) {
         if (photoPreviewUrl) {
           photoDataUrl = await compressPhotoForStorage(photoPreviewUrl);
         } else if (file) {
-          photoDataUrl = await compressPhotoForStorage(file);
+          if (file.type === 'application/pdf') {
+            if (file.size <= 500 * 1024) {
+              photoDataUrl = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve((reader.result as string) || '');
+                reader.onerror = () => resolve('');
+                reader.readAsDataURL(file);
+              });
+            }
+          } else {
+            photoDataUrl = await compressPhotoForStorage(file);
+          }
         }
 
         const offlineItem = {
@@ -559,8 +580,19 @@ export default function GuruPresensi({ user }: { user: any }) {
         const saveToLocalStorage = (itemToSave: any) => {
           localStorage.setItem('sipjam_offline_presensi', JSON.stringify(itemToSave));
           const rawQueue = localStorage.getItem('sipjam_offline_presensi_queue');
-          const queue = rawQueue ? JSON.parse(rawQueue) : [];
-          queue.push(itemToSave);
+          let queue: any[] = [];
+          try {
+            if (rawQueue) queue = JSON.parse(rawQueue);
+            if (!Array.isArray(queue)) queue = [];
+          } catch {
+            queue = [];
+          }
+          const existingIdx = queue.findIndex((q: any) => q.id === itemToSave.id);
+          if (existingIdx >= 0) {
+            queue[existingIdx] = itemToSave;
+          } else {
+            queue.push(itemToSave);
+          }
           localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(queue));
         };
 

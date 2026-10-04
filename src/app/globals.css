@@ -423,6 +423,18 @@ body.fade-out {
     page-break-after: avoid !important;
   }
 
+  /* Explicit page break utilities */
+  .page-break-before-always,
+  .break-before-page {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+  .page-break-after-always,
+  .break-after-page {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
   /* Keep signature and header together on same page */
   .print-header,
   .print-signature,

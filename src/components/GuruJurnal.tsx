@@ -580,8 +580,16 @@ export default function GuruJurnal({ user }: { user: any }) {
             initialAbsensi[s.nisn] = 'H';
           }
         });
-        setAbsensi(initialAbsensi);
-        setKehadiranMurid(calculateKehadiranSummary(initialAbsensi, data));
+        setAbsensi((prevAbsensi) => {
+          const hasMatchingStudent = data.some(s => s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
+          if (hasMatchingStudent) {
+            const merged = { ...initialAbsensi, ...prevAbsensi };
+            setKehadiranMurid(calculateKehadiranSummary(merged, data));
+            return merged;
+          }
+          setKehadiranMurid(calculateKehadiranSummary(initialAbsensi, data));
+          return initialAbsensi;
+        });
       }
     };
     fetchStudents();
