@@ -1,13 +1,14 @@
 # Progress — Challenger 2
 
-Last visited: 2026-10-01T11:37:45Z
-Status: Investigating codebase and existing tests
+Last visited: 2026-10-04T01:53:25Z
+Status: Investigating attendance flow, downstream queries, and setting up empirical tests
 
 ## Tasks
 - [x] Initialized DISPATCH.md and BRIEFING.md
-- [ ] Inspect existing test runner and project structure
-- [ ] Inspect relevant source files (`src/lib/avatars.tsx`, `AccountSettingsModal.tsx`, `GuruJurnal.tsx`, `GuruPresensi.tsx`, etc.)
-- [ ] Author `tests/adversarial_challenger_2.test.ts`
-- [ ] Run tests and collect empirical results
-- [ ] Document findings and produce `handoff.md` with explicit Verdict
-- [ ] Send message to orchestrator_6
+- [ ] Inspect `src/lib/qrSiswa.ts` and attendance recording implementation
+- [ ] Inspect `PiketView.tsx` manual attendance invocation
+- [ ] Inspect `GuruJurnal.tsx` and `RekapSiswaView.tsx` query implementations
+- [ ] Create and run empirical test harness for `recordPresensiSiswa` (`deviceId: 'manual'`, duplicate handling, downstream query simulation)
+- [ ] Run `npm run build` verification
+- [ ] Document results in `handoff.md` with verdict (APPROVE or FAIL)
+- [ ] Send completion message to parent

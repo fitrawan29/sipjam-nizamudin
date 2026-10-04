@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-01T11:38:00Z
+# BRIEFING — 2026-10-04T01:54:00Z
 
 ## Mission
-Perform empirical adversarial stress testing against R1-R6, write tests/adversarial_challenger_1.test.ts, run verification suites, and deliver handoff with explicit verdict.
+Empirically test database constraints, schema defaults, and mode transitions for mode_presensi_siswa in Supabase, verify rejection of invalid modes and multi-tenant isolation, run tsc --noEmit, and deliver handoff with APPROVE/FAIL verdict.
 
 ## 🔒 My Identity
 - Archetype: teamwork_preview_challenger
@@ -10,29 +10,32 @@ Perform empirical adversarial stress testing against R1-R6, write tests/adversar
 - Original parent: 99cc2021-9546-433d-8867-c45dc0860a07
 - Milestone: M5
 - Instance: 1 of 1
+- Current parent: 60f11d0f-3028-47d5-a4c0-af2902baf3f1
+- Current run: Challenger 1 (DB constraints & mode switching verification)
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
 - Respect Git Workflow Rule in GEMINI.md
+- Empirical test execution required — do NOT trust claims without direct verification
 
 ## Current Parent
-- Conversation ID: 99cc2021-9546-433d-8867-c45dc0860a07
-- Updated: 2026-10-01T11:36:51Z
+- Conversation ID: 60f11d0f-3028-47d5-a4c0-af2902baf3f1
+- Updated: 2026-10-04T01:52:41Z
 
 ## Review Scope
-- **Files to review**: `merge_accounts.sql`, `supabase/migrations/20261001_features_r1_r6.sql`, `src/lib/avatars.tsx`, `src/components/AccountSettingsModal.tsx`, `src/app/api/attendance/route.ts`, `src/components/GuruPresensi.tsx`, `src/components/GuruJurnal.tsx`, `src/components/SuperadminView.tsx`, `src/components/AdminVerifView.tsx`, `src/components/RekapJurnalView.tsx`
-- **Interface contracts**: PROJECT.md
-- **Review criteria**: Empirical adversarial stress-testing (R1-R6 edge cases, SQL idempotency, API robustness, security bypass attempts)
+- **Files to review**: `supabase/migrations/20261004_add_mode_presensi_siswa_to_sekolah.sql`, `src/types/database.ts`
+- **Database objects**: `public.sekolah` table, `mode_presensi_siswa` column, `sekolah_mode_presensi_siswa_check` constraint
+- **Interface contracts**: PROJECT.md (`mode_presensi_siswa TEXT NOT NULL DEFAULT 'qr'`, CHECK `IN ('qr', 'manual')`)
+- **Review criteria**: Empirical constraint enforcement, schema default correctness, mode transitions, multi-tenant isolation, TypeScript compilation
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Teacher username bypass attempts in UI and RPC update
-  - Malformed & missing fields in /api/attendance
-  - Geolocation null/error fallback in journal submission
-  - merge_accounts.sql duplicate execution idempotency
-  - School journal mode switching rendering
-- **Vulnerabilities found**: [In progress]
-- **Untested angles**: [In progress]
+  - Invalid mode strings (e.g. 'invalid', '', 'QR', 'MANUAL', 'hybrid') violate check constraint
+  - NULL values rejected by NOT NULL constraint
+  - Default value on INSERT without mode_presensi_siswa is 'qr'
+  - Updating one school does not affect other schools (multi-tenant isolation)
+- **Vulnerabilities found**: [Testing in progress]
+- **Untested angles**: [Testing in progress]
 
 ## Loaded Skills
 - **Source**: C:\Users\Fitra\.gemini\config\plugins\ponytail\skills\ponytail\SKILL.md
@@ -40,8 +43,11 @@ Perform empirical adversarial stress testing against R1-R6, write tests/adversar
 - **Core methodology**: Forces minimal working code, YAGNI, standard library / platform features first, root-cause fixes.
 
 ## Key Decisions Made
-- Designing comprehensive automated adversarial test script `tests/adversarial_challenger_1.test.ts`.
+- Execute SQL queries directly via Supabase MCP `execute_sql` tool on project `jicvvqxjyzntdrccnuyz`.
+- Run `npx tsc --noEmit` via terminal command.
+- Restore all modified school records to their initial state after testing.
 
 ## Artifact Index
-- tests/adversarial_challenger_1.test.ts — Custom adversarial test harness
 - handoff.md — Verification report with explicit verdict
+- progress.md — Liveness heartbeat and milestone tracking
+- DISPATCH.md — Task dispatch record

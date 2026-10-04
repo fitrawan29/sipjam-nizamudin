@@ -1,29 +1,44 @@
-# Task Assignment: Challenger 1 (Adversarial Correctness & Security Verifier)
+# Dispatch: Challenger 1 (Empirical DB Constraints & Mode Switching Verification)
 
-## Identity
-- Archetype: teamwork_preview_challenger
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_1
-- Parent: orchestrator_6 (99cc2021-9546-433d-8867-c45dc0860a07)
-- Scope Document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
-- Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-10-01T10:56:44Z)
+## Role
+You are a Challenger agent (`teamwork_preview_challenger`).
 
-## Mission
-Perform empirical adversarial stress testing against the solution for Requirements R1 through R6:
-1. Write a custom adversarial test script (e.g. `tests/adversarial_challenger_1.test.ts`) that executes edge cases:
-   - Attempting to bypass username update as a teacher (verifying rejection or preservation).
-   - Invoking `/api/attendance` with missing fields, malformed payloads, and "Izin Terlambat".
-   - Verifying geolocation null/error fallback in journal submission.
-   - Verifying `merge_accounts.sql` idempotency against duplicate execution.
-   - Verifying school mode switching properly toggles the file input.
-2. Run your adversarial test suite, plus the full suite `tests/all_requirements_r1_r6_verification.test.ts`.
+## Working Directory
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_1`
 
-## Verdict Requirement
-Your `handoff.md` must conclude with an unambiguous verdict:
-`Verdict: APPROVE` or `Verdict: REQUEST_CHANGES`.
-Report back via `send_message` to orchestrator_6.
+## Reference Files
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (MUST read first)
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\PROJECT.md`
+- Project Root: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
 
-## 2026-10-01T11:36:51Z
-You are Challenger 1. Read your task assignment at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_1\DISPATCH.md, PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md, and ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md.
-Write tests/adversarial_challenger_1.test.ts to adversarially test edge cases across R1-R6 (username bypass attempts, invalid attendance payloads, geolocation null handling, merge idempotency). Run tests.
-Write handoff.md with explicit Verdict: APPROVE or REQUEST_CHANGES. Notify orchestrator_6 via send_message.
+## Objective
+Empirically test and challenge the database constraints, schema defaults, and mode transitions for `mode_presensi_siswa` on `public.sekolah`.
+1. Verify column definition in Supabase (`information_schema.columns`).
+2. Verify check constraint `sekolah_mode_presensi_siswa_check` (`pg_constraint`).
+3. Empirically test constraint enforcement:
+   - Attempt an invalid mode (e.g. `UPDATE public.sekolah SET mode_presensi_siswa = 'invalid'`): verify it fails with PostgreSQL error 23514.
+   - Test updating to `'manual'`: verify it succeeds.
+   - Test updating back to `'qr'`: verify it succeeds.
+4. Verify multi-tenant isolation:
+   - Check that two different schools can have different modes (e.g. School A `'manual'`, School B `'qr'`) without interference.
+5. Run `npx tsc --noEmit`.
 
+## Deliverable
+Write your empirical test results and verdict (**APPROVE** or **FAIL**) to:
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_1\handoff.md`
+Then send a completion message back.
+
+
+## 2026-10-04T01:52:41Z
+You are Challenger 1.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_1
+Read your task description in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_1\DISPATCH.md
+Also read ORIGINAL_REQUEST.md at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+and PROJECT.md at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\PROJECT.md
+
+Empirically test database constraints, schema defaults, and mode transitions for mode_presensi_siswa in Supabase.
+Verify rejection of invalid modes and multi-tenant isolation.
+Run `npx tsc --noEmit`.
+Deliver your report with verdict (APPROVE or FAIL) to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_1\handoff.md
+Then send a completion message back.

@@ -1,32 +1,47 @@
-# Task Assignment: Reviewer 1 (Code Correctness & Acceptance Review)
+# Dispatch: Reviewer 1 (Frontend UI & Component Flow Review)
 
-## Identity
-- Archetype: teamwork_preview_reviewer
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_reviewer_1
-- Parent: orchestrator_6 (99cc2021-9546-433d-8867-c45dc0860a07)
-- Scope Document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
-- Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-10-01T10:56:44Z)
+## Role
+You are a Reviewer agent (`teamwork_preview_reviewer`).
 
-## Mission
-Perform an independent, objective code review of all changes implemented for Requirements R1 through R6:
-- `merge_accounts.sql` & `supabase/migrations/20261001_features_r1_r6.sql`
-- `src/lib/avatars.tsx` & `src/components/AccountSettingsModal.tsx`
-- `src/components/HomeView.tsx` & `src/components/AppScreen.tsx`
-- `src/components/GuruPresensi.tsx` & `src/app/api/attendance/route.ts`
-- `src/components/SuperadminView.tsx`, `src/components/GuruJurnal.tsx`, `src/components/AdminVerifView.tsx`, `src/components/RekapJurnalView.tsx`
-- `tests/all_requirements_r1_r6_verification.test.ts`
+## Working Directory
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_reviewer_1`
 
-Run verification tests:
-- `npx tsx tests/all_requirements_r1_r6_verification.test.ts`
-- `npx tsc --noEmit`
-- `npm run build`
+## Reference Files
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (MUST read first)
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\PROJECT.md`
+- Project Root: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
+- Implementation Files:
+  - `src/components/SuperadminView.tsx`
+  - `src/components/PiketView.tsx`
+  - `src/components/RekapSiswaView.tsx`
+  - `src/components/GuruJurnal.tsx`
+  - `src/types/database.ts`
 
-## Verdict Requirement
-Your `handoff.md` must conclude with an unambiguous verdict:
-`Verdict: APPROVE` or `Verdict: REQUEST_CHANGES` (with explicit reasons).
-Report back via `send_message` to orchestrator_6.
+## Tasks
+1. Review code changes across all modified components against Requirements R1-R5 and Acceptance Criteria:
+   - Check `SuperadminView.tsx` add/edit school modal inputs, save handlers, badges, and quick toggle.
+   - Check `PiketView.tsx` mode acquisition from `public.sekolah`, manual mode student roster (class filter, search, Tandai Datang / Tandai Pulang, cancel mark), and QR mode retention (camera + USB HID).
+   - Check `RekapSiswaView.tsx` and `GuruJurnal.tsx` for neutral phrasing and compatibility with manual attendance records.
+2. Execute verification commands:
+   - Run `npx tsc --noEmit`
+   - Run `npm run build`
+3. Formulate your verdict: **APPROVE** or **REQUEST_CHANGES**.
 
-## 2026-10-01T11:36:50Z
-You are Reviewer 1. Read your task assignment at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_reviewer_1\DISPATCH.md, PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md, and ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md.
-Review all implementation code across R1-R6. Run npx tsx tests/all_requirements_r1_r6_verification.test.ts, npx tsc --noEmit, npm run build.
-Write handoff.md with explicit Verdict: APPROVE or REQUEST_CHANGES. Notify orchestrator_6 via send_message.
+## Deliverable
+Write your review report to:
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_reviewer_1\handoff.md`
+Then send a completion message back.
+
+
+## 2026-10-04T01:52:41Z
+[Message] timestamp=2026-10-04T01:52:41Z sender=60f11d0f-3028-47d5-a4c0-af2902baf3f1 priority=MESSAGE_PRIORITY_HIGH content=You are Reviewer 1.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_reviewer_1
+Read your task description in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_reviewer_1\DISPATCH.md
+Also read ORIGINAL_REQUEST.md at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+and PROJECT.md at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\PROJECT.md
+
+Review all frontend UI and component changes (SuperadminView.tsx, PiketView.tsx, RekapSiswaView.tsx, GuruJurnal.tsx, database.ts).
+Run `npx tsc --noEmit` and `npm run build` to verify compiler clean state.
+Deliver your review report with verdict (APPROVE or REQUEST_CHANGES) to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_reviewer_1\handoff.md
+Then send a completion message back.

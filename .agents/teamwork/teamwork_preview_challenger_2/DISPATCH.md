@@ -1,27 +1,41 @@
-# Task Assignment: Challenger 2 (Empirical State & UI Reactivity Verifier)
+# Dispatch: Challenger 2 (Empirical Attendance Flow & Downstream Simulation Verification)
 
-## Identity
-- Archetype: teamwork_preview_challenger
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2
-- Parent: orchestrator_6 (99cc2021-9546-433d-8867-c45dc0860a07)
-- Scope Document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
-- Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-10-01T10:56:44Z)
+## Role
+You are a Challenger agent (`teamwork_preview_challenger`).
 
-## Mission
-Perform empirical adversarial stress testing on Reactivity and UI contract integrity:
-1. Write an adversarial test script (e.g. `tests/adversarial_challenger_2.test.ts`) that verifies:
-   - Avatar reactivity: data URLs, large base64 strings, SVG fallbacks, `onUserUpdated` invocation without full reload.
-   - School mode DOM isolation: verify that in `camera_only` mode, the DOM cannot contain the file input.
-   - GPS coordinate precision and negative values (Southern hemisphere / Eastern hemisphere coordinates).
-   - "Izin Terlambat" vs "Terlambat" legacy coexistence in attendance state.
-2. Execute your test script and report all assertion outputs.
+## Working Directory
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2`
 
-## Verdict Requirement
-Your `handoff.md` must conclude with an unambiguous verdict:
-`Verdict: APPROVE` or `Verdict: REQUEST_CHANGES`.
-Report back via `send_message` to orchestrator_6.
+## Reference Files
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (MUST read first)
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\PROJECT.md`
+- Project Root: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
 
-## 2026-10-01T11:36:51Z
-You are Challenger 2. Read your task assignment at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2\DISPATCH.md, PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md, and ORIGINAL_REQUEST.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md.
-Write tests/adversarial_challenger_2.test.ts to adversarially stress test UI reactivity, large base64 avatar images, school mode DOM isolation (ensuring no file input when camera_only), and negative/boundary GPS coordinates. Run tests.
-Write handoff.md with explicit Verdict: APPROVE or REQUEST_CHANGES. Notify orchestrator_6 via send_message.
+## Objective
+Empirically test and challenge the attendance recording and downstream view data ingestion:
+1. Verify `recordPresensiSiswa` function in `src/lib/qrSiswa.ts` when invoked with `deviceId: 'manual'`:
+   - Inserts record into `public.presensi_siswa` with correct columns (`sekolah_id`, `siswa_id`, `status: 'datang'`, `jam`, `tanggal`).
+   - Duplicate prevention: attempting duplicate mark on the same date/status returns `alreadyExists: true` or handles PostgreSQL 23505 without crashing.
+2. Verify downstream queries:
+   - Verify `GuruJurnal.tsx` arrival query (`status = 'datang'`) picks up manual records.
+   - Verify `RekapSiswaView.tsx` gate attendance query picks up manual records.
+3. Verify that `npm run build` succeeds cleanly.
+
+## Deliverable
+Write your empirical test results and verdict (**APPROVE** or **FAIL**) to:
+`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2\handoff.md`
+Then send a completion message back.
+
+
+## 2026-10-04T01:52:41Z
+You are Challenger 2.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2
+Read your task description in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2\DISPATCH.md
+Also read ORIGINAL_REQUEST.md at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+and PROJECT.md at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\PROJECT.md
+
+Empirically test attendance flow and downstream simulation (recordPresensiSiswa with deviceId: 'manual', duplicate prevention, and ingestion by GuruJurnal/RekapSiswaView).
+Verify `npm run build`.
+Deliver your report with verdict (APPROVE or FAIL) to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_challenger_2\handoff.md
+Then send a completion message back.

@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-01T11:37:00Z
+# BRIEFING — 2026-10-04T01:54:00Z
 
 ## Mission
-Independent, objective code review and adversarial challenge of R1-R6 bug fixes & feature enhancements across database, frontend, API, and tests.
+Objective review and adversarial challenge of frontend UI & component changes (SuperadminView.tsx, PiketView.tsx, RekapSiswaView.tsx, GuruJurnal.tsx, database.ts) for per-school student attendance mode (QR vs Manual).
 
 ## 🔒 My Identity
 - Archetype: teamwork_preview_reviewer
@@ -10,40 +10,43 @@ Independent, objective code review and adversarial challenge of R1-R6 bug fixes 
 - Original parent: 99cc2021-9546-433d-8867-c45dc0860a07
 - Milestone: M5 Review
 - Instance: 1 of 1
+- Current parent: 60f11d0f-3028-47d5-a4c0-af2902baf3f1
+- Current milestone: Orchestrator 12 Review
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
 - Conclude with unambiguous verdict: APPROVE or REQUEST_CHANGES
 - Actively check for integrity violations (hardcoded test results, facade implementations, bypassed tasks, fabricated logs)
 - Notify parent via send_message
+- Verify compiler and build clean state (npx tsc --noEmit, npm run build)
 
 ## Current Parent
-- Conversation ID: 99cc2021-9546-433d-8867-c45dc0860a07
-- Updated: 2026-10-01T11:36:50Z
+- Conversation ID: 60f11d0f-3028-47d5-a4c0-af2902baf3f1
+- Updated: 2026-10-04T01:52:41Z
 
 ## Review Scope
 - **Files to review**:
-  - `merge_accounts.sql` & `supabase/migrations/20261001_features_r1_r6.sql`
-  - `src/lib/avatars.tsx` & `src/components/AccountSettingsModal.tsx`
-  - `src/components/HomeView.tsx` & `src/components/AppScreen.tsx`
-  - `src/components/GuruPresensi.tsx` & `src/app/api/attendance/route.ts`
-  - `src/components/SuperadminView.tsx`, `src/components/GuruJurnal.tsx`, `src/components/AdminVerifView.tsx`, `src/components/RekapJurnalView.tsx`
-  - `tests/all_requirements_r1_r6_verification.test.ts`
-- **Interface contracts**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
-- **Review criteria**: correctness, completeness, quality, adversarial challenge, integrity
+  - `src/types/database.ts`
+  - `src/components/SuperadminView.tsx`
+  - `src/components/PiketView.tsx`
+  - `src/components/RekapSiswaView.tsx`
+  - `src/components/GuruJurnal.tsx`
+  - `supabase/migrations/20261004_add_mode_presensi_siswa_to_sekolah.sql`
+- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_12\PROJECT.md`
+- **Review criteria**: correctness, completeness, UI quality, adversarial challenge, integrity, multi-tenancy
 
 ## Review Checklist
-- **Items reviewed**: none yet
+- **Items reviewed**: pending
 - **Verdict**: pending
-- **Unverified claims**: all R1-R6 claims need verification
+- **Unverified claims**: all M1-M4 claims need verification
 
 ## Attack Surface
 - **Hypotheses tested**: none yet
 - **Vulnerabilities found**: none yet
-- **Untested angles**: R1-R6 implementation details, error handling, edge cases, schema consistency
+- **Untested angles**: UI edge cases, network errors, empty student roster, concurrent clicks, multi-tenant leakage
 
 ## Key Decisions Made
-- Initialized review briefing
+- Dispatched for Frontend UI & Component Flow Review
 
 ## Artifact Index
 - DISPATCH.md — Task assignment
