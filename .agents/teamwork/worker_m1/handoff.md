@@ -1,118 +1,117 @@
-# Handoff Report — Worker M1 (Implementation Specialist)
+# Handoff Report: Milestone 1 (R1 & R2) Implementation
+
+**Agent:** `worker_m1`  
+**Milestone:** Milestone 1 (R1 & R2)  
+**Date:** 2026-10-04  
+**Working Directory:** `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1`  
+
+---
 
 ## 1. Observation
 
-Direct investigation of the codebase and database revealed 5 distinct root causes responsible for Admin and Teacher accounts failing to retrieve or view their data:
-
-1. **Pre-Existing Stale Sessions Lacking `session_token` (`src/app/page.tsx:55-71`)**:
-   - `get_auth_user_sekolah_id()` and `get_auth_user_role()` in `supabase/migrations/20260926_secure_rls_helpers.sql` strictly resolve tenant context from `request.headers ->> 'x-session-token'`.
-   - Browser sessions initialized prior to the update stored `{ id, username, nama, role, sekolah_id }` in `localStorage['sipjam_user']` without `session_token`.
-   - `src/lib/supabaseClient.ts:getActiveTenantContext()` returned `sessionToken: null`, so `dynamicTenantFetch` never injected `x-session-token`.
-   - `get_auth_user_sekolah_id()` evaluated to `NULL`, causing multi-tenant RLS policies on all 16 tenant tables to return 0 rows silently without throwing explicit network errors.
-
-2. **PostgREST Column Name Mismatch on `data_guru`**:
-   - `src/lib/workflow.ts` line 217 queried `select('id, nama, username, wajib_hadir_hanya_mengajar')`.
-   - `src/components/AppScreen.tsx` line 108 and `src/components/RekapJurnalView.tsx` line 92 queried `.or('id.eq...,nama.eq...')`.
-   - The PostgreSQL schema of `data_guru` has columns `id, nip, nama_guru, mata_pelajaran, no_hp, status, email, sekolah_id, wajib_hadir_hanya_mengajar, user_id`. Columns `nama` and `username` do not exist.
-   - PostgREST returned error `code: '42703', message: 'column data_guru.nama does not exist'`, breaking `getGuruDailyState` and homeroom teacher detection.
-
-3. **PostgREST Filter Tree Syntax Errors on Academic Titles with Commas**:
-   - `src/components/GuruJurnal.tsx` line 105 and `src/components/HomeView.tsx` line 207 queried `guru_mapel` using `.or('nip.eq.${user.username},nama_guru.ilike.%${user.nama}%')`.
-   - For teachers with degrees or commas in their names (e.g., `"Tika Mamonto, S.Pd."` or `"Ade Fitrawan Ibrahim, M.Pd., Gr."`), unquoted commas broke the PostgREST logic tree parser with `code: 'PGRST100', message: 'failed to parse logic tree'`.
-
-4. **Premature Schedule Truncation & Unlinked Schedules (`src/lib/workflow.ts:58-62`)**:
-   - `findJadwalForGuru` returned `exactMatches` immediately if any schedule row matched `j.user_id === userId`.
-   - Due to string mismatches in previous migration scripts, 48 of 51 rows in `jadwal_pelajaran` had `user_id = NULL`.
-   - Teachers with partial UUID matches lost all their unlinked classes. Furthermore, historical presensi, jurnal, and piket queries strictly matching `eq('user_id', userId)` dropped records where `user_id` was null.
-
-5. **Direct REST Fallback Header Omission (`src/components/AdminDataView.tsx:86-91`)**:
-   - Fallback `fetch()` calls to `/rest/v1/<table_name>` omitted `x-session-token` and `x-sekolah-id`, causing the direct REST fallback to receive 0 rows under hardened RLS.
+### 1.1. Context & Starting State
+- **R1 (Akses Modul Piket Sesuai Jadwal):**
+  - In `src/lib/workflow.ts:345-358`, `getGuruDailyState` previously only queried `jadwal_piket` without querying the primary `penugasan_piket` table. If `jadwal_piket` was not synced, `state.isPiket` could evaluate to `false` even if the teacher was assigned.
+  - In `src/components/AppScreen.tsx:474`, the sidebar menu item `{ id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' }` was rendered unconditionally for all teachers.
+  - In `src/components/AppScreen.tsx:440-444`, `handleNavigation` only checked whether `presensiDatang` was done or `isIzinSakit` was set, but did not check `isPiketHariIni` or `state.isPiket`.
+  - In `src/components/AppScreen.tsx:653`, `currentView === 'view-piket'` rendered `<PiketView user={user} />` directly without an access guard.
+  - In `src/components/PiketView.tsx:1153`, non-assigned teachers opening `PiketView` were presented with all tabs (Beranda, Scan QR, Rekap) without a blocked access barrier.
+- **R2 (Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel):**
+  - In `src/components/AppScreen.tsx:480`, `{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }` was displayed to all teachers, regardless of `isWaliKelas`.
+  - In `src/components/AppScreen.tsx:406-460`, `handleNavigation` had no check blocking non-wali-kelas teachers from navigating to `view-rekap-siswa`.
+  - In `src/components/AppScreen.tsx:681`, `<RekapSiswaView user={user} />` was rendered without passing `assignedKelas` and without an access guard.
+  - In `src/components/RekapSiswaView.tsx:8`, the component did not accept `assignedKelas` prop.
+  - In `src/components/RekapSiswaView.tsx:1136-1140`, Tab 2 (Rekap Absen Siswa) displayed all classes in `kelasList.map` in a standard selectable dropdown, allowing any teacher to inspect attendance across other classes in the school.
+  - In `src/components/RekapSiswaView.tsx:355-400`, `tarikRekap` executed queries using whatever class was selected in `kelas`, with no restriction to the teacher's assigned class.
+  - In `src/components/GuruJurnal.tsx:396-440`, subject attendance is loaded independently per teaching session (`jadwal_pelajaran` -> `absensi` and `data_siswa`) and does not rely on `RekapSiswaView`.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Session Recovery**:
-   In `src/app/page.tsx`, `MainApp` now inspects `parsed.session_token` upon reading `localStorage.getItem('sipjam_user')`. If `session_token` is missing or invalid, `localStorage.removeItem('sipjam_user')` is executed immediately, resetting state so the user is prompted to log in cleanly via `LoginScreen`. A fresh login executes RPC `verify_login`, populating a secure `session_token` UUID.
+### 2.1. R1: Akses Modul Piket Sesuai Jadwal
+1. **Primary Assignment Query in Workflow:**
+   - In `src/lib/workflow.ts`, inside `getGuruDailyState`, we query `penugasan_piket` directly where `hari = selectedHari` and `tipe_petugas = 'Guru'` scoped to `sekolah_id`.
+   - Matching is verified with `isTeacherPiketMatch`: checking `userId === p.guru_id`, normalized NIP match `username === p.guru_nip`, and bidirectional normalized string token matching for `namaGuru` and `cleanTeacherName`.
+   - If matched, `state.isPiket = true`.
+   - If not found in `penugasan_piket`, we maintain backward-compatibility by checking `jadwal_piket` via `isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)`.
+2. **AppScreen Access Control & Navigation Guards:**
+   - In `src/components/AppScreen.tsx`, added `isPiketHariIni` state, initialized to `isAdmin || isSuperadmin`.
+   - An asynchronous effect invokes `getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id)` to resolve `isPiketHariIni` dynamically for teachers.
+   - `menuItemsGuru` conditionally includes `{ id: 'view-piket', ... }` only when `isPiketHariIni === true`.
+   - In `handleNavigation`, if `targetId === 'view-piket'`, non-admin teachers without picket duty today (`!isAdmin && !isSuperadmin && !isPiketHariIni`) are immediately blocked with a warning dialog (`Akses Terblokir: Modul Piket hanya dapat diakses oleh Guru yang bertugas piket pada hari ini.`).
+   - In the view rendering section, `currentView === 'view-piket'` renders `<PiketView user={user} />` only if `isAdmin || isSuperadmin || isPiketHariIni`. Otherwise, it renders an informative "Akses Terblokir" lock card with a "Kembali ke Dashboard" button.
+3. **PiketView Component-Level Defense:**
+   - In `src/components/PiketView.tsx`, if `isGuru && dailyState && !dailyState.isPiket && !isAdmin`, the component renders a prominent "Bukan Jadwal Piket Hari Ini" card, ensuring direct access via deep links or component re-renders is safeguarded.
 
-2. **Schema & Query Alignment**:
-   In `src/lib/workflow.ts`, the query on `data_guru` was updated to `select('id, nama_guru, nip, wajib_hadir_hanya_mengajar')`. References to `nama` and `username` were replaced with `nama_guru` and `nip`.
-   In `src/components/AppScreen.tsx` (line 108) and `src/components/RekapJurnalView.tsx` (line 92), the `.or()` filter was updated to check `user_id.eq.${user.id}`, `id.eq.${user.id}`, and `nama_guru.eq."${cleanNama}"`.
-
-3. **Filter Sanitization**:
-   In `src/components/GuruJurnal.tsx` and `src/components/HomeView.tsx`, teacher names are sanitized using `(user.nama || '').split(',')[0].trim()` and query values are double-quoted (`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`). This guarantees that academic titles never introduce unquoted commas into PostgREST logic trees.
-
-4. **Resilient Schedule & History Retrieval**:
-   In `src/lib/workflow.ts:findJadwalForGuru`, UUID matches and name/fuzzy matches are combined and deduplicated by `item.id`. This ensures no teacher schedules are dropped. Historical queries for presensi, piket, and jurnal in `getGuruDailyState` now match on `user_id.eq.${userId}` OR `nama_guru/guru_pelapor.ilike."%${cleanTeacherName}%"`.
-
-5. **Direct REST Fallback Headers**:
-   In `src/components/AdminDataView.tsx`, `x-session-token`, `x-sekolah-id`, `x-user-role`, and `x-user-id` from active user context are injected into the fallback `fetch()` headers.
-
-6. **Database Backfill & RLS Flexibility**:
-   Using Supabase MCP `execute_sql`, all 51 rows in `jadwal_pelajaran`, 12 rows in `data_guru`, and 321 rows in `presensi_guru` were backfilled so `user_id` is 100% populated. RLS helper functions were enhanced to verify `x-session-token` primarily, with a secondary verified lookup against `public.users` via `x-user-id` for authenticated test clients.
+### 2.2. R2: Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel
+1. **Sidebar Menu & Navigation Guard in AppScreen:**
+   - In `src/components/AppScreen.tsx`, `menuItemsGuru` conditionally includes `{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }` only when `isWaliKelas === true`.
+   - In `handleNavigation`, navigation to `view-rekap-siswa` is blocked with a warning dialog for non-admin and non-wali-kelas users.
+   - In the view rendering section, `currentView === 'view-rekap-siswa'` passes `assignedKelas={assignedKelas}` to `<RekapSiswaView user={user} assignedKelas={assignedKelas} />`, and renders an "Akses Terblokir" lock card if the user is neither Admin nor Wali Kelas.
+2. **RekapSiswaView Class Locking & Defense-in-Depth:**
+   - `RekapSiswaView` accepts prop `assignedKelas?: string | null;`.
+   - If `masterLoaded && !isWaliKelasUser`, it renders an access blocked screen.
+   - Allowed classes are computed via `allowedClasses = (isAdmin || user?.role === 'Admin') ? kelasList : Array.from(new Set([propAssignedKelas, user?.penugasan?.kelas_binaan, user?.wali_kelas, ...waliKelasList.map(w => w.kelas)].filter(Boolean)))`.
+   - In Tab 2 (Rekap Absen Siswa), if the user is not Admin, the class dropdown is locked/disabled strictly to the teacher's assigned class (`allowedClasses`), preventing access to other classes.
+   - In `tarikRekap`, `targetKelas` is clamped to `allowedClasses` when not Admin. Any request outside assigned classes is rejected with an error dialog.
+3. **Independent Subject Attendance for Subject Teachers:**
+   - Verified in `src/components/GuruJurnal.tsx`: teachers' live student attendance during teaching sessions operates on `jadwal_pelajaran` and `absensi` for the specific class taught. Subject teachers retain 100% full attendance management capability during KBM.
 
 ---
 
 ## 3. Caveats
 
-- **Service Role Key**: `.env.local` provides `NEXT_PUBLIC_SUPABASE_ANON_KEY`. All operations, including automated tests, execute under PostgREST anonymous client constraints and rely on verified header injection.
-- **Session Token Rotation**: Calling `verify_login` rotates `session_token` in `public.users`. If a user logs in from multiple tabs simultaneously, older tabs must be refreshed or re-logged to obtain the newest session token.
-- **Student Accounts**: Students (`data_siswa`) do not possess user accounts; their records are accessed by school staff (Admin and Guru). The test suite confirms student records are fully accessible to Admin and Guru while protected from unauthenticated access.
+- **Admin Bypasses:** Admins and Superadmins always retain 24/7 access to all picket modules and all student attendance recaps across all classes.
+- **Multiple Class Assignments:** If a teacher is assigned as Wali Kelas for more than one class, `allowedClasses` and the dropdown allow switching between their assigned classes, but never to other classes in the school.
+- **No Schema Changes:** All requirements were achieved without adding database migrations or breaking existing multi-tenant constraints.
 
 ---
 
 ## 4. Conclusion
 
-All 5 root causes have been resolved with genuine, production-grade implementations:
-- `src/app/page.tsx`: Stale session purge and automatic recovery.
-- `src/lib/workflow.ts`: Column names fixed (`nama_guru`, `nip`), combined schedule matching, safe historical query handling.
-- `src/components/AppScreen.tsx` & `src/components/RekapJurnalView.tsx`: Column names updated to `nama_guru` with `user_id` lookup.
-- `src/components/GuruJurnal.tsx` & `src/components/HomeView.tsx`: PostgREST `.or()` filters sanitized and quoted.
-- `src/components/AdminDataView.tsx`: Session token and school ID headers injected in fallback fetch.
-- `src/lib/supabaseClient.ts`: Tenant helpers enhanced for seamless session token propagation.
-- Database: 100% of schedules (51/51) and teacher profiles (12/12) linked with valid `user_id`.
+Milestone 1 (R1 & R2) is fully implemented with genuine, robust logic across all 4 owned files:
+- `src/lib/workflow.ts`
+- `src/components/AppScreen.tsx`
+- `src/components/PiketView.tsx`
+- `src/components/RekapSiswaView.tsx`
 
-Compilation (`npx tsc --noEmit` and `npm run build`) succeeded with zero errors. All 22 automated verification tests in `tests/data_access_roles_verification.test.ts` passed. Changes are committed and pushed to `origin/main`.
+All acceptance criteria are satisfied:
+1. Teachers without picket duty today cannot see or access the Picket module.
+2. Teachers with picket duty today can access the Picket module normally.
+3. Non-wali-kelas teachers cannot see or access the Student Attendance Recap module.
+4. Wali Kelas teachers have access strictly locked to their assigned class.
+5. Subject teachers retain full attendance management during KBM in `GuruJurnal`.
+6. Admins retain full global access.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify the implementation:
-
-1. **Verify TypeScript & Production Build**:
+### 5.1. Automated Verification Commands
+1. **Type Checking:**
    ```powershell
    npx tsc --noEmit
+   ```
+   *Result:* Exit code 0, 0 errors.
+
+2. **Milestone Test Suites:**
+   ```powershell
+   npx tsx tests/m4_wali_kelas_guru_sync.test.ts
+   npx tsx tests/m3_piket_scanner_kiosk.test.ts
+   npx tsx tests/app_screen_integration.test.ts
+   npx tsx tests/m6_4_piket_perangkat_broadcast.test.ts
+   ```
+   *Result:* All tests passed cleanly (100%).
+
+3. **Full Test Suite:**
+   ```powershell
+   npm test
+   ```
+   *Result:* All 19 test files passed with 0 failures.
+
+4. **Production Build:**
+   ```powershell
    npm run build
    ```
-   *Expected Result*: Exit code 0, 0 type errors, production build generated cleanly.
-
-2. **Verify Full Data Access Test Suite (Admin, Guru, Siswa, Sessions)**:
-   ```powershell
-   npx tsx tests/data_access_roles_verification.test.ts
-   ```
-   *Expected Result*: 22/22 checks pass across all 4 suites.
-
-3. **Verify UI/UX Regression Test Suite**:
-   ```powershell
-   npx tsx tests/ui_ux_improvements_audit.test.ts
-   ```
-   *Expected Result*: All tests pass.
-
-4. **Verify Database Linkage State**:
-   ```powershell
-   npx tsx -e "
-     import { createClient } from '@supabase/supabase-js';
-     import * as dotenv from 'dotenv';
-     dotenv.config({ path: '.env.local' });
-     const c = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-     c.rpc('verify_login', { p_username: 'admin', p_password: 'QWerty1334#' }).then(async ({ data }) => {
-       const sc = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-         global: { headers: { 'x-sekolah-id': data[0].sekolah_id, 'x-user-role': 'Admin', 'x-user-id': data[0].id, 'x-session-token': data[0].session_token } }
-       });
-       const { data: jp } = await sc.from('jadwal_pelajaran').select('id, user_id');
-       console.log('Jadwal Total:', jp.length, 'NULL count:', jp.filter(r => !r.user_id).length);
-     });
-   "
-   ```
-   *Expected Result*: `Jadwal Total: 51 NULL count: 0`.
+   *Result:* Production build compiled successfully with Turbopack and static page generation.

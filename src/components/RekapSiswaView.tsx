@@ -928,19 +928,19 @@ export default function RekapSiswaView({
                             <option key={k} value={k}>Kelas {k}</option>
                           ))}
                         </select>
-                      ) : waliKelasList.length > 1 ? (
+                      ) : allowedClasses.length > 1 ? (
                         <select
                           value={gerbangKelas}
                           onChange={e => setGerbangKelas(e.target.value)}
                           className="w-full px-2.5 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 font-semibold"
                         >
-                          {waliKelasList.map(w => (
-                            <option key={w.id} value={w.kelas}>Kelas {w.kelas}</option>
+                          {allowedClasses.map(k => (
+                            <option key={k} value={k}>Kelas {k} (Binaan)</option>
                           ))}
                         </select>
                       ) : (
                         <div className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-gray-800 border border-emerald-300 dark:border-emerald-700 font-bold text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
-                          <span>Kelas {gerbangKelas || user?.penugasan?.kelas_binaan || user?.wali_kelas || '-'}</span>
+                          <span>Kelas {gerbangKelas || allowedClasses[0] || user?.penugasan?.kelas_binaan || user?.wali_kelas || '-'}</span>
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal flex items-center gap-1">
                             <i className="fa-solid fa-user-shield text-[9px]"></i> Wali Kelas
                           </span>
@@ -1196,11 +1196,33 @@ export default function RekapSiswaView({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">KELAS <span className="text-red-500 dark:text-red-400">*</span></label>
-                      <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800">
-                        <option value="" disabled className="text-gray-900 dark:text-white dark:bg-gray-800">Pilih...</option>
-                        {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
-                      </select>
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                        KELAS <span className="text-red-500 dark:text-red-400">*</span>
+                        {user?.role !== 'Admin' && <span className="text-emerald-600 dark:text-emerald-400 font-normal ml-1">(Binaan)</span>}
+                      </label>
+                      {user?.role === 'Admin' ? (
+                        <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 font-semibold">
+                          <option value="" disabled className="text-gray-900 dark:text-white dark:bg-gray-800">Pilih...</option>
+                          {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
+                        </select>
+                      ) : (
+                        <select 
+                          value={kelas} 
+                          onChange={e => setKelas(e.target.value)} 
+                          disabled={allowedClasses.length <= 1}
+                          className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 disabled:opacity-80 font-semibold"
+                        >
+                          {allowedClasses.length === 0 ? (
+                            <option value="" disabled>Tidak ada kelas binaan</option>
+                          ) : allowedClasses.length === 1 ? (
+                            <option value={allowedClasses[0]}>Kelas {allowedClasses[0]} (Binaan Anda)</option>
+                          ) : (
+                            allowedClasses.map((k, i) => (
+                              <option key={i} value={k}>Kelas {k} (Binaan)</option>
+                            ))
+                          )}
+                        </select>
+                      )}
                     </div>
                     <div className="flex-1">
                       <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">MATA PELAJARAN</label>
