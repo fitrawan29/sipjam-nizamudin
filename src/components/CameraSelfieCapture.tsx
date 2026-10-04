@@ -145,6 +145,7 @@ export default function CameraSelfieCapture({
         video: {
           // Defaults to facingMode: 'user', with resilient mode switching via { ideal: mode }
           facingMode: { ideal: mode },
+          aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 },
           width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 },
           height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 },
         },
@@ -158,7 +159,17 @@ export default function CameraSelfieCapture({
         const e = err as { name?: string };
         // Fallback on OverconstrainedError / ConstraintNotSatisfiedError for single-camera devices
         if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError') {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: { ideal: mode },
+                aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 },
+              },
+              audio: false,
+            });
+          } catch {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
         } else {
           throw err;
         }
@@ -356,7 +367,9 @@ export default function CameraSelfieCapture({
             <img
               src={capturedImage}
               alt="Preview Kamera"
-              className="w-full h-full object-contain"
+              className={`w-full h-full ${
+                orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-video'
+              } object-contain`}
             />
             <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
               <i className="fa-solid fa-check text-emerald-400 shrink-0"></i>
@@ -372,7 +385,9 @@ export default function CameraSelfieCapture({
               playsInline
               autoPlay
               muted
-              className={`w-full h-full object-contain transform ${
+              className={`w-full h-full ${
+                orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-video'
+              } object-contain transform ${
                 facingMode === 'user' ? '-scale-x-100' : ''
               } ${isStreaming ? 'block' : 'hidden'}`}
             />

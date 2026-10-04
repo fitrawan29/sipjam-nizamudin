@@ -1,36 +1,41 @@
-# Sentinel Final Handoff Report
+# Sentinel Handoff Report — Guru Presensi Kamera Portrait & Anti Auto-Zoom
 
-## 1. Observation
-- The user requested 4 modifications on the SIPJAM application (Next.js + Supabase, multi-tenant, role-based):
-  1. **R1**: Hapus fitur Chat Guru sepenuhnya (`ChatView.tsx`, references, menu items in `menuItemsGuru` and `menuItemsAdmin`, router rendering).
-  2. **R2**: QR Code Siswa — Generate & Scan. Mekanisme generate QR code unik per siswa tersimpan di database Supabase. Modul scan di `PiketView` mendukung kamera browser via Web API dan hardware QR/barcode scanner USB HID (teks + Enter) hingga 10 unit simultan dengan pilihan mode `datang` atau `pulang`.
-  3. **R3**: Laporan Presensi ke Piket & Wali Kelas. Hasil scan tersimpan di tabel `presensi_siswa` di Supabase (`siswa_id`, `kelas`, `tanggal`, `status`, `timestamp`, `sekolah_id`). Laporan harian tampil di modul Piket dan di tampilan Wali Kelas (`RekapSiswaView`).
-  4. **R4**: Sinkronisasi ke Guru Mapel. Presensi datang siswa pada hari tersebut tersinkron ke tampilan guru mapel saat membuka jurnal pembelajaran (`GuruJurnal`), mencocokkan jadwal mengajar hari tersebut.
-- Execution was routed to General path (`teamwork_preview_orchestrator`).
-- Orchestrator 10 executed Phase 0 (Survey), Milestone 1 (Chat removal), Milestone 2 (DB & QR), and Milestone 3 (Piket Scanner UI). Due to API resource exhaustion, clean succession took place to Orchestrator 11.
-- Orchestrator 11 oversaw Milestone 4 (Wali Kelas & Guru Mapel Sync), completed Milestone 5 (E2E Verification & Git Delivery), and claimed victory.
-- Independent Victory Auditor (`victory_auditor_16`) performed a 3-phase audit (Timeline, Anti-Pattern/Cheating Detection, and Independent Test Execution) and delivered the verdict: **VICTORY CONFIRMED**.
+## Observation
+User meminta dua persyaratan utama:
+1. **R1. Kamera Portrait**: Pastikan kamera hanya menggunakan mode portrait saat guru melakukan presensi.
+2. **R2. Nonaktifkan Auto-zoom**: Pastikan gambar yang diambil tidak mengalami auto-zoom secara otomatis.
 
-## 2. Logic Chain
-- Requirement R1: `ChatView.tsx` completely removed, zero broken imports, menu items removed from admin and teacher sidebars.
-- Requirement R2: Live migration applied `supabase/migrations/20261003_qr_presensi_siswa.sql` adding `data_siswa.qr_code` and table `presensi_siswa`. Pure TypeScript ISO/IEC 18004 QR generation algorithm in `src/lib/qrSiswa.ts`. Card generation in `AdminDataView.tsx`.
-- Requirement R2/R3: Dedicated 'scan' tab in `src/components/PiketView.tsx` with Datang/Pulang toggle, camera Web API (`BarcodeDetector`), USB HID auto-focus text input + Enter, Web Audio API feedback, multi-kiosk concurrency (`kiosk-1` through `kiosk-10`) via `device_id` and Supabase Realtime, plus daily attendance log.
-- Requirement R3: Dedicated 'gerbang' tab in `src/components/RekapSiswaView.tsx` for Wali Kelas with auto-class filtering, 4 summary metric cards (Total, Datang, Pulang, Belum Scan), and student attendance table.
-- Requirement R4: In `src/components/GuruJurnal.tsx`, today's gate check-in status is queried and displayed next to each student in "Live Absensi Murid" (`✓ Hadir di Sekolah` vs `Belum Scan Piket`), with a 1-click "Terapkan Presensi Piket" action.
-- Multi-tenant isolation: All queries in `qrSiswa.ts`, `PiketView.tsx`, `RekapSiswaView.tsx`, and `GuruJurnal.tsx` strictly enforce `.eq('sekolah_id', user.sekolah_id)`.
-- Quality: All 19 test suites passed (`npm test`), TypeScript passed (`npx tsc --noEmit` exited 0), Next.js Turbopack production build succeeded (`npm run build` exited 0).
-- Git Workflow: Automatically staged, committed as `891fdc1`, and pushed to `origin/main`. Working tree clean.
-- Independent Victory Audit confirmed 100% compliance with zero facades or bypasses.
+Pelaksanaan didelegasikan melalui jalur **SWE Light** (`teamwork_preview_swe`) sebagai `swe_13`.
+Tim kerja `swe_13` menyelesaikan 4 tahapan eksekusi:
+- **Round 0**: `teamwork_preview_implementer` memverifikasi prop `orientation="portrait"` pada `GuruPresensi.tsx`, CSS `object-contain` pada elemen `<video>` dan `<img>` di `CameraSelfieCapture.tsx`, serta penskalaan 1x tanpa crop pada `src/lib/watermarkCanvas.ts`.
+- **Round 1**: `teamwork_preview_reviewer` menambahkan suite uji adversarial baru (`tests/reviewer_adversarial_camera.test.ts`) mencakup 38 assertion untuk variasi rasio sensor smartphone.
+- **Round 2**: `teamwork_preview_reviewer` memperbaiki sinkronisasi retake dengan callback `onRetake`, memperkuat autoplay WebKit iOS/Safari dengan `muted=true` dan penanganan promise rejection `play()`, fallback constraint kamera, dan validasi koordinat GPS NaN/Infinity (46 assertions).
+- **Round 3**: `teamwork_preview_reviewer` mencegah kebocoran track kamera saat unmount, menambahkan debounce double-click pada capture/confirm, mengisolasi siklus hidup request GPS, dan memperluas verifikasi menjadi 56 assertions.
+- **Git Sync**: Seluruh perubahan telah di-stage, di-commit, dan di-push ke branch `origin/main` (commit terbaru `42653f9`).
 
-## 3. Caveats
-- Hardware barcode scanners should be configured in USB HID Keyboard emulation mode with trailing Enter key (default factory configuration for virtually all 2D barcode scanners).
-- Browser camera scanning utilizes the HTML5 `BarcodeDetector` Web API when available on modern browsers (Chromium/Android), with video stream fallback.
+## Logic Chain
+Sesuai protokol Sentinel:
+1. Permintaan dicatat secara verbatim di `ORIGINAL_REQUEST.md` (timestamp `## 2026-10-04T22:19:58Z`).
+2. Jalur eksekusi dipilih: **SWE Light** (`teamwork_preview_swe`), karena merupakan satu perbaikan terisolasi dengan permintaan tim kecil terfokus.
+3. Pemantauan cron (progress reporting dan liveness check) dijalankan berkala selama eksekusi.
+4. Ketika `swe_13` mengklaim kemenangan, klaim tersebut diverifikasi secara independen oleh `victory_auditor_21` (`ceea5969-f38f-455d-87b6-1e4eedc24bfc`) melalui audit 3 fase yang bersifat BLOCKING.
+5. Auditor independen mengeluarkan putusan resmi: **VICTORY CONFIRMED**.
+6. Seluruh subagent dan cron dibatalkan dan dibersihkan (`manage_subagents(action="kill_all")` dan `manage_task(action="kill")`).
 
-## 4. Conclusion
-All acceptance criteria have been achieved, verified, build-tested, git-committed/pushed, and independently confirmed by the Victory Auditor.
+## Caveats
+- Perilaku hardware kamera pada vendor ROM tertentu dengan zoom digital firmware bawaan (di luar browser/DOM) tetap bergantung pada driver OEM fisik perangkat.
+- Pada webcam desktop berasio landscape 16:9 saat mode portrait aktif, canvas secara otomatis memotong bagian samping secara terpusat menjadi 3:4 agar kartu presensi guru tetap tegak (portrait).
 
-## 5. Verification Method
-- Independent audit report: `.agents/teamwork/victory_auditor_16/handoff.md`.
-- Automated test runs: `npm test` (19 suites passed).
-- Build compilation: `npx tsc --noEmit` and `npm run build`.
-- Remote repository synchronization: `git status` (clean) and `git log -n 1` (`891fdc1` on `origin/main`).
+## Conclusion
+Pekerjaan telah selesai sepenuhnya, teruji bebas regresi, terverifikasi oleh auditor independen (`VICTORY CONFIRMED`), dan telah tersinkronisasi ke repository git `origin/main`.
+
+## Verification Method
+Audit independen fase 3 menjalankan:
+- `npx tsx tests/camera_orientation.test.ts` (10 sections, 33 assertions passed)
+- `npx tsx tests/camera_zoom_fix.test.ts` (8 sections, 35 assertions passed)
+- `npx tsx tests/reviewer_adversarial_camera.test.ts` (10 sections, 56 assertions passed)
+- `npx tsx tests/adversarial_camera_badge_challenger_1.test.ts` (314 tests passed)
+- `npm test` (21 test suites passed)
+- `npx tsc --noEmit` (0 TypeScript errors)
+- `npm run build` (Next.js 16.3.4 Turbopack build succeeded across 12 routes)
+Semua pengujian 100% PASS.

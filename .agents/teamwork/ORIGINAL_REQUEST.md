@@ -834,3 +834,30 @@ Pastikan gambar yang diambil tidak mengalami auto-zoom secara otomatis.
 ### Verifikasi Manual User
 - [ ] Fitur presensi guru membuka kamera dalam orientasi portrait.
 - [ ] Hasil jepretan kamera sama persis dengan preview, tanpa zoom atau pemotongan (crop) otomatis.
+
+
+## 2026-10-04T23:42:41Z
+
+# Teamwork Project Prompt
+
+> Requested team: Small focused team
+
+This is a single self-contained fix; keep it small and focused.
+Perbaikan sebelumnya gagal. Kamera presensi guru masih landscape dan masih auto-zoom. Perbaiki agar benar-benar portrait dan tidak zoom.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Kamera Benar-benar Portrait
+Kamera harus dirender dan menangkap gambar dalam rasio portrait (tinggi > lebar) tanpa distorsi atau rotasi yang salah di perangkat sebenarnya, bukan sekadar set parameter `orientation` palsu.
+
+### R2. Hentikan Auto-zoom/Crop di Level CSS dan Canvas
+Gambar akhir yang diambil harus 100% identik dengan area yang terlihat di preview. Tidak boleh ada pemotongan (crop) atau zoom saat diproses.
+
+## Acceptance Criteria
+
+### Pengujian Bukti Kuat (Strong Verification)
+- [ ] Terdapat bukti pengujian (seperti screenshot/log render dimensi) bahwa elemen video memiliki height > width.
+- [ ] Terdapat script/tes UI yang memastikan kanvas hasil tangkapan memiliki rasio yang sama persis dengan elemen video.
