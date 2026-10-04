@@ -1,129 +1,99 @@
-# Victory Audit Handoff Report: Camera Zoom / Crop Fix
+# Post-Victory Audit Report: 4 Minimal Ponytail Improvements
 
-```
+## 1. Observation
+- **Timeline & Provenance**:
+  - Reconstructed git progression for implementation and adversarial QA:
+    - `3aef19c` (05:30:53 +0800): `feat(perf): implement 4 Ponytail improvements - dynamic imports, offline presensi, jurnal autosave/compression, unified print CSS`
+    - `c72e67d` (05:41:02 +0800): `fix(offline): strengthen presensi offline queue and jurnal auto-save resilience` (Review Round 1)
+    - `373e7b2` (05:51:30 +0800): `fix(offline): harden offline queue deduplication, json recovery, and draft absensi preservation` (Review Round 2)
+    - `b6a1134` (06:00:24 +0800): `fix(jurnal-presensi): prevent ghost draft re-save on submit and harden canvas compression error handling` (Review Round 3)
+  - All 4 commits exhibit authentic ~10-minute iterative intervals, with detailed adversarial problem remediation in each round.
+  - Workspace `.agents/teamwork/` metadata hygiene verified: only markdown metadata files exist in recent worker directories; zero implementation code, build artifacts, or data files placed in `.agents/teamwork/`.
+- **Source Code Verification**:
+  - `package.json`: Exactly 0 new dependencies added. Dependencies list remains strictly the original 9 packages (`@supabase/supabase-js`, `csv-parse`, `dotenv`, `next`, `react`, `react-dom`, `sweetalert2`, `tsx`, `web-push`).
+  - `src/components/AppScreen.tsx`: All 18 sub-views dynamically wrapped with `next/dynamic` (`dynamic(() => import('./...'))`). Layout structure, navigation logic, and user context are 100% preserved.
+  - `src/components/GuruPresensi.tsx`: Implements offline fallback saving payload and photo to `localStorage` under `sipjam_offline_presensi` and `sipjam_offline_presensi_queue`. Photo is compressed to max 800px / 0.6 quality using native HTML `<canvas>` before serialization. If storage quota is exceeded, payload is saved without photo (`photo: null`). Reconnect sync is wired to `window.addEventListener('online', ...)` with `isSyncingRef.current` concurrency mutex, queue deduplication, and Postgres `23505` duplicate key idempotency.
+  - `src/components/GuruJurnal.tsx`: Implements draft auto-save to `localStorage` under `sipjam_jurnal_autosave` on user change, guarded by `isRestoredRef.current`. Restores draft state on mount and preserves drafted student attendance during student list fetch. Upon successful submission, draft is removed and all fields (`mapel`, `kelas`, `absensi`, text fields) are cleanly reset, preventing ghost draft resurrection. Native HTML `<canvas>` photo compression (`compressImageWithCanvas`) scales images before upload, with `toBlob` / `toDataURL` fallback and `try...catch` guards inside `img.onload`.
+  - `src/app/globals.css`: Consolidated print styles inside `@media print` with `break-inside: avoid !important;`, `page-break-inside: avoid !important;` for `.page-break-inside-avoid`, `.break-inside-avoid`, `.print-avoid-break`, `.print-card`, `.card`, table rows `tr`, figures, blockquotes, and heading break-after rules, plus explicit page break utilities (`.page-break-before-always`, `.break-before-page`, `.page-break-after-always`, `.break-after-page`). No wrapper components created.
+- **Forensic Check**:
+  - Grep search for prohibited patterns (`TODO`, `FIXME`, `mock`, `dummy`, `fake`) in modified files returned 0 results. No facades, no hardcoded test mocks, and no fake return strings.
+- **Independent Execution**:
+  - `npx tsx tests/four_ponytail_improvements.test.ts`: 13/13 passed (100% pass, 0 failed).
+  - `npm test`: All 20 project test suites passed cleanly with 0 failures (35 QR tests, 37 kiosk scanner checks, 31 wali kelas sync tests, 33 camera zoom checks, etc.).
+  - `npm run test:e2e`: All 4 tiers (Feature coverage, Boundary & corner cases, Cross-feature interactions, Real-world scenarios) passed (111 assertions, 100% pass, 0 failed).
+  - `npx tsc --noEmit`: Exited with code 0 (0 type errors).
+  - `npm run build`: Next.js 16.3.4 Turbopack production build succeeded in 2.3s, generating 12 static/dynamic routes with 0 errors.
+
+## 2. Logic Chain
+1. The requirements in `ORIGINAL_REQUEST.md` demanded 4 minimal, Ponytail-style improvements:
+   - R1: Dynamic imports in `AppScreen.tsx` without rewriting layout or context.
+   - R2: Presensi offline fallback in `GuruPresensi.tsx` saving payload + photo to `localStorage`, retrying via `window.addEventListener('online')`.
+   - R3: Jurnal auto-save in `GuruJurnal.tsx` saving to `localStorage` on change, restoring on mount, and native HTML `<canvas>` photo compression.
+   - R4: Unified print CSS in `globals.css` with break-inside avoidance without creating new wrapper components.
+   - General: Zero new external dependencies.
+2. The team implemented these changes across 4 git commits with 3 rigorous rounds of adversarial review that surfaced and remediated:
+   - Uncompressed photos overflowing `localStorage` quota in Presensi.
+   - Reconnect race conditions and Postgres duplicate key rejection.
+   - Zombie / ghost draft revival on Jurnal submission.
+   - Hanging promises during async image loading in canvas compression.
+   - Legacy Android WebView compatibility lacking `canvas.toBlob`.
+3. Independent forensic analysis confirms:
+   - `package.json` diff contains 0 package changes.
+   - `AppScreen.tsx` diff contains only dynamic import conversions.
+   - `GuruPresensi.tsx` and `GuruJurnal.tsx` contain genuine native logic with comprehensive error handling.
+   - `globals.css` consolidates print layout rules under `@media print`.
+4. Independent execution of the entire test harness (`tests/four_ponytail_improvements.test.ts`, `npm test`, `npm run test:e2e`), strict TypeScript check, and Next.js Turbopack production build all passed with 100% clean exit codes.
+5. All claims are verified empirically.
+
+## 3. Caveats
+- Browser `localStorage` quota availability in strict private browsing environments (such as Safari Private Browsing) can be limited or restricted by browser sandbox security policy; UI displays graceful toast warnings.
+- Physical device network transitions in cellular dead zones depend on native browser `online`/`offline` event emission accuracy by the operating system.
+
+## 4. Conclusion
+The implementation is genuine, production-grade, highly resilient, zero-dependency, and fully compliant with all 4 Ponytail requirements and acceptance criteria.
+**Verdict: VICTORY CONFIRMED.**
+
+## 5. Verification Method
+- Independent test suite execution:
+  ```bash
+  npx tsx tests/four_ponytail_improvements.test.ts
+  ```
+- Full repo regression test suite:
+  ```bash
+  npm test
+  ```
+- End-to-end test suite:
+  ```bash
+  npm run test:e2e
+  ```
+- TypeScript typecheck:
+  ```bash
+  npx tsc --noEmit
+  ```
+- Turbopack production build:
+  ```bash
+  npm run build
+  ```
+
+---
+
 === VICTORY AUDIT REPORT ===
 
 VERDICT: VICTORY CONFIRMED
 
 PHASE A — TIMELINE:
   Result: PASS
-  Anomalies: none
+  Anomalies: none (4 authentic iterative commits spaced ~10m apart across implementer and 3 review rounds; clean metadata directory layout)
 
 PHASE B — INTEGRITY CHECK:
   Result: PASS
-  Details: Verified genuine CSS object-contain implementation in src/components/CameraSelfieCapture.tsx. No facades, no hardcoded test outputs, no mock test bypasses, no digital zoom hardware constraints, and no illicit files in teamwork metadata directories.
+  Details: Zero facades, zero dummy return constants, zero hardcoded test result cheats, zero new dependencies in package.json, genuine native implementation across all 4 requirements.
 
 PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npm test && npm run test:e2e && npm run build
-  Your results: 15/15 test suites passed (including 33 assertions in tests/camera_zoom_fix.test.ts); 4/4 E2E tiers passed (111 assertions, 0 failures); Next.js 16.3.4 Turbopack build succeeded cleanly in 1271ms with 0 errors.
-  Claimed results: 15/15 test suites passed; 111/111 E2E assertions passed; Turbopack build succeeded cleanly.
-  Match: YES — 100% exact match across all test suites, assertions, and build outputs.
-```
+  Test command: npx tsx tests/four_ponytail_improvements.test.ts && npm test && npm run test:e2e && npx tsc --noEmit && npm run build
+  Your results: 13/13 unit/simulation checks passed; 20/20 test suites passed; 111/111 E2E assertions passed; tsc 0 errors; Next.js build clean in 2.3s.
+  Claimed results: 13/13 tests pass; all repo test suites pass; 0 TypeScript errors; Turbopack production build succeeds with 0 errors.
+  Match: YES — 100% match across all test suites, typechecks, and build outputs.
 
----
-
-## 1. Observation
-
-- **Work Product & Source Changes**:
-  - In `src/components/CameraSelfieCapture.tsx` line 345:
-    ```tsx
-    <video
-      ref={videoRef}
-      playsInline
-      autoPlay
-      muted
-      className={`w-full h-full object-contain transform ${
-        facingMode === 'user' ? '-scale-x-100' : ''
-      } ${isStreaming ? 'block' : 'hidden'}`}
-    />
-    ```
-    Replaced `object-cover` with `object-contain`.
-  - Preview `<img>` tag at line 329 consistently maintains:
-    ```tsx
-    <img
-      src={capturedImage}
-      alt="Preview Kamera"
-      className="w-full h-full object-contain"
-    />
-    ```
-  - Viewport container styling at lines 319–321:
-    ```tsx
-    <div className={`relative w-full ${
-      orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'
-    } rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}>
-    ```
-  - `MediaStreamConstraints` at lines 140–148 contains NO hardware digital zoom parameters:
-    ```tsx
-    const constraints: MediaStreamConstraints = {
-      video: {
-        facingMode: { ideal: mode },
-        width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 },
-        height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 },
-      },
-      audio: false,
-    };
-    ```
-- **Git History & Commit Provenance**:
-  - Commit `2cf4a6642e5e4aa5192daece87574ca80d3e9cce`: `fix(camera): set video object-fit to contain to eliminate zoom and cropping` (Implementer R1)
-  - Commit `45edef832ace5257269970fd1dc8e4792957ae9b`: `test(camera): add empirical aspect ratio geometry and zero-crop mathematical verification` (Reviewer R1)
-  - Commit `c12185b3850a354862225e528931954bc60ae9ee`: `test(camera): add adversarial hardware zoom constraints guard and multi-sensor geometry verification` (Reviewer R2)
-  - Commit `12c942819c16ed16edd2d015260af34bdb339da2`: `test(camera): add exotic aspect ratio geometry and DOM viewport zoom prevention guards` (Reviewer R3)
-  - All commits reflect iterative refinement with consistent intervals (12:31, 12:37, 12:44, 12:51 UTC+8).
-- **Independent Execution Commands and Outputs**:
-  - Command: `npm test`
-    - Exit code: `0`
-    - Output: All 15 test suites passed cleanly. Section 1 to Section 8 of `tests/camera_zoom_fix.test.ts` passed 33/33 assertions with zero errors.
-  - Command: `npm run test:e2e`
-    - Exit code: `0`
-    - Output: All 4 Tiers passed (Tier 1: 15, Tier 2: 75, Tier 3: 16, Tier 4: 20 -> 111/111 assertions passed).
-  - Command: `npm run build`
-    - Exit code: `0`
-    - Output: `Next.js 16.3.4 (Turbopack) Compiled successfully in 1271ms`, `Finished TypeScript in 1319ms`, all 12 static/dynamic routes generated without error.
-
----
-
-## 2. Logic Chain
-
-1. **Root Cause Validation**:
-   - The user reported that camera images appeared zoomed-in/cropped when taking pictures.
-   - When the `<video>` element was styled with `object-cover`, browsers scaled the video stream to completely fill the container box (16:9 landscape or 3:4 portrait).
-   - Because standard camera sensors are 4:3, 16:9, or other sensor proportions, `object-cover` forced a 25% to 57.8% crop on mismatched aspect ratios, making subjects appear zoomed in and cropped.
-2. **Implementation Verification**:
-   - Switching `<video>` to `object-contain` ensures the entire video stream is fitted within the container without cropping (0% crop) and without stretching (0% distortion).
-   - The container's `bg-black` background provides clean, standard letterbox/pillarbox bars for any sensor-to-container aspect discrepancies.
-   - Visual symmetry is maintained because the preview `<img>` also uses `object-contain`.
-3. **Adversarial Hardening Verification**:
-   - 11 aspect ratio permutations (4:3, 16:9, 9:16, 4032x3024, 1:1 in 16:9, 1:1 in 3:4, 19.5:9, 3:2, 21:9, 5:4, 4:5) mathematically prove 0% crop and 0% distortion.
-   - Scale transform classes (`scale-105`, `scale-110`, etc.) were verified absent on `<video>`, `<img>`, and the viewport container.
-   - Hardware digital zoom constraints (`zoom:`) were verified absent in `MediaStreamConstraints`.
-   - HTML attributes (`width`, `height`) and inline styles (`objectFit`, `zoom`) were verified absent to prevent layout overriding.
-   - Viewport scaling prevention was confirmed in `src/app/layout.tsx`.
-4. **Authenticity & Integrity**:
-   - Zero hardcoded test bypasses, mock shortcuts, or fake result files.
-   - Independent verification reproduces all claimed test passes and build results identically.
-
----
-
-## 3. Caveats
-
-- **Physical Sensor Hardware**: Testing on live physical smartphone hardware lenses with proprietary optical zoom configurations was validated programmatically via DOM assertions, constraint matching, and geometric bounding models rather than manual physical phone handling.
-
----
-
-## 4. Conclusion
-
-- **Verdict: VICTORY CONFIRMED**.
-- The implementation strictly adheres to R1 and satisfies all Acceptance Criteria:
-  1. CSS styling on `<video>` in `CameraSelfieCapture.tsx` uses `object-contain`, eliminating unwanted zoom and cropping.
-  2. Camera viewfinder remains tidy, properly centered (`bg-black flex items-center justify-center`), and proportional (zero distortion).
-  3. All 15 unit/regression test suites, 4 E2E tiers (111 assertions), and Next.js Turbopack production build pass independently with exit code 0.
-
----
-
-## 5. Verification Method
-
-To independently re-verify at any time:
-1. Run `npm test` -> confirms 15 suites pass (including 33 assertions in `tests/camera_zoom_fix.test.ts`).
-2. Run `npm run test:e2e` -> confirms 111 assertions across 4 tiers pass with 0 failures.
-3. Run `npm run build` -> confirms Next.js Turbopack build compiles cleanly in under 2 seconds.
-4. Inspect `git diff HEAD~4 HEAD -- src/components/CameraSelfieCapture.tsx` -> confirms concise change from `object-cover` to `object-contain`.
+EVIDENCE (if REJECTED):
+  N/A
