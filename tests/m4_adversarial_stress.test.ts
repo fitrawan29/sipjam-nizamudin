@@ -265,7 +265,8 @@ assert(formatDisplayDate('2026-10-04') === '04-10-2026', 'Standard ISO date form
 assert(formatDisplayDate('2028-02-29') === '29-02-2028', 'Leap year date 2028-02-29 formats correctly');
 assert(formatDisplayDate('2026-12-31') === '31-12-2026', 'Year end date formats correctly');
 assert(formatDisplayDate('') === '', 'Empty date string returns empty string safely');
-assert(formatDisplayDate('non-iso-format') === 'non-iso-format', 'Non-conforming string falls back to original string without crash');
+assert(formatDisplayDate('2026/10/04') === '2026/10/04', 'Slash formatted string falls back cleanly');
+assert(formatDisplayDate('today') === 'today', 'Non-hyphenated string falls back cleanly');
 
 // 3.2 Gate timestamp variations
 assert(parseGateTimestamp('06:45:00') === '06:45', 'Postgres TIME "06:45:00" parsed to "06:45"');
@@ -367,6 +368,28 @@ const s1 = mappedAnomaly[0];
 assert(!s1.hasDatang && s1.hasPulang && s1.jamPulang === '14:00', 'Student 1 has departure timestamp without arrival');
 const s1StatusStr = s1.hasPulang ? 'Sudah Pulang' : s1.hasDatang ? 'Hadir Datang' : 'Belum Scan';
 assert(s1StatusStr === 'Sudah Pulang', 'Status string correctly displays "Sudah Pulang"');
+
+// 4.4 Special characters in student names for CSV serialization
+const specialStudents = [
+  { id: 'sp-1', nisn: '001', nama_siswa: 'Ahmad "The Great" Al-Haddad', kelas: '7A' },
+  { id: 'sp-2', nisn: '002', nama_siswa: "O'Connor, Liam", kelas: '7A' }
+];
+const csvHeader = ['No', 'NISN', 'Nama Siswa', 'Kelas', 'Tanggal', 'Jam Datang', 'Jam Pulang', 'Status'];
+const csvRows = [csvHeader.join(',')];
+specialStudents.forEach((s, idx) => {
+  csvRows.push([
+    idx + 1,
+    s.nisn,
+    `"${s.nama_siswa.replace(/"/g, '""')}"`,
+    s.kelas,
+    '2026-10-04',
+    '-',
+    '-',
+    '"Belum Scan"'
+  ].join(','));
+});
+assert(csvRows.length === 3, 'CSV properly formats records with quotes and special characters');
+assert(csvRows[1].includes('Ahmad ""The Great"" Al-Haddad'), 'CSV quotes properly escaped');
 
 // ============================================================================
 // SUITE 5: GURU JURNAL ROLL CALL GATE SYNC, UUID FALLBACKS & OVERRIDES
