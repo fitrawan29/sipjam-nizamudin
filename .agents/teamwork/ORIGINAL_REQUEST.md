@@ -750,3 +750,29 @@ Tambahkan fitur pada tampilan Admin (misal: di `AdminDataView`) untuk **mendownl
 - [ ] Desain kartu rapi dan proporsional.
 
 - [ ] `tsc --noEmit` lulus dengan 0 error dan `npm run build` berhasil.
+
+
+## 2026-10-04T13:50:06Z
+
+Analyze `sipjam-app` codebase. Map current application flow, menu hierarchy, and existing features. Provide actionable suggestions for improvement (UX, architecture, or missing capabilities).
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Map Application Flow
+Generate a Mermaid flowchart mapping all accessible routes, pages, and menu hierarchies found in the codebase.
+
+### R2. Feature Inventory
+Identify and document all major features and capabilities currently implemented.
+
+### R3. Improvement Suggestions
+Provide concrete, actionable suggestions for improving the architecture, codebase structure, or User Experience (UX).
+
+## Acceptance Criteria
+
+### Verification Rubric
+- [ ] Report includes a syntactically valid Mermaid flowchart covering the full app flow.
+- [ ] Feature inventory maps directly to existing codebase directories/files.
+- [ ] Includes at least 3 distinct, actionable improvement suggestions.
