@@ -673,3 +673,464 @@ export async function getRecentPresensiSiswa(
     return [];
   }
 }
+
+// ============================================================================
+// 5. STUDENT IDENTITY & QR CARD GENERATOR (HTML5 CANVAS & PNG DOWNLOAD)
+// ============================================================================
+
+export interface GenerateStudentCardParams {
+  student: {
+    id: string;
+    nama_siswa?: string | null;
+    nisn?: string | null;
+    kelas?: string | null;
+    gender?: string | null;
+    status?: string | null;
+    qr_code?: string | null;
+    [key: string]: any;
+  };
+  schoolName?: string;
+  qrIdentifier?: string;
+}
+
+export interface PrintStudentCardParams {
+  student: any;
+  schoolName?: string;
+  qrSvg?: string;
+  qrIdentifier?: string;
+}
+
+/**
+ * Helper to safely draw rounded rectangles across browser canvas engines.
+ */
+function drawCanvasRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+): void {
+  if (typeof (ctx as any).roundRect === 'function') {
+    (ctx as any).roundRect(x, y, w, h, r);
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+/**
+ * Generates an official portrait student digital attendance card (600 x 960 px)
+ * on an HTML5 Canvas element with emerald & gold themes, school branding,
+ * sharp QR matrix, student metadata box, and instructions footer.
+ */
+export function generateStudentCardCanvas({
+  student,
+  schoolName = 'SIPJAM',
+  qrIdentifier,
+}: GenerateStudentCardParams): HTMLCanvasElement {
+  if (typeof document === 'undefined') {
+    // Graceful fallback for non-browser/Node.js testing environments
+    return {
+      width: 600,
+      height: 960,
+      toDataURL: (_type = 'image/png') =>
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      getContext: () => null,
+    } as unknown as HTMLCanvasElement;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 960;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  // 1. Base card background
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillRect(0, 0, 600, 960);
+
+  // Card outer border
+  ctx.strokeStyle = '#E2E8F0';
+  ctx.lineWidth = 2;
+  drawCanvasRoundRect(ctx, 2, 2, 596, 956, 20);
+  ctx.stroke();
+
+  // 2. Header: Gradient emerald theme (#0B4619 to #166534)
+  const headerGrad = ctx.createLinearGradient(0, 0, 600, 175);
+  headerGrad.addColorStop(0, '#0B4619');
+  headerGrad.addColorStop(1, '#166534');
+  ctx.fillStyle = headerGrad;
+
+  ctx.beginPath();
+  ctx.moveTo(2, 20);
+  ctx.quadraticCurveTo(2, 2, 20, 2);
+  ctx.lineTo(580, 2);
+  ctx.quadraticCurveTo(598, 2, 598, 20);
+  ctx.lineTo(598, 175);
+  ctx.lineTo(2, 175);
+  ctx.closePath();
+  ctx.fill();
+
+  // Gold accent line (#EAB308)
+  ctx.fillStyle = '#EAB308';
+  ctx.fillRect(2, 175, 596, 4);
+
+  // Header Typography
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Title: "KARTU PRESENSI DIGITAL"
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 20px system-ui, -apple-system, sans-serif';
+  ctx.fillText('KARTU PRESENSI DIGITAL', 300, 48);
+
+  // School Name (Gold / Yellow Accent)
+  const displaySchool = (schoolName || 'SIPJAM').trim().toUpperCase();
+  ctx.fillStyle = '#FEF08A';
+  if (displaySchool.length > 32) {
+    ctx.font = 'bold 18px system-ui, -apple-system, sans-serif';
+  } else if (displaySchool.length > 22) {
+    ctx.font = 'bold 21px system-ui, -apple-system, sans-serif';
+  } else {
+    ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+  }
+  ctx.fillText(displaySchool, 300, 90);
+
+  // Subtitle: "Sistem Informasi Presensi Siswa"
+  ctx.fillStyle = '#BBF7D0';
+  ctx.font = '500 14px system-ui, -apple-system, sans-serif';
+  ctx.fillText('Sistem Informasi Presensi Siswa', 300, 130);
+
+  // 3. QR Container: Rounded white box (270x270 px) with drop shadow
+  const qrBoxX = 165;
+  const qrBoxY = 205;
+  const qrBoxSize = 270;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = '#FFFFFF';
+  drawCanvasRoundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 18);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle = '#E2E8F0';
+  ctx.lineWidth = 1.5;
+  drawCanvasRoundRect(ctx, qrBoxX, qrBoxY, qrBoxSize, qrBoxSize, 18);
+  ctx.stroke();
+
+  // 4. Sharp QR Matrix in #0B4619 color (220x220 px)
+  const idStr = qrIdentifier || getStudentQrIdentifier(student);
+  const matrix = generateQrMatrix(idStr);
+  const qrSize = 210;
+  const moduleCount = matrix.length;
+  const moduleSize = qrSize / moduleCount;
+  const qrX = qrBoxX + (qrBoxSize - qrSize) / 2;
+  const qrY = qrBoxY + 16;
+
+  ctx.fillStyle = '#0B4619';
+  for (let r = 0; r < moduleCount; r++) {
+    for (let c = 0; c < moduleCount; c++) {
+      if (matrix[r][c]) {
+        ctx.fillRect(
+          qrX + c * moduleSize,
+          qrY + r * moduleSize,
+          moduleSize + 0.5,
+          moduleSize + 0.5
+        );
+      }
+    }
+  }
+
+  // Monospace Badge: ID: ${qrIdentifier}
+  const badgeY = qrY + qrSize + 16;
+  const badgeWidth = Math.min(240, Math.max(160, idStr.length * 9 + 40));
+  const badgeX = 300 - badgeWidth / 2;
+
+  ctx.fillStyle = '#F1F5F9';
+  drawCanvasRoundRect(ctx, badgeX, badgeY - 11, badgeWidth, 22, 6);
+  ctx.fill();
+
+  ctx.fillStyle = '#0B4619';
+  ctx.font = 'bold 12px "Courier New", Courier, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`ID: ${idStr}`, 300, badgeY);
+
+  // 5. Student Identity Box
+  const infoBoxX = 45;
+  const infoBoxY = 500;
+  const infoBoxWidth = 510;
+  const infoBoxHeight = 315;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
+  ctx.shadowBlur = 8;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#FFFFFF';
+  drawCanvasRoundRect(ctx, infoBoxX, infoBoxY, infoBoxWidth, infoBoxHeight, 16);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.strokeStyle = '#E2E8F0';
+  ctx.lineWidth = 1.5;
+  drawCanvasRoundRect(ctx, infoBoxX, infoBoxY, infoBoxWidth, infoBoxHeight, 16);
+  ctx.stroke();
+
+  // Full Name (student.nama_siswa)
+  const namaSiswa = (student.nama_siswa || 'Siswa').trim();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#0F172A';
+  if (namaSiswa.length > 28) {
+    ctx.font = 'bold 19px system-ui, -apple-system, sans-serif';
+  } else if (namaSiswa.length > 20) {
+    ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
+  } else {
+    ctx.font = 'bold 24px system-ui, -apple-system, sans-serif';
+  }
+  ctx.fillText(namaSiswa, 300, infoBoxY + 36);
+
+  // Status Badge: "SISWA AKTIF"
+  const rawStatus = (student.status || 'Aktif').trim();
+  const statusLabel = rawStatus.toUpperCase().includes('AKTIF') ? 'SISWA AKTIF' : rawStatus.toUpperCase();
+  const statusPillWidth = 110;
+  ctx.fillStyle = '#DCFCE7';
+  drawCanvasRoundRect(ctx, 300 - statusPillWidth / 2, infoBoxY + 58, statusPillWidth, 22, 11);
+  ctx.fill();
+
+  ctx.strokeStyle = '#86EFAC';
+  ctx.lineWidth = 1;
+  drawCanvasRoundRect(ctx, 300 - statusPillWidth / 2, infoBoxY + 58, statusPillWidth, 22, 11);
+  ctx.stroke();
+
+  ctx.fillStyle = '#166534';
+  ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
+  ctx.fillText(statusLabel, 300, infoBoxY + 69);
+
+  // Horizontal divider
+  ctx.strokeStyle = '#F1F5F9';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(infoBoxX + 25, infoBoxY + 95);
+  ctx.lineTo(infoBoxX + infoBoxWidth - 25, infoBoxY + 95);
+  ctx.stroke();
+
+  // Identity Rows: NISN, Kelas, Sekolah, Gender
+  const identityRows = [
+    { label: 'NISN', value: student.nisn || '-', isMono: true },
+    { label: 'Kelas', value: student.kelas || '-', isMono: false },
+    { label: 'Sekolah', value: schoolName || 'SIPJAM', isMono: false },
+    { label: 'Gender', value: student.gender || '-', isMono: false },
+  ];
+
+  let currentY = infoBoxY + 126;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  for (const item of identityRows) {
+    ctx.font = '500 14px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#64748B';
+    ctx.fillText(item.label, infoBoxX + 35, currentY);
+
+    ctx.fillText(':', infoBoxX + 130, currentY);
+
+    if (item.isMono) {
+      ctx.font = 'bold 16px "Courier New", Courier, monospace';
+    } else {
+      ctx.font = '600 15px system-ui, -apple-system, sans-serif';
+    }
+    ctx.fillStyle = '#0F172A';
+
+    let displayVal = item.value;
+    if (displayVal.length > 32) {
+      displayVal = displayVal.substring(0, 30) + '...';
+    }
+    ctx.fillText(displayVal, infoBoxX + 145, currentY);
+
+    currentY += 40;
+  }
+
+  // 6. Footer: instructions and branding
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Instructions
+  ctx.font = 'italic 13px system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = '#475569';
+  ctx.fillText('Tunjukkan kartu ini pada scanner saat presensi datang & pulang', 300, 858);
+
+  // Branding: "SIPJAM • Dokumen Resmi Presensi"
+  ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+  ctx.fillStyle = '#0B4619';
+  ctx.fillText('SIPJAM • Dokumen Resmi Presensi', 300, 890);
+
+  // Bottom emerald accent bar
+  const bottomGrad = ctx.createLinearGradient(0, 946, 600, 958);
+  bottomGrad.addColorStop(0, '#0B4619');
+  bottomGrad.addColorStop(1, '#166534');
+  ctx.fillStyle = bottomGrad;
+  ctx.beginPath();
+  ctx.moveTo(2, 946);
+  ctx.lineTo(598, 946);
+  ctx.lineTo(598, 940);
+  ctx.quadraticCurveTo(598, 958, 580, 958);
+  ctx.lineTo(20, 958);
+  ctx.quadraticCurveTo(2, 958, 2, 940);
+  ctx.closePath();
+  ctx.fill();
+
+  return canvas;
+}
+
+/**
+ * Generates and downloads student card as PNG image file.
+ * Filename format: Kartu_Presensi_${student.nama_siswa || 'Siswa'}_${student.nisn || student.id}.png
+ */
+export function downloadStudentCardPng({
+  student,
+  schoolName = 'SIPJAM',
+  qrIdentifier,
+}: GenerateStudentCardParams): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return false;
+  }
+  try {
+    const canvas = generateStudentCardCanvas({ student, schoolName, qrIdentifier });
+    const dataUrl = canvas.toDataURL('image/png');
+
+    const rawName = student?.nama_siswa || 'Siswa';
+    const rawId = student?.nisn || student?.id || 'ID';
+    const safeName = rawName.replace(/[/\\?%*:|"<>]/g, '').trim().replace(/\s+/g, '_');
+    const safeId = String(rawId).replace(/[/\\?%*:|"<>]/g, '').trim();
+    const fileName = `Kartu_Presensi_${safeName}_${safeId}.png`;
+
+    const downloadLink = document.createElement('a');
+    downloadLink.download = fileName;
+    downloadLink.href = dataUrl;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    return true;
+  } catch (err) {
+    console.error('[qrSiswa] downloadStudentCardPng error:', err);
+    return false;
+  }
+}
+
+/**
+ * Enhanced single student card print popup with school name and formatted print layout.
+ */
+export function printStudentQrCardWithSchool({
+  student,
+  schoolName = 'SIPJAM',
+  qrSvg,
+  qrIdentifier,
+}: PrintStudentCardParams): void {
+  if (typeof window === 'undefined') return;
+
+  const identifier = qrIdentifier || getStudentQrIdentifier(student);
+  const svg = qrSvg || generateStudentQrSvg(identifier, { size: 180, fgColor: '#0B4619' });
+  const printWindow = window.open('', '_blank', 'width=700,height=800');
+  if (!printWindow) return;
+
+  const escapeHtml = (str: string) => {
+    return (str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Kartu Presensi Siswa - ${escapeHtml(student?.nama_siswa || 'Siswa')}</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f1f5f9; padding: 20px; }
+        .card { width: 360px; background: white; border: 2px solid #0B4619; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0B4619 0%, #166534 100%); color: white; padding: 18px 16px 14px; text-align: center; border-bottom: 3px solid #EAB308; }
+        .school { font-size: 15px; font-weight: 800; color: #FEF08A; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .title { font-size: 13px; font-weight: 800; letter-spacing: 1px; }
+        .sub { font-size: 10px; color: #BBF7D0; margin-top: 2px; }
+        .body { padding: 18px 20px; text-align: center; }
+        .qr-box { background: #ffffff; border: 1.5px solid #E2E8F0; border-radius: 14px; padding: 12px; display: inline-block; margin: 0 auto 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .qr-box svg { display: block; margin: 0 auto; }
+        .id-badge { font-family: monospace; font-size: 11px; font-weight: 700; color: #0B4619; background: #ECFDF5; padding: 3px 10px; border-radius: 6px; display: inline-block; margin-top: 6px; }
+        .info-box { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 14px; text-align: left; margin-top: 10px; }
+        .name { font-size: 15px; font-weight: 800; color: #0F172A; text-align: center; margin-bottom: 4px; }
+        .status-badge { text-align: center; margin-bottom: 10px; }
+        .status-pill { font-size: 10px; font-weight: 700; color: #166534; background: #DCFCE7; padding: 2px 8px; border-radius: 9999px; display: inline-block; }
+        .info-row { display: flex; font-size: 12px; margin-bottom: 4px; }
+        .info-label { width: 90px; color: #64748B; }
+        .info-colon { margin-right: 6px; color: #64748B; }
+        .info-val { font-weight: 600; color: #0F172A; flex: 1; word-break: break-word; }
+        .footer { padding: 10px 16px 14px; text-align: center; border-top: 1px dashed #CBD5E1; font-size: 10px; color: #64748B; background: #FAFAFA; }
+        .footer-brand { font-weight: 700; color: #0B4619; margin-top: 2px; }
+        @media print {
+          body { background: white; padding: 0; min-height: auto; }
+          .card { box-shadow: none; border: 1.5px solid #0B4619; page-break-inside: avoid; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="header">
+          <div class="school">${escapeHtml(schoolName)}</div>
+          <div class="title">KARTU PRESENSI DIGITAL</div>
+          <div class="sub">Sistem Informasi Presensi Siswa</div>
+        </div>
+        <div class="body">
+          <div class="qr-box">
+            ${svg}
+            <div class="id-badge">ID: ${escapeHtml(identifier)}</div>
+          </div>
+          <div class="info-box">
+            <div class="name">${escapeHtml(student?.nama_siswa || '-')}</div>
+            <div class="status-badge">
+              <span class="status-pill">${escapeHtml(student?.status ? student.status.toUpperCase() : 'SISWA AKTIF')}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">NISN</span><span class="info-colon">:</span><span class="info-val" style="font-family: monospace;">${escapeHtml(student?.nisn || '-')}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Kelas</span><span class="info-colon">:</span><span class="info-val">${escapeHtml(student?.kelas || '-')}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Sekolah</span><span class="info-colon">:</span><span class="info-val">${escapeHtml(schoolName)}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Gender</span><span class="info-colon">:</span><span class="info-val">${escapeHtml(student?.gender || '-')}</span>
+            </div>
+          </div>
+        </div>
+        <div class="footer">
+          <div>Tunjukkan kartu ini pada scanner saat presensi datang &amp; pulang</div>
+          <div class="footer-brand">SIPJAM &bull; Dokumen Resmi Presensi</div>
+        </div>
+      </div>
+      <script>
+        window.onload = function() {
+          window.print();
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}

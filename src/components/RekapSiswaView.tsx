@@ -5,11 +5,20 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
 
-export default function RekapSiswaView({ user }: { user: any }) {
+export default function RekapSiswaView({ 
+  user, 
+  assignedKelas: propAssignedKelas 
+}: { 
+  user: any; 
+  assignedKelas?: string | null; 
+}) {
+  const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
+
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [kelas, setKelas] = useState('');
+  const [kelas, setKelas] = useState(propAssignedKelas || '');
   const [mapel, setMapel] = useState('');
   const [search, setSearch] = useState('');
 
@@ -24,7 +33,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
 
   // Gerbang (Gate Attendance) states
   const [gerbangTanggal, setGerbangTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [gerbangKelas, setGerbangKelas] = useState<string>('');
+  const [gerbangKelas, setGerbangKelas] = useState<string>(propAssignedKelas || '');
   const [gerbangStudents, setGerbangStudents] = useState<any[]>([]);
   const [gerbangLoading, setGerbangLoading] = useState(false);
   const [gerbangSearch, setGerbangSearch] = useState('');
@@ -40,6 +49,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
   const [waliAttendance, setWaliAttendance] = useState<Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'; keterangan: string; logs: string[] }>>({});
   const [waliLoading, setWaliLoading] = useState(false);
   const [waliSaving, setWaliSaving] = useState(false);
+  const [masterLoaded, setMasterLoaded] = useState(false);
 
   useEffect(() => {
     const fetchMaster = async () => {
@@ -51,7 +61,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
         if (siswa) {
           uniqueKelas = Array.from(new Set(siswa.map(s => s.kelas).filter(Boolean))) as string[];
           setKelasList(uniqueKelas);
-          if (uniqueKelas.length > 0) {
+          if (uniqueKelas.length > 0 && isAdmin) {
             setKelas(prev => prev || uniqueKelas[0]);
           }
         }
@@ -80,24 +90,29 @@ export default function RekapSiswaView({ user }: { user: any }) {
           setWaliKelasList(userWalis);
           if (userWalis.length > 0) {
             setActiveWaliKelas(userWalis[0]);
-            setKelas(prev => prev || userWalis[0].kelas);
             resolvedWaliKelas = userWalis[0].kelas;
           }
         }
 
-        // Automatic filter for Wali Kelas: prioritize assigned class from penugasan.kelas_binaan or wali_kelas
-        const assignedWali = user?.penugasan?.kelas_binaan || user?.wali_kelas || resolvedWaliKelas;
+        // Automatic filter for Wali Kelas: prioritize assigned class from propAssignedKelas, penugasan.kelas_binaan, or wali_kelas
+        const assignedWali = propAssignedKelas || user?.penugasan?.kelas_binaan || user?.wali_kelas || resolvedWaliKelas;
         if (user?.role !== 'Admin' && assignedWali) {
           setGerbangKelas(assignedWali);
+          setKelas(assignedWali);
         } else if (uniqueKelas.length > 0) {
           setGerbangKelas(prev => prev || uniqueKelas[0]);
+          if (!propAssignedKelas) {
+            setKelas(prev => prev || uniqueKelas[0]);
+          }
         }
       } catch (error) {
         console.error('Error fetching master data:', error);
+      } finally {
+        setMasterLoaded(true);
       }
     };
     fetchMaster();
-  }, [user]);
+  }, [user, propAssignedKelas, isAdmin]);
 
   // Load students and existing absensi when activeWaliKelas, waliTanggal, or showWaliInput changes
   useEffect(() => {
@@ -337,12 +352,37 @@ export default function RekapSiswaView({ user }: { user: any }) {
     }
   };
 
+  const userWaliKelasString = typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas;
+  const rawAllowed = [
+    propAssignedKelas,
+    user?.penugasan?.kelas_binaan,
+    userWaliKelasString,
+    ...waliKelasList.map(w => w.kelas)
+  ].filter(Boolean);
+  const allowedClasses = (isAdmin || user?.role === 'Admin')
+    ? kelasList
+    : (Array.from(new Set(rawAllowed)) as string[]);
+
   const tarikRekap = async () => {
-    if (!kelas) {
+    const targetKelas = !isAdmin && allowedClasses.length > 0 
+      ? (allowedClasses.includes(kelas) ? kelas : allowedClasses[0]) 
+      : kelas;
+
+    if (!targetKelas) {
       Swal.fire({
         icon: 'warning',
         title: 'Peringatan',
         text: 'Pilih kelas terlebih dahulu.',
+        confirmButtonColor: '#0d9488'
+      });
+      return;
+    }
+
+    if (!isAdmin && allowedClasses.length > 0 && !allowedClasses.includes(targetKelas)) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Akses Ditolak',
+        text: 'Anda hanya dapat melihat rekapitulasi kehadiran untuk kelas binaan Anda.',
         confirmButtonColor: '#0d9488'
       });
       return;
@@ -354,7 +394,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
       let siswaQuery = supabase
         .from('data_siswa')
         .select('*')
-        .eq('kelas', kelas)
+        .eq('kelas', targetKelas)
         .order('nama_siswa', { ascending: true });
       if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
       const { data: siswa } = await siswaQuery;
@@ -363,7 +403,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
       let query = supabase
         .from('jurnal_pembelajaran')
         .select('absensi_siswa, detail_absen, tanggal, kehadiran_murid')
-        .eq('kelas', kelas)
+        .eq('kelas', targetKelas)
         .order('tanggal', { ascending: true });
 
       if (user?.sekolah_id) query = query.eq('sekolah_id', user.sekolah_id);
@@ -377,7 +417,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
       let absensiQuery = supabase
         .from('absensi')
         .select('*')
-        .eq('kelas', kelas);
+        .eq('kelas', targetKelas);
       if (user?.sekolah_id) absensiQuery = absensiQuery.eq('sekolah_id', user.sekolah_id);
       if (startDate) absensiQuery = absensiQuery.gte('tanggal', startDate);
       if (endDate) absensiQuery = absensiQuery.lte('tanggal', endDate);
@@ -574,6 +614,29 @@ export default function RekapSiswaView({ user }: { user: any }) {
     }
     return dStr;
   };
+
+  const isWaliKelasUser = isAdmin || user?.role === 'Admin' || Boolean(
+    propAssignedKelas || 
+    user?.wali_kelas || 
+    user?.penugasan?.kelas_binaan || 
+    waliKelasList.length > 0
+  );
+
+  if (masterLoaded && !isWaliKelasUser) {
+    return (
+      <section id="view-rekap-siswa" className="view-section page-enter w-full max-w-full">
+        <div className="glass-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 shadow-sm">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+            <i className="fa-solid fa-lock"></i>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+            Halaman <strong>Presensi Siswa</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai <strong>Wali Kelas</strong>. Anda tidak memiliki hak akses untuk membuka halaman ini.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="view-rekap-siswa" className="view-section fade-in">

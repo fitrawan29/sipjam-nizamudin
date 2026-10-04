@@ -556,15 +556,15 @@ export default function RekapJurnalView({
                       /* ============================================================ */
                       <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
                         <thead>
-                          <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[5%]">No</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold print:w-[15%]">Nama Guru</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[15%]">Tanggal & Waktu</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Mapel</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Jam KBM</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black font-bold print:w-[15%]">Materi</th>
-                            <th className="p-0 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[20%]">Foto</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Keterangan kehadiran guru</th>
+                          <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[5%]">No</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold print:w-[15%]">Nama Guru</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[15%]">Tanggal & Waktu</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Mapel</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Jam KBM</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold print:w-[15%]">Materi</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-32 print:w-[20%]">Foto</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Keterangan kehadiran guru</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -581,17 +581,17 @@ export default function RekapJurnalView({
                                 className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 print:hover:bg-transparent"
                               >
                                 {/* 1. No */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold align-top">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold align-top">
                                   {index + 1}
                                 </td>
 
                                 {/* 2. Nama Guru */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black font-bold align-top text-gray-900 dark:text-white print:text-black">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-bold align-top text-gray-900 dark:text-white print:text-black">
                                   {j.nama_guru || '-'}
                                 </td>
 
                                 {/* 3. Tanggal & Waktu */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top">
                                   <div className="font-semibold text-gray-900 dark:text-white print:text-black">{formatHariTanggal(j.tanggal)}</div>
                                   {waktuStr && (
                                     <div className="text-[10px] text-gray-500 dark:text-gray-400 print:text-black">
@@ -601,7 +601,7 @@ export default function RekapJurnalView({
                                 </td>
 
                                 {/* 4. Mapel */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-semibold text-blue-600 dark:text-blue-400 print:text-black">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-semibold text-blue-600 dark:text-blue-400 print:text-black">
                                   {j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' ? (
                                     <span className="text-amber-700 dark:text-amber-400 font-bold">Kegiatan Khusus (Sistem Blok)</span>
                                   ) : (
@@ -610,7 +610,7 @@ export default function RekapJurnalView({
                                 </td>
 
                                 {/* 5. Jam KBM */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-medium">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top font-medium">
                                   <div>{j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' ? 'Sistem Blok' : jamKbmStr}</div>
                                   {j.pertemuan_ke && j.jam_ke && j.keterangan !== 'Jurnal Kegiatan' && j.mapel !== 'Jurnal Kegiatan' && (
                                     <div className="text-[10px] text-gray-500 dark:text-gray-400 print:text-black">
@@ -620,7 +620,7 @@ export default function RekapJurnalView({
                                 </td>
 
                                 {/* 6. Materi */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   <div className="font-bold text-gray-900 dark:text-white print:text-black">
                                     {j.materi_pembelajaran || j.materi || '-'}
                                   </div>
@@ -659,7 +659,7 @@ export default function RekapJurnalView({
                                         <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
                                       </a>
                                       {(j.lokasi || (j.latitude && j.longitude)) && (
-                                        <div className="text-[8px] print:text-[6pt] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5 max-w-[100px] text-center leading-tight">
+                                        <div className="text-[8px] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5 max-w-[100px] text-center leading-tight no-print">
                                           <i className="fa-solid fa-location-dot text-red-500 text-[8px]"></i>
                                           <span className="truncate" title={j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}>
                                             {j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}
@@ -667,7 +667,7 @@ export default function RekapJurnalView({
                                         </div>
                                       )}
                                       {j.waktu_upload && (
-                                        <div className="text-[7px] text-gray-400 font-mono text-center">
+                                        <div className="text-[7px] text-gray-400 font-mono text-center no-print">
                                           {j.waktu_upload}
                                         </div>
                                       )}
@@ -678,7 +678,7 @@ export default function RekapJurnalView({
                                 </td>
 
                                 {/* 8. Keterangan kehadiran guru */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top">
                                   <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
                                     j.status_verifikasi === 'Disetujui'
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
@@ -700,19 +700,19 @@ export default function RekapJurnalView({
                       /* ============================================================ */
                       <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
                         <thead>
-                          <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-200 print:text-black print:border-black">
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[3%]">No</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[9%]">Hari/Tanggal</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Tujuan Pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[9%]">KKTP</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Konten</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Kegiatan Pembelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-14 print:w-[5%]">Kelas</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Mata Pelajaran</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Absensi Murid (H/I/S/A)</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[7%]">Lokasi KBM</th>
-                            <th className="p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[10%]">Foto Dokumentasi</th>
-                            <th className="p-2 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[6%]">Catatan</th>
+                          <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[3%]">No</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[9%]">Hari/Tanggal</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Tujuan Pembelajaran</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[9%]">KKTP</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Konten</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Kegiatan Pembelajaran</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-14 print:w-[5%]">Kelas</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Mata Pelajaran</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Absensi Murid (H/I/S/A)</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[7%]">Lokasi KBM</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[10%]">Foto Dokumentasi</th>
+                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[6%]">Catatan</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -726,52 +726,52 @@ export default function RekapJurnalView({
                                 className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 print:hover:bg-transparent"
                               >
                                 {/* 1. No */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
                                   {index + 1}
                                 </td>
 
                                 {/* 2. Hari/Tanggal */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium align-top">
                                   {formatHariTanggal(j.tanggal)}
                                 </td>
 
                                 {/* 3. Tujuan Pembelajaran */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   {j.tujuan_pembelajaran || '-'}
                                 </td>
 
                                 {/* 4. KKTP */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   {j.kktp || '-'}
                                 </td>
 
                                 {/* 5. Konten */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
                                   {j.konten || j.materi_pembelajaran || j.materi || '-'}
                                 </td>
 
                                 {/* 6. Kegiatan Pembelajaran */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   {j.kegiatan_pembelajaran || j.kegiatan || '-'}
                                 </td>
 
                                 {/* 7. Kelas */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-bold text-gray-900 dark:text-white print:text-black">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-bold text-gray-900 dark:text-white print:text-black">
                                   {j.kelas || '-'}
                                 </td>
 
                                 {/* 8. Mata Pelajaran */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-semibold text-blue-600 dark:text-blue-400 print:text-black">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-semibold text-blue-600 dark:text-blue-400 print:text-black">
                                   {j.mapel || '-'}
                                 </td>
 
                                 {/* 9. Absensi Murid (H/I/S/A) */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center sm:text-left">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center sm:text-left">
                                   {formatAbsensi(j.absensi_siswa, j.detail_absen, j.kehadiran_murid)}
                                 </td>
 
                                 {/* 10. Lokasi KBM */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   {j.lokasi_kbm || j.lokasi || '-'}
                                 </td>
 
@@ -814,7 +814,7 @@ export default function RekapJurnalView({
                                 </td>
 
                                 {/* 12. Catatan */}
-                                <td className="p-2 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
                                   {j.catatan_refleksi || j.refleksi || '-'}
                                 </td>
                               </tr>
@@ -832,8 +832,10 @@ export default function RekapJurnalView({
             <PrintSignature
               leftTitle="Mengetahui,"
               leftSubtitle={tabMode === 'kelas' ? 'Wali Kelas' : 'Guru Mata Pelajaran'}
-              leftName={tabMode === 'kelas' ? '( ........................................ )' : user?.nama}
-              leftNip={tabMode === 'kelas' ? '-' : user?.nip}
+              leftName={tabMode === 'kelas' ? ((isWaliKelas || waliClasses.length > 0) ? (user?.nama || '( ........................................ )') : '( ........................................ )') : user?.nama}
+              leftNip={tabMode === 'kelas' ? ((isWaliKelas || waliClasses.length > 0) ? (user?.nip || '-') : '-') : user?.nip}
+              user={user}
+              sekolahId={user?.sekolah_id}
             />
 
             {jurnalData && jurnalData.length > 0 && (

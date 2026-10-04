@@ -310,9 +310,17 @@ body.fade-out {
 
   /* Hide non-printable elements */
   header, nav, aside, .swal2-container, .no-print { display: none !important; }
-  #gemini-chat, #antigravity, #sidecar, [class*="ai-"], [id*="ai-"], [id*="gemini-"] { display: none !important; }
   header, nav, aside, .swal2-container, .no-print,
-  .app-header, .page-transition > .no-print {
+  .app-header, .page-transition > .no-print,
+  #gemini-chat, #antigravity, #sidecar, [class*="ai-"], [id*="ai-"], [id*="gemini-"],
+  [data-tour="ai-assistant-btn"],
+  [aria-label*="Asisten AI"],
+  [role="dialog"][aria-label*="Asisten AI"],
+  .fa-robot,
+  [data-testid="spotlight-box"],
+  [data-testid="tooltip-card"],
+  button.fixed,
+  div.fixed:not(.sipjam-print-watermark) {
     display: none !important;
     visibility: hidden !important;
     height: 0 !important;
@@ -480,7 +488,8 @@ body.fade-out {
 }
 
 @media screen {
-  .print-only { display: none !important; }
+  .print-only,
+  .sipjam-print-watermark { display: none !important; }
 }
 
 /* Broadcast Bell Shake Animation */

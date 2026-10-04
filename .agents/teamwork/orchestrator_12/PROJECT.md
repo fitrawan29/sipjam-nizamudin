@@ -21,18 +21,18 @@ Both modes write to the exact same `presensi_siswa` schema, allowing downstream 
 - Attendance Helper: `src/lib/qrSiswa.ts`
 
 ## Feature Inventory
-| # | Feature | Description | Milestone | Source |
-|---|---------|-------------|-----------|--------|
-| 1 | DB Schema & Migration | Add `mode_presensi_siswa` column with default `'qr'` and constraint `('qr', 'manual')` | M1 | R1 |
-| 2 | TypeScript Definitions | Add `mode_presensi_siswa` to `sekolah.Row`, `Insert`, `Update`, and export `ModePresensiSiswa` | M1 | R1 |
-| 3 | Superadmin Add/Edit UI | Add `mode_presensi_siswa` select to Add & Edit School modals in `SuperadminView.tsx` | M2 | R2 |
-| 4 | Superadmin Badge & Toggle | Display mode badge in school table and provide quick toggle handler | M2 | R2 |
-| 5 | Piket Mode Fetching | In `PiketView.tsx`, fetch school's `mode_presensi_siswa` by `user.sekolah_id` on mount | M3 | R3, R4 |
-| 6 | Piket Manual Checklist UI | When mode is `'manual'`, render class-filterable student roster with Datang and Pulang buttons | M3 | R3 |
-| 7 | Piket QR Retained | When mode is `'qr'`, retain full camera and USB HID kiosk scanner functionality | M3 | R4 |
-| 8 | Downstream Views Check | Ensure `RekapSiswaView.tsx` and `GuruJurnal.tsx` read manual records seamlessly and neutralize labels | M4 | R5 |
-| 9 | Multi-Tenant Isolation | Verify strict multi-tenant boundary per `sekolah_id` across all operations | M4 | AC |
-| 10 | Build & Compile Gate | Ensure `tsc --noEmit` exits 0 and `npm run build` succeeds | M4 | AC |
+| # | Feature | Description | Milestone | Source | Status |
+|---|---------|-------------|-----------|--------|--------|
+| 1 | DB Schema & Migration | Add `mode_presensi_siswa` column with default `'qr'` and constraint `('qr', 'manual')` | M1 | R1 | DONE |
+| 2 | TypeScript Definitions | Add `mode_presensi_siswa` to `sekolah.Row`, `Insert`, `Update`, and export `ModePresensiSiswa` | M1 | R1 | DONE |
+| 3 | Superadmin Add/Edit UI | Add `mode_presensi_siswa` select to Add & Edit School modals in `SuperadminView.tsx` | M2 | R2 | DONE |
+| 4 | Superadmin Badge & Toggle | Display mode badge in school table and provide quick toggle handler | M2 | R2 | DONE |
+| 5 | Piket Mode Fetching | In `PiketView.tsx`, fetch school's `mode_presensi_siswa` by `user.sekolah_id` on mount | M3 | R3, R4 | DONE |
+| 6 | Piket Manual Checklist UI | When mode is `'manual'`, render class-filterable student roster with Datang and Pulang buttons | M3 | R3 | DONE |
+| 7 | Piket QR Retained | When mode is `'qr'`, retain full camera and USB HID kiosk scanner functionality | M3 | R4 | DONE |
+| 8 | Downstream Views Check | Ensure `RekapSiswaView.tsx` and `GuruJurnal.tsx` read manual records seamlessly and neutralize labels | M4 | R5 | DONE |
+| 9 | Multi-Tenant Isolation | Verify strict multi-tenant boundary per `sekolah_id` across all operations | M4 | AC | DONE |
+| 10 | Build & Compile Gate | Ensure `tsc --noEmit` exits 0 and `npm run build` succeeds | M4 | AC | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |

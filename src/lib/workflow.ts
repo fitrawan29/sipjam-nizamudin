@@ -346,13 +346,48 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // Guru pengecualian (wajib hadir hanya di hari mengajar) dibebaskan dari piket saat sistem blok aktif jika tidak ada jadwal hari ini
     const isExemptAndNoSchedule = isTeacherExempt && state.jadwalKBM.length === 0;
     if (!(state.isBlok && isExemptAndNoSchedule)) {
-      let jpQuery = supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
-      if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
-      const { data: jpiket } = await jpQuery;
-      if (jpiket && jpiket.length > 0) {
-        const piketHariIni = jpiket[0];
-        if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)) {
+      // Check penugasan_piket directly
+      let penugasanQuery = supabase
+        .from('penugasan_piket')
+        .select('*')
+        .eq('hari', selectedHari)
+        .eq('tipe_petugas', 'Guru');
+      if (sekolahId) penugasanQuery = penugasanQuery.eq('sekolah_id', sekolahId);
+      const { data: penugasanList } = await penugasanQuery;
+
+      const cleanStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+      const isTeacherPiketMatch = (recordName?: string | null, recordNip?: string | null, recordGuruId?: string | null): boolean => {
+        if (userId && recordGuruId && String(recordGuruId) === String(userId)) return true;
+        if (username && recordNip && String(recordNip).trim() === String(username).trim()) return true;
+        if (!recordName || !namaGuru) return false;
+        const c1 = cleanStr(recordName);
+        const c2 = cleanStr(namaGuru);
+        const cClean = cleanStr(cleanTeacherName);
+        if (c1 === c2 || c1 === cClean) return true;
+        if (c1.includes(c2) || c2.includes(c1) || c1.includes(cClean) || cClean.includes(c1)) return true;
+        const t1 = c1.split(/\s+/).filter(w => w.length > 2);
+        const t2 = c2.split(/\s+/).filter(w => w.length > 2);
+        if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;
+        return false;
+      };
+
+      if (penugasanList && penugasanList.length > 0) {
+        const matched = penugasanList.some((p: any) => isTeacherPiketMatch(p.guru_nama, p.guru_nip, p.guru_id));
+        if (matched) {
           state.isPiket = true;
+        }
+      }
+
+      // Fallback: jadwal_piket
+      if (!state.isPiket) {
+        let jpQuery = supabase.from('jadwal_piket').select('*').eq('hari', selectedHari);
+        if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
+        const { data: jpiket } = await jpQuery;
+        if (jpiket && jpiket.length > 0) {
+          const piketHariIni = jpiket[0];
+          if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru) || isGuruDiPiket(piketHariIni.daftar_guru, cleanTeacherName)) {
+            state.isPiket = true;
+          }
         }
       }
     }

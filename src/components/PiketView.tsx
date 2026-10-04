@@ -1150,6 +1150,25 @@ export default function PiketView({ user }: { user: any }) {
     (!dailyState.laporanPiket || dailyState.laporanPiketDitolak)
   );
 
+  if (isGuru && dailyState && !dailyState.isPiket && !isAdmin) {
+    return (
+      <section id="view-piket" className="view-section page-enter w-full max-w-full">
+        <div className="glass-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 shadow-sm">
+          <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+            <i className="fa-solid fa-shield-halved"></i>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Bukan Jadwal Piket Hari Ini</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+            Modul <strong>Piket</strong> (termasuk fitur Presensi Siswa dan Laporan Piket) secara eksklusif hanya dapat diakses oleh Guru yang memiliki jadwal piket pada hari ini. Anda tidak tercatat dalam jadwal piket hari ini.
+          </p>
+          <div className="p-3 bg-white/80 dark:bg-gray-800/80 rounded-xl border border-amber-200/60 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300 font-medium">
+            <i className="fa-solid fa-circle-info mr-1.5"></i> Hubungi Administrator jika jadwal penugasan piket Anda belum tercatat di sistem.
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="view-piket" className="view-section page-enter w-full max-w-full overflow-x-auto">
         <div className="glass-card p-4 sm:p-6 w-full max-w-full overflow-hidden">

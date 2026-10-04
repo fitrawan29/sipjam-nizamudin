@@ -193,6 +193,7 @@ export default function AppScreen({
 
   const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin);
   const [assignedKelas, setAssignedKelas] = useState<string | null>(null);
+  const [isPiketHariIni, setIsPiketHariIni] = useState<boolean>(isAdmin || isSuperadmin);
 
   // Broadcast notification bell states
   const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -257,6 +258,33 @@ export default function AppScreen({
 
     checkWaliKelas();
   }, [user, isAdmin, syncKey]);
+
+  useEffect(() => {
+    if (isAdmin || isSuperadmin) {
+      setIsPiketHariIni(true);
+      return;
+    }
+    if (!user) {
+      setIsPiketHariIni(false);
+      return;
+    }
+
+    let isMounted = true;
+    const checkPiket = async () => {
+      try {
+        const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
+        if (isMounted) {
+          setIsPiketHariIni(Boolean(state?.isPiket));
+        }
+      } catch (err) {
+        console.error('[AppScreen] Error verifying piket hari ini:', err);
+        if (isMounted) setIsPiketHariIni(false);
+      }
+    };
+
+    checkPiket();
+    return () => { isMounted = false; };
+  }, [user, isAdmin, isSuperadmin, syncKey]);
 
   useEffect(() => {
     if (user?.sekolah_id) {
@@ -427,6 +455,30 @@ export default function AppScreen({
         }
       }
 
+      if (targetId === 'view-piket') {
+        if (!isAdmin && !isSuperadmin && !isPiketHariIni) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Modul Piket hanya dapat diakses oleh Guru yang bertugas piket pada hari ini.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+      }
+
+      if (targetId === 'view-rekap-siswa') {
+        if (!isAdmin && !isSuperadmin && !isWaliKelas) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Halaman Presensi Siswa secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+      }
+
       if (restrictedViews.includes(targetId)) {
         Swal.fire({ title: 'Memeriksa Akses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
@@ -438,6 +490,15 @@ export default function AppScreen({
         }
 
         if (targetId === 'view-piket') {
+          if (!state.isPiket) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Akses Ditolak',
+              text: 'Akses Terblokir: Modul Piket hanya dapat diakses oleh Guru yang bertugas piket pada hari ini.',
+              confirmButtonColor: '#0B4619'
+            });
+            return;
+          }
           if (!state.presensiDatang) return Swal.fire('Akses Ditolak', 'Harap lakukan Presensi Datang terlebih dahulu.', 'warning');
           if (state.isIzinSakit) return Swal.fire('Akses Ditolak', state.lockedReason || '', 'info');
         }
@@ -471,13 +532,13 @@ export default function AppScreen({
     { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', label: 'Presensi Guru' },
     { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
     ...(isWaliKelas ? [{ id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' }] : []),
-    { id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' },
+    ...(isPiketHariIni ? [{ id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' }] : []),
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
     { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
     { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
     { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
     { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' },
-    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }
+    ...(isWaliKelas ? [{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }] : [])
   ];
 
   const menuItemsAdmin = [
@@ -650,7 +711,28 @@ export default function AppScreen({
               )}
               {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
               {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
-              {currentView === 'view-piket' && <PiketView user={user} />}
+              {currentView === 'view-piket' && (
+                isAdmin || isSuperadmin || isPiketHariIni ? (
+                  <PiketView user={user} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Modul <strong>Piket</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang memiliki <strong>jadwal piket pada hari ini</strong>. Anda tidak bertugas piket hari ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
               {currentView === 'view-dokumen' && <DokumenView user={user} />}
               {currentView === 'view-gradebook' && <GradebookView user={user} />}
               {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
@@ -678,7 +760,28 @@ export default function AppScreen({
                   </div>
                 )
               )}
-              {currentView === 'view-rekap-siswa' && <RekapSiswaView user={user} />}
+              {currentView === 'view-rekap-siswa' && (
+                isAdmin || isSuperadmin || isWaliKelas ? (
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Presensi Siswa</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai <strong>Wali Kelas</strong>. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
               {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
               {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
               {currentView === 'view-admin-data' && <AdminDataView user={user} />}

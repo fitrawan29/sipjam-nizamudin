@@ -5,7 +5,12 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast, Toast } from '@/lib/toast';
 import NaikKelasModal from './NaikKelasModal';
-import { getStudentQrIdentifier, generateStudentQrSvg } from '@/lib/qrSiswa';
+import {
+  getStudentQrIdentifier,
+  generateStudentQrSvg,
+  downloadStudentCardPng,
+  printStudentQrCardWithSchool,
+} from '@/lib/qrSiswa';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
@@ -25,8 +30,29 @@ export default function AdminDataView({ user }: { user: any }) {
   const [debugInfo, setDebugInfo] = useState('');
   const [isNaikKelasOpen, setIsNaikKelasOpen] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [schoolName, setSchoolName] = useState<string>(user?.sekolah_nama || 'SIPJAM');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ITEMS_PER_PAGE = 20;
+
+  // Fetch school name from Supabase sekolah table on mount
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      if (!user?.sekolah_id) return;
+      try {
+        const { data, error } = await supabase
+          .from('sekolah')
+          .select('nama')
+          .eq('id', user.sekolah_id)
+          .maybeSingle();
+        if (data?.nama && !error) {
+          setSchoolName(data.nama);
+        }
+      } catch (err) {
+        console.error('[AdminDataView] Error fetching school name:', err);
+      }
+    };
+    fetchSchoolName();
+  }, [user?.sekolah_id]);
 
   const tabs = [
     { id: 'Data_Siswa', label: 'Siswa', table: 'data_siswa' },
@@ -844,51 +870,29 @@ export default function AdminDataView({ user }: { user: any }) {
       .replace(/'/g, '&#039;');
   };
 
+  // Single Student Card Download as PNG
+  const handleDownloadStudentCard = (student: any) => {
+    const qrIdentifier = getStudentQrIdentifier(student);
+    const success = downloadStudentCardPng({
+      student,
+      schoolName,
+      qrIdentifier,
+    });
+    if (success) {
+      showToast('Berhasil', `Kartu presensi ${student.nama_siswa || 'siswa'} berhasil didownload.`, 'success');
+    } else {
+      showToast('Gagal', 'Tidak dapat mengunduh kartu presensi.', 'error');
+    }
+  };
+
   // Student QR Code display and single card print
   const printStudentQrCard = (student: any, qrSvg: string, qrIdentifier: string) => {
-    const printWindow = window.open('', '_blank', 'width=650,height=650');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Kartu Presensi Siswa - ${escapeHtml(student.nama_siswa || 'Siswa')}</title>
-        <style>
-          * { box-sizing: border-box; }
-          body { font-family: system-ui, -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
-          .card { width: 340px; background: white; border: 2px solid #0B4619; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
-          .header { font-size: 13px; font-weight: 800; color: #0B4619; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
-          .sub { font-size: 11px; color: #6b7280; margin-bottom: 16px; }
-          .qr { margin: 12px auto; display: flex; justify-content: center; }
-          .name { font-size: 15px; font-weight: 800; margin-top: 12px; color: #111827; }
-          .meta { font-size: 12px; color: #374151; margin-top: 4px; }
-          .badge { display: inline-block; font-size: 10px; font-weight: 700; color: #0B4619; background: #e8f5e9; padding: 2px 8px; border-radius: 9999px; margin-top: 8px; }
-          .code { font-size: 10px; font-family: monospace; color: #6b7280; margin-top: 8px; }
-          @media print {
-            body { background: white; }
-            .card { box-shadow: none; border: 1.5px solid #0B4619; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="header">KARTU PRESENSI SISWA</div>
-          <div class="sub">SIPJAM Digital Attendance Kiosk</div>
-          <div class="qr">${qrSvg}</div>
-          <div class="name">${escapeHtml(student.nama_siswa || '-')}</div>
-          <div class="meta">Kelas: <b>${escapeHtml(student.kelas || '-')}</b> &bull; NISN: <b>${escapeHtml(student.nisn || '-')}</b></div>
-          <div class="badge">STATUS: ${escapeHtml(student.status || 'Aktif')}</div>
-          <div class="code">ID: ${escapeHtml(qrIdentifier)}</div>
-        </div>
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        <\/script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
+    printStudentQrCardWithSchool({
+      student,
+      schoolName,
+      qrSvg,
+      qrIdentifier,
+    });
   };
 
   const handleShowStudentQr = (student: any) => {
@@ -903,6 +907,7 @@ export default function AdminDataView({ user }: { user: any }) {
             ${qrSvg}
           </div>
           <div class="text-center space-y-1">
+            <div class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">${escapeHtml(schoolName)}</div>
             <h4 class="font-bold text-sm text-gray-900 dark:text-gray-100">${escapeHtml(student.nama_siswa || 'Siswa')}</h4>
             <p class="text-xs text-gray-600 dark:text-gray-300">Kelas: <span class="font-bold text-purple-700 dark:text-purple-400">${escapeHtml(student.kelas || '-')}</span></p>
             <p class="text-xs text-gray-600 dark:text-gray-300">NISN: <span class="font-mono font-bold">${escapeHtml(student.nisn || '-')}</span></p>
@@ -911,13 +916,18 @@ export default function AdminDataView({ user }: { user: any }) {
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: '<i class="fa-solid fa-print mr-1"></i> Cetak Kartu',
+      showDenyButton: true,
+      confirmButtonText: '<i class="fa-solid fa-print mr-1"></i> Cetak / Simpan PDF',
       confirmButtonColor: '#0B4619',
+      denyButtonText: '<i class="fa-solid fa-download mr-1"></i> Download Gambar (PNG)',
+      denyButtonColor: '#059669',
       cancelButtonText: 'Tutup',
       cancelButtonColor: '#6B7280',
     }).then((result) => {
       if (result.isConfirmed) {
-        printStudentQrCard(student, qrSvg, qrIdentifier);
+        printStudentQrCardWithSchool({ student, schoolName, qrSvg, qrIdentifier });
+      } else if (result.isDenied) {
+        handleDownloadStudentCard(student);
       }
     });
   };
@@ -941,12 +951,14 @@ export default function AdminDataView({ user }: { user: any }) {
       const qrSvg = generateStudentQrSvg(qrIdentifier, { size: 140, fgColor: '#0B4619' });
       return `
         <div class="card">
-          <div class="header">KARTU PRESENSI</div>
-          <div class="sub">SIPJAM Kiosk</div>
+          <div class="school">${escapeHtml(schoolName)}</div>
+          <div class="header">KARTU PRESENSI DIGITAL</div>
+          <div class="sub">SIPJAM Digital Attendance Kiosk</div>
           <div class="qr">${qrSvg}</div>
           <div class="name">${escapeHtml(student.nama_siswa || '-')}</div>
           <div class="meta">Kelas: <b>${escapeHtml(student.kelas || '-')}</b> &bull; NISN: <b>${escapeHtml(student.nisn || '-')}</b></div>
-          <div class="code">${escapeHtml(qrIdentifier)}</div>
+          <div class="badge">STATUS: ${escapeHtml(student.status || 'Aktif')}</div>
+          <div class="code">ID: ${escapeHtml(qrIdentifier)}</div>
         </div>
       `;
     }).join('\n');
@@ -955,17 +967,19 @@ export default function AdminDataView({ user }: { user: any }) {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Cetak Kartu QR Siswa (${targetStudents.length} Siswa)</title>
+        <title>Cetak Kartu QR Siswa - ${escapeHtml(schoolName)} (${targetStudents.length} Siswa)</title>
         <style>
           * { box-sizing: border-box; }
           body { font-family: system-ui, -apple-system, sans-serif; margin: 20px; background: #fff; }
           .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
           .card { border: 1.5px solid #0B4619; border-radius: 12px; padding: 14px; text-align: center; page-break-inside: avoid; }
-          .header { font-size: 11px; font-weight: 800; color: #0B4619; letter-spacing: 0.5px; }
-          .sub { font-size: 9px; color: #6b7280; margin-bottom: 8px; }
+          .school { font-size: 11px; font-weight: 800; color: #0B4619; text-transform: uppercase; margin-bottom: 2px; }
+          .header { font-size: 10px; font-weight: 800; color: #166534; letter-spacing: 0.5px; }
+          .sub { font-size: 8px; color: #6b7280; margin-bottom: 6px; }
           .qr { margin: 6px auto; display: flex; justify-content: center; }
           .name { font-size: 13px; font-weight: 700; color: #111827; margin-top: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .meta { font-size: 10px; color: #374151; margin-top: 2px; }
+          .badge { display: inline-block; font-size: 9px; font-weight: 700; color: #0B4619; background: #e8f5e9; padding: 1px 6px; border-radius: 9999px; margin-top: 4px; }
           .code { font-size: 9px; font-family: monospace; color: #6b7280; margin-top: 4px; }
           @media print {
             body { margin: 0; }
@@ -2005,14 +2019,24 @@ export default function AdminDataView({ user }: { user: any }) {
                         </div>
                         <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 gap-2">
                           {activeTab === 'Data_Siswa' && (
-                            <button 
-                              type="button" 
-                              onClick={() => handleShowStudentQr(item)} 
-                              className="btn-click text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 flex items-center gap-1 transition"
-                              title="Lihat & Cetak QR Code Siswa"
-                            >
-                              <i className="fa-solid fa-qrcode text-[10px]"></i> QR Code
-                            </button>
+                            <>
+                              <button 
+                                type="button" 
+                                onClick={() => handleDownloadStudentCard(item)} 
+                                className="btn-click text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-1 transition"
+                                title="Download Kartu Presensi (PNG)"
+                              >
+                                <i className="fa-solid fa-download text-[10px]"></i> Download Kartu
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => handleShowStudentQr(item)} 
+                                className="btn-click text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 flex items-center gap-1 transition"
+                                title="Lihat & Cetak QR Code Siswa"
+                              >
+                                <i className="fa-solid fa-qrcode text-[10px]"></i> QR Code
+                              </button>
+                            </>
                           )}
                           <button 
                             type="button" 

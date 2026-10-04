@@ -1,46 +1,48 @@
-# BRIEFING — 2026-09-28T05:50:30+08:00
+# BRIEFING — 2026-10-04T07:23:00Z
 
 ## Mission
-Thoroughly examine `src/components/AppScreen.tsx` for architectural survey: state management, role handling, sidebar & header JSX/classes, navigation item view keys for Guru and Admin, onboarding button placement, AI Assistant & OnboardingTutorial mounting points, and mobile responsiveness considerations.
+Conduct comprehensive technical survey for R1 (Akses Modul Piket Sesuai Jadwal) and R2 (Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel).
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: Git History & Recent Updates Investigator, AppScreen Architecture Explorer
+- Roles: investigation, synthesis
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1
-- Original parent: f963fff1-816c-4a40-9daa-b44715a5d909
-- Milestone: explorer_survey_1
+- Original parent: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
+- Milestone: technical_survey
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement
-- Files for content delivery, Messages for coordination
-- Handoff report in handoff.md with 5-Component structure
-- No direct source modifications (except teamwork working directory)
-- Strictly analyze AppScreen.tsx and related layout/tour targets
+- Scope bounded to R1 and R2 survey
+- Write handoff.md in working directory
+- Communicate completion to parent via send_message
 
 ## Current Parent
-- Conversation ID: 3b364431-4af8-4ed9-9a8c-b79b77d58fbe
-- Updated: 2026-09-28T05:50:30+08:00
+- Conversation ID: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
+- Updated: 2026-10-04T07:23:00Z
 
 ## Investigation State
-- **Explored paths**: `src/components/AppScreen.tsx`, `src/app/page.tsx`, `src/app/layout.tsx`, `package.json`, `tests/`
+- **Explored paths**:
+  - `src/types/database.ts`: schemas of `penugasan_piket`, `jadwal_piket`, `wali_kelas`, `data_guru`, `data_siswa`, `absensi`, `presensi_siswa`
+  - `src/lib/workflow.ts`: `isGuruDiPiket`, `getGuruDailyState`, `dailyState.isPiket`
+  - `src/lib/wita.ts`: `getWitaDayName()`, `getWitaDateStr()`
+  - `src/lib/warningSystem.ts`: `isTeacherPiketOnDay`, `penugasan_piket` & `jadwal_piket` queries
+  - `src/components/HomeView.tsx`: `assignedPiketTeachers`, `inPenugasan`, `inJadwalPiket`, step generator
+  - `src/components/AppScreen.tsx`: `isWaliKelas`, `assignedKelas`, `menuItemsGuru`, `menuItemsAdmin`, `handleNavigation`, view renders
+  - `src/components/PiketView.tsx`: tabs, `fetchDataPiket`, `syncJadwalPiketForDay`, authorization checks
+  - `src/components/RekapSiswaView.tsx`: `waliKelasList`, class dropdowns in tab 'gerbang' & tab 'rekap'
+  - `src/components/RekapJurnalView.tsx`: pattern for `assignedKelas` & locked class dropdown
+  - `src/components/GuruJurnal.tsx`: live attendance in subject journal session
+  - `tests/`: test suite verification (`npm test` passes 100%, `tsc --noEmit` 0 errors)
 - **Key findings**:
-  1. Active view state is controlled by `currentView` initialized with URL query `?view=...`, defaults to `'view-home'` (or `'view-superadmin-overview'`).
-  2. Role checks: `isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin'`. Superadmin is exempt from tutorials; Guru is `!isAdmin && !isSuperadmin`; Admin is `isAdmin && !isSuperadmin`.
-  3. Header Hamburger button located at lines 489-491 (`btn-click w-9 h-9 ... <i className="fa-solid fa-bars"></i>`). Target with `data-tour="hamburger-btn"`.
-  4. Sidebar navigation items mapped from `menuItemsGuru` and `menuItemsAdmin` (lines 554-566). Exact view keys:
-     - Guru: Presensi Datang (`view-guru-presensi`), Jurnal Mengajar (`view-guru-jurnal`), Piket (`view-piket`).
-     - Admin: Verifikasi (`view-admin-verif`), Sistem Blok (`view-sistem-blok`), Master Data (`view-admin-data`), Analitik (`view-analitik`), Sistem (`view-admin-config`).
-     - Tag them dynamically with `data-tour={item.id}` in the `.map()`.
-  5. Sidebar is conditionally rendered: `{sidebarOpen && ...}`. Tour controller must open sidebar (`setSidebarOpen(true)`) during sidebar steps and close it during outside steps.
-  6. "Lihat Tutorial Lagi" button placed cleanly directly after "Pengaturan Akun" in the sidebar menu list (around line 574) and guarded by `!isSuperadmin`.
-  7. `AIAssistant` (floating button bottom-right) and `OnboardingTutorial` mounted at the bottom of `AppScreen.tsx` (lines 843-844) adjacent to other modal overlays.
-  8. Mobile responsiveness: Auto-scroll (`scrollIntoView`), dynamic viewport clamping for tooltips, responsive width (`inset-x-4 sm:w-96`) for chat window.
-- **Unexplored areas**: None; all requested survey items thoroughly documented in handoff.md.
+  - R1: Database has `penugasan_piket` and `jadwal_piket`. Currently `AppScreen.tsx` renders `view-piket` unconditionally in `menuItemsGuru`. `handleNavigation` checks presensi datang but not `state.isPiket`.
+  - R2: `AppScreen.tsx` already has `isWaliKelas` and `assignedKelas`, but `view-rekap-siswa` is unconditionally shown in `menuItemsGuru`. In `RekapSiswaView.tsx`, tab 2 allows selecting ANY class from the school (`kelasList`). `GuruJurnal.tsx` operates independently per KBM session and will not be broken.
+- **Unexplored areas**: None within the survey scope of R1 and R2.
 
 ## Key Decisions Made
-- Documented complete architectural blueprint with verbatim lines and code snippets in `handoff.md`.
+- Fully documented all database schemas, query methods, UI navigation paths, and exact code changes needed.
 
 ## Artifact Index
-- handoff.md — Complete 5-component handoff report
-- progress.md — Heartbeat and progress tracking
-- DISPATCH.md — Received dispatch records
+- DISPATCH.md — incoming dispatch instructions
+- BRIEFING.md — persistent situational awareness
+- progress.md — liveness heartbeat
+- handoff.md — final handoff report

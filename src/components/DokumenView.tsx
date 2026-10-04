@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
 import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from '@/types/database';
+import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
 
 export const KURIKULUM_DOCS = [
   { id: 'CP', code: 'CP', name: 'Analisis Capaian Pembelajaran', short: 'CP' },
@@ -19,6 +20,7 @@ export const KURIKULUM_DOCS = [
 export default function DokumenView({ user }: { user: any }) {
   const isAdmin = user?.role === 'Admin';
   const [activeTab, setActiveTab] = useState<'matrix' | 'syarat' | 'list' | 'upload'>(isAdmin ? 'matrix' : 'list');
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   
   // Data states
   const [dokumenList, setDokumenList] = useState<BankDokumen[]>([]);
@@ -455,6 +457,40 @@ export default function DokumenView({ user }: { user: any }) {
     return Array.from(set).sort();
   }, [myTeacherSubjects, kelasList]);
 
+  // Structured Print Table Rows for Teacher
+  const teacherPrintRows = useMemo(() => {
+    const rows: {
+      index: number;
+      kode: string;
+      nama: string;
+      mapelKelas: string;
+      format: string;
+      statusUnggah: string;
+      statusVerif: string;
+      tanggal: string;
+    }[] = [];
+
+    let counter = 1;
+    myTeacherSubjects.forEach(sub => {
+      KURIKULUM_DOCS.forEach(doc => {
+        const matchDoc = matchDocToTypeForSubject(dokumenList, doc.id, sub.nama_mapel, sub.kelas);
+        const isUploaded = Boolean(matchDoc);
+        rows.push({
+          index: counter++,
+          kode: doc.code,
+          nama: doc.name,
+          mapelKelas: `${sub.nama_mapel}${sub.kelas ? ` (Kelas ${sub.kelas})` : ''}`,
+          format: 'PDF, DOCX',
+          statusUnggah: isUploaded ? 'Sudah Diunggah' : 'Belum Diunggah',
+          statusVerif: isUploaded ? (matchDoc?.status_verifikasi || 'Menunggu') : '-',
+          tanggal: matchDoc?.timestamp ? formatTimestampWita(matchDoc.timestamp) : '-'
+        });
+      });
+    });
+
+    return rows;
+  }, [myTeacherSubjects, dokumenList]);
+
   // Handler for direct upload trigger from matrix card
   const handleTriggerDirectUpload = (docTypeName: string, mapelName: string, kelasName?: string) => {
     setJenis(docTypeName);
@@ -700,9 +736,51 @@ export default function DokumenView({ user }: { user: any }) {
     d => d.status_verifikasi === 'Menunggu' || !d.status_verifikasi
   ).length;
 
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  const tahunAjaran = currentMonth >= 7 ? `${currentYear}/${currentYear + 1}` : `${currentYear - 1}/${currentYear}`;
+  const tanggalCetak = now.toLocaleDateString('id-ID', {
+    timeZone: 'Asia/Makassar',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+
   return (
     <section id="view-dokumen" className="view-section page-enter">
       <div className="glass-card p-4 sm:p-6 mb-6">
+        {/* Print Header (Official School Kop) */}
+        <PrintHeader user={user} sekolahId={user?.sekolah_id} />
+
+        {/* Document Print Subheader */}
+        <div className="hidden print:block text-center my-3 print:my-2">
+          <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+            {isAdmin
+              ? 'Rekapitulasi Matriks Kelengkapan Perangkat Pembelajaran Dewan Guru'
+              : 'Laporan Kelengkapan Perangkat Pembelajaran Kurikulum Merdeka'}
+          </h3>
+          <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+            {!isAdmin && (
+              <span>Guru: <strong>{user?.nama || '-'}</strong> {user?.nip ? `(NIP. ${user.nip})` : ''}</span>
+            )}
+            <span>Tahun Ajaran: <strong>{tahunAjaran}</strong></span>
+            <span>Dicetak: <strong>{tanggalCetak}</strong></span>
+          </div>
+        </div>
+
+        {/* Print Orientation Toolbar & Button */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 no-print">
+          <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="btn-click bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+          >
+            <i className="fa-solid fa-print"></i> Cetak Dokumen
+          </button>
+        </div>
+
         {/* Header Title */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-gray-100 dark:border-gray-800 pb-4 no-print">
           <div>
@@ -790,7 +868,7 @@ export default function DokumenView({ user }: { user: any }) {
         {/* ADMIN VIEW: TEACHER MATRIX CARD SYSTEM (R4.2)                             */}
         {/* ========================================================================= */}
         {isAdmin && activeTab === 'matrix' && (
-          <div className="space-y-6 fade-in">
+          <div className="space-y-6 fade-in no-print">
             {/* KPI Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-3.5 rounded-2xl">
@@ -1002,7 +1080,7 @@ export default function DokumenView({ user }: { user: any }) {
         {/* ADMIN VIEW: KELOLA SYARAT DOKUMEN PER MAPEL (R2.1)                        */}
         {/* ========================================================================= */}
         {isAdmin && activeTab === 'syarat' && (
-          <div className="space-y-6 fade-in">
+          <div className="space-y-6 fade-in no-print">
             {/* Header & Filter Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-amber-50/50 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-800/50">
               <div>
@@ -1132,7 +1210,7 @@ export default function DokumenView({ user }: { user: any }) {
         {/* TEACHER VIEW: MY DOCUMENTS LIST & PERSONAL COMPLETENESS CHECKLIST         */}
         {/* ========================================================================= */}
         {!isAdmin && activeTab === 'list' && (
-          <div className="space-y-6 fade-in">
+          <div className="space-y-6 fade-in no-print">
             {/* Subject-Grouped 6-Document Matrix for Teacher */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -1318,7 +1396,7 @@ export default function DokumenView({ user }: { user: any }) {
         {/* TEACHER VIEW: UPLOAD NEW DOCUMENT FORM                                    */}
         {/* ========================================================================= */}
         {!isAdmin && activeTab === 'upload' && (
-          <div id="dokumen-content-upload" className="fade-in max-w-xl mx-auto">
+          <div id="dokumen-content-upload" className="fade-in max-w-xl mx-auto no-print">
             <div className="bg-white dark:bg-gray-800/90 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <i className="fa-solid fa-cloud-arrow-up text-amber-600 dark:text-amber-400"></i>
@@ -1431,6 +1509,119 @@ export default function DokumenView({ user }: { user: any }) {
             </div>
           </div>
         )}
+
+        {/* ========================================================================= */}
+        {/* PRINT-ONLY TABLES (STANDARDIZED ADMIN & TEACHER LAYOUT)                  */}
+        {/* ========================================================================= */}
+        <div className="print-only hidden print:block w-full my-4">
+          {!isAdmin ? (
+            <table className="w-full text-left text-xs border-collapse border border-black print:border-black print:text-[8pt]">
+              <thead>
+                <tr className="bg-gray-100 text-black font-bold border-b border-black print:bg-gray-100 print:text-black print:border-black">
+                  <th className="px-2 py-1.5 border border-black text-center w-10">No</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-16">Kode</th>
+                  <th className="px-2 py-1.5 border border-black">Nama Dokumen</th>
+                  <th className="px-2 py-1.5 border border-black">Mata Pelajaran &amp; Kelas</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-24">Format</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-28">Status Unggah</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-28">Status Verifikasi</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-32">Tanggal Unggah</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teacherPrintRows.map(row => (
+                  <tr key={`${row.index}-${row.kode}-${row.mapelKelas}`} className="border-b border-black print:border-black">
+                    <td className="px-2 py-1.5 border border-black text-center font-medium align-top">{row.index}</td>
+                    <td className="px-2 py-1.5 border border-black text-center font-mono font-bold align-top">{row.kode}</td>
+                    <td className="px-2 py-1.5 border border-black align-top font-semibold">{row.nama}</td>
+                    <td className="px-2 py-1.5 border border-black align-top">{row.mapelKelas}</td>
+                    <td className="px-2 py-1.5 border border-black text-center align-top font-mono">{row.format}</td>
+                    <td className="px-2 py-1.5 border border-black text-center align-top font-medium">{row.statusUnggah}</td>
+                    <td className="px-2 py-1.5 border border-black text-center align-top font-medium">{row.statusVerif}</td>
+                    <td className="px-2 py-1.5 border border-black text-center align-top">{row.tanggal}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : activeTab === 'syarat' ? (
+            <table className="w-full text-left text-xs border-collapse border border-black print:border-black print:text-[8pt]">
+              <thead>
+                <tr className="bg-gray-100 text-black font-bold border-b border-black print:bg-gray-100 print:text-black print:border-black">
+                  <th className="px-2 py-1.5 border border-black text-center w-10">No</th>
+                  <th className="px-2 py-1.5 border border-black">Mata Pelajaran</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-16">Kode</th>
+                  <th className="px-2 py-1.5 border border-black">Nama Dokumen</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-24">Format</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-24">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {syaratList.map((s, idx) => (
+                  <tr key={s.id || idx} className="border-b border-black print:border-black">
+                    <td className="px-2 py-1.5 border border-black text-center font-medium align-top">{s.urutan ?? idx + 1}</td>
+                    <td className="px-2 py-1.5 border border-black align-top">{s.nama_mapel}</td>
+                    <td className="px-2 py-1.5 border border-black text-center font-mono font-bold align-top">{s.kode_dokumen}</td>
+                    <td className="px-2 py-1.5 border border-black align-top font-semibold">{s.nama_dokumen}</td>
+                    <td className="px-2 py-1.5 border border-black text-center align-top font-mono">{s.format_dokumen}</td>
+                    <td className="px-2 py-1.5 border border-black text-center align-top">{s.wajib !== false ? 'Wajib' : 'Opsional'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full text-left text-xs border-collapse border border-black print:border-black print:text-[8pt]">
+              <thead>
+                <tr className="bg-gray-100 text-black font-bold border-b border-black print:bg-gray-100 print:text-black print:border-black">
+                  <th className="px-2 py-1.5 border border-black text-center w-10">No</th>
+                  <th className="px-2 py-1.5 border border-black">Nama Guru</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-24">NIP</th>
+                  <th className="px-2 py-1.5 border border-black">Mata Pelajaran Diampu</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-10">CP</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-10">ATP</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-10">RPE</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-10">Prota</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-10">Promes</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-10">RPM</th>
+                  <th className="px-2 py-1.5 border border-black text-center w-28">Kelengkapan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTeacherMatrix.map((item, idx) => {
+                  const mapelStr = item.teacherMapel.map(m => m.nama_mapel).filter(Boolean).join(', ') || item.teacher.mata_pelajaran || '-';
+                  return (
+                    <tr key={item.teacher.id || idx} className="border-b border-black print:border-black">
+                      <td className="px-2 py-1.5 border border-black text-center font-medium align-top">{idx + 1}</td>
+                      <td className="px-2 py-1.5 border border-black font-semibold align-top">{item.teacher.nama_guru}</td>
+                      <td className="px-2 py-1.5 border border-black text-center font-mono align-top">{item.teacher.nip || '-'}</td>
+                      <td className="px-2 py-1.5 border border-black align-top">{mapelStr}</td>
+                      {KURIKULUM_DOCS.map(doc => {
+                        const d = item.docStatusMap[doc.id];
+                        return (
+                          <td key={doc.id} className="px-2 py-1.5 border border-black text-center font-bold align-top">
+                            {d ? (d.status_verifikasi === 'Disetujui' ? '✓ (V)' : '✓') : '-'}
+                          </td>
+                        );
+                      })}
+                      <td className="px-2 py-1.5 border border-black text-center font-bold align-top">
+                        {item.completedCount}/6 ({item.completionRate}%)
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Print Signature Block */}
+        <PrintSignature
+          leftTitle="Mengetahui,"
+          leftSubtitle={isAdmin ? "Pengelola Data / Admin" : "Guru Mata Pelajaran"}
+          leftName={user?.nama}
+          leftNip={user?.nip}
+          user={user}
+          sekolahId={user?.sekolah_id}
+        />
       </div>
 
       {/* ========================================================================= */}
