@@ -1,18 +1,20 @@
-# Progress Tracker — Milestone 4 (teamwork_preview_worker_m4)
+# Progress Tracker — Milestone M4 (Downstream Views Alignment & Multi-Tenant Audit)
 
-Last visited: 2026-10-01T11:25:50Z
+Last visited: 2026-10-04T01:51:00Z
 
 ## Status: COMPLETED
 
 ### Completed Steps
-- [x] Initialized DISPATCH.md, BRIEFING.md, and progress.md
-- [x] Reviewed requirements and Survey 3 report
-- [x] Inspected existing implementation in `SuperadminView.tsx`, `GuruJurnal.tsx`, `AdminVerifView.tsx`, and `RekapJurnalView.tsx`
-- [x] Implemented `mode_jurnal` selection in `SuperadminView.tsx` (Add & Edit school modals and table badge)
-- [x] Implemented school mode check, conditional gallery upload rendering, and GPS capture on gallery upload in `GuruJurnal.tsx`
-- [x] Implemented location badge and upload timestamp display in `AdminVerifView.tsx` and `RekapJurnalView.tsx`
-- [x] Verified TypeScript types with `npx tsc --noEmit` (0 errors)
-- [x] Verified production build with `npm run build` (success, code 0)
-- [x] Created `handoff.md`
-- [x] Executed git workflow (status, add, commit, push)
-- [x] Sent handoff notification to orchestrator_6
+- [x] Initialized DISPATCH.md, BRIEFING.md, and progress.md for Milestone M4
+- [x] Inspected `src/components/RekapSiswaView.tsx` for QR-specific phrasing, manual compatibility, and multi-tenant isolation
+- [x] Inspected `src/components/GuruJurnal.tsx` for QR-specific phrasing, manual compatibility, and multi-tenant isolation
+- [x] Applied minimal edits to `RekapSiswaView.tsx` to neutralize phrasing ("pos gerbang/piket QR" -> "pos gerbang/piket", "Belum Scan" -> "Belum Presensi")
+- [x] Applied minimal edits to `GuruJurnal.tsx` to neutralize phrasing ("Belum Scan Piket" -> "Belum Presensi Piket", tooltip) and strengthened multi-tenant isolation in `handleSelectGuruInval`
+- [x] Verified data compatibility: downstream queries in both components filter on `status = 'datang'` / `'pulang'`, identical to manual attendance records written by `PiketView`
+- [x] Verified multi-tenant isolation across all Supabase queries in both files (`user?.sekolah_id` strictly applied)
+- [x] Verified `npx tsc --noEmit` (0 errors)
+- [x] Verified `npm run build` (success, code 0)
+- [x] Updated `progress.md` and `BRIEFING.md`
+- [ ] Write `handoff.md`
+- [ ] Run Git Workflow (`git status`, `git add .`, `git commit -m "..."`, `git push origin main`)
+- [ ] Send completion message to parent

@@ -232,7 +232,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
     const headers = ['No', 'NISN', 'Nama Siswa', 'Kelas', 'Tanggal', 'Jam Datang', 'Jam Pulang', 'Status'];
     const rows = [headers.join(',')];
     gerbangStudents.forEach((s, idx) => {
-      const statusStr = s.hasPulang ? 'Sudah Pulang' : s.hasDatang ? 'Hadir Datang' : 'Belum Scan';
+      const statusStr = s.hasPulang ? 'Sudah Pulang' : s.hasDatang ? 'Hadir Datang' : 'Belum Presensi';
       rows.push([
         idx + 1,
         s.nisn || '',
@@ -551,7 +551,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
   const totalGerbangSiswa = gerbangStudents.length;
   const totalGerbangDatang = gerbangStudents.filter(s => s.hasDatang).length;
   const totalGerbangPulang = gerbangStudents.filter(s => s.hasPulang).length;
-  const totalGerbangBelumScan = totalGerbangSiswa - totalGerbangDatang;
+  const totalGerbangBelumPresensi = totalGerbangSiswa - totalGerbangDatang;
 
   const filteredGerbangStudents = gerbangStudents.filter(s => {
     if (gerbangFilterStatus === 'datang' && !s.hasDatang) return false;
@@ -752,7 +752,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                                   ) : (
                                     <div className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
                                       <i className="fa-solid fa-clock text-[8px]"></i>
-                                      Piket: Belum Scan
+                                      Piket: Belum Presensi
                                     </div>
                                   )}
                                   {currentRec.logs && currentRec.logs.length > 0 && (
@@ -840,7 +840,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                     <span>Presensi Gerbang Piket</span>
                   </h2>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Data kedatangan harian siswa tercatat melalui pos gerbang/piket QR.
+                    Data kedatangan harian siswa tercatat melalui pos gerbang/piket.
                   </div>
                 </div>
 
@@ -925,7 +925,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                   </div>
                 </div>
 
-                {/* Summary Metric Cards: Total Siswa, Hadir Datang, Pulang, Belum Scan */}
+                {/* Summary Metric Cards: Total Siswa, Hadir Datang, Pulang, Belum Presensi */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 p-3 rounded-xl text-center shadow-sm">
                     <div className="text-xs font-bold text-blue-800 dark:text-blue-300 flex items-center justify-center gap-1.5 mb-1">
@@ -954,9 +954,9 @@ export default function RekapSiswaView({ user }: { user: any }) {
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 p-3 rounded-xl text-center shadow-sm">
                     <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center justify-center gap-1.5 mb-1">
                       <i className="fa-solid fa-clock-rotate-left text-amber-500"></i>
-                      <span>Belum Scan</span>
+                      <span>Belum Presensi</span>
                     </div>
-                    <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{totalGerbangBelumScan}</div>
+                    <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{totalGerbangBelumPresensi}</div>
                   </div>
                 </div>
 
@@ -1006,7 +1006,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                           : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300'
                       }`}
                     >
-                      Belum Scan ({totalGerbangBelumScan})
+                      Belum Presensi ({totalGerbangBelumPresensi})
                     </button>
                   </div>
 
@@ -1066,7 +1066,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                  <i className="fa-solid fa-clock text-[9px]"></i> Belum Scan
+                                  <i className="fa-solid fa-clock text-[9px]"></i> Belum Presensi
                                 </span>
                               )}
                             </td>

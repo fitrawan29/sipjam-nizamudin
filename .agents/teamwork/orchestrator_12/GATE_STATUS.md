@@ -9,7 +9,8 @@
 - Gate Result: **PASS**
 
 ## Milestone M3: Piket View QR vs Manual
-- Gate Result: PENDING
+- Worker: DONE (PiketView school mode fetching, class-filtered manual roster, mark Datang/Pulang, retain QR scanner, tsc & build passed)
+- Gate Result: **PASS**
 
 ## Milestone M4: Downstream Alignment & Verification
 - Gate Result: PENDING

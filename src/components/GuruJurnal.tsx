@@ -754,11 +754,12 @@ export default function GuruJurnal({ user }: { user: any }) {
     setKelas('');
 
     // Fetch jadwal of the selected guru
-    const { data } = await supabase
+    let gmQuery = supabase
       .from('guru_mapel')
       .select('*')
-      .eq('guru_id', guruId)
-      .order('nama_mapel', { ascending: true });
+      .eq('guru_id', guruId);
+    if (user?.sekolah_id) gmQuery = gmQuery.eq('sekolah_id', user.sekolah_id);
+    const { data } = await gmQuery.order('nama_mapel', { ascending: true });
 
     if (data && data.length > 0) {
       const mapels = data.map(d => ({
@@ -1087,7 +1088,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                               type="button"
                               onClick={handleApplyPiketAttendance}
                               className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
-                              title="Tandai siswa yang sudah scan di gerbang piket sebagai Hadir"
+                              title="Tandai siswa yang sudah presensi di gerbang piket sebagai Hadir"
                             >
                               <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Piket
                             </button>
@@ -1108,7 +1109,7 @@ export default function GuruJurnal({ user }: { user: any }) {
                                           </span>
                                         ) : (
                                           <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
-                                            <i className="fa-solid fa-clock text-[8px]"></i> Belum Scan Piket
+                                            <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Piket
                                           </span>
                                         )}
                                       </div>
