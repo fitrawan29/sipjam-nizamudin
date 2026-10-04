@@ -1,39 +1,42 @@
-# Handoff Report: 4 Minimal Ponytail Improvements
+# Handoff Report: Kamera Portrait & Anti Auto-Zoom Guru Presensi
 
 > [!WARNING] **Skepticism Disclaimer**
-> Highly confident in the compile, test suite, and simulated lifecycle verifications; however, real-world browser offline transitions and mobile canvas compression behaviors rely on underlying browser capabilities and device-specific memory limits that must be observed in field testing.
+> High confidence in the orientation prop enforcement, CSS object-contain anti-zoom, canvas zero-crop logic, and automated test suite; however, hardware-level auto-focus/zoom mechanisms and device camera driver aspect ratio behaviors on physical OEM Android/iOS devices require real device validation.
 
 ## 1. What I changed
-- `src/components/AppScreen.tsx`: Wrapped all 18 sub-views with `next/dynamic` (`dynamic(() => import('./...'))`), splitting heavy view code into separate chunks loaded on-demand without modifying context or layout hierarchy.
-- `src/components/GuruPresensi.tsx`: Added offline fallback queue storing payload + selfie data URL in `localStorage` (`sipjam_offline_presensi` and `sipjam_offline_presensi_queue`) upon network error or when offline, and registered `window.addEventListener('online', ...)` to automatically replay submissions, convert data URLs back to `File` via native `dataUrlToFile`, upload to Drive, and refresh state.
-- `src/components/GuruJurnal.tsx`: Implemented automatic form state persistence to `localStorage` (`sipjam_jurnal_autosave`) on user input with restoration on mount guarded against empty state overwrites, cleared upon successful submission; implemented zero-dependency native HTML `<canvas>` image compression (`compressImageWithCanvas`) scaling photos before transmission.
-- `src/app/globals.css`: Unified scattered print styles into `@media print` with universal `break-inside: avoid !important;` and `page-break-inside: avoid !important;` rules for `.page-break-inside-avoid`, `.break-inside-avoid`, `.print-card`, `.card`, table rows (`tr`), headers, figures, and signatures.
-- `package.json`: Registered `tests/four_ponytail_improvements.test.ts` in `"test"` script without adding any new external dependencies.
-- `tests/four_ponytail_improvements.test.ts`: Added automated audit and simulation test suite verifying zero new dependencies, dynamic sub-view imports, presensi offline queue and sync lifecycle, jurnal form draft persistence and canvas compression, and unified print CSS.
+- Verified and validated `src/components/GuruPresensi.tsx`: Camera invocation strictly passes `orientation="portrait"` to `CameraSelfieCapture`.
+- Verified and validated `src/components/CameraSelfieCapture.tsx`:
+  - `MediaStreamConstraints` requests portrait dimensions (`width: 720, height: 1280`) when `orientation === 'portrait'`.
+  - Viewfinder container applies `aspect-[3/4] max-w-sm mx-auto` for portrait orientation.
+  - Video element (`<video>`) and captured preview image (`<img>`) enforce CSS `object-contain` (eliminating `object-cover` auto-cropping and unwanted zoom).
+  - Forwards `orientation` prop to `drawWatermarkedCanvas`.
+- Verified and validated `src/lib/watermarkCanvas.ts`:
+  - `drawWatermarkedCanvas` accepts `orientation?: 'portrait' | 'landscape'`.
+  - For portrait orientation on vertical mobile streams (`width < height`), retains uncropped 1x sensor scale (`drawWidth = width`, `drawHeight = height`, `offsetX = 0`, `offsetY = 0`) to prevent artificial zoom or crop.
+  - For desktop landscape webcams in portrait mode, crops to centered 3:4 aspect ratio.
 
 ## 2. Why
-To deliver minimal, Ponytail-style improvements:
-1. Dynamic imports in `AppScreen.tsx` shrink initial client bundle size by deferring view chunks until navigated.
-2. Offline fallback queue in `GuruPresensi.tsx` ensures teachers in low-connectivity areas do not lose attendance records when connection drops.
-3. Auto-save in `GuruJurnal.tsx` preserves multi-field KBM draft progress across accidental page refreshes, and HTML `<canvas>` photo compression prevents payload timeouts and saves mobile bandwidth.
-4. Unified print CSS in `globals.css` consolidates scattered print page-break rules without redundant custom `<style>` blocks.
+- **R1 (Kamera Portrait)**: Teachers taking attendance require an upright portrait framing tailored to smartphone mobile usage and facial selfie identification.
+- **R2 (Nonaktifkan Auto-zoom)**: Previously, camera streams using `object-cover` or artificial crop cut off up to 25%-58% of the video frame, making users appear zoomed in. Switching to `object-contain` with 1x uncropped canvas drawing ensures the captured photo matches the live preview exactly with zero crop distortion.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/four_ponytail_improvements.test.ts`: All 8/8 audit & simulation checks PASSED.
-  - `npm test`: Full 20-file regression suite (35 QR/attendance tests, 37 kiosk scanner checks, 31 wali kelas/guru sync tests, etc.) PASSED.
-  - `npx tsc --noEmit`: TypeScript typecheck PASSED with 0 errors.
-  - `npm run build`: Next.js 16.3.4 Turbopack production build compiled successfully and generated 12 static/dynamic routes with 0 errors in 2.4s.
+  - `npx tsx tests/camera_orientation.test.ts`: All 10 sections passed (33 assertions). Verified portrait orientation constraints, `GuruPresensi` props, and canvas aspect ratio scaling.
+  - `npx tsx tests/camera_zoom_fix.test.ts`: All 8 sections passed (35 assertions). Mathematically verified 0% crop and 0% distortion across 4:3, 16:9, 9:16, 1:1, 19.5:9, 21:9, and 5:4 sensor feeds.
+  - `npx tsx tests/adversarial_camera_badge_challenger_1.test.ts`: All 314 adversarial tests passed (0 failures).
+  - `npm test`: Full 20-file test suite passed cleanly (100% pass rate).
+  - `npx tsc --noEmit`: Exited with code 0 (0 type errors).
+  - `npm run build`: Next.js 16.3.4 Turbopack production build succeeded with 0 errors across 12 routes.
 - **Shallow Verification (manual run only):**
-  - Eyeballed dynamic import chunk boundaries and Next.js client-side code-splitting behavior.
-  - Simulated `localStorage` JSON serialization for base64 photo payloads up to typical canvas output sizes.
+  - Inspected DOM attribute hardening (`playsInline`, `autoPlay`, `muted`, absence of static pixel width/height).
+  - Checked letterboxing/pillarboxing styling in dark background viewport.
 - **Unverified aspects:**
-  - Real device physical network interface disconnection (e.g. airplane mode toggle on actual Android/iOS hardware) in live production browser.
-  - Browser localStorage quota limits if hundreds of high-res photos are queued without reconnecting.
+  - Physical camera hardware on actual mobile phones running various OEM camera drivers (e.g., Samsung One UI, Xiaomi MIUI, iOS Safari).
+  - Camera sensors with proprietary hardware digital zoom enabled at the OS/firmware level.
 
 ## 4. Known Issues
-- `Minor Robustness Risk` — Browser `localStorage` has a typical quota of 5-10MB; if a device remains offline for dozens of presensi submissions with large photos, storage quota could be reached. Canvas compression and queue clearance on reconnect mitigate this.
-- `Shallow Verification` — Native HTML `<canvas>.toBlob()` behavior on very old mobile webview browsers where canvas memory allocation may vary.
+- `Minor Robustness Risk` — If a user uses a desktop webcam (typically fixed landscape 16:9) for portrait presensi, `drawWatermarkedCanvas` centers and crops the horizontal feed to 3:4 vertical orientation. This is intentional to ensure the resulting attendance card is portrait.
+- `Shallow Verification` — Exact appearance of letterboxing on very narrow physical mobile screens (< 320px width).
 
 ## 5. Untested Edge Cases & Next Step
-- Reviewers should test taking attendance with device in airplane mode, taking a photo, verifying `localStorage` key `sipjam_offline_presensi`, turning airplane mode off, and verifying that the `online` event triggers automatic upload to Supabase and Drive.
+- Reviewer should test on a physical mobile device: open Guru Presensi, verify the camera opens in portrait mode, take a selfie, and verify that the preview image matches the live viewfinder framing without unexpected magnification or cropping.

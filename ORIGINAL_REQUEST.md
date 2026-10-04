@@ -714,3 +714,30 @@ Komponen lain yang membaca/menampilkan data presensi siswa (`RekapSiswaView.tsx`
 - [ ] `tsc --noEmit` 0 error
 - [ ] `npm run build` lulus
 - [ ] Data multi-tenant terisolasi per `sekolah_id` — sekolah A tidak bocor ke B
+
+
+## 2026-10-04T22:19:58Z
+
+# Teamwork Project Prompt
+
+> Requested team: Small focused team
+
+This is a single self-contained fix; keep it small and focused.
+Guru presensi. Kamera khusus mode portrait. Gambar tidak auto-zoom saat diambil.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Kamera Portrait
+Pastikan kamera hanya menggunakan mode portrait saat guru melakukan presensi.
+
+### R2. Nonaktifkan Auto-zoom
+Pastikan gambar yang diambil tidak mengalami auto-zoom secara otomatis.
+
+## Acceptance Criteria
+
+### Verifikasi Manual User
+- [ ] Fitur presensi guru membuka kamera dalam orientasi portrait.
+- [ ] Hasil jepretan kamera sama persis dengan preview, tanpa zoom atau pemotongan (crop) otomatis.

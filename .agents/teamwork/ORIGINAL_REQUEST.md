@@ -807,3 +807,30 @@ Move scattered print styles into `@media print` inside `globals.css` (e.g., `bre
 - [ ] Disconnecting the network and submitting Presensi saves data to `localStorage`; reconnecting triggers the sync logic.
 - [ ] Refreshing the `GuruJurnal` page restores previously entered form data.
 - [ ] The app builds successfully (`npm run build` or `tsc --noEmit`) without type errors.
+
+
+## 2026-10-04T22:19:58Z
+
+# Teamwork Project Prompt
+
+> Requested team: Small focused team
+
+This is a single self-contained fix; keep it small and focused.
+Guru presensi. Kamera khusus mode portrait. Gambar tidak auto-zoom saat diambil.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Kamera Portrait
+Pastikan kamera hanya menggunakan mode portrait saat guru melakukan presensi.
+
+### R2. Nonaktifkan Auto-zoom
+Pastikan gambar yang diambil tidak mengalami auto-zoom secara otomatis.
+
+## Acceptance Criteria
+
+### Verifikasi Manual User
+- [ ] Fitur presensi guru membuka kamera dalam orientasi portrait.
+- [ ] Hasil jepretan kamera sama persis dengan preview, tanpa zoom atau pemotongan (crop) otomatis.
