@@ -75,8 +75,8 @@ assert(
   rekapContent.includes('totalGerbangSiswa') &&
   rekapContent.includes('totalGerbangDatang') &&
   rekapContent.includes('totalGerbangPulang') &&
-  rekapContent.includes('totalGerbangBelumScan'),
-  'RekapSiswaView calculates and displays 4 summary cards: Total Siswa, Hadir Datang, Pulang, Belum Scan'
+  (rekapContent.includes('totalGerbangBelumScan') || rekapContent.includes('totalGerbangBelumPresensi')),
+  'RekapSiswaView calculates and displays 4 summary cards: Total Siswa, Hadir Datang, Pulang, Belum Scan / Belum Presensi'
 );
 
 // Student table columns & badges
@@ -85,7 +85,7 @@ assert(
   rekapContent.includes('Jam Pulang') &&
   rekapContent.includes('Hadir Datang') &&
   rekapContent.includes('Sudah Pulang') &&
-  rekapContent.includes('Belum Scan'),
+  (rekapContent.includes('Belum Scan') || rekapContent.includes('Belum Presensi')),
   'RekapSiswaView displays student gate table with NISN, Nama, Jam Datang, Jam Pulang, and status badges'
 );
 
@@ -116,8 +116,8 @@ assert(
 // Gate attendance indicator badges in Live Absensi Murid
 assert(
   jurnalContent.includes('✓ Hadir di Sekolah (Piket') &&
-  jurnalContent.includes('Belum Scan Piket'),
-  'GuruJurnal displays "✓ Hadir di Sekolah (Piket ${jam})" and "Belum Scan Piket" badges in Live Absensi Murid'
+  (jurnalContent.includes('Belum Scan Piket') || jurnalContent.includes('Belum Presensi Piket')),
+  'GuruJurnal displays "✓ Hadir di Sekolah (Piket ${jam})" and "Belum Scan Piket" / "Belum Presensi Piket" badges in Live Absensi Murid'
 );
 
 // Action button "Terapkan Presensi Piket"

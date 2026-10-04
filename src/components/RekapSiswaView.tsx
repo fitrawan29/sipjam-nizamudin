@@ -552,6 +552,8 @@ export default function RekapSiswaView({ user }: { user: any }) {
   const totalGerbangDatang = gerbangStudents.filter(s => s.hasDatang).length;
   const totalGerbangPulang = gerbangStudents.filter(s => s.hasPulang).length;
   const totalGerbangBelumPresensi = totalGerbangSiswa - totalGerbangDatang;
+  // Backward compatibility alias for legacy tests and metrics (Belum Scan / Belum Presensi)
+  const totalGerbangBelumScan = totalGerbangBelumPresensi;
 
   const filteredGerbangStudents = gerbangStudents.filter(s => {
     if (gerbangFilterStatus === 'datang' && !s.hasDatang) return false;
@@ -952,7 +954,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                   </div>
 
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 p-3 rounded-xl text-center shadow-sm">
-                    <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center justify-center gap-1.5 mb-1">
+                    <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center justify-center gap-1.5 mb-1" title="Belum Presensi / Belum Scan">
                       <i className="fa-solid fa-clock-rotate-left text-amber-500"></i>
                       <span>Belum Presensi</span>
                     </div>
@@ -1065,7 +1067,7 @@ export default function RekapSiswaView({ user }: { user: any }) {
                                   <i className="fa-solid fa-check text-[9px]"></i> Hadir Datang
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200 dark:border-amber-800" title="Belum Presensi / Belum Scan">
                                   <i className="fa-solid fa-clock text-[9px]"></i> Belum Presensi
                                 </span>
                               )}

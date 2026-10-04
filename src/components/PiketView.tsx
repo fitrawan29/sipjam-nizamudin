@@ -344,10 +344,10 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   useEffect(() => {
-    if (activeTab !== 'scan' && cameraActive) {
+    if ((activeTab !== 'scan' || modePresensiSiswa === 'manual') && cameraActive) {
       stopCamera();
     }
-  }, [activeTab]);
+  }, [activeTab, modePresensiSiswa, cameraActive]);
 
   useEffect(() => {
     return () => {
@@ -511,20 +511,20 @@ export default function PiketView({ user }: { user: any }) {
       });
 
       if (res.success) {
-        showToast(res.message, 'success');
+        showToast('Berhasil', res.message, 'success');
         playAudioFeedback('success');
         await fetchTodayScanData();
       } else if (res.alreadyExists) {
-        showToast(res.message, 'info');
+        showToast('Info', res.message, 'info');
         playAudioFeedback('warning');
         await fetchTodayScanData();
       } else {
-        showToast(res.message, 'error');
+        showToast('Gagal', res.message || 'Terjadi kesalahan', 'error');
         playAudioFeedback('error');
       }
     } catch (err: any) {
       console.error('Error marking manual presensi:', err);
-      showToast(err.message || 'Gagal menandai presensi', 'error');
+      showToast('Error', err.message || 'Gagal menandai presensi', 'error');
       playAudioFeedback('error');
     } finally {
       setManualMarkLoading(null);
@@ -549,11 +549,11 @@ export default function PiketView({ user }: { user: any }) {
         if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
         const { error } = await q;
         if (error) throw error;
-        showToast(`Presensi ${status} ${namaSiswa} berhasil dibatalkan`, 'info');
+        showToast('Info', `Presensi ${status} ${namaSiswa} berhasil dibatalkan`, 'info');
         await fetchTodayScanData();
       } catch (e: any) {
         console.error('Error cancelling presensi:', e);
-        showToast('Gagal membatalkan presensi: ' + e.message, 'error');
+        showToast('Gagal', 'Gagal membatalkan presensi: ' + e.message, 'error');
       }
     }
   };

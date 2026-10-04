@@ -1,17 +1,15 @@
 # Gate Status Log
 
-## Milestone M1: Database Migration & Types
-- Worker: DONE (Migration applied, constraints verified, tsc passed 0 errors)
-- Gate Result: **PASS**
+## Iteration 1 Gate Status
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| reviewer_1 | teamwork_preview_reviewer | REQUEST_CHANGES | handoff.md |
+| reviewer_2 | teamwork_preview_reviewer | APPROVE | handoff.md |
+| challenger_1 | teamwork_preview_challenger | APPROVE | handoff.md |
+| challenger_2 | teamwork_preview_challenger | APPROVE | handoff.md |
+| auditor_1 | teamwork_preview_auditor | CLEAN | handoff.md |
 
-## Milestone M2: Superadmin Configuration UI
-- Worker: DONE (SuperadminView modals, table badges, quick toggle, tsc & build passed)
-- Gate Result: **PASS**
+Gate Result: **FAIL** (reviewer_1 REQUEST_CHANGES on legacy test string alignment & toast argument order in PiketView)
 
-## Milestone M3: Piket View QR vs Manual
-- Worker: DONE (PiketView school mode fetching, class-filtered manual roster, mark Datang/Pulang, retain QR scanner, tsc & build passed)
-- Gate Result: **PASS**
-
-## Milestone M4: Downstream Alignment & Verification
-- Worker: DONE (RekapSiswaView & GuruJurnal phrasing neutralized, multi-tenant isolation strengthened, tsc & build passed)
-- Gate Result: **PASS**
+## Remediation & Iteration 2
+- Remediation Worker (`234ddb77`): In-progress fixing toast argument order, camera stop on mode switch, and updating legacy test assertions.
