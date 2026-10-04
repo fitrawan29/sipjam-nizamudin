@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-04T01:54:00Z
+# BRIEFING — 2026-10-04T01:58:00Z
 
 ## Mission
 Empirically test database constraints, schema defaults, and mode transitions for mode_presensi_siswa in Supabase, verify rejection of invalid modes and multi-tenant isolation, run tsc --noEmit, and deliver handoff with APPROVE/FAIL verdict.
@@ -30,12 +30,13 @@ Empirically test database constraints, schema defaults, and mode transitions for
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Invalid mode strings (e.g. 'invalid', '', 'QR', 'MANUAL', 'hybrid') violate check constraint
-  - NULL values rejected by NOT NULL constraint
-  - Default value on INSERT without mode_presensi_siswa is 'qr'
-  - Updating one school does not affect other schools (multi-tenant isolation)
-- **Vulnerabilities found**: [Testing in progress]
-- **Untested angles**: [Testing in progress]
+  - Invalid mode strings ('invalid', '', 'QR', 'MANUAL', 'hybrid') violate check constraint -> Confirmed Postgres error 23514
+  - NULL values rejected by NOT NULL constraint -> Confirmed Postgres error 23502
+  - Default value on INSERT without mode_presensi_siswa is 'qr' -> Confirmed 'qr' populated automatically
+  - Updating one school does not affect other schools (multi-tenant isolation) -> Confirmed independent tenant states
+  - TypeScript types and compilation -> Confirmed npx tsc --noEmit exits 0
+- **Vulnerabilities found**: None. System adheres to all specifications and constraints.
+- **Untested angles**: All dispatched angles tested and passed.
 
 ## Loaded Skills
 - **Source**: C:\Users\Fitra\.gemini\config\plugins\ponytail\skills\ponytail\SKILL.md
@@ -43,11 +44,12 @@ Empirically test database constraints, schema defaults, and mode transitions for
 - **Core methodology**: Forces minimal working code, YAGNI, standard library / platform features first, root-cause fixes.
 
 ## Key Decisions Made
-- Execute SQL queries directly via Supabase MCP `execute_sql` tool on project `jicvvqxjyzntdrccnuyz`.
-- Run `npx tsc --noEmit` via terminal command.
-- Restore all modified school records to their initial state after testing.
+- Executed direct SQL queries against Supabase Postgres instance to observe constraint definitions and raw Postgres error codes.
+- Created standalone test harness `tests/adversarial_mode_presensi_challenger_1.test.ts` for repeatable verification.
+- Delivered handoff report with verdict APPROVE.
 
 ## Artifact Index
-- handoff.md — Verification report with explicit verdict
+- handoff.md — Verification report with explicit verdict (APPROVE)
 - progress.md — Liveness heartbeat and milestone tracking
 - DISPATCH.md — Task dispatch record
+- tests/adversarial_mode_presensi_challenger_1.test.ts — Automated challenger test harness
