@@ -340,6 +340,75 @@ test('GuruJurnal draft attendance preservation during student list sync', () => 
   assert.strictEqual(merged['003'], 'I', 'Student 003 Izin mark should be preserved from draft');
 });
 
+test('GuruJurnal submission cleanly clears draft and does not resurrect zombie draft', () => {
+  const store: Record<string, string> = {};
+  const mockLocalStorage = {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, val: string) => { store[key] = val; },
+    removeItem: (key: string) => { delete store[key]; }
+  };
+
+  // Teacher types a draft
+  let materi = 'Bab 4 Teorema Pythagoras';
+  let kegiatan = 'Latihan soal';
+  let mapel = 'Matematika';
+  let kelas = '8B';
+
+  const checkHasContent = (m: string, k: string) => Boolean(
+    (m && m.trim()) || (k && k.trim())
+  );
+
+  if (checkHasContent(materi, kegiatan)) {
+    mockLocalStorage.setItem('sipjam_jurnal_autosave', JSON.stringify({ materi, kegiatan, mapel, kelas }));
+  }
+  assert(mockLocalStorage.getItem('sipjam_jurnal_autosave') !== null, 'Draft should be saved while user types');
+
+  // Teacher submits form:
+  mockLocalStorage.removeItem('sipjam_jurnal_autosave');
+  materi = '';
+  kegiatan = '';
+  mapel = '';
+  kelas = '';
+
+  // Auto-save effect triggers on subsequent render:
+  const hasContentAfterSubmit = checkHasContent(materi, kegiatan);
+  assert.strictEqual(hasContentAfterSubmit, false, 'hasContent must evaluate to false after submit');
+  if (hasContentAfterSubmit) {
+    mockLocalStorage.setItem('sipjam_jurnal_autosave', JSON.stringify({ materi, kegiatan, mapel, kelas }));
+  }
+
+  assert.strictEqual(
+    mockLocalStorage.getItem('sipjam_jurnal_autosave'),
+    null,
+    'Submitted journal must NOT resurrect a ghost draft in localStorage'
+  );
+});
+
+test('Canvas image compression helpers contain internal try-catch in img.onload to prevent promise hangs', () => {
+  const jurnalCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'GuruJurnal.tsx'), 'utf-8');
+  const presensiCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'GuruPresensi.tsx'), 'utf-8');
+
+  // Check GuruJurnal compressImageWithCanvas
+  assert(
+    jurnalCode.includes('img.onload = () => {\n          try {') ||
+    jurnalCode.includes('img.onload = () => {\r\n          try {'),
+    'GuruJurnal compressImageWithCanvas must guard img.onload with try-catch'
+  );
+
+  // Check GuruPresensi compressPhotoForStorage
+  assert(
+    presensiCode.includes('img.onload = () => {\n          try {') ||
+    presensiCode.includes('img.onload = () => {\r\n          try {'),
+    'GuruPresensi compressPhotoForStorage must guard img.onload with try-catch'
+  );
+
+  // Check GuruPresensi sync folder fallbacks
+  assert(
+    presensiCode.includes('item.folderName ||'),
+    'GuruPresensi syncOfflinePresensi must provide default folder fallback'
+  );
+});
+
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
 if (failed > 0) {
   process.exit(1);

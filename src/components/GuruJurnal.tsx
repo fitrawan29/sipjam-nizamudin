@@ -69,55 +69,59 @@ export default function GuruJurnal({ user }: { user: any }) {
         const img = new Image();
         const objectUrl = URL.createObjectURL(imageFile);
         img.onload = () => {
-          URL.revokeObjectURL(objectUrl);
-          let { width, height } = img;
-          if (width > maxWidth || height > maxHeight) {
-            if (width / height > maxWidth / maxHeight) {
-              height = Math.round((height * maxWidth) / width);
-              width = maxWidth;
-            } else {
-              width = Math.round((width * maxHeight) / height);
-              height = maxHeight;
+          try {
+            URL.revokeObjectURL(objectUrl);
+            let { width, height } = img;
+            if (width > maxWidth || height > maxHeight) {
+              if (width / height > maxWidth / maxHeight) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              } else {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
             }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return resolve(imageFile);
-          ctx.drawImage(img, 0, 0, width, height);
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return resolve(imageFile);
+            ctx.drawImage(img, 0, 0, width, height);
 
-          if (typeof canvas.toBlob === 'function') {
-            canvas.toBlob(
-              (blob) => {
-                if (!blob) return resolve(imageFile);
+            if (typeof canvas.toBlob === 'function') {
+              canvas.toBlob(
+                (blob) => {
+                  if (!blob) return resolve(imageFile);
+                  const compressed = new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                  });
+                  resolve(compressed);
+                },
+                'image/jpeg',
+                quality
+              );
+            } else {
+              try {
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                const byteString = atob(dataUrl.split(',')[1]);
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                  ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: 'image/jpeg' });
                 const compressed = new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), {
                   type: 'image/jpeg',
                   lastModified: Date.now()
                 });
                 resolve(compressed);
-              },
-              'image/jpeg',
-              quality
-            );
-          } else {
-            try {
-              const dataUrl = canvas.toDataURL('image/jpeg', quality);
-              const byteString = atob(dataUrl.split(',')[1]);
-              const ab = new ArrayBuffer(byteString.length);
-              const ia = new Uint8Array(ab);
-              for (let i = 0; i < byteString.length; i++) {
-                ia[i] = byteString.charCodeAt(i);
+              } catch {
+                resolve(imageFile);
               }
-              const blob = new Blob([ab], { type: 'image/jpeg' });
-              const compressed = new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), {
-                type: 'image/jpeg',
-                lastModified: Date.now()
-              });
-              resolve(compressed);
-            } catch {
-              resolve(imageFile);
             }
+          } catch {
+            resolve(imageFile);
           }
         };
         img.onerror = () => {
@@ -167,9 +171,14 @@ export default function GuruJurnal({ user }: { user: any }) {
   useEffect(() => {
     if (!isRestoredRef.current) return;
     const hasContent = Boolean(
-      materi || kegiatan || catatanSiswa || refleksi ||
-      tujuanPembelajaran || kktp || konten || lokasiKbm ||
-      pertemuanKe || jamKe || mapel || kelas
+      (materi && materi.trim()) ||
+      (kegiatan && kegiatan.trim()) ||
+      (catatanSiswa && catatanSiswa.trim()) ||
+      (refleksi && refleksi.trim()) ||
+      (tujuanPembelajaran && tujuanPembelajaran.trim()) ||
+      (kktp && kktp.trim()) ||
+      (konten && konten.trim()) ||
+      (lokasiKbm && lokasiKbm.trim())
     );
     if (hasContent) {
       const draft = {
@@ -868,6 +877,9 @@ export default function GuruJurnal({ user }: { user: any }) {
         setKktp('');
         setKonten('');
         setLokasiKbm('');
+        setMapel('');
+        setKelas('');
+        setAbsensi({});
         // Reset inval mode
         setIsInval(false);
         setGuruDigantikan(null);

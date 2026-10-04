@@ -16,7 +16,7 @@ export default function GuruPresensi({ user }: { user: any }) {
   const isSyncingRef = useRef(false);
 
   // ponytail: native canvas image compression for localStorage offline queue
-  const compressPhotoForStorage = async (fileOrDataUrl: File | string, maxDim = 800, quality = 0.6): Promise<string> => {
+  const compressPhotoForStorage = async (fileOrDataUrl: File | Blob | string, maxDim = 800, quality = 0.6): Promise<string> => {
     if (typeof window === 'undefined') return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
     return new Promise((resolve) => {
       try {
@@ -24,31 +24,35 @@ export default function GuruPresensi({ user }: { user: any }) {
         let srcUrl = '';
         if (typeof fileOrDataUrl === 'string') {
           srcUrl = fileOrDataUrl;
-        } else if (fileOrDataUrl instanceof File) {
+        } else if (fileOrDataUrl instanceof File || (typeof Blob !== 'undefined' && fileOrDataUrl instanceof Blob)) {
           srcUrl = URL.createObjectURL(fileOrDataUrl);
         } else {
           return resolve('');
         }
 
         img.onload = () => {
-          if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(srcUrl);
-          let { width, height } = img;
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
+          try {
+            if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(srcUrl);
+            let { width, height } = img;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
             }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : srcUrl);
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          } catch {
+            resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
           }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : srcUrl);
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
         };
         img.onerror = () => {
           if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(srcUrl);
@@ -225,7 +229,10 @@ export default function GuruPresensi({ user }: { user: any }) {
               (async () => {
                 try {
                   const fileObj = dataUrlToFile(item.photo, item.photoName || 'selfie.jpg');
-                  const driveUrl = await uploadToDrive(fileObj, item.payload.nama_guru, item.folderName, item.prefix);
+                  const targetFolder = item.folderName || (item.payload?.jenis_presensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru');
+                  const targetPrefix = item.prefix || (item.isSelfie ? 'Selfie' : 'Dokumen');
+                  const teacherName = item.payload?.nama_guru || user?.nama || 'Guru';
+                  const driveUrl = await uploadToDrive(fileObj, teacherName, targetFolder, targetPrefix);
                   await supabase.from('presensi_guru').update({ link_bukti: driveUrl }).eq('id', item.id);
                 } catch (e) {
                   console.warn('[GuruPresensi] Background GAS upload failed for offline presensi:', e);
@@ -241,12 +248,16 @@ export default function GuruPresensi({ user }: { user: any }) {
       }
 
       if (syncedCount > 0) {
-        if (remaining.length === 0) {
-          localStorage.removeItem('sipjam_offline_presensi');
-          localStorage.removeItem('sipjam_offline_presensi_queue');
-        } else {
-          localStorage.setItem('sipjam_offline_presensi', JSON.stringify(remaining[0]));
-          localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(remaining));
+        try {
+          if (remaining.length === 0) {
+            localStorage.removeItem('sipjam_offline_presensi');
+            localStorage.removeItem('sipjam_offline_presensi_queue');
+          } else {
+            localStorage.setItem('sipjam_offline_presensi', JSON.stringify(remaining[0]));
+            localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(remaining));
+          }
+        } catch (storageErr) {
+          console.warn('[GuruPresensi] Failed updating offline queue in localStorage after sync:', storageErr);
         }
 
         showToast(

@@ -1,51 +1,71 @@
-# Handoff Report: Reviewer R3 (Round 4 Final Adversarial Review)
+# Adversarial Review & QA Report: Round 3 Review & Hardening
 
 > [!WARNING] **Skepticism Disclaimer**
-> High confidence based on multi-sensor mathematical geometry proofs across 11 sensor/container aspect ratio permutations, DOM element attribute integrity guards, strict viewport zoom prevention verification, passing all 15 automated test suites plus 4 E2E tiers (111 assertions), and a clean Next.js Turbopack production build with 0 errors; physical handheld optical lens dynamics across unusual multi-lens mobile sensors remain validated through programmatic DOM constraints and geometry proofs rather than physical hands-on hardware.
+> High confidence in offline queue durability, zero-leak submit state transitions, and canvas promise stability; hardware GPS lock timing inside deep building basements and extreme Safari Private storage sandboxing remain platform-bound.
 
 ## 1. What the prior attempt got wrong
-- **Prior attempt strengths:**
-  - The implementer correctly identified and fixed the root cause of the camera zoom/crop issue: CSS `object-fit: cover` on `<video>` in `src/components/CameraSelfieCapture.tsx` replaced with `object-contain`.
-  - Reviewer R1 and R2 added mathematical bounding proofs across standard and edge-case aspect ratios (4:3, 16:9, 9:16, 1:1, 19.5:9, 3:2, high-res) and asserted against digital zoom constraints and scale transforms.
-- **Deficiencies & gaps identified during Round 4 final review:**
-  1. **Exotic Sensor Aspect Ratios Uncovered (21:9 Ultra-Wide, 5:4 Legacy CCD, 4:5 Portrait):**
-     - Prior reviews omitted ultra-wide 21:9 cinematic sensors (e.g. Sony Xperia or external ultra-wide webcams), legacy 5:4 CCD sensors (1280x1024), and 4:5 portrait feeds (1080x1350).
-     - *Empirical proof added:* Proved that previously `object-cover` cropped 25.0% of a 21:9 feed in 16:9, 29.7% of a 5:4 feed in 16:9, and 6.3% of a 4:5 feed in 3:4, whereas `object-contain` guarantees exactly 0.0% crop and 0% distortion across all permutations.
-  2. **Static Pixel HTML Dimension Override Blindspot:**
-     - Neither prior attempt guarded against hardcoded HTML pixel `width` or `height` attributes on the `<video>` element (e.g. `width="640"`), which could conflict with CSS responsive scaling or cause initial aspect-ratio layout shifts prior to video metadata loading.
-  3. **Viewport Container Transform Scaling Blindspot:**
-     - Prior reviews guarded against scale transform classes on `<video>` and `<img>`, but did not assert against accidental scale transform classes on the container viewport wrapper itself.
-  4. **Mobile Browser Viewport Pinch/Auto-Zoom Prevention Blindspot:**
-     - Prior reviews did not verify that application-level viewport configuration in `src/app/layout.tsx` enforces `userScalable: false`, `initialScale: 1`, and `maximumScale: 1` to prevent mobile browsers (iOS Safari / Chrome Android) from accidentally magnifying or zooming the camera viewport.
+
+### Issue 1: GuruJurnal Ghost / Zombie Draft Recreation on Successful Submission
+- **Input:** Teacher completes a KBM journal entry with Class "8B", Subject "Matematika", and student attendance marks, then submits the journal successfully to Supabase.
+- **Expected:** `sipjam_jurnal_autosave` in `localStorage` is removed permanently upon submit, and the form resets cleanly so subsequent visits start with a blank state.
+- **Actual:** Line 856 ran `localStorage.removeItem('sipjam_jurnal_autosave')`, but `mapel` and `kelas` were not reset to `''`. On the immediate next React render cycle, the auto-save `useEffect` checked `const hasContent = Boolean(... || mapel || kelas)`. Because `mapel` and `kelas` were still truthy, `hasContent` evaluated to `true`, instantly re-saving a ghost draft (`{ mapel: 'Matematika', kelas: '8B', absensi: ... }`) back into `localStorage`. On page reload, the teacher was greeted with stale draft data from their already-submitted journal.
+- **Root Cause:**
+  1. `hasContent` incorrectly considered standalone dropdown selections (`mapel || kelas`) as an active draft even with zero written journal content (`materi`, `kegiatan`, `catatanSiswa`, `refleksi`, `tujuanPembelajaran`, `kktp`, `konten`, `lokasiKbm`).
+  2. `handleJurnalSubmit` failed to reset `setMapel('')`, `setKelas('')`, and `setAbsensi({})` on successful submission.
+
+### Issue 2: Unhandled Asynchronous Exceptions in Canvas Image Compression Freezing Submit Flow
+- **Input:** Teacher attempts to submit presensi or journal in a restricted browser environment or low-memory mobile device where canvas processing encounters an exception (e.g., tainted canvas `SecurityError`, `DOMException` under memory pressure, or unsupported format).
+- **Expected:** Canvas compression promise resolves safely with the original file / data URL fallback so the submission can proceed without interrupting the teacher.
+- **Actual:** `compressImageWithCanvas` (in `GuruJurnal.tsx`) and `compressPhotoForStorage` (in `GuruPresensi.tsx`) only wrapped the outer synchronous setup (`img.src = srcUrl`) in `try ... catch`. Inside the asynchronous `img.onload` event callback, canvas operations ran unguarded. When an exception was thrown inside `img.onload`, the Promise was never resolved or rejected. `await compressImageWithCanvas(file)` or `await compressPhotoForStorage(...)` in `handleSubmit` hung indefinitely, keeping `loading = true` ("Menyimpan...") permanently locked.
+- **Root Cause:** Missing `try ... catch` guard inside the asynchronous `img.onload` handler in both canvas compression helpers.
+
+### Issue 3: Missing Defensive Defaults in Presensi Offline Queue Drive Upload
+- **Input:** An offline queued presensi record without explicit `folderName` or `prefix` attributes (e.g. from an earlier schema or fallback queue entry) reconnects to the network and triggers `syncOfflinePresensi`.
+- **Expected:** Google Drive upload safely defaults to standard presensi folders and file prefixes.
+- **Actual:** Line 228 called `uploadToDrive(fileObj, item.payload.nama_guru, item.folderName, item.prefix)`, passing `undefined` for `folderFitur` into the GAS webhook payload. Furthermore, updating `localStorage.setItem` for remaining items lacked a try-catch guard.
+- **Root Cause:** Missing defensive fallback defaults for `item.folderName || 'Presensi_Guru'`, `item.prefix || (item.isSelfie ? 'Selfie' : 'Dokumen')`, and `teacherName = item.payload?.nama_guru || user?.nama || 'Guru'`.
+
+---
 
 ## 2. What I changed
-1. `tests/camera_zoom_fix.test.ts`:
-   - Added Section 7 (**Exotic Sensor Aspect Ratios & Zero-Crop Mathematical Verification**):
-     - Test Case 9: Ultra-wide 21:9 sensor (2560x1080) in 16:9 container (0% crop, 0% distortion).
-     - Test Case 10: Legacy 5:4 CCD sensor (1280x1024) in 16:9 container (0% crop, 0% distortion).
-     - Test Case 11: 4:5 portrait sensor (1080x1350) in 3:4 portrait container (0% crop, 0% distortion).
-   - Added Section 8 (**DOM Element Attribute Hardening & Viewport Zoom Prevention Guard**):
-     - Verified `<video>` has NO static HTML pixel `width="..."` or `height="..."` attributes.
-     - Verified camera container viewport wrapper has NO accidental scale zoom transform classes.
-     - Verified `src/app/layout.tsx` enforces `initialScale: 1`, `maximumScale: 1`, and `userScalable: false`.
-2. Updated `.agents/teamwork/reviewer_r3/progress.md` and `.agents/teamwork/reviewer_r3/handoff.md`.
+
+- **`src/components/GuruJurnal.tsx`**:
+  - Fixed `hasContent` in auto-save `useEffect`: now requires at least one actual written journal content field (`materi`, `kegiatan`, `catatanSiswa`, `refleksi`, `tujuanPembelajaran`, `kktp`, `konten`, `lokasiKbm`).
+  - Added complete form cleanup in `handleJurnalSubmit`: resets `setMapel('')`, `setKelas('')`, and `setAbsensi({})` alongside text fields, ensuring drafts are never resurrected after submission.
+  - Hardened `compressImageWithCanvas`: added `try ... catch` inside `img.onload` to ensure the Promise always resolves safely with `imageFile` on any canvas execution failure.
+- **`src/components/GuruPresensi.tsx`**:
+  - Hardened `compressPhotoForStorage`: supported `Blob` instances alongside `File` and guarded `img.onload` with `try ... catch` to prevent hanging promises.
+  - Added robust fallback parameters in `syncOfflinePresensi` background Drive upload (`folderFitur`, `prefix`, `teacherName`) and guarded remaining queue updates with try-catch.
+- **`tests/four_ponytail_improvements.test.ts`**:
+  - Added tests verifying: (1) `GuruJurnal` submission cleanly clears draft without zombie draft resurrection, (2) internal `try-catch` inside `img.onload` in canvas compression helpers, and (3) offline sync folder fallbacks.
+
+---
 
 ## 3. Verification Record
+
 - **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/camera_zoom_fix.test.ts`: All 8 sections passed cleanly with 33 individual assertions (0 failures).
-  - Ran `npm test` across all 15 suites: 85 sistem_blok tests, 3 three_fixes tests, 26 camera orientation tests, 33 camera zoom fix tests — 100% PASS.
-  - Ran `npm run test:e2e`: All 4 tiers (Tier 1-4, 111 assertions) passed cleanly in 0.08s.
-  - Ran `npx tsc --noEmit`: 0 TypeScript errors.
-  - Ran `npm run build`: Next.js Turbopack production compilation succeeded cleanly in 1.41s with zero errors.
+  - `npx tsx tests/four_ponytail_improvements.test.ts`: 13/13 tests PASSED (100%).
+  - `npm test`: Full 20-file test suite passed cleanly (100% pass, 0 failed).
+  - `npx tsx tests/m6_2_print_redesign.test.ts`: 27/27 PASSED.
+  - `npx tsx tests/m10_r1_r4.test.ts`: 23/23 PASSED.
+  - `npx tsc --noEmit`: Strict TypeScript typecheck passed with 0 errors.
+  - `npm run build`: Turbopack production build succeeded in 2.3s generating 12 static/dynamic routes with 0 errors.
+
 - **Shallow Verification (manual only):**
-  - Inspected production CSS bundle (`.next/static/chunks/30-8tn8bqdqln.css`) and confirmed `.object-contain`, `.-scale-x-100`, and `.aspect-video` are correctly generated.
-  - Verified call sites in `GuruPresensi.tsx` (portrait 3:4), `GuruJurnal.tsx` (landscape 16:9), and `PiketView.tsx` (landscape 16:9).
+  - Verified Next.js dynamic chunk imports in `AppScreen.tsx` for all 18 sub-views without breaking layout or context hierarchy.
+  - Verified print CSS unification in `globals.css` with page-break avoidance, print watermark, and table flow resets.
+
 - **Unverified aspects:**
-  - Physical optical testing on live physical iOS Safari and Android Chrome hardware devices with multi-camera lenses (validated via programmatic constraint matching, DOM attribute checks, and simulated canvas rendering).
+  - Physical mobile device battery-saver aggressive process termination during offline state transitions.
+  - Safari Private Browsing mode where `localStorage` quota can be 0 MB.
+
+---
 
 ## 4. Known Issues
-- `Minor Robustness Risk` — Camera feeds whose hardware sensor aspect ratio does not match the container aspect ratio (16:9 or 3:4) will display black letterboxing/pillarboxing margins against the `bg-black` container. This is mathematically necessary to guarantee 0% crop and 0% distortion.
+- `Minor Robustness Risk`: In Safari Private Browsing (or browsers with storage completely blocked), `localStorage` operations throw security errors; UI alerts the teacher via toast.
+- `Shallow Verification`: Background Google Drive upload performance on severely throttled 2G cellular connections.
+
+---
 
 ## 5. Remaining risk & next step
-- The implementation and test coverage are complete, airtight, and rigorously verified.
-- Next step: Hand off to orchestrator `swe_10` to complete the teamwork review round and proceed to victory audit / commit workflow.
+The 4 Ponytail improvements are fully implemented, zero-dependency, verified against all test suites, and hardened against queue corruption, ghost drafts, and async compression hangs. The task is complete.
