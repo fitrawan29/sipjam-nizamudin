@@ -25,26 +25,26 @@ SIPJAM is a multi-tenant school management system built on Next.js 16 (React 19)
 ---
 
 ## Feature Inventory
-| # | Feature | Description | Milestone | Source |
-|---|---------|-------------|-----------|--------|
-| 1 | Akses Piket Sesuai Jadwal | Cek `penugasan_piket` & `jadwal_piket` hari ini; sembunyikan menu & blokir akses non-piket; Admin/Superadmin bypass | M1 | R1 |
-| 2 | Pembatasan Rekap Wali Kelas | Menu & view `RekapSiswaView` hanya untuk Wali Kelas; dropdown kelas terkunci mutlak ke kelas binaan | M1 | R2 |
-| 3 | Akses Presensi Guru Mapel | Guru Mapel tetap dapat melihat & mengelola kehadiran murid di kelas/mapel binaan saat KBM (`GuruJurnal`) | M1 | R2 |
-| 4 | Sembunyikan Robot & UI Melayang saat Print | Sembunyikan tombol robot AI, chat popup, floating reminder/modals saat cetak (`@media print` & `no-print`) | M2 | R3 |
-| 5 | Pertahankan Watermark Sekolah | Watermark sekolah (`.sipjam-print-watermark`) tetap tercetak di background kertas dan tidak boleh disembunyikan | M2 | R3 |
-| 6 | Standarisasi Format Cetak Dokumen Guru | `DokumenView` & `RekapJurnalView` disamakan strukturnya dengan standar Admin (`PrintHeader`, tabel `px-2 py-1.5`, `PrintSignature`) | M2 | R3 |
-| 7 | Generator & Download Kartu QR Siswa | Download kartu presensi PNG via HTML5 Canvas (Nama, NISN, Kelas, Nama Sekolah, QR code) di `AdminDataView` | M3 | R4 |
-| 8 | Verifikasi, Audit, & Git Workflow | `tsc --noEmit`, `npm run build`, unit/integration tests, Reviewer, Challenger, Forensic Auditor, Git commit & push | M4 | R1-R4, GEMINI.md |
+| # | Feature | Description | Milestone | Source | Status |
+|---|---------|-------------|-----------|--------|--------|
+| 1 | Akses Piket Sesuai Jadwal | Cek `penugasan_piket` & `jadwal_piket` hari ini; sembunyikan menu & blokir akses non-piket; Admin/Superadmin bypass | M1 | R1 | DONE |
+| 2 | Pembatasan Rekap Wali Kelas | Menu & view `RekapSiswaView` hanya untuk Wali Kelas; dropdown kelas terkunci mutlak ke kelas binaan | M1 | R2 | DONE |
+| 3 | Akses Presensi Guru Mapel | Guru Mapel tetap dapat melihat & mengelola kehadiran murid di kelas/mapel binaan saat KBM (`GuruJurnal`) | M1 | R2 | DONE |
+| 4 | Sembunyikan Robot & UI Melayang saat Print | Sembunyikan tombol robot AI, chat popup, floating reminder/modals saat cetak (`@media print` & `no-print`) | M2 | R3 | DONE |
+| 5 | Pertahankan Watermark Sekolah | Watermark sekolah (`.sipjam-print-watermark`) tetap tercetak di background kertas dan tidak boleh disembunyikan | M2 | R3 | DONE |
+| 6 | Standarisasi Format Cetak Dokumen Guru | `DokumenView` & `RekapJurnalView` disamakan strukturnya dengan standar Admin (`PrintHeader`, tabel `px-2 py-1.5`, `PrintSignature`) | M2 | R3 | DONE |
+| 7 | Generator & Download Kartu QR Siswa | Download kartu presensi PNG via HTML5 Canvas (Nama, NISN, Kelas, Nama Sekolah, QR code) di `AdminDataView` | M3 | R4 | DONE |
+| 8 | Verifikasi, Audit, & Git Workflow | `tsc --noEmit`, `npm run build`, unit/integration tests, Reviewer, Challenger, Forensic Auditor, Git commit & push | M4 | R1-R4, GEMINI.md | DONE |
 
 ---
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Piket & Attendance Access Control | R1 (Akses Piket sesuai jadwal hari ini) & R2 (Rekap Wali Kelas vs Guru Mapel) | none | IN_PROGRESS |
-| M2 | Print Layout, Hide Robot UI & Watermark | R3 (Format cetak guru identik admin, sembunyikan robot & tombol melayang, pertahankan watermark) | none | PLANNED |
-| M3 | Download Kartu Presensi QR Siswa | R4 (Download kartu identitas QR siswa PDF/Image di AdminDataView) | none | PLANNED |
-| M4 | Comprehensive Verification, Audit & Git Delivery | Automated test suite, `tsc --noEmit`, `npm run build`, Reviewer, Challenger, Auditor, Git commit & push | M1, M2, M3 | PLANNED |
+| M1 | Piket & Attendance Access Control | R1 (Akses Piket sesuai jadwal hari ini) & R2 (Rekap Wali Kelas vs Guru Mapel) | none | DONE |
+| M2 | Print Layout, Hide Robot UI & Watermark | R3 (Format cetak guru identik admin, sembunyikan robot & tombol melayang, pertahankan watermark) | none | DONE |
+| M3 | Download Kartu Presensi QR Siswa | R4 (Download kartu identitas QR siswa PDF/Image di AdminDataView) | none | DONE |
+| M4 | Comprehensive Verification, Audit & Git Delivery | Automated test suite, `tsc --noEmit`, `npm run build`, Reviewer, Challenger, Auditor, Git commit & push | M1, M2, M3 | DONE |
 
 ---
 
@@ -60,8 +60,8 @@ SIPJAM is a multi-tenant school management system built on Next.js 16 (React 19)
 - `src/components/RekapJurnalView.tsx`: Standardisasi padding sel tabel (`px-2 py-1.5`), header bg, hide raw GPS geotag, signature wali kelas.
 - `src/lib/qrSiswa.ts`: Penambahan helper `downloadStudentCardPng`, `generateStudentCardCanvas`, `printStudentQrCardWithSchool`.
 - `src/components/AdminDataView.tsx`: Tombol "Download Kartu" per siswa, modal preview dengan opsi download & print, batch print/download.
-- `tests/piket_wali_access.test.ts`: Uji otomatis hak akses piket dan rekap wali kelas.
-- `tests/print_and_qr_card.test.ts`: Uji otomatis CSS print, watermark, dan generator kartu siswa.
+- `tests/adversarial_piket_wali_challenger_1.test.ts`: Uji empiris hak akses piket dan rekap wali kelas (42 tests).
+- `tests/adversarial_r3_r4_challenger_2.test.ts`: Uji empiris CSS print, watermark, dan generator kartu siswa (102 tests).
 
 ---
 
