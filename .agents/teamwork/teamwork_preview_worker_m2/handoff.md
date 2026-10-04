@@ -1,104 +1,54 @@
-# Handoff Report: Milestone 2 Implementation
-
-**Agent**: Worker (teamwork_preview_worker)  
-**Date**: 2026-10-03T07:32:00Z  
-**Type**: Hard Handoff  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_preview_worker_m2`
-
----
+# Handoff Report: Milestone M2 - Superadmin Configuration UI (`mode_presensi_siswa`)
 
 ## 1. Observation
-
-1. **Database Schema & Types**:
-   - Migration created at `supabase/migrations/20261003_add_kktp_konten_lokasi_kbm.sql`:
-     ```sql
-     ALTER TABLE public.jurnal_pembelajaran 
-       ADD COLUMN IF NOT EXISTS kktp TEXT,
-       ADD COLUMN IF NOT EXISTS konten TEXT,
-       ADD COLUMN IF NOT EXISTS lokasi_kbm TEXT;
-     ```
-   - In `src/types/database.ts`: added `kktp`, `konten`, `lokasi_kbm` to `Row`, `Insert`, and `Update` interfaces for `jurnal_pembelajaran`.
-
-2. **Camera Orientation & Facing Mode**:
-   - `src/components/GuruPresensi.tsx`: Updated `CameraSelfieCapture` invocation to explicitly include `orientation="portrait"` and `initialFacingMode="user"`.
-   - `src/components/GuruJurnal.tsx`: Verified `CameraSelfieCapture` uses `orientation="landscape"` and `initialFacingMode="environment"`.
-   - `src/components/PiketView.tsx`: Verified `CameraSelfieCapture` uses `orientation="landscape"` and `initialFacingMode="environment"`.
-
-3. **Restrukturisasi Form Jurnal KBM (`src/components/GuruJurnal.tsx`)**:
-   - Isolated to `tipeJurnal === 'Jurnal KBM'`; `tipeJurnal === 'Jurnal Kegiatan'` remains fully intact with its original fields (Tanggal, Nama Kegiatan, Uraian/Deskripsi, Foto, Refleksi).
-   - Added states: `kktp`, `konten`, `lokasiKbm`.
-   - Added date formatter `formatDisplayDate(tanggal)` rendering `DD-MM-YYYY` read-only in the UI, while keeping `tanggal` state as `YYYY-MM-DD`.
-   - Rendered 12 form fields in the exact specified sequence:
-     1. `No.` (`pertemuanKe`, auto-filled from query, editable)
-     2. `Hari/Tanggal` (read-only input displaying `DD-MM-YYYY`)
-     3. `Tujuan Pembelajaran` (textarea, required)
-     4. `KKTP` (textarea, required, saved to `kktp`)
-     5. `Konten` (textarea, required, replaces Materi Pembelajaran, saved to `konten`, dual-written to `materi` & `materi_pembelajaran`)
-     6. `Kegiatan Pembelajaran` (textarea, required, saved to `kegiatan`)
-     7. `Mapel` (dropdown, remains in form)
-     8. `Kelas` (dropdown, auto-fill logic preserved)
-     9. `Absensi Murid` (Kehadiran murid, live absensi student buttons `['H', 'S', 'I', 'A']` synced to `public.absensi`, and catatan khusus siswa)
-     10. `Lokasi KBM` (text input, required, placeholder `"contoh: Ruang Kelas 7A, Lab IPA"`, saved to `lokasi_kbm`)
-     11. `Dokumentasi KBM` (`CameraSelfieCapture` landscape, environment, with gallery upload support)
-     12. `Catatan` (optional textarea, saved to `catatan_refleksi`)
-   - Removed standalone `Pertemuan ke-` and `Jam ke-` inputs from the old grid UI while preserving `jamKe` state and auto-fill in the background for `newJurnal.jam_ke`.
-   - In `handleJurnalSubmit`: added validation checks for `pertemuanKe`, `tujuanPembelajaran`, `kktp`, `konten`, `kegiatan`, `mapel`, `kelas`, `lokasiKbm`, and `file`.
-   - In `newJurnal` payload: assigned `kktp`, `konten`, `lokasi_kbm`, and dual-wrote `konten` to `materi` and `materi_pembelajaran`.
-   - Reset: Added `setKktp('')`, `setKonten('')`, `setLokasiKbm('')` upon successful submission.
-
-4. **Rekap Jurnal Pribadi (`src/components/RekapJurnalView.tsx`)**:
-   - Isolated strictly to `tabMode === 'pribadi'`; `tabMode === 'kelas'` was left 100% untouched.
-   - Updated the table headers and cells to 11 columns:
-     `No` | `Hari/Tanggal` | `Tujuan Pembelajaran` | `KKTP` | `Konten` | `Kegiatan Pembelajaran` | `Kelas` | `Absensi Murid (H/I/S/A)` | `Lokasi KBM` | `Foto Dokumentasi` | `Catatan`
-   - Added fallbacks:
-     - Konten: `j.konten || j.materi_pembelajaran || j.materi || '-'`
-     - Kegiatan Pembelajaran: `j.kegiatan_pembelajaran || j.kegiatan || '-'`
-     - KKTP: `j.kktp || '-'`
-     - Lokasi KBM: `j.lokasi_kbm || j.lokasi || '-'`
-     - Catatan: `j.catatan_refleksi || j.refleksi || '-'`
-     - Absensi Murid: `j.kehadiran_murid || formatAbsensi(j.absensi_siswa, j.detail_absen)`
-     - Foto: `w-24 aspect-video object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:aspect-video print:object-cover print:rounded-none print:border-none print:bg-transparent print:m-0 print:block`
-   - Updated CSV / Excel export for `tabMode === 'pribadi'` with synchronized headers and columns.
-   - Added `konten`, `kktp`, and `lokasi_kbm` to client-side search filter.
-
-5. **Typecheck & Build**:
-   - `npx tsc --noEmit` exited with code 0 (zero errors).
-   - `npm run build` exited with code 0 (all static and dynamic routes compiled successfully).
-
----
+- **Target File**: `src/components/SuperadminView.tsx`
+- **Add School Modal (`handleOpenAddSchoolModal`)**:
+  - Inserted dropdown `<select id="swal-sch-mode-presensi-siswa">` (lines 219–225) with options `'qr'` (default selected: "QR Code (Scan Kamera / Scanner Eksternal)") and `'manual'` ("Manual (Ceklis Hadir / Pulang per Siswa)").
+  - Read value in `preConfirm` (line 244):
+    `const mode_presensi_siswa = (document.getElementById('swal-sch-mode-presensi-siswa') as HTMLSelectElement)?.value || 'qr';`
+  - Added `mode_presensi_siswa` to returned insert payload (line 262).
+- **Edit School Modal (`handleEditSchool`)**:
+  - Inserted dropdown `<select id="swal-edit-mode-presensi-siswa">` (lines 345–351) pre-selecting current school state:
+    `<option value="qr" ${(school as any).mode_presensi_siswa === 'manual' ? '' : 'selected'}>...`
+    `<option value="manual" ${(school as any).mode_presensi_siswa === 'manual' ? 'selected' : ''}>...`
+  - Read value in `preConfirm` (line 370):
+    `const mode_presensi_siswa = (document.getElementById('swal-edit-mode-presensi-siswa') as HTMLSelectElement)?.value || 'qr';`
+  - Added `mode_presensi_siswa` to returned update payload (line 388).
+- **Quick Toggle Handler (`handleTogglePresensiMode`)**:
+  - Created `handleTogglePresensiMode(school: Sekolah)` (lines 452–487) prompting confirmation with SweetAlert2, updating Supabase `public.sekolah` table with `mode_presensi_siswa: newMode` (`'qr'` <-> `'manual'`), and refreshing data via `fetchAllData()`.
+- **School Table Presentation (`activeTab === 'sekolah'`)**:
+  - Added visual attendance mode badge in `Nama Lembaga & NPSN` column (lines 1139–1151) displaying purple badge (`fa-list-check`, "Presensi Manual") when `mode_presensi_siswa === 'manual'` and emerald badge (`fa-qrcode`, "Presensi QR") when `mode_presensi_siswa !== 'manual'`. The badge is interactive and clickable with hover styling to quickly trigger `handleTogglePresensiMode(s)`.
+  - Added dedicated quick toggle action button in table action column (lines 1290–1297) triggering `handleTogglePresensiMode(s)`.
+- **Compiler & Build Verifications**:
+  - `npx tsc --noEmit` executed cleanly with exit code 0.
+  - `npm run build` executed cleanly with exit code 0 (all routes compiled and optimized, zero errors).
 
 ## 2. Logic Chain
-
-- **State & Schema Symmetry**: By adding `kktp`, `konten`, and `lokasi_kbm` to Supabase types and the migration file, the frontend payload directly maps to canonical columns in `jurnal_pembelajaran`.
-- **Backward Compatibility via Dual-Write**: Because legacy views and reports query `materi` and `materi_pembelajaran`, `konten` is dual-written to `materi` and `materi_pembelajaran`, eliminating any regression risks across existing code paths.
-- **Form Usability & Compliance**: Splitting `tipeJurnal === 'Jurnal KBM'` into its dedicated 12-field layout ensures user corrections (read-only DD-MM-YYYY display, Konten replacing Materi Pembelajaran, Kegiatan Pembelajaran separate and required, Lokasi KBM required, Pertemuan/Jam removed from form UI) are fulfilled cleanly without impacting Jurnal Kegiatan.
-- **Print Optimization**: Applying `w-24 aspect-video` on screen and `print:w-full print:aspect-video print:object-cover` in print preview ensures photos maintain 16:9 landscape aspect ratio without distortion or clipping. The print column percentages total exactly 100%.
-
----
+1. **Requirement Satisfaction**:
+   - Requirement R2 mandates that Superadmin can configure `mode_presensi_siswa` per school (QR Code / Manual) through Add/Edit dialogs and quick toggle.
+   - By following the exact precedent established by `mode_jurnal` in SweetAlert2 modal forms and Supabase update calls, the configuration seamlessly integrates into existing architecture without adding unnecessary libraries or components.
+2. **Type Safety & Backward Compatibility**:
+   - Milestone M1 established `mode_presensi_siswa?: 'qr' | 'manual' | string` in `src/types/database.ts`.
+   - The UI safely falls back to `'qr'` whenever `mode_presensi_siswa` is undefined or null, ensuring legacy records function in QR mode by default.
+3. **UI Responsiveness & Ergonomics**:
+   - Placing both an interactive badge on the school item and an action button in the action column provides maximum discoverability and convenience for Superadmins while managing tenant settings.
 
 ## 3. Caveats
-
-- In `GuruJurnal.tsx`, `tipeJurnal === 'Jurnal Kegiatan'` continues to use the existing `materi` and `kegiatan` fields as intended by the school block system workflow.
-- In `RekapJurnalView.tsx`, the print layout is styled for standard landscape orientation (`@media print` settings).
-
----
+- Only Superadmin can access `SuperadminView.tsx` and toggle school modes across tenants. School admins and teachers configure their own settings according to this global tenant configuration.
+- Changes made by Superadmin to `mode_presensi_siswa` take effect immediately in Supabase and will be read by PiketView in Milestone M3 upon school data fetch.
 
 ## 4. Conclusion
-
-All requirements and corrections for Milestone 2 have been fully implemented, verified, and validated against TypeScript typechecker and Next.js compiler. All targets compile with zero errors.
-
----
+Milestone M2 is fully implemented and tested. All form inputs, modal pre-confirm readers, insert/update payloads, table badges, and quick toggle handlers are properly wired in `src/components/SuperadminView.tsx`. Zero TypeScript or Next.js build errors were detected.
 
 ## 5. Verification Method
-
-1. **Typecheck**:
-   ```bash
-   npx tsc --noEmit
-   ```
-   *Result*: Code 0, zero errors.
-
-2. **Production Build**:
-   ```bash
-   npm run build
-   ```
-   *Result*: Code 0, optimized production build generated with all routes valid.
+- **TypeScript Static Analysis**:
+  Run: `npx tsc --noEmit`
+  Expected: exit code 0, no errors.
+- **Production Next.js Build**:
+  Run: `npm run build`
+  Expected: exit code 0, Turbopack compiled successfully.
+- **Visual & Functional Inspection**:
+  1. Open `/superadmin` view and navigate to "Kelola Sekolah".
+  2. Click "Daftarkan Sekolah Baru" -> Observe "Mode Presensi Siswa" dropdown with QR Code (default) and Manual options.
+  3. Click "Edit Data Sekolah" on a school -> Observe "Mode Presensi Siswa" dropdown reflecting current school setting.
+  4. Click the "Presensi QR" or "Presensi Manual" badge or action button -> Confirm dialog appears, switches mode in DB, and refreshes table badge.

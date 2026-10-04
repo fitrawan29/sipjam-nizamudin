@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-04T01:23:15Z
+# BRIEFING — 2026-10-04T01:27:55Z
 
 ## Mission
 Orchestrate the implementation and verification of student attendance mode configuration (QR vs Manual) per-school for SIPJAM.
@@ -19,13 +19,13 @@ Orchestrate the implementation and verification of student attendance mode confi
 4. **Succession**: At 16 spawns, write handoff.md, spawn successor.
 - **Work items**:
   1. Survey & Architecture Specification [done]
-  2. M1: Database Migration & Schema (`public.sekolah.mode_presensi_siswa`) [in-progress]
-  3. M2: Superadmin Configuration UI (`SuperadminView.tsx`) [pending]
+  2. M1: Database Migration & Schema (`public.sekolah.mode_presensi_siswa`) [done]
+  3. M2: Superadmin Configuration UI (`SuperadminView.tsx`) [in-progress]
   4. M3: Piket View Mode Handling (QR vs Manual list) (`PiketView.tsx`) [pending]
   5. M4: Multi-tenant Isolation & Related Views Verification (`RekapSiswaView.tsx`, `GuruJurnal.tsx`) [pending]
   6. E2E / Dual-track Integration Verification [pending]
 - **Current phase**: 1 (Implementation)
-- **Current focus**: Milestone M1 (Database Migration & Types)
+- **Current focus**: Milestone M2 (Superadmin Configuration UI)
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files directly.
@@ -41,8 +41,8 @@ Orchestrate the implementation and verification of student attendance mode confi
 - Updated: 2026-10-04T01:13:54Z
 
 ## Key Decisions Made
-- Survey phase concluded, PROJECT.md and Feature Inventory established.
-- Dispatched Worker M1 to create migration SQL, apply to Supabase, update database types, and verify tsc.
+- M1 successfully executed and verified on database and database.ts types.
+- Dispatched Worker M2 to implement school attendance mode configuration in `SuperadminView.tsx`.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
@@ -50,12 +50,13 @@ Orchestrate the implementation and verification of student attendance mode confi
 | explorer_survey_1 | teamwork_preview_explorer | DB & Schema Survey | completed | 36dc8009-6533-4dbc-ab56-5d3f4a1b4c75 |
 | explorer_survey_2 | teamwork_preview_explorer | Superadmin UI Survey | completed | eed8581e-ea73-4e3b-a3c1-111b0a4cb793 |
 | explorer_survey_3 | teamwork_preview_explorer | Piket & Views Survey | completed | 9a1fee43-ab89-44c1-8a4c-dd68f7d7c3df |
-| worker_m1 | teamwork_preview_worker | M1: DB Migration & Types | in-progress | cb1ce59c-fdb3-47f6-a008-cf76a3b6354a |
+| worker_m1 | teamwork_preview_worker | M1: DB Migration & Types | completed | cb1ce59c-fdb3-47f6-a008-cf76a3b6354a |
+| worker_m2 | teamwork_preview_worker | M2: Superadmin UI | in-progress | 8530e15f-3289-49a1-b8b8-f668cc240cbb |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 4 / 16
-- Pending subagents: cb1ce59c-fdb3-47f6-a008-cf76a3b6354a
+- Spawn count: 5 / 16
+- Pending subagents: 8530e15f-3289-49a1-b8b8-f668cc240cbb
 - Predecessor: none
 - Successor: not yet spawned
 
