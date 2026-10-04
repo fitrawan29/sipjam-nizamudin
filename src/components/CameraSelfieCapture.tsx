@@ -32,6 +32,7 @@ export default function CameraSelfieCapture({
   const activeSessionIdRef = useRef(0);
   const facingModeRef = useRef<'user' | 'environment'>(initialFacingMode);
   const isRetakeRef = useRef(false);
+  const isConfirmingRef = useRef(false);
   const prevOrientationRef = useRef(orientation);
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function CameraSelfieCapture({
     setCapturedImage(existingPhotoUrl || null);
     if (!existingPhotoUrl) {
       setCapturedFile(null);
+      isConfirmingRef.current = false;
     }
   }, [existingPhotoUrl]);
 
@@ -177,15 +179,31 @@ export default function CameraSelfieCapture({
         videoRef.current.muted = true;
         try {
           await videoRef.current.play();
+          if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {
+            stream.getTracks().forEach(t => t.stop());
+            return;
+          }
           setIsStreaming(true);
         } catch (e: unknown) {
+          if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {
+            stream.getTracks().forEach(t => t.stop());
+            return;
+          }
           console.warn('Video play error:', e);
+          stream.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+          if (videoRef.current) {
+            videoRef.current.srcObject = null;
+          }
           const playErr = e as { message?: string };
           setCameraError(`Gagal memutar video kamera: ${playErr?.message || 'Autoplay diblokir browser'}. Harap ketuk tombol Coba Lagi.`);
           setIsStreaming(false);
         }
       }
     } catch (err: unknown) {
+      if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {
+        return;
+      }
       console.error('[CameraCapture] Camera access error:', err);
       const e = err as { name?: string; message?: string };
       let message = 'Gagal mengakses kamera.';
@@ -224,10 +242,10 @@ export default function CameraSelfieCapture({
     }
   }, [orientation, capturedImage, isStreaming, facingMode, startCamera]);
 
-  // Initial mount: update GPS and start camera once if no image captured yet
+  // Start camera and track GPS when no photo is captured yet
   useEffect(() => {
-    requestLocation();
     if (!capturedImage) {
+      requestLocation();
       if (isRetakeRef.current) {
         isRetakeRef.current = false;
         startCamera(facingModeRef.current || initialFacingMode);
@@ -243,6 +261,7 @@ export default function CameraSelfieCapture({
 
   // 4. Capture photo and draw watermark
   const handleCapturePhoto = () => {
+    if (isStartingRef.current || !isStreaming || capturedImage) return;
     if (!videoRef.current) return;
     if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
       showToast('Kamera Belum Siap', 'Harap tunggu hingga gambar kamera muncul sepenuhnya.', 'warning');
@@ -257,6 +276,7 @@ export default function CameraSelfieCapture({
 
       setCapturedImage(dataUrl);
       setCapturedFile(file);
+      isConfirmingRef.current = false;
       stopCamera();
     } catch (err: unknown) {
       console.error('[CameraCapture] Error capturing frame:', err);
@@ -268,15 +288,17 @@ export default function CameraSelfieCapture({
   // 5. Retake photo
   const handleRetake = () => {
     isRetakeRef.current = true;
+    isConfirmingRef.current = false;
     setCapturedImage(null);
     setCapturedFile(null);
     onRetake?.();
-    requestLocation();
   };
 
   // 6. Confirm and use photo
   const handleConfirmPhoto = () => {
+    if (isConfirmingRef.current) return;
     if (!capturedFile && capturedImage) {
+      isConfirmingRef.current = true;
       const file = dataUrlToFile(capturedImage, `foto_kamera_${Date.now()}.jpg`);
       stopCamera();
       onPhotoConfirmed(file, capturedImage);
@@ -284,6 +306,7 @@ export default function CameraSelfieCapture({
     }
 
     if (capturedFile && capturedImage) {
+      isConfirmingRef.current = true;
       stopCamera();
       onPhotoConfirmed(capturedFile, capturedImage);
     } else {

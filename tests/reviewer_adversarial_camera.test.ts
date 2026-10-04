@@ -128,7 +128,7 @@ if (typeof (global as any).HTMLImageElement === 'undefined') {
   (global as any).HTMLImageElement = class {};
 }
 
-import { drawWatermarkedCanvas, dataUrlToFile, getDefaultWatermarkOptions } from '../src/lib/watermarkCanvas';
+import { drawWatermarkedCanvas, dataUrlToFile, getDefaultWatermarkOptions, reverseGeocodeNominatim } from '../src/lib/watermarkCanvas';
 
 const sampleOpts = getDefaultWatermarkOptions({ latitude: -8.5, longitude: 115.2 }, 'Ubud, Bali');
 
@@ -199,10 +199,10 @@ assert(
 // --- Section 6: Camera Lifecycle, Retake Synchronization & WebKit Autoplay ---
 console.log('\n--- Section 6: Camera Lifecycle, Retake Sync & WebKit Autoplay Resilience ---');
 
-// Re-read latest file contents
-const currentCameraCode = fs.readFileSync(cameraCompPath, 'utf-8');
-const currentPresensiCode = fs.readFileSync(guruPresensiPath, 'utf-8');
-const currentWatermarkCode = fs.readFileSync(watermarkPath, 'utf-8');
+// Re-read latest file contents with normalized newlines
+const currentCameraCode = fs.readFileSync(cameraCompPath, 'utf-8').replace(/\r\n/g, '\n');
+const currentPresensiCode = fs.readFileSync(guruPresensiPath, 'utf-8').replace(/\r\n/g, '\n');
+const currentWatermarkCode = fs.readFileSync(watermarkPath, 'utf-8').replace(/\r\n/g, '\n');
 
 assert(
   currentCameraCode.includes('onRetake?: () => void;'),
@@ -237,16 +237,75 @@ assert(
   'watermarkCanvas guards against NaN/Infinite coordinates to prevent badge distortion'
 );
 
-console.log('\n========================================================================');
-console.log(`TOTAL CHECKS: ${passed + failed}`);
-console.log(`PASSED: ${passed}`);
-console.log(`FAILED: ${failed}`);
-console.log('========================================================================');
+// --- Section 7: Unmount Leak Protection & Hardware Track Release ---
+console.log('\n--- Section 7: Unmount Leak Protection & Hardware Track Release ---');
 
-if (failed === 0) {
-  console.log('🎉 ALL REVIEWER ADVERSARIAL CHECKS PASSED!');
-  process.exit(0);
-} else {
-  console.error(`💥 ${failed} CHECK(S) FAILED!`);
-  process.exit(1);
+assert(
+  currentCameraCode.includes('if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {\n            stream.getTracks().forEach(t => t.stop());\n            return;\n          }'),
+  'CameraSelfieCapture stops tracks and aborts if unmounted during video.play() resolution'
+);
+assert(
+  currentCameraCode.includes('stream.getTracks().forEach(t => t.stop());\n          streamRef.current = null;\n          if (videoRef.current) {\n            videoRef.current.srcObject = null;\n          }'),
+  'CameraSelfieCapture releases hardware tracks and clears srcObject on video.play() rejection'
+);
+assert(
+  currentCameraCode.includes('if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {\n        return;\n      }'),
+  'Outer camera error handler aborts without updating state if component unmounted'
+);
+
+// --- Section 8: Concurrent Capture & Confirm Idempotency Guards ---
+console.log('\n--- Section 8: Concurrent Capture & Confirm Idempotency Guards ---');
+
+assert(
+  currentCameraCode.includes('if (isStartingRef.current || !isStreaming || capturedImage) return;'),
+  'handleCapturePhoto rejects rapid multi-clicks while starting, before streaming, or when image already captured'
+);
+assert(
+  currentCameraCode.includes('if (isConfirmingRef.current) return;'),
+  'handleConfirmPhoto prevents double-confirmation submission race conditions'
+);
+assert(
+  currentCameraCode.includes('isConfirmingRef.current = false;'),
+  'handleRetake resets isConfirmingRef allowing future photo confirmation'
+);
+
+async function runAsyncSections() {
+  // --- Section 9: Reverse Geocoding Non-Finite Coordinate Handling ---
+  console.log('\n--- Section 9: Reverse Geocoding Non-Finite Coordinate Handling ---');
+
+  const infRes1 = await reverseGeocodeNominatim(Infinity, 115.2);
+  assert(infRes1 === '[Lokasi Tidak Terdeteksi]', 'reverseGeocodeNominatim rejects Infinity latitude safely');
+
+  const infRes2 = await reverseGeocodeNominatim(-8.5, -Infinity);
+  assert(infRes2 === '[Lokasi Tidak Terdeteksi]', 'reverseGeocodeNominatim rejects -Infinity longitude safely');
+
+  const nanRes = await reverseGeocodeNominatim(NaN, 115.2);
+  assert(nanRes === '[Lokasi Tidak Terdeteksi]', 'reverseGeocodeNominatim rejects NaN coordinates safely');
+
+  // --- Section 10: GPS Request Lifecycle Isolation ---
+  console.log('\n--- Section 10: GPS Request Lifecycle Isolation ---');
+
+  assert(
+    currentCameraCode.includes('if (!capturedImage) {\n      requestLocation();'),
+    'requestLocation is strictly isolated to when no photo is captured (prevents GPS scanning flash on preview)'
+  );
+
+  console.log('\n========================================================================');
+  console.log(`TOTAL CHECKS: ${passed + failed}`);
+  console.log(`PASSED: ${passed}`);
+  console.log(`FAILED: ${failed}`);
+  console.log('========================================================================');
+
+  if (failed === 0) {
+    console.log('🎉 ALL REVIEWER ADVERSARIAL CHECKS PASSED!');
+    process.exit(0);
+  } else {
+    console.error(`💥 ${failed} CHECK(S) FAILED!`);
+    process.exit(1);
+  }
 }
+
+runAsyncSections().catch((err) => {
+  console.error('Fatal test runner error:', err);
+  process.exit(1);
+});

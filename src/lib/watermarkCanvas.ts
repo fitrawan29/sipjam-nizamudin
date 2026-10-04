@@ -50,7 +50,14 @@ export function getDefaultWatermarkOptions(
  * Target format: "[desa/kelurahan, kecamatan, kota/kabupaten, provinsi]"
  */
 export async function reverseGeocodeNominatim(lat: number, lon: number): Promise<string> {
-  if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+  if (
+    typeof lat !== 'number' ||
+    typeof lon !== 'number' ||
+    !isFinite(lat) ||
+    !isFinite(lon) ||
+    isNaN(lat) ||
+    isNaN(lon)
+  ) {
     return '[Lokasi Tidak Terdeteksi]';
   }
   const fallback = `[GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}]`;
