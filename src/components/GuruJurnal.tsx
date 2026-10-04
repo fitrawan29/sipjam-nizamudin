@@ -65,44 +65,69 @@ export default function GuruJurnal({ user }: { user: any }) {
       return imageFile;
     }
     return new Promise((resolve) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(imageFile);
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        let { width, height } = img;
-        if (width > maxWidth || height > maxHeight) {
-          if (width / height > maxWidth / maxHeight) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
+      try {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(imageFile);
+        img.onload = () => {
+          URL.revokeObjectURL(objectUrl);
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
           }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return resolve(imageFile);
-        ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) return resolve(imageFile);
-            const compressed = new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(compressed);
-          },
-          'image/jpeg',
-          quality
-        );
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(imageFile);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          if (typeof canvas.toBlob === 'function') {
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) return resolve(imageFile);
+                const compressed = new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                resolve(compressed);
+              },
+              'image/jpeg',
+              quality
+            );
+          } else {
+            try {
+              const dataUrl = canvas.toDataURL('image/jpeg', quality);
+              const byteString = atob(dataUrl.split(',')[1]);
+              const ab = new ArrayBuffer(byteString.length);
+              const ia = new Uint8Array(ab);
+              for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+              }
+              const blob = new Blob([ab], { type: 'image/jpeg' });
+              const compressed = new File([blob], imageFile.name.replace(/\.[^.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressed);
+            } catch {
+              resolve(imageFile);
+            }
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          resolve(imageFile);
+        };
+        img.src = objectUrl;
+      } catch {
         resolve(imageFile);
-      };
-      img.src = objectUrl;
+      }
     });
   };
 
@@ -170,6 +195,10 @@ export default function GuruJurnal({ user }: { user: any }) {
       } catch (err) {
         console.warn('[GuruJurnal] Auto-save error:', err);
       }
+    } else {
+      try {
+        localStorage.removeItem('sipjam_jurnal_autosave');
+      } catch {}
     }
   }, [
     tipeJurnal, mapel, kelas, tanggal, materi, kegiatan, catatanSiswa,

@@ -47,12 +47,13 @@ Implement 4 minimal, Ponytail-style improvements to the sipjam-app codebase: App
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |---|---|---|---|---|
-| implementer_r0 | teamwork_preview_implementer | Initial Implementation (R1-R4) | in-progress | cb7d3eef-36e5-4ddd-afed-b2ae50fc7a21 |
+| implementer_r0 | teamwork_preview_implementer | Initial Implementation (R1-R4) | completed | cb7d3eef-36e5-4ddd-afed-b2ae50fc7a21 |
+| reviewer_r1 | teamwork_preview_reviewer | Adversarial Review Round 1 | in-progress | 7e2fc62a-67b9-404a-9445-9c6bef9b916e |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: cb7d3eef-36e5-4ddd-afed-b2ae50fc7a21
+- Spawn count: 2 / 16
+- Pending subagents: 7e2fc62a-67b9-404a-9445-9c6bef9b916e
 - Predecessor: none
 - Successor: not yet spawned
 

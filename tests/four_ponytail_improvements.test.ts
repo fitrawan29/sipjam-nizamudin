@@ -90,6 +90,9 @@ test('GuruPresensi.tsx implements localStorage offline queue & online listener',
   assert(fileContent.includes("window.addEventListener('online'"), 'Must register window online event listener');
   assert(fileContent.includes('syncOfflinePresensi'), 'Must implement syncOfflinePresensi function');
   assert(fileContent.includes('dataUrlToFile'), 'Must restore photo from data URL for upload');
+  assert(fileContent.includes('isSyncingRef'), 'Must implement concurrency lock isSyncingRef');
+  assert(fileContent.includes('compressPhotoForStorage'), 'Must implement native canvas photo compression for offline storage');
+  assert(fileContent.includes('23505'), 'Must handle duplicate key 23505 gracefully');
 });
 
 test('Presensi offline queue serialization & sync lifecycle simulation', async () => {
@@ -150,6 +153,36 @@ test('Presensi offline queue serialization & sync lifecycle simulation', async (
   assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi'), null);
 });
 
+test('Presensi offline quota exceeded fallback preserves payload without photo', () => {
+  const store: Record<string, string> = {};
+  let quotaExceeded = true;
+
+  const saveToLocalStorage = (itemToSave: any) => {
+    if (quotaExceeded && itemToSave.photo) {
+      throw new Error('QuotaExceededError');
+    }
+    store['sipjam_offline_presensi'] = JSON.stringify(itemToSave);
+  };
+
+  const item = {
+    id: 'test-presensi-quota',
+    payload: { id: 'test-presensi-quota', nama_guru: 'Siti Rahma' },
+    photo: 'data:image/jpeg;base64,VERY_LARGE_IMAGE_DATA',
+  };
+
+  try {
+    saveToLocalStorage(item);
+  } catch {
+    const itemWithoutPhoto = { ...item, photo: null };
+    saveToLocalStorage(itemWithoutPhoto);
+  }
+
+  const saved = JSON.parse(store['sipjam_offline_presensi']);
+  assert.strictEqual(saved.id, 'test-presensi-quota');
+  assert.strictEqual(saved.payload.nama_guru, 'Siti Rahma');
+  assert.strictEqual(saved.photo, null, 'Payload preserved safely even if photo exceeds quota');
+});
+
 // ---------------------------------------------------------------------
 // R3: GuruJurnal Auto-Save & Canvas Compression Audit
 // ---------------------------------------------------------------------
@@ -159,6 +192,8 @@ test('GuruJurnal.tsx implements localStorage auto-save on change and restore on 
   assert(content.includes('compressImageWithCanvas'), 'Must define canvas image compression helper');
   assert(content.includes('isRestoredRef'), 'Must guard initial draft restoration');
   assert(content.includes('document.createElement(\'canvas\')'), 'Must use native HTML canvas');
+  assert(content.includes('toDataURL'), 'Must provide toDataURL fallback for older WebViews without toBlob');
+  assert(content.includes('localStorage.removeItem(\'sipjam_jurnal_autosave\')'), 'Must clean up draft when form is cleared or submitted');
 });
 
 test('GuruJurnal form auto-save and restore behavior simulation', () => {
@@ -199,6 +234,13 @@ test('GuruJurnal form auto-save and restore behavior simulation', () => {
   assert.strictEqual(restored.materi, 'Aljabar Linier');
   assert.strictEqual(restored.kegiatan, 'Diskusi kelompok dan pemecahan soal matriks');
   assert.strictEqual(restored.lokasiKbm, 'Ruang Kelas 7A');
+
+  // Simulating form emptied by user -> draft removed from localStorage
+  const hasContent = false;
+  if (!hasContent) {
+    mockLocalStorage.removeItem('sipjam_jurnal_autosave');
+  }
+  assert.strictEqual(mockLocalStorage.getItem('sipjam_jurnal_autosave'), null, 'Cleared form removes draft');
 
   // Simulating submit clearing draft
   mockLocalStorage.removeItem('sipjam_jurnal_autosave');

@@ -13,6 +13,53 @@ import { WatermarkCoordinates, dataUrlToFile } from '@/lib/watermarkCanvas';
 export default function GuruPresensi({ user }: { user: any }) {
   const isMountedRef = useRef(true);
   const isSwitchingRef = useRef(false);
+  const isSyncingRef = useRef(false);
+
+  // ponytail: native canvas image compression for localStorage offline queue
+  const compressPhotoForStorage = async (fileOrDataUrl: File | string, maxDim = 800, quality = 0.6): Promise<string> => {
+    if (typeof window === 'undefined') return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        let srcUrl = '';
+        if (typeof fileOrDataUrl === 'string') {
+          srcUrl = fileOrDataUrl;
+        } else if (fileOrDataUrl instanceof File) {
+          srcUrl = URL.createObjectURL(fileOrDataUrl);
+        } else {
+          return resolve('');
+        }
+
+        img.onload = () => {
+          if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(srcUrl);
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : srcUrl);
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => {
+          if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(srcUrl);
+          resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
+        };
+        img.src = srcUrl;
+      } catch {
+        resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
+      }
+    });
+  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -121,81 +168,91 @@ export default function GuruPresensi({ user }: { user: any }) {
 
   // ponytail: sync queued offline presensi records on reconnect
   const syncOfflinePresensi = async () => {
-    if (typeof window === 'undefined') return;
-    const queueStr = localStorage.getItem('sipjam_offline_presensi_queue') || localStorage.getItem('sipjam_offline_presensi');
-    if (!queueStr) return;
-
-    let items: any[] = [];
+    if (typeof window === 'undefined' || isSyncingRef.current) return;
+    isSyncingRef.current = true;
     try {
-      const parsed = JSON.parse(queueStr);
-      items = Array.isArray(parsed) ? parsed : [parsed];
-    } catch {
-      return;
-    }
-    if (items.length === 0) return;
+      const queueStr = localStorage.getItem('sipjam_offline_presensi_queue') || localStorage.getItem('sipjam_offline_presensi');
+      if (!queueStr) return;
 
-    const remaining: any[] = [];
-    let syncedCount = 0;
-
-    for (const item of items) {
+      let items: any[] = [];
       try {
-        let sent = false;
-        const { error } = await supabase.from('presensi_guru').insert([item.payload]);
-        if (!error) {
-          sent = true;
-        } else {
-          const fallbackRes = await fetch('/api/attendance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(item.payload)
-          });
-          if (fallbackRes.ok) {
-            const resData = await fallbackRes.json();
-            if (resData.success) sent = true;
-          }
-        }
+        const parsed = JSON.parse(queueStr);
+        items = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return;
+      }
+      if (items.length === 0) return;
 
-        if (sent) {
-          syncedCount++;
-          if (item.photo) {
-            (async () => {
-              try {
-                const fileObj = dataUrlToFile(item.photo, item.photoName || 'selfie.jpg');
-                const driveUrl = await uploadToDrive(fileObj, item.payload.nama_guru, item.folderName, item.prefix);
-                await supabase.from('presensi_guru').update({ link_bukti: driveUrl }).eq('id', item.id);
-              } catch (e) {
-                console.warn('[GuruPresensi] Background GAS upload failed for offline presensi:', e);
+      const remaining: any[] = [];
+      let syncedCount = 0;
+
+      for (const item of items) {
+        try {
+          let sent = false;
+          const { error } = await supabase.from('presensi_guru').insert([item.payload]);
+          if (!error) {
+            sent = true;
+          } else if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('already exists')) {
+            // Already stored in database during previous network attempt
+            sent = true;
+          } else {
+            const fallbackRes = await fetch('/api/attendance', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(item.payload)
+            });
+            if (fallbackRes.ok) {
+              const resData = await fallbackRes.json();
+              if (resData.success || resData.message?.includes('duplicate') || resData.message?.includes('already')) {
+                sent = true;
               }
-            })();
+            }
           }
-        } else {
+
+          if (sent) {
+            syncedCount++;
+            if (item.photo) {
+              (async () => {
+                try {
+                  const fileObj = dataUrlToFile(item.photo, item.photoName || 'selfie.jpg');
+                  const driveUrl = await uploadToDrive(fileObj, item.payload.nama_guru, item.folderName, item.prefix);
+                  await supabase.from('presensi_guru').update({ link_bukti: driveUrl }).eq('id', item.id);
+                } catch (e) {
+                  console.warn('[GuruPresensi] Background GAS upload failed for offline presensi:', e);
+                }
+              })();
+            }
+          } else {
+            remaining.push(item);
+          }
+        } catch {
           remaining.push(item);
         }
-      } catch {
-        remaining.push(item);
-      }
-    }
-
-    if (syncedCount > 0) {
-      if (remaining.length === 0) {
-        localStorage.removeItem('sipjam_offline_presensi');
-        localStorage.removeItem('sipjam_offline_presensi_queue');
-      } else {
-        localStorage.setItem('sipjam_offline_presensi', JSON.stringify(remaining[0]));
-        localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(remaining));
       }
 
-      showToast(
-        'Presensi Tersinkron!',
-        `${syncedCount} data presensi offline berhasil dikirim ke server.`,
-        'success',
-        { toast: true, position: 'top-end', timer: 4000, showConfirmButton: false }
-      );
+      if (syncedCount > 0) {
+        if (remaining.length === 0) {
+          localStorage.removeItem('sipjam_offline_presensi');
+          localStorage.removeItem('sipjam_offline_presensi_queue');
+        } else {
+          localStorage.setItem('sipjam_offline_presensi', JSON.stringify(remaining[0]));
+          localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(remaining));
+        }
 
-      try {
-        const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
-        if (isMountedRef.current) setDailyState(state);
-      } catch {}
+        showToast(
+          'Presensi Tersinkron!',
+          `${syncedCount} data presensi offline berhasil dikirim ke server.`,
+          'success',
+          { toast: true, position: 'top-end', timer: 4000, showConfirmButton: false }
+        );
+
+        try {
+          const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
+          if (isMountedRef.current) setDailyState(state);
+        } catch {}
+      }
+    } finally {
+      isSyncingRef.current = false;
     }
   };
 
@@ -481,14 +538,11 @@ export default function GuruPresensi({ user }: { user: any }) {
     if (!insertSuccess) {
       // Offline fallback: catch network error / offline status and queue in localStorage
       try {
-        let photoDataUrl = photoPreviewUrl || '';
-        if (!photoDataUrl && file) {
-          photoDataUrl = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(file);
-          });
+        let photoDataUrl = '';
+        if (photoPreviewUrl) {
+          photoDataUrl = await compressPhotoForStorage(photoPreviewUrl);
+        } else if (file) {
+          photoDataUrl = await compressPhotoForStorage(file);
         }
 
         const offlineItem = {
@@ -502,11 +556,22 @@ export default function GuruPresensi({ user }: { user: any }) {
           timestamp: new Date().toISOString()
         };
 
-        localStorage.setItem('sipjam_offline_presensi', JSON.stringify(offlineItem));
-        const rawQueue = localStorage.getItem('sipjam_offline_presensi_queue');
-        const queue = rawQueue ? JSON.parse(rawQueue) : [];
-        queue.push(offlineItem);
-        localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(queue));
+        const saveToLocalStorage = (itemToSave: any) => {
+          localStorage.setItem('sipjam_offline_presensi', JSON.stringify(itemToSave));
+          const rawQueue = localStorage.getItem('sipjam_offline_presensi_queue');
+          const queue = rawQueue ? JSON.parse(rawQueue) : [];
+          queue.push(itemToSave);
+          localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(queue));
+        };
+
+        try {
+          saveToLocalStorage(offlineItem);
+        } catch (quotaErr) {
+          // If storage quota exceeded, retry saving without the heavy photo data URL to ensure attendance record is never lost
+          console.warn('[GuruPresensi] Quota exceeded, preserving presensi record without photo:', quotaErr);
+          const itemWithoutPhoto = { ...offlineItem, photo: null };
+          saveToLocalStorage(itemWithoutPhoto);
+        }
 
         showToast(
           'Tersimpan Offline',
