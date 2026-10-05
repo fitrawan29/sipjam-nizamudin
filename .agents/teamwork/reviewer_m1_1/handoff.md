@@ -1,172 +1,145 @@
-# Reviewer 1 Handoff Report: Milestone 1 Verification & Adversarial Audit
+# Handoff Report — reviewer_m1_1: Requirement R1 (UI & State Modul Piket)
 
-**Agent**: Reviewer 1 (`teamwork_preview_reviewer` / `critic`)  
+**Agent**: `reviewer_m1_1`  
+**Roles**: `reviewer`, `critic`  
 **Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1`  
-**Milestone**: Milestone 1 (F1 - F4)  
-**Parent Orchestrator**: `2ac91888-0ccf-41c6-9452-748556b221b7`  
-**Date**: 2026-09-24  
-**Verdict**: **APPROVE**
+**Project Root**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`  
+**Scope**: Requirement R1 (UI & State Modul Piket)  
+**Verdict**: **APPROVE**  
 
 ---
 
 ## 1. Observation
 
-Direct code and execution observations:
+### 1.1 Source Code Inspection of `src/components/PiketView.tsx`
 
-1. **`src/components/GuruPresensi.tsx` (F1)**:
-   - Lines 96–106: Automatically selects `tipeAbsen = 'Datang'` and sets `jenisPresensi` when `state.presensiDatangDitolak` is truthy, enabling the teacher to immediately resubmit their arrival attendance.
-   - Lines 143–158: Duplicate prevention correctly blocks Pulang when `dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak`. Allows resubmission only when rejected.
-   - Lines 271–275:
-     ```ts
-     const rejectedRecord = tipeAbsen === 'Datang' ? dailyState?.presensiDatangDitolak : dailyState?.presensiPulangDitolak;
-     if (rejectedRecord?.id) {
-       await supabase.from('presensi_guru').delete().eq('id', rejectedRecord.id);
-     }
-     ```
-     Old rejected attendance record is cleanly deleted by its unique ID before concluding the submission flow.
-   - Lines 301–308: Awaits `getGuruDailyState(user.nama, user.username)` and refreshes local `dailyState`.
-   - Line 406: Select dropdown enforces:
+1. **Auto-Filter & Search State Preservation (R1.1)**:
+   - In `handleManualMark` (`src/components/PiketView.tsx`, lines 619–735):
      ```tsx
-     <option value="Datang" disabled={!!dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak}>DATANG</option>
-     <option value="Pulang" disabled={!dailyState?.presensiDatang || (!!dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak)}>PULANG</option>
+     // Two-way sync: fill QR scanner input (preserve manual search query and class filter to keep roster intact)
+     setUsbInputVal(student.nisn || student.nama_siswa);
+     await fetchTodayScanData();
      ```
-
-2. **`src/components/GuruJurnal.tsx` (F2)**:
-   - Line 6: Correctly imports `isJurnalMatchJadwal` from `@/lib/workflow`.
-   - Line 335: Multi-tenant safety — includes `...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})` in `newJurnal` insert payload.
-   - Lines 340–358: Indiscriminate batch-deletion bug is eliminated. Replaced with targeted filtering:
-     ```ts
-     const matchingRejected = dailyState.jurnalDitolak.filter((j: any) => {
-       if (tipeJurnal === 'Jurnal Kegiatan') {
-         return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan';
-       }
-       if (tipeJurnal === 'Jurnal KBM') {
-         if (j.kelas !== kelas) return false;
-         return j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel });
-       }
-       return false;
+     Observed that neither `setManualSearchQuery(...)` nor `setManualKelasFilter(...)` is called in `handleManualMark` (lines 619–735).
+   - In contrast, search query and class filter modification are properly restricted to:
+     - Form submit via explicit query (`handleManualFormSubmit`, line 761, 770)
+     - Explicit user dropdown selection (`setManualKelasFilter(e.target.value)`, lines 2071, 2686)
+     - Explicit user typing in search input (`setManualSearchQuery(val)`, lines 550, 589)
+     - Clearing search query via "X" button (`setManualSearchQuery('')`, lines 2113, 2714)
+   - The student roster filtering logic (`src/components/PiketView.tsx`, lines 600–607):
+     ```tsx
+     const filteredManualStudents = allStudents.filter(s => {
+       const matchKelas = manualKelasFilter === 'Semua' || s.kelas === manualKelasFilter;
+       const matchSearch = !manualSearchQuery.trim() || 
+         (s.nama_siswa?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) ||
+         (s.nisn?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) ||
+         ((s as any).qr_code && (s as any).qr_code.toLowerCase().includes(manualSearchQuery.toLowerCase()));
+       return matchKelas && matchSearch;
      });
-     if (matchingRejected.length > 0) {
-       const matchingIds = matchingRejected.map((j: any) => j.id);
-       await supabase.from('jurnal_pembelajaran').delete().in('id', matchingIds);
-     }
      ```
-     Only the matching class and subject rejected journal is removed; other rejected journals remain for other sessions.
-   - Lines 420–425: Synchronously awaits `getGuruDailyState` to update `dailyState`.
+     Because `manualKelasFilter` and `manualSearchQuery` are left completely untouched when marking attendance, all students in the selected class remain rendered.
 
-3. **`src/components/PiketView.tsx` (F3)**:
-   - Lines 332–341: Deletes `dailyState.laporanPiketDitolak.id` and executes cleanup for any rejected piket report for this teacher on today's date:
-     ```ts
-     if (dailyState?.laporanPiketDitolak?.id) {
-       await supabase.from('laporan_piket').delete().eq('id', dailyState.laporanPiketDitolak.id);
-     }
-     await supabase.from('laporan_piket')
-       .delete()
-       .eq('guru_pelapor', user.nama)
-       .eq('tanggal', getWitaDateStr())
-       .eq('status_verifikasi', 'Ditolak');
+2. **Role Normalization & Conditional View Splitting (R1.2)**:
+   - Normalized role detection (`src/components/PiketView.tsx`, lines 27–29):
+     ```tsx
+     const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
+     const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
+     const isGuru = roleNormalized === 'guru';
      ```
-   - Lines 393–399: Synchronously awaits `getGuruDailyState` to refresh `dailyState`.
+   - Layout differentiation under `{activeTab === 'scan' && (isAdmin ? ... : ...)}` (lines 1690–2838):
+     - **Admin Detailed View** (`id="piket-content-scan"`, lines 1691–2431):
+       - Kiosk Station Selector: lines 1707–1731 with options `kiosk-1` through `kiosk-10`.
+       - 3 Large Metric Cards: lines 2287–2323 (`Total Hadir Datang`, `Total Pulang`, `Total Unik Siswa`).
+       - Full 6-column Student Roster Table: lines 2157–2281 (`No`, `Nama Siswa`, `NISN`, `Kelas`, `Presensi Datang`, `Presensi Pulang`).
+       - 7-column Live Attendance Audit Log Table: lines 2326–2430 (`No`, `Waktu`, `Nama Siswa`, `Kelas`, `NISN`, `Status`, `Kios`).
+       - Exclusive Admin Tab Access: `Penugasan Piket` (`activeTab === 'penugasan' && isAdmin`, line 2841).
+     - **Guru Compact View** (`id="piket-content-scan-guru"`, lines 2434–2837):
+       - Kiosk selector dropdown is omitted (defaults `deviceId` to `'kiosk-default'`).
+       - Compact mode pill toggle: lines 2462–2493 (`Datang` | `Pulang`).
+       - Inline counter badge: lines 2448–2459 (`Hadir Datang: {scanSummary.totalDatang} • Pulang: {scanSummary.totalPulang}`).
+       - Fast touch-friendly student roster cards with 1-tap action buttons: lines 2747–2831 (emerald Datang & blue Pulang buttons with `min-h-[38px]`).
+       - 7-column Live Attendance Audit Log table is omitted to keep the mobile interface clutter-free.
 
-4. **`src/components/AdminVerifView.tsx` (F4)**:
-   - Lines 196–205: In `verifyItem`, when status is `'Ditolak'`, optimistically purges the rejected card from the active state list immediately (`setPresensiList(prev => prev.filter(item => item.id !== id))`, and similarly for Jurnal and Piket).
-   - Lines 235: In `bulkVerifyCurrent`, excludes rejected items: `&& item.status_verifikasi !== 'Ditolak'`.
-   - Lines 474–477: In `displayList`, automatically hides rejected items from the active queue:
-     ```ts
-     if (verifFilter !== 'Ditolak' && item.status_verifikasi === 'Ditolak') {
-       return false;
-     }
-     ```
-     Rejected items are only shown if the admin explicitly selects the `'Ditolak'` filter.
-   - Lines 860–876: "Setujui" button is guarded with `{item.status_verifikasi !== 'Ditolak' && ( ... )}` so that it is never rendered for any rejected item.
+3. **Integrity & Anti-Cheating Verification**:
+   - No mock/dummy datasets embedded in `src/components/PiketView.tsx`.
+   - `handleManualMark` executes genuine backend calls via `recordPresensiSiswa(supabase, { ... })`.
+   - `fetchTodayScanData()` re-queries the Supabase database to synchronize live counts and badges.
 
-5. **Test and Build Executions**:
-   - `npm test`: Exited code 0. Passed 23/23 tests in `tests/m1_resubmission_and_verif.test.ts` and all regression suites (M6.1, M6.2, M6.3, M6.4, M10, QOL).
-   - `npx tsx tests/e2e/tier1_feature_coverage.test.ts`: Exited code 0. 75/75 assertions passed (including all F1-F4 tests).
-   - `npx tsx tests/e2e/run_all_e2e.ts`: Exited code 0. 186/186 assertions passed across Tier 1, 2, 3, and 4.
-   - `npm run build`: Exited code 0. Compiled successfully via Next.js 16.3.4 (Turbopack), 0 TypeScript errors, 8/8 static/dynamic routes generated.
+### 1.2 Programmatic Verification Outputs
+
+1. **TypeScript Type Checking**:
+   - Command: `npx tsc --noEmit`
+   - Output: Exited with code 0 (0 errors).
+2. **Next.js Production Build**:
+   - Command: `npm run build`
+   - Output: Compiled successfully in 1743ms, static pages generated cleanly in 699ms, code 0.
+3. **Independent Verification Suite**:
+   - Command: `npx tsx tests/r1_piket_ui_state_reviewer.test.ts`
+   - Output: 37 of 37 assertions passed (0 failures).
+4. **Camera Reviewer Suite**:
+   - Command: `npx tsx tests/r2_camera_piket_reviewer.test.ts`
+   - Output: 15 of 15 assertions passed (0 failures).
+5. **Full Regression Suite**:
+   - Command: `npm test`
+   - Output: All test suites executed and passed (code 0).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Integrity Audit**:
-   - Inspected implementation in `GuruPresensi.tsx`, `GuruJurnal.tsx`, `PiketView.tsx`, and `AdminVerifView.tsx`.
-   - No mock overrides, no hardcoded test outputs, no facade placeholders, and no bypass shortcuts were introduced. The logic genuinely interacts with Supabase, manages state, and modifies the DOM reactively.
-   - **Integrity Verdict**: PASS (Zero integrity violations).
-
-2. **F1 Presensi Re-submission Reset**:
-   - Observation 1 demonstrates that `GuruPresensi` detects `presensiDatangDitolak` and initializes the form to "Datang".
-   - Upon form submission, the old rejected record is deleted using Supabase `.delete().eq('id', rejectedRecord.id)` and the new submission is inserted with `status_verifikasi = 'Menunggu'`.
-   - State refresh is awaited, restoring valid `dailyState`.
-   - Duplicate Pulang submission is blocked unless Pulang was previously rejected.
-
-3. **F2 Jurnal Selective Reset & Multi-Tenant**:
-   - Observation 2 demonstrates that the indiscriminate batch deletion of all rejected journals (`dailyState.jurnalDitolak.map(j => j.id)`) was eliminated.
-   - The new logic explicitly matches `kelas` and `mapel` (including fuzzy match via `isJurnalMatchJadwal`) or `Jurnal Kegiatan`. Only the matching rejected record is deleted.
-   - Other rejected journals (e.g. for Class VII B when submitting Class VII A) remain in the database with status `Ditolak` and continue alerting the teacher until individually resubmitted.
-   - `sekolah_id` is included in `newJurnal`, guaranteeing tenant isolation under RLS.
-
-4. **F3 Laporan Piket Reset**:
-   - Observation 3 shows that resubmission deletes the old rejected piket report by ID and cleans up any matching rejected record for the teacher today.
-   - Local state is refreshed via awaited `getGuruDailyState`.
-
-5. **F4 Admin Verification UI**:
-   - Observation 4 confirms that when an admin rejects an item, it is immediately removed from the active verification queue in memory.
-   - When viewing the active queue ("Semua" or "Menunggu"), rejected items are filtered out in `displayList`.
-   - The "Setujui" button is guarded and completely unmounted from the DOM for any item where `status_verifikasi === 'Ditolak'`.
-   - Bulk approval explicitly excludes rejected items.
-   - If an admin specifically switches the filter dropdown to "Ditolak", the rejected cards appear for audit purposes with the rejection reason clearly displayed.
+1. **Observation 1.1.1** demonstrates that `handleManualMark` in `src/components/PiketView.tsx` no longer invokes `setManualSearchQuery` or `setManualKelasFilter`.
+2. As a direct consequence, clicking "Tandai Datang" or "Tandai Pulang" maintains `manualSearchQuery` and `manualKelasFilter` intact.
+3. When a teacher selects a class (e.g. Kelas 7A) and clicks "Tandai Datang" for any student, `filteredManualStudents` continues to evaluate all students belonging to Kelas 7A. The clicked student's status badge updates via `fetchTodayScanData()` while all peer students remain visible.
+4. **Observation 1.1.2** verifies that role normalization handles whitespace and case variations (`'admin'`, `'Admin'`, `'superadmin'`, `'Super Admin'`, `'guru'`, `'Guru'`, `'GURU'`).
+5. **Observation 1.1.2** shows that `activeTab === 'scan'` is bifurcated into two mutually exclusive views: `id="piket-content-scan"` for Admin and `id="piket-content-scan-guru"` for Guru.
+6. The Admin view satisfies all criteria: Kiosk 1–10 selector, 3 large metric cards, 6-column roster table, and 7-column Live Attendance Audit Log.
+7. The Guru view satisfies all criteria: Kiosk selector hidden, compact mode pill toggle, inline counters, 1-tap touch action buttons, and heavy 7-column audit log hidden.
+8. **Observation 1.2** confirms zero compilation errors, flawless production build, and 100% test pass rate across unit, regression, and adversarial test suites.
+9. Therefore, Requirement R1 is fully and correctly fulfilled.
 
 ---
 
 ## 3. Caveats
 
-- In production Supabase environments with strict Row Level Security (RLS), the database policies on `presensi_guru`, `jurnal_pembelajaran`, and `laporan_piket` must grant teachers the `DELETE` permission on rows where `status_verifikasi = 'Ditolak'` and `nama_guru` / `guru_pelapor` matches their authenticated user.
-- If an admin rejects an item, it is optimistically filtered out of the local list. If the admin immediately changes the filter to "Ditolak" without clicking reload or waiting for a real-time event, the item re-appears upon next fetch (`loadData` or Supabase channel push). This is normal reactive behavior.
+- **Network / Offline Mode**: When the application loses network connection during manual marking, `recordPresensiSiswa` throws an error which is caught, displayed via `showToast('Error', ...)`, and logged without corrupting local roster state.
+- **Role Assignment**: If a user role is undefined or unrecognized, it safely defaults to the Guru (compact) layout rather than exposing Admin controls.
 
 ---
 
 ## 4. Conclusion
 
-**Verdict**: **APPROVE**
+**Verdict: APPROVE**
 
-Milestone 1 satisfies all requirements set forth in `ORIGINAL_REQUEST.md` (R1.1, R1.4) and `PROJECT.md` (F1–F4):
-- Presensi re-submission reset works reliably, deleting old rejected records and refreshing state.
-- Jurnal re-submission bug is completely resolved: batch deletion replaced with targeted matching by class/mapel, and `sekolah_id` is supplied.
-- Piket re-submission cleanly purges rejected reports and refreshes workflow.
-- Admin Verification UI eliminates the "Setujui" button for rejected items and removes rejected items from the active verification queue.
-- Full test suites (`npm test`, full E2E suite of 186 tests) and production build (`npm run build`) pass cleanly.
-
-Work is approved for transition to Milestone 2.
+- **R1.1**: Resolved. Clicking "Tandai Datang" or "Tandai Pulang" preserves the active class filter and roster state. All students in the active roster remain visible.
+- **R1.2**: Resolved. Distinct, optimized UI presentations are rendered for Guru (compact, fast touch-friendly) and Admin (detailed multi-kiosk audit view).
+- **Integrity**: Clean. No dummy implementations, hardcoded outputs, or bypasses detected.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify this review:
-1. **Run Unit & Integration Tests**:
-   ```bash
+To independently reproduce this verification:
+
+1. **Run R1 Dedicated Unit & Adversarial Test**:
+   ```powershell
+   npx tsx tests/r1_piket_ui_state_reviewer.test.ts
+   ```
+   *Expected*: 37 of 37 passed.
+
+2. **Run TypeScript Verification**:
+   ```powershell
+   npx tsc --noEmit
+   ```
+   *Expected*: Exits with code 0.
+
+3. **Run Full Test Suite**:
+   ```powershell
    npm test
    ```
-   Expect: All 23 M1 tests and previous suites pass (0 failures).
-2. **Run E2E Feature Coverage**:
-   ```bash
-   npx tsx tests/e2e/tier1_feature_coverage.test.ts
-   ```
-   Expect: All 75 tests pass (including F1-F4).
-3. **Run Complete E2E Suite**:
-   ```bash
-   npx tsx tests/e2e/run_all_e2e.ts
-   ```
-   Expect: 186/186 tests pass across Tiers 1–4.
+   *Expected*: All test suites pass.
+
 4. **Run Production Build**:
-   ```bash
+   ```powershell
    npm run build
    ```
-   Expect: Exit code 0, 0 TypeScript errors.
-5. **Inspect Source Code**:
-   - `src/components/GuruPresensi.tsx` (lines 96-106, 271-275, 406)
-   - `src/components/GuruJurnal.tsx` (lines 6, 335, 340-358, 420-425)
-   - `src/components/PiketView.tsx` (lines 332-341, 393-399)
-   - `src/components/AdminVerifView.tsx` (lines 196-205, 235, 474-477, 860-876)
+   *Expected*: Compiles successfully.

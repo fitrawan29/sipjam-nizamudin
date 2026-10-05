@@ -20,8 +20,8 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Modul Piket UI/State & QR Camera Fix | `src/components/PiketView.tsx` (R1.1, R1.2, R2) | Survey completed | PLANNED |
-| M2 | Sidebar Profile & Tutorial System | `src/components/AppScreen.tsx`, `src/components/Tutorial/*`, `docs/PANDUAN_PENGGUNA.md` (R3.1, R3.2) | Interface defined | PLANNED |
+| M1 | Modul Piket UI/State & QR Camera Fix | `src/components/PiketView.tsx` (R1.1, R1.2, R2) | Survey completed | DONE |
+| M2 | Sidebar Profile & Tutorial System | `src/components/AppScreen.tsx`, `src/components/Tutorial/*`, `docs/PANDUAN_PENGGUNA.md` (R3.1, R3.2) | Interface defined | IN_PROGRESS |
 | M3 | Comprehensive Verification & Git Push | Test execution, build gate, git commit & push | M1, M2 | PLANNED |
 
 ## Code Layout

@@ -1,53 +1,58 @@
-## 2026-10-04T07:25:38Z
-You are Worker 2 (worker_m2).
+## 2026-10-05T10:34:48Z
+You are worker_m2.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2
+Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-Read ORIGINAL_REQUEST.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically the latest request at the bottom, 2026-10-04T07:11:46Z).
+MANDATORY FIRST STEP: Read the user request at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
 
-Read PROJECT.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_13\PROJECT.md
+Also read the survey explorer report:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md (Sidebar User Profile & Tutorial System)
 
-Read the survey handoff from explorer_survey_2 at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md
+File Ownership:
+You have exclusive write access to:
+- `src/components/AppScreen.tsx`
+- `src/components/Tutorial/tutorialData.ts`
+- `src/components/Tutorial/TutorialModal.tsx`
+- `src/components/Tutorial/index.ts`
+- `docs/PANDUAN_PENGGUNA.md`
+- `TUTORIAL.md`
 
-Your exclusive write ownership files (YOU OWN ONLY THESE FILES):
-- `src/app/globals.css`
-- `src/components/AIAssistant/AIAssistant.tsx`
-- `src/components/DokumenView.tsx`
-- `src/components/RekapJurnalView.tsx`
-DO NOT write to any other source files.
+Requirements to implement:
+1. R3.1: Sidebar Menu User Profile Display (`src/components/AppScreen.tsx`):
+   - In the sidebar overlay, directly below the brand header and above the scrollable menu list, insert a User Profile Card:
+     - Avatar: `renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')` with online status indicator dot.
+     - Full name: `{user?.nama || 'Pengguna SIPJAM'}`.
+     - Role Badge: Color-coded badge with icon for Superadmin (purple), Administrator (blue), Guru (Wali Kelas) (teal), Guru (emerald).
+     - Username / NIP if available.
+   - Adjust menu list max height so the entire drawer remains scrollable on mobile and desktop (`flex-1 overflow-y-auto custom-scroll max-h-[calc(100vh-230px)]`).
+2. R3.2: Complete In-App Tutorial System:
+   - Create `src/components/Tutorial/tutorialData.ts` containing comprehensive tutorial data covering all 28 menus across all 3 roles:
+     - Guru (11 menus): Dashboard, Presensi Guru, Jurnal Pembelajaran, Jurnal Kelas, Modul Piket, Perangkat Pembelajaran, Daftar Nilai, Informasi, Riwayat, Rekap Jurnal, Presensi Siswa.
+     - Admin (14 menus): Dashboard, Verifikasi, Sistem Blok, Jurnal Kelas, Kelola Piket, Perangkat Pembelajaran, Daftar Nilai, Informasi, Analitik, Rekap Akhir, Presensi Siswa, Master Data, Akses Data / Backup, Sistem (Konfigurasi).
+     - Superadmin (3 menus): Ringkasan Platform, Kelola Sekolah, Admin Sekolah.
+     - Each menu item includes `id`, `viewId`, `title`, `icon`, `role`, `summary`, `prerequisites`, `steps: string[]`, `keyTips: string[]`.
+   - Create `src/components/Tutorial/TutorialModal.tsx`:
+     - Role filter tabs (`Semua`, `Guru`, `Admin`, `Superadmin`).
+     - Real-time search filter input (matching title, summary, steps).
+     - Clean accordion list of cards.
+     - Direct "Buka Menu" navigation button calling `onNavigate(viewId)`.
+   - Create `src/components/Tutorial/index.ts` exporting `TutorialModal` and `tutorialData`.
+   - In `src/components/AppScreen.tsx`:
+     - Mount `<TutorialModal isOpen={tutorialModalOpen} onClose={() => setTutorialModalOpen(false)} onNavigate={handleNavigation} currentRole={user?.role} />`.
+     - In sidebar menu list, add a button labeled `"Panduan & Tutorial Lengkap"` that opens this modal.
+     - CRITICAL REGRESSION SAFETY: RETAIN the existing `"Lihat Tutorial Lagi"` button (`setTourOpen(true)`) and existing `<OnboardingTutorial ... />` component to preserve 100% backward compatibility with `tests/app_screen_integration.test.ts` and `tests/onboarding_and_ai_assistant_ui.test.ts`.
+3. R3.2: Complete Documentation File:
+   - Create `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md` providing complete written guides for all 3 roles and their features.
 
-Task: Implement Milestone 2 (R3):
-1. Sembunyikan Elemen Robot & Tombol UI Melayang saat Print:
-   - In `src/components/AIAssistant/AIAssistant.tsx`: Add `no-print print:hidden` to the trigger button (`data-tour="ai-assistant-btn"`) and chat modal dialog container.
-   - In `src/app/globals.css`: In `@media print`, expand selectors to hide:
-     `[data-tour="ai-assistant-btn"], [aria-label*="Asisten AI"], [role="dialog"][aria-label*="Asisten AI"], .fa-robot, button.fixed, div.fixed:not(.sipjam-print-watermark)`
-     Ensure all floating/interactive buttons are hidden cleanly.
+Verification & Git Workflow:
+- Run `npx tsc --noEmit` (must be 0 errors).
+- Run `npx tsx tests/app_screen_integration.test.ts` and `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`.
+- Run `npm test` and `npm run build`.
+- Execute Git Workflow Rule (GEMINI.md): `git status`, `git add .`, `git commit -m "feat: sidebar user profile, complete tutorial modal, and comprehensive documentation"`, `git push origin main`.
 
-2. Pertahankan Watermark Sekolah:
-   - CRITICAL: Watermark sekolah (`.sipjam-print-watermark`) in `PrintHeader.tsx` and `globals.css` MUST REMAIN PRINTED.
-   - Ensure ANY rule hiding `fixed` elements strictly uses `:not(.sipjam-print-watermark)`.
-   - Ensure `.sipjam-print-watermark` has `display: flex !important;` in `@media print`.
 
-3. Standarisasi Format Cetak Dokumen Guru (Identik Admin):
-   - In `src/components/DokumenView.tsx`:
-     - Import and render `<PrintHeader user={user} sekolahId={user?.sekolah_id} />`.
-     - Add print subheader (Nama Guru, Tahun Ajaran, Tanggal Cetak).
-     - Add `PrintOrientationToggle` and "Cetak Dokumen" button (`no-print`).
-     - Hide web interactive cards, KPI tabs, upload forms with `no-print`.
-     - Add clean print table (Print-Only Table) for curriculum documents / teacher requirements with admin standard styling (`border-collapse border border-black text-[8pt]`, header `bg-gray-100 text-black font-bold px-2 py-1.5`, cells `px-2 py-1.5 border border-black`).
-     - Render `<PrintSignature />` (Guru & Kepala Sekolah).
-   - In `src/components/RekapJurnalView.tsx`:
-     - Standardize table cells from `p-2` to `px-2 py-1.5` / `print:p-1.5`.
-     - Standardize table header bg to `print:bg-gray-100`.
-     - Add `no-print` to raw GPS coordinates.
-     - Autofill Wali Kelas name in signature if user is Wali Kelas (`isWaliKelas`).
-
-MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
-
-Acceptance verification:
-Run `npx tsc --noEmit` and relevant tests. Make sure there are 0 TypeScript errors.
-Document all changes and test outputs in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md`.
-Send a message to parent when completed.
+## 2026-10-05T10:50:30Z
+**Context**: Status inquiry for Milestone 2 implementation
+**Content**: Please report your current status on implementing the Sidebar user profile, TutorialModal, tutorialData, and PANDUAN_PENGGUNA.md.
+**Action**: Continue implementation, run tests and build, write handoff.md, and reply with completion report.

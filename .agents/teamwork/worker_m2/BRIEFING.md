@@ -1,64 +1,54 @@
-# BRIEFING — 2026-10-04T07:37:00Z
+# BRIEFING — 2026-10-05T10:52:00Z
 
 ## Mission
-Implement Milestone 2 (R3): Hide AI Assistant / floating elements in print while strictly preserving .sipjam-print-watermark, standardize teacher DokumenView printing to match Admin standard, and standardize RekapJurnalView print layout and Wali Kelas signature autofill.
+Implement sidebar menu user profile display, in-app tutorial system with 28 menus across 3 roles, and comprehensive documentation guides.
 
 ## 🔒 My Identity
 - Archetype: worker
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2
-- Original parent: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Milestone: Milestone 2 (R3)
+- Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
+- Milestone: M2 (Sidebar User Profile, In-App Tutorial System, Documentation)
 
 ## 🔒 Key Constraints
-- Exclusive write ownership files:
-  - `src/app/globals.css`
-  - `src/components/AIAssistant/AIAssistant.tsx`
-  - `src/components/DokumenView.tsx`
-  - `src/components/RekapJurnalView.tsx`
-- DO NOT write to any other source files.
-- Integrity mandate: genuine implementation only, zero hardcoded cheat results.
-- Run `npx tsc --noEmit` and confirm 0 TypeScript errors.
-- Ensure `.sipjam-print-watermark` has `display: flex !important;` in `@media print` and is never hidden by fixed element rules.
-- Follow Git Workflow Rule at completion if applicable or report back to orchestrator.
+- File Ownership: `src/components/AppScreen.tsx`, `src/components/Tutorial/tutorialData.ts`, `src/components/Tutorial/TutorialModal.tsx`, `src/components/Tutorial/index.ts`, `docs/PANDUAN_PENGGUNA.md`, `TUTORIAL.md`. Do not touch other files.
+- Retain existing "Lihat Tutorial Lagi" button and OnboardingTutorial component for backward compatibility.
+- Comply with GEMINI.md git workflow (status, add, commit, push origin main).
+- All implementations must be genuine, maintain real state, and produce real behavior.
 
 ## Current Parent
-- Conversation ID: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Updated: 2026-10-04T07:37:00Z
+- Conversation ID: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
+- Updated: 2026-10-05T10:50:30Z
 
 ## Task Summary
-- **What to build**:
-  1. Hide floating robot / AI Assistant and floating UI in print:
-     - `src/components/AIAssistant/AIAssistant.tsx`: added `no-print print:hidden` to trigger button & chat modal.
-     - `src/app/globals.css`: added `@media print` selectors for `[data-tour="ai-assistant-btn"], [aria-label*="Asisten AI"], [role="dialog"][aria-label*="Asisten AI"], .fa-robot, button.fixed, div.fixed:not(.sipjam-print-watermark)`.
-  2. Preserve `.sipjam-print-watermark` in `src/app/globals.css`:
-     - Ensured `display: flex !important;` in `@media print`, exempted from fixed element hiding via `:not(.sipjam-print-watermark)`, and hidden on `@media screen`.
-  3. Standardize teacher document printing in `src/components/DokumenView.tsx`:
-     - Added `<PrintHeader user={user} sekolahId={user?.sekolah_id} />`.
-     - Added standardized Print Subheader with Teacher Name, School Year, Print Date.
-     - Added `PrintOrientationToggle` and "Cetak Dokumen" button with `no-print`.
-     - Hid interactive web cards, KPI tabs, and upload forms with `no-print`.
-     - Added standardized Print-Only Table (`border-collapse border border-black text-[8pt]`, header `bg-gray-100 text-black font-bold px-2 py-1.5`, cells `px-2 py-1.5 border border-black`).
-     - Rendered `<PrintSignature />` with dual signers.
-  4. Standardize print styling & Wali Kelas autofill in `src/components/RekapJurnalView.tsx`:
-     - Standardized cell padding from `p-2` to `px-2 py-1.5 print:p-1.5`.
-     - Standardized table header background to `print:bg-gray-100`.
-     - Added `no-print` to raw GPS coordinates.
-     - Autofilled Wali Kelas name and NIP in signature when user is Wali Kelas (`isWaliKelas || waliClasses.length > 0`).
+- **What to build**: Sidebar user profile display card, comprehensive in-app tutorial modal & data (28 menus, 3 roles), complete user guide markdown files (`docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md`).
+- **Success criteria**: TypeScript checks clean (`tsc --noEmit`), all tests pass (`npm test`, `tsx tests/app_screen_integration.test.ts`, `tsx tests/onboarding_and_ai_assistant_ui.test.ts`), build succeeds (`npm run build`), git pushed.
+- **Interface contracts**: AppScreen integration with TutorialModal.
+
+## Key Decisions Made
+- Embedded User Profile Card directly under brand header in sidebar overlay in `src/components/AppScreen.tsx`.
+- Implemented `TutorialModal.tsx` and `tutorialData.ts` with 28 menus (11 Guru, 14 Admin, 3 Superadmin).
+- Retained original "Lihat Tutorial Lagi" button and OnboardingTutorial to avoid any regression in existing tests.
+- Formulated comprehensive documentation in `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md`.
+
+## Artifact Index
+- `src/components/AppScreen.tsx` — Sidebar User Profile Card & TutorialModal integration
+- `src/components/Tutorial/tutorialData.ts` — Data definitions and search utilities for 28 menus
+- `src/components/Tutorial/TutorialModal.tsx` — Interactive search, tabs, and direct navigation modal
+- `src/components/Tutorial/index.ts` — Module exports
+- `docs/PANDUAN_PENGGUNA.md` — Complete user manual
+- `TUTORIAL.md` — Role-based tutorial reference manual
+- `.agents/teamwork/worker_m2/handoff.md` — 5-component handoff report
 
 ## Change Tracker
-- **Files modified**:
-  - `src/app/globals.css`: expanded `@media print` hide selectors, preserved `.sipjam-print-watermark`, hid watermark in `@media screen`.
-  - `src/components/AIAssistant/AIAssistant.tsx`: added `no-print print:hidden` on floating button and chat modal.
-  - `src/components/DokumenView.tsx`: integrated PrintHeader, subheader, orientation toggle, print-only table, and PrintSignature; marked web cards with `no-print`.
-  - `src/components/RekapJurnalView.tsx`: standardized table padding (`px-2 py-1.5`), header bg (`print:bg-gray-100`), hid GPS coords (`no-print`), autofilled Wali Kelas signature.
-- **Build status**: `npx tsc --noEmit` PASS (0 errors), `npm test` PASS (all suites), `npm run build` PASS.
+- **Files modified**: `src/components/AppScreen.tsx`, `src/components/Tutorial/tutorialData.ts`, `src/components/Tutorial/TutorialModal.tsx`, `src/components/Tutorial/index.ts`, `docs/PANDUAN_PENGGUNA.md`, `TUTORIAL.md`
+- **Build status**: PASS (`next build` & `tsc --noEmit` exited 0)
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: PASS (TypeScript 0 errors, full Next.js build clean, 25/25 M2 checks passed).
-- **Lint status**: Clean.
-- **Tests added/modified**: `.agents/teamwork/worker_m2/verify_m2.ts` (25 automated assertion checks covering all M2 criteria).
+- **Build/test result**: PASS (TypeScript 0 errors, app_screen_integration 24/24 PASS, onboarding_and_ai_assistant_ui PASS, npm test 27 test suites PASS, npm run build PASS)
+- **Lint status**: clean
+- **Tests added/modified**: Verified against all test suites
 
 ## Loaded Skills
-- None specified in dispatch
+- None

@@ -1,113 +1,106 @@
-# Handoff Report: Milestone 2 (R3) — Penyesuaian Format Cetak Dokumen Guru, Sembunyikan Robot & Tombol UI Melayang, Pertahankan Watermark
+# Handoff Report — Milestone 2: Sidebar User Profile, In-App Tutorial System, & Documentation
+
+**Agent**: `worker_m2`  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2`  
+**Date**: 2026-10-05T10:52:00Z  
+**Type**: Hard Handoff (Task Complete)  
+
+---
 
 ## 1. Observation
-1. **`src/components/AIAssistant/AIAssistant.tsx`**:
-   - Previously, the floating trigger button (`data-tour="ai-assistant-btn"`) on lines 170-176 and the expandable chat panel modal (`role="dialog"`, `aria-label="Panel Asisten AI SIPJAM"`) on lines 188-192 had no `no-print` or `print:hidden` classes.
-   - We updated both elements with `no-print print:hidden`.
 
-2. **`src/app/globals.css`**:
-   - Expanded `@media print` non-printable selector rules to specifically target and hide:
-     `[data-tour="ai-assistant-btn"]`,
-     `[aria-label*="Asisten AI"]`,
-     `[role="dialog"][aria-label*="Asisten AI"]`,
-     `.fa-robot`,
-     `[data-testid="spotlight-box"]`,
-     `[data-testid="tooltip-card"]`,
-     `button.fixed`,
-     `div.fixed:not(.sipjam-print-watermark)`.
-   - Maintained `.sipjam-print-watermark` with `display: flex !important;` in `@media print`, protected from fixed element removal using `:not(.sipjam-print-watermark)`.
-   - Hidden `.sipjam-print-watermark` on screen devices via `@media screen { .print-only, .sipjam-print-watermark { display: none !important; } }`.
+### 1.1 Codebase Modifications & Implementations
+1. **Sidebar Menu User Profile Card (`src/components/AppScreen.tsx`)**:
+   - Integrated a dedicated profile card directly below the brand header divider and above the scrollable menu list.
+   - Profile card includes:
+     - Avatar: `renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')` with a green online status badge.
+     - Full Name: `{user?.nama || 'Pengguna SIPJAM'}`.
+     - Role Badges: Color-coded with Font Awesome icons:
+       - **Superadmin**: `bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300` (`fa-crown`).
+       - **Administrator**: `bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300` (`fa-user-shield`).
+       - **Guru (Wali Kelas)**: `bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300` (`fa-chalkboard-user`).
+       - **Guru**: `bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300` (`fa-chalkboard-user`).
+     - Username / NIP indicator: `{(user?.username || user?.nip)}`.
+   - Adjusted menu list height to `flex-1 overflow-y-auto max-h-[calc(100vh-230px)] custom-scroll` ensuring drawer remains smoothly scrollable on mobile and desktop without overflowing.
 
-3. **`src/components/DokumenView.tsx`**:
-   - Integrated `<PrintHeader user={user} sekolahId={user?.sekolah_id} />`.
-   - Added standard print subheader:
-     - Title: "Laporan Kelengkapan Perangkat Pembelajaran Kurikulum Merdeka" (for Teacher) / "Rekapitulasi Matriks Kelengkapan Perangkat Pembelajaran Dewan Guru" (for Admin).
-     - Subtitle: Teacher Name & NIP, Tahun Ajaran (computed dynamically, e.g. 2026/2027), Tanggal Cetak (WITA timezone in Indonesian format).
-   - Added `PrintOrientationToggle` and "Cetak Dokumen" button (`no-print`).
-   - Hidden web interactive elements during print using `no-print`:
-     - Header Title & action toolbar (`no-print`)
-     - Tab Selector pills (`no-print`)
-     - Admin Matrix cards & KPI grid (`no-print`)
-     - Admin Syarat management table & CRUD modal (`no-print`)
-     - Teacher My Documents cards & upload list (`no-print`)
-     - Teacher Upload form (`no-print`)
-   - Added clean, formal Print-Only Table (`print-only hidden print:block`):
-     - For Teacher: lists all 6 Kurikulum Merdeka documents per subject and class with standard Admin styling (`border-collapse border border-black text-[8pt]`, header `bg-gray-100 text-black font-bold px-2 py-1.5 border border-black`, cells `px-2 py-1.5 border border-black`).
-     - For Admin: summarizes the Dewan Guru completeness matrix or syarat catalog with identical crisp border styling.
-   - Rendered `<PrintSignature />` at the bottom with dual signers (Teacher / Admin on left, Headmaster / Kepala Sekolah with region and date on right).
+2. **In-App Tutorial System (`src/components/Tutorial/`)**:
+   - `src/components/Tutorial/tutorialData.ts`:
+     - Covers all **28 menus** across all 3 roles:
+       - **Guru (11 menus)**: Dashboard (`view-home`), Presensi Guru (`view-guru-presensi`), Jurnal Pembelajaran (`view-guru-jurnal`), Jurnal Kelas (`view-jurnal-kelas`), Modul Piket (`view-piket`), Perangkat Pembelajaran (`view-dokumen`), Daftar Nilai (`view-gradebook`), Informasi (`view-informasi`), Riwayat (`view-history`), Rekap Jurnal (`view-guru-rekap-jurnal`), Presensi Siswa (`view-rekap-siswa`).
+       - **Admin (14 menus)**: Dashboard (`view-home`), Verifikasi (`view-admin-verif`), Sistem Blok (`view-sistem-blok`), Jurnal Kelas (`view-jurnal-kelas`), Kelola Piket (`view-piket`), Perangkat Pembelajaran (`view-dokumen`), Daftar Nilai (`view-gradebook`), Informasi (`view-informasi`), Analitik (`view-analitik`), Rekap Akhir (`view-admin-rekap`), Presensi Siswa (`view-rekap-siswa`), Master Data (`view-admin-data`), Akses Data / Backup (`view-admin-backup`), Sistem Konfigurasi (`view-admin-config`).
+       - **Superadmin (3 menus)**: Ringkasan Platform (`view-superadmin-overview`), Kelola Sekolah (`view-superadmin-sekolah`), Admin Sekolah (`view-superadmin-admins`).
+     - Includes helper functions `getTutorialsByRole(role)` and `searchTutorials(query, roleFilter)`.
+   - `src/components/Tutorial/TutorialModal.tsx`:
+     - Clean tabs for role filtering (`Semua`, `Guru`, `Admin`, `Superadmin`).
+     - Real-time search filter matching menu titles, summaries, steps, tips, and prerequisites.
+     - Accordion-style expandable cards with expand/collapse all controls.
+     - Direct action button "Buka Menu" executing `onNavigate(viewId)` and closing the modal.
+   - `src/components/Tutorial/index.ts`:
+     - Barrel export for `TutorialModal`, `tutorialData`, and helper types.
+   - Integrated in `src/components/AppScreen.tsx`:
+     - Added button `"Panduan & Tutorial Lengkap"` in the sidebar drawer to open `TutorialModal`.
+     - Mounted `<TutorialModal isOpen={tutorialModalOpen} onClose={() => setTutorialModalOpen(false)} onNavigate={handleNavigation} currentRole={user?.role} />`.
+     - Preserved existing `"Lihat Tutorial Lagi"` button and `<OnboardingTutorial ... />` for 100% backward compatibility.
 
-4. **`src/components/RekapJurnalView.tsx`**:
-   - Standardized table header background color from `print:bg-gray-200` to `print:bg-gray-100` in both `tabMode === 'kelas'` and `tabMode === 'pribadi'`.
-   - Standardized table cell padding from `p-2` to `px-2 py-1.5 print:p-1.5` across all columns in both tables.
-   - Added `no-print` to the raw GPS geotag coordinates container under activity photos to prevent ugly raw coordinates in printouts.
-   - Autofilled Wali Kelas name and NIP in `PrintSignature` when the viewing user is a Wali Kelas (`isWaliKelas || waliClasses.length > 0`).
+3. **Complete Documentation**:
+   - `docs/PANDUAN_PENGGUNA.md`: 7-chapter comprehensive user manual covering architecture, all 28 menus with role distinctions, troubleshooting (GPS, camera permissions, offline mode, QR scanners), and FAQ.
+   - `TUTORIAL.md`: Complete root-level reference guide detailing all 28 menus, prerequisites, and operational steps for Guru, Admin, and Superadmin.
+
+### 1.2 Verification Outputs
+- `npx tsc --noEmit`: 0 errors.
+- `npx tsx tests/app_screen_integration.test.ts`: 24 passed, 0 failed.
+- `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`: 8/8 sections passed (100%).
+- `npm test`: All 27 test files passed.
+- `npm run build`: Production build succeeded with Next.js Turbopack, static page generation (12/12) completed.
 
 ---
 
 ## 2. Logic Chain
-1. **User Requirement & R3 Specification**:
-   - The user requested:
-     (a) Sembunyikan elemen "robot", tombol mengambang, dan modal chat saat cetak.
-     (b) Pertahankan watermark sekolah (`.sipjam-print-watermark`) agar tetap tercetak samar di background setiap halaman.
-     (c) Format cetak dokumen guru harus rapi dan identik dengan standar cetak Admin (kop resmi, subheader, tabel ringkas bergaris hitam tegas, padding `px-2 py-1.5`, dan blok tanda tangan).
-2. **Elimination of Floating Buttons & Robot UI**:
-   - By combining Tailwind classes (`no-print print:hidden`) directly on `<button data-tour="ai-assistant-btn">` and `<div role="dialog" aria-label="Panel Asisten AI SIPJAM">` in `AIAssistant.tsx`, and reinforcing with `@media print` rules targeting `[data-tour="ai-assistant-btn"], [aria-label*="Asisten AI"], [role="dialog"][aria-label*="Asisten AI"], .fa-robot, button.fixed, div.fixed:not(.sipjam-print-watermark)`, we provide defense-in-depth: regardless of whether styling comes from utility classes or CSS rules, all floating and robot elements are reliably hidden on print.
-3. **Protection of School Watermark**:
-   - In CSS Paged Media, `position: fixed` causes an element to repeat across every printed page.
-   - Because `PrintHeader.tsx` renders `<div className="sipjam-print-watermark">` via `createPortal` to `document.body`, any blanket rule hiding `fixed` elements would inadvertently eliminate the watermark unless explicitly excluded.
-   - By using `div.fixed:not(.sipjam-print-watermark)` and explicitly declaring `.sipjam-print-watermark { display: flex !important; }`, the watermark is guaranteed to survive print processing on every page.
-   - By rendering `<PrintHeader user={user} sekolahId={user?.sekolah_id} />` in `DokumenView.tsx`, the watermark is now also ported to teacher curriculum document printouts.
-4. **Standardization of Teacher Document Print Layout**:
-   - Previously `DokumenView.tsx` had no print layout at all — printing it resulted in distorted interactive web cards, broken progress bars, and missing headers/signatures.
-   - By introducing `PrintHeader`, print subheader, orientation toggle, `no-print` on interactive cards, and a clean print-only table styled identically to `AdminRekapView.tsx`, teacher curriculum documents now print with professional administrative quality.
-   - In `RekapJurnalView.tsx`, switching cell padding from `p-2` (8px) to `px-2 py-1.5 print:p-1.5` prevents line wrapping on wide 12-column tables, header background is standardized to `print:bg-gray-100`, raw GPS coordinates are hidden with `no-print`, and Wali Kelas signatures are filled automatically.
+
+1. **User Identity In Sidebar**:
+   - Prior to this change, logged-in user identity was only visible when viewing the `HomeView` dashboard banner. Once navigating to other menus (presensi, jurnal, piket), user context was invisible.
+   - Embedding the user profile card directly below the brand header divider guarantees persistent situational awareness for users on shared devices (tablets/laptops in schools).
+2. **Two-Tier Tutorial Design**:
+   - The existing onboarding system relied solely on a 5-step or 6-step spotlight overlay on UI elements. Attempting to force 28 menus into a spotlight tour would overwhelm users and cause fatigue.
+   - Introducing `TutorialModal.tsx` provides an on-demand, searchable, comprehensive reference covering all 28 menus with operational steps and tips, while retaining the onboarding tour for first-time orientation.
+3. **Regression Safety**:
+   - Existing integration test suites (`app_screen_integration.test.ts`) assert exact strings (`"Lihat Tutorial Lagi"`, `setTourOpen(true)`, `setSidebarOpen(false)`). By strictly keeping the existing tour button and adding `"Panduan & Tutorial Lengkap"` alongside it, 100% backward compatibility was achieved.
 
 ---
 
 ## 3. Caveats
-- No caveats. All 4 owned files (`globals.css`, `AIAssistant.tsx`, `DokumenView.tsx`, `RekapJurnalView.tsx`) were modified strictly within scope without touching any other files.
+
+1. **Role Context for Dynamic Menus**:
+   - For teachers, certain menus (`view-jurnal-kelas`, `view-rekap-siswa`, `view-piket`) only appear in the sidebar when specific role conditions are met (e.g. `isWaliKelas` or `isPiketHariIni`). The tutorial data and documentation explicitly describe these access prerequisites so teachers understand conditional menu visibility.
+2. **No External Dependencies**:
+   - All components are built with native React 19, Tailwind CSS, Font Awesome 6 icons, and TypeScript without introducing new packages to `package.json`.
 
 ---
 
 ## 4. Conclusion
-Milestone 2 (R3) is completely and genuinely implemented:
-- Floating robot button and chat modal are hidden in `@media print` via both CSS selectors and Tailwind utility classes.
-- Watermark sekolah is preserved with `display: flex !important;` and strictly exempted from fixed element hiding rules.
-- DokumenView printing is fully standardized with official Kop Surat (`PrintHeader`), print subheader, paper orientation controls, clean curriculum document print table, and dual signatures (`PrintSignature`).
-- RekapJurnalView table styling, headers, GPS coords hiding, and Wali Kelas signature autofill are aligned with the Admin standard.
-- TypeScript check (`npx tsc --noEmit`) passes with 0 errors, `npm test` passes 100%, and Next.js production build (`npm run build`) builds cleanly.
+
+All requirements for Requirement 3 (Sidebar User Profile Display & Complete Tutorial System across Guru, Admin, and Superadmin) have been completely and genuinely implemented, verified against existing test suites and production build, and documented in `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md`.
 
 ---
 
 ## 5. Verification Method
-To independently verify the implementation:
 
-1. **Automated Verification Script**:
-   ```powershell
-   npx tsx .agents/teamwork/worker_m2/verify_m2.ts
-   ```
-   *Expected result: 25/25 checks pass.*
-
-2. **TypeScript Compilation Check**:
+To independently verify this implementation:
+1. **Type Checking**:
    ```powershell
    npx tsc --noEmit
    ```
-   *Expected result: Exits with code 0 (0 errors).*
-
-3. **Existing Test Suite Regression Check**:
+2. **Integration & Regression Tests**:
    ```powershell
+   npx tsx tests/app_screen_integration.test.ts
+   npx tsx tests/onboarding_and_ai_assistant_ui.test.ts
    npm test
    ```
-   *Expected result: All test suites pass.*
-
-4. **Production Build Verification**:
+3. **Production Build**:
    ```powershell
    npm run build
    ```
-   *Expected result: Optimized production build succeeds.*
-
-5. **Visual / Source Inspection**:
-   - `src/components/AIAssistant/AIAssistant.tsx`: Lines 176 and 191 contain `no-print print:hidden`.
-   - `src/app/globals.css`: Contains `@media print` selectors targeting `[data-tour="ai-assistant-btn"], [aria-label*="Asisten AI"], .fa-robot, button.fixed, div.fixed:not(.sipjam-print-watermark)` and keeps `.sipjam-print-watermark { display: flex !important; }`.
-   - `src/components/DokumenView.tsx`: Contains `<PrintHeader user={user} sekolahId={user?.sekolah_id} />`, print subheader, `PrintOrientationToggle`, `no-print` on web cards, print-only table, and `<PrintSignature />`.
-   - `src/components/RekapJurnalView.tsx`: Header uses `print:bg-gray-100`, cells use `px-2 py-1.5 print:p-1.5`, GPS coordinate div has `no-print`, and signature autofills Wali Kelas name.
+4. **File Inspection**:
+   - Check `src/components/AppScreen.tsx` lines ~640-700 (profile card & tutorial button) and lines ~1050-1060 (`TutorialModal` mount).
+   - Check `src/components/Tutorial/tutorialData.ts` (28 menus across 3 roles).
+   - Check `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md`.

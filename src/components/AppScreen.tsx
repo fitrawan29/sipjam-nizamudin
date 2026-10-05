@@ -28,6 +28,7 @@ import PushNotificationPrompt from './PushNotificationPrompt';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import AIAssistant from '@/components/AIAssistant';
 import { OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN } from '@/components/Onboarding';
+import { TutorialModal } from '@/components/Tutorial';
 import TeacherReminderManager from './TeacherReminderManager';
 import { Pengumuman } from '@/types/database';
 import { supabase } from '@/lib/supabaseClient';
@@ -204,6 +205,7 @@ export default function AppScreen({
   const [unreadAnnouncements, setUnreadAnnouncements] = useState<Pengumuman[]>([]);
   const [readMap, setReadMap] = useState<Record<string, boolean>>({});
   const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
+  const [tutorialModalOpen, setTutorialModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -637,7 +639,40 @@ export default function AppScreen({
                     <i className="fa-solid fa-xmark text-sm"></i>
                 </button>
               </div>
-              <div className="space-y-1.5 overflow-y-auto max-h-[calc(100vh-180px)] custom-scroll">
+
+              {/* User Identity Card */}
+              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-green-50/40 dark:from-gray-800/90 dark:to-gray-800/40 border border-emerald-100/90 dark:border-gray-700/60 shadow-xs flex items-center gap-3">
+                <div className="relative w-11 h-11 rounded-full bg-white dark:bg-gray-700 p-0.5 shadow-xs shrink-0 overflow-hidden border border-emerald-200 dark:border-gray-600 flex items-center justify-center">
+                  {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')}
+                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-800" title="Aktif"></span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white truncate" title={user?.nama || 'Pengguna SIPJAM'}>
+                    {user?.nama || 'Pengguna SIPJAM'}
+                  </h3>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      isSuperadmin
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200/50'
+                        : isAdmin
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'
+                        : isWaliKelas
+                        ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
+                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
+                    }`}>
+                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isAdmin ? 'fa-user-shield' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
+                      {isSuperadmin ? 'Superadmin' : isAdmin ? 'Administrator' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
+                    </span>
+                    {(user?.username || user?.nip) && (
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
+                        {user?.username || user?.nip}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[calc(100vh-230px)] custom-scroll">
                 {menuItems.map(item => (
                   <button 
                     key={item.id}
@@ -658,6 +693,15 @@ export default function AppScreen({
                   className="w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800 border border-transparent transition-all"
                 >
                   <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all border border-emerald-200 dark:border-emerald-800/60 mt-2 mb-1 cursor-pointer"
+                  title="Buka panduan & tutorial lengkap seluruh menu"
+                >
+                  <i className="fa-solid fa-book-bookmark text-sm"></i>
+                  <span>Panduan & Tutorial Lengkap</span>
                 </button>
                 {!isSuperadmin && (
                   <button
@@ -1006,6 +1050,12 @@ export default function AppScreen({
         onClose={() => setTourOpen(false)}
         onComplete={() => setTourOpen(false)}
         onEnsureSidebarOpen={(open) => setSidebarOpen(open)}
+      />
+      <TutorialModal
+        isOpen={tutorialModalOpen}
+        onClose={() => setTutorialModalOpen(false)}
+        onNavigate={handleNavigation}
+        currentRole={user?.role}
       />
       <TeacherReminderManager
         user={user}
