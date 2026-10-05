@@ -40,6 +40,8 @@ export default function CameraSelfieCapture({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      isCapturingRef.current = false;
+      isConfirmingRef.current = false;
     };
   }, []);
 
@@ -52,10 +54,10 @@ export default function CameraSelfieCapture({
   // Synchronize internal capture state when existingPhotoUrl prop changes (e.g. form reset or Ganti Foto)
   useEffect(() => {
     setCapturedImage(existingPhotoUrl || null);
+    isConfirmingRef.current = false;
+    isCapturingRef.current = false;
     if (!existingPhotoUrl) {
       setCapturedFile(null);
-      isConfirmingRef.current = false;
-      isCapturingRef.current = false;
     }
   }, [existingPhotoUrl]);
 
@@ -122,6 +124,7 @@ export default function CameraSelfieCapture({
   const startCamera = useCallback(async (mode: 'user' | 'environment') => {
     if (isStartingRef.current) return;
     isStartingRef.current = true;
+    isCapturingRef.current = false;
     const currentSession = ++activeSessionIdRef.current;
     setCameraError(null);
 
@@ -159,8 +162,8 @@ export default function CameraSelfieCapture({
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err: unknown) {
         const e = err as { name?: string };
-        // Fallback on OverconstrainedError / ConstraintNotSatisfiedError / TypeError for single-camera or legacy devices
-        if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError' || e?.name === 'TypeError') {
+        // Fallback on OverconstrainedError / ConstraintNotSatisfiedError / TypeError / NotSupportedError for single-camera or legacy devices
+        if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError' || e?.name === 'TypeError' || e?.name === 'NotSupportedError') {
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               video: {
@@ -318,14 +321,24 @@ export default function CameraSelfieCapture({
       isConfirmingRef.current = true;
       const file = dataUrlToFile(capturedImage, `foto_kamera_${Date.now()}.jpg`);
       stopCamera();
-      onPhotoConfirmed(file, capturedImage);
+      try {
+        onPhotoConfirmed(file, capturedImage);
+      } catch (err: unknown) {
+        isConfirmingRef.current = false;
+        console.error('[CameraCapture] Error in onPhotoConfirmed:', err);
+      }
       return;
     }
 
     if (capturedFile && capturedImage) {
       isConfirmingRef.current = true;
       stopCamera();
-      onPhotoConfirmed(capturedFile, capturedImage);
+      try {
+        onPhotoConfirmed(capturedFile, capturedImage);
+      } catch (err: unknown) {
+        isConfirmingRef.current = false;
+        console.error('[CameraCapture] Error in onPhotoConfirmed:', err);
+      }
     } else {
       showToast('Foto Belum Diambil', 'Harap ambil foto terlebih dahulu sebelum konfirmasi.', 'warning');
     }

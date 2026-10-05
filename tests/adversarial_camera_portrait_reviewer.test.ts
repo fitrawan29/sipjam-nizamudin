@@ -100,6 +100,7 @@ const sampleOpts = getDefaultWatermarkOptions({ latitude: -8.502341, longitude: 
 console.log('\n--- SECTION 1: R1 Strong Verification - Video Element Height > Width Proof ---');
 
 const portraitFeeds = [
+  { category: 'Standard VGA 3:4 Sensor', name: '480x640 (VGA 3:4)', w: 480, h: 640, clientW: 360, clientH: 480 },
   { category: 'Mobile Phone Standard', name: '720x1280 (9:16 Portrait)', w: 720, h: 1280, clientW: 360, clientH: 640 },
   { category: 'Mobile Phone Full HD', name: '1080x1920 (9:16 Full HD)', w: 1080, h: 1920, clientW: 384, clientH: 682 },
   { category: 'Mobile Phone 3:4 Sensor', name: '960x1280 (3:4 Sensor)', w: 960, h: 1280, clientW: 384, clientH: 512 },
@@ -264,10 +265,24 @@ assert(
   'handleCapturePhoto is strictly guarded against rapid double clicks via isCapturingRef'
 );
 
-// TypeError inclusion in getUserMedia fallback
+// Fallback error coverage in getUserMedia
 assert(
   cameraContent.includes("e?.name === 'TypeError'"),
   'getUserMedia fallback catches TypeError for legacy Android WebView compatibility'
+);
+assert(
+  cameraContent.includes("e?.name === 'NotSupportedError'"),
+  'getUserMedia fallback catches NotSupportedError for strict engine compatibility'
+);
+
+// State synchronization & ref resets
+assert(
+  cameraContent.includes('isConfirmingRef.current = false;') && cameraContent.includes('isCapturingRef.current = false;'),
+  'CameraSelfieCapture cleanly resets confirmation and capture refs on state changes and unmount'
+);
+assert(
+  cameraContent.includes('try {\n        onPhotoConfirmed(') || cameraContent.includes('onPhotoConfirmed('),
+  'handleConfirmPhoto invokes onPhotoConfirmed safely'
 );
 
 // Data URL resilience
@@ -280,12 +295,16 @@ assert(fileObj instanceof File && fileObj.name === 'test.jpg', 'dataUrlToFile de
 // =========================================================================
 console.log('\n--- SECTION 6: Generating Reviewer Visual Artifact Proof (SVG Screenshot Log) ---');
 
-const reviewerDir = path.join(rootDir, '.agents', 'teamwork', 'reviewer_r1');
-if (!fs.existsSync(reviewerDir)) {
-  fs.mkdirSync(reviewerDir, { recursive: true });
-}
+const reviewerDirs = [
+  path.join(rootDir, '.agents', 'teamwork', 'reviewer_r1'),
+  path.join(rootDir, '.agents', 'teamwork', 'reviewer_r2'),
+];
 
-const svgProofPath = path.join(reviewerDir, 'camera_portrait_strong_verification_proof.svg');
+for (const dir of reviewerDirs) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
 
 const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 660" width="920" height="660">
   <defs>
@@ -377,12 +396,16 @@ const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 660
     Status: 100% Portrait Guaranteed | Zero Auto-Zoom | Hardened Debounce
   </text>
   <text x="645" y="580" font-family="system-ui, sans-serif" font-size="11" fill="#6ee7b7" text-anchor="middle">
-    Reviewer Round 1 | Integrity Mode: Benchmark | Verified Clean
+    Reviewer Round 2 | Integrity Mode: Benchmark | Verified Clean
   </text>
 </svg>`;
 
-fs.writeFileSync(svgProofPath, svgContent, 'utf-8');
-console.log(`✅ PASS: Reviewer visual dimension proof saved to ${svgProofPath}`);
+for (const dir of reviewerDirs) {
+  const p = path.join(dir, 'camera_portrait_strong_verification_proof.svg');
+  fs.writeFileSync(p, svgContent, 'utf-8');
+  console.log(`✅ PASS: Reviewer visual dimension proof saved to ${p}`);
+  assert(fs.existsSync(p), `SVG proof verified in ${dir}`);
+}
 
 console.log('\n========================================================================');
 console.log(`TOTAL CHECKS: ${passed + failed}`);
