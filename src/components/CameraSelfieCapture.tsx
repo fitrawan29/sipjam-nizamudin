@@ -33,6 +33,7 @@ export default function CameraSelfieCapture({
   const facingModeRef = useRef<'user' | 'environment'>(initialFacingMode);
   const isRetakeRef = useRef(false);
   const isConfirmingRef = useRef(false);
+  const isCapturingRef = useRef(false);
   const prevOrientationRef = useRef(orientation);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function CameraSelfieCapture({
     if (!existingPhotoUrl) {
       setCapturedFile(null);
       isConfirmingRef.current = false;
+      isCapturingRef.current = false;
     }
   }, [existingPhotoUrl]);
 
@@ -157,8 +159,8 @@ export default function CameraSelfieCapture({
         stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (err: unknown) {
         const e = err as { name?: string };
-        // Fallback on OverconstrainedError / ConstraintNotSatisfiedError for single-camera devices
-        if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError') {
+        // Fallback on OverconstrainedError / ConstraintNotSatisfiedError / TypeError for single-camera or legacy devices
+        if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError' || e?.name === 'TypeError') {
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               video: {
@@ -273,6 +275,7 @@ export default function CameraSelfieCapture({
   // 4. Capture photo and draw watermark
   const handleCapturePhoto = () => {
     if (isStartingRef.current || !isStreaming || capturedImage) return;
+    if (isCapturingRef.current) return;
     if (!videoRef.current) return;
     if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
       showToast('Kamera Belum Siap', 'Harap tunggu hingga gambar kamera muncul sepenuhnya.', 'warning');
@@ -280,6 +283,7 @@ export default function CameraSelfieCapture({
     }
 
     try {
+      isCapturingRef.current = true;
       const watermarkOpts = getDefaultWatermarkOptions(coordinates, locationName);
       const isMirror = facingMode === 'user';
       const dataUrl = drawWatermarkedCanvas(videoRef.current, watermarkOpts, isMirror, orientation);
@@ -290,6 +294,7 @@ export default function CameraSelfieCapture({
       isConfirmingRef.current = false;
       stopCamera();
     } catch (err: unknown) {
+      isCapturingRef.current = false;
       console.error('[CameraCapture] Error capturing frame:', err);
       const e = err as { message?: string };
       showToast('Gagal Mengambil Foto', e?.message || 'Silakan coba lagi.', 'error');
@@ -299,6 +304,7 @@ export default function CameraSelfieCapture({
   // 5. Retake photo
   const handleRetake = () => {
     isRetakeRef.current = true;
+    isCapturingRef.current = false;
     isConfirmingRef.current = false;
     setCapturedImage(null);
     setCapturedFile(null);

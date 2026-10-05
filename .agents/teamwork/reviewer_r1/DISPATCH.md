@@ -1,53 +1,74 @@
-# Dispatch Instructions for Reviewer (reviewer_r1)
+# Dispatch for reviewer_r1
 
-## Objective
-Audit and verify the comprehensive analysis report produced in `orchestrator_14/report.md`.
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1
 
-## Context & Inputs
-- Authoritative user request: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (read this first!)
-- Report to audit: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_14\report.md`
-- Actual codebase: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
+<original_task>
+# Teamwork Project Prompt
 
-## Audit Criteria
-1. **Mermaid Flowchart Validity & Completeness**:
-   - Is the Mermaid flowchart syntactically valid?
-   - Does it comprehensively map all accessible routes, pages, and menu hierarchies across Superadmin, Admin, Guru, Piket, and Wali Kelas?
-2. **Feature Inventory Accuracy**:
-   - Does every inventoried feature map directly to existing codebase files, components, and tables?
-   - Are file paths verified against the filesystem?
-3. **Actionable Improvement Suggestions**:
-   - Are there at least 3 distinct, concrete, actionable improvement proposals across UX, architecture, and codebase structure?
-   - Are the implementation steps feasible, grounded in the codebase, and detailed?
-4. **Codebase Verification**:
-   - Run `npx tsc --noEmit` to verify type integrity.
-   - Run existing test suites (`npm test`) to confirm tests pass.
+> Requested team: Small focused team
 
-## Deliverables & Output
-Write your audit findings to:
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1\report.md`
-and write your handoff in:
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1\handoff.md`
+This is a single self-contained fix; keep it small and focused.
+Perbaikan sebelumnya gagal. Kamera presensi guru masih landscape dan masih auto-zoom. Perbaiki agar benar-benar portrait dan tidak zoom.
 
-Provide a clear verdict: **APPROVE** or **REQUEST_CHANGES**.
-When finished, send a message to orchestrator (`962492f1-3042-46e5-9074-fc7b66436c10`).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
 
+## Requirements
 
-## 2026-10-04T14:06:27Z
-You are the Quality and Verification Reviewer (reviewer_r1).
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1
-Read your dispatch instructions at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1\DISPATCH.md
-Read the authoritative user request first at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically timestamp 2026-10-04T13:50:06Z).
-Read the comprehensive report to audit at: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_14\report.md
+### R1. Kamera Benar-benar Portrait
+Kamera harus dirender dan menangkap gambar dalam rasio portrait (tinggi > lebar) tanpa distorsi atau rotasi yang salah di perangkat sebenarnya, bukan sekadar set parameter `orientation` palsu.
 
-Audit the report according to the 4 acceptance criteria:
-1. Syntactically valid Mermaid flowchart covering the full application flow, routes, roles (Superadmin, Admin, Guru, Piket, Wali Kelas), and menu hierarchies.
-2. Comprehensive Feature Inventory mapping directly to existing codebase directories/files.
-3. At least 3 distinct, actionable improvement suggestions (UX, architecture, codebase structure).
-4. Run verification commands (tsc --noEmit, npm test) and confirm codebase integrity.
+### R2. Hentikan Auto-zoom/Crop di Level CSS dan Canvas
+Gambar akhir yang diambil harus 100% identik dengan area yang terlihat di preview. Tidak boleh ada pemotongan (crop) atau zoom saat diproses.
 
-Write your findings to:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1\report.md
-Write your handoff to:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1\handoff.md
-With a clear verdict: APPROVE or REQUEST_CHANGES.
-When finished, send a message to orchestrator (962492f1-3042-46e5-9074-fc7b66436c10).
+## Acceptance Criteria
+
+### Pengujian Bukti Kuat (Strong Verification)
+- [ ] Terdapat bukti pengujian (seperti screenshot/log render dimensi) bahwa elemen video memiliki height > width.
+- [ ] Terdapat script/tes UI yang memastikan kanvas hasil tangkapan memiliki rasio yang sama persis dengan elemen video.
+</original_task>
+
+<prior_attempt>
+# Handoff Report: Kamera Portrait & Anti Auto-Zoom Guru Presensi
+
+> [!WARNING] **Skepticism Disclaimer**
+> High confidence in the orientation prop enforcement, CSS object-contain anti-zoom, canvas zero-crop logic, and automated test suite; however, hardware-level auto-focus/zoom mechanisms and device camera driver aspect ratio behaviors on physical OEM Android/iOS devices require real device validation.
+
+## 1. What I changed
+- Verified and validated `src/components/GuruPresensi.tsx`: Camera invocation strictly passes `orientation="portrait"` to `CameraSelfieCapture`.
+- Verified and validated `src/components/CameraSelfieCapture.tsx`:
+  - `MediaStreamConstraints` requests portrait dimensions (`width: 720, height: 1280`) when `orientation === 'portrait'`.
+  - Viewfinder container applies `aspect-[3/4] max-w-sm mx-auto` for portrait orientation.
+  - Video element (`<video>`) and captured preview image (`<img>`) enforce CSS `object-contain` (eliminating `object-cover` auto-cropping and unwanted zoom).
+  - Forwards `orientation` prop to `drawWatermarkedCanvas`.
+- Verified and validated `src/lib/watermarkCanvas.ts`:
+  - `drawWatermarkedCanvas` accepts `orientation?: 'portrait' | 'landscape'`.
+  - For portrait orientation on vertical mobile streams (`width < height`), retains uncropped 1x sensor scale (`drawWidth = width`, `drawHeight = height`, `offsetX = 0`, `offsetY = 0`) to prevent artificial zoom or crop.
+  - For desktop landscape webcams in portrait mode, crops to centered 3:4 aspect ratio.
+
+## 2. Why
+- **R1 (Kamera Portrait)**: Teachers taking attendance require an upright portrait framing tailored to smartphone mobile usage and facial selfie identification.
+- **R2 (Nonaktifkan Auto-zoom)**: Previously, camera streams using `object-cover` or artificial crop cut off up to 25%-58% of the video frame, making users appear zoomed in. Switching to `object-contain` with 1x uncropped canvas drawing ensures the captured photo matches the live preview exactly with zero crop distortion.
+
+## 3. Verification Record
+- **Deep Verification (ran actual tests):**
+  - `npx tsx tests/camera_orientation.test.ts`: All 10 sections passed (33 assertions). Verified portrait orientation constraints, `GuruPresensi` props, and canvas aspect ratio scaling.
+  - `npx tsx tests/camera_zoom_fix.test.ts`: All 8 sections passed (35 assertions). Mathematically verified 0% crop and 0% distortion across 4:3, 16:9, 9:16, 1:1, 19.5:9, 21:9, and 5:4 sensor feeds.
+  - `npx tsx tests/adversarial_camera_badge_challenger_1.test.ts`: All 314 adversarial tests passed (0 failures).
+  - `npm test`: Full 20-file test suite passed cleanly (100% pass rate).
+  - `npx tsc --noEmit`: Exited with code 0 (0 type errors).
+  - `npm run build`: Next.js 16.3.4 Turbopack production build succeeded with 0 errors across 12 routes.
+- **Shallow Verification (manual run only):**
+  - Inspected DOM attribute hardening (`playsInline`, `autoPlay`, `muted`, absence of static pixel width/height).
+  - Checked letterboxing/pillarboxing styling in dark background viewport.
+- **Unverified aspects:**
+  - Physical camera hardware on actual mobile phones running various OEM camera drivers (e.g., Samsung One UI, Xiaomi MIUI, iOS Safari).
+  - Camera sensors with proprietary hardware digital zoom enabled at the OS/firmware level.
+
+## 4. Known Issues
+- `Minor Robustness Risk` — If a user uses a desktop webcam (typically fixed landscape 16:9) for portrait presensi, `drawWatermarkedCanvas` centers and crops the horizontal feed to 3:4 vertical orientation. This is intentional to ensure the resulting attendance card is portrait.
+- `Shallow Verification` — Exact appearance of letterboxing on very narrow physical mobile screens (< 320px width).
+
+## 5. Untested Edge Cases & Next Step
+- Reviewer should test on a physical mobile device: open Guru Presensi, verify the camera opens in portrait mode, take a selfie, and verify that the preview image matches the live viewfinder framing without unexpected magnification or cropping.
+</prior_attempt>
