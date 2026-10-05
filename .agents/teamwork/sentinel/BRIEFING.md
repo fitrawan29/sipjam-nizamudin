@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-04T23:36:00Z
+# BRIEFING — 2026-10-05T02:22:00Z
 
 ## Mission
-Route and monitor execution of SIPJAM app: Guru presensi kamera portrait only, nonaktifkan auto-zoom saat pengambilan foto.
+Route and monitor execution of SIPJAM app: Presensi siswa sinkronisasi dua arah (QR & manual input) dan hapus konfigurasi mode presensi siswa di superadmin.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -40,7 +40,11 @@ Route and monitor execution of SIPJAM app: Guru presensi kamera portrait only, n
 - Orchestrator 12: 60f11d0f-3028-47d5-a4c0-af2902baf3f1 (completed & retired)
 - Victory Auditor (victory_auditor_17): b9221247-724c-4ae0-aa13-817bd806dc54 (VICTORY CONFIRMED & retired)
 - SWE Orchestrator (swe_13): 0d65758d-f082-4759-b6d9-3b4fb1b0f47d (completed & retired)
-- Sentinel Victory Auditor (victory_auditor_21): ceea5969-f38f-455d-87b6-1e4eedc24bfc (VICTORY CONFIRMED & retired)
+- Sentinel Victory Auditor (victory_auditor_21): speed-retired
+- Active SWE Orchestrator: 6ccbc814-8f55-47ba-8af6-a392f7b949c0 (swe_14 - completed & retired)
+- Active Victory Auditor: 6931427e-db28-4f05-b410-c522d0ef12d3 (victory_auditor_23 - VICTORY CONFIRMED & retired)
+- Active SWE Orchestrator (swe_15): b5095777-d8c1-4731-883f-9e5ab66865e1
+- Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -49,25 +53,22 @@ Route and monitor execution of SIPJAM app: Guru presensi kamera portrait only, n
 - Cancel all crons and kill all subagents before final summary delivery
 
 ## User Context
-- **Last user request**: Guru presensi: kamera khusus mode portrait, gambar tidak auto-zoom saat diambil.
+- **Last user request**: Presensi siswa: Mendukung QR code dan input manual. Sinkronisasi dua arah: jika QR discan, form manual terisi otomatis; jika diisi manual, form QR terupdate otomatis (jika relevan). Superadmin tidak lagi mengatur mode presensi siswa.
 - **Pending clarifications**: none
-- **Delivered results**: Guru presensi kamera portrait only and anti-auto-zoom verified, tested (438 camera assertions, full 21 test suites passing, tsc 0 errors, build successful), committed and pushed to origin/main. VICTORY CONFIRMED.
+- **Delivered results**: In progress under swe_15
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (cancelled)
-- **Active Subagents**: none (all killed)
+- **Active Crons**: Progress Reporting (task-26), Liveness Check (task-28)
+- **Active Subagents**: b5095777-d8c1-4731-883f-9e5ab66865e1 (swe_15)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
-- **Auditor ID**: ceea5969-f38f-455d-87b6-1e4eedc24bfc (victory_auditor_21)
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original verbatim user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\BRIEFING.md — Sentinel persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\handoff.md — Sentinel final handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_13\handoff.md — SWE 13 handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_21\handoff.md — Victory Auditor 21 report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_15\DISPATCH.md — SWE 15 dispatch document

@@ -861,3 +861,33 @@ Gambar akhir yang diambil harus 100% identik dengan area yang terlihat di previe
 ### Pengujian Bukti Kuat (Strong Verification)
 - [ ] Terdapat bukti pengujian (seperti screenshot/log render dimensi) bahwa elemen video memiliki height > width.
 - [ ] Terdapat script/tes UI yang memastikan kanvas hasil tangkapan memiliki rasio yang sama persis dengan elemen video.
+
+## 2026-10-05T02:19:36Z
+
+# Teamwork Project Prompt
+
+> Requested team: Small focused team
+
+This is a single self-contained fix; keep it small and focused.
+Presensi siswa. Mendukung QR code dan input manual. Sinkronisasi dua arah: jika QR discan, form manual terisi otomatis; jika diisi manual, form QR terupdate otomatis (jika relevan). Superadmin tidak lagi mengatur mode presensi siswa.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. Sinkronisasi Dua Arah
+Ketika kode QR discan, data harus otomatis mengisi form input manual. Sebaliknya, ketika pengguna mengetik data secara manual, sistem harus menyesuaikan state pencarian seolah-olah dipindai dari QR.
+
+### R2. Hapus Pengaturan Mode Presensi oleh Superadmin
+Superadmin tidak perlu lagi mengatur mode presensi siswa secara eksplisit, karena kedua mode (QR dan Manual) sekarang tersedia dan sinkron bersamaan. Hapus opsi konfigurasi ini dari UI superadmin dan logika terkait.
+
+### R3. Pertahankan Logika Presensi Saat Ini
+Mekanisme submit data presensi ke database tetap menggunakan flow yang sama, hanya pengisian field UI yang saling tersinkronisasi.
+
+## Acceptance Criteria
+
+### Verifikasi Manual User
+- [ ] Scan QR akan membuat nama/ID siswa langsung tampil di form manual.
+- [ ] Mengisi form manual akan memproses data seolah telah disubmit via QR, atau membatalkan state QR lama jika berbeda.
+- [ ] Opsi pengaturan mode presensi siswa tidak lagi muncul di halaman pengaturan superadmin.

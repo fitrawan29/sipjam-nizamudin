@@ -216,13 +216,6 @@ export default function SuperadminView({
               <option value="camera_only">Live Camera Langsung</option>
             </select>
           </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Mode Presensi Siswa</label>
-            <select id="swal-sch-mode-presensi-siswa" class="swal2-select !mt-0 !w-full text-xs">
-              <option value="qr" selected>QR Code (Scan Kamera / Scanner Eksternal)</option>
-              <option value="manual">Manual (Ceklis Hadir / Pulang per Siswa)</option>
-            </select>
-          </div>
         </div>
       `,
       focusConfirm: false,
@@ -241,7 +234,6 @@ export default function SuperadminView({
         const logo_url = (document.getElementById('swal-sch-logo') as HTMLInputElement)?.value?.trim() || null;
         const status = (document.getElementById('swal-sch-status') as HTMLSelectElement)?.value || 'aktif';
         const mode_jurnal = (document.getElementById('swal-sch-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
-        const mode_presensi_siswa = (document.getElementById('swal-sch-mode-presensi-siswa') as HTMLSelectElement)?.value || 'qr';
 
         if (!nama || !npsn || !kota_kabupaten) {
           Swal.showValidationMessage('Nama Sekolah, NPSN, dan Kota/Kabupaten wajib diisi!');
@@ -259,7 +251,7 @@ export default function SuperadminView({
           logo_url,
           status,
           mode_jurnal,
-          mode_presensi_siswa
+          mode_presensi_siswa: 'qr'
         };
       }
     });
@@ -342,13 +334,6 @@ export default function SuperadminView({
               <option value="camera_upload" ${(school as any).mode_jurnal === 'camera_upload' || !(school as any).mode_jurnal ? 'selected' : ''}>Live Camera + Upload Foto</option>
             </select>
           </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Mode Presensi Siswa</label>
-            <select id="swal-edit-mode-presensi-siswa" class="swal2-select !mt-0 !w-full text-xs">
-              <option value="qr" ${(school as any).mode_presensi_siswa === 'manual' ? '' : 'selected'}>QR Code (Scan Kamera / Scanner Eksternal)</option>
-              <option value="manual" ${(school as any).mode_presensi_siswa === 'manual' ? 'selected' : ''}>Manual (Ceklis Hadir / Pulang per Siswa)</option>
-            </select>
-          </div>
         </div>
       `,
       focusConfirm: false,
@@ -367,7 +352,6 @@ export default function SuperadminView({
         const logo_url = (document.getElementById('swal-edit-logo') as HTMLInputElement)?.value?.trim() || null;
         const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'aktif';
         const mode_jurnal = (document.getElementById('swal-edit-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
-        const mode_presensi_siswa = (document.getElementById('swal-edit-mode-presensi-siswa') as HTMLSelectElement)?.value || 'qr';
 
         if (!nama || !npsn || !kota_kabupaten) {
           Swal.showValidationMessage('Nama Sekolah, NPSN, dan Kota/Kabupaten wajib diisi!');
@@ -385,7 +369,6 @@ export default function SuperadminView({
           logo_url,
           status,
           mode_jurnal,
-          mode_presensi_siswa,
           updated_at: new Date().toISOString()
         };
       }
@@ -440,43 +423,6 @@ export default function SuperadminView({
         Swal.fire('Gagal Mengubah Status', error.message, 'error');
       } else {
         Swal.fire('Berhasil', `Status sekolah berhasil diubah menjadi ${newStatus}.`, 'success');
-        fetchAllData();
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTogglePresensiMode = async (school: Sekolah) => {
-    const currentMode = (school as any).mode_presensi_siswa || 'qr';
-    const newMode = currentMode === 'manual' ? 'qr' : 'manual';
-    const modeLabel = newMode === 'manual' ? 'Manual (Ceklis Hadir/Pulang)' : 'QR Code (Scanner)';
-
-    const confirm = await Swal.fire({
-      title: 'Ubah Mode Presensi Siswa?',
-      text: `Ubah mode presensi siswa untuk "${school.nama}" menjadi ${modeLabel}?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: `Ya, Ubah ke ${modeLabel}`,
-      confirmButtonColor: newMode === 'manual' ? '#7e22ce' : '#0B4619',
-      cancelButtonText: 'Batal'
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from('sekolah')
-        .update({ mode_presensi_siswa: newMode, updated_at: new Date().toISOString() })
-        .eq('id', school.id);
-
-      if (error) {
-        Swal.fire('Gagal Mengubah Mode', error.message, 'error');
-      } else {
-        Swal.fire('Berhasil', `Mode presensi siswa berhasil diubah menjadi ${modeLabel}.`, 'success');
         fetchAllData();
       }
     } catch (err: any) {
@@ -1136,19 +1082,6 @@ export default function SuperadminView({
                               <i className={`fa-solid ${(s as any).mode_jurnal === 'camera_only' ? 'fa-camera' : 'fa-camera-rotate'} mr-1`}></i>
                               {(s as any).mode_jurnal === 'camera_only' ? 'Kamera Langsung' : 'Kamera + Upload'}
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePresensiMode(s)}
-                              className={`btn-click px-1.5 py-0.5 rounded text-[9px] font-semibold transition cursor-pointer flex items-center gap-1 ${
-                                (s as any).mode_presensi_siswa === 'manual'
-                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 hover:bg-purple-200'
-                                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 hover:bg-emerald-200'
-                              }`}
-                              title="Klik untuk ubah mode presensi siswa (QR / Manual)"
-                            >
-                              <i className={`fa-solid ${(s as any).mode_presensi_siswa === 'manual' ? 'fa-list-check' : 'fa-qrcode'} mr-1`}></i>
-                              {(s as any).mode_presensi_siswa === 'manual' ? 'Presensi Manual' : 'Presensi QR'}
-                            </button>
                           </div>
                           {s.alamat && (
                             <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-xs">
@@ -1286,14 +1219,6 @@ Superadmin SIPJAM`;
                               title="Tagihan / Invoice"
                             >
                               <i className="fa-solid fa-file-invoice-dollar text-xs"></i>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePresensiMode(s)}
-                              className="btn-click w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-700 dark:text-purple-300 flex items-center justify-center"
-                              title={`Ubah Mode Presensi (${(s as any).mode_presensi_siswa === 'manual' ? 'Manual' : 'QR'})`}
-                            >
-                              <i className={`fa-solid ${(s as any).mode_presensi_siswa === 'manual' ? 'fa-list-check' : 'fa-qrcode'} text-xs`}></i>
                             </button>
                             <button
                               type="button"
