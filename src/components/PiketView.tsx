@@ -95,8 +95,7 @@ export default function PiketView({ user }: { user: any }) {
   const [scanFilterKelas, setScanFilterKelas] = useState('Semua');
   const [scanSearchQuery, setScanSearchQuery] = useState('');
 
-  // Mode Presensi Siswa ('qr' | 'manual') per-sekolah & Manual Attendance state
-  const [modePresensiSiswa, setModePresensiSiswa] = useState<'qr' | 'manual'>('qr');
+  // Presensi Siswa Manual Attendance state
   const [manualKelasFilter, setManualKelasFilter] = useState('Semua');
   const [manualSearchQuery, setManualSearchQuery] = useState('');
   const [manualMarkLoading, setManualMarkLoading] = useState<string | null>(null);
@@ -453,6 +452,16 @@ export default function PiketView({ user }: { user: any }) {
 
   // Two-way synchronization handlers between QR input and manual form
   const handleUsbInputChange = (val: string) => {
+    // Hardware scanner carriage return / newline burst handling
+    const cleanVal = val.replace(/[\r\n]/g, '').trim();
+    if (val.includes('\n') || val.includes('\r')) {
+      if (cleanVal) {
+        setUsbInputVal('');
+        handleProcessScan(cleanVal);
+        return;
+      }
+    }
+
     setUsbInputVal(val);
     setManualSearchQuery(val);
 
@@ -470,6 +479,17 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   const handleManualSearchChange = (val: string) => {
+    // Hardware scanner carriage return / newline burst handling in manual input
+    const cleanVal = val.replace(/[\r\n]/g, '');
+    if (val.includes('\n') || val.includes('\r')) {
+      if (cleanVal.trim()) {
+        setManualSearchQuery(cleanVal.trim());
+        setUsbInputVal(cleanVal.trim());
+        setTimeout(() => handleManualFormSubmit(), 0);
+        return;
+      }
+    }
+
     setManualSearchQuery(val);
     setUsbInputVal(val);
 
@@ -540,6 +560,7 @@ export default function PiketView({ user }: { user: any }) {
         // Two-way sync: fill QR scanner input and manual search input
         setUsbInputVal(student.nisn || student.nama_siswa);
         setManualSearchQuery(student.nama_siswa);
+        setManualKelasFilter('Semua');
 
         await fetchTodayScanData();
       } else if (res.alreadyExists) {
@@ -564,6 +585,7 @@ export default function PiketView({ user }: { user: any }) {
 
         setUsbInputVal(student.nisn || student.nama_siswa);
         setManualSearchQuery(student.nama_siswa);
+        setManualKelasFilter('Semua');
 
         await fetchTodayScanData();
       } else {
@@ -592,8 +614,20 @@ export default function PiketView({ user }: { user: any }) {
     if (!match) match = allStudents.find(s => s.nama_siswa && s.nama_siswa.toLowerCase() === query.toLowerCase());
     // 4. Try single filtered student
     if (!match && filteredManualStudents.length === 1) match = filteredManualStudents[0];
+    // 5. Try single match across all students in school (if filtered out by class dropdown)
+    if (!match) {
+      const allMatches = allStudents.filter(s =>
+        (s.nama_siswa?.toLowerCase() || '').includes(query.toLowerCase()) ||
+        (s.nisn?.toLowerCase() || '').includes(query.toLowerCase())
+      );
+      if (allMatches.length === 1) {
+        match = allMatches[0];
+        setManualKelasFilter('Semua');
+      }
+    }
 
     if (match) {
+      setManualKelasFilter('Semua');
       await handleManualMark(match, scanMode);
     } else if (filteredManualStudents.length > 1) {
       showToast('Info', `Ditemukan ${filteredManualStudents.length} siswa dengan kata kunci "${query}". Klik tombol di daftar siswa.`, 'info');
@@ -668,7 +702,6 @@ export default function PiketView({ user }: { user: any }) {
         if (uniqueKelas.length > 0) {
           setActiveKelas(uniqueKelas[0] as string);
           setSelectedSiswaFilterKelas(uniqueKelas[0] as string);
-          setManualKelasFilter(prev => prev === 'Semua' ? (uniqueKelas[0] as string) : prev);
         }
         
         // Initialize default attendance, checking canonical public.absensi first
@@ -1633,7 +1666,20 @@ export default function PiketView({ user }: { user: any }) {
                           type="text"
                           value={usbInputVal}
                           onChange={(e) => handleUsbInputChange(e.target.value)}
-                          onFocus={() => setIsUsbInputFocused(true)}
+                          onFocus={(e) => {
+                            setIsUsbInputFocused(true);
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === '\r' || e.key === '\n' || e.keyCode === 13) {
+                              e.preventDefault();
+                              const code = usbInputVal.trim();
+                              if (code) {
+                                setUsbInputVal('');
+                                handleProcessScan(code);
+                              }
+                            }
+                          }}
                           onBlur={handleUsbInputBlur}
                           disabled={scanProcessing}
                           placeholder="Arahkan scanner ke QR Code atau ketik NISN lalu Enter..."
@@ -1876,6 +1922,12 @@ export default function PiketView({ user }: { user: any }) {
                             type="text"
                             value={manualSearchQuery}
                             onChange={(e) => handleManualSearchChange(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === '\r' || e.key === '\n' || e.keyCode === 13) {
+                                e.preventDefault();
+                                handleManualFormSubmit();
+                              }
+                            }}
                             placeholder="Ketik nama siswa atau NISN lalu Enter untuk presensi..."
                             className="w-full pl-9 pr-8 py-2.5 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
                           />
@@ -1886,6 +1938,7 @@ export default function PiketView({ user }: { user: any }) {
                               onClick={() => {
                                 setManualSearchQuery('');
                                 setUsbInputVal('');
+                                setLastScanResult(null);
                               }}
                               className="absolute right-2.5 top-2.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
                             >
