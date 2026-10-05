@@ -1,13 +1,14 @@
-# Progress: Challenger 2 (Milestone 1)
+# Progress — Challenger M1.2
 
-Last visited: 2026-09-24T12:51:35Z
+Last visited: 2026-10-05T10:30:00Z
 
 ## Status
-- [x] Initialized workspace and briefing
-- [x] Inspect Worker M1 code changes in target files
-- [x] Run existing test suite (`npm test` -> 23/23 M1 tests, 0 regressions)
-- [x] Run E2E test suite (`npx tsx tests/e2e/tier1_feature_coverage.test.ts` -> 75/75 passed)
-- [x] Design and execute adversarial stress tests (`tests/adversarial_m1_challenger_2.test.ts` -> 28/28 passed)
-- [x] Review edge cases and failure modes (All verified robust)
-- [ ] Prepare handoff.md with verdict (APPROVE / REJECT)
-- [ ] Send completion message to parent
+- [x] Initialized DISPATCH.md, BRIEFING.md, and local skill copy
+- [x] Read ORIGINAL_REQUEST.md and worker_m1/handoff.md
+- [x] Inspected src/components/PiketView.tsx implementation
+- [x] Wrote empirical test script `tests/challenger_m1_camera_qr_lifecycle.test.ts`
+- [x] Ran `npx tsx tests/challenger_m1_camera_qr_lifecycle.test.ts` (18/18 passed)
+- [x] Ran full regression test suites `npm test` (all 27 suites passed)
+- [x] Ran `npx tsc --noEmit` (0 errors) and `npm run build` (build succeeded)
+- [x] Adversarial review & stress-testing complete (no vulnerabilities found)
+- [x] Compiled handoff.md with APPROVE verdict

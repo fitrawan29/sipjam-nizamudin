@@ -1,28 +1,19 @@
-# Task Assignment: Reviewer 1 (Milestone 1)
+## 2026-10-05T10:24:21Z
 
-You are Reviewer 1 (`teamwork_preview_reviewer`).
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1
-- Original Request File: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-- Master Project Document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_1\PROJECT.md
-- Worker M1 Handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1_1\handoff.md
-- Test Ready Report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_READY.md
-- Parent Orchestrator ID: 2ac91888-0ccf-41c6-9452-748556b221b7
+You are reviewer_m1_1.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1
+Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-## Objective
-Review Milestone 1 changes in:
-- `src/components/GuruPresensi.tsx` (F1)
-- `src/components/GuruJurnal.tsx` (F2)
-- `src/components/PiketView.tsx` (F3)
-- `src/components/AdminVerifView.tsx` (F4)
+MANDATORY FIRST STEP: Read the user request at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
 
-## Review Criteria
-1. Correctness: Does resubmission delete old rejected record? Is Jurnal batch deletion properly fixed (only matching class/mapel deleted, other rejected journals preserved)? Is `sekolah_id` included? Does AdminVerifView hide "Setujui" button on rejected items? Are rejected cards removed from active queue?
-2. Robustness & Regression: Run `npm test` and `npx tsx tests/e2e/tier1_feature_coverage.test.ts`. Verify all tests pass.
-3. Verdict: Give clear APPROVE or REQUEST_CHANGES in `handoff.md` and message back to parent.
+Read Worker M1's handoff report:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
 
-## 2026-09-24T12:43:27Z
-You are Reviewer 1 for Milestone 1. Working dir: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1.
-Read DISPATCH.md in your working dir, Worker M1 handoff at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1_1\handoff.md, and original request at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md.
-Review changes in GuruPresensi.tsx, GuruJurnal.tsx, PiketView.tsx, and AdminVerifView.tsx.
-Run tests (npm test and E2E tests).
-Write handoff.md with verdict (APPROVE / REQUEST_CHANGES) and send completion message to parent (2ac91888-0ccf-41c6-9452-748556b221b7).
+Your role is to independently review Requirement R1 (UI & State Modul Piket):
+1. Review `src/components/PiketView.tsx` to ensure clicking "Tandai Datang" (and "Tandai Pulang") does NOT auto-filter the student list to only 1 student. Confirm that all students remain visible in the active class/roster and the class filter is not reset to 'Semua'.
+2. Review role differentiation: Guru role must have a compact/ringkas view (hidden kiosk selector, compact mode pill toggle, inline counters, 1-tap touch buttons, hidden 7-col audit log), and Admin role must have a detailed view (kiosk 1-10 selector, 3 large metric cards, 6-col roster, 7-col live audit log).
+3. Run verification commands (`npx tsc --noEmit`, test suites).
+4. Provide a clear APPROVE or REQUEST_CHANGES verdict in your handoff report.
+
+Write your report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\handoff.md` and send a message to parent.

@@ -48,12 +48,17 @@ Orchestrate bugfixes and feature additions for SIPJAM: Fix piket UI & state pres
 | explorer_survey_1 | teamwork_preview_explorer | Survey R1 (Piket UI & State) | completed | 6ae99f09-7ffd-433a-aa63-e806d009f4ad |
 | explorer_survey_2 | teamwork_preview_explorer | Survey R2 (QR Camera Fix) | completed | 12dfb023-b3da-44d8-a81d-57f36b947cc9 |
 | explorer_survey_3 | teamwork_preview_explorer | Survey R3 (Sidebar & Tutorial) | completed | 2c9b3922-7632-4e64-85a8-d321049787e3 |
-| worker_m1 | teamwork_preview_worker | Milestone 1 Piket Implementation | in-progress | 70880484-bdc6-4805-850f-040663d4624d |
+| worker_m1 | teamwork_preview_worker | Milestone 1 Piket Implementation | completed | 70880484-bdc6-4805-850f-040663d4624d |
+| reviewer_m1_1 | teamwork_preview_reviewer | M1 Review Piket State/UI | in-progress | d9cb8ea8-da58-428a-9515-16bb32125e46 |
+| reviewer_m1_2 | teamwork_preview_reviewer | M1 Review QR Camera | in-progress | ba4dc8b8-2da7-4b9e-a391-424276fd7c2a |
+| challenger_m1_1 | teamwork_preview_challenger | M1 Empirical Test Piket Filter | in-progress | cffeda05-8865-4b62-b1b2-2d0d4fb34f6e |
+| challenger_m1_2 | teamwork_preview_challenger | M1 Empirical Test QR Camera | in-progress | bed93d5f-3459-43b7-bacb-86d5ef81a949 |
+| auditor_m1 | teamwork_preview_auditor | M1 Forensic Integrity Audit | in-progress | 26f0274e-b871-4d22-9647-10ff09e04649 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 4 / 16
-- Pending subagents: 70880484-bdc6-4805-850f-040663d4624d
+- Spawn count: 9 / 16
+- Pending subagents: d9cb8ea8-da58-428a-9515-16bb32125e46, ba4dc8b8-2da7-4b9e-a391-424276fd7c2a, cffeda05-8865-4b62-b1b2-2d0d4fb34f6e, bed93d5f-3459-43b7-bacb-86d5ef81a949, 26f0274e-b871-4d22-9647-10ff09e04649
 - Predecessor: none
 - Successor: not yet spawned
 

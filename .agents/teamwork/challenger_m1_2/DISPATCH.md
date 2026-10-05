@@ -1,28 +1,23 @@
-# Task Assignment: Challenger 2 (Milestone 1)
+## 2026-10-05T10:24:21Z
+You are challenger_m1_2.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_2
+Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-You are Challenger 2 (`teamwork_preview_challenger`).
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_2
-- Original Request File: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-- Master Project Document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_1\PROJECT.md
-- Worker M1 Handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1_1\handoff.md
-- Parent Orchestrator ID: 2ac91888-0ccf-41c6-9452-748556b221b7
+MANDATORY FIRST STEP: Read the user request at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
 
-## Objective
-Independently stress-test and challenge Milestone 1 implementation:
-1. Verify that `GuruJurnal.tsx` does NOT delete unrelated rejected journals when one is resubmitted.
-2. Verify that `AdminVerifView.tsx` completely eliminates the "Setujui" button for rejected items.
-3. Verify that `GuruPresensi.tsx` and `PiketView.tsx` properly clean up stale rejected records.
-4. Run regression and E2E suites: `npm test` and `npx tsx tests/e2e/tier1_feature_coverage.test.ts`.
-5. Write your empirical challenge report to `handoff.md` with explicit verdict (APPROVE / REJECT) and notify parent.
+Read Worker M1's handoff report:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
 
-## 2026-09-24T12:43:27Z
-You are Challenger 2 for Milestone 1. Working dir: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_2.
-Read DISPATCH.md in your working dir, Worker M1 handoff at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1_1\handoff.md, and original request at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md.
-Independently challenge M1 resubmission reset, class isolation, and AdminVerifView changes.
-Run tests (npm test and E2E tests).
-Write handoff.md with empirical findings and verdict (APPROVE / REJECT) and send completion message to parent (2ac91888-0ccf-41c6-9452-748556b221b7).
+Your role is to write an empirical test script (e.g. `tests/challenger_m1_camera_qr_lifecycle.test.ts`) that programmatically and empirically verifies:
+1. R2: That `PiketView.tsx` implements:
+   - A video element callback ref that binds `streamRef.current` to `el.srcObject` and calls `play()`.
+   - A `useEffect([cameraActive])` synchronization hook.
+   - A camera startup mutex `isStartingCameraRef`.
+   - Fallback constraints handling when `facingMode: environment` is unavailable.
+   - Dynamic BarcodeDetector capability badge.
+   - All contracts required by existing test suites (`videoRef`, `startCamera`, `stopCamera`, `BarcodeDetector`).
+2. Run the test with `npx tsx tests/challenger_m1_camera_qr_lifecycle.test.ts` and run `npm test`.
 
-## 2026-09-24T12:50:36Z
-**Context**: Milestone 1 Gate Check
-**Content**: Heartbeat check. Reviewer 1 (APPROVE), Reviewer 2 (APPROVE), Challenger 1 (APPROVE), and Auditor (CLEAN) have all completed. Please write your handoff.md with your empirical findings and verdict (APPROVE / REJECT), and send completion message to parent.
-**Action**: Compile handoff.md and report verdict.
+Provide a clear APPROVE or REQUEST_CHANGES verdict in your handoff report.
+Write your report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_2\handoff.md` and send a message to parent.
