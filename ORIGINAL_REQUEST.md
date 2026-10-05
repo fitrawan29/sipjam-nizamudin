@@ -768,3 +768,37 @@ Gambar akhir yang diambil harus 100% identik dengan area yang terlihat di previe
 ### Pengujian Bukti Kuat (Strong Verification)
 - [ ] Terdapat bukti pengujian (seperti screenshot/log render dimensi) bahwa elemen video memiliki height > width.
 - [ ] Terdapat script/tes UI yang memastikan kanvas hasil tangkapan memiliki rasio yang sama persis dengan elemen video.
+
+
+## 2026-10-05T09:55:29Z
+
+# Teamwork Project Prompt
+
+> Requested team: Full team
+
+Perbaikan multi-fitur: UI piket, fix kamera QR, tambah info sidebar, dan buat tutorial lengkap.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. UI & State Modul Piket
+1. Saat klik "Tandai Datang", daftar siswa tidak boleh terfilter otomatis menjadi 1 siswa saja; semua daftar harus tetap terlihat.
+2. Tampilan modul piket harus dibedakan: tampilan ringkas untuk role Guru, dan tampilan detail untuk role Admin.
+
+### R2. Perbaikan Kamera QR
+Perbaiki bug kamera QR code yang tidak muncul, sehingga fitur scan QR dapat digunakan kembali.
+
+### R3. Update Sidebar & Tutorial
+1. Sidebar menu harus menampilkan nama dan role dari akun yang sedang login.
+2. Sediakan tutorial yang lengkap (baik berupa panduan tertulis dalam app atau file dokumentasi) untuk semua menu dan fitur per role.
+
+## Acceptance Criteria
+
+### Verifikasi Manual User
+- [ ] Daftar siswa tetap utuh setelah klik "Tandai Datang".
+- [ ] Kamera QR berfungsi normal.
+- [ ] Modul piket guru terlihat ringkas, admin terlihat detail.
+- [ ] Sidebar menampilkan nama dan role.
+- [ ] Terdapat tutorial lengkap yang dapat diakses.

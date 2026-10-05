@@ -1,18 +1,21 @@
-# Progress - worker_m1
+# Progress — worker_m1
 
-Last visited: 2026-10-04T07:38:00Z
+Last visited: 2026-10-05T10:22:30Z
 
 ## Status
-- Milestone 1 (R1 & R2) completed.
-- R1 (Akses Modul Piket Sesuai Jadwal):
-  - `src/lib/workflow.ts`: Query `penugasan_piket` directly with fuzzy matching for `guru_id`, `guru_nama`, and `guru_nip`, with fallback to `jadwal_piket`.
-  - `src/components/AppScreen.tsx`: Added `isPiketHariIni` state, conditioned `menuItemsGuru`, guarded navigation in `handleNavigation`, and blocked direct URL navigation with locked UI card.
-  - `src/components/PiketView.tsx`: Rendered prominent blocked access card if teacher is not on picket duty today and not an admin.
-- R2 (Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel):
-  - `src/components/AppScreen.tsx`: Conditioned `menuItemsGuru` so `view-rekap-siswa` only appears for `isWaliKelas`, guarded navigation in `handleNavigation`, passed `assignedKelas={assignedKelas}` prop to `RekapSiswaView`, and blocked non-wali-kelas with UI card.
-  - `src/components/RekapSiswaView.tsx`: Accepted `assignedKelas` prop, rendered access blocked screen if non-admin and non-wali-kelas, locked Tab 2 class dropdown strictly to assigned class (`allowedClasses`), and restricted `tarikRekap` query to assigned class.
-  - `src/components/GuruJurnal.tsx`: Verified teacher's subject attendance during teaching session remains 100% independent and fully operational.
-- Verification:
-  - `npx tsc --noEmit` passed with 0 errors.
-  - `npm test` (all 19 test files) passed 100%.
-  - `npm run build` passed cleanly.
+All implementation and verification steps complete. Ready for handoff and git commit.
+
+## Checklist
+- [x] Read DISPATCH.md and initialize BRIEFING.md
+- [x] Read ORIGINAL_REQUEST.md and explorer survey handoffs
+- [x] Inspect `src/components/PiketView.tsx`
+- [x] Formulate exact implementation plan
+- [x] Implement R1.1 (Auto-filter fix in `handleManualMark`)
+- [x] Implement R2 (QR Camera preview fix & BarcodeDetector badge)
+- [x] Implement R1.2 (Guru vs Admin UI layout differentiation)
+- [x] Run `npx tsc --noEmit` (0 errors)
+- [x] Run `npm run build` (Passed)
+- [x] Run `npm test` (All 27 suites passed)
+- [x] Verify regression tests: `tests/m3_piket_scanner_kiosk.test.ts`, `tests/presensi_siswa_sync_and_superadmin.test.ts`, `tests/adversarial_presensi_sync_reviewer*.test.ts`, `tests/adversarial_piket_wali_challenger_1.test.ts`
+- [ ] Git workflow (status, add, commit, push)
+- [ ] Write handoff.md and send message to parent

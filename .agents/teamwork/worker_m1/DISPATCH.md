@@ -1,48 +1,49 @@
-## 2026-10-04T07:25:38Z
-You are Worker 1 (worker_m1).
+## 2026-10-05T10:06:52Z
+You are worker_m1.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1
+Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-Read ORIGINAL_REQUEST.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically the latest request at the bottom, 2026-10-04T07:11:46Z).
+MANDATORY FIRST STEP: Read the user request at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
 
-Read PROJECT.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_13\PROJECT.md
+Also read the detailed survey explorer reports:
+1. c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md (Piket UI & State)
+2. c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md (QR Camera Fix)
 
-Read the survey handoff from explorer_survey_1 at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md
+File Ownership:
+You have EXCLUSIVE write access to `src/components/PiketView.tsx`.
+Do NOT modify `AppScreen.tsx` or other files in this milestone.
 
-Your exclusive write ownership files (YOU OWN ONLY THESE FILES):
-- `src/lib/workflow.ts`
-- `src/components/AppScreen.tsx`
-- `src/components/PiketView.tsx`
-- `src/components/RekapSiswaView.tsx`
-DO NOT write to any other source files.
+Requirements to implement in `src/components/PiketView.tsx`:
+1. R1.1: Fix "Tandai Datang" auto-filter bug:
+   - In `handleManualMark` (both success branch around line 592 and alreadyExists branch around line 617), remove `setManualSearchQuery(student.nama_siswa)` and `setManualKelasFilter('Semua')`.
+   - Preserve `setUsbInputVal` and `setLastScanResult`, but DO NOT overwrite the user's manual search query or class filter. The student list must remain fully intact with all students visible after marking attendance.
+2. R2: Fix QR Camera preview rendering:
+   - Implement camera initiation mutex `isStartingCameraRef = useRef(false)`.
+   - In `startCamera()`, implement resilient `MediaStreamConstraints` with `facingMode: { ideal: 'environment' }` and fallback catch to `{ video: true, audio: false }`.
+   - Implement callback ref on `<video>` element in JSX to immediately bind `streamRef.current` and call `.play()`.
+   - Implement `useEffect` synchronization on `cameraActive` to ensure that once the video element mounts, `videoRef.current.srcObject = streamRef.current` and `.play()` is called.
+   - Update capability badge for BarcodeDetector.
+3. R1.2: Differentiate Guru vs Admin UI:
+   - Normalize role check:
+     `const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');`
+     `const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';`
+     `const isGuru = roleNormalized === 'guru';`
+   - For Guru (`isGuru` or `!isAdmin`):
+     - Hide Kiosk Station dropdown selector (default to 'kiosk-default').
+     - Show compact attendance mode toggle (pill button `Datang` | `Pulang`).
+     - Render compact scanner toggle card.
+     - Fast touch-friendly student roster with 1-tap "Datang" and "Pulang" buttons and status badge.
+     - Inline counter badge (`Hadir Datang: X • Pulang: Y`) instead of 3 large standalone metric cards.
+     - Hide the redundant 7-column raw Live Attendance Audit Log table.
+   - For Admin (`isAdmin`):
+     - Keep full kiosk controls (dropdown Kiosk 1–10).
+     - Full 6-column student roster with override/cancel.
+     - 3 large metric stat cards.
+     - Full 7-column Live Attendance Audit Log table.
+     - Access to `Penugasan Piket` tab.
 
-Task: Implement Milestone 1 (R1 & R2):
-1. R1: Akses Modul Piket Sesuai Jadwal
-   - In `src/lib/workflow.ts`: in `getGuruDailyState`, add check for `penugasan_piket` (query `.from('penugasan_piket').select('*').eq('hari', selectedHari).eq('tipe_petugas', 'Guru')`, filter `sekolah_id` if present, match `guru_id`, `guru_nama`, or `guru_nip`), with fallback to `jadwal_piket`. If matched, set `state.isPiket = true`.
-   - In `src/components/AppScreen.tsx`: add state `isPiketHariIni` (Admin & Superadmin = true, Guru checked via `getGuruDailyState`).
-   - In `menuItemsGuru`: `{ id: 'view-piket', ... }` only included if `isPiketHariIni === true`.
-   - In `handleNavigation`: if `targetId === 'view-piket'`, block non-admin and non-piket teachers with warning Swal.
-   - In `currentView === 'view-piket'`: if non-admin and `!isPiketHariIni`, render informative "Akses Terblokir" card.
-   - In `src/components/PiketView.tsx`: if `isGuru && dailyState && !dailyState.isPiket && !isAdmin`, render blocked banner / card.
-
-2. R2: Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel
-   - In `src/components/AppScreen.tsx`:
-     - In `menuItemsGuru`: `{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }` only included if `isWaliKelas === true`.
-     - In `handleNavigation`: block `view-rekap-siswa` if non-admin and `!isWaliKelas`.
-     - In `currentView === 'view-rekap-siswa'`: pass `assignedKelas={assignedKelas}` to `<RekapSiswaView user={user} assignedKelas={assignedKelas} />`, and block access with UI card if non-admin and non-wali-kelas.
-   - In `src/components/RekapSiswaView.tsx`:
-     - Accept prop `assignedKelas?: string | null;`
-     - If non-admin and non-wali-kelas, render access blocked screen.
-     - In Tab 2 (Rekap Absen Siswa): lock the class dropdown! If not Admin, disable/lock the dropdown strictly to the teacher's assigned class (`assignedKelas` / `waliKelasList`), so teachers CANNOT select other classes.
-     - In `tarikRekap`: ensure class query is restricted to assigned class when non-admin.
-   - Verify `src/components/GuruJurnal.tsx`: ensure teacher's subject attendance during teaching session remains 100% functional and unhindered.
-
-MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
-
-Acceptance verification:
-Run `npx tsc --noEmit` and relevant tests. Make sure there are 0 TypeScript errors.
-Document all changes and test outputs in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md`.
-Send a message to parent when completed.
+Verification Requirements:
+- Run `npx tsc --noEmit` and ensure 0 TypeScript errors.
+- Run existing regression tests: `npx tsx tests/m3_piket_scanner_kiosk.test.ts` and `npx tsx tests/presensi_siswa_sync_and_superadmin.test.ts`.
+- Document all modified lines, build results, and test outputs in `handoff.md`.

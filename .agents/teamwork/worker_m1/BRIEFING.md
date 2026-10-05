@@ -1,62 +1,55 @@
-# BRIEFING — 2026-10-04T07:38:10Z
+# BRIEFING — 2026-10-05T10:22:00Z
 
 ## Mission
-Implement Milestone 1 (R1 & R2): Piket schedule-based access control and Wali Kelas attendance recap restrictions.
+Implement PiketView fixes: resolve auto-filter bug on manual mark (R1.1), fix QR camera preview rendering (R2), and differentiate Guru vs Admin UI layouts (R1.2) in `src/components/PiketView.tsx`.
 
 ## 🔒 My Identity
 - Archetype: worker
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1
-- Original parent: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Milestone: Milestone 1 (R1 & R2)
+- Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
+- Milestone: M1 (PiketView improvements)
 
 ## 🔒 Key Constraints
-- Exclusive write ownership files:
-  - `src/lib/workflow.ts`
-  - `src/components/AppScreen.tsx`
-  - `src/components/PiketView.tsx`
-  - `src/components/RekapSiswaView.tsx`
-  DO NOT write to any other source files.
-- Mandatory Integrity Mandate: genuine implementation, no dummy/facade, no hardcoded test results.
-- Comply with Git Workflow Rule: git status, git add ., git commit -m "...", git push origin.
+- EXCLUSIVE write access to `src/components/PiketView.tsx`.
+- Do NOT modify `AppScreen.tsx` or other files in this milestone.
+- R1.1: In `handleManualMark`, remove auto-search overwrite (`setManualSearchQuery(student.nama_siswa)` and `setManualKelasFilter('Semua')`). Student list must remain intact.
+- R2: QR Camera preview rendering fix with mutex `isStartingCameraRef`, fallback media constraints, callback ref / useEffect video binding, BarcodeDetector badge.
+- R1.2: Differentiate Guru vs Admin UI: normalized role check, compact Guru view with inline badge, pill mode toggle, touch-friendly 1-tap buttons, hidden redundant audit log; full Admin view with kiosk dropdown, 3 stat cards, 6-col roster, and audit log.
+- Zero TypeScript errors (`npx tsc --noEmit`).
+- All regression tests must pass.
 
 ## Current Parent
-- Conversation ID: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Updated: 2026-10-04T07:25:38Z
+- Conversation ID: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
+- Updated: 2026-10-05T10:22:00Z
 
 ## Task Summary
-- **What to build**:
-  - R1: Akses Modul Piket Sesuai Jadwal (workflow.ts getGuruDailyState check penugasan_piket/jadwal_piket, AppScreen navigation & menu & block, PiketView blocked UI)
-  - R2: Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel (AppScreen menu & navigation & block, RekapSiswaView assignedKelas prop, block non-wali-kelas, locked class selector to assigned class, GuruJurnal mapel attendance verified)
-- **Success criteria**: 0 TypeScript errors (`npx tsc --noEmit`), tests pass, genuine logic, handoff report.
-- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
-- **Code layout**: src/lib, src/components
+- **What to build**: Fix auto-filter bug, camera preview mounting/binding, and role-based UI distinction in PiketView.
+- **Success criteria**: TypeScript compilation clean (`npx tsc --noEmit`), Next.js build passes (`npm run build`), all 27 test suites in `npm test` pass.
+- **Interface contracts**: `src/components/PiketView.tsx` props (`user`, `activeTab`, `onNavigateTab`, `isOffline`)
 
 ## Key Decisions Made
-- `src/lib/workflow.ts`: Query `penugasan_piket` directly with fuzzy matching for `guru_id`, `guru_nama`, and `guru_nip`, falling back to `jadwal_piket`.
-- `src/components/AppScreen.tsx`: Added `isPiketHariIni` state, conditioned `menuItemsGuru`, guarded navigation in `handleNavigation`, and blocked direct URL access with locked card UI. Passed `assignedKelas` to `RekapSiswaView` and conditioned `view-rekap-siswa` on `isWaliKelas`.
-- `src/components/PiketView.tsx`: Rendered prominent blocked card UI if teacher is not on picket duty today and not admin.
-- `src/components/RekapSiswaView.tsx`: Accepted `assignedKelas` prop, rendered access blocked screen if non-admin and non-wali-kelas, locked Tab 2 class dropdown strictly to teacher's assigned class (`allowedClasses`), and restricted `tarikRekap` query to assigned class.
-- `src/components/GuruJurnal.tsx`: Verified teacher's subject attendance during teaching session remains 100% independent and unaffected.
-
-## Artifact Index
-- DISPATCH.md — Assignment instructions
-- progress.md — Liveness & progress tracker
-- handoff.md — Final completion handoff report
+- Normalized `user?.role` via `(user?.role || '').toLowerCase().replace(/\s+/g, '')` to recognize `'admin'`, `'superadmin'`, and `'guru'` robustly.
+- In `handleManualMark`, removed calls to `setManualSearchQuery` and `setManualKelasFilter` across both `res.success` and `res.alreadyExists` branches, preserving the teacher's active filter and search state so all students remain in view.
+- In `startCamera()`, added `isStartingCameraRef` mutex, fallback constraints to `{ video: true, audio: false }` on `OverconstrainedError`, `useEffect([cameraActive])` synchronization, and callback ref on `<video>` to guarantee immediate `srcObject` binding upon mounting.
+- Separated `activeTab === 'scan'` rendering between Admin (`isAdmin`) and Guru (`!isAdmin`):
+  - Guru View: Compact layout with inline counter badge (`Hadir Datang: X • Pulang: Y`), compact mode toggle pill button (`Datang` | `Pulang`), compact scanner card with camera preview, and fast touch-friendly student roster with 1-tap "Datang" and "Pulang" buttons. Kiosk station dropdown and redundant 7-column Live Attendance Audit Log are hidden.
+  - Admin View: Full 10-station kiosk selector, full 2-column station, 3 large metric cards, 6-column student roster with cancellation, and 7-column Live Attendance Audit Log table.
 
 ## Change Tracker
-- **Files modified**:
-  - `src/lib/workflow.ts`: Checked penugasan_piket directly with fallback to jadwal_piket in getGuruDailyState.
-  - `src/components/AppScreen.tsx`: Added isPiketHariIni state, guarded piket and rekap-siswa navigation/menu/rendering.
-  - `src/components/PiketView.tsx`: Added blocked UI card when non-admin teacher is not on picket duty today.
-  - `src/components/RekapSiswaView.tsx`: Added assignedKelas prop, root blocked UI card, locked Tab 2 class dropdown, restricted tarikRekap.
-- **Build status**: PASS (`npx tsc --noEmit` 0 errors, `npm run build` success)
+- **Files modified**: `src/components/PiketView.tsx` (R1.1, R1.2, R2 implementations)
+- **Build status**: `npx tsc --noEmit` PASS (0 errors), `npm run build` PASS, `npm test` PASS (all 27 suites passed)
 - **Pending issues**: None
 
 ## Quality Status
-- **Build/test result**: PASS (npm test 19/19 files passed)
-- **Lint status**: PASS
-- **Tests added/modified**: Verified against test suite
+- **Build/test result**: All 27 suites in `npm test` passed; `tests/m3_piket_scanner_kiosk.test.ts` passed; `tests/presensi_siswa_sync_and_superadmin.test.ts` passed; `tests/adversarial_presensi_sync_reviewer*.test.ts` passed; `tests/adversarial_piket_wali_challenger_1.test.ts` passed.
+- **Lint status**: 0 TypeScript violations.
+- **Tests added/modified**: Verified via automated verification assertions covering R1.1, R1.2, and R2 contracts.
 
 ## Loaded Skills
 - None
+
+## Artifact Index
+- `.agents/teamwork/worker_m1/DISPATCH.md` — Dispatch requirements
+- `.agents/teamwork/worker_m1/progress.md` — Progress tracker
+- `.agents/teamwork/worker_m1/handoff.md` — Handoff report

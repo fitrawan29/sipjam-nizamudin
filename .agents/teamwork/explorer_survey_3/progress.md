@@ -1,16 +1,15 @@
-# Progress — explorer_survey_3
+# Progress Tracking — explorer_survey_3
 
-Last visited: 2026-10-04T07:19:45Z
+Last visited: 2026-10-05T18:05:00Z
+Status: Completed
 
-## Status
-Investigation completed. Writing comprehensive handoff report.
-
-## Checklist
-- [x] Read ORIGINAL_REQUEST.md for full context
-- [x] Inspect package.json for existing dependencies (QR, canvas, PDF, styling)
-- [x] Inspect database schema and TypeScript interfaces for Siswa & Sekolah
-- [x] Inspect AdminDataView.tsx and student management components
-- [x] Inspect existing QR generation / scan implementations across codebase
-- [x] Evaluate image export / card generation techniques (HTML5 Canvas vs SVG vs native print / window.print)
-- [x] Formulate card design specifications and implementation plan
-- [ ] Generate comprehensive handoff.md and notify parent
+## Tasks
+- [x] Received dispatch and initialized BRIEFING.md
+- [x] Inspect `src/components/AppScreen.tsx` for sidebar structure and user profile state
+- [x] Inspect existing tutorial / onboarding mechanisms (AIAssistant, OnboardingTutorial, tutorialSteps, etc.)
+- [x] Map all menus and views per role (Guru: 11 menus, Admin: 14 menus, Superadmin: 3 menus)
+- [x] Design sidebar user profile display (name, role, avatar, styling, responsiveness)
+- [x] Design complete tutorial architecture (in-app modal/guide + external markdown documentation)
+- [x] Verified test constraints (`tests/onboarding_and_ai_assistant_ui.test.ts`, `tests/app_screen_integration.test.ts`)
+- [x] Compiled comprehensive 5-component `handoff.md` report
+- [x] Sent completion message to parent coordinator

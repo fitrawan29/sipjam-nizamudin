@@ -1,117 +1,126 @@
-# Handoff Report: Milestone 1 (R1 & R2) Implementation
+# Handoff Report — worker_m1: PiketView Auto-Filter Bug, QR Camera Preview Fix, and Role-Based UI Differentiation
 
-**Agent:** `worker_m1`  
-**Milestone:** Milestone 1 (R1 & R2)  
-**Date:** 2026-10-04  
-**Working Directory:** `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1`  
+**Agent**: `worker_m1`  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1`  
+**Modified File**: `src/components/PiketView.tsx`  
+**Timestamp**: 2026-10-05T10:23:00Z  
 
 ---
 
 ## 1. Observation
 
-### 1.1. Context & Starting State
-- **R1 (Akses Modul Piket Sesuai Jadwal):**
-  - In `src/lib/workflow.ts:345-358`, `getGuruDailyState` previously only queried `jadwal_piket` without querying the primary `penugasan_piket` table. If `jadwal_piket` was not synced, `state.isPiket` could evaluate to `false` even if the teacher was assigned.
-  - In `src/components/AppScreen.tsx:474`, the sidebar menu item `{ id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' }` was rendered unconditionally for all teachers.
-  - In `src/components/AppScreen.tsx:440-444`, `handleNavigation` only checked whether `presensiDatang` was done or `isIzinSakit` was set, but did not check `isPiketHariIni` or `state.isPiket`.
-  - In `src/components/AppScreen.tsx:653`, `currentView === 'view-piket'` rendered `<PiketView user={user} />` directly without an access guard.
-  - In `src/components/PiketView.tsx:1153`, non-assigned teachers opening `PiketView` were presented with all tabs (Beranda, Scan QR, Rekap) without a blocked access barrier.
-- **R2 (Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel):**
-  - In `src/components/AppScreen.tsx:480`, `{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }` was displayed to all teachers, regardless of `isWaliKelas`.
-  - In `src/components/AppScreen.tsx:406-460`, `handleNavigation` had no check blocking non-wali-kelas teachers from navigating to `view-rekap-siswa`.
-  - In `src/components/AppScreen.tsx:681`, `<RekapSiswaView user={user} />` was rendered without passing `assignedKelas` and without an access guard.
-  - In `src/components/RekapSiswaView.tsx:8`, the component did not accept `assignedKelas` prop.
-  - In `src/components/RekapSiswaView.tsx:1136-1140`, Tab 2 (Rekap Absen Siswa) displayed all classes in `kelasList.map` in a standard selectable dropdown, allowing any teacher to inspect attendance across other classes in the school.
-  - In `src/components/RekapSiswaView.tsx:355-400`, `tarikRekap` executed queries using whatever class was selected in `kelas`, with no restriction to the teacher's assigned class.
-  - In `src/components/GuruJurnal.tsx:396-440`, subject attendance is loaded independently per teaching session (`jadwal_pelajaran` -> `absensi` and `data_siswa`) and does not rely on `RekapSiswaView`.
+### 1.1 Auto-Filter Issue (Requirement R1.1)
+- In `src/components/PiketView.tsx` (previously lines 590–594 and lines 616–619), `handleManualMark` called:
+  ```tsx
+  setUsbInputVal(student.nisn || student.nama_siswa);
+  setManualSearchQuery(student.nama_siswa);
+  setManualKelasFilter('Semua');
+  ```
+- Because `filteredManualStudents` filters by `manualSearchQuery`:
+  ```tsx
+  const filteredManualStudents = allStudents.filter(s => {
+    const matchKelas = manualKelasFilter === 'Semua' || s.kelas === manualKelasFilter;
+    const matchSearch = !manualSearchQuery.trim() || 
+      (s.nama_siswa?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) || ...
+  ```
+  Setting `manualSearchQuery(student.nama_siswa)` immediately filtered the roster down to only the clicked student. All other students disappeared from the table, and any selected class filter was forcibly reset to `'Semua'`.
+
+### 1.2 QR Camera Preview Not Rendering (Requirement R2)
+- In `src/components/PiketView.tsx`, the `<video>` element was rendered conditionally inside `{cameraActive && (...) }`.
+- When clicking "Buka Kamera", `startCamera()` obtained a stream via `getUserMedia`, set `streamRef.current = stream`, and tried to execute:
+  ```tsx
+  if (videoRef.current) {
+    videoRef.current.srcObject = stream;
+    await videoRef.current.play();
+  }
+  setCameraActive(true);
+  ```
+- Because `cameraActive` was `false` before `startCamera` completed, `<video>` was unmounted and `videoRef.current` was `null`. The assignment was skipped.
+- After `setCameraActive(true)` caused `<video>` to mount, no callback ref or `useEffect` attached `streamRef.current` to `videoRef.current.srcObject`. Consequently, `video.srcObject` stayed `null`, showing a black/blank box, and `video.readyState` remained 0, blocking `BarcodeDetector`.
+- Furthermore, `startCamera` requested `{ video: { facingMode: 'environment', ... } }` without an `OverconstrainedError` fallback for desktop webcams lacking an environment camera, and had no concurrency mutex against rapid double-clicks.
+
+### 1.3 Guru vs Admin UI Lack of Differentiation (Requirement R1.2)
+- Role evaluation was strictly `user?.role === 'Admin'` and `user?.role === 'Guru'`, failing on lowercase or trimmed roles (e.g. `'superadmin'`).
+- Both Guru and Admin roles rendered an identical, heavy 2-column kiosk interface with 10 kiosk stations, 3 large metric cards, and a 7-column Live Attendance Audit Log table.
+- Teachers conducting picket duty at school gates needed a streamlined mobile-friendly interface with fast 1-tap attendance marking buttons, compact mode toggles, and inline counters without scrolling through raw audit logs.
 
 ---
 
 ## 2. Logic Chain
 
-### 2.1. R1: Akses Modul Piket Sesuai Jadwal
-1. **Primary Assignment Query in Workflow:**
-   - In `src/lib/workflow.ts`, inside `getGuruDailyState`, we query `penugasan_piket` directly where `hari = selectedHari` and `tipe_petugas = 'Guru'` scoped to `sekolah_id`.
-   - Matching is verified with `isTeacherPiketMatch`: checking `userId === p.guru_id`, normalized NIP match `username === p.guru_nip`, and bidirectional normalized string token matching for `namaGuru` and `cleanTeacherName`.
-   - If matched, `state.isPiket = true`.
-   - If not found in `penugasan_piket`, we maintain backward-compatibility by checking `jadwal_piket` via `isGuruDiPiket(piketHariIni.daftar_guru, namaGuru)`.
-2. **AppScreen Access Control & Navigation Guards:**
-   - In `src/components/AppScreen.tsx`, added `isPiketHariIni` state, initialized to `isAdmin || isSuperadmin`.
-   - An asynchronous effect invokes `getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id)` to resolve `isPiketHariIni` dynamically for teachers.
-   - `menuItemsGuru` conditionally includes `{ id: 'view-piket', ... }` only when `isPiketHariIni === true`.
-   - In `handleNavigation`, if `targetId === 'view-piket'`, non-admin teachers without picket duty today (`!isAdmin && !isSuperadmin && !isPiketHariIni`) are immediately blocked with a warning dialog (`Akses Terblokir: Modul Piket hanya dapat diakses oleh Guru yang bertugas piket pada hari ini.`).
-   - In the view rendering section, `currentView === 'view-piket'` renders `<PiketView user={user} />` only if `isAdmin || isSuperadmin || isPiketHariIni`. Otherwise, it renders an informative "Akses Terblokir" lock card with a "Kembali ke Dashboard" button.
-3. **PiketView Component-Level Defense:**
-   - In `src/components/PiketView.tsx`, if `isGuru && dailyState && !dailyState.isPiket && !isAdmin`, the component renders a prominent "Bukan Jadwal Piket Hari Ini" card, ensuring direct access via deep links or component re-renders is safeguarded.
-
-### 2.2. R2: Pembatasan Rekapitulasi Presensi untuk Wali Kelas & Akses Guru Mapel
-1. **Sidebar Menu & Navigation Guard in AppScreen:**
-   - In `src/components/AppScreen.tsx`, `menuItemsGuru` conditionally includes `{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }` only when `isWaliKelas === true`.
-   - In `handleNavigation`, navigation to `view-rekap-siswa` is blocked with a warning dialog for non-admin and non-wali-kelas users.
-   - In the view rendering section, `currentView === 'view-rekap-siswa'` passes `assignedKelas={assignedKelas}` to `<RekapSiswaView user={user} assignedKelas={assignedKelas} />`, and renders an "Akses Terblokir" lock card if the user is neither Admin nor Wali Kelas.
-2. **RekapSiswaView Class Locking & Defense-in-Depth:**
-   - `RekapSiswaView` accepts prop `assignedKelas?: string | null;`.
-   - If `masterLoaded && !isWaliKelasUser`, it renders an access blocked screen.
-   - Allowed classes are computed via `allowedClasses = (isAdmin || user?.role === 'Admin') ? kelasList : Array.from(new Set([propAssignedKelas, user?.penugasan?.kelas_binaan, user?.wali_kelas, ...waliKelasList.map(w => w.kelas)].filter(Boolean)))`.
-   - In Tab 2 (Rekap Absen Siswa), if the user is not Admin, the class dropdown is locked/disabled strictly to the teacher's assigned class (`allowedClasses`), preventing access to other classes.
-   - In `tarikRekap`, `targetKelas` is clamped to `allowedClasses` when not Admin. Any request outside assigned classes is rejected with an error dialog.
-3. **Independent Subject Attendance for Subject Teachers:**
-   - Verified in `src/components/GuruJurnal.tsx`: teachers' live student attendance during teaching sessions operates on `jadwal_pelajaran` and `absensi` for the specific class taught. Subject teachers retain 100% full attendance management capability during KBM.
+1. **Step 1 (Fixing R1.1 Auto-Filter Bug)**:
+   - By removing `setManualSearchQuery(student.nama_siswa)` and `setManualKelasFilter('Semua')` from `handleManualMark` in both the `res.success` and `res.alreadyExists` branches (preserving `setUsbInputVal` and `setLastScanResult`), marking a student does NOT alter the user's active search query or class filter.
+   - All students in the active class remain visible in the list with their updated attendance badges.
+2. **Step 2 (Fixing R2 Camera Preview Lifecycle & Constraints)**:
+   - Added an initiation mutex `isStartingCameraRef = useRef(false)` to block race conditions.
+   - Wrapped `getUserMedia` constraints with `facingMode: { ideal: 'environment' }` and a `catch` fallback to `{ video: true, audio: false }` to support laptops and webcams without environment cameras.
+   - Attached a callback ref `ref={(el) => { videoRef.current = el; if (el && streamRef.current && el.srcObject !== streamRef.current) { el.srcObject = streamRef.current; el.play().catch(...); } }}` on the `<video>` element to bind the media stream synchronously upon DOM mount.
+   - Added `useEffect` on `[cameraActive]` to ensure stream attachment if mounting occurs across state transitions.
+   - Added dynamic BarcodeDetector capability badge.
+3. **Step 3 (Differentiating Guru vs Admin Layouts R1.2)**:
+   - Normalized roles:
+     ```tsx
+     const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
+     const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
+     const isGuru = roleNormalized === 'guru';
+     ```
+   - Conditioned `activeTab === 'scan'` rendering on `isAdmin`:
+     - **For Guru (`!isAdmin`)**:
+       - Kiosk Station selector dropdown is hidden (defaults `deviceId` to `'kiosk-default'`).
+       - Mode toggle rendered as compact pill button (`Datang` | `Pulang`).
+       - Compact scanner toggle card with Buka/Tutup Kamera, camera video preview with reticle and badge, USB HID input, and compact result feedback banner.
+       - Inline counter badge (`Hadir Datang: X • Pulang: Y`) replaces the 3 standalone cards.
+       - Fast touch-friendly student roster with 1-tap "Datang" and "Pulang" buttons and status badges.
+       - Redundant 7-column Live Attendance Audit Log table is hidden.
+     - **For Admin (`isAdmin`)**:
+       - Full Kiosk Station selector dropdown (Kios 1–10).
+       - Full two-column station (USB input + Camera preview + Large visual feedback card).
+       - Full 6-column student roster with cancel buttons.
+       - 3 large metric stat cards (`Total Hadir Datang`, `Total Pulang`, `Total Unik Siswa`).
+       - Full 7-column Live Attendance Audit Log table (`Log Presensi Siswa Hari Ini`).
+       - Exclusive access to `Penugasan Piket` tab.
 
 ---
 
 ## 3. Caveats
 
-- **Admin Bypasses:** Admins and Superadmins always retain 24/7 access to all picket modules and all student attendance recaps across all classes.
-- **Multiple Class Assignments:** If a teacher is assigned as Wali Kelas for more than one class, `allowedClasses` and the dropdown allow switching between their assigned classes, but never to other classes in the school.
-- **No Schema Changes:** All requirements were achieved without adding database migrations or breaking existing multi-tenant constraints.
+- In environments without HTTPS or localhost, browsers restrict `navigator.mediaDevices.getUserMedia`; an informative error banner is displayed prompting for secure context / permissions.
+- In browsers without native `window.BarcodeDetector` (e.g. desktop Firefox or older Chromium), the video stream displays clearly and a badge informs the user that BarcodeDetector is unavailable, guiding them to use USB HID or manual NISN input.
+- Presensi Siswa two-way sync (`handleProcessScan`) continues to sync scanned QR codes to the manual input form as specified in earlier milestone requirements, while `handleManualMark` strictly preserves the teacher's active filter and search state.
 
 ---
 
 ## 4. Conclusion
 
-Milestone 1 (R1 & R2) is fully implemented with genuine, robust logic across all 4 owned files:
-- `src/lib/workflow.ts`
-- `src/components/AppScreen.tsx`
-- `src/components/PiketView.tsx`
-- `src/components/RekapSiswaView.tsx`
-
-All acceptance criteria are satisfied:
-1. Teachers without picket duty today cannot see or access the Picket module.
-2. Teachers with picket duty today can access the Picket module normally.
-3. Non-wali-kelas teachers cannot see or access the Student Attendance Recap module.
-4. Wali Kelas teachers have access strictly locked to their assigned class.
-5. Subject teachers retain full attendance management during KBM in `GuruJurnal`.
-6. Admins retain full global access.
+All requirements for Milestone M1 in `src/components/PiketView.tsx` have been successfully and genuinely implemented:
+- **R1.1**: "Tandai Datang" and "Tandai Pulang" no longer filter the student list down to 1 student or reset the class filter; all students remain visible.
+- **R2**: Camera preview blank screen bug resolved via video callback ref, `useEffect([cameraActive])` synchronization, `isStartingCameraRef` mutex, and fallback constraints.
+- **R1.2**: Role checking is normalized and distinct interfaces are rendered: a compact, touch-friendly UI for Guru with inline counters and 1-tap buttons, and a comprehensive multi-kiosk audit UI for Admin.
 
 ---
 
 ## 5. Verification Method
 
-### 5.1. Automated Verification Commands
-1. **Type Checking:**
-   ```powershell
-   npx tsc --noEmit
-   ```
-   *Result:* Exit code 0, 0 errors.
+### 5.1 TypeScript Compilation
+```powershell
+npx tsc --noEmit
+```
+**Result**: Exited with code 0 (0 errors).
 
-2. **Milestone Test Suites:**
-   ```powershell
-   npx tsx tests/m4_wali_kelas_guru_sync.test.ts
-   npx tsx tests/m3_piket_scanner_kiosk.test.ts
-   npx tsx tests/app_screen_integration.test.ts
-   npx tsx tests/m6_4_piket_perangkat_broadcast.test.ts
-   ```
-   *Result:* All tests passed cleanly (100%).
+### 5.2 Next.js Production Build
+```powershell
+npm run build
+```
+**Result**: Compiled successfully in 2.2s; all static and dynamic routes generated cleanly.
 
-3. **Full Test Suite:**
-   ```powershell
-   npm test
-   ```
-   *Result:* All 19 test files passed with 0 failures.
-
-4. **Production Build:**
-   ```powershell
-   npm run build
-   ```
-   *Result:* Production build compiled successfully with Turbopack and static page generation.
+### 5.3 Automated Regression Suites
+```powershell
+npx tsx tests/m3_piket_scanner_kiosk.test.ts
+npx tsx tests/presensi_siswa_sync_and_superadmin.test.ts
+npx tsx tests/adversarial_presensi_sync_reviewer.test.ts
+npx tsx tests/adversarial_presensi_sync_reviewer_r2.test.ts
+npx tsx tests/adversarial_presensi_sync_reviewer_r3.test.ts
+npx tsx tests/adversarial_piket_wali_challenger_1.test.ts
+npm test
+```
+**Result**: All 27 test suites in `npm test` and all individual test scripts passed with 100% success rate.

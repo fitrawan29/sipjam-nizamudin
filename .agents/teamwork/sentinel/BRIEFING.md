@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-05T02:22:00Z
+# BRIEFING — 2026-10-05T09:57:00Z
 
 ## Mission
-Route and monitor execution of SIPJAM app: Presensi siswa sinkronisasi dua arah (QR & manual input) dan hapus konfigurasi mode presensi siswa di superadmin.
+Route and monitor execution of SIPJAM app: Perbaikan multi-fitur (UI piket: daftar siswa utuh saat klik Tandai Datang & pembedaan UI Guru ringkas vs Admin detail; perbaikan kamera QR code; info nama & role akun pada sidebar; tutorial lengkap panduan fitur per role).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -17,9 +17,6 @@ Route and monitor execution of SIPJAM app: Presensi siswa sinkronisasi dua arah 
 - Victory Auditor: 9e5eb9cc-c65f-4b8a-a20e-f19df23a1cc0 (victory_auditor_5 - VICTORY CONFIRMED & retired)
 - Orchestrator 5: 3b364431-4af8-4ed9-9a8c-b79b77d58fbe (victory claimed & retired)
 - Victory Auditor 6: 2ed89218-879e-458f-86d4-7e73f2ba1964 (VICTORY CONFIRMED & retired)
-- Active SWE Orchestrator (swe_5): 3d9c45b2-b130-4bb6-b5cc-feec131167d4 (completed & retired)
-- Orchestrator 6: 99cc2021-9546-433d-8867-c45dc0860a07 (orchestrator_6 - victory confirmed & retired)
-- Victory Auditor 7: 6ea507cb-89c7-47f5-a1d6-a67deb8af043 (victory_auditor_7 - VICTORY CONFIRMED & retired)
 - Active SWE Orchestrator (swe_6): b682bce7-11f6-4c9b-8a9e-1ed563a26ff1 (completed & retired)
 - Sentinel Victory Auditor (victory_auditor_10): c3707d87-71e6-4a4c-a5e7-625c6c3841ee (VICTORY CONFIRMED & retired)
 - Active SWE Orchestrator (swe_7): b91e8024-c4f4-4a35-9c87-7d547c9151cc (completed & retired)
@@ -43,7 +40,8 @@ Route and monitor execution of SIPJAM app: Presensi siswa sinkronisasi dua arah 
 - Sentinel Victory Auditor (victory_auditor_21): speed-retired
 - Active SWE Orchestrator: 6ccbc814-8f55-47ba-8af6-a392f7b949c0 (swe_14 - completed & retired)
 - Active Victory Auditor: 6931427e-db28-4f05-b410-c522d0ef12d3 (victory_auditor_23 - VICTORY CONFIRMED & retired)
-- Active SWE Orchestrator (swe_15): b5095777-d8c1-4731-883f-9e5ab66865e1
+- Active SWE Orchestrator (swe_15): b5095777-d8c1-4731-883f-9e5ab66865e1 (completed & retired)
+- Active Orchestrator (orchestrator_15): 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
 - Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
@@ -53,15 +51,15 @@ Route and monitor execution of SIPJAM app: Presensi siswa sinkronisasi dua arah 
 - Cancel all crons and kill all subagents before final summary delivery
 
 ## User Context
-- **Last user request**: Presensi siswa: Mendukung QR code dan input manual. Sinkronisasi dua arah: jika QR discan, form manual terisi otomatis; jika diisi manual, form QR terupdate otomatis (jika relevan). Superadmin tidak lagi mengatur mode presensi siswa.
+- **Last user request**: Perbaikan multi-fitur: UI piket (daftar tetap utuh, bedakan guru vs admin), fix kamera QR, sidebar nama & role, tutorial lengkap.
 - **Pending clarifications**: none
-- **Delivered results**: In progress under swe_15
+- **Delivered results**: In progress under orchestrator_15
 
 ## Project Status
 - **Phase**: in progress
-- **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: Progress Reporting (task-26), Liveness Check (task-28)
-- **Active Subagents**: b5095777-d8c1-4731-883f-9e5ab66865e1 (swe_15)
+- **Route**: General (teamwork_preview_orchestrator)
+- **Active Crons**: Progress Reporting (task-32), Liveness Check (task-34)
+- **Active Subagents**: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c (orchestrator_15)
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -71,4 +69,4 @@ Route and monitor execution of SIPJAM app: Presensi siswa sinkronisasi dua arah 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original verbatim user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\BRIEFING.md — Sentinel persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_15\DISPATCH.md — SWE 15 dispatch document
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_15\DISPATCH.md — Orchestrator 15 dispatch document

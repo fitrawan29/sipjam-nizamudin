@@ -1,47 +1,49 @@
-# BRIEFING — 2026-10-04T07:19:30Z
+# BRIEFING — 2026-10-05T18:04:00Z
 
 ## Mission
-Technical survey for R4: Download Kartu Presensi QR Siswa (Admin) in SIPJAM App.
+Investigate Requirement R3: Sidebar user profile (name & role) and comprehensive tutorial for all menus and features per role (Guru, Admin, Superadmin), both in-app and documentation.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: investigation, synthesis
+- Roles: read-only investigation, survey, analysis, architectural recommendation
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3
-- Original parent: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Milestone: milestone_survey_r4
+- Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
+- Milestone: Requirement R3 Analysis & Architecture
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement
-- Do NOT edit or modify source code files
-- Output comprehensive findings and recommendation in handoff.md
-- Send message to parent when finished
+- Read-only investigation — do NOT implement / modify source files
+- Files for content delivery, Messages for coordination
+- Store metadata only in .agents/teamwork/explorer_survey_3
+- Send message to parent upon completion
 
 ## Current Parent
-- Conversation ID: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Updated: 2026-10-04T07:15:19Z
+- Conversation ID: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
+- Updated: 2026-10-05T18:04:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `package.json`: Verified installed dependencies (no jspdf, html2canvas, or external QR library).
-  - `src/types/database.ts`: Inspected `data_siswa` and `sekolah` schemas.
-  - `src/lib/qrSiswa.ts`: Pure TypeScript QR engine (`generateQrMatrix`, `generateStudentQrSvg`, `getStudentQrIdentifier`).
-  - `src/components/AdminDataView.tsx`: Inspected student table, card rendering, and existing print handlers (`handleShowStudentQr`, `printStudentQrCard`, `handlePrintBatchQrCards`).
-  - `src/lib/watermarkCanvas.ts`: Inspected existing HTML5 canvas patterns in repository.
-  - `tests/qrSiswa.test.ts` & `tests/printHeader.test.ts`: Inspected test practices and execution patterns.
+  - `src/components/AppScreen.tsx` (lines 1-1018): Inspected sidebar structure, user state, navigation logic, menu registration.
+  - `src/components/HomeView.tsx` (lines 1020-1055): Inspected existing user profile rendering patterns.
+  - `src/lib/avatars.tsx`: Inspected `renderUserAvatar` implementation.
+  - `src/components/Onboarding/` (`OnboardingTutorial.tsx`, `tutorialSteps.ts`, `index.ts`): Inspected interactive tour mechanisms and localStorage flags.
+  - `src/components/AIAssistant/knowledgeBase.ts`: Inspected 20 menu categories and existing Q&A knowledge base.
+  - `src/components/SuperadminView.tsx`: Inspected Superadmin tabs and features.
+  - `tests/onboarding_and_ai_assistant_ui.test.ts` & `tests/app_screen_integration.test.ts`: Inspected existing integration tests and assertions.
 - **Key findings**:
-  - Zero external dependencies needed: HTML5 Canvas + `generateQrMatrix` provides 100% synchronous, high-resolution PNG rendering and download.
-  - Student schema uses `nama_siswa`, `nisn`, `kelas`, `sekolah_id`, `qr_code`.
-  - School schema (`sekolah`) has `nama`, `logo_url`, `alamat`. AdminDataView currently has `user.sekolah_id`, easily querying `sekolah` table.
-  - Existing print functions in `AdminDataView.tsx` lacked `Nama Sekolah` and only supported `window.print()`.
-- **Unexplored areas**: None. Survey is complete.
+  - The sidebar in `AppScreen.tsx` currently has ZERO user details (no name, no role badge, no avatar).
+  - The existing OnboardingTutorial is a 5/6-step spotlight overlay only covering basic navigation, not a full menu guide.
+  - Superadmin has 0 onboarding steps and cannot access any tutorial from the sidebar.
+  - Full menu mapping completed: Guru (11 menus), Admin (14 menus), Superadmin (3 menus).
+  - Test suites require retaining exact strings like "Lihat Tutorial Lagi", `STORAGE_KEY_GURU`, and `STORAGE_KEY_ADMIN`.
+- **Unexplored areas**: None for R3.
 
 ## Key Decisions Made
-- Recommend pure HTML5 Canvas PNG download (`toDataURL('image/png')`) + updated Print window for PDF export.
-- Standard CR80 portrait layout (600x960px) with SIPJAM emerald branding, complete student identity (Nama, NISN, Kelas, Nama Sekolah), and sharp QR matrix rendering.
-- UI button placement: dedicated "Download Kartu" on each student item card in Data_Siswa tab + inside QR modal + batch support.
+- Design a high-contrast, responsive User Profile Card for the sidebar directly below the brand header.
+- Recommend a dual tutorial deliverable: (1) An in-app `TutorialModal` accessible from sidebar for all roles (Guru, Admin, Superadmin) with structured menu accordion guides and search, and (2) A complete Markdown document (`docs/PANDUAN_PENGGUNA.md` / `TUTORIAL.md`).
+- Ensure full backward compatibility with existing tests (`app_screen_integration.test.ts`).
 
 ## Artifact Index
-- DISPATCH.md — Initial dispatch message
-- BRIEFING.md — Persistent context & state
-- progress.md — Liveness heartbeat
-- handoff.md — Final 5-component handoff report
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\DISPATCH.md` — Inbound task dispatch
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\BRIEFING.md` — Situational awareness
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\progress.md` — Heartbeat and progress
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md` — 5-component handoff report

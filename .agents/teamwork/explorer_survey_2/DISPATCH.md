@@ -1,19 +1,19 @@
-## 2026-10-04T07:15:19Z
-You are an Explorer subagent (explorer_survey_2).
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2
+## 2026-10-05T09:58:22Z
+You are explorer_survey_2.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2
+Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+User request is in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
 
-Read ORIGINAL_REQUEST.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically the latest request at the bottom, 2026-10-04T07:11:46Z).
+Your focus is Requirement R2 (Perbaikan Kamera QR Code):
+Perbaiki bug kamera QR code yang tidak muncul, sehingga fitur scan QR dapat digunakan kembali.
+1. Locate where QR code scanning is implemented in the codebase (check `src/components/PiketView.tsx` and any related components/utilities).
+2. Determine how the camera scanner works (is it using html5-qrcode, jsQR, navigator.mediaDevices, or another library?).
+3. Identify why the camera preview is not appearing / not rendering:
+   - Check DOM element mounting, container ref / ID, video constraints, permissions, facingMode, canvas processing.
+   - Check if tab switching or state toggling prevents the video element from initializing or getting dimensions.
+   - Check console errors / potential exceptions when initializing scanner.
+4. Provide the exact root cause with file paths and line numbers, and provide a concrete, step-by-step fix recipe that will reliably make the camera visible and scanning.
 
-Your objective is technical survey for:
-3. R3: Penyesuaian Format Cetak Dokumen Guru & Hapus "Robot" (Kecuali Watermark)
-   - Periksa format cetak (print) dokumen di modul Admin vs Guru (misalnya `DokumenView.tsx`, `RekapJurnalView.tsx`, `PrintHeader.tsx`, `globals.css`, dsb.).
-   - Bandingkan layout dokumen Guru dengan dokumen Admin: apa yang berbeda (header, tabel, margin, font, dsb.) dan bagaimana menyamakannya agar persis sama rapinya.
-   - Selidiki elemen "robot" (ikon bot AI, AI Assistant floating button di `AIAssistant.tsx`, tombol UI melayang, tombol print, floating action buttons, dsb.).
-   - Periksa aturan CSS `@media print` yang ada di `globals.css` atau komponen terkait. Cari tahu mengapa elemen robot atau tombol melayang saat ini ikut tercetak atau bagaimana menyembunyikannya saat print (`display: none !important;`).
-   - PERIKSA WATERMARK SEKOLAH: Di mana watermark sekolah didefinisikan/dirender pada cetak dokumen? Pastikan watermark sekolah TIDAK BOLEH dihilangkan dan harus tetap tercetak pada preview print / kertas.
-
-Scope boundaries:
-- DO NOT edit or modify source code files. You are an exploratory read-only agent.
-- Output your comprehensive findings and implementation recommendation in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md`.
-- Send a message to parent when finished.
+Investigate using view_file and grep_search. Do NOT modify source files.
+Write a thorough investigation report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md`.
+When done, send a message to parent with your completion status and path to handoff.md.

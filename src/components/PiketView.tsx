@@ -24,6 +24,10 @@ import {
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
 export default function PiketView({ user }: { user: any }) {
+  const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
+  const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
+  const isGuru = roleNormalized === 'guru';
+
   const [activeTab, setActiveTab] = useState<'beranda' | 'scan' | 'lapor' | 'penugasan' | 'rekap'>('beranda');
   const [jadwalPiket, setJadwalPiket] = useState<any[]>([]);
   const [penugasanList, setPenugasanList] = useState<PenugasanPiket[]>([]);
@@ -66,7 +70,7 @@ export default function PiketView({ user }: { user: any }) {
 
   // States for Scan QR Siswa Kiosk
   const [scanMode, setScanMode] = useState<'datang' | 'pulang'>('datang');
-  const [deviceId, setDeviceId] = useState<string>('kiosk-1');
+  const [deviceId, setDeviceId] = useState<string>(isAdmin ? 'kiosk-1' : 'kiosk-default');
   const [usbInputVal, setUsbInputVal] = useState('');
   const [isUsbInputFocused, setIsUsbInputFocused] = useState(false);
   const [scanProcessing, setScanProcessing] = useState(false);
@@ -85,6 +89,7 @@ export default function PiketView({ user }: { user: any }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isStartingCameraRef = useRef(false);
   const isDetectingRef = useRef(false);
   const lastCameraScannedRef = useRef<{ code: string; time: number } | null>(null);
   const usbInputRef = useRef<HTMLInputElement | null>(null);
@@ -272,20 +277,73 @@ export default function PiketView({ user }: { user: any }) {
 
   // Camera start / stop functions
   const startCamera = async () => {
+    if (isStartingCameraRef.current) return;
+    isStartingCameraRef.current = true;
     setCameraError(null);
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Browser ini tidak mendukung akses kamera langsung atau koneksi tidak aman (HTTPS diperlukan).');
+      setCameraActive(false);
+      isStartingCameraRef.current = false;
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
+      // Stop any existing tracks before acquiring new stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+
+      let stream: MediaStream;
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 }
+        },
+        audio: false
+      };
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (constraintErr: any) {
+        console.warn('[PiketView] Overconstrained camera request, falling back to basic video:', constraintErr);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+
       streamRef.current = stream;
+
+      // Attach immediately if videoRef is already in DOM
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('webkit-playsinline', 'true');
+        videoRef.current.muted = true;
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          console.warn('[PiketView] Direct play error:', playErr);
+        }
       }
+
       setCameraActive(true);
     } catch (err: any) {
-      setCameraError(err.message || 'Gagal mengakses kamera browser. Pastikan izin kamera telah diberikan.');
+      console.error('[PiketView] startCamera error:', err);
+      let errMsg = 'Gagal mengakses kamera browser. Pastikan izin kamera telah diberikan.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errMsg = 'Izin kamera ditolak. Harap izinkan akses kamera pada pengaturan browser.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errMsg = 'Kamera tidak ditemukan pada perangkat Anda.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errMsg = 'Kamera sedang digunakan oleh aplikasi lain.';
+      } else if (err.message) {
+        errMsg = err.message;
+      }
+      setCameraError(errMsg);
       setCameraActive(false);
+    } finally {
+      isStartingCameraRef.current = false;
     }
   };
 
@@ -299,6 +357,22 @@ export default function PiketView({ user }: { user: any }) {
     }
     setCameraActive(false);
   };
+
+  // Ensure video element receives the stream when cameraActive mounts the element
+  useEffect(() => {
+    if (cameraActive && streamRef.current && videoRef.current) {
+      const video = videoRef.current;
+      if (video.srcObject !== streamRef.current) {
+        video.srcObject = streamRef.current;
+      }
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('webkit-playsinline', 'true');
+      video.muted = true;
+      video.play().catch(err => {
+        console.warn('[PiketView] Video play error in effect:', err);
+      });
+    }
+  }, [cameraActive]);
 
   useEffect(() => {
     if (activeTab !== 'scan' && cameraActive) {
@@ -587,10 +661,8 @@ export default function PiketView({ user }: { user: any }) {
           timestamp: res.data?.timestamp || new Date().toISOString()
         });
 
-        // Two-way sync: fill QR scanner input and manual search input
+        // Two-way sync: fill QR scanner input (preserve manual search query and class filter to keep roster intact)
         setUsbInputVal(student.nisn || student.nama_siswa);
-        setManualSearchQuery(student.nama_siswa);
-        setManualKelasFilter('Semua');
 
         await fetchTodayScanData();
       } else if (res.alreadyExists) {
@@ -614,8 +686,6 @@ export default function PiketView({ user }: { user: any }) {
         });
 
         setUsbInputVal(student.nisn || student.nama_siswa);
-        setManualSearchQuery(student.nama_siswa);
-        setManualKelasFilter('Semua');
 
         await fetchTodayScanData();
       } else {
@@ -830,7 +900,7 @@ export default function PiketView({ user }: { user: any }) {
       }
     });
 
-    if (user?.role === 'Guru') {
+    if (isGuru) {
       getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id).then(setDailyState).catch(console.error);
     }
   }, [user]);
@@ -1136,7 +1206,7 @@ export default function PiketView({ user }: { user: any }) {
       setPhotoPreviewUrl(null);
       setActiveTab('beranda');
       fetchDataPiket(); // Refresh data
-      if (user?.role === 'Guru') {
+      if (isGuru) {
         try {
           const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
           setDailyState(state);
@@ -1353,8 +1423,6 @@ export default function PiketView({ user }: { user: any }) {
     }
   };
 
-  const isGuru = user?.role === 'Guru';
-  const isAdmin = user?.role === 'Admin';
   // Admin never conducts daily report; Guru conducts report if assigned and not on leave
   // Also allow reporting when laporan piket was rejected (teacher needs to re-submit)
   const canReport = !isAdmin && isGuru && Boolean(
@@ -1585,7 +1653,7 @@ export default function PiketView({ user }: { user: any }) {
                                 </a>
                               </div>
                             )}
-                            {user?.role === 'Admin' && (
+                            {isAdmin && (
                               <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                                 <button
                                   disabled={processingId === l.id || l.status_verifikasi === 'Disetujui'}
@@ -1620,7 +1688,8 @@ export default function PiketView({ user }: { user: any }) {
 
             {/* TAB: PRESENSI SISWA (QR & MANUAL) */}
             {activeTab === 'scan' && (
-              <div id="piket-content-scan" className="space-y-6 fade-in">
+              isAdmin ? (
+                <div id="piket-content-scan" className="space-y-6 fade-in">
                 {/* 1. Kiosk Station & Mode Switcher Controls */}
                 <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 p-4 sm:p-5 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -1833,7 +1902,16 @@ export default function PiketView({ user }: { user: any }) {
                       {cameraActive && (
                         <div className="relative rounded-xl overflow-hidden bg-black aspect-video border-2 border-teal-500 shadow-inner">
                           <video
-                            ref={videoRef}
+                            ref={(el) => {
+                              videoRef.current = el;
+                              if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                                el.srcObject = streamRef.current;
+                                el.setAttribute('playsinline', 'true');
+                                el.setAttribute('webkit-playsinline', 'true');
+                                el.muted = true;
+                                el.play().catch(e => console.warn('[PiketView] Callback ref play error:', e));
+                              }
+                            }}
                             playsInline
                             autoPlay
                             muted
@@ -1848,7 +1926,11 @@ export default function PiketView({ user }: { user: any }) {
                             </div>
                           </div>
                           <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs p-1.5 rounded-lg text-center text-[10px] text-white">
-                            <i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis
+                            {typeof window !== 'undefined' && 'BarcodeDetector' in window ? (
+                              <span><i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis</span>
+                            ) : (
+                              <span><i className="fa-solid fa-circle-info mr-1 text-amber-400"></i> Browser ini tidak mendukung BarcodeDetector bawaan. Gunakan scanner USB HID atau ketik NISN.</span>
+                            )}
                           </div>
                         </div>
                       )}
@@ -2347,6 +2429,412 @@ export default function PiketView({ user }: { user: any }) {
                   </div>
                 </div>
               </div>
+            ) : (
+                /* GURU VIEW: Tampilan Ringkas, Pill Mode, Scanner Compact, Roster Sentuh Cepat, Badge Metrik Inline */
+                <div id="piket-content-scan-guru" className="space-y-5 fade-in">
+                  {/* 1. Header Bar Ringkas (Guru) */}
+                  <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 p-4 sm:p-5 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
+                          <i className="fa-solid fa-qrcode text-teal-600 dark:text-teal-400"></i>
+                          Presensi Siswa Piket (Mode Guru)
+                        </h3>
+                        <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
+                          Pencatatan kehadiran siswa secara ringkas via scanner QR atau 1-tap tombol presensi.
+                        </p>
+                      </div>
+
+                      {/* Inline counter badge: Hadir Datang: X • Pulang: Y */}
+                      <div className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 px-3.5 py-1.5 rounded-xl border border-teal-200 dark:border-teal-800 shadow-2xs text-xs font-bold self-stretch sm:self-auto justify-center">
+                        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          Hadir Datang: {scanSummary.totalDatang}
+                        </span>
+                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                        <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          Pulang: {scanSummary.totalPulang}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Compact Attendance Mode Toggle (Pill button Datang | Pulang) */}
+                    <div className="flex items-center gap-3 pt-1">
+                      <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                        Mode Presensi:
+                      </span>
+                      <div className="inline-flex p-1 bg-white dark:bg-gray-800 rounded-xl border border-teal-200 dark:border-teal-800 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setScanMode('datang')}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            scanMode === 'datang'
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'text-gray-600 dark:text-gray-300 hover:text-emerald-600'
+                          }`}
+                        >
+                          <i className="fa-solid fa-right-to-bracket text-xs"></i>
+                          <span>Datang</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setScanMode('pulang')}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            scanMode === 'pulang'
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-gray-600 dark:text-gray-300 hover:text-blue-600'
+                          }`}
+                        >
+                          <i className="fa-solid fa-right-from-bracket text-xs"></i>
+                          <span>Pulang</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Compact Scanner Toggle Card */}
+                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center text-sm font-bold shrink-0">
+                          <i className="fa-solid fa-camera"></i>
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-gray-900 dark:text-white">Scanner QR Code Siswa</div>
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400">Pindai kartu QR siswa menggunakan kamera atau USB scanner</div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {!cameraActive ? (
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            className="w-full sm:w-auto px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                          >
+                            <i className="fa-solid fa-camera"></i>
+                            <span>Buka Kamera QR</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={stopCamera}
+                            className="w-full sm:w-auto px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                          >
+                            <i className="fa-solid fa-video-slash"></i>
+                            <span>Tutup Kamera</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {cameraError && (
+                      <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                        <i className="fa-solid fa-triangle-exclamation"></i>
+                        <span>{cameraError}</span>
+                      </div>
+                    )}
+
+                    {cameraActive && (
+                      <div className="relative rounded-xl overflow-hidden bg-black aspect-video max-w-md mx-auto border-2 border-teal-500 shadow-inner">
+                        <video
+                          ref={(el) => {
+                            videoRef.current = el;
+                            if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                              el.srcObject = streamRef.current;
+                              el.setAttribute('playsinline', 'true');
+                              el.setAttribute('webkit-playsinline', 'true');
+                              el.muted = true;
+                              el.play().catch(e => console.warn('[PiketView] Callback ref play error:', e));
+                            }
+                          }}
+                          playsInline
+                          autoPlay
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                          <div className="w-44 h-44 border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
+                            <span className="text-[10px] text-teal-200 bg-black/60 px-2 py-0.5 rounded-full font-bold">
+                              Arahkan QR ke Sini
+                            </span>
+                          </div>
+                        </div>
+                        <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs p-1.5 rounded-lg text-center text-[10px] text-white">
+                          {typeof window !== 'undefined' && 'BarcodeDetector' in window ? (
+                            <span><i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis</span>
+                          ) : (
+                            <span><i className="fa-solid fa-circle-info mr-1 text-amber-400"></i> Browser ini tidak mendukung BarcodeDetector bawaan. Gunakan scanner USB HID atau ketik NISN.</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Compact USB scanner input for Guru */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const code = usbInputVal.trim();
+                        if (code) {
+                          setUsbInputVal('');
+                          handleProcessScan(code);
+                        }
+                      }}
+                      className="pt-2 border-t border-gray-100 dark:border-gray-700"
+                    >
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-teal-600">
+                          <i className="fa-solid fa-barcode text-xs"></i>
+                        </div>
+                        <input
+                          ref={!isAdmin ? usbInputRef : undefined}
+                          type="text"
+                          value={usbInputVal}
+                          onChange={(e) => handleUsbInputChange(e.target.value)}
+                          onFocus={(e) => {
+                            setIsUsbInputFocused(true);
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === '\r' || e.key === '\n' || e.keyCode === 13) {
+                              e.preventDefault();
+                              const code = usbInputVal.trim();
+                              if (code) {
+                                setUsbInputVal('');
+                                handleProcessScan(code);
+                              }
+                            }
+                          }}
+                          onBlur={handleUsbInputBlur}
+                          disabled={scanProcessing}
+                          placeholder="Scan barcode/QR atau ketik NISN siswa..."
+                          className="w-full pl-8 pr-20 py-2.5 text-xs bg-gray-50 dark:bg-gray-900 border border-teal-300 dark:border-teal-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-gray-900 dark:text-white"
+                        />
+                        <button
+                          type="submit"
+                          disabled={scanProcessing || !usbInputVal.trim()}
+                          className="absolute right-1 top-1 bottom-1 px-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        >
+                          {scanProcessing ? <i className="fa-solid fa-spinner animate-spin"></i> : <span>Scan</span>}
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* Feedback Banner if lastScanResult exists */}
+                    {lastScanResult && (
+                      <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                        lastScanResult.success
+                          ? lastScanResult.status === 'datang'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
+                            : 'bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200'
+                          : lastScanResult.alreadyExists
+                          ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                          : 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200'
+                      }`}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${
+                            lastScanResult.status === 'datang' ? 'bg-emerald-600' : 'bg-blue-600'
+                          }`}>
+                            {lastScanResult.student ? lastScanResult.student.nama_siswa.charAt(0).toUpperCase() : '!'}
+                          </div>
+                          <div className="truncate">
+                            <div className="font-bold truncate text-sm">
+                              {lastScanResult.student?.nama_siswa || 'Presensi'}
+                              {lastScanResult.student && <span className="ml-1 text-xs font-normal opacity-80">({lastScanResult.student.kelas})</span>}
+                            </div>
+                            <div className="text-[11px] opacity-90 truncate">{lastScanResult.message}</div>
+                          </div>
+                        </div>
+                        <div className="text-[11px] font-mono shrink-0 font-bold">
+                          {lastScanResult.jam ? `pk. ${lastScanResult.jam.slice(0, 5)}` : ''}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 3. Fast Touch-Friendly Student Roster (Guru) */}
+                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div>
+                        <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
+                          <i className="fa-solid fa-users text-teal-600 dark:text-teal-400"></i>
+                          Daftar Siswa {manualKelasFilter !== 'Semua' ? `Kelas ${manualKelasFilter}` : '(Semua Kelas)'}
+                        </h3>
+                        <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
+                          Menampilkan {filteredManualStudents.length} siswa • 1-tap tombol untuk mencatat kehadiran
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={fetchTodayScanData}
+                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+                      >
+                        <i className="fa-solid fa-rotate text-xs"></i>
+                        <span>Segarkan Data</span>
+                      </button>
+                    </div>
+
+                    {/* Filter & Quick Search Form */}
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-teal-200/50 dark:border-teal-800/50">
+                      <div className="w-full sm:w-48">
+                        <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                          Pilih Kelas:
+                        </label>
+                        <select
+                          value={manualKelasFilter}
+                          onChange={(e) => setManualKelasFilter(e.target.value)}
+                          className="w-full text-xs font-semibold bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-2.5 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                        >
+                          <option value="Semua">Semua Kelas</option>
+                          {kelasList.map(k => (
+                            <option key={k} value={k}>{k}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex-1">
+                        <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                          Cari Siswa:
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={manualSearchQuery}
+                            onChange={(e) => handleManualSearchChange(e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            placeholder="Ketik nama siswa atau NISN..."
+                            className="w-full pl-9 pr-8 py-2.5 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
+                          />
+                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
+                          {manualSearchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualSearchQuery('');
+                                setUsbInputVal('');
+                                setLastScanResult(null);
+                              }}
+                              className="absolute right-2.5 top-2.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                            >
+                              <i className="fa-solid fa-xmark"></i>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Student List (Touch-Friendly Cards with 1-Tap Buttons) */}
+                    <div className="space-y-2 pt-2">
+                      {filteredManualStudents.length === 0 ? (
+                        <div className="py-10 text-center text-gray-400 dark:text-gray-500 text-xs">
+                          <div className="flex flex-col items-center justify-center space-y-2">
+                            <i className="fa-solid fa-user-slash text-2xl text-gray-300 dark:text-gray-600"></i>
+                            <span>Tidak ada siswa ditemukan sesuai filter / pencarian.</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                          {filteredManualStudents.map((s, idx) => {
+                            const datangRecord = todayScans.find(
+                              scan => (scan.siswa_id === s.id || (s.nisn && scan.nisn === s.nisn)) && scan.status === 'datang'
+                            );
+                            const pulangRecord = todayScans.find(
+                              scan => (scan.siswa_id === s.id || (s.nisn && scan.nisn === s.nisn)) && scan.status === 'pulang'
+                            );
+
+                            return (
+                              <div
+                                key={s.id || idx}
+                                className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/70 dark:hover:bg-gray-750/50 px-2 rounded-xl transition-colors"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-bold flex items-center justify-center text-xs shrink-0">
+                                    {idx + 1}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                      {s.nama_siswa}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+                                      <span className="font-semibold text-teal-600 dark:text-teal-400">Kelas {s.kelas}</span>
+                                      {s.nisn && <span>• NISN: {s.nisn}</span>}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                  {datangRecord ? (
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
+                                        <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
+                                        <span>Datang {datangRecord.jam ? datangRecord.jam.slice(0, 5) : ''}</span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCancelManualPresensi(datangRecord.id, s.nama_siswa, 'datang', s.id)}
+                                        title="Batalkan presensi datang"
+                                        className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                      >
+                                        <i className="fa-solid fa-xmark"></i>
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={manualMarkLoading === `${s.id}-datang`}
+                                      onClick={() => handleManualMark(s, 'datang')}
+                                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
+                                    >
+                                      {manualMarkLoading === `${s.id}-datang` ? (
+                                        <i className="fa-solid fa-spinner animate-spin"></i>
+                                      ) : (
+                                        <i className="fa-solid fa-right-to-bracket text-xs"></i>
+                                      )}
+                                      <span>Datang</span>
+                                    </button>
+                                  )}
+
+                                  {pulangRecord ? (
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
+                                        <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
+                                        <span>Pulang {pulangRecord.jam ? pulangRecord.jam.slice(0, 5) : ''}</span>
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCancelManualPresensi(pulangRecord.id, s.nama_siswa, 'pulang', s.id)}
+                                        title="Batalkan presensi pulang"
+                                        className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                      >
+                                        <i className="fa-solid fa-xmark"></i>
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      disabled={manualMarkLoading === `${s.id}-pulang`}
+                                      onClick={() => handleManualMark(s, 'pulang')}
+                                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
+                                    >
+                                      {manualMarkLoading === `${s.id}-pulang` ? (
+                                        <i className="fa-solid fa-spinner animate-spin"></i>
+                                      ) : (
+                                        <i className="fa-solid fa-right-from-bracket text-xs"></i>
+                                      )}
+                                      <span>Pulang</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
             )}
 
             {/* TAB: PENUGASAN PIKET (ADMIN ONLY) */}
@@ -2937,7 +3425,7 @@ export default function PiketView({ user }: { user: any }) {
                                   )}
                               </div>
 
-                              {user?.role === 'Admin' && (
+                              {isAdmin && (
                                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 no-print">
                                       <button
                                           disabled={processingId === item.id || item.status_verifikasi === 'Disetujui'}
