@@ -88,6 +88,7 @@ export default function PiketView({ user }: { user: any }) {
   const isDetectingRef = useRef(false);
   const lastCameraScannedRef = useRef<{ code: string; time: number } | null>(null);
   const usbInputRef = useRef<HTMLInputElement | null>(null);
+  const isSubmittingPresensiRef = useRef(false);
 
   // Live Attendance Log & Summary
   const [scanSummary, setScanSummary] = useState({ totalDatang: 0, totalPulang: 0, totalUnik: 0 });
@@ -357,7 +358,8 @@ export default function PiketView({ user }: { user: any }) {
 
   // Main scan processor: resolves student and records attendance
   const handleProcessScan = async (code: string) => {
-    if (!code || scanProcessing) return;
+    if (!code || scanProcessing || isSubmittingPresensiRef.current) return;
+    isSubmittingPresensiRef.current = true;
     setScanProcessing(true);
 
     try {
@@ -443,6 +445,7 @@ export default function PiketView({ user }: { user: any }) {
         jam: getLocalCurrentTime()
       });
     } finally {
+      isSubmittingPresensiRef.current = false;
       setScanProcessing(false);
       setTimeout(() => {
         if (usbInputRef.current) {
@@ -473,14 +476,19 @@ export default function PiketView({ user }: { user: any }) {
     setManualSearchQuery(val);
 
     // Cancel old QR scan result if user types a different student code/name or clears input
-    if (lastScanResult?.student) {
-      const s = lastScanResult.student;
-      const matchesOld =
-        s.nama_siswa.toLowerCase().includes(val.toLowerCase()) ||
-        (s.nisn && s.nisn.toLowerCase().includes(val.toLowerCase())) ||
-        s.id === val;
-      if (!matchesOld || val.trim() === '') {
+    if (lastScanResult) {
+      if (!lastScanResult.student || val.trim() === '') {
         setLastScanResult(null);
+      } else {
+        const s = lastScanResult.student;
+        const matchesOld =
+          s.nama_siswa.toLowerCase().includes(val.toLowerCase()) ||
+          (s.nisn && s.nisn.toLowerCase().includes(val.toLowerCase())) ||
+          ((s as any).qr_code && (s as any).qr_code.toLowerCase().includes(val.toLowerCase())) ||
+          s.id === val;
+        if (!matchesOld || val.trim() === '') {
+          setLastScanResult(null);
+        }
       }
     }
   };
@@ -508,14 +516,19 @@ export default function PiketView({ user }: { user: any }) {
     setUsbInputVal(val);
 
     // Cancel old QR scan result if user types a different student code/name or clears input
-    if (lastScanResult?.student) {
-      const s = lastScanResult.student;
-      const matchesOld =
-        s.nama_siswa.toLowerCase().includes(val.toLowerCase()) ||
-        (s.nisn && s.nisn.toLowerCase().includes(val.toLowerCase())) ||
-        s.id === val;
-      if (!matchesOld || val.trim() === '') {
+    if (lastScanResult) {
+      if (!lastScanResult.student || val.trim() === '') {
         setLastScanResult(null);
+      } else {
+        const s = lastScanResult.student;
+        const matchesOld =
+          s.nama_siswa.toLowerCase().includes(val.toLowerCase()) ||
+          (s.nisn && s.nisn.toLowerCase().includes(val.toLowerCase())) ||
+          ((s as any).qr_code && (s as any).qr_code.toLowerCase().includes(val.toLowerCase())) ||
+          s.id === val;
+        if (!matchesOld || val.trim() === '') {
+          setLastScanResult(null);
+        }
       }
     }
   };
@@ -531,6 +544,8 @@ export default function PiketView({ user }: { user: any }) {
   // Manual attendance marking for Piket (two-way synced with QR feedback card)
   const handleManualMark = async (student: any, status: 'datang' | 'pulang') => {
     if (scanProcessing || manualMarkLoading) return;
+    if (isSubmittingPresensiRef.current) return;
+    isSubmittingPresensiRef.current = true;
     const opKey = `${student.id}-${status}`;
     setManualMarkLoading(opKey);
     try {
@@ -606,12 +621,45 @@ export default function PiketView({ user }: { user: any }) {
       } else {
         showToast('Gagal', res.message || 'Terjadi kesalahan', 'error');
         playAudioFeedback('error');
+
+        setLastScanResult({
+          student: {
+            id: student.id,
+            nisn: student.nisn,
+            nama_siswa: student.nama_siswa,
+            kelas: student.kelas,
+            sekolah_id: user?.sekolah_id || student.sekolah_id,
+            gender: student.gender
+          },
+          status,
+          success: false,
+          alreadyExists: false,
+          message: res.message || 'Gagal menandai presensi',
+          jam: jamStr
+        });
       }
     } catch (err: any) {
       console.error('Error marking manual presensi:', err);
       showToast('Error', err.message || 'Gagal menandai presensi', 'error');
       playAudioFeedback('error');
+
+      setLastScanResult({
+        student: {
+          id: student.id,
+          nisn: student.nisn,
+          nama_siswa: student.nama_siswa,
+          kelas: student.kelas,
+          sekolah_id: user?.sekolah_id || student.sekolah_id,
+          gender: student.gender
+        },
+        status,
+        success: false,
+        alreadyExists: false,
+        message: err.message || 'Gagal menandai presensi',
+        jam: getLocalCurrentTime()
+      });
     } finally {
+      isSubmittingPresensiRef.current = false;
       setManualMarkLoading(null);
     }
   };
@@ -619,6 +667,7 @@ export default function PiketView({ user }: { user: any }) {
   // Submit manual input form (processes attendance as if submitted via QR)
   const handleManualFormSubmit = async (overrideQuery?: string) => {
     if (scanProcessing || manualMarkLoading) return;
+    if (isSubmittingPresensiRef.current) return;
     const query = (overrideQuery !== undefined ? overrideQuery : manualSearchQuery).trim();
     if (!query) return;
 
@@ -626,15 +675,16 @@ export default function PiketView({ user }: { user: any }) {
     let match = allStudents.find(s => s.nisn && s.nisn.toLowerCase() === query.toLowerCase());
     // 2. Try finding by exact ID
     if (!match) match = allStudents.find(s => s.id === query);
-    // 3. Try finding by exact name
+    // 3. Try finding by exact QR Code
+    if (!match) match = allStudents.find(s => (s as any).qr_code && (s as any).qr_code.toLowerCase() === query.toLowerCase());
+    // 4. Try finding by exact name
     if (!match) match = allStudents.find(s => s.nama_siswa && s.nama_siswa.toLowerCase() === query.toLowerCase());
-    // 4. Try single filtered student
-    if (!match && filteredManualStudents.length === 1) match = filteredManualStudents[0];
     // 5. Try single match across all students in school (if filtered out by class dropdown)
     if (!match) {
       const allMatches = allStudents.filter(s =>
         (s.nama_siswa?.toLowerCase() || '').includes(query.toLowerCase()) ||
-        (s.nisn?.toLowerCase() || '').includes(query.toLowerCase())
+        (s.nisn?.toLowerCase() || '').includes(query.toLowerCase()) ||
+        ((s as any).qr_code && (s as any).qr_code.toLowerCase().includes(query.toLowerCase()))
       );
       if (allMatches.length === 1) {
         match = allMatches[0];
@@ -649,28 +699,45 @@ export default function PiketView({ user }: { user: any }) {
     if (match) {
       setManualKelasFilter('Semua');
       await handleManualMark(match, scanMode);
-    } else if (filteredManualStudents.length > 1) {
-      showToast('Info', `Ditemukan ${filteredManualStudents.length} siswa dengan kata kunci "${query}". Klik tombol di daftar siswa.`, 'info');
     } else {
-      // Fallback: resolve student by code from DB
-      const { data: resolved } = await resolveStudentByCode(supabase, query, user?.sekolah_id);
-      if (resolved) {
-        await handleManualMark(resolved, scanMode);
-      } else {
-        showToast('Error', `Siswa dengan nama/NISN "${query}" tidak ditemukan.`, 'error');
+      // Fallback: resolve student by code from DB with lock
+      isSubmittingPresensiRef.current = true;
+      setManualMarkLoading('resolving-code');
+      try {
+        const { data: resolved } = await resolveStudentByCode(supabase, query, user?.sekolah_id);
+        if (resolved) {
+          isSubmittingPresensiRef.current = false;
+          setManualMarkLoading(null);
+          await handleManualMark(resolved, scanMode);
+        } else {
+          showToast('Error', `Siswa dengan nama/NISN "${query}" tidak ditemukan.`, 'error');
+          playAudioFeedback('error');
+          setLastScanResult({
+            student: null,
+            status: scanMode,
+            success: false,
+            message: `Siswa "${query}" tidak ditemukan.`,
+            jam: getLocalCurrentTime()
+          });
+        }
+      } catch (err: any) {
+        showToast('Error', err.message || 'Gagal mencari data siswa.', 'error');
         playAudioFeedback('error');
         setLastScanResult({
           student: null,
           status: scanMode,
           success: false,
-          message: `Siswa "${query}" tidak ditemukan.`,
+          message: err.message || `Siswa "${query}" tidak ditemukan.`,
           jam: getLocalCurrentTime()
         });
+      } finally {
+        isSubmittingPresensiRef.current = false;
+        setManualMarkLoading(null);
       }
     }
   };
 
-  const handleCancelManualPresensi = async (recordId: string, namaSiswa: string, status: 'datang' | 'pulang') => {
+  const handleCancelManualPresensi = async (recordId: string, namaSiswa: string, status: 'datang' | 'pulang', studentId?: string) => {
     const result = await Swal.fire({
       title: 'Batalkan Presensi?',
       text: `Hapus status presensi ${status} untuk ${namaSiswa}?`,
@@ -689,7 +756,10 @@ export default function PiketView({ user }: { user: any }) {
         const { error } = await q;
         if (error) throw error;
         showToast('Info', `Presensi ${status} ${namaSiswa} berhasil dibatalkan`, 'info');
-        if (lastScanResult?.student?.nama_siswa === namaSiswa) {
+        if (
+          (studentId && lastScanResult?.student?.id === studentId) ||
+          lastScanResult?.student?.nama_siswa === namaSiswa
+        ) {
           setLastScanResult(null);
         }
         await fetchTodayScanData();
@@ -704,7 +774,8 @@ export default function PiketView({ user }: { user: any }) {
     const matchKelas = manualKelasFilter === 'Semua' || s.kelas === manualKelasFilter;
     const matchSearch = !manualSearchQuery.trim() || 
       (s.nama_siswa?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) ||
-      (s.nisn?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase());
+      (s.nisn?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) ||
+      ((s as any).qr_code?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase());
     return matchKelas && matchSearch;
   });
 
@@ -1942,6 +2013,7 @@ export default function PiketView({ user }: { user: any }) {
                             type="text"
                             value={manualSearchQuery}
                             onChange={(e) => handleManualSearchChange(e.target.value)}
+                            onFocus={(e) => e.target.select()}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === '\r' || e.key === '\n' || e.keyCode === 13) {
                                 e.preventDefault();
@@ -2064,7 +2136,7 @@ export default function PiketView({ user }: { user: any }) {
                                         </span>
                                         <button
                                           type="button"
-                                          onClick={() => handleCancelManualPresensi(datangRecord.id, s.nama_siswa, 'datang')}
+                                          onClick={() => handleCancelManualPresensi(datangRecord.id, s.nama_siswa, 'datang', s.id)}
                                           title="Batalkan presensi datang"
                                           className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
                                         >
@@ -2096,7 +2168,7 @@ export default function PiketView({ user }: { user: any }) {
                                         </span>
                                         <button
                                           type="button"
-                                          onClick={() => handleCancelManualPresensi(pulangRecord.id, s.nama_siswa, 'pulang')}
+                                          onClick={() => handleCancelManualPresensi(pulangRecord.id, s.nama_siswa, 'pulang', s.id)}
                                           title="Batalkan presensi pulang"
                                           className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
                                         >
