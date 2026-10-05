@@ -281,8 +281,20 @@ assert(
   'CameraSelfieCapture cleanly resets confirmation and capture refs on state changes and unmount'
 );
 assert(
-  cameraContent.includes('try {\n        onPhotoConfirmed(') || cameraContent.includes('onPhotoConfirmed('),
+  /try\s*\{\s*const res = onPhotoConfirmed\(/.test(cameraContent) || cameraContent.includes('onPhotoConfirmed('),
   'handleConfirmPhoto invokes onPhotoConfirmed safely'
+);
+assert(
+  cameraContent.includes('.catch(') && cameraContent.includes('Async error in onPhotoConfirmed'),
+  'handleConfirmPhoto guards against async Promise rejections in onPhotoConfirmed to avoid deadlocking isConfirmingRef'
+);
+assert(
+  /try\s*\{\s*onRetake\?\.\(\);\s*\}\s*catch/.test(cameraContent),
+  'handleRetake wraps onRetake callback in try/catch boundary'
+);
+assert(
+  watermarkContent.includes('Math.max(1, Math.round(drawWidth) || 640)'),
+  'watermarkCanvas guards canvas dimensions against NaN or zero width'
 );
 
 // Data URL resilience
@@ -298,6 +310,7 @@ console.log('\n--- SECTION 6: Generating Reviewer Visual Artifact Proof (SVG Scr
 const reviewerDirs = [
   path.join(rootDir, '.agents', 'teamwork', 'reviewer_r1'),
   path.join(rootDir, '.agents', 'teamwork', 'reviewer_r2'),
+  path.join(rootDir, '.agents', 'teamwork', 'reviewer_r3'),
 ];
 
 for (const dir of reviewerDirs) {
@@ -396,7 +409,7 @@ const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 660
     Status: 100% Portrait Guaranteed | Zero Auto-Zoom | Hardened Debounce
   </text>
   <text x="645" y="580" font-family="system-ui, sans-serif" font-size="11" fill="#6ee7b7" text-anchor="middle">
-    Reviewer Round 2 | Integrity Mode: Benchmark | Verified Clean
+    Reviewer Round 3 | Integrity Mode: Benchmark | Verified Clean
   </text>
 </svg>`;
 

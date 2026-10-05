@@ -192,8 +192,8 @@ export function drawWatermarkedCanvas(
 
   const canvas = document.createElement('canvas');
   // Canvas dimensions conform to target ratio (3:4 portrait or 16:9 landscape)
-  canvas.width = Math.round(drawWidth);
-  canvas.height = Math.round(drawHeight);
+  canvas.width = Math.max(1, Math.round(drawWidth) || 640);
+  canvas.height = Math.max(1, Math.round(drawHeight) || 480);
   drawWidth = canvas.width;
   drawHeight = canvas.height;
 

@@ -311,7 +311,11 @@ export default function CameraSelfieCapture({
     isConfirmingRef.current = false;
     setCapturedImage(null);
     setCapturedFile(null);
-    onRetake?.();
+    try {
+      onRetake?.();
+    } catch (err: unknown) {
+      console.warn('[CameraCapture] Error in onRetake:', err);
+    }
   };
 
   // 6. Confirm and use photo
@@ -322,7 +326,13 @@ export default function CameraSelfieCapture({
       const file = dataUrlToFile(capturedImage, `foto_kamera_${Date.now()}.jpg`);
       stopCamera();
       try {
-        onPhotoConfirmed(file, capturedImage);
+        const res = onPhotoConfirmed(file, capturedImage) as unknown;
+        if (res && typeof (res as Promise<unknown>).catch === 'function') {
+          (res as Promise<unknown>).catch((err: unknown) => {
+            isConfirmingRef.current = false;
+            console.error('[CameraCapture] Async error in onPhotoConfirmed:', err);
+          });
+        }
       } catch (err: unknown) {
         isConfirmingRef.current = false;
         console.error('[CameraCapture] Error in onPhotoConfirmed:', err);
@@ -334,7 +344,13 @@ export default function CameraSelfieCapture({
       isConfirmingRef.current = true;
       stopCamera();
       try {
-        onPhotoConfirmed(capturedFile, capturedImage);
+        const res = onPhotoConfirmed(capturedFile, capturedImage) as unknown;
+        if (res && typeof (res as Promise<unknown>).catch === 'function') {
+          (res as Promise<unknown>).catch((err: unknown) => {
+            isConfirmingRef.current = false;
+            console.error('[CameraCapture] Async error in onPhotoConfirmed:', err);
+          });
+        }
       } catch (err: unknown) {
         isConfirmingRef.current = false;
         console.error('[CameraCapture] Error in onPhotoConfirmed:', err);
