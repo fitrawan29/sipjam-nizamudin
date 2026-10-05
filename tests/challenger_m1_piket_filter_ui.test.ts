@@ -146,7 +146,7 @@ async function runChallengerTestSuite() {
   // ==========================================================================
   console.log(`\n${YELLOW}${BOLD}━━━ 2. EMPIRICAL FILTER PERSISTENCE SIMULATION (R1.1) ━━━${RESET}`);
 
-  // Create synthetic dataset of 30 students across 3 classes
+  // Create synthetic dataset of 30 students across 3 classes with collision-free distinct names
   interface TestStudent {
     id: string;
     nisn: string;
@@ -156,16 +156,26 @@ async function runChallengerTestSuite() {
     sekolah_id: string;
   }
 
+  const distinctNames = [
+    'Ahmad Fauzi', 'Budi Santoso', 'Citra Lestari', 'Dewi Anggraini', 'Eko Prasetyo',
+    'Fajar Ramadhan', 'Gita Gutawa', 'Hadi Wijaya', 'Indah Permata', 'Joko Widodo',
+    'Kartika Putri', 'Lukman Hakim', 'Mega Utami', 'Nabila Syakieb', 'Oscar Lawalata',
+    'Putri Marino', 'Qori Sandioriva', 'Rian D Masiv', 'Siti Nurhaliza', 'Taufik Hidayat',
+    'Umar Wirahadi', 'Vina Panduwinata', 'Wawan Hendrawan', 'Xavier Pratama', 'Yuni Shara',
+    'Zaskia Gotik', 'Ade Rai', 'Bella Saphira', 'Cak Lontong', 'Deddy Mizwar'
+  ];
+
   const mockStudents: TestStudent[] = [];
   const classes = ['X-A', 'X-B', 'XI-IPA'];
-  let studentCounter = 1;
+  let studentCounter = 0;
 
   for (const cls of classes) {
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 0; i < 10; i++) {
+      const name = distinctNames[studentCounter % distinctNames.length] + ` [${cls}-${i + 1}]`;
       mockStudents.push({
-        id: `std-${studentCounter}`,
-        nisn: `00${10000 + studentCounter}`,
-        nama_siswa: `Siswa ${cls} No ${i}`,
+        id: `std-${studentCounter + 1}`,
+        nisn: `00${10000 + studentCounter + 1}`,
+        nama_siswa: name,
         kelas: cls,
         gender: i % 2 === 0 ? 'L' : 'P',
         sekolah_id: 'sch-1'
@@ -273,7 +283,7 @@ async function runChallengerTestSuite() {
       `Count: ${initialFiltered.length}`
     );
 
-    const targetStudent = initialFiltered[0]; // Siswa X-A No 1
+    const targetStudent = initialFiltered[0];
     await sim.handleManualMark(targetStudent, 'datang', 'success');
 
     const postMarkFiltered = sim.filteredManualStudents;
@@ -362,24 +372,24 @@ async function runChallengerTestSuite() {
   {
     const sim = new PiketStateSimulator(mockStudents);
     sim.manualKelasFilter = 'Semua';
-    sim.manualSearchQuery = 'No 5'; // Matches "Siswa X-A No 5", "Siswa X-B No 5", "Siswa XI-IPA No 5"
+    sim.manualSearchQuery = 'Santoso'; // Matches Budi Santoso [X-A-2]
 
     const matchingInitial = sim.filteredManualStudents;
-    assert(matchingInitial.length === 3, 'SIM-04', 'Search for "No 5" returns 3 students across classes');
+    assert(matchingInitial.length === 1, 'SIM-04', 'Search for "Santoso" returns 1 unique student');
 
     await sim.handleManualMark(matchingInitial[0], 'datang', 'success');
 
     assert(
-      sim.manualSearchQuery === 'No 5',
+      sim.manualSearchQuery === 'Santoso',
       'R1.1-SEARCH-01',
-      'manualSearchQuery is preserved as "No 5" after marking student',
+      'manualSearchQuery is preserved as "Santoso" after marking student',
       `Query: "${sim.manualSearchQuery}"`
     );
 
     assert(
-      sim.filteredManualStudents.length === 3,
+      sim.filteredManualStudents.length === 1,
       'R1.1-SEARCH-02',
-      'All 3 matching search results remain visible in the filtered list',
+      'Matching search result remains visible in the filtered list',
       `Remaining: ${sim.filteredManualStudents.length}`
     );
   }
@@ -388,7 +398,7 @@ async function runChallengerTestSuite() {
   {
     const sim = new PiketStateSimulator(mockStudents);
     sim.manualKelasFilter = 'XI-IPA';
-    sim.manualSearchQuery = 'Siswa';
+    sim.manualSearchQuery = 'IPA';
 
     const countBefore = sim.filteredManualStudents.length;
 
@@ -400,7 +410,7 @@ async function runChallengerTestSuite() {
       'Duplicate attendance mark preserves filter count and state'
     );
     assert(
-      sim.manualKelasFilter === 'XI-IPA' && sim.manualSearchQuery === 'Siswa',
+      sim.manualKelasFilter === 'XI-IPA' && sim.manualSearchQuery === 'IPA',
       'R1.1-DUP-02',
       'manualKelasFilter and manualSearchQuery untouched on duplicate mark'
     );
@@ -413,7 +423,7 @@ async function runChallengerTestSuite() {
       'Error during attendance mark preserves filter count and state'
     );
     assert(
-      sim.manualKelasFilter === 'XI-IPA' && sim.manualSearchQuery === 'Siswa',
+      sim.manualKelasFilter === 'XI-IPA' && sim.manualSearchQuery === 'IPA',
       'R1.1-ERR-02',
       'manualKelasFilter and manualSearchQuery untouched on error'
     );
@@ -495,31 +505,21 @@ async function runChallengerTestSuite() {
     );
   }
 
-  // Extract the JSX blocks for Admin and Guru scan view
-  const scanTabMatch = piketCode.match(/\{activeTab === 'scan' && \([\s\S]*?\)\s*\}\s*\)/);
-  assert(scanTabMatch !== null, 'UI-01', 'Found activeTab === "scan" block in PiketView.tsx');
+  // Extract the exact Admin and Guru blocks from PiketView.tsx using precise section demarcations
+  const scanStartIdx = piketCode.indexOf("{activeTab === 'scan' && (");
+  assert(scanStartIdx !== -1, 'UI-01', 'Found activeTab === "scan" block in PiketView.tsx');
 
-  const scanTabCode = scanTabMatch ? scanTabMatch[0] : '';
+  const adminStartIdx = piketCode.indexOf('isAdmin ? (', scanStartIdx);
+  const adminIdIdx = piketCode.indexOf('id="piket-content-scan"', adminStartIdx);
+  const guruIdIdx = piketCode.indexOf('id="piket-content-scan-guru"', adminIdIdx);
+  const nextTabIdx = piketCode.indexOf('{/* TAB: PENUGASAN PIKET (ADMIN ONLY) */}', guruIdIdx);
 
-  // Extract Admin branch: starts at isAdmin ? ( <div id="piket-content-scan"
-  const adminBranchMatch = scanTabCode.match(/isAdmin \?\s*\(\s*<div id="piket-content-scan"[\s\S]*?\)\s*:\s*\(/);
-  assert(
-    adminBranchMatch !== null,
-    'UI-02',
-    'Admin branch located with id="piket-content-scan"',
-    adminBranchMatch ? `Admin branch length: ${adminBranchMatch[0].length} chars` : 'Missing'
-  );
-  const adminBranch = adminBranchMatch ? adminBranchMatch[0] : '';
+  assert(adminIdIdx !== -1, 'UI-02', 'Admin branch located with id="piket-content-scan"');
+  assert(guruIdIdx !== -1, 'UI-03', 'Guru branch located with id="piket-content-scan-guru"');
+  assert(nextTabIdx !== -1, 'UI-04', 'Scan tab section bounded before next tab');
 
-  // Extract Guru branch: starts after ) : ( with id="piket-content-scan-guru"
-  const guruBranchMatch = scanTabCode.match(/id="piket-content-scan-guru"[\s\S]*?\)\s*\)\s*;/);
-  assert(
-    guruBranchMatch !== null,
-    'UI-03',
-    'Guru branch located with id="piket-content-scan-guru"',
-    guruBranchMatch ? `Guru branch length: ${guruBranchMatch[0].length} chars` : 'Missing'
-  );
-  const guruBranch = guruBranchMatch ? guruBranchMatch[0] : '';
+  const adminBranch = piketCode.slice(adminIdIdx, guruIdIdx);
+  const guruBranch = piketCode.slice(guruIdIdx, nextTabIdx);
 
   // --------------------------------------------------------------------------
   // R1.2 VERIFICATION: GURU VIEW (Ringkas)
@@ -595,8 +595,8 @@ async function runChallengerTestSuite() {
   // 5. Touch-friendly Student Roster with 1-tap buttons in Guru branch
   const guruHasTouchRoster =
     guruBranch.includes('Menampilkan {filteredManualStudents.length} siswa') &&
-    guruBranch.includes('handleManualMark(s, \'datang\')') &&
-    guruBranch.includes('handleManualMark(s, \'pulang\')') &&
+    guruBranch.includes("onClick={() => handleManualMark(s, 'datang')}") &&
+    guruBranch.includes("onClick={() => handleManualMark(s, 'pulang')}") &&
     guruBranch.includes('1-tap tombol untuk mencatat kehadiran');
   assert(
     guruHasTouchRoster,

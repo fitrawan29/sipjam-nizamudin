@@ -29,9 +29,9 @@ const piketCode = fs.readFileSync(piketViewPath, 'utf8');
 // ============================================================================
 console.log('\n--- Section 1: Requirement R1.1 (Auto-Filter & Roster Preservation) ---');
 
-// Extract the handleManualMark function accurately: from "const handleManualMark" to "const handleCancelManualPresensi"
+// Extract the handleManualMark function accurately: from "const handleManualMark" to "const handleManualFormSubmit"
 const startIdx = piketCode.indexOf('const handleManualMark = async');
-const endIdx = piketCode.indexOf('const handleCancelManualPresensi = async');
+const endIdx = piketCode.indexOf('const handleManualFormSubmit = async');
 assert(startIdx !== -1 && endIdx !== -1 && endIdx > startIdx, 'handleManualMark boundary identified in PiketView.tsx');
 
 const handleManualMarkCode = piketCode.substring(startIdx, endIdx);
@@ -235,9 +235,10 @@ assert(
 // Admin: 6-column roster table
 assert(
   adminScanCode.includes('Presensi Manual & Daftar Siswa') &&
-  adminScanCode.includes('Aksi Presensi Datang') &&
-  adminScanCode.includes('Aksi Presensi Pulang'),
-  'Admin view renders full detailed student roster table with separate Datang & Pulang column controls'
+  adminScanCode.includes('Presensi Datang') &&
+  adminScanCode.includes('Presensi Pulang') &&
+  adminScanCode.includes('colSpan={6}'),
+  'Admin view renders full detailed 6-column student roster table with separate Datang & Pulang controls'
 );
 
 // Admin: 7-column Live Attendance Audit Log

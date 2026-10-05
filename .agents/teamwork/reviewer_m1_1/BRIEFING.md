@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-05T10:25:00Z
+# BRIEFING — 2026-10-05T10:32:00Z
 
 ## Mission
 Independently review Requirement R1 (UI & State Modul Piket in PiketView.tsx) implemented by Worker M1.
@@ -18,26 +18,32 @@ Independently review Requirement R1 (UI & State Modul Piket in PiketView.tsx) im
 
 ## Current Parent
 - Conversation ID: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Updated: 2026-10-05T10:25:00Z
+- Updated: 2026-10-05T10:32:00Z
 
 ## Review Scope
-- **Files to review**: `src/components/PiketView.tsx`, `tests/piket-view-r1.test.tsx`, `tests/piket-view.test.tsx`, worker_m1 handoff report
-- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md`
+- **Files to review**: `src/components/PiketView.tsx`, `worker_m1/handoff.md`, `tests/r1_piket_ui_state_reviewer.test.ts`
+- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (R1.1 & R1.2 under ## 2026-10-05T09:55:29Z)
 - **Review criteria**: R1 requirements (no auto-filter to 1 student on Tandai Datang/Pulang, no reset to 'Semua', Guru compact vs Admin detailed view, integrity check, test pass)
 
 ## Key Decisions Made
-- Initialized review environment and briefing.
+- Confirmed removal of `setManualSearchQuery` and `setManualKelasFilter` inside `handleManualMark` in `src/components/PiketView.tsx`.
+- Confirmed full role differentiation: Guru (compact view, hidden kiosk selector, pill mode toggle, inline counters, 1-tap touch buttons, hidden 7-col audit log) vs Admin (kiosk 1-10 selector, 3 large metric cards, 6-col roster, 7-col live audit log).
+- Created independent adversarial verification suite `tests/r1_piket_ui_state_reviewer.test.ts` (37/37 assertions passed).
+- Verified `npx tsc --noEmit` (0 errors), `npm test` (all passed), `npm run build` (success in 1.7s).
+- Verified no integrity violations: no hardcoded results, no dummy facade logic, genuine Supabase calls.
+- Issued APPROVE verdict.
 
 ## Artifact Index
 - `handoff.md` — Final review and critic report
 - `progress.md` — Heartbeat and step progress
+- `tests/r1_piket_ui_state_reviewer.test.ts` — Independent verification suite for R1
 
 ## Review Checklist
-- **Items reviewed**: none yet
-- **Verdict**: pending
-- **Unverified claims**: all worker M1 claims
+- **Items reviewed**: `src/components/PiketView.tsx`, `worker_m1/handoff.md`, test suites
+- **Verdict**: APPROVE
+- **Unverified claims**: none remaining; all claims independently verified
 
 ## Attack Surface
-- **Hypotheses tested**: none yet
-- **Vulnerabilities found**: none yet
-- **Untested angles**: filter reset on attendance click, role conditional rendering, test integrity
+- **Hypotheses tested**: Filter reset on manual mark, roster collapse to 1 student, role casing/spacing normalization, Guru vs Admin layout rendering, concurrency mutex lock
+- **Vulnerabilities found**: None in production code for R1.
+- **Untested angles**: None within R1 scope.
