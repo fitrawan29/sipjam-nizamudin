@@ -445,7 +445,10 @@ export default function PiketView({ user }: { user: any }) {
     } finally {
       setScanProcessing(false);
       setTimeout(() => {
-        usbInputRef.current?.focus();
+        if (usbInputRef.current) {
+          usbInputRef.current.focus();
+          usbInputRef.current.select();
+        }
       }, 100);
     }
   };
@@ -453,8 +456,12 @@ export default function PiketView({ user }: { user: any }) {
   // Two-way synchronization handlers between QR input and manual form
   const handleUsbInputChange = (val: string) => {
     // Hardware scanner carriage return / newline burst handling
-    const cleanVal = val.replace(/[\r\n]/g, '').trim();
     if (val.includes('\n') || val.includes('\r')) {
+      let cleanVal = val.replace(/[\r\n]/g, '').trim();
+      // If previous input was prepended (e.g. from prior manual search sync), isolate the scanned barcode
+      if (usbInputVal && cleanVal.startsWith(usbInputVal) && cleanVal.length > usbInputVal.length) {
+        cleanVal = cleanVal.slice(usbInputVal.length).trim();
+      }
       if (cleanVal) {
         setUsbInputVal('');
         handleProcessScan(cleanVal);
@@ -465,14 +472,14 @@ export default function PiketView({ user }: { user: any }) {
     setUsbInputVal(val);
     setManualSearchQuery(val);
 
-    // Cancel old QR scan result if user types a different student code/name
+    // Cancel old QR scan result if user types a different student code/name or clears input
     if (lastScanResult?.student) {
       const s = lastScanResult.student;
       const matchesOld =
         s.nama_siswa.toLowerCase().includes(val.toLowerCase()) ||
         (s.nisn && s.nisn.toLowerCase().includes(val.toLowerCase())) ||
         s.id === val;
-      if (!matchesOld && val.trim() !== '') {
+      if (!matchesOld || val.trim() === '') {
         setLastScanResult(null);
       }
     }
@@ -480,12 +487,19 @@ export default function PiketView({ user }: { user: any }) {
 
   const handleManualSearchChange = (val: string) => {
     // Hardware scanner carriage return / newline burst handling in manual input
-    const cleanVal = val.replace(/[\r\n]/g, '');
     if (val.includes('\n') || val.includes('\r')) {
-      if (cleanVal.trim()) {
-        setManualSearchQuery(cleanVal.trim());
-        setUsbInputVal(cleanVal.trim());
-        setTimeout(() => handleManualFormSubmit(), 0);
+      let cleanVal = val.replace(/[\r\n]/g, '').trim();
+      // If previous manual search was prepended, isolate the scanned barcode
+      if (manualSearchQuery && cleanVal.startsWith(manualSearchQuery) && cleanVal.length > manualSearchQuery.length) {
+        cleanVal = cleanVal.slice(manualSearchQuery.length).trim();
+      }
+      if (cleanVal) {
+        setManualSearchQuery(cleanVal);
+        setUsbInputVal(cleanVal);
+        handleManualFormSubmit(cleanVal);
+        return;
+      } else {
+        handleManualFormSubmit();
         return;
       }
     }
@@ -493,14 +507,14 @@ export default function PiketView({ user }: { user: any }) {
     setManualSearchQuery(val);
     setUsbInputVal(val);
 
-    // Cancel old QR scan result if user types a different student code/name
+    // Cancel old QR scan result if user types a different student code/name or clears input
     if (lastScanResult?.student) {
       const s = lastScanResult.student;
       const matchesOld =
         s.nama_siswa.toLowerCase().includes(val.toLowerCase()) ||
         (s.nisn && s.nisn.toLowerCase().includes(val.toLowerCase())) ||
         s.id === val;
-      if (!matchesOld && val.trim() !== '') {
+      if (!matchesOld || val.trim() === '') {
         setLastScanResult(null);
       }
     }
@@ -516,6 +530,7 @@ export default function PiketView({ user }: { user: any }) {
 
   // Manual attendance marking for Piket (two-way synced with QR feedback card)
   const handleManualMark = async (student: any, status: 'datang' | 'pulang') => {
+    if (scanProcessing || manualMarkLoading) return;
     const opKey = `${student.id}-${status}`;
     setManualMarkLoading(opKey);
     try {
@@ -602,8 +617,9 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   // Submit manual input form (processes attendance as if submitted via QR)
-  const handleManualFormSubmit = async () => {
-    const query = manualSearchQuery.trim();
+  const handleManualFormSubmit = async (overrideQuery?: string) => {
+    if (scanProcessing || manualMarkLoading) return;
+    const query = (overrideQuery !== undefined ? overrideQuery : manualSearchQuery).trim();
     if (!query) return;
 
     // 1. Try finding by exact NISN
@@ -623,6 +639,10 @@ export default function PiketView({ user }: { user: any }) {
       if (allMatches.length === 1) {
         match = allMatches[0];
         setManualKelasFilter('Semua');
+      } else if (allMatches.length > 1) {
+        setManualKelasFilter('Semua');
+        showToast('Info', `Ditemukan ${allMatches.length} siswa dengan kata kunci "${query}". Klik tombol di daftar siswa.`, 'info');
+        return;
       }
     }
 
