@@ -1,41 +1,47 @@
-# Sentinel Handoff Report — Guru Presensi Kamera Portrait & Anti Auto-Zoom
+# Sentinel Handoff Report — Presensi Siswa: Sinkronisasi Dua Arah & Penghapusan Konfigurasi Superadmin
 
 ## Observation
-User meminta dua persyaratan utama:
-1. **R1. Kamera Portrait**: Pastikan kamera hanya menggunakan mode portrait saat guru melakukan presensi.
-2. **R2. Nonaktifkan Auto-zoom**: Pastikan gambar yang diambil tidak mengalami auto-zoom secara otomatis.
+User meminta 3 requirements utama untuk presensi siswa:
+1. **R1. Sinkronisasi Dua Arah:** Ketika kode QR discan, data harus otomatis mengisi form input manual. Sebaliknya, ketika pengguna mengetik data secara manual, sistem harus menyesuaikan state pencarian seolah-olah dipindai dari QR.
+2. **R2. Hapus Pengaturan Mode Presensi oleh Superadmin:** Superadmin tidak perlu lagi mengatur mode presensi siswa secara eksplisit, karena kedua mode (QR dan Manual) sekarang tersedia dan sinkron bersamaan. Opsi konfigurasi dihapus dari UI superadmin dan logika terkait.
+3. **R3. Pertahankan Logika Presensi Saat Ini:** Mekanisme submit data presensi ke database tetap menggunakan flow yang sama (`recordPresensiSiswa`), hanya pengisian field UI yang saling tersinkronisasi.
 
-Pelaksanaan didelegasikan melalui jalur **SWE Light** (`teamwork_preview_swe`) sebagai `swe_13`.
-Tim kerja `swe_13` menyelesaikan 4 tahapan eksekusi:
-- **Round 0**: `teamwork_preview_implementer` memverifikasi prop `orientation="portrait"` pada `GuruPresensi.tsx`, CSS `object-contain` pada elemen `<video>` dan `<img>` di `CameraSelfieCapture.tsx`, serta penskalaan 1x tanpa crop pada `src/lib/watermarkCanvas.ts`.
-- **Round 1**: `teamwork_preview_reviewer` menambahkan suite uji adversarial baru (`tests/reviewer_adversarial_camera.test.ts`) mencakup 38 assertion untuk variasi rasio sensor smartphone.
-- **Round 2**: `teamwork_preview_reviewer` memperbaiki sinkronisasi retake dengan callback `onRetake`, memperkuat autoplay WebKit iOS/Safari dengan `muted=true` dan penanganan promise rejection `play()`, fallback constraint kamera, dan validasi koordinat GPS NaN/Infinity (46 assertions).
-- **Round 3**: `teamwork_preview_reviewer` mencegah kebocoran track kamera saat unmount, menambahkan debounce double-click pada capture/confirm, mengisolasi siklus hidup request GPS, dan memperluas verifikasi menjadi 56 assertions.
-- **Git Sync**: Seluruh perubahan telah di-stage, di-commit, dan di-push ke branch `origin/main` (commit terbaru `42653f9`).
+Sesuai Routing Decision Table:
+- Tugas ini adalah satu perbaikan terisolasi dengan permintaan eksplisit tim kecil ("Requested team: Small focused team", "This is a single self-contained fix; keep it small and focused.").
+- Dipilih rute **SWE Light** (`teamwork_preview_swe`).
+
+Pelaksanaan:
+- Dijalankan oleh orchestrator `swe_16` melalui siklus SWE Light:
+  - Implementasi awal: `PiketView.tsx` menyatukan kiosk QR scanner dan daftar manual siswa dalam satu tampilan sinkron; `SuperadminView.tsx` menghapus kontrol konfigurasi `mode_presensi_siswa`.
+  - Reviewer Round 1: Isolasi buffer scanner barcode hardware, penanganan pencarian lintas kelas.
+  - Reviewer Round 2: Isolasi burst newline/carriage return hardware scanner, parameter query eksplisit, pencegahan balapan closure asinkron, dan penjaga double-submit.
+  - Reviewer Round 3: Sinkronisasi kartu feedback saat input dibersihkan/diedit, in-memory mutex lock (`isSubmittingPresensiRef`) untuk mencegah double-submission mikro-task, dan integrasi atribut `qr_code` siswa pada filter memori.
+- Audit kemenangan independen (`victory_auditor_25`) melakukan audit 3 fase yang bersifat BLOCKING dan mengeluarkan putusan resmi: **VICTORY CONFIRMED**.
+- Seluruh subagent dan cron telah dibersihkan (`manage_subagents(action="kill_all")` dan `manage_task(action="kill")`).
 
 ## Logic Chain
-Sesuai protokol Sentinel:
-1. Permintaan dicatat secara verbatim di `ORIGINAL_REQUEST.md` (timestamp `## 2026-10-04T22:19:58Z`).
-2. Jalur eksekusi dipilih: **SWE Light** (`teamwork_preview_swe`), karena merupakan satu perbaikan terisolasi dengan permintaan tim kecil terfokus.
-3. Pemantauan cron (progress reporting dan liveness check) dijalankan berkala selama eksekusi.
-4. Ketika `swe_13` mengklaim kemenangan, klaim tersebut diverifikasi secara independen oleh `victory_auditor_21` (`ceea5969-f38f-455d-87b6-1e4eedc24bfc`) melalui audit 3 fase yang bersifat BLOCKING.
-5. Auditor independen mengeluarkan putusan resmi: **VICTORY CONFIRMED**.
-6. Seluruh subagent dan cron dibatalkan dan dibersihkan (`manage_subagents(action="kill_all")` dan `manage_task(action="kill")`).
+1. Permintaan user dicatat secara verbatim di `.agents/teamwork/ORIGINAL_REQUEST.md`.
+2. Jalur eksekusi dipilih secara deterministik: SWE Light (`teamwork_preview_swe`).
+3. Sentinel memonitor jalannya pengerjaan melalui cron progress reporting dan liveness check.
+4. Ketika orchestrator mengklaim kemenangan, Sentinel meluncurkan auditor independen `victory_auditor_25` (`464b5cec-2404-4dd3-a72a-bcb2e6bd87e0`).
+5. Auditor independen memverifikasi Phase A (Timeline & Provenance), Phase B (Forensic Integrity & Anti-Cheating), dan Phase C (Independent Test Execution).
+6. Hasil verifikasi auditor: **VICTORY CONFIRMED**.
+7. Pembersihan tuntas dilakukan pada seluruh subagent dan cron.
 
 ## Caveats
-- Perilaku hardware kamera pada vendor ROM tertentu dengan zoom digital firmware bawaan (di luar browser/DOM) tetap bergantung pada driver OEM fisik perangkat.
-- Pada webcam desktop berasio landscape 16:9 saat mode portrait aktif, canvas secara otomatis memotong bagian samping secara terpusat menjadi 3:4 agar kartu presensi guru tetap tegak (portrait).
+- Hardware scanner USB yang beroperasi sebagai keyboard wedge standar (mengirimkan string karakter diakhiri `Enter`/`\n`/`\r`) didukung penuh secara native di browser. Hardware scanner berbasis port serial COM khusus (RS-232 tanpa emulasi keyboard HID) membutuhkan driver OS lokal dan berada di luar lingkup Web API browser.
 
 ## Conclusion
-Pekerjaan telah selesai sepenuhnya, teruji bebas regresi, terverifikasi oleh auditor independen (`VICTORY CONFIRMED`), dan telah tersinkronisasi ke repository git `origin/main`.
+Pekerjaan telah selesai 100%, seluruh kriteria penerimaan terpenuhi, tidak ada regresi, dan telah lolos audit kemenangan independen secara obyektif.
 
 ## Verification Method
-Audit independen fase 3 menjalankan:
-- `npx tsx tests/camera_orientation.test.ts` (10 sections, 33 assertions passed)
-- `npx tsx tests/camera_zoom_fix.test.ts` (8 sections, 35 assertions passed)
-- `npx tsx tests/reviewer_adversarial_camera.test.ts` (10 sections, 56 assertions passed)
-- `npx tsx tests/adversarial_camera_badge_challenger_1.test.ts` (314 tests passed)
-- `npm test` (21 test suites passed)
-- `npx tsc --noEmit` (0 TypeScript errors)
-- `npm run build` (Next.js 16.3.4 Turbopack build succeeded across 12 routes)
+Auditor independen `victory_auditor_25` menjalankan dan memverifikasi:
+- `npx tsc --noEmit`: 0 errors
+- `npm run build`: Turbopack production build succeeded
+- `npx tsx tests/presensi_siswa_sync_and_superadmin.test.ts`: 11/11 passed
+- `npx tsx tests/adversarial_presensi_sync_reviewer.test.ts`: 12/12 passed
+- `npx tsx tests/adversarial_presensi_sync_reviewer_r2.test.ts`: 10/10 passed
+- `npx tsx tests/adversarial_presensi_sync_reviewer_r3.test.ts`: 12/12 passed
+- `npm test`: 27/27 test suites passed (118 individual automated checks passed)
+- `npm run test:e2e`: 111/111 assertions across 4 tiers passed
 Semua pengujian 100% PASS.
