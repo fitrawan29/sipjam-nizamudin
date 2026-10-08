@@ -1,23 +1,27 @@
-# Progress — worker_remediation
+# Progress Log
 
-Last visited: 2026-09-28T06:10:00+08:00
-Status: Completed
+Last visited: 2026-10-08T12:12:30Z
 
-## Tasks
-- [x] Initialize DISPATCH.md, BRIEFING.md, and progress.md
-- [x] Read references: ORIGINAL_REQUEST.md, reviewer_2/handoff.md, challenger_2/handoff.md, reviewer_1/handoff.md, GEMINI.md
-- [x] Inspect target files: `OnboardingTutorial.tsx`, `tutorialSteps.ts`, `AIAssistant.tsx`
-- [x] Implement bug fixes & polish:
-  - [x] Tour Reopening Index reset in OnboardingTutorial.tsx
-  - [x] Guard against non-string role in normalizeRole in tutorialSteps.ts
-  - [x] z-[45] arbitrary class and userName personalization in AIAssistant.tsx
-- [x] Run test suites, tsc, and npm run build:
-  - [x] `npx tsx tests/ai_assistant_faq.test.ts` (24 passed, 0 failed)
-  - [x] `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts` (all passed, 100%)
-  - [x] `npx tsx tests/app_screen_integration.test.ts` (24 passed, 0 failed)
-  - [x] `npx tsx tests/adversarial_ai_assistant_challenger_1.test.ts` (74 passed, 0 failed)
-  - [x] `npx tsx tests/adversarial_onboarding_stress.test.ts` (161 passed, 0 failed, 0 findings)
-  - [x] `npx tsc --noEmit` (exit code 0)
-  - [x] `npm run build` (exit code 0, 11/11 routes prerendered)
-- [ ] Perform git workflow (status, add, commit, push)
-- [ ] Write handoff.md and report to parent
+- [x] Initialized DISPATCH.md and BRIEFING.md
+- [x] Read mandatory input files: ORIGINAL_REQUEST.md, PROJECT.md, explorer_m1_iter2/report.md
+- [x] Analyze src/lib/watermarkCanvas.ts and plan genuine 4:3 crop logic
+- [x] Analyze src/components/CameraSelfieCapture.tsx and identify dead comment lines
+- [x] Inspect the 7 test files with obsolete 16:9 assertions
+- [x] Implement changes in src/lib/watermarkCanvas.ts (universal 4:3 center crop, coordinate hack removed)
+- [x] Implement changes in src/components/CameraSelfieCapture.tsx (dead comment blocks removed)
+- [x] Update legacy test assertions to 4:3 across 7 test files:
+  - tests/camera_orientation.test.ts (passed)
+  - tests/adversarial_camera_portrait_reviewer.test.ts (passed)
+  - tests/adversarial_camera_badge_challenger_1.test.ts (passed - 314/314)
+  - tests/camera_portrait_strong_verification.test.ts (passed - 55/55)
+  - tests/reviewer_adversarial_camera.test.ts (passed - 56/56)
+  - tests/camera_zoom_fix.test.ts (passed)
+  - tests/challenger_m1_1_empirical_stress.test.ts (passed - 107/107)
+- [x] Verified git grep "latitude === -8.12" src/ -> 0 matches
+- [x] Verified git grep "aspect-video" src/components/CameraSelfieCapture.tsx -> 0 matches
+- [x] Ran npx tsc --noEmit -> Exit code 0
+- [x] Ran npm test -> Exit code 0
+- [x] Ran npx tsx tests/e2e/run_all_e2e.ts -> Exit code 0 (100% across all 4 Tiers)
+- [x] Ran npm run build -> Exit code 0 (Turbopack compilation clean)
+- [ ] Perform git workflow (status, stage, commit, push)
+- [ ] Deliver handoff report and notify orchestrator

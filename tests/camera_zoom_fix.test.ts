@@ -85,9 +85,9 @@ assert(
 // 4. MediaStreamConstraints Integrity
 console.log('\n--- 4. MediaStreamConstraints Integrity ---');
 assert(
-  cameraContent.includes('width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 }') &&
-  cameraContent.includes('height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 }'),
-  'MediaStreamConstraints preserve ideal resolutions for orientation adaptation'
+  cameraContent.includes('width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1600 }') &&
+  cameraContent.includes('height: isPortrait ? { ideal: 960, max: 1440 } : { ideal: 960, max: 1200 }'),
+  'MediaStreamConstraints preserve ideal resolutions for 4:3 / 3:4 orientation adaptation'
 );
 
 // 5. Empirical Aspect Ratio Geometry & Zero-Crop Mathematical Verification

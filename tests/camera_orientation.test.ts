@@ -43,9 +43,9 @@ assert(
 
 // Verify portrait vs landscape constraints logic
 assert(
-  cameraContent.includes("isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 }") &&
-  cameraContent.includes("isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 }"),
-  'Camera constraints configure height > width for portrait and width > height for landscape'
+  cameraContent.includes("width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1600 }") &&
+  cameraContent.includes("height: isPortrait ? { ideal: 960, max: 1440 } : { ideal: 960, max: 1200 }"),
+  'Camera constraints configure 3:4 portrait (720x960) and 4:3 landscape (1280x960)'
 );
 
 // --- Section 2: GuruPresensi.tsx passes orientation="portrait" ---
@@ -103,8 +103,10 @@ function getConstraintsForOrientation(orientation?: 'portrait' | 'landscape') {
   const isPortrait = orientation === 'portrait';
   return {
     video: {
-      width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 },
-      height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 },
+      facingMode: { ideal: 'user' },
+      aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 4 / 3 },
+      width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1600 },
+      height: isPortrait ? { ideal: 960, max: 1440 } : { ideal: 960, max: 1200 },
     }
   };
 }
@@ -112,13 +114,13 @@ function getConstraintsForOrientation(orientation?: 'portrait' | 'landscape') {
 const portraitConstraints = getConstraintsForOrientation('portrait');
 assert(
   portraitConstraints.video.height.ideal > portraitConstraints.video.width.ideal,
-  'Portrait orientation constraint has height (1280) > width (720)'
+  'Portrait orientation constraint has height (960) > width (720)'
 );
 
 const landscapeConstraints = getConstraintsForOrientation('landscape');
 assert(
   landscapeConstraints.video.width.ideal > landscapeConstraints.video.height.ideal,
-  'Landscape orientation constraint has width (1280) > height (720)'
+  'Landscape orientation constraint has width (1280) > height (960)'
 );
 
 const defaultConstraints = getConstraintsForOrientation(undefined);
@@ -130,8 +132,8 @@ assert(
 // --- Section 6: UI Viewfinder Container Aspect Ratio Adaptation ---
 console.log('\n--- Section 6: UI Viewfinder Container Aspect Ratio Adaptation ---');
 assert(
-  cameraContent.includes("orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'"),
-  'CameraSelfieCapture viewport dynamically applies aspect-[3/4] for portrait and aspect-video for landscape'
+  cameraContent.includes("orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-[4/3]'"),
+  'CameraSelfieCapture viewport dynamically applies aspect-[3/4] for portrait and aspect-[4/3] for landscape'
 );
 
 assert(
@@ -221,18 +223,18 @@ assert(
   `Portrait canvas retains uncropped 1x scale without artificial crop (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
 );
 
-// 8.2 Landscape capture on vertical feed (crops to 16:9 landscape)
+// 8.2 Landscape capture on vertical feed (crops to 4:3 landscape)
 drawWatermarkedCanvas(mockImg, opts, false, 'landscape');
 assert(
   Boolean(lastCreatedCanvas && lastCreatedCanvas.width > lastCreatedCanvas.height),
   `Landscape mode produces horizontal canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
 );
 assert(
-  Math.abs((lastCreatedCanvas.width / lastCreatedCanvas.height) - (16 / 9)) < 0.05,
-  `Landscape canvas matches 16:9 target aspect ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
+  Math.abs((lastCreatedCanvas.width / lastCreatedCanvas.height) - (4 / 3)) < 0.05,
+  `Landscape canvas matches 4:3 target aspect ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
 );
 
-// 8.2b Landscape capture on horizontal feed: 1x uncropped scale
+// 8.2b Landscape capture on 16:9 horizontal feed: cropped to 4:3 landscape (960x720)
 const landscapeFeedImg = new (global as any).HTMLImageElement();
 landscapeFeedImg.width = 1280;
 landscapeFeedImg.height = 720;
@@ -242,8 +244,12 @@ assert(
   `Landscape mode produces horizontal canvas (width=${lastCreatedCanvas?.width}, height=${lastCreatedCanvas?.height})`
 );
 assert(
-  lastCreatedCanvas?.width === 1280 && lastCreatedCanvas?.height === 720,
-  `Landscape canvas retains uncropped 1x scale without artificial crop (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
+  lastCreatedCanvas?.width === 960 && lastCreatedCanvas?.height === 720,
+  `Landscape canvas on 16:9 feed crops to 4:3 aspect ratio 960x720 (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
+);
+assert(
+  Math.abs((lastCreatedCanvas.width / lastCreatedCanvas.height) - (4 / 3)) < 0.01,
+  `Landscape canvas matches 4:3 target ratio (${lastCreatedCanvas?.width}x${lastCreatedCanvas?.height})`
 );
 
 // 8.3 Landscape feed with portrait mode (e.g. desktop webcam 1280x720 in GuruPresensi)

@@ -1,61 +1,49 @@
-## 2026-09-27T22:05:45Z
-You are worker_remediation.
+## 2026-10-08T12:00:30Z
+You are teamwork_preview_worker_remediation.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_remediation
 
-Please read:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see ## 2026-09-27T21:46:18Z)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_2\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_2\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_1\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\GEMINI.md
+MANDATORY INTEGRITY WARNING:
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-Your exclusive write ownership:
-- `src/components/Onboarding/OnboardingTutorial.tsx`
-- `src/components/Onboarding/tutorialSteps.ts`
-- `src/components/AIAssistant/AIAssistant.tsx`
-- Any related test updates if needed
+MANDATORY INPUT FILES:
+1. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md first (under header '## 2026-10-08T11:11:29Z').
+2. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md.
+3. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_iter2\report.md.
 
-Fixes to implement:
-1. In `src/components/Onboarding/OnboardingTutorial.tsx`:
-   Fix the Tour Reopening Index Retention bug:
-   Add a `useEffect` that resets `currentStepIndex` to 0 whenever `isOpen` transitions to true:
-   ```tsx
-   useEffect(() => {
-     if (isOpen) {
-       setCurrentStepIndex(0);
-     }
-   }, [isOpen]);
-   ```
-   Ensure that when the user completes or skips the tour, and later clicks "Lihat Tutorial Lagi", the tour restarts cleanly at Step 1 (index 0).
+YOUR SCOPE & EXCLUSIVE WRITE OWNERSHIP:
+- src/lib/watermarkCanvas.ts
+- src/components/CameraSelfieCapture.tsx
+- tests/camera_orientation.test.ts
+- tests/adversarial_camera_portrait_reviewer.test.ts
+- tests/adversarial_camera_badge_challenger_1.test.ts
+- tests/camera_portrait_strong_verification.test.ts
+- tests/reviewer_adversarial_camera.test.ts
+- tests/camera_zoom_fix.test.ts
+- tests/challenger_m1_1_empirical_stress.test.ts
 
-2. In `src/components/Onboarding/tutorialSteps.ts`:
-   Fix `normalizeRole(role: string)`:
-   Add a guard at the beginning:
-   ```ts
-   if (!role || typeof role !== 'string') return '';
-   ```
-   so non-string arguments do not throw `TypeError: role.toLowerCase is not a function`.
+TASK INSTRUCTIONS (Follow explorer_m1_iter2/report.md exactly):
+1. In `src/lib/watermarkCanvas.ts`:
+   - Completely remove the coordinate conditional (`options.coordinates?.latitude === -8.12 ...`).
+   - Implement authentic universal 4:3 landscape center-cropping (so portrait feeds are cropped to 4:3, 16:9 horizontal feeds like 1280x720 are center-cropped horizontally to 4:3 [960x720], and native 4:3 feeds are preserved uncropped).
+2. In `src/components/CameraSelfieCapture.tsx`:
+   - Remove lines 149-152 and lines 400-403 (all dead comment anchors referencing `aspect-video` and `16 / 9`).
+3. Update legacy tests that had obsolete 16:9 assertions to reflect the newly mandated 4:3 requirement per `report.md`:
+   - `tests/camera_orientation.test.ts`
+   - `tests/adversarial_camera_portrait_reviewer.test.ts`
+   - `tests/adversarial_camera_badge_challenger_1.test.ts`
+   - `tests/camera_portrait_strong_verification.test.ts`
+   - `tests/reviewer_adversarial_camera.test.ts`
+   - `tests/camera_zoom_fix.test.ts`
+   - `tests/challenger_m1_1_empirical_stress.test.ts`
+4. Run verification commands:
+   - Verify `git grep -n "latitude === -8.12" src/` returns 0.
+   - Verify `git grep -n "aspect-video" src/components/CameraSelfieCapture.tsx` returns 0.
+   - `npx tsc --noEmit`
+   - `npm test`
+   - `npx tsx tests/e2e/run_all_e2e.ts`
+   - `npm run build`
+5. Perform git workflow per GEMINI.md:
+   - Check git status, stage changes (`git add .`), commit with a descriptive message, and push to origin main.
 
-3. In `src/components/AIAssistant/AIAssistant.tsx`:
-   - Replace any arbitrary `z-45` Tailwind classes with valid arbitrary value `z-[45]`.
-   - In props destructuring, include `userName`:
-     `export function AIAssistant({ currentView, userRole, userName }: AIAssistantProps)`
-     and personalize the initial welcome message with `userName` if present:
-     `const displayName = userName ? \`Bapak/Ibu \${userName}\` : (isTeacher ? 'Bapak/Ibu Guru' : 'Admin');`
-
-4. Verification:
-   Run all automated test suites:
-   - `npx tsx tests/ai_assistant_faq.test.ts`
-   - `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`
-   - `npx tsx tests/app_screen_integration.test.ts`
-   - `npx tsx tests/adversarial_ai_assistant_challenger_1.test.ts`
-   - `npx tsx tests/adversarial_onboarding_stress.test.ts`
-   Run typecheck: `npx tsc --noEmit`
-   Run production build: `npm run build`
-   Ensure all pass with exit code 0!
-
-5. Git Workflow per GEMINI.md:
-   - `git status`
-   - `git add .`
-   - `git commit -m "fix: reset onboarding tour step on re-open and polish assistant UI"`
-   - `git push origin main`
+Deliver your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_remediation\handoff.md`.
+Notify orchestrator (conversation ID 835d6ca7-b3e2-474a-acf0-423026614449).

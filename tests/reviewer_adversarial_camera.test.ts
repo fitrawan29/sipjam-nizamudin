@@ -57,8 +57,8 @@ console.log('\n--- Section 2: CameraSelfieCapture Viewport & Anti-Zoom Invariant
 
 // Viewport aspect ratio
 assert(
-  cameraContent.includes("orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'"),
-  'Camera viewport container enforces aspect-[3/4] max-w-sm mx-auto for portrait'
+  cameraContent.includes("orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-[4/3]'"),
+  'Camera viewport container enforces aspect-[3/4] max-w-sm mx-auto for portrait and aspect-[4/3] for landscape'
 );
 
 // <video> styling
@@ -75,9 +75,9 @@ assert(!imgTag.match(/\bscale-(?:105|110|125|150|200)\b/), 'Preview <img> has no
 
 // Constraints check
 assert(
-  cameraContent.includes('width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 }') &&
-  cameraContent.includes('height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 }'),
-  'MediaStreamConstraints request portrait dimensions (height > width) when orientation is portrait'
+  cameraContent.includes('width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1600 }') &&
+  cameraContent.includes('height: isPortrait ? { ideal: 960, max: 1440 } : { ideal: 960, max: 1200 }'),
+  'MediaStreamConstraints request 3:4 portrait (720x960) and 4:3 landscape (1280x960)'
 );
 
 // --- Section 3: watermarkCanvas.ts 1x Scale Mathematical Proof ---

@@ -146,10 +146,6 @@ export default function CameraSelfieCapture({
 
     try {
       // Locked strictly to 4:3 ratio: portrait 3:4 for attendance, landscape 4:3 for KBM journal/piket
-      // Legacy compatibility anchors for static test assertions:
-      // aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 }
-      // width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 }
-      // height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 }
       const isPortrait = orientation === 'portrait';
       const constraints: MediaStreamConstraints = {
         video: {
@@ -397,10 +393,6 @@ export default function CameraSelfieCapture({
       </div>
 
       {/* Main View Area - strictly locked to 4:3 (portrait 3:4, landscape 4:3) */}
-      {/* Test anchor compatibility:
-          orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'
-          orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-video'
-      */}
       <div className={`relative w-full ${
         orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-[4/3]'
       } rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}>

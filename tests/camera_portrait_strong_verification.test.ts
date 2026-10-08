@@ -157,8 +157,8 @@ console.log('+------------------------------------------------------------------
 
 // Verify JSX code enforces aspect-[3/4] on video element
 assert(
-  cameraContent.includes("orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-video'"),
-  '<video> element explicitly declares orientation === "portrait" ? "aspect-[3/4]" : "aspect-video"'
+  cameraContent.includes("orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-[4/3]'"),
+  '<video> element explicitly declares orientation === "portrait" ? "aspect-[3/4]" : "aspect-[4/3]"'
 );
 
 // Verify GuruPresensi strictly binds orientation="portrait"
@@ -267,8 +267,8 @@ assert(
   'Preview <img> has zero CSS scale zoom transform classes'
 );
 assert(
-  cameraContent.includes('aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 }'),
-  'MediaStreamConstraints requests aspectRatio: 3/4 ideal for hardware portrait stream negotiation'
+  cameraContent.includes('aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 4 / 3 }'),
+  'MediaStreamConstraints requests aspectRatio: 3/4 ideal for portrait and 4/3 for landscape'
 );
 
 // =========================================================================

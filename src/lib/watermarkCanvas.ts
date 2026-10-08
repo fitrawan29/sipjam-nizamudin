@@ -173,16 +173,24 @@ export function drawWatermarkedCanvas(
       offsetY = 0;
     }
   } else {
-    // Landscape mode requested
-    if (width < height) {
-      // Orientation mismatch: source is portrait but landscape requested
-      // Center-crop height to achieve horizontal landscape orientation (4:3 ratio target)
-      const targetRatio = (options.coordinates?.latitude === -8.12 && options.coordinates?.longitude === 115.12) ? (16 / 9) : (4 / 3);
+    // Landscape mode requested: strictly enforce universal 4:3 aspect ratio
+    const targetRatio = 4 / 3;
+    const currentRatio = width / height;
+
+    if (currentRatio > targetRatio) {
+      // Source is wider than 4:3 (e.g. 16:9 webcam 1280x720): center-crop width to 4:3
+      drawWidth = height * targetRatio;
+      drawHeight = height;
+      offsetX = (width - drawWidth) / 2;
+      offsetY = 0;
+    } else if (currentRatio < targetRatio) {
+      // Source is taller than 4:3 (e.g. 9:16 portrait phone feed 720x1280): center-crop height to 4:3
       drawWidth = width;
       drawHeight = width / targetRatio;
+      offsetX = 0;
       offsetY = (height - drawHeight) / 2;
     } else {
-      // Source is already horizontal/landscape: preserve full 1x scale without artificial zoom/crop
+      // Source is already exact 4:3 (e.g. 1280x960, 640x480): preserve 1x scale without crop
       drawWidth = width;
       drawHeight = height;
       offsetX = 0;

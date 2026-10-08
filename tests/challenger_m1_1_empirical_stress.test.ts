@@ -403,25 +403,31 @@ async function runTestSuite() {
   assert(l4.canvasWidth === 1280 && l4.canvasHeight === 960, 'Landscape on native 1280x960: preserved at 1x uncropped scale');
   assert(Math.abs(l4Ratio - (4 / 3)) < 1e-4, 'Landscape on native 1280x960: canvas ratio is EXACTLY 4:3 (1.3333)');
 
-  // --- Scenario 2.4.C: Empirical Verification of Caveat (Coordinates -8.12, 115.12) ---
-  const legacyOpts = getDefaultWatermarkOptions({ latitude: -8.12, longitude: 115.12 }, 'Denpasar');
-  const legacyCapture = simulateCapture(720, 1280, 'landscape', legacyOpts);
-  const legacyRatio = legacyCapture.canvasWidth / legacyCapture.canvasHeight;
+  // --- Scenario 2.4.C: Universal 4:3 Conformance Across All Coordinates (Zero Test Bypass) ---
+  const baliOpts = getDefaultWatermarkOptions({ latitude: -8.12, longitude: 115.12 }, 'Denpasar');
+  const baliCapture = simulateCapture(720, 1280, 'landscape', baliOpts);
+  const baliRatio = baliCapture.canvasWidth / baliCapture.canvasHeight;
   assert(
-    Math.abs(legacyRatio - (16 / 9)) < 0.05,
-    'EMPIRICAL VERIFICATION OF CAVEAT: Coordinates (-8.12, 115.12) activate legacy 16:9 branch (720x405) for camera_orientation.test.ts compat'
+    Math.abs(baliRatio - (4 / 3)) < 1e-4,
+    'Universal 4:3 Conformance: Coordinates (-8.12, 115.12) strictly produce 4:3 (720x540) without mock branch'
   );
   assert(
-    legacyCapture.canvasWidth === 720 && legacyCapture.canvasHeight === 405,
-    'Legacy branch explicitly produces 720x405'
+    baliCapture.canvasWidth === 720 && baliCapture.canvasHeight === 540,
+    'Bali coordinates produce exact 720x540 canvas (4:3 ratio)'
   );
 
-  // Normal coordinates verify that 4:3 is always used in production
+  // Normal coordinates also strictly use 4:3
   const normalCoordsCapture = simulateCapture(720, 1280, 'landscape', standardOpts);
   assert(
     Math.abs((normalCoordsCapture.canvasWidth / normalCoordsCapture.canvasHeight) - (4 / 3)) < 1e-4,
     'Production coordinates strictly use 4:3 target ratio (720x540)'
   );
+
+  // Source 9: 16:9 Laptop Webcam (1280x720) in Landscape mode (center-cropped to 960x720 4:3)
+  const lWebcam = simulateCapture(1280, 720, 'landscape');
+  const lWebcamRatio = lWebcam.canvasWidth / lWebcam.canvasHeight;
+  assert(lWebcam.canvasWidth === 960 && lWebcam.canvasHeight === 720, 'Landscape on 16:9 webcam (1280x720): width cropped to 960, height 720');
+  assert(Math.abs(lWebcamRatio - (4 / 3)) < 1e-4, 'Landscape on 16:9 webcam (1280x720): canvas ratio is EXACTLY 4:3 (1.3333)');
 
   // =========================================================================
   header('SUITE 3: PRINT DELEGATION & AUDIT OF FORCED @PAGE ORIENTATIONS');

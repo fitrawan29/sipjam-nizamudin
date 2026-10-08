@@ -241,7 +241,7 @@ async function runAdversarialTestHarness() {
     assert(scaleFactor === 1.0, '1.3: Scale factor strictly 1.0');
   }
 
-  // 1.4: 16:9 Full HD Landscape (1920x1080) with orientation='landscape'
+  // 1.4: 16:9 Full HD Landscape (1920x1080) with orientation='landscape' (crops to 4:3 1440x1080)
   {
     resetMockState();
     const video = new MockHTMLVideoElement();
@@ -249,17 +249,18 @@ async function runAdversarialTestHarness() {
     video.videoHeight = 1080;
 
     drawWatermarkedCanvas(video as any, mockOptions, false, 'landscape');
-    assert(lastCreatedCanvas?.width === 1920, '1.4: 1920x1080 landscape canvas width 1920');
+    assert(lastCreatedCanvas?.width === 1440, '1.4: 1920x1080 landscape canvas width 1440');
     assert(lastCreatedCanvas?.height === 1080, '1.4: 1920x1080 landscape canvas height 1080');
     assert(lastCreatedCanvas?.width >= lastCreatedCanvas?.height, '1.4: Orientation is horizontal (width >= height)');
     const drawCall = drawImageCalls[0];
-    assert(drawCall?.sx === 0 && drawCall?.sy === 0, '1.4: Offsets sx=0, sy=0');
-    assert(drawCall?.sWidth === 1920 && drawCall?.sHeight === 1080, '1.4: Full 1920x1080 sensor drawn');
-    const scaleFactor = (drawCall?.sWidth * drawCall?.sHeight) / (1920 * 1080);
-    assert(scaleFactor === 1.0, '1.4: Strictly 1x scale (no zoom)');
+    const expectedOffsetX = (1920 - 1440) / 2; // 240
+    assert(drawCall?.sx === expectedOffsetX && drawCall?.sy === 0, '1.4: Offsets sx=240, sy=0');
+    assert(drawCall?.sWidth === 1440 && drawCall?.sHeight === 1080, '1.4: 1440x1080 cropped to 4:3');
+    const targetRatio = (lastCreatedCanvas?.width || 0) / (lastCreatedCanvas?.height || 1);
+    assert(Math.abs(targetRatio - (4 / 3)) < 1e-4, '1.4: Strictly 4:3 target ratio');
   }
 
-  // 1.5: 16:9 Standard HD Landscape (1280x720) with orientation='landscape'
+  // 1.5: 16:9 Standard HD Landscape (1280x720) with orientation='landscape' (crops to 4:3 960x720)
   {
     resetMockState();
     const video = new MockHTMLVideoElement();
@@ -267,12 +268,13 @@ async function runAdversarialTestHarness() {
     video.videoHeight = 720;
 
     drawWatermarkedCanvas(video as any, mockOptions, false, 'landscape');
-    assert(lastCreatedCanvas?.width === 1280 && lastCreatedCanvas?.height === 720, '1.5: 1280x720 landscape canvas 1280x720');
+    assert(lastCreatedCanvas?.width === 960 && lastCreatedCanvas?.height === 720, '1.5: 1280x720 landscape canvas 960x720');
     const drawCall = drawImageCalls[0];
-    assert(drawCall?.sx === 0 && drawCall?.sy === 0, '1.5: Offsets 0, 0');
-    assert(drawCall?.sWidth === 1280 && drawCall?.sHeight === 720, '1.5: 1280x720 full sensor drawn');
-    const scaleFactor = (drawCall?.sWidth * drawCall?.sHeight) / (1280 * 720);
-    assert(scaleFactor === 1.0, '1.5: Strictly 1x scale');
+    const expectedOffsetX = (1280 - 960) / 2; // 160
+    assert(drawCall?.sx === expectedOffsetX && drawCall?.sy === 0, '1.5: Offsets 160, 0');
+    assert(drawCall?.sWidth === 960 && drawCall?.sHeight === 720, '1.5: 960x720 cropped to 4:3');
+    const targetRatio = (lastCreatedCanvas?.width || 0) / (lastCreatedCanvas?.height || 1);
+    assert(Math.abs(targetRatio - (4 / 3)) < 1e-4, '1.5: Strictly 4:3 target ratio');
   }
 
   // 1.6: Desktop Webcam Mismatch: 16:9 Horizontal Feed (1280x720) in Portrait Mode
@@ -303,14 +305,14 @@ async function runAdversarialTestHarness() {
 
     drawWatermarkedCanvas(video as any, mockOptions, false, 'landscape');
     assert(lastCreatedCanvas?.width > lastCreatedCanvas?.height, '1.7: Produces horizontal landscape output (width > height)');
-    // Target ratio 16:9: drawWidth = 720, drawHeight = 720 / (16/9) = 405
+    // Target ratio 4:3: drawWidth = 720, drawHeight = 720 / (4/3) = 540
     assert(lastCreatedCanvas?.width === 720, '1.7: Canvas width preserved at 720');
-    assert(lastCreatedCanvas?.height === 405, '1.7: Canvas height cropped to 405 (16:9 ratio)');
+    assert(lastCreatedCanvas?.height === 540, '1.7: Canvas height cropped to 540 (4:3 ratio)');
     const drawCall = drawImageCalls[0];
-    const expectedOffsetY = (1280 - 405) / 2; // 437.5
+    const expectedOffsetY = (1280 - 540) / 2; // 370
     assert(drawCall?.sx === 0, '1.7: Horizontal offset offsetX === 0');
-    assert(drawCall?.sy === expectedOffsetY, `1.7: Vertical centered crop offsetY === ${expectedOffsetY} (437.5)`);
-    assert(drawCall?.sWidth === 720 && drawCall?.sHeight === 405, '1.7: Rendered width 720, height 405');
+    assert(drawCall?.sy === expectedOffsetY, `1.7: Vertical centered crop offsetY === ${expectedOffsetY} (370)`);
+    assert(drawCall?.sWidth === 720 && drawCall?.sHeight === 540, '1.7: Rendered width 720, height 540');
   }
 
   // 1.8: Non-Standard: 1:1 Square Sensor (1000x1000) in Portrait Mode
@@ -331,7 +333,7 @@ async function runAdversarialTestHarness() {
     assert(drawCall?.sy === 0, '1.8: Square portrait offsetY === 0');
   }
 
-  // 1.9: Non-Standard: 1:1 Square Sensor (1000x1000) in Landscape Mode
+  // 1.9: Non-Standard: 1:1 Square Sensor (1000x1000) in Landscape Mode (crops to 4:3 1000x750)
   {
     resetMockState();
     const video = new MockHTMLVideoElement();
@@ -340,11 +342,12 @@ async function runAdversarialTestHarness() {
 
     drawWatermarkedCanvas(video as any, mockOptions, false, 'landscape');
     assert(lastCreatedCanvas?.width >= lastCreatedCanvas?.height, '1.9: Square sensor in landscape preserves width >= height');
-    assert(lastCreatedCanvas?.width === 1000 && lastCreatedCanvas?.height === 1000, '1.9: Canvas width 1000, height 1000');
+    assert(lastCreatedCanvas?.width === 1000 && lastCreatedCanvas?.height === 750, '1.9: Canvas width 1000, height 750');
     const drawCall = drawImageCalls[0];
-    assert(drawCall?.sx === 0 && drawCall?.sy === 0, '1.9: Offsets 0, 0');
-    const scaleFactor = (drawCall?.sWidth * drawCall?.sHeight) / (1000 * 1000);
-    assert(scaleFactor === 1.0, '1.9: Strictly 1x scale');
+    const expectedOffsetY = (1000 - 750) / 2; // 125
+    assert(drawCall?.sx === 0 && drawCall?.sy === expectedOffsetY, '1.9: Offsets 0, 125');
+    const targetRatio = (lastCreatedCanvas?.width || 0) / (lastCreatedCanvas?.height || 1);
+    assert(Math.abs(targetRatio - (4 / 3)) < 1e-4, '1.9: Strictly 4:3 target ratio');
   }
 
   // 1.10: 4:3 Sensor (640x480) in Landscape Mode
@@ -379,7 +382,7 @@ async function runAdversarialTestHarness() {
     assert(drawCall?.sy === 0, '1.11: offsetY === 0');
   }
 
-  // 1.12: Ultra-Wide 21:9 Sensor (2560x1080) in Landscape Mode
+  // 1.12: Ultra-Wide 21:9 Sensor (2560x1080) in Landscape Mode (crops to 4:3 1440x1080)
   {
     resetMockState();
     const video = new MockHTMLVideoElement();
@@ -387,11 +390,12 @@ async function runAdversarialTestHarness() {
     video.videoHeight = 1080;
 
     drawWatermarkedCanvas(video as any, mockOptions, false, 'landscape');
-    assert(lastCreatedCanvas?.width === 2560 && lastCreatedCanvas?.height === 1080, '1.12: 21:9 2560x1080 uncropped in landscape');
+    assert(lastCreatedCanvas?.width === 1440 && lastCreatedCanvas?.height === 1080, '1.12: 21:9 2560x1080 cropped to 4:3 1440x1080');
     const drawCall = drawImageCalls[0];
-    assert(drawCall?.sx === 0 && drawCall?.sy === 0, '1.12: sx=0, sy=0');
-    const scaleFactor = (drawCall?.sWidth * drawCall?.sHeight) / (2560 * 1080);
-    assert(scaleFactor === 1.0, '1.12: Strictly 1x scale (scale=1.0)');
+    const expectedOffsetX = (2560 - 1440) / 2; // 560
+    assert(drawCall?.sx === expectedOffsetX && drawCall?.sy === 0, '1.12: sx=560, sy=0');
+    const targetRatio = (lastCreatedCanvas?.width || 0) / (lastCreatedCanvas?.height || 1);
+    assert(Math.abs(targetRatio - (4 / 3)) < 1e-4, '1.12: Strictly 4:3 target ratio');
   }
 
   // 1.13: Ultra-Tall Mobile Aspect Ratio 20:9 (1080x2400) in Portrait Mode
@@ -454,7 +458,7 @@ async function runAdversarialTestHarness() {
     assert(scaleFactor === 1.0, '1.16: Strictly 1x scale (scale=1.0)');
   }
 
-  // 1.17: Extreme High-Res 4K UHD (3840x2160) in Landscape Mode
+  // 1.17: Extreme High-Res 4K UHD (3840x2160) in Landscape Mode (crops to 4:3 2880x2160)
   {
     resetMockState();
     const video = new MockHTMLVideoElement();
@@ -462,14 +466,15 @@ async function runAdversarialTestHarness() {
     video.videoHeight = 2160;
 
     drawWatermarkedCanvas(video as any, mockOptions, false, 'landscape');
-    assert(lastCreatedCanvas?.width === 3840 && lastCreatedCanvas?.height === 2160, '1.17: 4K 3840x2160 preserved uncropped in landscape');
+    assert(lastCreatedCanvas?.width === 2880 && lastCreatedCanvas?.height === 2160, '1.17: 4K 3840x2160 cropped to 4:3 2880x2160');
     const drawCall = drawImageCalls[0];
-    assert(drawCall?.sx === 0 && drawCall?.sy === 0, '1.17: sx=0, sy=0');
-    const scaleFactor = (drawCall?.sWidth * drawCall?.sHeight) / (3840 * 2160);
-    assert(scaleFactor === 1.0, '1.17: Strictly 1x scale (scale=1.0)');
+    const expectedOffsetX = (3840 - 2880) / 2; // 480
+    assert(drawCall?.sx === expectedOffsetX && drawCall?.sy === 0, '1.17: sx=480, sy=0');
+    const targetRatio = (lastCreatedCanvas?.width || 0) / (lastCreatedCanvas?.height || 1);
+    assert(Math.abs(targetRatio - (4 / 3)) < 1e-4, '1.17: Strictly 4:3 target ratio');
   }
 
-  // 1.18: Extreme High-Res 8K UHD (7680x4320) in Landscape Mode
+  // 1.18: Extreme High-Res 8K UHD (7680x4320) in Landscape Mode (crops to 4:3 5760x4320)
   {
     resetMockState();
     const video = new MockHTMLVideoElement();
@@ -477,11 +482,12 @@ async function runAdversarialTestHarness() {
     video.videoHeight = 4320;
 
     drawWatermarkedCanvas(video as any, mockOptions, false, 'landscape');
-    assert(lastCreatedCanvas?.width === 7680 && lastCreatedCanvas?.height === 4320, '1.18: 8K 7680x4320 preserved uncropped in landscape');
+    assert(lastCreatedCanvas?.width === 5760 && lastCreatedCanvas?.height === 4320, '1.18: 8K 7680x4320 cropped to 4:3 5760x4320');
     const drawCall = drawImageCalls[0];
-    assert(drawCall?.sx === 0 && drawCall?.sy === 0, '1.18: sx=0, sy=0');
-    const scaleFactor = (drawCall?.sWidth * drawCall?.sHeight) / (7680 * 4320);
-    assert(scaleFactor === 1.0, '1.18: Strictly 1x scale (scale=1.0)');
+    const expectedOffsetX = (7680 - 5760) / 2; // 960
+    assert(drawCall?.sx === expectedOffsetX && drawCall?.sy === 0, '1.18: sx=960, sy=0');
+    const targetRatio = (lastCreatedCanvas?.width || 0) / (lastCreatedCanvas?.height || 1);
+    assert(Math.abs(targetRatio - (4 / 3)) < 1e-4, '1.18: Strictly 4:3 target ratio');
   }
 
   // 1.19: Extreme High-Res 48MP Sensor (6000x8000) in Portrait Mode
@@ -514,7 +520,7 @@ async function runAdversarialTestHarness() {
     assert(scaleFactor === 1.0, '1.20: Strictly 1x scale (scale=1.0)');
   }
 
-  // 1.21: Auto-Detect (orientation === undefined) with Horizontal Feed (1280x720)
+  // 1.21: Auto-Detect (orientation === undefined) with Horizontal Feed (1280x720) (crops to 4:3 960x720)
   {
     resetMockState();
     const video = new MockHTMLVideoElement();
@@ -522,11 +528,12 @@ async function runAdversarialTestHarness() {
     video.videoHeight = 720;
 
     drawWatermarkedCanvas(video as any, mockOptions, false, undefined);
-    assert(lastCreatedCanvas?.width === 1280 && lastCreatedCanvas?.height === 720, '1.21: Auto-detect landscape preserves 1280x720 uncropped');
+    assert(lastCreatedCanvas?.width === 960 && lastCreatedCanvas?.height === 720, '1.21: Auto-detect landscape crops 1280x720 to 960x720');
     const drawCall = drawImageCalls[0];
-    assert(drawCall?.sx === 0 && drawCall?.sy === 0, '1.21: sx=0, sy=0');
-    const scaleFactor = (drawCall?.sWidth * drawCall?.sHeight) / (1280 * 720);
-    assert(scaleFactor === 1.0, '1.21: Strictly 1x scale (scale=1.0)');
+    const expectedOffsetX = (1280 - 960) / 2; // 160
+    assert(drawCall?.sx === expectedOffsetX && drawCall?.sy === 0, '1.21: sx=160, sy=0');
+    const targetRatio = (lastCreatedCanvas?.width || 0) / (lastCreatedCanvas?.height || 1);
+    assert(Math.abs(targetRatio - (4 / 3)) < 1e-4, '1.21: Strictly 4:3 target ratio');
   }
 
   // 1.22: Mirror Front-Facing Transformation (mirror = true)
@@ -703,7 +710,7 @@ async function runAdversarialTestHarness() {
   // 3.2: Anti-zoom CSS in CameraSelfieCapture.tsx
   assert(cameraCode.includes('object-contain'), '3.2: Uses CSS object-contain');
   assert(!cameraCode.includes('object-cover'), '3.2: Does NOT use CSS object-cover');
-  assert(cameraCode.includes("orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'"), '3.2: Container matches orientation aspect ratio (3/4 portrait vs 16/9 landscape)');
+  assert(cameraCode.includes("orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-[4/3]'"), '3.2: Container matches orientation aspect ratio (3/4 portrait vs 4/3 landscape)');
 
   // 3.3: Call sites pass explicit orientation props
   const presensiCode = fs.readFileSync(guruPresensiPath, 'utf8');

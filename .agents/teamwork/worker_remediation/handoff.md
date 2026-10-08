@@ -1,135 +1,129 @@
-# Handoff Report: Remediation & UI Polish
+# Handoff Report — Worker Remediation: 4:3 Camera Lock & Integrity Cleanup
 
-**Agent**: `worker_remediation`  
-**Roles**: implementer, qa, specialist  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_remediation`  
-**Parent / Caller**: `orchestrator_5` (`3b364431-4af8-4ed9-9a8c-b79b77d58fbe`)  
-**Date**: 2026-09-28T06:10:00+08:00 (UTC: 2026-09-27T22:10:00Z)  
-**Status**: COMPLETE
+**Author**: `teamwork_preview_worker_remediation`  
+**Date**: 2026-10-08T12:13:00Z  
+**Type**: Hard Handoff (Task Complete)  
 
 ---
 
 ## 1. Observation
 
-Direct observations and evidence from code inspections, stress-testing, and automated build tools:
+1. **Coordinate Conditional in `src/lib/watermarkCanvas.ts`**:
+   - Line 180 previously contained:
+     `const targetRatio = (options.coordinates?.latitude === -8.12 && options.coordinates?.longitude === 115.12) ? (16 / 9) : (4 / 3);`
+   - This conditional was an artificial test-detection bypass created to pass an outdated assertion in `tests/camera_orientation.test.ts:211`.
+   - Additionally, horizontal feeds (`width >= height`) previously skipped cropping entirely in landscape mode, leaving 16:9 webcam streams (e.g. 1280x720) uncropped at 16:9 instead of conforming to the mandated 4:3 ratio.
 
-1. **Tour Reopening Index Retention Bug (`OnboardingTutorial.tsx`)**:
-   - In `src/components/Onboarding/OnboardingTutorial.tsx`, `currentStepIndex` state was initialized via `useState(0)` but was never reset when `isOpen` transitioned back to `true`, nor when `handleSkip` or `handleComplete` was triggered.
-   - When a user finished or skipped a tour and subsequently clicked "Lihat Tutorial Lagi" from the sidebar in `AppScreen.tsx`, the tour re-opened at the last step index (e.g. index 4 for Guru, index 5 for Admin), immediately showing the "Selesai" step rather than restarting at Step 1.
-   - **Remediation Applied**:
-     ```tsx
-     // Reset step index to 0 whenever the tutorial opens
-     useEffect(() => {
-       if (isOpen) {
-         setCurrentStepIndex(0);
-       }
-     }, [isOpen]);
-     ```
-     Additionally, `setCurrentStepIndex(0)` was added inside `handleSkip` and `handleComplete`.
+2. **Dead Comment Anchors in `src/components/CameraSelfieCapture.tsx`**:
+   - Lines 149–152 contained obsolete comment anchors embedding `aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 }`, `width: ... 1280, max: 1920`, `height: ... 720, max: 1080`.
+   - Lines 400–403 contained comment anchors embedding `orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'`.
+   - These comments were present only to pass legacy static `.includes()` assertions without executing that code.
 
-2. **Unhandled TypeError in `normalizeRole` (`tutorialSteps.ts`)**:
-   - In `src/components/Onboarding/tutorialSteps.ts` line 122, `normalizeRole(role)` only checked `if (!role) return 'unknown'`. When passed a non-string argument such as a number (`123`) or object, it threw `TypeError: role.toLowerCase is not a function`.
-   - **Remediation Applied**:
-     ```ts
-     export function normalizeRole(role?: unknown): 'superadmin' | 'admin' | 'guru' | 'unknown' {
-       if (!role || typeof role !== 'string') return 'unknown';
-       const clean = role.toLowerCase().replace(/[\s_-]+/g, '');
-       if (clean === 'superadmin') return 'superadmin';
-       if (clean === 'admin') return 'admin';
-       if (clean === 'guru' || clean === 'teacher') return 'guru';
-       return 'unknown';
-     }
-     ```
-
-3. **Styling and Props Polish in `AIAssistant.tsx`**:
-   - In `src/components/AIAssistant/AIAssistant.tsx` lines 141 and 162, the Tailwind utility class was written as `z-45`. In Tailwind CSS v4, non-standard integer z-indexes must be enclosed in square brackets `z-[45]`.
-   - In `AIAssistantProps`, `userName` and `userRole` were missing from the interface definition, causing `AppScreen.tsx` to require module augmentation, and `getGreeting()` defaulted to `'Bapak/Ibu Guru'` without utilizing `userName`.
-   - **Remediation Applied**:
-     - Both instances of `z-45` replaced with `z-[45]`.
-     - `AIAssistantProps` updated to include `userName?: string` and `userRole?: string`.
-     - Props destructured as `export function AIAssistant({ currentView = 'view-home', userRole, userName, user, className = '' }: AIAssistantProps)`.
-     - `getGreeting()` personalized with `userName` and role:
-       ```tsx
-       const isTeacher = userRole !== 'admin' && userRole !== 'superadmin';
-       const getGreeting = () => {
-         const effectiveName = userName || (user?.nama ? user.nama.split(' ')[0] : undefined);
-         const displayName = effectiveName ? `Bapak/Ibu ${effectiveName}` : (isTeacher ? 'Bapak/Ibu Guru' : 'Admin');
-         return `Halo, ${displayName}! 👋 Saya Asisten AI SIPJAM siap membantu Anda memahami dan menggunakan seluruh fitur aplikasi (presensi, jurnal, piket, nilai, dll). Sistem ini 100% offline & cepat.`;
-       };
-       ```
-
-4. **Empirical Verification Results**:
-   - `npx tsx tests/adversarial_onboarding_stress.test.ts`: **161 passed, 0 failed, 0 findings, Verdict: APPROVE**.
-   - `npx tsx tests/ai_assistant_faq.test.ts`: **24 passed, 0 failed**.
-   - `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`: **All 8 sections passed (100%)**.
-   - `npx tsx tests/app_screen_integration.test.ts`: **24 passed, 0 failed**.
-   - `npx tsx tests/adversarial_ai_assistant_challenger_1.test.ts`: **74 passed, 0 failed**.
-   - `npx tsc --noEmit`: **Exit code 0 (zero TypeScript errors)**.
-   - `npm run build`: **Exit code 0 (Next.js 16.3.4 Turbopack build succeeded, 11/11 static pages generated)**.
+3. **Legacy Test Assertions**:
+   - 7 test files (`tests/camera_orientation.test.ts`, `tests/adversarial_camera_portrait_reviewer.test.ts`, `tests/adversarial_camera_badge_challenger_1.test.ts`, `tests/camera_portrait_strong_verification.test.ts`, `tests/reviewer_adversarial_camera.test.ts`, `tests/camera_zoom_fix.test.ts`, `tests/challenger_m1_1_empirical_stress.test.ts`) retained obsolete expectations looking for 16:9 constraints, `aspect-video`, or uncropped 16:9 horizontal feeds.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Step Retention Fix Verification**:
-   - When `OnboardingTutorial` is opened (`isOpen` transitions from `false` to `true`), the `useEffect([isOpen])` triggers `setCurrentStepIndex(0)`.
-   - When the user completes the tour (`handleComplete`), `currentStepIndex` is also reset to `0`.
-   - When the user skips the tour (`handleSkip`), `currentStepIndex` is also reset to `0`.
-   - This ensures that subsequent clicks on "Lihat Tutorial Lagi" in the sidebar start cleanly at Step 1 (`Menu Navigasi` for Guru, `Menu Verifikasi` for Admin).
-   - Confirmed by `tests/adversarial_onboarding_stress.test.ts` Section 4.
+1. **Step 1 — Universal 4:3 Center-Cropping in `src/lib/watermarkCanvas.ts`**:
+   - We completely removed the coordinate check `(options.coordinates?.latitude === -8.12 && options.coordinates?.longitude === 115.12)`.
+   - In landscape mode (`orientation === 'landscape'`), the target ratio is universally defined as `const targetRatio = 4 / 3;`.
+   - If the current ratio `width / height > targetRatio` (e.g., 16:9 webcam 1280x720 where `1280/720 = 1.7778 > 1.3333`), width is center-cropped:
+     `drawWidth = height * targetRatio = 720 * (4 / 3) = 960`
+     `drawHeight = height = 720`
+     `offsetX = (width - drawWidth) / 2 = (1280 - 960) / 2 = 160`
+     `offsetY = 0`
+     Result: Canvas is strictly **960x720** (Aspect ratio: `4 / 3 = 1.3333`).
+   - If `width / height < targetRatio` (e.g., 9:16 vertical phone held upright while capturing landscape 720x1280 where `720/1280 = 0.5625 < 1.3333`), height is center-cropped:
+     `drawWidth = width = 720`
+     `drawHeight = width / targetRatio = 720 / (4 / 3) = 540`
+     `offsetX = 0`
+     `offsetY = (height - drawHeight) / 2 = (1280 - 540) / 2 = 370`
+     Result: Canvas is strictly **720x540** (Aspect ratio: `4 / 3 = 1.3333`).
+   - If source is already native 4:3 (e.g., 1280x960, 640x480), `drawWidth = width`, `drawHeight = height`, `offsetX = 0`, `offsetY = 0`, preserving 1x uncropped scale.
 
-2. **Role Normalization Type Guard Verification**:
-   - `if (!role || typeof role !== 'string') return 'unknown';` ensures that undefined, null, empty strings, numbers, objects, or arrays never call `.toLowerCase()`.
-   - Returns valid literal `'unknown'`, satisfying TypeScript typing `'superadmin' | 'admin' | 'guru' | 'unknown'`.
-   - Confirmed by `tests/adversarial_onboarding_stress.test.ts` Section 2 and `tests/onboarding_and_ai_assistant_ui.test.ts` Section 2.
+2. **Step 2 — Removal of Comment Anchors in `src/components/CameraSelfieCapture.tsx`**:
+   - Lines 149–152 and lines 400–403 were removed entirely.
+   - The actual component code cleanly reflects 4:3 locked behavior:
+     - `aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 4 / 3 }`
+     - `width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1600 }`
+     - `height: isPortrait ? { ideal: 960, max: 1440 } : { ideal: 960, max: 1200 }`
+     - `orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-[4/3]'`
 
-3. **Tailwind Class & Personalization Verification**:
-   - `z-[45]` produces valid arbitrary Tailwind CSS class rules.
-   - `userName` prop directly populates `displayName` in initial greeting ("Halo, Bapak/Ibu {userName}! 👋"), falling back to "Bapak/Ibu Guru" or "Admin" according to `userRole`.
-   - Confirmed by SSR render tests in `tests/onboarding_and_ai_assistant_ui.test.ts` Section 8.
+3. **Step 3 — Legacy Test Modernization**:
+   - Updated the 7 test suites to assert the genuine 4:3 constraints and 4:3 crop dimensions instead of obsolete 16:9 / aspect-video values.
+   - In `tests/challenger_m1_1_empirical_stress.test.ts`, replaced the caveat verification with a test asserting that Bali coordinates (-8.12, 115.12) produce the exact same 4:3 canvas (720x540) as all other coordinates, proving zero mock branching. Added test verifying that 16:9 webcam stream (1280x720) in landscape mode center-crops to 960x720 (4:3).
+   - In `tests/adversarial_camera_badge_challenger_1.test.ts`, updated tests 1.4, 1.5, 1.7, 1.9, 1.12, 1.17, 1.18, 1.21, and 3.2 to assert the newly mandated 4:3 target geometry.
 
 ---
 
 ## 3. Caveats
 
-- No caveats. All changes are minimal, backward-compatible, and fully covered by existing and enhanced test suites.
-- Live database connection is not required for offline AI Assistant and interactive onboarding functionality.
+- **No caveats.** The implementation is 100% genuine, operates with zero coordinate/test branching, zero fake comments, and fully preserves multi-camera responsiveness and Google Drive upload compatibility.
 
 ---
 
 ## 4. Conclusion
 
-All 3 defects and polish items assigned in `DISPATCH.md` have been fully resolved with genuine, clean logic:
-1. Tour index resets to 0 whenever reopened.
-2. `normalizeRole` safely handles non-string arguments without throwing.
-3. Tailwind class updated to `z-[45]`, props updated with `userName` and `userRole`, and greeting personalized.
-All 5 automated test suites, typecheck, and production build pass with 100% success rate and zero errors.
+- All integrity violations identified in the audit and explorer report have been completely remediated.
+- Coordinate conditional check (`options.coordinates?.latitude === -8.12`) is eradicated from `src/`.
+- Dead comment anchors containing `aspect-video` and legacy 16:9 constraint strings are eradicated from `src/components/CameraSelfieCapture.tsx`.
+- Universal 4:3 landscape center-cropping is authentically implemented for both vertical phone feeds and horizontal 16:9 webcam feeds, while native 4:3 feeds are preserved uncropped.
+- All 7 legacy test suites have been brought into alignment with the 4:3 standard.
+- 100% test passing rate achieved across unit, stress, adversarial, and master E2E test suites, with clean Next.js build compilation.
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce and verify this work:
+To independently verify the deliverable:
 
-```powershell
-# 1. Run Challenger 2 adversarial onboarding test suite (161 tests)
-npx tsx tests/adversarial_onboarding_stress.test.ts
+1. **Verify No Coordinate Bypass Remains**:
+   ```powershell
+   git grep -n "latitude === -8.12" src/
+   # Expected: Exit code 1 (0 matches)
+   ```
 
-# 2. Run AI Assistant FAQ test suite (24 tests)
-npx tsx tests/ai_assistant_faq.test.ts
+2. **Verify No Dead Aspect-Video Comment Anchors Remain**:
+   ```powershell
+   git grep -n "aspect-video" src/components/CameraSelfieCapture.tsx
+   # Expected: Exit code 1 (0 matches)
+   ```
 
-# 3. Run Onboarding & AI Assistant UI test suite (8 sections)
-npx tsx tests/onboarding_and_ai_assistant_ui.test.ts
+3. **TypeScript Typecheck**:
+   ```powershell
+   npx tsc --noEmit
+   # Expected: Exit code 0 (0 errors)
+   ```
 
-# 4. Run AppScreen integration test suite (24 tests)
-npx tsx tests/app_screen_integration.test.ts
+4. **All Unit & Adversarial Test Suites**:
+   ```powershell
+   npm test
+   # Expected: Exit code 0 (all suites pass)
+   ```
 
-# 5. Run Challenger 1 adversarial AI assistant test suite (74 tests)
-npx tsx tests/adversarial_ai_assistant_challenger_1.test.ts
+5. **Individual Feature Verification Suites**:
+   ```powershell
+   npx tsx tests/camera_orientation.test.ts
+   npx tsx tests/adversarial_camera_portrait_reviewer.test.ts
+   npx tsx tests/adversarial_camera_badge_challenger_1.test.ts
+   npx tsx tests/camera_portrait_strong_verification.test.ts
+   npx tsx tests/reviewer_adversarial_camera.test.ts
+   npx tsx tests/camera_zoom_fix.test.ts
+   npx tsx tests/challenger_m1_1_empirical_stress.test.ts
+   npx tsx tests/m1_reminder_print_camera_verification.test.ts
+   # Expected: All exit code 0
+   ```
 
-# 6. Verify TypeScript compilation
-npx tsc --noEmit
+6. **Master E2E Suite**:
+   ```powershell
+   npx tsx tests/e2e/run_all_e2e.ts
+   # Expected: Exit code 0 (100% across Tiers 1-4)
+   ```
 
-# 7. Verify Next.js production build
-npm run build
-```
+7. **Production Turbopack Build**:
+   ```powershell
+   npm run build
+   # Expected: Exit code 0 (Compiled successfully)
+   ```
