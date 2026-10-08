@@ -1,47 +1,50 @@
-# Sentinel Handoff Report — Presensi Siswa: Sinkronisasi Dua Arah & Penghapusan Konfigurasi Superadmin
+# Handoff Report: Sentinel — Comprehensive Teacher Account Updates
 
-## Observation
-User meminta 3 requirements utama untuk presensi siswa:
-1. **R1. Sinkronisasi Dua Arah:** Ketika kode QR discan, data harus otomatis mengisi form input manual. Sebaliknya, ketika pengguna mengetik data secara manual, sistem harus menyesuaikan state pencarian seolah-olah dipindai dari QR.
-2. **R2. Hapus Pengaturan Mode Presensi oleh Superadmin:** Superadmin tidak perlu lagi mengatur mode presensi siswa secara eksplisit, karena kedua mode (QR dan Manual) sekarang tersedia dan sinkron bersamaan. Opsi konfigurasi dihapus dari UI superadmin dan logika terkait.
-3. **R3. Pertahankan Logika Presensi Saat Ini:** Mekanisme submit data presensi ke database tetap menggunakan flow yang sama (`recordPresensiSiswa`), hanya pengisian field UI yang saling tersinkronisasi.
+## 1. Observation
+- **User Request**: Comprehensive overhaul of teacher account functionality in `sipjam-app` spanning:
+  1. UI/UX & Camera (R1): 30-min reminder snooze, remove print orientation setting, 4:3 camera aspect ratio + Google Drive upload optimization.
+  2. Teacher Attendance & Admin Routing (R2): Multi-state attendance transitions ("Hadir di Sekolah" <-> "Dinas Luar"), auto-checkout flagging for missed departures, admin routing for multi-day sick (>= 3 days) and leave (> 3 days), GPS coordinates attached to printed documents with geolocation error alerts.
+  3. Student Attendance & Piket Flow (R3): Role-based access control, arrival sync from Piket to Mapel with automatic truancy detection, lease-based concurrency locking on Piket forms.
+  4. Academic Updates (R4): Kurikulum Merdeka Capaian Pembelajaran (CP) narrative synthesis, dedicated "Rapor" menu & view for Wali Kelas, tutorial updates.
+  5. E2E Verification & Quality (M5): Comprehensive E2E test suites covering all 5 Acceptance Criteria, 100% test pass rate, clean Turbopack build, and automatic git push.
+- **Auditor Verification**:
+  - Independent post-victory auditor (`victory_auditor_26`) executed a 3-phase audit with zero shared context from the implementation swarm.
+  - Final Verdict: **VICTORY CONFIRMED**.
+  - All test suites (`npx tsc --noEmit`, `npm test`, `npx tsx tests/e2e/run_all_e2e.ts`, `npm run build`) passed independently with 100% pass rate.
+  - All commits pushed to `origin/main` on clean working tree.
 
-Sesuai Routing Decision Table:
-- Tugas ini adalah satu perbaikan terisolasi dengan permintaan eksplisit tim kecil ("Requested team: Small focused team", "This is a single self-contained fix; keep it small and focused.").
-- Dipilih rute **SWE Light** (`teamwork_preview_swe`).
+## 2. Logic Chain
+- **Milestone 1 (UI/UX & Camera - Commit 277b49e)**:
+  - `TeacherReminderManager.tsx`: Added 30-minute snooze stored per-user in localStorage (`sipjam_reminder_snooze_until_${userId}`) with remaining time calculation and banner/notification suppression.
+  - `PrintHeader.tsx`: Removed print orientation toggle buttons, delegating layout control to the browser print dialog.
+  - `watermarkCanvas.ts` & `CameraSelfieCapture.tsx`: Enforced clean 4:3 center-crop via canvas mathematics and dynamic 4:3 preview dimensions with Google Drive compression.
+- **Milestone 2 (Teacher Attendance & Admin Routing - Commit ee1ce69)**:
+  - `GuruPresensi.tsx`: Added multi-state attendance transitions for Hadir di Sekolah and Dinas Luar with target directory routing.
+  - `attendanceAlpa.ts`: Added `evaluateAndApplyAutoCheckout` running post-cutoff, exempting multi-day approved leaves, and marking missed checkouts as `is_auto_checkout: true`.
+  - `AdminVerifView.tsx`: Integrated multi-day threshold checks (sakit >= 3 days, izin > 3 days) triggering required admin verification.
+  - `printWithGps.ts`: Attached GPS coordinates to printable views with geolocation error alerts.
+- **Milestone 3 (Student Attendance & Piket Concurrency - Commit 4030a93)**:
+  - `src/lib/piketLock.ts` & `PiketView.tsx`: Implemented lease-based concurrency lock (5-minute lease with heartbeat refresh and auto-release) disabling editing and displaying lock banner when occupied.
+  - `GuruJurnal.tsx`: Integrated gate-to-mapel truancy detection flagging students marked Hadir at the gate but Alpa in class with audit trail logging.
+- **Milestone 4 (Academic Updates & Kurikulum Merdeka - Commits ae44fb3, e1575f2)**:
+  - `GradebookView.tsx`: Hardened `generateKurikulumMerdekaDeskripsi` for Capaian Pembelajaran narrative synthesis across all boundary scores, single/multi TPs, and ties.
+  - `RaporView.tsx`: Created comprehensive Wali Kelas report card view with grades, attendance, extracurriculars, and achievements.
+  - `AppScreen.tsx`: Enforced role-based access control and navigation intercept for Rapor menu.
+  - `tutorialSteps.ts` & `tutorialData.ts`: Updated onboarding guides and feature tours.
+- **Milestone 5 (E2E Test Suites & Verification - Commits be53dac, 9aadcc6, 4e463fe)**:
+  - `tests/e2e/acceptance_criteria_m5.test.ts`: Authored comprehensive test suite with 51 assertions covering all 5 Acceptance Criteria.
+  - `tests/e2e/run_all_e2e.ts`: Master runner executed with 188/188 assertions passing (100%).
+  - Full suite: 0 TypeScript errors, 27/27 test suites passing, Next.js 16.3.4 Turbopack build successful.
 
-Pelaksanaan:
-- Dijalankan oleh orchestrator `swe_16` melalui siklus SWE Light:
-  - Implementasi awal: `PiketView.tsx` menyatukan kiosk QR scanner dan daftar manual siswa dalam satu tampilan sinkron; `SuperadminView.tsx` menghapus kontrol konfigurasi `mode_presensi_siswa`.
-  - Reviewer Round 1: Isolasi buffer scanner barcode hardware, penanganan pencarian lintas kelas.
-  - Reviewer Round 2: Isolasi burst newline/carriage return hardware scanner, parameter query eksplisit, pencegahan balapan closure asinkron, dan penjaga double-submit.
-  - Reviewer Round 3: Sinkronisasi kartu feedback saat input dibersihkan/diedit, in-memory mutex lock (`isSubmittingPresensiRef`) untuk mencegah double-submission mikro-task, dan integrasi atribut `qr_code` siswa pada filter memori.
-- Audit kemenangan independen (`victory_auditor_25`) melakukan audit 3 fase yang bersifat BLOCKING dan mengeluarkan putusan resmi: **VICTORY CONFIRMED**.
-- Seluruh subagent dan cron telah dibersihkan (`manage_subagents(action="kill_all")` dan `manage_task(action="kill")`).
+## 3. Caveats
+- Production database schema migrations (`20261008_m2_presensi_guru_approval_autocheckout.sql` and `20261008_m3_piket_form_lock.sql`) have been committed in `supabase/migrations/` and should be applied to the live Supabase instance if not yet executed there.
 
-## Logic Chain
-1. Permintaan user dicatat secara verbatim di `.agents/teamwork/ORIGINAL_REQUEST.md`.
-2. Jalur eksekusi dipilih secara deterministik: SWE Light (`teamwork_preview_swe`).
-3. Sentinel memonitor jalannya pengerjaan melalui cron progress reporting dan liveness check.
-4. Ketika orchestrator mengklaim kemenangan, Sentinel meluncurkan auditor independen `victory_auditor_25` (`464b5cec-2404-4dd3-a72a-bcb2e6bd87e0`).
-5. Auditor independen memverifikasi Phase A (Timeline & Provenance), Phase B (Forensic Integrity & Anti-Cheating), dan Phase C (Independent Test Execution).
-6. Hasil verifikasi auditor: **VICTORY CONFIRMED**.
-7. Pembersihan tuntas dilakukan pada seluruh subagent dan cron.
+## 4. Conclusion
+All user requirements have been fulfilled, verified through adversarial review panels and independent victory auditing with zero integrity shortcuts. All commits are committed and pushed to `origin/main`.
 
-## Caveats
-- Hardware scanner USB yang beroperasi sebagai keyboard wedge standar (mengirimkan string karakter diakhiri `Enter`/`\n`/`\r`) didukung penuh secara native di browser. Hardware scanner berbasis port serial COM khusus (RS-232 tanpa emulasi keyboard HID) membutuhkan driver OS lokal dan berada di luar lingkup Web API browser.
-
-## Conclusion
-Pekerjaan telah selesai 100%, seluruh kriteria penerimaan terpenuhi, tidak ada regresi, dan telah lolos audit kemenangan independen secara obyektif.
-
-## Verification Method
-Auditor independen `victory_auditor_25` menjalankan dan memverifikasi:
-- `npx tsc --noEmit`: 0 errors
-- `npm run build`: Turbopack production build succeeded
-- `npx tsx tests/presensi_siswa_sync_and_superadmin.test.ts`: 11/11 passed
-- `npx tsx tests/adversarial_presensi_sync_reviewer.test.ts`: 12/12 passed
-- `npx tsx tests/adversarial_presensi_sync_reviewer_r2.test.ts`: 10/10 passed
-- `npx tsx tests/adversarial_presensi_sync_reviewer_r3.test.ts`: 12/12 passed
-- `npm test`: 27/27 test suites passed (118 individual automated checks passed)
-- `npm run test:e2e`: 111/111 assertions across 4 tiers passed
-Semua pengujian 100% PASS.
+## 5. Verification Method
+- Independent Victory Auditor command executed cleanly:
+  ```powershell
+  npx tsc --noEmit && npm test && npx tsx tests/e2e/run_all_e2e.ts && npm run build
+  ```
+- Git status: `origin/main` is up to date, clean working tree.
