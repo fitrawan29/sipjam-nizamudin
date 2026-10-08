@@ -48,12 +48,17 @@ Conclude Milestone 2, execute Milestones 3, 4, 5 with full verification and fore
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| worker_o17_m2 | teamwork_preview_worker | Worker M2 Finalization | in-progress | ffb2e904-eeaa-4720-b81d-88a304801415 |
+| worker_o17_m2 | teamwork_preview_worker | Worker M2 Finalization | completed | ffb2e904-eeaa-4720-b81d-88a304801415 |
+| reviewer_o17_m2_1 | teamwork_preview_reviewer | Reviewer 1 M2 | in-progress | 4dcfb680-dbf8-40e4-92e9-94c39e697132 |
+| reviewer_o17_m2_2 | teamwork_preview_reviewer | Reviewer 2 M2 | in-progress | f35224c0-e57a-4b2f-b9a8-9d9c2df584b1 |
+| challenger_o17_m2_1 | teamwork_preview_challenger | Challenger 1 M2 | in-progress | b58a4292-ad81-484e-94c1-5f9e14f9d6ae |
+| challenger_o17_m2_2 | teamwork_preview_challenger | Challenger 2 M2 | in-progress | dd3a5447-d847-4f8b-95b1-6847573b1679 |
+| auditor_o17_m2_1 | teamwork_preview_auditor | Forensic Auditor M2 | in-progress | f40aeecd-961a-4c4c-8d09-97a6ecb15fed |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: ffb2e904-eeaa-4720-b81d-88a304801415
+- Spawn count: 6 / 16
+- Pending subagents: 4dcfb680-dbf8-40e4-92e9-94c39e697132, f35224c0-e57a-4b2f-b9a8-9d9c2df584b1, b58a4292-ad81-484e-94c1-5f9e14f9d6ae, dd3a5447-d847-4f8b-95b1-6847573b1679, f40aeecd-961a-4c4c-8d09-97a6ecb15fed
 - Predecessor: orchestrator_16
 - Successor: not yet spawned
 
