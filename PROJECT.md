@@ -35,9 +35,9 @@
 | 6 | F6: Auto-Checkout Flagging | Detect uncompleted checkouts past cutoff and flag auto-checkout | M2 | Survey 2 | DONE |
 | 7 | F7: Long-Term Sick & Leave Admin Routing | Route sick >=3 days and leave >3 days to Admin dashboard for approval | M2 | Survey 2 | DONE |
 | 8 | F8: GPS Coordinates on Printed Documents | Auto-attach GPS to printed documents with alert if GPS is blocked | M2 | Survey 2 | DONE |
-| 9 | F9: Student Attendance RBAC | Strict RBAC for student attendance across Mapel, Wali Kelas, and Piket | M3 | Survey 3 | PLANNED |
-| 10 | F10: Gate-to-Mapel Sync & Truancy Detection | Synchronize gate check-ins and auto-flag truancy when Piket Hadir but Mapel Alpa | M3 | Survey 3 | PLANNED |
-| 11 | F11: Piket Form Concurrency Lock | Concurrency lock preventing double entry by simultaneous Piket users | M3 | Survey 3 | PLANNED |
+| 9 | F9: Student Attendance RBAC | Strict RBAC for student attendance across Mapel, Wali Kelas, and Piket | M3 | Survey 3 | DONE |
+| 10 | F10: Gate-to-Mapel Sync & Truancy Detection | Synchronize gate check-ins and auto-flag truancy when Piket Hadir but Mapel Alpa | M3 | Survey 3 | DONE |
+| 11 | F11: Piket Form Concurrency Lock | Concurrency lock preventing double entry by simultaneous Piket users | M3 | Survey 3 | DONE |
 | 12 | F12: Kurikulum Merdeka CP Calculations | Capaian Pembelajaran narrative descriptions computed from highest/lowest TP | M4 | Survey 3 | PLANNED |
 | 13 | F13: Wali Kelas "Rapor" Menu | Dedicated "Rapor" navigation item for teachers assigned as Wali Kelas | M4 | Survey 3 | PLANNED |
 | 14 | F14: In-App Tutorial Updates | Update onboarding tour and guide cards for all new flows | M4 | Survey 3 | PLANNED |
@@ -49,7 +49,7 @@
 |---|------|-------|-------------|--------|
 | M1 | UI/UX & Camera Updates (R1) | Notification 30-min snooze, print orientation removal, 4:3 camera lock, Google Drive upload | none | DONE |
 | M2 | Teacher Attendance & Admin Verification (R2) | Multi-state flows, auto-checkout, sick/leave admin routing, GPS print footer | M1 | DONE |
-| M3 | Student Attendance & Piket Concurrency (R3) | RBAC enforcement, gate sync & truancy detection, Piket form concurrency lock | M2 | PLANNED |
+| M3 | Student Attendance & Piket Concurrency (R3) | RBAC enforcement, gate sync & truancy detection, Piket form concurrency lock | M2 | DONE |
 | M4 | Academic Merdeka, Rapor Menu & Tutorials (R4) | Kurikulum Merdeka CP calculations, Wali Kelas Rapor menu, tutorial updates | M3 | PLANNED |
 | M5 | E2E Testing, Adversarial Verification & Git Delivery | All acceptance criteria tests in tests/e2e/, npm test, tsc, npm run build, git push | M1, M2, M3, M4 | PLANNED |
 

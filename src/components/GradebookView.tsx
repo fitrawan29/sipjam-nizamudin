@@ -8,6 +8,79 @@ import { PrintHeader, PrintSignature, PrintOrientationToggle } from './PrintHead
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { TujuanPembelajaran, AsesmenKolom, NilaiSiswa } from '@/types/database';
 
+export interface CapaianDeskripsiResult {
+  nilaiRapor: number | null;
+  predikat: string;
+  predikatBadge: string;
+  highestTp: { kode: string; deskripsi: string; score: number } | null;
+  lowestTp: { kode: string; deskripsi: string; score: number } | null;
+  deskripsiCapaian: string;
+}
+
+export function generateKurikulumMerdekaDeskripsi(
+  studentName: string,
+  tpScores: { kode: string; deskripsi: string; score: number | null }[]
+): CapaianDeskripsiResult {
+  const validScores = tpScores.filter(
+    (t): t is { kode: string; deskripsi: string; score: number } =>
+      t.score !== null && t.score !== undefined && !isNaN(t.score)
+  );
+
+  if (validScores.length === 0) {
+    return {
+      nilaiRapor: null,
+      predikat: '-',
+      predikatBadge: 'text-gray-400',
+      highestTp: null,
+      lowestTp: null,
+      deskripsiCapaian: 'Belum ada data penilaian capaian pembelajaran.'
+    };
+  }
+
+  const finalScore = parseFloat(
+    (validScores.reduce((acc, t) => acc + t.score, 0) / validScores.length).toFixed(1)
+  );
+
+  let predikat = 'Perlu Bimbingan (D)';
+  let predikatBadge = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+  if (finalScore >= 85) {
+    predikat = 'Sangat Baik (A)';
+    predikatBadge = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+  } else if (finalScore >= 75) {
+    predikat = 'Baik (B)';
+    predikatBadge = 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+  } else if (finalScore >= 65) {
+    predikat = 'Cukup (C)';
+    predikatBadge = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+  }
+
+  // Sort valid TP scores descending
+  const sorted = [...validScores].sort((a, b) => b.score - a.score);
+  const highest = sorted[0];
+  const lowest = sorted[sorted.length - 1];
+
+  let deskripsi = '';
+  const isAllHigh = lowest.score >= 85;
+  const isAllLow = highest.score < 70;
+
+  if (isAllHigh || sorted.length === 1) {
+    deskripsi = `Menunjukkan penguasaan yang sangat baik dalam seluruh capaian pembelajaran, terutama dalam ${highest.deskripsi}.`;
+  } else if (isAllLow) {
+    deskripsi = `Perlu bimbingan dan pendampingan lebih lanjut dalam menguasai seluruh capaian pembelajaran, khususnya dalam ${lowest.deskripsi}.`;
+  } else {
+    deskripsi = `Menunjukkan penguasaan yang baik dalam ${highest.deskripsi}, namun perlu bimbingan dan peningkatan dalam ${lowest.deskripsi}.`;
+  }
+
+  return {
+    nilaiRapor: finalScore,
+    predikat,
+    predikatBadge,
+    highestTp: highest,
+    lowestTp: lowest,
+    deskripsiCapaian: deskripsi
+  };
+}
+
 interface GradebookViewProps {
   user: any;
 }
@@ -1151,33 +1224,21 @@ export default function GradebookView({ user }: GradebookViewProps) {
       if (score !== null) validTpScores.push(score);
     });
 
-    const semesterFinal = validTpScores.length > 0
-      ? parseFloat((validTpScores.reduce((a, b) => a + b, 0) / validTpScores.length).toFixed(1))
-      : null;
-
-    let predikat = '-';
-    let predikatBadge = 'text-gray-400';
-    if (semesterFinal !== null) {
-      if (semesterFinal >= 85) {
-        predikat = 'Sangat Baik (A)';
-        predikatBadge = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
-      } else if (semesterFinal >= 75) {
-        predikat = 'Baik (B)';
-        predikatBadge = 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
-      } else if (semesterFinal >= 65) {
-        predikat = 'Cukup (C)';
-        predikatBadge = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
-      } else {
-        predikat = 'Perlu Bimbingan (D)';
-        predikatBadge = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
-      }
-    }
+    const tpScoresList = tpList.map(tp => ({
+      kode: tp.kode_tp,
+      deskripsi: tp.deskripsi,
+      score: tpResults[tp.id] ?? null
+    }));
+    const cpAnalysis = generateKurikulumMerdekaDeskripsi(nisn, tpScoresList);
 
     return {
       tpResults,
-      semesterFinal,
-      predikat,
-      predikatBadge,
+      semesterFinal: cpAnalysis.nilaiRapor,
+      predikat: cpAnalysis.predikat,
+      predikatBadge: cpAnalysis.predikatBadge,
+      deskripsiCapaian: cpAnalysis.deskripsiCapaian,
+      highestTp: cpAnalysis.highestTp,
+      lowestTp: cpAnalysis.lowestTp,
     };
   }, [gradesMap, tpList, allSemesterColumns]);
 
@@ -2184,7 +2245,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
                       <th className="py-2.5 px-3 w-32 text-center font-black bg-amber-100/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-r border-gray-200 dark:border-gray-700">
                         Nilai Rapor
                       </th>
-                      <th className="py-2.5 px-3 w-36 text-center">Predikat Semester</th>
+                      <th className="py-2.5 px-3 w-36 text-center border-r border-gray-200 dark:border-gray-700">Predikat Semester</th>
+                      <th className="py-2.5 px-3 min-w-[280px] text-left">Deskripsi Capaian Pembelajaran</th>
                     </tr>
                   </thead>
 
@@ -2238,7 +2300,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           </td>
 
                           {/* Predikat */}
-                          <td className="py-2.5 px-3 text-center">
+                          <td className="py-2.5 px-3 text-center border-r border-gray-200 dark:border-gray-700">
                             {stats.predikat !== '-' ? (
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${stats.predikatBadge}`}>
                                 {stats.predikat}
@@ -2246,6 +2308,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
                             ) : (
                               <span className="text-gray-400">-</span>
                             )}
+                          </td>
+
+                          {/* Deskripsi Capaian Pembelajaran */}
+                          <td className="py-2.5 px-3 text-left whitespace-normal text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed max-w-sm">
+                            {stats.deskripsiCapaian}
                           </td>
                         </tr>
                       );

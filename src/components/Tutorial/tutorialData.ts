@@ -39,18 +39,21 @@ export const TUTORIAL_DATA: TutorialItem[] = [
     title: 'Presensi Guru',
     icon: 'fa-right-to-bracket',
     role: 'guru',
-    summary: 'Pencatatan kehadiran mandiri (Datang & Pulang) dengan kamera potret anti-zoom, deteksi radius geofence GPS, dan pengajuan izin/sakit/dinas luar.',
+    summary: 'Pencatatan kehadiran mandiri multi-state ("Hadir di Sekolah" vs "Dinas Luar") dengan kamera standar 4:3, deteksi radius geofence GPS, auto-checkout flagging, fitur tunda pengingat (30-min snooze), serta routing otomatis cuti/sakit berdurasi panjang ke dashboard admin.',
     prerequisites: 'Izinkan akses kamera dan lokasi (GPS) pada browser/perangkat Anda.',
     steps: [
       'Buka menu Presensi Guru pada rentang jam presensi yang telah ditetapkan sekolah.',
-      'Pilih status presensi: Hadir Datang, Hadir Pulang, Izin, Sakit, Izin Terlambat, atau Dinas Luar.',
-      'Untuk Hadir Datang/Pulang: Ambil foto selfie tegak (kamera otomatis mode portrait 1:1 tanpa zoom) dalam radius geofence sekolah.',
-      'Untuk Izin/Sakit/Izin Terlambat/Dinas Luar: Unggah foto surat keterangan pendukung dan tuliskan alasan secara jelas.',
-      'Klik tombol "Kirim Presensi". Jika koneksi terputus, sistem menyimpan ke antrean offline lokal dan menyinkronkan otomatis saat online kembali.'
+      'Pilih status presensi: Hadir Datang (di sekolah), Dinas Luar, Hadir Pulang, Izin, Sakit, atau Izin Terlambat.',
+      'Untuk Hadir Datang/Pulang: Ambil foto selfie tegak (kamera rasio 4:3 portrait) dalam radius geofence sekolah.',
+      'Untuk Dinas Luar: Ambil foto selfie di lokasi tugas luar kedinasan beserta keterangan agenda.',
+      'Untuk Izin/Sakit: Tentukan durasi hari dan unggah foto surat keterangan. Sakit >=3 hari dan izin >3 hari otomatis diteruskan ke persetujuan Admin.',
+      'Gunakan fitur "Tunda Pengingat (30 Menit)" untuk membisukan notifikasi presensi sementara waktu jika sedang bertugas mendesak.',
+      'Klik tombol "Kirim Presensi". Jika terlupa checkout melewati batas cutoff, sistem secara otomatis menandai status auto-checkout.'
     ],
     keyTips: [
       'Pastikan GPS akurat dan tidak menggunakan aplikasi pemalsu lokasi (Fake GPS / Mock Location).',
-      'Pengajuan Izin, Sakit, dan Izin Terlambat akan berstatus "Menunggu Verifikasi" hingga diverifikasi oleh Administrator sekolah.',
+      'Pengajuan Sakit >=3 hari dan Izin >3 hari berstatus "Menunggu Verifikasi" hingga disetujui Admin sekolah.',
+      'Toggle 30-min snooze di TeacherReminderManager menyimpan status penundaan di perangkat guru selama 30 menit.',
       'Tombol Hadir Pulang hanya aktif setelah jam kepulangan resmi sekolah tiba.'
     ]
   },
@@ -67,12 +70,13 @@ export const TUTORIAL_DATA: TutorialItem[] = [
       'Isi formulir terstruktur: Tujuan Pembelajaran (wajib) dan KKTP / Kriteria Ketercapaian Tujuan Pembelajaran (wajib).',
       'Ketik Konten materi yang diajarkan dan Kegiatan Pembelajaran yang berlangsung.',
       'Pilih Mata Pelajaran dan Kelas. Jika menggantikan rekan guru yang berhalangan, aktifkan toggle "Saya sebagai Guru Inval" lalu pilih nama guru yang digantikan.',
-      'Lakukan absensi murid secara langsung dengan menandai status Hadir, Izin, Sakit, atau Alpa (H/I/S/A) per siswa.',
+      'Lakukan absensi murid secara langsung dengan menandai status Hadir, Izin, Sakit, atau Alpa (H/I/S/A) per siswa. Sistem otomatis menampilkan peringatan siswa bolos jika siswa tercatat hadir di gerbang tetapi ditandai Alpa di mapel ini.',
       'Ketik Lokasi KBM (misal: "Ruang Kelas 7A" atau "Laboratorium IPA") dan ambil foto dokumentasi KBM menggunakan kamera mode lanskap.',
       'Tambahkan Catatan / Refleksi pembelajaran jika ada, lalu klik tombol "Simpan Jurnal".'
     ],
     keyTips: [
       'Formulir otomatis tersimpan di penyimpanan lokal browser (auto-save), sehingga aman dari kehilangan data saat jaringan terputus.',
+      'Deteksi otomatis siswa bolos: Sistem membandingkan presensi gerbang piket dengan absensi mapel. Jika ada ketidaksesuaian (Piket Hadir vs Mapel Alpa), badge merah "⚠️ Terindikasi Bolos" muncul dan tercatat ke audit log.',
       'Saat periode Sistem Blok aktif, formulir beralih otomatis ke Jurnal Kegiatan khusus tanpa absensi kelas reguler.'
     ]
   },
@@ -105,13 +109,14 @@ export const TUTORIAL_DATA: TutorialItem[] = [
     prerequisites: 'Guru memiliki jadwal penugasan piket pada hari ini.',
     steps: [
       'Buka menu Modul Piket (hanya aktif dan dapat dibuka pada hari Anda bertugas piket).',
-      'Pada tab Presensi Siswa, tentukan mode pencatatan: Scan QR atau Manual Checklist.',
+      'Pada tab Presensi Siswa, tentukan mode pencatatan: Scan QR atau Manual Checklist. Akses formulir dilindungi Concurrency Lock otomatis agar tidak tertimpa rekan piket lain yang aktif bersamaan.',
       'Untuk Mode QR: Arahkan QR code kartu siswa ke kamera browser atau sambungkan barcode scanner USB HID eksternal (otomatis tekan Enter).',
       'Untuk Mode Manual: Cari nama siswa lalu klik tombol "Tandai Datang" atau "Tandai Pulang" (daftar siswa tetap utuh setelah ditandai).',
       'Catat tamu sekolah pada tab Buku Tamu dan kejadian penting pada tab Catatan Kejadian/Ketertiban.',
       'Ambil foto dokumentasi piket (kamera lanskap) dan kirimkan Laporan Piket Harian sebelum jam piket berakhir.'
     ],
     keyTips: [
+      'Sistem Concurrency Lock: Hanya satu guru piket yang dapat menyunting formulir presensi siswa dalam satu sesi sewa (lease). Rekan piket lainnya akan melihat notifikasi formulir terkunci hingga sesi selesai, mencegah duplikasi dan tumpang tindih data.',
       'Presensi siswa yang discan guru piket langsung tersinkronisasi ke daftar siswa guru mata pelajaran di jurnal KBM dan rekap wali kelas.',
       'Mendukung hingga 10 unit hardware scanner USB di beberapa komputer/laptop piket secara bersamaan.'
     ]
@@ -231,6 +236,29 @@ export const TUTORIAL_DATA: TutorialItem[] = [
       'Guru biasa yang bukan wali kelas tidak memiliki akses ke rekap menyeluruh ini demi privasi data kelas.'
     ]
   },
+  {
+    id: 'guru-rapor',
+    viewId: 'view-rapor',
+    title: 'Rapor Kurikulum Merdeka (Wali Kelas)',
+    icon: 'fa-file-lines',
+    role: 'guru',
+    summary: 'Pusat kompilasi dan penerbitan lembar laporan hasil belajar (Rapor) Kurikulum Merdeka untuk siswa di kelas binaan Wali Kelas, lengkap dengan sintesis deskripsi Capaian Pembelajaran (CP), rekap kehadiran, catatan refleksi, dan cetak resmi ber-GPS.',
+    prerequisites: 'Akun terdaftar sebagai Wali Kelas aktif di sekolah.',
+    steps: [
+      'Buka menu Rapor dari sidebar (menu ini khusus tampil bagi Wali Kelas dan Administrator).',
+      'Pilih semester dan tahun ajaran aktif untuk kelas binaan Anda.',
+      'Pada tab "Ringkasan Kelas", tinjau rata-rata nilai semester, predikat, dan rekapitulasi kehadiran (Hadir, Sakit, Izin, Alpa) seluruh siswa.',
+      'Ketik atau sesuaikan catatan refleksi Wali Kelas pada kolom catatan yang disediakan (tersimpan otomatis).',
+      'Klik tombol "Rapor" pada salah satu siswa untuk membuka tab "Lembar Rapor Siswa".',
+      'Tinjau nilai akhir tiap mata pelajaran beserta deskripsi Capaian Pembelajaran (CP) otomatis yang memuat capaian kompetensi tertinggi dan kompetensi yang perlu bimbingan.',
+      'Klik tombol "Cetak Rapor Resmi (GPS Verified)" untuk mencetak atau menyimpan dokumen rapor berformat PDF lengkap dengan koordinat GPS dan tanda tangan resmi.'
+    ],
+    keyTips: [
+      'Deskripsi Capaian Pembelajaran disintesis otomatis berdasarkan Tujuan Pembelajaran (TP) dengan nilai tertinggi dan terendah sesuai panduan Kurikulum Merdeka Kemendikbudristek.',
+      'Pencetakan rapor resmi diverifikasi dengan koordinat GPS asli untuk menjamin keabsahan dan akuntabilitas penandatanganan dokumen di lokasi sekolah.',
+      'Guru yang bukan Wali Kelas atau bukan Admin akan diblokir secara otomatis oleh sistem jika mencoba mengakses menu ini.'
+    ]
+  },
 
   // ==========================================
   // ADMIN MENUS (14 Menus)
@@ -259,16 +287,17 @@ export const TUTORIAL_DATA: TutorialItem[] = [
     title: 'Pusat Verifikasi',
     icon: 'fa-clipboard-check',
     role: 'admin',
-    summary: 'Pusat persetujuan perizinan guru (Izin, Sakit, Izin Terlambat, Dinas Luar), validasi jurnal KBM, dan pengesahan perangkat pembelajaran.',
+    summary: 'Pusat persetujuan perizinan guru (Izin, Sakit berdurasi panjang >=3 hari, Cuti >3 hari, Izin Terlambat, Dinas Luar), validasi jurnal KBM, dan pengesahan perangkat pembelajaran.',
     prerequisites: 'Terdapat pengajuan tertunda dari guru di sekolah.',
     steps: [
       'Buka menu Verifikasi. Pilih tab permohonan yang ingin diproses: Presensi/Izin, Jurnal Mengajar, atau Perangkat Pembelajaran.',
-      'Klik pada nama guru untuk melihat rincian bukti: surat keterangan dokter, surat tugas dinas, atau berkas perangkat.',
+      'Klik pada nama guru untuk melihat rincian bukti: surat keterangan dokter, surat tugas dinas luar, atau berkas perangkat.',
       'Untuk pengajuan Izin Terlambat: Verifikasi alasan keterlambatan, lalu klik "Setujui" agar dihitung hadir atau "Tolak" jika tidak valid.',
-      'Untuk pengajuan Izin/Sakit: Klik "Setujui" untuk mengesahkan status atau "Tolak" disertai alasan penolakan.',
+      'Untuk pengajuan Sakit (>=3 hari) dan Izin/Cuti (>3 hari): Verifikasi surat dokter/keterangan lampiran dan rentang durasi hari, lalu klik "Setujui" untuk mengesahkan status atau "Tolak" disertai alasan penolakan.',
       'Status guru akan langsung diperbarui secara real-time pada dashboard dan rekap kehadiran.'
     ],
     keyTips: [
+      'Pengajuan sakit >=3 hari atau izin >3 hari dari akun guru secara otomatis ditandai status "Menunggu Verifikasi" dan masuk ke antrean verifikasi ini sebelum sah dihitung di rekap.',
       'Tersedia tombol "Reset Status" apabila admin perlu membatalkan keputusan verifikasi yang keliru.'
     ]
   },

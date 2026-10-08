@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-09T00:07:30Z
+# BRIEFING — 2026-10-09T05:10:30Z
 
 ## Mission
 Route and monitor execution of comprehensive teacher account updates in sipjam-app (reminders, camera/storage 4:3 GDrive, attendance & admin verif, student sync & piket concurrency, Kurikulum Merdeka & rapor, and E2E verification).
@@ -21,10 +21,10 @@ Route and monitor execution of comprehensive teacher account updates in sipjam-a
 ## User Context
 - **Last user request**: Comprehensive update to teacher's account: R1 (UI/UX 30m snooze, remove print orientation, 4:3 camera + GDrive), R2 (multi-state attendance Hadir/Dinas Luar, auto-checkout flagging, admin approval for sick/leave, GPS auto-attach), R3 (role-based student attendance, piket sync to mapel with truancy, concurrency locks), R4 (Kurikulum Merdeka calculations, CP descriptions, Rapor menu, tutorial updates), plus 5 E2E test suites.
 - **Pending clarifications**: none
-- **Delivered results**: M1 completed & verified (commit 277b49e pushed); M2 schema & initial implementation in progress; orchestrator_16 replaced by successor orchestrator_17 via flash fallback model after 429 quota exhaustion.
+- **Delivered results**: M1 completed & verified (commit 277b49e); M2 completed & verified (commit ee1ce69); M3 completed & verified (commit 4030a93); M4 code written and actively being finalized under worker_o17_m4_2.
 
 ## Project Status
-- **Phase**: in progress
+- **Phase**: in progress (quota restored, worker_o17_m4_2 active)
 - **Route**: General (teamwork_preview_orchestrator)
 - **Active Crons**: task-28 (progress reporting */8), task-30 (liveness check */10)
 - **Active Subagents**: orchestrator_17 (3ef8ddbb-8819-4386-aaac-f3d3ca2811fc)
