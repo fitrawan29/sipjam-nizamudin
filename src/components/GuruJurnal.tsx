@@ -637,11 +637,21 @@ export default function GuruJurnal({ user }: { user: any }) {
       const fullStatus = statusMap[status] || 'Hadir';
       const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
 
-      let aQ = supabase.from('absensi').select('log_perubahan').eq('tanggal', tanggal).eq('nisn', nisn);
+      const pRec = (student.nisn && piketAttendance[student.nisn]) || (student.id && piketAttendance[student.id]) || piketAttendance[nisn];
+      const isTruant = status === 'A' && Boolean(pRec);
+
+      let aQ = supabase.from('absensi').select('log_perubahan, keterangan').eq('tanggal', tanggal).eq('nisn', nisn);
       if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
       const { data: existing } = await aQ;
       const prevLogs = (existing && existing[0]?.log_perubahan) || [];
-      const logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user?.nama || 'Guru Mapel'} (Guru Mapel)`;
+
+      let logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user?.nama || 'Guru Mapel'} (Guru Mapel)`;
+      let noteKeterangan = existing && existing[0]?.keterangan ? existing[0].keterangan : null;
+
+      if (isTruant && pRec) {
+        logEntry = `[${nowWita} WITA] Terindikasi Bolos: Hadir di Gerbang Piket (${pRec.jam}), tetapi ditandai Alpa oleh ${user?.nama || 'Guru Mapel'} (${mapel || 'Mapel'})`;
+        noteKeterangan = `Terindikasi Bolos (Hadir Gerbang ${pRec.jam}, Alpa Mapel)`;
+      }
 
       supabase.from('absensi').upsert([{
         sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
@@ -653,6 +663,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         status: fullStatus,
         sumber_perubahan: 'Guru Mapel',
         diubah_oleh: user?.nama || 'Guru Mapel',
+        keterangan: noteKeterangan,
         log_perubahan: [...prevLogs, logEntry],
         updated_at: new Date().toISOString()
       }], { onConflict: 'sekolah_id, tanggal, nisn' }).then(null, console.error);
@@ -1250,69 +1261,90 @@ export default function GuruJurnal({ user }: { user: any }) {
                         />
                       </div>
 
-                      {students.length > 0 && (
-                        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                            <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                              <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
-                            </h3>
-                            <button
-                              type="button"
-                              onClick={handleApplyPiketAttendance}
-                              className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
-                              title="Tandai siswa yang sudah presensi di gerbang piket sebagai Hadir"
-                            >
-                              <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Piket
-                            </button>
-                          </div>
-                          <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
-                            {students.map((siswa, idx) => {
-                              const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
-                              return (
-                                <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4 shrink-0">{idx + 1}.</span>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
-                                        {pRec ? (
-                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
-                                            <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Piket {pRec.jam})
-                                          </span>
-                                        ) : (
-                                          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
-                                            <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Piket
-                                          </span>
-                                        )}
+                      {students.length > 0 && (() => {
+                        const truantCount = students.filter(s => {
+                          const pRec = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
+                          return Boolean(pRec && absensi[s.nisn] === 'A');
+                        }).length;
+
+                        return (
+                          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
+                            {truantCount > 0 && (
+                              <div 
+                                id="jurnal-truancy-alert"
+                                className="p-3 mb-3 rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/80 dark:border-red-800 text-red-900 dark:text-red-200 text-xs font-bold flex items-center gap-2.5 animate-pulse"
+                              >
+                                <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400 text-sm shrink-0"></i>
+                                <span>⚠️ Perhatian: Terdeteksi {truantCount} siswa bolos (hadir di gerbang sekolah namun Alpa pada jam pelajaran ini).</span>
+                              </div>
+                            )}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                              <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
+                              </h3>
+                              <button
+                                type="button"
+                                onClick={handleApplyPiketAttendance}
+                                className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
+                                title="Tandai siswa yang sudah presensi di gerbang piket sebagai Hadir"
+                              >
+                                <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Piket
+                              </button>
+                            </div>
+                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
+                              {students.map((siswa, idx) => {
+                                const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
+                                const isTruant = Boolean(pRec && absensi[siswa.nisn] === 'A');
+                                return (
+                                  <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4 shrink-0">{idx + 1}.</span>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
+                                          {isTruant && pRec ? (
+                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1 shrink-0 animate-pulse">
+                                              <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Hadir Gerbang {pRec.jam}, Alpa Mapel)
+                                            </span>
+                                          ) : pRec ? (
+                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+                                              <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Piket {pRec.jam})
+                                            </span>
+                                          ) : (
+                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
+                                              <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Piket
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
                                       </div>
-                                      <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                                    </div>
+                                    <div className="flex gap-1 shrink-0">
+                                      {['H', 'S', 'I', 'A'].map(status => (
+                                        <button 
+                                          key={status}
+                                          type="button"
+                                          onClick={() => handleAbsensiChange(siswa.nisn, status)}
+                                          className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
+                                            absensi[siswa.nisn] === status 
+                                            ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
+                                               status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
+                                               status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
+                                               'bg-red-500 text-white shadow-sm') 
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                          }`}
+                                        >
+                                          {status}
+                                        </button>
+                                      ))}
                                     </div>
                                   </div>
-                                  <div className="flex gap-1 shrink-0">
-                                    {['H', 'S', 'I', 'A'].map(status => (
-                                      <button 
-                                        key={status}
-                                        type="button"
-                                        onClick={() => handleAbsensiChange(siswa.nisn, status)}
-                                        className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
-                                          absensi[siswa.nisn] === status 
-                                          ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
-                                             status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
-                                             status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
-                                             'bg-red-500 text-white shadow-sm') 
-                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                        }`}
-                                      >
-                                        {status}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                       <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
                         <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>

@@ -11,3 +11,13 @@
 | auditor_o17_m2_1 | teamwork_preview_auditor | CLEAN | handoff.md | 0 integrity violations, benchmark mode verified |
 
 Gate Result: **FAIL** (challenger_o17_m2_2 REQUEST_CHANGES)
+
+---
+
+## Milestone 2 Gate — Iteration 2 (Remediation)
+| Agent | Role | Verdict | Source | Notes |
+|-------|------|---------|--------|-------|
+| worker_o17_m2_remediation | teamwork_preview_worker | DONE | handoff.md | Fixed auto-alpa multi-day leave, wired triggerPrintWithGps across views, date clamping, commit ee1ce69 |
+| reviewer_o17_m2_recheck | teamwork_preview_reviewer | APPROVE | handoff.md | Verified commit ee1ce69, all 6 test commands passed, 0 integrity violations |
+
+Gate Result: **PASS**

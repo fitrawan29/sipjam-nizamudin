@@ -1600,6 +1600,47 @@ export type Database = {
           },
         ]
       }
+      piket_form_lock: {
+        Row: {
+          expires_at: string
+          form_type: string
+          id: string
+          locked_at: string
+          locked_by_user_id: string
+          locked_by_user_name: string
+          sekolah_id: string
+          tanggal: string
+        }
+        Insert: {
+          expires_at: string
+          form_type?: string
+          id?: string
+          locked_at?: string
+          locked_by_user_id: string
+          locked_by_user_name: string
+          sekolah_id: string
+          tanggal: string
+        }
+        Update: {
+          expires_at?: string
+          form_type?: string
+          id?: string
+          locked_at?: string
+          locked_by_user_id?: string
+          locked_by_user_name?: string
+          sekolah_id?: string
+          tanggal?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "piket_form_lock_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       guru_kelas: {
@@ -1925,6 +1966,11 @@ export interface SyaratPerangkatPembelajaran {
 export type SyaratPerangkatPembelajaranRow = Tables<"syarat_perangkat_pembelajaran">;
 export type SyaratPerangkatPembelajaranInsert = TablesInsert<"syarat_perangkat_pembelajaran">;
 export type SyaratPerangkatPembelajaranUpdate = TablesUpdate<"syarat_perangkat_pembelajaran">;
+
+// Concurrency Lock (Milestone 3)
+export type PiketFormLock = Tables<"piket_form_lock">;
+export type PiketFormLockInsert = TablesInsert<"piket_form_lock">;
+export type PiketFormLockUpdate = TablesUpdate<"piket_form_lock">;
 
 // Useful Enum / Literal Types for Components
 export type HariPiket = "Senin" | "Selasa" | "Rabu" | "Kamis" | "Jumat" | "Sabtu";

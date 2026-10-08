@@ -21,6 +21,7 @@ import {
   getLocalCurrentTime,
   StudentReference
 } from '@/lib/qrSiswa';
+import { acquirePiketLock, refreshPiketLock, releasePiketLock, PiketLockInfo } from '@/lib/piketLock';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
@@ -28,6 +29,12 @@ export default function PiketView({ user }: { user: any }) {
   const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
   const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
   const isGuru = roleNormalized === 'guru';
+
+  // Concurrency Lock states (M3)
+  const [piketLockInfo, setPiketLockInfo] = useState<PiketLockInfo | null>(null);
+  const [isFormLockChecking, setIsFormLockChecking] = useState(false);
+  const activeLockIdRef = useRef<string | null>(null);
+  const isFormLocked = Boolean(piketLockInfo?.lockedByOther);
 
   const [activeTab, setActiveTab] = useState<'beranda' | 'scan' | 'lapor' | 'penugasan' | 'rekap'>('beranda');
   const [jadwalPiket, setJadwalPiket] = useState<any[]>([]);
@@ -913,6 +920,50 @@ export default function PiketView({ user }: { user: any }) {
     }
   }, [activeTab, rekapBulan, rekapGuru, rekapStatus]);
 
+  // Concurrency Lock for Tab Lapor (Milestone 3)
+  useEffect(() => {
+    let heartbeatTimer: any = null;
+
+    if (activeTab === 'lapor' && user) {
+      const todayStr = getWitaDateStr();
+      const sekolahId = user.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      const userId = user.id || user.username || 'unknown-user';
+      const userName = user.nama || user.username || 'Petugas Piket';
+
+      setIsFormLockChecking(true);
+      acquirePiketLock(supabase, sekolahId, todayStr, userId, userName, 'student_attendance').then(res => {
+        setIsFormLockChecking(false);
+        setPiketLockInfo(res.lockInfo);
+        if (res.success && res.lockInfo.lockId) {
+          activeLockIdRef.current = res.lockInfo.lockId;
+          // Start 60-second heartbeat
+          heartbeatTimer = setInterval(async () => {
+            if (activeLockIdRef.current) {
+              const refreshRes = await refreshPiketLock(supabase, activeLockIdRef.current, userId);
+              if (refreshRes.success) {
+                setPiketLockInfo(refreshRes.lockInfo);
+              } else if (refreshRes.lockInfo?.lockedByOther) {
+                setPiketLockInfo(refreshRes.lockInfo);
+              }
+            }
+          }, 60000);
+        }
+      }).catch(err => {
+        console.error('Failed to acquire piket form lock:', err);
+        setIsFormLockChecking(false);
+      });
+    }
+
+    return () => {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      if (activeLockIdRef.current && user) {
+        const userId = user.id || user.username || 'unknown-user';
+        releasePiketLock(supabase, activeLockIdRef.current, userId).catch(() => {});
+        activeLockIdRef.current = null;
+      }
+    };
+  }, [activeTab, user?.id, user?.sekolah_id, user?.nama, user?.username]);
+
   const fetchDataPiket = async () => {
     // Fetch Jadwal
     let jQ = supabase.from('jadwal_piket').select('*');
@@ -1067,6 +1118,10 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   const handlePiketAbsensiChange = async (siswa: any, status: string) => {
+    if (isFormLocked) {
+      showToast('Formulir Terkunci', 'Formulir presensi piket sedang diedit oleh petugas lain.', 'warning');
+      return;
+    }
     setPiketAbsensi(prev => ({ ...prev, [siswa.nisn]: status }));
 
     // Live upsert to public.absensi
@@ -1103,6 +1158,10 @@ export default function PiketView({ user }: { user: any }) {
 
   const handlePiketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (isFormLocked) {
+      return showToast('Formulir Terkunci', 'Formulir presensi piket sedang diedit oleh petugas lain.', 'warning');
+    }
 
     if (!file) {
       return showToast('Foto Wajib Diambil', 'Silakan ambil foto dokumentasi piket menggunakan kamera langsung.', 'warning');
@@ -1195,6 +1254,14 @@ export default function PiketView({ user }: { user: any }) {
           console.error('Error synchronizing piket attendance to public.absensi:', syncErr);
         }
       }
+
+      // Release concurrency lock upon successful submission
+      if (activeLockIdRef.current && user) {
+        const userId = user.id || user.username || 'unknown-user';
+        await releasePiketLock(supabase, activeLockIdRef.current, userId).catch(() => {});
+        activeLockIdRef.current = null;
+      }
+      setPiketLockInfo(null);
 
       showToast('Berhasil', 'Laporan piket berhasil disimpan dan presensi disinkronkan!', 'success', {
         toast: true,
@@ -3128,6 +3195,19 @@ export default function PiketView({ user }: { user: any }) {
             {/* TAB 2: LAPOR PIKET (GURU ON DUTY ONLY) */}
             {activeTab === 'lapor' && canReport && (
               <div id="piket-content-form" className="fade-in space-y-4">
+                  {isFormLocked && (
+                    <div 
+                      id="piket-form-lock-alert"
+                      className="sticky top-2 z-30 p-3.5 mb-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/80 dark:border-amber-700 text-amber-900 dark:text-amber-200 shadow-md flex items-start gap-2.5 animate-pulse"
+                    >
+                      <div className="text-lg text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                        <i className="fa-solid fa-lock"></i>
+                      </div>
+                      <div className="text-xs font-semibold leading-relaxed">
+                        ⚠️ Formulir Presensi Terkunci: Sedang diedit oleh {piketLockInfo?.lockedBy?.userName || 'Petugas Piket lain'}. Untuk mencegah duplikasi/konflik data, formulir ini tidak dapat diubah sampai sesi selesai.
+                      </div>
+                    </div>
+                  )}
                   <div className="bg-orange-50 border border-orange-200 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400 p-3 rounded-xl mb-4 text-[10px] text-orange-800 font-medium leading-relaxed">
                       <i className="fa-solid fa-circle-info mr-1.5"></i> Silakan isi laporan karena Anda ditugaskan piket hari ini. Periksa seluruh kelas secara bergantian.
                   </div>
@@ -3173,8 +3253,11 @@ export default function PiketView({ user }: { user: any }) {
                                   <button 
                                     key={status}
                                     type="button"
+                                    disabled={isFormLocked}
                                     onClick={() => handlePiketAbsensiChange(siswa, status)}
                                     className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
+                                      isFormLocked ? 'opacity-50 cursor-not-allowed ' : ''
+                                    }${
                                       piketAbsensi[siswa.nisn] === status 
                                       ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
                                          status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
@@ -3194,7 +3277,14 @@ export default function PiketView({ user }: { user: any }) {
 
                       <div>
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Catatan Khusus</label>
-                        <textarea value={catatan} onChange={e => setCatatan(e.target.value)} rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800" placeholder="Deskripsikan kejadian saat piket..."></textarea>
+                        <textarea 
+                          value={catatan} 
+                          onChange={e => setCatatan(e.target.value)} 
+                          disabled={isFormLocked}
+                          rows={2} 
+                          className={`w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800 ${isFormLocked ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}`} 
+                          placeholder={isFormLocked ? 'Formulir presensi terkunci...' : 'Deskripsikan kejadian saat piket...'}
+                        ></textarea>
                       </div>
                       <div className="space-y-2">
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center justify-between">
@@ -3213,10 +3303,12 @@ export default function PiketView({ user }: { user: any }) {
                           initialFacingMode="environment"
                           existingPhotoUrl={photoPreviewUrl}
                           onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                            if (isFormLocked) return;
                             setFile(capturedFile);
                             setPhotoPreviewUrl(previewUrl);
                           }}
                           onRetake={() => {
+                            if (isFormLocked) return;
                             setFile(null);
                             setPhotoPreviewUrl(null);
                           }}
@@ -3235,11 +3327,12 @@ export default function PiketView({ user }: { user: any }) {
                             </div>
                             <button
                               type="button"
+                              disabled={isFormLocked}
                               onClick={() => {
                                 setFile(null);
                                 setPhotoPreviewUrl(null);
                               }}
-                              className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-bold px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                              className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-bold px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Hapus
                             </button>
@@ -3247,8 +3340,18 @@ export default function PiketView({ user }: { user: any }) {
                         )}
                       </div>
                       <div className="pt-2">
-                        <button type="submit" disabled={loading} className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-                          {loading ? 'Menyimpan...' : <><i className="fa-solid fa-paper-plane"></i> Kirim Laporan</>}
+                        <button 
+                          type="submit" 
+                          disabled={loading || isFormLocked} 
+                          className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {loading ? 'Menyimpan...' : isFormLocked ? (
+                            <>
+                              <i className="fa-solid fa-lock"></i> Formulir Terkunci (Sedang Diedit)
+                            </>
+                          ) : (
+                            <><i className="fa-solid fa-paper-plane"></i> Kirim Laporan</>
+                          )}
                         </button>
                       </div>
                   </form>

@@ -54,12 +54,14 @@ Conclude Milestone 2, execute Milestones 3, 4, 5 with full verification and fore
 | challenger_o17_m2_1 | teamwork_preview_challenger | Challenger 1 M2 | in-progress | b58a4292-ad81-484e-94c1-5f9e14f9d6ae |
 | challenger_o17_m2_2 | teamwork_preview_challenger | Challenger 2 M2 | completed | dd3a5447-d847-4f8b-95b1-6847573b1679 |
 | auditor_o17_m2_1 | teamwork_preview_auditor | Forensic Auditor M2 | completed | f40aeecd-961a-4c4c-8d09-97a6ecb15fed |
-| worker_o17_m2_remediation | teamwork_preview_worker | Worker M2 Remediation | in-progress | 74aee6a1-f558-4258-b277-69008e4250d8 |
+| worker_o17_m2_remediation | teamwork_preview_worker | Worker M2 Remediation | completed | 74aee6a1-f558-4258-b277-69008e4250d8 |
+| reviewer_o17_m2_recheck | teamwork_preview_reviewer | Reviewer M2 Recheck | completed | c1209977-66f2-49b0-b140-52b6fa607fdf |
+| worker_o17_m3 | teamwork_preview_worker | Worker M3 Implementation | in-progress | 666fc8e2-4d04-4672-8036-f03148edfd5d |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 7 / 16
-- Pending subagents: 74aee6a1-f558-4258-b277-69008e4250d8
+- Spawn count: 9 / 16
+- Pending subagents: 666fc8e2-4d04-4672-8036-f03148edfd5d
 - Predecessor: orchestrator_16
 - Successor: not yet spawned
 
