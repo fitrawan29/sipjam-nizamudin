@@ -103,6 +103,35 @@ export async function evaluateAndApplyAutoAlpa(
     return ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
   });
 
+  // 3b. Query approved or pending multi-day leave records covering evaluatedDate
+  // Multi-day leave spans [tanggal_mulai, tanggal_selesai] where status_verifikasi !== 'Ditolak'
+  let multiDayQuery = supabase
+    .from('presensi_guru')
+    .select('*')
+    .lte('tanggal_mulai', evaluatedDate)
+    .gte('tanggal_selesai', evaluatedDate)
+    .neq('status_verifikasi', 'Ditolak');
+
+  if (sekolahId) {
+    multiDayQuery = multiDayQuery.eq('sekolah_id', sekolahId);
+  }
+
+  const { data: multiDayRecords, error: multiDayError } = await multiDayQuery;
+  if (multiDayError) {
+    console.error('[attendanceAlpa] Error fetching multi-day leave records:', multiDayError.message);
+  }
+
+  const activeMultiDayLeaves = (multiDayRecords || []).filter(rec => {
+    if (rec.status_verifikasi === 'Ditolak') return false;
+    const isLeaveType = ['Sakit', 'Izin', 'Dinas Luar'].includes(rec.jenis_presensi) ||
+      rec.detail_izin === 'Sakit' || (rec.detail_izin && rec.detail_izin.includes('Izin'));
+    if (!isLeaveType) return false;
+    if (rec.tanggal_mulai && rec.tanggal_selesai) {
+      return evaluatedDate >= rec.tanggal_mulai && evaluatedDate <= rec.tanggal_selesai;
+    }
+    return false;
+  });
+
   // 4. Identify unresubmitted rejected records
   // Group all records by teacher name (normalized)
   const teacherRecordsMap = new Map<string, typeof presensiRecords>();
@@ -118,11 +147,14 @@ export async function evaluateAndApplyAutoAlpa(
   const details: AutoAlpaResult['details'] = [];
 
   for (const [teacherKey, teacherRecs] of teacherRecordsMap.entries()) {
-    // Check if teacher has approved leave (Sakit, Izin, Dinas Luar with status_verifikasi === 'Disetujui') (F6-B3)
+    // Check if teacher has approved leave or active multi-day leave
     const hasApprovedLeave = teacherRecs.some(
       r => ['Sakit', 'Izin', 'Dinas Luar'].includes(r.jenis_presensi) && r.status_verifikasi === 'Disetujui'
     );
-    if (hasApprovedLeave) {
+    const hasActiveMultiDay = activeMultiDayLeaves.some(
+      l => (l.nama_guru || '').toLowerCase().trim() === teacherKey
+    );
+    if (hasApprovedLeave || hasActiveMultiDay) {
       continue; // Protected from Alpa
     }
 
@@ -232,6 +264,16 @@ export async function evaluateAndApplyAutoAlpa(
     if (!guru.nama_guru) continue;
 
     const namaNorm = guru.nama_guru.toLowerCase().trim();
+
+    // Skip jika guru memiliki izin/sakit multi-hari aktif yang mencakup tanggal ini dan belum/tidak ditolak
+    const hasActiveMultiDayLeave = activeMultiDayLeaves.some(leave => {
+      const matchName = (leave.nama_guru || '').toLowerCase().trim() === namaNorm;
+      const matchUser = Boolean(guru.user_id && leave.user_id === guru.user_id);
+      return matchName || matchUser;
+    });
+    if (hasActiveMultiDayLeave) {
+      continue; // Dilindungi dari Alpa karena cuti/izin multi-hari yang valid
+    }
 
     // Skip jika sudah ada record hari ini (match by nama atau user_id)
     const hasRecord = presensiRecords.some(r =>

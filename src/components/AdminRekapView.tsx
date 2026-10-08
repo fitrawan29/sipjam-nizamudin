@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 /**
  * Hitung jumlah hari kerja dalam rentang startDateStr..endDateStr (inklusif, WITA-aware).
@@ -433,7 +434,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                       }} className="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-green-700 transition">
                         <i className="fa-solid fa-file-excel"></i> Excel
                       </button>
-                      <button type="button" onClick={() => window.print()} className="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-blue-700 transition">
+                      <button type="button" onClick={() => triggerPrintWithGps()} className="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-blue-700 transition">
                         <i className="fa-solid fa-print"></i> Cetak Halaman
                       </button>
                   </div>

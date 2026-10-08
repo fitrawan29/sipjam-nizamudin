@@ -11,6 +11,7 @@ import {
   downloadStudentCardPng,
   printStudentQrCardWithSchool,
 } from '@/lib/qrSiswa';
+import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { PrintHeader, PrintSignature, PrintOrientationToggle } from './PrintHeader';
+import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { TujuanPembelajaran, AsesmenKolom, NilaiSiswa } from '@/types/database';
 
 interface GradebookViewProps {
@@ -1559,7 +1560,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
           )}
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => triggerPrintWithGps()}
             className="btn-click bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-200 dark:border-blue-800 flex items-center gap-1.5"
           >
             <i className="fa-solid fa-print"></i> Cetak Dokumen

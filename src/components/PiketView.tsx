@@ -8,6 +8,7 @@ import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName } from '@/lib/wita';
 import { PrintHeader, PrintSignature } from './PrintHeader';
+import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { PenugasanPiket } from '@/types/database';
 import CameraSelfieCapture from './CameraSelfieCapture';
@@ -3470,7 +3471,7 @@ export default function PiketView({ user }: { user: any }) {
                           </button>
                           <button 
                             type="button" 
-                            onClick={() => window.print()} 
+                            onClick={() => triggerPrintWithGps()} 
                             className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition"
                           >
                               <i className="fa-solid fa-print"></i> Cetak Rekap

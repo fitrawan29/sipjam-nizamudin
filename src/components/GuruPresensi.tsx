@@ -120,8 +120,10 @@ export default function GuruPresensi({ user }: { user: any }) {
   };
 
   const handleTanggalSelesaiChange = (newEnd: string) => {
-    setTanggalSelesai(newEnd);
-    const days = getDaysBetween(tanggalMulai, newEnd);
+    // Guard against inverted selection: clamp to tanggalMulai if newEnd < tanggalMulai
+    const effectiveEnd = (newEnd && newEnd < tanggalMulai) ? tanggalMulai : newEnd;
+    setTanggalSelesai(effectiveEnd);
+    const days = getDaysBetween(tanggalMulai, effectiveEnd);
     setDurasiHari(days);
   };
 

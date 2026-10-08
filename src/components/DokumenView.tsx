@@ -7,6 +7,7 @@ import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
 import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from '@/types/database';
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 export const KURIKULUM_DOCS = [
   { id: 'CP', code: 'CP', name: 'Analisis Capaian Pembelajaran', short: 'CP' },
@@ -774,7 +775,7 @@ export default function DokumenView({ user }: { user: any }) {
           <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => triggerPrintWithGps()}
             className="btn-click bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
           >
             <i className="fa-solid fa-print"></i> Cetak Dokumen

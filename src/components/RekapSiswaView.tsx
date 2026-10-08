@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 export default function RekapSiswaView({ 
   user, 
@@ -1168,7 +1169,7 @@ export default function RekapSiswaView({
                   </button>
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={() => triggerPrintWithGps()}
                     className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition"
                   >
                     <i className="fa-solid fa-print text-sm"></i> Cetak Dokumen
@@ -1357,7 +1358,7 @@ export default function RekapSiswaView({
                       }} className="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
                         <i className="fa-solid fa-file-excel text-sm"></i> Excel
                       </button>
-                      <button type="button" onClick={() => window.print()} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
+                      <button type="button" onClick={() => triggerPrintWithGps()} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
                         <i className="fa-solid fa-print text-sm"></i> Cetak Dokumen
                       </button>
                   </div>
