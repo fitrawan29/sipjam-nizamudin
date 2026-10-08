@@ -289,3 +289,150 @@ export async function evaluateAndApplyAutoAlpa(
     evaluatedDate
   };
 }
+
+export interface AutoCheckoutResult {
+  affectedCount: number;
+  details: {
+    id: string;
+    nama_guru: string;
+    user_id?: string | null;
+    sekolah_id?: string;
+    previousStatus?: string;
+    newStatus: string;
+  }[];
+  cutoffTime?: string;
+  evaluatedDate?: string;
+  reason?: string;
+}
+
+/**
+ * Evaluates attendance on targetDate past jam_pulang_akhir cutoff for teachers who checked in
+ * but forgot to check out (no 'Pulang' record).
+ * Automatically inserts an explicit auto-checkout record with:
+ * is_auto_checkout = true, status_verifikasi = 'Lupa Checkout',
+ * catatan_admin = 'Auto-checkout: Guru tidak melakukan presensi pulang'
+ */
+export async function evaluateAndApplyAutoCheckout(
+  targetDateStr?: string,
+  sekolahId?: string,
+  options?: EvaluateAutoAlpaOptions
+): Promise<AutoCheckoutResult> {
+  const evaluatedDate = targetDateStr || getWitaDateStr();
+  const todayWita = getWitaDateStr();
+  const currentTimeWita = getWitaTimeStr();
+
+  // 1. Fetch jam_pulang_akhir from pengaturan
+  let configQuery = supabase.from('pengaturan').select('*').eq('key', 'jam_pulang_akhir');
+  if (sekolahId) {
+    configQuery = configQuery.eq('sekolah_id', sekolahId);
+  }
+  const { data: configData } = await configQuery.maybeSingle();
+  const cutoffTime = configData?.value || '22:00';
+
+  // 2. Pre-cutoff early exit
+  if (evaluatedDate === todayWita && !options?.force) {
+    if (isBeforeCutoff(currentTimeWita, cutoffTime)) {
+      return {
+        affectedCount: 0,
+        details: [],
+        cutoffTime,
+        evaluatedDate,
+        reason: `Cutoff time (${cutoffTime} WITA) has not been reached yet for today (${currentTimeWita} WITA).`
+      };
+    }
+  }
+
+  // 3. Query all presensi_guru records for the evaluated date
+  const startOfDay = getWitaStartOfDay(evaluatedDate);
+  const endOfDay = getWitaEndOfDay(evaluatedDate);
+
+  let query = supabase
+    .from('presensi_guru')
+    .select('*')
+    .gte('timestamp', startOfDay)
+    .lte('timestamp', endOfDay);
+
+  if (sekolahId) {
+    query = query.eq('sekolah_id', sekolahId);
+  }
+
+  const { data: records, error } = await query;
+  if (error) {
+    console.error('[attendanceAlpa] Error fetching attendance records for auto-checkout:', error.message);
+    throw new Error(`Failed to query attendance for ${evaluatedDate}: ${error.message}`);
+  }
+
+  const presensiRecords = (records || []).filter(rec => {
+    const ts = rec.timestamp || '';
+    return ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
+  });
+
+  // Group by teacher
+  const teacherRecordsMap = new Map<string, typeof presensiRecords>();
+  for (const rec of presensiRecords) {
+    const teacherKey = rec.user_id ? `uid:${rec.user_id}` : (rec.nama_guru || '').toLowerCase().trim();
+    if (!teacherKey) continue;
+    if (!teacherRecordsMap.has(teacherKey)) {
+      teacherRecordsMap.set(teacherKey, []);
+    }
+    teacherRecordsMap.get(teacherKey)!.push(rec);
+  }
+
+  const details: AutoCheckoutResult['details'] = [];
+
+  for (const [_, teacherRecs] of teacherRecordsMap.entries()) {
+    // Check if teacher has valid Datang
+    const validDatang = teacherRecs.find(
+      r => r.tipe_absen === 'Datang' && r.status_verifikasi !== 'Ditolak' && r.status_verifikasi !== 'Alpa'
+    );
+    if (!validDatang) continue;
+
+    // Skip teachers on full-day leave
+    const isLeave = ['Izin', 'Sakit'].includes(validDatang.jenis_presensi || '') ||
+      ['Izin', 'Sakit'].includes(validDatang.detail_izin || '');
+    if (isLeave) continue;
+
+    // Check if teacher already has any Pulang record
+    const hasPulang = teacherRecs.some(r => r.tipe_absen === 'Pulang');
+    if (hasPulang) continue;
+
+    // Insert explicit auto-checkout record
+    const autoCheckoutId = crypto.randomUUID();
+    const formattedCutoff = cutoffTime.replace('.', ':');
+    const autoRecord = {
+      id: autoCheckoutId,
+      timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
+      nama_guru: validDatang.nama_guru,
+      user_id: validDatang.user_id || null,
+      tipe_absen: 'Pulang',
+      jenis_presensi: 'Auto-Checkout',
+      status_verifikasi: 'Lupa Checkout',
+      catatan_admin: 'Auto-checkout: Guru tidak melakukan presensi pulang',
+      sekolah_id: validDatang.sekolah_id,
+      lokasi: 'Sistem Otomatis (Lupa Checkout)',
+      jarak: '0 m',
+      is_auto_checkout: true
+    };
+
+    const { error: insErr } = await supabase.from('presensi_guru').insert(autoRecord);
+    if (insErr) {
+      console.error(`[attendanceAlpa] Failed to insert auto-checkout for ${validDatang.nama_guru}:`, insErr.message);
+    } else {
+      details.push({
+        id: autoCheckoutId,
+        nama_guru: validDatang.nama_guru,
+        user_id: validDatang.user_id,
+        sekolah_id: validDatang.sekolah_id,
+        previousStatus: 'Belum Pulang',
+        newStatus: 'Lupa Checkout'
+      });
+    }
+  }
+
+  return {
+    affectedCount: details.length,
+    details,
+    cutoffTime,
+    evaluatedDate
+  };
+}

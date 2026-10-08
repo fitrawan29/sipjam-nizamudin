@@ -1048,15 +1048,22 @@ export type Database = {
           alasan_penolakan: string | null
           catatan_admin: string | null
           detail_izin: string | null
+          durasi_hari: number | null
           id: string
+          is_auto_checkout: boolean | null
           jarak: string | null
           jenis_presensi: string | null
           keterlambatan_detik: number | null
+          latitude: number | null
           link_bukti: string | null
           lokasi: string | null
+          longitude: number | null
+          memerlukan_persetujuan_admin: boolean | null
           nama_guru: string | null
           sekolah_id: string
           status_verifikasi: string | null
+          tanggal_mulai: string | null
+          tanggal_selesai: string | null
           timestamp: string | null
           tipe_absen: string | null
           user_id: string | null
@@ -1065,15 +1072,22 @@ export type Database = {
           alasan_penolakan?: string | null
           catatan_admin?: string | null
           detail_izin?: string | null
-          id: string
+          durasi_hari?: number | null
+          id?: string
+          is_auto_checkout?: boolean | null
           jarak?: string | null
           jenis_presensi?: string | null
           keterlambatan_detik?: number | null
+          latitude?: number | null
           link_bukti?: string | null
           lokasi?: string | null
+          longitude?: number | null
+          memerlukan_persetujuan_admin?: boolean | null
           nama_guru?: string | null
           sekolah_id?: string
           status_verifikasi?: string | null
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
           timestamp?: string | null
           tipe_absen?: string | null
           user_id?: string | null
@@ -1082,15 +1096,22 @@ export type Database = {
           alasan_penolakan?: string | null
           catatan_admin?: string | null
           detail_izin?: string | null
+          durasi_hari?: number | null
           id?: string
+          is_auto_checkout?: boolean | null
           jarak?: string | null
           jenis_presensi?: string | null
           keterlambatan_detik?: number | null
+          latitude?: number | null
           link_bukti?: string | null
           lokasi?: string | null
+          longitude?: number | null
+          memerlukan_persetujuan_admin?: boolean | null
           nama_guru?: string | null
           sekolah_id?: string
           status_verifikasi?: string | null
+          tanggal_mulai?: string | null
+          tanggal_selesai?: string | null
           timestamp?: string | null
           tipe_absen?: string | null
           user_id?: string | null

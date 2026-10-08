@@ -48,6 +48,17 @@ export type GuruDailyState = {
   presensiPulangDitolak: any | null;
   laporanPiketDitolak: any | null;
   jurnalDitolak: any[];
+
+  // Multi-State Arrival & Departure
+  arrivalState?: string | null;
+  departureState?: string | null;
+
+  // Auto-checkout tracking
+  isAutoCheckout?: boolean;
+  lastAutoCheckout?: any | null;
+
+  // Multi-day leave coverage
+  activeLeaveRecord?: any | null;
 };
 
 /**
@@ -446,6 +457,39 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       // Store rejected records for UI notification (most recent rejection first)
       state.presensiDatangDitolak = rejectedPresensi.find((p: any) => p.tipe_absen === 'Datang') || null;
       state.presensiPulangDitolak = rejectedPresensi.find((p: any) => p.tipe_absen === 'Pulang') || null;
+
+      // Multi-day approved leave coverage:
+      // If teacher has an active sick/leave record where today is within [tanggal_mulai, tanggal_selesai]
+      const multiDayLeave = allPresensi.find((p: any) => {
+        if (p.status_verifikasi === 'Ditolak') return false;
+        const isLeaveType = p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit' || p.detail_izin === 'Sakit';
+        if (!isLeaveType) return false;
+        if (p.tanggal_mulai && p.tanggal_selesai) {
+          return todayStr >= p.tanggal_mulai && todayStr <= p.tanggal_selesai;
+        }
+        return false;
+      });
+
+      if (multiDayLeave) {
+        state.activeLeaveRecord = multiDayLeave;
+        if (!state.presensiDatang) {
+          state.presensiDatang = multiDayLeave;
+        }
+      }
+
+      // Check auto-checkout record for forgotten checkout tracking
+      const lastAutoCheckout = allPresensi.find((p: any) =>
+        p.tipe_absen === 'Pulang' && (p.is_auto_checkout || p.status_verifikasi === 'Lupa Checkout')
+      );
+      if (lastAutoCheckout) {
+        state.lastAutoCheckout = lastAutoCheckout;
+      }
+      if (state.presensiPulang?.is_auto_checkout || state.presensiPulang?.status_verifikasi === 'Lupa Checkout') {
+        state.isAutoCheckout = true;
+      }
+
+      state.arrivalState = state.presensiDatang?.jenis_presensi || null;
+      state.departureState = state.presensiPulang?.jenis_presensi || null;
     }
 
     const hasTeachingObligation = (state.isBlok && !isTeacherExempt) || state.jadwalKBM.length > 0 || state.isPiket;
@@ -484,10 +528,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     }
 
     const jp = state.presensiDatang.jenis_presensi;
-    if (jp === 'Izin' || jp === 'Sakit') {
+    if (state.activeLeaveRecord || jp === 'Izin' || jp === 'Sakit') {
       state.isIzinSakit = true;
       state.bebasAlpa = true;
-      state.lockedReason = `Anda sedang ${jp}. Tidak perlu mengisi Jurnal/Piket/Pulang.`;
+      state.isAlpa = false;
+      const rec = state.activeLeaveRecord || state.presensiDatang;
+      state.lockedReason = `Anda sedang ${rec.detail_izin || rec.jenis_presensi}${rec.durasi_hari ? ` (${rec.durasi_hari} hari)` : ''}. Tidak perlu mengisi Jurnal/Piket/Pulang.`;
       return state;
     }
 
@@ -592,7 +638,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       const fulfilled = state.jadwalKBM.every(jk => 
         state.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk))
       );
-      if (fulfilled) isJurnalDone = true;
+      if (fulfilled || state.jurnalKegiatan) isJurnalDone = true;
     }
 
     let isPiketDone = true;

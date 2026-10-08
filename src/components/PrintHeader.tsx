@@ -197,6 +197,12 @@ export interface PrintSignatureProps {
   singleColumn?: boolean;
   sekolahId?: string;
   user?: any;
+  gpsCoordinates?: {
+    latitude: number;
+    longitude: number;
+    accuracy?: number;
+    timestamp?: string;
+  } | null;
 }
 
 export function PrintSignature({
@@ -209,7 +215,8 @@ export function PrintSignature({
   rightNip,
   singleColumn = false,
   sekolahId,
-  user
+  user,
+  gpsCoordinates
 }: PrintSignatureProps = {}) {
   const [config, setConfig] = useState<any>({});
   const [schoolInfo, setSchoolInfo] = useState<any>(null);
@@ -373,11 +380,20 @@ export function PrintSignature({
         </div>
       </div>
       
-      {/* Security Footer (2 baris di bawah NIP) */}
-      <div className="print-only text-[9px] text-gray-500 mt-6 text-left max-w-4xl mx-auto">
-        Dicetak dari Sistem SIPJAM oleh {namaPencetak || 'Pengguna'} pada {timestamp} WITA.<br/>
-        Dokumen ini sah dan tidak untuk diedit.
-      </div>
+      {/* Security Footer (2 baris di bawah NIP) with GPS Coordinates */}
+      {(() => {
+        const activeGps = gpsCoordinates ?? (typeof window !== 'undefined' ? (window as any).__SIPJAM_PRINT_GPS__ : null);
+        return (
+          <div className="print-only text-[9px] text-gray-500 mt-6 text-left max-w-4xl mx-auto">
+            Dicetak dari Sistem SIPJAM oleh {namaPencetak || 'Pengguna'} pada {timestamp} WITA.
+            {activeGps && (
+              <span> | Koordinat GPS: {activeGps.latitude.toFixed(6)}, {activeGps.longitude.toFixed(6)}{activeGps.accuracy ? ` (±${activeGps.accuracy}m)` : ''}{activeGps.timestamp ? ` [${activeGps.timestamp}]` : ''}</span>
+            )}
+            <br/>
+            Dokumen ini sah dan tidak untuk diedit.
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -1,54 +1,58 @@
-# BRIEFING — 2026-10-05T10:52:00Z
+# BRIEFING — 2026-10-08T12:27:00Z
 
 ## Mission
-Implement sidebar menu user profile display, in-app tutorial system with 28 menus across 3 roles, and comprehensive documentation guides.
+Implement Milestone 2: Teacher Attendance Multi-State Transitions, Long-Term Leave Approval Routing, Auto-Checkout Flagging, and GPS Signature Printing.
 
 ## 🔒 My Identity
-- Archetype: worker
+- Archetype: implementer, qa, specialist
 - Roles: implementer, qa, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2
-- Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Milestone: M2 (Sidebar User Profile, In-App Tutorial System, Documentation)
+- Original parent: 835d6ca7-b3e2-474a-acf0-423026614449
+- Milestone: m2
 
 ## 🔒 Key Constraints
-- File Ownership: `src/components/AppScreen.tsx`, `src/components/Tutorial/tutorialData.ts`, `src/components/Tutorial/TutorialModal.tsx`, `src/components/Tutorial/index.ts`, `docs/PANDUAN_PENGGUNA.md`, `TUTORIAL.md`. Do not touch other files.
-- Retain existing "Lihat Tutorial Lagi" button and OnboardingTutorial component for backward compatibility.
-- Comply with GEMINI.md git workflow (status, add, commit, push origin main).
-- All implementations must be genuine, maintain real state, and produce real behavior.
+- DO NOT CHEAT. All implementations must be genuine.
+- Exclusive write ownership:
+  - src/types/database.ts
+  - supabase/migrations/20261008_m2_presensi_guru_approval_autocheckout.sql
+  - src/components/GuruPresensi.tsx
+  - src/lib/workflow.ts
+  - src/lib/attendanceAlpa.ts
+  - src/components/AdminVerifView.tsx
+  - src/components/PrintHeader.tsx
+  - src/utils/printWithGps.ts
+  - tests/m2_teacher_attendance_verification.test.ts
+- Verification commands: npx tsc --noEmit, npm test, npx tsx tests/m2_teacher_attendance_verification.test.ts, npx tsx tests/e2e/run_all_e2e.ts, npm run build
+- Follow Git workflow: git add ., commit, git push origin main.
 
 ## Current Parent
-- Conversation ID: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Updated: 2026-10-05T10:50:30Z
+- Conversation ID: 835d6ca7-b3e2-474a-acf0-423026614449
+- Updated: 2026-10-08T12:27:00Z
 
 ## Task Summary
-- **What to build**: Sidebar user profile display card, comprehensive in-app tutorial modal & data (28 menus, 3 roles), complete user guide markdown files (`docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md`).
-- **Success criteria**: TypeScript checks clean (`tsc --noEmit`), all tests pass (`npm test`, `tsx tests/app_screen_integration.test.ts`, `tsx tests/onboarding_and_ai_assistant_ui.test.ts`), build succeeds (`npm run build`), git pushed.
-- **Interface contracts**: AppScreen integration with TutorialModal.
-
-## Key Decisions Made
-- Embedded User Profile Card directly under brand header in sidebar overlay in `src/components/AppScreen.tsx`.
-- Implemented `TutorialModal.tsx` and `tutorialData.ts` with 28 menus (11 Guru, 14 Admin, 3 Superadmin).
-- Retained original "Lihat Tutorial Lagi" button and OnboardingTutorial to avoid any regression in existing tests.
-- Formulated comprehensive documentation in `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md`.
-
-## Artifact Index
-- `src/components/AppScreen.tsx` — Sidebar User Profile Card & TutorialModal integration
-- `src/components/Tutorial/tutorialData.ts` — Data definitions and search utilities for 28 menus
-- `src/components/Tutorial/TutorialModal.tsx` — Interactive search, tabs, and direct navigation modal
-- `src/components/Tutorial/index.ts` — Module exports
-- `docs/PANDUAN_PENGGUNA.md` — Complete user manual
-- `TUTORIAL.md` — Role-based tutorial reference manual
-- `.agents/teamwork/worker_m2/handoff.md` — 5-component handoff report
+- **What to build**: Teacher attendance multi-state transitions, multi-day leave form with admin approval flagging, workflow logic for leave date ranges, auto-checkout for forgotten checkouts, admin verification badges/routing, and GPS coordinates on printed documents.
+- **Success criteria**: All 6 verification commands pass, migration exists, types updated, clean code, no regressions.
+- **Interface contracts**: PROJECT.md & explorer_o16_2/report.md
+- **Code layout**: Next.js App / components in src/, tests in tests/
 
 ## Change Tracker
-- **Files modified**: `src/components/AppScreen.tsx`, `src/components/Tutorial/tutorialData.ts`, `src/components/Tutorial/TutorialModal.tsx`, `src/components/Tutorial/index.ts`, `docs/PANDUAN_PENGGUNA.md`, `TUTORIAL.md`
-- **Build status**: PASS (`next build` & `tsc --noEmit` exited 0)
-- **Pending issues**: None
+- **Files modified**: [TBD]
+- **Build status**: [TBD]
+- **Pending issues**: [TBD]
 
 ## Quality Status
-- **Build/test result**: PASS (TypeScript 0 errors, app_screen_integration 24/24 PASS, onboarding_and_ai_assistant_ui PASS, npm test 27 test suites PASS, npm run build PASS)
-- **Lint status**: clean
-- **Tests added/modified**: Verified against all test suites
+- **Build/test result**: [TBD]
+- **Lint status**: [TBD]
+- **Tests added/modified**: [TBD]
 
 ## Loaded Skills
-- None
+- None explicitly requested as external skill dumps.
+
+## Key Decisions Made
+- Follow explorer_o16_2/report.md blueprint precisely.
+
+## Artifact Index
+- .agents/teamwork/worker_m2/DISPATCH.md — Dispatch instructions
+- .agents/teamwork/worker_m2/BRIEFING.md — Situational awareness
+- .agents/teamwork/worker_m2/progress.md — Liveness heartbeat & progress log
+- .agents/teamwork/worker_m2/handoff.md — Final handoff report

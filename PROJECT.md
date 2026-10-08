@@ -27,14 +27,14 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | F1: 30-Minute Notification Snooze | 30-min snooze for auto-notifications toggleable by teacher | M1 | Survey 1 | PLANNED |
-| 2 | F2: Print Orientation Simplification | Remove print orientation toggle buttons, rely cleanly on browser dialog | M1 | Survey 1 | PLANNED |
-| 3 | F3: 4:3 Camera Lock & Google Drive Upload | Camera locked to 4:3 (portrait 3:4, landscape 4:3), canvas compression & Drive upload | M1 | Survey 1 | PLANNED |
-| 4 | F4: UI Responsiveness Across Devices | Responsive layout for all teacher controls across desktop and mobile | M1 | Survey 1 | PLANNED |
-| 5 | F5: Multi-State Teacher Attendance | Arrival/departure multi-state transitions ("Hadir di Sekolah" <-> "Dinas Luar") | M2 | Survey 2 | PLANNED |
-| 6 | F6: Auto-Checkout Flagging | Detect uncompleted checkouts past cutoff and flag auto-checkout | M2 | Survey 2 | PLANNED |
-| 7 | F7: Long-Term Sick & Leave Admin Routing | Route sick >=3 days and leave >3 days to Admin dashboard for approval | M2 | Survey 2 | PLANNED |
-| 8 | F8: GPS Coordinates on Printed Documents | Auto-attach GPS to printed documents with alert if GPS is blocked | M2 | Survey 2 | PLANNED |
+| 1 | F1: 30-Minute Notification Snooze | 30-min snooze for auto-notifications toggleable by teacher | M1 | Survey 1 | DONE |
+| 2 | F2: Print Orientation Simplification | Remove print orientation toggle buttons, rely cleanly on browser dialog | M1 | Survey 1 | DONE |
+| 3 | F3: 4:3 Camera Lock & Google Drive Upload | Camera locked to 4:3 (portrait 3:4, landscape 4:3), canvas compression & Drive upload | M1 | Survey 1 | DONE |
+| 4 | F4: UI Responsiveness Across Devices | Responsive layout for all teacher controls across desktop and mobile | M1 | Survey 1 | DONE |
+| 5 | F5: Multi-State Teacher Attendance | Arrival/departure multi-state transitions ("Hadir di Sekolah" <-> "Dinas Luar") | M2 | Survey 2 | DONE |
+| 6 | F6: Auto-Checkout Flagging | Detect uncompleted checkouts past cutoff and flag auto-checkout | M2 | Survey 2 | DONE |
+| 7 | F7: Long-Term Sick & Leave Admin Routing | Route sick >=3 days and leave >3 days to Admin dashboard for approval | M2 | Survey 2 | DONE |
+| 8 | F8: GPS Coordinates on Printed Documents | Auto-attach GPS to printed documents with alert if GPS is blocked | M2 | Survey 2 | DONE |
 | 9 | F9: Student Attendance RBAC | Strict RBAC for student attendance across Mapel, Wali Kelas, and Piket | M3 | Survey 3 | PLANNED |
 | 10 | F10: Gate-to-Mapel Sync & Truancy Detection | Synchronize gate check-ins and auto-flag truancy when Piket Hadir but Mapel Alpa | M3 | Survey 3 | PLANNED |
 | 11 | F11: Piket Form Concurrency Lock | Concurrency lock preventing double entry by simultaneous Piket users | M3 | Survey 3 | PLANNED |
@@ -47,8 +47,8 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | UI/UX & Camera Updates (R1) | Notification 30-min snooze, print orientation removal, 4:3 camera lock, Google Drive upload | none | PLANNED |
-| M2 | Teacher Attendance & Admin Verification (R2) | Multi-state flows, auto-checkout, sick/leave admin routing, GPS print footer | M1 | PLANNED |
+| M1 | UI/UX & Camera Updates (R1) | Notification 30-min snooze, print orientation removal, 4:3 camera lock, Google Drive upload | none | DONE |
+| M2 | Teacher Attendance & Admin Verification (R2) | Multi-state flows, auto-checkout, sick/leave admin routing, GPS print footer | M1 | DONE |
 | M3 | Student Attendance & Piket Concurrency (R3) | RBAC enforcement, gate sync & truancy detection, Piket form concurrency lock | M2 | PLANNED |
 | M4 | Academic Merdeka, Rapor Menu & Tutorials (R4) | Kurikulum Merdeka CP calculations, Wali Kelas Rapor menu, tutorial updates | M3 | PLANNED |
 | M5 | E2E Testing, Adversarial Verification & Git Delivery | All acceptance criteria tests in tests/e2e/, npm test, tsc, npm run build, git push | M1, M2, M3, M4 | PLANNED |

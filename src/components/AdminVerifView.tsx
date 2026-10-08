@@ -823,6 +823,35 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                     {item.keterlambatan_detik > 0 && (
                       <p><span className="font-semibold">Terlambat:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{Math.ceil(item.keterlambatan_detik / 60)} menit</span></p>
                     )}
+                    {((item.detail_izin === 'Sakit' || item.jenis_presensi === 'Sakit') && (item.durasi_hari >= 3 || item.memerlukan_persetujuan_admin)) && (
+                      <div className="my-1.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">
+                          <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                          Sakit &gt;= 3 Hari (Perlu Persetujuan)
+                        </span>
+                      </div>
+                    )}
+                    {((item.jenis_presensi === 'Izin' || item.detail_izin?.includes('Izin')) && item.detail_izin !== 'Sakit' && (item.durasi_hari > 3 || item.memerlukan_persetujuan_admin)) && (
+                      <div className="my-1.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 inline-flex items-center gap-1">
+                          <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
+                          Izin &gt; 3 Hari (Perlu Persetujuan)
+                        </span>
+                      </div>
+                    )}
+                    {item.is_auto_checkout && (
+                      <div className="my-1.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 inline-flex items-center gap-1">
+                          <i className="fa-solid fa-robot text-[10px]"></i>
+                          Auto-Checkout (Lupa Checkout)
+                        </span>
+                      </div>
+                    )}
+                    {(item.durasi_hari || item.tanggal_mulai) && (
+                      <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                        <span className="font-semibold">Periode:</span> {item.tanggal_mulai ? `${item.tanggal_mulai} s/d ${item.tanggal_selesai || item.tanggal_mulai}` : ''} ({item.durasi_hari || 1} Hari)
+                      </p>
+                    )}
                     {item.link_bukti && item.link_bukti !== '-' && (
                       <div className="mt-2 flex items-center gap-2">
                         <img 

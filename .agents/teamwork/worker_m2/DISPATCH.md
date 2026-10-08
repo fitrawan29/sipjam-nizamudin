@@ -1,58 +1,73 @@
-## 2026-10-05T10:34:48Z
-You are worker_m2.
+## 2026-10-08T12:26:47Z
+You are teamwork_preview_worker_m2.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-MANDATORY FIRST STEP: Read the user request at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
+MANDATORY INTEGRITY WARNING:
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-Also read the survey explorer report:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md (Sidebar User Profile & Tutorial System)
+MANDATORY INPUT FILES:
+1. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md first (under header '## 2026-10-08T11:11:29Z').
+2. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md.
+3. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_o16_2\report.md.
 
-File Ownership:
-You have exclusive write access to:
-- `src/components/AppScreen.tsx`
-- `src/components/Tutorial/tutorialData.ts`
-- `src/components/Tutorial/TutorialModal.tsx`
-- `src/components/Tutorial/index.ts`
-- `docs/PANDUAN_PENGGUNA.md`
-- `TUTORIAL.md`
+YOUR SCOPE & EXCLUSIVE WRITE OWNERSHIP:
+- src/types/database.ts
+- supabase/migrations/20261008_m2_presensi_guru_approval_autocheckout.sql
+- src/components/GuruPresensi.tsx
+- src/lib/workflow.ts
+- src/lib/attendanceAlpa.ts
+- src/components/AdminVerifView.tsx
+- src/components/PrintHeader.tsx
+- src/utils/printWithGps.ts (or src/lib/gpsPrint.ts)
+- tests/m2_teacher_attendance_verification.test.ts
 
-Requirements to implement:
-1. R3.1: Sidebar Menu User Profile Display (`src/components/AppScreen.tsx`):
-   - In the sidebar overlay, directly below the brand header and above the scrollable menu list, insert a User Profile Card:
-     - Avatar: `renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')` with online status indicator dot.
-     - Full name: `{user?.nama || 'Pengguna SIPJAM'}`.
-     - Role Badge: Color-coded badge with icon for Superadmin (purple), Administrator (blue), Guru (Wali Kelas) (teal), Guru (emerald).
-     - Username / NIP if available.
-   - Adjust menu list max height so the entire drawer remains scrollable on mobile and desktop (`flex-1 overflow-y-auto custom-scroll max-h-[calc(100vh-230px)]`).
-2. R3.2: Complete In-App Tutorial System:
-   - Create `src/components/Tutorial/tutorialData.ts` containing comprehensive tutorial data covering all 28 menus across all 3 roles:
-     - Guru (11 menus): Dashboard, Presensi Guru, Jurnal Pembelajaran, Jurnal Kelas, Modul Piket, Perangkat Pembelajaran, Daftar Nilai, Informasi, Riwayat, Rekap Jurnal, Presensi Siswa.
-     - Admin (14 menus): Dashboard, Verifikasi, Sistem Blok, Jurnal Kelas, Kelola Piket, Perangkat Pembelajaran, Daftar Nilai, Informasi, Analitik, Rekap Akhir, Presensi Siswa, Master Data, Akses Data / Backup, Sistem (Konfigurasi).
-     - Superadmin (3 menus): Ringkasan Platform, Kelola Sekolah, Admin Sekolah.
-     - Each menu item includes `id`, `viewId`, `title`, `icon`, `role`, `summary`, `prerequisites`, `steps: string[]`, `keyTips: string[]`.
-   - Create `src/components/Tutorial/TutorialModal.tsx`:
-     - Role filter tabs (`Semua`, `Guru`, `Admin`, `Superadmin`).
-     - Real-time search filter input (matching title, summary, steps).
-     - Clean accordion list of cards.
-     - Direct "Buka Menu" navigation button calling `onNavigate(viewId)`.
-   - Create `src/components/Tutorial/index.ts` exporting `TutorialModal` and `tutorialData`.
-   - In `src/components/AppScreen.tsx`:
-     - Mount `<TutorialModal isOpen={tutorialModalOpen} onClose={() => setTutorialModalOpen(false)} onNavigate={handleNavigation} currentRole={user?.role} />`.
-     - In sidebar menu list, add a button labeled `"Panduan & Tutorial Lengkap"` that opens this modal.
-     - CRITICAL REGRESSION SAFETY: RETAIN the existing `"Lihat Tutorial Lagi"` button (`setTourOpen(true)`) and existing `<OnboardingTutorial ... />` component to preserve 100% backward compatibility with `tests/app_screen_integration.test.ts` and `tests/onboarding_and_ai_assistant_ui.test.ts`.
-3. R3.2: Complete Documentation File:
-   - Create `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md` providing complete written guides for all 3 roles and their features.
+TASK INSTRUCTIONS (Follow explorer_o16_2/report.md blueprint):
+1. Database Schema & Migration:
+   - Create migration `supabase/migrations/20261008_m2_presensi_guru_approval_autocheckout.sql` adding nullable columns to `public.presensi_guru`:
+     `durasi_hari INTEGER DEFAULT 1`,
+     `tanggal_mulai DATE`,
+     `tanggal_selesai DATE`,
+     `memerlukan_persetujuan_admin BOOLEAN DEFAULT false`,
+     `is_auto_checkout BOOLEAN DEFAULT false`
+   - Update `src/types/database.ts` for `presensi_guru` row/insert/update types.
 
-Verification & Git Workflow:
-- Run `npx tsc --noEmit` (must be 0 errors).
-- Run `npx tsx tests/app_screen_integration.test.ts` and `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`.
-- Run `npm test` and `npm run build`.
-- Execute Git Workflow Rule (GEMINI.md): `git status`, `git add .`, `git commit -m "feat: sidebar user profile, complete tutorial modal, and comprehensive documentation"`, `git push origin main`.
+2. Teacher Attendance Flow & Multi-State Transitions:
+   - In `src/components/GuruPresensi.tsx`:
+     - Unlock the `Pulang` dropdown (`isJenisDropdownDisabled`) so teachers can select between "Hadir di Sekolah" (or "Sekolah") and "Dinas Luar" when checking out, supporting all 4 state transitions ("Hadir di Sekolah" <-> "Dinas Luar").
+     - In the leave form (`jenisPresensi === 'Izin'`), add duration fields (`durasi_hari` with default 1, min 1, and start/end dates).
+     - Calculate `memerlukan_persetujuan_admin = (detailIzin === 'Sakit' && durasi >= 3) || (jenisPresensi === 'Izin' && durasi > 3)`.
+     - Display informational badge indicating if admin approval is required.
+   - In `src/lib/workflow.ts`:
+     - Track arrival vs departure states cleanly.
+     - Add multi-day approved leave coverage: if teacher has an approved sick/leave record where today is within `[tanggal_mulai, tanggal_selesai]`, mark `isIzinSakit = true`, `bebasAlpa = true`.
 
+3. Auto-Checkout Flagging (Forgotten Checkouts):
+   - In `src/lib/attendanceAlpa.ts`:
+     - Add `evaluateAndApplyAutoCheckout` function to detect teachers who checked in (`Datang`) on targetDate but never checked out (`Pulang`) past `jam_pulang_akhir`.
+     - Insert/flag an explicit auto-checkout record with `is_auto_checkout = true`, `status_verifikasi = 'Lupa Checkout'`, `catatan_admin = 'Auto-checkout: Guru tidak melakukan presensi pulang'`.
+   - In `GuruPresensi.tsx`:
+     - Surface a warning/notification banner if teacher was flagged as "Lupa Checkout" on their last attendance day.
 
-## 2026-10-05T10:50:30Z
-**Context**: Status inquiry for Milestone 2 implementation
-**Content**: Please report your current status on implementing the Sidebar user profile, TutorialModal, tutorialData, and PANDUAN_PENGGUNA.md.
-**Action**: Continue implementation, run tests and build, write handoff.md, and reply with completion report.
+4. Admin Verification Routing:
+   - In `src/components/AdminVerifView.tsx`:
+     - On the Presensi verification tab, detect long-term sick (>= 3 days) and leave (> 3 days).
+     - Display distinctive badges ("Sakit >= 3 Hari (Perlu Persetujuan)", "Izin > 3 Hari (Perlu Persetujuan)") along with the date range and duration.
+     - Ensure admin can approve or reject with feedback.
+
+5. GPS Coordinates on Printed Documents:
+   - Create helper `src/utils/printWithGps.ts` (or `src/lib/gpsPrint.ts`).
+   - In `src/components/PrintHeader.tsx`'s `PrintSignature`:
+     - Accept and render `gpsCoordinates` (latitude, longitude, timestamp) in the official legal security footer.
+   - Trigger print with geolocation: if `navigator.geolocation` fails or user blocks/denies permission, display a SweetAlert alert notifying the user that GPS access is blocked/required.
+
+6. Verification Commands:
+   - `npx tsc --noEmit`
+   - `npm test`
+   - `npx tsx tests/m2_teacher_attendance_verification.test.ts`
+   - `npx tsx tests/e2e/run_all_e2e.ts`
+   - `npm run build`
+7. Git Workflow:
+   - Stage changes (`git add .`), commit with descriptive message (`feat(m2): implement teacher attendance multi-state, auto-checkout, admin routing, and gps print`), and push to `origin main`.
+
+Deliver detailed handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md`.
+Notify orchestrator (conversation ID 835d6ca7-b3e2-474a-acf0-423026614449).

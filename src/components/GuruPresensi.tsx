@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { showToast, Toast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
-import { getWitaTimestamp, getWitaDayName } from '@/lib/wita';
+import { getWitaTimestamp, getWitaDayName, getWitaDateStr } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates, dataUrlToFile } from '@/lib/watermarkCanvas';
 
@@ -76,6 +76,56 @@ export default function GuruPresensi({ user }: { user: any }) {
   const [jenisPresensi, setJenisPresensi] = useState('Sekolah');
   const [detailIzin, setDetailIzin] = useState('Sakit');
   const [keterangan, setKeterangan] = useState('');
+  const [durasiHari, setDurasiHari] = useState(1);
+  const [tanggalMulai, setTanggalMulai] = useState(getWitaDateStr());
+  const [tanggalSelesai, setTanggalSelesai] = useState(getWitaDateStr());
+
+  const addDaysToDateStr = (dateStr: string, days: number): string => {
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      dt.setDate(dt.getDate() + days);
+      const year = dt.getFullYear();
+      const month = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getDaysBetween = (startStr: string, endStr: string): number => {
+    try {
+      const [y1, m1, d1] = startStr.split('-').map(Number);
+      const [y2, m2, d2] = endStr.split('-').map(Number);
+      const dt1 = new Date(y1, m1 - 1, d1);
+      const dt2 = new Date(y2, m2 - 1, d2);
+      const diffTime = dt2.getTime() - dt1.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      return Math.max(1, diffDays + 1);
+    } catch {
+      return 1;
+    }
+  };
+
+  const handleDurasiChange = (val: number) => {
+    const durasi = Math.max(1, val);
+    setDurasiHari(durasi);
+    setTanggalSelesai(addDaysToDateStr(tanggalMulai, durasi - 1));
+  };
+
+  const handleTanggalMulaiChange = (newStart: string) => {
+    setTanggalMulai(newStart);
+    setTanggalSelesai(addDaysToDateStr(newStart, durasiHari - 1));
+  };
+
+  const handleTanggalSelesaiChange = (newEnd: string) => {
+    setTanggalSelesai(newEnd);
+    const days = getDaysBetween(tanggalMulai, newEnd);
+    setDurasiHari(days);
+  };
+
+  const memerlukanPersetujuanAdmin = (detailIzin === 'Sakit' && durasiHari >= 3) || (jenisPresensi === 'Izin' && durasiHari > 3);
   const [file, setFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [lokasi, setLokasi] = useState('Mendeteksi lokasi...');
@@ -508,11 +558,18 @@ export default function GuruPresensi({ user }: { user: any }) {
       tipe_absen: tipeAbsen,
       jenis_presensi: jenisPresensi,
       detail_izin: jenisPresensi === 'Izin' ? detailIzin : (isTerlambat ? (keterangan || 'Izin Datang Terlambat') : ''),
+      durasi_hari: jenisPresensi === 'Izin' ? durasiHari : 1,
+      tanggal_mulai: jenisPresensi === 'Izin' ? tanggalMulai : getWitaDateStr(),
+      tanggal_selesai: jenisPresensi === 'Izin' ? tanggalSelesai : getWitaDateStr(),
+      memerlukan_persetujuan_admin: jenisPresensi === 'Izin' ? memerlukanPersetujuanAdmin : false,
+      is_auto_checkout: false,
       lokasi: lokasi,
       jarak: jarakAktual !== null ? `${jarakAktual} m` : 'Unknown',
       link_bukti: file ? 'pending:uploading' : '',
       status_verifikasi: statusVerif,
       keterlambatan_detik: keterlambatanDetik,
+      latitude: userCoords?.latitude || null,
+      longitude: userCoords?.longitude || null,
     };
     if (user?.sekolah_id) {
       newPresensi.sekolah_id = user.sekolah_id;
@@ -704,10 +761,10 @@ export default function GuruPresensi({ user }: { user: any }) {
 
   const isPulangLocked = tipeAbsen === 'Pulang' && dailyState && !dailyState.canPresensiPulang;
 
-  // Pulang options for Dinas Luar:
-  // If teacher checked in as Dinas Luar (dailyState?.isDinasLuar is true), allow choosing between "Di Sekolah" and "Dinas Luar".
-  // Dropdown is only disabled if doing Pulang and NOT Dinas Luar.
-  const isJenisDropdownDisabled = tipeAbsen === 'Pulang' && !dailyState?.isDinasLuar;
+  // Pulang options for Multi-State Transitions:
+  // Teachers can select between "Hadir di Sekolah" and "Dinas Luar" when checking out,
+  // supporting all 4 state transitions ("Hadir di Sekolah" <-> "Dinas Luar").
+  const isJenisDropdownDisabled = false;
 
   return (
     <section id="view-guru-presensi" className="view-section fade-in">
@@ -719,6 +776,19 @@ export default function GuruPresensi({ user }: { user: any }) {
             {dailyState?.isLibur && (
               <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
                 <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {dailyState.lockedReason}
+              </div>
+            )}
+
+            {/* Auto-Checkout (Lupa Checkout) Warning Banner */}
+            {dailyState?.lastAutoCheckout && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl p-4 mb-4 space-y-1">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
+                  <i className="fa-solid fa-triangle-exclamation text-base shrink-0 text-amber-500"></i>
+                  <span>Peringatan Presensi: Tercatat Lupa Checkout</span>
+                </div>
+                <div className="pl-6 text-xs text-amber-700 dark:text-amber-400">
+                  Anda tercatat tidak melakukan presensi pulang pada tanggal {dailyState.lastAutoCheckout.timestamp ? dailyState.lastAutoCheckout.timestamp.substring(0, 10) : 'sebelumnya'}. Sistem telah menandai status presensi Anda sebagai <span className="font-bold">Lupa Checkout</span>.
+                </div>
               </div>
             )}
 
@@ -784,14 +854,14 @@ export default function GuruPresensi({ user }: { user: any }) {
                           required 
                           className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50 text-gray-900 dark:text-white"
                         >
-                            {tipeAbsen === 'Pulang' && dailyState?.isDinasLuar ? (
+                            {tipeAbsen === 'Pulang' ? (
                               <>
-                                <option value="Sekolah">Di Sekolah</option>
+                                <option value="Sekolah">Hadir di Sekolah</option>
                                 <option value="Dinas Luar">Dinas Luar</option>
                               </>
                             ) : (
                               <>
-                                <option value="Sekolah">Hadir Sekolah</option>
+                                <option value="Sekolah">Hadir di Sekolah</option>
                                 <option value="Dinas Luar">Dinas Luar</option>
                                 <option value="Izin Terlambat">Izin Terlambat</option>
                                 <option value="Izin">Izin / Sakit</option>
@@ -842,6 +912,75 @@ export default function GuruPresensi({ user }: { user: any }) {
                             <option value="Izin Khusus">Izin Khusus</option>
                           </select>
                       </div>
+
+                      {/* Durasi & Tanggal Izin / Sakit */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                            Durasi (Hari)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="60"
+                            value={durasiHari}
+                            onChange={e => handleDurasiChange(parseInt(e.target.value, 10) || 1)}
+                            className="w-full px-3 py-2 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                            Tanggal Mulai
+                          </label>
+                          <input
+                            type="date"
+                            value={tanggalMulai}
+                            onChange={e => handleTanggalMulaiChange(e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                            Tanggal Selesai
+                          </label>
+                          <input
+                            type="date"
+                            value={tanggalSelesai}
+                            min={tanggalMulai}
+                            onChange={e => handleTanggalSelesaiChange(e.target.value)}
+                            className="w-full px-3 py-2 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Informational Badge for Admin Approval Requirement */}
+                      {memerlukanPersetujuanAdmin ? (
+                        <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs font-semibold ${
+                          detailIzin === 'Sakit'
+                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200'
+                            : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+                        }`}>
+                          <i className={`fa-solid fa-triangle-exclamation text-base shrink-0 ${detailIzin === 'Sakit' ? 'text-rose-500' : 'text-amber-500'}`}></i>
+                          <div>
+                            <div className="font-bold">
+                              {detailIzin === 'Sakit' ? 'Sakit ≥ 3 Hari: Perlu Persetujuan Admin' : 'Izin > 3 Hari: Perlu Persetujuan Admin'}
+                            </div>
+                            <div className="text-[11px] font-normal opacity-90">
+                              {detailIzin === 'Sakit'
+                                ? 'Pengajuan sakit selama 3 hari atau lebih wajib melampirkan surat dokter dan disetujui Admin.'
+                                : 'Pengajuan izin lebih dari 3 hari tergolong izin jangka panjang dan wajib disetujui Admin.'}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2 font-medium">
+                          <i className="fa-solid fa-circle-info text-blue-500"></i>
+                          <span>Pengajuan {detailIzin} selama {durasiHari} hari.</span>
+                        </div>
+                      )}
                       
                       <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800/50 p-4 rounded-2xl">
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-2 flex justify-between items-center">
