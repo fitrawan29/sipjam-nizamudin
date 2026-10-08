@@ -64,14 +64,14 @@ Conclude Milestone 2, execute Milestones 3, 4, 5 with full verification and fore
 | challenger_o17_m3_2 | teamwork_preview_challenger | Challenger 2 M3 | completed | 98d23f3d-10f8-4dc0-b021-5f4274d0d1ff |
 | auditor_o17_m3_1 | teamwork_preview_auditor | Forensic Auditor M3 | completed | fdb7c753-5eb7-40d6-8413-6acb3bd5aec7 |
 | worker_o17_m4 | teamwork_preview_worker | Worker M4 Implementation | errored | 6a68fc6a-664c-42f6-bba6-1c21284bd08b |
-| worker_o17_m4_2 | teamwork_preview_worker | Worker M4 Implementation Retry | in-progress | e03a0611-33ce-4f8d-8f95-389cfd3c7ea6 |
+| worker_o17_m4_2 | teamwork_preview_worker | Worker M4 Implementation Retry | completed | e03a0611-33ce-4f8d-8f95-389cfd3c7ea6 |
 
 ## Succession Status
-- Succession required: pending worker completion
+- Succession required: yes
 - Spawn count: 16 / 16
-- Pending subagents: e03a0611-33ce-4f8d-8f95-389cfd3c7ea6
+- Pending subagents: none
 - Predecessor: orchestrator_16
-- Successor: not yet spawned
+- Successor: spawning orchestrator_18
 
 ## Active Timers
 - Heartbeat cron: 3ef8ddbb-8819-4386-aaac-f3d3ca2811fc/task-36
