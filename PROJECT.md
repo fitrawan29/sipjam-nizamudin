@@ -38,11 +38,11 @@
 | 9 | F9: Student Attendance RBAC | Strict RBAC for student attendance across Mapel, Wali Kelas, and Piket | M3 | Survey 3 | DONE |
 | 10 | F10: Gate-to-Mapel Sync & Truancy Detection | Synchronize gate check-ins and auto-flag truancy when Piket Hadir but Mapel Alpa | M3 | Survey 3 | DONE |
 | 11 | F11: Piket Form Concurrency Lock | Concurrency lock preventing double entry by simultaneous Piket users | M3 | Survey 3 | DONE |
-| 12 | F12: Kurikulum Merdeka CP Calculations | Capaian Pembelajaran narrative descriptions computed from highest/lowest TP | M4 | Survey 3 | PLANNED |
-| 13 | F13: Wali Kelas "Rapor" Menu | Dedicated "Rapor" navigation item for teachers assigned as Wali Kelas | M4 | Survey 3 | PLANNED |
-| 14 | F14: In-App Tutorial Updates | Update onboarding tour and guide cards for all new flows | M4 | Survey 3 | PLANNED |
-| 15 | F15: E2E & Programmatic Test Suite | Write/update E2E tests in tests/e2e/ validating all 5 acceptance criteria | M5 | Survey 3 | PLANNED |
-| 16 | F16: Build Verification & Git Delivery | tsc --noEmit, npm run build, git add/commit/push per GEMINI.md | M5 | Dispatch | PLANNED |
+| 12 | F12: Kurikulum Merdeka CP Calculations | Capaian Pembelajaran narrative descriptions computed from highest/lowest TP | M4 | Survey 3 | DONE |
+| 13 | F13: Wali Kelas "Rapor" Menu | Dedicated "Rapor" navigation item for teachers assigned as Wali Kelas | M4 | Survey 3 | DONE |
+| 14 | F14: In-App Tutorial Updates | Update onboarding tour and guide cards for all new flows | M4 | Survey 3 | DONE |
+| 15 | F15: E2E & Programmatic Test Suite | Write/update E2E tests in tests/e2e/ validating all 5 acceptance criteria | M5 | Survey 3 | DONE |
+| 16 | F16: Build Verification & Git Delivery | tsc --noEmit, npm run build, git add/commit/push per GEMINI.md | M5 | Dispatch | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -50,8 +50,8 @@
 | M1 | UI/UX & Camera Updates (R1) | Notification 30-min snooze, print orientation removal, 4:3 camera lock, Google Drive upload | none | DONE |
 | M2 | Teacher Attendance & Admin Verification (R2) | Multi-state flows, auto-checkout, sick/leave admin routing, GPS print footer | M1 | DONE |
 | M3 | Student Attendance & Piket Concurrency (R3) | RBAC enforcement, gate sync & truancy detection, Piket form concurrency lock | M2 | DONE |
-| M4 | Academic Merdeka, Rapor Menu & Tutorials (R4) | Kurikulum Merdeka CP calculations, Wali Kelas Rapor menu, tutorial updates | M3 | PLANNED |
-| M5 | E2E Testing, Adversarial Verification & Git Delivery | All acceptance criteria tests in tests/e2e/, npm test, tsc, npm run build, git push | M1, M2, M3, M4 | PLANNED |
+| M4 | Academic Merdeka, Rapor Menu & Tutorials (R4) | Kurikulum Merdeka CP calculations, Wali Kelas Rapor menu, tutorial updates | M3 | DONE |
+| M5 | E2E Testing, Adversarial Verification & Git Delivery | All acceptance criteria tests in tests/e2e/, npm test, tsc, npm run build, git push | M1, M2, M3, M4 | DONE |
 
 ## Interface Contracts
 

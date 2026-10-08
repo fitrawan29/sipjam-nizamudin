@@ -7,15 +7,16 @@ import { runTier1Tests } from './tier1_feature_coverage.test';
 import { runTier2Tests } from './tier2_boundary_corner.test';
 import { runTier3Tests } from './tier3_cross_feature.test';
 import { runTier4Tests } from './tier4_real_world_scenarios.test';
+import { runAcceptanceCriteriaM5Tests } from './acceptance_criteria_m5.test';
 import { BOLD, CYAN, GREEN, RED, RESET, YELLOW } from './helpers/testHarness';
 
 async function main() {
   const startTime = Date.now();
 
   console.log(`\n${CYAN}${BOLD}==============================================================================${RESET}`);
-  console.log(`${CYAN}${BOLD}       SIPJAM APPLICATION ENHANCEMENTS — 4-TIER E2E TEST SUITE RUNNER         ${RESET}`);
+  console.log(`${CYAN}${BOLD}       SIPJAM APPLICATION ENHANCEMENTS — 5-TIER E2E TEST SUITE RUNNER         ${RESET}`);
   console.log(`${CYAN}${BOLD}==============================================================================${RESET}\n`);
-  console.log(`Target: 15 Features across Tiers 1 to 4`);
+  console.log(`Target: Features F1-F15 & Teacher Updates Acceptance Criteria (AC 1 to AC 5)`);
   console.log(`Working Directory: ${process.cwd()}\n`);
 
   const results: { tier: string; passed: boolean }[] = [];
@@ -47,6 +48,13 @@ async function main() {
   console.log(`${BOLD}------------------------------------------------------------------------------${RESET}`);
   const t4Passed = await runTier4Tests();
   results.push({ tier: 'Tier 4: Real-World Scenarios', passed: t4Passed });
+
+  // Milestone 5
+  console.log(`${BOLD}------------------------------------------------------------------------------${RESET}`);
+  console.log(`${BOLD}RUNNING MILESTONE 5: ACCEPTANCE CRITERIA SUITE (AC 1 - AC 5 FOR TEACHER UPDATES)${RESET}`);
+  console.log(`${BOLD}------------------------------------------------------------------------------${RESET}`);
+  const m5Passed = await runAcceptanceCriteriaM5Tests();
+  results.push({ tier: 'Milestone 5: Teacher Updates Acceptance Criteria (AC 1-5)', passed: m5Passed });
 
   const totalDuration = ((Date.now() - startTime) / 1000).toFixed(2);
   const allPassed = results.every(r => r.passed);

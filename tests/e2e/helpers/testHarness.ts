@@ -76,14 +76,16 @@ if (typeof (global as any).document === 'undefined') {
         style: {},
         setAttribute: () => {},
         appendChild: () => {},
+        getElementsByTagName: () => [],
       };
     },
+    getElementsByTagName: () => [{ appendChild: () => {}, getElementsByTagName: () => [] }],
     getElementById: () => null,
     querySelector: () => null,
     querySelectorAll: () => [],
-    head: { appendChild: () => {} },
-    body: { appendChild: () => {} },
-    documentElement: { style: {} },
+    head: { appendChild: () => {}, getElementsByTagName: () => [] },
+    body: { appendChild: () => {}, getElementsByTagName: () => [] },
+    documentElement: { style: {}, getElementsByTagName: () => [] },
   };
 }
 
