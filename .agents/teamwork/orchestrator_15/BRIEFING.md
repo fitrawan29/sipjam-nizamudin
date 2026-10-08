@@ -54,12 +54,17 @@ Orchestrate bugfixes and feature additions for SIPJAM: Fix piket UI & state pres
 | challenger_m1_1 | teamwork_preview_challenger | M1 Empirical Test Piket Filter | completed | cffeda05-8865-4b62-b1b2-2d0d4fb34f6e |
 | challenger_m1_2 | teamwork_preview_challenger | M1 Empirical Test QR Camera | completed | bed93d5f-3459-43b7-bacb-86d5ef81a949 |
 | auditor_m1 | teamwork_preview_auditor | M1 Forensic Integrity Audit | completed | 26f0274e-b871-4d22-9647-10ff09e04649 |
-| worker_m2 | teamwork_preview_worker | M2 Sidebar & Tutorial Implementation | in-progress | ee1d25a1-c6e3-4c63-a3ef-6f09e367de8c |
+| worker_m2 | teamwork_preview_worker | M2 Sidebar & Tutorial Implementation | completed | ee1d25a1-c6e3-4c63-a3ef-6f09e367de8c |
+| reviewer_m2_1 | teamwork_preview_reviewer | M2 Review Sidebar Profile | in-progress | 4577a054-619a-4070-b86b-e21ea5d09f9a |
+| reviewer_m2_2 | teamwork_preview_reviewer | M2 Review Tutorial System | in-progress | d988ba83-c6ff-4c2b-bb72-0318f9755a12 |
+| challenger_m2_1 | teamwork_preview_challenger | M2 Empirical Test Sidebar Profile | in-progress | bf8c828c-77d0-4a6d-bfd0-37b3bb6463b5 |
+| challenger_m2_2 | teamwork_preview_challenger | M2 Empirical Test Tutorial System | in-progress | c9288868-eb9d-40ea-9b34-935989ea20f6 |
+| auditor_m2 | teamwork_preview_auditor | M2 Forensic Integrity Audit | in-progress | 150e083d-2d64-4db6-9357-d8245fd3b895 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 10 / 16
-- Pending subagents: ee1d25a1-c6e3-4c63-a3ef-6f09e367de8c
+- Spawn count: 15 / 16
+- Pending subagents: 4577a054-619a-4070-b86b-e21ea5d09f9a, d988ba83-c6ff-4c2b-bb72-0318f9755a12, bf8c828c-77d0-4a6d-bfd0-37b3bb6463b5, c9288868-eb9d-40ea-9b34-935989ea20f6, 150e083d-2d64-4db6-9357-d8245fd3b895
 - Predecessor: none
 - Successor: not yet spawned
 

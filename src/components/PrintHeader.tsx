@@ -383,60 +383,28 @@ export function PrintSignature({
 }
 
 export function PrintOrientationToggle({
-  orientation,
-  setOrientation
+  orientation: _orientation,
+  setOrientation: _setOrientation
 }: {
-  orientation: 'landscape' | 'portrait';
-  setOrientation: (val: 'landscape' | 'portrait') => void;
+  orientation?: 'landscape' | 'portrait';
+  setOrientation?: (val: 'landscape' | 'portrait') => void;
 }) {
+  // Rely directly on native browser print dialog for orientation.
+  // Manual toggle buttons removed. Inject print styles to hide chrome/navigation.
   return (
-    <>
-      <style>{`
-        @media print {
-          @page {
-            margin: ${orientation === 'landscape' ? '8mm 10mm' : '12mm 15mm'} !important;
-          }
-          header, nav, aside, .app-header, .no-print {
-            display: none !important;
-          }
-          main {
-            padding: 0 !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-            width: 100% !important;
-          }
+    <style>{`
+      @media print {
+        header, nav, aside, .app-header, .no-print {
+          display: none !important;
         }
-      `}</style>
-      <div className="flex items-center gap-2 no-print">
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-          <i className="fa-solid fa-arrows-rotate text-[11px] text-gray-400"></i> Orientasi Cetak:
-        </span>
-        <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
-          <button
-            type="button"
-            onClick={() => setOrientation('portrait')}
-            className={`px-3 py-1 text-xs rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-              orientation === 'portrait'
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <i className="fa-solid fa-file text-[11px]"></i> Portrait
-          </button>
-          <button
-            type="button"
-            onClick={() => setOrientation('landscape')}
-            className={`px-3 py-1 text-xs rounded-lg font-semibold transition-all flex items-center gap-1.5 ${
-              orientation === 'landscape'
-                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            <i className="fa-solid fa-file fa-rotate-90 text-[11px]"></i> Landscape
-          </button>
-        </div>
-      </div>
-    </>
+        main {
+          padding: 0 !important;
+          margin: 0 !important;
+          max-width: 100% !important;
+          width: 100% !important;
+        }
+      }
+    `}</style>
   );
 }
 

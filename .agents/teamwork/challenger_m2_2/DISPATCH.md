@@ -1,27 +1,22 @@
-# Dispatch: Challenger M2.2
+## 2026-10-05T10:53:56Z
+You are challenger_m2_2.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2
+Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-## Identity
-- Role: teamwork_preview_challenger
-- Assigned Scope: Milestone 2 Empirical Verification & Regression Testing
-- Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\
-- Parent Orchestrator: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\
+MANDATORY FIRST STEP: Read the user request at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
 
-## Mandatory Context
-- ORIGINAL_REQUEST: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-- PROJECT: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\PROJECT.md
-- Worker Handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2_2\handoff.md
+Read Worker M2's handoff report:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
 
-## Objectives
-1. Perform empirical verification of M2 requirements:
-   - Check API endpoints: `/api/notifications/rejection` and `/api/attendance/auto-alpa`.
-   - Verify that UI components `AdminRekapView.tsx`, `HomeView.tsx`, and `AdminMonitorView.tsx` render without runtime errors or crashes.
-   - Run automated tests (`npx tsx tests/m2_notifications_alpa_warning.test.ts`, `npm test`).
-   - Run typecheck (`npx tsc --noEmit`).
-2. Formulate verdict in `handoff.md`: APPROVE or REQUEST_CHANGES.
-3. Notify parent orchestrator via `send_message`.
+Your role is to write an empirical test script (e.g. `tests/challenger_m2_tutorial_system.test.ts`) that programmatically and empirically verifies:
+1. R3.2: Complete Tutorial System:
+   - Verifies `src/components/Tutorial/tutorialData.ts` contains exactly 28 menus (11 Guru, 14 Admin, 3 Superadmin).
+   - Tests `getTutorialsByRole` and `searchTutorials` functions with multiple search queries (e.g. 'piket', 'qr', 'jurnal', 'inval', 'blok', 'naik kelas').
+   - Verifies `TutorialModal.tsx` contains search input, role tabs, accordion details, and "Buka Menu" navigation.
+   - Verifies existence and non-empty content of `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md`.
+2. Run `npx tsx tests/challenger_m2_tutorial_system.test.ts`.
+3. Run `npm test`.
 
-## 2026-09-24T16:45:57Z
-You are Challenger M2.2. Your working directory is c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\.
-Read your dispatch instructions at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\DISPATCH.md.
-Also read ORIGINAL_REQUEST at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md and PROJECT.md at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_2\PROJECT.md.
-Perform empirical verification of Milestone 2 features, formulate verdict (APPROVE or REQUEST_CHANGES), write handoff.md, and notify parent with send_message.
+Provide a clear APPROVE or REQUEST_CHANGES verdict in your handoff report.
+Write your report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\handoff.md` and send a message to parent.

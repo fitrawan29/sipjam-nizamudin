@@ -1,87 +1,119 @@
-# Project: SIPJAM Hak Akses Piket, Rekap Wali Kelas, Cetak Dokumen & Download Kartu QR Siswa
+# Project: SIPJAM — Teacher Account Comprehensive Updates
 
 ## Architecture
-SIPJAM is a multi-tenant school management system built on Next.js 16 (React 19) + Supabase with role-based access control (Superadmin, Admin, Guru, Wali Kelas).
-
-### Modules & Boundaries
-1. **Access Control & Routing Layer (`src/lib/workflow.ts`, `src/components/AppScreen.tsx`)**:
-   - `isPiketHariIni`: Query `penugasan_piket` & `jadwal_piket` for today's WITA day. Admins have 24/7 access; teachers only have access if assigned today.
-   - `isWaliKelas` & `assignedKelas`: Restricts whole-class attendance recap (`view-rekap-siswa`) strictly to assigned Wali Kelas and Admins.
-   - Teacher subject attendance (`GuruJurnal.tsx`) remains independent per teaching schedule session.
-2. **Attendance & Student Recap Views (`src/components/PiketView.tsx`, `src/components/RekapSiswaView.tsx`, `src/components/GuruJurnal.tsx`)**:
-   - `PiketView.tsx`: Blocks non-assigned teachers with informative lock UI.
-   - `RekapSiswaView.tsx`: Locks class dropdown strictly to the teacher's assigned class (`assignedKelas` / `waliKelasList`).
-   - `GuruJurnal.tsx`: Preserves subject-level attendance management for subject teachers unaffected.
-3. **Print Layout, Robot UI & Watermark Layer (`src/app/globals.css`, `AIAssistant.tsx`, `DokumenView.tsx`, `RekapJurnalView.tsx`, `PrintHeader.tsx`)**:
-   - Robot element (`fa-robot` & chat popup in `AIAssistant.tsx`) and floating buttons hidden via `no-print print:hidden` and specific `@media print` rules.
-   - School watermark (`.sipjam-print-watermark` created by `PrintHeader.tsx`) strictly preserved using `:not(.sipjam-print-watermark)` and `display: flex !important;`.
-   - `DokumenView.tsx`: Complete print integration with `PrintHeader`, subheader, print table, `PrintSignature`, and `no-print` on web cards.
-   - `RekapJurnalView.tsx`: Table padding standardized to `px-2 py-1.5`, header to `print:bg-gray-100`, raw GPS coords hidden with `no-print`.
-4. **Student Identity & QR Card Download Layer (`src/lib/qrSiswa.ts`, `src/components/AdminDataView.tsx`)**:
-   - Client-side zero-dependency HTML5 Canvas generator for student ID cards (600x960 px portrait).
-   - Generates PNG download with complete student identity: Nama Lengkap, NISN, Kelas, Nama Sekolah, and sharp QR code matrix.
-   - Integrated into `AdminDataView.tsx` with "Download Kartu" button per student and preview modal options.
-
----
+- **Stack**: Next.js 16.3.4 (App Router), React 19, TypeScript, Tailwind CSS, Font Awesome 6, SweetAlert2, Supabase (PostgreSQL + PostgREST).
+- **Authentication & Roles**: Roles are `'superadmin'`, `'admin'`, and `'guru'`. Additional teacher assignments include `wali_kelas` and daily `piket`.
+- **Multi-tenant Data Flow**: All operational queries strictly partitioned by `sekolah_id`.
+- **Teacher Reminder Subsystem**: `TeacherReminderManager.tsx` with 30-minute persistent snooze toggle in `localStorage` (`sipjam_reminder_snooze_until_${userId}`) suppressing both in-app banners and push alerts.
+- **Camera & Storage Architecture**: `CameraSelfieCapture.tsx` locked strictly to 4:3 (portrait 3:4 for attendance, landscape 4:3 for KBM journal) with canvas pre-compression before upload via `src/lib/driveUpload.ts` to Google Drive.
+- **Attendance & Admin Verification**:
+  - `public.presensi_guru`: enhanced with `durasi_hari`, `tanggal_mulai`, `tanggal_selesai`, `memerlukan_persetujuan_admin`, `is_auto_checkout`.
+  - Multi-state transitions between "Hadir di Sekolah" and "Dinas Luar".
+  - Auto-checkout evaluation in `src/lib/attendanceAlpa.ts`.
+  - Admin approval routing in `AdminVerifView.tsx` for sick $\ge 3$ days and leave $> 3$ days.
+  - GPS coordinate capture and injection into `PrintHeader.tsx`'s security footer, with SweetAlert alert if GPS access is denied/blocked.
+- **Student Attendance, Sync & Concurrency**:
+  - Strict RBAC: Mapel limited to session roll-call, Wali Kelas locked to assigned class, Piket active only on duty days.
+  - Gate to Mapel synchronization with automatic truancy detection (`piketAttendance` present but Mapel marks `Alpa`).
+  - Lease-based concurrency lock in `src/lib/piketLock.ts` preventing simultaneous form edits.
+- **Academic Merdeka & Reporting**:
+  - `GradebookView.tsx`: Kurikulum Merdeka Capaian Pembelajaran narrative generator based on highest and lowest TP scores.
+  - `AppScreen.tsx`: Dedicated "Rapor" menu for Wali Kelas (`isWaliKelas`).
+  - Updated in-app tutorials (`tutorialSteps.ts` and `tutorialData.ts`).
+- **Testing & Quality Assurance**:
+  - Comprehensive automated tests in `tests/e2e/` covering all 5 Acceptance Criteria.
+  - Zero TypeScript errors (`npx tsc --noEmit`), clean build (`npm run build`), and git workflow compliance.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | Akses Piket Sesuai Jadwal | Cek `penugasan_piket` & `jadwal_piket` hari ini; sembunyikan menu & blokir akses non-piket; Admin/Superadmin bypass | M1 | R1 | DONE |
-| 2 | Pembatasan Rekap Wali Kelas | Menu & view `RekapSiswaView` hanya untuk Wali Kelas; dropdown kelas terkunci mutlak ke kelas binaan | M1 | R2 | DONE |
-| 3 | Akses Presensi Guru Mapel | Guru Mapel tetap dapat melihat & mengelola kehadiran murid di kelas/mapel binaan saat KBM (`GuruJurnal`) | M1 | R2 | DONE |
-| 4 | Sembunyikan Robot & UI Melayang saat Print | Sembunyikan tombol robot AI, chat popup, floating reminder/modals saat cetak (`@media print` & `no-print`) | M2 | R3 | DONE |
-| 5 | Pertahankan Watermark Sekolah | Watermark sekolah (`.sipjam-print-watermark`) tetap tercetak di background kertas dan tidak boleh disembunyikan | M2 | R3 | DONE |
-| 6 | Standarisasi Format Cetak Dokumen Guru | `DokumenView` & `RekapJurnalView` disamakan strukturnya dengan standar Admin (`PrintHeader`, tabel `px-2 py-1.5`, `PrintSignature`) | M2 | R3 | DONE |
-| 7 | Generator & Download Kartu QR Siswa | Download kartu presensi PNG via HTML5 Canvas (Nama, NISN, Kelas, Nama Sekolah, QR code) di `AdminDataView` | M3 | R4 | DONE |
-| 8 | Verifikasi, Audit, & Git Workflow | `tsc --noEmit`, `npm run build`, unit/integration tests, Reviewer, Challenger, Forensic Auditor, Git commit & push | M4 | R1-R4, GEMINI.md | DONE |
-
----
+| 1 | F1: 30-Minute Notification Snooze | 30-min snooze for auto-notifications toggleable by teacher | M1 | Survey 1 | PLANNED |
+| 2 | F2: Print Orientation Simplification | Remove print orientation toggle buttons, rely cleanly on browser dialog | M1 | Survey 1 | PLANNED |
+| 3 | F3: 4:3 Camera Lock & Google Drive Upload | Camera locked to 4:3 (portrait 3:4, landscape 4:3), canvas compression & Drive upload | M1 | Survey 1 | PLANNED |
+| 4 | F4: UI Responsiveness Across Devices | Responsive layout for all teacher controls across desktop and mobile | M1 | Survey 1 | PLANNED |
+| 5 | F5: Multi-State Teacher Attendance | Arrival/departure multi-state transitions ("Hadir di Sekolah" <-> "Dinas Luar") | M2 | Survey 2 | PLANNED |
+| 6 | F6: Auto-Checkout Flagging | Detect uncompleted checkouts past cutoff and flag auto-checkout | M2 | Survey 2 | PLANNED |
+| 7 | F7: Long-Term Sick & Leave Admin Routing | Route sick >=3 days and leave >3 days to Admin dashboard for approval | M2 | Survey 2 | PLANNED |
+| 8 | F8: GPS Coordinates on Printed Documents | Auto-attach GPS to printed documents with alert if GPS is blocked | M2 | Survey 2 | PLANNED |
+| 9 | F9: Student Attendance RBAC | Strict RBAC for student attendance across Mapel, Wali Kelas, and Piket | M3 | Survey 3 | PLANNED |
+| 10 | F10: Gate-to-Mapel Sync & Truancy Detection | Synchronize gate check-ins and auto-flag truancy when Piket Hadir but Mapel Alpa | M3 | Survey 3 | PLANNED |
+| 11 | F11: Piket Form Concurrency Lock | Concurrency lock preventing double entry by simultaneous Piket users | M3 | Survey 3 | PLANNED |
+| 12 | F12: Kurikulum Merdeka CP Calculations | Capaian Pembelajaran narrative descriptions computed from highest/lowest TP | M4 | Survey 3 | PLANNED |
+| 13 | F13: Wali Kelas "Rapor" Menu | Dedicated "Rapor" navigation item for teachers assigned as Wali Kelas | M4 | Survey 3 | PLANNED |
+| 14 | F14: In-App Tutorial Updates | Update onboarding tour and guide cards for all new flows | M4 | Survey 3 | PLANNED |
+| 15 | F15: E2E & Programmatic Test Suite | Write/update E2E tests in tests/e2e/ validating all 5 acceptance criteria | M5 | Survey 3 | PLANNED |
+| 16 | F16: Build Verification & Git Delivery | tsc --noEmit, npm run build, git add/commit/push per GEMINI.md | M5 | Dispatch | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Piket & Attendance Access Control | R1 (Akses Piket sesuai jadwal hari ini) & R2 (Rekap Wali Kelas vs Guru Mapel) | none | DONE |
-| M2 | Print Layout, Hide Robot UI & Watermark | R3 (Format cetak guru identik admin, sembunyikan robot & tombol melayang, pertahankan watermark) | none | DONE |
-| M3 | Download Kartu Presensi QR Siswa | R4 (Download kartu identitas QR siswa PDF/Image di AdminDataView) | none | DONE |
-| M4 | Comprehensive Verification, Audit & Git Delivery | Automated test suite, `tsc --noEmit`, `npm run build`, Reviewer, Challenger, Auditor, Git commit & push | M1, M2, M3 | DONE |
-
----
-
-## Code Layout
-- `src/lib/workflow.ts`: Helper `getGuruDailyState` diperbarui untuk query `penugasan_piket` dan `jadwal_piket` hari ini.
-- `src/components/AppScreen.tsx`: State `isPiketHariIni`, pembatasan menu `view-piket` & `view-rekap-siswa`, guard navigasi, passing `assignedKelas`.
-- `src/components/PiketView.tsx`: UI akses terblokir untuk guru yang tidak bertugas hari ini.
-- `src/components/RekapSiswaView.tsx`: Guard akses untuk non-wali-kelas, dropdown kelas terkunci mutlak ke kelas binaan.
-- `src/components/GuruJurnal.tsx`: Verifikasi presensi mapel tetap berfungsi penuh.
-- `src/app/globals.css`: Selektor `@media print` untuk sembunyikan robot, tombol fixed, dengan pengecualian `:not(.sipjam-print-watermark)`.
-- `src/components/AIAssistant/AIAssistant.tsx`: Penambahan `no-print print:hidden` pada button & modal dialog.
-- `src/components/DokumenView.tsx`: Penambahan `PrintHeader`, subheader cetak, print table matriks perangkat, `PrintSignature`, dan `no-print` pada web cards.
-- `src/components/RekapJurnalView.tsx`: Standardisasi padding sel tabel (`px-2 py-1.5`), header bg, hide raw GPS geotag, signature wali kelas.
-- `src/lib/qrSiswa.ts`: Penambahan helper `downloadStudentCardPng`, `generateStudentCardCanvas`, `printStudentQrCardWithSchool`.
-- `src/components/AdminDataView.tsx`: Tombol "Download Kartu" per siswa, modal preview dengan opsi download & print, batch print/download.
-- `tests/adversarial_piket_wali_challenger_1.test.ts`: Uji empiris hak akses piket dan rekap wali kelas (42 tests).
-- `tests/adversarial_r3_r4_challenger_2.test.ts`: Uji empiris CSS print, watermark, dan generator kartu siswa (102 tests).
-
----
+| M1 | UI/UX & Camera Updates (R1) | Notification 30-min snooze, print orientation removal, 4:3 camera lock, Google Drive upload | none | PLANNED |
+| M2 | Teacher Attendance & Admin Verification (R2) | Multi-state flows, auto-checkout, sick/leave admin routing, GPS print footer | M1 | PLANNED |
+| M3 | Student Attendance & Piket Concurrency (R3) | RBAC enforcement, gate sync & truancy detection, Piket form concurrency lock | M2 | PLANNED |
+| M4 | Academic Merdeka, Rapor Menu & Tutorials (R4) | Kurikulum Merdeka CP calculations, Wali Kelas Rapor menu, tutorial updates | M3 | PLANNED |
+| M5 | E2E Testing, Adversarial Verification & Git Delivery | All acceptance criteria tests in tests/e2e/, npm test, tsc, npm run build, git push | M1, M2, M3, M4 | PLANNED |
 
 ## Interface Contracts
-### `isPiketHariIni` Contract
-- Input: `user: User`, `day: DayName` (WITA)
-- Check 1: `penugasan_piket` where `tipe_petugas = 'Guru'` AND `hari = day` AND (`guru_id = user.id` OR `guru_nama = user.nama` OR `guru_nip = user.nip`)
-- Check 2: `jadwal_piket` where `hari = day` AND `daftar_guru` contains `user.nama`
-- Bypass: `user.role === 'admin' || user.role === 'superadmin'` -> always `true`
 
-### `isWaliKelas` & `assignedKelas` Contract
-- In `RekapSiswaView`:
-  - If `!isAdmin`: `select` dropdown disabled or restricted strictly to `[assignedKelas, ...waliKelasList.map(w => w.kelas)]`.
-  - Class query in `tarikRekap` clamped to assigned class.
-- In `GuruJurnal`:
-  - Attendance query for current class/schedule remains intact: `.from('presensi_siswa').select('*').eq('tanggal', tgl).eq('kelas', kelas).eq('status', 'datang')`.
+### 1. Teacher Notification Snooze (`TeacherReminderManager.tsx`)
+- Storage Key: `sipjam_reminder_snooze_until_${user.id}`
+- Snooze Duration: 30 minutes (`30 * 60 * 1000` ms)
+- Evaluation:
+  ```ts
+  export function isReminderSnoozed(userId: string): boolean {
+    const until = localStorage.getItem(`sipjam_reminder_snooze_until_${userId}`);
+    if (!until) return false;
+    return Date.now() < parseInt(until, 10);
+  }
+  ```
 
-### Student Card Canvas Contract
-- Dimensions: 600 x 960 px
-- Header: Gradient `#0B4619` -> `#166534`, Title: "KARTU PRESENSI DIGITAL", School Name
-- Body: QR Code (220x220 px) in white container (270x270 px) + Monospace ID text
-- Info Box: Nama Siswa, NISN, Kelas, Nama Sekolah
-- Output: PNG download via `a[download]` + Native Print Dialog
+### 2. Camera Constraints & Frame Ratios (`CameraSelfieCapture.tsx`)
+- Constraints:
+  - Portrait: `aspectRatio: { ideal: 3 / 4 }`, `width: { ideal: 720 }`, `height: { ideal: 960 }`
+  - Landscape: `aspectRatio: { ideal: 4 / 3 }`, `width: { ideal: 1280 }`, `height: { ideal: 960 }`
+- Canvas Processing:
+  - Portrait cropped to 3:4, landscape cropped to 4:3 in `watermarkCanvas.ts`.
+
+### 3. Presensi Guru Schema (`public.presensi_guru`)
+- New columns:
+  - `durasi_hari`: INTEGER DEFAULT 1
+  - `tanggal_mulai`: DATE
+  - `tanggal_selesai`: DATE
+  - `memerlukan_persetujuan_admin`: BOOLEAN DEFAULT false
+  - `is_auto_checkout`: BOOLEAN DEFAULT false
+- Approval Threshold Rule:
+  ```ts
+  const requiresAdminApproval = (detailIzin === 'Sakit' && durasi >= 3) || (jenisPresensi === 'Izin' && durasi > 3);
+  ```
+
+### 4. Piket Form Concurrency Lock (`src/lib/piketLock.ts`)
+- Lock record: `{ id, sekolah_id, tanggal, form_type, user_id, user_name, locked_at, expires_at }`
+- Lease duration: 5 minutes (300 seconds), refresh heartbeat: 60 seconds.
+- Lock acquisition:
+  ```ts
+  acquirePiketLock(sekolahId: string, tanggal: string, userId: string, userName: string): Promise<{ success: boolean; lockedBy?: string }>
+  ```
+
+### 5. Kurikulum Merdeka Capaian Pembelajaran (`GradebookView.tsx`)
+- For each student:
+  - Find TP with highest score: `tpMax`
+  - Find TP with lowest score: `tpMin`
+  - Description synthesized:
+    - Strengths: "Menunjukkan penguasaan yang sangat baik dalam [materi tpMax]"
+    - Needs Guidance: "Perlu bimbingan lebih lanjut dalam [materi tpMin]"
+
+## Code Layout
+- `src/components/TeacherReminderManager.tsx`: 30-minute notification snooze.
+- `src/components/PrintHeader.tsx`: Clean print layout, GPS security footer.
+- `src/components/CameraSelfieCapture.tsx`: 4:3 aspect ratio lock.
+- `src/lib/watermarkCanvas.ts`: 4:3 canvas cropping.
+- `src/components/GuruPresensi.tsx`: Multi-state attendance, leave duration input.
+- `src/lib/attendanceAlpa.ts`: Auto-checkout detection pass.
+- `src/components/AdminVerifView.tsx`: Sick/leave approval cards & badges.
+- `src/components/PiketView.tsx`: Piket concurrency lock and gate logging.
+- `src/lib/piketLock.ts`: Concurrency lease manager.
+- `src/components/GuruJurnal.tsx`: Gate sync & truancy detection.
+- `src/components/GradebookView.tsx`: Kurikulum Merdeka grade & CP generation.
+- `src/components/AppScreen.tsx`: Wali Kelas "Rapor" menu and navigation guards.
+- `src/components/Onboarding/tutorialSteps.ts` & `src/components/Tutorial/tutorialData.ts`: In-app guides.
+- `tests/e2e/`: E2E test suites verifying all 5 acceptance criteria.

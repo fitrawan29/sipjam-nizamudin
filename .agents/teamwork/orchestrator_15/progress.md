@@ -10,5 +10,5 @@ Current iteration: 0 / 32
 - [x] Phase 0: Dispatched 3 parallel Explorers for survey (R1, R2, R3)
 - [x] Phase 0: Merged survey reports into PROJECT.md and plan.md
 - [x] Milestone 1: Modul Piket UI & State Fix (R1 & R2) [PASSED GATE]
-- [ ] Milestone 2: Sidebar User Profile & Tutorial System (R3) [Worker active]
+- [ ] Milestone 2: Sidebar User Profile & Tutorial System (R3) [Verification active]
 - [ ] Phase Final: Verification, build check, git commit & push, completion report to parent

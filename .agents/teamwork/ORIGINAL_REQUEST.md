@@ -925,3 +925,46 @@ Perbaiki bug kamera QR code yang tidak muncul, sehingga fitur scan QR dapat digu
 - [ ] Modul piket guru terlihat ringkas, admin terlihat detail.
 - [ ] Sidebar menampilkan nama dan role.
 - [ ] Terdapat tutorial lengkap yang dapat diakses.
+
+## 2026-10-08T11:11:29Z
+
+# Teamwork Project Prompt — Final
+
+A comprehensive update to the teacher's account in sipjam-app, including reminder notifications, camera/storage standardizations, complex attendance flows with admin verification, student attendance synchronization, and academic calculations for Kurikulum Merdeka.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: benchmark
+
+## Requirements
+
+### R1. UI/UX and Camera Updates
+- Implement a 30-minute snooze for auto-notifications (toggleable by teacher).
+- Remove print orientation settings (rely on browser print dialog).
+- Lock camera ratios to 4:3 (portrait for attendance, landscape for KBM journal) and optimize/upload directly to Google Drive.
+- Ensure seamless responsiveness across desktop and mobile.
+
+### R2. Teacher Attendance & Admin Verification
+- Implement multi-state arrival/departure flows ("Hadir di Sekolah" vs "Dinas Luar").
+- Implement auto-checkout flagging for forgotten checkouts.
+- Route sick (>=3 days) and leave (>3 days) requests to an Admin dashboard for pending approval.
+- Auto-attach GPS coordinates to printed documents, with alerts if GPS is blocked.
+
+### R3. Student Attendance & Piket Flow
+- Enforce role-based access to student attendance (Mapel, Wali Kelas, Piket).
+- Synchronize arrival attendance from Piket/Wali Kelas to Mapel, with truancy detection.
+- Implement concurrency locks for Piket forms to prevent double data entry.
+
+### R4. Academic Updates
+- Implement Kurikulum Merdeka calculations, including Capaian Pembelajaran descriptions.
+- Add a "Rapor" menu specifically for Wali Kelas.
+- Update in-app tutorials to reflect all new flows.
+
+## Acceptance Criteria
+
+### E2E Testing & Verification
+- [ ] Must write or update existing E2E tests (in `tests/e2e/`) to programmatically verify the 30-minute snooze functionality.
+- [ ] Must write an E2E test verifying that the teacher attendance flow correctly transitions states (e.g., "Dinas Luar" check-in to check-out) and routes long-term sick/leave to the Admin dashboard.
+- [ ] Must write a programmatic test to verify the concurrency lock: simulating two Piket users accessing the student attendance form simultaneously should lock one out.
+- [ ] Must write a test asserting that student truancy is automatically flagged when Piket marks "Hadir" but Mapel marks "Alpa".
+- [ ] Must write unit or integration tests validating the Kurikulum Merdeka calculation logic and verifying the Wali Kelas "Rapor" menu visibility.
+- [ ] All new and existing tests must pass locally before the task is considered complete.

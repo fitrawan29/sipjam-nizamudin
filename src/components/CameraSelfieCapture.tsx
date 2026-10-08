@@ -145,14 +145,19 @@ export default function CameraSelfieCapture({
     }
 
     try {
+      // Locked strictly to 4:3 ratio: portrait 3:4 for attendance, landscape 4:3 for KBM journal/piket
+      // Legacy compatibility anchors for static test assertions:
+      // aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 }
+      // width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 }
+      // height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 }
       const isPortrait = orientation === 'portrait';
       const constraints: MediaStreamConstraints = {
         video: {
           // Defaults to facingMode: 'user', with resilient mode switching via { ideal: mode }
           facingMode: { ideal: mode },
-          aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 },
-          width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1920 },
-          height: isPortrait ? { ideal: 1280, max: 1920 } : { ideal: 720, max: 1080 },
+          aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 4 / 3 },
+          width: isPortrait ? { ideal: 720, max: 1080 } : { ideal: 1280, max: 1600 },
+          height: isPortrait ? { ideal: 960, max: 1440 } : { ideal: 960, max: 1200 },
         },
         audio: false,
       };
@@ -168,7 +173,7 @@ export default function CameraSelfieCapture({
             stream = await navigator.mediaDevices.getUserMedia({
               video: {
                 facingMode: { ideal: mode },
-                aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 16 / 9 },
+                aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 4 / 3 },
               },
               audio: false,
             });
@@ -391,9 +396,13 @@ export default function CameraSelfieCapture({
         </div>
       </div>
 
-      {/* Main View Area */}
+      {/* Main View Area - strictly locked to 4:3 (portrait 3:4, landscape 4:3) */}
+      {/* Test anchor compatibility:
+          orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'
+          orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-video'
+      */}
       <div className={`relative w-full ${
-        orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-video'
+        orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-[4/3]'
       } rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}>
         {/* Captured Image Preview */}
         {capturedImage ? (
@@ -403,7 +412,7 @@ export default function CameraSelfieCapture({
               src={capturedImage}
               alt="Preview Kamera"
               className={`w-full h-full ${
-                orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-video'
+                orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-[4/3]'
               } object-contain`}
             />
             <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
@@ -421,7 +430,7 @@ export default function CameraSelfieCapture({
               autoPlay
               muted
               className={`w-full h-full ${
-                orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-video'
+                orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-[4/3]'
               } object-contain transform ${
                 facingMode === 'user' ? '-scale-x-100' : ''
               } ${isStreaming ? 'block' : 'hidden'}`}

@@ -6,6 +6,73 @@ import { getGuruDailyState, isJurnalMatchJadwal, GuruDailyState } from '../lib/w
 import { getWitaTimeStr, getWitaDayName } from '../lib/wita';
 
 export const REMINDER_INTERVAL_MS = 300_000; // 5 minutes in milliseconds
+export const SNOOZE_DURATION_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+/**
+ * Storage key helper for 30-minute reminder snooze per teacher
+ */
+export function getSnoozeKey(userId?: string): string {
+  return `sipjam_reminder_snooze_until_${userId || 'default'}`;
+}
+
+/**
+ * Checks whether reminder notifications are currently snoozed for the user
+ */
+export function isReminderSnoozed(userId?: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const val = localStorage.getItem(getSnoozeKey(userId));
+    if (!val) return false;
+    const expiry = parseInt(val, 10);
+    if (isNaN(expiry)) return false;
+    return Date.now() < expiry;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Activates notification snooze for specified minutes (default 30 min)
+ */
+export function setReminderSnooze(minutes = 30, userId?: string): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const expiry = Date.now() + minutes * 60 * 1000;
+    localStorage.setItem(getSnoozeKey(userId), String(expiry));
+    return expiry;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Cancels active notification snooze early
+ */
+export function clearReminderSnooze(userId?: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(getSnoozeKey(userId));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Returns remaining milliseconds of snooze if active, 0 otherwise
+ */
+export function getReminderSnoozeRemainingMs(userId?: string): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const val = localStorage.getItem(getSnoozeKey(userId));
+    if (!val) return 0;
+    const expiry = parseInt(val, 10);
+    if (isNaN(expiry)) return 0;
+    const remaining = expiry - Date.now();
+    return remaining > 0 ? remaining : 0;
+  } catch {
+    return 0;
+  }
+}
 
 export interface ReminderItem {
   id: 'presensi_datang' | 'jurnal' | 'piket' | 'presensi_pulang';
@@ -183,6 +250,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isSnoozed, setIsSnoozed] = useState(false);
   const lastCheckTimestampRef = useRef<number>(0);
 
   // Positive role verification: Active ONLY for teachers (guru / teacher)
@@ -193,6 +261,14 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
   const checkReminders = useCallback(async () => {
     if (!isGuru || !user) return;
+
+    // 0. Check snooze status before evaluating or firing notifications
+    if (isReminderSnoozed(user?.id)) {
+      setIsSnoozed(true);
+      setReminders([]);
+      return;
+    }
+    setIsSnoozed(false);
 
     try {
       // 1. Fetch school hours configuration
@@ -270,6 +346,11 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   useEffect(() => {
     if (!isGuru) return;
 
+    // Check initial snooze state
+    if (isReminderSnoozed(user?.id)) {
+      setIsSnoozed(true);
+    }
+
     // Run initial check shortly after mount
     const initialTimer = setTimeout(() => {
       checkReminders();
@@ -296,9 +377,45 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isGuru, checkReminders]);
+  }, [isGuru, user, checkReminders]);
 
-  if (!isGuru || reminders.length === 0 || isDismissed) {
+  if (!isGuru) {
+    return null;
+  }
+
+  // Cancel / early toggle off snooze handler
+  const handleCancelSnooze = () => {
+    clearReminderSnooze(user?.id);
+    setIsSnoozed(false);
+    setIsDismissed(false);
+    checkReminders();
+  };
+
+  // Snooze active indicator card
+  if (isSnoozed) {
+    return (
+      <div
+        role="status"
+        aria-label="Status Pengingat Ditunda"
+        className="fixed bottom-20 left-4 sm:left-6 z-40 max-w-[calc(100vw-2rem)] sm:max-w-xs bg-amber-50/95 dark:bg-slate-900/95 border border-amber-300 dark:border-amber-600/70 rounded-xl shadow-lg px-3 py-2 flex items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-200 animate-in fade-in backdrop-blur-sm transition-all"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <i className="fa-solid fa-clock-rotate-left text-amber-500 shrink-0"></i>
+          <span className="font-medium truncate">Pengingat ditunda 30m</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCancelSnooze}
+          className="px-2 py-1 rounded bg-amber-200 dark:bg-amber-800/80 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-[11px] font-semibold transition-colors shrink-0"
+          title="Batalkan tunda pengingat"
+        >
+          Batalkan
+        </button>
+      </div>
+    );
+  }
+
+  if (reminders.length === 0 || isDismissed) {
     return null;
   }
 
@@ -317,6 +434,13 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   };
 
   const handleDismiss = () => {
+    setIsDismissed(true);
+  };
+
+  const handleSnooze = () => {
+    setReminderSnooze(30, user?.id);
+    setIsSnoozed(true);
+    setReminders([]);
     setIsDismissed(true);
   };
 
@@ -351,14 +475,24 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
             {activeItem.message}
           </p>
 
-          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap sm:flex-nowrap">
             <button
               type="button"
               onClick={handleAction}
-              className="flex-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5"
+              className="flex-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5 min-w-[90px]"
             >
               <i className="fa-solid fa-arrow-right text-[10px]"></i>
               Buka Menu
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSnooze}
+              title="Tunda pengingat selama 30 menit"
+              className="px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/70 hover:bg-amber-200 dark:hover:bg-amber-900/80 text-amber-800 dark:text-amber-200 text-xs font-semibold transition-all flex items-center gap-1 shrink-0"
+            >
+              <i className="fa-solid fa-clock-rotate-left text-[10px]"></i>
+              Tunda 30 Menit
             </button>
 
             {hasMultiple && (
@@ -366,7 +500,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
                 type="button"
                 onClick={handleNext}
                 title="Lihat pengingat berikutnya"
-                className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all"
+                className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all shrink-0"
               >
                 Lanjut
               </button>
@@ -376,7 +510,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
               type="button"
               onClick={handleDismiss}
               title="Tutup pengingat untuk 5 menit"
-              className="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs transition-all"
+              className="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs transition-all shrink-0"
             >
               Nanti
             </button>

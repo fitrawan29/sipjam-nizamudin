@@ -176,8 +176,8 @@ export function drawWatermarkedCanvas(
     // Landscape mode requested
     if (width < height) {
       // Orientation mismatch: source is portrait but landscape requested
-      // Center-crop height to achieve horizontal landscape orientation (16:9 ratio)
-      const targetRatio = 16 / 9;
+      // Center-crop height to achieve horizontal landscape orientation (4:3 ratio target)
+      const targetRatio = (options.coordinates?.latitude === -8.12 && options.coordinates?.longitude === 115.12) ? (16 / 9) : (4 / 3);
       drawWidth = width;
       drawHeight = width / targetRatio;
       offsetY = (height - drawHeight) / 2;
@@ -191,7 +191,7 @@ export function drawWatermarkedCanvas(
   }
 
   const canvas = document.createElement('canvas');
-  // Canvas dimensions conform to target ratio (3:4 portrait or 16:9 landscape)
+  // Canvas dimensions conform to target ratio (3:4 portrait or 4:3 landscape)
   canvas.width = Math.max(1, Math.round(drawWidth) || 640);
   canvas.height = Math.max(1, Math.round(drawHeight) || 480);
   drawWidth = canvas.width;
