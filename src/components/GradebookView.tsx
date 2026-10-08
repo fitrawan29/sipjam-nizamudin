@@ -21,10 +21,19 @@ export function generateKurikulumMerdekaDeskripsi(
   studentName: string,
   tpScores: { kode: string; deskripsi: string; score: number | null }[]
 ): CapaianDeskripsiResult {
-  const validScores = tpScores.filter(
-    (t): t is { kode: string; deskripsi: string; score: number } =>
-      t.score !== null && t.score !== undefined && !isNaN(t.score)
-  );
+  const validScores = (tpScores || [])
+    .map(t => {
+      if (t.score === null || t.score === undefined || (t.score as any) === '') return null;
+      const rawNum = typeof t.score === 'string' ? parseFloat(t.score) : Number(t.score);
+      if (isNaN(rawNum) || !isFinite(rawNum)) return null;
+      const clampedScore = Math.max(0, Math.min(100, rawNum));
+      return {
+        kode: t.kode || '',
+        deskripsi: t.deskripsi || '',
+        score: clampedScore
+      };
+    })
+    .filter((t): t is { kode: string; deskripsi: string; score: number } => t !== null);
 
   if (validScores.length === 0) {
     return {
@@ -59,16 +68,29 @@ export function generateKurikulumMerdekaDeskripsi(
   const highest = sorted[0];
   const lowest = sorted[sorted.length - 1];
 
-  let deskripsi = '';
-  const isAllHigh = lowest.score >= 85;
-  const isAllLow = highest.score < 70;
+  const sanitizeDeskripsi = (item: { kode: string; deskripsi: string }): string => {
+    const d = item.deskripsi?.trim();
+    if (d && d.length > 0) return d;
+    const k = item.kode?.trim();
+    if (k && k.length > 0) return k;
+    return 'capaian pembelajaran';
+  };
 
-  if (isAllHigh || sorted.length === 1) {
-    deskripsi = `Menunjukkan penguasaan yang sangat baik dalam seluruh capaian pembelajaran, terutama dalam ${highest.deskripsi}.`;
-  } else if (isAllLow) {
-    deskripsi = `Perlu bimbingan dan pendampingan lebih lanjut dalam menguasai seluruh capaian pembelajaran, khususnya dalam ${lowest.deskripsi}.`;
+  const highestDesc = sanitizeDeskripsi(highest);
+  const lowestDesc = sanitizeDeskripsi(lowest);
+
+  let deskripsi = '';
+  const isAllLow = highest.score < 70;
+  const isAllHigh = lowest.score >= 85 || (lowest.score >= 84.95 && finalScore >= 85);
+
+  if (isAllLow) {
+    deskripsi = `Perlu bimbingan dan pendampingan lebih lanjut dalam menguasai seluruh capaian pembelajaran, khususnya dalam ${lowestDesc}.`;
+  } else if (isAllHigh || sorted.length === 1) {
+    deskripsi = `Menunjukkan penguasaan yang sangat baik dalam seluruh capaian pembelajaran, terutama dalam ${highestDesc}.`;
+  } else if (highest.score === lowest.score || highestDesc === lowestDesc) {
+    deskripsi = `Menunjukkan penguasaan yang baik dan merata dalam seluruh capaian pembelajaran, terutama dalam ${highestDesc}.`;
   } else {
-    deskripsi = `Menunjukkan penguasaan yang baik dalam ${highest.deskripsi}, namun perlu bimbingan dan peningkatan dalam ${lowest.deskripsi}.`;
+    deskripsi = `Menunjukkan penguasaan yang baik dalam ${highestDesc}, namun perlu bimbingan dan peningkatan dalam ${lowestDesc}.`;
   }
 
   return {
