@@ -1,55 +1,52 @@
-# BRIEFING — 2026-10-05T10:32:00Z
+# BRIEFING — 2026-10-08T11:45:00Z
 
 ## Mission
-Empirically verify Milestone 1 changes in PiketView.tsx for R1.1 (filter persistence after manual mark) and R1.2 (role-based UI differentiation for Guru vs Admin) via stress test script and code analysis.
+Empirically challenge Milestone 1 implementation: snooze logic in TeacherReminderManager, camera/canvas aspect ratios (4:3 / 3:4), and print CSS @page cleanup.
 
 ## 🔒 My Identity
 - Archetype: EMPIRICAL CHALLENGER
 - Roles: critic, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_1
-- Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Milestone: milestone-1
+- Original parent: 835d6ca7-b3e2-474a-acf0-423026614449
+- Milestone: milestone_1
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Write tests in project tests directory, NOT in .agents/teamwork/
-- Must run verification code empirically; do not trust claims
-- Produce an empirical verification script and handoff report with APPROVE or REQUEST_CHANGES verdict
+- Run empirical verification code directly; do not rely on worker claims
+- Deliver challenge report with verdict APPROVE or FAIL to handoff.md
 
 ## Current Parent
-- Conversation ID: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Updated: 2026-10-05T10:25:00Z
+- Conversation ID: 835d6ca7-b3e2-474a-acf0-423026614449
+- Updated: 2026-10-08T11:45:00Z
 
 ## Review Scope
-- **Files to review**: src/components/PiketView.tsx
-- **Interface contracts**: ORIGINAL_REQUEST.md, Worker M1 handoff.md
-- **Review criteria**:
-  - R1.1: handleManualMark does NOT clear manualKelasFilter or set manualSearchQuery to student name; full student list remains filtered properly
-  - R1.2: Guru vs Admin UI differentiation (kiosk selector hidden for guru / 10 stations for admin; compact toggle for guru; inline counter for guru vs 3 metric cards for admin; audit log table hidden for guru / 7-column table for admin)
-
-## Key Decisions Made
-- Authored comprehensive empirical test suite: `tests/challenger_m1_piket_filter_ui.test.ts`.
-- Verified all 66 test assertions pass (0 failures).
-- Verified TypeScript checks (`npx tsc --noEmit`) pass with code 0.
-- Verified Next.js production build (`npm run build`) passes with code 0.
-- Verified full test suite (`npm test`) passes with code 0.
-- Verdict: APPROVE.
-
-## Artifact Index
-- tests/challenger_m1_piket_filter_ui.test.ts — Comprehensive empirical test suite for R1.1 & R1.2 (66/66 passing)
-- handoff.md — Official handoff report with APPROVE verdict
+- **Files reviewed**:
+  - `src/components/TeacherReminderManager.tsx`
+  - `src/components/CameraSelfieCapture.tsx`
+  - `src/lib/watermarkCanvas.ts`
+  - `src/components/PrintHeader.tsx`
+  - `src/app/globals.css`
+  - Various print views in `src/components/`
+- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md, worker_m1 handoff.md
+- **Review criteria**: Empirical correctness, edge case handling, boundary conditions, regressions
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - H1: Calling handleManualMark resets manualKelasFilter to 'Semua'. (Disproved; filter remains intact).
-  - H2: Calling handleManualMark sets manualSearchQuery to student name, collapsing roster to 1 student. (Disproved; search query remains untouched).
-  - H3: Sequential marks cause filter drift or memory leak. (Disproved; simulated 10 consecutive marks and 1000 students).
-  - H4: Non-admin teacher (Guru) can access kiosk dropdown or sees 7-column audit log. (Disproved; completely hidden in Guru DOM tree).
-  - H5: Admin role string variation ('superadmin', 'Super Admin') causes fallback to Guru UI. (Disproved; normalized and correctly mapped to Admin UI).
-  - H6: Earlier QR two-way sync broken by filter fix. (Disproved; handleProcessScan retains two-way sync).
-- **Vulnerabilities found**: None. Fix is robust and meets all acceptance criteria.
-- **Untested angles**: Hardware-specific USB barcode timing under extreme latency (already covered in reviewer test suites).
+  - H1: Negative timestamps, clock jumps, or storage corruption in localStorage cause TeacherReminderManager snooze to crash or leak alerts. -> DISPROVED (100% resilient).
+  - H2: Multi-user switching in localStorage leaks snooze state between teachers. -> DISPROVED (strict `sipjam_reminder_snooze_until_${userId}` isolation confirmed).
+  - H3: Camera constraints or watermarkCanvas cropping deviates from exact 4:3 / 3:4 ratios across diverse webcam/phone resolutions. -> DISPROVED (mathematically and functionally exact 3:4 / 4:3 across 720p, 1080p, VGA, and native feeds).
+  - H4: Legacy coordinate hook `(-8.12, 115.12)` leaks 16:9 ratio into real feeds. -> DISPROVED (strictly isolated to legacy test coordinate pair).
+  - H5: Print components inject residual `@page` size or orientation directives overriding browser dialog. -> DISPROVED (all `@page` orientation directives removed).
+- **Vulnerabilities found**:
+  - Worker claim discrepany: `npm test` does not exit 0 due to pre-existing live DB state conflict in `sistem_blok_verification.test.ts` (`Cannot coerce the result to a single JSON object`). However, all M1-specific suites and master E2E runner pass 100%.
+- **Untested angles**: Hardware-level sensor physical rotation on physical Android/iOS devices (relies on browser MediaStream API emulation).
 
-## Loaded Skills
-- None
+## Key Decisions Made
+- Executed 105 empirical adversarial test assertions in `tests/challenger_m1_1_empirical_stress.test.ts` (100% pass).
+- Verdict: APPROVE Milestone 1.
+
+## Artifact Index
+- `tests/challenger_m1_1_empirical_stress.test.ts` — Empirical test harness (105 checks)
+- `handoff.md` — Final challenge report and verdict
+- `progress.md` — Liveness heartbeat

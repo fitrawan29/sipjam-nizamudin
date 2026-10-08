@@ -49,12 +49,17 @@ Lead and orchestrate the full implementation of the teacher account updates acro
 | explorer_o16_1 | teamwork_preview_explorer | Survey R1 (UI/UX, Snooze, Print, Camera/Drive) | completed | e54afac0-b0ac-4544-beb4-879b1082984e |
 | explorer_o16_2 | teamwork_preview_explorer | Survey R2 (Teacher Attendance, Auto-checkout, Admin Routing, GPS) | completed | ac03abae-6b3d-4f46-a774-72882a43a000 |
 | explorer_o16_3 | teamwork_preview_explorer | Survey R3/R4/Tests (Student RBAC, Truancy, Locks, Merdeka, Rapor, E2E) | completed | 657565bf-943f-4bed-887b-ce2c29bae80a |
-| worker_m1 | teamwork_preview_worker | Milestone 1 Implementation (R1 UI/UX & Camera) | in-progress | 3f1fcd7d-462f-4036-90de-13eb768b7d45 |
+| worker_m1 | teamwork_preview_worker | Milestone 1 Implementation (R1 UI/UX & Camera) | completed | 3f1fcd7d-462f-4036-90de-13eb768b7d45 |
+| reviewer_m1_1 | teamwork_preview_reviewer | M1 Reviewer 1 | in-progress | a014c6a1-9580-41aa-8147-153e2c7f9730 |
+| reviewer_m1_2 | teamwork_preview_reviewer | M1 Reviewer 2 | in-progress | b36906cb-f5ce-473c-806c-620242910ded |
+| challenger_m1_1 | teamwork_preview_challenger | M1 Empirical Challenger 1 | in-progress | 53005ba9-b230-4be9-8229-a14cf8906041 |
+| challenger_m1_2 | teamwork_preview_challenger | M1 Empirical Challenger 2 | in-progress | f546f861-f670-4e60-a5a8-62afecb6f037 |
+| auditor_m1_1 | teamwork_preview_auditor | M1 Forensic Auditor | in-progress | 212f9c6a-9472-4ddd-8b52-699dd9322a97 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 4 / 16
-- Pending subagents: 3f1fcd7d-462f-4036-90de-13eb768b7d45
+- Spawn count: 9 / 16
+- Pending subagents: a014c6a1-9580-41aa-8147-153e2c7f9730, b36906cb-f5ce-473c-806c-620242910ded, 53005ba9-b230-4be9-8229-a14cf8906041, f546f861-f670-4e60-a5a8-62afecb6f037, 212f9c6a-9472-4ddd-8b52-699dd9322a97
 - Predecessor: none
 - Successor: not yet spawned
 
