@@ -39,6 +39,12 @@ export function setReminderSnooze(minutes = 30, userId?: string): number {
   try {
     const expiry = Date.now() + minutes * 60 * 1000;
     localStorage.setItem(getSnoozeKey(userId), String(expiry));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      try {
+        window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
+        window.dispatchEvent(new Event('storage'));
+      } catch {}
+    }
     return expiry;
   } catch {
     return 0;
@@ -52,6 +58,12 @@ export function clearReminderSnooze(userId?: string): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(getSnoozeKey(userId));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      try {
+        window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
+        window.dispatchEvent(new Event('storage'));
+      } catch {}
+    }
   } catch {
     // Ignore storage errors
   }
@@ -374,9 +386,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     if (!isGuru) return;
 
     // Check initial snooze state
-    if (isReminderSnoozed(user?.id)) {
-      setIsSnoozed(true);
-    }
+    setIsSnoozed(isReminderSnoozed(user?.id));
 
     if (!reminderConfig.enabled) {
       setReminders([]);
@@ -424,12 +434,14 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
       }
     };
     window.addEventListener('sipjam_reminder_config_changed', handleConfigChange);
+    window.addEventListener('storage', handleConfigChange);
 
     return () => {
       clearTimeout(initialTimer);
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('sipjam_reminder_config_changed', handleConfigChange);
+      window.removeEventListener('storage', handleConfigChange);
     };
   }, [isGuru, user, checkReminders, reminderConfig.enabled, reminderConfig.intervalMs, loadReminderConfig]);
 

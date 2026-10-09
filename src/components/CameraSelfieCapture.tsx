@@ -11,7 +11,7 @@ export interface CameraSelfieCaptureProps {
   initialLocationName?: string | null;
   existingPhotoUrl?: string | null;
   initialFacingMode?: 'user' | 'environment';
-  
+  orientation?: 'portrait' | 'landscape';
   onRetake?: () => void;
 }
 
@@ -22,7 +22,7 @@ export default function CameraSelfieCapture({
   initialLocationName = null,
   existingPhotoUrl = null,
   initialFacingMode = 'user',
-  
+  orientation = 'landscape',
   onRetake,
 }: CameraSelfieCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -243,7 +243,6 @@ export default function CameraSelfieCapture({
           message = 'Kamera tidak dapat diakses (izin ditolak atau kerusakan hardware). Harap gunakan gawai lain untuk menggunakan sistem.';
         } else {
           message = 'Akses kamera gagal: ' + (e?.message || 'Error tidak diketahui') + '. Harap gunakan gawai lain.';
-        }`;
       }
       setCameraError(message);
       setIsStreaming(false);

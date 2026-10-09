@@ -141,23 +141,76 @@ export default function RekapSiswaView({
           if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
           const { data: absensiData } = await aQ;
 
-          
           let pQ = supabase
             .from('presensi_siswa')
             .select('*')
-            .eq('kelas', gerbangKelas)
-            .eq('tanggal', gerbangTanggal);
+            .eq('tanggal', waliTanggal)
+            .eq('kelas', activeWaliKelas.kelas);
           if (user?.sekolah_id) pQ = pQ.eq('sekolah_id', user.sekolah_id);
-          const { data: gateLogs } = await pQ;
+          const { data: gateData } = await pQ;
 
-          let aQ = supabase
-            .from('absensi')
-            .select('*')
-            .eq('kelas', gerbangKelas)
-            .eq('tanggal', gerbangTanggal);
-          if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
-          const { data: absensiLogs } = await aQ;
+          const gateMap: Record<string, { datang?: any; pulang?: any }> = {};
+          if (gateData) {
+            gateData.forEach((g: any) => {
+              const k = g.nisn || g.siswa_id;
+              if (!gateMap[k]) gateMap[k] = {};
+              if (g.status === 'datang') gateMap[k].datang = g;
+              if (g.status === 'pulang') gateMap[k].pulang = g;
+            });
+          }
+          setWaliGateLogs(gateMap);
 
+          const map: Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | ''; keterangan: string; logs: string[] }> = {};
+          studentsData.forEach(s => {
+            const found = absensiData?.find(a => a.nisn === s.nisn);
+            map[s.nisn] = {
+              status: (found?.status as any) || '',
+              keterangan: found?.keterangan || '',
+              logs: Array.isArray(found?.log_perubahan) ? (found.log_perubahan as string[]) : []
+            };
+          });
+          setWaliAttendance(map);
+        }
+      } catch (err) {
+        console.error('Error loading wali students and absensi:', err);
+      } finally {
+        setWaliLoading(false);
+      }
+    };
+
+    loadWaliData();
+  }, [activeWaliKelas, waliTanggal, showWaliInput, user?.sekolah_id]);
+
+  // Effect to load Gate Attendance records from presensi_siswa for selected gerbangKelas & gerbangTanggal
+  useEffect(() => {
+    if (!gerbangKelas) return;
+
+    const fetchGerbangAttendance = async () => {
+      setGerbangLoading(true);
+      try {
+        let sQ = supabase
+          .from('data_siswa')
+          .select('*')
+          .eq('kelas', gerbangKelas)
+          .order('nama_siswa', { ascending: true });
+        if (user?.sekolah_id) sQ = sQ.eq('sekolah_id', user.sekolah_id);
+        const { data: studentsData } = await sQ;
+
+        let pQ = supabase
+          .from('presensi_siswa')
+          .select('*')
+          .eq('kelas', gerbangKelas)
+          .eq('tanggal', gerbangTanggal);
+        if (user?.sekolah_id) pQ = pQ.eq('sekolah_id', user.sekolah_id);
+        const { data: gateLogs } = await pQ;
+
+        let aQ = supabase
+          .from('absensi')
+          .select('*')
+          .eq('kelas', gerbangKelas)
+          .eq('tanggal', gerbangTanggal);
+        if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
+        const { data: absensiLogs } = await aQ;
           if (studentsData) {
             const combined = studentsData.map(siswa => {
               const datang = (gateLogs || []).find(p => 

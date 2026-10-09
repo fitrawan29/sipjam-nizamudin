@@ -78,6 +78,70 @@ export default function AccountSettingsModal({
     }
   }, [user, isOpen]);
 
+  // Real-time sync for reminder settings and snooze status across tabs/components
+  useEffect(() => {
+    if (!user || !isOpen) return;
+
+    const refreshReminderState = () => {
+      try {
+        const storedEnabled = localStorage.getItem(`sipjam_reminder_enabled_${user.id}`);
+        setAutoReminderEnabled(storedEnabled !== null ? storedEnabled === 'true' : true);
+        const storedInterval = localStorage.getItem(`sipjam_reminder_interval_${user.id}`);
+        setAutoReminderInterval(storedInterval ? parseInt(storedInterval, 10) : 5);
+        if (isReminderSnoozed(user.id)) {
+          const remMs = getReminderSnoozeRemainingMs(user.id);
+          setSnoozeRemainingMinutes(Math.max(1, Math.ceil(remMs / 60000)));
+        } else {
+          setSnoozeRemainingMinutes(0);
+        }
+      } catch (e) {}
+    };
+
+    const ticker = setInterval(() => {
+      if (user.id && isReminderSnoozed(user.id)) {
+        const remMs = getReminderSnoozeRemainingMs(user.id);
+        setSnoozeRemainingMinutes(Math.max(1, Math.ceil(remMs / 60000)));
+      } else {
+        setSnoozeRemainingMinutes(0);
+      }
+    }, 15000);
+
+    window.addEventListener('sipjam_reminder_config_changed', refreshReminderState);
+    window.addEventListener('storage', refreshReminderState);
+
+    return () => {
+      clearInterval(ticker);
+      window.removeEventListener('sipjam_reminder_config_changed', refreshReminderState);
+      window.removeEventListener('storage', refreshReminderState);
+    };
+  }, [user, isOpen]);
+
+  const handleToggleReminder = (enabled: boolean) => {
+    setAutoReminderEnabled(enabled);
+    if (user?.id) {
+      try {
+        localStorage.setItem(`sipjam_reminder_enabled_${user.id}`, String(enabled));
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
+          window.dispatchEvent(new Event('storage'));
+        }
+      } catch (e) {}
+    }
+  };
+
+  const handleChangeReminderInterval = (interval: number) => {
+    setAutoReminderInterval(interval);
+    if (user?.id) {
+      try {
+        localStorage.setItem(`sipjam_reminder_interval_${user.id}`, String(interval));
+        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+          window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
+          window.dispatchEvent(new Event('storage'));
+        }
+      } catch (e) {}
+    }
+  };
+
   const handleCancelSnoozeFromModal = () => {
     if (!user?.id) return;
     clearReminderSnooze(user.id);
@@ -572,7 +636,7 @@ export default function AccountSettingsModal({
                         <input
                           type="checkbox"
                           checked={autoReminderEnabled}
-                          onChange={(e) => setAutoReminderEnabled(e.target.checked)}
+                          onChange={(e) => handleToggleReminder(e.target.checked)}
                           className="sr-only peer"
                         />
                         <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
@@ -589,7 +653,7 @@ export default function AccountSettingsModal({
                           <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">Jeda Waktu:</span>
                           <select
                             value={autoReminderInterval}
-                            onChange={(e) => setAutoReminderInterval(Number(e.target.value))}
+                            onChange={(e) => handleChangeReminderInterval(Number(e.target.value))}
                             className="text-[11px] px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
                           >
                             <option value={1}>1 Menit</option>
@@ -605,7 +669,7 @@ export default function AccountSettingsModal({
                   </div>
 
                   {snoozeRemainingMinutes > 0 && (
-                    <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-100/70 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 mt-2.5">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-100/70 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 mt-2.5">
                       <div className="flex items-center gap-2 text-[11px] text-amber-800 dark:text-amber-200">
                         <i className="fa-solid fa-clock-rotate-left text-amber-600 dark:text-amber-400"></i>
                         <span>Pengingat sedang ditunda (~{snoozeRemainingMinutes} menit tersisa)</span>
@@ -613,7 +677,7 @@ export default function AccountSettingsModal({
                       <button
                         type="button"
                         onClick={handleCancelSnoozeFromModal}
-                        className="px-2.5 py-1 rounded-md bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-[10px] font-bold transition shadow-xs"
+                        className="px-2.5 py-1 rounded-md bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-[10px] font-bold transition shadow-xs shrink-0 ml-auto sm:ml-0"
                         title="Batalkan status tunda pengingat"
                       >
                         Batalkan Tunda
