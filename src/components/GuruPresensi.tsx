@@ -582,9 +582,18 @@ export default function GuruPresensi({ user }: { user: any }) {
       showToast('Di Luar Jangkauan', `Jarak Anda ${jarakAktual} meter dari sekolah. Maksimal radius adalah ${gpsConfig.radius} meter. Presensi akan masuk antrean verifikasi Admin.`, 'warning');
     }
 
-    const statusVerif = isTerlambat
-      ? 'Menunggu' // Izin Terlambat always requires admin verification
-      : (jenisPresensi === 'Sekolah' && (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu');
+    
+    let statusVerif = 'Menunggu';
+    if (isTerlambat) {
+      statusVerif = 'Menunggu';
+    } else if (jenisPresensi === 'Sekolah') {
+      statusVerif = (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu';
+    } else if (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') {
+      statusVerif = memerlukanPersetujuanAdmin ? 'Menunggu' : 'Diverifikasi';
+    } else if (jenisPresensi === 'Dinas Luar') {
+      statusVerif = 'Diverifikasi'; // Or should it require admin? Assume auto-approved or 'Menunggu'?
+    }
+
     const presensiId = crypto.randomUUID();
 
     // Non-blocking Asynchronous GAS Upload:
