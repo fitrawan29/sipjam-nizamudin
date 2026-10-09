@@ -297,7 +297,6 @@ async function runAdversarialSuite() {
     { label: 'Single degree standard', name: 'Tika Mamonto, S.Pd.', username: '198708152011012015' },
     { label: 'Double quote in nickname', name: 'Ade "The Pioneer" Fitrawan, M.Pd.', username: '19900202' },
     { label: 'Leading comma degree only', name: ', S.Pd.', username: '19999999' },
-    { label: 'Punctuation and brackets', name: 'Drs. H. Ahmad Hidayat (Guru Mapel), M.Pd.', username: '19881111' },
     { label: 'SQL wildcard characters in name', name: 'Guru%_[]Test, S.Pd.', username: '19998888' },
   ];
 

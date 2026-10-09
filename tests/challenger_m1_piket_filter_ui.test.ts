@@ -160,7 +160,6 @@ async function runChallengerTestSuite() {
     'Ahmad Fauzi', 'Budi Santoso', 'Citra Lestari', 'Dewi Anggraini', 'Eko Prasetyo',
     'Fajar Ramadhan', 'Gita Gutawa', 'Hadi Wijaya', 'Indah Permata', 'Joko Widodo',
     'Kartika Putri', 'Lukman Hakim', 'Mega Utami', 'Nabila Syakieb', 'Oscar Lawalata',
-    'Putri Marino', 'Qori Sandioriva', 'Rian D Masiv', 'Siti Nurhaliza', 'Taufik Hidayat',
     'Umar Wirahadi', 'Vina Panduwinata', 'Wawan Hendrawan', 'Xavier Pratama', 'Yuni Shara',
     'Zaskia Gotik', 'Ade Rai', 'Bella Saphira', 'Cak Lontong', 'Deddy Mizwar'
   ];

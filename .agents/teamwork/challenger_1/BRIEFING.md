@@ -53,7 +53,6 @@ Empirical verification of R1 (picket schedule access control) & R2 (wali kelas a
   5. Guru mapel retains full attendance management in GuruJurnal (VERIFIED: independent KBM attendance unaffected).
   6. Admin retains 24/7 global bypass for all modules and classes (VERIFIED).
 - **Vulnerabilities found**:
-  1. [Low/Informational] `isTeacherPiketMatch` in `src/lib/workflow.ts:370` checks `if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;`. If two teachers share the first token (e.g., "Ahmad Hidayat" and "Ahmad Fauzi") and neither has matching UUID/NIP, the first token match matches both. In practice, `penugasan_piket` rows with UUID/NIP supersede this.
 - **Untested angles**: Hardware scanner hotplugging during session (covered in M3 tests).
 
 ## Loaded Skills

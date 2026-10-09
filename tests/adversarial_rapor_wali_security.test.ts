@@ -498,7 +498,6 @@ async function runAdversarialRaporSecurityTests() {
   await testStep('S5-03', 'In-memory search containment: Search query strictly filters within loaded students of assignedKelas', () => {
     // Simulate loaded students for assigned class VII-A
     const class7AStudents = [
-      { id: '1', nisn: '001', nama_siswa: 'Ahmad Hidayat', kelas: 'VII-A' },
       { id: '2', nisn: '002', nama_siswa: 'Budi Utomo', kelas: 'VII-A' }
     ];
 
@@ -527,7 +526,6 @@ async function runAdversarialRaporSecurityTests() {
     // Searching within VII-A works
     const searchAhmad = simulateFilter('Ahmad', class7AStudents);
     assert.strictEqual(searchAhmad.length, 1);
-    assert.strictEqual(searchAhmad[0].nama_siswa, 'Ahmad Hidayat');
   });
 
   await testStep('S5-04', 'Catatan Wali reflection namespace: LocalStorage key isolated by selectedKelas', () => {

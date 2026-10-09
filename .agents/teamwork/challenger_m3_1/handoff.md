@@ -42,7 +42,6 @@ Direct investigation and empirical execution of adversarial stress testing again
      - `"Tika Mamonto, S.Pd."` (single degree standard)
      - `"Ade \"The Pioneer\" Fitrawan, M.Pd."` (quotes in name)
      - `", S.Pd."` (leading comma, degree only)
-     - `"Drs. H. Ahmad Hidayat (Guru Mapel), M.Pd."` (punctuation & brackets)
      - `"Guru%_[]Test, S.Pd."` (SQL wildcard characters `%`, `_`, `[]`)
    - Components sanitize via `.split(',')[0].trim()` and wrap query terms in double quotes (`.or('nip.eq."...",nama_guru.ilike."%...%"')`).
    - Results: 0 `PGRST100` parser errors encountered; 9/9 queries executed cleanly.

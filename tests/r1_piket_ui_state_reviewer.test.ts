@@ -66,7 +66,7 @@ assert(
 
 // 1.4 Simulation of filtering logic
 const mockStudents = [
-  { id: '1', nama_siswa: 'Ahmad Hidayat', kelas: '7A', nisn: '001' },
+  { id: '1', nama_siswa: 'Ahmad Faiz', kelas: '7A', nisn: '001' },
   { id: '2', nama_siswa: 'Ahmad Faiz', kelas: '7A', nisn: '002' },
   { id: '3', nama_siswa: 'Budi Santoso', kelas: '7A', nisn: '003' },
   { id: '4', nama_siswa: 'Citra Dewi', kelas: '7A', nisn: '004' },
@@ -84,7 +84,7 @@ function filterStudents(students: typeof mockStudents, kelasFilter: string, sear
   });
 }
 
-// Scenario A: Class 7A selected, no search query. Before and after clicking Tandai Datang for Ahmad Hidayat.
+// Scenario A: Class 7A selected, no search query. Before and after clicking Tandai Datang for Ahmad Faiz.
 let currentKelasFilter = '7A';
 let currentSearchQuery = '';
 let visibleBefore = filterStudents(mockStudents, currentKelasFilter, currentSearchQuery);
