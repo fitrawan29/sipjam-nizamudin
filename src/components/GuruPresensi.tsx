@@ -1073,18 +1073,8 @@ export default function GuruPresensi({ user }: { user: any }) {
                           </div>
                           <button
                             type="button"
-                            onClick={async () => {
-                              const result = await Swal.fire({
-                                title: `Ganti Surat ${jenisPresensi === 'Dinas Luar' ? 'Tugas' : 'Izin'}?`,
-                                text: 'File yang diunggah sebelumnya akan dihapus.',
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonColor: '#EF4444',
-                                cancelButtonColor: '#6B7280',
-                                confirmButtonText: 'Ya, Ganti',
-                                cancelButtonText: 'Batal',
-                              });
-                              if (result.isConfirmed) {
+                            onClick={() => {
+                              if (confirm(`Ganti Surat ${jenisPresensi === 'Dinas Luar' ? 'Tugas' : 'Izin'}?`)) {
                                 setFile(null);
                                 setPhotoPreviewUrl(null);
                               }

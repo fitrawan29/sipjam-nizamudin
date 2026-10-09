@@ -322,35 +322,24 @@ export default function PiketView({ user }: { user: any }) {
       };
 
       let stream: MediaStream | null = null;
-      let retries = 2;
       let lastErr: any;
 
-      while (retries > 0 && !stream) {
+      for (let i = 0; i < 2; i++) {
         if (!isMountedRef.current) {
           isStartingCameraRef.current = false;
           return;
         }
-
         try {
           stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (constraintErr: any) {
-          if (constraintErr.name === 'NotReadableError' || constraintErr.name === 'TrackStartError') {
-            lastErr = constraintErr;
-            retries--;
-            if (retries > 0) await new Promise(r => setTimeout(r, 800));
+          break;
+        } catch (e: any) {
+          lastErr = e;
+          if (['NotReadableError', 'TrackStartError'].includes(e.name)) {
+            await new Promise(r => setTimeout(r, 800));
           } else {
-            console.warn('[PiketView] Overconstrained camera request, falling back to basic video:', constraintErr);
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            } catch (fallbackErr: any) {
-              lastErr = fallbackErr;
-              if (fallbackErr.name === 'NotReadableError' || fallbackErr.name === 'TrackStartError') {
-                retries--;
-                if (retries > 0) await new Promise(r => setTimeout(r, 800));
-              } else {
-                throw fallbackErr;
-              }
-            }
+            console.warn('[PiketView] Overconstrained, fallback to basic video:', e);
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(err => { lastErr = err; return null; });
+            break;
           }
         }
       }
