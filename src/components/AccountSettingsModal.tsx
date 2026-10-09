@@ -122,28 +122,23 @@ export default function AccountSettingsModal({
 
   const handleToggleReminder = (enabled: boolean) => {
     setAutoReminderEnabled(enabled);
-    if (user?.id) {
-      try {
-        // Writes to sipjam_reminder_enabled_${user.id}
-        setReminderConfig(user.id, enabled, autoReminderInterval);
-      } catch (e) {}
-    }
+    try {
+      // Writes to sipjam_reminder_enabled_${user.id}
+      setReminderConfig(user?.id, enabled, autoReminderInterval);
+    } catch (e) {}
   };
 
   const handleChangeReminderInterval = (interval: number) => {
     const validInterval = isNaN(interval) || interval < 1 ? 5 : interval;
     setAutoReminderInterval(validInterval);
-    if (user?.id) {
-      try {
-        // Writes to sipjam_reminder_interval_${user.id}
-        setReminderConfig(user.id, autoReminderEnabled, validInterval);
-      } catch (e) {}
-    }
+    try {
+      // Writes to sipjam_reminder_interval_${user.id}
+      setReminderConfig(user?.id, autoReminderEnabled, validInterval);
+    } catch (e) {}
   };
 
   const handleCancelSnoozeFromModal = () => {
-    if (!user?.id) return;
-    clearReminderSnooze(user.id);
+    clearReminderSnooze(user?.id);
     setSnoozeRemainingMinutes(0);
     try {
       window.dispatchEvent(new Event('sipjam_reminder_config_changed'));

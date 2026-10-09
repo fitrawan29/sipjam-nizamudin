@@ -439,14 +439,30 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
           for (const item of activeReminders) {
             try {
               if ('serviceWorker' in navigator) {
-                const reg = await navigator.serviceWorker.ready;
-                await reg.showNotification(item.title, {
-                  body: item.message,
-                  icon: '/favicon.ico',
-                  badge: '/favicon.ico',
-                  tag: `sipjam-reminder-${item.id}`,
-                  data: { url: `/?view=${item.targetView}` },
-                });
+                let reg: ServiceWorkerRegistration | null = null;
+                try {
+                  reg = await Promise.race([
+                    navigator.serviceWorker.ready,
+                    new Promise<null>(resolve => setTimeout(() => resolve(null), 800))
+                  ]);
+                } catch {
+                  reg = null;
+                }
+
+                if (reg && typeof reg.showNotification === 'function') {
+                  await reg.showNotification(item.title, {
+                    body: item.message,
+                    icon: '/favicon.ico',
+                    badge: '/favicon.ico',
+                    tag: `sipjam-reminder-${item.id}`,
+                    data: { url: `/?view=${item.targetView}` },
+                  });
+                } else {
+                  new Notification(item.title, {
+                    body: item.message,
+                    icon: '/favicon.ico',
+                  });
+                }
               } else {
                 new Notification(item.title, {
                   body: item.message,
