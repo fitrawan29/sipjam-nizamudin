@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
-import { PrintHeader, PrintSignature, PrintOrientationToggle } from './PrintHeader';
+import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { TujuanPembelajaran, AsesmenKolom, NilaiSiswa } from '@/types/database';
 
@@ -194,7 +194,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
   const [bulkFillOnlyEmpty, setBulkFillOnlyEmpty] = useState<boolean>(true);
 
   // Print Orientation
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+  
 
   // Resolve Sekolah ID
   useEffect(() => {
@@ -1429,7 +1429,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
   return (
     <section className="space-y-5 pb-12 w-full max-w-full overflow-x-auto">
       {/* Dynamic CSS for print orientation */}
-      <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
+      
 
       {/* HEADER CARD */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/80 no-print">

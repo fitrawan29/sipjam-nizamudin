@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr } from '@/lib/wita';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
-import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { showToast } from '@/lib/toast';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 
@@ -29,8 +29,7 @@ export default function RekapJurnalView({
     return [];
   });
 
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
-  const [bulan, setBulan] = useState(() => {
+    const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });
   const [startDate, setStartDate] = useState('');
@@ -513,8 +512,7 @@ export default function RekapJurnalView({
 
             {/* Print Toolbar Controls */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3 no-print">
-              <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
-              {filteredJurnal && filteredJurnal.length > 0 && (
+                            {filteredJurnal && filteredJurnal.length > 0 && (
                 <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                   Menampilkan {filteredJurnal.length} entri jurnal {tabMode === 'kelas' ? `kelas ${kelas || ''}` : ''}
                 </div>

@@ -1193,23 +1193,42 @@ export default function PiketView({ user }: { user: any }) {
     e.preventDefault();
 
     if (isFormLocked) {
-      return showToast('Formulir Terkunci', 'Formulir presensi piket sedang diedit oleh petugas lain.', 'warning');
-    }
-
-    if (!file) {
-      return showToast('Foto Wajib Diambil', 'Silakan ambil foto dokumentasi piket menggunakan kamera langsung.', 'warning');
+      if (!file) {
+        return showToast('Foto Wajib Diambil', 'Silakan ambil foto dokumentasi piket Anda menggunakan kamera langsung.', 'warning');
+      }
+      setLoading(true);
+      let fileUrl = '';
+      try {
+        fileUrl = await uploadToDrive(file, user.nama, 'Laporan_Piket', 'Piket_Personal');
+      } catch (err: any) {
+        setLoading(false);
+        return showToast('Gagal Upload', err.message, 'error');
+      }
+      
+      const newLaporan = {
+        id: crypto.randomUUID(),
+        timestamp: getWitaTimestamp(),
+        tanggal: getWitaDateStr(),
+        guru_pelapor: user.nama,
+        user_id: user.id,
+        rekap_absen_kelas: JSON.stringify({}),
+        catatan_apel: catatan || 'Laporan Pribadi Piket',
+        link_foto: fileUrl,
+        status_verifikasi: 'Menunggu',
+        kehadiran_guru_piket: 'Hadir',
+        ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
+      };
+      const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
+      setLoading(false);
+      if (error) return showToast('Gagal Simpan', error.message, 'error');
+      showToast('Berhasil', 'Laporan piket pribadi Anda berhasil dikirim.', 'success');
+      setFile(null);
+      setPhotoPreviewUrl(null);
+      setCatatan('');
+      return;
     }
 
     setLoading(true);
-
-    let fileUrl = '';
-    try {
-      fileUrl = await uploadToDrive(file, user.nama, 'Laporan_Piket', 'Piket');
-    } catch (err: any) {
-      setLoading(false);
-      return showToast('Gagal Upload', err.message, 'error');
-    }
-
     const newLaporan = {
       id: crypto.randomUUID(),
       timestamp: getWitaTimestamp(),
@@ -1217,169 +1236,16 @@ export default function PiketView({ user }: { user: any }) {
       guru_pelapor: user.nama,
       user_id: user.id,
       rekap_absen_kelas: JSON.stringify(piketAbsensi),
-      catatan_apel: catatan,
-      link_foto: fileUrl,
-      status_verifikasi: 'Menunggu',
+      catatan_apel: 'Tugas Utama: Mengisi Presensi Siswa',
+      link_foto: '',
+      status_verifikasi: 'Disetujui',
       kehadiran_guru_piket: 'Hadir',
       ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
     };
-
     const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
-
-    if (error) {
-      showToast('Error', 'Gagal menyimpan laporan piket: ' + error.message, 'error');
-    } else {
-      // If re-submitting after rejection: delete the old rejected laporan
-      if (dailyState?.laporanPiketDitolak?.id) {
-        await supabase.from('laporan_piket').delete().eq('id', dailyState.laporanPiketDitolak.id);
-      }
-      // Also ensure any rejected piket report for this teacher today is cleanly cleaned up
-      await supabase.from('laporan_piket')
-        .delete()
-        .eq('guru_pelapor', user.nama)
-        .eq('tanggal', getWitaDateStr())
-        .eq('status_verifikasi', 'Ditolak');
-      // Sync Piket student attendance to canonical public.absensi
-      if (allStudents.length > 0) {
-        try {
-          const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
-            H: 'Hadir',
-            S: 'Sakit',
-            I: 'Izin',
-            A: 'Alpa'
-          };
-          const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-          const todayDateStr = getWitaDateStr();
-
-          let aQ = supabase.from('absensi').select('nisn, status, log_perubahan').eq('tanggal', todayDateStr);
-          if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
-          const { data: existingAbs } = await aQ;
-          const existingMap = new Map(existingAbs?.map(a => [a.nisn, a]));
-
-          const absensiRows = allStudents.map(s => {
-            const existing = existingMap.get(s.nisn);
-            if (existing?.status === 'Tidak Hadir') {
-              return null;
-            }
-
-            const statusCode = piketAbsensi[s.nisn] || 'H';
-            const fullStatus = statusMap[statusCode] || 'Hadir';
-            const prevLogs = existing?.log_perubahan || [];
-            const logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user?.nama || 'Piket'} (Piket)`;
-
-            return {
-              sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
-              tanggal: todayDateStr,
-              kelas: s.kelas,
-              siswa_id: s.id,
-              nisn: s.nisn,
-              nama_siswa: s.nama_siswa,
-              status: fullStatus,
-              sumber_perubahan: 'Piket',
-              diubah_oleh: user?.nama || 'Piket',
-              log_perubahan: [...prevLogs, logEntry],
-              updated_at: new Date().toISOString()
-            };
-          }).filter(Boolean);
-
-          await supabase.from('absensi').upsert(absensiRows as any[], { onConflict: 'sekolah_id, tanggal, nisn' });
-        } catch (syncErr) {
-          console.error('Error synchronizing piket attendance to public.absensi:', syncErr);
-        }
-      }
-
-      // Release concurrency lock upon successful submission
-      if (activeLockIdRef.current && user) {
-        const userId = user.id || user.username || 'unknown-user';
-        await releasePiketLock(supabase, activeLockIdRef.current, userId).catch(() => {});
-        activeLockIdRef.current = null;
-      }
-      setPiketLockInfo(null);
-
-      showToast('Berhasil', 'Laporan piket berhasil disimpan dan presensi disinkronkan!', 'success', {
-        toast: true,
-        position: 'top-end',
-        timer: 3000,
-        showConfirmButton: false,
-      });
-      setCatatan('');
-      setFile(null);
-      setPhotoPreviewUrl(null);
-      setActiveTab('beranda');
-      fetchDataPiket(); // Refresh data
-      if (isGuru) {
-        try {
-          const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
-          setDailyState(state);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }
     setLoading(false);
-  };
-
-  const formatRekapAbsen = (jsonStr: string) => {
-    if (!jsonStr) return null;
-    try {
-      const parsed = JSON.parse(jsonStr);
-      const counts = { H: 0, S: 0, I: 0, A: 0 };
-      Object.values(parsed).forEach((val: any) => {
-        const code = String(val).toUpperCase() as 'H' | 'S' | 'I' | 'A';
-        if (counts[code] !== undefined) counts[code]++;
-      });
-      const total = counts.H + counts.S + counts.I + counts.A;
-      if (total === 0) return null;
-      return `H: ${counts.H} | S: ${counts.S} | I: ${counts.I} | A: ${counts.A} (${total} Siswa)`;
-    } catch (_) {
-      return null;
-    }
-  };
-
-  const filteredRekap = rekapList
-    .filter(item => {
-      if (!rekapSearch) return true;
-      const q = rekapSearch.toLowerCase();
-      return (
-        item.guru_pelapor?.toLowerCase().includes(q) ||
-        item.catatan_apel?.toLowerCase().includes(q) ||
-        item.tanggal?.toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (a.timestamp || '').localeCompare(b.timestamp || ''));
-
-  const totalRekap = filteredRekap.length;
-  const totalDisetujui = filteredRekap.filter(r => r.status_verifikasi === 'Disetujui').length;
-  const totalMenunggu = filteredRekap.filter(r => r.status_verifikasi === 'Menunggu' || !r.status_verifikasi || r.status_verifikasi === 'Menunggu Verifikasi').length;
-  const totalDitolak = filteredRekap.filter(r => r.status_verifikasi === 'Ditolak').length;
-
-  const exportRekapPiketCSV = () => {
-    if (filteredRekap.length === 0) {
-      return showToast('Info', 'Tidak ada data rekap piket untuk diekspor.', 'info');
-    }
-    const headers = ['No', 'Tanggal', 'Hari', 'Guru Pelapor', 'Catatan Apel / Kejadian', 'Status Verifikasi', 'Kehadiran Siswa', 'Link Foto'];
-    const csvRows = [headers.join(',')];
-    filteredRekap.forEach((r, idx) => {
-      const absenStr = formatRekapAbsen(r.rekap_absen_kelas) || '-';
-      const hari = r.tanggal ? getWitaDayName(new Date(r.tanggal + 'T00:00:00+08:00')) : '-';
-      csvRows.push([
-        idx + 1,
-        `"${r.tanggal || ''}"`,
-        `"${hari}"`,
-        `"${(r.guru_pelapor || '').replace(/"/g, '""')}"`,
-        `"${(r.catatan_apel || '-').replace(/"/g, '""')}"`,
-        `"${r.status_verifikasi || 'Menunggu'}"`,
-        `"${absenStr.replace(/"/g, '""')}"`,
-        `"${r.link_foto || '-'}"`
-      ].join(','));
-    });
-    const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Rekap_Piket_${rekapBulan || 'Semua'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (error) return showToast('Gagal Simpan', error.message, 'error');
+    showToast('Berhasil', 'Presensi siswa berhasil disimpan.', 'success');
   };
 
   const handleAddGuruPiket = async (e: React.FormEvent) => {
@@ -3242,7 +3108,7 @@ export default function PiketView({ user }: { user: any }) {
                     </div>
                   )}
                   <div className="bg-orange-50 border border-orange-200 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400 p-3 rounded-xl mb-4 text-[10px] text-orange-800 font-medium leading-relaxed">
-                      <i className="fa-solid fa-circle-info mr-1.5"></i> Silakan isi laporan karena Anda ditugaskan piket hari ini. Periksa seluruh kelas secara bergantian.
+                      <i className="fa-solid fa-circle-info mr-1.5"></i> {isFormLocked ? "Anda tidak perlu mengisi presensi (sedang diisi piket lain). Silakan isi laporan piket pribadi Anda." : "Anda bertugas mengisi Presensi Siswa. Laporan piket pribadi (foto & catatan) tidak diwajibkan."}
                   </div>
                   <form onSubmit={handlePiketSubmit} className="space-y-4">
                       <div>
@@ -3250,7 +3116,7 @@ export default function PiketView({ user }: { user: any }) {
                         <input type="date" required value={getWitaDateStr()} readOnly className="w-full px-3 py-2.5 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed" />
                       </div>
                       
-                      <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/50 rounded-xl p-3">
+                      {!isFormLocked && (<div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/50 rounded-xl p-3">
                         <label className="block text-[11px] font-bold text-teal-800 dark:text-teal-400 mb-2">
                           <i className="fa-solid fa-clipboard-check mr-1.5"></i> Rekap Absensi Sekolah
                         </label>
@@ -3375,17 +3241,13 @@ export default function PiketView({ user }: { user: any }) {
                       <div className="pt-2">
                         <button 
                           type="submit" 
-                          disabled={loading || isFormLocked} 
+                          disabled={loading} 
                           className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {loading ? 'Menyimpan...' : isFormLocked ? (
-                            <>
-                              <i className="fa-solid fa-lock"></i> Formulir Terkunci (Sedang Diedit)
-                            </>
-                          ) : (
-                            <><i className="fa-solid fa-paper-plane"></i> Kirim Laporan</>
-                          )}
-                        </button>
+                          >
+                            {loading ? 'Menyimpan...' : (
+                              <><i className="fa-solid fa-paper-plane"></i> {isFormLocked ? "Kirim Laporan Pribadi" : "Simpan Presensi Siswa"}</>
+                            )}
+                          </button>
                       </div>
                   </form>
               </div>

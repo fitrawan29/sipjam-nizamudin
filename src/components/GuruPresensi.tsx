@@ -468,6 +468,19 @@ export default function GuruPresensi({ user }: { user: any }) {
   // Dinas Luar and Izin/Sakit require file upload instead.
   const isSelfieRequired = jenisPresensi === 'Sekolah' || jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
 
+    const getRequiredDocName = () => {
+      if (jenisPresensi === 'Dinas Luar') return 'Surat Tugas';
+      if (jenisPresensi === 'Izin' && detailIzin === 'Sakit') {
+        return durasiHari >= 3 ? 'Surat Dokter' : 'Surat Sakit Mandiri';
+      }
+      if (jenisPresensi === 'Izin' && detailIzin === 'Izin') {
+        return durasiHari > 3 ? 'Surat Cuti Legal (Dinas)' : 'Surat Izin Mandiri';
+      }
+      return 'Dokumen Keterangan';
+    };
+    const requiredDocName = getRequiredDocName();
+
+
   const handlePresensiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -500,7 +513,7 @@ export default function GuruPresensi({ user }: { user: any }) {
 
     // Validasi File Bukti (Izin / Dinas Luar)
     if (!isSelfieRequired && !file) {
-      const docType = jenisPresensi === 'Dinas Luar' ? 'surat tugas' : 'surat keterangan izin/sakit';
+      const docType = requiredDocName.toLowerCase();
       return showToast(
         'Lampiran Wajib',
         `Silakan lampirkan ${docType}.`,
@@ -1048,7 +1061,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                 {!isSelfieRequired && (
                   <div id="row-file-izin" className="fade-in pt-1 space-y-2">
                       <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1">
-                        <i className="fa-solid fa-asterisk"></i> Wajib Upload {jenisPresensi === 'Dinas Luar' ? 'Surat Tugas' : 'Surat Keterangan / Sakit'}
+                        <i className="fa-solid fa-asterisk"></i> Wajib Upload {requiredDocName}
                       </label>
                       <input 
                         type="file" 
@@ -1065,7 +1078,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                           <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
                             <i className="fa-solid fa-file-lines text-amber-500 text-base"></i>
                             <div>
-                              <div>File {jenisPresensi === 'Dinas Luar' ? 'surat tugas' : 'surat izin'} terpasang</div>
+                              <div>File {requiredDocName} terpasang</div>
                               <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
                                 {file.name} ({(file.size / 1024).toFixed(0)} KB)
                               </div>
@@ -1074,7 +1087,7 @@ export default function GuruPresensi({ user }: { user: any }) {
                           <button
                             type="button"
                             onClick={() => {
-                              if (confirm(`Ganti Surat ${jenisPresensi === 'Dinas Luar' ? 'Tugas' : 'Izin'}?`)) {
+                              if (confirm(`Ganti file ${requiredDocName}?`)) {
                                 setFile(null);
                                 setPhotoPreviewUrl(null);
                               }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
-import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 export default function RekapSiswaView({ 
@@ -16,7 +16,7 @@ export default function RekapSiswaView({
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
 
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('portrait');
+  
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [kelas, setKelas] = useState(propAssignedKelas || '');
@@ -47,7 +47,7 @@ export default function RekapSiswaView({
   const [showWaliInput, setShowWaliInput] = useState(false);
   const [waliTanggal, setWaliTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
   const [waliStudents, setWaliStudents] = useState<any[]>([]);
-  const [waliAttendance, setWaliAttendance] = useState<Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'; keterangan: string; logs: string[] }>>({});
+  const [waliAttendance, setWaliAttendance] = useState<Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | ''; keterangan: string; logs: string[] }>>({});
   const [waliLoading, setWaliLoading] = useState(false);
   const [waliSaving, setWaliSaving] = useState(false);
   const [masterLoaded, setMasterLoaded] = useState(false);
@@ -141,77 +141,46 @@ export default function RekapSiswaView({
           if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
           const { data: absensiData } = await aQ;
 
+          
           let pQ = supabase
             .from('presensi_siswa')
             .select('*')
-            .eq('tanggal', waliTanggal)
-            .eq('kelas', activeWaliKelas.kelas);
+            .eq('kelas', gerbangKelas)
+            .eq('tanggal', gerbangTanggal);
           if (user?.sekolah_id) pQ = pQ.eq('sekolah_id', user.sekolah_id);
-          const { data: gateData } = await pQ;
+          const { data: gateLogs } = await pQ;
 
-          const gateMap: Record<string, { datang?: any; pulang?: any }> = {};
-          if (gateData) {
-            gateData.forEach((g: any) => {
-              const k = g.nisn || g.siswa_id;
-              if (!gateMap[k]) gateMap[k] = {};
-              if (g.status === 'datang') gateMap[k].datang = g;
-              if (g.status === 'pulang') gateMap[k].pulang = g;
-            });
-          }
-          setWaliGateLogs(gateMap);
+          let aQ = supabase
+            .from('absensi')
+            .select('*')
+            .eq('kelas', gerbangKelas)
+            .eq('tanggal', gerbangTanggal);
+          if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
+          const { data: absensiLogs } = await aQ;
 
-          const map: Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'; keterangan: string; logs: string[] }> = {};
-          studentsData.forEach(s => {
-            const found = absensiData?.find(a => a.nisn === s.nisn);
-            map[s.nisn] = {
-              status: (found?.status as any) || 'Hadir',
-              keterangan: found?.keterangan || '',
-              logs: Array.isArray(found?.log_perubahan) ? (found.log_perubahan as string[]) : []
-            };
-          });
-          setWaliAttendance(map);
-        }
-      } catch (err) {
-        console.error('Error loading wali students and absensi:', err);
-      } finally {
-        setWaliLoading(false);
-      }
-    };
+          if (studentsData) {
+            const combined = studentsData.map(siswa => {
+              const datang = (gateLogs || []).find(p => 
+                (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'datang'
+              );
+              let pulang = (gateLogs || []).find(p => 
+                (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'pulang'
+              );
 
-    loadWaliData();
-  }, [activeWaliKelas, waliTanggal, showWaliInput, user?.sekolah_id]);
+              // Auto-fallback to mapel presensi if pulang gerbang is missing
+              if (!pulang && absensiLogs) {
+                const mapelLog = absensiLogs.find(a => a.nisn === siswa.nisn || a.nama_siswa === siswa.nama_siswa);
+                if (mapelLog && mapelLog.logs && mapelLog.logs.length > 0) {
+                  // The logs array contains strings like "[HH:MM WITA] Ditandai Hadir oleh ..."
+                  // We extract the latest timestamp.
+                  const latestLog = mapelLog.logs[mapelLog.logs.length - 1];
+                  const timeMatch = latestLog.match(/\[(\d{2}:\d{2})/);
+                  if (timeMatch && timeMatch[1]) {
+                    pulang = { jam: timeMatch[1] + ':00', device_id: 'Sistem Mapel Auto' };
+                  }
+                }
+              }
 
-  // Effect to load Gate Attendance records from presensi_siswa for selected gerbangKelas & gerbangTanggal
-  useEffect(() => {
-    if (!gerbangKelas) return;
-
-    const fetchGerbangAttendance = async () => {
-      setGerbangLoading(true);
-      try {
-        let sQ = supabase
-          .from('data_siswa')
-          .select('*')
-          .eq('kelas', gerbangKelas)
-          .order('nama_siswa', { ascending: true });
-        if (user?.sekolah_id) sQ = sQ.eq('sekolah_id', user.sekolah_id);
-        const { data: studentsData } = await sQ;
-
-        let pQ = supabase
-          .from('presensi_siswa')
-          .select('*')
-          .eq('kelas', gerbangKelas)
-          .eq('tanggal', gerbangTanggal);
-        if (user?.sekolah_id) pQ = pQ.eq('sekolah_id', user.sekolah_id);
-        const { data: gateLogs } = await pQ;
-
-        if (studentsData) {
-          const combined = studentsData.map(siswa => {
-            const datang = (gateLogs || []).find(p => 
-              (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'datang'
-            );
-            const pulang = (gateLogs || []).find(p => 
-              (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'pulang'
-            );
             const rawJamDatang = datang?.jam ? String(datang.jam).trim() : null;
             const jamDatang = rawJamDatang ? (rawJamDatang.length > 5 ? rawJamDatang.slice(0, 5) : rawJamDatang) : null;
             const rawJamPulang = pulang?.jam ? String(pulang.jam).trim() : null;
@@ -283,7 +252,7 @@ export default function RekapSiswaView({
     setWaliAttendance(prev => ({
       ...prev,
       [nisn]: {
-        ...(prev[nisn] || { status: 'Hadir', logs: [] }),
+        ...(prev[nisn] || { status: '', logs: [] }),
         keterangan
       }
     }));
@@ -308,7 +277,7 @@ export default function RekapSiswaView({
     try {
       const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
       const rowsToUpsert = waliStudents.map(s => {
-        const record = waliAttendance[s.nisn] || { status: 'Hadir', keterangan: '', logs: [] };
+        const record = waliAttendance[s.nisn] || { status: '', keterangan: '', logs: [] };
         const currentLogs = Array.isArray(record.logs) ? [...record.logs] : [];
         const logNote = record.keterangan ? `. Keterangan: ${record.keterangan}` : '';
         const logEntry = `[${nowWita} WITA] Diubah ke ${record.status} oleh ${user?.nama || 'Wali Kelas'} (Wali Kelas)${logNote}`;
@@ -793,7 +762,7 @@ export default function RekapSiswaView({
                     ) : (
                       <div className="space-y-2.5 max-h-[380px] overflow-y-auto custom-scroll pr-1">
                         {waliStudents.map((siswa, idx) => {
-                          const currentRec = waliAttendance[siswa.nisn] || { status: 'Hadir', keterangan: '', logs: [] };
+                          const currentRec = waliAttendance[siswa.nisn] || { status: '', keterangan: '', logs: [] };
                           return (
                             <div
                               key={siswa.nisn || idx}
@@ -1076,7 +1045,7 @@ export default function RekapSiswaView({
                     </button>
                   </div>
 
-                  <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
+                  
                 </div>
 
                 {/* Table of students */}
@@ -1289,7 +1258,7 @@ export default function RekapSiswaView({
                           Reset
                         </button>
                       )}
-                      <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
+                      
                   </div>
 
                   <div className="overflow-x-auto w-full border border-gray-300 dark:border-gray-700 print:border-black rounded-xl print:overflow-visible shadow-sm">

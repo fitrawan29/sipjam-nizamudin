@@ -239,14 +239,11 @@ export default function CameraSelfieCapture({
       console.error('[CameraCapture] Camera access error:', err);
       const e = err as { name?: string; message?: string };
       let message = 'Gagal mengakses kamera.';
-      if (e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError') {
-        message = 'Izin kamera ditolak. Harap izinkan akses kamera di pengaturan browser.';
-      } else if (e?.name === 'NotFoundError' || e?.name === 'DevicesNotFoundError') {
-        message = 'Kamera tidak ditemukan pada perangkat Anda.';
-      } else if (e?.name === 'NotReadableError' || e?.name === 'TrackStartError') {
-        message = 'Kamera sedang digunakan oleh aplikasi lain.';
-      } else {
-        message = `Akses kamera gagal: ${e?.message || 'Error tidak diketahui'}`;
+      if (e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError' || e?.name === 'NotFoundError' || e?.name === 'DevicesNotFoundError' || e?.name === 'NotReadableError' || e?.name === 'TrackStartError') {
+          message = 'Kamera tidak dapat diakses (izin ditolak atau kerusakan hardware). Harap gunakan gawai lain untuk menggunakan sistem.';
+        } else {
+          message = 'Akses kamera gagal: ' + (e?.message || 'Error tidak diketahui') + '. Harap gunakan gawai lain.';
+        }`;
       }
       setCameraError(message);
       setIsStreaming(false);

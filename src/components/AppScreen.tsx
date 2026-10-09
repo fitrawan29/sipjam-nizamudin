@@ -555,7 +555,7 @@ export default function AppScreen({
     { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
     { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
     { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' },
-    ...(isWaliKelas ? [{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }] : [])
+    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }
   ];
 
   const menuItemsAdmin = [

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
-import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 /**
@@ -32,8 +32,7 @@ function countWorkdays(
 }
 
 export default function AdminRekapView({ user }: { user: any }) {
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
-  const [bulan, setBulan] = useState(() => {
+    const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });
   const [startDate, setStartDate] = useState('');
@@ -329,8 +328,7 @@ export default function AdminRekapView({ user }: { user: any }) {
                           Reset
                         </button>
                       )}
-                      <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
-                  </div>
+                                        </div>
 
                   {/* 11-Column Professional Recap Table */}
                   <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">

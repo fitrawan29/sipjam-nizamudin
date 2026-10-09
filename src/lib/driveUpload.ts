@@ -38,14 +38,61 @@ async function getTargetEmail(): Promise<string | undefined> {
   return undefined;
 }
 
+
+async function compressImage(file: File, maxWidth = 1600, quality = 0.7): Promise<File> {
+  if (!file.type.startsWith('image/')) return file;
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const compressedFile = new File([blob], file.name, {
+            type: file.type,
+            lastModified: Date.now(),
+          });
+          resolve(compressedFile);
+        }, file.type, quality);
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+}
+
 export async function uploadToDrive(
-  file: File,
+  originalFile: File,
   namaGuru: string,
   folderFitur: string,
   prefix: string = 'Upload',
   targetEmail?: string
 ): Promise<string> {
   let resolvedEmail = targetEmail;
+  const file = typeof window !== 'undefined' ? await compressImage(originalFile) : originalFile;
   if (!resolvedEmail) {
     resolvedEmail = await getTargetEmail();
   }

@@ -398,32 +398,6 @@ export function PrintSignature({
   );
 }
 
-export function PrintOrientationToggle({
-  orientation: _orientation,
-  setOrientation: _setOrientation
-}: {
-  orientation?: 'landscape' | 'portrait';
-  setOrientation?: (val: 'landscape' | 'portrait') => void;
-}) {
-  // Rely directly on native browser print dialog for orientation.
-  // Manual toggle buttons removed. Inject print styles to hide chrome/navigation.
-  return (
-    <style>{`
-      @media print {
-        header, nav, aside, .app-header, .no-print {
-          display: none !important;
-        }
-        main {
-          padding: 0 !important;
-          margin: 0 !important;
-          max-width: 100% !important;
-          width: 100% !important;
-        }
-      }
-    `}</style>
-  );
-}
-
 export function formatPeriodHeader(bulan?: string, startDate?: string, endDate?: string): string {
   const formatDateIndo = (dateStr: string): string => {
     if (!dateStr) return '';

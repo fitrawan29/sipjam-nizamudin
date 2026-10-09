@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
 import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from '@/types/database';
-import { PrintHeader, PrintSignature, PrintOrientationToggle, formatPeriodHeader } from './PrintHeader';
+import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 export const KURIKULUM_DOCS = [
@@ -21,8 +21,7 @@ export const KURIKULUM_DOCS = [
 export default function DokumenView({ user }: { user: any }) {
   const isAdmin = user?.role === 'Admin';
   const [activeTab, setActiveTab] = useState<'matrix' | 'syarat' | 'list' | 'upload'>(isAdmin ? 'matrix' : 'list');
-  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
-  
+    
   // Data states
   const [dokumenList, setDokumenList] = useState<BankDokumen[]>([]);
   const [teachersList, setTeachersList] = useState<DataGuru[]>([]);
@@ -772,8 +771,7 @@ export default function DokumenView({ user }: { user: any }) {
 
         {/* Print Orientation Toolbar & Button */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4 no-print">
-          <PrintOrientationToggle orientation={orientation} setOrientation={setOrientation} />
-          <button
+                    <button
             type="button"
             onClick={() => triggerPrintWithGps()}
             className="btn-click bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
