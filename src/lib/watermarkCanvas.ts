@@ -147,58 +147,12 @@ export function drawWatermarkedCanvas(
     height = videoElement.naturalHeight || videoElement.height || 480;
   }
 
-  // Calculate crop dimensions based on requested orientation or source aspect ratio
-  // Anti-zoom 1x scale: If orientation matches the source stream, preserve full 1x scale without artificial crop.
-  // Only center-crop when orientation mismatches (e.g., desktop horizontal webcam in portrait mode).
-  const isPortrait = orientation === 'portrait' || (!orientation && width < height);
-
   let drawWidth = width;
-  let drawHeight = height;
-  let offsetX = 0;
-  let offsetY = 0;
+    let drawHeight = height;
+    let offsetX = 0;
+    let offsetY = 0;
 
-  if (isPortrait) {
-    if (width >= height) {
-      // Orientation mismatch: source is landscape (e.g. desktop webcam) but portrait requested
-      // Center-crop width to achieve vertical portrait orientation (3:4 ratio)
-      const targetRatio = 3 / 4;
-      drawWidth = height * targetRatio;
-      drawHeight = height;
-      offsetX = (width - drawWidth) / 2;
-    } else {
-      // Source is already vertical/portrait: preserve full 1x scale without artificial zoom/crop
-      drawWidth = width;
-      drawHeight = height;
-      offsetX = 0;
-      offsetY = 0;
-    }
-  } else {
-    // Landscape mode requested: strictly enforce universal 4:3 aspect ratio
-    const targetRatio = 4 / 3;
-    const currentRatio = width / height;
-
-    if (currentRatio > targetRatio) {
-      // Source is wider than 4:3 (e.g. 16:9 webcam 1280x720): center-crop width to 4:3
-      drawWidth = height * targetRatio;
-      drawHeight = height;
-      offsetX = (width - drawWidth) / 2;
-      offsetY = 0;
-    } else if (currentRatio < targetRatio) {
-      // Source is taller than 4:3 (e.g. 9:16 portrait phone feed 720x1280): center-crop height to 4:3
-      drawWidth = width;
-      drawHeight = width / targetRatio;
-      offsetX = 0;
-      offsetY = (height - drawHeight) / 2;
-    } else {
-      // Source is already exact 4:3 (e.g. 1280x960, 640x480): preserve 1x scale without crop
-      drawWidth = width;
-      drawHeight = height;
-      offsetX = 0;
-      offsetY = 0;
-    }
-  }
-
-  const canvas = document.createElement('canvas');
+    const canvas = document.createElement('canvas');
   // Canvas dimensions conform to target ratio (3:4 portrait or 4:3 landscape)
   canvas.width = Math.max(1, Math.round(drawWidth) || 640);
   canvas.height = Math.max(1, Math.round(drawHeight) || 480);

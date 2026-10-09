@@ -151,7 +151,7 @@ export default function CameraSelfieCapture({
         video: {
           // Defaults to facingMode: 'user', with resilient mode switching via { ideal: mode }
           facingMode: { ideal: mode },
-          aspectRatio: { ideal: 4 / 3 },
+          
           width: { ideal: 1280, max: 1600 },
           height: { ideal: 960, max: 1200 },
         },
@@ -178,7 +178,7 @@ export default function CameraSelfieCapture({
           } else {
             try {
               stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: mode }, aspectRatio: { ideal: 4 / 3 } },
+                video: { facingMode: { ideal: mode },  },
                 audio: false,
               });
             } catch {
@@ -405,19 +405,19 @@ export default function CameraSelfieCapture({
       </div>
 
       {/* Main View Area - strictly locked to 4:3 (portrait 3:4, landscape 4:3) */}
-      <div className={`relative w-full ${
-        'aspect-[4/3]'
+      <div className={`relative w-full min-h-[200px] ${
+        ''
       } rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}>
         {/* Captured Image Preview */}
         {capturedImage ? (
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+          <div className="relative w-full h-auto flex items-center justify-center overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={capturedImage}
               alt="Preview Kamera"
-              className={`w-full h-full ${
-                'aspect-[4/3]'
-              } object-cover`}
+              className={`w-full h-auto ${
+                ''
+              } object-contain`}
             />
             <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
               <i className="fa-solid fa-check text-emerald-400 shrink-0"></i>
@@ -433,9 +433,9 @@ export default function CameraSelfieCapture({
               playsInline
               autoPlay
               muted
-              className={`w-full h-full ${
-                'aspect-[4/3]'
-              } object-cover transform ${
+              className={`w-full h-auto ${
+                ''
+              } object-contain transform ${
                 facingMode === 'user' ? '-scale-x-100' : ''
               } ${isStreaming ? 'block' : 'hidden'}`}
             />
