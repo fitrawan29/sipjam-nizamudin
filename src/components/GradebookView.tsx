@@ -178,6 +178,16 @@ export default function GradebookView({ user }: GradebookViewProps) {
     bobot: 1,
   });
 
+  const [formatifWeightPct, setFormatifWeightPct] = useState<number>(50);
+  useEffect(() => {
+    const saved = localStorage.getItem('gradebook_formatif_weight');
+    if (saved) {
+      const val = parseInt(saved, 10);
+      if (!isNaN(val) && val >= 0 && val <= 100) setFormatifWeightPct(val);
+    }
+  }, []);
+
+
   const [isBulkFillModalOpen, setIsBulkFillModalOpen] = useState(false);
   const [bulkFillColId, setBulkFillColId] = useState<string>('');
   const [bulkFillValue, setBulkFillValue] = useState<string>('80');
@@ -1159,10 +1169,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
     });
     const avgS = sumWeightS > 0 ? parseFloat((sumS / sumWeightS).toFixed(1)) : null;
 
-    // Nilai Akhir TP: Weighted 50% Formatif + 50% Sumatif, or available average
+    // Nilai Akhir TP: Weighted based on formatifWeightPct, or available average
     let finalTp: number | null = null;
     if (avgF !== null && avgS !== null) {
-      finalTp = parseFloat((avgF * 0.5 + avgS * 0.5).toFixed(1));
+      finalTp = parseFloat((avgF * (formatifWeightPct / 100) + avgS * ((100 - formatifWeightPct) / 100)).toFixed(1));
     } else if (avgS !== null) {
       finalTp = avgS;
     } else if (avgF !== null) {
@@ -1468,6 +1478,25 @@ export default function GradebookView({ user }: GradebookViewProps) {
               >
                 <i className={`fa-solid ${isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
                 {isSaving ? 'Menyimpan...' : 'Simpan Semua Nilai'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const val = window.prompt("Masukkan persentase bobot Nilai Formatif (0-100).\nBobot Sumatif akan menyesuaikan otomatis:", formatifWeightPct.toString());
+                  if (val !== null) {
+                    const num = parseInt(val, 10);
+                    if (!isNaN(num) && num >= 0 && num <= 100) {
+                      setFormatifWeightPct(num);
+                      localStorage.setItem('gradebook_formatif_weight', num.toString());
+                    } else {
+                      alert("Persentase tidak valid. Masukkan angka bulat 0-100.");
+                    }
+                  }
+                }}
+                className="btn-click px-3 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition border border-indigo-200 dark:border-indigo-800"
+              >
+                <i className="fa-solid fa-scale-balanced"></i>
+                Bobot: F {formatifWeightPct}% / S {100 - formatifWeightPct}%
               </button>
             </div>
           )}

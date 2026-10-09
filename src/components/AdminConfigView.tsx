@@ -227,12 +227,14 @@ export default function AdminConfigView({
 
       // Also sync data_guru.wajib_hadir_hanya_mengajar
       if (guruList.length > 0) {
-        for (const t of guruList) {
-          const isExempt = exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru));
-          await supabase
-            .from('data_guru')
-            .update({ wajib_hadir_hanya_mengajar: isExempt })
-            .eq('id', t.id);
+        const exemptIds = guruList.filter(t => exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id);
+        const nonExemptIds = guruList.filter(t => !exemptTeacherIds.includes(t.id) && !(t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id);
+
+        if (exemptIds.length > 0) {
+          await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: true }).in('id', exemptIds);
+        }
+        if (nonExemptIds.length > 0) {
+          await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: false }).in('id', nonExemptIds);
         }
       }
 

@@ -311,7 +311,6 @@ export default function PiketView({ user }: { user: any }) {
         streamRef.current = null;
       }
 
-      let stream: MediaStream;
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: { ideal: 'environment' },
