@@ -60,6 +60,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, { hadir: number; izin: number; sakit: number; alpa: number }>>({});
   const [catatanWaliMap, setCatatanWaliMap] = useState<Record<string, string>>({});
+  const [deepLearningMap, setDeepLearningMap] = useState<Record<string, { mindful: string; meaningful: string; joyful: string }>>({});
   const [ekskulMap, setEkskulMap] = useState<Record<string, { kegiatan: string; keterangan: string; predikat: string }[]>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
@@ -152,6 +153,17 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           // ignore parsing error
         }
       }
+
+      // 4. Load saved Deep Learning observations
+      const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+      const savedDl = localStorage.getItem(dlKey);
+      if (savedDl) {
+        try {
+          setDeepLearningMap(JSON.parse(savedDl));
+        } catch {
+          // ignore parsing error
+        }
+      }
     } catch (err: any) {
       console.error('Error fetching class data for rapor:', err);
       showToast('Gagal memuat data kelas untuk rapor', 'error');
@@ -171,6 +183,19 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
     const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
     try {
       localStorage.setItem(notesKey, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDeepLearningChange = (nisn: string, field: 'mindful' | 'meaningful' | 'joyful', text: string) => {
+    const prev = deepLearningMap[nisn] || { mindful: '', meaningful: '', joyful: '' };
+    const updatedObj = { ...prev, [field]: text };
+    const updatedMap = { ...deepLearningMap, [nisn]: updatedObj };
+    setDeepLearningMap(updatedMap);
+    const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+    try {
+      localStorage.setItem(dlKey, JSON.stringify(updatedMap));
     } catch {
       // ignore
     }
@@ -263,7 +288,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
             </div>
             <div>
               <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                Rapor Kurikulum Merdeka
+                E-Rapor SMA (Kurikulum Deep Learning)
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
                   Wali Kelas
                 </span>
@@ -508,10 +533,10 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
             <div className="text-center my-6">
               <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-gray-900 dark:text-white">
-                LAPORAN HASIL BELAJAR (RAPOR)
+                LAPORAN HASIL BELAJAR (E-RAPOR SMA)
               </h2>
               <p className="text-xs text-gray-600 dark:text-gray-300 font-semibold mt-1">
-                KURIKULUM MERDEKA — TAHUN AJARAN {selectedTahunAjaran}
+                KURIKULUM DEEP LEARNING — TAHUN AJARAN {selectedTahunAjaran}
               </p>
             </div>
 
@@ -572,8 +597,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               </div>
             </div>
 
-            {/* ATTENDANCE SUMMARY & CATATAN WALI KELAS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 print:grid-cols-2">
+            {/* ATTENDANCE SUMMARY & DEEP LEARNING */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 print:grid-cols-2">
               {/* Rekap Kehadiran */}
               <div>
                 <h3 className="text-xs font-black uppercase text-gray-900 dark:text-white mb-2">
@@ -601,17 +626,56 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 </div>
               </div>
 
-              {/* Catatan Wali Kelas */}
+              {/* Observasi Kurikulum Deep Learning */}
               <div>
                 <h3 className="text-xs font-black uppercase text-gray-900 dark:text-white mb-2">
-                  C. Catatan Wali Kelas
+                  C. Observasi Kurikulum Deep Learning
                 </h3>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs min-h-[90px] bg-gray-50/30 dark:bg-gray-900/30 print:bg-transparent">
-                  <p className="text-gray-800 dark:text-gray-200 leading-relaxed italic">
-                    {catatanWaliMap[selectedStudent.nisn] ||
-                      'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.'}
-                  </p>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden text-xs">
+                  <div className="flex flex-col py-1.5 px-3 border-b border-gray-100 dark:border-gray-700">
+                    <span className="font-bold text-gray-900 dark:text-white">1. Mindful Learning (Kesadaran Belajar)</span>
+                    <input 
+                      type="text" 
+                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:border-none focus:border-teal-500" 
+                      placeholder="Catatan mindfulness..." 
+                      value={deepLearningMap[selectedStudent.nisn]?.mindful || ''}
+                      onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'mindful', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col py-1.5 px-3 border-b border-gray-100 dark:border-gray-700">
+                    <span className="font-bold text-gray-900 dark:text-white">2. Meaningful Learning (Pemaknaan Materi)</span>
+                    <input 
+                      type="text" 
+                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:border-none focus:border-teal-500" 
+                      placeholder="Catatan meaningfulness..." 
+                      value={deepLearningMap[selectedStudent.nisn]?.meaningful || ''}
+                      onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'meaningful', e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-col py-1.5 px-3">
+                    <span className="font-bold text-gray-900 dark:text-white">3. Joyful Learning (Kegembiraan Belajar)</span>
+                    <input 
+                      type="text" 
+                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:border-none focus:border-teal-500" 
+                      placeholder="Catatan joyfulness..." 
+                      value={deepLearningMap[selectedStudent.nisn]?.joyful || ''}
+                      onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'joyful', e.target.value)}
+                    />
+                  </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Catatan Wali Kelas */}
+            <div className="mb-8">
+              <h3 className="text-xs font-black uppercase text-gray-900 dark:text-white mb-2">
+                D. Catatan Wali Kelas
+              </h3>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs min-h-[50px] bg-gray-50/30 dark:bg-gray-900/30 print:bg-transparent">
+                <p className="text-gray-800 dark:text-gray-200 leading-relaxed italic">
+                  {catatanWaliMap[selectedStudent.nisn] ||
+                    'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.'}
+                </p>
               </div>
             </div>
 
