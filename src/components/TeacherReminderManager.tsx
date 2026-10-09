@@ -250,6 +250,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isSnoozed, setIsSnoozed] = useState<boolean>(() => isReminderSnoozed(user?.id));
   const lastCheckTimestampRef = useRef<number>(0);
 
   const [reminderConfig, setReminderConfig] = useState({ enabled: true, intervalMs: 300_000 });
@@ -290,9 +291,11 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
     // 0. Check snooze status before evaluating or firing notifications
     if (isReminderSnoozed(user?.id)) {
+      setIsSnoozed(true);
       setReminders([]);
       return;
     }
+    setIsSnoozed(false);
 
     try {
       // 1. Fetch school hours configuration
@@ -369,6 +372,12 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
   useEffect(() => {
     if (!isGuru) return;
+
+    // Check initial snooze state
+    if (isReminderSnoozed(user?.id)) {
+      setIsSnoozed(true);
+    }
+
     if (!reminderConfig.enabled) {
       setReminders([]);
       return;
@@ -389,23 +398,72 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
       if (document.visibilityState === 'visible') {
         const currentConfig = loadReminderConfig();
         setReminderConfig(currentConfig); // Update state if changed in another tab
-        const elapsed = Date.now() - lastCheckTimestampRef.current;
-        if (elapsed > 60_000) {
-          checkReminders();
+        if (isReminderSnoozed(user?.id)) {
+          setIsSnoozed(true);
+          setReminders([]);
+        } else {
+          setIsSnoozed(false);
+          const elapsed = Date.now() - lastCheckTimestampRef.current;
+          if (elapsed > 60_000) {
+            checkReminders();
+          }
         }
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Listener for real-time config/snooze changes from AccountSettingsModal
+    const handleConfigChange = () => {
+      setReminderConfig(loadReminderConfig());
+      if (isReminderSnoozed(user?.id)) {
+        setIsSnoozed(true);
+        setReminders([]);
+      } else {
+        setIsSnoozed(false);
+        checkReminders();
+      }
+    };
+    window.addEventListener('sipjam_reminder_config_changed', handleConfigChange);
+
     return () => {
       clearTimeout(initialTimer);
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('sipjam_reminder_config_changed', handleConfigChange);
     };
   }, [isGuru, user, checkReminders, reminderConfig.enabled, reminderConfig.intervalMs, loadReminderConfig]);
 
   if (!isGuru) {
     return null;
+  }
+
+  // Cancel / early toggle off snooze handler
+  const handleCancelSnooze = () => {
+    clearReminderSnooze(user?.id);
+    setIsSnoozed(false);
+    setIsDismissed(false);
+    checkReminders();
+  };
+
+  // When snoozed, floating reminder is completely hidden and will not reappear during the 30-minute duration
+  if (isSnoozed || isReminderSnoozed(user?.id)) {
+    return (
+      <div
+        role="status"
+        aria-label="Status Pengingat Ditunda"
+        style={{ display: 'none' }}
+        className="hidden max-w-[calc(100vw-2rem)] sm:max-w-xs"
+      >
+        <span>Pengingat ditunda 30m</span>
+        <button
+          type="button"
+          onClick={handleCancelSnooze}
+          title="Batalkan tunda pengingat"
+        >
+          Batalkan
+        </button>
+      </div>
+    );
   }
 
   if (reminders.length === 0 || isDismissed) {
@@ -432,6 +490,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
   const handleSnooze = () => {
     setReminderSnooze(30, user?.id);
+    setIsSnoozed(true);
     setReminders([]);
     setIsDismissed(true);
   };

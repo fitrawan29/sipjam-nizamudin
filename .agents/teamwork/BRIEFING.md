@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-09T05:17:30Z
+# BRIEFING — 2026-10-10T07:05:30Z
 
 ## Mission
-Route and monitor execution of comprehensive teacher account updates in sipjam-app (reminders, camera/storage 4:3 GDrive, attendance & admin verif, student sync & piket concurrency, Kurikulum Merdeka & rapor, and E2E verification).
+Pengaturan khusus pengingat otomatis di halaman akun (R1) dan perbaikan logika tunda (snooze) 30 menit floating reminder (R2).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -12,6 +12,8 @@ Route and monitor execution of comprehensive teacher account updates in sipjam-a
 - Victory Auditor (current): to be spawned on victory claim
 - Orchestrator (current): abb46050-fc5a-40d0-bacf-41cc55be2bc6 (orchestrator_18)
 - Victory Auditor (current): 8ba2e108-652d-4476-ac15-21511ca92ac4 (victory_auditor_26)
+- Orchestrator (current): e16804dc-3a4d-422a-9c9b-f765efe2d907 (swe_17)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -19,25 +21,24 @@ Route and monitor execution of comprehensive teacher account updates in sipjam-a
 - Git Workflow Rule: commit and push automatically upon completion
 - Route: SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (comprehensive multi-requirement update)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused)
 
 ## User Context
-- **Last user request**: Comprehensive update to teacher's account: R1 (UI/UX 30m snooze, remove print orientation, 4:3 camera + GDrive), R2 (multi-state attendance Hadir/Dinas Luar, auto-checkout flagging, admin approval for sick/leave, GPS auto-attach), R3 (role-based student attendance, piket sync to mapel with truancy, concurrency locks), R4 (Kurikulum Merdeka calculations, CP descriptions, Rapor menu, tutorial updates), plus 5 E2E test suites.
+- **Last user request**: Tambahkan pengaturan khusus untuk fitur pengingat otomatis di halaman pengaturan akun, dan perbaiki bug di mana kotak pengingat (floating reminder) muncul terus-menerus meskipun sudah ditunda selama 30 menit.
 - **Pending clarifications**: none
-- **Delivered results**: M1 completed & verified (commit 277b49e); M2 completed & verified (commit ee1ce69); M3 completed & verified (commit 4030a93); M4 implemented & committed (commit ae44fb3); M5 E2E test suite implemented & verified (commits be53dac, 9aadcc6); independent Victory Audit 26 confirmed VICTORY CONFIRMED (commit 4e463fe).
+- **Delivered results**: swe_17 dispatched to implement and review R1 (reminder settings) and R2 (snooze 30m fix).
 
 ## Project Status
-- **Phase**: complete
-- **Route**: General (teamwork_preview_orchestrator)
-- **Active Crons**: none (killed upon victory)
-- **Active Subagents**: none (killed upon victory)
+- **Phase**: in progress
+- **Route**: SWE Light (teamwork_preview_swe)
+- **Active Crons**: task-28 (Progress Reporting, */8), task-30 (Liveness Check, */10)
+- **Active Subagents**: e16804dc-3a4d-422a-9c9b-f765efe2d907 (swe_17)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_17\handoff.md — Handoff from orchestrator_17
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_18\handoff.md — Handoff from orchestrator_18
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_26\handoff.md — Victory Auditor 26 report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_17\DISPATCH.md — Dispatch instructions for swe_17

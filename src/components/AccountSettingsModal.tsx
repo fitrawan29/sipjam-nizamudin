@@ -11,6 +11,11 @@ import {
   unsubscribeFromPushNotifications,
   sendTestNotification
 } from '@/lib/pushClient';
+import {
+  isReminderSnoozed,
+  clearReminderSnooze,
+  getReminderSnoozeRemainingMs
+} from './TeacherReminderManager';
 
 interface AccountSettingsModalProps {
   isOpen: boolean;
@@ -44,6 +49,7 @@ export default function AccountSettingsModal({
   // Reminder state
   const [autoReminderEnabled, setAutoReminderEnabled] = useState<boolean>(true);
   const [autoReminderInterval, setAutoReminderInterval] = useState<number>(5);
+  const [snoozeRemainingMinutes, setSnoozeRemainingMinutes] = useState<number>(0);
 
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -62,9 +68,26 @@ export default function AccountSettingsModal({
         setAutoReminderEnabled(storedEnabled !== null ? storedEnabled === 'true' : true);
         const storedInterval = localStorage.getItem(`sipjam_reminder_interval_${user.id}`);
         setAutoReminderInterval(storedInterval ? parseInt(storedInterval, 10) : 5);
+        if (isReminderSnoozed(user.id)) {
+          const remMs = getReminderSnoozeRemainingMs(user.id);
+          setSnoozeRemainingMinutes(Math.max(1, Math.ceil(remMs / 60000)));
+        } else {
+          setSnoozeRemainingMinutes(0);
+        }
       } catch (e) {}
     }
   }, [user, isOpen]);
+
+  const handleCancelSnoozeFromModal = () => {
+    if (!user?.id) return;
+    clearReminderSnooze(user.id);
+    setSnoozeRemainingMinutes(0);
+    try {
+      window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
+      window.dispatchEvent(new Event('storage'));
+    } catch {}
+    showToast('Tunda Dibatalkan', 'Pengingat otomatis akan aktif kembali.', 'info');
+  };
 
   // Check push subscription on mount/open
   useEffect(() => {
@@ -239,6 +262,8 @@ export default function AccountSettingsModal({
       try {
         localStorage.setItem(`sipjam_reminder_enabled_${user.id}`, String(autoReminderEnabled));
         localStorage.setItem(`sipjam_reminder_interval_${user.id}`, String(autoReminderInterval));
+        window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
+        window.dispatchEvent(new Event('storage'));
       } catch (e) {}
 
       showToast('Profil Berhasil Disimpan', 'Perubahan avatar, identitas, dan pengaturan akun telah disimpan.', 'success');
@@ -578,6 +603,23 @@ export default function AccountSettingsModal({
                       </>
                     )}
                   </div>
+
+                  {snoozeRemainingMinutes > 0 && (
+                    <div className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-100/70 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 mt-2.5">
+                      <div className="flex items-center gap-2 text-[11px] text-amber-800 dark:text-amber-200">
+                        <i className="fa-solid fa-clock-rotate-left text-amber-600 dark:text-amber-400"></i>
+                        <span>Pengingat sedang ditunda (~{snoozeRemainingMinutes} menit tersisa)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCancelSnoozeFromModal}
+                        className="px-2.5 py-1 rounded-md bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-[10px] font-bold transition shadow-xs"
+                        title="Batalkan status tunda pengingat"
+                      >
+                        Batalkan Tunda
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

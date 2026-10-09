@@ -968,3 +968,31 @@ Integrity mode: benchmark
 - [ ] Must write a test asserting that student truancy is automatically flagged when Piket marks "Hadir" but Mapel marks "Alpa".
 - [ ] Must write unit or integration tests validating the Kurikulum Merdeka calculation logic and verifying the Wali Kelas "Rapor" menu visibility.
 - [ ] All new and existing tests must pass locally before the task is considered complete.
+
+## 2026-10-09T23:03:55Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Craft prompt → get user approval → delegate to teamwork_preview
+> Requested team: Small focused team (This is a single self-contained fix; keep it small and focused.)
+
+Tambahkan pengaturan khusus untuk fitur pengingat otomatis di halaman pengaturan akun, dan perbaiki bug di mana kotak pengingat (floating reminder) muncul terus-menerus meskipun sudah ditunda selama 30 menit.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Pengaturan Pengingat
+Tambahkan antarmuka pengaturan untuk fitur pengingat otomatis di dalam halaman pengaturan akun.
+
+### R2. Perbaikan Logika Tunda (Snooze)
+Ubah logika penundaan (snooze) agar saat pengguna menunda selama 30 menit, kotak melayang (floating reminder) benar-benar tersembunyi dan tidak muncul kembali selama durasi tersebut.
+
+## Acceptance Criteria
+
+### Verifikasi Programmatik / Fungsional
+- [ ] Pengaturan pengingat muncul di halaman akun dan state perubahannya tersimpan.
+- [ ] Ketika tombol tunda (snooze) diklik, kotak melayang langsung hilang.
+- [ ] Me-refresh halaman atau berpindah halaman di dalam durasi 30 menit setelah penundaan tidak akan memunculkan kembali kotak melayang.

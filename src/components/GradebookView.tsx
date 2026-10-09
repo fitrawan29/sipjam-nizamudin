@@ -1489,7 +1489,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
                       setFormatifWeightPct(num);
                       localStorage.setItem('gradebook_formatif_weight', num.toString());
                     } else {
-                      alert("Persentase tidak valid. Masukkan angka bulat 0-100.");
+                      Swal.fire({
+                        icon: 'warning',
+                        title: 'Persentase Tidak Valid',
+                        text: 'Masukkan angka bulat 0-100.',
+                      });
                     }
                   }
                 }}
