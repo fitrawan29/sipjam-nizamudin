@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabaseClient';
 import LoginScreen from '@/components/LoginScreen';
 import AppScreen from '@/components/AppScreen';
 import PreLoginSplash from '@/components/PreLoginSplash';
-import NotificationPermissionModal from '@/components/NotificationPermissionModal';
 
 export default function Home() {
   const [session, setSession] = useState<any>(null);
@@ -210,9 +209,6 @@ function MainApp() {
 
   return (
     <>
-      {/* Full blocking notification permission modal overlay on initial app open */}
-      <NotificationPermissionModal user={user} />
-
       {/* Main flow: If authenticated -> AppScreen. If unauthenticated -> Splash then LoginScreen */}
       {user ? (
         <AppScreen user={user} onLogout={handleLogout} onUserUpdate={setUser} />

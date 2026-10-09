@@ -25,7 +25,6 @@ const SistemBlokView = dynamic(() => import('./SistemBlokView'));
 const RaporView = dynamic(() => import('./RaporView'));
 import AccountSettingsModal from './AccountSettingsModal';
 import { renderUserAvatar } from '@/lib/avatars';
-import PushNotificationPrompt from './PushNotificationPrompt';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import AIAssistant from '@/components/AIAssistant';
 import { OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN } from '@/components/Onboarding';
@@ -910,9 +909,6 @@ export default function AppScreen({
           )}
         </div>
       </main>
-
-      {/* Push Notification Permission & Test Prompt */}
-      <PushNotificationPrompt user={user} />
 
       {/* Native PWA Install Prompt */}
       <PWAInstallPrompt />
