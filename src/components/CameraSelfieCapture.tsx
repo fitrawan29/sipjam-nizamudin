@@ -158,27 +158,54 @@ export default function CameraSelfieCapture({
         audio: false,
       };
 
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (err: unknown) {
-        const e = err as { name?: string };
-        // Fallback on OverconstrainedError / ConstraintNotSatisfiedError / TypeError / NotSupportedError for single-camera or legacy devices
-        if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError' || e?.name === 'TypeError' || e?.name === 'NotSupportedError') {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                facingMode: { ideal: mode },
-                aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 4 / 3 },
-              },
-              audio: false,
-            });
-          } catch {
-            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-          }
-        } else {
-          throw err;
+      let stream: MediaStream | null = null;
+      let retries = 2;
+      let lastErr: unknown;
+
+      while (retries > 0 && !stream) {
+        if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {
+          isStartingRef.current = false;
+          return;
         }
+        
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err: unknown) {
+          const e = err as { name?: string };
+          // Fallback on OverconstrainedError / ConstraintNotSatisfiedError / TypeError / NotSupportedError for single-camera or legacy devices
+          if (e?.name === 'OverconstrainedError' || e?.name === 'ConstraintNotSatisfiedError' || e?.name === 'TypeError' || e?.name === 'NotSupportedError') {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                  facingMode: { ideal: mode },
+                  aspectRatio: isPortrait ? { ideal: 3 / 4 } : { ideal: 4 / 3 },
+                },
+                audio: false,
+              });
+            } catch {
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+              } catch (fallbackErr) {
+                lastErr = fallbackErr;
+                retries--;
+                if (retries > 0) await new Promise(r => setTimeout(r, 800));
+              }
+            }
+          } else if (e?.name === 'NotReadableError' || e?.name === 'TrackStartError') {
+            lastErr = err;
+            retries--;
+            if (retries > 0) {
+              // Wait longer for OS to release the camera hardware lock before retrying
+              await new Promise(r => setTimeout(r, 800));
+            }
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      if (!stream) {
+        throw lastErr || new Error('Kamera sedang digunakan');
       }
 
       if (!isMountedRef.current || currentSession !== activeSessionIdRef.current) {

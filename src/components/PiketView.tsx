@@ -102,6 +102,14 @@ export default function PiketView({ user }: { user: any }) {
   const lastCameraScannedRef = useRef<{ code: string; time: number } | null>(null);
   const usbInputRef = useRef<HTMLInputElement | null>(null);
   const isSubmittingPresensiRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Live Attendance Log & Summary
   const [scanSummary, setScanSummary] = useState({ totalDatang: 0, totalPulang: 0, totalUnik: 0 });
@@ -313,11 +321,48 @@ export default function PiketView({ user }: { user: any }) {
         audio: false
       };
 
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (constraintErr: any) {
-        console.warn('[PiketView] Overconstrained camera request, falling back to basic video:', constraintErr);
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      let stream: MediaStream | null = null;
+      let retries = 2;
+      let lastErr: any;
+
+      while (retries > 0 && !stream) {
+        if (!isMountedRef.current) {
+          isStartingCameraRef.current = false;
+          return;
+        }
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (constraintErr: any) {
+          if (constraintErr.name === 'NotReadableError' || constraintErr.name === 'TrackStartError') {
+            lastErr = constraintErr;
+            retries--;
+            if (retries > 0) await new Promise(r => setTimeout(r, 800));
+          } else {
+            console.warn('[PiketView] Overconstrained camera request, falling back to basic video:', constraintErr);
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            } catch (fallbackErr: any) {
+              lastErr = fallbackErr;
+              if (fallbackErr.name === 'NotReadableError' || fallbackErr.name === 'TrackStartError') {
+                retries--;
+                if (retries > 0) await new Promise(r => setTimeout(r, 800));
+              } else {
+                throw fallbackErr;
+              }
+            }
+          }
+        }
+      }
+
+      if (!stream) {
+        throw lastErr || new Error('Kamera sedang digunakan');
+      }
+
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        isStartingCameraRef.current = false;
+        return;
       }
 
       streamRef.current = stream;

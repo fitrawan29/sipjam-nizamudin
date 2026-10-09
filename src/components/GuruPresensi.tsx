@@ -345,36 +345,16 @@ export default function GuruPresensi({ user }: { user: any }) {
   const togglePresensiFields = async (val: string) => {
     if (isSwitchingRef.current) return;
 
-    // If teacher has a live selfie attached and attempts to switch to Izin (document upload required)
-    if (file && val === 'Izin' && jenisPresensi !== 'Izin') {
-      isSwitchingRef.current = true;
-      try {
-        const result = await Swal.fire({
-          title: 'Ganti ke Izin / Sakit?',
-          text: 'Foto selfie yang telah diambil tidak dapat digunakan sebagai surat izin. Hapus foto selfie?',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#10B981',
-          cancelButtonColor: '#6B7280',
-          confirmButtonText: 'Ya, Ganti',
-          cancelButtonText: 'Batal',
-        });
-        if (!result.isConfirmed) {
-          return;
-        }
-        setFile(null);
-        setPhotoPreviewUrl(null);
-      } finally {
-        isSwitchingRef.current = false;
-      }
-    }
-    // If teacher attached an Izin document and attempts to switch to Sekolah or Dinas Luar (camera selfie required)
-    else if (file && val !== 'Izin' && jenisPresensi === 'Izin') {
+    const requiresDocumentNew = val === 'Izin' || val === 'Dinas Luar';
+    const requiresDocumentOld = jenisPresensi === 'Izin' || jenisPresensi === 'Dinas Luar';
+
+    // If teacher has a live selfie attached and attempts to switch to a document upload mode
+    if (file && requiresDocumentNew && !requiresDocumentOld) {
       isSwitchingRef.current = true;
       try {
         const result = await Swal.fire({
           title: 'Ganti Jenis Presensi?',
-          text: 'File bukti izin tidak dapat digunakan sebagai foto selfie. Hapus file?',
+          text: `Foto selfie yang telah diambil tidak dapat digunakan sebagai lampiran ${val}. Hapus foto selfie?`,
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#10B981',
@@ -391,20 +371,75 @@ export default function GuruPresensi({ user }: { user: any }) {
         isSwitchingRef.current = false;
       }
     }
-    // Switching between Sekolah and Dinas Luar preserves the selfie seamlessly without prompt
+    // If teacher attached a document and attempts to switch to a camera selfie mode
+    else if (file && !requiresDocumentNew && requiresDocumentOld) {
+      isSwitchingRef.current = true;
+      try {
+        const result = await Swal.fire({
+          title: 'Ganti Jenis Presensi?',
+          text: 'File dokumen tidak dapat digunakan sebagai foto selfie. Hapus file?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#10B981',
+          cancelButtonColor: '#6B7280',
+          confirmButtonText: 'Ya, Ganti',
+          cancelButtonText: 'Batal',
+        });
+        if (!result.isConfirmed) {
+          return;
+        }
+        setFile(null);
+        setPhotoPreviewUrl(null);
+      } finally {
+        isSwitchingRef.current = false;
+      }
+    }
+    // Switching between modes of the same type (e.g. Sekolah <-> Terlambat, Izin <-> Dinas Luar) preserves the attachment seamlessly without prompt
     setJenisPresensi(val);
   };
 
   const handleTipeAbsenChange = async (val: string) => {
     if (isSwitchingRef.current) return;
 
-    // If teacher attached an Izin document and attempts to switch to Pulang (which requires camera selfie)
-    if (file && val === 'Pulang' && jenisPresensi === 'Izin') {
+    let nextJenisPresensi = jenisPresensi;
+    if (val === 'Pulang') {
+      nextJenisPresensi = dailyState?.isDinasLuar ? 'Dinas Luar' : 'Sekolah';
+    } else {
+      if (jenisPresensi !== 'Izin' && jenisPresensi !== 'Dinas Luar') {
+        nextJenisPresensi = 'Sekolah';
+      }
+    }
+
+    const requiresDocumentNew = nextJenisPresensi === 'Izin' || nextJenisPresensi === 'Dinas Luar';
+    const requiresDocumentOld = jenisPresensi === 'Izin' || jenisPresensi === 'Dinas Luar';
+
+    if (file && !requiresDocumentNew && requiresDocumentOld) {
       isSwitchingRef.current = true;
       try {
         const result = await Swal.fire({
           title: 'Ganti ke Presensi Pulang?',
-          text: 'File bukti izin tidak dapat digunakan untuk presensi pulang. Hapus file?',
+          text: 'File dokumen yang telah dilampirkan tidak dapat digunakan sebagai foto selfie. Hapus file?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#10B981',
+          cancelButtonColor: '#6B7280',
+          confirmButtonText: 'Ya, Ganti',
+          cancelButtonText: 'Batal',
+        });
+        if (!result.isConfirmed) {
+          return;
+        }
+        setFile(null);
+        setPhotoPreviewUrl(null);
+      } finally {
+        isSwitchingRef.current = false;
+      }
+    } else if (file && requiresDocumentNew && !requiresDocumentOld) {
+      isSwitchingRef.current = true;
+      try {
+        const result = await Swal.fire({
+          title: 'Ganti Tipe Absen?',
+          text: 'Foto selfie tidak dapat digunakan sebagai lampiran dokumen. Hapus foto selfie?',
           icon: 'warning',
           showCancelButton: true,
           confirmButtonColor: '#10B981',
@@ -423,25 +458,15 @@ export default function GuruPresensi({ user }: { user: any }) {
     }
 
     setTipeAbsen(val);
-    if (val === 'Pulang') {
-      if (dailyState?.isDinasLuar) {
-        setJenisPresensi('Dinas Luar');
-      } else {
-        setJenisPresensi('Sekolah');
-      }
-    } else {
-      if (jenisPresensi !== 'Izin') {
-        setJenisPresensi('Sekolah');
-      }
-    }
+    setJenisPresensi(nextJenisPresensi);
   };
 
   // Determine if selfie camera is required
   // Required for:
-  // 1. All Presensi Pulang
-  // 2. Presensi Datang (Sekolah, Dinas Luar, Terlambat)
-  // 3. Any Dinas Luar
-  const isSelfieRequired = tipeAbsen === 'Pulang' || (tipeAbsen === 'Datang' && jenisPresensi !== 'Izin') || jenisPresensi === 'Dinas Luar';
+  // 1. Hadir di Sekolah (Datang & Pulang)
+  // 2. Terlambat / Izin Terlambat
+  // Dinas Luar and Izin/Sakit require file upload instead.
+  const isSelfieRequired = jenisPresensi === 'Sekolah' || jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
 
   const handlePresensiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -473,11 +498,12 @@ export default function GuruPresensi({ user }: { user: any }) {
       );
     }
 
-    // Validasi File Bukti Izin
-    if (jenisPresensi === 'Izin' && tipeAbsen === 'Datang' && !file) {
+    // Validasi File Bukti (Izin / Dinas Luar)
+    if (!isSelfieRequired && !file) {
+      const docType = jenisPresensi === 'Dinas Luar' ? 'surat tugas' : 'surat keterangan izin/sakit';
       return showToast(
-        'Surat Keterangan Wajib',
-        'Silakan lampirkan surat keterangan izin atau surat dokter.',
+        'Lampiran Wajib',
+        `Silakan lampirkan ${docType}.`,
         'warning'
       );
     }
@@ -999,57 +1025,6 @@ export default function GuruPresensi({ user }: { user: any }) {
                           ></textarea>
                       </div>
 
-                      {/* File upload for Izin / Sakit */}
-                      <div id="row-file-izin" className="fade-in pt-1 space-y-2">
-                          <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1">
-                            <i className="fa-solid fa-asterisk"></i> Wajib Upload Surat Keterangan / Sakit
-                          </label>
-                          <input 
-                            type="file" 
-                            accept="image/*,.pdf" 
-                            onChange={e => {
-                              setFile(e.target.files ? e.target.files[0] : null);
-                              setPhotoPreviewUrl(null);
-                            }} 
-                            required={!file} 
-                            className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
-                          />
-                          {file && (
-                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-between transition-all">
-                              <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
-                                <i className="fa-solid fa-file-lines text-amber-500 text-base"></i>
-                                <div>
-                                  <div>File surat izin terpasang</div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                    {file.name} ({(file.size / 1024).toFixed(0)} KB)
-                                  </div>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const result = await Swal.fire({
-                                    title: 'Ganti Surat Izin?',
-                                    text: 'File surat izin yang diunggah akan dihapus.',
-                                    icon: 'warning',
-                                    showCancelButton: true,
-                                    confirmButtonColor: '#EF4444',
-                                    cancelButtonColor: '#6B7280',
-                                    confirmButtonText: 'Ya, Ganti',
-                                    cancelButtonText: 'Batal',
-                                  });
-                                  if (result.isConfirmed) {
-                                    setFile(null);
-                                    setPhotoPreviewUrl(null);
-                                  }
-                                }}
-                                className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
-                              >
-                                Ganti File
-                              </button>
-                            </div>
-                          )}
-                      </div>
                   </div>
                 )}
 
@@ -1069,6 +1044,60 @@ export default function GuruPresensi({ user }: { user: any }) {
                   </div>
                 )}
 
+                {/* File upload for Izin / Sakit or Dinas Luar */}
+                {!isSelfieRequired && (
+                  <div id="row-file-izin" className="fade-in pt-1 space-y-2">
+                      <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1">
+                        <i className="fa-solid fa-asterisk"></i> Wajib Upload {jenisPresensi === 'Dinas Luar' ? 'Surat Tugas' : 'Surat Keterangan / Sakit'}
+                      </label>
+                      <input 
+                        type="file" 
+                        accept="image/*,.pdf" 
+                        onChange={e => {
+                          setFile(e.target.files ? e.target.files[0] : null);
+                          setPhotoPreviewUrl(null);
+                        }} 
+                        required={!file} 
+                        className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
+                      />
+                      {file && (
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-between transition-all">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                            <i className="fa-solid fa-file-lines text-amber-500 text-base"></i>
+                            <div>
+                              <div>File {jenisPresensi === 'Dinas Luar' ? 'surat tugas' : 'surat izin'} terpasang</div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const result = await Swal.fire({
+                                title: `Ganti Surat ${jenisPresensi === 'Dinas Luar' ? 'Tugas' : 'Izin'}?`,
+                                text: 'File yang diunggah sebelumnya akan dihapus.',
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#EF4444',
+                                cancelButtonColor: '#6B7280',
+                                confirmButtonText: 'Ya, Ganti',
+                                cancelButtonText: 'Batal',
+                              });
+                              if (result.isConfirmed) {
+                                setFile(null);
+                                setPhotoPreviewUrl(null);
+                              }
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                          >
+                            Ganti File
+                          </button>
+                        </div>
+                      )}
+                  </div>
+                )}
+
                 {/* Camera Selfie Capture for Datang and Pulang */}
                 {isSelfieRequired && (
                   <div id="row-camera-selfie" className="fade-in pt-1 space-y-2">
@@ -1083,9 +1112,9 @@ export default function GuruPresensi({ user }: { user: any }) {
                     </label>
 
                     <CameraSelfieCapture
-                      key="camera-selfie"
-                      orientation="portrait"
-                      initialFacingMode="user"
+                      key={`camera-presensi-${tipeAbsen}-${jenisPresensi}`}
+                      orientation="landscape"
+                      initialFacingMode="environment"
                       initialCoordinates={userCoords}
                       existingPhotoUrl={photoPreviewUrl}
                       onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
