@@ -56,7 +56,7 @@ async function runRound3Tests() {
   // ==========================================================================
   console.log('--- SECTION 1: R1 False Collision Attack & Scope Verification ---');
 
-  const DUMMY_UNRELATED_NAME = 'Drs. Ahmad Dahlan, M.Pd.';
+  const DUMMY_UNRELATED_NAME = 'Drs. Ahmad Zainudin, M.Pd.';
   const DUMMY_TEACHER_ID = crypto.randomUUID();
   const DUMMY_USER_ID = '6f5bfd44-7356-4b3e-a115-f87df12eedba'; // Valid teacher user ID
 
@@ -105,7 +105,7 @@ async function runRound3Tests() {
       .select('*', { count: 'exact', head: true })
       .or(`nama_guru.eq."${DUPLICATE_NAME}",nama_guru.ilike.Ade Fitrawan Ibrahim%M.Pd%`);
 
-    // The unrelated teacher has name 'Drs. Ahmad Dahlan, M.Pd.', so count MUST be 0
+    // The unrelated teacher has name 'Drs. Ahmad Zainudin, M.Pd.', so count MUST be 0
     assert(
       dupPresensiCount === 0,
       `Unrelated teacher record was falsely matched as duplicate! Expected 0, got ${dupPresensiCount}`

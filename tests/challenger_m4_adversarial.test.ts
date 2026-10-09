@@ -553,7 +553,7 @@ async function runAdversarialTests() {
 
   // B. Data_Guru
   const guruData = [
-    { id: 1, nama_guru: 'Ahmad Dahlan', status: 'Aktif', mata_pelajaran: 'Matematika', nip: '19800101' },
+    { id: 1, nama_guru: 'Ahmad Zainudin', status: 'Aktif', mata_pelajaran: 'Matematika', nip: '19800101' },
     { id: 2, nama_guru: 'Ahmad Subarjo', status: 'Cuti', mata_pelajaran: 'Matematika', nip: '19800102' },
     { id: 3, nama_guru: 'Siti Barokah', status: 'Aktif', mata_pelajaran: 'Bahasa Arab', nip: '19800103' },
   ];

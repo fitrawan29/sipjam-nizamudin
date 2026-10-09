@@ -90,7 +90,7 @@
 
 ## 3. Caveats
 
-- **Search Whitespace Handling**: In `PiketView.tsx` line 439, `scanSearchQuery.toLowerCase()` preserves leading or trailing whitespace typed by the user. If an operator types `"  Ahmad  "`, `.includes('  ahmad  ')` will not match `"Ahmad Dahlan"`. While not causing any crash or error, trimming the search token before comparison (`const q = scanSearchQuery.trim().toLowerCase()`) is a recommended future ergonomic polish.
+- **Search Whitespace Handling**: In `PiketView.tsx` line 439, `scanSearchQuery.toLowerCase()` preserves leading or trailing whitespace typed by the user. If an operator types `"  Ahmad  "`, `.includes('  ahmad  ')` will not match `"Ahmad Zainudin"`. While not causing any crash or error, trimming the search token before comparison (`const q = scanSearchQuery.trim().toLowerCase()`) is a recommended future ergonomic polish.
 - **Hardware USB HID**: Tested via synthetic keyboard Enter and programmatic invocation; physical USB electrical handshake depends on standard OS HID driver behavior.
 
 ---

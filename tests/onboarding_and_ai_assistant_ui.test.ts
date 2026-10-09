@@ -221,7 +221,7 @@ const assistantHtml = renderToString(
   React.createElement(AIAssistant, {
     currentView: 'view-guru-presensi',
     userRole: 'guru',
-    userName: 'Ahmad Dahlan',
+    userName: 'Ahmad Zainudin',
   })
 );
 assert(assistantHtml.includes('z-[45]'), 'AIAssistant button has valid arbitrary class z-[45]');

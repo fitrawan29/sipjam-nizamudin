@@ -105,7 +105,7 @@ async function runChallengerStressTests() {
       guru_id: null,
       guru_nama: null,
       guru_nip: null,
-      siswa_nama: 'Ahmad Dahlan',
+      siswa_nama: 'Ahmad Zainudin',
       siswa_nisn: '0012345678',
       kelas: 'X Merdeka 1',
       tahun_ajaran: '2026/2027',
@@ -148,19 +148,19 @@ async function runChallengerStressTests() {
   }
 
   assert(
-    isStudentDuplicate(mockPenugasanList, 'Senin', 'Ahmad Dahlan'),
+    isStudentDuplicate(mockPenugasanList, 'Senin', 'Ahmad Zainudin'),
     'Duplicate check: blocks same student on same day (exact match)'
   );
   assert(
-    isStudentDuplicate(mockPenugasanList, 'Senin', 'ahmad dahlan'),
+    isStudentDuplicate(mockPenugasanList, 'Senin', 'ahmad zainudin'),
     'Duplicate check: blocks same student with lowercase variation'
   );
   assert(
-    isStudentDuplicate(mockPenugasanList, 'Senin', 'AHMAD DAHLAN'),
+    isStudentDuplicate(mockPenugasanList, 'Senin', 'AHMAD ZAINUDIN'),
     'Duplicate check: blocks same student with UPPERCASE variation'
   );
   assert(
-    !isStudentDuplicate(mockPenugasanList, 'Selasa', 'Ahmad Dahlan'),
+    !isStudentDuplicate(mockPenugasanList, 'Selasa', 'Ahmad Zainudin'),
     'Duplicate check: permits same student on a DIFFERENT day'
   );
   assert(

@@ -165,7 +165,7 @@ const mockSchoolId = 'school-tenant-alpha';
 const mockOtherSchoolId = 'school-tenant-beta';
 
 const mockStudentsClass7A = [
-  { id: 'std-1', nisn: '001', nama_siswa: 'Ahmad Dahlan', kelas: '7A', sekolah_id: mockSchoolId },
+  { id: 'std-1', nisn: '001', nama_siswa: 'Ahmad Zainudin', kelas: '7A', sekolah_id: mockSchoolId },
   { id: 'std-2', nisn: '002', nama_siswa: 'Budi Utomo', kelas: '7A', sekolah_id: mockSchoolId },
   { id: 'std-3', nisn: '003', nama_siswa: 'Cut Nyak Dien', kelas: '7A', sekolah_id: mockSchoolId },
   { id: 'std-4', nisn: '004', nama_siswa: 'Dewi Sartika', kelas: '7A', sekolah_id: mockSchoolId },
