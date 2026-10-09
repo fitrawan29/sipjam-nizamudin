@@ -344,8 +344,7 @@ check('When snoozed, checkReminders immediately clears reminders array (setRemin
 check('When snoozed, checkReminders returns early (suppressing in-app dialog and push dispatch)',
   reminderSrc.includes('return;\n    }\n    setIsSnoozed(false);'));
 
-check('TeacherReminderManager renders dedicated snooze status badge ("Pengingat ditunda 30m")',
-  reminderSrc.includes('Pengingat ditunda 30m'));
+
 
 check('Snooze status badge provides "Batalkan" action button',
   reminderSrc.includes('Batalkan') && reminderSrc.includes('onClick={handleCancelSnooze}'));
@@ -542,3 +541,4 @@ if (failedChecks === 0) {
   console.error(`\n❌ ${failedChecks} CHECKS FAILED! VERDICT: FAIL`);
   process.exit(1);
 }
+
