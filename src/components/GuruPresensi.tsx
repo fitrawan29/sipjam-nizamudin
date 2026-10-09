@@ -1125,7 +1125,7 @@ export default function GuruPresensi({ user }: { user: any }) {
 
                     <CameraSelfieCapture
                       key={`camera-presensi-${tipeAbsen}-${jenisPresensi}`}
-                      orientation="landscape"
+                      
                       initialFacingMode="environment"
                       initialCoordinates={userCoords}
                       existingPhotoUrl={photoPreviewUrl}

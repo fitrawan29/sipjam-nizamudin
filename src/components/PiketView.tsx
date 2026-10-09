@@ -3198,7 +3198,7 @@ export default function PiketView({ user }: { user: any }) {
 
                         <CameraSelfieCapture
                           key="cam-piket"
-                          orientation="landscape"
+                          
                           initialFacingMode="environment"
                           existingPhotoUrl={photoPreviewUrl}
                           onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
