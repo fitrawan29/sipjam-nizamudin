@@ -432,7 +432,7 @@ export default function CameraSelfieCapture({
               alt="Preview Kamera"
               className={`w-full h-full ${
                 orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-[4/3]'
-              } object-contain`}
+              } object-cover`}
             />
             <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
               <i className="fa-solid fa-check text-emerald-400 shrink-0"></i>
@@ -450,7 +450,7 @@ export default function CameraSelfieCapture({
               muted
               className={`w-full h-full ${
                 orientation === 'portrait' ? 'aspect-[3/4]' : 'aspect-[4/3]'
-              } object-contain transform ${
+              } object-cover transform ${
                 facingMode === 'user' ? '-scale-x-100' : ''
               } ${isStreaming ? 'block' : 'hidden'}`}
             />
