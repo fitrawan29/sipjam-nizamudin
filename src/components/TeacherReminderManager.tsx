@@ -250,8 +250,27 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isSnoozed, setIsSnoozed] = useState(false);
   const lastCheckTimestampRef = useRef<number>(0);
+
+  const [reminderConfig, setReminderConfig] = useState({ enabled: true, intervalMs: 300_000 });
+
+  // Read config on mount and when tab becomes visible
+  const loadReminderConfig = useCallback(() => {
+    if (!user?.id) return { enabled: true, intervalMs: 300_000 };
+    try {
+      const storedEnabled = localStorage.getItem(`sipjam_reminder_enabled_${user.id}`);
+      const enabled = storedEnabled !== null ? storedEnabled === 'true' : true;
+      const storedInterval = localStorage.getItem(`sipjam_reminder_interval_${user.id}`);
+      const intervalMs = storedInterval ? parseInt(storedInterval, 10) * 60 * 1000 : 300_000;
+      return { enabled, intervalMs: isNaN(intervalMs) || intervalMs < 60000 ? 300_000 : intervalMs };
+    } catch {
+      return { enabled: true, intervalMs: 300_000 };
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    setReminderConfig(loadReminderConfig());
+  }, [loadReminderConfig]);
 
   // Positive role verification: Active ONLY for teachers (guru / teacher)
   const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
@@ -261,14 +280,19 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
   const checkReminders = useCallback(async () => {
     if (!isGuru || !user) return;
-
-    // 0. Check snooze status before evaluating or firing notifications
-    if (isReminderSnoozed(user?.id)) {
-      setIsSnoozed(true);
+    
+    // Check if user disabled auto reminders entirely
+    const currentConfig = loadReminderConfig();
+    if (!currentConfig.enabled) {
       setReminders([]);
       return;
     }
-    setIsSnoozed(false);
+
+    // 0. Check snooze status before evaluating or firing notifications
+    if (isReminderSnoozed(user?.id)) {
+      setReminders([]);
+      return;
+    }
 
     try {
       // 1. Fetch school hours configuration
@@ -341,14 +365,13 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     } catch (err) {
       console.warn('Error evaluating teacher reminders:', err);
     }
-  }, [isGuru, user]);
+  }, [isGuru, user, loadReminderConfig]);
 
   useEffect(() => {
     if (!isGuru) return;
-
-    // Check initial snooze state
-    if (isReminderSnoozed(user?.id)) {
-      setIsSnoozed(true);
+    if (!reminderConfig.enabled) {
+      setReminders([]);
+      return;
     }
 
     // Run initial check shortly after mount
@@ -356,14 +379,16 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
       checkReminders();
     }, 2500);
 
-    // Setup 5-minute recurring evaluation interval
+    // Setup dynamic recurring evaluation interval
     const intervalId = setInterval(() => {
       checkReminders();
-    }, REMINDER_INTERVAL_MS);
+    }, reminderConfig.intervalMs);
 
     // Also re-evaluate when tab becomes visible if at least 1 minute elapsed
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        const currentConfig = loadReminderConfig();
+        setReminderConfig(currentConfig); // Update state if changed in another tab
         const elapsed = Date.now() - lastCheckTimestampRef.current;
         if (elapsed > 60_000) {
           checkReminders();
@@ -377,42 +402,10 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isGuru, user, checkReminders]);
+  }, [isGuru, user, checkReminders, reminderConfig.enabled, reminderConfig.intervalMs, loadReminderConfig]);
 
   if (!isGuru) {
     return null;
-  }
-
-  // Cancel / early toggle off snooze handler
-  const handleCancelSnooze = () => {
-    clearReminderSnooze(user?.id);
-    setIsSnoozed(false);
-    setIsDismissed(false);
-    checkReminders();
-  };
-
-  // Snooze active indicator card
-  if (isSnoozed) {
-    return (
-      <div
-        role="status"
-        aria-label="Status Pengingat Ditunda"
-        className="fixed bottom-20 left-4 sm:left-6 z-40 max-w-[calc(100vw-2rem)] sm:max-w-xs bg-amber-50/95 dark:bg-slate-900/95 border border-amber-300 dark:border-amber-600/70 rounded-xl shadow-lg px-3 py-2 flex items-center justify-between gap-3 text-xs text-amber-800 dark:text-amber-200 animate-in fade-in backdrop-blur-sm transition-all"
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          <i className="fa-solid fa-clock-rotate-left text-amber-500 shrink-0"></i>
-          <span className="font-medium truncate">Pengingat ditunda 30m</span>
-        </div>
-        <button
-          type="button"
-          onClick={handleCancelSnooze}
-          className="px-2 py-1 rounded bg-amber-200 dark:bg-amber-800/80 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-[11px] font-semibold transition-colors shrink-0"
-          title="Batalkan tunda pengingat"
-        >
-          Batalkan
-        </button>
-      </div>
-    );
   }
 
   if (reminders.length === 0 || isDismissed) {
@@ -439,7 +432,6 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
   const handleSnooze = () => {
     setReminderSnooze(30, user?.id);
-    setIsSnoozed(true);
     setReminders([]);
     setIsDismissed(true);
   };

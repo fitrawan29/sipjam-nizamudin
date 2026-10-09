@@ -41,6 +41,10 @@ export default function AccountSettingsModal({
   const [isPushSubscribed, setIsPushSubscribed] = useState<boolean>(false);
   const [pushLoading, setPushLoading] = useState<boolean>(false);
 
+  // Reminder state
+  const [autoReminderEnabled, setAutoReminderEnabled] = useState<boolean>(true);
+  const [autoReminderInterval, setAutoReminderInterval] = useState<number>(5);
+
   const [saving, setSaving] = useState<boolean>(false);
 
   useEffect(() => {
@@ -52,6 +56,13 @@ export default function AccountSettingsModal({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+
+      try {
+        const storedEnabled = localStorage.getItem(`sipjam_reminder_enabled_${user.id}`);
+        setAutoReminderEnabled(storedEnabled !== null ? storedEnabled === 'true' : true);
+        const storedInterval = localStorage.getItem(`sipjam_reminder_interval_${user.id}`);
+        setAutoReminderInterval(storedInterval ? parseInt(storedInterval, 10) : 5);
+      } catch (e) {}
     }
   }, [user, isOpen]);
 
@@ -224,6 +235,11 @@ export default function AccountSettingsModal({
       if (onUserUpdated) {
         onUserUpdated(updatedUser);
       }
+
+      try {
+        localStorage.setItem(`sipjam_reminder_enabled_${user.id}`, String(autoReminderEnabled));
+        localStorage.setItem(`sipjam_reminder_interval_${user.id}`, String(autoReminderInterval));
+      } catch (e) {}
 
       showToast('Profil Berhasil Disimpan', 'Perubahan avatar, identitas, dan pengaturan akun telah disimpan.', 'success');
 
@@ -510,6 +526,61 @@ export default function AccountSettingsModal({
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Section 5: Auto Reminder Control */}
+          <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-3.5 bg-amber-50/40 dark:bg-amber-900/10">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5 w-full">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-800/60 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <i className="fa-solid fa-clock-rotate-left text-sm"></i>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Pengingat Otomatis (In-App)</h4>
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 mb-2.5">
+                    Tampilkan pop-up pengingat presensi dan jurnal mengajar di dalam aplikasi.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800/60">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          checked={autoReminderEnabled}
+                          onChange={(e) => setAutoReminderEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                      </div>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white">
+                        {autoReminderEnabled ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    </label>
+
+                    {autoReminderEnabled && (
+                      <>
+                        <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">Jeda Waktu:</span>
+                          <select
+                            value={autoReminderInterval}
+                            onChange={(e) => setAutoReminderInterval(Number(e.target.value))}
+                            className="text-[11px] px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                          >
+                            <option value={1}>1 Menit</option>
+                            <option value={3}>3 Menit</option>
+                            <option value={5}>5 Menit (Default)</option>
+                            <option value={10}>10 Menit</option>
+                            <option value={15}>15 Menit</option>
+                            <option value={30}>30 Menit</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Footer Actions */}
