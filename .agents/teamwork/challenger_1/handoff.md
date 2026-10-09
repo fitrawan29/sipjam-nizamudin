@@ -206,7 +206,7 @@
 1. **Adversarial Name Matching Precedence (Informational):**
    - In `src/lib/workflow.ts:370`, `isTeacherPiketMatch` includes:
      `if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;`
-   - In rare edge cases where two teachers share the exact first token (e.g., "Ahmad Zainudin" and "Ahmad Fauzi") AND neither has a matching UUID or NIP populated in `penugasan_piket`, this fuzzy rule could match both.
+   - In rare edge cases where two teachers share the exact first token (e.g., "Ahmad Hidayat" and "Ahmad Fauzi") AND neither has a matching UUID or NIP populated in `penugasan_piket`, this fuzzy rule could match both.
    - In standard production operations, `penugasan_piket` rows contain UUID (`guru_id`) or NIP (`guru_nip`), which are checked first and prevent ambiguity.
 2. **Admin Unrestricted Access:**
    - Admins and Superadmins have unrestricted access across all picket modules, all classes, and all attendance recaps by architectural design.

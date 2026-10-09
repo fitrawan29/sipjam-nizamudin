@@ -400,7 +400,7 @@ function filterAttendanceLog(
 
 function runFilterAndSearchSuite() {
   const sampleScans = [
-    { id: 1, nama_siswa: 'Ahmad Zainudin', nisn: '001001', kelas: 'VII-A', status: 'datang', jam: '06:45:00' },
+    { id: 1, nama_siswa: 'Ahmad Hidayat', nisn: '001001', kelas: 'VII-A', status: 'datang', jam: '06:45:00' },
     { id: 2, nama_siswa: 'Budi Santoso', nisn: '001002', kelas: 'VII-A', status: 'datang', jam: '06:47:00' },
     { id: 3, nama_siswa: 'Citra Kirana', nisn: '002001', kelas: 'VII-B', status: 'datang', jam: '06:48:00' },
     { id: 4, nama_siswa: 'Dewi Sartika', nisn: '002002', kelas: 'VII-B', status: 'pulang', jam: '13:00:00' },
@@ -436,7 +436,7 @@ function runFilterAndSearchSuite() {
   expect(rBudiUpper.length === 1 && rBudiUpper[0].nama_siswa === 'Budi Santoso', "Search 'BUDI' (uppercase) matches 'Budi Santoso'");
 
   const rAhmad = filterAttendanceLog(sampleScans, 'Semua', 'Ahmad');
-  expect(rAhmad.length === 3, "Search 'Ahmad' matches 3 records across classes (Ahmad Zainudin, Farhan Ahmad, Ahmad Syarif)");
+  expect(rAhmad.length === 3, "Search 'Ahmad' matches 3 records across classes (Ahmad Hidayat, Farhan Ahmad, Ahmad Syarif)");
 
   // 3.4 Search by NISN (Exact & Partial)
   const rNisnExact = filterAttendanceLog(sampleScans, 'Semua', '002001');
@@ -447,7 +447,7 @@ function runFilterAndSearchSuite() {
 
   // 3.5 Combined Filter + Search
   const rAhmad7A = filterAttendanceLog(sampleScans, 'VII-A', 'Ahmad');
-  expect(rAhmad7A.length === 1 && rAhmad7A[0].nama_siswa === 'Ahmad Zainudin', "Filter 'VII-A' + Search 'Ahmad' returns only Ahmad Zainudin");
+  expect(rAhmad7A.length === 1 && rAhmad7A[0].nama_siswa === 'Ahmad Hidayat', "Filter 'VII-A' + Search 'Ahmad' returns only Ahmad Hidayat");
 
   const rAhmad8A = filterAttendanceLog(sampleScans, 'VIII-A', 'Ahmad');
   expect(rAhmad8A.length === 1 && rAhmad8A[0].nama_siswa === 'Farhan Ahmad', "Filter 'VIII-A' + Search 'Ahmad' returns only Farhan Ahmad");

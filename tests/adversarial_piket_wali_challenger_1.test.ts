@@ -405,13 +405,13 @@ async function runAllChallengerTests() {
   console.log(`\n  ${YELLOW}[ADVERSARIAL STRESS] Testing name token collision behavior...${RESET}`);
   const teacherA = { id: 'uuid-ahmad-fauzi', username: '111', nama: 'Ahmad Fauzi' };
   const collisionMatch = simulateIsTeacherPiketMatch(
-    'Ahmad Zainudin',
+    'Ahmad Hidayat',
     '222',
-    'uuid-ahmad-zainudin',
+    'uuid-ahmad-hidayat',
     teacherA
   );
   if (collisionMatch) {
-    console.log(`    ${YELLOW}⚠ Finding: Ahmad Fauzi matched Ahmad Zainudin via first-token fuzzy rule ('ahmad').${RESET}`);
+    console.log(`    ${YELLOW}⚠ Finding: Ahmad Fauzi matched Ahmad Hidayat via first-token fuzzy rule ('ahmad').${RESET}`);
     console.log(`    ${GRAY}↳ In production, penugasan_piket rows with matching UUID or NIP take priority.${RESET}`);
   }
   assert(
