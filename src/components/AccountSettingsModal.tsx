@@ -14,7 +14,11 @@ import {
 import {
   isReminderSnoozed,
   clearReminderSnooze,
-  getReminderSnoozeRemainingMs
+  getReminderSnoozeRemainingMs,
+  getReminderConfig,
+  setReminderConfig,
+  getReminderEnabledKey,
+  getReminderIntervalKey
 } from './TeacherReminderManager';
 
 interface AccountSettingsModalProps {
@@ -64,10 +68,10 @@ export default function AccountSettingsModal({
       setConfirmPassword('');
 
       try {
-        const storedEnabled = localStorage.getItem(`sipjam_reminder_enabled_${user.id}`);
-        setAutoReminderEnabled(storedEnabled !== null ? storedEnabled === 'true' : true);
-        const storedInterval = localStorage.getItem(`sipjam_reminder_interval_${user.id}`);
-        setAutoReminderInterval(storedInterval ? parseInt(storedInterval, 10) : 5);
+        // Reads from sipjam_reminder_enabled_${user.id} and sipjam_reminder_interval_${user.id}
+        const cfg = getReminderConfig(user.id);
+        setAutoReminderEnabled(cfg.enabled);
+        setAutoReminderInterval(cfg.intervalMinutes);
         if (isReminderSnoozed(user.id)) {
           const remMs = getReminderSnoozeRemainingMs(user.id);
           setSnoozeRemainingMinutes(Math.max(1, Math.ceil(remMs / 60000)));
@@ -84,10 +88,10 @@ export default function AccountSettingsModal({
 
     const refreshReminderState = () => {
       try {
-        const storedEnabled = localStorage.getItem(`sipjam_reminder_enabled_${user.id}`);
-        setAutoReminderEnabled(storedEnabled !== null ? storedEnabled === 'true' : true);
-        const storedInterval = localStorage.getItem(`sipjam_reminder_interval_${user.id}`);
-        setAutoReminderInterval(storedInterval ? parseInt(storedInterval, 10) : 5);
+        // Reads from sipjam_reminder_enabled_${user.id} and sipjam_reminder_interval_${user.id}
+        const cfg = getReminderConfig(user.id);
+        setAutoReminderEnabled(cfg.enabled);
+        setAutoReminderInterval(cfg.intervalMinutes);
         if (isReminderSnoozed(user.id)) {
           const remMs = getReminderSnoozeRemainingMs(user.id);
           setSnoozeRemainingMinutes(Math.max(1, Math.ceil(remMs / 60000)));
@@ -120,24 +124,19 @@ export default function AccountSettingsModal({
     setAutoReminderEnabled(enabled);
     if (user?.id) {
       try {
-        localStorage.setItem(`sipjam_reminder_enabled_${user.id}`, String(enabled));
-        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-          window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
-          window.dispatchEvent(new Event('storage'));
-        }
+        // Writes to sipjam_reminder_enabled_${user.id}
+        setReminderConfig(user.id, enabled, autoReminderInterval);
       } catch (e) {}
     }
   };
 
   const handleChangeReminderInterval = (interval: number) => {
-    setAutoReminderInterval(interval);
+    const validInterval = isNaN(interval) || interval < 1 ? 5 : interval;
+    setAutoReminderInterval(validInterval);
     if (user?.id) {
       try {
-        localStorage.setItem(`sipjam_reminder_interval_${user.id}`, String(interval));
-        if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
-          window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
-          window.dispatchEvent(new Event('storage'));
-        }
+        // Writes to sipjam_reminder_interval_${user.id}
+        setReminderConfig(user.id, autoReminderEnabled, validInterval);
       } catch (e) {}
     }
   };
@@ -324,10 +323,8 @@ export default function AccountSettingsModal({
       }
 
       try {
-        localStorage.setItem(`sipjam_reminder_enabled_${user.id}`, String(autoReminderEnabled));
-        localStorage.setItem(`sipjam_reminder_interval_${user.id}`, String(autoReminderInterval));
-        window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
-        window.dispatchEvent(new Event('storage'));
+        // Persist sipjam_reminder_enabled_${user.id} and sipjam_reminder_interval_${user.id}
+        setReminderConfig(user.id, autoReminderEnabled, autoReminderInterval);
       } catch (e) {}
 
       showToast('Profil Berhasil Disimpan', 'Perubahan avatar, identitas, dan pengaturan akun telah disimpan.', 'success');

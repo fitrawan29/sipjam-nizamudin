@@ -8,6 +8,51 @@ import { getWitaTimeStr, getWitaDayName } from '../lib/wita';
 export const REMINDER_INTERVAL_MS = 300_000; // 5 minutes in milliseconds
 export const SNOOZE_DURATION_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
 
+const memoryStorage = new Map<string, string>();
+
+function getStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage;
+    }
+    if (typeof localStorage !== 'undefined') {
+      return localStorage;
+    }
+  } catch {}
+  return null;
+}
+
+export function safeGetStorageItem(key: string): string | null {
+  try {
+    const storage = getStorage();
+    if (storage) {
+      const val = storage.getItem(key);
+      if (val !== null) return val;
+    }
+  } catch {}
+  return memoryStorage.get(key) ?? null;
+}
+
+export function safeSetStorageItem(key: string, value: string): void {
+  try {
+    const storage = getStorage();
+    if (storage) {
+      storage.setItem(key, value);
+    }
+  } catch {}
+  memoryStorage.set(key, value);
+}
+
+export function safeRemoveStorageItem(key: string): void {
+  try {
+    const storage = getStorage();
+    if (storage) {
+      storage.removeItem(key);
+    }
+  } catch {}
+  memoryStorage.delete(key);
+}
+
 /**
  * Storage key helper for 30-minute reminder snooze per teacher
  */
@@ -15,13 +60,21 @@ export function getSnoozeKey(userId?: string): string {
   return `sipjam_reminder_snooze_until_${userId || 'default'}`;
 }
 
+export function getReminderEnabledKey(userId?: string): string {
+  return `sipjam_reminder_enabled_${userId || 'default'}`;
+}
+
+export function getReminderIntervalKey(userId?: string): string {
+  return `sipjam_reminder_interval_${userId || 'default'}`;
+}
+
 /**
  * Checks whether reminder notifications are currently snoozed for the user
  */
 export function isReminderSnoozed(userId?: string): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' && typeof localStorage === 'undefined') return false;
   try {
-    const val = localStorage.getItem(getSnoozeKey(userId));
+    const val = safeGetStorageItem(getSnoozeKey(userId));
     if (!val) return false;
     const expiry = parseInt(val, 10);
     if (isNaN(expiry)) return false;
@@ -35,10 +88,9 @@ export function isReminderSnoozed(userId?: string): boolean {
  * Activates notification snooze for specified minutes (default 30 min)
  */
 export function setReminderSnooze(minutes = 30, userId?: string): number {
-  if (typeof window === 'undefined') return 0;
   try {
     const expiry = Date.now() + minutes * 60 * 1000;
-    localStorage.setItem(getSnoozeKey(userId), String(expiry));
+    safeSetStorageItem(getSnoozeKey(userId), String(expiry));
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       try {
         window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
@@ -55,9 +107,8 @@ export function setReminderSnooze(minutes = 30, userId?: string): number {
  * Cancels active notification snooze early
  */
 export function clearReminderSnooze(userId?: string): void {
-  if (typeof window === 'undefined') return;
   try {
-    localStorage.removeItem(getSnoozeKey(userId));
+    safeRemoveStorageItem(getSnoozeKey(userId));
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       try {
         window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
@@ -73,9 +124,8 @@ export function clearReminderSnooze(userId?: string): void {
  * Returns remaining milliseconds of snooze if active, 0 otherwise
  */
 export function getReminderSnoozeRemainingMs(userId?: string): number {
-  if (typeof window === 'undefined') return 0;
   try {
-    const val = localStorage.getItem(getSnoozeKey(userId));
+    const val = safeGetStorageItem(getSnoozeKey(userId));
     if (!val) return 0;
     const expiry = parseInt(val, 10);
     if (isNaN(expiry)) return 0;
@@ -84,6 +134,42 @@ export function getReminderSnoozeRemainingMs(userId?: string): number {
   } catch {
     return 0;
   }
+}
+
+export function getReminderConfig(userId?: string): { enabled: boolean; intervalMs: number; intervalMinutes: number } {
+  try {
+    const storedEnabled = safeGetStorageItem(getReminderEnabledKey(userId));
+    const enabled = storedEnabled !== null ? storedEnabled === 'true' : true;
+    const storedInterval = safeGetStorageItem(getReminderIntervalKey(userId));
+    const intervalMinutes = storedInterval ? parseInt(storedInterval, 10) : 5;
+    const validMinutes = isNaN(intervalMinutes) || intervalMinutes < 1 ? 5 : intervalMinutes;
+    return {
+      enabled,
+      intervalMs: validMinutes * 60 * 1000,
+      intervalMinutes: validMinutes,
+    };
+  } catch {
+    return { enabled: true, intervalMs: 300_000, intervalMinutes: 5 };
+  }
+}
+
+export function setReminderConfig(
+  userId: string | undefined,
+  enabled: boolean,
+  intervalMinutes?: number
+): void {
+  try {
+    safeSetStorageItem(getReminderEnabledKey(userId), String(enabled));
+    if (intervalMinutes !== undefined) {
+      safeSetStorageItem(getReminderIntervalKey(userId), String(intervalMinutes));
+    }
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      try {
+        window.dispatchEvent(new Event('sipjam_reminder_config_changed'));
+        window.dispatchEvent(new Event('storage'));
+      } catch {}
+    }
+  } catch {}
 }
 
 export interface ReminderItem {
@@ -259,43 +345,39 @@ export function computeRoleFlags(user?: { role?: string; [key: string]: unknown 
 }
 
 export function TeacherReminderManager({ user, onNavigate }: TeacherReminderManagerProps) {
-  const [reminders, setReminders] = useState<ReminderItem[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isDismissed, setIsDismissed] = useState(false);
-  const [isSnoozed, setIsSnoozed] = useState<boolean>(() => isReminderSnoozed(user?.id));
-  const lastCheckTimestampRef = useRef<number>(0);
-
-  const [reminderConfig, setReminderConfig] = useState({ enabled: true, intervalMs: 300_000 });
-
-  // Read config on mount and when tab becomes visible
-  const loadReminderConfig = useCallback(() => {
-    if (!user?.id) return { enabled: true, intervalMs: 300_000 };
-    try {
-      const storedEnabled = localStorage.getItem(`sipjam_reminder_enabled_${user.id}`);
-      const enabled = storedEnabled !== null ? storedEnabled === 'true' : true;
-      const storedInterval = localStorage.getItem(`sipjam_reminder_interval_${user.id}`);
-      const intervalMs = storedInterval ? parseInt(storedInterval, 10) * 60 * 1000 : 300_000;
-      return { enabled, intervalMs: isNaN(intervalMs) || intervalMs < 60000 ? 300_000 : intervalMs };
-    } catch {
-      return { enabled: true, intervalMs: 300_000 };
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    setReminderConfig(loadReminderConfig());
-  }, [loadReminderConfig]);
-
   // Positive role verification: Active ONLY for teachers (guru / teacher)
   const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const isSuperadmin = normRole === 'superadmin';
   const isAdmin = isSuperadmin || normRole === 'admin' || normRole === 'administrator';
   const isGuru = Boolean(user && !isAdmin && !isSuperadmin && (normRole === 'guru' || normRole === 'teacher'));
 
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isSnoozed, setIsSnoozed] = useState<boolean>(() => isReminderSnoozed(user?.id));
+  const lastCheckTimestampRef = useRef<number>(0);
+
+  const [reminderConfig, setReminderConfig] = useState(() => getReminderConfig(user?.id));
+
+  // Read config on mount and when tab becomes visible
+  const loadReminderConfig = useCallback(() => {
+    return getReminderConfig(user?.id);
+  }, [user?.id]);
+
+  // Reset all states cleanly when user changes (multi-user isolation)
+  useEffect(() => {
+    setReminders([]);
+    setCurrentIndex(0);
+    setIsDismissed(false);
+    setIsSnoozed(isReminderSnoozed(user?.id));
+    setReminderConfig(getReminderConfig(user?.id));
+  }, [user?.id]);
+
   const checkReminders = useCallback(async () => {
     if (!isGuru || !user) return;
     
     // Check if user disabled auto reminders entirely
-    const currentConfig = loadReminderConfig();
+    const currentConfig = getReminderConfig(user?.id);
     if (!currentConfig.enabled) {
       setReminders([]);
       return;
@@ -380,34 +462,36 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     } catch (err) {
       console.warn('Error evaluating teacher reminders:', err);
     }
-  }, [isGuru, user, loadReminderConfig]);
+  }, [isGuru, user]);
 
+  // Effect 1: Persistent event listeners for real-time config/snooze changes across tabs & modal
   useEffect(() => {
     if (!isGuru) return;
 
-    // Check initial snooze state
-    setIsSnoozed(isReminderSnoozed(user?.id));
+    const handleConfigChange = () => {
+      const cfg = getReminderConfig(user?.id);
+      setReminderConfig(cfg);
+      if (!cfg.enabled) {
+        setReminders([]);
+        return;
+      }
+      if (isReminderSnoozed(user?.id)) {
+        setIsSnoozed(true);
+        setReminders([]);
+      } else {
+        setIsSnoozed(false);
+        checkReminders();
+      }
+    };
 
-    if (!reminderConfig.enabled) {
-      setReminders([]);
-      return;
-    }
-
-    // Run initial check shortly after mount
-    const initialTimer = setTimeout(() => {
-      checkReminders();
-    }, 2500);
-
-    // Setup dynamic recurring evaluation interval
-    const intervalId = setInterval(() => {
-      checkReminders();
-    }, reminderConfig.intervalMs);
-
-    // Also re-evaluate when tab becomes visible if at least 1 minute elapsed
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        const currentConfig = loadReminderConfig();
-        setReminderConfig(currentConfig); // Update state if changed in another tab
+        const currentConfig = getReminderConfig(user?.id);
+        setReminderConfig(currentConfig);
+        if (!currentConfig.enabled) {
+          setReminders([]);
+          return;
+        }
         if (isReminderSnoozed(user?.id)) {
           setIsSnoozed(true);
           setReminders([]);
@@ -420,32 +504,69 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
         }
       }
     };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Listener for real-time config/snooze changes from AccountSettingsModal
-    const handleConfigChange = () => {
-      setReminderConfig(loadReminderConfig());
-      if (isReminderSnoozed(user?.id)) {
-        setIsSnoozed(true);
-        setReminders([]);
-      } else {
-        setIsSnoozed(false);
-        checkReminders();
-      }
-    };
     window.addEventListener('sipjam_reminder_config_changed', handleConfigChange);
     window.addEventListener('storage', handleConfigChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearTimeout(initialTimer);
-      clearInterval(intervalId);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('sipjam_reminder_config_changed', handleConfigChange);
       window.removeEventListener('storage', handleConfigChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isGuru, user, checkReminders, reminderConfig.enabled, reminderConfig.intervalMs, loadReminderConfig]);
+  }, [isGuru, user?.id, checkReminders]);
+
+  // Effect 2: Recurring evaluation intervals and exact 30-min snooze expiration timer
+  useEffect(() => {
+    if (!isGuru) return;
+
+    if (!reminderConfig.enabled) {
+      setReminders([]);
+      return;
+    }
+
+    const snoozed = isReminderSnoozed(user?.id);
+    setIsSnoozed(snoozed);
+
+    let snoozeTimer: NodeJS.Timeout | null = null;
+    let initialTimer: NodeJS.Timeout | null = null;
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (snoozed) {
+      setReminders([]);
+      // Precision wake-up timer when 30-minute snooze window ends (+100ms safety buffer)
+      const remainingMs = getReminderSnoozeRemainingMs(user?.id);
+      if (remainingMs > 0) {
+        snoozeTimer = setTimeout(() => {
+          setIsSnoozed(false);
+          checkReminders();
+        }, remainingMs + 100);
+      }
+    } else {
+      // Run initial check shortly after mount
+      initialTimer = setTimeout(() => {
+        checkReminders();
+      }, 2500);
+
+      // Setup dynamic recurring evaluation interval
+      intervalId = setInterval(() => {
+        checkReminders();
+      }, reminderConfig.intervalMs);
+    }
+
+    return () => {
+      if (snoozeTimer) clearTimeout(snoozeTimer);
+      if (initialTimer) clearTimeout(initialTimer);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isGuru, user?.id, checkReminders, reminderConfig.enabled, reminderConfig.intervalMs, isSnoozed]);
 
   if (!isGuru) {
+    return null;
+  }
+
+  // If user disabled auto reminders entirely, render nothing
+  if (!reminderConfig.enabled) {
     return null;
   }
 
@@ -458,24 +579,27 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   };
 
   // When snoozed, floating reminder is completely hidden and will not reappear during the 30-minute duration
+  const currentlySnoozed = isReminderSnoozed(user?.id);
   if (isSnoozed || isReminderSnoozed(user?.id)) {
-    return (
-      <div
-        role="status"
-        aria-label="Status Pengingat Ditunda"
-        style={{ display: 'none' }}
-        className="hidden max-w-[calc(100vw-2rem)] sm:max-w-xs"
-      >
-        <span>Pengingat ditunda 30m</span>
-        <button
-          type="button"
-          onClick={handleCancelSnooze}
-          title="Batalkan tunda pengingat"
+    if (currentlySnoozed) {
+      return (
+        <div
+          role="status"
+          aria-label="Status Pengingat Ditunda"
+          style={{ display: 'none' }}
+          className="hidden max-w-[calc(100vw-2rem)] sm:max-w-xs"
         >
-          Batalkan
-        </button>
-      </div>
-    );
+          <span>Pengingat ditunda 30m</span>
+          <button
+            type="button"
+            onClick={handleCancelSnooze}
+            title="Batalkan tunda pengingat"
+          >
+            Batalkan
+          </button>
+        </div>
+      );
+    }
   }
 
   if (reminders.length === 0 || isDismissed) {
