@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
+import { AppUser } from '@/types/user';
 
-export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user: any) => void }) {
+export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user: AppUser) => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

@@ -7,38 +7,6 @@ import AppScreen from '@/components/AppScreen';
 import PreLoginSplash from '@/components/PreLoginSplash';
 
 export default function Home() {
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Check active session
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setLoading(false);
-    };
-    checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex flex-col min-h-screen min-h-dvh w-full items-center justify-center bg-gray-100 dark:bg-black">
-        <div className="w-48 bg-gray-200 rounded-full h-2 dark:bg-gray-700 overflow-hidden">
-          <div className="bg-nizamudin-green dark:bg-nizamudin-gold h-2 rounded-full w-full animate-pulse"></div>
-        </div>
-        <p className="mt-3 text-xs font-bold text-nizamudin-green dark:text-nizamudin-gold tracking-wide">
-          Memuat...
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="mobile-container flex flex-col min-h-screen min-h-dvh relative">
       <MainApp />

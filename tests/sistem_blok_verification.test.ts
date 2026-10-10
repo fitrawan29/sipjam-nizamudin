@@ -80,7 +80,11 @@ async function runTests() {
 
   const viewContent = fs.readFileSync(viewPath, 'utf8');
   const appScreenContent = fs.readFileSync(appScreenPath, 'utf8');
-  const homeViewContent = fs.readFileSync(homeViewPath, 'utf8');
+  const homeGuruPath = path.join(projectRoot, 'src', 'components', 'HomeViewGuru.tsx');
+  const homeAdminPath = path.join(projectRoot, 'src', 'components', 'HomeViewAdmin.tsx');
+  const homeViewContent = fs.readFileSync(homeViewPath, 'utf8') +
+    (fs.existsSync(homeGuruPath) ? fs.readFileSync(homeGuruPath, 'utf8') : '') +
+    (fs.existsSync(homeAdminPath) ? fs.readFileSync(homeAdminPath, 'utf8') : '');
   const guruJurnalContent = fs.readFileSync(guruJurnalPath, 'utf8');
   const piketContent = fs.readFileSync(piketPath, 'utf8');
   const adminVerifContent = fs.readFileSync(adminVerifPath, 'utf8');

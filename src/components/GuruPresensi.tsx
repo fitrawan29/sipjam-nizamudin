@@ -9,8 +9,9 @@ import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, getWitaDayName, getWitaDateStr } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates, dataUrlToFile } from '@/lib/watermarkCanvas';
+import { AppUser } from '@/types/user';
 
-export default function GuruPresensi({ user }: { user: any }) {
+export default function GuruPresensi({ user }: { user: AppUser }) {
   const isMountedRef = useRef(true);
   const isSwitchingRef = useRef(false);
   const isSyncingRef = useRef(false);

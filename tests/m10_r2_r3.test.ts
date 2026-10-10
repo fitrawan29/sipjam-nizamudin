@@ -78,8 +78,12 @@ assert(
 // ----------------------------------------------------
 console.log('\n--- Section 2: HomeView.tsx (Admin Matrix & Teacher Dashboard) ---');
 const homePath = path.join(projectRoot, 'src', 'components', 'HomeView.tsx');
+const homeGuruPath = path.join(projectRoot, 'src', 'components', 'HomeViewGuru.tsx');
+const homeAdminPath = path.join(projectRoot, 'src', 'components', 'HomeViewAdmin.tsx');
 assert(fs.existsSync(homePath), 'HomeView.tsx file exists');
-const homeContent = fs.readFileSync(homePath, 'utf8');
+const homeContent = fs.readFileSync(homePath, 'utf8') +
+  (fs.existsSync(homeGuruPath) ? fs.readFileSync(homeGuruPath, 'utf8') : '') +
+  (fs.existsSync(homeAdminPath) ? fs.readFileSync(homeAdminPath, 'utf8') : '');
 
 // 1. Resilient Admin Daily Status Matrix
 assert(

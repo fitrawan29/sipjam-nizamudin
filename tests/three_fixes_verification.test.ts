@@ -12,13 +12,18 @@ const homeViewPath = path.join(projectRoot, 'src', 'components', 'HomeView.tsx')
 const rekapJurnalPath = path.join(projectRoot, 'src', 'components', 'RekapJurnalView.tsx');
 const sendRemindersPath = path.join(projectRoot, 'src', 'app', 'api', 'push', 'send-reminders', 'route.ts');
 
+const homeGuruPath = path.join(projectRoot, 'src', 'components', 'HomeViewGuru.tsx');
+const homeAdminPath = path.join(projectRoot, 'src', 'components', 'HomeViewAdmin.tsx');
+
 assert(fs.existsSync(workflowPath), 'workflow.ts exists');
 assert(fs.existsSync(homeViewPath), 'HomeView.tsx exists');
 assert(fs.existsSync(rekapJurnalPath), 'RekapJurnalView.tsx exists');
 assert(fs.existsSync(sendRemindersPath), 'send-reminders route.ts exists');
 
 const workflowContent = fs.readFileSync(workflowPath, 'utf8');
-const homeViewContent = fs.readFileSync(homeViewPath, 'utf8');
+const homeViewContent = fs.readFileSync(homeViewPath, 'utf8') +
+  (fs.existsSync(homeGuruPath) ? fs.readFileSync(homeGuruPath, 'utf8') : '') +
+  (fs.existsSync(homeAdminPath) ? fs.readFileSync(homeAdminPath, 'utf8') : '');
 const rekapJurnalContent = fs.readFileSync(rekapJurnalPath, 'utf8');
 const sendRemindersContent = fs.readFileSync(sendRemindersPath, 'utf8');
 

@@ -211,8 +211,10 @@ export function getTenantSupabaseClient(
   });
 }
 
-// Quick connectivity test on module load (client-side only)
-if (typeof window !== 'undefined') {
+// Quick connectivity test on module load (client-side only, once per session)
+let _connectivityChecked = false;
+if (typeof window !== 'undefined' && !_connectivityChecked) {
+  _connectivityChecked = true;
   supabase
     .from('sekolah')
     .select('id')
@@ -225,3 +227,4 @@ if (typeof window !== 'undefined') {
       }
     });
 }
+

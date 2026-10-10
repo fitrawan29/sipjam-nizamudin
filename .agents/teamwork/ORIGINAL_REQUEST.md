@@ -996,3 +996,146 @@ Ubah logika penundaan (snooze) agar saat pengguna menunda selama 30 menit, kotak
 - [ ] Pengaturan pengingat muncul di halaman akun dan state perubahannya tersimpan.
 - [ ] Ketika tombol tunda (snooze) diklik, kotak melayang langsung hilang.
 - [ ] Me-refresh halaman atau berpindah halaman di dalam durasi 30 menit setelah penundaan tidak akan memunculkan kembali kotak melayang.
+
+
+## 2026-10-10T10:25:07Z
+
+Aplikasi SIPJAM (Sistem Informasi Presensi & Jurnal Mengajar) adalah PWA berbasis Next.js 16 + Supabase untuk manajemen presensi guru dan jurnal mengajar di lingkungan multi-sekolah. Lakukan perbaikan yang telah diidentifikasi — dari isu keamanan kritis (hardcoded password, duplikasi auth) hingga bug korektif (isGuru check, realtime channel scoping) dan optimasi performa (preconnect CDN, connectivity test once-flag, pemecahan komponen besar) — menggunakan pendekatan ponytail: solusi paling minimal yang berfungsi, tanpa menambah dependency baru.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+
+Integrity mode: development
+
+---
+
+## Konteks Aplikasi
+
+- **Stack:** Next.js 16.3.4, React 19, TypeScript, Supabase JS v2, TailwindCSS v4, SweetAlert2, web-push
+- **Autentikasi:** Custom session via RPC `verify_login` → `sipjam_user` di localStorage (bukan Supabase Auth built-in)
+- **Multi-tenant:** Setiap sekolah punya `sekolah_id`; tenant context dikirim via custom request headers
+- **Peran:** Superadmin, Admin (per-sekolah), Guru
+- **Test runner:** `tsx` — jalankan dengan `npm test`
+
+---
+
+## Requirements
+
+### R1. Keamanan: Hapus Hardcoded Credentials
+
+File `src/app/api/attendance/route.ts` memiliki password Superadmin dalam plaintext sebagai fallback. Pindahkan ke environment variable `SUPERADMIN_API_PASSWORD` di `.env.local`. Jika env var tidak tersedia, fungsi `resolveSessionToken` cukup return `null` tanpa mencoba auto-login.
+
+### R2. Hapus Duplikasi Auth State
+
+Komponen `Home()` di `src/app/page.tsx` memanggil `supabase.auth.getSession()` dan mendengarkan `onAuthStateChange`, namun hasilnya tidak pernah digunakan — `MainApp` hanya membaca `sipjam_user` dari localStorage. Hapus seluruh auth check di `Home()` dan render `MainApp` langsung (dengan loading state minimal jika diperlukan).
+
+### R3. Fix Bug isGuru di HomeView
+
+Di `src/components/HomeView.tsx` baris 78, `const isGuru = user?.role !== 'Admin'` menyebabkan Superadmin (role === 'Superadmin') dianggap sebagai Guru, yang bisa menampilkan UI yang salah. Perbaiki agar `isGuru = !isAdmin`, konsisten dengan pola di `AppScreen.tsx`:
+```ts
+const role = (user?.role || '').toLowerCase().replace(/\s+/g, '');
+const isSuperadmin = role === 'superadmin';
+const isAdmin = isSuperadmin || role === 'admin';
+const isGuru = !isAdmin;
+```
+
+### R4. Scope Realtime Channel per Sekolah di AdminVerifView
+
+Di `src/components/AdminVerifView.tsx`, channel names `'verif-presensi'`, `'verif-jurnal'`, `'verif-piket'` tidak unik per sekolah. Admin dari dua sekolah berbeda yang membuka halaman ini secara bersamaan akan saling trigger reload. Perbaiki dengan menambahkan `sekolah_id` ke nama channel:
+```ts
+supabase.channel(`verif-presensi-${user?.sekolah_id || 'global'}`)
+```
+Lakukan untuk ketiga channel.
+
+### R5. Tambah AppUser Interface
+
+Buat file `src/types/user.ts` dengan interface `AppUser` yang mendefinisikan shape dari user object yang dipakai di seluruh komponen. Ganti `user: any` di setidaknya komponen utama: `AppScreen.tsx`, `HomeView.tsx`, `LoginScreen.tsx`, dan `GuruPresensi.tsx`. Jangan ganti semua sekaligus — prioritaskan komponen yang paling banyak mengakses field user.
+
+```ts
+// src/types/user.ts
+export interface AppUser {
+  id: string;
+  username: string;
+  nama: string;
+  role: string;
+  sekolah_id: string;
+  session_token: string;
+  avatar?: string | null;
+  wali_kelas?: string | { kelas: string } | null;
+}
+```
+
+### R6. Extract Hooks dari AppScreen.tsx
+
+`AppScreen.tsx` (1101 baris) memiliki terlalu banyak concern. Extract logic berikut ke custom hooks di `src/hooks/`:
+
+- `useSessionSync(user, onLogout, onUserUpdate)` — idle revalidation (baris 77–162)
+- `useWaliKelas(user, isAdmin, syncKey)` — cek wali kelas (baris 210–264)
+- `usePiket(user, isAdmin, isSuperadmin, syncKey)` — cek piket (baris 266–291)
+- `useBroadcasts(user, isAdmin, isWaliKelas, syncKey)` — pengumuman realtime (baris 316–421)
+
+`AppScreen.tsx` kemudian consume keempat hooks tersebut. **Jangan ubah behavior** — hanya pindahkan logic.
+
+### R7. Split HomeView menjadi Dua Komponen
+
+`HomeView.tsx` (1831 baris) mencakup dua dashboard berbeda dalam satu file. Pisahkan menjadi:
+- `src/components/HomeViewGuru.tsx` — dashboard khusus Guru
+- `src/components/HomeViewAdmin.tsx` — dashboard khusus Admin
+- `src/components/HomeView.tsx` — wrapper kecil yang memilih komponen berdasarkan role
+
+Import path yang ada tidak perlu berubah — hanya `HomeView.tsx` yang terlihat dari luar.
+
+### R8. Tambah preconnect Font Awesome di layout.tsx
+
+Di `src/app/layout.tsx`, tambahkan `<link rel="preconnect" href="https://cdnjs.cloudflare.com" />` sebelum tag `<link rel="stylesheet" ...>` Font Awesome, untuk mengurangi latency pertama kali Font Awesome dimuat.
+
+### R9. Fix Connectivity Test Supabase — Once-Flag
+
+Di `src/lib/supabaseClient.ts`, blok connectivity test di baris 214–227 dijalankan setiap kali module diimport. Tambahkan `once` flag:
+
+```ts
+let _connectivityChecked = false;
+if (typeof window !== 'undefined' && !_connectivityChecked) {
+  _connectivityChecked = true;
+  supabase.from('sekolah').select('id').limit(1).then(...)
+}
+```
+
+### R10. Investigasi dan Bersihkan Dead Code sync-spreadsheet
+
+Direktori `src/app/api/sync-spreadsheet/` ada tapi tidak memiliki `route.ts`. Jika ini benar-benar dead code, hapus direktori-nya. Jika ada file route di dalamnya, pastikan tidak ada TypeScript error. Laporan temuan harus disebutkan dalam commit message.
+
+---
+
+## Acceptance Criteria
+
+### Keamanan
+- [ ] Tidak ada string literal password hardcoded di source code: `grep -r 'SipjamSuperAdmin' src/` harus return kosong
+- [ ] File `.env.local` memiliki entry `SUPERADMIN_API_PASSWORD`
+
+### Korektifitas
+- [ ] `npm test` berhasil (exit code 0) setelah semua perubahan diterapkan
+- [ ] `npm run build` berhasil tanpa TypeScript error
+- [ ] `grep -n 'supabase.auth' src/app/page.tsx` harus kosong setelah R2
+- [ ] Nama channel realtime di `AdminVerifView.tsx` mengandung `sekolah_id`: `grep "verif-presensi'" src/components/AdminVerifView.tsx` harus kosong
+
+### Arsitektur
+- [ ] File `src/types/user.ts` ada dan mengekspor `AppUser`
+- [ ] Keempat hooks ada: `src/hooks/useSessionSync.ts`, `useWaliKelas.ts`, `usePiket.ts`, `useBroadcasts.ts`
+- [ ] `AppScreen.tsx` mengimport keempat hooks tersebut
+- [ ] `src/components/HomeViewGuru.tsx` dan `HomeViewAdmin.tsx` ada
+- [ ] `HomeView.tsx` setelah split lebih kecil dari 200 baris
+
+### Performa & Kebersihan
+- [ ] `src/app/layout.tsx` memiliki `<link rel="preconnect" href="https://cdnjs.cloudflare.com" />`
+- [ ] `src/lib/supabaseClient.ts` memiliki once-flag untuk connectivity test
+- [ ] Commit telah dilakukan: `git status` menunjukkan working tree clean
+
+---
+
+## Panduan Implementasi
+
+- **Ponytail:** Minimal diff yang berfungsi. Jangan tambah abstraksi baru selain yang diminta.
+- **Urutan yang disarankan:** R1 → R2 → R3 → R4 → R8 → R9 → R10 → R5 → R6 → R7
+- **Test setelah setiap kelompok:** Jalankan `npm test` dan `npm run build` setelah R1-R4, kemudian lagi setelah R5-R7.
+- **Commit setelah selesai:** `git add . && git commit -m "ponytail: security fix, bug fixes, refactor & perf improvements" && git push origin main`
+- **Jangan install dependency baru** — gunakan hanya yang sudah ada di `package.json`

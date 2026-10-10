@@ -34,6 +34,11 @@ import { Pengumuman } from '@/types/database';
 import { supabase } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
+import { AppUser } from '@/types/user';
+import { useSessionSync } from '@/hooks/useSessionSync';
+import { useWaliKelas } from '@/hooks/useWaliKelas';
+import { usePiket } from '@/hooks/usePiket';
+import { useBroadcasts } from '@/hooks/useBroadcasts';
 
 declare module '@/components/AIAssistant' {
   interface AIAssistantProps {
@@ -47,16 +52,11 @@ export default function AppScreen({
   onLogout,
   onUserUpdate
 }: {
-  user: any;
+  user: AppUser;
   onLogout: () => void;
-  onUserUpdate?: (user: any) => void;
+  onUserUpdate?: (user: AppUser) => void;
 }) {
-  const [currentUser, setCurrentUser] = useState(initialUser);
-
-  useEffect(() => {
-    setCurrentUser(initialUser);
-  }, [initialUser]);
-
+  const { syncKey, currentUser, setCurrentUser } = useSessionSync(initialUser, onLogout, onUserUpdate);
   const user = currentUser || initialUser;
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
@@ -70,96 +70,6 @@ export default function AppScreen({
     if (isSuperadmin) return 'view-superadmin-overview';
     return 'view-home';
   });
-
-  // ponytail: native visibilitychange + focus + activity listener re-syncs state after idle period (prevents stale data)
-  const [syncKey, setSyncKey] = useState(0);
-
-  useEffect(() => {
-    let lastActive = Date.now();
-    let isSyncing = false;
-
-    const checkIdleAndResume = async () => {
-      const now = Date.now();
-      const elapsed = now - lastActive;
-      lastActive = now;
-
-      // Re-sync only when returning after actual idle (>=30s) and document is visible
-      if (elapsed >= 30000 && document.visibilityState === 'visible' && !isSyncing) {
-        isSyncing = true;
-        try {
-          if (!user?.id || !user?.session_token) return;
-
-          // Re-validate session token against database
-          const { data: dbUser, error } = await supabase
-            .from('users')
-            .select('id, username, nama, role, sekolah_id, session_token, avatar')
-            .eq('id', user.id)
-            .single();
-
-          const isNetworkError =
-            (typeof navigator !== 'undefined' && !navigator.onLine) ||
-            (error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || (error as any).name === 'AbortError'));
-
-          if (isNetworkError) {
-            console.warn('[AppScreen] Network unavailable during resume. Retaining active session.');
-            return;
-          }
-
-          if (error || !dbUser || dbUser.session_token !== user.session_token) {
-            console.warn('[AppScreen] Session invalidated or expired after idle. Logging out.');
-            onLogout();
-            return;
-          }
-
-          // If superadmin role was changed/revoked in DB, log out
-          if (isSuperadmin && (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') !== 'superadmin') {
-            console.warn('[AppScreen] Superadmin role revoked after idle. Logging out.');
-            onLogout();
-            return;
-          }
-
-          // Sync fresh user data from database into localStorage & state
-          try {
-            const stored = localStorage.getItem('sipjam_user');
-            const parsed = stored ? JSON.parse(stored) : {};
-            const synced = { ...parsed, ...dbUser };
-            localStorage.setItem('sipjam_user', JSON.stringify(synced));
-            setCurrentUser(synced);
-            if (onUserUpdate) {
-              onUserUpdate(synced);
-            }
-          } catch (_) {}
-
-          // Invalidate view state to force fresh fetch from database
-          setSyncKey(k => k + 1);
-        } catch (err) {
-          console.error('[AppScreen] Re-sync error on resume:', err);
-        } finally {
-          isSyncing = false;
-        }
-      }
-    };
-
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        checkIdleAndResume();
-      } else {
-        lastActive = Date.now();
-      }
-    };
-
-    window.addEventListener('focus', checkIdleAndResume);
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('pointerdown', checkIdleAndResume, { passive: true });
-    window.addEventListener('keydown', checkIdleAndResume, { passive: true });
-
-    return () => {
-      window.removeEventListener('focus', checkIdleAndResume);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('pointerdown', checkIdleAndResume);
-      window.removeEventListener('keydown', checkIdleAndResume);
-    };
-  }, [user?.id, user?.session_token, isSuperadmin, onLogout, onUserUpdate]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -194,101 +104,20 @@ export default function AppScreen({
   const [schoolData, setSchoolData] = useState<any>(null);
   const { theme, toggleTheme } = useTheme();
 
-  const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin);
-  const [assignedKelas, setAssignedKelas] = useState<string | null>(null);
-  const [isPiketHariIni, setIsPiketHariIni] = useState<boolean>(isAdmin || isSuperadmin);
-
-  // Broadcast notification bell states
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [broadcastModalOpen, setBroadcastModalOpen] = useState<boolean>(false);
-  const [allAnnouncements, setAllAnnouncements] = useState<Pengumuman[]>([]);
-  const [unreadAnnouncements, setUnreadAnnouncements] = useState<Pengumuman[]>([]);
-  const [readMap, setReadMap] = useState<Record<string, boolean>>({});
+  const { isWaliKelas, assignedKelas } = useWaliKelas(user, isAdmin, syncKey);
+  const { isPiketHariIni } = usePiket(user, isAdmin, isSuperadmin, syncKey);
+  const {
+    unreadCount,
+    broadcastModalOpen,
+    setBroadcastModalOpen,
+    allAnnouncements,
+    unreadAnnouncements,
+    readMap,
+    handleMarkAsRead,
+    handleMarkAllAsRead,
+  } = useBroadcasts(user, isAdmin, isWaliKelas, syncKey);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
   const [tutorialModalOpen, setTutorialModalOpen] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (isAdmin) {
-      setIsWaliKelas(true);
-      return;
-    }
-
-    if (user?.wali_kelas) {
-      setIsWaliKelas(true);
-      setAssignedKelas(typeof user.wali_kelas === 'string' ? user.wali_kelas : (user.wali_kelas.kelas || null));
-      return;
-    }
-
-    const checkWaliKelas = async () => {
-      try {
-        let query = supabase.from('wali_kelas').select('*');
-        if (user?.sekolah_id) {
-          query = query.eq('sekolah_id', user.sekolah_id);
-        }
-        const { data } = await query;
-        if (data && data.length > 0) {
-          const found = data.find(w => 
-            (user?.id && w.guru_id === user.id) ||
-            (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
-            (user?.username && w.nip && w.nip === user.username)
-          );
-          if (found) {
-            setIsWaliKelas(true);
-            setAssignedKelas(found.kelas);
-            return;
-          }
-        }
-
-        // Also check data_guru for wali_kelas field
-        if (user?.id || user?.nama) {
-          const cleanNama = (user?.nama || '').split(',')[0].trim();
-          const { data: gData } = await supabase
-            .from('data_guru')
-            .select('*')
-            .or(`user_id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},id.eq.${user.id || '00000000-0000-0000-0000-000000000000'},nama_guru.eq."${cleanNama}"`);
-          if (gData && gData.length > 0) {
-            const g = gData[0] as any;
-            if (g.wali_kelas) {
-              setIsWaliKelas(true);
-              setAssignedKelas(typeof g.wali_kelas === 'string' ? g.wali_kelas : (g.wali_kelas.kelas || null));
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[AppScreen] Error verifying wali kelas:', err);
-      }
-    };
-
-    checkWaliKelas();
-  }, [user, isAdmin, syncKey]);
-
-  useEffect(() => {
-    if (isAdmin || isSuperadmin) {
-      setIsPiketHariIni(true);
-      return;
-    }
-    if (!user) {
-      setIsPiketHariIni(false);
-      return;
-    }
-
-    let isMounted = true;
-    const checkPiket = async () => {
-      try {
-        const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
-        if (isMounted) {
-          setIsPiketHariIni(Boolean(state?.isPiket));
-        }
-      } catch (err) {
-        console.error('[AppScreen] Error verifying piket hari ini:', err);
-        if (isMounted) setIsPiketHariIni(false);
-      }
-    };
-
-    checkPiket();
-    return () => { isMounted = false; };
-  }, [user, isAdmin, isSuperadmin, syncKey]);
 
   useEffect(() => {
     if (user?.sekolah_id) {
@@ -311,114 +140,6 @@ export default function AppScreen({
     }
   }, [user?.sekolah_id, syncKey]);
 
-  const myUserId = String(user?.id || user?.username || user?.nama || 'user');
-
-  const fetchBroadcasts = async () => {
-    try {
-      let annQuery = supabase
-        .from('pengumuman')
-        .select('*')
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false });
-      if (user?.sekolah_id) {
-        annQuery = annQuery.eq('sekolah_id', user.sekolah_id);
-      }
-      const { data: annData } = await annQuery;
-      if (!annData) return;
-
-      // Filter by sasaran for teachers
-      let filtered = annData as Pengumuman[];
-      if (!isAdmin) {
-        filtered = filtered.filter(a => {
-          if (!a.sasaran || a.sasaran === 'Semua') return true;
-          if (a.sasaran === 'Guru') return true;
-          if (isWaliKelas && a.sasaran === 'Wali Kelas') return true;
-          return false;
-        });
-      }
-
-      // Query read records
-      let readQuery = supabase.from('pengumuman_dibaca').select('pengumuman_id');
-      if (user?.sekolah_id) {
-        readQuery = readQuery.eq('sekolah_id', user.sekolah_id);
-      }
-      readQuery = readQuery.or(
-        `user_id.eq."${myUserId}",user_id.eq."${user?.id || ''}",user_id.eq."${user?.nama || ''}",user_id.eq."${user?.username || ''}"`
-      );
-      const { data: readData } = await readQuery;
-
-      const newReadMap: Record<string, boolean> = {};
-      (readData || []).forEach(r => {
-        newReadMap[r.pengumuman_id] = true;
-      });
-
-      const unreadList = filtered.filter(a => !newReadMap[a.id]);
-      setReadMap(newReadMap);
-      setAllAnnouncements(filtered);
-      setUnreadAnnouncements(unreadList);
-      setUnreadCount(unreadList.length);
-    } catch (err) {
-      console.error('[AppScreen] Error fetching broadcasts:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchBroadcasts();
-
-    const channelName = `realtime-broadcasts-${user?.sekolah_id || 'global'}`;
-    const channel = supabase
-      .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengumuman' }, () => {
-        fetchBroadcasts();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengumuman_dibaca' }, () => {
-        fetchBroadcasts();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.sekolah_id, myUserId, isAdmin, isWaliKelas, syncKey]);
-
-  const handleMarkAsRead = async (announcementId: string) => {
-    try {
-      const payload = {
-        sekolah_id: user?.sekolah_id || '00000000-0000-0000-0000-000000000000',
-        pengumuman_id: announcementId,
-        user_id: myUserId,
-        read_at: new Date().toISOString()
-      };
-      await supabase.from('pengumuman_dibaca').upsert([payload], { onConflict: 'sekolah_id,pengumuman_id,user_id' });
-      setReadMap(prev => ({ ...prev, [announcementId]: true }));
-      setUnreadAnnouncements(prev => prev.filter(a => a.id !== announcementId));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (err) {
-      console.error('[AppScreen] Error marking broadcast as read:', err);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      if (unreadAnnouncements.length === 0) return;
-      const inserts = unreadAnnouncements.map(a => ({
-        sekolah_id: user?.sekolah_id || '00000000-0000-0000-0000-000000000000',
-        pengumuman_id: a.id,
-        user_id: myUserId,
-        read_at: new Date().toISOString()
-      }));
-      await supabase.from('pengumuman_dibaca').upsert(inserts, { onConflict: 'sekolah_id,pengumuman_id,user_id' });
-      const newMap = { ...readMap };
-      unreadAnnouncements.forEach(a => {
-        newMap[a.id] = true;
-      });
-      setReadMap(newMap);
-      setUnreadAnnouncements([]);
-      setUnreadCount(0);
-    } catch (err) {
-      console.error('[AppScreen] Error marking all broadcasts as read:', err);
-    }
-  };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 

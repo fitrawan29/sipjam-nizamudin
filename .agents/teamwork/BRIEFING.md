@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-10T08:08:45Z
+# BRIEFING — 2026-10-10T10:26:40Z
 
 ## Mission
-Pengaturan khusus pengingat otomatis di halaman akun (R1) dan perbaikan logika tunda (snooze) 30 menit floating reminder (R2).
+Perbaikan komprehensif aplikasi SIPJAM (R1-R10): security fix (credentials, auth duplicate), bug fixes (isGuru, realtime channel scoping), arsitektur (AppUser interface, extract 4 hooks dari AppScreen, split HomeView), dan performa/kebersihan (preconnect, connectivity test once-flag, cleanup dead code sync-spreadsheet) via ponytail approach.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -15,6 +15,8 @@ Pengaturan khusus pengingat otomatis di halaman akun (R1) dan perbaikan logika t
 - Orchestrator (current): e16804dc-3a4d-422a-9c9b-f765efe2d907 (swe_17)
 - Victory Auditor (current): to be spawned on victory claim
 - Victory Auditor (current): 798b78a4-a923-4439-9421-5619b78ae0e7 (victory_auditor_27)
+- Orchestrator (current): 10338150-5928-42f6-aed4-72eb0fc6dd61 (orchestrator_19)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -23,26 +25,24 @@ Pengaturan khusus pengingat otomatis di halaman akun (R1) dan perbaikan logika t
 - Route: SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (comprehensive multi-requirement update)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused)
+- Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (multi-part overhaul across security, bugs, architecture, and perf)
 
 ## User Context
-- **Last user request**: Tambahkan pengaturan khusus untuk fitur pengingat otomatis di halaman pengaturan akun, dan perbaiki bug di mana kotak pengingat (floating reminder) muncul terus-menerus meskipun sudah ditunda selama 30 menit.
+- **Last user request**: Perbaikan komprehensif SIPJAM (R1-R10) dengan pendekatan ponytail tanpa dependensi baru.
 - **Pending clarifications**: none
-- **Delivered results**: R1 (Pengaturan pengingat otomatis di halaman akun) & R2 (Perbaikan logika tunda 30 menit floating reminder persisten lintas reload/navigasi) selesai, diaudit secara independen oleh victory_auditor_27 dengan putusan VICTORY CONFIRMED.
+- **Delivered results**: previous milestones completed. New run starting.
 
 ## Project Status
-- **Phase**: complete
-- **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (killed upon victory)
-- **Active Subagents**: none (killed upon victory)
+- **Phase**: in progress
+- **Route**: General (teamwork_preview_orchestrator)
+- **Active Crons**: task-28 (progress reporting */8m), task-30 (liveness check */10m)
+- **Active Subagents**: orchestrator_19 (10338150-5928-42f6-aed4-72eb0fc6dd61)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_17\DISPATCH.md — Dispatch instructions for swe_17
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_17\handoff.md — Orchestrator swe_17 completion report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_27\DISPATCH.md — Victory Auditor 27 instructions
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_27\handoff.md — Victory Auditor 27 independent report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_19\DISPATCH.md — Dispatch instructions for orchestrator_19

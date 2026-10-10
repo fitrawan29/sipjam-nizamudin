@@ -61,21 +61,21 @@ export default function AdminVerifView({ user }: { user: any }) {
     loadData();
 
     const channelPresensi = supabase
-      .channel('verif-presensi')
+      .channel(`verif-presensi-${user?.sekolah_id || 'global'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru' }, () => {
         if (activeTab === 'Presensi') loadData();
       })
       .subscribe();
 
     const channelJurnal = supabase
-      .channel('verif-jurnal')
+      .channel(`verif-jurnal-${user?.sekolah_id || 'global'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran' }, () => {
         if (activeTab === 'Jurnal') loadData();
       })
       .subscribe();
 
     const channelPiket = supabase
-      .channel('verif-piket')
+      .channel(`verif-piket-${user?.sekolah_id || 'global'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket' }, () => {
         if (activeTab === 'Piket') loadData();
       })

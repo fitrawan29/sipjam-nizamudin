@@ -34,12 +34,16 @@ async function runTests() {
   console.log('====================================================\n');
 
   const homeViewPath = path.resolve(__dirname, '..', 'src', 'components', 'HomeView.tsx');
+  const homeGuruPath = path.resolve(__dirname, '..', 'src', 'components', 'HomeViewGuru.tsx');
+  const homeAdminPath = path.resolve(__dirname, '..', 'src', 'components', 'HomeViewAdmin.tsx');
   const adminVerifPath = path.resolve(__dirname, '..', 'src', 'components', 'AdminVerifView.tsx');
 
   assert(fs.existsSync(homeViewPath), 'HomeView.tsx file exists');
   assert(fs.existsSync(adminVerifPath), 'AdminVerifView.tsx file exists');
 
-  const homeContent = fs.readFileSync(homeViewPath, 'utf8');
+  const homeContent = fs.readFileSync(homeViewPath, 'utf8') +
+    (fs.existsSync(homeGuruPath) ? fs.readFileSync(homeGuruPath, 'utf8') : '') +
+    (fs.existsSync(homeAdminPath) ? fs.readFileSync(homeAdminPath, 'utf8') : '');
   const verifContent = fs.readFileSync(adminVerifPath, 'utf8');
 
   // ----------------------------------------------------

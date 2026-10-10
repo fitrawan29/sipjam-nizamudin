@@ -23,10 +23,15 @@ async function resolveSessionToken(req: NextRequest, body: any): Promise<string 
 
   if (cachedSuperadminToken) return cachedSuperadminToken;
 
+  const superadminPassword = process.env.SUPERADMIN_API_PASSWORD;
+  if (!superadminPassword) {
+    return null;
+  }
+
   try {
     const { data } = await supabase.rpc('verify_login', {
       p_username: 'superadmin',
-      p_password: 'SipjamSuperAdmin2026!',
+      p_password: superadminPassword,
     });
     if (data && data[0]?.session_token) {
       cachedSuperadminToken = data[0].session_token;
