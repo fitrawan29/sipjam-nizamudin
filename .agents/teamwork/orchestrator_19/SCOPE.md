@@ -1,43 +1,45 @@
 # Scope: SIPJAM Maintenance & Refactoring (R1 - R10)
 
 ## Architecture & Code Layout
-- `src/app/api/attendance/route.ts` - Attendance API & superadmin credentials
-- `src/app/page.tsx` - App entry point & auth listener cleanup
-- `src/components/HomeView.tsx` - Dashboard view (to be split into HomeViewGuru.tsx, HomeViewAdmin.tsx, HomeView.tsx)
-- `src/components/AdminVerifView.tsx` - Admin verification realtime channels
-- `src/types/user.ts` - New AppUser interface
-- `src/hooks/` - New hooks: useSessionSync.ts, useWaliKelas.ts, usePiket.ts, useBroadcasts.ts
-- `src/components/AppScreen.tsx` - Main app orchestrator view, consume hooks & AppUser
-- `src/components/LoginScreen.tsx` - Consume AppUser
-- `src/components/GuruPresensi.tsx` - Consume AppUser
-- `src/app/layout.tsx` - Add preconnect to Font Awesome
-- `src/lib/supabaseClient.ts` - Connectivity check once-flag
-- `src/app/api/sync-spreadsheet/` - Dead code investigation & cleanup
+- `src/app/api/attendance/route.ts` - Attendance API & superadmin credentials (DONE)
+- `src/app/page.tsx` - App entry point & auth listener cleanup (DONE)
+- `src/components/HomeView.tsx` - Dashboard view wrapper (< 200 lines, currently 45 lines) (DONE)
+- `src/components/HomeViewGuru.tsx` - Teacher dashboard view (DONE)
+- `src/components/HomeViewAdmin.tsx` - Admin dashboard view (DONE)
+- `src/components/AdminVerifView.tsx` - Admin verification realtime channels (DONE)
+- `src/types/user.ts` - New AppUser interface (DONE)
+- `src/hooks/` - New hooks: useSessionSync.ts, useWaliKelas.ts, usePiket.ts, useBroadcasts.ts (DONE)
+- `src/components/AppScreen.tsx` - Main app orchestrator view, consuming hooks & AppUser (DONE)
+- `src/components/LoginScreen.tsx` - Consuming AppUser (DONE)
+- `src/components/GuruPresensi.tsx` - Consuming AppUser (DONE)
+- `src/app/layout.tsx` - Preconnect to Font Awesome CDN (DONE)
+- `src/lib/supabaseClient.ts` - Connectivity check once-flag (DONE)
+- `src/app/api/sync-spreadsheet/` - Dead code deleted (DONE)
 
-## Feature Inventory & Requirements
-| # | Requirement | Description | Target Files | Phase |
-|---|-------------|-------------|--------------|-------|
-| R1 | Security: Superadmin password | Move plaintext password in route.ts to env var SUPERADMIN_API_PASSWORD in .env.local; return null if absent | `src/app/api/attendance/route.ts`, `.env.local` | 1 |
-| R2 | Auth Duplication | Remove getSession() and onAuthStateChange in page.tsx; render MainApp directly | `src/app/page.tsx` | 1 |
-| R3 | Bugfix isGuru | Fix isGuru = !isAdmin in HomeView.tsx matching AppScreen.tsx | `src/components/HomeView.tsx` | 1 |
-| R4 | Realtime Scope | Scope channels with user?.sekolah_id in AdminVerifView.tsx | `src/components/AdminVerifView.tsx` | 1 |
-| R8 | Font Awesome Preconnect | Add preconnect link in layout.tsx | `src/app/layout.tsx` | 1 |
-| R9 | Connectivity Once-Flag | Add once-flag in supabaseClient.ts | `src/lib/supabaseClient.ts` | 1 |
-| R10 | Clean Dead Code | Investigate & delete src/app/api/sync-spreadsheet/ if dead | `src/app/api/sync-spreadsheet/` | 1 |
-| R5 | AppUser Interface | Create src/types/user.ts and apply to AppScreen, HomeView, LoginScreen, GuruPresensi | `src/types/user.ts`, `src/components/...` | 2 |
-| R6 | Extract 4 Hooks | Extract useSessionSync, useWaliKelas, usePiket, useBroadcasts from AppScreen.tsx | `src/hooks/...`, `src/components/AppScreen.tsx` | 2 |
-| R7 | Split HomeView | Split into HomeViewGuru.tsx, HomeViewAdmin.tsx, HomeView.tsx (<200 lines) | `src/components/HomeView...` | 2 |
+## Feature Inventory & Requirements Status
+| # | Requirement | Description | Target Files | Status |
+|---|-------------|-------------|--------------|--------|
+| R1 | Security: Superadmin password | Move plaintext password in route.ts to env var SUPERADMIN_API_PASSWORD in .env.local; return null if absent | `src/app/api/attendance/route.ts`, `.env.local` | DONE |
+| R2 | Auth Duplication | Remove getSession() and onAuthStateChange in page.tsx; render MainApp directly | `src/app/page.tsx` | DONE |
+| R3 | Bugfix isGuru | Fix isGuru = !isAdmin in HomeView.tsx matching AppScreen.tsx | `src/components/HomeView.tsx` | DONE |
+| R4 | Realtime Scope | Scope channels with user?.sekolah_id in AdminVerifView.tsx | `src/components/AdminVerifView.tsx` | DONE |
+| R8 | Font Awesome Preconnect | Add preconnect link in layout.tsx | `src/app/layout.tsx` | DONE |
+| R9 | Connectivity Once-Flag | Add once-flag in supabaseClient.ts | `src/lib/supabaseClient.ts` | DONE |
+| R10 | Clean Dead Code | Investigate & delete src/app/api/sync-spreadsheet/ if dead | `src/app/api/sync-spreadsheet/` | DONE |
+| R5 | AppUser Interface | Create src/types/user.ts and apply to AppScreen, HomeView, LoginScreen, GuruPresensi | `src/types/user.ts`, `src/components/...` | DONE |
+| R6 | Extract 4 Hooks | Extract useSessionSync, useWaliKelas, usePiket, useBroadcasts from AppScreen.tsx | `src/hooks/...`, `src/components/AppScreen.tsx` | DONE |
+| R7 | Split HomeView | Split into HomeViewGuru.tsx, HomeViewAdmin.tsx, HomeView.tsx (<200 lines) | `src/components/HomeView...` | DONE |
 
 ## Acceptance Criteria
-- No 'SipjamSuperAdmin' literal in src/
-- `.env.local` has SUPERADMIN_API_PASSWORD
-- `npm test` exit code 0
-- `npm run build` succeeds without TS errors
-- No supabase.auth in page.tsx
-- Channel names include sekolah_id in AdminVerifView.tsx
-- src/types/user.ts exports AppUser, used in main components
-- 4 hooks created and consumed in AppScreen.tsx
-- HomeView split into Guru & Admin, wrapper <200 lines
-- layout.tsx has preconnect
-- supabaseClient.ts has once-flag
-- git clean, committed, pushed to origin main
+- [x] No 'SipjamSuperAdmin' literal in src/ (0 matches)
+- [x] `.env.local` has SUPERADMIN_API_PASSWORD
+- [x] `npm test` exit code 0 (all test suites passing)
+- [x] `npm run build` succeeds without TS errors
+- [x] No supabase.auth in page.tsx (0 matches)
+- [x] Channel names include sekolah_id in AdminVerifView.tsx
+- [x] src/types/user.ts exports AppUser, used in main components
+- [x] 4 hooks created and consumed in AppScreen.tsx
+- [x] HomeView split into Guru & Admin, wrapper is 45 lines (<200 lines)
+- [x] layout.tsx has preconnect
+- [x] supabaseClient.ts has once-flag
+- [x] git clean, committed, pushed to origin main
