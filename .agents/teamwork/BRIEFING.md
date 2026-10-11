@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-10T10:26:40Z
+# BRIEFING — 2026-10-10T22:56:05Z
 
 ## Mission
-Perbaikan komprehensif aplikasi SIPJAM (R1-R10): security fix (credentials, auth duplicate), bug fixes (isGuru, realtime channel scoping), arsitektur (AppUser interface, extract 4 hooks dari AppScreen, split HomeView), dan performa/kebersihan (preconnect, connectivity test once-flag, cleanup dead code sync-spreadsheet) via ponytail approach.
+Rombak ulang modul daftar nilai (GradebookView) pada aplikasi SIPJAM (Next.js + Supabase) agar mengikuti alur CP → TP → Asesmen (Diagnostik/Formatif/Sumatif) → Nilai Akhir (R1-R5).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -17,6 +17,11 @@ Perbaikan komprehensif aplikasi SIPJAM (R1-R10): security fix (credentials, auth
 - Victory Auditor (current): 798b78a4-a923-4439-9421-5619b78ae0e7 (victory_auditor_27)
 - Orchestrator (current): 10338150-5928-42f6-aed4-72eb0fc6dd61 (orchestrator_19)
 - Victory Auditor (current): 9be99cd8-2ed4-4c58-b581-fa10f644f18d (victory_auditor_28)
+- Orchestrator (current): to be spawned (orchestrator_20)
+- Victory Auditor (current): to be spawned on victory claim
+- Orchestrator (current): 2cb0cbe0-1611-4de1-a447-0a40f7ca123b (orchestrator_20 - errored 429)
+- Orchestrator (current): to be spawned (orchestrator_21)
+- Orchestrator (current): 1f15a155-9441-412f-8adc-6ac5519d6f4d (orchestrator_21, flash model)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -26,26 +31,25 @@ Perbaikan komprehensif aplikasi SIPJAM (R1-R10): security fix (credentials, auth
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (comprehensive multi-requirement update)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (multi-part overhaul across security, bugs, architecture, and perf)
+- Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (overhaul of GradebookView CP -> TP -> Asesmen -> Nilai Akhir)
 
 ## User Context
-- **Last user request**: Perbaikan komprehensif SIPJAM (R1-R10) dengan pendekatan ponytail tanpa dependensi baru.
+- **Last user request**: Rombak ulang modul daftar nilai (GradebookView) pada aplikasi SIPJAM (Next.js + Supabase) mengikuti alur CP → TP → Asesmen (Diagnostik/Formatif/Sumatif) → Nilai Akhir (R1-R5).
 - **Pending clarifications**: none
-- **Delivered results**: Seluruh perbaikan R1-R10 (Keamanan kredensial, hapus duplikasi auth, fix isGuru check, scoping realtime channel per sekolah, AppUser interface, ekstraksi 4 custom hooks, split HomeView, preconnect Font Awesome, connectivity test once-flag, pembersihan dead code sync-spreadsheet) selesai dan diverifikasi independen oleh victory_auditor_28 dengan putusan VICTORY CONFIRMED.
+- **Delivered results**: Inisialisasi request dan dispatch briefing selesai.
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: General (teamwork_preview_orchestrator)
-- **Active Crons**: none (killed upon victory)
-- **Active Subagents**: none (killed upon victory)
+- **Active Crons**: task-29 (Progress Reporting `*/8 * * * *`), task-31 (Liveness Check `*/10 * * * *`)
+- **Active Subagents**: orchestrator_21 (1f15a155-9441-412f-8adc-6ac5519d6f4d)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_19\DISPATCH.md — Dispatch instructions for orchestrator_19
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_19\handoff.md — Orchestrator handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_28\DISPATCH.md — Dispatch instructions for victory_auditor_28
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_28\handoff.md — Victory Auditor independent verification report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_21\DISPATCH.md — Dispatch instructions for orchestrator_21
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_20\BRIEFING.md — Prior orchestrator briefing state

@@ -1,24 +1,26 @@
-## 2026-10-05T09:58:22Z
-You are explorer_survey_1.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-User request is in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
+# Dispatch for explorer_survey_1
 
-Your focus is Requirement R1 (UI & State Modul Piket):
-1. Why does clicking "Tandai Datang" cause the student list in PiketView to auto-filter down to only 1 student instead of keeping all students visible?
-   - Trace `src/components/PiketView.tsx` and related state/handlers. Note the two-way sync logic from previous update (2026-10-05T02:19:36Z).
-   - Find exact lines causing the filtering and explain why it occurs.
-2. How to distinguish Piket view UI between Guru role (ringkas/compact) and Admin role (detail):
-   - What fields/columns/controls are shown now?
-   - How should Guru view be compact (e.g. quick attendance, simplified card/table layout)?
-   - How should Admin view be detailed (e.g. full metadata, filters, time logs, manual overrides, stats)?
-   - How is `user.role` or `role` currently passed to `PiketView` or `AppScreen`?
+- **Role**: Explorer 1 — GradebookView Architecture & CP → TP Hierarchy Investigation
+- **Working Directory**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1
+- **Authoritative Request**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see entry at 2026-10-10T22:56:05Z)
+- **Parent Conversation ID**: 1f15a155-9441-412f-8adc-6ac5519d6f4d
 
-Investigate using view_file and grep_search. Do NOT modify source files.
-Write a thorough investigation report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md` with:
-- Summary of Findings
-- Root Cause Analysis with file paths and line numbers
-- Concrete Recommendations for implementation
-- Risk assessment
+## Objective
+Analyze `src/components/GradebookView.tsx` (2814 lines) to understand how the gradebook currently operates and design the implementation of CP (Capaian Pembelajaran) above TP (Tujuan Pembelajaran):
+1. How `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa` are loaded, state-managed, displayed, added, edited, and deleted.
+2. How the UI components/tabs/modals are organized in `GradebookView.tsx`.
+3. How to introduce CP as a parent entity in the UI:
+   - Guru must see and manage CP first before adding TP.
+   - One CP can have multiple TP.
+   - UI controls for CRUD on CP (modal, form fields: `kode_cp`, `deskripsi`, `semester`, `tahun_ajaran`).
+   - Linking TP to CP (e.g. selection of CP when creating TP, filtering TP by CP).
+4. Identify all state, props, Supabase queries, and user feedback mechanisms (SweetAlert2, Tailwind CSS).
+5. Output detailed report in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md`.
 
-When done, send a message to parent with your completion status and path to handoff.md.
+
+## 2026-10-11T00:42:19Z
+Investigate `src/components/GradebookView.tsx`:
+- Map out its structure, tabs, modals, state variables, and handlers related to TP, Asesmen, and Nilai.
+- Detail how to integrate Capaian Pembelajaran (CP) hierarchy above Tujuan Pembelajaran (TP) in the UI.
+- Examine how teachers select guru_mapel, semester, tahun_ajaran, and how CP CRUD operations should be implemented.
+- Write your complete findings to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md` and message the orchestrator when finished.

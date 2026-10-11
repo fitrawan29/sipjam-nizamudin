@@ -1,363 +1,372 @@
-# Handoff Report — Requirement R2: Perbaikan Kamera QR Code
+# Handoff Report — Explorer 2: Database Schema, Migrations, Types & Admin Settings
 
-**Agent**: explorer_survey_2  
-**Milestone**: Survey / Investigation  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2`  
-**Target File**: `src/components/PiketView.tsx`  
+- **Project**: orchestrator_21
+- **Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2`
+- **Role**: Explorer 2 (Database & Admin Settings Explorer)
+- **Authoritative Request**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (2026-10-10T22:56:05Z)
+- **Date**: 2026-10-11
 
 ---
 
 ## 1. Observation
 
-### 1.1 Architecture & Implementation Location
-- **Location**: `src/components/PiketView.tsx` (Lines 83–92, 273–358, 1801–1856).
-- **QR Utilities**: `src/lib/qrSiswa.ts` (Lines 15–22, 547–560).
-- **Dependencies**: Inspection of `package.json` (lines 13–23) confirms **no external QR scanning libraries** are installed (no `html5-qrcode`, `jsQR`, or `@zxing/library`).
-- **Mechanism**: The scanner is implemented purely using native browser Web APIs:
-  - Video stream acquisition: `navigator.mediaDevices.getUserMedia` (`src/components/PiketView.tsx:277-279`).
-  - Barcode / QR detection: Native W3C `window.BarcodeDetector` (`src/components/PiketView.tsx:319-335`).
+### 1.1 Existing Database Architecture & Migrations
+- **Migration Directory**: `supabase/migrations/` contains 23 migration files (from `20260911_guru_mapel_relational.sql` to `20261009_delete_ahmad_dahlan.sql`).
+- **Existing Gradebook Tables** in `supabase/migrations/20260917_comprehensive_features.sql`:
+  - `public.tujuan_pembelajaran` (lines 97–113):
+    ```sql
+    CREATE TABLE IF NOT EXISTS public.tujuan_pembelajaran (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE DEFAULT public.get_auth_user_sekolah_id(),
+        guru_id UUID REFERENCES public.data_guru(id) ON DELETE SET NULL,
+        nama_guru TEXT NOT NULL,
+        mapel_id TEXT,
+        nama_mapel TEXT NOT NULL,
+        kelas TEXT NOT NULL,
+        kode_tp TEXT NOT NULL,
+        deskripsi TEXT NOT NULL,
+        semester TEXT NOT NULL DEFAULT 'Ganjil',
+        tahun_ajaran TEXT NOT NULL DEFAULT '2024/2025',
+        urutan INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now(),
+        CONSTRAINT uq_tp_guru_mapel_kelas_kode UNIQUE (sekolah_id, nama_guru, nama_mapel, kelas, kode_tp, semester, tahun_ajaran)
+    );
+    ```
+  - `public.asesmen_kolom` (lines 119–129):
+    ```sql
+    CREATE TABLE IF NOT EXISTS public.asesmen_kolom (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE DEFAULT public.get_auth_user_sekolah_id(),
+        tp_id UUID NOT NULL REFERENCES public.tujuan_pembelajaran(id) ON DELETE CASCADE,
+        kategori TEXT NOT NULL CHECK (kategori IN ('Diagnostik', 'Formatif', 'Sumatif')),
+        nama TEXT NOT NULL,
+        bobot NUMERIC DEFAULT 1,
+        urutan INTEGER NOT NULL DEFAULT 1,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        updated_at TIMESTAMPTZ DEFAULT now()
+    );
+    ```
+    *Note*: `asesmen_kolom` in `20260917_comprehensive_features.sql` does NOT have column `keterangan`.
+  - `public.nilai_siswa` (lines 135–151): contains `tp_id`, `asesmen_id`, `nisn`, `nilai`, etc.
+  - `public.pengaturan` in `supabase/migrations/20260912_multi_tenant_sekolah_rls.sql` (lines 124–191):
+    Columns: `id`, `sekolah_id`, `key`, `value`, with unique constraint:
+    `CONSTRAINT uq_pengaturan_sekolah_key UNIQUE (sekolah_id, key)`
 
-### 1.2 State & Ref Declarations
-In `src/components/PiketView.tsx` (lines 83–92):
-```tsx
-83:   // Camera scanner states
-84:   const [cameraActive, setCameraActive] = useState(false);
-85:   const [cameraError, setCameraError] = useState<string | null>(null);
-86:   const videoRef = useRef<HTMLVideoElement | null>(null);
-87:   const streamRef = useRef<MediaStream | null>(null);
-88:   const isDetectingRef = useRef(false);
-89:   const lastCameraScannedRef = useRef<{ code: string; time: number } | null>(null);
-90:   const usbInputRef = useRef<HTMLInputElement | null>(null);
-91:   const isSubmittingPresensiRef = useRef(false);
-```
+### 1.2 Untracked & Working Directory Draft Migration
+- An untracked file exists at `migrations/add_cp_and_gradebook_v2.sql` (lines 1–54):
+  - Defines `public.capaian_pembelajaran` with columns: `id`, `sekolah_id`, `guru_mapel_id`, `nama_mapel`, `kelas`, `semester`, `tahun_ajaran`, `kode_cp`, `deskripsi`, `urutan`, timestamps.
+  - Adds `cp_id uuid REFERENCES public.capaian_pembelajaran(id) ON DELETE SET NULL` to `public.tujuan_pembelajaran`.
+  - Adds `keterangan text` to `public.asesmen_kolom`.
+  - Documents storing JSON `bobot_nilai_mapel` in `public.pengaturan`.
 
-### 1.3 `startCamera` and `stopCamera` Implementation
-In `src/components/PiketView.tsx` (lines 274–301):
-```tsx
-274:   const startCamera = async () => {
-275:     setCameraError(null);
-276:     try {
-277:       const stream = await navigator.mediaDevices.getUserMedia({
-278:         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-279:       });
-280:       streamRef.current = stream;
-281:       if (videoRef.current) {
-282:         videoRef.current.srcObject = stream;
-283:         await videoRef.current.play();
-284:       }
-285:       setCameraActive(true);
-286:     } catch (err: any) {
-287:       setCameraError(err.message || 'Gagal mengakses kamera browser. Pastikan izin kamera telah diberikan.');
-288:       setCameraActive(false);
-289:     }
-290:   };
-291: 
-292:   const stopCamera = () => {
-293:     if (streamRef.current) {
-294:       streamRef.current.getTracks().forEach(track => track.stop());
-295:       streamRef.current = null;
-296:     }
-297:     if (videoRef.current) {
-298:       videoRef.current.srcObject = null;
-299:     }
-300:     setCameraActive(false);
-301:   };
-```
+### 1.3 TypeScript Definitions in `src/types/database.ts`
+- `src/types/database.ts` already has draft additions (git diff shows modified status):
+  - Line 82, 94, 106: `keterangan: string | null` added to `asesmen_kolom` Row, Insert, and Update.
+  - Lines 1451–1510: `capaian_pembelajaran` table defined with `sekolah_id`, `guru_mapel_id`, `nama_mapel`, `kelas`, `semester`, `tahun_ajaran`, `kode_cp`, `deskripsi`, `urutan`, `created_at`, `updated_at`.
+  - Lines 1514, 1531, 1548: `cp_id: string | null` added to `tujuan_pembelajaran` Row, Insert, and Update.
+  - Lines 2006–2008: `CapaianPembelajaran`, `CapaianPembelajaranInsert`, `CapaianPembelajaranUpdate` exported.
+  - *Missing in Relationships*: In `tujuan_pembelajaran.Relationships`, the foreign key `tujuan_pembelajaran_cp_id_fkey` referencing `capaian_pembelajaran` is currently missing.
 
-### 1.4 JSX Rendering of Camera Preview
-In `src/components/PiketView.tsx` (lines 1807–1855):
-```tsx
-1807:                         {!cameraActive ? (
-1808:                           <button
-1809:                             type="button"
-1810:                             onClick={startCamera}
-1811:                             className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-teal-200 dark:border-teal-800 cursor-pointer"
-1812:                           >
-1813:                             <i className="fa-solid fa-camera"></i> Buka Kamera
-1814:                           </button>
-1815:                         ) : (
-1816:                           <button
-1817:                             type="button"
-1818:                             onClick={stopCamera}
-1819:                             className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-red-200 dark:border-red-800 cursor-pointer"
-1820:                           >
-1821:                             <i className="fa-solid fa-video-slash"></i> Tutup Kamera
-1822:                           </button>
-1823:                         )}
-...
-1833:                       {cameraActive && (
-1834:                         <div className="relative rounded-xl overflow-hidden bg-black aspect-video border-2 border-teal-500 shadow-inner">
-1835:                           <video
-1836:                             ref={videoRef}
-1837:                             playsInline
-1838:                             autoPlay
-1839:                             muted
-1840:                             className="w-full h-full object-cover"
-1841:                           />
-...
-1854:                       )}
-```
-
-### 1.5 Frame Detection Loop
-In `src/components/PiketView.tsx` (lines 316–357):
-```tsx
-316:   // Frame detection loop with native BarcodeDetector
-317:   useEffect(() => {
-318:     let intervalId: any = null;
-319:     if (cameraActive) {
-320:       const BarcodeDetectorClass = typeof window !== 'undefined' ? (window as any).BarcodeDetector : undefined;
-...
-329:       intervalId = setInterval(async () => {
-330:         if (!videoRef.current || videoRef.current.readyState < 2 || isDetectingRef.current) return;
-331:         isDetectingRef.current = true;
-332:         try {
-333:           if (detector) {
-334:             const barcodes = await detector.detect(videoRef.current);
-...
-```
-
-### 1.6 Existing Test Assertions
-In `tests/m3_piket_scanner_kiosk.test.ts` (lines 64–71):
-```ts
-assert(
-  piketContent.includes('videoRef') &&
-  piketContent.includes('startCamera') &&
-  piketContent.includes('stopCamera') &&
-  piketContent.includes('BarcodeDetector'),
-  'PiketView implements HTML5 video stream camera scanner with native BarcodeDetector API'
-);
-```
+### 1.4 Admin Bobot Logic & Premature Syntax Error in `src/components/GradebookView.tsx`
+- **State & Loading** (`GradebookView.tsx:182-212`):
+  - `bobotKehadiran` (default 40), `bobotFormatif` (default 30), `bobotSumatif` (default 30).
+  - Loaded via `supabase.from('pengaturan').select('value').eq('sekolah_id', sekolahId).eq('key', 'bobot_nilai_mapel').maybeSingle()`.
+- **UI Button for Admin** (`GradebookView.tsx:1645-1654`):
+  ```tsx
+  {isAdmin && (
+    <button
+      type="button"
+      onClick={() => { setBobotForm({ kehadiran: bobotKehadiran, formatif: bobotFormatif, sumatif: bobotSumatif }); setIsBobotModalOpen(true); }}
+      className="btn-click px-3 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 ..."
+    >
+      <i className="fa-solid fa-scale-balanced"></i>
+      Bobot: H {bobotKehadiran}% / F {bobotFormatif}% / S {bobotSumatif}%
+    </button>
+  )}
+  ```
+- **Save Handler with Validation** (`GradebookView.tsx:667-692`):
+  ```ts
+  const total = bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif;
+  if (total !== 100) {
+    showToast('Validasi', `Total bobot harus 100%. Saat ini: ${total}%.`, 'warning'); return;
+  }
+  ```
+- **Syntax Bug Discovered in `GradebookView.tsx`**:
+  At lines 3056–3058, the component closing tags `</section>);}` were placed immediately after `{isBobotModalOpen && isAdmin && (...)}`, BEFORE the subsequent modal `{/* Modal Bulk Fill Grades */}`.
+  Consequently, TypeScript compilation fails with:
+  `src/components/GradebookView.tsx(3144,5): error TS1128: Declaration or statement expected.`
+  Deleting lines 3056–3058 instantly fixes the TS syntax error so `Modal Bulk Fill Grades` resides cleanly within the component return statement.
 
 ---
 
 ## 2. Logic Chain
 
-### 2.1 Primary Root Cause: React Conditional Rendering Ref Lifecycle Bug
-1. **Initial Condition** (`Observation 1.2`): `cameraActive` starts as `false`.
-2. **DOM Hierarchy** (`Observation 1.4`): The `<video ref={videoRef} ...>` element is wrapped inside `{cameraActive && (...)}` at line 1833. Because `cameraActive` is `false`, the `<video>` element is **not rendered** in the DOM. Therefore, `videoRef.current` is strictly `null`.
-3. **Execution of `startCamera`** (`Observation 1.3`):
-   - When the user clicks "Buka Kamera", `startCamera()` is invoked.
-   - `navigator.mediaDevices.getUserMedia` acquires the stream and stores it in `streamRef.current = stream` (line 280).
-   - At line 281: `if (videoRef.current)` is evaluated. Since `videoRef.current` is `null`, this condition is **false**!
-   - Lines 282–283 (`videoRef.current.srcObject = stream; await videoRef.current.play();`) are **skipped completely**.
-   - At line 285, `setCameraActive(true)` is called, which schedules a React state update.
-4. **Post-Render State**:
-   - React re-renders `PiketView`. Since `cameraActive` is now `true`, the `<video>` element is mounted and `videoRef.current` points to the newly created HTMLVideoElement.
-   - **Crucially**, there is **no `useEffect` or callback ref** that connects `streamRef.current` to `videoRef.current` after the video element mounts.
-   - As a result, the `<video>` element in the DOM has `srcObject = null`.
-   - The user sees a black box (`bg-black aspect-video`) with the scanning reticle overlay, but **zero camera preview feed**.
-5. **Impact on QR Detection** (`Observation 1.5`):
-   - The BarcodeDetector loop checks `videoRef.current.readyState < 2` at line 330.
-   - Because `videoRef.current.srcObject` is `null`, `videoRef.current.readyState` remains `0` (`HAVE_NOTHING`).
-   - Consequently, the detection loop exits early on every tick, making it impossible to detect any QR code.
+1. **Hierarchy CP → TP**:
+   - *Observation*: `tujuan_pembelajaran` has `id`, `sekolah_id`, `nama_mapel`, `kelas`, `semester`, `tahun_ajaran`.
+   - *Requirement*: CP is the umbrella above TP. One CP has many TPs.
+   - *Inference*: `capaian_pembelajaran` must share the scope (`sekolah_id`, `guru_mapel_id` nullable, `nama_mapel`, `kelas`, `semester`, `tahun_ajaran`, `kode_cp`, `deskripsi`, `urutan`).
+   - *Inference on Foreign Key*: `tujuan_pembelajaran` must have a foreign key to `capaian_pembelajaran`.
+   - *Column Name*: `cp_id` is chosen over `capaian_pembelajaran_id` because:
+     1. It directly parallels `tp_id` on `asesmen_kolom` and `nilai_siswa`.
+     2. It is already written in `src/types/database.ts` line 1514 and `src/components/GradebookView.tsx` line 1003.
+     3. It is shorter and adheres to Ponytail minimalism.
+   - *Nullability*: `cp_id` MUST BE NULLABLE (`UUID REFERENCES public.capaian_pembelajaran(id) ON DELETE SET NULL`). If it were `NOT NULL`, adding the column to an existing database containing TPs would immediately throw a constraint violation on all pre-existing records. Furthermore, `ON DELETE SET NULL` ensures that deleting a CP does not wipe out teacher TP assessments unexpectedly.
 
-### 2.2 Secondary Root Cause: Overconstrained Camera Constraints on Non-Mobile Devices
-1. **Constraint Definition** (`Observation 1.3`):
-   Line 278 uses `{ facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }`.
-2. In browsers running on laptops, desktop PCs, or webcams without an environment (rear) camera, un-idealized constraints or devices without environment cameras can throw `OverconstrainedError` or `ConstraintNotSatisfiedError`.
-3. In `startCamera`, this error immediately drops into the `catch` block (lines 286–289), setting `cameraError` and aborting camera activation.
-4. By contrast, `src/components/CameraSelfieCapture.tsx` (lines 152, 166–177) uses `{ facingMode: { ideal: mode } }` and implements an automatic fallback catch to `{ video: true, audio: false }`.
+2. **Column `keterangan` in `asesmen_kolom`**:
+   - *Observation*: `asesmen_kolom` currently has `id`, `sekolah_id`, `tp_id`, `kategori`, `nama`, `bobot`, `urutan`.
+   - *Requirement*: Each assessment has a free-text notes field stored in `keterangan` on `asesmen_kolom`.
+   - *Inference*: `ALTER TABLE public.asesmen_kolom ADD COLUMN IF NOT EXISTS keterangan TEXT;` is non-destructive, nullable, and 100% backward-compatible.
 
-### 2.3 Additional Edge Cases
-1. **Tab Switching**: Switching tabs triggers `useEffect` (line 303–307) which calls `stopCamera()` and sets `cameraActive = false`. When returning to the 'scan' tab, clicking "Buka Kamera" encounters the exact same unmounted `videoRef.current` timing bug.
-2. **Missing Insecure Context Guard**: If loaded via HTTP on a mobile LAN IP, `navigator.mediaDevices` is `undefined`, causing an uncaught property access error unless guarded.
-3. **Double-Click Race Condition**: Rapidly clicking "Buka Kamera" dispatches multiple concurrent `getUserMedia` requests without an acquisition mutex.
+3. **Diagnostik Max 1 per TP Database Constraint**:
+   - *Requirement R2*: "Diagnostik (dibatasi maks. 1 per TP — validasi di UI & DB)".
+   - *Inference*: In PostgreSQL, this can be enforced using a partial unique index:
+     `CREATE UNIQUE INDEX IF NOT EXISTS uq_asesmen_tp_diagnostik ON public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik');`
+     This strictly guarantees at the database engine level that no TP can ever have more than 1 Diagnostik column, while allowing arbitrary numbers of Formatif and Sumatif columns.
+
+4. **Settings Key `bobot_nilai_mapel` in `pengaturan`**:
+   - *Observation*: Table `pengaturan` has unique constraint `uq_pengaturan_sekolah_key UNIQUE (sekolah_id, key)`.
+   - *Requirement R4*: Store weights as JSON string `{ kehadiran, formatif, sumatif }` per school.
+   - *Inference*: No new schema columns are required in `pengaturan`. The migration should provide an idempotent seed query populating default weights (`{"kehadiran":40,"formatif":30,"sumatif":30}`) for all existing schools:
+     ```sql
+     INSERT INTO public.pengaturan (sekolah_id, key, value)
+     SELECT id, 'bobot_nilai_mapel', '{"kehadiran":40,"formatif":30,"sumatif":30}'
+     FROM public.sekolah
+     ON CONFLICT (sekolah_id, key) DO NOTHING;
+     ```
+   - In code, saving is best done via `upsert`:
+     ```ts
+     await supabase.from('pengaturan').upsert({
+       sekolah_id: sekolahId,
+       key: 'bobot_nilai_mapel',
+       value: JSON.stringify(bobotForm)
+     }, { onConflict: 'sekolah_id,key' });
+     ```
+
+5. **Admin Settings Placement & Validation**:
+   - *Observation*: Gradebook calculations occur in `GradebookView.tsx`.
+   - *Evaluation*: Placing the weight settings button in the top action bar of `GradebookView` for `isAdmin` gives administrators immediate visual feedback and control over the exact gradebook they are viewing. It can also be added into `AdminConfigView.tsx` under a "Konfigurasi Bobot Nilai" card.
+   - *Validation*: Total must equal 100% (`bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100`). The UI displays real-time green/red badge indicators before submitting.
 
 ---
 
 ## 3. Caveats
 
-1. **Browser Support for BarcodeDetector**: Native `window.BarcodeDetector` is supported out-of-the-box on Chrome for Android, macOS, and ChromeOS, but may be disabled by default on certain Windows Chrome releases without experimental flags, and on Firefox. While this investigation focuses on fixing the camera preview bug (R2), fallback messaging should be presented if `BarcodeDetector` is not present on the user's browser.
-2. **Hardware Scanners Remain Fully Functional**: USB HID barcode scanners do not use the camera and are unaffected by this bug.
-3. **No External Libraries Allowed**: The project strictly enforces zero new dependencies (`package.json` constraint). The fix must remain 100% native Web API compliant.
+1. **Migration Location Convention**:
+   The project has `supabase/migrations/` as its official Supabase migration directory (23 files). The draft file `migrations/add_cp_and_gradebook_v2.sql` was placed in a root `migrations/` folder. For official migration tracking, the canonical migration should be placed in `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql`.
+2. **Session Authentication & RLS**:
+   SIPJAM utilizes custom session authentication (`verify_login` storing `sipjam_user` in `localStorage`), with client queries filtering `sekolah_id`. When Supabase Auth JWT is not active, strict RLS policies requiring `auth.uid()` will block anon client queries. Therefore, RLS policies for `capaian_pembelajaran` must either permit anon reads/writes or use `USING (true)` / tenant helper policies consistent with other recent tables (such as `piket_form_lock` and `guru_mapel`).
+3. **Existing CP Data**:
+   There is currently no existing data in `capaian_pembelajaran`. Any existing TP records will have `cp_id = NULL`, which is fully supported by the nullable design.
 
 ---
 
 ## 4. Conclusion
 
-The bug causing the QR camera preview not to appear in `src/components/PiketView.tsx` is caused by **conditional DOM rendering timing in React**:
-- The `<video>` element is rendered conditionally (`{cameraActive && ...}`).
-- `startCamera()` tries to assign `videoRef.current.srcObject = stream` before calling `setCameraActive(true)`, at which point `videoRef.current` is `null`.
-- After `<video>` mounts, no hook attaches the acquired media stream to the video element.
-- The stream runs in hardware, but the `<video>` element remains blank/black with `srcObject = null`.
+### 4.1 Canonical SQL Migration Design
+File path: `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql`
 
-### Concrete Step-by-Step Fix Recipe (for Implementer)
+```sql
+-- ==============================================================================
+-- Migration: 20261011_capaian_pembelajaran_and_gradebook_v2.sql
+-- Description: CP -> TP Hierarchy, Asesmen Keterangan, DB Diagnostik Limit, Bobot Pengaturan
+-- Principle: Ponytail Minimal Schema Diff & Backward Compatibility
+-- ==============================================================================
 
-#### Step 1: Add Camera Initiation Mutex in `src/components/PiketView.tsx`
-Near line 90, add:
-```tsx
-const isStartingCameraRef = useRef(false);
+-- 1. Create capaian_pembelajaran table
+CREATE TABLE IF NOT EXISTS public.capaian_pembelajaran (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    guru_mapel_id UUID REFERENCES public.guru_mapel(id) ON DELETE SET NULL,
+    nama_mapel TEXT NOT NULL,
+    kelas TEXT NOT NULL,
+    semester TEXT NOT NULL DEFAULT 'Ganjil',
+    tahun_ajaran TEXT NOT NULL DEFAULT '2024/2025',
+    kode_cp TEXT NOT NULL,
+    deskripsi TEXT NOT NULL,
+    urutan INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indexes for CP queries
+CREATE INDEX IF NOT EXISTS idx_cp_sekolah_mapel_kelas 
+    ON public.capaian_pembelajaran(sekolah_id, nama_mapel, kelas);
+CREATE INDEX IF NOT EXISTS idx_cp_guru_mapel_id 
+    ON public.capaian_pembelajaran(guru_mapel_id);
+CREATE INDEX IF NOT EXISTS idx_cp_semester_tahun 
+    ON public.capaian_pembelajaran(sekolah_id, semester, tahun_ajaran);
+
+-- 2. Add cp_id to tujuan_pembelajaran (NULLABLE for full backward-compatibility)
+ALTER TABLE public.tujuan_pembelajaran
+    ADD COLUMN IF NOT EXISTS cp_id UUID REFERENCES public.capaian_pembelajaran(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_tp_cp_id 
+    ON public.tujuan_pembelajaran(cp_id);
+
+-- 3. Add keterangan to asesmen_kolom
+ALTER TABLE public.asesmen_kolom
+    ADD COLUMN IF NOT EXISTS keterangan TEXT;
+
+-- 4. Enforce max 1 Diagnostik assessment per TP at the Database level
+CREATE UNIQUE INDEX IF NOT EXISTS uq_asesmen_tp_diagnostik 
+    ON public.asesmen_kolom(tp_id) 
+    WHERE (kategori = 'Diagnostik');
+
+-- 5. Row Level Security for capaian_pembelajaran
+ALTER TABLE public.capaian_pembelajaran ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "capaian_pembelajaran_select_policy" ON public.capaian_pembelajaran;
+CREATE POLICY "capaian_pembelajaran_select_policy" ON public.capaian_pembelajaran
+    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "capaian_pembelajaran_modify_policy" ON public.capaian_pembelajaran;
+CREATE POLICY "capaian_pembelajaran_modify_policy" ON public.capaian_pembelajaran
+    FOR ALL USING (true) WITH CHECK (true);
+
+GRANT ALL ON public.capaian_pembelajaran TO anon, authenticated, service_role;
+
+-- 6. Seed default bobot_nilai_mapel for all schools in pengaturan
+INSERT INTO public.pengaturan (sekolah_id, key, value)
+SELECT id, 'bobot_nilai_mapel', '{"kehadiran":40,"formatif":30,"sumatif":30}'
+FROM public.sekolah
+ON CONFLICT (sekolah_id, key) DO NOTHING;
 ```
 
-#### Step 2: Update `startCamera` with Resilient Constraints and Fallback
-Replace lines 274–290 with:
-```tsx
-  const startCamera = async () => {
-    if (isStartingCameraRef.current) return;
-    isStartingCameraRef.current = true;
-    setCameraError(null);
+### 4.2 TypeScript Type Changes in `src/types/database.ts`
 
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraError('Browser ini tidak mendukung akses kamera langsung atau koneksi tidak aman (HTTPS diperlukan).');
-      setCameraActive(false);
-      isStartingCameraRef.current = false;
-      return;
-    }
+1. **Under `Database['public']['Tables']`**:
+   ```ts
+   capaian_pembelajaran: {
+     Row: {
+       created_at: string | null
+       deskripsi: string
+       guru_mapel_id: string | null
+       id: string
+       kelas: string
+       kode_cp: string
+       nama_mapel: string
+       sekolah_id: string
+       semester: string
+       tahun_ajaran: string
+       updated_at: string | null
+       urutan: number
+     }
+     Insert: {
+       created_at?: string | null
+       deskripsi: string
+       guru_mapel_id?: string | null
+       id?: string
+       kelas: string
+       kode_cp: string
+       nama_mapel: string
+       sekolah_id?: string
+       semester?: string
+       tahun_ajaran?: string
+       updated_at?: string | null
+       urutan?: number
+     }
+     Update: {
+       created_at?: string | null
+       deskripsi?: string
+       guru_mapel_id?: string | null
+       id?: string
+       kelas?: string
+       kode_cp?: string
+       nama_mapel?: string
+       sekolah_id?: string
+       semester?: string
+       tahun_ajaran?: string
+       updated_at?: string | null
+       urutan?: number
+     }
+     Relationships: [
+       {
+         foreignKeyName: "capaian_pembelajaran_guru_mapel_id_fkey"
+         columns: ["guru_mapel_id"]
+         isOneToOne: false
+         referencedRelation: "guru_mapel"
+         referencedColumns: ["id"]
+       },
+       {
+         foreignKeyName: "capaian_pembelajaran_sekolah_id_fkey"
+         columns: ["sekolah_id"]
+         isOneToOne: false
+         referencedRelation: "sekolah"
+         referencedColumns: ["id"]
+       },
+     ]
+   }
+   ```
 
-    try {
-      // Stop any existing tracks before acquiring new stream
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
-      }
+2. **In `tujuan_pembelajaran`**:
+   - `Row`: `cp_id: string | null`
+   - `Insert`: `cp_id?: string | null`
+   - `Update`: `cp_id?: string | null`
+   - `Relationships`:
+     ```ts
+     {
+       foreignKeyName: "tujuan_pembelajaran_cp_id_fkey"
+       columns: ["cp_id"]
+       isOneToOne: false
+       referencedRelation: "capaian_pembelajaran"
+       referencedColumns: ["id"]
+     }
+     ```
 
-      let stream: MediaStream;
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 }
-        },
-        audio: false
-      };
+3. **In `asesmen_kolom`**:
+   - `Row`: `keterangan: string | null`
+   - `Insert`: `keterangan?: string | null`
+   - `Update`: `keterangan?: string | null`
 
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (constraintErr: any) {
-        console.warn('[PiketView] Overconstrained camera request, falling back to basic video:', constraintErr);
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      }
+4. **Convenience Type Aliases & Constants (at bottom of `src/types/database.ts`)**:
+   ```ts
+   export type CapaianPembelajaran = Tables<"capaian_pembelajaran">;
+   export type CapaianPembelajaranInsert = TablesInsert<"capaian_pembelajaran">;
+   export type CapaianPembelajaranUpdate = TablesUpdate<"capaian_pembelajaran">;
 
-      streamRef.current = stream;
+   export interface BobotNilaiMapel {
+     kehadiran: number;
+     formatif: number;
+     sumatif: number;
+   }
 
-      // Attach immediately if videoRef is already in DOM
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute('playsinline', 'true');
-        videoRef.current.setAttribute('webkit-playsinline', 'true');
-        videoRef.current.muted = true;
-        try {
-          await videoRef.current.play();
-        } catch (playErr) {
-          console.warn('[PiketView] Direct play error:', playErr);
-        }
-      }
+   export const DEFAULT_BOBOT_NILAI_MAPEL: BobotNilaiMapel = {
+     kehadiran: 40,
+     formatif: 30,
+     sumatif: 30,
+   };
+   ```
 
-      // Activate camera state to mount video element if not mounted
-      setCameraActive(true);
-    } catch (err: any) {
-      console.error('[PiketView] startCamera error:', err);
-      let errMsg = 'Gagal mengakses kamera browser. Pastikan izin kamera telah diberikan.';
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errMsg = 'Izin kamera ditolak. Harap izinkan akses kamera pada pengaturan browser.';
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        errMsg = 'Kamera tidak ditemukan pada perangkat Anda.';
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        errMsg = 'Kamera sedang digunakan oleh aplikasi lain.';
-      } else if (err.message) {
-        errMsg = err.message;
-      }
-      setCameraError(errMsg);
-      setCameraActive(false);
-    } finally {
-      isStartingCameraRef.current = false;
-    }
-  };
-```
-
-#### Step 3: Add Lifecycle Synchronization Hook for `cameraActive`
-Insert right after `stopCamera` (around line 302):
-```tsx
-  // Ensure video element receives the stream when cameraActive mounts the element
-  useEffect(() => {
-    if (cameraActive && streamRef.current && videoRef.current) {
-      const video = videoRef.current;
-      if (video.srcObject !== streamRef.current) {
-        video.srcObject = streamRef.current;
-      }
-      video.setAttribute('playsinline', 'true');
-      video.setAttribute('webkit-playsinline', 'true');
-      video.muted = true;
-      video.play().catch(err => {
-        console.warn('[PiketView] Video play error in effect:', err);
-      });
-    }
-  }, [cameraActive]);
-```
-
-#### Step 4: Add Callback Ref to `<video>` in JSX
-In `src/components/PiketView.tsx` (around lines 1835–1841), update the `<video>` tag:
-```tsx
-  <video
-    ref={(el) => {
-      videoRef.current = el;
-      if (el && streamRef.current && el.srcObject !== streamRef.current) {
-        el.srcObject = streamRef.current;
-        el.setAttribute('playsinline', 'true');
-        el.setAttribute('webkit-playsinline', 'true');
-        el.muted = true;
-        el.play().catch(e => console.warn('[PiketView] Callback ref play error:', e));
-      }
-    }}
-    playsInline
-    autoPlay
-    muted
-    className="w-full h-full object-cover"
-  />
-```
-
-#### Step 5: Update the BarcodeDetector Indicator Badge
-In lines 1850–1852, replace static text with capability indicator:
-```tsx
-  <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs p-1.5 rounded-lg text-center text-[10px] text-white">
-    {typeof window !== 'undefined' && 'BarcodeDetector' in window ? (
-      <span><i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis</span>
-    ) : (
-      <span><i className="fa-solid fa-circle-info mr-1 text-amber-400"></i> Browser ini tidak mendukung BarcodeDetector bawaan. Gunakan scanner USB HID atau ketik NISN.</span>
-    )}
-  </div>
-```
+### 4.3 Actionable Recommendation for the Implementer (Builder)
+- Remove the premature closing tags `</section>);}` at lines 3056–3058 in `src/components/GradebookView.tsx`. This immediately resolves the TypeScript compile failure.
+- Ensure the save logic for `bobot_nilai_mapel` uses `supabase.from('pengaturan').upsert(..., { onConflict: 'sekolah_id,key' })`.
 
 ---
 
 ## 5. Verification Method
 
-### 5.1 Static Code Contract Verification
-Ensure all required identifiers for existing test suites are preserved:
-```powershell
-npx tsx -e "
-const fs = require('fs');
-const code = fs.readFileSync('src/components/PiketView.tsx', 'utf8');
-const reqs = ['videoRef', 'startCamera', 'stopCamera', 'BarcodeDetector'];
-reqs.forEach(r => {
-  if (!code.includes(r)) throw new Error('Missing contract: ' + r);
-  console.log('PASS: ' + r);
-});
-"
-```
+To independently verify all findings and proposals:
 
-### 5.2 Test Suite Execution
-Execute existing test suites to prevent regression:
-```powershell
-npm test
-```
-Specifically verifies:
-- `tests/m3_piket_scanner_kiosk.test.ts`
-- `tests/m3_adversarial_scanner_kiosk_stress.test.ts`
-- `tests/presensi_siswa_sync_and_superadmin.test.ts`
-- `tests/adversarial_presensi_sync_reviewer.test.ts`
-- `tests/adversarial_presensi_sync_reviewer_r2.test.ts`
-- `tests/adversarial_presensi_sync_reviewer_r3.test.ts`
+1. **Verify TypeScript Definitions**:
+   Inspect `src/types/database.ts` lines 80–110, lines 1451–1579, and lines 2006–2010.
+   Command:
+   ```bash
+   npx tsc --noEmit
+   ```
+   *(Note: Will pass once premature closing tags at lines 3056–3058 in `GradebookView.tsx` are removed)*.
 
-### 5.3 Type Check & Build Verification
-```powershell
-npx tsc --noEmit
-npm run build
-```
+2. **Verify SQL Migration Syntax**:
+   Inspect `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql` (or `migrations/add_cp_and_gradebook_v2.sql`).
+   Verify with PostgreSQL query validator or Supabase CLI.
 
-### 5.4 Behavioral Verification Conditions (Invalidation Criteria)
-The fix is considered invalid if:
-1. `videoRef.current.srcObject` is null after `cameraActive` becomes true.
-2. Clicking "Buka Kamera" on a laptop with a front-facing webcam throws `OverconstrainedError`.
-3. Switching from 'scan' to 'beranda' and back to 'scan' leaves camera tracks running or fails to open upon subsequent click.
-4. Any existing test in `npm test` fails.
+3. **Verify Existing Tests**:
+   Command:
+   ```bash
+   npm test
+   ```
+   Expected: 100% PASS (Total 11 + 12 + 10 + 12 tests passed).
+
+4. **Verify Weight Validation**:
+   - Total must equal 100%: Sum validation formula `kehadiran + formatif + sumatif === 100`.
+   - Rejection condition: Any total != 100 yields `'Validasi: Total bobot harus 100%'`.

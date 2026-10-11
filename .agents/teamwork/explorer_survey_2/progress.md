@@ -1,11 +1,15 @@
-# Progress — explorer_survey_2
+# Progress — Explorer 2 (Database & Admin Settings)
 
-Last visited: 2026-10-05T10:04:30Z
-Status: IN_PROGRESS
+- Status: Complete
+- Last visited: 2026-10-11T00:49:30Z
+- Current focus: Finished investigation and compiled handoff.md
 
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [x] Locate QR code scanning implementation in codebase (`src/components/PiketView.tsx` and `src/lib/qrSiswa.ts`)
-- [x] Analyze camera scanner mechanism and DOM lifecycle (`getUserMedia` + native `BarcodeDetector`)
-- [x] Determine root cause of camera preview not appearing (conditional mounting timing bug, `videoRef.current` null when assigning `srcObject`, overconstrained camera constraints)
-- [x] Formulate concrete step-by-step fix recipe (lifecycle sync effect + callback ref, constraint fallbacks, error handling)
-- [ ] Generate handoff.md and report to parent
+## Completed Steps
+- [x] Received dispatch instructions and initialized BRIEFING.md
+- [x] Inspect supabase/migrations/ and existing database schemas
+- [x] Inspect src/types/database.ts
+- [x] Inspect how pengaturan is queried and modified across the app
+- [x] Inspect GradebookView.tsx admin/weight logic & syntax error
+- [x] Design SQL migration with RLS & indexes
+- [x] Formulate TypeScript changes
+- [x] Compile handoff report (handoff.md)

@@ -1139,3 +1139,64 @@ Direktori `src/app/api/sync-spreadsheet/` ada tapi tidak memiliki `route.ts`. Ji
 - **Test setelah setiap kelompok:** Jalankan `npm test` dan `npm run build` setelah R1-R4, kemudian lagi setelah R5-R7.
 - **Commit setelah selesai:** `git add . && git commit -m "ponytail: security fix, bug fixes, refactor & perf improvements" && git push origin main`
 - **Jangan install dependency baru** — gunakan hanya yang sudah ada di `package.json`
+
+## 2026-10-10T22:56:05Z
+
+Rombak ulang modul daftar nilai (GradebookView) pada aplikasi SIPJAM (Next.js + Supabase) agar mengikuti alur CP → TP → Asesmen (Diagnostik/Formatif/Sumatif) → Nilai Akhir. Hierarki: CP adalah payung di atas TP (tabel baru `capaian_pembelajaran`). Formula nilai akhir mapel = 40% kehadiran + 30% rata-rata formatif + 30% rata-rata sumatif; bobot ini bisa diubah oleh Admin dan berlaku per sekolah (disimpan di tabel `pengaturan`). Diagnostik tidak masuk perhitungan nilai, hanya sebagai catatan diagnostik guru.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: demo
+
+## Context Codebase
+
+- Stack: Next.js 15 (App Router, `'use client'`), Supabase (PostgreSQL + RLS), Tailwind CSS, SweetAlert2
+- File utama: `src/components/GradebookView.tsx` (2814 baris)
+- Tabel DB yang sudah ada: `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa`, `absensi`, `pengaturan`, `guru_mapel`
+- Tabel yang perlu ditambah: `capaian_pembelajaran`
+- Kolom yang perlu ditambah: `keterangan` di `asesmen_kolom`; bobot nilai di `pengaturan` (key: `bobot_nilai_mapel` → JSON `{ kehadiran: 40, formatif: 30, sumatif: 30 }`)
+- Tipe yang sudah ada: `TujuanPembelajaran`, `AsesmenKolom`, `NilaiSiswa` di `src/types/database.ts`
+
+## Requirements
+
+### R1. Hierarki CP → TP di UI
+Guru melihat dan mengelola CP (Capaian Pembelajaran) terlebih dahulu sebelum bisa menambahkan TP. Satu CP bisa memiliki banyak TP. CP tersimpan di tabel baru `capaian_pembelajaran` yang berelasi ke `guru_mapel`.
+
+### R2. Asesmen per TP dengan tipe dan keterangan
+Setiap TP memiliki tiga jenis asesmen: Diagnostik (dibatasi maks. 1 per TP — validasi di UI & DB), Formatif (min. 1), Sumatif (min. 1). Setiap asesmen memiliki field keterangan bebas yang tersimpan di kolom `keterangan` pada tabel `asesmen_kolom`.
+
+### R3. Formula Nilai Akhir
+Nilai akhir mapel = (bobot_kehadiran × rata kehadiran) + (bobot_formatif × rata formatif) + (bobot_sumatif × rata sumatif), di mana rata kehadiran dihitung dari data absensi siswa di mapel tersebut. Asesmen Diagnostik tidak masuk perhitungan. Rekap semester dan data rapor menggunakan formula ini.
+
+### R4. Pengaturan Bobot (Admin Only)
+Admin dapat mengubah persentase bobot (kehadiran/formatif/sumatif) melalui form pengaturan. Total harus selalu 100% (validasi). Bobot tersimpan di tabel `pengaturan` sebagai key `bobot_nilai_mapel` (value: JSON string) dan berlaku untuk seluruh sekolah.
+
+### R5. Migrasi Database & Tipe
+Sediakan SQL migration untuk tabel `capaian_pembelajaran` dan kolom baru `keterangan` di `asesmen_kolom`. Perbarui `src/types/database.ts` agar sinkron. Gunakan prinsip ponytail: sesedikit mungkin perubahan skema yang masih cukup untuk fitur ini.
+
+## Acceptance Criteria
+
+### Database
+- [ ] Tabel `capaian_pembelajaran` tersedia dengan kolom: `id`, `sekolah_id`, `guru_mapel_id`, `kode_cp`, `deskripsi`, `semester`, `tahun_ajaran`, timestamps
+- [ ] Kolom `keterangan` ada di `asesmen_kolom`
+- [ ] Baris di `pengaturan` dengan key `bobot_nilai_mapel` dapat disimpan dan dibaca (value: JSON `{ kehadiran, formatif, sumatif }`)
+
+### Alur Input Guru
+- [ ] Guru dapat menambah/edit/hapus CP dari UI tanpa error
+- [ ] Guru dapat menambah TP di bawah CP yang dipilih
+- [ ] Untuk setiap TP: form asesmen menolak penambahan Diagnostik ke-2 (validasi di UI)
+- [ ] Formatif dan Sumatif dapat ditambah lebih dari satu
+- [ ] Field keterangan tersedia dan tersimpan untuk setiap asesmen
+
+### Perhitungan Nilai Akhir
+- [ ] Nilai akhir mapel = (bobot_kehadiran × rata kehadiran) + (bobot_formatif × rata formatif) + (bobot_sumatif × rata sumatif)
+- [ ] Asesmen Diagnostik tidak masuk perhitungan nilai akhir
+- [ ] Jika tidak ada data formatif atau sumatif, nilai akhir menampilkan `-` / null (tidak error)
+
+### Pengaturan Bobot (Admin)
+- [ ] Form pengaturan bobot hanya tampil untuk role Admin/Superadmin
+- [ ] Validasi: total bobot harus = 100% sebelum bisa disimpan
+- [ ] Bobot yang tersimpan ter-load saat halaman dibuka kembali
+
+### Rekap & Rapor
+- [ ] Tab rekap semester menampilkan nilai akhir dari formula baru
+- [ ] Tidak ada regresi: fitur print, analitik, dan rekap siswa tetap berfungsi

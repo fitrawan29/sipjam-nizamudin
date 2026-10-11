@@ -1,36 +1,43 @@
-# BRIEFING — 2026-10-05T10:05:00Z
+# BRIEFING — 2026-10-11T00:46:00Z
 
 ## Mission
-Investigate PiketView UI & state issues: root cause of "Tandai Datang" auto-filtering list down to 1 student, and design/strategy to differentiate Guru (compact) vs Admin (detail) views.
+Investigate `src/components/GradebookView.tsx` architecture, map TP/Asesmen/Nilai state, and design CP → TP hierarchy integration.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: explorer, investigator, analyst
+- Roles: Codebase Explorer
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1
-- Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Milestone: Requirement R1 (UI & State Modul Piket) Investigation
+- Original parent: 1f15a155-9441-412f-8adc-6ac5519d6f4d
+- Milestone: milestone_1_architecture_investigation
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement
-- Do NOT modify project source files
-- Focus on Requirement R1 (UI & State Modul Piket)
+- Do NOT modify application source code
+- Communicate findings via handoff.md and send_message
 
 ## Current Parent
-- Conversation ID: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Updated: 2026-10-05T09:58:22Z
+- Conversation ID: 1f15a155-9441-412f-8adc-6ac5519d6f4d
+- Updated: 2026-10-11T00:46:00Z
 
 ## Investigation State
-- **Explored paths**: `src/components/PiketView.tsx`, `src/components/AppScreen.tsx`, `src/lib/qrSiswa.ts`, `src/types/database.ts`
+- **Explored paths**:
+  - `src/components/GradebookView.tsx` (all 3147 lines inspected)
+  - `src/types/database.ts` (table schemas for CP, TP, Asesmen, Nilai)
+  - `migrations/add_cp_and_gradebook_v2.sql`
+  - `src/components/RaporView.tsx` (absensi pattern)
+  - `tests/adversarial_kurikulum_merdeka_cp.test.ts`
 - **Key findings**:
-  1. Root cause identified: `handleManualMark` in `PiketView.tsx` lines 592 & 617 sets `manualSearchQuery(student.nama_siswa)`, which triggers `filteredManualStudents` (line 773) to filter out all other students. Lines 593 & 618 also reset `manualKelasFilter` to `'Semua'`.
-  2. Guru vs Admin role distinction: `user?.role` should be normalized (`admin` / `superadmin` vs `guru`). Guru view should be streamlined/compact (hide 10-kiosk selector, hide 7-column audit log table, compact mode switcher, fast 1-tap roster, compact counters). Admin view should be comprehensive/detail (full kiosk management, 3 metric cards, full 7-column live audit log table, penugasan schedule management).
-- **Unexplored areas**: None for R1.
+  - Identified build-blocking syntax error in `src/components/GradebookView.tsx` at lines 3056-3058 (duplicate closing tags).
+  - Detailed state & tabs architecture: `'tp-matrix'`, `'rekap-semester'`, `'statistik'`.
+  - Discovered CP and TP are currently parallel UI rows without functional filtering or modal dropdown linking (`tpForm` lacks `cp_id`).
+  - Mapped complete teacher selection flow for `guru_mapel`, `semester`, and `tahun_ajaran`.
+  - Defined full implementation plan for CP -> TP UI hierarchy, modal updates, and attendance integration.
+- **Unexplored areas**: None within Explorer 1 scope.
 
 ## Key Decisions Made
-- Confirmed exact lines causing the auto-filter bug and formulated a non-destructive patch that preserves two-way sync to the feedback card without altering `manualSearchQuery`.
-- Designed concrete feature matrix comparing Guru compact view and Admin detailed view.
+- Authored 5-component self-contained `handoff.md` detailing all findings, file paths, line numbers, and actionable blueprints.
 
 ## Artifact Index
-- DISPATCH.md — Initial dispatch message
-- progress.md — Liveness heartbeat and progress
-- handoff.md — Complete 5-component handoff report
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md` — 5-Component Comprehensive Handoff Report
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\progress.md` — Liveness & Progress tracker
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\DISPATCH.md` — Logged dispatch instructions

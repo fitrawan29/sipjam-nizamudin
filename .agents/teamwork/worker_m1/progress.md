@@ -1,22 +1,26 @@
 # Progress Log - worker_m1
 
-Last visited: 2026-10-08T11:37:30Z
+Last visited: 2026-10-11T01:03:00Z
 
 ## Status
-All M1 requirements implemented, tested, and verified with 0 errors. Ready for handoff and git push.
+Milestone 1 (Data Layer: Database Migration & TypeScript Types) fully implemented and verified with 100% test pass.
 
-## Steps
-- [x] Initialized DISPATCH.md, BRIEFING.md, and progress.md
-- [x] Read ORIGINAL_REQUEST.md, PROJECT.md, and explorer_o16_1/report.md
-- [x] Inspect existing implementation in targets
-- [x] Implement Requirement 1: 30-Minute Notification Snooze (`TeacherReminderManager.tsx`)
-- [x] Implement Requirement 2: Print Orientation Simplification (`PrintHeader.tsx`)
-- [x] Implement Requirement 3: Camera 4:3 Ratio Lock & Storage Optimization (`CameraSelfieCapture.tsx` & `watermarkCanvas.ts`)
-- [x] Verify UI Responsiveness (mobile 320px–428px and desktop)
-- [x] Add programmatic test `tests/m1_reminder_print_camera_verification.test.ts` (20 passed)
-- [x] Run test suite:
-  - `npx tsc --noEmit` -> PASS (0 errors)
-  - `npm test` -> PASS (all test suites passed)
-  - `npx tsx tests/e2e/run_all_e2e.ts` -> PASS (all 4 tiers, 100% pass)
-  - `npm run build` -> PASS (0 errors)
-- [ ] Write handoff report and commit/push git changes
+## Steps Completed
+- [x] Received dispatch for Milestone 1 (Database Migration & TypeScript Types).
+- [x] Investigated requirements in ORIGINAL_REQUEST.md, PROJECT.md, and explorer_survey_2/handoff.md.
+- [x] Created canonical migration `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql`.
+  - Created `public.capaian_pembelajaran` table with all required columns and indexes.
+  - Added `cp_id` foreign key on `public.tujuan_pembelajaran` (`ON DELETE SET NULL`).
+  - Added `keterangan` text column on `public.asesmen_kolom`.
+  - Created partial unique index `uq_asesmen_tp_diagnostik` on `public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik')`.
+  - Configured RLS policies for `capaian_pembelajaran`.
+  - Seeded default `bobot_nilai_mapel` into `public.pengaturan`.
+- [x] Updated `src/types/database.ts`:
+  - Verified `capaian_pembelajaran` table types.
+  - Added `tujuan_pembelajaran_cp_id_fkey` relationship to `tujuan_pembelajaran.Relationships`.
+  - Exported `BobotNilaiMapel` interface and `DEFAULT_BOBOT_NILAI_MAPEL` constant.
+- [x] Cleaned up untracked duplicate draft `migrations/add_cp_and_gradebook_v2.sql`.
+- [x] Created test suite `tests/m1_database_and_types_verification.test.ts` (38/38 assertions passed).
+- [x] Verified zero regressions on `npm test` (all test suites passed).
+- [x] Updated BRIEFING.md and progress.md.
+- [ ] Prepare handoff report `handoff.md` and execute Git workflow.

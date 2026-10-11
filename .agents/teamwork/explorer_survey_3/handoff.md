@@ -1,311 +1,440 @@
-# Handoff Report — Requirement R3: Update Sidebar User Profile & Complete Tutorial System
+# Handoff Report — Explorer 3: Grading Logic, Attendance Integration & Test Suite
 
-**Agent**: `explorer_survey_3`  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3`  
-**Date**: 2026-10-05  
-**Focus**: Requirement R3 (Sidebar user profile: Name & Role display, and Complete Tutorial covering all menus and features per role: Guru, Admin, Superadmin)
+- **Project**: orchestrator_21
+- **Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3`
+- **Role**: Explorer 3 (Grading Logic, Absensi & Testing Explorer)
+- **Authoritative Request**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (entry at 2026-10-10T22:56:05Z)
+- **Date**: 2026-10-11
 
 ---
 
 ## 1. Observation
 
-### 1.1 Existing Sidebar Structure in `src/components/AppScreen.tsx`
-- **Location**: `src/components/AppScreen.tsx` lines 622–677.
-- **Verbatim Code**:
-```tsx
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" onClick={toggleSidebar}>
-          <div className="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
-            <div>
-              <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
-                        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : 'fa-mosque'}`}></i>
-                    </div>
-                    <span className="font-bold text-sm text-gray-900 dark:text-white">
-                      {isSuperadmin ? 'Portal Superadmin' : 'SIPJAM Menu'}
-                    </span>
-                </div>
-                <button type="button" onClick={toggleSidebar} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
-                    <i className="fa-solid fa-xmark text-sm"></i>
-                </button>
-              </div>
-              <div className="space-y-1.5 overflow-y-auto max-h-[calc(100vh-180px)] custom-scroll">
-                {menuItems.map(item => (
-                  <button 
-                    key={item.id}
-                    data-tour={item.id}
-                    onClick={() => handleNavigation(item.id)}
-                    className={`w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
-                      currentView === item.id 
-                        ? 'bg-green-50 text-nizamudin-green border border-green-200 dark:bg-green-900/20 dark:text-nizamudin-gold dark:border-green-800/50' 
-                        : 'text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800 border border-transparent'
-                    }`}
-                  >
-                    <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
-                  className="w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800 border border-transparent transition-all"
-                >
-                  <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
-                </button>
-                {!isSuperadmin && (
-                  <button
-                    type="button"
-                    onClick={() => { setTourOpen(true); setSidebarOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all border border-amber-200/60 dark:border-amber-800/40 mt-1 mb-2 cursor-pointer"
-                    title="Buka kembali panduan tutorial interaktif"
-                  >
-                    <i className="fa-solid fa-graduation-cap text-sm"></i>
-                    <span>Lihat Tutorial Lagi</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-```
-- **Observations on Current State**:
-  1. **User details missing**: Neither the user's name (`user.nama`), role (`user.role`), avatar, nor NIP/username is rendered anywhere in the sidebar.
-  2. **Top Header in App**: Only has the avatar button opening `AccountSettingsModal` (line 606–612: `{renderUserAvatar(currentUser?.avatar, 'w-7 h-7')}`). No name or role is shown in the top header either.
-  3. **Dashboard Banner**: `src/components/HomeView.tsx` lines 1030–1045 renders `user.nama`, `user.role`, and avatar, but this is only visible when the user is on the Dashboard view. Once the user navigates to Presensi, Jurnal, Piket, etc., there is zero indication of who is currently logged in unless they open Account Settings.
-  4. **Logged-in user state**:
-     - `user = currentUser || initialUser` passed as prop to `AppScreen`.
-     - Fields: `user.id`, `user.nama`, `user.role`, `user.username`, `user.avatar`, `user.sekolah_id`, `user.wali_kelas`.
-     - Role booleans: `isSuperadmin` (line 60), `isAdmin` (line 61), `isWaliKelas` (line 196), `isPiketHariIni` (line 198).
-     - School data: `schoolData?.nama`.
-     - Avatar helper: `renderUserAvatar` is already imported at line 26 from `@/lib/avatars`.
+### 1.1 Existing Score Calculation in `src/components/GradebookView.tsx`
 
----
+Inspection of `src/components/GradebookView.tsx` reveals two distinct calculation scopes:
 
-### 1.2 Existing Tutorial & Onboarding Mechanisms
-- **Existing Files**:
-  - `src/components/Onboarding/tutorialSteps.ts`: Contains `GURU_STEPS` (5 steps) and `ADMIN_STEPS` (6 steps).
-  - `src/components/Onboarding/OnboardingTutorial.tsx`: Interactive spotlight tour highlighting UI elements via `data-tour`.
-  - `src/components/AIAssistant/knowledgeBase.ts`: Contains 20 menu categories and 42 Q&A items used by the floating chatbot.
-- **Observations on Gaps**:
-  1. **Tutorial steps are limited to 5 or 6 UI highlight overlays**:
-     - Guru only has 5 spotlight steps: Hamburger, Presensi, Jurnal, Piket, AI Assistant.
-     - Admin only has 6 spotlight steps: Verifikasi, Sistem Blok, Master Data, Analitik, Sistem Config, AI Assistant.
-     - Superadmin has **0 steps** and is explicitly exempt (`isSuperadmin ? []`).
-  2. **Zero coverage of major features**:
-     - Guru: Perangkat Pembelajaran, Daftar Nilai, Informasi, Riwayat, Rekap Jurnal, Presensi Siswa (Wali Kelas), Jurnal Kelas (Wali Kelas).
-     - Admin: Dashboard, Kelola Piket, Perangkat Pembelajaran, Daftar Nilai, Informasi, Rekap Akhir, Presensi Siswa, Akses Data / Backup.
-     - Superadmin: Ringkasan Platform, Kelola Sekolah, Admin Sekolah.
-  3. **No in-app written guide/modal**:
-     - Currently, clicking "Lihat Tutorial Lagi" only launches the 5-step overlay tour. There is no structured, readable in-app reference guide or modal where users can browse how-to instructions per menu.
-     - Superadmin is barred from "Lihat Tutorial Lagi" (`{!isSuperadmin && ...}`).
-  4. **No repository documentation file**:
-     - The root `README.md` is empty (2 lines). There is no user guide or manual markdown file (e.g. `TUTORIAL.md` or `docs/PANDUAN_PENGGUNA.md`).
+#### A. Per-TP Calculation: `calculateStudentTpStats` (Lines 1283–1356)
+- **Diagnostik**:
+  ```ts
+  // Line 1287: Diagnostik fetched but completely excluded from TP final score
+  const diagVal = diagnostikCol ? sGrades[diagnostikCol.id] : null;
+  ```
+- **Formatif Weighted Average**:
+  ```ts
+  // Lines 1290–1300
+  let sumF = 0;
+  let sumWeightF = 0;
+  formatifCols.forEach(col => {
+    const val = sGrades[col.id];
+    if (val !== null && val !== undefined && !isNaN(val)) {
+      const weight = col.bobot ? Number(col.bobot) : 1;
+      sumF += val * weight;
+      sumWeightF += weight;
+    }
+  });
+  const avgF = sumWeightF > 0 ? parseFloat((sumF / sumWeightF).toFixed(1)) : null;
+  ```
+- **Sumatif Weighted Average**:
+  ```ts
+  // Lines 1303–1313
+  let sumS = 0;
+  let sumWeightS = 0;
+  sumatifCols.forEach(col => {
+    const val = sGrades[col.id];
+    if (val !== null && val !== undefined && !isNaN(val)) {
+      const weight = col.bobot ? Number(col.bobot) : 1;
+      sumS += val * weight;
+      sumWeightS += weight;
+    }
+  });
+  const avgS = sumWeightS > 0 ? parseFloat((sumS / sumWeightS).toFixed(1)) : null;
+  ```
+- **Nilai Akhir TP** (Normalized Formatif + Sumatif for a single TP):
+  ```ts
+  // Lines 1317–1328
+  let finalTp: number | null = null;
+  const fPct = bobotFormatif;
+  const sPct = bobotSumatif;
+  const fsTotal = fPct + sPct;
+  if (avgF !== null && avgS !== null && fsTotal > 0) {
+    finalTp = parseFloat((avgF * (fPct / fsTotal) + avgS * (sPct / fsTotal)).toFixed(1));
+  } else if (avgS !== null) {
+    finalTp = avgS;
+  } else if (avgF !== null) {
+    finalTp = avgF;
+  }
+  ```
 
----
+#### B. Overall Semester Calculation: `calculateStudentSemesterStats` (Lines 1361–1435)
+- **Current State**:
+  ```ts
+  // Lines 1404–1419
+  // Aggregate semester final with kehadiran component
+  // ponytail: kehadiran placeholder = 100 until kehadiran-per-mapel data is wired
+  const avgFormatifAll = allAvgF.length > 0 ? allAvgF.reduce((a, b) => a + b, 0) / allAvgF.length : null;
+  const avgSumatifAll = allAvgS.length > 0 ? allAvgS.reduce((a, b) => a + b, 0) / allAvgS.length : null;
+  const kehadiranScore = 100; // ponytail: placeholder; replace with real attendance query when available
 
-### 1.3 Menu Mapping per Role in `src/components/AppScreen.tsx`
+  let semesterFinalRaw: number | null = null;
+  if (avgFormatifAll !== null || avgSumatifAll !== null) {
+    const f = avgFormatifAll ?? 0;
+    const s = avgSumatifAll ?? 0;
+    semesterFinalRaw = parseFloat((
+      kehadiranScore * (bobotKehadiran / 100) +
+      f * (bobotFormatif / 100) +
+      s * (bobotSumatif / 100)
+    ).toFixed(1));
+  }
+  ```
+- **Observed Deficiency**:
+  1. `kehadiranScore` is hardcoded as `100` instead of querying the student's actual attendance for the subject.
+  2. If `avgSumatifAll` is `null` (e.g., student has only taken Formatif assessments), `const s = avgSumatifAll ?? 0` assigns 0, artificially penalizing the score, instead of displaying `'-'` or `null` as required by acceptance criteria: *"Jika tidak ada data formatif atau sumatif, nilai akhir menampilkan '-' / null (tidak error)"*.
 
-| Role | Menu ID | Label | Icon | Hak Akses / Syarat | Deskripsi & Alur Utama |
-|---|---|---|---|---|---|
-| **Guru** | `view-home` | Dashboard | `fa-house` | Semua Guru | Alur 4 langkah kerja harian, indikator akumulasi keterlambatan WITA, peringatan alpa, siaran pengumuman, dan jadwal mengajar hari ini. |
-| **Guru** | `view-guru-presensi` | Presensi Guru | `fa-right-to-bracket` | Semua Guru | Presensi Datang & Pulang mandiri, kamera potret anti-zoom, validasi radius GPS geofence, pengajuan izin/sakit/dinas luar dengan bukti surat, dan offline queue sync fallback. |
-| **Guru** | `view-guru-jurnal` | Jurnal Pembelajaran | `fa-book-journal-whills` | Semua Guru | Pencatatan KBM 10 field (Tujuan Pembelajaran, KKTP, Konten, Kegiatan, Mapel, Kelas, Absensi H/I/S/A, Lokasi, Kamera landscape, Catatan). Auto-save formulir ke localStorage, mode Guru Inval, dan switch otomatis ke Jurnal Kegiatan saat Sistem Blok aktif. |
-| **Guru** | `view-jurnal-kelas` | Jurnal Kelas | `fa-chalkboard-user` | Wali Kelas & Admin | Monitoring seluruh jurnal KBM yang diisi guru mapel di kelas binaan wali kelas, deteksi ketidakhadiran murid lintas mapel. |
-| **Guru** | `view-piket` | Modul Piket | `fa-shield-halved` | Terjadwal Piket Hari Ini | Scan presensi siswa via QR kamera browser / scanner USB HID (hingga 10 unit) atau checklist manual, buku tamu & ketertiban, submit laporan piket dengan foto lanskap. |
-| **Guru** | `view-dokumen` | Perangkat Pembelajaran | `fa-folder-open` | Semua Guru | Unggah 6 jenis administrasi kurikulum (CP, ATP, RPE, Prota, Promes, Modul Ajar/RPM), pelacakan status verifikasi admin (Disetujui, Perlu Revisi, Menunggu). |
-| **Guru** | `view-gradebook` | Daftar Nilai | `fa-graduation-cap` | Semua Guru | Buku nilai digital Kurikulum Merdeka, input nilai asesmen formatif dan sumatif per TP, dan ekspor ke file Excel (.xlsx). |
-| **Guru** | `view-informasi` | Informasi | `fa-bullhorn` | Semua Guru | Papan pengumuman & siaran resmi sekolah, interaksi komentar dua arah (jika diizinkan admin). |
-| **Guru** | `view-history` | Riwayat | `fa-clock-rotate-left` | Semua Guru | Arsip presensi masa lalu (jam, menit terlambat, foto) dan log seluruh jurnal KBM yang pernah dibuat. |
-| **Guru** | `view-guru-rekap-jurnal` | Rekap Jurnal | `fa-book-open` | Semua Guru | Cetak rekap jurnal mengajar bulanan resmi atau rentang tanggal kustom berformat kop sekolah, 10 kolom standar, ringkasan kehadiran murid, dan tanda tangan kepala sekolah. |
-| **Guru** | `view-rekap-siswa` | Presensi Siswa | `fa-users-viewfinder` | Wali Kelas & Admin | Rekapitulasi absensi siswa harian kelas binaan wali kelas, input/koreksi absensi (H, S, I, A), dan laporan persentase kehadiran siswa. |
-| **Admin** | `view-home` | Dashboard | `fa-house` | Admin | Monitoring operasional sekolah real-time: statistik kehadiran guru hari ini, grafik keterlambatan, guru belum absen/jurnal. |
-| **Admin** | `view-admin-verif` | Verifikasi | `fa-clipboard-check` | Admin | Pusat persetujuan: izin/sakit/dinas luar guru, izin terlambat, jurnal mengajar, dan perangkat kurikulum. Opsi Setujui, Tolak (dengan alasan), dan Reset Status. |
-| **Admin** | `view-sistem-blok` | Sistem Blok | `fa-layer-group` | Admin | Buat, ubah, dan hapus periode kegiatan khusus (ujian, PTS, jeda KBM). Jadwal KBM reguler disembunyikan di UI dan dialihkan ke Jurnal Kegiatan tanpa menghapus data di DB. |
-| **Admin** | `view-jurnal-kelas` | Jurnal Kelas | `fa-chalkboard-user` | Admin | Pemantauan keterisian jurnal pembelajaran untuk semua kelas dan rombel di sekolah. |
-| **Admin** | `view-piket` | Kelola Piket | `fa-shield-halved` | Admin | Atur jadwal penugasan guru piket harian (Senin–Sabtu), pantau laporan ketertiban piket masuk, dan akses data presensi siswa. |
-| **Admin** | `view-dokumen` | Perangkat Pembelajaran | `fa-folder-open` | Admin | Tinjau seluruh dokumen kurikulum guru, unduh berkas, dan berikan status persetujuan atau catatan revisi. |
-| **Admin** | `view-gradebook` | Daftar Nilai | `fa-graduation-cap` | Admin | Supervisi pengisian nilai oleh dewan guru, monitoring capaian pembelajaran, dan ekspor rapor nilai. |
-| **Admin** | `view-informasi` | Informasi | `fa-bullhorn` | Admin | Buat & terbitkan siaran pengumuman baru, atur sasaran (Semua / Guru / Wali Kelas), pin pengumuman, dan atur mode 1 arah atau 2 arah. |
-| **Admin** | `view-analitik` | Analitik | `fa-chart-pie` | Admin | Metrik statistik kedisiplinan guru: tren kehadiran, jam keterlambatan, rasio pemenuhan jurnal, dan Leaderboard Guru Terdisiplin bulanan. |
-| **Admin** | `view-admin-rekap` | Rekap Akhir | `fa-file-invoice` | Admin | Laporan bulanan komprehensif seluruh guru untuk dinas/yayasan, cetak format resmi tanda tangan kepala sekolah, dan ekspor Excel (.xlsx). |
-| **Admin** | `view-rekap-siswa` | Presensi Siswa | `fa-users-viewfinder` | Admin | Rekapitulasi absensi siswa seluruh kelas, filter kelas/tanggal, dan cetak laporan kehadiran siswa. |
-| **Admin** | `view-admin-data` | Master Data | `fa-database` | Admin | Kelola database sekolah: Siswa (CRUD, cetak kartu QR, proses naik kelas massal), Guru (CRUD, ubah username, reset password), Mapel, Kalender Libur, Jadwal Pelajaran, dan Wali Kelas. |
-| **Admin** | `view-admin-backup` | Akses Data / Backup | `fa-hard-drive` | Admin | Sinkronisasi data presensi dan jurnal ke Google Spreadsheet / cloud, pembersihan arsip transaksi lama. |
-| **Admin** | `view-admin-config` | Sistem (Konfigurasi) | `fa-gears` | Admin | Konfigurasi profil sekolah, batas toleransi jam presensi (datang, kepulangan reguler & Jumat), geofence koordinat GPS & radius meter, mode upload kamera jurnal. |
-| **Superadmin** | `view-superadmin-overview` | Ringkasan Platform | `fa-gauge-high` | Superadmin | Dasbor multi-tenant platform: total sekolah terdaftar, sekolah aktif vs non-aktif, total akun admin, total guru, total siswa. |
-| **Superadmin** | `view-superadmin-sekolah` | Kelola Sekolah | `fa-school` | Superadmin | Pendaftaran sekolah baru, pengaktifan lisensi, konfigurasi fitur per sekolah (misal: live camera saja vs live camera + upload foto jurnal). |
-| **Superadmin** | `view-superadmin-admins` | Admin Sekolah | `fa-user-shield` | Superadmin | Manajemen akun Administrator sekolah: buat admin baru, tautkan ke sekolah, reset password admin, pantau status akun. |
+### 1.2 Admin Bobot Configuration Mechanism
+- **Loading Bobot** (`GradebookView.tsx:182–212`):
+  Defaults: `kehadiran: 40`, `formatif: 30`, `sumatif: 30`. Loaded from table `pengaturan` using key `'bobot_nilai_mapel'`.
+- **Saving & Validation** (`GradebookView.tsx:667–692`):
+  - Strictly requires `bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100`.
+  - Rejects with `showToast('Validasi', 'Total bobot harus 100%. Saat ini: ...', 'warning')`.
+  - Saved as JSON string `{"kehadiran":40,"formatif":30,"sumatif":30}` in `pengaturan`.
 
----
+### 1.3 Diagnostik Constraint & Assessment Rules
+- **Rule 1: Diagnostik Max 1 per TP**:
+  - In `GradebookView.tsx:713–735`: `fetchColumnsForActiveTP` auto-heals / initializes exactly 1 Diagnostik column if missing.
+  - In `GradebookView.tsx:1102`: `handleOpenAddColModal(kategori: 'Formatif' | 'Sumatif')` restricts add column buttons in the UI to Formatif and Sumatif only (no manual "+ Diagnostik" button).
+  - In `GradebookView.tsx:1195–1198`: `handleDeleteCol` blocks deleting Diagnostik (`showToast('Tidak Dapat Dihapus', 'Asesmen Diagnostik wajib ada tepat 1 per Tujuan Pembelajaran.', 'warning')`).
+  - *Missing in DB*: While UI restricts adding Diagnostik, PostgreSQL table `asesmen_kolom` currently lacks a database-level unique constraint preventing concurrent or programmatic insertion of a second Diagnostik column for the same `tp_id`.
+- **Rule 2: Diagnostik Excluded from Nilai Akhir**:
+  - Confirmed: `diagnostikCol` is never factored into `allAvgF`, `allAvgS`, or `semesterFinalRaw`.
 
-### 1.4 Test Suite Regression Constraints
-Execution of existing test suites revealed strict assertions that must be preserved:
-1. `tests/onboarding_and_ai_assistant_ui.test.ts`:
-   - Requires `STORAGE_KEY_GURU === 'sipjam_onboarding_guru_done'`
-   - Requires `STORAGE_KEY_ADMIN === 'sipjam_onboarding_admin_done'`
-   - Requires `GURU_STEPS.length >= 5` with exact target IDs (`hamburger-btn`, `view-guru-presensi`, `view-guru-jurnal`, `view-piket`, `ai-assistant-btn`).
-   - Requires `ADMIN_STEPS.length >= 6` with exact target IDs (`view-admin-verif`, `view-sistem-blok`, `view-admin-data`, `view-analitik`, `view-admin-config`, `ai-assistant-btn`).
-2. `tests/app_screen_integration.test.ts`:
-   - Checks that `AppScreen.tsx` contains text `"Lihat Tutorial Lagi"`.
-   - Checks that `AppScreen.tsx` contains `setTourOpen(true)` and `setSidebarOpen(false)`.
-   - Checks that `AppScreen.tsx` mounts `<OnboardingTutorial ... />` with all existing props.
-   - Checks that all `data-tour` attributes remain intact.
+### 1.4 How Attendance is Tracked in the Database
+- **Table `public.absensi`** (`src/types/database.ts:17–75`):
+  - Columns: `id`, `sekolah_id`, `tanggal`, `kelas`, `siswa_id`, `nisn`, `nama_siswa`, `status` (`'Hadir'|'Izin'|'Sakit'|'Alpa'`), `keterangan`, `sumber_perubahan`, `diubah_oleh`, `log_perubahan`.
+  - Constraint: `UNIQUE (sekolah_id, tanggal, nisn)`.
+- **Table `public.jurnal_pembelajaran`** (`src/types/database.ts:514–615`):
+  - Columns: `id`, `sekolah_id`, `mapel`, `kelas`, `tanggal`, `absensi_siswa` (JSON string of `{ [nisn]: 'H'|'S'|'I'|'A' }`), `kehadiran_murid`.
+  - In `src/components/GuruJurnal.tsx:827–863`: Each Jurnal KBM submission records the subject's attendance and synchronizes it to `absensi`.
+- **Attendance Querying Pattern in `src/components/RaporView.tsx:120–144`**:
+  `RaporView.tsx` queries:
+  ```ts
+  let aQuery = supabase.from('absensi').select('nisn, status').eq('kelas', selectedKelas);
+  if (sekolahId) aQuery = aQuery.eq('sekolah_id', sekolahId);
+  const { data: aData } = await aQuery;
+  ```
+  And compiles `{ hadir, izin, sakit, alpa }` for each `nisn`.
+
+### 1.5 Rekap Semester & Rapor Integration
+- **`src/components/GradebookView.tsx` Tab 2 (`'rekap-semester'`, lines 2465–2604)**:
+  Renders student table with columns `#`, `NISN`, `Nama Siswa`, `L/P`, `[TP Columns]`, `Nilai Rapor` (`stats.semesterFinal ?? '-'`), `Predikat Semester`, and `Deskripsi Capaian Pembelajaran` (`stats.deskripsiCapaian`).
+- **`exportSemesterToCsv` (lines 1548–1586)**:
+  Exports `semStats.semesterFinal` and `semStats.predikat` for all students in the class.
+- **`generateKurikulumMerdekaDeskripsi` (lines 20–104)**:
+  Pure exported function taking `(studentName: string, tpScores: { kode, deskripsi, score }[])` returning `CapaianDeskripsiResult`.
+  Used by:
+  1. `GradebookView.tsx:1424` (Tab 2 deskripsi column).
+  2. `src/components/RaporView.tsx:218` (Wali Kelas report card synthesis).
+  3. `tests/m4_academic_merdeka_rapor.test.ts`.
+  4. `tests/adversarial_kurikulum_merdeka_cp.test.ts`.
+  5. `tests/adversarial_kurikulum_merdeka_cp_permutations.test.ts`.
+
+### 1.6 Syntax Error Blocker in `GradebookView.tsx`
+- Running `npx tsx tests/adversarial_kurikulum_merdeka_cp.test.ts` fails with:
+  ```
+  Error: Transform failed with 1 error:
+  src/components/GradebookView.tsx:3144:5: ERROR: Expected identifier but found "/"
+  ```
+- **Direct Cause**: Premature closure tags `</section>\n );\n}` were inadvertently inserted at lines 3056–3058 immediately following the Admin Bobot Modal, leaving the subsequent `Modal Bulk Fill Grades` outside the component scope. Removing lines 3056–3058 resolves this immediately.
+
+### 1.7 Existing Test Suites
+- Test command: `npm test` runs 19 test suites using `tsx` (configured in `package.json`).
+- Related academic test suites in `tests/`:
+  - `tests/m4_gradebook.test.ts` (verifies CRUD, TP calculation, Diagnostik isolation).
+  - `tests/m4_academic_merdeka_rapor.test.ts` (verifies `generateKurikulumMerdekaDeskripsi`, Wali Kelas access guards).
+  - `tests/adversarial_kurikulum_merdeka_cp.test.ts` (100+ checks for Kurikulum Merdeka boundary logic).
+  - `tests/adversarial_kurikulum_merdeka_cp_permutations.test.ts` (permutation test for empty/degenerate arrays and score distribution).
 
 ---
 
 ## 2. Logic Chain
 
-1. **User Identity Visibility Problem**:
-   - Currently, user name and role only appear on the Dashboard (`HomeView`). When a teacher or administrator navigates to other modules (which is 90% of their daily interaction), their active user profile is hidden.
-   - In multi-user school environments where computers or tablets are shared among teachers, not seeing the logged-in user's name and role in the navigation sidebar creates confusion (e.g., teachers submitting journals or presensi under another teacher's session).
-   - Displaying the user's name, role badge, avatar, and NIP/username prominently in the sidebar resolves this ambiguity completely.
+### 2.1 Diagnostik Exclusion & Limit Architecture
+1. **Exclusion from Formula**:
+   - *Observation (1.1)*: `diagnostikCol` represents diagnostic/baseline competency.
+   - *Requirement (ORIGINAL_REQUEST R2 & R3)*: Diagnostik must not count towards Nilai Akhir.
+   - *Deduction*: Diagnostik columns must strictly be excluded from both `avgFormatifAll` and `avgSumatifAll`. In `GradebookView`, Formatif columns are filtered by `c.kategori === 'Formatif'` and Sumatif by `c.kategori === 'Sumatif'`. Diagnostik (`kategori === 'Diagnostik'`) is ignored during aggregation, satisfying the isolation rule.
+2. **Limit: Max 1 per TP**:
+   - *UI Layer*: The UI already restricts addition by only offering `handleOpenAddColModal('Formatif')` and `handleOpenAddColModal('Sumatif')`. If `handleSaveCol` is invoked, add an explicit guard:
+     ```ts
+     if (colForm.kategori === 'Diagnostik') {
+       const existingDiag = columnsList.find(c => c.kategori === 'Diagnostik');
+       if (existingDiag && (!editingCol || editingCol.id !== existingDiag.id)) {
+         showToast('Validasi Gagal', 'Maksimal 1 Asesmen Diagnostik per Tujuan Pembelajaran.', 'warning');
+         return;
+       }
+     }
+     ```
+   - *DB Layer*: Enforce via partial unique index in migration:
+     ```sql
+     CREATE UNIQUE INDEX IF NOT EXISTS uq_asesmen_tp_diagnostik 
+     ON public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik');
+     ```
 
-2. **Sidebar Layout Integration**:
-   - The sidebar drawer in `AppScreen.tsx` currently has `w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full p-5 flex flex-col justify-between`.
-   - Placing the User Profile Card directly under the top brand header (above the scrollable menu list) ensures immediate visibility upon opening the drawer.
-   - Converting the menu list to `flex-1 overflow-y-auto custom-scroll` guarantees that long menus (Admin has 14 menus) remain easily scrollable without pushing the profile off the screen.
+### 2.2 Mathematical Design of Nilai Akhir Formula
+1. **Core Equation**:
+   $$\text{Nilai Akhir} = (\text{bobot}_{\text{kehadiran}} \times \text{rata}_{\text{kehadiran}}) + (\text{bobot}_{\text{formatif}} \times \text{rata}_{\text{formatif}}) + (\text{bobot}_{\text{sumatif}} \times \text{rata}_{\text{sumatif}})$$
+   Where:
+   - $\text{bobot}_{\text{kehadiran}} + \text{bobot}_{\text{formatif}} + \text{bobot}_{\text{sumatif}} = 100\%$
+   - Standard defaults: $40\%$, $30\%$, $30\%$
+2. **Handling Missing / Incomplete Data**:
+   - *Requirement R3*: *"Jika tidak ada data formatif atau sumatif, nilai akhir menampilkan '-' / null (tidak error)"*.
+   - *Logic*:
+     - If both `avgFormatifAll === null` and `avgSumatifAll === null`: return `null`.
+     - If either `avgFormatifAll === null` or `avgSumatifAll === null`: return `null` (since a Kurikulum Merdeka subject final grade cannot be certified without both formative progress and summative achievement).
+     - If `totalPertemuan === 0` (no attendance sessions recorded yet): default `rata_kehadiran` to `100.0` so students are not penalized for untracked attendance.
+   - *Implementation*:
+     ```ts
+     const avgFormatifAll = allAvgF.length > 0 ? allAvgF.reduce((a, b) => a + b, 0) / allAvgF.length : null;
+     const avgSumatifAll = allAvgS.length > 0 ? allAvgS.reduce((a, b) => a + b, 0) / allAvgS.length : null;
+     const rataKehadiran = attendanceRates[nisn] ?? 100;
 
-3. **Tutorial Architecture: Interactive Tour vs In-App Guide**:
-   - The existing `OnboardingTutorial` is an interactive spotlight tour. Attempting to force all 11 menus for Guru, 14 menus for Admin, and 3 menus for Superadmin into a 14-step sequential modal overlay would create severe user fatigue and UX degradation.
-   - Therefore, the optimal solution is a **two-tier tutorial architecture**:
-     - **Tier 1 (Interactive Tour)**: Keep and preserve `OnboardingTutorial.tsx` with its 5/6-step spotlight for quick visual orientation on first login.
-     - **Tier 2 (Comprehensive In-App Tutorial Hub)**: Introduce `TutorialModal.tsx`—a searchable, tabbed, accordion-style guide modal covering ALL 28 menus across all 3 roles (Guru, Admin, Superadmin) with detailed operational steps, rules, and tips.
-     - **Tier 3 (External Documentation)**: Provide `docs/PANDUAN_PENGGUNA.md` (and a link from `README.md`) containing the full offline/printable markdown guide for school management and accreditation.
+     let semesterFinalRaw: number | null = null;
+     if (avgFormatifAll !== null && avgSumatifAll !== null) {
+       const wK = bobotKehadiran / 100;
+       const wF = bobotFormatif / 100;
+       const wS = bobotSumatif / 100;
 
-4. **Backward Compatibility & Test Safety**:
-   - By retaining the exact string `"Lihat Tutorial Lagi"` in the sidebar alongside the new `"Panduan & Tutorial Lengkap"` button, both the existing regression tests (`app_screen_integration.test.ts`) and the new user requirement ("tutorial yang lengkap ... untuk semua menu dan fitur per role") will be simultaneously 100% satisfied.
+       semesterFinalRaw = parseFloat((
+         (rataKehadiran * wK) +
+         (avgFormatifAll * wF) +
+         (avgSumatifAll * wS)
+       ).toFixed(1));
+     }
+     ```
+
+### 2.3 Attendance (`absensi`) Integration Strategy
+1. **Data Source Evaluation**:
+   - `jurnal_pembelajaran` records contain `mapel`, `kelas`, `tanggal`, and `absensi_siswa` (JSON map of student attendance per KBM session).
+   - `absensi` table stores daily verified attendance records (`kelas`, `tanggal`, `status`, `nisn`).
+2. **Robust Dual-Source Resolver**:
+   - Query KBM journals for `selectedMapel` and `selectedKelas`:
+     ```ts
+     let jQ = supabase
+       .from('jurnal_pembelajaran')
+       .select('tanggal, absensi_siswa')
+       .eq('mapel', selectedMapel)
+       .eq('kelas', selectedKelas);
+     if (sekolahId) jQ = jQ.eq('sekolah_id', sekolahId);
+     const { data: jData } = await jQ;
+     ```
+   - If `jData` has KBM entries with `absensi_siswa`:
+     - Parse JSON for each journal session.
+     - For each student: `hadirCount = count where status in ('H', 'Hadir')`, `totalSessions = jData.length`.
+     - `attendanceRate = (hadirCount / totalSessions) * 100`.
+   - Fallback (if no journals yet):
+     - Query canonical `absensi` table matching `RaporView.tsx`:
+       ```ts
+       let aQ = supabase.from('absensi').select('nisn, status').eq('kelas', selectedKelas);
+       if (sekolahId) aQ = aQ.eq('sekolah_id', sekolahId);
+       const { data: aData } = await aQ;
+       ```
+     - For each student: `total = hadir + izin + sakit + alpa`.
+     - `attendanceRate = total > 0 ? (hadir / total) * 100 : 100.0`.
+   - Store in `attendanceRates: Record<string, number>`.
+
+### 2.4 Regression Prevention for Rekap Semester & Rapor
+1. **Preserve Export Signature**:
+   - `generateKurikulumMerdekaDeskripsi` and `CapaianDeskripsiResult` must remain unchanged in `GradebookView.tsx`.
+   - `RaporView.tsx` imports this exact function at line 9. Preserving its inputs and outputs guarantees 0 regressions in `RaporView.tsx`.
+2. **Preserve Tab 2 Columns**:
+   - Tab 2 table in `GradebookView.tsx` expects `stats.semesterFinal`, `stats.predikat`, and `stats.deskripsiCapaian`.
+   - When `stats.semesterFinal === null`, the table renders `'-'`, matching acceptance criteria.
+3. **Preserve CSV Export**:
+   - `exportSemesterToCsv` outputs `Nilai_Rapor_Semester` and `Predikat` cleanly with no `NaN` or unhandled exceptions.
 
 ---
 
 ## 3. Caveats
 
-1. **Superadmin Role Scope**:
-   - Superadmin is a platform-level role that does not belong to a single school (`sekolah_id` is null). The tutorial for Superadmin must focus on platform operations (tenant management, school onboarding, admin credentials) rather than school-level KBM workflows.
-2. **Dynamic Menu Visibility**:
-   - For teachers, certain menus are conditionally rendered based on assignment:
-     - `view-jurnal-kelas` and `view-rekap-siswa` require `isWaliKelas`.
-     - `view-piket` requires `isPiketHariIni`.
-   - The tutorial must explicitly state these prerequisites so teachers understand why a menu may not appear on their specific device on a given day.
-3. **No npm Dependencies**:
-   - All proposed components (`TutorialModal`, sidebar profile card, documentation) rely strictly on native React 19, Tailwind CSS, Font Awesome 6 icons, and TypeScript. No new external libraries or packages are introduced.
+1. **Read-Only Explorer Discipline**:
+   In strict compliance with teamwork explorer rules, no code changes were made to `src/components/GradebookView.tsx` or `src/types/database.ts`. All solutions are provided as exact actionable blueprints for the Implementer.
+2. **Historical Absence Records**:
+   In instances where school sessions have just started and 0 attendance records exist for a subject, defaulting `rata_kehadiran` to `100.0` prevents penalizing students with 0% attendance.
+3. **Partial Unique Index in PostgreSQL**:
+   `CREATE UNIQUE INDEX ... WHERE (kategori = 'Diagnostik')` is PostgreSQL-specific. This is fully supported by Supabase PostgreSQL.
 
 ---
 
-## 4. Conclusion & Recommended Implementation Plan
+## 4. Conclusion
 
-### 4.1 Component 1: Sidebar User Profile Design (in `src/components/AppScreen.tsx`)
-In `src/components/AppScreen.tsx`, inside the sidebar overlay (around line 639), immediately below the brand header divider, insert a dedicated **User Profile Card**:
+### 4.1 Concrete Implementer Blueprint for `src/components/GradebookView.tsx`
 
-```tsx
-{/* User Identity Card */}
-<div className="mb-4 p-3 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-green-50/40 dark:from-gray-800/90 dark:to-gray-800/40 border border-emerald-100/90 dark:border-gray-700/60 shadow-xs flex items-center gap-3">
-  <div className="relative w-11 h-11 rounded-full bg-white dark:bg-gray-700 p-0.5 shadow-xs shrink-0 overflow-hidden border border-emerald-200 dark:border-gray-600">
-    {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')}
-    <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-800" title="Aktif"></span>
-  </div>
-  <div className="min-w-0 flex-1">
-    <h3 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white truncate" title={user?.nama || 'Pengguna'}>
-      {user?.nama || 'Pengguna SIPJAM'}
-    </h3>
-    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-        isSuperadmin
-          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200/50'
-          : isAdmin
-          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'
-          : isWaliKelas
-          ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
-          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
-      }`}>
-        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isAdmin ? 'fa-user-shield' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
-        {isSuperadmin ? 'Superadmin' : isAdmin ? 'Administrator' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
-      </span>
-      {user?.username && (
-        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user.username}>
-          {user.username}
-        </span>
-      )}
-    </div>
-  </div>
-</div>
-```
+1. **Step 1: Fix Syntax Error**:
+   Delete lines 3056–3058:
+   ```tsx
+   // REMOVE THESE 3 LINES:
+       </section>
+     );
+   }
+   ```
+   This ensures `Modal Bulk Fill Grades` remains inside the component return statement.
 
----
+2. **Step 2: Add Attendance Querying Hook**:
+   ```ts
+   // State
+   const [attendanceRates, setAttendanceRates] = useState<Record<string, number>>({});
 
-### 4.2 Component 2: Complete Tutorial In-App (`TutorialModal.tsx`)
-Create new modular tutorial components under `src/components/Tutorial/`:
-1. `src/components/Tutorial/tutorialData.ts`:
-   - Data structures for all 28 menus grouped by role: `guru` (11 menus), `admin` (14 menus), `superadmin` (3 menus).
-   - Each item includes: `id`, `viewId`, `title`, `icon`, `role`, `summary`, `prerequisites`, `steps: string[]`, `keyTips: string[]`.
-2. `src/components/Tutorial/TutorialModal.tsx`:
-   - Responsive dialog with role selector tabs (`Guru`, `Admin`, `Superadmin`).
-   - Live search input to quickly find how to do specific actions (e.g., "scan qr", "guru inval", "naik kelas", "sistem blok").
-   - Menu cards with expandable accordion details.
-   - Action button "Buka Menu" allowing the user to jump directly to that menu from the tutorial!
-3. `src/components/Tutorial/index.ts`:
-   - Barrel export.
-4. Integrate into `AppScreen.tsx`:
-   - Add state `const [tutorialModalOpen, setTutorialModalOpen] = useState(false);`.
-   - Add button to sidebar:
-     ```tsx
-     <button
-       type="button"
-       onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
-       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all border border-emerald-200 dark:border-emerald-800/60 mt-2 mb-1 cursor-pointer"
-     >
-       <i className="fa-solid fa-book-bookmark text-sm"></i>
-       <span>Panduan & Tutorial Lengkap</span>
-     </button>
-     ```
-   - Keep `"Lihat Tutorial Lagi"` button for triggering the visual spotlight tour (`setTourOpen(true)`).
+   // Fetch attendance when mapel/kelas/sekolahId changes
+   useEffect(() => {
+     if (!selectedKelas || !selectedMapel) {
+       setAttendanceRates({});
+       return;
+     }
 
----
+     const fetchMapelAttendance = async () => {
+       try {
+         // 1. Try fetching from jurnal_pembelajaran for this specific mapel & kelas
+         let jQ = supabase
+           .from('jurnal_pembelajaran')
+           .select('absensi_siswa')
+           .eq('mapel', selectedMapel)
+           .eq('kelas', selectedKelas);
+         if (sekolahId) jQ = jQ.eq('sekolah_id', sekolahId);
+         const { data: jData } = await jQ;
 
-### 4.3 Component 3: Complete Documentation File (`docs/PANDUAN_PENGGUNA.md` & `TUTORIAL.md`)
-Create a comprehensive, structured markdown manual covering:
-- Bab 1: Gambaran Umum & Arsitektur SIPJAM
-- Bab 2: Panduan Operasional Guru (11 Menu lengkap + Guru Inval + Presensi QR)
-- Bab 3: Panduan Operasional Administrator (14 Menu lengkap + Verifikasi + Master Data + Backup + Sistem Blok)
-- Bab 4: Panduan Operasional Superadmin (Ringkasan Platform, Kelola Sekolah, Admin Sekolah)
-- Bab 5: Pemecahan Masalah & Solusi Kendala Teknis (GPS, Kamera, Offline Mode, dll.)
+         const rates: Record<string, number> = {};
+
+         if (jData && jData.length > 0 && jData.some(j => j.absensi_siswa)) {
+           const studentHadirCount: Record<string, number> = {};
+           let validSessions = 0;
+
+           jData.forEach(j => {
+             if (!j.absensi_siswa) return;
+             try {
+               const parsed = typeof j.absensi_siswa === 'string' ? JSON.parse(j.absensi_siswa) : j.absensi_siswa;
+               validSessions++;
+               Object.entries(parsed).forEach(([nisn, status]) => {
+                 const st = String(status).toUpperCase();
+                 if (st === 'H' || st === 'HADIR') {
+                   studentHadirCount[nisn] = (studentHadirCount[nisn] || 0) + 1;
+                 }
+               });
+             } catch {}
+           });
+
+           if (validSessions > 0) {
+             students.forEach(s => {
+               const hadir = studentHadirCount[s.nisn] || 0;
+               rates[s.nisn] = parseFloat(((hadir / validSessions) * 100).toFixed(1));
+             });
+             setAttendanceRates(rates);
+             return;
+           }
+         }
+
+         // 2. Fallback: query canonical absensi table for this class
+         let aQ = supabase.from('absensi').select('nisn, status').eq('kelas', selectedKelas);
+         if (sekolahId) aQ = aQ.eq('sekolah_id', sekolahId);
+         const { data: aData } = await aQ;
+
+         if (aData && aData.length > 0) {
+           const studentStats: Record<string, { hadir: number; total: number }> = {};
+           aData.forEach(row => {
+             if (!studentStats[row.nisn]) studentStats[row.nisn] = { hadir: 0, total: 0 };
+             studentStats[row.nisn].total++;
+             const st = (row.status || '').toUpperCase();
+             if (st === 'H' || st === 'HADIR') studentStats[row.nisn].hadir++;
+           });
+
+           students.forEach(s => {
+             const stat = studentStats[s.nisn];
+             rates[s.nisn] = stat && stat.total > 0 ? parseFloat(((stat.hadir / stat.total) * 100).toFixed(1)) : 100;
+           });
+           setAttendanceRates(rates);
+           return;
+         }
+
+         // 3. Fallback default: 100% if no records yet
+         const defaultRates: Record<string, number> = {};
+         students.forEach(s => { defaultRates[s.nisn] = 100; });
+         setAttendanceRates(defaultRates);
+       } catch (err) {
+         console.error('Error fetching attendance for gradebook:', err);
+       }
+     };
+
+     fetchMapelAttendance();
+   }, [selectedMapel, selectedKelas, sekolahId, students]);
+   ```
+
+3. **Step 3: Update `calculateStudentSemesterStats`**:
+   Replace lines 1404–1420 with:
+   ```ts
+   // Aggregate semester final with real kehadiran component
+   const avgFormatifAll = allAvgF.length > 0 ? allAvgF.reduce((a, b) => a + b, 0) / allAvgF.length : null;
+   const avgSumatifAll = allAvgS.length > 0 ? allAvgS.reduce((a, b) => a + b, 0) / allAvgS.length : null;
+   const kehadiranScore = attendanceRates[nisn] ?? 100;
+
+   let semesterFinalRaw: number | null = null;
+   // Requirement: "Jika tidak ada data formatif atau sumatif, nilai akhir menampilkan '-' / null (tidak error)"
+   if (avgFormatifAll !== null && avgSumatifAll !== null) {
+     const wKehadiran = bobotKehadiran / 100;
+     const wFormatif = bobotFormatif / 100;
+     const wSumatif = bobotSumatif / 100;
+
+     semesterFinalRaw = parseFloat((
+       (kehadiranScore * wKehadiran) +
+       (avgFormatifAll * wFormatif) +
+       (avgSumatifAll * wSumatif)
+     ).toFixed(1));
+   }
+   ```
+
+4. **Step 4: Update UI Validation for Diagnostik Limit**:
+   In `handleSaveCol` (line 1162):
+   ```ts
+   if (colForm.kategori === 'Diagnostik') {
+     const existingDiag = columnsList.find(c => c.kategori === 'Diagnostik');
+     if (existingDiag && (!editingCol || editingCol.id !== existingDiag.id)) {
+       showToast('Validasi Gagal', 'Maksimal 1 Asesmen Diagnostik per Tujuan Pembelajaran.', 'warning');
+       return;
+     }
+   }
+   ```
 
 ---
 
 ## 5. Verification Method
 
-To verify the implementation independently:
-
-1. **Static Analysis & TypeScript Compilation**:
+### 5.1 Verification Commands
+1. **TypeScript Static Check**:
    ```powershell
    npx tsc --noEmit
    ```
-   *Expected*: Exits with code 0.
+   *Pass Condition*: 0 errors (clean compilation after removing lines 3056–3058).
 
-2. **Existing Regression Test Verification**:
+2. **Kurikulum Merdeka CP Engine Verification**:
    ```powershell
-   npx tsx tests/onboarding_and_ai_assistant_ui.test.ts
-   npx tsx tests/app_screen_integration.test.ts
+   npx tsx tests/adversarial_kurikulum_merdeka_cp.test.ts
    ```
-   *Expected*: All 24 assertions in `app_screen_integration.test.ts` and all 8 sections in `onboarding_and_ai_assistant_ui.test.ts` pass 100%.
+   *Pass Condition*: All boundary tests pass with exit code 0.
 
-3. **New Verification Test Suite**:
-   Create a dedicated test `tests/sidebar_user_profile_and_tutorial.test.ts`:
-   - Verifies `AppScreen.tsx` renders user name, role badge, and avatar in the sidebar.
-   - Verifies `TutorialModal` contains all 11 menus for Guru, 14 menus for Admin, and 3 menus for Superadmin.
-   - Verifies search/filter functionality in `tutorialData.ts`.
-   - Verifies existence of `docs/PANDUAN_PENGGUNA.md` or `TUTORIAL.md`.
-   Run with:
+3. **Extended Permutations Verification**:
    ```powershell
-   npx tsx tests/sidebar_user_profile_and_tutorial.test.ts
+   npx tsx tests/adversarial_kurikulum_merdeka_cp_permutations.test.ts
    ```
+   *Pass Condition*: All degenerate array tests pass with exit code 0.
 
-4. **Production Build Gate**:
-   ```powershell
-   npm run build
-   ```
-   *Expected*: Next.js build succeeds with 0 errors.
+4. **Dedicated New Test File to Implement**:
+   Create `tests/gradebook_formula_and_attendance.test.ts` to programmatically verify:
+   - Nilai Akhir formula: `(40% * 90) + (30% * 80) + (30% * 70) = 36 + 24 + 21 = 81.0`.
+   - Diagnostik isolation: Diagnostik score 50 vs 100 produces identical Nilai Akhir.
+   - Missing data check: Formatif `null` or Sumatif `null` returns `null` (displayed as `'-'`).
+   - Weight validation: Sum != 100 is rejected.
+   - Attendance rate calculation from mock meetings.
 
----
-*Report compiled by explorer_survey_3.*
+### 5.2 Invalidation Conditions
+- Any occurrence of `NaN` or unexpected fallback when a student has missing grades.
+- Any change to the exported signature of `generateKurikulumMerdekaDeskripsi` or `CapaianDeskripsiResult`.
+- Permitting more than 1 Diagnostik column per TP.
+- Factoring Diagnostik scores into the semester final grade.

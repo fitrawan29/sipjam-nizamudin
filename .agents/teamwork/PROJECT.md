@@ -1,92 +1,90 @@
-# Project: SIPJAM — Chat Removal, QR Siswa Presensi, Piket/Wali Kelas Reporting & Guru Mapel Sync
+# Project: SIPJAM — GradebookView CP → TP → Asesmen → Nilai Akhir Refactor (R1-R5)
 
 ## Architecture
-- **Stack**: Next.js 16.3.4 (App Router), React 19, TypeScript, Tailwind CSS, Font Awesome 6 (CDN), SweetAlert2, Supabase (PostgreSQL + PostgREST).
-- **Authentication & Roles**: Roles are `'superadmin'`, `'admin'`, and `'guru'`. User identity maintained in `users` and `data_guru`.
-- **Multi-tenant Data Flow**: All operational queries are strictly partitioned by `sekolah_id`.
-- **Database Schema Additions**:
-  - `data_siswa`: Column `qr_code TEXT` storing unique QR identifier (fallback to NISN or UUID).
-  - `presensi_siswa`: New attendance table tracking gate check-ins (datang / pulang) by Piket with unique constraint `(sekolah_id, tanggal, siswa_id, status)`.
-- **Scanner Kiosk Architecture**:
-  - `PiketView.tsx` with dedicated Scan tab.
-  - Native Web API `BarcodeDetector` / camera stream for browser scanning.
-  - External USB HID barcode/QR scanner via auto-focused text input listening to Enter key event.
-  - Concurrent operation: supports up to 10 independent kiosks/tabs concurrently via idempotent PostgreSQL upserts and Supabase realtime synchronization.
-- **Reporting & Sync**:
-  - `PiketView.tsx`: Live daily gate attendance log and summary.
-  - `RekapSiswaView.tsx`: Wali Kelas filtered view for assigned class daily gate attendance.
-  - `GuruJurnal.tsx`: Synchronization showing students who checked in with Piket (`Hadir di Sekolah`) when teacher opens active class journal.
+- **Stack**: Next.js 15 (App Router, `'use client'`), React 19, TypeScript, Tailwind CSS, SweetAlert2, Supabase (PostgreSQL + RLS).
+- **Core Component**: `src/components/GradebookView.tsx` (3,147 lines).
+- **Database Schema**:
+  - `capaian_pembelajaran`: New table storing Capaian Pembelajaran (`id`, `sekolah_id`, `guru_mapel_id`, `nama_mapel`, `kelas`, `semester`, `tahun_ajaran`, `kode_cp`, `deskripsi`, `urutan`, timestamps).
+  - `tujuan_pembelajaran`: Column `cp_id UUID REFERENCES capaian_pembelajaran(id) ON DELETE SET NULL` linking TP to parent CP.
+  - `asesmen_kolom`: Column `keterangan TEXT` for free-text assessment notes.
+  - `asesmen_kolom`: Partial unique index `uq_asesmen_tp_diagnostik` enforcing max 1 Diagnostik column per TP.
+  - `pengaturan`: Key `bobot_nilai_mapel` storing JSON string `{"kehadiran":40,"formatif":30,"sumatif":30}` with unique constraint `(sekolah_id, key)`.
+- **UI Hierarchy & Data Flow**:
+  - CP is the top parent entity for a subject/class/semester.
+  - Teachers must define CP before creating TPs.
+  - Each TP has 3 assessment types: Diagnostik (exactly 1, excluded from final grade), Formatif (min 1), Sumatif (min 1).
+  - Nilai Akhir Formula: `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)`.
+  - Attendance Rate: Computed from subject's KBM sessions in `jurnal_pembelajaran` with fallback to `absensi` table.
+  - Admin/Superadmin Bobot Settings: Customizable percentage weights with strict 100% sum validation.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | R1: Hapus ChatView Component & File | Delete `src/components/ChatView.tsx` without leaving broken references | M1 | Survey 1 | DONE |
-| 2 | R1: Hapus ChatView References di AppScreen | Remove import, `view-chat` menu item in `menuItemsGuru` & `menuItemsAdmin`, and route render in `src/components/AppScreen.tsx` | M1 | Survey 1 | DONE |
-| 3 | R1: Audit Test Guard for ChatView | Update `tests/ui_ux_improvements_audit.test.ts` to guard or adapt `ChatView.tsx` existence check so `npm test` passes cleanly | M1 | Survey 1 | DONE |
-| 4 | R2: Database Migration Siswa QR & Presensi | Migration SQL adding `qr_code` to `data_siswa` and creating table `presensi_siswa` with multi-tenant RLS & unique constraint | M2 | Survey 2 | DONE |
-| 5 | R2: Student QR Generation & Export Mechanism | Mechanism to generate/populate unique QR identifiers (`data_siswa.qr_code`) and display/print student QR codes in Admin/Piket | M2 | Survey 2 | DONE |
-| 6 | R2: PiketView Scanner UI & Multi-Input | Dedicated Scan tab in `PiketView.tsx` with Datang/Pulang toggle, camera Web API scanner, and USB HID scanner input (text + Enter) | M3 | Survey 2 | DONE |
-| 7 | R2: 10-Unit Hardware Scanner Concurrency | Robust concurrency handling for up to 10 simultaneous kiosk scanner windows with idempotent upsert and audio/visual feedback | M3 | Survey 2 | DONE |
-| 8 | R3: Piket Attendance Daily Log & Summary | Real-time table and status summary of today's scanned students in `PiketView.tsx` | M3 | Survey 2 & 3 | DONE |
-| 9 | R3: Wali Kelas Attendance Report | Daily gate attendance report by class in `RekapSiswaView.tsx` for teachers assigned as Wali Kelas | M4 | Survey 3 | DONE |
-| 10 | R4: Guru Mapel Attendance Sync | In `GuruJurnal.tsx`, display gate arrival status (`Hadir di Sekolah` vs `Belum Scan`) in student list for today's teaching schedule | M4 | Survey 3 | DONE |
-| 11 | Multi-Tenant Data Isolation Guard | Ensure all queries for `presensi_siswa`, `data_siswa`, and schedules strictly filter by `sekolah_id` | M2, M3, M4 | Dispatch | DONE |
-| 12 | Comprehensive Verification, Build & Git Delivery | Automated test suite verification, `npx tsc --noEmit`, `npm run build`, and automatic git commit & push per GEMINI.md | M5 | Dispatch & GEMINI.md | DONE |
+| 1 | R5: Database Migration SQL | New table `capaian_pembelajaran`, `cp_id` in `tujuan_pembelajaran`, `keterangan` in `asesmen_kolom`, `uq_asesmen_tp_diagnostik` index, and default seed in `pengaturan` | M1 | Survey 2 | PLANNED |
+| 2 | R5: TypeScript Database Types | Update `src/types/database.ts` with `CapaianPembelajaran`, updated `tujuan_pembelajaran`, updated `asesmen_kolom`, `BobotNilaiMapel`, `DEFAULT_BOBOT_NILAI_MAPEL` | M1 | Survey 2 | PLANNED |
+| 3 | Syntax Fix in GradebookView | Remove premature closing tag at lines 3056–3058 so `Modal Bulk Fill Grades` compiles cleanly | M2 | Survey 1, 2, 3 | PLANNED |
+| 4 | R1: UI CP Management & State | Add/edit/delete Capaian Pembelajaran, modal, form validation, and save with `guru_mapel_id` linking | M2 | Survey 1 | PLANNED |
+| 5 | R1: UI CP → TP Hierarchy & Linking | Require CP before TP, add `cp_id` dropdown in TP modal, link TP to selected CP, filter TP pills by active CP | M2 | Survey 1 | PLANNED |
+| 6 | R2: Asesmen Diagnostik Rule | Enforce max 1 Diagnostik per TP in UI and DB, auto-heal if missing, block adding 2nd Diagnostik, block deleting Diagnostik | M2 | Survey 1, 3 | PLANNED |
+| 7 | R2: Asesmen Formatif & Sumatif Multi-Add | Allow multiple Formatif and multiple Sumatif columns with customizable weights | M2 | Survey 1, 3 | PLANNED |
+| 8 | R2: Asesmen Field Keterangan | Input, edit, save, and display free-text `keterangan` for each assessment column | M2 | Survey 1, 2 | PLANNED |
+| 9 | R4: Admin Bobot Settings Modal & Validation | Admin/Superadmin form to adjust percentage weights, validate total = 100%, save to `pengaturan` table | M2 | Survey 1, 2 | PLANNED |
+| 10 | R4: Bobot Settings Loading & State | Load saved weights on mount per `sekolah_id`, apply dynamically to grade calculations | M2 | Survey 1, 2 | PLANNED |
+| 11 | R3: Nilai Akhir Mathematical Formula | Implement `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)` | M2 | Survey 3 | PLANNED |
+| 12 | R3: Diagnostik Exclusion from Nilai Akhir | Guarantee Diagnostik is never included in student subject final score | M2 | Survey 3 | PLANNED |
+| 13 | R3: Missing Data Handling | If formatif or sumatif is missing/null, return `null` / display `'-'` without runtime errors | M2 | Survey 3 | PLANNED |
+| 14 | R3: Attendance Integration per Mapel | Query student attendance percentage from `jurnal_pembelajaran` / `absensi` for the subject/class | M2 | Survey 1, 3 | PLANNED |
+| 15 | R3: Rekap Semester & Rapor Preservation | Ensure Tab 2 Rekap Semester, CSV export, and `generateKurikulumMerdekaDeskripsi` work with 0 regressions | M2 | Survey 3 | PLANNED |
+| 16 | E2E & Adversarial Testing Track | Complete test suite covering Tiers 1-5 (Feature, Boundary, Combinations, Real-world, Adversarial) | M3 | E2E Track | PLANNED |
+| 17 | Final Build & Git Delivery | Verify `npx tsc --noEmit`, `npm test`, `npm run build`, and execute automatic Git workflow (status, add, commit, push) | M3 | GEMINI.md | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Hapus Fitur Chat Guru & Test Fix | Delete `ChatView.tsx`, remove references from `AppScreen.tsx`, adjust `ui_ux_improvements_audit.test.ts` | none | DONE |
-| M2 | Database Migrations & QR Code Siswa Mechanism | Migration SQL (`data_siswa.qr_code`, `presensi_siswa`), QR generation/display helper | M1 | DONE |
-| M3 | PiketView QR Scanner (Camera + USB HID 10-Unit) & Piket Daily Report | `PiketView.tsx` Scan tab, camera & USB HID handler, multi-kiosk concurrency, daily scan log | M2 | DONE |
-| M4 | Laporan Wali Kelas & Sinkronisasi Guru Mapel | `RekapSiswaView.tsx` Wali Kelas reporting, `GuruJurnal.tsx` student arrival status sync | M2, M3 | DONE |
-| M5 | E2E Testing, Build & Git Delivery | Comprehensive automated tests, `npx tsc --noEmit`, `npm run build`, git commit & push | M1, M2, M3, M4 | DONE |
+| M1 | Data Layer (Database Migration & TypeScript Types) | `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql` & `src/types/database.ts` | none | PLANNED |
+| M2 | UI & Logic Layer (`GradebookView.tsx`) | Syntax fix, CP->TP hierarchy, Asesmen per TP, Admin Bobot modal, Nilai Akhir formula & attendance | M1 | PLANNED |
+| M3 | Verification, E2E Testing, Build & Git Delivery | Automated test suite `tests/gradebook_cp_tp_formula_verification.test.ts`, `npm test`, `npm run build`, Git push | M1, M2 | PLANNED |
 
 ## Interface Contracts
 
-### 1. Database Schema (`presensi_siswa`)
-- Columns:
+### 1. Database Schema (`capaian_pembelajaran`)
+- Table: `public.capaian_pembelajaran`
   - `id`: UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  - `sekolah_id`: UUID NOT NULL REFERENCES sekolah(id)
-  - `siswa_id`: UUID NOT NULL REFERENCES data_siswa(id) ON DELETE CASCADE
-  - `nisn`: TEXT
-  - `nama_siswa`: TEXT NOT NULL
+  - `sekolah_id`: UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE
+  - `guru_mapel_id`: UUID REFERENCES public.guru_mapel(id) ON DELETE SET NULL
+  - `nama_mapel`: TEXT NOT NULL
   - `kelas`: TEXT NOT NULL
-  - `tanggal`: DATE NOT NULL DEFAULT CURRENT_DATE
-  - `status`: TEXT NOT NULL CHECK (status IN ('datang', 'pulang'))
-  - `jam`: TIME NOT NULL DEFAULT CURRENT_TIME
-  - `timestamp`: TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  - `device_id`: TEXT DEFAULT 'kiosk-default'
-- Constraint:
-  - `UNIQUE (sekolah_id, tanggal, siswa_id, status)`
-- RLS Policy:
-  - Select/Insert/Update enabled for authenticated users where `sekolah_id` matches user session `sekolah_id`.
+  - `semester`: TEXT NOT NULL DEFAULT 'Ganjil'
+  - `tahun_ajaran`: TEXT NOT NULL DEFAULT '2024/2025'
+  - `kode_cp`: TEXT NOT NULL
+  - `deskripsi`: TEXT NOT NULL
+  - `urutan`: INTEGER NOT NULL DEFAULT 1
+  - `created_at`: TIMESTAMPTZ DEFAULT now()
+  - `updated_at`: TIMESTAMPTZ DEFAULT now()
 
-### 2. Student QR Identifier (`data_siswa.qr_code`)
-- Value format: string identifier (e.g. NISN or UUID or `QR-SISWA-${id}`).
-- Resolution query:
-  `.or(\`qr_code.eq.\${code},nisn.eq.\${code},id.eq.\${code}\`)` scoped by `.eq('sekolah_id', sekolah_id)`.
+### 2. Table Adjustments
+- `public.tujuan_pembelajaran`:
+  - `cp_id`: UUID REFERENCES public.capaian_pembelajaran(id) ON DELETE SET NULL
+- `public.asesmen_kolom`:
+  - `keterangan`: TEXT (nullable)
+  - Constraint: `UNIQUE INDEX uq_asesmen_tp_diagnostik ON public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik')`
+- `public.pengaturan`:
+  - Row key: `'bobot_nilai_mapel'`
+  - Row value: JSON string `{"kehadiran": 40, "formatif": 30, "sumatif": 30}`
 
-### 3. Piket Scanner Input Contract
-- Input modes:
-  1. Camera: HTML5 Video + `BarcodeDetector` API (or fallback canvas scanning).
-  2. Hardware USB HID: Text input field auto-focused; on `keydown (Enter)`, read string value, trim, trigger scan handler, clear input, and re-focus.
-- Upsert logic:
-  - Check mode (`datang` or `pulang`).
-  - Upsert into `presensi_siswa` on conflict `(sekolah_id, tanggal, siswa_id, status)` DO UPDATE SET `jam = EXCLUDED.jam, timestamp = EXCLUDED.timestamp`.
-
-### 4. Guru Mapel Sync Contract (`GuruJurnal.tsx`)
-- When active class is selected for today:
-  - Query: `supabase.from('presensi_siswa').select('siswa_id, status, jam').eq('sekolah_id', user.sekolah_id).eq('tanggal', todayDate).eq('kelas', activeKelas).eq('status', 'datang')`
-  - Map results by `siswa_id`:
-    - If present: show badge `✓ Hadir di Sekolah (Jam ${jam})`
-    - If not present: show badge `Belum Scan Piket`
+### 3. Nilai Akhir Formula Contract
+- Inputs:
+  - `rata_kehadiran`: number (0-100)
+  - `rata_formatif`: number (0-100) or null
+  - `rata_sumatif`: number (0-100) or null
+  - `bobot_kehadiran`, `bobot_formatif`, `bobot_sumatif`: numbers summing to 100
+- Formula:
+  `if (rata_formatif !== null && rata_sumatif !== null) { return ((rata_kehadiran * bobot_kehadiran / 100) + (rata_formatif * bobot_formatif / 100) + (rata_sumatif * bobot_sumatif / 100)).toFixed(1); } else { return null; }`
+- Display:
+  `finalScore !== null ? finalScore : '-'`
 
 ## Code Layout
-- `supabase/migrations/`: Migration scripts (`20261003_qr_presensi_siswa.sql`).
-- `src/components/AppScreen.tsx`: Top layout, navigation menu items, view switcher.
-- `src/components/PiketView.tsx`: Piket management, Scan kiosk tab, daily gate attendance log.
-- `src/components/RekapSiswaView.tsx`: Student attendance recap, Wali Kelas gate attendance view.
-- `src/components/GuruJurnal.tsx`: Teacher journal, class selection, live attendance sync with gate scan.
-- `src/lib/`: Helpers for QR generation and Supabase client queries.
-- `tests/`: Automated unit & E2E tests verifying all requirements.
+- `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql`: Owned by M1.
+- `src/types/database.ts`: Owned by M1.
+- `src/components/GradebookView.tsx`: Owned by M2.
+- `tests/gradebook_cp_tp_formula_verification.test.ts`: Owned by M3.

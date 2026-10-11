@@ -1,19 +1,34 @@
-## 2026-10-05T09:58:22Z
-You are explorer_survey_2.
+# Dispatch for explorer_survey_2
+
+- **Role**: Explorer 2 — Database Migrations, Schema Design, Types & Admin Settings
+- **Working Directory**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2
+- **Authoritative Request**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see entry at 2026-10-10T22:56:05Z)
+- **Parent Conversation ID**: 1f15a155-9441-412f-8adc-6ac5519d6f4d
+
+## Objective
+Analyze database migrations, existing schema, TypeScript definitions, and Admin settings:
+1. Examine `supabase/migrations/` and `src/types/database.ts` to see current tables: `guru_mapel`, `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa`, `pengaturan`.
+2. Design the SQL migration for:
+   - New table `capaian_pembelajaran` with columns: `id`, `sekolah_id`, `guru_mapel_id`, `kode_cp`, `deskripsi`, `semester`, `tahun_ajaran`, timestamps, foreign keys, RLS policies. Check if `tujuan_pembelajaran` needs `capaian_pembelajaran_id` foreign key.
+   - Column `keterangan TEXT` in `asesmen_kolom`.
+   - Settings key `bobot_nilai_mapel` in `pengaturan` (JSON string or jsonb: `{ kehadiran: number, formatif: number, sumatif: number }`).
+3. Check how Admin/Superadmin settings for `pengaturan` are stored and read across the app (in `GradebookView.tsx` or other admin components).
+4. Outline TypeScript type updates for `src/types/database.ts` (interfaces for `CapaianPembelajaran`, updated `AsesmenKolom`, `BobotNilaiMapel`).
+5. Ensure Ponytail principle: minimal schema diff, minimal bloat, backward compatibility.
+6. Output detailed report in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md`.
+
+## 2026-10-11T00:42:19Z
+You are Explorer 2 (Database & Admin Settings Explorer) for project orchestrator_21.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-User request is in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
+Read your instructions in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\DISPATCH.md
+Authoritative request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see entry at 2026-10-10T22:56:05Z)
 
-Your focus is Requirement R2 (Perbaikan Kamera QR Code):
-Perbaiki bug kamera QR code yang tidak muncul, sehingga fitur scan QR dapat digunakan kembali.
-1. Locate where QR code scanning is implemented in the codebase (check `src/components/PiketView.tsx` and any related components/utilities).
-2. Determine how the camera scanner works (is it using html5-qrcode, jsQR, navigator.mediaDevices, or another library?).
-3. Identify why the camera preview is not appearing / not rendering:
-   - Check DOM element mounting, container ref / ID, video constraints, permissions, facingMode, canvas processing.
-   - Check if tab switching or state toggling prevents the video element from initializing or getting dimensions.
-   - Check console errors / potential exceptions when initializing scanner.
-4. Provide the exact root cause with file paths and line numbers, and provide a concrete, step-by-step fix recipe that will reliably make the camera visible and scanning.
-
-Investigate using view_file and grep_search. Do NOT modify source files.
-Write a thorough investigation report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md`.
-When done, send a message to parent with your completion status and path to handoff.md.
+Investigate database schema, migrations, types, and admin settings:
+- Review `supabase/migrations/` and `src/types/database.ts`.
+- Design the SQL migration for:
+  1. `capaian_pembelajaran` table: id, sekolah_id, guru_mapel_id, kode_cp, deskripsi, semester, tahun_ajaran, timestamps. Check if `tujuan_pembelajaran` needs `capaian_pembelajaran_id` (nullable or required).
+  2. Column `keterangan` (TEXT nullable) in `asesmen_kolom`.
+  3. Settings row in `pengaturan` for `bobot_nilai_mapel` (JSON `{ kehadiran, formatif, sumatif }`).
+- Check how admin weight settings form should be added in GradebookView (or admin panel) and validated (total = 100%).
+- Detail the TypeScript type changes for `src/types/database.ts`.
+- Write your complete findings to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md` and message the orchestrator when finished.

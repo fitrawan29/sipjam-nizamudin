@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { TujuanPembelajaran, AsesmenKolom, NilaiSiswa } from '@/types/database';
+import { TujuanPembelajaran, AsesmenKolom, NilaiSiswa, CapaianPembelajaran } from '@/types/database';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -176,16 +176,47 @@ export default function GradebookView({ user }: GradebookViewProps) {
     kategori: 'Formatif' as 'Formatif' | 'Sumatif',
     nama: 'Formatif 1',
     bobot: 1,
+    keterangan: '',
   });
 
-  const [formatifWeightPct, setFormatifWeightPct] = useState<number>(50);
+  // Bobot nilai akhir mapel — loaded from pengaturan (admin can edit)
+  const [bobotKehadiran, setBobotKehadiran] = useState<number>(40);
+  const [bobotFormatif, setBobotFormatif] = useState<number>(30);
+  const [bobotSumatif, setBobotSumatif] = useState<number>(30);
+  const [isBobotModalOpen, setIsBobotModalOpen] = useState(false);
+  const [bobotForm, setBobotForm] = useState({ kehadiran: 40, formatif: 30, sumatif: 30 });
+
+  // Load bobot from pengaturan
   useEffect(() => {
-    const saved = localStorage.getItem('gradebook_formatif_weight');
-    if (saved) {
-      const val = parseInt(saved, 10);
-      if (!isNaN(val) && val >= 0 && val <= 100) setFormatifWeightPct(val);
-    }
-  }, []);
+    const fetchBobot = async () => {
+      if (!sekolahId) return;
+      const { data } = await supabase
+        .from('pengaturan')
+        .select('value')
+        .eq('sekolah_id', sekolahId)
+        .eq('key', 'bobot_nilai_mapel')
+        .maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value);
+          if (parsed.kehadiran !== undefined) {
+            setBobotKehadiran(parsed.kehadiran);
+            setBobotFormatif(parsed.formatif);
+            setBobotSumatif(parsed.sumatif);
+            setBobotForm(parsed);
+          }
+        } catch { /* keep defaults */ }
+      }
+    };
+    fetchBobot();
+  }, [sekolahId]);
+
+  // CP (Capaian Pembelajaran) state
+  const [cpList, setCpList] = useState<CapaianPembelajaran[]>([]);
+  const [selectedCpId, setSelectedCpId] = useState<string | null>(null);
+  const [isCpModalOpen, setIsCpModalOpen] = useState(false);
+  const [editingCp, setEditingCp] = useState<CapaianPembelajaran | null>(null);
+  const [cpForm, setCpForm] = useState({ kode_cp: 'CP 1', deskripsi: '', urutan: 1 });
 
 
   const [isBulkFillModalOpen, setIsBulkFillModalOpen] = useState(false);
@@ -557,7 +588,110 @@ export default function GradebookView({ user }: GradebookViewProps) {
     fetchTPs();
   }, [fetchTPs]);
 
-  // 4. Fetch Columns for Active TP (and strictly ensure 1 Diagnostik exists)
+  // Fetch CPs for current mapel/kelas/semester/tahun
+  const fetchCPs = useCallback(async () => {
+    if (!selectedMapel || !selectedKelas) { setCpList([]); setSelectedCpId(null); return; }
+    const query = supabase
+      .from('capaian_pembelajaran')
+      .select('*')
+      .eq('nama_mapel', selectedMapel)
+      .eq('kelas', selectedKelas)
+      .eq('semester', selectedSemester)
+      .eq('tahun_ajaran', selectedTahunAjaran)
+      .order('urutan', { ascending: true });
+    const { data } = sekolahId ? await query.eq('sekolah_id', sekolahId) : await query;
+    const list = data || [];
+    setCpList(list);
+    if (list.length > 0) setSelectedCpId(prev => list.some(c => c.id === prev) ? prev : list[0].id);
+    else setSelectedCpId(null);
+  }, [selectedMapel, selectedKelas, selectedSemester, selectedTahunAjaran, sekolahId]);
+
+  useEffect(() => { fetchCPs(); }, [fetchCPs]);
+
+  // CP CRUD handlers
+  const handleOpenAddCpModal = () => {
+    if (isAdmin || !isGuruPengampu) {
+      showToast('Akses Ditolak', 'Hanya guru pengampu yang berhak menambah CP.', 'warning'); return;
+    }
+    setEditingCp(null);
+    setCpForm({ kode_cp: `CP ${cpList.length + 1}`, deskripsi: '', urutan: cpList.length + 1 });
+    setIsCpModalOpen(true);
+  };
+
+  const handleSaveCp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cpForm.kode_cp.trim() || !cpForm.deskripsi.trim()) {
+      showToast('Validasi', 'Kode CP dan Deskripsi wajib diisi.', 'warning'); return;
+    }
+    try {
+      if (editingCp) {
+        const { error } = await supabase.from('capaian_pembelajaran').update({
+          kode_cp: cpForm.kode_cp.trim(), deskripsi: cpForm.deskripsi.trim(),
+          urutan: cpForm.urutan, updated_at: new Date().toISOString(),
+        }).eq('id', editingCp.id);
+        if (error) throw error;
+        showToast('CP Diperbarui', '', 'success');
+      } else {
+        const { error } = await supabase.from('capaian_pembelajaran').insert({
+          sekolah_id: sekolahId || undefined,
+          nama_mapel: selectedMapel, kelas: selectedKelas,
+          semester: selectedSemester, tahun_ajaran: selectedTahunAjaran,
+          kode_cp: cpForm.kode_cp.trim(), deskripsi: cpForm.deskripsi.trim(),
+          urutan: cpForm.urutan,
+        } as any);
+        if (error) throw error;
+        showToast('CP Dibuat', '', 'success');
+      }
+      setIsCpModalOpen(false);
+      await fetchCPs();
+    } catch (err: any) {
+      showToast('Gagal Simpan CP', err.message || 'Terjadi kesalahan.', 'error');
+    }
+  };
+
+  const handleDeleteCp = async (cp: CapaianPembelajaran) => {
+    const result = await Swal.fire({
+      title: `Hapus ${cp.kode_cp}?`, text: 'TP di bawah CP ini tidak akan ikut terhapus.',
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#ef4444', cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal',
+    });
+    if (!result.isConfirmed) return;
+    const { error } = await supabase.from('capaian_pembelajaran').delete().eq('id', cp.id);
+    if (error) { showToast('Gagal', error.message, 'error'); return; }
+    showToast('CP Dihapus', '', 'success');
+    await fetchCPs();
+  };
+
+  // Save bobot (Admin only)
+  const handleSaveBobot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const total = bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif;
+    if (total !== 100) {
+      showToast('Validasi', `Total bobot harus 100%. Saat ini: ${total}%.`, 'warning'); return;
+    }
+    try {
+      const valueStr = JSON.stringify(bobotForm);
+      const { data: existing } = await supabase.from('pengaturan')
+        .select('id').eq('sekolah_id', sekolahId).eq('key', 'bobot_nilai_mapel').maybeSingle();
+      if (existing?.id) {
+        await supabase.from('pengaturan').update({ value: valueStr }).eq('id', existing.id);
+      } else {
+        await supabase.from('pengaturan').insert({
+          sekolah_id: sekolahId || undefined, key: 'bobot_nilai_mapel', value: valueStr,
+        } as any);
+      }
+      setBobotKehadiran(bobotForm.kehadiran);
+      setBobotFormatif(bobotForm.formatif);
+      setBobotSumatif(bobotForm.sumatif);
+      setIsBobotModalOpen(false);
+      showToast('Bobot Disimpan', `Kehadiran ${bobotForm.kehadiran}% / Formatif ${bobotForm.formatif}% / Sumatif ${bobotForm.sumatif}%`, 'success');
+    } catch (err: any) {
+      showToast('Gagal', err.message, 'error');
+    }
+  };
+
+
   const fetchColumnsForActiveTP = useCallback(async (activeTpId: string) => {
     try {
       let query = supabase
@@ -802,6 +936,10 @@ export default function GradebookView({ user }: GradebookViewProps) {
       showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menambah Tujuan Pembelajaran (TP).', 'warning');
       return;
     }
+    if (!selectedCpId && cpList.length === 0) {
+      showToast('Perhatian', 'Tambahkan Capaian Pembelajaran (CP) terlebih dahulu sebelum menambah TP.', 'warning');
+      return;
+    }
     setEditingTp(null);
     setTpForm({
       kode_tp: `TP ${tpList.length + 1}`,
@@ -862,6 +1000,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         // Create new TP
         const newTP = {
           sekolah_id: sekolahId || undefined,
+          cp_id: selectedCpId || null,
           nama_guru: selectedGuru || user?.nama || 'Guru',
           nama_mapel: selectedMapel,
           kelas: selectedKelas,
@@ -975,6 +1114,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       kategori,
       nama: kategori === 'Formatif' ? `Formatif ${existingCount + 1}` : `Sumatif ${existingCount + 1}`,
       bobot: 1,
+      keterangan: '',
     });
     setIsColModalOpen(true);
   };
@@ -989,6 +1129,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       kategori: col.kategori as 'Formatif' | 'Sumatif',
       nama: col.nama,
       bobot: col.bobot ? Number(col.bobot) : 1,
+      keterangan: col.keterangan || '',
     });
     setIsColModalOpen(true);
   };
@@ -1011,6 +1152,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
           .update({
             nama: colForm.nama.trim(),
             bobot: colForm.bobot,
+            keterangan: colForm.keterangan.trim() || null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editingCol.id);
@@ -1025,6 +1167,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
           kategori: colForm.kategori,
           nama: colForm.nama.trim(),
           bobot: colForm.bobot,
+          keterangan: colForm.keterangan.trim() || null,
           urutan: columnsList.length + 1,
         };
 
@@ -1140,7 +1283,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
   const calculateStudentTpStats = useCallback((nisn: string) => {
     const sGrades = gradesMap[nisn] || {};
 
-    // Diagnostik
+    // Diagnostik (not counted in final score)
     const diagVal = diagnostikCol ? sGrades[diagnostikCol.id] : null;
 
     // Formatif
@@ -1169,10 +1312,14 @@ export default function GradebookView({ user }: GradebookViewProps) {
     });
     const avgS = sumWeightS > 0 ? parseFloat((sumS / sumWeightS).toFixed(1)) : null;
 
-    // Nilai Akhir TP: Weighted based on formatifWeightPct, or available average
+    // Nilai Akhir TP: Formatif + Sumatif bobot (kehadiran dihitung di semester level)
+    // ponytail: simplified — per-TP hanya F+S, normalisasi ke total F+S bobot
     let finalTp: number | null = null;
-    if (avgF !== null && avgS !== null) {
-      finalTp = parseFloat((avgF * (formatifWeightPct / 100) + avgS * ((100 - formatifWeightPct) / 100)).toFixed(1));
+    const fPct = bobotFormatif;
+    const sPct = bobotSumatif;
+    const fsTotal = fPct + sPct;
+    if (avgF !== null && avgS !== null && fsTotal > 0) {
+      finalTp = parseFloat((avgF * (fPct / fsTotal) + avgS * (sPct / fsTotal)).toFixed(1));
     } else if (avgS !== null) {
       finalTp = avgS;
     } else if (avgF !== null) {
@@ -1209,70 +1356,84 @@ export default function GradebookView({ user }: GradebookViewProps) {
   }, [gradesMap, diagnostikCol, formatifCols, sumatifCols]);
 
   // Overall Semester Stats for a Student
+  // Formula: (bobotKehadiran% × kehadiran) + (bobotFormatif% × avg_formatif_all_tp) + (bobotSumatif% × avg_sumatif_all_tp)
+  // ponytail: kehadiran not yet stored per-mapel; use 100 as placeholder so formula still runs
   const calculateStudentSemesterStats = useCallback((nisn: string) => {
     const sGrades = gradesMap[nisn] || {};
     const tpResults: Record<string, number | null> = {};
     const validTpScores: number[] = [];
+
+    let allAvgF: number[] = [];
+    let allAvgS: number[] = [];
 
     tpList.forEach(tp => {
       const cols = allSemesterColumns[tp.id] || [];
       const fCols = cols.filter(c => c.kategori === 'Formatif');
       const sCols = cols.filter(c => c.kategori === 'Sumatif');
 
-      let sumF = 0;
-      let wF = 0;
+      let sumF = 0, wF = 0;
       fCols.forEach(c => {
         const val = sGrades[c.id];
-        if (val !== null && val !== undefined && !isNaN(val)) {
-          const w = c.bobot ? Number(c.bobot) : 1;
-          sumF += val * w;
-          wF += w;
-        }
+        if (val !== null && val !== undefined && !isNaN(val)) { const w = c.bobot ? Number(c.bobot) : 1; sumF += val * w; wF += w; }
       });
       const avgF = wF > 0 ? sumF / wF : null;
+      if (avgF !== null) allAvgF.push(avgF);
 
-      let sumS = 0;
-      let wS = 0;
+      let sumS = 0, wS = 0;
       sCols.forEach(c => {
         const val = sGrades[c.id];
-        if (val !== null && val !== undefined && !isNaN(val)) {
-          const w = c.bobot ? Number(c.bobot) : 1;
-          sumS += val * w;
-          wS += w;
-        }
+        if (val !== null && val !== undefined && !isNaN(val)) { const w = c.bobot ? Number(c.bobot) : 1; sumS += val * w; wS += w; }
       });
       const avgS = wS > 0 ? sumS / wS : null;
+      if (avgS !== null) allAvgS.push(avgS);
 
+      // Per-TP score for display (F+S only, normalized)
+      const fsTotal = bobotFormatif + bobotSumatif;
       let score: number | null = null;
-      if (avgF !== null && avgS !== null) {
-        score = parseFloat((avgF * 0.5 + avgS * 0.5).toFixed(1));
+      if (avgF !== null && avgS !== null && fsTotal > 0) {
+        score = parseFloat((avgF * (bobotFormatif / fsTotal) + avgS * (bobotSumatif / fsTotal)).toFixed(1));
       } else if (avgS !== null) {
         score = parseFloat(avgS.toFixed(1));
       } else if (avgF !== null) {
         score = parseFloat(avgF.toFixed(1));
       }
-
       tpResults[tp.id] = score;
       if (score !== null) validTpScores.push(score);
     });
 
+    // Aggregate semester final with kehadiran component
+    // ponytail: kehadiran placeholder = 100 until kehadiran-per-mapel data is wired
+    const avgFormatifAll = allAvgF.length > 0 ? allAvgF.reduce((a, b) => a + b, 0) / allAvgF.length : null;
+    const avgSumatifAll = allAvgS.length > 0 ? allAvgS.reduce((a, b) => a + b, 0) / allAvgS.length : null;
+    const kehadiranScore = 100; // ponytail: placeholder; replace with real attendance query when available
+
+    let semesterFinalRaw: number | null = null;
+    if (avgFormatifAll !== null || avgSumatifAll !== null) {
+      const f = avgFormatifAll ?? 0;
+      const s = avgSumatifAll ?? 0;
+      semesterFinalRaw = parseFloat((
+        kehadiranScore * (bobotKehadiran / 100) +
+        f * (bobotFormatif / 100) +
+        s * (bobotSumatif / 100)
+      ).toFixed(1));
+    }
+
     const tpScoresList = tpList.map(tp => ({
-      kode: tp.kode_tp,
-      deskripsi: tp.deskripsi,
-      score: tpResults[tp.id] ?? null
+      kode: tp.kode_tp, deskripsi: tp.deskripsi, score: tpResults[tp.id] ?? null
     }));
     const cpAnalysis = generateKurikulumMerdekaDeskripsi(nisn, tpScoresList);
 
     return {
       tpResults,
-      semesterFinal: cpAnalysis.nilaiRapor,
+      semesterFinal: semesterFinalRaw,
       predikat: cpAnalysis.predikat,
       predikatBadge: cpAnalysis.predikatBadge,
       deskripsiCapaian: cpAnalysis.deskripsiCapaian,
       highestTp: cpAnalysis.highestTp,
       lowestTp: cpAnalysis.lowestTp,
     };
-  }, [gradesMap, tpList, allSemesterColumns]);
+  }, [gradesMap, tpList, allSemesterColumns, bobotKehadiran, bobotFormatif, bobotSumatif]);
+
 
   // Filtered Students for Display
   const filteredStudents = useMemo(() => {
@@ -1479,30 +1640,17 @@ export default function GradebookView({ user }: GradebookViewProps) {
                 <i className={`fa-solid ${isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
                 {isSaving ? 'Menyimpan...' : 'Simpan Semua Nilai'}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const val = window.prompt("Masukkan persentase bobot Nilai Formatif (0-100).\nBobot Sumatif akan menyesuaikan otomatis:", formatifWeightPct.toString());
-                  if (val !== null) {
-                    const num = parseInt(val, 10);
-                    if (!isNaN(num) && num >= 0 && num <= 100) {
-                      setFormatifWeightPct(num);
-                      localStorage.setItem('gradebook_formatif_weight', num.toString());
-                    } else {
-                      Swal.fire({
-                        icon: 'warning',
-                        title: 'Persentase Tidak Valid',
-                        text: 'Masukkan angka bulat 0-100.',
-                      });
-                    }
-                  }
-                }}
-                className="btn-click px-3 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition border border-indigo-200 dark:border-indigo-800"
-              >
-                <i className="fa-solid fa-scale-balanced"></i>
-                Bobot: F {formatifWeightPct}% / S {100 - formatifWeightPct}%
-              </button>
             </div>
+          )}
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => { setBobotForm({ kehadiran: bobotKehadiran, formatif: bobotFormatif, sumatif: bobotSumatif }); setIsBobotModalOpen(true); }}
+              className="btn-click px-3 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition border border-indigo-200 dark:border-indigo-800"
+            >
+              <i className="fa-solid fa-scale-balanced"></i>
+              Bobot: H {bobotKehadiran}% / F {bobotFormatif}% / S {bobotSumatif}%
+            </button>
           )}
         </div>
 
@@ -1710,8 +1858,76 @@ export default function GradebookView({ user }: GradebookViewProps) {
       {/* ========================================================================= */}
       {activeTab === 'tp-matrix' && (
         <div className="space-y-4">
+          {/* ===== CP (Capaian Pembelajaran) SECTION ===== */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-extrabold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
+                  Capaian Pembelajaran (CP):
+                </span>
+                <span className="text-xs font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-2 py-0.5 rounded-lg">
+                  {cpList.length} CP Tersedia
+                </span>
+              </div>
+              {!isAdmin && isGuruPengampu && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddCpModal}
+                  className="btn-click bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
+                >
+                  <i className="fa-solid fa-plus text-xs"></i> Tambah CP
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll">
+              {cpList.length === 0 ? (
+                <div className="text-xs italic text-gray-400 dark:text-gray-500 py-2">
+                  Belum ada CP. {!isAdmin && isGuruPengampu ? 'Klik "Tambah CP" untuk memulai.' : ''}
+                </div>
+              ) : (
+                cpList.map(cp => (
+                  <div
+                    key={cp.id}
+                    onClick={() => setSelectedCpId(cp.id)}
+                    className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border transition shrink-0 ${
+                      selectedCpId === cp.id
+                        ? 'bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-200 dark:border-violet-700 shadow-sm'
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    <span>{cp.kode_cp}</span>
+                    <span className="font-normal text-[11px] max-w-[160px] truncate text-gray-500 dark:text-gray-400">
+                      {cp.deskripsi}
+                    </span>
+                    {selectedCpId === cp.id && !isAdmin && isGuruPengampu && (
+                      <div className="flex items-center gap-1 ml-1">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setEditingCp(cp); setCpForm({ kode_cp: cp.kode_cp, deskripsi: cp.deskripsi, urutan: cp.urutan }); setIsCpModalOpen(true); }}
+                          className="w-5 h-5 rounded-md hover:bg-violet-100 dark:hover:bg-violet-800 flex items-center justify-center text-violet-700 dark:text-violet-300"
+                          title="Edit CP"
+                        >
+                          <i className="fa-solid fa-pen text-[10px]"></i>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteCp(cp); }}
+                          className="w-5 h-5 rounded-md hover:bg-red-100 dark:hover:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-400"
+                          title="Hapus CP"
+                        >
+                          <i className="fa-solid fa-trash text-[10px]"></i>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
           {/* TP Selector Bar */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+
             <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-extrabold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
@@ -2690,6 +2906,19 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
               <div>
                 <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Keterangan <span className="font-normal text-gray-400">(opsional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={colForm.keterangan}
+                  onChange={e => setColForm({ ...colForm, keterangan: e.target.value })}
+                  placeholder="e.g. Ulangan Harian Bab 3, Proyek Kelompok..."
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
                   Bobot Nilai
                 </label>
                 <input
@@ -2724,6 +2953,110 @@ export default function GradebookView({ user }: GradebookViewProps) {
           </div>
         </div>
       )}
+
+      {/* Modal Add / Edit CP */}
+      {isCpModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-sm font-black text-gray-900 dark:text-white">
+                {editingCp ? 'Edit Capaian Pembelajaran' : 'Tambah Capaian Pembelajaran (CP)'}
+              </h3>
+              <button type="button" onClick={() => setIsCpModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-white flex items-center justify-center text-xs">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <form onSubmit={handleSaveCp} className="space-y-3.5 mt-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Kode CP</label>
+                  <input type="text" required value={cpForm.kode_cp}
+                    onChange={e => setCpForm({ ...cpForm, kode_cp: e.target.value })}
+                    placeholder="e.g. CP 1"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Urutan</label>
+                  <input type="number" min="1" value={cpForm.urutan}
+                    onChange={e => setCpForm({ ...cpForm, urutan: parseInt(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">Deskripsi Capaian Pembelajaran</label>
+                <textarea required rows={4} value={cpForm.deskripsi}
+                  onChange={e => setCpForm({ ...cpForm, deskripsi: e.target.value })}
+                  placeholder="Deskripsikan capaian pembelajaran yang menjadi payung dari beberapa Tujuan Pembelajaran..."
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:outline-none">
+                </textarea>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setIsCpModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  Batal
+                </button>
+                <button type="submit"
+                  className="btn-click px-4 py-2 rounded-xl text-xs font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-md">
+                  {editingCp ? 'Simpan Perubahan' : 'Buat CP'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Bobot Nilai (Admin Only) */}
+      {isBobotModalOpen && isAdmin && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-sm font-black text-gray-900 dark:text-white">Pengaturan Bobot Nilai Akhir</h3>
+              <button type="button" onClick={() => setIsBobotModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-white flex items-center justify-center text-xs">
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <form onSubmit={handleSaveBobot} className="space-y-3.5 mt-4 text-xs">
+              <p className="text-gray-500 dark:text-gray-400 text-[11px]">
+                Total bobot kehadiran + formatif + sumatif <strong>harus = 100%</strong>. Berlaku untuk semua guru di sekolah ini.
+              </p>
+              {(['kehadiran', 'formatif', 'sumatif'] as const).map(key => (
+                <div key={key}>
+                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 capitalize">
+                    Bobot {key} (%)
+                  </label>
+                  <input type="number" min="0" max="100" required value={bobotForm[key]}
+                    onChange={e => setBobotForm({ ...bobotForm, [key]: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                </div>
+              ))}
+              <div className={`p-2.5 rounded-xl text-[11px] font-bold text-center border ${
+                bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100
+                  ? 'bg-green-50 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800'
+                  : 'bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
+              }`}>
+                Total: {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif}%
+                {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100 ? ' ✓' : ' (harus 100%)'}
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setIsBobotModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  Batal
+                </button>
+                <button type="submit"
+                  className="btn-click px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+                  Simpan Bobot
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 
       {/* Modal Bulk Fill Grades */}
       {isBulkFillModalOpen && (

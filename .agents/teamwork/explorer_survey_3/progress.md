@@ -1,15 +1,14 @@
 # Progress Tracking — explorer_survey_3
 
-Last visited: 2026-10-05T18:05:00Z
+Last visited: 2026-10-11T00:54:30Z
 Status: Completed
 
 ## Tasks
 - [x] Received dispatch and initialized BRIEFING.md
-- [x] Inspect `src/components/AppScreen.tsx` for sidebar structure and user profile state
-- [x] Inspect existing tutorial / onboarding mechanisms (AIAssistant, OnboardingTutorial, tutorialSteps, etc.)
-- [x] Map all menus and views per role (Guru: 11 menus, Admin: 14 menus, Superadmin: 3 menus)
-- [x] Design sidebar user profile display (name, role, avatar, styling, responsiveness)
-- [x] Design complete tutorial architecture (in-app modal/guide + external markdown documentation)
-- [x] Verified test constraints (`tests/onboarding_and_ai_assistant_ui.test.ts`, `tests/app_screen_integration.test.ts`)
-- [x] Compiled comprehensive 5-component `handoff.md` report
-- [x] Sent completion message to parent coordinator
+- [x] Investigate current score calculations in `src/components/GradebookView.tsx`
+- [x] Design the new Nilai Akhir formula: `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)`
+- [x] Verify Diagnostik rules (max 1 per TP, excluded from Nilai Akhir calculation)
+- [x] Investigate how attendance per mapel is queried from `absensi` table for each student
+- [x] Trace Rekap Semester and Rapor data calculation to ensure formula applies without regressions
+- [x] Examine existing test suites in `tests/`, test command execution, and test cases needed
+- [x] Compile 5-component `handoff.md` and notify parent coordinator

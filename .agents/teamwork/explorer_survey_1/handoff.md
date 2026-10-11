@@ -1,263 +1,195 @@
-# Handoff Report: Requirement R1 (UI & State Modul Piket) Investigation
+# Handoff Report — Explorer Survey 1: GradebookView Architecture & CP → TP Hierarchy
 
-**Investigator**: `explorer_survey_1`  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1`  
-**Target Component**: `src/components/PiketView.tsx` & `src/components/AppScreen.tsx`  
-**Timestamp**: 2026-10-05T10:05:00Z  
+**Author**: Explorer 1 (`explorer_survey_1`)  
+**Target Audience**: Orchestrator 21, Implementer, Reviewer  
+**Scope**: Comprehensive investigation of `src/components/GradebookView.tsx`, CP → TP hierarchy integration, teacher selection flow, and state mapping.
 
 ---
 
 ## 1. Observation
 
-### Observation 1.1: Root Cause of "Tandai Datang" Auto-Filtering Down to 1 Student
-In `src/components/PiketView.tsx`:
-1. The student roster table in the "Presensi Siswa (QR & Manual)" tab renders `filteredManualStudents` (lines 2089-2196):
-   ```tsx
-   // src/components/PiketView.tsx:2099
-   filteredManualStudents.map((s, idx) => { ... })
-   ```
-2. `filteredManualStudents` is computed at lines 773–780:
-   ```tsx
-   // src/components/PiketView.tsx:773-780
-   const filteredManualStudents = allStudents.filter(s => {
-     const matchKelas = manualKelasFilter === 'Semua' || s.kelas === manualKelasFilter;
-     const matchSearch = !manualSearchQuery.trim() || 
-       (s.nama_siswa?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) ||
-       (s.nisn?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase()) ||
-       ((s as any).qr_code?.toLowerCase() || '').includes(manualSearchQuery.toLowerCase());
-     return matchKelas && matchSearch;
-   });
-   ```
-3. Each row contains action buttons to mark attendance:
-   - "Tandai Datang" at line 2150:
-     ```tsx
-     // src/components/PiketView.tsx:2150
-     onClick={() => handleManualMark(s, 'datang')}
-     ```
-   - "Tandai Pulang" at line 2182:
-     ```tsx
-     // src/components/PiketView.tsx:2182
-     onClick={() => handleManualMark(s, 'pulang')}
-     ```
-4. Inside `handleManualMark` (lines 545–665), upon successfully saving attendance or detecting existing attendance:
-   ```tsx
-   // src/components/PiketView.tsx:590-594 (Success branch)
-   // Two-way sync: fill QR scanner input and manual search input
-   setUsbInputVal(student.nisn || student.nama_siswa);
-   setManualSearchQuery(student.nama_siswa);
-   setManualKelasFilter('Semua');
+### 1.1 Codebase File Metrics & Core Exports
+- **Target File**: `src/components/GradebookView.tsx` (3,147 lines).
+- **Exported Utilities**:
+  - `generateKurikulumMerdekaDeskripsi(studentName, tpScores)` (lines 20–104): Generates Kurikulum Merdeka competency narrative, predikat (A/B/C/D), highest/lowest TP score identification. Tested by `tests/adversarial_kurikulum_merdeka_cp.test.ts`.
+  - `export interface CapaianDeskripsiResult` (lines 11–18).
+  - Default export: `GradebookView({ user }: GradebookViewProps)` (lines 119–3146).
 
-   // src/components/PiketView.tsx:616-619 (Already exists branch)
-   setUsbInputVal(student.nisn || student.nama_siswa);
-   setManualSearchQuery(student.nama_siswa);
-   setManualKelasFilter('Semua');
-   ```
-5. When `setManualSearchQuery(student.nama_siswa)` is called:
-   - State `manualSearchQuery` is populated with the marked student's name (e.g., `"Ahmad Dani"`).
-   - Re-render occurs immediately.
-   - `filteredManualStudents` checks `s.nama_siswa.toLowerCase().includes("ahmad dani")`.
-   - Every other student fails the filter check and disappears from the table.
-   - In addition, `setManualKelasFilter('Semua')` wipes out any class filter the teacher had previously selected (e.g., "7A" resets to "Semua").
+### 1.2 Syntax Error & Build Blocker
+- **Tool Command**: `npx tsc --noEmit`
+- **Verbatim Error Output**:
+  ```
+  src/components/GradebookView.tsx(3144,5): error TS1128: Declaration or statement expected.
+  src/components/GradebookView.tsx(3145,3): error TS1109: Expression expected.
+  src/components/GradebookView.tsx(3146,1): error TS1128: Declaration or statement expected.
+  ```
+- **Code Inspection** (`src/components/GradebookView.tsx` lines 3056–3063):
+  ```tsx
+  3056:     </section>
+  3057:   );
+  3058: }
+  3059: 
+  3060: 
+  3061:       {/* Modal Bulk Fill Grades */}
+  3062:       {isBulkFillModalOpen && (
+  ```
+  An extra closing tag `</section>\n );\n}` was inserted prematurely before `{isBulkFillModalOpen && (...)}`, causing lines 3061–3143 to exist outside the component function, followed by a duplicate closure at lines 3144–3146.
 
----
+### 1.3 Tab Organization
+The UI is divided into 3 primary tabs via state `activeTab` (line 138):
+1. `'tp-matrix'` (lines 1859–2460): Matrix spreadsheet for scoring students against active TP's assessments. Contains:
+   - CP selector/manager (lines 1862–1926)
+   - TP selector/manager (lines 1928–2021)
+   - Active TP description banner (lines 2004–2020)
+   - Column toolbar & student search (lines 2024–2073)
+   - Spreadsheet table with Diagnostik, Formatif, Sumatif, and per-TP calculations (lines 2105–2450)
+   - Signature section (`PrintSignature`, line 2453)
+2. `'rekap-semester'` (lines 2465–2604): Compilation of all TPs across the semester for rapor calculations, displaying per-TP scores, Nilai Rapor Semester, Predikat, and auto-generated Kurikulum Merdeka description.
+3. `'statistik'` (lines 2609–2742): Analytics view containing 4 KPI metric cards (Class Average, KKTP Ketuntasan %, Highest Score, Lowest Score) and 4-tier competency distribution cards (A, B, C, D).
 
-### Observation 1.2: Current Role Passing & Evaluation in `AppScreen` and `PiketView`
-1. In `src/components/AppScreen.tsx`:
-   - Role evaluation on lines 60–61:
-     ```tsx
-     // src/components/AppScreen.tsx:60-61
-     const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-     const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
-     ```
-   - Component rendering at lines 716–719:
-     ```tsx
-     // src/components/AppScreen.tsx:716-719
-     {currentView === 'view-piket' && (
-       isAdmin || isSuperadmin || isPiketHariIni ? (
-         <PiketView user={user} />
-       ) : ( ... )
-     )}
-     ```
-2. In `src/components/PiketView.tsx`:
-   - Props and role evaluation on lines 26 and lines 1356–1357:
-     ```tsx
-     // src/components/PiketView.tsx:26
-     export default function PiketView({ user }: { user: any })
+### 1.4 State Variables & Props
+- **Props**:
+  - `user`: AppUser / any object (`id`, `nama`, `username`/nip, `role`, `sekolah_id`).
+- **Tenant & Role Resolution**:
+  - `isAdmin`: `boolean` (line 121: `user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin'`).
+  - `sekolahId`: `string | null` (resolved from `user?.sekolah_id`, `localStorage`, or `supabase.from('sekolah')`).
+  - `isGuruPengampu`: `boolean` (lines 428–501: verifies if logged-in teacher matches subject and class).
+- **Filter State**:
+  - `selectedGuru`: `string` (defaults to `user?.nama || ''`, selectable by Admin).
+  - `selectedMapel`: `string` (populated from `guru_mapel` or `data_mapel`).
+  - `selectedKelas`: `string` (populated from `guru_mapel` or `data_siswa`).
+  - `selectedSemester`: `'Ganjil' | 'Genap'` (synced from `pengaturan` for teacher, selectable by Admin).
+  - `selectedTahunAjaran`: `string` (synced from `pengaturan` for teacher, selectable by Admin).
+  - `studentSearch`: `string` (client-side text filter).
+- **Capaian Pembelajaran (CP) State**:
+  - `cpList`: `CapaianPembelajaran[]` (lines 215, 592–607).
+  - `selectedCpId`: `string | null` (line 216).
+  - `isCpModalOpen`: `boolean` (line 217).
+  - `editingCp`: `CapaianPembelajaran | null` (line 218).
+  - `cpForm`: `{ kode_cp: string; deskripsi: string; urutan: number }` (line 219).
+- **Tujuan Pembelajaran (TP) State**:
+  - `tpList`: `TujuanPembelajaran[]` (lines 147, 543–585).
+  - `selectedTpId`: `string | null` (line 148).
+  - `isTpModalOpen`: `boolean` (line 163).
+  - `editingTp`: `TujuanPembelajaran | null` (line 164).
+  - `tpForm`: `{ kode_tp: string; deskripsi: string; semester: string; tahun_ajaran: string; urutan: number }` (lines 165–171). Note: currently lacks `cp_id`!
+- **Asesmen Kolom State**:
+  - `columnsList`: `AsesmenKolom[]` (for active TP, lines 149, 695–740).
+  - `allSemesterColumns`: `Record<string, AsesmenKolom[]>` (for rekap semester, lines 150, 751–777).
+  - `isColModalOpen`: `boolean` (line 173).
+  - `editingCol`: `AsesmenKolom | null` (line 174).
+  - `colForm`: `{ kategori: 'Formatif' | 'Sumatif'; nama: string; bobot: number; keterangan: string }` (lines 175–180).
+- **Nilai Siswa State**:
+  - `gradesMap`: `Record<string, Record<string, number | null>>` (`gradesMap[nisn][colId]`, line 153).
+  - `dirtyGrades`: `Record<string, boolean>` (track unsaved changes, line 154).
+  - `isSaving`: `boolean` (line 160).
+- **Bobot Pengaturan (Admin)**:
+  - `bobotKehadiran`: `number` (loaded from `pengaturan.key = 'bobot_nilai_mapel'`, defaults to 40, lines 183, 190–212).
+  - `bobotFormatif`: `number` (defaults to 30, line 184).
+  - `bobotSumatif`: `number` (defaults to 30, line 185).
+  - `isBobotModalOpen`: `boolean` (line 186).
+  - `bobotForm`: `{ kehadiran: number; formatif: number; sumatif: number }` (line 187).
 
-     // src/components/PiketView.tsx:1356-1357
-     const isGuru = user?.role === 'Guru';
-     const isAdmin = user?.role === 'Admin';
-     ```
-   - Discrepancy observed: `PiketView.tsx` uses strict case-sensitive checks (`'Admin'`, `'Guru'`), ignoring `'superadmin'` or `'admin'`, whereas `AppScreen.tsx` treats `'superadmin'` and lowercase `'admin'` as admin.
-
----
-
-### Observation 1.3: Current UI Elements & Controls in `PiketView.tsx`
-Currently, `PiketView.tsx` renders identical, heavy interfaces for both Guru and Admin under the `scan` tab (lines 1622–2349):
-1. **Kiosk Header Bar** (lines 1625–1663):
-   - Kiosk Station Selector: Dropdown with 10 options (`kiosk-1` through `kiosk-10`).
-   - Live pulse indicator.
-2. **Attendance Mode Switcher** (lines 1666–1715):
-   - Two large full-width banner buttons ("PRESENSI DATANG" vs "PRESENSI PULANG").
-3. **Scanner Station & Visual Feedback Card** (lines 1718–1960):
-   - Left column: USB HID scanner input + Browser Camera video preview with targeting reticle and camera toggle.
-   - Right column: Large student feedback card with avatar, NISN, class, gender, status badge, time, and cancel button.
-4. **Presensi Manual & Student Roster Section** (lines 1962–2202):
-   - "Sinkronisasi Dua Arah Aktif" badge.
-   - Class filter dropdown ("Semua Kelas", etc.).
-   - Search input field + "Proses Presensi" button.
-   - Full student table with 6 columns: `No`, `Nama Siswa`, `NISN`, `Kelas`, `Presensi Datang` (button/badge), `Presensi Pulang` (button/badge).
-5. **Real-Time Stat Cards** (lines 2204–2241):
-   - 3 large metric cards: `Total Hadir Datang`, `Total Pulang`, `Total Unik Siswa`.
-6. **Live Attendance Audit Log Table** (lines 2243–2349):
-   - Duplicate class filter + search input.
-   - 7 columns: `No`, `Waktu` (HH:MM:SS), `Nama Siswa`, `Kelas`, `NISN`, `Status`, `Kios` (`device_id`).
+### 1.5 Database Schema & Migrations
+- `migrations/add_cp_and_gradebook_v2.sql`:
+  - `capaian_pembelajaran`: `id` (uuid), `sekolah_id` (uuid), `guru_mapel_id` (uuid, nullable), `nama_mapel` (text), `kelas` (text), `semester` (text), `tahun_ajaran` (text), `kode_cp` (text), `deskripsi` (text), `urutan` (int).
+  - `tujuan_pembelajaran`: `cp_id` (uuid, nullable REFERENCES `capaian_pembelajaran(id)` ON DELETE SET NULL).
+  - `asesmen_kolom`: `keterangan` (text, nullable).
+  - `pengaturan`: key `'bobot_nilai_mapel'` with value JSON `{"kehadiran":40,"formatif":30,"sumatif":30}`.
+- `src/types/database.ts`:
+  - Lines 1451–1509 define `capaian_pembelajaran`.
+  - Line 1514 defines `cp_id: string | null` in `tujuan_pembelajaran`.
+  - Line 82 defines `keterangan: string | null` in `asesmen_kolom`.
+  - Lines 2006–2008 export `CapaianPembelajaran`, `CapaianPembelajaranInsert`, `CapaianPembelajaranUpdate`.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Step 1 (Root Cause of Auto-Filter)**:
-   - When a user clicks "Tandai Datang" (or "Tandai Pulang") on any student in the roster table, the click handler calls `handleManualMark(s, 'datang')` (Obs 1.1, item 3).
-   - In previous commit/update (2026-10-05T02:19:36Z), requirement R1 requested two-way synchronization between manual and QR input. The developer added lines 591–593 (`setUsbInputVal`, `setManualSearchQuery`, `setManualKelasFilter`).
-   - Line 592 calls `setManualSearchQuery(student.nama_siswa)`.
-   - Because `filteredManualStudents` (Obs 1.1, item 2) filters by `manualSearchQuery`, this state update immediately filters the displayed student array to only items where `nama_siswa` contains that specific student's name.
-   - Consequently, the UI updates to show only that 1 student. All other students are filtered out until the user manually deletes the text in `manualSearchQuery`.
-   - **Deduction**: Removing `setManualSearchQuery(student.nama_siswa)` and `setManualKelasFilter('Semua')` from `handleManualMark` preserves the active filter and keeps the full student list visible after marking attendance.
+1. **Hierarchy Disconnect (Observation 1.4 & 1.5)**:
+   - While `tujuan_pembelajaran` in `src/types/database.ts` and the migration has `cp_id`, `tpForm` (lines 165–171) in `GradebookView.tsx` does NOT include `cp_id`.
+   - When a teacher creates a TP (line 1003), it sets `cp_id: selectedCpId || null`. But when editing a TP (`handleOpenEditTpModal`, line 954), `cp_id` is neither preserved in `tpForm` nor updated in `handleSaveTp` (lines 984–994).
+   - In `isTpModalOpen` (lines 2749–2864), there is no `<select>` dropdown for the teacher to choose or reassign the parent CP.
+   - Therefore, TP cannot be explicitly linked or re-linked to a specific CP by the user.
 
-2. **Step 2 (Role Detection Logic)**:
-   - In `AppScreen.tsx`, role comparison is case-insensitive and treats `superadmin` as `isAdmin` (Obs 1.2, item 1).
-   - In `PiketView.tsx`, lines 1356–1357 perform strict checks: `user?.role === 'Admin'` and `user?.role === 'Guru'`.
-   - If a Superadmin enters `PiketView`, `isAdmin` is false, which incorrectly locks out Admin features.
-   - **Deduction**: `PiketView.tsx` must normalize `user?.role`:
-     ```tsx
-     const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
-     const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
-     const isGuru = roleNormalized === 'guru';
-     ```
+2. **UI Segregation & Filtering (Observation 1.3 & 1.4)**:
+   - In the `'tp-matrix'` tab, `cpList` is rendered as horizontal pills (lines 1888–1925), and clicking a CP sets `selectedCpId(cp.id)` (line 1891).
+   - However, `tpList` (lines 1958–2000) displays all TPs fetched for the class/subject/semester without checking whether `tp.cp_id === selectedCpId`.
+   - Therefore, clicking a CP does not currently filter the visible TPs, failing the user experience expectation of a hierarchical CP → TP drill-down.
 
-3. **Step 3 (Guru vs Admin UI Distinction)**:
-   - **Guru Persona**: A teacher on picket duty operates on mobile or tablet at school gates or hallways. They need high speed, minimal vertical scrolling, large touch buttons, and simple attendance marking. They do NOT need multi-kiosk device selection (10 kiosks), hardware device debugging, or administrative 7-column audit log tables.
-   - **Admin Persona**: An administrator in the office needs comprehensive oversight: multi-kiosk device routing, real-time aggregate statistics, full metadata (NISN, gender, timestamp down to the second), manual overrides (canceling/editing attendance logs), and picket schedule management (`Penugasan Piket`).
-   - **Deduction**: The `scan` and `beranda` tabs must render distinct UI layouts conditioned on `isAdmin`:
-     - **Guru (Compact / Ringkas)**:
-       - Hide the Kiosk Station selector (default to `kiosk-default`).
-       - Compact Mode Switch: Segmented pill toggle (`[Datang | Pulang]`).
-       - Compact Scanner Card: Toggleable camera/scanner without overwhelming two-column layout.
-       - Compact Roster: Class selector pills + quick search + streamlined student cards/rows with 1-tap attendance marking and instant status indicators.
-       - Inline counter badge (e.g. `Hadir: 142 • Pulang: 12`) instead of 3 large standalone cards.
-       - Hide the duplicate 7-column `Live Attendance Log Table`.
-     - **Admin (Detail / Comprehensive)**:
-       - Retain Kiosk Station dropdown (Kiosk 1–10) with live connection status.
-       - Retain Full Two-Column Kiosk layout (USB Scanner + Camera Scanner + Detailed Student Feedback Card).
-       - Comprehensive Roster Table with all columns, manual overrides, and cancellation buttons.
-       - 3 Large Stat Cards (`Total Datang`, `Total Pulang`, `Total Unik`).
-       - Full 7-column Live Attendance Audit Log Table with search and class filters.
-       - Full access to `Penugasan Piket` tab for teacher/student scheduling.
+3. **Enforcement Rule: CP First Before TP (Observation 1.4 & ORIGINAL_REQUEST R1)**:
+   - Line 939 currently has: `if (!selectedCpId && cpList.length === 0) { showToast('Perhatian', 'Tambahkan Capaian Pembelajaran (CP) terlebih dahulu sebelum menambah TP.', 'warning'); return; }`.
+   - While this prevents form submission, the UI still renders an empty TP bar with an active "Tambah TP Baru" button even when 0 CPs exist.
+   - To provide a seamless Kurikulum Merdeka flow: when `cpList.length === 0`, the TP section should be locked or replaced with an educational banner stating *"Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu sebelum menambahkan Tujuan Pembelajaran (TP)."*
+
+4. **Foreign Key `guru_mapel_id` Linking**:
+   - `mapelList` contains `{ id: d.id, nama_mapel: d.nama_mapel, kelas: d.kelas }` where `d.id` originates from the `guru_mapel` table.
+   - In `handleSaveCp` (lines 635–641), the insert query currently omits `guru_mapel_id`.
+   - Finding the matching item from `mapelList` via `mapelList.find(m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === selectedKelas))?.id` allows saving `guru_mapel_id` properly.
+
+5. **Asesmen Constraint: Diagnostik Rule (Observation 1.4 & ORIGINAL_REQUEST R2)**:
+   - Line 714 ensures exactly 1 Diagnostik column is auto-created per TP.
+   - Line 1102 restricts `handleOpenAddColModal` to `'Formatif' | 'Sumatif'` only (preventing teachers from adding a 2nd Diagnostik column).
+   - Line 1195 prevents deleting the Diagnostik column (`showToast('Tidak Dapat Dihapus', 'Asesmen Diagnostik wajib ada tepat 1 per Tujuan Pembelajaran.', 'warning')`).
+   - Line 1155 and 1170 now support `keterangan` in `colForm` and database updates.
+   - This directly fulfills R2 requirements.
+
+6. **Formula Nilai Akhir & Absensi Integration (Observation 1.4 & R3)**:
+   - The formula in `calculateStudentSemesterStats` (lines 1410–1419) computes:
+     `semesterFinalRaw = (kehadiranScore * bobotKehadiran / 100) + (avgFormatifAll * bobotFormatif / 100) + (avgSumatifAll * bobotSumatif / 100)`.
+   - Currently, `kehadiranScore` uses a hardcoded fallback of `100` (line 1408: `const kehadiranScore = 100`).
+   - In `RaporView.tsx` (lines 120–144), real student attendance is queried from `supabase.from('absensi').select('nisn, status').eq('kelas', selectedKelas)`.
+   - Integrating this query in `GradebookView.tsx` provides true per-student attendance rates: `(hadir / total) * 100`.
 
 ---
 
 ## 3. Caveats
 
-1. **Camera Scanner State**: This report focuses on UI & State for Requirement R1. The camera initialization failure (Requirement R2) is investigated separately, but ensuring the compact view for Guru maintains clean video element mounting is critical.
-2. **Offline LocalStorage**: Recent commits introduced offline queueing for Presensi Guru. Presensi Siswa (`recordPresensiSiswa`) currently interacts directly with Supabase via `qrSiswa.ts`. No schema changes are required for R1.
-3. **No Caveats on Root Cause**: The root cause of the "Tandai Datang" auto-filter bug is 100% verified and reproducible via code tracing at lines 592 and 617 of `src/components/PiketView.tsx`.
+1. **Read-Only Explorer Mandate**: In accordance with system instructions, no source code files in `src/` were edited during this investigation. The syntax error at line 3056 was identified and documented for the Implementer.
+2. **Database Migration Application**: Migration `migrations/add_cp_and_gradebook_v2.sql` is present in the repository, but actual execution against the remote Supabase PostgreSQL instance depends on Supabase migration execution or admin execution.
+3. **Data Backwards-Compatibility**: Historical `tujuan_pembelajaran` records created before this update have `cp_id = NULL`. Filtering strictly by `selectedCpId` could hide legacy TPs unless a "Semua TP" or fallback unassigned filter (`cp_id === null`) is accommodated.
 
 ---
 
-## 4. Conclusion & Concrete Recommendations
+## 4. Conclusion
 
-### 4.1 Fix for "Tandai Datang" Auto-Filtering (Requirement R1.1)
-
-In `src/components/PiketView.tsx`, edit `handleManualMark`:
-
-```tsx
-// BEFORE (Lines 590-595):
-showToast('Berhasil', res.message, 'success');
-playAudioFeedback('success');
-setLastScanResult({ ... });
-
-// Two-way sync: fill QR scanner input and manual search input
-setUsbInputVal(student.nisn || student.nama_siswa);
-setManualSearchQuery(student.nama_siswa); // <-- BUG: filters table to 1 student!
-setManualKelasFilter('Semua');            // <-- BUG: resets active class filter!
-
-await fetchTodayScanData();
-
-// AFTER:
-showToast('Berhasil', res.message, 'success');
-playAudioFeedback('success');
-setLastScanResult({ ... });
-
-// Two-way sync: Update USB input and feedback card, but DO NOT overwrite manual search or class filter
-setUsbInputVal(student.nisn || student.nama_siswa);
-// Do NOT call setManualSearchQuery here!
-// Do NOT call setManualKelasFilter here!
-
-await fetchTodayScanData();
-```
-
-Apply the identical change to the `res.alreadyExists` branch (lines 616–619):
-```tsx
-// BEFORE:
-setUsbInputVal(student.nisn || student.nama_siswa);
-setManualSearchQuery(student.nama_siswa);
-setManualKelasFilter('Semua');
-
-// AFTER:
-setUsbInputVal(student.nisn || student.nama_siswa);
-// Remove setManualSearchQuery and setManualKelasFilter
-```
-
----
-
-### 4.2 Role Normalization (Requirement R1.2)
-
-In `src/components/PiketView.tsx`, update role calculation:
-
-```tsx
-// BEFORE (Lines 1356-1357):
-const isGuru = user?.role === 'Guru';
-const isAdmin = user?.role === 'Admin';
-
-// AFTER:
-const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
-const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
-const isGuru = roleNormalized === 'guru';
-```
-
----
-
-### 4.3 UI Differentiation Specification (Requirement R1.2)
-
-| Feature / UI Element | Guru Role (Ringkas / Compact) | Admin Role (Detail / Comprehensive) |
-|---|---|---|
-| **Header Badge** | `Petugas Piket Hari Ini` | `Administrator Sistem Piket` |
-| **Kiosk Device Selector** | Hidden (defaults to `'kiosk-guru'` or `'kiosk-1'`) | Visible (Kios 1–10 dropdown + live ping) |
-| **Attendance Mode Selector** | Compact pill button (`Datang` / `Pulang`) | Large dual banner cards with descriptive text |
-| **Scanner Interface** | Compact collapsible card (Camera / Barcode toggle) | Full side-by-side Kiosk station (USB input + Camera stream) |
-| **Feedback Card** | Toast + compact top banner notification | Persistent high-detail student card (photo, NISN, class, time) |
-| **Stat Summary** | Compact badge row (`Hadir: X • Pulang: Y`) | 3 full-width metric dashboard cards |
-| **Student Roster** | Fast touch-friendly list/compact table: Name, Class, 1-tap "Datang" / "Pulang" button with live time stamp | Comprehensive 6-column table with gender, NISN, cancel action buttons |
-| **Audit Log Table** | **Hidden** (reduces mobile scroll clutter) | **Visible** (Full 7-column log: time, student, class, NISN, status, kiosk ID) |
-| **Tabs Available** | Beranda, Presensi Siswa, Isi Laporan, Rekap | Beranda, Presensi Siswa, Penugasan Piket, Rekap |
+1. **Syntax Blocker**: Lines 3056–3058 in `src/components/GradebookView.tsx` must have the stray `</section>);}` removed immediately so TypeScript compilation (`npx tsc --noEmit`) passes.
+2. **CP → TP UI Hierarchy Implementation Blueprint**:
+   - **In State**: Add `cp_id: string` to `tpForm`.
+   - **In UI Pills**:
+     - Group or filter `tpList` by `selectedCpId`. Add an option `"Semua TP"` or automatically filter to the selected CP with a count badge.
+     - When `cpList.length === 0`, display a prominent prompt banner in the TP section prompting the teacher to create a CP first, and disable the "Tambah TP Baru" button until at least 1 CP exists.
+   - **In Modal `isTpModalOpen`**:
+     - Add a required `<select>` dropdown populated with `cpList` (`Kode CP + Deskripsi`) to assign the TP to a CP.
+     - When clicking "Tambah TP Baru" with an active `selectedCpId`, pre-select that CP in the modal.
+     - In `handleOpenEditTpModal`, populate `tpForm.cp_id` from `tp.cp_id`.
+     - In `handleSaveTp`, include `cp_id: tpForm.cp_id || null` in both `update` and `insert`.
+   - **In CP CRUD**:
+     - In `handleSaveCp`, set `guru_mapel_id` by matching `selectedMapel` & `selectedKelas` in `mapelList`.
+     - Expand `cpForm` to show and validate `semester` and `tahun_ajaran`.
+3. **Nilai Akhir & Absensi**:
+   - Fetch attendance summary from `absensi` for `selectedKelas` (matching the pattern in `RaporView.tsx`) to replace the `kehadiranScore = 100` placeholder with the student's actual attendance percentage.
 
 ---
 
 ## 5. Verification Method
 
-1. **Automated / Build Verification**:
-   - Run TypeScript check: `npx tsc --noEmit`
-   - Run Next.js build: `npm run build`
-2. **Interactive Manual Test**:
-   - Log in as Guru with picket duty.
-   - Navigate to **Modul Piket** -> Tab **Presensi Siswa**.
-   - Select a specific class (e.g., "7A") with multiple students visible in the roster table.
-   - Click **Tandai Datang** on the first student.
-   - **Verification Pass Condition**:
-     - The first student's status immediately updates to `Datang [HH:MM]`.
-     - **All other students in the class remain visible in the table** (the roster DOES NOT collapse to 1 student).
-     - The class filter remains "7A" (does not reset).
-   - Log in as Admin:
-     - Verify Kiosk selector (1–10), 3 metric cards, and 7-column Live Attendance Audit Log are fully visible.
-     - Verify `Penugasan Piket` tab is accessible.
+To independently verify the findings and any subsequent implementation:
+
+1. **TypeScript Static Check**:
+   ```powershell
+   npx tsc --noEmit
+   ```
+   *Expected Result*: Must pass with 0 errors once lines 3056–3058 are cleaned.
+
+2. **Adversarial Test Suite Execution**:
+   ```powershell
+   npm test tests/adversarial_kurikulum_merdeka_cp.test.ts
+   ```
+   *Expected Result*: All 100+ checks for Kurikulum Merdeka CP calculations pass without regression.
+
+3. **Code Inspection of Hierarchy Points in `src/components/GradebookView.tsx`**:
+   - Inspect lines 165–171: verify `tpForm` contains `cp_id`.
+   - Inspect lines 934–952: verify `handleOpenAddTpModal` sets `cp_id: selectedCpId`.
+   - Inspect lines 2765–2861: verify `isTpModalOpen` renders `<select>` for Capaian Pembelajaran.
+   - Inspect lines 1862–2021: verify CP pills filter or organize TP pills dynamically.

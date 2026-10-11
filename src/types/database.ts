@@ -79,6 +79,7 @@ export type Database = {
           created_at: string | null
           id: string
           kategori: string
+          keterangan: string | null
           nama: string
           sekolah_id: string
           tp_id: string
@@ -90,6 +91,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           kategori: string
+          keterangan?: string | null
           nama: string
           sekolah_id?: string
           tp_id: string
@@ -101,6 +103,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           kategori?: string
+          keterangan?: string | null
           nama?: string
           sekolah_id?: string
           tp_id?: string
@@ -1445,8 +1448,70 @@ export type Database = {
           },
         ]
       }
+      capaian_pembelajaran: {
+        Row: {
+          id: string
+          sekolah_id: string
+          guru_mapel_id: string | null
+          nama_mapel: string
+          kelas: string
+          semester: string
+          tahun_ajaran: string
+          kode_cp: string
+          deskripsi: string
+          urutan: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          sekolah_id?: string
+          guru_mapel_id?: string | null
+          nama_mapel: string
+          kelas: string
+          semester?: string
+          tahun_ajaran?: string
+          kode_cp: string
+          deskripsi: string
+          urutan?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          sekolah_id?: string
+          guru_mapel_id?: string | null
+          nama_mapel?: string
+          kelas?: string
+          semester?: string
+          tahun_ajaran?: string
+          kode_cp?: string
+          deskripsi?: string
+          urutan?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "capaian_pembelajaran_sekolah_id_fkey"
+            columns: ["sekolah_id"]
+            isOneToOne: false
+            referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "capaian_pembelajaran_guru_mapel_id_fkey"
+            columns: ["guru_mapel_id"]
+            isOneToOne: false
+            referencedRelation: "guru_mapel"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+
       tujuan_pembelajaran: {
         Row: {
+          cp_id: string | null
           created_at: string | null
           deskripsi: string
           guru_id: string | null
@@ -1463,6 +1528,7 @@ export type Database = {
           urutan: number
         }
         Insert: {
+          cp_id?: string | null
           created_at?: string | null
           deskripsi: string
           guru_id?: string | null
@@ -1479,6 +1545,7 @@ export type Database = {
           urutan?: number
         }
         Update: {
+          cp_id?: string | null
           created_at?: string | null
           deskripsi?: string
           guru_id?: string | null
@@ -1495,6 +1562,13 @@ export type Database = {
           urutan?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "tujuan_pembelajaran_cp_id_fkey"
+            columns: ["cp_id"]
+            isOneToOne: false
+            referencedRelation: "capaian_pembelajaran"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "tujuan_pembelajaran_guru_id_fkey"
             columns: ["guru_id"]
@@ -1935,6 +2009,23 @@ export type AsesmenKolomUpdate = TablesUpdate<"asesmen_kolom">;
 export type NilaiSiswa = Tables<"nilai_siswa">;
 export type NilaiSiswaInsert = TablesInsert<"nilai_siswa">;
 export type NilaiSiswaUpdate = TablesUpdate<"nilai_siswa">;
+
+export type CapaianPembelajaran = Tables<"capaian_pembelajaran">;
+export type CapaianPembelajaranInsert = TablesInsert<"capaian_pembelajaran">;
+export type CapaianPembelajaranUpdate = TablesUpdate<"capaian_pembelajaran">;
+
+export interface BobotNilaiMapel {
+  kehadiran: number;
+  formatif: number;
+  sumatif: number;
+}
+
+export const DEFAULT_BOBOT_NILAI_MAPEL: BobotNilaiMapel = {
+  kehadiran: 40,
+  formatif: 30,
+  sumatif: 30,
+};
+
 
 export type PushSubscription = Tables<"push_subscriptions">;
 export type PushSubscriptionInsert = TablesInsert<"push_subscriptions">;
