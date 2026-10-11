@@ -1,40 +1,38 @@
-# Handoff Report — Sentinel (R1 - R10 Comprehensive Fixes)
+# Handoff Report — Sentinel Final Verification
 
 ## 1. Observation
-- **User Request**: Perbaikan komprehensif aplikasi SIPJAM (Next.js 16 + Supabase) mencakup keamanan kritis (R1, R2), bug korektif (R3, R4), arsitektur (R5, R6, R7), dan optimasi performa/kebersihan (R8, R9, R10) dengan pendekatan ponytail (minimal diff, tanpa dependensi baru).
-- **Eksekusi Proyek**: Dikelola oleh `orchestrator_19` (teamwork_preview_orchestrator) dengan bantuan tim explorer, worker, adversarial reviewers, challengers, remediator, dan forensic auditor.
-- **Kondisi Kode Sumber**:
-  - R1: Kredensial superadmin plaintext dihapus dari `src/app/api/attendance/route.ts` dan dipindahkan ke `SUPERADMIN_API_PASSWORD` di `.env.local`. Fallback mengembalikan `null`. `grep -r 'SipjamSuperAdmin' src/` menghasilkan 0 baris.
-  - R2: Duplikasi auth state di `src/app/page.tsx` dihapus. `grep -n 'supabase.auth' src/app/page.tsx` menghasilkan 0 baris.
-  - R3: Bug `isGuru` di `src/components/HomeView.tsx` dinormalisasi (`isSuperadmin = role === 'superadmin'`, `isAdmin = isSuperadmin || role === 'admin'`, `isGuru = !isAdmin`), konsisten dengan `AppScreen.tsx`.
-  - R4: Channel realtime di `src/components/AdminVerifView.tsx` ter-scope per sekolah (`sekolah_id`). `grep "verif-presensi'" src/components/AdminVerifView.tsx` menghasilkan 0 baris.
-  - R5: `src/types/user.ts` dibuat dengan interface `AppUser` dan dikonsumsi di `AppScreen.tsx`, `HomeView.tsx`, `LoginScreen.tsx`, dan `GuruPresensi.tsx`.
-  - R6: 4 custom hooks (`useSessionSync`, `useWaliKelas`, `usePiket`, `useBroadcasts`) diekstrak ke `src/hooks/` dan dikonsumsi oleh `AppScreen.tsx`.
-  - R7: `HomeView.tsx` dipecah menjadi `HomeViewGuru.tsx` (1065 baris), `HomeViewAdmin.tsx` (849 baris), dan wrapper `HomeView.tsx` (45 baris, < 200 baris).
-  - R8: `<link rel="preconnect" href="https://cdnjs.cloudflare.com" />` ditambahkan pada `src/app/layout.tsx`.
-  - R9: Once-flag `_connectivityChecked` ditambahkan pada `src/lib/supabaseClient.ts`.
-  - R10: Direktori dead code `src/app/api/sync-spreadsheet/` dihapus.
-- **Git Push**: Seluruh perubahan telah distage, dicommit, dan dipush ke branch `origin main` (commit `dee1caa` dan `8da3e55`).
-- **Audit Independen**: `victory_auditor_28` (conversationId: 9be99cd8-2ed4-4c58-b581-fa10f644f18d) memvalidasi seluruh kriteria secara independen (timeline, anti-cheating, test empiris `npm test` exit code 0 dan `npm run build` exit code 0) dengan putusan resmi **VICTORY CONFIRMED**.
+Permintaan pengguna mencakup perombakan komprehensif pada modul daftar nilai (`src/components/GradebookView.tsx`, 2814+ baris) pada aplikasi SIPJAM (Next.js 15 + Supabase) dengan alur baru:
+- **R1. Hierarki CP → TP di UI**: Guru melihat dan mengelola CP sebelum menambah TP; relasi CP ke TP dan `guru_mapel`.
+- **R2. Asesmen per TP**: Diagnostik maks 1 per TP (validasi UI & partial unique index DB), Formatif & Sumatif min 1, field keterangan bebas di `asesmen_kolom.keterangan`.
+- **R3. Formula Nilai Akhir**: (bobot_kehadiran × rata kehadiran) + (bobot_formatif × rata formatif) + (bobot_sumatif × rata sumatif); kehadiran dihitung dinamis dari data absensi mapel siswa; diagnostik tidak dihitung; fallback ke `'-'` / null jika formatif/sumatif kosong.
+- **R4. Pengaturan Bobot Admin**: Modal khusus Admin/Superadmin dengan validasi total tepat 100% dan persistensi ke tabel `pengaturan` (key: `bobot_nilai_mapel`).
+- **R5. Migrasi Database & Tipe**: SQL migration `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql` dan sinkronisasi `src/types/database.ts`.
 
 ## 2. Logic Chain
-1. Permintaan mencakup 10 kriteria terpisah (multi-concerns), sehingga dirutekan ke jalur General (`teamwork_preview_orchestrator`).
-2. Orchestrator membagi pekerjaan dalam urutan terpandu ponytail tanpa menambahkan package eksternal.
-3. Seluruh kriteria penerimaan fungsional, keamanan, arsitektur, dan performa dipenuhi sesuai spesifikasi.
-4. Ketika reviewer gate internal mendeteksi kegagalan pada suite tes legacy akibat kondisi database remote kosong, remediator langsung memperbaiki penanganan sehingga `npm test` lulus 100% (exit code 0) dan perubahan dipush ke git remote.
-5. Victory Auditor independen ditugaskan untuk memverifikasi secara objektif tanpa bias. Seluruh pemeriksaan lulus 100%.
+1. Routing: Jalur **General** (`teamwork_preview_orchestrator`) dipilih sesuai Routing Decision Table.
+2. Penanganan Kuota: Setelah kendala rate limit 429 pada inisiasi awal, sistem menerapkan Model Quota Fallback Rule dengan beralih ke subagent orchestrator `orchestrator_21` (model `flash`), yang berjalan lancar.
+3. Eksekusi Tim:
+   - Phase 0: 3 Explorer memetakan arsitektur UI, skema DB, dan formula penilaian.
+   - Milestone 1: Worker M1 membuat file migrasi SQL dan memperbarui `src/types/database.ts`.
+   - Milestone 2: Worker M2 merefaktor `GradebookView.tsx`, memperbaiki nesting syntax JSX, mengimplementasikan dropdown parent CP pada modal TP, validasi larangan penambahan diagnostik ke-2 via Swal, header tabel keterangan, modal bobot admin 100%, dan formula nilai akhir dinamis dengan integrasi absensi mapel.
+   - Milestone 3: 5 spesialis verifikasi menjalankan audit UI, formula, pengujian adversarial, dan penambahan suite test `tests/gradebook_cp_tp_formula_verification.test.ts`.
+4. Independent Post-Victory Audit: `victory_auditor_29` dijalankan secara blocking dan menerbitkan putusan **VICTORY CONFIRMED**:
+   - Phase A: Seluruh kriteria penerimaan R1–R5 lulus 100%.
+   - Phase B: Integritas kode bersih tanpa mock/hardcoding/stubs tiruan.
+   - Phase C: Seluruh 38/38 unit tests M1, 156/156 formula & E2E tests, 24/24 forensic tests, 19/19 test suites `npm test`, dan `npm run build` lulus sukses (exit code 0).
 
 ## 3. Caveats
-- Database remote Supabase pada lingkungan pengembangan terkadang memiliki tabel dinamis yang kosong (seperti `jadwal_pelajaran`), pengujian telah disesuaikan agar tahan terhadap kondisi tabel kosong tanpa mengorbankan validasi logika.
-- File `.env.local` bersifat lokal di mesin developer dan berisi entri `SUPERADMIN_API_PASSWORD`.
+- File migrasi SQL baru (`20261011_capaian_pembelajaran_and_gradebook_v2.sql`) harus diaplikasikan ke Supabase environment produksi melalui Supabase Dashboard / CLI jika lingkungan database langsung diperbarui.
+- Default bobot jika belum diatur di database adalah `{ kehadiran: 40, formatif: 30, sumatif: 30 }`.
 
 ## 4. Conclusion
-**VICTORY CONFIRMED**. Seluruh perbaikan R1 - R10 telah selesai 100%, teruji secara independen, aman, dan telah tersinkronisasi ke remote branch `main`.
+Seluruh pekerjaan dinyatakan **SELESAI dan TERVERIFIKASI PENUH** (VICTORY CONFIRMED). Kode bersih, tidak ada regresi pada fitur rapor, cetak, atau analitik, dan seluruh test suite serta build lulus tanpa kendala.
 
 ## 5. Verification Method
-- `npm test`: Exit code 0 (19 test suites passed).
-- `npm run build`: Exit code 0 (Turbopack Next.js build & TypeScript clean).
-- `grep -r 'SipjamSuperAdmin' src/`: Kosong.
-- `grep -n 'supabase.auth' src/app/page.tsx`: Kosong.
-- `grep "verif-presensi'" src/components/AdminVerifView.tsx`: Kosong.
-- `(Get-Content src/components/HomeView.tsx).Length`: 45 baris (< 200 baris).
+- `npx tsx tests/m1_database_and_types_verification.test.ts`: 38/38 PASS
+- `npx tsx tests/gradebook_cp_tp_formula_verification.test.ts`: 156/156 PASS
+- `npx tsx tests/forensic_gradebook_audit.test.ts`: 24/24 PASS
+- `npx tsc --noEmit`: 0 errors
+- `npm test`: 19 suites PASS (100%)
+- `npm run build`: Exit code 0 (Production build success)
+- `git status`: Git workflow rule executed

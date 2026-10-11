@@ -20,30 +20,30 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | R5: Database Migration SQL | New table `capaian_pembelajaran`, `cp_id` in `tujuan_pembelajaran`, `keterangan` in `asesmen_kolom`, `uq_asesmen_tp_diagnostik` index, and default seed in `pengaturan` | M1 | Survey 2 | PLANNED |
-| 2 | R5: TypeScript Database Types | Update `src/types/database.ts` with `CapaianPembelajaran`, updated `tujuan_pembelajaran`, updated `asesmen_kolom`, `BobotNilaiMapel`, `DEFAULT_BOBOT_NILAI_MAPEL` | M1 | Survey 2 | PLANNED |
-| 3 | Syntax Fix in GradebookView | Remove premature closing tag at lines 3056–3058 so `Modal Bulk Fill Grades` compiles cleanly | M2 | Survey 1, 2, 3 | PLANNED |
-| 4 | R1: UI CP Management & State | Add/edit/delete Capaian Pembelajaran, modal, form validation, and save with `guru_mapel_id` linking | M2 | Survey 1 | PLANNED |
-| 5 | R1: UI CP → TP Hierarchy & Linking | Require CP before TP, add `cp_id` dropdown in TP modal, link TP to selected CP, filter TP pills by active CP | M2 | Survey 1 | PLANNED |
-| 6 | R2: Asesmen Diagnostik Rule | Enforce max 1 Diagnostik per TP in UI and DB, auto-heal if missing, block adding 2nd Diagnostik, block deleting Diagnostik | M2 | Survey 1, 3 | PLANNED |
-| 7 | R2: Asesmen Formatif & Sumatif Multi-Add | Allow multiple Formatif and multiple Sumatif columns with customizable weights | M2 | Survey 1, 3 | PLANNED |
-| 8 | R2: Asesmen Field Keterangan | Input, edit, save, and display free-text `keterangan` for each assessment column | M2 | Survey 1, 2 | PLANNED |
-| 9 | R4: Admin Bobot Settings Modal & Validation | Admin/Superadmin form to adjust percentage weights, validate total = 100%, save to `pengaturan` table | M2 | Survey 1, 2 | PLANNED |
-| 10 | R4: Bobot Settings Loading & State | Load saved weights on mount per `sekolah_id`, apply dynamically to grade calculations | M2 | Survey 1, 2 | PLANNED |
-| 11 | R3: Nilai Akhir Mathematical Formula | Implement `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)` | M2 | Survey 3 | PLANNED |
-| 12 | R3: Diagnostik Exclusion from Nilai Akhir | Guarantee Diagnostik is never included in student subject final score | M2 | Survey 3 | PLANNED |
-| 13 | R3: Missing Data Handling | If formatif or sumatif is missing/null, return `null` / display `'-'` without runtime errors | M2 | Survey 3 | PLANNED |
-| 14 | R3: Attendance Integration per Mapel | Query student attendance percentage from `jurnal_pembelajaran` / `absensi` for the subject/class | M2 | Survey 1, 3 | PLANNED |
-| 15 | R3: Rekap Semester & Rapor Preservation | Ensure Tab 2 Rekap Semester, CSV export, and `generateKurikulumMerdekaDeskripsi` work with 0 regressions | M2 | Survey 3 | PLANNED |
-| 16 | E2E & Adversarial Testing Track | Complete test suite covering Tiers 1-5 (Feature, Boundary, Combinations, Real-world, Adversarial) | M3 | E2E Track | PLANNED |
-| 17 | Final Build & Git Delivery | Verify `npx tsc --noEmit`, `npm test`, `npm run build`, and execute automatic Git workflow (status, add, commit, push) | M3 | GEMINI.md | PLANNED |
+| 1 | R5: Database Migration SQL | New table `capaian_pembelajaran`, `cp_id` in `tujuan_pembelajaran`, `keterangan` in `asesmen_kolom`, `uq_asesmen_tp_diagnostik` index, and default seed in `pengaturan` | M1 | Survey 2 | DONE |
+| 2 | R5: TypeScript Database Types | Update `src/types/database.ts` with `CapaianPembelajaran`, updated `tujuan_pembelajaran`, updated `asesmen_kolom`, `BobotNilaiMapel`, `DEFAULT_BOBOT_NILAI_MAPEL` | M1 | Survey 2 | DONE |
+| 3 | Syntax Fix in GradebookView | Remove premature closing tag at lines 3056–3058 so `Modal Bulk Fill Grades` compiles cleanly | M2 | Survey 1, 2, 3 | DONE |
+| 4 | R1: UI CP Management & State | Add/edit/delete Capaian Pembelajaran, modal, form validation, and save with `guru_mapel_id` linking | M2 | Survey 1 | DONE |
+| 5 | R1: UI CP → TP Hierarchy & Linking | Require CP before TP, add `cp_id` dropdown in TP modal, link TP to selected CP, filter TP pills by active CP | M2 | Survey 1 | DONE |
+| 6 | R2: Asesmen Diagnostik Rule | Enforce max 1 Diagnostik per TP in UI and DB, auto-heal if missing, block adding 2nd Diagnostik, block deleting Diagnostik | M2 | Survey 1, 3 | DONE |
+| 7 | R2: Asesmen Formatif & Sumatif Multi-Add | Allow multiple Formatif and multiple Sumatif columns with customizable weights | M2 | Survey 1, 3 | DONE |
+| 8 | R2: Asesmen Field Keterangan | Input, edit, save, and display free-text `keterangan` for each assessment column | M2 | Survey 1, 2 | DONE |
+| 9 | R4: Admin Bobot Settings Modal & Validation | Admin/Superadmin form to adjust percentage weights, validate total = 100%, save to `pengaturan` table | M2 | Survey 1, 2 | DONE |
+| 10 | R4: Bobot Settings Loading & State | Load saved weights on mount per `sekolah_id`, apply dynamically to grade calculations | M2 | Survey 1, 2 | DONE |
+| 11 | R3: Nilai Akhir Mathematical Formula | Implement `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)` | M2 | Survey 3 | DONE |
+| 12 | R3: Diagnostik Exclusion from Nilai Akhir | Guarantee Diagnostik is never included in student subject final score | M2 | Survey 3 | DONE |
+| 13 | R3: Missing Data Handling | If formatif or sumatif is missing/null, return `null` / display `'-'` without runtime errors | M2 | Survey 3 | DONE |
+| 14 | R3: Attendance Integration per Mapel | Query student attendance percentage from `jurnal_pembelajaran` / `absensi` for the subject/class | M2 | Survey 1, 3 | DONE |
+| 15 | R3: Rekap Semester & Rapor Preservation | Ensure Tab 2 Rekap Semester, CSV export, and `generateKurikulumMerdekaDeskripsi` work with 0 regressions | M2 | Survey 3 | DONE |
+| 16 | E2E & Adversarial Testing Track | Complete test suite covering Tiers 1-5 (Feature, Boundary, Combinations, Real-world, Adversarial) | M3 | E2E Track | DONE |
+| 17 | Final Build & Git Delivery | Verify `npx tsc --noEmit`, `npm test`, `npm run build`, and execute automatic Git workflow (status, add, commit, push) | M3 | GEMINI.md | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Data Layer (Database Migration & TypeScript Types) | `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql` & `src/types/database.ts` | none | PLANNED |
-| M2 | UI & Logic Layer (`GradebookView.tsx`) | Syntax fix, CP->TP hierarchy, Asesmen per TP, Admin Bobot modal, Nilai Akhir formula & attendance | M1 | PLANNED |
-| M3 | Verification, E2E Testing, Build & Git Delivery | Automated test suite `tests/gradebook_cp_tp_formula_verification.test.ts`, `npm test`, `npm run build`, Git push | M1, M2 | PLANNED |
+| M1 | Data Layer (Database Migration & TypeScript Types) | `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql` & `src/types/database.ts` | none | DONE |
+| M2 | UI & Logic Layer (`GradebookView.tsx`) | Syntax fix, CP->TP hierarchy, Asesmen per TP, Admin Bobot modal, Nilai Akhir formula & attendance | M1 | DONE |
+| M3 | Verification, E2E Testing, Build & Git Delivery | Automated test suite `tests/gradebook_cp_tp_formula_verification.test.ts`, `npm test`, `npm run build`, Git push | M1, M2 | DONE |
 
 ## Interface Contracts
 
