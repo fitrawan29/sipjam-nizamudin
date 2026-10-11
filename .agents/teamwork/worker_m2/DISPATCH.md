@@ -1,73 +1,81 @@
-## 2026-10-08T12:26:47Z
-You are teamwork_preview_worker_m2.
+# Dispatch for worker_m2
+
+- **Role**: Worker for Milestone 2 — UI & Logic Layer (`src/components/GradebookView.tsx`)
+- **Working Directory**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2
+- **Authoritative Request**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see entry at 2026-10-10T22:56:05Z)
+- **Project Blueprint**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
+- **Reference Explorations**:
+  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md` (UI Hierarchy)
+  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md` (Schema & Admin Settings)
+  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md` (Grading Logic & Attendance)
+- **Exclusive Write Ownership**:
+  `src/components/GradebookView.tsx`
+
+## Mandatory Integrity Warning
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A forensic auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
+
+## Tasks in `src/components/GradebookView.tsx`
+1. **Fix Syntax Blocker Immediately**:
+   Remove lines 3056–3058 (the duplicate premature `</section>\n );\n}`) so `Modal Bulk Fill Grades` remains cleanly inside the component function return statement.
+2. **CP → TP UI Hierarchy (R1)**:
+   - Add `cp_id: string` to `tpForm` state.
+   - When `cpList.length === 0`: render an educational guidance banner in the TP section stating CP must be added first, and disable/guard the "Tambah TP Baru" button until at least 1 CP exists.
+   - In `isTpModalOpen`: Add a `<select>` dropdown populated with `cpList` (`kode_cp` + `deskripsi`) so teacher can assign TP to CP. Pre-select `selectedCpId`.
+   - In `handleOpenAddTpModal`: set `cp_id: selectedCpId || (cpList[0]?.id ?? '')`.
+   - In `handleOpenEditTpModal`: populate `tpForm.cp_id` from `tp.cp_id`.
+   - In `handleSaveTp`: persist `cp_id: tpForm.cp_id || null` in both insert and update queries.
+   - In `handleSaveCp`: set `guru_mapel_id` by matching `selectedMapel` & `selectedKelas` in `mapelList`.
+   - In TP pills toolbar: clicking a CP selects it (`selectedCpId`); filter visible TP pills by `selectedCpId` (support "Semua TP" or filter to active CP).
+3. **Asesmen per TP & Keterangan (R2)**:
+   - Diagnostik Rule: auto-create exactly 1 Diagnostik column if missing; block adding a 2nd Diagnostik column in `handleSaveCol` with warning toast; block deleting Diagnostik column in `handleDeleteCol`.
+   - Formatif & Sumatif: allow adding multiple Formatif and multiple Sumatif columns.
+   - Field `keterangan`: add textarea/input `keterangan` in `isColModalOpen`, save to `asesmen_kolom.keterangan`, load into `colForm` when editing, and display in column headers/tooltips.
+4. **Admin Bobot Settings UI & Persistence (R4)**:
+   - Admin Bobot button in toolbar visible only for `isAdmin`.
+   - Modal allows adjusting `kehadiran`, `formatif`, `sumatif`.
+   - Validate `kehadiran + formatif + sumatif === 100` before saving.
+   - Persist to table `pengaturan` using key `'bobot_nilai_mapel'`.
+   - Load saved weights on mount per `sekolah_id` (fallback to 40, 30, 30).
+5. **Nilai Akhir Formula & Attendance Integration (R3)**:
+   - Query subject attendance per student from `jurnal_pembelajaran` for `selectedMapel` & `selectedKelas`; fallback to `absensi` table per class; default 100% if no sessions recorded yet.
+   - In `calculateStudentSemesterStats`:
+     Nilai Akhir = `(kehadiranScore * bobotKehadiran / 100) + (avgFormatifAll * bobotFormatif / 100) + (avgSumatifAll * bobotSumatif / 100)`.
+   - Diagnostik is excluded from Nilai Akhir calculation.
+   - If either `avgFormatifAll === null` or `avgSumatifAll === null`: return `null` (displays `'-'`).
+   - Preserve `generateKurikulumMerdekaDeskripsi` and `CapaianDeskripsiResult` exports with 0 regressions.
+6. **Verification**:
+   - Run `npx tsc --noEmit` — must pass with 0 errors.
+   - Run existing academic tests:
+     `npx tsx tests/adversarial_kurikulum_merdeka_cp.test.ts`
+     `npx tsx tests/adversarial_kurikulum_merdeka_cp_permutations.test.ts`
+     `npx tsx tests/m4_gradebook.test.ts`
+   - Run full `npm test` to verify zero regressions.
+7. Write complete handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md`.
+
+
+## 2026-10-11T01:03:52Z
+You are Worker for Milestone 2 (UI & Logic Layer: GradebookView.tsx).
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2
+Read instructions in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\DISPATCH.md
+Authoritative request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (see entry at 2026-10-10T22:56:05Z)
+Project Blueprint: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\PROJECT.md
+Survey findings:
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\handoff.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md
+
+Exclusive Write Ownership:
+`src/components/GradebookView.tsx`
 
 MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A forensic auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-MANDATORY INPUT FILES:
-1. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md first (under header '## 2026-10-08T11:11:29Z').
-2. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md.
-3. Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_o16_2\report.md.
+Implement all Milestone 2 requirements:
+1. Fix syntax error at lines 3056–3058.
+2. CP → TP UI hierarchy (CP first before TP, CP assignment dropdown in TP modal, filter TP pills by CP, link guru_mapel_id).
+3. Asesmen per TP (Diagnostik max 1 guard, Formatif & Sumatif multi-column, keterangan field in modal & table).
+4. Admin Bobot Settings modal with total = 100% validation, save to pengaturan table, load on mount.
+5. Nilai Akhir formula: (bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif), attendance per mapel query from jurnal_pembelajaran/absensi, null fallback if formatif or sumatif is missing, Diagnostik excluded from final score.
+6. Verify with `npx tsc --noEmit` and `npm test`.
 
-YOUR SCOPE & EXCLUSIVE WRITE OWNERSHIP:
-- src/types/database.ts
-- supabase/migrations/20261008_m2_presensi_guru_approval_autocheckout.sql
-- src/components/GuruPresensi.tsx
-- src/lib/workflow.ts
-- src/lib/attendanceAlpa.ts
-- src/components/AdminVerifView.tsx
-- src/components/PrintHeader.tsx
-- src/utils/printWithGps.ts (or src/lib/gpsPrint.ts)
-- tests/m2_teacher_attendance_verification.test.ts
-
-TASK INSTRUCTIONS (Follow explorer_o16_2/report.md blueprint):
-1. Database Schema & Migration:
-   - Create migration `supabase/migrations/20261008_m2_presensi_guru_approval_autocheckout.sql` adding nullable columns to `public.presensi_guru`:
-     `durasi_hari INTEGER DEFAULT 1`,
-     `tanggal_mulai DATE`,
-     `tanggal_selesai DATE`,
-     `memerlukan_persetujuan_admin BOOLEAN DEFAULT false`,
-     `is_auto_checkout BOOLEAN DEFAULT false`
-   - Update `src/types/database.ts` for `presensi_guru` row/insert/update types.
-
-2. Teacher Attendance Flow & Multi-State Transitions:
-   - In `src/components/GuruPresensi.tsx`:
-     - Unlock the `Pulang` dropdown (`isJenisDropdownDisabled`) so teachers can select between "Hadir di Sekolah" (or "Sekolah") and "Dinas Luar" when checking out, supporting all 4 state transitions ("Hadir di Sekolah" <-> "Dinas Luar").
-     - In the leave form (`jenisPresensi === 'Izin'`), add duration fields (`durasi_hari` with default 1, min 1, and start/end dates).
-     - Calculate `memerlukan_persetujuan_admin = (detailIzin === 'Sakit' && durasi >= 3) || (jenisPresensi === 'Izin' && durasi > 3)`.
-     - Display informational badge indicating if admin approval is required.
-   - In `src/lib/workflow.ts`:
-     - Track arrival vs departure states cleanly.
-     - Add multi-day approved leave coverage: if teacher has an approved sick/leave record where today is within `[tanggal_mulai, tanggal_selesai]`, mark `isIzinSakit = true`, `bebasAlpa = true`.
-
-3. Auto-Checkout Flagging (Forgotten Checkouts):
-   - In `src/lib/attendanceAlpa.ts`:
-     - Add `evaluateAndApplyAutoCheckout` function to detect teachers who checked in (`Datang`) on targetDate but never checked out (`Pulang`) past `jam_pulang_akhir`.
-     - Insert/flag an explicit auto-checkout record with `is_auto_checkout = true`, `status_verifikasi = 'Lupa Checkout'`, `catatan_admin = 'Auto-checkout: Guru tidak melakukan presensi pulang'`.
-   - In `GuruPresensi.tsx`:
-     - Surface a warning/notification banner if teacher was flagged as "Lupa Checkout" on their last attendance day.
-
-4. Admin Verification Routing:
-   - In `src/components/AdminVerifView.tsx`:
-     - On the Presensi verification tab, detect long-term sick (>= 3 days) and leave (> 3 days).
-     - Display distinctive badges ("Sakit >= 3 Hari (Perlu Persetujuan)", "Izin > 3 Hari (Perlu Persetujuan)") along with the date range and duration.
-     - Ensure admin can approve or reject with feedback.
-
-5. GPS Coordinates on Printed Documents:
-   - Create helper `src/utils/printWithGps.ts` (or `src/lib/gpsPrint.ts`).
-   - In `src/components/PrintHeader.tsx`'s `PrintSignature`:
-     - Accept and render `gpsCoordinates` (latitude, longitude, timestamp) in the official legal security footer.
-   - Trigger print with geolocation: if `navigator.geolocation` fails or user blocks/denies permission, display a SweetAlert alert notifying the user that GPS access is blocked/required.
-
-6. Verification Commands:
-   - `npx tsc --noEmit`
-   - `npm test`
-   - `npx tsx tests/m2_teacher_attendance_verification.test.ts`
-   - `npx tsx tests/e2e/run_all_e2e.ts`
-   - `npm run build`
-7. Git Workflow:
-   - Stage changes (`git add .`), commit with descriptive message (`feat(m2): implement teacher attendance multi-state, auto-checkout, admin routing, and gps print`), and push to `origin main`.
-
-Deliver detailed handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md`.
-Notify orchestrator (conversation ID 835d6ca7-b3e2-474a-acf0-423026614449).
+Write your full handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md` and message the orchestrator when finished.

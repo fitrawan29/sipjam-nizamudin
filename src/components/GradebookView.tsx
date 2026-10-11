@@ -168,12 +168,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
     semester: 'Ganjil',
     tahun_ajaran: '2024/2025',
     urutan: 1,
+    cp_id: '',
   });
 
   const [isColModalOpen, setIsColModalOpen] = useState(false);
   const [editingCol, setEditingCol] = useState<AsesmenKolom | null>(null);
   const [colForm, setColForm] = useState({
-    kategori: 'Formatif' as 'Formatif' | 'Sumatif',
+    kategori: 'Formatif' as 'Diagnostik' | 'Formatif' | 'Sumatif',
     nama: 'Formatif 1',
     bobot: 1,
     keterangan: '',
@@ -185,6 +186,12 @@ export default function GradebookView({ user }: GradebookViewProps) {
   const [bobotSumatif, setBobotSumatif] = useState<number>(30);
   const [isBobotModalOpen, setIsBobotModalOpen] = useState(false);
   const [bobotForm, setBobotForm] = useState({ kehadiran: 40, formatif: 30, sumatif: 30 });
+
+  // Attendance rates per student: { [nisn]: number } (percentage 0-100)
+  const [attendanceRates, setAttendanceRates] = useState<Record<string, number>>({});
+
+  // Filter TP by CP state: if false, only show TPs linked to selectedCpId (or unassigned if any)
+  const [showAllTp, setShowAllTp] = useState<boolean>(false);
 
   // Load bobot from pengaturan
   useEffect(() => {
@@ -210,6 +217,92 @@ export default function GradebookView({ user }: GradebookViewProps) {
     };
     fetchBobot();
   }, [sekolahId]);
+
+  // Fetch subject attendance per student from jurnal_pembelajaran with fallback to absensi
+  useEffect(() => {
+    if (!selectedKelas || !selectedMapel) {
+      setAttendanceRates({});
+      return;
+    }
+
+    const fetchMapelAttendance = async () => {
+      try {
+        // 1. Query jurnal_pembelajaran for this specific mapel and kelas
+        let jQ = supabase
+          .from('jurnal_pembelajaran')
+          .select('absensi_siswa')
+          .eq('mapel', selectedMapel)
+          .eq('kelas', selectedKelas);
+        if (sekolahId) jQ = jQ.eq('sekolah_id', sekolahId);
+        const { data: jData } = await jQ;
+
+        const rates: Record<string, number> = {};
+
+        if (jData && jData.length > 0 && jData.some(j => j.absensi_siswa)) {
+          const studentHadirCount: Record<string, number> = {};
+          let validSessions = 0;
+
+          jData.forEach(j => {
+            if (!j.absensi_siswa) return;
+            try {
+              const parsed = typeof j.absensi_siswa === 'string' ? JSON.parse(j.absensi_siswa) : j.absensi_siswa;
+              if (parsed && typeof parsed === 'object') {
+                validSessions++;
+                Object.entries(parsed).forEach(([nisn, status]) => {
+                  const st = String(status).toUpperCase();
+                  if (st === 'H' || st === 'HADIR') {
+                    studentHadirCount[nisn] = (studentHadirCount[nisn] || 0) + 1;
+                  }
+                });
+              }
+            } catch {
+              // ignore json parse error
+            }
+          });
+
+          if (validSessions > 0) {
+            students.forEach(s => {
+              const hadir = studentHadirCount[s.nisn] || 0;
+              rates[s.nisn] = parseFloat(((hadir / validSessions) * 100).toFixed(1));
+            });
+            setAttendanceRates(rates);
+            return;
+          }
+        }
+
+        // 2. Fallback: query canonical absensi table for this class
+        let aQ = supabase.from('absensi').select('nisn, status').eq('kelas', selectedKelas);
+        if (sekolahId) aQ = aQ.eq('sekolah_id', sekolahId);
+        const { data: aData } = await aQ;
+
+        if (aData && aData.length > 0) {
+          const studentStats: Record<string, { hadir: number; total: number }> = {};
+          aData.forEach(row => {
+            if (!studentStats[row.nisn]) studentStats[row.nisn] = { hadir: 0, total: 0 };
+            studentStats[row.nisn].total++;
+            const st = (row.status || '').toUpperCase();
+            if (st === 'H' || st === 'HADIR') studentStats[row.nisn].hadir++;
+          });
+
+          students.forEach(s => {
+            const stat = studentStats[s.nisn];
+            rates[s.nisn] = stat && stat.total > 0 ? parseFloat(((stat.hadir / stat.total) * 100).toFixed(1)) : 100;
+          });
+          setAttendanceRates(rates);
+          return;
+        }
+
+        // 3. Fallback default: 100% if no records yet
+        const defaultRates: Record<string, number> = {};
+        students.forEach(s => { defaultRates[s.nisn] = 100; });
+        setAttendanceRates(defaultRates);
+      } catch (err) {
+        console.error('Error fetching attendance for gradebook:', err);
+      }
+    };
+
+    fetchMapelAttendance();
+  }, [selectedMapel, selectedKelas, sekolahId, students]);
 
   // CP (Capaian Pembelajaran) state
   const [cpList, setCpList] = useState<CapaianPembelajaran[]>([]);
@@ -624,19 +717,27 @@ export default function GradebookView({ user }: GradebookViewProps) {
       showToast('Validasi', 'Kode CP dan Deskripsi wajib diisi.', 'warning'); return;
     }
     try {
+      const matchingGuruMapel = mapelList.find(m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === selectedKelas))?.id || null;
       if (editingCp) {
         const { error } = await supabase.from('capaian_pembelajaran').update({
-          kode_cp: cpForm.kode_cp.trim(), deskripsi: cpForm.deskripsi.trim(),
-          urutan: cpForm.urutan, updated_at: new Date().toISOString(),
+          kode_cp: cpForm.kode_cp.trim(),
+          deskripsi: cpForm.deskripsi.trim(),
+          urutan: cpForm.urutan,
+          guru_mapel_id: matchingGuruMapel,
+          updated_at: new Date().toISOString(),
         }).eq('id', editingCp.id);
         if (error) throw error;
         showToast('CP Diperbarui', '', 'success');
       } else {
         const { error } = await supabase.from('capaian_pembelajaran').insert({
           sekolah_id: sekolahId || undefined,
-          nama_mapel: selectedMapel, kelas: selectedKelas,
-          semester: selectedSemester, tahun_ajaran: selectedTahunAjaran,
-          kode_cp: cpForm.kode_cp.trim(), deskripsi: cpForm.deskripsi.trim(),
+          guru_mapel_id: matchingGuruMapel,
+          nama_mapel: selectedMapel,
+          kelas: selectedKelas,
+          semester: selectedSemester,
+          tahun_ajaran: selectedTahunAjaran,
+          kode_cp: cpForm.kode_cp.trim(),
+          deskripsi: cpForm.deskripsi.trim(),
           urutan: cpForm.urutan,
         } as any);
         if (error) throw error;
@@ -818,6 +919,19 @@ export default function GradebookView({ user }: GradebookViewProps) {
     fetchGrades();
   }, [fetchGrades]);
 
+  // Filtered TP list based on selected CP (or all TPs if showAllTp is toggled)
+  const displayedTpList = useMemo(() => {
+    if (showAllTp || !selectedCpId) return tpList;
+    return tpList.filter(tp => tp.cp_id === selectedCpId || !tp.cp_id);
+  }, [tpList, selectedCpId, showAllTp]);
+
+  // Sync selectedTpId when displayed TP list changes
+  useEffect(() => {
+    if (displayedTpList.length > 0 && (!selectedTpId || !displayedTpList.some(t => t.id === selectedTpId))) {
+      setSelectedTpId(displayedTpList[0].id);
+    }
+  }, [displayedTpList, selectedTpId]);
+
   // Active TP Object
   const currentTP = useMemo(() => {
     return tpList.find(t => t.id === selectedTpId) || null;
@@ -936,7 +1050,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menambah Tujuan Pembelajaran (TP).', 'warning');
       return;
     }
-    if (!selectedCpId && cpList.length === 0) {
+    if (cpList.length === 0) {
       showToast('Perhatian', 'Tambahkan Capaian Pembelajaran (CP) terlebih dahulu sebelum menambah TP.', 'warning');
       return;
     }
@@ -947,6 +1061,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       semester: selectedSemester,
       tahun_ajaran: selectedTahunAjaran,
       urutan: tpList.length + 1,
+      cp_id: selectedCpId || (cpList[0]?.id ?? ''),
     });
     setIsTpModalOpen(true);
   };
@@ -963,6 +1078,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       semester: tp.semester || selectedSemester,
       tahun_ajaran: tp.tahun_ajaran || selectedTahunAjaran,
       urutan: tp.urutan || 1,
+      cp_id: tp.cp_id || selectedCpId || (cpList[0]?.id ?? ''),
     });
     setIsTpModalOpen(true);
   };
@@ -984,6 +1100,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         const { error } = await supabase
           .from('tujuan_pembelajaran')
           .update({
+            cp_id: tpForm.cp_id || null,
             kode_tp: tpForm.kode_tp.trim(),
             deskripsi: tpForm.deskripsi.trim(),
             semester: tpForm.semester,
@@ -1000,7 +1117,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         // Create new TP
         const newTP = {
           sekolah_id: sekolahId || undefined,
-          cp_id: selectedCpId || null,
+          cp_id: tpForm.cp_id || selectedCpId || null,
           nama_guru: selectedGuru || user?.nama || 'Guru',
           nama_mapel: selectedMapel,
           kelas: selectedKelas,
@@ -1126,7 +1243,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
     }
     setEditingCol(col);
     setColForm({
-      kategori: col.kategori as 'Formatif' | 'Sumatif',
+      kategori: col.kategori as 'Diagnostik' | 'Formatif' | 'Sumatif',
       nama: col.nama,
       bobot: col.bobot ? Number(col.bobot) : 1,
       keterangan: col.keterangan || '',
@@ -1143,6 +1260,14 @@ export default function GradebookView({ user }: GradebookViewProps) {
     if (!colForm.nama.trim()) {
       showToast('Validasi', 'Nama asesmen wajib diisi.', 'warning');
       return;
+    }
+
+    if (colForm.kategori === 'Diagnostik') {
+      const existingDiag = columnsList.find(c => c.kategori === 'Diagnostik');
+      if (existingDiag && (!editingCol || editingCol.id !== existingDiag.id)) {
+        showToast('Validasi Gagal', 'Maksimal 1 Asesmen Diagnostik per Tujuan Pembelajaran.', 'warning');
+        return;
+      }
     }
 
     try {
@@ -1401,20 +1526,19 @@ export default function GradebookView({ user }: GradebookViewProps) {
       if (score !== null) validTpScores.push(score);
     });
 
-    // Aggregate semester final with kehadiran component
-    // ponytail: kehadiran placeholder = 100 until kehadiran-per-mapel data is wired
+    // Aggregate semester final with real kehadiran component
     const avgFormatifAll = allAvgF.length > 0 ? allAvgF.reduce((a, b) => a + b, 0) / allAvgF.length : null;
     const avgSumatifAll = allAvgS.length > 0 ? allAvgS.reduce((a, b) => a + b, 0) / allAvgS.length : null;
-    const kehadiranScore = 100; // ponytail: placeholder; replace with real attendance query when available
+    const kehadiranScore = attendanceRates[nisn] ?? 100;
 
     let semesterFinalRaw: number | null = null;
-    if (avgFormatifAll !== null || avgSumatifAll !== null) {
-      const f = avgFormatifAll ?? 0;
-      const s = avgSumatifAll ?? 0;
+    // Requirement: Jika tidak ada data formatif atau sumatif, nilai akhir menampilkan '-' / null (tidak error)
+    // Diagnostik is completely excluded from final score
+    if (avgFormatifAll !== null && avgSumatifAll !== null) {
       semesterFinalRaw = parseFloat((
         kehadiranScore * (bobotKehadiran / 100) +
-        f * (bobotFormatif / 100) +
-        s * (bobotSumatif / 100)
+        avgFormatifAll * (bobotFormatif / 100) +
+        avgSumatifAll * (bobotSumatif / 100)
       ).toFixed(1));
     }
 
@@ -1432,7 +1556,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       highestTp: cpAnalysis.highestTp,
       lowestTp: cpAnalysis.lowestTp,
     };
-  }, [gradesMap, tpList, allSemesterColumns, bobotKehadiran, bobotFormatif, bobotSumatif]);
+  }, [gradesMap, tpList, allSemesterColumns, bobotKehadiran, bobotFormatif, bobotSumatif, attendanceRates]);
 
 
   // Filtered Students for Display
@@ -1888,7 +2012,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                 cpList.map(cp => (
                   <div
                     key={cp.id}
-                    onClick={() => setSelectedCpId(cp.id)}
+                    onClick={() => { setSelectedCpId(cp.id); setShowAllTp(false); }}
                     className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border transition shrink-0 ${
                       selectedCpId === cp.id
                         ? 'bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-200 dark:border-violet-700 shadow-sm'
@@ -1928,20 +2052,48 @@ export default function GradebookView({ user }: GradebookViewProps) {
           {/* TP Selector Bar */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
 
+            {/* Educational Guidance Banner if no CP exists */}
+            {cpList.length === 0 && (
+              <div className="p-3.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
+                <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-sm shrink-0"></i>
+                <span>Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu sebelum menambahkan Tujuan Pembelajaran (TP).</span>
+              </div>
+            )}
+
             <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-extrabold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
                   Tujuan Pembelajaran:
                 </span>
                 <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 px-2 py-0.5 rounded-lg">
-                  {tpList.length} TP Tersedia
+                  {displayedTpList.length} dari {tpList.length} TP
                 </span>
+                {selectedCpId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTp(prev => !prev)}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition ${
+                      showAllTp
+                        ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/50 dark:text-teal-200 dark:border-teal-700'
+                        : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+                    }`}
+                  >
+                    <i className={`fa-solid ${showAllTp ? 'fa-filter-circle-xmark' : 'fa-filter'} mr-1 text-[10px]`}></i>
+                    {showAllTp ? 'Tampilkan TP Sesuai CP' : 'Tampilkan Semua TP'}
+                  </button>
+                )}
               </div>
               {!isAdmin && isGuruPengampu && (
                 <button
                   type="button"
                   onClick={handleOpenAddTpModal}
-                  className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
+                  disabled={cpList.length === 0}
+                  className={`btn-click px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition ${
+                    cpList.length === 0
+                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                      : 'bg-teal-600 hover:bg-teal-700 text-white'
+                  }`}
+                  title={cpList.length === 0 ? 'Buat CP terlebih dahulu' : 'Tambah TP Baru'}
                 >
                   <i className="fa-solid fa-plus text-xs"></i> Tambah TP Baru
                 </button>
@@ -1950,12 +2102,16 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
             {/* Horizontal TP Pills */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll">
-              {tpList.length === 0 ? (
+              {displayedTpList.length === 0 ? (
                 <div className="text-xs italic text-gray-400 dark:text-gray-500 py-2">
-                  Belum ada Tujuan Pembelajaran (TP) untuk mata pelajaran dan kelas ini. Klik "Tambah TP Baru".
+                  {cpList.length === 0
+                    ? 'Belum ada CP. Buat Capaian Pembelajaran (CP) di atas terlebih dahulu.'
+                    : tpList.length === 0
+                    ? 'Belum ada Tujuan Pembelajaran (TP) untuk mata pelajaran dan kelas ini. Klik "Tambah TP Baru".'
+                    : 'Tidak ada TP di bawah CP ini. Klik "Tampilkan Semua TP" atau tambah TP baru untuk CP ini.'}
                 </div>
               ) : (
-                tpList.map(tp => (
+                displayedTpList.map(tp => (
                   <div
                     key={tp.id}
                     onClick={() => setSelectedTpId(tp.id)}
@@ -2141,12 +2297,22 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
                       {/* Diagnostik Column */}
                       {diagnostikCol && (
-                        <th className="py-2 px-2 w-28 text-center bg-blue-50/30 dark:bg-blue-950/20 border-r border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center justify-center gap-1">
-                            <span>{diagnostikCol.nama}</span>
-                            <span className="text-[9px] px-1 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded">
-                              1x
-                            </span>
+                        <th
+                          className="py-2 px-2 w-28 text-center bg-blue-50/30 dark:bg-blue-950/20 border-r border-gray-200 dark:border-gray-700"
+                          title={diagnostikCol.keterangan ? `Keterangan: ${diagnostikCol.keterangan}` : undefined}
+                        >
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <div className="flex items-center justify-center gap-1">
+                              <span>{diagnostikCol.nama}</span>
+                              <span className="text-[9px] px-1 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded">
+                                1x
+                              </span>
+                            </div>
+                            {diagnostikCol.keterangan && (
+                              <span className="text-[9px] font-normal text-gray-500 dark:text-gray-400 truncate max-w-[90px]">
+                                {diagnostikCol.keterangan}
+                              </span>
+                            )}
                           </div>
                         </th>
                       )}
@@ -2161,28 +2327,36 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           <th
                             key={col.id}
                             className="py-2 px-2 w-28 text-center bg-emerald-50/30 dark:bg-emerald-950/20 border-r border-gray-200 dark:border-gray-700 group"
+                            title={col.keterangan ? `Keterangan: ${col.keterangan}` : undefined}
                           >
-                            <div className="flex items-center justify-center gap-1">
-                              <span className="truncate max-w-[70px]">{col.nama}</span>
-                              {!isAdmin && isGuruPengampu && (
-                                <div className="flex items-center gap-0.5 no-print">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEditColModal(col)}
-                                    className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
-                                    title="Ubah Nama/Bobot"
-                                  >
-                                    <i className="fa-solid fa-pen text-[9px]"></i>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteCol(col)}
-                                    className="w-4 h-4 rounded text-red-400 hover:text-red-600"
-                                    title="Hapus Kolom"
-                                  >
-                                    <i className="fa-solid fa-trash text-[9px]"></i>
-                                  </button>
-                                </div>
+                            <div className="flex flex-col items-center justify-center gap-0.5">
+                              <div className="flex items-center justify-center gap-1">
+                                <span className="truncate max-w-[70px]">{col.nama}</span>
+                                {!isAdmin && isGuruPengampu && (
+                                  <div className="flex items-center gap-0.5 no-print">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditColModal(col)}
+                                      className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                      title="Ubah Nama/Bobot/Keterangan"
+                                    >
+                                      <i className="fa-solid fa-pen text-[9px]"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteCol(col)}
+                                      className="w-4 h-4 rounded text-red-400 hover:text-red-600"
+                                      title="Hapus Kolom"
+                                    >
+                                      <i className="fa-solid fa-trash text-[9px]"></i>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              {col.keterangan && (
+                                <span className="text-[9px] font-normal text-gray-500 dark:text-gray-400 truncate max-w-[90px]">
+                                  {col.keterangan}
+                                </span>
                               )}
                             </div>
                           </th>
@@ -2199,28 +2373,36 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           <th
                             key={col.id}
                             className="py-2 px-2 w-28 text-center bg-purple-50/30 dark:bg-purple-950/20 border-r border-gray-200 dark:border-gray-700 group"
+                            title={col.keterangan ? `Keterangan: ${col.keterangan}` : undefined}
                           >
-                            <div className="flex items-center justify-center gap-1">
-                              <span className="truncate max-w-[70px]">{col.nama}</span>
-                              {!isAdmin && isGuruPengampu && (
-                                <div className="flex items-center gap-0.5 no-print">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEditColModal(col)}
-                                    className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
-                                    title="Ubah Nama/Bobot"
-                                  >
-                                    <i className="fa-solid fa-pen text-[9px]"></i>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteCol(col)}
-                                    className="w-4 h-4 rounded text-red-400 hover:text-red-600"
-                                    title="Hapus Kolom"
-                                  >
-                                    <i className="fa-solid fa-trash text-[9px]"></i>
-                                  </button>
-                                </div>
+                            <div className="flex flex-col items-center justify-center gap-0.5">
+                              <div className="flex items-center justify-center gap-1">
+                                <span className="truncate max-w-[70px]">{col.nama}</span>
+                                {!isAdmin && isGuruPengampu && (
+                                  <div className="flex items-center gap-0.5 no-print">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditColModal(col)}
+                                      className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                      title="Ubah Nama/Bobot/Keterangan"
+                                    >
+                                      <i className="fa-solid fa-pen text-[9px]"></i>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteCol(col)}
+                                      className="w-4 h-4 rounded text-red-400 hover:text-red-600"
+                                      title="Hapus Kolom"
+                                    >
+                                      <i className="fa-solid fa-trash text-[9px]"></i>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              {col.keterangan && (
+                                <span className="text-[9px] font-normal text-gray-500 dark:text-gray-400 truncate max-w-[90px]">
+                                  {col.keterangan}
+                                </span>
                               )}
                             </div>
                           </th>
@@ -2763,6 +2945,25 @@ export default function GradebookView({ user }: GradebookViewProps) {
             </div>
 
             <form onSubmit={handleSaveTp} className="space-y-3.5 mt-4 text-xs">
+              <div>
+                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  Capaian Pembelajaran (CP) Payung <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  required
+                  value={tpForm.cp_id}
+                  onChange={e => setTpForm({ ...tpForm, cp_id: e.target.value })}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                  <option value="" disabled>-- Pilih Capaian Pembelajaran --</option>
+                  {cpList.map(cp => (
+                    <option key={cp.id} value={cp.id}>
+                      {cp.kode_cp} - {cp.deskripsi.slice(0, 60)}{cp.deskripsi.length > 60 ? '...' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
@@ -3053,10 +3254,6 @@ export default function GradebookView({ user }: GradebookViewProps) {
           </div>
         </div>
       )}
-    </section>
-  );
-}
-
 
       {/* Modal Bulk Fill Grades */}
       {isBulkFillModalOpen && (
