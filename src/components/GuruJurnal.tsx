@@ -704,6 +704,14 @@ export default function GuruJurnal({ user }: { user: any }) {
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran.',
+        'warning'
+      );
+    }
+
     if (tipeJurnal === 'Jurnal KBM') {
       if (!tujuanPembelajaran || !tujuanPembelajaran.trim()) {
         return showToast('Tujuan Pembelajaran Wajib', 'Silakan isi tujuan pembelajaran.', 'warning');
@@ -737,14 +745,6 @@ export default function GuruJurnal({ user }: { user: any }) {
 
     if (!file) {
       return showToast('Foto Dokumentasi Wajib', 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera atau unggah dari galeri.', 'warning');
-    }
-
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      return showToast(
-        'Koneksi Internet Diperlukan',
-        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran.',
-        'warning'
-      );
     }
 
     setLoading(true);
@@ -829,7 +829,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       const { error } = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
 
       if (error) {
-        showToast('Error', 'Gagal menyimpan jurnal', 'error');
+        showToast('Gagal Menyimpan Jurnal', 'Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran. ' + (error.message || 'Silakan periksa koneksi Anda dan coba lagi.'), 'error');
       } else {
         // Sync student attendance to canonical public.absensi
         if (tipeJurnal === 'Jurnal KBM' && students.length > 0) {
@@ -918,7 +918,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       setLoading(false);
     } catch (err: any) {
       setLoading(false);
-      return showToast('Error', 'Gagal menyimpan jurnal: ' + (err as any).message, 'error');
+      return showToast('Gagal Menyimpan Jurnal', 'Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran: ' + (err?.message || 'Silakan periksa koneksi Anda dan coba lagi.'), 'error');
     }
   };
 

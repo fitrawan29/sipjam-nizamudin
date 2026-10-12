@@ -1215,6 +1215,13 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   const handlePiketAbsensiChange = async (siswa: any, status: string) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat absensi siswa.',
+        'warning'
+      );
+    }
     if (isFormLocked) {
       showToast('Formulir Terkunci', 'Formulir presensi piket sedang diedit oleh petugas lain.', 'warning');
       return;
@@ -1250,7 +1257,13 @@ export default function PiketView({ user }: { user: any }) {
       diubah_oleh: user?.nama || 'Piket',
       log_perubahan: [...prevLogs, logEntry],
       updated_at: new Date().toISOString()
-    }], { onConflict: 'sekolah_id, tanggal, nisn' }).then(null, console.error);
+    }], { onConflict: 'sekolah_id, tanggal, nisn' }).then(({ error }) => {
+      if (error) {
+        showToast('Gagal Mencatat Absensi', 'Koneksi internet aktif diwajibkan untuk mencatat absensi siswa. ' + error.message, 'error');
+      }
+    }, (err) => {
+      showToast('Gagal Mencatat Absensi', 'Koneksi internet aktif diwajibkan untuk mencatat absensi siswa.', 'error');
+    });
   };
 
   const handlePiketSubmit = async (e: React.FormEvent) => {

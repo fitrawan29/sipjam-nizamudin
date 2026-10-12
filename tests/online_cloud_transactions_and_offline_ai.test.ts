@@ -65,6 +65,14 @@ async function run() {
     const jurnalCode = fs.readFileSync(path.join(root, 'src', 'components', 'GuruJurnal.tsx'), 'utf-8');
     assert(jurnalCode.includes('Koneksi Internet Diperlukan'), 'GuruJurnal must require active internet connection');
     assert(jurnalCode.includes("supabase.from('jurnal_pembelajaran').insert"), 'GuruJurnal must insert directly to cloud');
+
+    // Assert that offline check is upfront at handleJurnalSubmit before field validations
+    const submitStartIdx = jurnalCode.indexOf('const handleJurnalSubmit = async');
+    assert(submitStartIdx !== -1, 'handleJurnalSubmit must exist');
+    const offlineCheckIdx = jurnalCode.indexOf("if (typeof navigator !== 'undefined' && !navigator.onLine)", submitStartIdx);
+    const fieldValIdx = jurnalCode.indexOf("if (tipeJurnal === 'Jurnal KBM')", submitStartIdx);
+    assert(offlineCheckIdx !== -1, 'Offline check must exist in handleJurnalSubmit');
+    assert(offlineCheckIdx < fieldValIdx, 'Offline check must precede field validations to warn user upfront');
   });
 
   // --- R1: PiketView Online-Only Cloud Transactions ---
@@ -122,6 +130,7 @@ async function run() {
       'handleManualMark',
       'handleManualFormSubmit',
       'handleCancelManualPresensi',
+      'handlePiketAbsensiChange',
       'handlePiketSubmit',
       'handleAddGuruPiket',
       'handleAddSiswaPiket',
@@ -158,6 +167,16 @@ async function run() {
     const verifyItemBody = verifCode.slice(verifyItemIdx, verifyItemIdx + 400);
     assert(verifyItemBody.includes('navigator.onLine'), 'AdminVerifView verifyItem must guard against offline attempts');
     assert(verifyItemBody.includes('Koneksi Internet Diperlukan'), 'AdminVerifView verifyItem must warn with Koneksi Internet Diperlukan');
+  });
+
+  test('R1.11: RekapSiswaView guards homeroom teacher (Wali Kelas) attendance against offline saves', () => {
+    const rekapSiswaCode = fs.readFileSync(path.join(root, 'src', 'components', 'RekapSiswaView.tsx'), 'utf-8');
+    const handlerIdx = rekapSiswaCode.indexOf('const handleSaveWaliAttendance = async');
+    assert(handlerIdx !== -1, 'handleSaveWaliAttendance must exist');
+    const handlerBody = rekapSiswaCode.slice(handlerIdx, handlerIdx + 500);
+    assert(handlerBody.includes('navigator.onLine'), 'handleSaveWaliAttendance must guard with navigator.onLine check');
+    assert(handlerBody.includes('Koneksi Internet Diperlukan'), 'handleSaveWaliAttendance must warn with Koneksi Internet Diperlukan');
+    assert(rekapSiswaCode.includes("supabase.from('absensi').upsert"), 'Must persist directly to supabase absensi table');
   });
 
   // --- R2: Offline AI Assistant Preservation ---

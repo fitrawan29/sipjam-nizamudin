@@ -325,6 +325,14 @@ export default function RekapSiswaView({
   };
 
   const handleSaveWaliAttendance = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Koneksi Internet Diperlukan',
+        text: 'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan presensi siswa.',
+        confirmButtonColor: '#0d9488'
+      });
+    }
     if (!activeWaliKelas || waliStudents.length === 0) return;
     setWaliSaving(true);
     try {
@@ -369,7 +377,12 @@ export default function RekapSiswaView({
         tarikRekap();
       }
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Gagal menyimpan presensi', 'error');
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Menyimpan Presensi',
+        text: 'Koneksi internet aktif diwajibkan untuk menyimpan presensi siswa. ' + (err?.message || 'Silakan periksa koneksi Anda dan coba lagi.'),
+        confirmButtonColor: '#dc2626'
+      });
     } finally {
       setWaliSaving(false);
     }
