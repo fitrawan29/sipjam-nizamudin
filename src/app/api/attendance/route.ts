@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const rawKeterlambatan = typeof body.keterlambatan_detik === 'number' ? body.keterlambatan_detik : 0;
     // ponytail: naive cap to prevent negative or > 12h test values, tighten if people bypass it
     const keterlambatan_detik = Math.max(0, Math.min(rawKeterlambatan, 43200));
-    const sekolah_id = body.sekolah_id || body.sekolahId || null;
+    const sekolah_id = body.sekolah_id || body.sekolahId || req.headers.get('x-sekolah-id') || null;
 
     // Status verifikasi default:
     // If 'Izin Terlambat' or 'Terlambat', requires admin approval -> 'Menunggu'
@@ -99,11 +99,34 @@ export async function POST(req: NextRequest) {
       sessionToken
     );
 
-    const { data, error } = await dbClient
+    let { data, error } = await dbClient
       .from('presensi_guru')
       .insert([presensiRecord])
       .select()
       .single();
+
+    if (error && (error.message.includes('schema cache') || error.message.includes('column'))) {
+      const baseCleanRecord = {
+        id: presensiRecord.id,
+        timestamp: presensiRecord.timestamp,
+        nama_guru: presensiRecord.nama_guru,
+        user_id: presensiRecord.user_id,
+        tipe_absen: presensiRecord.tipe_absen,
+        jenis_presensi: presensiRecord.jenis_presensi,
+        detail_izin: presensiRecord.detail_izin,
+        lokasi: presensiRecord.lokasi,
+        jarak: presensiRecord.jarak,
+        link_bukti: presensiRecord.link_bukti,
+        status_verifikasi: presensiRecord.status_verifikasi,
+        keterlambatan_detik: presensiRecord.keterlambatan_detik,
+        ...(presensiRecord.sekolah_id ? { sekolah_id: presensiRecord.sekolah_id } : {})
+      };
+      const retry = await dbClient.from('presensi_guru').insert([baseCleanRecord]).select().single();
+      if (!retry.error) {
+        data = retry.data;
+        error = null;
+      }
+    }
 
     if (error) {
       console.error('[API /api/attendance] POST Supabase error:', error);

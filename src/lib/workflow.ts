@@ -467,6 +467,11 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         if (p.tanggal_mulai && p.tanggal_selesai) {
           return todayStr >= p.tanggal_mulai && todayStr <= p.tanggal_selesai;
         }
+        // Fallback: parse date range from detail_izin text e.g. "(3 Hari: 2026-10-13 s/d 2026-10-15)"
+        const match = p.detail_izin?.match(/(\d{4}-\d{2}-\d{2})\s*s\/d\s*(\d{4}-\d{2}-\d{2})/);
+        if (match) {
+          return todayStr >= match[1] && todayStr <= match[2];
+        }
         return false;
       });
 

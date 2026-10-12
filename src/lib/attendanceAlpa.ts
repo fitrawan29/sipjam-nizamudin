@@ -456,7 +456,15 @@ export async function evaluateAndApplyAutoCheckout(
       is_auto_checkout: true
     };
 
-    const { error: insErr } = await supabase.from('presensi_guru').insert(autoRecord);
+    let { error: insErr } = await supabase.from('presensi_guru').insert(autoRecord);
+    if (insErr && (insErr.message.includes('schema cache') || insErr.message.includes('column'))) {
+      const { is_auto_checkout, ...baseAutoRecord } = autoRecord;
+      const retry = await supabase.from('presensi_guru').insert(baseAutoRecord);
+      if (!retry.error) {
+        insErr = null;
+      }
+    }
+
     if (insErr) {
       console.error(`[attendanceAlpa] Failed to insert auto-checkout for ${validDatang.nama_guru}:`, insErr.message);
     } else {

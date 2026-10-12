@@ -490,6 +490,35 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
         insertSuccess = true;
       } else {
         insertErrorMsg = error.message;
+        // ponytail: fallback if database schema does not have milestone 2 columns (e.g. durasi_hari)
+        if (error.message && (error.message.includes('schema cache') || error.message.includes('column'))) {
+          const compatiblePresensi: any = {
+            id: newPresensi.id,
+            timestamp: newPresensi.timestamp,
+            nama_guru: newPresensi.nama_guru,
+            user_id: newPresensi.user_id,
+            tipe_absen: newPresensi.tipe_absen,
+            jenis_presensi: newPresensi.jenis_presensi,
+            detail_izin: (jenisPresensi === 'Izin' && durasiHari > 1)
+              ? `${detailIzin || 'Izin'} (${durasiHari} Hari: ${tanggalMulai} s/d ${tanggalSelesai})`
+              : newPresensi.detail_izin,
+            lokasi: newPresensi.lokasi,
+            jarak: newPresensi.jarak,
+            link_bukti: newPresensi.link_bukti,
+            status_verifikasi: statusVerif,
+            keterlambatan_detik: keterlambatanDetik,
+          };
+          if (newPresensi.sekolah_id) {
+            compatiblePresensi.sekolah_id = newPresensi.sekolah_id;
+          }
+          const { error: retryError } = await supabase.from('presensi_guru').insert([compatiblePresensi]);
+          if (!retryError) {
+            insertSuccess = true;
+            insertErrorMsg = '';
+          } else {
+            insertErrorMsg = retryError.message;
+          }
+        }
       }
     } catch (netErr: any) {
       insertErrorMsg = netErr?.message || 'Koneksi jaringan terputus';
@@ -498,18 +527,26 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     // Fallback: If client direct insert fails (e.g. temporary network drop or client RLS issue), try server route
     if (!insertSuccess) {
       try {
+        const payloadToSend = {
+          ...newPresensi,
+          session_token: user?.session_token || undefined,
+        };
         const fallbackRes = await fetch('/api/attendance', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newPresensi)
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(user?.session_token ? { 'x-session-token': user.session_token } : {}),
+            ...(user?.sekolah_id ? { 'x-sekolah-id': user.sekolah_id } : {}),
+            ...(user?.role ? { 'x-user-role': user.role } : {}),
+            ...(user?.id ? { 'x-user-id': user.id } : {}),
+          },
+          body: JSON.stringify(payloadToSend)
         });
-        if (fallbackRes.ok) {
-          const resData = await fallbackRes.json();
-          if (resData.success) {
-            insertSuccess = true;
-          } else {
-            insertErrorMsg = resData.message || resData.error || insertErrorMsg;
-          }
+        const resData = await fallbackRes.json().catch(() => ({}));
+        if (fallbackRes.ok && resData.success) {
+          insertSuccess = true;
+        } else {
+          insertErrorMsg = resData.message || resData.error || insertErrorMsg;
         }
       } catch (fallbackErr: any) {
         insertErrorMsg = fallbackErr?.message || insertErrorMsg;

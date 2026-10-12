@@ -17,3 +17,6 @@ CREATE INDEX IF NOT EXISTS idx_presensi_guru_leave_range
 
 CREATE INDEX IF NOT EXISTS idx_presensi_guru_auto_checkout
   ON public.presensi_guru(sekolah_id, tipe_absen, is_auto_checkout);
+
+-- Reload PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
