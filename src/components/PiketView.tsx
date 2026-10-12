@@ -818,6 +818,19 @@ export default function PiketView({ user }: { user: any }) {
     const query = (overrideQuery !== undefined ? overrideQuery : manualSearchQuery).trim();
     if (!query) return;
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      playAudioFeedback('error');
+      setLastScanResult({
+        student: null,
+        status: scanMode,
+        success: false,
+        message: 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.',
+        jam: getLocalCurrentTime()
+      });
+      showToast('Koneksi Internet Diperlukan', 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.', 'warning');
+      return;
+    }
+
     // 1. Try finding by exact NISN
     let match = allStudents.find(s => s.nisn && s.nisn.toLowerCase() === query.toLowerCase());
     // 2. Try finding by exact ID
@@ -885,6 +898,14 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   const handleCancelManualPresensi = async (recordId: string, namaSiswa: string, status: 'datang' | 'pulang', studentId?: string) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk membatalkan presensi siswa.',
+        'warning'
+      );
+    }
+
     const result = await Swal.fire({
       title: 'Batalkan Presensi?',
       text: `Hapus status presensi ${status} untuk ${namaSiswa}?`,

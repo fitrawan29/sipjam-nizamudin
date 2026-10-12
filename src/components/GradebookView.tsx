@@ -1093,6 +1093,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   const handleSaveTp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi Tujuan Pembelajaran.',
+        'warning'
+      );
+    }
     if (isAdmin || !isGuruPengampu) {
       showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menyimpan Tujuan Pembelajaran (TP).', 'warning');
       return;
@@ -1261,6 +1268,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   const handleSaveCol = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi kolom asesmen.',
+        'warning'
+      );
+    }
     if (isAdmin || !isGuruPengampu) {
       showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menyimpan kolom asesmen.', 'warning');
       return;

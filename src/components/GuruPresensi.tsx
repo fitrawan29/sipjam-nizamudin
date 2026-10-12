@@ -321,7 +321,15 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
 
   const handlePresensiSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi presensi.',
+        'warning'
+      );
+    }
+
     // Validasi Workflow Pulang
     if (tipeAbsen === 'Pulang') {
       if (dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak) {
@@ -500,7 +508,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
           if (resData.success) {
             insertSuccess = true;
           } else {
-            insertErrorMsg = resData.message || insertErrorMsg;
+            insertErrorMsg = resData.message || resData.error || insertErrorMsg;
           }
         }
       } catch (fallbackErr: any) {
@@ -545,17 +553,22 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     setFile(null);
     setPhotoPreviewUrl(null);
     
-    // Refresh workflow state
-    const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
-    if (!isMountedRef.current) return;
-    setDailyState(state);
-    if (tipeAbsen === 'Datang') {
-      setTipeAbsen('Pulang');
-      if (state.isDinasLuar) {
-        setJenisPresensi('Dinas Luar');
+    // Refresh workflow state safely
+    try {
+      const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
+      if (!isMountedRef.current) return;
+      setDailyState(state);
+      if (tipeAbsen === 'Datang') {
+        setTipeAbsen('Pulang');
+        if (state.isDinasLuar) {
+          setJenisPresensi('Dinas Luar');
+        }
       }
+    } catch (stateErr) {
+      console.warn('[GuruPresensi] Daily state refresh warning:', stateErr);
+    } finally {
+      if (isMountedRef.current) setLoading(false);
     }
-    setLoading(false);
 
     // Fire background upload to GAS webhook asynchronously
     if (fileToUpload) {
