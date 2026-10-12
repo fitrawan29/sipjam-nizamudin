@@ -14,57 +14,6 @@ import { AppUser } from '@/types/user';
 export default function GuruPresensi({ user }: { user: AppUser }) {
   const isMountedRef = useRef(true);
   const isSwitchingRef = useRef(false);
-  const isSyncingRef = useRef(false);
-
-  // ponytail: native canvas image compression for localStorage offline queue
-  const compressPhotoForStorage = async (fileOrDataUrl: File | Blob | string, maxDim = 800, quality = 0.6): Promise<string> => {
-    if (typeof window === 'undefined') return typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '';
-    return new Promise((resolve) => {
-      try {
-        const img = new Image();
-        let srcUrl = '';
-        if (typeof fileOrDataUrl === 'string') {
-          srcUrl = fileOrDataUrl;
-        } else if (fileOrDataUrl instanceof File || (typeof Blob !== 'undefined' && fileOrDataUrl instanceof Blob)) {
-          srcUrl = URL.createObjectURL(fileOrDataUrl);
-        } else {
-          return resolve('');
-        }
-
-        img.onload = () => {
-          try {
-            if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(srcUrl);
-            let { width, height } = img;
-            if (width > maxDim || height > maxDim) {
-              if (width > height) {
-                height = Math.round((height * maxDim) / width);
-                width = maxDim;
-              } else {
-                width = Math.round((width * maxDim) / height);
-                height = maxDim;
-              }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : srcUrl);
-            ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', quality));
-          } catch {
-            resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
-          }
-        };
-        img.onerror = () => {
-          if (typeof fileOrDataUrl !== 'string') URL.revokeObjectURL(srcUrl);
-          resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
-        };
-        img.src = srcUrl;
-      } catch {
-        resolve(typeof fileOrDataUrl === 'string' ? fileOrDataUrl : '');
-      }
-    });
-  };
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -223,125 +172,13 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     initConfig();
   }, [user.nama, user.username]);
 
-  // ponytail: sync queued offline presensi records on reconnect
-  const syncOfflinePresensi = async () => {
-    if (typeof window === 'undefined' || isSyncingRef.current) return;
-    isSyncingRef.current = true;
-    try {
-      const queueStr = localStorage.getItem('sipjam_offline_presensi_queue') || localStorage.getItem('sipjam_offline_presensi');
-      if (!queueStr) return;
-
-      let items: any[] = [];
-      try {
-        const parsed = JSON.parse(queueStr);
-        items = Array.isArray(parsed) ? parsed : [parsed];
-      } catch {
-        localStorage.removeItem('sipjam_offline_presensi_queue');
-        const fallbackSingle = localStorage.getItem('sipjam_offline_presensi');
-        if (fallbackSingle) {
-          try {
-            const singleParsed = JSON.parse(fallbackSingle);
-            items = Array.isArray(singleParsed) ? singleParsed : [singleParsed];
-          } catch {
-            localStorage.removeItem('sipjam_offline_presensi');
-          }
-        }
-        if (items.length === 0) return;
-      }
-      if (items.length === 0) return;
-
-      const remaining: any[] = [];
-      let syncedCount = 0;
-
-      for (const item of items) {
-        try {
-          let sent = false;
-          const { error } = await supabase.from('presensi_guru').insert([item.payload]);
-          if (!error) {
-            sent = true;
-          } else if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('already exists')) {
-            // Already stored in database during previous network attempt
-            sent = true;
-          } else {
-            const fallbackRes = await fetch('/api/attendance', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(item.payload)
-            });
-            if (fallbackRes.ok) {
-              const resData = await fallbackRes.json();
-              if (resData.success || resData.message?.includes('duplicate') || resData.message?.includes('already')) {
-                sent = true;
-              }
-            }
-          }
-
-          if (sent) {
-            syncedCount++;
-            if (item.photo) {
-              (async () => {
-                try {
-                  const fileObj = dataUrlToFile(item.photo, item.photoName || 'selfie.jpg');
-                  const targetFolder = item.folderName || (item.payload?.jenis_presensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru');
-                  const targetPrefix = item.prefix || (item.isSelfie ? 'Selfie' : 'Dokumen');
-                  const teacherName = item.payload?.nama_guru || user?.nama || 'Guru';
-                  const driveUrl = await uploadToDrive(fileObj, teacherName, targetFolder, targetPrefix);
-                  await supabase.from('presensi_guru').update({ link_bukti: driveUrl }).eq('id', item.id);
-                } catch (e) {
-                  console.warn('[GuruPresensi] Background GAS upload failed for offline presensi:', e);
-                }
-              })();
-            }
-          } else {
-            remaining.push(item);
-          }
-        } catch {
-          remaining.push(item);
-        }
-      }
-
-      if (syncedCount > 0) {
-        try {
-          if (remaining.length === 0) {
-            localStorage.removeItem('sipjam_offline_presensi');
-            localStorage.removeItem('sipjam_offline_presensi_queue');
-          } else {
-            localStorage.setItem('sipjam_offline_presensi', JSON.stringify(remaining[0]));
-            localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(remaining));
-          }
-        } catch (storageErr) {
-          console.warn('[GuruPresensi] Failed updating offline queue in localStorage after sync:', storageErr);
-        }
-
-        showToast(
-          'Presensi Tersinkron!',
-          `${syncedCount} data presensi offline berhasil dikirim ke server.`,
-          'success',
-          { toast: true, position: 'top-end', timer: 4000, showConfirmButton: false }
-        );
-
-        try {
-          const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
-          if (isMountedRef.current) setDailyState(state);
-        } catch {}
-      }
-    } finally {
-      isSyncingRef.current = false;
-    }
-  };
-
+  // Clean up legacy offline queue keys to enforce online-only cloud transactions
   useEffect(() => {
-    const handleOnline = () => {
-      syncOfflinePresensi();
-    };
-    window.addEventListener('online', handleOnline);
-    if (typeof navigator !== 'undefined' && navigator.onLine) {
-      syncOfflinePresensi();
-    }
-    return () => {
-      window.removeEventListener('online', handleOnline);
-    };
-  }, [user?.nama, user?.username, user?.id, user?.sekolah_id]);
+    try {
+      localStorage.removeItem('sipjam_offline_presensi');
+      localStorage.removeItem('sipjam_offline_presensi_queue');
+    } catch {}
+  }, []);
 
   const togglePresensiFields = async (val: string) => {
     if (isSwitchingRef.current) return;
@@ -630,118 +467,54 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     let insertErrorMsg = '';
     const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
 
-    if (!isOffline) {
-      try {
-        const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
-        if (!error) {
-          insertSuccess = true;
-        } else {
-          insertErrorMsg = error.message;
-        }
-      } catch (netErr: any) {
-        insertErrorMsg = netErr.message || 'Koneksi jaringan terputus';
-      }
+    if (isOffline) {
+      setLoading(false);
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi presensi.',
+        'warning'
+      );
+    }
 
-      // Fallback: If client direct insert fails (e.g. temporary network drop or client RLS issue), try server route
-      if (!insertSuccess) {
-        try {
-          const fallbackRes = await fetch('/api/attendance', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newPresensi)
-          });
-          if (fallbackRes.ok) {
-            const resData = await fallbackRes.json();
-            if (resData.success) {
-              insertSuccess = true;
-            } else {
-              insertErrorMsg = resData.message || insertErrorMsg;
-            }
+    try {
+      const { error } = await supabase.from('presensi_guru').insert([newPresensi]);
+      if (!error) {
+        insertSuccess = true;
+      } else {
+        insertErrorMsg = error.message;
+      }
+    } catch (netErr: any) {
+      insertErrorMsg = netErr?.message || 'Koneksi jaringan terputus';
+    }
+
+    // Fallback: If client direct insert fails (e.g. temporary network drop or client RLS issue), try server route
+    if (!insertSuccess) {
+      try {
+        const fallbackRes = await fetch('/api/attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newPresensi)
+        });
+        if (fallbackRes.ok) {
+          const resData = await fallbackRes.json();
+          if (resData.success) {
+            insertSuccess = true;
+          } else {
+            insertErrorMsg = resData.message || insertErrorMsg;
           }
-        } catch (fallbackErr: any) {
-          insertErrorMsg = fallbackErr.message || insertErrorMsg;
         }
+      } catch (fallbackErr: any) {
+        insertErrorMsg = fallbackErr?.message || insertErrorMsg;
       }
     }
 
     if (!insertSuccess) {
-      // Offline fallback: catch network error / offline status and queue in localStorage
-      try {
-        let photoDataUrl = '';
-        if (photoPreviewUrl) {
-          photoDataUrl = await compressPhotoForStorage(photoPreviewUrl);
-        } else if (file) {
-          if (file.type === 'application/pdf') {
-            if (file.size <= 500 * 1024) {
-              photoDataUrl = await new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve((reader.result as string) || '');
-                reader.onerror = () => resolve('');
-                reader.readAsDataURL(file);
-              });
-            }
-          } else {
-            photoDataUrl = await compressPhotoForStorage(file);
-          }
-        }
-
-        const offlineItem = {
-          id: presensiId,
-          payload: newPresensi,
-          photo: photoDataUrl || null,
-          photoName: file?.name || 'selfie.jpg',
-          isSelfie: isSelfieRequired,
-          folderName: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru',
-          prefix: isSelfieRequired ? 'Selfie' : 'Dokumen',
-          timestamp: new Date().toISOString()
-        };
-
-        const saveToLocalStorage = (itemToSave: any) => {
-          localStorage.setItem('sipjam_offline_presensi', JSON.stringify(itemToSave));
-          const rawQueue = localStorage.getItem('sipjam_offline_presensi_queue');
-          let queue: any[] = [];
-          try {
-            if (rawQueue) queue = JSON.parse(rawQueue);
-            if (!Array.isArray(queue)) queue = [];
-          } catch {
-            queue = [];
-          }
-          const existingIdx = queue.findIndex((q: any) => q.id === itemToSave.id);
-          if (existingIdx >= 0) {
-            queue[existingIdx] = itemToSave;
-          } else {
-            queue.push(itemToSave);
-          }
-          localStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(queue));
-        };
-
-        try {
-          saveToLocalStorage(offlineItem);
-        } catch (quotaErr) {
-          // If storage quota exceeded, retry saving without the heavy photo data URL to ensure attendance record is never lost
-          console.warn('[GuruPresensi] Quota exceeded, preserving presensi record without photo:', quotaErr);
-          const itemWithoutPhoto = { ...offlineItem, photo: null };
-          saveToLocalStorage(itemWithoutPhoto);
-        }
-
-        showToast(
-          'Tersimpan Offline',
-          'Koneksi internet terputus. Data presensi dan foto disimpan di perangkat dan akan dikirim otomatis saat koneksi kembali.',
-          'info',
-          { toast: true, position: 'top-end', timer: 4000, showConfirmButton: false }
-        );
-
-        setJenisPresensi('Sekolah');
-        setKeterangan('');
-        setFile(null);
-        setPhotoPreviewUrl(null);
-        setLoading(false);
-        return;
-      } catch (offlineErr) {
-        console.error('Failed saving to localStorage offline fallback:', offlineErr);
-        setLoading(false);
-        return showToast('Error', 'Gagal menyimpan data presensi. Periksa koneksi internet Anda: ' + insertErrorMsg, 'error');
-      }
+      setLoading(false);
+      return showToast(
+        'Gagal Menyimpan Presensi',
+        'Koneksi internet aktif diwajibkan untuk menyimpan transaksi presensi. ' + (insertErrorMsg || 'Silakan periksa koneksi Anda dan coba lagi.'),
+        'error'
+      );
     }
 
     // If this was a re-submission after rejection, delete the old rejected record
@@ -804,7 +577,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
             .from('presensi_guru')
             .update({ link_bukti: 'gagal_upload' })
             .eq('id', presensiId);
-          showToast('Sinkronisasi Tertunda', 'Foto tersimpan di database lokal namun gagal diunggah ke Google Drive.', 'warning');
+          showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
         }
       })();
     }

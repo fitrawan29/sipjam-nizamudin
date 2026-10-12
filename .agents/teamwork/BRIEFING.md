@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-10T22:56:05Z
+# BRIEFING — 2026-10-12T11:02:49Z
 
 ## Mission
-Rombak ulang modul daftar nilai (GradebookView) pada aplikasi SIPJAM (Next.js + Supabase) agar mengikuti alur CP → TP → Asesmen (Diagnostik/Formatif/Sumatif) → Nilai Akhir (R1-R5).
+Sesuaikan aplikasi SIPJAM agar seluruh lini transaksi data (presensi, jurnal, piket, nilai) beroperasi online langsung ke Supabase tanpa antrean offline lokal, dengan AI Assistant dipertahankan 100% offline (prinsip Ponytail).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -24,6 +24,8 @@ Rombak ulang modul daftar nilai (GradebookView) pada aplikasi SIPJAM (Next.js + 
 - Orchestrator (current): 1f15a155-9441-412f-8adc-6ac5519d6f4d (orchestrator_21, flash model)
 - Victory Auditor (current): to be spawned (victory_auditor_29)
 - Victory Auditor (current): 474872bb-b902-484b-9307-00639a1db00e (victory_auditor_29)
+- Orchestrator (current): cc0db25c-cdde-4d08-b17a-6224476bfc0a (swe_18)
+- Victory Auditor (current): to be spawned on victory claim (victory_auditor_30)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -34,26 +36,24 @@ Rombak ulang modul daftar nilai (GradebookView) pada aplikasi SIPJAM (Next.js + 
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (multi-part overhaul across security, bugs, architecture, and perf)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (overhaul of GradebookView CP -> TP -> Asesmen -> Nilai Akhir)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Ponytail online-only transactions & 100% offline AI preservation)
 
 ## User Context
-- **Last user request**: Rombak ulang modul daftar nilai (GradebookView) pada aplikasi SIPJAM (Next.js + Supabase) mengikuti alur CP → TP → Asesmen (Diagnostik/Formatif/Sumatif) → Nilai Akhir (R1-R5).
+- **Last user request**: Sesuaikan aplikasi SIPJAM agar seluruh lini transaksi data (presensi, jurnal, piket, nilai) beroperasi online langsung ke Supabase tanpa antrean offline lokal, dengan AI Assistant dipertahankan 100% offline (prinsip Ponytail).
 - **Pending clarifications**: none
-- **Delivered results**: Seluruh persyaratan R1-R5 (Hierarki CP→TP, Asesmen per TP & Keterangan, Formula Nilai Akhir dengan absensi, Pengaturan Bobot Admin, Migrasi Database & Types) telah selesai diimplementasikan, diuji penuh (100% tests & build passed), dan diverifikasi independen oleh Victory Auditor (VICTORY CONFIRMED).
+- **Delivered results**: In progress
 
 ## Project Status
-- **Phase**: complete
-- **Route**: General (teamwork_preview_orchestrator)
-- **Active Crons**: none (killed upon victory)
-- **Active Subagents**: none (killed upon victory)
+- **Phase**: in progress
+- **Route**: SWE Light (teamwork_preview_swe)
+- **Active Crons**: task-34 (progress */8), task-36 (liveness */10)
+- **Active Subagents**: cc0db25c-cdde-4d08-b17a-6224476bfc0a (swe_18)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_21\DISPATCH.md — Dispatch instructions for orchestrator_21
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_21\handoff.md — Orchestrator completion report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_29\DISPATCH.md — Dispatch instructions for victory_auditor_29
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_29\handoff.md — Victory Auditor verification report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_18\DISPATCH.md — Dispatch instructions for swe_18

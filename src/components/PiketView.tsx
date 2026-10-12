@@ -471,11 +471,25 @@ export default function PiketView({ user }: { user: any }) {
     };
   }, [cameraActive, scanMode]);
 
-  // Main scan processor: resolves student and records attendance
   const handleProcessScan = async (code: string) => {
     if (!code || scanProcessing || isSubmittingPresensiRef.current) return;
     isSubmittingPresensiRef.current = true;
     setScanProcessing(true);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      playAudioFeedback('error');
+      setLastScanResult({
+        student: null,
+        status: scanMode,
+        success: false,
+        message: 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.',
+        jam: getLocalCurrentTime()
+      });
+      showToast('Koneksi Internet Diperlukan', 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.', 'warning');
+      isSubmittingPresensiRef.current = false;
+      setScanProcessing(false);
+      return;
+    }
 
     try {
       // 1. Resolve student by code
@@ -660,6 +674,28 @@ export default function PiketView({ user }: { user: any }) {
   const handleManualMark = async (student: any, status: 'datang' | 'pulang') => {
     if (scanProcessing || manualMarkLoading) return;
     if (isSubmittingPresensiRef.current) return;
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      showToast('Koneksi Internet Diperlukan', 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.', 'warning');
+      playAudioFeedback('error');
+      setLastScanResult({
+        student: {
+          id: student.id,
+          nisn: student.nisn,
+          nama_siswa: student.nama_siswa,
+          kelas: student.kelas,
+          sekolah_id: user?.sekolah_id || student.sekolah_id,
+          gender: student.gender
+        },
+        status,
+        success: false,
+        alreadyExists: false,
+        message: 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.',
+        jam: getLocalCurrentTime()
+      });
+      return;
+    }
+
     isSubmittingPresensiRef.current = true;
     const opKey = `${student.id}-${status}`;
     setManualMarkLoading(opKey);
@@ -1191,6 +1227,14 @@ export default function PiketView({ user }: { user: any }) {
 
   const handlePiketSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk mengirim laporan piket.',
+        'warning'
+      );
+    }
 
     if (isFormLocked) {
       if (!file) {

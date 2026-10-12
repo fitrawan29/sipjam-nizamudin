@@ -995,6 +995,14 @@ export default function GradebookView({ user }: GradebookViewProps) {
       return;
     }
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi nilai.',
+        'warning'
+      );
+    }
+
     setIsSaving(true);
     try {
       const recordsToUpsert: any[] = [];

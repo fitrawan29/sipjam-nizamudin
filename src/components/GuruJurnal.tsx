@@ -739,6 +739,14 @@ export default function GuruJurnal({ user }: { user: any }) {
       return showToast('Foto Dokumentasi Wajib', 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera atau unggah dari galeri.', 'warning');
     }
 
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran.',
+        'warning'
+      );
+    }
+
     setLoading(true);
 
     let fileUrl = '';

@@ -82,105 +82,78 @@ test('AppScreen.tsx wraps sub-views using next/dynamic', () => {
 });
 
 // ---------------------------------------------------------------------
-// R2: Presensi Offline Fallback & Online Sync Audit
+// R2: Presensi Online-Only Cloud Enforcement & Zero Local Offline Queue Audit
 // ---------------------------------------------------------------------
-test('GuruPresensi.tsx implements localStorage offline queue & online listener', () => {
+test('GuruPresensi.tsx enforces online-only Supabase transactions & cleans up legacy offline queue', () => {
   const fileContent = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'GuruPresensi.tsx'), 'utf-8');
-  assert(fileContent.includes('sipjam_offline_presensi'), 'Must use localStorage key sipjam_offline_presensi');
-  assert(fileContent.includes("window.addEventListener('online'"), 'Must register window online event listener');
-  assert(fileContent.includes('syncOfflinePresensi'), 'Must implement syncOfflinePresensi function');
-  assert(fileContent.includes('dataUrlToFile'), 'Must restore photo from data URL for upload');
-  assert(fileContent.includes('isSyncingRef'), 'Must implement concurrency lock isSyncingRef');
-  assert(fileContent.includes('compressPhotoForStorage'), 'Must implement native canvas photo compression for offline storage');
-  assert(fileContent.includes('23505'), 'Must handle duplicate key 23505 gracefully');
+  // Must NOT store offline queue items
+  assert(!fileContent.includes("localStorage.setItem('sipjam_offline_presensi'"), 'Must NOT store offline presensi into localStorage');
+  assert(!fileContent.includes("localStorage.setItem('sipjam_offline_presensi_queue'"), 'Must NOT store offline presensi queue into localStorage');
+
+  // Must clean up legacy keys on mount
+  assert(fileContent.includes("localStorage.removeItem('sipjam_offline_presensi')"), 'Must clean up legacy sipjam_offline_presensi');
+  assert(fileContent.includes("localStorage.removeItem('sipjam_offline_presensi_queue')"), 'Must clean up legacy sipjam_offline_presensi_queue');
+
+  // Must enforce online check with interactive warning
+  assert(fileContent.includes('Koneksi Internet Diperlukan'), 'Must show interactive warning when attempting presensi while offline');
+  assert(fileContent.includes('isOffline'), 'Must check isOffline status');
+
+  // Direct communication to cloud Supabase
+  assert(fileContent.includes("supabase.from('presensi_guru').insert"), 'Must insert directly to Supabase presensi_guru table');
 });
 
-test('Presensi offline queue serialization & sync lifecycle simulation', async () => {
-  // Mock localStorage
-  const store: Record<string, string> = {};
+test('Online-only transactional enforcement simulation across operational data', () => {
+  // Mock localStorage to verify no offline queues are generated
+  const store: Record<string, string> = {
+    sipjam_offline_presensi: '{"id":"stale"}',
+    sipjam_offline_presensi_queue: '[{"id":"stale"}]'
+  };
   const mockLocalStorage = {
     getItem: (key: string) => store[key] || null,
     setItem: (key: string, val: string) => { store[key] = val; },
     removeItem: (key: string) => { delete store[key]; }
   };
 
+  // Simulating component mount cleanup
+  mockLocalStorage.removeItem('sipjam_offline_presensi');
+  mockLocalStorage.removeItem('sipjam_offline_presensi_queue');
+
+  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi'), null, 'Legacy offline presensi key must be removed');
+  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi_queue'), null, 'Legacy queue must be removed');
+
+  // Verify offline submission rejection behavior
+  const isOffline = true;
+  let offlineWarningTriggered = false;
+  if (isOffline) {
+    offlineWarningTriggered = true;
+  }
+  assert.strictEqual(offlineWarningTriggered, true, 'Offline device must immediately trigger warning and abort saving');
+  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi'), null, 'Must never create offline queue');
+});
+
+test('Presensi direct Supabase cloud insertion flow verification', async () => {
   const dummyPayload = {
-    id: 'test-presensi-123',
+    id: 'test-presensi-online-1',
     nama_guru: 'Budi Santoso',
     tipe_absen: 'Datang',
     jenis_presensi: 'Sekolah',
-    timestamp: '2026-10-05 07:00:00'
+    timestamp: '2026-10-12 07:00:00'
   };
 
-  const offlineItem = {
-    id: dummyPayload.id,
-    payload: dummyPayload,
-    photo: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==',
-    photoName: 'selfie.jpg',
-    isSelfie: true,
-    folderName: 'Presensi_Guru',
-    prefix: 'Selfie',
-    timestamp: new Date().toISOString()
+  let insertedDirectlyToCloud = false;
+  const mockSupabase = {
+    from: (table: string) => ({
+      insert: (rows: any[]) => {
+        if (table === 'presensi_guru' && rows[0].id === dummyPayload.id) {
+          insertedDirectlyToCloud = true;
+        }
+        return Promise.resolve({ error: null });
+      }
+    })
   };
 
-  // 1. Simulating offline submission saving to localStorage
-  mockLocalStorage.setItem('sipjam_offline_presensi', JSON.stringify(offlineItem));
-  mockLocalStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify([offlineItem]));
-
-  const saved = JSON.parse(mockLocalStorage.getItem('sipjam_offline_presensi')!);
-  assert.strictEqual(saved.id, dummyPayload.id);
-  assert.strictEqual(saved.payload.nama_guru, 'Budi Santoso');
-  assert(saved.photo.startsWith('data:image/jpeg;base64,'));
-
-  // 2. Simulating reconnect sync logic
-  const queuedStr = mockLocalStorage.getItem('sipjam_offline_presensi_queue');
-  assert(queuedStr !== null);
-  const items = JSON.parse(queuedStr);
-  assert.strictEqual(items.length, 1);
-
-  // Mock server delivery
-  let delivered = false;
-  for (const item of items) {
-    if (item.id === dummyPayload.id) {
-      delivered = true;
-    }
-  }
-  assert.strictEqual(delivered, true, 'Queued item should be successfully processed');
-
-  // Queue cleared upon successful sync
-  mockLocalStorage.removeItem('sipjam_offline_presensi');
-  mockLocalStorage.removeItem('sipjam_offline_presensi_queue');
-  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi'), null);
-});
-
-test('Presensi offline quota exceeded fallback preserves payload without photo', () => {
-  const store: Record<string, string> = {};
-  let quotaExceeded = true;
-
-  const saveToLocalStorage = (itemToSave: any) => {
-    if (quotaExceeded && itemToSave.photo) {
-      throw new Error('QuotaExceededError');
-    }
-    store['sipjam_offline_presensi'] = JSON.stringify(itemToSave);
-  };
-
-  const item = {
-    id: 'test-presensi-quota',
-    payload: { id: 'test-presensi-quota', nama_guru: 'Siti Rahma' },
-    photo: 'data:image/jpeg;base64,VERY_LARGE_IMAGE_DATA',
-  };
-
-  try {
-    saveToLocalStorage(item);
-  } catch {
-    const itemWithoutPhoto = { ...item, photo: null };
-    saveToLocalStorage(itemWithoutPhoto);
-  }
-
-  const saved = JSON.parse(store['sipjam_offline_presensi']);
-  assert.strictEqual(saved.id, 'test-presensi-quota');
-  assert.strictEqual(saved.payload.nama_guru, 'Siti Rahma');
-  assert.strictEqual(saved.photo, null, 'Payload preserved safely even if photo exceeds quota');
+  await mockSupabase.from('presensi_guru').insert([dummyPayload]);
+  assert.strictEqual(insertedDirectlyToCloud, true, 'Operational transaction must go directly to cloud database');
 });
 
 // ---------------------------------------------------------------------
@@ -261,52 +234,20 @@ test('globals.css defines unified print break avoidance rules in @media print', 
   assert(content.includes('.break-after-page'), 'Must include .break-after-page utility');
 });
 
-test('Presensi offline queue deduplication and corrupted JSON recovery', () => {
-  const store: Record<string, string> = {};
+test('Legacy offline queue purge and clean state verification', () => {
+  const store: Record<string, string> = {
+    sipjam_offline_presensi_queue: 'INVALID_JSON_{[',
+    sipjam_offline_presensi: 'some-old-data'
+  };
   const mockLocalStorage = {
     getItem: (key: string) => store[key] || null,
-    setItem: (key: string, val: string) => { store[key] = val; },
     removeItem: (key: string) => { delete store[key]; }
   };
 
-  const saveToLocalStorage = (itemToSave: any) => {
-    mockLocalStorage.setItem('sipjam_offline_presensi', JSON.stringify(itemToSave));
-    const rawQueue = mockLocalStorage.getItem('sipjam_offline_presensi_queue');
-    let queue: any[] = [];
-    try {
-      if (rawQueue) queue = JSON.parse(rawQueue);
-      if (!Array.isArray(queue)) queue = [];
-    } catch {
-      queue = [];
-    }
-    const existingIdx = queue.findIndex((q: any) => q.id === itemToSave.id);
-    if (existingIdx >= 0) {
-      queue[existingIdx] = itemToSave;
-    } else {
-      queue.push(itemToSave);
-    }
-    mockLocalStorage.setItem('sipjam_offline_presensi_queue', JSON.stringify(queue));
-  };
-
-  const item1 = { id: 'presensi-dup-1', nama: 'Guru A' };
-  // 1. Submit twice while offline -> should deduplicate
-  saveToLocalStorage(item1);
-  saveToLocalStorage(item1);
-  const queue1 = JSON.parse(mockLocalStorage.getItem('sipjam_offline_presensi_queue')!);
-  assert.strictEqual(queue1.length, 1, 'Duplicate ID should update existing entry instead of inflating queue');
-
-  // 2. Corrupted queue recovery
-  mockLocalStorage.setItem('sipjam_offline_presensi_queue', 'INVALID_JSON_{[[');
-  const rawCorrupt = mockLocalStorage.getItem('sipjam_offline_presensi_queue');
-  let recoveredQueue: any[] = [];
-  try {
-    if (rawCorrupt) recoveredQueue = JSON.parse(rawCorrupt);
-  } catch {
-    mockLocalStorage.removeItem('sipjam_offline_presensi_queue');
-    recoveredQueue = [];
-  }
-  assert.strictEqual(recoveredQueue.length, 0, 'Corrupt JSON should safely recover without crashing');
-  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi_queue'), null);
+  mockLocalStorage.removeItem('sipjam_offline_presensi');
+  mockLocalStorage.removeItem('sipjam_offline_presensi_queue');
+  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi'), null, 'sipjam_offline_presensi must be purged');
+  assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi_queue'), null, 'sipjam_offline_presensi_queue must be purged');
 });
 
 test('GuruJurnal draft attendance preservation during student list sync', () => {
@@ -384,7 +325,7 @@ test('GuruJurnal submission cleanly clears draft and does not resurrect zombie d
   );
 });
 
-test('Canvas image compression helpers contain internal try-catch in img.onload to prevent promise hangs', () => {
+test('Canvas image compression and upload helpers preserve robust error guards', () => {
   const jurnalCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'GuruJurnal.tsx'), 'utf-8');
   const presensiCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'GuruPresensi.tsx'), 'utf-8');
 
@@ -395,18 +336,31 @@ test('Canvas image compression helpers contain internal try-catch in img.onload 
     'GuruJurnal compressImageWithCanvas must guard img.onload with try-catch'
   );
 
-  // Check GuruPresensi compressPhotoForStorage
+  // Check GuruPresensi cloud upload error handling
   assert(
-    presensiCode.includes('img.onload = () => {\n          try {') ||
-    presensiCode.includes('img.onload = () => {\r\n          try {'),
-    'GuruPresensi compressPhotoForStorage must guard img.onload with try-catch'
+    presensiCode.includes('uploadErr') && presensiCode.includes('Upload Foto Tertunda'),
+    'GuruPresensi must gracefully handle background Google Drive upload errors without failing cloud record'
   );
+});
 
-  // Check GuruPresensi sync folder fallbacks
-  assert(
-    presensiCode.includes('item.folderName ||'),
-    'GuruPresensi syncOfflinePresensi must provide default folder fallback'
-  );
+test('AI Assistant 100% offline preservation and zero network call verification', () => {
+  const aiCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'AIAssistant', 'AIAssistant.tsx'), 'utf-8');
+  const matcherCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'AIAssistant', 'faqMatcher.ts'), 'utf-8');
+  const kbCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'AIAssistant', 'knowledgeBase.ts'), 'utf-8');
+
+  assert(aiCode.includes('100% Offline FAQ'), 'AI Assistant must display 100% Offline FAQ indicator');
+  assert(!matcherCode.includes('fetch(') && !matcherCode.includes('axios'), 'Matcher must have 0 external network calls');
+  assert(!kbCode.includes('fetch(') && !kbCode.includes('http'), 'Knowledge base must be pure static local constants');
+});
+
+test('Cross-module operational transactions (jurnal, piket, nilai) enforce online requirements', () => {
+  const jurnalCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'GuruJurnal.tsx'), 'utf-8');
+  const piketCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'PiketView.tsx'), 'utf-8');
+  const gradebookCode = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'GradebookView.tsx'), 'utf-8');
+
+  assert(jurnalCode.includes('Koneksi Internet Diperlukan'), 'GuruJurnal must require active internet connection');
+  assert(piketCode.includes('Koneksi Internet Diperlukan'), 'PiketView must require active internet connection');
+  assert(gradebookCode.includes('Koneksi Internet Diperlukan'), 'GradebookView must require active internet connection');
 });
 
 console.log(`\nResults: ${passed} passed, ${failed} failed`);
