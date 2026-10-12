@@ -713,6 +713,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   const handleSaveCp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan Capaian Pembelajaran.',
+        'warning'
+      );
+    }
     if (!cpForm.kode_cp.trim() || !cpForm.deskripsi.trim()) {
       showToast('Validasi', 'Kode CP dan Deskripsi wajib diisi.', 'warning'); return;
     }
@@ -751,6 +758,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   const handleDeleteCp = async (cp: CapaianPembelajaran) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menghapus Capaian Pembelajaran.',
+        'warning'
+      );
+    }
     const result = await Swal.fire({
       title: `Hapus ${cp.kode_cp}?`, text: 'TP di bawah CP ini tidak akan ikut terhapus.',
       icon: 'warning', showCancelButton: true,
@@ -767,6 +781,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
   // Save bobot (Admin only)
   const handleSaveBobot = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan bobot penilaian.',
+        'warning'
+      );
+    }
     const total = bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif;
     if (total !== 100) {
       showToast('Validasi', `Total bobot harus 100%. Saat ini: ${total}%.`, 'warning'); return;
@@ -976,6 +997,14 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   // Batch Save Grades
   const handleSaveGrades = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi nilai.',
+        'warning'
+      );
+    }
+
     if (isAdmin) {
       return;
     }
@@ -993,14 +1022,6 @@ export default function GradebookView({ user }: GradebookViewProps) {
     if (dirtyKeys.length === 0) {
       showToast('Informasi', 'Tidak ada perubahan nilai yang perlu disimpan.', 'info');
       return;
-    }
-
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      return showToast(
-        'Koneksi Internet Diperlukan',
-        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi nilai.',
-        'warning'
-      );
     }
 
     setIsSaving(true);
@@ -1196,6 +1217,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   const handleDeleteTp = async (tp: TujuanPembelajaran) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menghapus Tujuan Pembelajaran.',
+        'warning'
+      );
+    }
     if (isAdmin || !isGuruPengampu) {
       showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menghapus Tujuan Pembelajaran (TP).', 'warning');
       return;
@@ -1335,6 +1363,13 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   const handleDeleteCol = async (col: AsesmenKolom) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menghapus kolom asesmen.',
+        'warning'
+      );
+    }
     if (isAdmin || !isGuruPengampu) {
       showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak menghapus kolom asesmen.', 'warning');
       return;

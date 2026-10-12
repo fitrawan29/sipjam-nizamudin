@@ -75,12 +75,29 @@ async function run() {
   });
 
   // --- R1: GradebookView Online-Only Cloud Transactions ---
-  test('R1.7: GradebookView warns user interactively when offline on save grades, TP, and columns', () => {
+  test('R1.7: GradebookView warns user interactively when offline on save grades, TP, columns, CP, and bobot', () => {
     const gradebookCode = fs.readFileSync(path.join(root, 'src', 'components', 'GradebookView.tsx'), 'utf-8');
     assert(gradebookCode.includes('Koneksi Internet Diperlukan'), 'GradebookView must warn when offline');
     assert(gradebookCode.includes("supabase.from('nilai_siswa')") || gradebookCode.includes(".from('nilai_siswa')"), 'Must upsert directly to cloud');
-    assert(gradebookCode.includes("handleSaveTp"), 'GradebookView must include handleSaveTp');
-    assert(gradebookCode.includes("handleSaveCol"), 'GradebookView must include handleSaveCol');
+
+    const mutationHandlers = [
+      'handleSaveGrades',
+      'handleSaveTp',
+      'handleDeleteTp',
+      'handleSaveCol',
+      'handleDeleteCol',
+      'handleSaveCp',
+      'handleDeleteCp',
+      'handleSaveBobot'
+    ];
+    for (const handler of mutationHandlers) {
+      assert(gradebookCode.includes(handler), `GradebookView must include ${handler}`);
+      const handlerIdx = gradebookCode.indexOf(`const ${handler} = `);
+      assert(handlerIdx !== -1, `${handler} definition must exist`);
+      const handlerBody = gradebookCode.slice(handlerIdx, handlerIdx + 800);
+      assert(handlerBody.includes('navigator.onLine'), `${handler} must guard with navigator.onLine check`);
+      assert(handlerBody.includes('Koneksi Internet Diperlukan'), `${handler} must warn with Koneksi Internet Diperlukan`);
+    }
   });
 
   // --- R1: Adversarial Resiliency & Captive Portal / Fluctuation Coverage ---
@@ -98,34 +115,49 @@ async function run() {
     assert(presensiCode.includes('if (isMountedRef.current) setLoading(false);'), 'setLoading(false) must be in finally block');
   });
 
-  test('R1.9: PiketView protects manual search submit and cancel attendance against offline executions', () => {
+  test('R1.9: PiketView protects scans, manual entries, submissions, assignments, and verification against offline executions', () => {
     const piketCode = fs.readFileSync(path.join(root, 'src', 'components', 'PiketView.tsx'), 'utf-8');
-    const manualFormSubmitIdx = piketCode.indexOf('const handleManualFormSubmit = async');
-    const cancelManualIdx = piketCode.indexOf('const handleCancelManualPresensi = async');
-    assert(manualFormSubmitIdx !== -1, 'handleManualFormSubmit must exist');
-    assert(cancelManualIdx !== -1, 'handleCancelManualPresensi must exist');
-    assert(piketCode.includes('handleManualFormSubmit') && piketCode.includes('Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.'), 'handleManualFormSubmit must warn when offline');
-    assert(piketCode.includes('handleCancelManualPresensi') && piketCode.includes('Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk membatalkan presensi siswa.'), 'handleCancelManualPresensi must warn when offline');
+    const piketHandlers = [
+      'handleProcessScan',
+      'handleManualMark',
+      'handleManualFormSubmit',
+      'handleCancelManualPresensi',
+      'handlePiketSubmit',
+      'handleAddGuruPiket',
+      'handleAddSiswaPiket',
+      'handleDeletePenugasan',
+      'updatePiketStatus'
+    ];
+    for (const handler of piketHandlers) {
+      assert(piketCode.includes(handler), `PiketView must include ${handler}`);
+      const handlerIdx = piketCode.indexOf(`const ${handler} = `);
+      assert(handlerIdx !== -1, `${handler} definition must exist`);
+      const handlerBody = piketCode.slice(handlerIdx, handlerIdx + 800);
+      assert(handlerBody.includes('navigator.onLine'), `${handler} must guard with navigator.onLine check`);
+      assert(handlerBody.includes('Koneksi Internet Diperlukan'), `${handler} must warn with Koneksi Internet Diperlukan`);
+    }
   });
 
-  test('R1.10: Captive portal & mid-flight failure leaves zero localStorage queue traces', async () => {
-    // Simulate captive portal: navigator.onLine is true, but network requests reject
-    const mockStore: Record<string, string> = {};
-    const mockLocalStorage = {
-      getItem: (key: string) => mockStore[key] || null,
-      setItem: (key: string, val: string) => { mockStore[key] = val; },
-      removeItem: (key: string) => { delete mockStore[key]; }
-    };
+  test('R1.10: Captive portal & mid-flight failure leaves zero localStorage queue traces across failure paths', () => {
+    const presensiCode = fs.readFileSync(path.join(root, 'src', 'components', 'GuruPresensi.tsx'), 'utf-8');
+    const submitStartIdx = presensiCode.indexOf('const handlePresensiSubmit = async');
+    const submitEndIdx = presensiCode.indexOf('const isPulangLocked =', submitStartIdx);
+    const submitBody = presensiCode.slice(submitStartIdx, submitEndIdx);
 
-    let simulatedDirectInsertFailed = true;
-    let simulatedFallbackRouteFailed = true;
+    // Assert that inside handlePresensiSubmit, localStorage.setItem is NEVER called under any condition
+    assert(!submitBody.includes('localStorage.setItem'), 'handlePresensiSubmit must never call localStorage.setItem under any circumstance');
 
-    // Simulate flow: direct insert rejects, fallback rejects -> must throw / toast, never write to localStorage
-    if (simulatedDirectInsertFailed && simulatedFallbackRouteFailed) {
-      // Must NOT write to sipjam_offline_presensi
-      assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi'), null);
-      assert.strictEqual(mockLocalStorage.getItem('sipjam_offline_presensi_queue'), null);
-    }
+    // Assert that in failure path (!insertSuccess), error toast is returned with no local fallback save
+    assert(submitBody.includes('if (!insertSuccess) {'), 'Must check !insertSuccess');
+    assert(submitBody.includes('Gagal Menyimpan Presensi'), 'Must show Gagal Menyimpan Presensi toast');
+    assert(submitBody.includes('Koneksi internet aktif diwajibkan untuk menyimpan transaksi presensi.'), 'Must explain internet requirement');
+
+    // Check AdminVerifView.tsx verifyItem has offline guard
+    const verifCode = fs.readFileSync(path.join(root, 'src', 'components', 'AdminVerifView.tsx'), 'utf-8');
+    const verifyItemIdx = verifCode.indexOf('const verifyItem = async');
+    const verifyItemBody = verifCode.slice(verifyItemIdx, verifyItemIdx + 400);
+    assert(verifyItemBody.includes('navigator.onLine'), 'AdminVerifView verifyItem must guard against offline attempts');
+    assert(verifyItemBody.includes('Koneksi Internet Diperlukan'), 'AdminVerifView verifyItem must warn with Koneksi Internet Diperlukan');
   });
 
   // --- R2: Offline AI Assistant Preservation ---

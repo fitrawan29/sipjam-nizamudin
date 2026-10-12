@@ -813,11 +813,6 @@ export default function PiketView({ user }: { user: any }) {
 
   // Submit manual input form (processes attendance as if submitted via QR)
   const handleManualFormSubmit = async (overrideQuery?: string) => {
-    if (scanProcessing || manualMarkLoading) return;
-    if (isSubmittingPresensiRef.current) return;
-    const query = (overrideQuery !== undefined ? overrideQuery : manualSearchQuery).trim();
-    if (!query) return;
-
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       playAudioFeedback('error');
       setLastScanResult({
@@ -827,9 +822,13 @@ export default function PiketView({ user }: { user: any }) {
         message: 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.',
         jam: getLocalCurrentTime()
       });
-      showToast('Koneksi Internet Diperlukan', 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.', 'warning');
-      return;
+      return showToast('Koneksi Internet Diperlukan', 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.', 'warning');
     }
+
+    if (scanProcessing || manualMarkLoading) return;
+    if (isSubmittingPresensiRef.current) return;
+    const query = (overrideQuery !== undefined ? overrideQuery : manualSearchQuery).trim();
+    if (!query) return;
 
     // 1. Try finding by exact NISN
     let match = allStudents.find(s => s.nisn && s.nisn.toLowerCase() === query.toLowerCase());
@@ -1136,6 +1135,14 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   const updatePiketStatus = async (id: string, status: 'Disetujui' | 'Ditolak') => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk memverifikasi laporan piket.',
+        'warning'
+      );
+    }
+
     let catatan_admin = '';
 
     if (status === 'Ditolak') {
@@ -1461,6 +1468,13 @@ export default function PiketView({ user }: { user: any }) {
 
   const handleAddGuruPiket = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk menugaskan guru piket.',
+        'warning'
+      );
+    }
     if (!selectedTeacherId) {
       showToast('Peringatan', 'Silakan pilih guru terlebih dahulu.', 'warning');
       return;
@@ -1509,6 +1523,13 @@ export default function PiketView({ user }: { user: any }) {
 
   const handleAddSiswaPiket = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk menugaskan siswa piket.',
+        'warning'
+      );
+    }
     let nama = '';
     let nisn = '';
     let kelas = '';
@@ -1572,6 +1593,13 @@ export default function PiketView({ user }: { user: any }) {
   };
 
   const handleDeletePenugasan = async (id: string, nama: string, tipe: 'Guru' | 'Siswa') => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk menghapus penugasan piket.',
+        'warning'
+      );
+    }
     const result = await Swal.fire({
       title: `Hapus ${tipe} Piket?`,
       text: `Hapus ${nama} dari daftar piket hari ${selectedHariPiket}?`,

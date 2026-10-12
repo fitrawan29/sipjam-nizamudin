@@ -143,6 +143,14 @@ export default function AdminVerifView({ user }: { user: any }) {
   };
 
   const verifyItem = async (id: number | string, status: 'Disetujui' | 'Ditolak') => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk memverifikasi pengajuan.',
+        'warning'
+      );
+    }
+
     const { table, label } = getActiveConfig();
 
     let rejectionReason: string | null = null;
