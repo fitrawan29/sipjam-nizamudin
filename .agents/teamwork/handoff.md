@@ -1,38 +1,33 @@
 # Handoff Report — Sentinel Final Verification
 
 ## 1. Observation
-Permintaan pengguna mencakup perombakan komprehensif pada modul daftar nilai (`src/components/GradebookView.tsx`, 2814+ baris) pada aplikasi SIPJAM (Next.js 15 + Supabase) dengan alur baru:
-- **R1. Hierarki CP → TP di UI**: Guru melihat dan mengelola CP sebelum menambah TP; relasi CP ke TP dan `guru_mapel`.
-- **R2. Asesmen per TP**: Diagnostik maks 1 per TP (validasi UI & partial unique index DB), Formatif & Sumatif min 1, field keterangan bebas di `asesmen_kolom.keterangan`.
-- **R3. Formula Nilai Akhir**: (bobot_kehadiran × rata kehadiran) + (bobot_formatif × rata formatif) + (bobot_sumatif × rata sumatif); kehadiran dihitung dinamis dari data absensi mapel siswa; diagnostik tidak dihitung; fallback ke `'-'` / null jika formatif/sumatif kosong.
-- **R4. Pengaturan Bobot Admin**: Modal khusus Admin/Superadmin dengan validasi total tepat 100% dan persistensi ke tabel `pengaturan` (key: `bobot_nilai_mapel`).
-- **R5. Migrasi Database & Tipe**: SQL migration `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql` dan sinkronisasi `src/types/database.ts`.
+Permintaan pengguna mencakup penegakan transaksi cloud Supabase online langsung tanpa antrean offline lokal, dengan preservasi Asisten AI 100% offline (prinsip Ponytail):
+- **R1. Online-Only Cloud Transaction Enforcement**: Seluruh pencatatan dan submission data operasional (khususnya Presensi Guru di `src/components/GuruPresensi.tsx`, Jurnal Pembelajaran, Presensi Siswa/Piket, Nilai) wajib terkirim langsung secara online ke Supabase. Mekanisme antrean offline lokal (`sipjam_offline_presensi`, `sipjam_offline_presensi_queue`) dihapus secara menyeluruh. Peringatan interaktif dimunculkan jika perangkat terputus dari internet saat transaksi dicoba.
+- **R2. Offline AI Assistant Preservation**: Modul Asisten AI SIPJAM (`src/components/AIAssistant/`) dipertahankan murni 100% offline dengan static FAQ & fuzzy matcher lokal tanpa dependensi atau network calls eksternal.
+- **R3. Liveness, Network Status & Clean Error Handling**: Feedback pengguna yang konsisten dan jelas saat error jaringan tanpa residu data tertahan di antrean lokal.
 
 ## 2. Logic Chain
-1. Routing: Jalur **General** (`teamwork_preview_orchestrator`) dipilih sesuai Routing Decision Table.
-2. Penanganan Kuota: Setelah kendala rate limit 429 pada inisiasi awal, sistem menerapkan Model Quota Fallback Rule dengan beralih ke subagent orchestrator `orchestrator_21` (model `flash`), yang berjalan lancar.
-3. Eksekusi Tim:
-   - Phase 0: 3 Explorer memetakan arsitektur UI, skema DB, dan formula penilaian.
-   - Milestone 1: Worker M1 membuat file migrasi SQL dan memperbarui `src/types/database.ts`.
-   - Milestone 2: Worker M2 merefaktor `GradebookView.tsx`, memperbaiki nesting syntax JSX, mengimplementasikan dropdown parent CP pada modal TP, validasi larangan penambahan diagnostik ke-2 via Swal, header tabel keterangan, modal bobot admin 100%, dan formula nilai akhir dinamis dengan integrasi absensi mapel.
-   - Milestone 3: 5 spesialis verifikasi menjalankan audit UI, formula, pengujian adversarial, dan penambahan suite test `tests/gradebook_cp_tp_formula_verification.test.ts`.
-4. Independent Post-Victory Audit: `victory_auditor_29` dijalankan secara blocking dan menerbitkan putusan **VICTORY CONFIRMED**:
-   - Phase A: Seluruh kriteria penerimaan R1–R5 lulus 100%.
-   - Phase B: Integritas kode bersih tanpa mock/hardcoding/stubs tiruan.
-   - Phase C: Seluruh 38/38 unit tests M1, 156/156 formula & E2E tests, 24/24 forensic tests, 19/19 test suites `npm test`, dan `npm run build` lulus sukses (exit code 0).
+1. **Routing**: Rute **SWE Light** (`teamwork_preview_swe`) dipilih berdasarkan Routing Decision Table (tugas perbaikan terfokus tunggal dengan prinsip Ponytail).
+2. **Orkestrasi `swe_18`**:
+   - Round 1 (Implementer): Menghapus antrean `sipjam_offline_presensi` (-350 baris di `GuruPresensi.tsx`), menerapkan pengecekan upfront `navigator.onLine` dengan toast interaktif "Koneksi Internet Diperlukan", menambahkan test suite baru `tests/online_cloud_transactions_and_offline_ai.test.ts`.
+   - Round 2 (Reviewer 1): Menganalisis captive portal & skenario diskoneksi mid-flight, mengonfirmasi penutupan isu tanpa residu antrean.
+   - Round 3 (Reviewer 2): Memeriksa kepatuhan prinsip Ponytail dan ketiadaan defek struktural.
+   - Round 4 (Reviewer 3): Melakukan pengujian adversarial mendalam lapis ketiga untuk memastikan seluruh mutation endpoints terlindungi.
+3. **Independent Victory Audit (`victory_auditor_30`)**:
+   - Dijalankan secara independen dan blocking.
+   - Phase A (Timeline): PASS (iterasi git teratur dengan 4 commits bertahap: 9c6d539, 35cc9db, ffe5569, 4da7494).
+   - Phase B (Integrity Check): PASS (penghapusan total offline queue di localStorage, proteksi online di seluruh 10 handler Piket, 8 handler Gradebook, GuruJurnal, RekapSiswa, GuruPresensi; Asisten AI terbukti murni offline 0 network calls).
+   - Phase C (Independent Test Execution): PASS (`npm test` 21 suites lulus 100%, `npm run build` Next.js 16 Turbopack sukses dengan 0 error).
+   - Putusan Resmi: **VICTORY CONFIRMED**.
 
 ## 3. Caveats
-- File migrasi SQL baru (`20261011_capaian_pembelajaran_and_gradebook_v2.sql`) harus diaplikasikan ke Supabase environment produksi melalui Supabase Dashboard / CLI jika lingkungan database langsung diperbarui.
-- Default bobot jika belum diatur di database adalah `{ kehadiran: 40, formatif: 30, sumatif: 30 }`.
+- Jaringan captive portal (hotspot yang membajak DNS) dapat melaporkan `navigator.onLine === true`. Namun penanganan error try-catch pada operasi Supabase cloud memastikan request gagal secara aman dengan toast error tanpa pernah membuat antrean offline di localStorage.
 
 ## 4. Conclusion
-Seluruh pekerjaan dinyatakan **SELESAI dan TERVERIFIKASI PENUH** (VICTORY CONFIRMED). Kode bersih, tidak ada regresi pada fitur rapor, cetak, atau analitik, dan seluruh test suite serta build lulus tanpa kendala.
+Seluruh persyaratan R1, R2, dan R3 telah selesai, diverifikasi secara independen oleh Victory Auditor 30 dengan status **VICTORY CONFIRMED**, dan seluruh pengujian otomatis lulus 100% tanpa regresi.
 
 ## 5. Verification Method
-- `npx tsx tests/m1_database_and_types_verification.test.ts`: 38/38 PASS
-- `npx tsx tests/gradebook_cp_tp_formula_verification.test.ts`: 156/156 PASS
-- `npx tsx tests/forensic_gradebook_audit.test.ts`: 24/24 PASS
-- `npx tsc --noEmit`: 0 errors
-- `npm test`: 19 suites PASS (100%)
-- `npm run build`: Exit code 0 (Production build success)
-- `git status`: Git workflow rule executed
+- `npm test`: 21 test suites passed 100% (exit code 0)
+- `npm run build`: Exit code 0 (Next.js production build succeeded with 0 TypeScript errors)
+- `git status`: Working tree synchronized with `origin/main`
+- Independent Victory Auditor: VICTORY CONFIRMED

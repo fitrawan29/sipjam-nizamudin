@@ -1,50 +1,41 @@
-# Victory Auditor Dispatch
-
-Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
-Project Root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+## 2026-10-12T12:03:25Z
+You are teamwork_preview_victory_auditor.
+Your working directory is c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor.
+Project root is c:\Users\Fitra\OneDrive\Documents\sipjam-app.
 
 <original_task>
-# Teamwork Project Prompt — Draft
-
-> Status: Launched.
-> Goal: Craft prompt → get user approval → delegate to teamwork_preview
-> Requested team: small focused team
-
 This is a single self-contained fix; keep it small and focused.
-Pastikan kamera yang digunakan di aplikasi tidak terlihat men-zoom (terpotong atau membesar) saat mengambil gambar.
+
+Sesuaikan aplikasi SIPJAM agar seluruh lini transaksi data (presensi, jurnal, piket, nilai) beroperasi secara online langsung ke cloud Supabase tanpa antrean offline lokal, dengan pengecualian khusus: Asisten AI tetap dipertahankan dalam mode 100% offline (FAQ lokal & knowledge base statis tanpa dependensi API eksternal). Implementasi harus menerapkan prinsip Ponytail (solusi paling efisien, ringkas, tanpa over-engineering, diff seminimal mungkin).
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-Integrity mode: demo
+Integrity mode: development
 
 ## Requirements
 
-### R1. Nonaktifkan Zoom/Crop di Kamera
-Periksa komponen `src/components/CameraSelfieCapture.tsx`. Kemungkinan besar masalah zoom disebabkan oleh CSS `object-fit: cover` yang memotong (crop) video stream sehingga terlihat membesar, atau batasan (constraints) resolusi yang memaksa crop dari sisi hardware. Sesuaikan styling CSS (misalnya menggunakan `object-contain` atau mencocokkan aspect-ratio container secara presisi) atau sesuaikan `MediaStreamConstraints` agar tampilan kamera pas dan tidak terpotong/zoom.
+### R1. Online-Only Cloud Transaction Enforcement
+Seluruh pencatatan dan submission data operasional (khususnya Presensi Guru di `src/components/GuruPresensi.tsx`, Jurnal Pembelajaran, Presensi Siswa/Piket, Nilai) wajib terkirim langsung secara online ke Supabase. Hapus atau nonaktifkan mekanisme antrean offline lokal (`sipjam_offline_presensi`, `sipjam_offline_presensi_queue`). Jika perangkat terputus dari internet saat mencoba menyimpan/mengirim data, tampilkan peringatan interaktif kepada pengguna bahwa koneksi internet aktif diwajibkan untuk menyimpan transaksi.
+
+### R2. Offline AI Assistant Preservation
+Pertahankan arsitektur Asisten AI SIPJAM (`src/components/AIAssistant/`) tetap dalam mode 100% offline (menggunakan fuzzy matcher & knowledge base statis lokal, tanpa panggilan jaringan / API eksternal) sesuai indikator "100% Offline FAQ" yang sudah ada. Jaga agar tidak ada API network call yang ditambahkan ke modul AI.
+
+### R3. Liveness, Network Status & Clean Error Handling
+Pastikan deteksi status koneksi dan penanganan error jaringan berjalan konsisten dan jelas, memberikan feedback langsung kepada user tanpa meninggalkan data tertahan di antrean lokal yang berpotensi menimbulkan desinkronisasi.
 
 ## Acceptance Criteria
 
-### Verifikasi Kode (Programmatic / Statis)
-- [ ] CSS atau constraints pada elemen `<video>` di `CameraSelfieCapture.tsx` telah disesuaikan untuk menghindari efek "zoom" atau crop yang berlebihan.
-- [ ] Tampilan kamera tetap rapi dan proposional (tidak penyok/distorsi).
+### Online Data Transactions
+- [ ] Submisi presensi di `GuruPresensi.tsx` tidak lagi menyimpan antrean offline ke `localStorage` (`sipjam_offline_presensi` / `sipjam_offline_presensi_queue`) saat offline.
+- [ ] Saat perangkat offline, aplikasi memberikan peringatan/pesan interaktif bahwa koneksi internet aktif diperlukan untuk menyimpan data.
+- [ ] Seluruh data transaksi (presensi, jurnal, piket) langsung berkomunikasi ke Supabase cloud.
+
+### AI Assistant Offline Purity
+- [ ] Komponen Asisten AI tetap beroperasi 100% offline tanpa network call eksternal.
+- [ ] Test suite `ai_assistant_faq.test.ts` tetap valid dan lulus 100%.
+
+### Verification & Quality
+- [ ] Disesuaikan test suite otomatis untuk memverifikasi penegakan mode online pada transaksi data dan retensi offline pada AI assistant.
+- [ ] Seluruh pengujian automated test (`npm test`) berjalan dan lulus 100% tanpa regresi.
 </original_task>
 
-<additional_context>
-The implementation team completed 1 implementation round and 3 adversarial review rounds.
-In `src/components/CameraSelfieCapture.tsx`, `<video>` was updated from `object-cover` to `object-contain` with clean framing.
-Test suite `tests/camera_zoom_fix.test.ts` was added with 33 assertions covering 11 aspect ratio permutations, geometry calculations, scale guards, and constraints.
-All 15 test suites and Next.js Turbopack production build have passed.
-Please perform independent 3-phase audit and report your structured verdict.
-</additional_context>
-
-## 2026-10-03T04:52:50Z
-[Message] timestamp=2026-10-03T04:52:50Z sender=6c7808af-def6-413e-841d-07594d748435 priority=MESSAGE_PRIORITY_HIGH
-Task: Victory audit for camera zoom fix in `CameraSelfieCapture.tsx`.
-Mode: demo
-
-
-## 2026-10-04T22:01:51Z
-[Message] timestamp=2026-10-04T22:01:51Z sender=7d1a5c32-05b5-44c3-b3bf-8674553211e8 priority=MESSAGE_PRIORITY_HIGH
-Task: Victory audit for 4 minimal improvements (R1 Dynamic Imports, R2 Presensi Offline Fallback, R3 Jurnal Auto-Save & Canvas Compression, R4 Unified Print CSS).
-Mode: development
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
+Conduct an independent post-victory audit (timeline audit, anti-cheating audit, independent test suite execution `npm test`, and production build `npm run build`). Provide a structured verdict: CONFIRMED or REJECTED.

@@ -1,99 +1,62 @@
-# Post-Victory Audit Report: 4 Minimal Ponytail Improvements
+# Handoff Report — Victory Auditor
 
 ## 1. Observation
-- **Timeline & Provenance**:
-  - Reconstructed git progression for implementation and adversarial QA:
-    - `3aef19c` (05:30:53 +0800): `feat(perf): implement 4 Ponytail improvements - dynamic imports, offline presensi, jurnal autosave/compression, unified print CSS`
-    - `c72e67d` (05:41:02 +0800): `fix(offline): strengthen presensi offline queue and jurnal auto-save resilience` (Review Round 1)
-    - `373e7b2` (05:51:30 +0800): `fix(offline): harden offline queue deduplication, json recovery, and draft absensi preservation` (Review Round 2)
-    - `b6a1134` (06:00:24 +0800): `fix(jurnal-presensi): prevent ghost draft re-save on submit and harden canvas compression error handling` (Review Round 3)
-  - All 4 commits exhibit authentic ~10-minute iterative intervals, with detailed adversarial problem remediation in each round.
-  - Workspace `.agents/teamwork/` metadata hygiene verified: only markdown metadata files exist in recent worker directories; zero implementation code, build artifacts, or data files placed in `.agents/teamwork/`.
-- **Source Code Verification**:
-  - `package.json`: Exactly 0 new dependencies added. Dependencies list remains strictly the original 9 packages (`@supabase/supabase-js`, `csv-parse`, `dotenv`, `next`, `react`, `react-dom`, `sweetalert2`, `tsx`, `web-push`).
-  - `src/components/AppScreen.tsx`: All 18 sub-views dynamically wrapped with `next/dynamic` (`dynamic(() => import('./...'))`). Layout structure, navigation logic, and user context are 100% preserved.
-  - `src/components/GuruPresensi.tsx`: Implements offline fallback saving payload and photo to `localStorage` under `sipjam_offline_presensi` and `sipjam_offline_presensi_queue`. Photo is compressed to max 800px / 0.6 quality using native HTML `<canvas>` before serialization. If storage quota is exceeded, payload is saved without photo (`photo: null`). Reconnect sync is wired to `window.addEventListener('online', ...)` with `isSyncingRef.current` concurrency mutex, queue deduplication, and Postgres `23505` duplicate key idempotency.
-  - `src/components/GuruJurnal.tsx`: Implements draft auto-save to `localStorage` under `sipjam_jurnal_autosave` on user change, guarded by `isRestoredRef.current`. Restores draft state on mount and preserves drafted student attendance during student list fetch. Upon successful submission, draft is removed and all fields (`mapel`, `kelas`, `absensi`, text fields) are cleanly reset, preventing ghost draft resurrection. Native HTML `<canvas>` photo compression (`compressImageWithCanvas`) scales images before upload, with `toBlob` / `toDataURL` fallback and `try...catch` guards inside `img.onload`.
-  - `src/app/globals.css`: Consolidated print styles inside `@media print` with `break-inside: avoid !important;`, `page-break-inside: avoid !important;` for `.page-break-inside-avoid`, `.break-inside-avoid`, `.print-avoid-break`, `.print-card`, `.card`, table rows `tr`, figures, blockquotes, and heading break-after rules, plus explicit page break utilities (`.page-break-before-always`, `.break-before-page`, `.page-break-after-always`, `.break-after-page`). No wrapper components created.
-- **Forensic Check**:
-  - Grep search for prohibited patterns (`TODO`, `FIXME`, `mock`, `dummy`, `fake`) in modified files returned 0 results. No facades, no hardcoded test mocks, and no fake return strings.
-- **Independent Execution**:
-  - `npx tsx tests/four_ponytail_improvements.test.ts`: 13/13 passed (100% pass, 0 failed).
-  - `npm test`: All 20 project test suites passed cleanly with 0 failures (35 QR tests, 37 kiosk scanner checks, 31 wali kelas sync tests, 33 camera zoom checks, etc.).
-  - `npm run test:e2e`: All 4 tiers (Feature coverage, Boundary & corner cases, Cross-feature interactions, Real-world scenarios) passed (111 assertions, 100% pass, 0 failed).
-  - `npx tsc --noEmit`: Exited with code 0 (0 type errors).
-  - `npm run build`: Next.js 16.3.4 Turbopack production build succeeded in 2.3s, generating 12 static/dynamic routes with 0 errors.
+- Project: SIPJAM (`c:\Users\Fitra\OneDrive\Documents\sipjam-app`)
+- Scope: Online-Only Cloud Transaction Enforcement with 100% Offline AI Assistant Preservation (Ponytail approach).
+- Commit History:
+  - `4da7494`: `fix(offline-guards): harden offline guards for GuruJurnal, Piket absensi, and RekapSiswa Wali Kelas`
+  - `ffe5569`: `fix(offline-guards): harden offline guards across Gradebook, Piket assignments, and AdminVerif`
+  - `35cc9db`: `fix(online-cloud): enforce upfront offline guards across presensi, piket, and gradebook transactions`
+  - `9c6d539`: `feat: enforce online cloud transactions and preserve offline ai assistant`
+  - All 4 sequential commits cleanly committed and pushed to `origin/main`.
+- Codebase Forensics:
+  - `src/components/GuruPresensi.tsx`:
+    - Legacy localStorage offline queueing logic (`sipjam_offline_presensi` and `sipjam_offline_presensi_queue`) has been completely removed.
+    - An explicit mount cleanup `useEffect` purges any residual legacy keys: `localStorage.removeItem('sipjam_offline_presensi'); localStorage.removeItem('sipjam_offline_presensi_queue');`.
+    - Upfront offline check in `handlePresensiSubmit`: `if (isOffline) { setLoading(false); return showToast('Koneksi Internet Diperlukan', 'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan transaksi presensi.', 'warning'); }`.
+    - Transactions write directly to Supabase table `presensi_guru` (`supabase.from('presensi_guru').insert([newPresensi])`).
+  - `src/components/GuruJurnal.tsx`:
+    - `handleJurnalSubmit` enforces upfront offline check (`Koneksi Internet Diperlukan`) before validations and inserts directly to Supabase table `jurnal_pembelajaran`.
+  - `src/components/PiketView.tsx`:
+    - All operational entry points (`handleProcessScan`, `handleManualMark`, `handleManualFormSubmit`, `handleCancelManualPresensi`, `updatePiketStatus`, `handlePiketAbsensiChange`, `handlePiketSubmit`, `handleAddGuruPiket`, `handleAddSiswaPiket`, `handleDeletePenugasan`) enforce offline guards and interactive warnings (`Koneksi Internet Diperlukan`), persisting directly to Supabase `presensi_siswa`, `piket`, and `absensi`.
+  - `src/components/GradebookView.tsx`:
+    - Mutations (`handleSaveCp`, `handleDeleteCp`, `handleSaveBobot`, `handleSaveGrades`, `handleSaveTp`, `handleDeleteTp`, `handleSaveCol`, `handleDeleteCol`) check `navigator.onLine` and alert `Koneksi Internet Diperlukan`, with direct Supabase persistence to `nilai_siswa`, `tujuan_pembelajaran`, `capaian_pembelajaran`, `asesmen_kolom`, `pengaturan`.
+  - `src/components/AdminVerifView.tsx` and `src/components/RekapSiswaView.tsx`:
+    - Verification and Wali Kelas attendance submission enforce offline warning guards and direct cloud persistence.
+  - `src/components/AIAssistant/`:
+    - 0 network calls (`fetch`, `axios`, external endpoints).
+    - Preserves "100% Offline FAQ" banner and static keyword matcher.
+    - Zero diff against base commit for AI assistant logic.
+- Independent Test Execution:
+  - Canonical test command: `npm test`
+  - Output: 21 test suites executed independently, all passed with exit code 0 (including `ai_assistant_faq.test.ts` with 24/24 passed and `online_cloud_transactions_and_offline_ai.test.ts` with 14/14 passed).
+- Independent Build Execution:
+  - Canonical build command: `npm run build`
+  - Output: Next.js 16.3.4 (Turbopack) production build completed in 2.5s; TypeScript type check passed with 0 errors; all static routes generated.
 
 ## 2. Logic Chain
-1. The requirements in `ORIGINAL_REQUEST.md` demanded 4 minimal, Ponytail-style improvements:
-   - R1: Dynamic imports in `AppScreen.tsx` without rewriting layout or context.
-   - R2: Presensi offline fallback in `GuruPresensi.tsx` saving payload + photo to `localStorage`, retrying via `window.addEventListener('online')`.
-   - R3: Jurnal auto-save in `GuruJurnal.tsx` saving to `localStorage` on change, restoring on mount, and native HTML `<canvas>` photo compression.
-   - R4: Unified print CSS in `globals.css` with break-inside avoidance without creating new wrapper components.
-   - General: Zero new external dependencies.
-2. The team implemented these changes across 4 git commits with 3 rigorous rounds of adversarial review that surfaced and remediated:
-   - Uncompressed photos overflowing `localStorage` quota in Presensi.
-   - Reconnect race conditions and Postgres duplicate key rejection.
-   - Zombie / ghost draft revival on Jurnal submission.
-   - Hanging promises during async image loading in canvas compression.
-   - Legacy Android WebView compatibility lacking `canvas.toBlob`.
-3. Independent forensic analysis confirms:
-   - `package.json` diff contains 0 package changes.
-   - `AppScreen.tsx` diff contains only dynamic import conversions.
-   - `GuruPresensi.tsx` and `GuruJurnal.tsx` contain genuine native logic with comprehensive error handling.
-   - `globals.css` consolidates print layout rules under `@media print`.
-4. Independent execution of the entire test harness (`tests/four_ponytail_improvements.test.ts`, `npm test`, `npm run test:e2e`), strict TypeScript check, and Next.js Turbopack production build all passed with 100% clean exit codes.
-5. All claims are verified empirically.
+1. Requirement R1 demands that all transactional lines (presensi, jurnal, piket, nilai) operate online directly to Supabase without local offline queues, displaying interactive warnings when offline.
+   - Verified via code inspection and AST checks in `tests/online_cloud_transactions_and_offline_ai.test.ts`.
+   - Confirmed no `localStorage.setItem` for offline queues exists anywhere in `src/`.
+   - Verified legacy queue keys are purged on mount.
+   - Verified interactive SweetAlert2/showToast warning dialogs are displayed on offline attempts across all operational components.
+2. Requirement R2 demands that the AI Assistant remains 100% offline with zero external network calls.
+   - Verified `src/components/AIAssistant/` contains zero fetch/network calls.
+   - Verified `tests/ai_assistant_faq.test.ts` mocks fetch to throw on any network call and runs 10 test groups, passing 100%.
+3. Requirement R3 demands clean error handling, liveness, and network status consistency.
+   - Verified upfront offline checking, mutex locks, and try/catch/finally state restoration across all async handlers.
+4. Acceptance Criteria:
+   - All acceptance criteria are objectively satisfied and independently verified.
 
 ## 3. Caveats
-- Browser `localStorage` quota availability in strict private browsing environments (such as Safari Private Browsing) can be limited or restricted by browser sandbox security policy; UI displays graceful toast warnings.
-- Physical device network transitions in cellular dead zones depend on native browser `online`/`offline` event emission accuracy by the operating system.
+- No caveats. The implementation directly meets all requirements with clean, minimal diff adhering to Ponytail principles.
 
 ## 4. Conclusion
-The implementation is genuine, production-grade, highly resilient, zero-dependency, and fully compliant with all 4 Ponytail requirements and acceptance criteria.
-**Verdict: VICTORY CONFIRMED.**
+- Victory is CONFIRMED.
+- All functional, forensic, and behavioral requirements are fully met.
+- Zero cheating, zero hardcoding, zero facade implementations, and 100% independent test pass rate.
 
 ## 5. Verification Method
-- Independent test suite execution:
-  ```bash
-  npx tsx tests/four_ponytail_improvements.test.ts
-  ```
-- Full repo regression test suite:
-  ```bash
-  npm test
-  ```
-- End-to-end test suite:
-  ```bash
-  npm run test:e2e
-  ```
-- TypeScript typecheck:
-  ```bash
-  npx tsc --noEmit
-  ```
-- Turbopack production build:
-  ```bash
-  npm run build
-  ```
-
----
-
-=== VICTORY AUDIT REPORT ===
-
-VERDICT: VICTORY CONFIRMED
-
-PHASE A — TIMELINE:
-  Result: PASS
-  Anomalies: none (4 authentic iterative commits spaced ~10m apart across implementer and 3 review rounds; clean metadata directory layout)
-
-PHASE B — INTEGRITY CHECK:
-  Result: PASS
-  Details: Zero facades, zero dummy return constants, zero hardcoded test result cheats, zero new dependencies in package.json, genuine native implementation across all 4 requirements.
-
-PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npx tsx tests/four_ponytail_improvements.test.ts && npm test && npm run test:e2e && npx tsc --noEmit && npm run build
-  Your results: 13/13 unit/simulation checks passed; 20/20 test suites passed; 111/111 E2E assertions passed; tsc 0 errors; Next.js build clean in 2.3s.
-  Claimed results: 13/13 tests pass; all repo test suites pass; 0 TypeScript errors; Turbopack production build succeeds with 0 errors.
-  Match: YES — 100% match across all test suites, typechecks, and build outputs.
-
-EVIDENCE (if REJECTED):
-  N/A
+- Independent Test Run: `npm test` (21 suites, exit code 0)
+- Independent Build Run: `npm run build` (Turbopack build, exit code 0)
+- Git Tree Check: `git status` (clean working tree on main branch matching origin/main)
