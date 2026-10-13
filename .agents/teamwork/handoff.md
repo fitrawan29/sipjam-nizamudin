@@ -1,33 +1,44 @@
-# Handoff Report — Sentinel Final Verification
+# Handoff Report — Sentinel (swe_19 Milestone)
 
-## 1. Observation
-Permintaan pengguna mencakup penegakan transaksi cloud Supabase online langsung tanpa antrean offline lokal, dengan preservasi Asisten AI 100% offline (prinsip Ponytail):
-- **R1. Online-Only Cloud Transaction Enforcement**: Seluruh pencatatan dan submission data operasional (khususnya Presensi Guru di `src/components/GuruPresensi.tsx`, Jurnal Pembelajaran, Presensi Siswa/Piket, Nilai) wajib terkirim langsung secara online ke Supabase. Mekanisme antrean offline lokal (`sipjam_offline_presensi`, `sipjam_offline_presensi_queue`) dihapus secara menyeluruh. Peringatan interaktif dimunculkan jika perangkat terputus dari internet saat transaksi dicoba.
-- **R2. Offline AI Assistant Preservation**: Modul Asisten AI SIPJAM (`src/components/AIAssistant/`) dipertahankan murni 100% offline dengan static FAQ & fuzzy matcher lokal tanpa dependensi atau network calls eksternal.
-- **R3. Liveness, Network Status & Clean Error Handling**: Feedback pengguna yang konsisten dan jelas saat error jaringan tanpa residu data tertahan di antrean lokal.
+## Observation
+User requested feature: **Portal Induk Jaringan Multi-Sekolah dengan Akses Superadmin Tunggal (Single Sign-On / School Switcher)** pada aplikasi SIPJAM.
+Requirements:
+- R1: Unified Master Superadmin Authentication & School Switcher
+- R2: Central School Registry Management (`sekolah_registry` schema, RLS, types)
+- R3: Tab "Jaringan Sekolah" on `SuperadminView.tsx` (cards/table, status ping, metrics, modals, action triggers)
+- R4: Dynamic Client-Side Scope Switching in `src/lib/supabaseClient.ts`
 
-## 2. Logic Chain
-1. **Routing**: Rute **SWE Light** (`teamwork_preview_swe`) dipilih berdasarkan Routing Decision Table (tugas perbaikan terfokus tunggal dengan prinsip Ponytail).
-2. **Orkestrasi `swe_18`**:
-   - Round 1 (Implementer): Menghapus antrean `sipjam_offline_presensi` (-350 baris di `GuruPresensi.tsx`), menerapkan pengecekan upfront `navigator.onLine` dengan toast interaktif "Koneksi Internet Diperlukan", menambahkan test suite baru `tests/online_cloud_transactions_and_offline_ai.test.ts`.
-   - Round 2 (Reviewer 1): Menganalisis captive portal & skenario diskoneksi mid-flight, mengonfirmasi penutupan isu tanpa residu antrean.
-   - Round 3 (Reviewer 2): Memeriksa kepatuhan prinsip Ponytail dan ketiadaan defek struktural.
-   - Round 4 (Reviewer 3): Melakukan pengujian adversarial mendalam lapis ketiga untuk memastikan seluruh mutation endpoints terlindungi.
-3. **Independent Victory Audit (`victory_auditor_30`)**:
-   - Dijalankan secara independen dan blocking.
-   - Phase A (Timeline): PASS (iterasi git teratur dengan 4 commits bertahap: 9c6d539, 35cc9db, ffe5569, 4da7494).
-   - Phase B (Integrity Check): PASS (penghapusan total offline queue di localStorage, proteksi online di seluruh 10 handler Piket, 8 handler Gradebook, GuruJurnal, RekapSiswa, GuruPresensi; Asisten AI terbukti murni offline 0 network calls).
-   - Phase C (Independent Test Execution): PASS (`npm test` 21 suites lulus 100%, `npm run build` Next.js 16 Turbopack sukses dengan 0 error).
-   - Putusan Resmi: **VICTORY CONFIRMED**.
+Execution:
+1. Routed to SWE Light (`teamwork_preview_swe`) per the single self-contained feature directive.
+2. Executed through implementer and 3 full adversarial reviewer rounds:
+   - Initial implementation: Commit `17444fa`
+   - Reviewer Round 1: Commit `090b8b6` (isolation, multi-tab sync, error propagation)
+   - Reviewer Round 2: Commit `e7ae069` (master RLS headers, key leak isolation, header sanitization)
+   - Reviewer Round 3: Commit `9907d5d` (session sync satellite protection, mutation routing, timeout memory leak prevention)
+3. Independent Post-Victory Auditor `victory_auditor_31` was dispatched in a clean context and conducted full 3-phase audit:
+   - Phase A (Timeline Analysis): PASS
+   - Phase B (Integrity Forensics): PASS
+   - Phase C (Independent Test Execution): PASS (`npx tsc --noEmit` 0 errors, `npm test` 22 suites / 47 portal assertions passed 100%, `npm run build` passed in 3.2s).
+   - VERDICT: **VICTORY CONFIRMED**.
+4. Both monitoring crons cancelled and subagents terminated.
 
-## 3. Caveats
-- Jaringan captive portal (hotspot yang membajak DNS) dapat melaporkan `navigator.onLine === true`. Namun penanganan error try-catch pada operasi Supabase cloud memastikan request gagal secara aman dengan toast error tanpa pernah membuat antrean offline di localStorage.
+## Logic Chain
+- R1 Verified: Single master login enables seamless switching across registered satellite schools without re-authentication. The active school dropdown is strictly scoped to Superadmin in `AppScreen.tsx`.
+- R2 Verified: Central registry table `sekolah_registry` exists with strict Superadmin RLS policies (`supabase/migrations/20261013_portal_induk_jaringan_multi_sekolah.sql`) and TypeScript entity definitions.
+- R3 Verified: Tab "Jaringan Sekolah" in `SuperadminView.tsx` provides status indicators, teacher/student metric counts, and action buttons ("Kelola Sekolah Ini", "Buka Web Vercel"), and modals for Add/Edit/Delete satellite schools.
+- R4 Verified: `dynamicTenantFetch` transparently routes PostgREST traffic to target satellite endpoints while preserving central master operations via `masterSupabase`.
 
-## 4. Conclusion
-Seluruh persyaratan R1, R2, dan R3 telah selesai, diverifikasi secara independen oleh Victory Auditor 30 dengan status **VICTORY CONFIRMED**, dan seluruh pengujian otomatis lulus 100% tanpa regresi.
+## Caveats
+- Remote satellite Supabase projects must have their CORS configurations set to allow origins from the master Vercel portal domain.
+- Remote database status ping depends on PostgREST network connectivity; unreachable or paused projects are cleanly marked as "Ter-pause".
 
-## 5. Verification Method
-- `npm test`: 21 test suites passed 100% (exit code 0)
-- `npm run build`: Exit code 0 (Next.js production build succeeded with 0 TypeScript errors)
-- `git status`: Working tree synchronized with `origin/main`
-- Independent Victory Auditor: VICTORY CONFIRMED
+## Conclusion
+All requirements R1–R4 from the user request have been completely delivered, hardened through 3 reviewer rounds, independently verified with `VICTORY CONFIRMED`, and synchronized to the Git repository.
+
+## Verification Method
+```powershell
+npx tsc --noEmit
+npm test
+npm run build
+git status
+```
