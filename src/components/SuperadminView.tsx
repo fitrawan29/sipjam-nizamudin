@@ -10,6 +10,7 @@ import {
   setActiveTargetSchool,
   onActiveTargetSchoolChange,
   getSatelliteSupabaseClient,
+  normalizeSupabaseUrl,
   type SatelliteSchool
 } from '@/lib/supabaseClient';
 
@@ -110,14 +111,25 @@ export default function SuperadminView({
       }
 
       // 3. Fetch count of teachers & students across all schools (or targeted active school)
-      const countClient = activeTargetSchool?.supabase_url ? getSatelliteSupabaseClient(activeTargetSchool) : masterSupabase;
-      const [guruCountRes, siswaCountRes] = await Promise.all([
-        countClient.from('data_guru').select('id', { count: 'exact', head: true }),
-        countClient.from('data_siswa').select('id', { count: 'exact', head: true })
-      ]);
+      let totalGuru = 0;
+      let totalSiswa = 0;
+      try {
+        const countClient = activeTargetSchool?.supabase_url ? getSatelliteSupabaseClient(activeTargetSchool) : masterSupabase;
+        let guruQuery = countClient.from('data_guru').select('id', { count: 'exact', head: true });
+        let siswaQuery = countClient.from('data_siswa').select('id', { count: 'exact', head: true });
 
-      const totalGuru = guruCountRes.count || 0;
-      const totalSiswa = siswaCountRes.count || 0;
+        // If target school is selected and shares the central database, filter counts specifically for this school
+        if (activeTargetSchool && !activeTargetSchool.supabase_url) {
+          guruQuery = guruQuery.eq('sekolah_id', activeTargetSchool.id);
+          siswaQuery = siswaQuery.eq('sekolah_id', activeTargetSchool.id);
+        }
+
+        const [guruCountRes, siswaCountRes] = await Promise.all([guruQuery, siswaQuery]);
+        totalGuru = guruCountRes?.count || 0;
+        totalSiswa = siswaCountRes?.count || 0;
+      } catch (countErr) {
+        console.warn('[SuperadminView] Could not fetch teacher/student metrics:', countErr);
+      }
 
       const activeSchools = (schools || []).filter(s => s.status === 'aktif').length;
       const inactiveSchools = (schools || []).filter(s => s.status === 'nonaktif').length;
@@ -406,13 +418,25 @@ export default function SuperadminView({
           return null;
         }
 
+        if (supabase_url && !supabase_anon_key) {
+          Swal.showValidationMessage('Jika Supabase Project URL diisi, Supabase Anon Key juga wajib diisi!');
+          return null;
+        }
+
+        if (supabase_anon_key && !supabase_url) {
+          Swal.showValidationMessage('Jika Supabase Anon Key diisi, Supabase Project URL juga wajib diisi!');
+          return null;
+        }
+
+        const normalized_supabase_url = supabase_url ? normalizeSupabaseUrl(supabase_url) : null;
+
         return {
           nama,
           npsn,
           kota_kabupaten,
           provinsi,
           vercel_url,
-          supabase_url,
+          supabase_url: normalized_supabase_url,
           supabase_anon_key,
           status
         };
@@ -517,13 +541,25 @@ export default function SuperadminView({
           return null;
         }
 
+        if (supabase_url && !supabase_anon_key) {
+          Swal.showValidationMessage('Jika Supabase Project URL diisi, Supabase Anon Key juga wajib diisi!');
+          return null;
+        }
+
+        if (supabase_anon_key && !supabase_url) {
+          Swal.showValidationMessage('Jika Supabase Anon Key diisi, Supabase Project URL juga wajib diisi!');
+          return null;
+        }
+
+        const normalized_supabase_url = supabase_url ? normalizeSupabaseUrl(supabase_url) : null;
+
         return {
           nama,
           npsn,
           kota_kabupaten,
           provinsi,
           vercel_url,
-          supabase_url,
+          supabase_url: normalized_supabase_url,
           supabase_anon_key,
           status,
           updated_at: new Date().toISOString()

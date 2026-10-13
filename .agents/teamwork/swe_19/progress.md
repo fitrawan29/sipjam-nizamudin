@@ -1,21 +1,19 @@
 # Progress — swe_19
 
 ## Current Status
-Last visited: 2026-10-13T07:10:00Z
+Last visited: 2026-10-13T07:20:00Z
 - [x] Implementer dispatch and execution (completed by 4743efed-7124-4e9e-a628-c1d727ec2196)
-- [ ] Reviewer Round 1 (in progress: ecf340a1-e127-49b4-ae46-c0ebea5f0cf3)
-- [ ] Reviewer Round 2
+- [x] Reviewer Round 1 (completed by ecf340a1-e127-49b4-ae46-c0ebea5f0cf3)
+- [ ] Reviewer Round 2 (in progress: 5fd035c2-a899-4087-a849-0809f808d262)
 - [ ] Reviewer Round 3
 - [ ] Victory Auditor verification
 - [ ] Git commit and push per GEMINI.md
 - [ ] Final handoff and completion reporting
 
 ## Iteration Status
-Current iteration: 3 / 32
+Current iteration: 5 / 32
 
 ## Open Issues Ledger
-- [ ] [Implementer] Real browser network roundtrips to remote satellite Supabase project endpoints with active TLS certificates and actual Supabase project pause states.
-- [ ] [Implementer] Multi-tab localStorage synchronization if Superadmin opens multiple browser tabs with different active school switches simultaneously.
-- [ ] [Implementer] Satellite ping health check relies on `fetch(url + '/rest/v1/', { headers: { apikey: anonKey } })` with a 4-second timeout; if CORS or strict network firewalls block browser-side cross-origin HEAD/GET requests to arbitrary satellite Supabase projects, status may display as "Ter-pause / Unreachable" despite being online.
-- [ ] [Implementer] If a satellite school URL stored in `sekolah_registry` has a trailing slash or invalid URI scheme, `URL` constructor in `dynamicTenantFetch` falls back gracefully without crashing, but the request will fall back to central Supabase origin.
-- [ ] [Implementer] Verify CORS headers on satellite Supabase instances to allow health-check pings from the master Vercel portal domain.
+- [ ] [Reviewer 1] Real browser network roundtrips to remote live third-party Supabase projects across multiple physical internet domains (verified through contract/mock tests).
+- [ ] [Reviewer 1] Satellite database ping health check relies on PostgREST queries over client-side fetch; if an external satellite Supabase instance has overly restrictive CORS policies rejecting cross-origin requests from the master Vercel portal domain, the browser may report the status as "Ter-pause" due to CORS blockage.
+- [ ] [Reviewer 1] Verify that satellite Supabase project configurations (under Project Settings -> API) have allowed CORS origins for the production Vercel portal URL if deploying multi-tenant satellites on separate domains.

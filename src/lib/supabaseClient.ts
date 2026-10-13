@@ -59,10 +59,21 @@ export function setServerActiveTargetSchool(school: SatelliteSchool | null): voi
 }
 
 /**
+ * Sanitizes header string values by removing newlines, carriage returns, tabs, and control characters.
+ */
+export function sanitizeHeaderValue(val?: string | null): string | null {
+  if (val === null || val === undefined) return null;
+  const str = String(val).replace(/[\r\n\t\x00-\x1f\x7f]/g, '').trim();
+  return str.length > 0 ? str : null;
+}
+
+/**
  * Sets the active target school for Superadmin scope switching.
  * Stored in browser localStorage and dispatches a 'sipjam_target_school_changed' CustomEvent.
+ * Keeps in-memory context synchronized across both server and client environments.
  */
 export function setActiveTargetSchool(school: SatelliteSchool | null): void {
+  serverActiveTargetSchool = school;
   if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
     try {
       if (school) {
@@ -74,8 +85,6 @@ export function setActiveTargetSchool(school: SatelliteSchool | null): void {
     } catch (e) {
       console.warn('[supabaseClient] Failed to persist sipjam_active_target_school:', e);
     }
-  } else {
-    serverActiveTargetSchool = school;
   }
 }
 
@@ -108,9 +117,25 @@ export function getActiveTargetSchool(): SatelliteSchool | null {
 
 /**
  * Clears the active target school and returns client scope to Master/Global.
+ * Symmetrically resets both in-memory state and localStorage.
  */
 export function clearActiveTargetSchool(): void {
+  serverActiveTargetSchool = null;
   setActiveTargetSchool(null);
+}
+
+/**
+ * Completely purges all client session and active scope states from localStorage and memory on logout.
+ */
+export function clearAllClientSessionState(): void {
+  clearActiveTargetSchool();
+  clearServerTenantContext();
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem('sipjam_user');
+      localStorage.removeItem('sipjam_active_target_school');
+    } catch (_) {}
+  }
 }
 
 /**
@@ -195,6 +220,54 @@ export function onActiveTargetSchoolChange(callback: (school: SatelliteSchool | 
 }
 
 /**
+ * Custom fetch wrapper for masterSupabase that always queries the central master database
+ * and dynamically injects the central tenant/session headers (with cache: no-store).
+ * Never rewrites to satellite instances, ensuring central registry & session operations work cleanly
+ * with PostgreSQL RLS policies.
+ */
+export const masterFetch: typeof fetch = async (input, init) => {
+  const headers = new Headers(
+    typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined
+  );
+
+  if (init?.headers) {
+    new Headers(init.headers).forEach((value, key) => {
+      headers.set(key, value);
+    });
+  }
+
+  const { sekolahId, role, userId, sessionToken } = getActiveTenantContext();
+
+  const safeSekolahId = sanitizeHeaderValue(sekolahId);
+  const safeRole = sanitizeHeaderValue(role);
+  const safeUserId = sanitizeHeaderValue(userId);
+  const safeSessionToken = sanitizeHeaderValue(sessionToken);
+
+  if (safeSekolahId && !headers.has('x-sekolah-id')) {
+    headers.set('x-sekolah-id', safeSekolahId);
+  }
+  if (safeRole && !headers.has('x-user-role')) {
+    headers.set('x-user-role', safeRole);
+  }
+  if (safeUserId && !headers.has('x-user-id')) {
+    headers.set('x-user-id', safeUserId);
+  }
+  if (safeSessionToken && !headers.has('x-session-token')) {
+    headers.set('x-session-token', safeSessionToken);
+  }
+
+  if (headers.has('x-target-scope')) {
+    headers.delete('x-target-scope');
+  }
+
+  return fetch(input, {
+    ...init,
+    cache: 'no-store',
+    headers,
+  });
+};
+
+/**
  * Custom fetch wrapper that intercepts every outgoing PostgREST / Storage / RPC request
  * and dynamically injects `x-sekolah-id`, `x-user-role`, `x-user-id`, and `x-session-token` headers according to the active
  * user session or context.
@@ -224,18 +297,23 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
   // If Superadmin has an active satellite school scope, prioritize target school ID
   const effectiveSekolahId = targetSchool?.id ? String(targetSchool.id).trim() : sekolahId;
 
+  const safeSekolahId = sanitizeHeaderValue(effectiveSekolahId);
+  const safeRole = sanitizeHeaderValue(role);
+  const safeUserId = sanitizeHeaderValue(userId);
+  const safeSessionToken = sanitizeHeaderValue(sessionToken);
+
   // Inject headers only if not already explicitly provided by the caller
-  if (effectiveSekolahId && !headers.has('x-sekolah-id')) {
-    headers.set('x-sekolah-id', effectiveSekolahId);
+  if (safeSekolahId && !headers.has('x-sekolah-id')) {
+    headers.set('x-sekolah-id', safeSekolahId);
   }
-  if (role && !headers.has('x-user-role')) {
-    headers.set('x-user-role', role);
+  if (safeRole && !headers.has('x-user-role')) {
+    headers.set('x-user-role', safeRole);
   }
-  if (userId && !headers.has('x-user-id')) {
-    headers.set('x-user-id', userId);
+  if (safeUserId && !headers.has('x-user-id')) {
+    headers.set('x-user-id', safeUserId);
   }
-  if (sessionToken && !headers.has('x-session-token')) {
-    headers.set('x-session-token', sessionToken);
+  if (safeSessionToken && !headers.has('x-session-token')) {
+    headers.set('x-session-token', safeSessionToken);
   }
 
   const requestUrlStr = typeof input === 'string'
@@ -252,36 +330,65 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
     requestUrlStr.includes('/rest/v1/rpc/verify_login') ||
     headers.get('x-target-scope') === 'master';
 
+  if (headers.has('x-target-scope')) {
+    headers.delete('x-target-scope');
+  }
+
   let effectiveInput = input;
-  // If target school specifies an external Supabase instance URL & key, route requests dynamically
-  // (unless this is a master-only central registry or session query)
-  if (!isMasterOnlyRequest && targetSchool?.supabase_url && targetSchool.supabase_url.trim()) {
-    const targetBase = normalizeSupabaseUrl(targetSchool.supabase_url);
+  // If target school specifies an external Supabase instance URL & key, route requests dynamically.
+  // Security guard: Only rewrite to an external host if both URL AND valid anon key are present.
+  // Never leak master portal anon key to an external host!
+  const hasSatelliteUrl = Boolean(targetSchool?.supabase_url && targetSchool.supabase_url.trim());
+  const hasSatelliteKey = Boolean(targetSchool?.supabase_anon_key && targetSchool.supabase_anon_key.trim());
+
+  if (!isMasterOnlyRequest && hasSatelliteUrl && hasSatelliteKey) {
+    const targetBase = normalizeSupabaseUrl(targetSchool!.supabase_url);
     const currentBase = normalizeSupabaseUrl(supabaseUrl);
 
-    if (typeof input === 'string') {
-      if (input.startsWith(currentBase)) {
-        effectiveInput = input.replace(currentBase, targetBase);
-      } else if (input.startsWith('/')) {
-        effectiveInput = `${targetBase}${input}`;
-      } else if (!input.startsWith('http://') && !input.startsWith('https://')) {
-        effectiveInput = `${targetBase}/${input.replace(/^\/+/, '')}`;
+    try {
+      const parsedUrl = new URL(requestUrlStr);
+      const parsedCurrent = new URL(currentBase);
+      const parsedTarget = new URL(targetBase);
+
+      if (parsedUrl.host === parsedCurrent.host) {
+        parsedUrl.protocol = parsedTarget.protocol;
+        parsedUrl.host = parsedTarget.host;
+        parsedUrl.port = parsedTarget.port;
+        const rewrittenUrlStr = parsedUrl.toString();
+
+        if (typeof input === 'string') {
+          effectiveInput = rewrittenUrlStr;
+        } else if (typeof URL !== 'undefined' && input instanceof URL) {
+          effectiveInput = new URL(rewrittenUrlStr);
+        } else if (typeof Request !== 'undefined' && input instanceof Request) {
+          effectiveInput = new Request(rewrittenUrlStr, input);
+        }
       }
-    } else if (typeof URL !== 'undefined' && input instanceof URL) {
-      if (input.href.startsWith(currentBase)) {
-        effectiveInput = new URL(input.href.replace(currentBase, targetBase));
-      }
-    } else if (typeof Request !== 'undefined' && input instanceof Request) {
-      if (input.url.startsWith(currentBase)) {
-        const rewritten = input.url.replace(currentBase, targetBase);
-        effectiveInput = new Request(rewritten, input);
-      } else if (input.url.startsWith('/')) {
-        effectiveInput = new Request(`${targetBase}${input.url}`, input);
+    } catch (_) {
+      if (typeof input === 'string') {
+        if (input.startsWith(currentBase)) {
+          effectiveInput = input.replace(currentBase, targetBase);
+        } else if (input.startsWith('/')) {
+          effectiveInput = `${targetBase}${input}`;
+        } else if (!input.startsWith('http://') && !input.startsWith('https://')) {
+          effectiveInput = `${targetBase}/${input.replace(/^\/+/, '')}`;
+        }
+      } else if (typeof URL !== 'undefined' && input instanceof URL) {
+        if (input.href.startsWith(currentBase)) {
+          effectiveInput = new URL(input.href.replace(currentBase, targetBase));
+        }
+      } else if (typeof Request !== 'undefined' && input instanceof Request) {
+        if (input.url.startsWith(currentBase)) {
+          const rewritten = input.url.replace(currentBase, targetBase);
+          effectiveInput = new Request(rewritten, input);
+        } else if (input.url.startsWith('/')) {
+          effectiveInput = new Request(`${targetBase}${input.url}`, input);
+        }
       }
     }
 
-    if (targetSchool.supabase_anon_key && targetSchool.supabase_anon_key.trim()) {
-      const anonKey = targetSchool.supabase_anon_key.trim();
+    const anonKey = sanitizeHeaderValue(targetSchool!.supabase_anon_key);
+    if (anonKey) {
       headers.set('apikey', anonKey);
       headers.set('authorization', `Bearer ${anonKey}`);
     }
@@ -296,11 +403,17 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
 
   // Invalidate stale browser session if server returns 401 Unauthorized
   // Note: Only invalidate central user session if not in active satellite switch scope
-  if (res.status === 401 && typeof window !== 'undefined' && !targetSchool) {
-    try {
-      localStorage.removeItem('sipjam_user');
-      window.dispatchEvent(new Event('sipjam_unauthorized'));
-    } catch (_) {}
+  if (res.status === 401 && typeof window !== 'undefined') {
+    if (!targetSchool) {
+      try {
+        clearAllClientSessionState();
+        window.dispatchEvent(new Event('sipjam_unauthorized'));
+      } catch (_) {}
+    } else {
+      try {
+        window.dispatchEvent(new CustomEvent('sipjam_satellite_error', { detail: { school: targetSchool, status: res.status } }));
+      } catch (_) {}
+    }
   }
 
   return res;
@@ -318,10 +431,14 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
 
 /**
  * Central Master Supabase client instance pinned directly to the master portal database.
- * Completely bypasses dynamic satellite rewriting. Essential for central registry operations,
- * session authentication validations, and platform-wide administrative queries.
+ * Completely bypasses dynamic satellite rewriting, while properly injecting master Superadmin
+ * session headers to satisfy Row Level Security (RLS) on sekolah_registry and platform tables.
  */
-export const masterSupabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
+export const masterSupabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    fetch: masterFetch,
+  },
+});
 
 /**
  * Factory helper to instantiate a dedicated Supabase client for a specific satellite school.
@@ -334,8 +451,14 @@ export function getSatelliteSupabaseClient(
   const target = school || getActiveTargetSchool();
   const rawTargetUrl = (target?.supabase_url && target.supabase_url.trim()) ? target.supabase_url.trim() : supabaseUrl;
   const targetUrl = normalizeSupabaseUrl(rawTargetUrl) || supabaseUrl;
-  const targetKey = (target?.supabase_anon_key && target.supabase_anon_key.trim()) ? target.supabase_anon_key.trim() : supabaseKey;
-  const targetSekolahId = target?.id ? String(target.id).trim() : null;
+
+  const isExternalTarget = targetUrl !== normalizeSupabaseUrl(supabaseUrl);
+  // Never leak master portal anon key to an external satellite URL if target key is absent
+  const rawTargetKey = (target?.supabase_anon_key && target.supabase_anon_key.trim())
+    ? target.supabase_anon_key.trim()
+    : (isExternalTarget ? 'missing-satellite-anon-key' : supabaseKey);
+  const targetKey = sanitizeHeaderValue(rawTargetKey) || (isExternalTarget ? 'missing-satellite-anon-key' : supabaseKey);
+  const targetSekolahId = sanitizeHeaderValue(target?.id ? String(target.id).trim() : null);
 
   return createClient(targetUrl, targetKey, {
     ...options,
@@ -403,10 +526,10 @@ export function getTenantSupabaseClient(
     explicitSessionToken = maybeSessionToken;
   }
 
-  const sessionToken = explicitSessionToken || serverTenantContext.sessionToken || null;
-  const effectiveUserId = userId || serverTenantContext.userId || null;
-  const effectiveSekolahId = sekolahId || getActiveTargetSchool()?.id || serverTenantContext.sekolahId || null;
-  const effectiveRole = role || serverTenantContext.role || null;
+  const sessionToken = sanitizeHeaderValue(explicitSessionToken || serverTenantContext.sessionToken || null);
+  const effectiveUserId = sanitizeHeaderValue(userId || serverTenantContext.userId || null);
+  const effectiveSekolahId = sanitizeHeaderValue(sekolahId || getActiveTargetSchool()?.id || serverTenantContext.sekolahId || null);
+  const effectiveRole = sanitizeHeaderValue(role || serverTenantContext.role || null);
 
   return createClient(supabaseUrl, supabaseKey, {
     ...options,
@@ -424,16 +547,16 @@ export function getTenantSupabaseClient(
         }
 
         if (effectiveSekolahId && !headers.has('x-sekolah-id')) {
-          headers.set('x-sekolah-id', String(effectiveSekolahId).trim());
+          headers.set('x-sekolah-id', effectiveSekolahId);
         }
         if (effectiveRole && !headers.has('x-user-role')) {
-          headers.set('x-user-role', String(effectiveRole).trim());
+          headers.set('x-user-role', effectiveRole);
         }
         if (effectiveUserId && !headers.has('x-user-id')) {
-          headers.set('x-user-id', String(effectiveUserId).trim());
+          headers.set('x-user-id', effectiveUserId);
         }
         if (sessionToken && !headers.has('x-session-token')) {
-          headers.set('x-session-token', String(sessionToken).trim());
+          headers.set('x-session-token', sessionToken);
         }
 
         const customFetch = options?.global?.fetch || fetch;

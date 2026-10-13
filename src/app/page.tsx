@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, masterSupabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
 import LoginScreen from '@/components/LoginScreen';
 import AppScreen from '@/components/AppScreen';
 import PreLoginSplash from '@/components/PreLoginSplash';
@@ -41,7 +41,7 @@ function MainApp() {
 
       if (error || !dbUser || dbUser.session_token !== storedUserObj.session_token) {
         console.warn('[MainApp] Stale or expired session token detected. Purging cache.');
-        localStorage.removeItem('sipjam_user');
+        clearAllClientSessionState();
         setUser(null);
         setShowSplash(false);
         return;
@@ -81,7 +81,7 @@ function MainApp() {
         const parsed = JSON.parse(storedUser);
         if (!parsed || !parsed.session_token || typeof parsed.session_token !== 'string' || !parsed.session_token.trim()) {
           console.warn('[MainApp] Stored user session lacks session_token. Clearing legacy session.');
-          localStorage.removeItem('sipjam_user');
+          clearAllClientSessionState();
           setUser(null);
           setIsUserLoaded(true);
         } else {
@@ -94,7 +94,7 @@ function MainApp() {
       }
     } catch (e) {
       console.error('Failed to parse stored user session:', e);
-      localStorage.removeItem('sipjam_user');
+      clearAllClientSessionState();
       setUser(null);
       setIsUserLoaded(true);
     }
@@ -133,6 +133,7 @@ function MainApp() {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'sipjam_user') {
         if (!e.newValue) {
+          clearAllClientSessionState();
           setUser(null);
           setShowSplash(false);
         } else {
@@ -147,7 +148,7 @@ function MainApp() {
     };
 
     const handleUnauthorized = () => {
-      localStorage.removeItem('sipjam_user');
+      clearAllClientSessionState();
       setUser(null);
       setShowSplash(false);
     };
@@ -166,7 +167,7 @@ function MainApp() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('sipjam_user');
+    clearAllClientSessionState();
     setUser(null);
     setShowSplash(false);
   };

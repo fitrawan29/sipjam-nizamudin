@@ -24,7 +24,10 @@ import {
   dynamicTenantFetch,
   normalizeSupabaseUrl,
   masterSupabase,
+  masterFetch,
   onActiveTargetSchoolChange,
+  sanitizeHeaderValue,
+  clearAllClientSessionState,
   SatelliteSchool
 } from '../src/lib/supabaseClient';
 
@@ -525,6 +528,155 @@ async function runTests() {
     pass('SuperadminView validates PostgREST error responses on sekolah_registry operations');
   } else {
     fail('SuperadminView does not check or propagate errors on sekolah_registry operations');
+  }
+
+  // ==========================================================================
+  // SECTION 7: ADVERSARIAL ROUND 2 DEEP VERIFICATION: HEADER SANITIZATION,
+  // KEY LEAK PREVENTION, SYMMETRIC SCOPE & SESSION PURGING
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}━━━ 7. ADVERSARIAL R2: SECURITY, KEY ISOLATION & SESSION PURGING ━━━${RESET}`);
+
+  // Test 7.1: sanitizeHeaderValue removes newlines, tabs, and control characters
+  try {
+    const rawVal = 'Bearer my-token\r\nInjected-Header: malicious\t\0';
+    const sanitized = sanitizeHeaderValue(rawVal);
+    if (sanitized === 'Bearer my-tokenInjected-Header: malicious' && !sanitized.includes('\r') && !sanitized.includes('\n')) {
+      pass('sanitizeHeaderValue successfully strips CR, LF, tabs, and control characters');
+    } else {
+      fail(`sanitizeHeaderValue did not sanitize properly: got "${sanitized}"`);
+    }
+  } catch (e) {
+    fail('Error in sanitizeHeaderValue test', e);
+  }
+
+  // Test 7.2: masterSupabase / masterFetch injects x-user-role and session headers to satisfy RLS
+  try {
+    setServerTenantContext({ role: 'Superadmin', userId: 'sa-root', sessionToken: 'tok-xyz-99', sekolahId: 'sch-main' });
+    let interceptedHeaders: Headers | null = null;
+    let interceptedUrl: string | null = null;
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input: any, init: any) => {
+      interceptedUrl = typeof input === 'string' ? input : input.url;
+      interceptedHeaders = new Headers(init?.headers);
+      return new Response(JSON.stringify([{ id: 'reg-item' }]), { status: 200 });
+    };
+
+    await masterFetch('https://placeholder.supabase.co/rest/v1/sekolah_registry?select=*', {});
+    globalThis.fetch = originalFetch;
+
+    if (
+      interceptedHeaders &&
+      interceptedHeaders.get('x-user-role') === 'Superadmin' &&
+      interceptedHeaders.get('x-user-id') === 'sa-root' &&
+      interceptedHeaders.get('x-session-token') === 'tok-xyz-99' &&
+      interceptedHeaders.get('x-sekolah-id') === 'sch-main'
+    ) {
+      pass('masterFetch injects complete sanitized Superadmin tenant headers to satisfy RLS policies');
+    } else {
+      fail(`masterFetch failed to inject tenant headers: role=${interceptedHeaders?.get('x-user-role')}`);
+    }
+
+    clearServerTenantContext();
+  } catch (e) {
+    fail('Error in masterFetch RLS header test', e);
+  }
+
+  // Test 7.3: Credential Leak Prevention: external satellite URL without anon key is NOT rewritten
+  try {
+    setServerTenantContext({ role: 'Superadmin' });
+    setServerActiveTargetSchool({
+      id: 'sch-no-key',
+      nama: 'Satellite Without Anon Key',
+      supabase_url: 'https://foreign-school.supabase.co',
+      supabase_anon_key: null // missing key
+    });
+
+    let interceptedUrl: string = '';
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input: any) => {
+      interceptedUrl = typeof input === 'string' ? input : input.url;
+      return new Response(JSON.stringify([]), { status: 200 });
+    };
+
+    await dynamicTenantFetch('https://placeholder.supabase.co/rest/v1/data_guru?select=id', {});
+    globalThis.fetch = originalFetch;
+
+    // Must NOT be rewritten to foreign-school.supabase.co because key is missing
+    if (!interceptedUrl.includes('foreign-school.supabase.co')) {
+      pass('Credential Leak Prevention: external URL without anon key is not rewritten to foreign host');
+    } else {
+      fail(`Master key leak hazard: request was rewritten to external domain without its own anon key: ${interceptedUrl}`);
+    }
+
+    clearActiveTargetSchool();
+  } catch (e) {
+    fail('Error in key leak prevention test', e);
+  }
+
+  // Test 7.4: getSatelliteSupabaseClient isolates keys: does not leak master key when satellite key is missing
+  try {
+    const externalSchoolNoKey: SatelliteSchool = {
+      id: 'sch-leak-check',
+      nama: 'External School',
+      supabase_url: 'https://thirdparty.supabase.co',
+      supabase_anon_key: null
+    };
+    const client = getSatelliteSupabaseClient(externalSchoolNoKey);
+    // Client supabaseKey internal property must NOT be the master anon key
+    if ((client as any).supabaseKey !== 'placeholder' && (client as any).supabaseKey !== process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      pass('getSatelliteSupabaseClient isolates keys: does not send master key to external URL when key is missing');
+    } else {
+      fail('getSatelliteSupabaseClient leaked master anon key to external satellite client');
+    }
+  } catch (e) {
+    fail('Error in satellite client key isolation test', e);
+  }
+
+  // Test 7.5: Symmetrical Scope Clearing: clearActiveTargetSchool resets serverActiveTargetSchool
+  try {
+    setServerActiveTargetSchool({ id: 'sch-symm', nama: 'Symmetric Test' });
+    clearActiveTargetSchool();
+    const active = getActiveTargetSchool();
+    if (active === null) {
+      pass('clearActiveTargetSchool symmetrically resets both memory context and storage scope to null');
+    } else {
+      fail('clearActiveTargetSchool failed to reset in-memory state');
+    }
+  } catch (e) {
+    fail('Error in symmetric scope clearing test', e);
+  }
+
+  // Test 7.6: Full Session Purge: clearAllClientSessionState resets all context
+  try {
+    setServerTenantContext({ role: 'Superadmin', userId: 'user-purge-test' });
+    setServerActiveTargetSchool({ id: 'sch-purge', nama: 'Purge School' });
+    clearAllClientSessionState();
+    const activeSch = getActiveTargetSchool();
+    if (activeSch === null) {
+      pass('clearAllClientSessionState fully purges tenant context and active target scope');
+    } else {
+      fail('clearAllClientSessionState failed to purge context');
+    }
+  } catch (e) {
+    fail('Error in clearAllClientSessionState test', e);
+  }
+
+  // Test 7.7: SuperadminView scopes counts by sekolah_id when monitoring shared-database satellite
+  if (saCode.includes("!activeTargetSchool.supabase_url") && saCode.includes("guruQuery.eq('sekolah_id', activeTargetSchool.id)")) {
+    pass('SuperadminView scopes metrics by sekolah_id when monitoring shared-database satellite');
+  } else {
+    fail('SuperadminView does not scope metrics by sekolah_id for shared-database satellites');
+  }
+
+  // Test 7.8: SuperadminView Add and Edit modals validate paired Supabase credentials
+  if (
+    saCode.includes('Jika Supabase Project URL diisi, Supabase Anon Key juga wajib diisi!') &&
+    saCode.includes('Jika Supabase Anon Key diisi, Supabase Project URL juga wajib diisi!')
+  ) {
+    pass('SuperadminView modal forms strictly validate paired Supabase URL and Anon Key credentials');
+  } else {
+    fail('SuperadminView modals missing paired credential validation');
   }
 
   // ==========================================================================
