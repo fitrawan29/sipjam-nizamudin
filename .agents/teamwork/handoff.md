@@ -1,44 +1,45 @@
-# Handoff Report — Sentinel (swe_19 Milestone)
+# HANDOFF REPORT — Sentinel
 
-## Observation
-User requested feature: **Portal Induk Jaringan Multi-Sekolah dengan Akses Superadmin Tunggal (Single Sign-On / School Switcher)** pada aplikasi SIPJAM.
-Requirements:
-- R1: Unified Master Superadmin Authentication & School Switcher
-- R2: Central School Registry Management (`sekolah_registry` schema, RLS, types)
-- R3: Tab "Jaringan Sekolah" on `SuperadminView.tsx` (cards/table, status ping, metrics, modals, action triggers)
-- R4: Dynamic Client-Side Scope Switching in `src/lib/supabaseClient.ts`
+## 1. Observation
+- **Mission**: Pembersihan dan penghapusan seluruh fitur, tab, dan modal usang (*obsolete*) pada role Superadmin akibat transisi ke arsitektur Jaringan Sekolah Satelit & Multi-School Switcher.
+- **Routing Decision**: SWE Light (`teamwork_preview_swe`) per Routing Decision Table (tugas berfokus pada refactor/cleanup tunggal mandiri dengan instruksi eksplisit "small and focused").
+- **Subagent Roster**:
+  - Orchestrator: `swe_20` (`150d9d73-054f-4d29-b427-4a8f6e4dcd3d`)
+  - Implementer: `implementer_1` (`158ac13f-344e-4f58-a0c4-366f6e54bfce`)
+  - Reviewer Round 1: `reviewer_r1` (`a94dc011-1f4c-4331-b95f-019b6e391505`)
+  - Reviewer Round 2: `reviewer_r2` (`cb2b92cf-013d-4b41-801a-95ac71d57fee`)
+  - Reviewer Round 3: `reviewer_r3` (`32a791ef-6ff4-44cd-92f3-e3dc49836c3a`)
+  - Victory Auditor Sentinel: `victory_auditor_33` (`fad6b157-5c8b-4522-bb29-088d3a55a119`)
+- **Key Changes Implemented**:
+  1. **R1**: Tab "Kelola Sekolah" (`sekolah`) dan "Admin Sekolah" (`admins`) dihapus dari `src/components/SuperadminView.tsx`. Navigasi drawer Superadmin `view-superadmin-sekolah` dan `view-superadmin-admins` dihapus dari `src/components/AppScreen.tsx`. Struktur disederhanakan murni menjadi 2 tab: "Ringkasan Platform" (`overview`) dan "Jaringan Sekolah" (`jaringan`).
+  2. **R2**: Seluruh modal dan handler usang yang menyisipkan/memanipulasi data lokal `public.sekolah` dan `public.users` (`showAddSchoolModal`, `showEditSchoolModal`, `handleToggleSchoolStatus`, `showAddAdminModal`, `showEditAdminModal`, `handleResetAdminPassword`) beserta state filter (`adminList`, `adminSearch`, `cityFilter`, `statusFilter`) dihapus bersih (-1244 baris kode usang).
+  3. **R3**: Tab Overview diselaraskan untuk mengacu langsung pada data Jaringan Sekolah Satelit (`satelliteSchools`), penghitungan status koneksi live database, serta agregat guru & siswa lintas jaringan dengan shortcut aksi cepat yang relevan.
+- **Git Commits**:
+  - `609b193`: `refactor(superadmin): purge obsolete local school and admin tabs in favor of satellite network architecture`
+  - `2ebd8e1`: `test(superadmin): add adversarial reviewer regression suite and complete R1 review`
+  - `1096c9c`: `test(superadmin): harden SuperadminView props typing and add Section 5 edge cases for reviewer R2`
+  - `6015b5d`: `test(superadmin): add Section 6 deep runtime isolation assertions for reviewer R3`
 
-Execution:
-1. Routed to SWE Light (`teamwork_preview_swe`) per the single self-contained feature directive.
-2. Executed through implementer and 3 full adversarial reviewer rounds:
-   - Initial implementation: Commit `17444fa`
-   - Reviewer Round 1: Commit `090b8b6` (isolation, multi-tab sync, error propagation)
-   - Reviewer Round 2: Commit `e7ae069` (master RLS headers, key leak isolation, header sanitization)
-   - Reviewer Round 3: Commit `9907d5d` (session sync satellite protection, mutation routing, timeout memory leak prevention)
-3. Independent Post-Victory Auditor `victory_auditor_31` was dispatched in a clean context and conducted full 3-phase audit:
-   - Phase A (Timeline Analysis): PASS
-   - Phase B (Integrity Forensics): PASS
-   - Phase C (Independent Test Execution): PASS (`npx tsc --noEmit` 0 errors, `npm test` 22 suites / 47 portal assertions passed 100%, `npm run build` passed in 3.2s).
-   - VERDICT: **VICTORY CONFIRMED**.
-4. Both monitoring crons cancelled and subagents terminated.
+## 2. Logic Chain
+1. Sesuai aturan Sentinel, permintaan pengguna dicatat secara verbatim di `ORIGINAL_REQUEST.md`.
+2. Alur dievaluasi dan diarahkan ke jalur `teamwork_preview_swe` (SWE Light). Subagent `swe_20` di-spawn dengan pemantauan cron berkala (laporan progress dan liveness check).
+3. `swe_20` mengoordinasikan implementer dan menjalankan 3 putaran adversarial review independen (R1, R2, R3) yang menambahkan 19 assertion pengujian regresi spesifik.
+4. Ketika `swe_20` melaporkan klaim kemenangan, Sentinel menolak menerima klaim begitu saja dan men-dispatch auditor independen `victory_auditor_33` untuk audit 3-fase yang memblokir.
+5. `victory_auditor_33` memverifikasi integritas timeline, ketiadaan sisa kode usang/fasad, dan menjalankan suite pengujian otomatis, pemeriksaan tipe TypeScript, serta build Next.js secara independen.
+6. Hasil audit: **VICTORY CONFIRMED**.
+7. Kedua cron dibatalkan via `manage_task(kill)` dan seluruh subagent ditutup via `manage_subagents(kill_all)`.
 
-## Logic Chain
-- R1 Verified: Single master login enables seamless switching across registered satellite schools without re-authentication. The active school dropdown is strictly scoped to Superadmin in `AppScreen.tsx`.
-- R2 Verified: Central registry table `sekolah_registry` exists with strict Superadmin RLS policies (`supabase/migrations/20261013_portal_induk_jaringan_multi_sekolah.sql`) and TypeScript entity definitions.
-- R3 Verified: Tab "Jaringan Sekolah" in `SuperadminView.tsx` provides status indicators, teacher/student metric counts, and action buttons ("Kelola Sekolah Ini", "Buka Web Vercel"), and modals for Add/Edit/Delete satellite schools.
-- R4 Verified: `dynamicTenantFetch` transparently routes PostgREST traffic to target satellite endpoints while preserving central master operations via `masterSupabase`.
+## 3. Caveats
+- Seluruh verifikasi berjalan pada mode integrity: development dengan mock & contract test suite yang komprehensif. Operasi live ke satelit nyata bergantung pada ketersediaan koneksi internet dan status Supabase satelit fisik (terproteksi dengan fallback timeout 4 detik).
 
-## Caveats
-- Remote satellite Supabase projects must have their CORS configurations set to allow origins from the master Vercel portal domain.
-- Remote database status ping depends on PostgREST network connectivity; unreachable or paused projects are cleanly marked as "Ter-pause".
+## 4. Conclusion
+Seluruh persyaratan R1, R2, dan R3 telah terpenuhi dengan sempurna. Tab dan modal usang berhasil dibersihkan tanpa regresi pada fungsionalitas Jaringan Sekolah Satelit.
+Status: **VICTORY CONFIRMED**.
 
-## Conclusion
-All requirements R1–R4 from the user request have been completely delivered, hardened through 3 reviewer rounds, independently verified with `VICTORY CONFIRMED`, and synchronized to the Git repository.
-
-## Verification Method
+## 5. Verification Method
 ```powershell
-npx tsc --noEmit
 npm test
+npx tsc --noEmit
 npm run build
 git status
 ```
