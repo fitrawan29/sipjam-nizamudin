@@ -1312,6 +1312,9 @@ export type Database = {
           telepon: string | null
           updated_at: string | null
           website: string | null
+          vercel_url?: string | null
+          supabase_url?: string | null
+          supabase_anon_key?: string | null
         }
         Insert: {
           alamat?: string | null
@@ -1333,6 +1336,9 @@ export type Database = {
           telepon?: string | null
           updated_at?: string | null
           website?: string | null
+          vercel_url?: string | null
+          supabase_url?: string | null
+          supabase_anon_key?: string | null
         }
         Update: {
           alamat?: string | null
@@ -1354,6 +1360,51 @@ export type Database = {
           telepon?: string | null
           updated_at?: string | null
           website?: string | null
+          vercel_url?: string | null
+          supabase_url?: string | null
+          supabase_anon_key?: string | null
+        }
+        Relationships: []
+      }
+      sekolah_registry: {
+        Row: {
+          created_at: string | null
+          id: string
+          kota_kabupaten: string | null
+          nama: string
+          npsn: string | null
+          provinsi: string | null
+          status: string
+          supabase_anon_key: string | null
+          supabase_url: string | null
+          updated_at: string | null
+          vercel_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          kota_kabupaten?: string | null
+          nama: string
+          npsn?: string | null
+          provinsi?: string | null
+          status?: string
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
+          updated_at?: string | null
+          vercel_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          kota_kabupaten?: string | null
+          nama?: string
+          npsn?: string | null
+          provinsi?: string | null
+          status?: string
+          supabase_anon_key?: string | null
+          supabase_url?: string | null
+          updated_at?: string | null
+          vercel_url?: string | null
         }
         Relationships: []
       }
@@ -1910,6 +1961,10 @@ export const Constants = {
 export type Sekolah = Tables<"sekolah">;
 export type SekolahInsert = TablesInsert<"sekolah">;
 export type SekolahUpdate = TablesUpdate<"sekolah">;
+
+export type SekolahRegistry = Tables<"sekolah_registry">;
+export type SekolahRegistryInsert = TablesInsert<"sekolah_registry">;
+export type SekolahRegistryUpdate = TablesUpdate<"sekolah_registry">;
 
 export type SistemBlok = Tables<"sistem_blok">;
 export type SistemBlokInsert = TablesInsert<"sistem_blok">;

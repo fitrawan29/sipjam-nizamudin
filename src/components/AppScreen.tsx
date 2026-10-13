@@ -31,7 +31,7 @@ import { OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN } from '@/compo
 import { TutorialModal } from '@/components/Tutorial';
 import TeacherReminderManager from './TeacherReminderManager';
 import { Pengumuman } from '@/types/database';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getActiveTargetSchool, setActiveTargetSchool, type SatelliteSchool } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
 import { AppUser } from '@/types/user';
@@ -60,6 +60,40 @@ export default function AppScreen({
   const user = currentUser || initialUser;
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
+
+  const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
+    return isSuperadmin ? getActiveTargetSchool() : null;
+  });
+  const [satelliteSchools, setSatelliteSchools] = useState<SatelliteSchool[]>([]);
+
+  useEffect(() => {
+    if (!isSuperadmin) return;
+
+    const fetchSchoolsForSwitcher = async () => {
+      try {
+        const { data: regData } = await supabase.from('sekolah_registry').select('*').order('nama');
+        if (regData && regData.length > 0) {
+          setSatelliteSchools(regData as SatelliteSchool[]);
+          return;
+        }
+      } catch (_) {}
+
+      try {
+        const { data: schData } = await supabase.from('sekolah').select('*').order('nama');
+        if (schData && schData.length > 0) {
+          setSatelliteSchools(schData as SatelliteSchool[]);
+        }
+      } catch (_) {}
+    };
+
+    fetchSchoolsForSwitcher();
+
+    const handleTargetChange = (e: any) => {
+      setActiveTargetSchoolState(e.detail || null);
+    };
+    window.addEventListener('sipjam_target_school_changed', handleTargetChange);
+    return () => window.removeEventListener('sipjam_target_school_changed', handleTargetChange);
+  }, [isSuperadmin]);
 
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -260,6 +294,7 @@ export default function AppScreen({
 
   const menuItemsSuperadmin = [
     { id: 'view-superadmin-overview', icon: 'fa-gauge-high', label: 'Ringkasan Platform' },
+    { id: 'view-superadmin-jaringan', icon: 'fa-network-wired', label: 'Jaringan Sekolah' },
     { id: 'view-superadmin-sekolah', icon: 'fa-school', label: 'Kelola Sekolah' },
     { id: 'view-superadmin-admins', icon: 'fa-user-shield', label: 'Admin Sekolah' }
   ];
@@ -315,9 +350,39 @@ export default function AppScreen({
             </button>
             <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
               SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">
-                {isSuperadmin ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
+                {user?.role === 'Superadmin' ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
               </span>
             </div>
+            {isSuperadmin && (
+              <div className="hidden sm:flex items-center ml-2">
+                <select
+                  aria-label="Ganti Sekolah yang Dipantau"
+                  value={activeTargetSchool?.id || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) {
+                      setActiveTargetSchool(null);
+                      setActiveTargetSchoolState(null);
+                    } else {
+                      const sch = satelliteSchools.find(s => s.id === val);
+                      if (sch) {
+                        setActiveTargetSchool(sch);
+                        setActiveTargetSchoolState(sch);
+                      }
+                    }
+                  }}
+                  className="text-[11px] font-semibold py-1 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 cursor-pointer max-w-[170px] truncate"
+                  title="Ganti Sekolah yang Dipantau"
+                >
+                  <option value="">🌐 Master Platform</option>
+                  {satelliteSchools.map(sch => (
+                    <option key={sch.id} value={sch.id}>
+                      🏫 {sch.nama}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -407,6 +472,39 @@ export default function AppScreen({
                 </div>
               </div>
 
+              {isSuperadmin && (
+                <div className="mb-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800">
+                  <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <i className="fa-solid fa-satellite-dish text-emerald-600"></i> Sekolah yang Dipantau:
+                  </div>
+                  <select
+                    aria-label="Ganti Sekolah yang Dipantau di Sidebar"
+                    value={activeTargetSchool?.id || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) {
+                        setActiveTargetSchool(null);
+                        setActiveTargetSchoolState(null);
+                      } else {
+                        const sch = satelliteSchools.find(s => s.id === val);
+                        if (sch) {
+                          setActiveTargetSchool(sch);
+                          setActiveTargetSchoolState(sch);
+                        }
+                      }
+                    }}
+                    className="w-full text-xs font-semibold py-1.5 px-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white cursor-pointer"
+                  >
+                    <option value="">🌐 Master Platform (Semua)</option>
+                    {satelliteSchools.map(sch => (
+                      <option key={sch.id} value={sch.id}>
+                        🏫 {sch.nama}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[calc(100vh-230px)] custom-scroll">
                 {menuItems.map(item => (
                   <button 
@@ -461,14 +559,19 @@ export default function AppScreen({
             <SuperadminView
               user={user}
               initialTab={
-                currentView === 'view-superadmin-sekolah'
+                currentView === 'view-superadmin-jaringan'
+                  ? 'jaringan'
+                  : currentView === 'view-superadmin-sekolah'
                   ? 'sekolah'
                   : currentView === 'view-superadmin-admins'
                   ? 'admins'
                   : 'overview'
               }
               onNavigateTab={(tab) => {
-                if (tab === 'sekolah') {
+                if (tab === 'jaringan') {
+                  window.history.pushState(null, '', '?view=view-superadmin-jaringan');
+                  setCurrentView('view-superadmin-jaringan');
+                } else if (tab === 'sekolah') {
                   window.history.pushState(null, '', '?view=view-superadmin-sekolah');
                   setCurrentView('view-superadmin-sekolah');
                 } else if (tab === 'admins') {

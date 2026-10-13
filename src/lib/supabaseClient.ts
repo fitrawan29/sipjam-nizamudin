@@ -19,8 +19,23 @@ export interface TenantContext {
   userId?: string | null;
 }
 
+export interface SatelliteSchool {
+  id: string;
+  nama: string;
+  npsn?: string | null;
+  kota_kabupaten?: string | null;
+  provinsi?: string | null;
+  vercel_url?: string | null;
+  supabase_url?: string | null;
+  supabase_anon_key?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 // In-memory fallback context for Server-Side / Node / Test environments
 let serverTenantContext: TenantContext = {};
+let serverActiveTargetSchool: SatelliteSchool | null = null;
 
 /**
  * Explicitly sets the tenant context for Node.js / Server-side / Test execution.
@@ -34,6 +49,68 @@ export function setServerTenantContext(context: TenantContext): void {
  */
 export function clearServerTenantContext(): void {
   serverTenantContext = {};
+}
+
+/**
+ * Helper to explicitly set in-memory active target school in test / server environments.
+ */
+export function setServerActiveTargetSchool(school: SatelliteSchool | null): void {
+  serverActiveTargetSchool = school;
+}
+
+/**
+ * Sets the active target school for Superadmin scope switching.
+ * Stored in browser localStorage and dispatches a 'sipjam_target_school_changed' CustomEvent.
+ */
+export function setActiveTargetSchool(school: SatelliteSchool | null): void {
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      if (school) {
+        localStorage.setItem('sipjam_active_target_school', JSON.stringify(school));
+      } else {
+        localStorage.removeItem('sipjam_active_target_school');
+      }
+      window.dispatchEvent(new CustomEvent('sipjam_target_school_changed', { detail: school }));
+    } catch (e) {
+      console.warn('[supabaseClient] Failed to persist sipjam_active_target_school:', e);
+    }
+  } else {
+    serverActiveTargetSchool = school;
+  }
+}
+
+/**
+ * Retrieves the currently active target school.
+ * Enforces strict RBAC: only Superadmin is authorized to use an active target scope.
+ * For local Admin or Guru roles, this unconditionally returns null to preserve data isolation.
+ */
+export function getActiveTargetSchool(): SatelliteSchool | null {
+  const tenant = getActiveTenantContext();
+  const roleNorm = (tenant.role || '').toLowerCase().replace(/\s+/g, '');
+  if (roleNorm !== 'superadmin') {
+    return null;
+  }
+
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('sipjam_active_target_school');
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('[supabaseClient] Failed to parse sipjam_active_target_school:', e);
+    }
+    return null;
+  }
+
+  return serverActiveTargetSchool;
+}
+
+/**
+ * Clears the active target school and returns client scope to Master/Global.
+ */
+export function clearActiveTargetSchool(): void {
+  setActiveTargetSchool(null);
 }
 
 /**
@@ -77,6 +154,10 @@ export function getActiveTenantContext(): TenantContext {
  * Custom fetch wrapper that intercepts every outgoing PostgREST / Storage / RPC request
  * and dynamically injects `x-sekolah-id`, `x-user-role`, `x-user-id`, and `x-session-token` headers according to the active
  * user session or context.
+ *
+ * When Superadmin switches to a satellite target school (`activeTargetSchool`), this fetcher
+ * dynamically routes requests to the target Supabase instance URL and injects the target anon key
+ * seamlessly without requiring user re-authentication.
  */
 export const dynamicTenantFetch: typeof fetch = async (input, init) => {
   // Initialize Headers from existing Request object or init.headers
@@ -91,10 +172,14 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
   }
 
   const { sekolahId, role, userId, sessionToken } = getActiveTenantContext();
+  const targetSchool = getActiveTargetSchool();
+
+  // If Superadmin has an active satellite school scope, prioritize target school ID
+  const effectiveSekolahId = targetSchool?.id ? String(targetSchool.id).trim() : sekolahId;
 
   // Inject headers only if not already explicitly provided by the caller
-  if (sekolahId && !headers.has('x-sekolah-id')) {
-    headers.set('x-sekolah-id', sekolahId);
+  if (effectiveSekolahId && !headers.has('x-sekolah-id')) {
+    headers.set('x-sekolah-id', effectiveSekolahId);
   }
   if (role && !headers.has('x-user-role')) {
     headers.set('x-user-role', role);
@@ -106,15 +191,45 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
     headers.set('x-session-token', sessionToken);
   }
 
+  let effectiveInput = input;
+  // If target school specifies an external Supabase instance URL & key, route requests dynamically:
+  if (targetSchool?.supabase_url && targetSchool.supabase_url.trim()) {
+    const targetBase = targetSchool.supabase_url.trim().replace(/\/+$/, '');
+    const currentBase = supabaseUrl.replace(/\/+$/, '');
+
+    if (typeof input === 'string') {
+      if (input.startsWith(currentBase)) {
+        effectiveInput = input.replace(currentBase, targetBase);
+      } else if (input.startsWith('/')) {
+        effectiveInput = `${targetBase}${input}`;
+      }
+    } else if (typeof Request !== 'undefined' && input instanceof Request) {
+      if (input.url.startsWith(currentBase)) {
+        const rewritten = input.url.replace(currentBase, targetBase);
+        effectiveInput = new Request(rewritten, input);
+      }
+    }
+
+    if (targetSchool.supabase_anon_key && targetSchool.supabase_anon_key.trim()) {
+      const anonKey = targetSchool.supabase_anon_key.trim();
+      headers.set('apikey', anonKey);
+      const auth = headers.get('authorization');
+      if (!auth || auth === `Bearer ${supabaseKey}` || auth.includes('placeholder')) {
+        headers.set('authorization', `Bearer ${anonKey}`);
+      }
+    }
+  }
+
   // ponytail: native fetch cache: 'no-store' prevents stale cached responses after idle
-  const res = await fetch(input, {
+  const res = await fetch(effectiveInput, {
     ...init,
     cache: 'no-store',
     headers,
   });
 
   // Invalidate stale browser session if server returns 401 Unauthorized
-  if (res.status === 401 && typeof window !== 'undefined') {
+  // Note: Only invalidate central user session if not in active satellite switch scope
+  if (res.status === 401 && typeof window !== 'undefined' && !targetSchool) {
     try {
       localStorage.removeItem('sipjam_user');
       window.dispatchEvent(new Event('sipjam_unauthorized'));
@@ -133,6 +248,52 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
     fetch: dynamicTenantFetch,
   },
 });
+
+/**
+ * Factory helper to instantiate a dedicated Supabase client for a specific satellite school.
+ * Useful for checking health status, querying metrics, or isolated operations.
+ */
+export function getSatelliteSupabaseClient(
+  school?: SatelliteSchool | null,
+  options?: SupabaseClientOptions<any>
+): SupabaseClient {
+  const target = school || getActiveTargetSchool();
+  const targetUrl = (target?.supabase_url && target.supabase_url.trim()) ? target.supabase_url.trim() : supabaseUrl;
+  const targetKey = (target?.supabase_anon_key && target.supabase_anon_key.trim()) ? target.supabase_anon_key.trim() : supabaseKey;
+  const targetSekolahId = target?.id ? String(target.id).trim() : null;
+
+  return createClient(targetUrl, targetKey, {
+    ...options,
+    global: {
+      ...options?.global,
+      fetch: async (input, init) => {
+        const headers = new Headers(
+          typeof Request !== 'undefined' && input instanceof Request ? input.headers : undefined
+        );
+
+        if (init?.headers) {
+          new Headers(init.headers).forEach((value, key) => {
+            headers.set(key, value);
+          });
+        }
+
+        if (targetSekolahId && !headers.has('x-sekolah-id')) {
+          headers.set('x-sekolah-id', targetSekolahId);
+        }
+        if (!headers.has('x-user-role')) {
+          headers.set('x-user-role', 'Superadmin');
+        }
+
+        const customFetch = options?.global?.fetch || fetch;
+        return customFetch(input, {
+          ...init,
+          cache: 'no-store',
+          headers,
+        });
+      },
+    },
+  });
+}
 
 /**
  * Helper factory to instantiate an explicitly scoped Supabase client for a specific
@@ -169,7 +330,7 @@ export function getTenantSupabaseClient(
 
   const sessionToken = explicitSessionToken || serverTenantContext.sessionToken || null;
   const effectiveUserId = userId || serverTenantContext.userId || null;
-  const effectiveSekolahId = sekolahId || serverTenantContext.sekolahId || null;
+  const effectiveSekolahId = sekolahId || getActiveTargetSchool()?.id || serverTenantContext.sekolahId || null;
   const effectiveRole = role || serverTenantContext.role || null;
 
   return createClient(supabaseUrl, supabaseKey, {
