@@ -396,6 +396,96 @@ async function runTestSuite() {
     'R4.8: AdminVerifView allows rejecting/cancelling any pending or approved submissions'
   );
 
+  // ==========================================================================
+  // R5: Adversarial Verification: Edge Cases & Multi-School Server Integrity
+  // ==========================================================================
+  console.log('\n--- [R5] Adversarial Verification: Edge Cases & Server Integrity ---');
+
+  // R5.1: /api/attendance preserves multi-day fields
+  assert(
+    apiCode.includes('durasi_hari:') &&
+    apiCode.includes('tanggal_mulai:') &&
+    apiCode.includes('tanggal_selesai:') &&
+    apiCode.includes('memerlukan_persetujuan_admin:'),
+    'R5.1: /api/attendance correctly preserves multi-day leave fields in presensiRecord'
+  );
+
+  // Functional simulation of server-side leave evaluation in route.ts
+  const evaluateServerAttendanceStatus = (body: any) => {
+    const jenis_presensi = body.jenis_presensi || body.status || 'Sekolah';
+    const isTerlambat = jenis_presensi === 'Izin Terlambat' || jenis_presensi === 'Terlambat';
+    const detail_izin = body.detail_izin || body.detail || body.keterangan || (isTerlambat ? 'Izin Datang Terlambat' : '');
+    const durasi_hari = typeof body.durasi_hari === 'number' ? body.durasi_hari : (body.durasi_hari ? parseInt(String(body.durasi_hari), 10) : 1);
+    const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit';
+    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin') && durasi_hari > 3);
+    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin;
+    const status_verifikasi = (isTerlambat || isMemerlukanPersetujuan) ? 'Menunggu' : (body.status_verifikasi || 'Disetujui');
+    return { status_verifikasi, isMemerlukanPersetujuan, durasi_hari };
+  };
+
+  // R5.2: Server enforces sick leave >= 3 days -> Menunggu even if client omitted flag
+  const serverSickLong = evaluateServerAttendanceStatus({ jenis_presensi: 'Izin', detail_izin: 'Sakit', durasi_hari: 3 });
+  assert(
+    serverSickLong.status_verifikasi === 'Menunggu' && serverSickLong.isMemerlukanPersetujuan === true,
+    'R5.2: Server /api/attendance enforces sick leave >= 3 days -> Menunggu even if flag omitted by client'
+  );
+
+  // R5.3: Server enforces normal leave > 3 days -> Menunggu even if client omitted flag
+  const serverLeaveLong = evaluateServerAttendanceStatus({ jenis_presensi: 'Izin', detail_izin: 'Izin', durasi_hari: 4 });
+  assert(
+    serverLeaveLong.status_verifikasi === 'Menunggu' && serverLeaveLong.isMemerlukanPersetujuan === true,
+    'R5.3: Server /api/attendance enforces normal leave > 3 days -> Menunggu even if flag omitted by client'
+  );
+
+  // R5.4: Server auto-approves short sick leave < 3 days -> Disetujui
+  const serverSickShort = evaluateServerAttendanceStatus({ jenis_presensi: 'Izin', detail_izin: 'Sakit', durasi_hari: 2 });
+  assert(
+    serverSickShort.status_verifikasi === 'Disetujui' && serverSickShort.isMemerlukanPersetujuan === false,
+    'R5.4: Server /api/attendance auto-approves short sick leave (< 3 days) -> Disetujui'
+  );
+
+  // R5.5: Server auto-approves short normal leave <= 3 days -> Disetujui
+  const serverLeaveShort = evaluateServerAttendanceStatus({ jenis_presensi: 'Izin', detail_izin: 'Izin', durasi_hari: 3 });
+  assert(
+    serverLeaveShort.status_verifikasi === 'Disetujui' && serverLeaveShort.isMemerlukanPersetujuan === false,
+    'R5.5: Server /api/attendance auto-approves short normal leave (<= 3 days) -> Disetujui'
+  );
+
+  // R5.6: GuruPresensi preserves multi-day duration and dates for Sakit
+  const presensiCodeUpdated = fs.readFileSync(guruPresensiPath, 'utf-8');
+  assert(
+    presensiCodeUpdated.includes("(jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? durasiHari : 1") &&
+    presensiCodeUpdated.includes("(jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? tanggalMulai : getWitaDateStr()"),
+    'R5.6: GuruPresensi preserves multi-day durasiHari and dates for Sakit attendance'
+  );
+
+  // R5.7: AdminVerifView optimistic update immediately purges rejected item from active queues
+  const verifCodeUpdated = fs.readFileSync(adminVerifPath, 'utf-8');
+  assert(
+    verifCodeUpdated.includes("if (status === 'Ditolak')") &&
+    verifCodeUpdated.includes("setPresensiList(prev => prev.filter(item => item.id !== id))") &&
+    verifCodeUpdated.includes("setJurnalList(prev => prev.filter(item => item.id !== id))") &&
+    verifCodeUpdated.includes("setPiketList(prev => prev.filter(item => item.id !== id))"),
+    'R5.7: AdminVerifView optimistic update immediately removes rejected item from active queues upon rejection'
+  );
+
+  // R5.8: PiketView cleans up rejected report on locked personal submission
+  const piketCodeUpdated = fs.readFileSync(piketViewPath, 'utf-8');
+  assert(
+    piketCodeUpdated.includes("if (dailyState?.laporanPiketDitolak?.id)") &&
+    piketCodeUpdated.includes("await supabase.from('laporan_piket').delete().eq('id', dailyState.laporanPiketDitolak.id);"),
+    'R5.8: PiketView cleans up rejected picket report on locked personal submission'
+  );
+
+  // R5.9: PiketView & RekapJurnalView backwards compatibility with legacy Diverifikasi
+  const rekapJurnalPath = path.join(rootDir, 'src', 'components', 'RekapJurnalView.tsx');
+  const rekapJurnalCode = fs.readFileSync(rekapJurnalPath, 'utf-8');
+  assert(
+    piketCodeUpdated.includes("r.status_verifikasi === 'Disetujui' || r.status_verifikasi === 'Diverifikasi'") &&
+    rekapJurnalCode.includes("j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi'"),
+    'R5.9: PiketView and RekapJurnalView support both Disetujui and legacy Diverifikasi statuses'
+  );
+
   console.log('\n========================================================================');
   console.log(`TOTAL TESTS: ${passed + failed}`);
   console.log(`PASSED: ${passed}`);

@@ -454,10 +454,10 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
       user_id: user.id,
       tipe_absen: tipeAbsen,
       jenis_presensi: jenisPresensi,
-      detail_izin: jenisPresensi === 'Izin' ? detailIzin : (isTerlambat ? (keterangan || 'Izin Datang Terlambat') : ''),
-      durasi_hari: jenisPresensi === 'Izin' ? durasiHari : 1,
-      tanggal_mulai: jenisPresensi === 'Izin' ? tanggalMulai : getWitaDateStr(),
-      tanggal_selesai: jenisPresensi === 'Izin' ? tanggalSelesai : getWitaDateStr(),
+      detail_izin: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? detailIzin : (isTerlambat ? (keterangan || 'Izin Datang Terlambat') : ''),
+      durasi_hari: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? durasiHari : 1,
+      tanggal_mulai: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? tanggalMulai : getWitaDateStr(),
+      tanggal_selesai: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? tanggalSelesai : getWitaDateStr(),
       memerlukan_persetujuan_admin: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? memerlukanPersetujuanAdmin : false,
       is_auto_checkout: false,
       lokasi: lokasi,
@@ -500,7 +500,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
             user_id: newPresensi.user_id,
             tipe_absen: newPresensi.tipe_absen,
             jenis_presensi: newPresensi.jenis_presensi,
-            detail_izin: (jenisPresensi === 'Izin' && durasiHari > 1)
+            detail_izin: ((jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') && durasiHari > 1)
               ? `${detailIzin || 'Izin'} (${durasiHari} Hari: ${tanggalMulai} s/d ${tanggalSelesai})`
               : newPresensi.detail_izin,
             lokasi: newPresensi.lokasi,

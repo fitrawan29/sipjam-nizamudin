@@ -331,7 +331,7 @@ export default function RekapJurnalView({
     .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (Number(a.jam_ke) || 0) - (Number(b.jam_ke) || 0));
 
   const totalJurnal = jurnalData?.length || 0;
-  const totalDisetujui = jurnalData?.filter(j => j.status_verifikasi === 'Disetujui').length || 0;
+  const totalDisetujui = jurnalData?.filter(j => j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi').length || 0;
   const totalMenunggu = jurnalData?.filter(j => !j.status_verifikasi || j.status_verifikasi === 'Menunggu').length || 0;
   const totalDitolak = jurnalData?.filter(j => j.status_verifikasi === 'Ditolak').length || 0;
 
@@ -679,7 +679,7 @@ export default function RekapJurnalView({
                                 {/* 8. Keterangan kehadiran guru */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center align-top">
                                   <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
-                                    j.status_verifikasi === 'Disetujui'
+                                    j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi'
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                       : j.status_verifikasi === 'Ditolak'
                                       ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'

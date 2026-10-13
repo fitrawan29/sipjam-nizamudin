@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, getTenantSupabaseClient } from '@/lib/supabaseClient';
-import { getWitaTimestamp } from '@/lib/wita';
+import { getWitaTimestamp, getWitaDateStr } from '@/lib/wita';
 
 let cachedSuperadminToken: string | null = null;
 
@@ -65,10 +65,17 @@ export async function POST(req: NextRequest) {
     const latitude = typeof body.latitude === 'number' ? body.latitude : (body.latitude ? parseFloat(body.latitude) : null);
     const longitude = typeof body.longitude === 'number' ? body.longitude : (body.longitude ? parseFloat(body.longitude) : null);
 
+    // Multi-day leave parameters & server-side leave duration rule validation
+    const durasi_hari = typeof body.durasi_hari === 'number' ? body.durasi_hari : (body.durasi_hari ? parseInt(String(body.durasi_hari), 10) : 1);
+    const tanggal_mulai = body.tanggal_mulai || getWitaDateStr();
+    const tanggal_selesai = body.tanggal_selesai || getWitaDateStr();
+    const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit';
+    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin') && durasi_hari > 3);
+
     // Status verifikasi default:
-    // If 'Izin Terlambat', 'Terlambat', or memerlukan_persetujuan_admin, requires admin approval -> 'Menunggu'
+    // If 'Izin Terlambat', 'Terlambat', or memerlukan_persetujuan_admin (explicit or calculated by leave duration), requires admin approval -> 'Menunggu'
     // Otherwise use provided status or 'Disetujui'
-    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true';
+    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin;
     const status_verifikasi = (isTerlambat || isMemerlukanPersetujuan) ? 'Menunggu' : (body.status_verifikasi || 'Disetujui');
 
     const presensiRecord: any = {
@@ -79,6 +86,10 @@ export async function POST(req: NextRequest) {
       tipe_absen: tipe_absen,
       jenis_presensi: jenis_presensi,
       detail_izin: detail_izin,
+      durasi_hari: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? durasi_hari : 1,
+      tanggal_mulai: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? tanggal_mulai : getWitaDateStr(),
+      tanggal_selesai: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? tanggal_selesai : getWitaDateStr(),
+      memerlukan_persetujuan_admin: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? isMemerlukanPersetujuan : false,
       lokasi: lokasi,
       jarak: jarak,
       link_bukti: link_bukti,

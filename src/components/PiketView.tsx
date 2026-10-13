@@ -1306,6 +1306,14 @@ export default function PiketView({ user }: { user: any }) {
       const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
       setLoading(false);
       if (error) return showToast('Gagal Simpan', error.message, 'error');
+      if (dailyState?.laporanPiketDitolak?.id) {
+        await supabase.from('laporan_piket').delete().eq('id', dailyState.laporanPiketDitolak.id);
+      }
+      await supabase.from('laporan_piket')
+        .delete()
+        .eq('guru_pelapor', user.nama)
+        .eq('tanggal', getWitaDateStr())
+        .eq('status_verifikasi', 'Ditolak');
       showToast('Berhasil', 'Laporan piket pribadi Anda berhasil dikirim.', 'success');
       setFile(null);
       setPhotoPreviewUrl(null);
@@ -1463,7 +1471,7 @@ export default function PiketView({ user }: { user: any }) {
     .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (a.timestamp || '').localeCompare(b.timestamp || ''));
 
   const totalRekap = filteredRekap.length;
-  const totalDisetujui = filteredRekap.filter(r => r.status_verifikasi === 'Disetujui').length;
+  const totalDisetujui = filteredRekap.filter(r => r.status_verifikasi === 'Disetujui' || r.status_verifikasi === 'Diverifikasi').length;
   const totalMenunggu = filteredRekap.filter(r => r.status_verifikasi === 'Menunggu' || !r.status_verifikasi || r.status_verifikasi === 'Menunggu Verifikasi').length;
   const totalDitolak = filteredRekap.filter(r => r.status_verifikasi === 'Ditolak').length;
 
@@ -1870,7 +1878,7 @@ export default function PiketView({ user }: { user: any }) {
                                 <div className="text-[9px] text-gray-500 dark:text-gray-400">{l.tanggal}</div>
                               </div>
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                l.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                 l.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                                 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                               }`}>{l.status_verifikasi || 'Menunggu'}</span>
@@ -1892,10 +1900,10 @@ export default function PiketView({ user }: { user: any }) {
                             {isAdmin && (
                               <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                                 <button
-                                  disabled={processingId === l.id || l.status_verifikasi === 'Disetujui'}
+                                  disabled={processingId === l.id || l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi'}
                                   onClick={() => updatePiketStatus(l.id, 'Disetujui')}
                                   className={`flex-1 text-[10px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
-                                    l.status_verifikasi === 'Disetujui'
+                                    l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi'
                                       ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
                                       : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
                                   }`}
@@ -3665,7 +3673,7 @@ export default function PiketView({ user }: { user: any }) {
                                       </div>
                                   </div>
                                   <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
-                                      item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                      item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                       item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                   }`}>
@@ -3696,10 +3704,10 @@ export default function PiketView({ user }: { user: any }) {
                               {isAdmin && (
                                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 no-print">
                                       <button
-                                          disabled={processingId === item.id || item.status_verifikasi === 'Disetujui'}
+                                          disabled={processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
                                           onClick={() => updatePiketStatus(item.id, 'Disetujui')}
                                           className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
-                                              item.status_verifikasi === 'Disetujui'
+                                              item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'
                                                   ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
                                                   : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
                                           }`}
