@@ -357,7 +357,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
       );
     }
 
-    // Validasi File Bukti (Izin / Dinas Luar)
+    // Validasi File Bukti (Izin)
     if (!isSelfieRequired && !file) {
       const docType = requiredDocName.toLowerCase();
       return showToast(
@@ -464,8 +464,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
       link_bukti: file ? 'pending:uploading' : '',
       status_verifikasi: statusVerif,
       keterlambatan_detik: keterlambatanDetik,
-      latitude: userCoords?.latitude || null,
-      longitude: userCoords?.longitude || null,
+      latitude: userCoords?.latitude ?? null,
+      longitude: userCoords?.longitude ?? null,
     };
     if (user?.sekolah_id) {
       newPresensi.sekolah_id = user.sekolah_id;
@@ -587,7 +587,11 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     );
 
     // Reset Form & Update local states immediately
-    setJenisPresensi('Sekolah');
+    const nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah';
+    if (tipeAbsen === 'Datang') {
+      setTipeAbsen('Pulang');
+    }
+    setJenisPresensi(nextJenisAfterSubmit);
     setKeterangan('');
     setFile(null);
     setPhotoPreviewUrl(null);
@@ -614,7 +618,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
       (async () => {
         try {
           // Storage folder routing: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'
-          const folderName = (currentJenis === 'Dinas Luar' || jenisPresensi === 'Dinas Luar') ? 'Presensi_DinasLuar' : 'Presensi_Guru';
+          const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
           const prefix = isSelfie ? 'Selfie' : 'Dokumen';
           const driveUrl = await uploadToDrive(fileToUpload, currentTeacher, folderName, prefix);
           
@@ -893,7 +897,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                   </div>
                 )}
 
-                {/* File upload for Izin / Sakit or Dinas Luar */}
+                {/* File upload for Izin / Sakit */}
                 {!isSelfieRequired && (
                   <div id="row-file-izin" className="fade-in pt-1 space-y-2">
                       <label className="block text-[11px] font-bold text-red-500 dark:text-red-400 mb-1.5 ml-1">

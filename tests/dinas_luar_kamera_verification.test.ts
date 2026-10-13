@@ -97,9 +97,9 @@ runTest('R2.2: Dinas Luar status_verifikasi is directly set to "Diverifikasi"', 
   );
 });
 
-runTest('R2.3: Primary payload includes latitude, longitude, and lokasi', () => {
-  assert.ok(code.includes('latitude: userCoords?.latitude || null'), 'Latitude must be included');
-  assert.ok(code.includes('longitude: userCoords?.longitude || null'), 'Longitude must be included');
+runTest('R2.3: Primary payload includes latitude, longitude, and lokasi with nullish coalescing', () => {
+  assert.ok(code.includes('latitude: userCoords?.latitude ?? null'), 'Latitude must use nullish coalescing');
+  assert.ok(code.includes('longitude: userCoords?.longitude ?? null'), 'Longitude must use nullish coalescing');
   assert.ok(code.includes('lokasi: lokasi'), 'Lokasi string must be included');
 });
 
@@ -156,6 +156,14 @@ runTest('R2.6: Functional simulation of geofence validation and verification sta
   const dlNull = evaluateStatus('Dinas Luar', null, gpsRadius);
   assert.strictEqual(dlNull.status, 'Diverifikasi');
   assert.strictEqual(dlNull.warningToast, false);
+});
+
+runTest('R2.7: Adversarial verification of 0.0 equator coordinates preservation', () => {
+  const preserveCoord = (coordVal: number | undefined | null) => coordVal ?? null;
+  assert.strictEqual(preserveCoord(0), 0, 'Latitude 0.0 at equator must NOT be coerced to null');
+  assert.strictEqual(preserveCoord(-0.001), -0.001, 'Negative coordinates must be preserved');
+  assert.strictEqual(preserveCoord(null), null, 'Null must remain null');
+  assert.strictEqual(preserveCoord(undefined), null, 'Undefined must become null');
 });
 
 // ============================================================================
@@ -223,6 +231,18 @@ runTest('R3.4: Functional simulation of state transition prompts', () => {
   );
 });
 
+runTest('R3.5: Post-submit transition immediately sets Pulang with Dinas Luar without state flicker', () => {
+  assert.ok(
+    code.includes("nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah';"),
+    'Must evaluate nextJenisAfterSubmit immediately upon submission'
+  );
+  assert.ok(
+    code.includes("if (tipeAbsen === 'Datang') {\n      setTipeAbsen('Pulang');\n    }") ||
+    code.includes("if (tipeAbsen === 'Datang') {\r\n      setTipeAbsen('Pulang');\r\n    }"),
+    'Must transition to Pulang immediately without awaiting dailyState network call'
+  );
+});
+
 // ============================================================================
 // SECTION 4: R4 - Folder Routing & Upload Google Drive
 // ============================================================================
@@ -260,6 +280,13 @@ runTest('R4.3: Functional simulation of Google Drive folder and prefix routing',
   const izinParams = getUploadParams('Izin', false);
   assert.strictEqual(izinParams.folderName, 'Presensi_Guru');
   assert.strictEqual(izinParams.prefix, 'Dokumen');
+});
+
+runTest('R4.4: Storage folder routing strictly checks currentJenis === "Dinas Luar"', () => {
+  assert.ok(
+    code.includes("const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';"),
+    'Folder name must strictly resolve based on submitted currentJenis'
+  );
 });
 
 console.log('\n========================================================================');
