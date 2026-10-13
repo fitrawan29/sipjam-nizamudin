@@ -1,62 +1,66 @@
+# Handoff Report — Reviewer Round 1
+
 > [!WARNING] **Skepticism Disclaimer**
-> Moderate-High confidence (95%) — Adversarial analysis confirmed the prior implementer cleanly purged all obsolete Superadmin tabs and legacy modals/handlers without regressing the satellite network architecture. All 23 test suites (over 300 tests) passed, TypeScript typecheck succeeded with 0 errors, and Next.js production build succeeded with code 0.
+> Moderate-to-high confidence on client and API business logic; live hardware camera permission and real-time physical device GPS sensor accuracy in mobile browsers remain physical-environment dependencies.
 
 ## 1. What the prior attempt got wrong
-- **Omission of dedicated regression test suite for obsolete tab & modal removals:** The prior attempt verified that existing tests passed, but did not introduce an empirical regression test suite asserting that obsolete symbols (`showAddSchoolModal`, `showEditSchoolModal`, `handleToggleSchoolStatus`, `showAddAdminModal`, `showEditAdminModal`, `handleResetAdminPassword`, `adminList`, `adminSearch`, `cityFilter`, `statusFilter`) and obsolete tab switches (`switchTab('sekolah')`, `switchTab('admins')`) cannot be inadvertently reintroduced.
-- **Root Cause:** Reliance on preexisting test suites that did not explicitly assert negative presence of purged legacy elements.
-- **Evidence of compliance in prior diff:** Prior attempt accurately purged `view-superadmin-sekolah` and `view-superadmin-admins` from `src/components/AppScreen.tsx`, stripped legacy modals & handlers from `src/components/SuperadminView.tsx`, aligned Overview KPI cards to satellite data (`satelliteSchools`, `onlineDbCount`, `totalGuruNetwork`, `totalSiswaNetwork`), and preserved existing test compatibility by retaining required PostgREST pinning references.
+
+### Issue 1: Dropped GPS Coordinates in Fallback Database Insert (`compatiblePresensi`)
+- **Input:** Teacher submits Dinas Luar attendance, but client direct insert fails due to PostgREST schema cache or missing column retry.
+- **Expected:** Retried attendance record retains `latitude` and `longitude` captured from GPS.
+- **Actual:** `latitude` and `longitude` were omitted from `compatiblePresensi`, dropping GPS coordinates on retry.
+- **Root Cause:** In `GuruPresensi.tsx`, `compatiblePresensi` fallback object constructed for retry lacked `latitude: newPresensi.latitude` and `longitude: newPresensi.longitude`.
+
+### Issue 2: Dropped GPS Coordinates in Server Route (`/api/attendance`)
+- **Input:** Teacher submits attendance and network/RLS issues trigger server fallback `POST /api/attendance`.
+- **Expected:** Server route saves `latitude` and `longitude` to `presensi_guru`.
+- **Actual:** `/api/attendance/route.ts` did not extract `latitude` or `longitude` from the request body or assign them to `presensiRecord` or `baseCleanRecord`.
+- **Root Cause:** Omission of `body.latitude` and `body.longitude` mapping in `src/app/api/attendance/route.ts`.
+
+### Issue 3: Loss of Dinas Luar State on Toggling `tipeAbsen` (Datang <-> Pulang)
+- **Input:** Teacher chooses "Dinas Luar", then switches `tipeAbsen` to "Pulang" before submitting Datang.
+- **Expected:** "Dinas Luar" choice is preserved.
+- **Actual:** `handleTipeAbsenChange` evaluated `dailyState?.isDinasLuar ? 'Dinas Luar' : 'Sekolah'`, resetting the dropdown to 'Sekolah' because Datang had not yet been submitted in the DB.
+- **Root Cause:** Asymmetrical state preservation in `handleTipeAbsenChange`.
+
+### Issue 4: Stale Document Logic in `getRequiredDocName`
+- **Input:** Code inspection of `getRequiredDocName()`.
+- **Expected:** Dead branch returning `'Surat Tugas'` for Dinas Luar purged, since Dinas Luar is now 100% camera-based.
+- **Actual:** `if (jenisPresensi === 'Dinas Luar') return 'Surat Tugas';` remained as confusing dead code.
+- **Root Cause:** Incomplete cleanup of legacy file-upload logic.
+
+### Issue 5: Shallow Verification Test Suite
+- **Input:** `tests/dinas_luar_kamera_verification.test.ts`.
+- **Expected:** Functional and behavioral assertion tests for geofence bypass, distance thresholds, state transitions, and API coordinate extraction.
+- **Actual:** Only static string matching (`code.includes(...)`) was performed.
+- **Root Cause:** Implementer relied exclusively on substring checks without runtime functional assertions.
 
 ## 2. What I changed
-- `tests/adversarial_superadmin_cleanup_reviewer.test.ts`:
-  - Created a comprehensive adversarial regression test suite covering all Requirements R1, R2, R3, and functional preservation.
-  - Verified negative presence of legacy modals (`showAddSchoolModal`, `showEditSchoolModal`, `handleToggleSchoolStatus`, `showAddAdminModal`, `showEditAdminModal`, `handleResetAdminPassword`).
-  - Verified negative presence of legacy state variables (`adminList`, `adminSearch`, `cityFilter`, `statusFilter`, `sekolahList`, `filteredSekolah`, `filteredAdmins`).
-  - Verified strict tab typing (`'overview' | 'jaringan'`) and tab navigation switches in `SuperadminView.tsx`.
-  - Verified sidebar/drawer menu stripping in `AppScreen.tsx` (`menuItemsSuperadmin`).
-  - Verified Overview KPI card metrics and satellite quick actions ("Tambah Sekolah Satelit", "Periksa Status Live Database", "Kelola Jaringan Sekolah").
-  - Verified functional preservation of all satellite school network operations (add, edit, delete, scope switcher, live ping, one-click Vercel link).
-- `package.json`:
-  - Appended `tsx tests/adversarial_superadmin_cleanup_reviewer.test.ts` into npm `test` script.
-- `.agents/teamwork/reviewer_r1/handoff.md`:
-  - Recorded reviewer round 1 verification findings, test results, and audit ledger.
+- `src/components/GuruPresensi.tsx`:
+  - Added `latitude: newPresensi.latitude` and `longitude: newPresensi.longitude` to `compatiblePresensi`.
+  - Preserved Dinas Luar across `tipeAbsen` changes: `nextJenisPresensi = (jenisPresensi === 'Dinas Luar' || dailyState?.isDinasLuar) ? 'Dinas Luar' : 'Sekolah'`.
+  - Purged obsolete `if (jenisPresensi === 'Dinas Luar') return 'Surat Tugas'` in `getRequiredDocName`.
+  - Dynamically customized "Ganti Foto" confirmation dialog text to state "Foto lokasi..." when `jenisPresensi === 'Dinas Luar'`.
+- `src/app/api/attendance/route.ts`:
+  - Extracted `latitude` and `longitude` from `body` and added them to `presensiRecord` and `baseCleanRecord`.
+- `tests/dinas_luar_kamera_verification.test.ts`:
+  - Expanded test suite from basic substring checks to 17 deep tests including functional simulations of geofence radius bypass (e.g. 50km out-of-range), state transition prompt rules, and API coordinate handling.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/adversarial_superadmin_cleanup_reviewer.test.ts`: 12/12 passed (0 failed).
-  - Ran `npm test`: All 23 test suites passed cleanly with 0 failures:
-    - `r1_r10_ponytail_verification.test.ts` (PASS)
-    - `imageUrl.test.ts` (PASS)
-    - `printHeader.test.ts` (PASS)
-    - `qolAudit.test.ts` (PASS)
-    - `m6_1_database_and_types.test.ts` (PASS)
-    - `m6_3_dashboards_and_verif.test.ts` (PASS)
-    - `m6_4_piket_perangkat_broadcast.test.ts` (PASS)
-    - `m10_r2_r3.test.ts` (PASS)
-    - `m1_resubmission_and_verif.test.ts` (PASS)
-    - `sistem_blok_verification.test.ts` (PASS)
-    - `three_fixes_verification.test.ts` (PASS)
-    - `teacher_reminder_r3.test.ts` (PASS)
-    - `qrSiswa.test.ts` (PASS)
-    - `m3_piket_scanner_kiosk.test.ts` (PASS)
-    - `four_ponytail_improvements.test.ts` (PASS)
-    - `presensi_siswa_sync_and_superadmin.test.ts` (11/11 passed)
-    - `adversarial_presensi_sync_reviewer.test.ts` (12/12 passed)
-    - `adversarial_presensi_sync_reviewer_r2.test.ts` (10/10 passed)
-    - `adversarial_presensi_sync_reviewer_r3.test.ts` (12/12 passed)
-    - `ai_assistant_faq.test.ts` (24/24 passed)
-    - `online_cloud_transactions_and_offline_ai.test.ts` (14/14 passed)
-    - `portal_induk_jaringan_multi_sekolah.test.ts` (47/47 passed)
-    - `adversarial_superadmin_cleanup_reviewer.test.ts` (12/12 passed)
-  - Ran `npx tsc --noEmit`: Exited with code 0 (zero TypeScript errors).
-  - Ran `npm run build`: Production Next.js build compiled and generated static and dynamic routes cleanly with code 0.
+  - `npx tsx tests/dinas_luar_kamera_verification.test.ts`: 17 passed, 0 failed across 4 sections.
+  - `npm test`: All 24 test suites passed 100% (47 multi-sekolah tests, 19 superadmin cleanup tests, 17 dinas luar tests, etc.).
+  - `npx tsc --noEmit`: Clean exit code 0, zero TypeScript compiler errors.
+  - `npm run build`: Production Turbopack build compiled cleanly in 3.4s, static page generation (12/12) completed cleanly.
 - **Shallow Verification (manual only):**
-  - Verified JSX layout and responsive behavior of simplified 2-tab interface in `SuperadminView.tsx`.
-  - Verified header switcher and dynamic menu expansion logic in `AppScreen.tsx`.
+  - Inspected prompt texts, button states, and JSX structure for Dinas Luar camera selfie form.
 - **Unverified aspects:**
-  - Live remote database pinging against physical remote Supabase instances (covered by mock/contract tests and build verification).
+  - Live hardware smartphone camera sensor feed on an actual physical mobile device.
+  - Real-world Google Apps Script execution with live Google Drive credentials.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: The health check pulse indicator relies on the initial health check resolution and `checkSatelliteHealthAndMetrics` timeout race (4 seconds); if network connectivity is slow, instance cards may transiently display `Ter-pause` until manually refreshed.
+- `Minor Robustness Risk`: On mobile devices if the user denies camera permission, `CameraSelfieCapture` displays an in-card error message and does not have an automated fallback to file upload (by design per requirement R1).
+- `Shallow Verification`: Google Drive upload mock endpoint verified via logic simulation; live GAS script endpoint execution requires live deployment credentials.
 
 ## 5. Remaining risk & next step
-- Cleanup is complete and fully verified. All requirements (R1, R2, R3) and acceptance criteria have been achieved. The task is ready for final sign-off.
+- Implementation is complete, hardened, and verified with zero compiler or test errors. All 4 requirements (R1 camera selfie, R2 radius bypass & GPS persistence, R3 seamless state transitions, R4 Google Drive routing) are satisfied and covered by tests.

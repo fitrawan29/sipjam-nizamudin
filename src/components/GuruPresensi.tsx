@@ -241,7 +241,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
 
     let nextJenisPresensi = jenisPresensi;
     if (val === 'Pulang') {
-      nextJenisPresensi = dailyState?.isDinasLuar ? 'Dinas Luar' : 'Sekolah';
+      nextJenisPresensi = (jenisPresensi === 'Dinas Luar' || dailyState?.isDinasLuar) ? 'Dinas Luar' : 'Sekolah';
     } else {
       if (jenisPresensi !== 'Izin' && jenisPresensi !== 'Dinas Luar') {
         nextJenisPresensi = 'Sekolah';
@@ -308,7 +308,6 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
   const isSelfieRequired = jenisPresensi === 'Sekolah' || jenisPresensi === 'Dinas Luar' || jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
 
     const getRequiredDocName = () => {
-      if (jenisPresensi === 'Dinas Luar') return 'Surat Tugas';
       if (jenisPresensi === 'Izin' && detailIzin === 'Sakit') {
         return durasiHari >= 3 ? 'Surat Dokter' : 'Surat Sakit Mandiri';
       }
@@ -508,6 +507,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
             link_bukti: newPresensi.link_bukti,
             status_verifikasi: statusVerif,
             keterlambatan_detik: keterlambatanDetik,
+            latitude: newPresensi.latitude,
+            longitude: newPresensi.longitude,
           };
           if (newPresensi.sekolah_id) {
             compatiblePresensi.sekolah_id = newPresensi.sekolah_id;
@@ -983,7 +984,9 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                           onClick={async () => {
                             const result = await Swal.fire({
                               title: 'Ganti Foto?',
-                              text: 'Foto selfie yang telah diambil akan dihapus dan kamera dibuka kembali.',
+                              text: jenisPresensi === 'Dinas Luar' 
+                                ? 'Foto lokasi yang telah diambil akan dihapus dan kamera dibuka kembali.' 
+                                : 'Foto selfie yang telah diambil akan dihapus dan kamera dibuka kembali.',
                               icon: 'warning',
                               showCancelButton: true,
                               confirmButtonColor: '#EF4444',

@@ -62,6 +62,8 @@ export async function POST(req: NextRequest) {
     // ponytail: naive cap to prevent negative or > 12h test values, tighten if people bypass it
     const keterlambatan_detik = Math.max(0, Math.min(rawKeterlambatan, 43200));
     const sekolah_id = body.sekolah_id || body.sekolahId || req.headers.get('x-sekolah-id') || null;
+    const latitude = typeof body.latitude === 'number' ? body.latitude : (body.latitude ? parseFloat(body.latitude) : null);
+    const longitude = typeof body.longitude === 'number' ? body.longitude : (body.longitude ? parseFloat(body.longitude) : null);
 
     // Status verifikasi default:
     // If 'Izin Terlambat' or 'Terlambat', requires admin approval -> 'Menunggu'
@@ -81,6 +83,8 @@ export async function POST(req: NextRequest) {
       link_bukti: link_bukti,
       status_verifikasi: status_verifikasi,
       keterlambatan_detik: keterlambatan_detik,
+      latitude: latitude,
+      longitude: longitude,
     };
 
     if (sekolah_id) {
@@ -119,6 +123,8 @@ export async function POST(req: NextRequest) {
         link_bukti: presensiRecord.link_bukti,
         status_verifikasi: presensiRecord.status_verifikasi,
         keterlambatan_detik: presensiRecord.keterlambatan_detik,
+        latitude: presensiRecord.latitude,
+        longitude: presensiRecord.longitude,
         ...(presensiRecord.sekolah_id ? { sekolah_id: presensiRecord.sekolah_id } : {})
       };
       const retry = await dbClient.from('presensi_guru').insert([baseCleanRecord]).select().single();
