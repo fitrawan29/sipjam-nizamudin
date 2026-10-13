@@ -5,7 +5,12 @@ import { showToast } from '@/lib/toast';
 import { drawWatermarkedCanvas, dataUrlToFile, getDefaultWatermarkOptions, reverseGeocodeNominatim, WatermarkCoordinates } from '@/lib/watermarkCanvas';
 
 export interface CameraSelfieCaptureProps {
-  onPhotoConfirmed: (file: File, previewUrl: string) => void;
+  onPhotoConfirmed: (
+    file: File,
+    previewUrl: string,
+    coordinates?: WatermarkCoordinates | null,
+    locationName?: string | null
+  ) => void;
   onCancel?: () => void;
   initialCoordinates?: WatermarkCoordinates | null;
   initialLocationName?: string | null;
@@ -64,6 +69,13 @@ export default function CameraSelfieCapture({
   const [coordinates, setCoordinates] = useState<WatermarkCoordinates | null>(initialCoordinates);
   const [locationName, setLocationName] = useState<string | null>(initialLocationName);
   const [gpsStatus, setGpsStatus] = useState<string>(initialLocationName || 'Mendeteksi GPS...');
+
+  // Synchronize initialCoordinates if provided or updated dynamically by parent component
+  useEffect(() => {
+    if (initialCoordinates && !coordinates) {
+      setCoordinates(initialCoordinates);
+    }
+  }, [initialCoordinates, coordinates]);
 
   // 1. Live Geolocation tracking
   const requestLocation = useCallback(() => {
@@ -338,7 +350,7 @@ export default function CameraSelfieCapture({
       const file = dataUrlToFile(capturedImage, `foto_kamera_${Date.now()}.jpg`);
       stopCamera();
       try {
-        const res = onPhotoConfirmed(file, capturedImage) as unknown;
+        const res = onPhotoConfirmed(file, capturedImage, coordinates, locationName) as unknown;
         if (res && typeof (res as Promise<unknown>).catch === 'function') {
           (res as Promise<unknown>).catch((err: unknown) => {
             isConfirmingRef.current = false;
@@ -356,7 +368,7 @@ export default function CameraSelfieCapture({
       isConfirmingRef.current = true;
       stopCamera();
       try {
-        const res = onPhotoConfirmed(capturedFile, capturedImage) as unknown;
+        const res = onPhotoConfirmed(capturedFile, capturedImage, coordinates, locationName) as unknown;
         if (res && typeof (res as Promise<unknown>).catch === 'function') {
           (res as Promise<unknown>).catch((err: unknown) => {
             isConfirmingRef.current = false;

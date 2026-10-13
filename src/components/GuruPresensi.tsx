@@ -962,9 +962,17 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                       initialFacingMode="environment"
                       initialCoordinates={userCoords}
                       existingPhotoUrl={photoPreviewUrl}
-                      onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                      onPhotoConfirmed={(capturedFile: File, previewUrl: string, coords?: WatermarkCoordinates | null, locName?: string | null) => {
                         setFile(capturedFile);
                         setPhotoPreviewUrl(previewUrl);
+                        if (coords && typeof coords.latitude === 'number' && typeof coords.longitude === 'number') {
+                          setUserCoords(coords);
+                          if (locName) {
+                            setLokasi(`${locName} (GPS: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)})`);
+                          } else {
+                            setLokasi(`GPS: ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`);
+                          }
+                        }
                       }}
                       onRetake={() => {
                         setFile(null);

@@ -1,2 +1,2 @@
-# Reviewer R3 Workspace
-Working directory for teamwork_preview_reviewer round 3.
+# Reviewer R3 Working Directory
+Agent working directory for teamwork_preview_reviewer round 3.

@@ -59,12 +59,13 @@ Mengganti mekanisme presensi Dinas Luar pada guru: dari upload dokumen (Surat Tu
 |-------|------|-----------|--------|---------|
 | Implementer | teamwork_preview_implementer | Implementation R1-R4 | completed | 79545c67-acb0-46ff-88ba-3bdd475b7171 |
 | Reviewer R1 | teamwork_preview_reviewer | Adversarial Review Round 1 | completed | f35d7bdf-eb90-4733-8c49-775c59ed584d |
-| Reviewer R2 | teamwork_preview_reviewer | Adversarial Review Round 2 | in-progress | 1f7bb94e-9335-4a61-bbbd-8515ddb805fb |
+| Reviewer R2 | teamwork_preview_reviewer | Adversarial Review Round 2 | completed | 1f7bb94e-9335-4a61-bbbd-8515ddb805fb |
+| Reviewer R3 | teamwork_preview_reviewer | Adversarial Review Round 3 | in-progress | dcf909df-6b6a-478c-8278-97ad52598c71 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 3 / 16
-- Pending subagents: 1f7bb94e-9335-4a61-bbbd-8515ddb805fb
+- Spawn count: 4 / 16
+- Pending subagents: dcf909df-6b6a-478c-8278-97ad52598c71
 - Predecessor: none
 - Successor: not yet spawned
 

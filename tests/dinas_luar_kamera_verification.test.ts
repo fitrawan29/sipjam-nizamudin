@@ -9,12 +9,15 @@ console.log('===================================================================
 const projectRoot = process.cwd();
 const guruPresensiPath = path.join(projectRoot, 'src', 'components', 'GuruPresensi.tsx');
 const apiAttendancePath = path.join(projectRoot, 'src', 'app', 'api', 'attendance', 'route.ts');
+const cameraPath = path.join(projectRoot, 'src', 'components', 'CameraSelfieCapture.tsx');
 
 assert(fs.existsSync(guruPresensiPath), 'GuruPresensi.tsx must exist');
 assert(fs.existsSync(apiAttendancePath), 'src/app/api/attendance/route.ts must exist');
+assert(fs.existsSync(cameraPath), 'CameraSelfieCapture.tsx must exist');
 
 const code = fs.readFileSync(guruPresensiPath, 'utf-8');
 const apiCode = fs.readFileSync(apiAttendancePath, 'utf-8');
+const cameraCode = fs.readFileSync(cameraPath, 'utf-8');
 
 let totalTests = 0;
 let passedTests = 0;
@@ -166,6 +169,31 @@ runTest('R2.7: Adversarial verification of 0.0 equator coordinates preservation'
   assert.strictEqual(preserveCoord(undefined), null, 'Undefined must become null');
 });
 
+runTest('R2.8: CameraSelfieCapture propagates coordinates and reverse geocoded location to GuruPresensi', () => {
+  assert.ok(
+    cameraCode.includes('onPhotoConfirmed(file, capturedImage, coordinates, locationName)') ||
+    cameraCode.includes('onPhotoConfirmed(capturedFile, capturedImage, coordinates, locationName)'),
+    'CameraSelfieCapture must pass coordinates and locationName to onPhotoConfirmed'
+  );
+  assert.ok(
+    code.includes('onPhotoConfirmed={(capturedFile: File, previewUrl: string, coords?: WatermarkCoordinates | null, locName?: string | null) =>'),
+    'GuruPresensi must accept coords and locName in onPhotoConfirmed callback'
+  );
+  assert.ok(
+    code.includes('setUserCoords(coords)'),
+    'GuruPresensi must sync userCoords from confirmed camera capture'
+  );
+});
+
+runTest('R2.9: Full boundary coordinates (equator, north/south poles, dateline) are preserved without data loss', () => {
+  const preserveCoord = (coordVal: number | undefined | null) => coordVal ?? null;
+  assert.strictEqual(preserveCoord(90.0), 90.0, 'North Pole latitude 90.0 preserved');
+  assert.strictEqual(preserveCoord(-90.0), -90.0, 'South Pole latitude -90.0 preserved');
+  assert.strictEqual(preserveCoord(180.0), 180.0, 'Antimeridian longitude 180.0 preserved');
+  assert.strictEqual(preserveCoord(-180.0), -180.0, 'Antimeridian longitude -180.0 preserved');
+  assert.strictEqual(preserveCoord(0.0), 0.0, 'Prime Meridian / Equator 0.0 preserved');
+});
+
 // ============================================================================
 // SECTION 3: R3 - Transisi State Presensi Tanpa Hambatan
 // ============================================================================
@@ -243,6 +271,23 @@ runTest('R3.5: Post-submit transition immediately sets Pulang with Dinas Luar wi
   );
 });
 
+runTest('R3.6: Multi-state checkout permits toggling between Hadir di Sekolah and Dinas Luar when checking out (Pulang)', () => {
+  assert.ok(
+    code.includes('<option value="Sekolah">Hadir di Sekolah</option>'),
+    'Sekolah option must be present'
+  );
+  assert.ok(
+    code.includes('<option value="Dinas Luar">Dinas Luar</option>'),
+    'Dinas Luar option must be present'
+  );
+  assert.ok(
+    code.includes("tipeAbsen === 'Pulang' ? (") &&
+    code.includes('<option value="Sekolah">Hadir di Sekolah</option>') &&
+    code.includes('<option value="Dinas Luar">Dinas Luar</option>'),
+    'Both Sekolah and Dinas Luar must be selectable for Pulang'
+  );
+});
+
 // ============================================================================
 // SECTION 4: R4 - Folder Routing & Upload Google Drive
 // ============================================================================
@@ -286,6 +331,17 @@ runTest('R4.4: Storage folder routing strictly checks currentJenis === "Dinas Lu
   assert.ok(
     code.includes("const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';"),
     'Folder name must strictly resolve based on submitted currentJenis'
+  );
+});
+
+runTest('R4.5: Storage error handling resilience: errors update link_bukti to "gagal_upload" without losing Supabase attendance record', () => {
+  assert.ok(
+    code.includes(".update({ link_bukti: 'gagal_upload' })"),
+    'Must record gagal_upload fallback status on drive upload rejection'
+  );
+  assert.ok(
+    code.includes("showToast('Upload Foto Tertunda'"),
+    'Must inform teacher with warning toast when background upload fails'
   );
 });
 

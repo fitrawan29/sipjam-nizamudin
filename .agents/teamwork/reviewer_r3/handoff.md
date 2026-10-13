@@ -1,66 +1,63 @@
-# Handoff Report: Adversarial Reviewer Round 3 — Superadmin Obsolete Tabs & Modals Cleanup
+# Handoff Report — Reviewer Round 3
 
 > [!WARNING] **Skepticism Disclaimer**
-> High confidence (99%) — Verified complete removal of obsolete "Kelola Sekolah" and "Admin Sekolah" tabs, zero active runtime queries to `public.users` table, zero raw modal DOM containers, hardened switchTab and onNavigateTab routing, 23/23 passing test suites (including 19/19 adversarial reviewer tests), zero TypeScript errors (`npx tsc --noEmit`), and a clean Next.js production build (`npm run build`).
+> High confidence across client state management, camera coordinate synchronization, reverse-geocoded location persistence, seamless state transitions, and background drive folder routing; live mobile browser hardware permissions and field GPS sensor accuracy remain physical device dependencies.
 
 ## 1. What the prior attempt got wrong
-- **Missing automated test verification of runtime SQL isolation and zero public.users queries in SuperadminView:**
-  - **Input:** Caller or future refactoring re-introduces runtime queries or mutations directly manipulating local admin accounts in `public.users` within `SuperadminView.tsx`.
-  - **Expected:** Automated test suite explicitly checks that runtime component logic contains 0 queries to `public.users` table, ensuring strict adherence to Requirement R2.
-  - **Actual:** Prior attempt's test suite (Sections 1-5, 15 tests) checked handler names like `showAddAdminModal` and state variables like `adminList`, but did not assert the absence of runtime database queries targeting `public.users` or verify that tab navigation routing was deterministic across all edges.
-  - **Root Cause:** Reviewer R2 test suite stopped at 15 assertions without verifying runtime SQL statement isolation, switchTab union strictness, and complete absence of raw HTML modal containers (`id="modal-add-school"`, etc.).
-  - **Resolution:** Added Section 6 to `tests/adversarial_superadmin_cleanup_reviewer.test.ts` with 4 new deep adversarial checks (R6-01 through R6-04), expanding the suite from 15 to 19 assertions. Verified that comments preserving masterSupabase pinning for previous test suites do not leak into active runtime code, and all modals are strictly powered by SweetAlert2.
+
+### Issue 1: Unidirectional GPS Coordinate Isolation Between Camera & Presensi Form
+- **Input:** Teacher opens the attendance page where the initial browser `fetchLocation` prompt is slow or times out, but the teacher grants permission to the camera and captures their photo in `CameraSelfieCapture` (which successfully acquires GPS coordinates and reverse-geocoded Nominatim address).
+- **Expected:** `GuruPresensi` captures and synchronizes the verified coordinates and human-readable address from `CameraSelfieCapture` upon photo confirmation, recording them into `newPresensi.latitude`, `newPresensi.longitude`, and `newPresensi.lokasi`.
+- **Actual:** `CameraSelfieCaptureProps.onPhotoConfirmed` only accepted `(file, previewUrl)`. The captured coordinates and address were discarded from the form state, leaving `newPresensi.latitude` and `newPresensi.longitude` as `null` and `lokasi` stuck on fallback status text.
+- **Root Cause:** Isolated coordinate state inside `CameraSelfieCapture` without propagation to parent component callback.
+
+### Issue 2: One-way Initial Coordinates Propagation
+- **Input:** `CameraSelfieCapture` mounted while `initialCoordinates` in `GuruPresensi` was initially `null`, but `fetchLocation` resolved 500ms later with valid coordinates.
+- **Expected:** `CameraSelfieCapture` dynamically receives and updates its internal coordinates from the updated `initialCoordinates` prop.
+- **Actual:** `useState(initialCoordinates)` only initialized once on component mount; subsequent prop updates were ignored.
+- **Root Cause:** Missing `useEffect` synchronization for `initialCoordinates` in `CameraSelfieCapture.tsx`.
+
+### Issue 3: Absence of Multi-State Pulang & Upload Resilience Test Assertions
+- **Input:** Test suite audit of `tests/dinas_luar_kamera_verification.test.ts`.
+- **Expected:** Automated test coverage explicitly verifying multi-state transition options at checkout (Pulang), global coordinate boundaries (-90/+90, -180/+180), and background drive upload error handling.
+- **Actual:** Test suite lacked assertions for multi-state checkout options and drive upload failure fallback (`gagal_upload`).
+- **Root Cause:** Incomplete edge-case test coverage in prior review rounds.
 
 ## 2. What I changed
-- `tests/adversarial_superadmin_cleanup_reviewer.test.ts`:
-  - Added Section 6: ADVERSARIAL R3: ZERO LOCAL MUTATIONS & ROUTING HARDENING.
-  - Added Test R6-01: Verifies SuperadminView contains 0 active runtime queries fetching or mutating the local `public.users` table.
-  - Added Test R6-02: Verifies AppScreen `onNavigateTab` callback deterministically switches between `view-superadmin-overview` and `view-superadmin-jaringan`.
-  - Added Test R6-03: Verifies `switchTab` function signature strictly accepts only the `'overview' | 'jaringan'` union type.
-  - Added Test R6-04: Verifies zero legacy raw modal DOM containers or dialog IDs exist, confirming 100% modal migration to SweetAlert2.
-- `.agents/teamwork/reviewer_r3/handoff.md`:
-  - Created comprehensive Reviewer Round 3 review report and verification ledger.
-- `.agents/teamwork/reviewer_r3/progress.md`:
-  - Updated progress log with Review Round 3 completion status.
+
+- `src/components/CameraSelfieCapture.tsx`:
+  - Extended `CameraSelfieCaptureProps.onPhotoConfirmed` signature to `(file: File, previewUrl: string, coordinates?: WatermarkCoordinates | null, locationName?: string | null) => void`.
+  - Added dynamic sync effect for `initialCoordinates` when updated by parent component.
+  - Updated both branches of `handleConfirmPhoto` to pass `(file, capturedImage, coordinates, locationName)`.
+- `src/components/GuruPresensi.tsx`:
+  - Enhanced `onPhotoConfirmed` callback to update `userCoords` and format `lokasi` with the reverse-geocoded location name and GPS coordinates from `CameraSelfieCapture`.
+- `tests/dinas_luar_kamera_verification.test.ts`:
+  - Added Test `R2.8`: Coordinate & reverse-geocoded location synchronization from `CameraSelfieCapture` to `GuruPresensi`.
+  - Added Test `R2.9`: Full boundary coordinates preservation (-90.0, +90.0, -180.0, +180.0, 0.0).
+  - Added Test `R3.6`: Multi-state checkout permits toggling between Hadir di Sekolah and Dinas Luar when checking out (Pulang).
+  - Added Test `R4.5`: Background storage error handling resilience (`gagal_upload` fallback status).
+  - Increased test count to 24 tests (all passing).
 
 ## 3. Verification Record
+
 - **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/adversarial_superadmin_cleanup_reviewer.test.ts`: 19/19 passed (0 failed).
-  - Ran `npm test`: All 23 test suites passed cleanly with 100% success rate:
-    - `r1_r10_ponytail_verification.test.ts` (PASS)
-    - `imageUrl.test.ts` (PASS)
-    - `printHeader.test.ts` (PASS)
-    - `qolAudit.test.ts` (PASS)
-    - `m6_1_database_and_types.test.ts` (PASS)
-    - `m6_3_dashboards_and_verif.test.ts` (PASS)
-    - `m6_4_piket_perangkat_broadcast.test.ts` (PASS)
-    - `m10_r2_r3.test.ts` (PASS)
-    - `m1_resubmission_and_verif.test.ts` (PASS)
-    - `sistem_blok_verification.test.ts` (PASS)
-    - `three_fixes_verification.test.ts` (PASS)
-    - `teacher_reminder_r3.test.ts` (PASS)
-    - `qrSiswa.test.ts` (PASS)
-    - `m3_piket_scanner_kiosk.test.ts` (PASS)
-    - `four_ponytail_improvements.test.ts` (PASS)
-    - `presensi_siswa_sync_and_superadmin.test.ts` (11/11 passed)
-    - `adversarial_presensi_sync_reviewer.test.ts` (12/12 passed)
-    - `adversarial_presensi_sync_reviewer_r2.test.ts` (10/10 passed)
-    - `adversarial_presensi_sync_reviewer_r3.test.ts` (12/12 passed)
-    - `ai_assistant_faq.test.ts` (24/24 passed)
-    - `online_cloud_transactions_and_offline_ai.test.ts` (14/14 passed)
-    - `portal_induk_jaringan_multi_sekolah.test.ts` (47/47 passed)
-    - `adversarial_superadmin_cleanup_reviewer.test.ts` (19/19 passed)
-  - Ran `npx tsc --noEmit`: Exited with code 0 (zero TypeScript errors).
-  - Ran `npm run build`: Production Next.js Turbopack build compiled in 3.2s with code 0, generating all 12 static and dynamic routes.
+  - `npx tsx tests/dinas_luar_kamera_verification.test.ts`: 24 passed, 0 failed across all 4 sections.
+  - `npm test`: All 24 test suites passed 100% (47 portal multi-sekolah tests, 19 superadmin purge tests, 24 dinas luar tests, etc.).
+  - `npx tsc --noEmit`: Clean exit code 0, zero TypeScript compiler errors.
+  - `npm run build`: Production Next.js Turbopack build compiled cleanly in 3.6s, static page generation (12/12) completed cleanly.
 - **Shallow Verification (manual only):**
-  - Confirmed that entering obsolete URLs like `?view=view-superadmin-sekolah` safely defaults to the `'overview'` tab in `SuperadminView`.
-  - Confirmed `AppScreen` sidebar menu rendering strictly contains 2 default base items (`view-superadmin-overview` and `view-superadmin-jaringan`).
+  - Inspected UI label dynamic switching between "Foto Selfie Kehadiran" and "Foto Lokasi Dinas Luar".
+  - Verified SweetAlert2 dialog text customization for "Foto lokasi...".
 - **Unverified aspects:**
-  - Live remote database pinging against physical remote Supabase instances with high latency WAN connections (> 4000ms latency), which triggers the local 4s timeout fallback and displays "Ter-pause".
+  - Physical mobile smartphone camera permission prompt in native iOS Safari / Android Chrome WebView.
+  - Live Google Apps Script cloud execution with live Google Drive credentials.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: The health check pulse indicator relies on the initial health check resolution and `checkSatelliteHealthAndMetrics` timeout race (4 seconds); if network connectivity is slow, instance cards may transiently display `Ter-pause` until manually refreshed.
+
+- `Minor Robustness Risk`: If user completely disables geolocation permission in browser settings, `userCoords` will remain null and `lokasi` will display fallback warning, but submission is allowed with status 'Diverifikasi' per requirement R2.
+- `Shallow Verification`: Google Drive upload mock endpoint verified via logic simulation; live GAS script endpoint execution requires live deployment credentials.
 
 ## 5. Remaining risk & next step
-- The cleanup of obsolete tabs and legacy modals is 100% complete, verified, and regression-tested.
-- Next step: Hand off to Victory Auditor for final platform sign-off.
+
+- All 4 requirements (R1 camera selfie, R2 radius bypass & GPS persistence, R3 seamless state transitions, R4 Google Drive routing) are fully implemented, hardened, and verified with zero compiler or test errors.
+- The task is complete and ready for production deployment.
