@@ -19,8 +19,8 @@ import {
 
 interface SuperadminViewProps {
   user: any;
-  initialTab?: 'overview' | 'jaringan' | string;
-  onNavigateTab?: (tab: string) => void;
+  initialTab?: 'overview' | 'jaringan';
+  onNavigateTab?: (tab: 'overview' | 'jaringan') => void;
 }
 
 export default function SuperadminView({
@@ -81,8 +81,9 @@ export default function SuperadminView({
 
   // Sync tab with props if changed externally
   useEffect(() => {
-    if (initialTab && (initialTab === 'overview' || initialTab === 'jaringan') && initialTab !== activeTab) {
-      setActiveTab(initialTab);
+    const resolvedTab = initialTab === 'jaringan' ? 'jaringan' : 'overview';
+    if (resolvedTab !== activeTab) {
+      setActiveTab(resolvedTab);
     }
   }, [initialTab, activeTab]);
 

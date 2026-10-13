@@ -239,6 +239,49 @@ async function runAdversarialReviewerTests() {
   }
 
   // ==========================================================================
+  // SECTION 5: ADVERSARIAL EDGE CASES & STRICT TYPE / MENU ISOLATION
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}━━━ 5. VERIFY ADVERSARIAL EDGE CASES & MENU ISOLATION ━━━${RESET}`);
+
+  // Test 5.1: SuperadminViewProps strictly types initialTab and onNavigateTab
+  const strictProps =
+    saCode.includes("initialTab?: 'overview' | 'jaringan'") &&
+    saCode.includes("onNavigateTab?: (tab: 'overview' | 'jaringan') => void");
+
+  if (strictProps) {
+    pass('R5-01', 'SuperadminViewProps strictly types initialTab and onNavigateTab without obsolete tab values');
+  } else {
+    fail('R5-01', 'SuperadminViewProps does not strictly constrain tab parameters');
+  }
+
+  // Test 5.2: Zero legacy modal overlay JSX in SuperadminView
+  const legacyModalJsx = [
+    'showAddSchoolModal &&',
+    'showEditSchoolModal &&',
+    'showAddAdminModal &&',
+    'showEditAdminModal &&',
+    'modal-backdrop-school',
+    'modal-backdrop-admin'
+  ];
+  const foundModalJsx = legacyModalJsx.filter(m => saCode.includes(m));
+  if (foundModalJsx.length === 0) {
+    pass('R5-02', 'Zero legacy modal markup or conditional render blocks exist in SuperadminView JSX');
+  } else {
+    fail('R5-02', `Found residual legacy modal JSX: ${foundModalJsx.join(', ')}`);
+  }
+
+  // Test 5.3: AppScreen default Superadmin menu isolation
+  const hasOnlyTwoMenuItemsByDefault =
+    asCode.includes("const menuItemsSuperadmin = [\n    { id: 'view-superadmin-overview'") ||
+    asCode.includes("const menuItemsSuperadmin = [\r\n    { id: 'view-superadmin-overview'");
+
+  if (hasOnlyTwoMenuItemsByDefault && !asCode.includes("view-superadmin-sekolah") && !asCode.includes("view-superadmin-admins")) {
+    pass('R5-03', 'AppScreen menuItemsSuperadmin defaults strictly to 2 base items with no legacy entries');
+  } else {
+    fail('R5-03', 'AppScreen menuItemsSuperadmin contains unexpected base items');
+  }
+
+  // ==========================================================================
   // SUMMARY
   // ==========================================================================
   console.log(`\n══════════════════════════════════════════════════════════════════════`);
@@ -254,3 +297,4 @@ runAdversarialReviewerTests().catch(err => {
   console.error('Test runner failure:', err);
   process.exit(1);
 });
+
