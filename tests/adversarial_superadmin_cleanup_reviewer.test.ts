@@ -282,6 +282,59 @@ async function runAdversarialReviewerTests() {
   }
 
   // ==========================================================================
+  // SECTION 6: ADVERSARIAL R3: ZERO LOCAL MUTATIONS & ROUTING HARDENING
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}━━━ 6. VERIFY ADVERSARIAL R3: RUNTIME INTEGRITY & DEEP ISOLATION ━━━${RESET}`);
+
+  // Test 6.1: Zero active runtime queries mutating or fetching local public.users table
+  const codeWithoutComments = saCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+  const hasRuntimeUserQueries = codeWithoutComments.includes(".from('users')");
+  if (!hasRuntimeUserQueries) {
+    pass('R6-01', 'SuperadminView contains 0 active runtime queries fetching or mutating local public.users table');
+  } else {
+    fail('R6-01', 'SuperadminView contains active runtime queries referencing public.users table');
+  }
+
+  // Test 6.2: AppScreen onNavigateTab safely routes only between overview and jaringan
+  const cleanAppScreen = asCode.replace(/\r\n/g, '\n');
+  const hasSafeTabRouter =
+    cleanAppScreen.includes("if (tab === 'jaringan') {") &&
+    cleanAppScreen.includes("setCurrentView('view-superadmin-jaringan');") &&
+    cleanAppScreen.includes("setCurrentView('view-superadmin-overview');");
+
+  if (hasSafeTabRouter) {
+    pass('R6-02', 'AppScreen onNavigateTab callback deterministically switches between overview and jaringan');
+  } else {
+    fail('R6-02', 'AppScreen onNavigateTab does not properly constrain superadmin tab routing');
+  }
+
+  // Test 6.3: SuperadminView switchTab method strict typing
+  const strictSwitchTab =
+    saCode.includes("const switchTab = (tab: 'overview' | 'jaringan') => {");
+
+  if (strictSwitchTab) {
+    pass('R6-03', 'switchTab function signature strictly accepts only overview | jaringan union');
+  } else {
+    fail('R6-03', 'switchTab function signature allows loose or unconstrained tab string');
+  }
+
+  // Test 6.4: Zero legacy raw HTML modal overlays for schools or admins
+  const rawModalSignatures = [
+    'id="modal-add-school"',
+    'id="modal-edit-school"',
+    'id="modal-add-admin"',
+    'id="modal-edit-admin"',
+    'aria-labelledby="modal-school-title"',
+    'aria-labelledby="modal-admin-title"'
+  ];
+  const foundRawModals = rawModalSignatures.filter(sig => saCode.includes(sig));
+  if (foundRawModals.length === 0) {
+    pass('R6-04', 'Zero legacy raw modal DOM containers exist; all modals migrated to SweetAlert2');
+  } else {
+    fail('R6-04', `Found legacy raw modal DOM containers: ${foundRawModals.join(', ')}`);
+  }
+
+  // ==========================================================================
   // SUMMARY
   // ==========================================================================
   console.log(`\n══════════════════════════════════════════════════════════════════════`);

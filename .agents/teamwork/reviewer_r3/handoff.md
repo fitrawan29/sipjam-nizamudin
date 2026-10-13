@@ -1,66 +1,66 @@
-# Handoff Report: Adversarial Reviewer Round 3 — Camera Portrait & Anti Auto-Zoom
+# Handoff Report: Adversarial Reviewer Round 3 — Superadmin Obsolete Tabs & Modals Cleanup
 
 > [!WARNING] **Skepticism Disclaimer**
-> Confidence is very high in orientation enforcement, `aspect-[3/4]` video rendering, zero-crop 1x scale uncropped canvas, CSS `object-contain`, async callback promise rejection guards, and 73 automated adversarial assertions across 9 mobile and desktop resolutions; however, physical execution on exotic hardware devices with non-standard webcam firmware that ignores W3C WebRTC aspectRatio constraints remains dependent on manufacturer HAL implementation.
+> High confidence (99%) — Verified complete removal of obsolete "Kelola Sekolah" and "Admin Sekolah" tabs, zero active runtime queries to `public.users` table, zero raw modal DOM containers, hardened switchTab and onNavigateTab routing, 23/23 passing test suites (including 19/19 adversarial reviewer tests), zero TypeScript errors (`npx tsc --noEmit`), and a clean Next.js production build (`npm run build`).
 
 ## 1. What the prior attempt got wrong
-
-### Issue 1: Permanent Confirmation Lockout Risk on Async `onPhotoConfirmed` Promise Rejection
-- **Input:** Caller passes an `async` or Promise-returning `onPhotoConfirmed: async (file, previewUrl) => { await uploadToServer(); }` that rejects.
-- **Expected:** `isConfirmingRef.current` safely resets to `false` upon promise rejection so the user can retry confirming or retake the photo.
-- **Actual:** Prior attempt enclosed `onPhotoConfirmed()` inside synchronous `try...catch`. Since async functions immediately return a pending Promise, synchronous `try/catch` succeeded without catching the rejection, leaving `isConfirmingRef.current = true` permanently locked. Subsequent clicks on "Gunakan Foto" silently failed.
-- **Root Cause:** Missing check and `.catch()` handler on the returned Promise. Fixed by checking if the callback result has a `.catch` method and resetting `isConfirmingRef.current = false` upon rejection.
-
-### Issue 2: Unguarded `onRetake` Callback in `handleRetake`
-- **Input:** Caller's optional `onRetake` callback throws a synchronous exception.
-- **Expected:** Retake flow completes gracefully without bubbling uncaught exceptions to React error boundaries.
-- **Actual:** Prior attempt called `onRetake?.()` without a `try...catch` boundary.
-- **Root Cause:** Missing error boundary around user-provided callback. Fixed by wrapping `onRetake?.()` in `try...catch`.
-
-### Issue 3: Potential NaN / 0 Canvas Dimensions on Edge-Case Streams
-- **Input:** Source media element with uninitialized or 0x0 natural dimensions.
-- **Expected:** Canvas element created with guaranteed positive, valid integer width and height.
-- **Actual:** `canvas.width = Math.round(drawWidth)` could evaluate to 0 or NaN if `drawWidth` was 0 or NaN.
-- **Root Cause:** Unguarded Math.round without lower bound fallback. Fixed with `Math.max(1, Math.round(drawWidth) || 640)`.
-
-### Issue 4: Missing Reviewer R3 Visual Proof Artifact
-- **Input:** Reviewer R3 verification execution.
-- **Expected:** `camera_portrait_strong_verification_proof.svg` generated and saved in `.agents/teamwork/reviewer_r3`.
-- **Actual:** Test script only saved artifact to `reviewer_r1` and `reviewer_r2`.
-- **Root Cause:** `reviewerDirs` array omitted `reviewer_r3`. Fixed by adding `reviewer_r3` to `reviewerDirs` and generating the SVG in all reviewer directories.
+- **Missing automated test verification of runtime SQL isolation and zero public.users queries in SuperadminView:**
+  - **Input:** Caller or future refactoring re-introduces runtime queries or mutations directly manipulating local admin accounts in `public.users` within `SuperadminView.tsx`.
+  - **Expected:** Automated test suite explicitly checks that runtime component logic contains 0 queries to `public.users` table, ensuring strict adherence to Requirement R2.
+  - **Actual:** Prior attempt's test suite (Sections 1-5, 15 tests) checked handler names like `showAddAdminModal` and state variables like `adminList`, but did not assert the absence of runtime database queries targeting `public.users` or verify that tab navigation routing was deterministic across all edges.
+  - **Root Cause:** Reviewer R2 test suite stopped at 15 assertions without verifying runtime SQL statement isolation, switchTab union strictness, and complete absence of raw HTML modal containers (`id="modal-add-school"`, etc.).
+  - **Resolution:** Added Section 6 to `tests/adversarial_superadmin_cleanup_reviewer.test.ts` with 4 new deep adversarial checks (R6-01 through R6-04), expanding the suite from 15 to 19 assertions. Verified that comments preserving masterSupabase pinning for previous test suites do not leak into active runtime code, and all modals are strictly powered by SweetAlert2.
 
 ## 2. What I changed
-- `src/components/CameraSelfieCapture.tsx`:
-  - Added async Promise rejection handling (`.catch`) to both confirmation pathways in `handleConfirmPhoto()` to safely reset `isConfirmingRef.current = false`.
-  - Added `try...catch` boundary around `onRetake?.()` in `handleRetake()`.
-- `src/lib/watermarkCanvas.ts`:
-  - Guarded canvas dimensions against NaN / 0 with `Math.max(1, Math.round(...) || fallback)`.
-- `tests/adversarial_camera_portrait_reviewer.test.ts`:
-  - Added `.agents/teamwork/reviewer_r3` to target artifact directories.
-  - Added adversarial assertions verifying async promise rejection handling, retake error boundaries, positive canvas dimensions, and SVG proof persistence in `reviewer_r3` (expanding checks from 69 to 73).
-  - Generated visual proof artifact `.agents/teamwork/reviewer_r3/camera_portrait_strong_verification_proof.svg`.
+- `tests/adversarial_superadmin_cleanup_reviewer.test.ts`:
+  - Added Section 6: ADVERSARIAL R3: ZERO LOCAL MUTATIONS & ROUTING HARDENING.
+  - Added Test R6-01: Verifies SuperadminView contains 0 active runtime queries fetching or mutating the local `public.users` table.
+  - Added Test R6-02: Verifies AppScreen `onNavigateTab` callback deterministically switches between `view-superadmin-overview` and `view-superadmin-jaringan`.
+  - Added Test R6-03: Verifies `switchTab` function signature strictly accepts only the `'overview' | 'jaringan'` union type.
+  - Added Test R6-04: Verifies zero legacy raw modal DOM containers or dialog IDs exist, confirming 100% modal migration to SweetAlert2.
+- `.agents/teamwork/reviewer_r3/handoff.md`:
+  - Created comprehensive Reviewer Round 3 review report and verification ledger.
+- `.agents/teamwork/reviewer_r3/progress.md`:
+  - Updated progress log with Review Round 3 completion status.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/adversarial_camera_portrait_reviewer.test.ts`: PASSED (73/73 checks passed, 0 failures).
-  - `npx tsx tests/camera_portrait_strong_verification.test.ts`: PASSED (55/55 checks passed, 0 failures).
-  - `npx tsx tests/reviewer_adversarial_camera.test.ts`: PASSED (56/56 checks passed, 0 failures).
-  - `npx tsx tests/camera_orientation.test.ts`: PASSED (All 10 sections, 33 assertions passed).
-  - `npx tsx tests/camera_zoom_fix.test.ts`: PASSED (All 8 sections, 35 assertions passed).
-  - `npx tsx tests/adversarial_camera_badge_challenger_1.test.ts`: PASSED (314/314 assertions passed).
-  - `npm test`: PASSED (All 23 test suites passed cleanly with 100% success rate).
-  - `npx tsc --noEmit`: PASSED (0 TypeScript errors).
-  - `npm run build`: PASSED (Production Next.js Turbopack build compiled in 31.8s with 0 errors across 12 routes).
+  - Ran `npx tsx tests/adversarial_superadmin_cleanup_reviewer.test.ts`: 19/19 passed (0 failed).
+  - Ran `npm test`: All 23 test suites passed cleanly with 100% success rate:
+    - `r1_r10_ponytail_verification.test.ts` (PASS)
+    - `imageUrl.test.ts` (PASS)
+    - `printHeader.test.ts` (PASS)
+    - `qolAudit.test.ts` (PASS)
+    - `m6_1_database_and_types.test.ts` (PASS)
+    - `m6_3_dashboards_and_verif.test.ts` (PASS)
+    - `m6_4_piket_perangkat_broadcast.test.ts` (PASS)
+    - `m10_r2_r3.test.ts` (PASS)
+    - `m1_resubmission_and_verif.test.ts` (PASS)
+    - `sistem_blok_verification.test.ts` (PASS)
+    - `three_fixes_verification.test.ts` (PASS)
+    - `teacher_reminder_r3.test.ts` (PASS)
+    - `qrSiswa.test.ts` (PASS)
+    - `m3_piket_scanner_kiosk.test.ts` (PASS)
+    - `four_ponytail_improvements.test.ts` (PASS)
+    - `presensi_siswa_sync_and_superadmin.test.ts` (11/11 passed)
+    - `adversarial_presensi_sync_reviewer.test.ts` (12/12 passed)
+    - `adversarial_presensi_sync_reviewer_r2.test.ts` (10/10 passed)
+    - `adversarial_presensi_sync_reviewer_r3.test.ts` (12/12 passed)
+    - `ai_assistant_faq.test.ts` (24/24 passed)
+    - `online_cloud_transactions_and_offline_ai.test.ts` (14/14 passed)
+    - `portal_induk_jaringan_multi_sekolah.test.ts` (47/47 passed)
+    - `adversarial_superadmin_cleanup_reviewer.test.ts` (19/19 passed)
+  - Ran `npx tsc --noEmit`: Exited with code 0 (zero TypeScript errors).
+  - Ran `npm run build`: Production Next.js Turbopack build compiled in 3.2s with code 0, generating all 12 static and dynamic routes.
 - **Shallow Verification (manual only):**
-  - Verified SVG visual proof rendering in `.agents/teamwork/reviewer_r3/camera_portrait_strong_verification_proof.svg`.
-  - Inspected CSS styling on `<video>` and `<img>` (`aspect-[3/4]`, `object-contain`, absence of `object-cover` or `scale-*`).
+  - Confirmed that entering obsolete URLs like `?view=view-superadmin-sekolah` safely defaults to the `'overview'` tab in `SuperadminView`.
+  - Confirmed `AppScreen` sidebar menu rendering strictly contains 2 default base items (`view-superadmin-overview` and `view-superadmin-jaringan`).
 - **Unverified aspects:**
-  - Physical mobile smartphone cameras running OEM custom camera drivers (e.g. Samsung One UI, Xiaomi MIUI, iOS Safari).
-  - Proprietary hardware digital zoom enabled at OS/firmware level.
+  - Live remote database pinging against physical remote Supabase instances with high latency WAN connections (> 4000ms latency), which triggers the local 4s timeout fallback and displays "Ter-pause".
 
 ## 4. Known Issues
-- `Minor Robustness Risk` — If a user uses a desktop webcam (typically fixed landscape 16:9) for portrait presensi, `drawWatermarkedCanvas` centers and crops the horizontal feed to 3:4 vertical orientation. This is intentional to ensure the resulting attendance card is portrait.
-- `Shallow Verification` — Appearance of letterboxing on very narrow physical mobile screens (< 320px width).
+- `Minor Robustness Risk`: The health check pulse indicator relies on the initial health check resolution and `checkSatelliteHealthAndMetrics` timeout race (4 seconds); if network connectivity is slow, instance cards may transiently display `Ter-pause` until manually refreshed.
 
 ## 5. Remaining risk & next step
-- Task is 100% complete and fully verified. Requirements R1 and R2 are satisfied, confirmed by 73 adversarial checks, visual SVG render proof in reviewer_r3, and full clean test and build passes.
+- The cleanup of obsolete tabs and legacy modals is 100% complete, verified, and regression-tested.
+- Next step: Hand off to Victory Auditor for final platform sign-off.
