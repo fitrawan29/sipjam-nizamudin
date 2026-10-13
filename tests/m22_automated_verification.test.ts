@@ -417,7 +417,7 @@ async function runTestSuite() {
     const detail_izin = body.detail_izin || body.detail || body.keterangan || (isTerlambat ? 'Izin Datang Terlambat' : '');
     const durasi_hari = typeof body.durasi_hari === 'number' ? Math.max(1, body.durasi_hari) : (body.durasi_hari ? Math.max(1, parseInt(String(body.durasi_hari), 10) || 1) : 1);
     const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('sakit'));
-    const isIzin = jenis_presensi === 'Izin' || detail_izin === 'Izin' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('izin')) || (typeof jenis_presensi === 'string' && jenis_presensi.toLowerCase().includes('izin'));
+    const isIzin = !isTerlambat && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('izin')) || (typeof jenis_presensi === 'string' && jenis_presensi.toLowerCase().includes('izin') && !jenis_presensi.toLowerCase().includes('terlambat')));
     const isLeave = isSakit || isIzin;
     const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || isIzin) && durasi_hari > 3);
 
@@ -427,9 +427,10 @@ async function runTestSuite() {
     const radiusToleransi = typeof body.radius === 'number' ? body.radius : 100;
     const isDiLuarRadius = (jenis_presensi === 'Sekolah' || (!jenis_presensi && !isLeave)) && numericJarak !== null && !isNaN(numericJarak) && numericJarak > radiusToleransi;
 
-    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin || isDiLuarRadius;
+    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin || isDiLuarRadius || isTerlambat;
     const status_verifikasi = (isTerlambat || isMemerlukanPersetujuan) ? 'Menunggu' : (body.status_verifikasi || 'Disetujui');
-    return { status_verifikasi, isMemerlukanPersetujuan, durasi_hari, isDiLuarRadius };
+    const isMultiDayType = isLeave;
+    return { status_verifikasi, isMemerlukanPersetujuan, durasi_hari, isDiLuarRadius, isMultiDayType, isTerlambat };
   };
 
   // R5.2: Server enforces sick leave >= 3 days -> Menunggu even if client omitted flag
@@ -544,6 +545,32 @@ async function runTestSuite() {
     updatedJurnalCode.includes("fileUrl !== 'gagal_upload'") &&
     updatedPiketCode.includes("fileUrl !== 'gagal_upload'"),
     'R5.15: GuruJurnal and PiketView do not treat gagal_upload as complete photo evidence'
+  );
+
+  // R5.16: GuruPresensi enforces memerlukan_persetujuan_admin for out-of-radius or late presensi
+  const finalPresensiCode = fs.readFileSync(guruPresensiPath, 'utf-8');
+  assert(
+    finalPresensiCode.includes("const isDiLuarRadius = jenisPresensi === 'Sekolah'") &&
+    finalPresensiCode.includes("memerlukan_persetujuan_admin: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? memerlukanPersetujuanAdmin : Boolean(isDiLuarRadius || isTerlambat)"),
+    'R5.16: GuruPresensi enforces memerlukan_persetujuan_admin = true for out-of-radius or late presensi'
+  );
+
+  // R5.17: Server /api/attendance isolates Izin Terlambat from multi-day leave and enforces admin approval
+  const serverIzinTerlambat = evaluateServerAttendanceStatus({ jenis_presensi: 'Izin Terlambat' });
+  assert(
+    serverIzinTerlambat.status_verifikasi === 'Menunggu' &&
+    serverIzinTerlambat.isMemerlukanPersetujuan === true &&
+    serverIzinTerlambat.isMultiDayType === false,
+    'R5.17: Server /api/attendance isolates Izin Terlambat from multi-day leave and enforces admin approval'
+  );
+
+  // R5.18: Server /api/attendance sets isMemerlukanPersetujuan = true for out-of-radius Sekolah attendance
+  const serverOutOfRadiusCheck = evaluateServerAttendanceStatus({ jenis_presensi: 'Sekolah', jarak: 300 });
+  assert(
+    serverOutOfRadiusCheck.status_verifikasi === 'Menunggu' &&
+    serverOutOfRadiusCheck.isMemerlukanPersetujuan === true &&
+    serverOutOfRadiusCheck.isDiLuarRadius === true,
+    'R5.18: Server /api/attendance sets isMemerlukanPersetujuan = true for out-of-radius Sekolah attendance'
   );
 
   console.log('\n========================================================================');

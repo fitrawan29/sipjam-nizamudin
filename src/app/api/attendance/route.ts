@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     const tanggal_mulai = body.tanggal_mulai || getWitaDateStr();
     const tanggal_selesai = body.tanggal_selesai || getWitaDateStr();
     const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('sakit'));
-    const isIzin = jenis_presensi === 'Izin' || detail_izin === 'Izin' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('izin')) || (typeof jenis_presensi === 'string' && jenis_presensi.toLowerCase().includes('izin'));
+    const isIzin = !isTerlambat && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('izin')) || (typeof jenis_presensi === 'string' && jenis_presensi.toLowerCase().includes('izin') && !jenis_presensi.toLowerCase().includes('terlambat')));
     const isLeave = isSakit || isIzin;
     const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || isIzin) && durasi_hari > 3);
 
@@ -85,10 +85,10 @@ export async function POST(req: NextRequest) {
     // Status verifikasi default:
     // If 'Izin Terlambat', 'Terlambat', di luar radius, or memerlukan_persetujuan_admin (explicit or calculated by leave duration), requires admin approval -> 'Menunggu'
     // Otherwise use provided status or 'Disetujui'
-    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin || isDiLuarRadius;
+    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin || isDiLuarRadius || isTerlambat;
     const status_verifikasi = (isTerlambat || isMemerlukanPersetujuan) ? 'Menunggu' : (body.status_verifikasi || 'Disetujui');
 
-    const isMultiDayType = jenis_presensi === 'Izin' || jenis_presensi === 'Sakit' || isLeave;
+    const isMultiDayType = isLeave;
 
     const presensiRecord: any = {
       id: body.id || crypto.randomUUID(),
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
       durasi_hari: isMultiDayType ? durasi_hari : 1,
       tanggal_mulai: isMultiDayType ? tanggal_mulai : getWitaDateStr(),
       tanggal_selesai: isMultiDayType ? tanggal_selesai : getWitaDateStr(),
-      memerlukan_persetujuan_admin: isMultiDayType ? isMemerlukanPersetujuan : (isDiLuarRadius || false),
+      memerlukan_persetujuan_admin: isMultiDayType ? isLeavePersetujuanAdmin : (isDiLuarRadius || isTerlambat || body.memerlukan_persetujuan_admin === true || false),
       lokasi: lokasi,
       jarak: jarak,
       link_bukti: link_bukti,

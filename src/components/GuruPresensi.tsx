@@ -430,6 +430,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     }
 
     
+    const isDiLuarRadius = jenisPresensi === 'Sekolah' && jarakAktual !== null && jarakAktual > gpsConfig.radius;
     let statusVerif = 'Menunggu';
     if (isTerlambat) {
       statusVerif = 'Menunggu';
@@ -458,7 +459,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
       durasi_hari: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? durasiHari : 1,
       tanggal_mulai: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? tanggalMulai : getWitaDateStr(),
       tanggal_selesai: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? tanggalSelesai : getWitaDateStr(),
-      memerlukan_persetujuan_admin: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? memerlukanPersetujuanAdmin : false,
+      memerlukan_persetujuan_admin: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? memerlukanPersetujuanAdmin : Boolean(isDiLuarRadius || isTerlambat),
       is_auto_checkout: false,
       lokasi: lokasi,
       jarak: jarakAktual !== null ? `${jarakAktual} m` : 'Unknown',
