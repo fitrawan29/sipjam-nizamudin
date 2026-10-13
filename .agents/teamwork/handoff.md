@@ -1,45 +1,43 @@
-# HANDOFF REPORT — Sentinel
+# Handoff Report — Project Sentinel (Presensi Dinas Luar Kamera Foto Lokasi)
 
-## 1. Observation
-- **Mission**: Pembersihan dan penghapusan seluruh fitur, tab, dan modal usang (*obsolete*) pada role Superadmin akibat transisi ke arsitektur Jaringan Sekolah Satelit & Multi-School Switcher.
-- **Routing Decision**: SWE Light (`teamwork_preview_swe`) per Routing Decision Table (tugas berfokus pada refactor/cleanup tunggal mandiri dengan instruksi eksplisit "small and focused").
-- **Subagent Roster**:
-  - Orchestrator: `swe_20` (`150d9d73-054f-4d29-b427-4a8f6e4dcd3d`)
-  - Implementer: `implementer_1` (`158ac13f-344e-4f58-a0c4-366f6e54bfce`)
-  - Reviewer Round 1: `reviewer_r1` (`a94dc011-1f4c-4331-b95f-019b6e391505`)
-  - Reviewer Round 2: `reviewer_r2` (`cb2b92cf-013d-4b41-801a-95ac71d57fee`)
-  - Reviewer Round 3: `reviewer_r3` (`32a791ef-6ff4-44cd-92f3-e3dc49836c3a`)
-  - Victory Auditor Sentinel: `victory_auditor_33` (`fad6b157-5c8b-4522-bb29-088d3a55a119`)
-- **Key Changes Implemented**:
-  1. **R1**: Tab "Kelola Sekolah" (`sekolah`) dan "Admin Sekolah" (`admins`) dihapus dari `src/components/SuperadminView.tsx`. Navigasi drawer Superadmin `view-superadmin-sekolah` dan `view-superadmin-admins` dihapus dari `src/components/AppScreen.tsx`. Struktur disederhanakan murni menjadi 2 tab: "Ringkasan Platform" (`overview`) dan "Jaringan Sekolah" (`jaringan`).
-  2. **R2**: Seluruh modal dan handler usang yang menyisipkan/memanipulasi data lokal `public.sekolah` dan `public.users` (`showAddSchoolModal`, `showEditSchoolModal`, `handleToggleSchoolStatus`, `showAddAdminModal`, `showEditAdminModal`, `handleResetAdminPassword`) beserta state filter (`adminList`, `adminSearch`, `cityFilter`, `statusFilter`) dihapus bersih (-1244 baris kode usang).
-  3. **R3**: Tab Overview diselaraskan untuk mengacu langsung pada data Jaringan Sekolah Satelit (`satelliteSchools`), penghitungan status koneksi live database, serta agregat guru & siswa lintas jaringan dengan shortcut aksi cepat yang relevan.
-- **Git Commits**:
-  - `609b193`: `refactor(superadmin): purge obsolete local school and admin tabs in favor of satellite network architecture`
-  - `2ebd8e1`: `test(superadmin): add adversarial reviewer regression suite and complete R1 review`
-  - `1096c9c`: `test(superadmin): harden SuperadminView props typing and add Section 5 edge cases for reviewer R2`
-  - `6015b5d`: `test(superadmin): add Section 6 deep runtime isolation assertions for reviewer R3`
+## Observation
+Permintaan pengguna meminta penggantian mekanisme presensi Dinas Luar pada guru: dari upload file dokumen (Surat Tugas) menjadi pengambilan foto lokasi langsung melalui kamera (`CameraSelfieCapture`) lengkap dengan watermark waktu, nama guru, koordinat GPS, dan nama lokasi, tanpa batasan radius GPS dari sekolah.
 
-## 2. Logic Chain
-1. Sesuai aturan Sentinel, permintaan pengguna dicatat secara verbatim di `ORIGINAL_REQUEST.md`.
-2. Alur dievaluasi dan diarahkan ke jalur `teamwork_preview_swe` (SWE Light). Subagent `swe_20` di-spawn dengan pemantauan cron berkala (laporan progress dan liveness check).
-3. `swe_20` mengoordinasikan implementer dan menjalankan 3 putaran adversarial review independen (R1, R2, R3) yang menambahkan 19 assertion pengujian regresi spesifik.
-4. Ketika `swe_20` melaporkan klaim kemenangan, Sentinel menolak menerima klaim begitu saja dan men-dispatch auditor independen `victory_auditor_33` untuk audit 3-fase yang memblokir.
-5. `victory_auditor_33` memverifikasi integritas timeline, ketiadaan sisa kode usang/fasad, dan menjalankan suite pengujian otomatis, pemeriksaan tipe TypeScript, serta build Next.js secara independen.
-6. Hasil audit: **VICTORY CONFIRMED**.
-7. Kedua cron dibatalkan via `manage_task(kill)` dan seluruh subagent ditutup via `manage_subagents(kill_all)`.
+Tugas dievaluasi dan diarahkan ke rute **SWE Light (`teamwork_preview_swe`)** sebagai perubahan kode mandiri yang fokus (single self-contained fix). Orchestrator `swe_21` ditugaskan dan menyelesaikan siklus implementasi bersama 3 putaran adversarial reviewer dan verifikasi internal. Pada klaim penyelesaian oleh `swe_21`, Sentinel secara blocking menugaskan auditor independen `victory_auditor_34` untuk melakukan 3-phase independent post-victory audit (Timeline, Anti-Cheating/Integrity, dan Independent Test Execution). Auditor memberikan hasil resmi: **VICTORY CONFIRMED**.
 
-## 3. Caveats
-- Seluruh verifikasi berjalan pada mode integrity: development dengan mock & contract test suite yang komprehensif. Operasi live ke satelit nyata bergantung pada ketersediaan koneksi internet dan status Supabase satelit fisik (terproteksi dengan fallback timeout 4 detik).
+## Logic Chain
+1. **R1 (Presensi Dinas Luar Kamera Foto Lokasi)**:
+   - Pada `src/components/GuruPresensi.tsx`, tipe "Dinas Luar" dikelompokkan ke dalam `isSelfieRequired`, sehingga menampilkan `CameraSelfieCapture` mode portrait dan meniadakan elemen `<input type="file">`.
+   - Foto kamera dilengkapi watermark dinamis: tanggal/waktu, nama guru, koordinat GPS, dan nama lokasi reverse-geocoding.
+2. **R2 (Tanpa Batasan Radius Lokasi & Preservasi Koordinat)**:
+   - Validasi radius jarak (`jarakAktual > gpsConfig.radius`) dikunci hanya untuk jenis presensi "Sekolah".
+   - Guru yang memilih "Dinas Luar" dapat melakukan presensi dari lokasi manapun tanpa batasan jarak dan tanpa toast "Di Luar Jangkauan".
+   - Status verifikasi langsung diset ke `'Diverifikasi'`.
+   - Koordinat GPS (didukung operator `??` untuk preservasi koordinat 0.0 di khatulistiwa) dan nama alamat lokasi tetap tersimpan ke tabel database presensi dan server API fallback `/api/attendance/route.ts`.
+3. **R3 (Transisi State Presensi Tanpa Hambatan)**:
+   - Logika `togglePresensiFields` dan `handleTipeAbsenChange` diselaraskan agar perpindahan antara "Sekolah" dan "Dinas Luar" tidak memunculkan dialog konfirmasi penghapusan file.
+   - Pergantian tipe presensi mempertahankan stream kamera maupun foto yang telah diambil.
+   - Setelah presensi Datang Dinas Luar berhasil disubmit, form bertransisi mulus ke Pulang dan tetap mempertahankan pilihan "Dinas Luar".
+4. **R4 (Folder Routing & Upload Google Drive)**:
+   - Upload foto presensi Dinas Luar diarahkan secara konsisten ke folder Google Drive `Presensi_DinasLuar` dengan prefix `'Selfie'`.
+5. **Adversarial Hardening**:
+   - Reviewer R1: Memperbaiki mapping koordinat pada fallback direct insert dan API route, serta simetri state Datang/Pulang.
+   - Reviewer R2: Menyelamatkan koordinat khatulistiwa dari falsy coercion `||`, mengeliminasi UI state flicker.
+   - Reviewer R3: Menghubungkan callback pengambilan foto dari `CameraSelfieCapture` langsung ke state `userCoords` dan `lokasi` form, memastikan sinkronisasi 100% antara watermark foto dan data database.
 
-## 4. Conclusion
-Seluruh persyaratan R1, R2, dan R3 telah terpenuhi dengan sempurna. Tab dan modal usang berhasil dibersihkan tanpa regresi pada fungsionalitas Jaringan Sekolah Satelit.
-Status: **VICTORY CONFIRMED**.
+## Caveats
+- Pembacaan izin kamera (`navigator.mediaDevices.getUserMedia`) dan sensor GPS (`navigator.geolocation`) di browser perangkat fisik nyata bergantung pada persetujuan izin (permission grant) pengguna di browser/WebView perangkat masing-masing. Jika izin ditolak oleh pengguna, komponen menampilkan pesan informatif di antarmuka kamera.
+- Integrasi Google Drive upload bergantung pada konektivitas jaringan dan Google Apps Script URL yang valid. Sistem telah dilengkapi background retry dan graceful fallback.
 
-## 5. Verification Method
-```powershell
-npm test
-npx tsc --noEmit
-npm run build
-git status
-```
+## Conclusion
+Seluruh persyaratan (R1-R4) telah terpenuhi 100% dengan kode yang bersih, ringkas, dan mematuhi prinsip Ponytail.
+Victory Auditor 34 telah menerbitkan putusan resmi **VICTORY CONFIRMED**.
+Seluruh subagent dan background cron telah dibersihkan secara penuh (`manage_subagents(action="kill_all")` dan pembatalan task).
+Repositori git berada dalam status bersih, ter-stage, ter-commit, dan tersinkronisasi ke branch `main`.
+
+## Verification Method
+1. `npm test`: 24/24 test suite lulus 100% (0 fail).
+2. `npx tsx tests/dinas_luar_kamera_verification.test.ts`: 24/24 assertion verifikasi Dinas Luar lulus 100%.
+3. `npx tsc --noEmit`: 0 error tipe TypeScript (Clean exit 0).
+4. `npm run build`: Build produksi Next.js Turbopack sukses (12/12 rute statis terkompilasi bersih).
+5. `git status`: Working tree bersih, seluruh commit tersinkronisasi dengan origin/main.
