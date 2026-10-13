@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase } from '@/lib/supabaseClient';
 import { AppUser } from '@/types/user';
 
 export function useSessionSync(
@@ -32,8 +32,8 @@ export function useSessionSync(
         try {
           if (!activeUser?.id || !activeUser?.session_token) return;
 
-          // Re-validate session token against database
-          const { data: dbUser, error } = await supabase
+          // Re-validate session token against master database (never rewritten by satellite scope)
+          const { data: dbUser, error } = await masterSupabase
             .from('users')
             .select('id, username, nama, role, sekolah_id, session_token, avatar')
             .eq('id', activeUser.id)

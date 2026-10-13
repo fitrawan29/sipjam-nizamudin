@@ -43,7 +43,7 @@ Bangun fitur Portal Induk Jaringan Multi-Sekolah dengan Akses Superadmin Tunggal
 ## Project Status
 - **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: Progress Reporting (c4fea448-de85-4130-90fb-8931f1805909/task-26), Liveness Check (c4fea448-de85-4130-90fb-8931f1805909/task-28)
+- **Active Crons**: Progress Reporting (c4fea448-de85-4130-90fb-8931f1805909/task-173), Liveness Check (c4fea448-de85-4130-90fb-8931f1805909/task-175)
 - **Active Subagents**: swe_19 (ff45a26f-b6cf-4779-b111-0990eab12d72)
 
 ## Victory Audit Status

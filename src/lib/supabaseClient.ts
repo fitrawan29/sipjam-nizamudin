@@ -482,6 +482,16 @@ export function getSatelliteSupabaseClient(
           headers.set('x-user-role', 'Superadmin');
         }
 
+        const { userId, sessionToken } = getActiveTenantContext();
+        const safeUserId = sanitizeHeaderValue(userId);
+        const safeSessionToken = sanitizeHeaderValue(sessionToken);
+        if (safeUserId && !headers.has('x-user-id')) {
+          headers.set('x-user-id', safeUserId);
+        }
+        if (safeSessionToken && !headers.has('x-session-token')) {
+          headers.set('x-session-token', safeSessionToken);
+        }
+
         const customFetch = options?.global?.fetch || fetch;
         return customFetch(input, {
           ...init,

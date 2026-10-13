@@ -680,6 +680,125 @@ async function runTests() {
   }
 
   // ==========================================================================
+  // SECTION 8: ADVERSARIAL R3: LIFECYCLE RESILIENCE, SESSION PURITY & SCOPING
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}━━━ 8. ADVERSARIAL R3: LIFECYCLE RESILIENCE, SESSION PURITY & SCOPING ━━━${RESET}`);
+
+  // Test 8.1: useSessionSync validates session against masterSupabase
+  const sessionSyncPath = path.resolve(process.cwd(), 'src/hooks/useSessionSync.ts');
+  const sessionSyncCode = fs.readFileSync(sessionSyncPath, 'utf8');
+  if (sessionSyncCode.includes('masterSupabase') && /masterSupabase\s*\.from\(['"]users['"]\)/.test(sessionSyncCode)) {
+    pass('useSessionSync validates session against masterSupabase (immune to satellite rewrite logout)');
+  } else {
+    fail('useSessionSync does not use masterSupabase for session validation');
+  }
+
+  // Test 8.2: SuperadminView central school and admin mutations are pinned to masterSupabase
+  const freshSaCode = fs.readFileSync(superadminViewPath, 'utf8');
+  const usesMasterForSchools =
+    /masterSupabase\s*\.from\(['"]sekolah['"]\)\s*\.insert/.test(freshSaCode) &&
+    /masterSupabase\s*\.from\(['"]sekolah['"]\)\s*\.update/.test(freshSaCode) &&
+    /masterSupabase\s*\.from\(['"]sekolah['"]\)\s*\.delete/.test(freshSaCode);
+
+  const usesMasterForAdmins =
+    /masterSupabase\s*\.from\(['"]users['"]\)\s*\.insert/.test(freshSaCode) &&
+    /masterSupabase\s*\.from\(['"]users['"]\)\s*\.update/.test(freshSaCode) &&
+    /masterSupabase\s*\.from\(['"]users['"]\)\s*\.delete/.test(freshSaCode);
+
+  if (usesMasterForSchools && usesMasterForAdmins) {
+    pass('SuperadminView platform operations (schools & admins) are pinned to masterSupabase');
+  } else {
+    fail(`SuperadminView operations not pinned to masterSupabase: schools=${usesMasterForSchools}, admins=${usesMasterForAdmins}`);
+  }
+
+  // Test 8.3: SuperadminView satellite health check cancels timeout handle & guards unmount
+  if (
+    freshSaCode.includes('clearTimeout(timerId)') &&
+    freshSaCode.includes('isMountedRef.current') &&
+    freshSaCode.includes('timeoutPromise.catch')
+  ) {
+    pass('SuperadminView health checks cancel pending timeouts and guard against unmounted state updates');
+  } else {
+    fail('SuperadminView health check lacks timeout cancellation or unmount protection');
+  }
+
+  // Test 8.4: sipjam_satellite_error event handled in UI
+  const freshAsCode = fs.readFileSync(appScreenPath, 'utf8');
+  if (freshSaCode.includes('sipjam_satellite_error') && freshAsCode.includes('sipjam_satellite_error')) {
+    pass('SuperadminView and AppScreen actively listen to sipjam_satellite_error events');
+  } else {
+    fail('sipjam_satellite_error event listener missing from SuperadminView or AppScreen');
+  }
+
+  // Test 8.5: AppScreen constructs effectiveUser with target school ID and name
+  if (
+    freshAsCode.includes('const effectiveUser: AppUser = (isSuperadmin && activeTargetSchool)') &&
+    freshAsCode.includes('sekolah_id: activeTargetSchool.id') &&
+    freshAsCode.includes('sekolah_nama: activeTargetSchool.nama')
+  ) {
+    pass('AppScreen dynamically constructs effectiveUser with activeTargetSchool context');
+  } else {
+    fail('AppScreen missing effectiveUser target school scoping');
+  }
+
+  // Test 8.6: AppScreen exposes satellite school admin tools when monitoring satellite
+  if (
+    freshAsCode.includes("view-admin-data") &&
+    freshAsCode.includes("activeTargetSchool ? [") &&
+    freshAsCode.includes("currentView.startsWith('view-superadmin-')")
+  ) {
+    pass('AppScreen dynamically exposes satellite admin tools and renders views without trap');
+  } else {
+    fail('AppScreen does not expose satellite admin tools or lacks view-superadmin un-trapping');
+  }
+
+  // Test 8.7: getSatelliteSupabaseClient injects sanitized user ID and session token headers
+  try {
+    setServerTenantContext({ role: 'Superadmin', userId: 'user-sat-test', sessionToken: 'tok-sat-test' });
+    let satHeaders: Headers | null = null;
+    const testSat: SatelliteSchool = {
+      id: 'sch-client-test',
+      nama: 'Client Test School',
+      supabase_url: 'https://placeholder.supabase.co',
+      supabase_anon_key: 'test-key'
+    };
+    const satClient = getSatelliteSupabaseClient(testSat);
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async (_: any, init: any) => {
+      satHeaders = new Headers(init?.headers);
+      return new Response(JSON.stringify([]), { status: 200 });
+    };
+
+    await satClient.from('sekolah').select('id');
+    globalThis.fetch = origFetch;
+
+    if (
+      satHeaders &&
+      satHeaders.get('x-user-id') === 'user-sat-test' &&
+      satHeaders.get('x-session-token') === 'tok-sat-test' &&
+      satHeaders.get('x-user-role') === 'Superadmin' &&
+      satHeaders.get('x-sekolah-id') === 'sch-client-test'
+    ) {
+      pass('getSatelliteSupabaseClient injects full sanitized tenant headers (role, userId, sessionToken, sekolahId)');
+    } else {
+      fail(`getSatelliteSupabaseClient failed header check: id=${satHeaders?.get('x-user-id')}, tok=${satHeaders?.get('x-session-token')}`);
+    }
+    clearServerTenantContext();
+  } catch (e) {
+    fail('Error in getSatelliteSupabaseClient header injection test', e);
+  }
+
+  // Test 8.8: ID and NPSN synchronization between sekolah_registry and sekolah tables
+  if (
+    freshSaCode.includes('insertedReg?.id ? { id: insertedReg.id }') &&
+    freshSaCode.includes("eq('npsn', school.npsn)")
+  ) {
+    pass('SuperadminView ensures ID and NPSN synchronization between sekolah_registry and sekolah');
+  } else {
+    fail('SuperadminView lacks ID or NPSN sync between sekolah_registry and sekolah');
+  }
+
+  // ==========================================================================
   // SUMMARY
   // ==========================================================================
   console.log(`\n${CYAN}══════════════════════════════════════════════════════════════════════════${RESET}`);

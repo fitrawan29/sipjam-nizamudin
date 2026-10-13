@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Swal from 'sweetalert2';
 import type { Sekolah, User } from '@/types/database';
 import {
@@ -25,6 +25,7 @@ export default function SuperadminView({
   initialTab = 'overview',
   onNavigateTab
 }: SuperadminViewProps) {
+  const isMountedRef = useRef(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'jaringan' | 'sekolah' | 'admins'>(initialTab);
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +37,33 @@ export default function SuperadminView({
   const [healthMap, setHealthMap] = useState<Record<string, 'online' | 'paused' | 'checking'>>({});
   const [metricsMap, setMetricsMap] = useState<Record<string, { guruCount: number; siswaCount: number }>>({});
   const [isPingingAll, setIsPingingAll] = useState(false);
+
+  // Track component lifecycle to prevent setting state on unmounted component
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Listen to satellite error events (e.g. 401 Unauthorized from invalid anon key)
+  useEffect(() => {
+    const handleSatelliteErr = (e: any) => {
+      const errSchool = e?.detail?.school;
+      if (errSchool) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Koneksi Satelit Gagal (401)',
+          html: `Instance Supabase <b>${errSchool.nama}</b> mengembalikan respon 401 Unauthorized.<br><span class="text-xs text-gray-500">Periksa kembali Supabase Anon Key di menu edit sekolah satelit.</span>`,
+          confirmButtonColor: '#0B4619'
+        });
+      }
+    };
+    window.addEventListener('sipjam_satellite_error', handleSatelliteErr);
+    return () => {
+      window.removeEventListener('sipjam_satellite_error', handleSatelliteErr);
+    };
+  }, []);
 
   // Stats / Overview Data
   const [stats, setStats] = useState({
@@ -195,14 +223,22 @@ export default function SuperadminView({
 
     await Promise.allSettled(
       schoolsToCheck.map(async (sch) => {
+        let timerId: any = null;
         try {
           if (sch.supabase_url && sch.supabase_anon_key && sch.supabase_url.trim()) {
             const client = getSatelliteSupabaseClient(sch);
             const pingPromise = client.from('sekolah').select('id').limit(1);
-            const timeoutPromise = new Promise<{ error: any }>((_, reject) =>
-              setTimeout(() => reject(new Error('Connection Timeout')), 4000)
-            );
-            const res: any = await Promise.race([pingPromise, timeoutPromise]);
+            const timeoutPromise = new Promise<{ error: any }>((_, reject) => {
+              timerId = setTimeout(() => reject(new Error('Connection Timeout')), 4000);
+            });
+            timeoutPromise.catch(() => {}); // prevent unhandled rejection if pingPromise resolves first
+
+            let res: any;
+            try {
+              res = await Promise.race([pingPromise, timeoutPromise]);
+            } finally {
+              if (timerId) clearTimeout(timerId);
+            }
 
             // Database is online ONLY if no error or empty-table code (PGRST116).
             // Any network error, timeout, 503, or HTML response (failing JSON parsing) marks it paused/unreachable.
@@ -230,12 +266,14 @@ export default function SuperadminView({
             };
           }
         } catch (_) {
+          if (timerId) clearTimeout(timerId);
           updatedHealth[sch.id] = 'paused';
           updatedMetrics[sch.id] = { guruCount: 0, siswaCount: 0 };
         }
       })
     );
 
+    if (!isMountedRef.current) return;
     setHealthMap(prev => ({ ...prev, ...updatedHealth }));
     setMetricsMap(prev => ({ ...prev, ...updatedMetrics }));
     setIsPingingAll(false);
@@ -446,13 +484,18 @@ export default function SuperadminView({
     if (formValues) {
       setLoading(true);
       try {
-        const { error: regErr } = await masterSupabase.from('sekolah_registry').insert([formValues]);
+        const { data: insertedReg, error: regErr } = await masterSupabase
+          .from('sekolah_registry')
+          .insert([formValues])
+          .select()
+          .maybeSingle();
         if (regErr) {
           throw new Error(regErr.message);
         }
 
         try {
           await masterSupabase.from('sekolah').insert([{
+            ...(insertedReg?.id ? { id: insertedReg.id } : {}),
             ...formValues,
             mode_presensi_siswa: 'qr'
           }]);
@@ -574,7 +617,10 @@ export default function SuperadminView({
         if (regErr) throw new Error(regErr.message);
 
         try {
-          await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
+          const { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
+          if (schErr && school.npsn) {
+            await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
+          }
         } catch (_) {}
 
         if (activeTargetSchool?.id === school.id) {
@@ -619,7 +665,10 @@ export default function SuperadminView({
       if (regErr) throw new Error(regErr.message);
 
       try {
-        await masterSupabase.from('sekolah').delete().eq('id', school.id);
+        const { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
+        if (schErr && school.npsn) {
+          await masterSupabase.from('sekolah').delete().eq('npsn', school.npsn);
+        }
       } catch (_) {}
 
       if (activeTargetSchool?.id === school.id) {
@@ -740,7 +789,7 @@ export default function SuperadminView({
     if (formValues) {
       setLoading(true);
       try {
-        const { error } = await supabase.from('sekolah').insert([formValues]);
+        const { error } = await masterSupabase.from('sekolah').insert([formValues]);
         if (error) {
           Swal.fire('Gagal Mendaftarkan Sekolah', error.message, 'error');
         } else {
@@ -858,7 +907,7 @@ export default function SuperadminView({
     if (formValues) {
       setLoading(true);
       try {
-        const { error } = await supabase
+        const { error } = await masterSupabase
           .from('sekolah')
           .update(formValues)
           .eq('id', school.id);
@@ -895,7 +944,7 @@ export default function SuperadminView({
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await masterSupabase
         .from('sekolah')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', school.id);
@@ -931,7 +980,7 @@ export default function SuperadminView({
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { error } = await masterSupabase
         .from('sekolah')
         .delete()
         .eq('id', school.id);
@@ -1022,7 +1071,7 @@ export default function SuperadminView({
     if (formValues) {
       setLoading(true);
       try {
-        const { error } = await supabase.from('users').insert([formValues]);
+        const { error } = await masterSupabase.from('users').insert([formValues]);
         if (error) {
           if (error.code === '23505') {
             Swal.fire('Gagal Membuat Admin', `Username "${formValues.username}" sudah digunakan. Gunakan username lain.`, 'error');
@@ -1105,10 +1154,7 @@ export default function SuperadminView({
     if (formValues) {
       setLoading(true);
       try {
-        const { error } = await supabase
-          .from('users')
-          .update(formValues)
-          .eq('id', admin.id);
+        const { error } = await masterSupabase.from('users').update(formValues).eq('id', admin.id);
 
         if (error) {
           Swal.fire('Gagal Memperbarui Admin', error.message, 'error');
@@ -1139,10 +1185,7 @@ export default function SuperadminView({
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', admin.id);
+      const { error } = await masterSupabase.from('users').delete().eq('id', admin.id);
 
       if (error) {
         Swal.fire('Gagal Menghapus Admin', error.message, 'error');

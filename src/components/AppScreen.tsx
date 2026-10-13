@@ -63,14 +63,24 @@ export default function AppScreen({
   onUserUpdate?: (user: AppUser) => void;
 }) {
   const { syncKey, currentUser, setCurrentUser } = useSessionSync(initialUser, onLogout, onUserUpdate);
-  const user = currentUser || initialUser;
-  const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
+  const baseUser = currentUser || initialUser;
+  const isSuperadmin = (baseUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+  const isAdmin = isSuperadmin || (baseUser?.role || '').toLowerCase() === 'admin';
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
     return isSuperadmin ? getActiveTargetSchool() : null;
   });
   const [satelliteSchools, setSatelliteSchools] = useState<SatelliteSchool[]>([]);
+
+  // When Superadmin selects an active target satellite school, inject its school ID and name into effectiveUser
+  const effectiveUser: AppUser = (isSuperadmin && activeTargetSchool)
+    ? {
+        ...baseUser,
+        sekolah_id: activeTargetSchool.id,
+        sekolah_nama: activeTargetSchool.nama
+      }
+    : baseUser;
+  const user = effectiveUser;
 
   useEffect(() => {
     if (!isSuperadmin) return;
@@ -102,8 +112,22 @@ export default function AppScreen({
       setActiveTargetSchoolState(sch);
     });
 
+    const handleSatelliteErr = (e: any) => {
+      const errSchool = e?.detail?.school;
+      if (errSchool && isSuperadmin) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Akses Satelit Ditolak (401)',
+          html: `Koneksi ke instance Supabase <b>${errSchool.nama}</b> ditolak (401 Unauthorized). Kredensial anon key mungkin tidak valid atau kedaluwarsa.`,
+          confirmButtonColor: '#0B4619'
+        });
+      }
+    };
+    window.addEventListener('sipjam_satellite_error', handleSatelliteErr);
+
     return () => {
       window.removeEventListener('sipjam_satellite_schools_updated', fetchSchoolsForSwitcher);
+      window.removeEventListener('sipjam_satellite_error', handleSatelliteErr);
       unsubscribe();
     };
   }, [isSuperadmin]);
@@ -309,7 +333,15 @@ export default function AppScreen({
     { id: 'view-superadmin-overview', icon: 'fa-gauge-high', label: 'Ringkasan Platform' },
     { id: 'view-superadmin-jaringan', icon: 'fa-network-wired', label: 'Jaringan Sekolah' },
     { id: 'view-superadmin-sekolah', icon: 'fa-school', label: 'Kelola Sekolah' },
-    { id: 'view-superadmin-admins', icon: 'fa-user-shield', label: 'Admin Sekolah' }
+    { id: 'view-superadmin-admins', icon: 'fa-user-shield', label: 'Admin Sekolah' },
+    ...(activeTargetSchool ? [
+      { id: 'view-admin-data', icon: 'fa-database', label: `Master (${activeTargetSchool.nama})` },
+      { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
+      { id: 'view-admin-rekap', icon: 'fa-file-invoice', label: 'Rekap Presensi' },
+      { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' },
+      { id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik Satelit' },
+      { id: 'view-admin-config', icon: 'fa-gears', label: 'Sistem Satelit' },
+    ] : [])
   ];
 
   const menuItemsGuru = [
@@ -568,7 +600,7 @@ export default function AppScreen({
 
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
         <div key={`${currentView}-${syncKey}`} className="page-transition">
-          {isSuperadmin ? (
+          {isSuperadmin && currentView.startsWith('view-superadmin-') ? (
             <SuperadminView
               user={user}
               initialTab={

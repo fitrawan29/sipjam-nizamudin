@@ -57,3 +57,12 @@ Follow the SWE Light loop: dispatch one implementer on the whole task, then adve
 Comply with GEMINI.md (git status, git add ., git commit, git push origin main upon completion).
 Maintain your progress.md and BRIEFING.md in your working directory.
 When finished and verified, write your completion handoff.md and send a completion message back to the Sentinel.
+
+
+## 2026-10-13T11:05:57Z
+The server was restarted. Please resume the workflow for swe_19 immediately:
+- Implementer and Reviewer Round 1 & 2 are complete (committed in e7ae069).
+- Check Reviewer Round 3 status (reviewer_r3 26668052-f448-41d5-918a-cd2029a70110). Revive it or complete Reviewer Round 3.
+- Run full test and build verification (tsc --noEmit, npm test, npm run build).
+- Comply with GEMINI.md git workflow (git status, add, commit, push).
+- Write handoff.md and report completion to Sentinel.
