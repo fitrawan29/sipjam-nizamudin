@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-13T13:20:00Z
+# BRIEFING — 2026-10-13T18:25:00Z
 
 ## Mission
-Hapus dan bersihkan seluruh fitur, tab, dan modal usang (obsolete) pada role Superadmin yang sudah tidak diperlukan lagi akibat transisi ke arsitektur Jaringan Sekolah Satelit & Multi-School Switcher.
+Mengganti mekanisme presensi Dinas Luar pada guru: dari upload dokumen (Surat Tugas) menjadi pengambilan foto lokasi langsung melalui kamera lengkap dengan watermark waktu & koordinat GPS/lokasi, tanpa batasan radius lokasi dari sekolah.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -24,6 +24,9 @@ Hapus dan bersihkan seluruh fitur, tab, dan modal usang (obsolete) pada role Sup
 - Victory Auditor (current): 0a222086-d0a2-4a8f-a306-398787ac97d1 (victory_auditor_31)
 - Orchestrator (current): 150d9d73-054f-4d29-b427-4a8f6e4dcd3d (swe_20)
 - Victory Auditor (current): fad6b157-5c8b-4522-bb29-088d3a55a119 (victory_auditor_33)
+- Orchestrator (current): to be spawned (swe_21)
+- Orchestrator (current): 3e8bd682-e794-4929-9e75-6ca1b41b7e73 (swe_21)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -37,26 +40,24 @@ Hapus dan bersihkan seluruh fitur, tab, dan modal usang (obsolete) pada role Sup
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Ponytail online-only transactions & 100% offline AI preservation)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained feature, small and focused; Portal Induk Jaringan Multi-Sekolah / Single Superadmin SSO / School Switcher)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained cleanup and removal of obsolete Superadmin tabs and modals, small and focused)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Dinas Luar camera presensi without radius restriction)
 
 ## User Context
-- **Last user request**: Hapus dan bersihkan seluruh fitur, tab, dan modal usang (obsolete) pada role Superadmin yang sudah tidak diperlukan lagi akibat transisi ke arsitektur Jaringan Sekolah Satelit & Multi-School Switcher.
+- **Last user request**: Mengganti mekanisme presensi Dinas Luar pada guru: dari upload dokumen (Surat Tugas) menjadi pengambilan foto lokasi langsung melalui kamera lengkap dengan watermark waktu & koordinat GPS/lokasi, tanpa batasan radius lokasi dari sekolah.
 - **Pending clarifications**: none
-- **Delivered results**: Seluruh persyaratan R1-R3 selesai diimplementasikan, melalui 3 round adversarial review, diverifikasi independen oleh Victory Auditor 33 (VICTORY CONFIRMED), automated test 23 suites lulus 100%, TypeScript lolos 0 error, Next.js production build bersih, dan git repo tersinkronisasi ke origin/main.
+- **Delivered results**: none for current request
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (killed upon victory)
-- **Active Subagents**: none (killed upon victory)
+- **Active Crons**: task-24 (progress reporting), task-26 (liveness check)
+- **Active Subagents**: swe_21 (3e8bd682-e794-4929-9e75-6ca1b41b7e73)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_20\DISPATCH.md — Dispatch instructions for swe_20
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_20\handoff.md — Completion handoff from swe_20
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_33\DISPATCH.md — Dispatch instructions for victory_auditor_33
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_33\handoff.md — Independent post-victory audit report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_21\DISPATCH.md — Dispatch instructions for swe_21

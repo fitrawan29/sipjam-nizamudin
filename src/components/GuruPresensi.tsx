@@ -183,8 +183,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
   const togglePresensiFields = async (val: string) => {
     if (isSwitchingRef.current) return;
 
-    const requiresDocumentNew = val === 'Izin' || val === 'Dinas Luar';
-    const requiresDocumentOld = jenisPresensi === 'Izin' || jenisPresensi === 'Dinas Luar';
+    const requiresDocumentNew = val === 'Izin';
+    const requiresDocumentOld = jenisPresensi === 'Izin';
 
     // If teacher has a live selfie attached and attempts to switch to a document upload mode
     if (file && requiresDocumentNew && !requiresDocumentOld) {
@@ -232,7 +232,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
         isSwitchingRef.current = false;
       }
     }
-    // Switching between modes of the same type (e.g. Sekolah <-> Terlambat, Izin <-> Dinas Luar) preserves the attachment seamlessly without prompt
+    // Switching between modes of the same type (e.g. Sekolah <-> Terlambat <-> Dinas Luar) preserves the attachment seamlessly without prompt
     setJenisPresensi(val);
   };
 
@@ -248,8 +248,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
       }
     }
 
-    const requiresDocumentNew = nextJenisPresensi === 'Izin' || nextJenisPresensi === 'Dinas Luar';
-    const requiresDocumentOld = jenisPresensi === 'Izin' || jenisPresensi === 'Dinas Luar';
+    const requiresDocumentNew = nextJenisPresensi === 'Izin';
+    const requiresDocumentOld = jenisPresensi === 'Izin';
 
     if (file && !requiresDocumentNew && requiresDocumentOld) {
       isSwitchingRef.current = true;
@@ -302,9 +302,10 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
   // Determine if selfie camera is required
   // Required for:
   // 1. Hadir di Sekolah (Datang & Pulang)
-  // 2. Terlambat / Izin Terlambat
-  // Dinas Luar and Izin/Sakit require file upload instead.
-  const isSelfieRequired = jenisPresensi === 'Sekolah' || jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
+  // 2. Dinas Luar (Datang & Pulang)
+  // 3. Terlambat / Izin Terlambat
+  // Izin/Sakit requires file upload instead.
+  const isSelfieRequired = jenisPresensi === 'Sekolah' || jenisPresensi === 'Dinas Luar' || jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
 
     const getRequiredDocName = () => {
       if (jenisPresensi === 'Dinas Luar') return 'Surat Tugas';
@@ -611,7 +612,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     if (fileToUpload) {
       (async () => {
         try {
-          const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
+          // Storage folder routing: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'
+          const folderName = (currentJenis === 'Dinas Luar' || jenisPresensi === 'Dinas Luar') ? 'Presensi_DinasLuar' : 'Presensi_Guru';
           const prefix = isSelfie ? 'Selfie' : 'Dokumen';
           const driveUrl = await uploadToDrive(fileToUpload, currentTeacher, folderName, prefix);
           
@@ -940,7 +942,9 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                     <label className="block text-[11px] font-bold text-gray-900 dark:text-white ml-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <i className="fa-solid fa-camera text-emerald-500"></i>
-                        {tipeAbsen === 'Pulang' ? 'Foto Kamera Langsung Presensi Pulang (Wajib)' : 'Foto Selfie Kehadiran (Wajib dengan Watermark)'}
+                        {tipeAbsen === 'Pulang' 
+                          ? (jenisPresensi === 'Dinas Luar' ? 'Foto Lokasi Presensi Pulang Dinas Luar (Wajib)' : 'Foto Kamera Langsung Presensi Pulang (Wajib)') 
+                          : (jenisPresensi === 'Dinas Luar' ? 'Foto Lokasi Dinas Luar (Wajib dengan Watermark)' : 'Foto Selfie Kehadiran (Wajib dengan Watermark)')}
                       </span>
                       <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
                         {file ? '✓ Foto Terpasang' : 'Kamera Aktif'}
@@ -948,8 +952,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                     </label>
 
                     <CameraSelfieCapture
-                      key={`camera-presensi-${tipeAbsen}-${jenisPresensi}`}
-                      
+                      key={`camera-presensi-${tipeAbsen}`}
+                      orientation="portrait"
                       initialFacingMode="environment"
                       initialCoordinates={userCoords}
                       existingPhotoUrl={photoPreviewUrl}
@@ -968,7 +972,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                         <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
                           <i className="fa-solid fa-circle-check text-emerald-500 text-base"></i>
                           <div>
-                            <div>Foto selfie siap digunakan</div>
+                            <div>{jenisPresensi === 'Dinas Luar' ? 'Foto lokasi siap digunakan' : 'Foto selfie siap digunakan'}</div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
                               {file.name} ({(file.size / 1024).toFixed(0)} KB)
                             </div>
