@@ -1314,6 +1314,23 @@ export default function PiketView({ user }: { user: any }) {
     }
 
     setLoading(true);
+    let fileUrl = '';
+    if (file) {
+      try {
+        fileUrl = await uploadToDrive(file, user.nama, 'Laporan_Piket', 'Piket_Dokumentasi');
+      } catch (err: any) {
+        setLoading(false);
+        return showToast('Gagal Upload', err.message, 'error');
+      }
+    }
+
+    // Automated Verification Evaluation for Piket:
+    // Auto-approved ('Disetujui') if rekap_absen_kelas is filled AND foto bukti is attached.
+    // Otherwise remains 'Menunggu'.
+    const isRekapLengkap = Boolean(piketAbsensi && Object.keys(piketAbsensi).length > 0);
+    const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0);
+    const statusVerifikasiPiket = (isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
+
     const newLaporan = {
       id: crypto.randomUUID(),
       timestamp: getWitaTimestamp(),
@@ -1321,9 +1338,9 @@ export default function PiketView({ user }: { user: any }) {
       guru_pelapor: user.nama,
       user_id: user.id,
       rekap_absen_kelas: JSON.stringify(piketAbsensi),
-      catatan_apel: 'Tugas Utama: Mengisi Presensi Siswa',
-      link_foto: '',
-      status_verifikasi: 'Disetujui',
+      catatan_apel: catatan || 'Tugas Utama: Mengisi Presensi Siswa',
+      link_foto: fileUrl,
+      status_verifikasi: statusVerifikasiPiket,
       kehadiran_guru_piket: 'Hadir',
       ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
     };

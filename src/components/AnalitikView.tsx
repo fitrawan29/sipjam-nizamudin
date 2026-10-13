@@ -35,7 +35,7 @@ export default function AnalitikView({ user }: { user: any }) {
         .gte('timestamp', start)
         .lte('timestamp', end)
         .eq('tipe_absen', 'Datang')
-        .eq('status_verifikasi', 'Disetujui');
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
 
       // 2. Fetch Jurnal
       const { data: jurnal } = await supabase

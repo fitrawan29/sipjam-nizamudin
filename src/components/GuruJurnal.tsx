@@ -769,6 +769,27 @@ export default function GuruJurnal({ user }: { user: any }) {
       ? `[INVAL - Menggantikan: ${guruDigantikan.nama}] `
       : '';
 
+    // Automated Verification Evaluation:
+    // Jurnal is auto-approved ('Disetujui') if:
+    // 1. Materi / Konten is filled
+    // 2. Kegiatan is filled
+    // 3. Student attendance (absensi) is completed
+    // 4. Photo evidence (fileUrl) is attached
+    // Otherwise falls back to 'Menunggu'
+    const isMateriLengkap = Boolean(finalKonten && finalKonten.trim().length > 0);
+    const isKegiatanLengkap = Boolean(kegiatan && kegiatan.trim().length > 0);
+    const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading');
+    const isAbsensiLengkap = tipeJurnal === 'Jurnal KBM'
+      ? (
+          Boolean(computedKehadiran && computedKehadiran.trim().length > 0 && computedKehadiran !== '-') &&
+          (students && students.length > 0 ? Object.keys(absensi || {}).length > 0 : true)
+        )
+      : Boolean(computedKehadiran && computedKehadiran.trim().length > 0);
+
+    const statusVerifikasiJurnal = (isMateriLengkap && isKegiatanLengkap && isAbsensiLengkap && isFotoLengkap)
+      ? 'Disetujui'
+      : 'Menunggu';
+
     const newJurnal = {
       id: crypto.randomUUID(),
       timestamp: getWitaTimestamp(),
@@ -784,7 +805,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       refleksi: refleksi,
       detail_absen: '',
       link_bukti_foto: fileUrl,
-      status_verifikasi: 'Menunggu',
+      status_verifikasi: statusVerifikasiJurnal,
       catatan_khusus_siswa: catatanSiswa,
       // Dual-write new R2 columns
       kktp: tipeJurnal === 'Jurnal KBM' ? (kktp || null) : null,

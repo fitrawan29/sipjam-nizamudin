@@ -66,9 +66,10 @@ export async function POST(req: NextRequest) {
     const longitude = typeof body.longitude === 'number' ? body.longitude : (body.longitude ? parseFloat(body.longitude) : null);
 
     // Status verifikasi default:
-    // If 'Izin Terlambat' or 'Terlambat', requires admin approval -> 'Menunggu'
-    // Otherwise use provided status or 'Diverifikasi'
-    const status_verifikasi = isTerlambat ? 'Menunggu' : (body.status_verifikasi || 'Diverifikasi');
+    // If 'Izin Terlambat', 'Terlambat', or memerlukan_persetujuan_admin, requires admin approval -> 'Menunggu'
+    // Otherwise use provided status or 'Disetujui'
+    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true';
+    const status_verifikasi = (isTerlambat || isMemerlukanPersetujuan) ? 'Menunggu' : (body.status_verifikasi || 'Disetujui');
 
     const presensiRecord: any = {
       id: body.id || crypto.randomUUID(),

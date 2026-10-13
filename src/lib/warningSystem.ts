@@ -156,7 +156,7 @@ export function evaluateTeacherWarningsSync(
       isAbsent = true;
     } else {
       const hasApprovedLeave = dayPresensi.some(
-        p => ['Sakit', 'Izin', 'Dinas Luar'].includes(p.jenis_presensi) && p.status_verifikasi === 'Disetujui'
+        p => ['Sakit', 'Izin', 'Dinas Luar'].includes(p.jenis_presensi) && (p.status_verifikasi === 'Disetujui' || p.status_verifikasi === 'Diverifikasi')
       );
       if (hasApprovedLeave) {
         isAbsent = false;

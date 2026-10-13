@@ -270,7 +270,7 @@ export default function AdminVerifView({ user }: { user: any }) {
   const bulkVerifyCurrent = async () => {
     if (taskFilter === 'Belum') return;
     const { table, label } = getActiveConfig();
-    const pendingItems = displayList.filter(item => !item.isUnsubmitted && item.status_verifikasi !== 'Disetujui' && item.status_verifikasi !== 'Ditolak');
+    const pendingItems = displayList.filter(item => !item.isUnsubmitted && item.status_verifikasi !== 'Disetujui' && item.status_verifikasi !== 'Diverifikasi' && item.status_verifikasi !== 'Ditolak');
 
     if (pendingItems.length === 0) {
       return showToast('Info', `Semua ${label} yang tampil sudah berstatus Disetujui.`, 'info');
@@ -515,6 +515,8 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
         const isPending = rawStatus === 'Menunggu' || rawStatus === 'Menunggu Verifikasi';
         if (verifFilter === 'Menunggu') {
           if (!isPending) return false;
+        } else if (verifFilter === 'Disetujui') {
+          if (rawStatus !== 'Disetujui' && rawStatus !== 'Diverifikasi') return false;
         } else if (rawStatus !== verifFilter) {
           return false;
         }
@@ -817,7 +819,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                     {activeTab === 'Piket' ? item.guru_pelapor : item.nama_guru}
                   </h3>
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                      item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                      item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                       item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>{item.status_verifikasi || 'Menunggu'}</span>
@@ -949,12 +951,12 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                 <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                   {item.status_verifikasi !== 'Ditolak' && (
                     <button 
-                      disabled={processingId === item.id || item.status_verifikasi === 'Disetujui'}
+                      disabled={processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
                       onClick={() => verifyItem(item.id, 'Disetujui')} 
                       title="Terima / Setujui Pengajuan"
                       aria-label="Terima / Setujui"
                       className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
-                        item.status_verifikasi === 'Disetujui'
+                        item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
                           : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
                       }`}

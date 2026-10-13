@@ -149,7 +149,7 @@ export async function evaluateAndApplyAutoAlpa(
   for (const [teacherKey, teacherRecs] of teacherRecordsMap.entries()) {
     // Check if teacher has approved leave or active multi-day leave
     const hasApprovedLeave = teacherRecs.some(
-      r => ['Sakit', 'Izin', 'Dinas Luar'].includes(r.jenis_presensi) && r.status_verifikasi === 'Disetujui'
+      r => ['Sakit', 'Izin', 'Dinas Luar'].includes(r.jenis_presensi) && (r.status_verifikasi === 'Disetujui' || r.status_verifikasi === 'Diverifikasi')
     );
     const hasActiveMultiDay = activeMultiDayLeaves.some(
       l => (l.nama_guru || '').toLowerCase().trim() === teacherKey

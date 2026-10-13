@@ -77,7 +77,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     setDurasiHari(days);
   };
 
-  const memerlukanPersetujuanAdmin = (detailIzin === 'Sakit' && durasiHari >= 3) || (jenisPresensi === 'Izin' && durasiHari > 3);
+  const isSakit = detailIzin === 'Sakit' || jenisPresensi === 'Sakit';
+  const memerlukanPersetujuanAdmin = (isSakit && durasiHari >= 3) || (!isSakit && (jenisPresensi === 'Izin' || detailIzin === 'Izin') && durasiHari > 3);
   const [file, setFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [lokasi, setLokasi] = useState('Mendeteksi lokasi...');
@@ -433,11 +434,11 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
     if (isTerlambat) {
       statusVerif = 'Menunggu';
     } else if (jenisPresensi === 'Sekolah') {
-      statusVerif = (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Diverifikasi' : 'Menunggu';
+      statusVerif = (jarakAktual === null || jarakAktual <= gpsConfig.radius) ? 'Disetujui' : 'Menunggu';
     } else if (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') {
-      statusVerif = memerlukanPersetujuanAdmin ? 'Menunggu' : 'Diverifikasi';
+      statusVerif = memerlukanPersetujuanAdmin ? 'Menunggu' : 'Disetujui';
     } else if (jenisPresensi === 'Dinas Luar') {
-      statusVerif = 'Diverifikasi'; // Or should it require admin? Assume auto-approved or 'Menunggu'?
+      statusVerif = 'Disetujui'; // statusVerif = 'Diverifikasi'
     }
 
     const presensiId = crypto.randomUUID();
@@ -457,7 +458,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
       durasi_hari: jenisPresensi === 'Izin' ? durasiHari : 1,
       tanggal_mulai: jenisPresensi === 'Izin' ? tanggalMulai : getWitaDateStr(),
       tanggal_selesai: jenisPresensi === 'Izin' ? tanggalSelesai : getWitaDateStr(),
-      memerlukan_persetujuan_admin: jenisPresensi === 'Izin' ? memerlukanPersetujuanAdmin : false,
+      memerlukan_persetujuan_admin: (jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? memerlukanPersetujuanAdmin : false,
       is_auto_checkout: false,
       lokasi: lokasi,
       jarak: jarakAktual !== null ? `${jarakAktual} m` : 'Unknown',
