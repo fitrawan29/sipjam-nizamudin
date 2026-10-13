@@ -78,7 +78,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
   };
 
   const isSakit = detailIzin === 'Sakit' || jenisPresensi === 'Sakit';
-  const memerlukanPersetujuanAdmin = (isSakit && durasiHari >= 3) || (!isSakit && (jenisPresensi === 'Izin' || detailIzin === 'Izin') && durasiHari > 3);
+  const memerlukanPersetujuanAdmin = (isSakit && durasiHari >= 3) || (!isSakit && (jenisPresensi === 'Izin' || detailIzin === 'Izin' || detailIzin.includes('Izin')) && durasiHari > 3);
   const [file, setFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [lokasi, setLokasi] = useState('Mendeteksi lokasi...');

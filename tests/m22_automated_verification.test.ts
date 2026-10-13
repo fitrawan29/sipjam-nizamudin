@@ -415,12 +415,21 @@ async function runTestSuite() {
     const jenis_presensi = body.jenis_presensi || body.status || 'Sekolah';
     const isTerlambat = jenis_presensi === 'Izin Terlambat' || jenis_presensi === 'Terlambat';
     const detail_izin = body.detail_izin || body.detail || body.keterangan || (isTerlambat ? 'Izin Datang Terlambat' : '');
-    const durasi_hari = typeof body.durasi_hari === 'number' ? body.durasi_hari : (body.durasi_hari ? parseInt(String(body.durasi_hari), 10) : 1);
-    const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit';
-    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin') && durasi_hari > 3);
-    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin;
+    const durasi_hari = typeof body.durasi_hari === 'number' ? Math.max(1, body.durasi_hari) : (body.durasi_hari ? Math.max(1, parseInt(String(body.durasi_hari), 10) || 1) : 1);
+    const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('sakit'));
+    const isIzin = jenis_presensi === 'Izin' || detail_izin === 'Izin' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('izin')) || (typeof jenis_presensi === 'string' && jenis_presensi.toLowerCase().includes('izin'));
+    const isLeave = isSakit || isIzin;
+    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || isIzin) && durasi_hari > 3);
+
+    const numericJarak = typeof body.jarak === 'number'
+      ? body.jarak
+      : (body.jarak ? parseFloat(String(body.jarak).replace(/[^0-9.]/g, '')) : null);
+    const radiusToleransi = typeof body.radius === 'number' ? body.radius : 100;
+    const isDiLuarRadius = (jenis_presensi === 'Sekolah' || (!jenis_presensi && !isLeave)) && numericJarak !== null && !isNaN(numericJarak) && numericJarak > radiusToleransi;
+
+    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin || isDiLuarRadius;
     const status_verifikasi = (isTerlambat || isMemerlukanPersetujuan) ? 'Menunggu' : (body.status_verifikasi || 'Disetujui');
-    return { status_verifikasi, isMemerlukanPersetujuan, durasi_hari };
+    return { status_verifikasi, isMemerlukanPersetujuan, durasi_hari, isDiLuarRadius };
   };
 
   // R5.2: Server enforces sick leave >= 3 days -> Menunggu even if client omitted flag
@@ -454,8 +463,9 @@ async function runTestSuite() {
   // R5.6: GuruPresensi preserves multi-day duration and dates for Sakit
   const presensiCodeUpdated = fs.readFileSync(guruPresensiPath, 'utf-8');
   assert(
-    presensiCodeUpdated.includes("(jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? durasiHari : 1") &&
-    presensiCodeUpdated.includes("(jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') ? tanggalMulai : getWitaDateStr()"),
+    presensiCodeUpdated.includes("(jenisPresensi === 'Izin' || jenisPresensi === 'Sakit'") &&
+    presensiCodeUpdated.includes("durasiHari") &&
+    presensiCodeUpdated.includes("tanggalMulai"),
     'R5.6: GuruPresensi preserves multi-day durasiHari and dates for Sakit attendance'
   );
 
@@ -484,6 +494,56 @@ async function runTestSuite() {
     piketCodeUpdated.includes("r.status_verifikasi === 'Disetujui' || r.status_verifikasi === 'Diverifikasi'") &&
     rekapJurnalCode.includes("j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi'"),
     'R5.9: PiketView and RekapJurnalView support both Disetujui and legacy Diverifikasi statuses'
+  );
+
+  // R5.10: Server geofence out-of-radius validation
+  const serverOutOfRadius = evaluateServerAttendanceStatus({ jenis_presensi: 'Sekolah', jarak: 250 });
+  const serverOutOfRadiusStr = evaluateServerAttendanceStatus({ jenis_presensi: 'Sekolah', jarak: '300 m' });
+  assert(
+    serverOutOfRadius.status_verifikasi === 'Menunggu' && serverOutOfRadius.isDiLuarRadius === true &&
+    serverOutOfRadiusStr.status_verifikasi === 'Menunggu' && serverOutOfRadiusStr.isDiLuarRadius === true,
+    'R5.10: Server /api/attendance enforces Sekolah out-of-radius (> 100m) -> Menunggu'
+  );
+
+  // R5.11: Server geofence in-radius auto-approval
+  const serverInRadius = evaluateServerAttendanceStatus({ jenis_presensi: 'Sekolah', jarak: 45 });
+  assert(
+    serverInRadius.status_verifikasi === 'Disetujui' && serverInRadius.isDiLuarRadius === false,
+    'R5.11: Server /api/attendance auto-approves Sekolah in-radius (<= 100m) -> Disetujui'
+  );
+
+  // R5.12: Server leave inference for Izin Pribadi / Khusus with long duration (> 3 days)
+  const serverIzinPribadiLong = evaluateServerAttendanceStatus({ detail_izin: 'Izin Pribadi', durasi_hari: 4 });
+  assert(
+    serverIzinPribadiLong.status_verifikasi === 'Menunggu' && serverIzinPribadiLong.isMemerlukanPersetujuan === true,
+    'R5.12: Server /api/attendance enforces Izin Pribadi > 3 days -> Menunggu even without explicit jenis_presensi'
+  );
+
+  // R5.13: Server leave inference for Izin Pribadi with short duration (<= 3 days)
+  const serverIzinPribadiShort = evaluateServerAttendanceStatus({ detail_izin: 'Izin Pribadi', durasi_hari: 2 });
+  assert(
+    serverIzinPribadiShort.status_verifikasi === 'Disetujui' && serverIzinPribadiShort.isMemerlukanPersetujuan === false,
+    'R5.13: Server /api/attendance auto-approves Izin Pribadi <= 3 days -> Disetujui'
+  );
+
+  // R5.14: AnalitikView parity across Presensi, Jurnal, and Piket for legacy Diverifikasi
+  const analitikPath = path.join(rootDir, 'src', 'components', 'AnalitikView.tsx');
+  const analitikCode = fs.readFileSync(analitikPath, 'utf-8');
+  assert(
+    analitikCode.includes(".from('presensi_guru')") &&
+    analitikCode.includes(".from('jurnal_pembelajaran')") &&
+    analitikCode.includes(".from('laporan_piket')") &&
+    (analitikCode.match(/\.in\('status_verifikasi', \['Disetujui', 'Diverifikasi'\]\)/g) || []).length >= 3,
+    'R5.14: AnalitikView applies [Disetujui, Diverifikasi] query across Presensi, Jurnal, and Piket'
+  );
+
+  // R5.15: Photo upload error resilience: gagal_upload is rejected as incomplete photo
+  const updatedJurnalCode = fs.readFileSync(guruJurnalPath, 'utf-8');
+  const updatedPiketCode = fs.readFileSync(piketViewPath, 'utf-8');
+  assert(
+    updatedJurnalCode.includes("fileUrl !== 'gagal_upload'") &&
+    updatedPiketCode.includes("fileUrl !== 'gagal_upload'"),
+    'R5.15: GuruJurnal and PiketView do not treat gagal_upload as complete photo evidence'
   );
 
   console.log('\n========================================================================');

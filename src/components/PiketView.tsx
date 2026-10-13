@@ -1336,7 +1336,7 @@ export default function PiketView({ user }: { user: any }) {
     // Auto-approved ('Disetujui') if rekap_absen_kelas is filled AND foto bukti is attached.
     // Otherwise remains 'Menunggu'.
     const isRekapLengkap = Boolean(piketAbsensi && Object.keys(piketAbsensi).length > 0);
-    const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0);
+    const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading' && fileUrl !== 'gagal_upload');
     const statusVerifikasiPiket = (isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
 
     const newLaporan = {

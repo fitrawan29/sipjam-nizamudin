@@ -778,7 +778,7 @@ export default function GuruJurnal({ user }: { user: any }) {
     // Otherwise falls back to 'Menunggu'
     const isMateriLengkap = Boolean(finalKonten && finalKonten.trim().length > 0);
     const isKegiatanLengkap = Boolean(kegiatan && kegiatan.trim().length > 0);
-    const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading');
+    const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading' && fileUrl !== 'gagal_upload');
     const isAbsensiLengkap = tipeJurnal === 'Jurnal KBM'
       ? (
           Boolean(computedKehadiran && computedKehadiran.trim().length > 0 && computedKehadiran !== '-') &&

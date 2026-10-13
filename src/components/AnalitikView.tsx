@@ -43,7 +43,7 @@ export default function AnalitikView({ user }: { user: any }) {
         .select('nama_guru')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
-        .eq('status_verifikasi', 'Disetujui');
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
 
       // 3. Fetch Piket
       const { data: piket } = await supabase
@@ -51,7 +51,7 @@ export default function AnalitikView({ user }: { user: any }) {
         .select('guru_pelapor, tanggal, status_verifikasi')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
-        .eq('status_verifikasi', 'Disetujui');
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
 
       // Aggregate stats
       let h = 0, i = 0, d = 0;

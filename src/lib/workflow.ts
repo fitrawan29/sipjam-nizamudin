@@ -462,7 +462,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       // If teacher has an active sick/leave record where today is within [tanggal_mulai, tanggal_selesai]
       const multiDayLeave = allPresensi.find((p: any) => {
         if (p.status_verifikasi === 'Ditolak') return false;
-        const isLeaveType = p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit' || p.detail_izin === 'Sakit';
+        const isLeaveType = p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit' || p.detail_izin === 'Sakit' || (p.detail_izin && p.detail_izin.includes('Izin'));
         if (!isLeaveType) return false;
         if (p.tanggal_mulai && p.tanggal_selesai) {
           return todayStr >= p.tanggal_mulai && todayStr <= p.tanggal_selesai;

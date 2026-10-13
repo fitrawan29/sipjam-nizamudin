@@ -66,17 +66,29 @@ export async function POST(req: NextRequest) {
     const longitude = typeof body.longitude === 'number' ? body.longitude : (body.longitude ? parseFloat(body.longitude) : null);
 
     // Multi-day leave parameters & server-side leave duration rule validation
-    const durasi_hari = typeof body.durasi_hari === 'number' ? body.durasi_hari : (body.durasi_hari ? parseInt(String(body.durasi_hari), 10) : 1);
+    const durasi_hari = typeof body.durasi_hari === 'number' ? Math.max(1, body.durasi_hari) : (body.durasi_hari ? Math.max(1, parseInt(String(body.durasi_hari), 10) || 1) : 1);
     const tanggal_mulai = body.tanggal_mulai || getWitaDateStr();
     const tanggal_selesai = body.tanggal_selesai || getWitaDateStr();
-    const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit';
-    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin') && durasi_hari > 3);
+    const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('sakit'));
+    const isIzin = jenis_presensi === 'Izin' || detail_izin === 'Izin' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('izin')) || (typeof jenis_presensi === 'string' && jenis_presensi.toLowerCase().includes('izin'));
+    const isLeave = isSakit || isIzin;
+    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || isIzin) && durasi_hari > 3);
+
+    // Geofence radius validation on server:
+    // If 'Sekolah' attendance is outside allowable radius (default 100m or custom radius), requires admin approval -> 'Menunggu'
+    const numericJarak = typeof body.jarak === 'number'
+      ? body.jarak
+      : (body.jarak ? parseFloat(String(body.jarak).replace(/[^0-9.]/g, '')) : null);
+    const radiusToleransi = typeof body.radius === 'number' ? body.radius : 100;
+    const isDiLuarRadius = (jenis_presensi === 'Sekolah' || (!jenis_presensi && !isLeave)) && numericJarak !== null && !isNaN(numericJarak) && numericJarak > radiusToleransi;
 
     // Status verifikasi default:
-    // If 'Izin Terlambat', 'Terlambat', or memerlukan_persetujuan_admin (explicit or calculated by leave duration), requires admin approval -> 'Menunggu'
+    // If 'Izin Terlambat', 'Terlambat', di luar radius, or memerlukan_persetujuan_admin (explicit or calculated by leave duration), requires admin approval -> 'Menunggu'
     // Otherwise use provided status or 'Disetujui'
-    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin;
+    const isMemerlukanPersetujuan = body.memerlukan_persetujuan_admin === true || body.memerlukan_persetujuan_admin === 'true' || isLeavePersetujuanAdmin || isDiLuarRadius;
     const status_verifikasi = (isTerlambat || isMemerlukanPersetujuan) ? 'Menunggu' : (body.status_verifikasi || 'Disetujui');
+
+    const isMultiDayType = jenis_presensi === 'Izin' || jenis_presensi === 'Sakit' || isLeave;
 
     const presensiRecord: any = {
       id: body.id || crypto.randomUUID(),
@@ -86,10 +98,10 @@ export async function POST(req: NextRequest) {
       tipe_absen: tipe_absen,
       jenis_presensi: jenis_presensi,
       detail_izin: detail_izin,
-      durasi_hari: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? durasi_hari : 1,
-      tanggal_mulai: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? tanggal_mulai : getWitaDateStr(),
-      tanggal_selesai: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? tanggal_selesai : getWitaDateStr(),
-      memerlukan_persetujuan_admin: (jenis_presensi === 'Izin' || jenis_presensi === 'Sakit') ? isMemerlukanPersetujuan : false,
+      durasi_hari: isMultiDayType ? durasi_hari : 1,
+      tanggal_mulai: isMultiDayType ? tanggal_mulai : getWitaDateStr(),
+      tanggal_selesai: isMultiDayType ? tanggal_selesai : getWitaDateStr(),
+      memerlukan_persetujuan_admin: isMultiDayType ? isMemerlukanPersetujuan : (isDiLuarRadius || false),
       lokasi: lokasi,
       jarak: jarak,
       link_bukti: link_bukti,
