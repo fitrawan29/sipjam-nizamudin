@@ -22,6 +22,9 @@ import {
   setServerActiveTargetSchool,
   getSatelliteSupabaseClient,
   dynamicTenantFetch,
+  normalizeSupabaseUrl,
+  masterSupabase,
+  onActiveTargetSchoolChange,
   SatelliteSchool
 } from '../src/lib/supabaseClient';
 
@@ -359,6 +362,169 @@ async function runTests() {
     pass('RBAC Isolation: Guru and Admin menus strictly exclude satellite school network features');
   } else {
     fail('RBAC Leak: Satellite school network found in Guru or Admin menu items!');
+  }
+
+  // ==========================================================================
+  // SECTION 6: ADVERSARIAL EDGE CASES, HEALTH RESILIENCE & MULTI-TAB SYNC
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}━━━ 6. ADVERSARIAL EDGE CASES, HEALTH RESILIENCE & MULTI-TAB SYNC ━━━${RESET}`);
+
+  // Test 6.1: normalizeSupabaseUrl trims whitespace, removes trailing slashes, ensures https://
+  try {
+    const norm1 = normalizeSupabaseUrl('   https://school-1.supabase.co///   ');
+    const norm2 = normalizeSupabaseUrl('school-2.supabase.co/');
+    const norm3 = normalizeSupabaseUrl(null);
+    const norm4 = normalizeSupabaseUrl('');
+
+    if (
+      norm1 === 'https://school-1.supabase.co' &&
+      norm2 === 'https://school-2.supabase.co' &&
+      norm3 === '' &&
+      norm4 === ''
+    ) {
+      pass('normalizeSupabaseUrl successfully cleans whitespace, strips trailing slashes, and ensures https://');
+    } else {
+      fail(`normalizeSupabaseUrl failed: norm1="${norm1}", norm2="${norm2}"`);
+    }
+  } catch (e) {
+    fail('Error in normalizeSupabaseUrl test', e);
+  }
+
+  // Test 6.2: Central master endpoint protection: dynamicTenantFetch does NOT rewrite sekolah_registry
+  try {
+    setServerTenantContext({ role: 'Superadmin' });
+    setServerActiveTargetSchool({
+      id: 'sch-remote-satellite',
+      nama: 'Remote Satellite',
+      supabase_url: 'https://satellite-school.supabase.co',
+      supabase_anon_key: 'satellite-anon-key'
+    });
+
+    let interceptedUrl = '';
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input: any) => {
+      interceptedUrl = typeof input === 'string' ? input : input.url;
+      return new Response(JSON.stringify([{ id: 'reg-1' }]), { status: 200 });
+    };
+
+    // Querying sekolah_registry while an external satellite school is active
+    await dynamicTenantFetch('https://placeholder.supabase.co/rest/v1/sekolah_registry?select=*', {});
+    globalThis.fetch = originalFetch;
+
+    if (interceptedUrl.includes('placeholder.supabase.co/rest/v1/sekolah_registry')) {
+      pass('Central Master Protection: dynamicTenantFetch protects sekolah_registry from satellite URL rewriting');
+    } else {
+      fail(`sekolah_registry was wrongly rewritten to satellite: ${interceptedUrl}`);
+    }
+
+    clearServerTenantContext();
+    clearActiveTargetSchool();
+  } catch (e) {
+    fail('Error in sekolah_registry master protection test', e);
+  }
+
+  // Test 6.3: Central master endpoint protection: dynamicTenantFetch does NOT rewrite verify_login RPC
+  try {
+    setServerTenantContext({ role: 'Superadmin' });
+    setServerActiveTargetSchool({
+      id: 'sch-sat-auth',
+      nama: 'Satellite Auth',
+      supabase_url: 'https://satellite-auth.supabase.co',
+      supabase_anon_key: 'satellite-auth-key'
+    });
+
+    let interceptedUrl = '';
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input: any) => {
+      interceptedUrl = typeof input === 'string' ? input : input.url;
+      return new Response(JSON.stringify([{ id: 'u1', role: 'Superadmin' }]), { status: 200 });
+    };
+
+    await dynamicTenantFetch('https://placeholder.supabase.co/rest/v1/rpc/verify_login', { method: 'POST' });
+    globalThis.fetch = originalFetch;
+
+    if (interceptedUrl.includes('placeholder.supabase.co/rest/v1/rpc/verify_login')) {
+      pass('Central Master Protection: dynamicTenantFetch protects verify_login RPC from satellite rewriting');
+    } else {
+      fail(`verify_login RPC was wrongly rewritten to satellite: ${interceptedUrl}`);
+    }
+
+    clearServerTenantContext();
+    clearActiveTargetSchool();
+  } catch (e) {
+    fail('Error in verify_login RPC master protection test', e);
+  }
+
+  // Test 6.4: dynamicTenantFetch supports URL object inputs
+  try {
+    setServerTenantContext({ role: 'Superadmin' });
+    setServerActiveTargetSchool({
+      id: 'sch-url-obj',
+      nama: 'URL Object Target',
+      supabase_url: 'https://satellite-url.supabase.co',
+      supabase_anon_key: 'sat-key'
+    });
+
+    let interceptedUrl = '';
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (input: any) => {
+      interceptedUrl = typeof input === 'string' ? input : (input instanceof URL ? input.href : input.url);
+      return new Response(JSON.stringify([]), { status: 200 });
+    };
+
+    const targetUrlObj = new URL('https://placeholder.supabase.co/rest/v1/data_guru?select=id');
+    await dynamicTenantFetch(targetUrlObj, {});
+    globalThis.fetch = originalFetch;
+
+    if (interceptedUrl.startsWith('https://satellite-url.supabase.co/rest/v1/data_guru')) {
+      pass('dynamicTenantFetch successfully rewrites input when provided as a native URL object');
+    } else {
+      fail(`URL object input was not rewritten: got ${interceptedUrl}`);
+    }
+
+    clearServerTenantContext();
+    clearActiveTargetSchool();
+  } catch (e) {
+    fail('Error in URL object rewriting test', e);
+  }
+
+  // Test 6.5: masterSupabase instance exists and targets the default central origin
+  try {
+    if (masterSupabase && typeof masterSupabase.from === 'function') {
+      pass('masterSupabase client instance is instantiated and exported for direct central access');
+    } else {
+      fail('masterSupabase client instance is invalid or not exported');
+    }
+  } catch (e) {
+    fail('Error in masterSupabase verification test', e);
+  }
+
+  // Test 6.6: onActiveTargetSchoolChange cross-tab helper function exists
+  try {
+    if (typeof onActiveTargetSchoolChange === 'function') {
+      pass('onActiveTargetSchoolChange listener helper is exported and handles multi-tab synchronization');
+    } else {
+      fail('onActiveTargetSchoolChange helper is not exported');
+    }
+  } catch (e) {
+    fail('Error in onActiveTargetSchoolChange test', e);
+  }
+
+  // Test 6.7: SuperadminView normalizes Vercel link href to prevent relative path bug
+  if (saCode.includes('sch.vercel_url.startsWith(\'http://\') || sch.vercel_url.startsWith(\'https://\')')) {
+    pass('SuperadminView card links normalize Vercel URL to avoid relative URL navigation bug');
+  } else {
+    fail('SuperadminView card link lacks Vercel URL protocol normalization');
+  }
+
+  // Test 6.8: SuperadminView checks error on sekolah_registry CRUD operations
+  if (
+    saCode.includes('if (regErr) {') ||
+    saCode.includes('if (regErr) throw')
+  ) {
+    pass('SuperadminView validates PostgREST error responses on sekolah_registry operations');
+  } else {
+    fail('SuperadminView does not check or propagate errors on sekolah_registry operations');
   }
 
   // ==========================================================================

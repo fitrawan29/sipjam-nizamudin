@@ -30,8 +30,14 @@ import AIAssistant from '@/components/AIAssistant';
 import { OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN } from '@/components/Onboarding';
 import { TutorialModal } from '@/components/Tutorial';
 import TeacherReminderManager from './TeacherReminderManager';
-import { Pengumuman } from '@/types/database';
-import { supabase, getActiveTargetSchool, setActiveTargetSchool, type SatelliteSchool } from '@/lib/supabaseClient';
+import {
+  supabase,
+  masterSupabase,
+  getActiveTargetSchool,
+  setActiveTargetSchool,
+  onActiveTargetSchoolChange,
+  type SatelliteSchool
+} from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
 import { useTheme } from '@/context/ThemeContext';
 import { AppUser } from '@/types/user';
@@ -71,7 +77,7 @@ export default function AppScreen({
 
     const fetchSchoolsForSwitcher = async () => {
       try {
-        const { data: regData } = await supabase.from('sekolah_registry').select('*').order('nama');
+        const { data: regData } = await masterSupabase.from('sekolah_registry').select('*').order('nama');
         if (regData && regData.length > 0) {
           setSatelliteSchools(regData as SatelliteSchool[]);
           return;
@@ -79,7 +85,7 @@ export default function AppScreen({
       } catch (_) {}
 
       try {
-        const { data: schData } = await supabase.from('sekolah').select('*').order('nama');
+        const { data: schData } = await masterSupabase.from('sekolah').select('*').order('nama');
         if (schData && schData.length > 0) {
           setSatelliteSchools(schData as SatelliteSchool[]);
         }
@@ -88,11 +94,18 @@ export default function AppScreen({
 
     fetchSchoolsForSwitcher();
 
-    const handleTargetChange = (e: any) => {
-      setActiveTargetSchoolState(e.detail || null);
+    // Listen to changes in the registered schools list (added, edited, deleted)
+    window.addEventListener('sipjam_satellite_schools_updated', fetchSchoolsForSwitcher);
+
+    // Multi-tab and intra-tab synchronization for active target school switch
+    const unsubscribe = onActiveTargetSchoolChange((sch) => {
+      setActiveTargetSchoolState(sch);
+    });
+
+    return () => {
+      window.removeEventListener('sipjam_satellite_schools_updated', fetchSchoolsForSwitcher);
+      unsubscribe();
     };
-    window.addEventListener('sipjam_target_school_changed', handleTargetChange);
-    return () => window.removeEventListener('sipjam_target_school_changed', handleTargetChange);
   }, [isSuperadmin]);
 
   const [currentView, setCurrentView] = useState(() => {
@@ -350,7 +363,7 @@ export default function AppScreen({
             </button>
             <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
               SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">
-                {user?.role === 'Superadmin' ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
+                {isSuperadmin ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
               </span>
             </div>
             {isSuperadmin && (

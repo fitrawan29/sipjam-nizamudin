@@ -151,6 +151,50 @@ export function getActiveTenantContext(): TenantContext {
 }
 
 /**
+ * Normalizes a Supabase project URL by trimming whitespace, stripping trailing slashes,
+ * and ensuring an absolute 'https://' protocol if missing.
+ */
+export function normalizeSupabaseUrl(url?: string | null): string {
+  if (!url || !url.trim()) return '';
+  let cleaned = url.trim().replace(/\/+$/, '');
+  if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+    cleaned = 'https://' + cleaned;
+  }
+  return cleaned;
+}
+
+/**
+ * Subscribes to active target school changes across the current tab and other browser tabs.
+ * Returns an unsubscription cleanup function.
+ */
+export function onActiveTargetSchoolChange(callback: (school: SatelliteSchool | null) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const handleCustom = (e: any) => {
+    callback(e.detail || null);
+  };
+
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === 'sipjam_active_target_school') {
+      try {
+        const parsed = e.newValue ? JSON.parse(e.newValue) : null;
+        callback(parsed);
+      } catch (_) {
+        callback(null);
+      }
+    }
+  };
+
+  window.addEventListener('sipjam_target_school_changed', handleCustom);
+  window.addEventListener('storage', handleStorage);
+
+  return () => {
+    window.removeEventListener('sipjam_target_school_changed', handleCustom);
+    window.removeEventListener('storage', handleStorage);
+  };
+}
+
+/**
  * Custom fetch wrapper that intercepts every outgoing PostgREST / Storage / RPC request
  * and dynamically injects `x-sekolah-id`, `x-user-role`, `x-user-id`, and `x-session-token` headers according to the active
  * user session or context.
@@ -158,6 +202,9 @@ export function getActiveTenantContext(): TenantContext {
  * When Superadmin switches to a satellite target school (`activeTargetSchool`), this fetcher
  * dynamically routes requests to the target Supabase instance URL and injects the target anon key
  * seamlessly without requiring user re-authentication.
+ *
+ * Requests targeting the central school registry (`sekolah_registry`) or login RPCs are protected
+ * and always execute against the central Master Supabase instance.
  */
 export const dynamicTenantFetch: typeof fetch = async (input, init) => {
   // Initialize Headers from existing Request object or init.headers
@@ -191,32 +238,52 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
     headers.set('x-session-token', sessionToken);
   }
 
+  const requestUrlStr = typeof input === 'string'
+    ? input
+    : (typeof Request !== 'undefined' && input instanceof Request)
+      ? input.url
+      : (typeof URL !== 'undefined' && input instanceof URL)
+        ? input.href
+        : '';
+
+  // Central tables and RPCs that must NEVER be rewritten to satellite instances
+  const isMasterOnlyRequest =
+    requestUrlStr.includes('/rest/v1/sekolah_registry') ||
+    requestUrlStr.includes('/rest/v1/rpc/verify_login') ||
+    headers.get('x-target-scope') === 'master';
+
   let effectiveInput = input;
-  // If target school specifies an external Supabase instance URL & key, route requests dynamically:
-  if (targetSchool?.supabase_url && targetSchool.supabase_url.trim()) {
-    const targetBase = targetSchool.supabase_url.trim().replace(/\/+$/, '');
-    const currentBase = supabaseUrl.replace(/\/+$/, '');
+  // If target school specifies an external Supabase instance URL & key, route requests dynamically
+  // (unless this is a master-only central registry or session query)
+  if (!isMasterOnlyRequest && targetSchool?.supabase_url && targetSchool.supabase_url.trim()) {
+    const targetBase = normalizeSupabaseUrl(targetSchool.supabase_url);
+    const currentBase = normalizeSupabaseUrl(supabaseUrl);
 
     if (typeof input === 'string') {
       if (input.startsWith(currentBase)) {
         effectiveInput = input.replace(currentBase, targetBase);
       } else if (input.startsWith('/')) {
         effectiveInput = `${targetBase}${input}`;
+      } else if (!input.startsWith('http://') && !input.startsWith('https://')) {
+        effectiveInput = `${targetBase}/${input.replace(/^\/+/, '')}`;
+      }
+    } else if (typeof URL !== 'undefined' && input instanceof URL) {
+      if (input.href.startsWith(currentBase)) {
+        effectiveInput = new URL(input.href.replace(currentBase, targetBase));
       }
     } else if (typeof Request !== 'undefined' && input instanceof Request) {
       if (input.url.startsWith(currentBase)) {
         const rewritten = input.url.replace(currentBase, targetBase);
         effectiveInput = new Request(rewritten, input);
+      } else if (input.url.startsWith('/')) {
+        effectiveInput = new Request(`${targetBase}${input.url}`, input);
       }
     }
 
     if (targetSchool.supabase_anon_key && targetSchool.supabase_anon_key.trim()) {
       const anonKey = targetSchool.supabase_anon_key.trim();
       headers.set('apikey', anonKey);
-      const auth = headers.get('authorization');
-      if (!auth || auth === `Bearer ${supabaseKey}` || auth.includes('placeholder')) {
-        headers.set('authorization', `Bearer ${anonKey}`);
-      }
+      headers.set('authorization', `Bearer ${anonKey}`);
     }
   }
 
@@ -250,6 +317,13 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
 });
 
 /**
+ * Central Master Supabase client instance pinned directly to the master portal database.
+ * Completely bypasses dynamic satellite rewriting. Essential for central registry operations,
+ * session authentication validations, and platform-wide administrative queries.
+ */
+export const masterSupabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
+
+/**
  * Factory helper to instantiate a dedicated Supabase client for a specific satellite school.
  * Useful for checking health status, querying metrics, or isolated operations.
  */
@@ -258,7 +332,8 @@ export function getSatelliteSupabaseClient(
   options?: SupabaseClientOptions<any>
 ): SupabaseClient {
   const target = school || getActiveTargetSchool();
-  const targetUrl = (target?.supabase_url && target.supabase_url.trim()) ? target.supabase_url.trim() : supabaseUrl;
+  const rawTargetUrl = (target?.supabase_url && target.supabase_url.trim()) ? target.supabase_url.trim() : supabaseUrl;
+  const targetUrl = normalizeSupabaseUrl(rawTargetUrl) || supabaseUrl;
   const targetKey = (target?.supabase_anon_key && target.supabase_anon_key.trim()) ? target.supabase_anon_key.trim() : supabaseKey;
   const targetSekolahId = target?.id ? String(target.id).trim() : null;
 

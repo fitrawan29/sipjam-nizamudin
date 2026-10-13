@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase } from '@/lib/supabaseClient';
 import LoginScreen from '@/components/LoginScreen';
 import AppScreen from '@/components/AppScreen';
 import PreLoginSplash from '@/components/PreLoginSplash';
@@ -22,7 +22,7 @@ function MainApp() {
   // ponytail: minimal session validator against live database to prevent stale state
   const validateSessionWithDb = async (storedUserObj: any) => {
     try {
-      const { data: dbUser, error } = await supabase
+      const { data: dbUser, error } = await masterSupabase
         .from('users')
         .select('id, username, nama, role, sekolah_id, session_token, avatar')
         .eq('id', storedUserObj.id)

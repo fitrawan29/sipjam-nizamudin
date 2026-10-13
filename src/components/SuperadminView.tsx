@@ -5,8 +5,10 @@ import Swal from 'sweetalert2';
 import type { Sekolah, User } from '@/types/database';
 import {
   supabase,
+  masterSupabase,
   getActiveTargetSchool,
   setActiveTargetSchool,
+  onActiveTargetSchoolChange,
   getSatelliteSupabaseClient,
   type SatelliteSchool
 } from '@/lib/supabaseClient';
@@ -61,13 +63,12 @@ export default function SuperadminView({
     }
   }, [initialTab]);
 
-  // Sync active target school with global storage events
+  // Sync active target school across tabs and custom events
   useEffect(() => {
-    const handleTargetChange = (e: any) => {
-      setActiveTargetSchoolState(e.detail || null);
-    };
-    window.addEventListener('sipjam_target_school_changed', handleTargetChange);
-    return () => window.removeEventListener('sipjam_target_school_changed', handleTargetChange);
+    const unsubscribe = onActiveTargetSchoolChange((sch) => {
+      setActiveTargetSchoolState(sch);
+    });
+    return unsubscribe;
   }, []);
 
   const switchTab = (tab: 'overview' | 'jaringan' | 'sekolah' | 'admins') => {
@@ -83,8 +84,8 @@ export default function SuperadminView({
   const fetchAllData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch schools
-      const { data: schools, error: schoolErr } = await supabase
+      // 1. Fetch schools from central master
+      const { data: schools, error: schoolErr } = await masterSupabase
         .from('sekolah')
         .select('*')
         .order('created_at', { ascending: false });
@@ -95,8 +96,8 @@ export default function SuperadminView({
         setSekolahList(schools);
       }
 
-      // 2. Fetch admin users (role = 'Admin')
-      const { data: admins, error: adminErr } = await supabase
+      // 2. Fetch admin users (role = 'Admin') from central master
+      const { data: admins, error: adminErr } = await masterSupabase
         .from('users')
         .select('*')
         .eq('role', 'Admin')
@@ -108,10 +109,11 @@ export default function SuperadminView({
         setAdminList(admins);
       }
 
-      // 3. Fetch count of teachers & students across all schools
+      // 3. Fetch count of teachers & students across all schools (or targeted active school)
+      const countClient = activeTargetSchool?.supabase_url ? getSatelliteSupabaseClient(activeTargetSchool) : masterSupabase;
       const [guruCountRes, siswaCountRes] = await Promise.all([
-        supabase.from('data_guru').select('id', { count: 'exact', head: true }),
-        supabase.from('data_siswa').select('id', { count: 'exact', head: true })
+        countClient.from('data_guru').select('id', { count: 'exact', head: true }),
+        countClient.from('data_siswa').select('id', { count: 'exact', head: true })
       ]);
 
       const totalGuru = guruCountRes.count || 0;
@@ -129,10 +131,10 @@ export default function SuperadminView({
         totalSiswa
       });
 
-      // 4. Fetch Satellite School Registry
+      // 4. Fetch Satellite School Registry from central master
       let loadedSatellites: SatelliteSchool[] = [];
       try {
-        const { data: regData, error: regErr } = await supabase
+        const { data: regData, error: regErr } = await masterSupabase
           .from('sekolah_registry')
           .select('*')
           .order('nama', { ascending: true });
@@ -164,7 +166,7 @@ export default function SuperadminView({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeTargetSchool]);
 
   const checkSatelliteHealthAndMetrics = useCallback(async (schoolsToCheck: SatelliteSchool[]) => {
     if (!schoolsToCheck || schoolsToCheck.length === 0) return;
@@ -190,11 +192,10 @@ export default function SuperadminView({
             );
             const res: any = await Promise.race([pingPromise, timeoutPromise]);
 
-            if (res?.error && res.error.code !== 'PGRST116' && !res.error.message?.includes('JSON')) {
-              updatedHealth[sch.id] = 'paused';
-            } else {
-              updatedHealth[sch.id] = 'online';
-            }
+            // Database is online ONLY if no error or empty-table code (PGRST116).
+            // Any network error, timeout, 503, or HTML response (failing JSON parsing) marks it paused/unreachable.
+            const isOnline = !res?.error || res?.error?.code === 'PGRST116';
+            updatedHealth[sch.id] = isOnline ? 'online' : 'paused';
 
             const [guruRes, siswaRes] = await Promise.all([
               client.from('data_guru').select('id', { count: 'exact', head: true }),
@@ -205,9 +206,10 @@ export default function SuperadminView({
               siswaCount: siswaRes.count || 0
             };
           } else {
+            // Central master database query
             const [guruRes, siswaRes] = await Promise.all([
-              supabase.from('data_guru').select('id', { count: 'exact', head: true }).eq('sekolah_id', sch.id),
-              supabase.from('data_siswa').select('id', { count: 'exact', head: true }).eq('sekolah_id', sch.id)
+              masterSupabase.from('data_guru').select('id', { count: 'exact', head: true }).eq('sekolah_id', sch.id),
+              masterSupabase.from('data_siswa').select('id', { count: 'exact', head: true }).eq('sekolah_id', sch.id)
             ]);
             updatedHealth[sch.id] = sch.status === 'nonaktif' ? 'paused' : 'online';
             updatedMetrics[sch.id] = {
@@ -297,6 +299,7 @@ export default function SuperadminView({
   const handleSelectTargetSchool = (school: SatelliteSchool | null) => {
     setActiveTargetSchool(school);
     setActiveTargetSchoolState(school);
+    fetchAllData();
     if (school) {
       Swal.fire({
         icon: 'success',
@@ -419,16 +422,21 @@ export default function SuperadminView({
     if (formValues) {
       setLoading(true);
       try {
-        try {
-          await supabase.from('sekolah_registry').insert([formValues]);
-        } catch (_) {}
+        const { error: regErr } = await masterSupabase.from('sekolah_registry').insert([formValues]);
+        if (regErr) {
+          throw new Error(regErr.message);
+        }
 
         try {
-          await supabase.from('sekolah').insert([{
+          await masterSupabase.from('sekolah').insert([{
             ...formValues,
             mode_presensi_siswa: 'qr'
           }]);
         } catch (_) {}
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sipjam_satellite_schools_updated'));
+        }
 
         Swal.fire({
           icon: 'success',
@@ -526,17 +534,21 @@ export default function SuperadminView({
     if (formValues) {
       setLoading(true);
       try {
+        const { error: regErr } = await masterSupabase.from('sekolah_registry').update(formValues).eq('id', school.id);
+        if (regErr) throw new Error(regErr.message);
+
         try {
-          await supabase.from('sekolah_registry').update(formValues).eq('id', school.id);
-        } catch (_) {}
-        try {
-          await supabase.from('sekolah').update(formValues).eq('id', school.id);
+          await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
         } catch (_) {}
 
         if (activeTargetSchool?.id === school.id) {
           const updatedTarget: SatelliteSchool = { ...school, ...formValues };
           setActiveTargetSchool(updatedTarget);
           setActiveTargetSchoolState(updatedTarget);
+        }
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sipjam_satellite_schools_updated'));
         }
 
         Swal.fire('Berhasil', 'Data sekolah satelit berhasil diperbarui!', 'success');
@@ -567,15 +579,19 @@ export default function SuperadminView({
 
     setLoading(true);
     try {
+      const { error: regErr } = await masterSupabase.from('sekolah_registry').delete().eq('id', school.id);
+      if (regErr) throw new Error(regErr.message);
+
       try {
-        await supabase.from('sekolah_registry').delete().eq('id', school.id);
-      } catch (_) {}
-      try {
-        await supabase.from('sekolah').delete().eq('id', school.id);
+        await masterSupabase.from('sekolah').delete().eq('id', school.id);
       } catch (_) {}
 
       if (activeTargetSchool?.id === school.id) {
         handleSelectTargetSchool(null);
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sipjam_satellite_schools_updated'));
       }
 
       Swal.fire('Berhasil', `Sekolah "${school.nama}" berhasil dihapus dari jaringan.`, 'success');
@@ -2106,7 +2122,7 @@ Superadmin SIPJAM`;
                           </span>
                           {sch.vercel_url ? (
                             <a
-                              href={sch.vercel_url}
+                              href={sch.vercel_url.startsWith('http://') || sch.vercel_url.startsWith('https://') ? sch.vercel_url : `https://${sch.vercel_url}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="font-mono text-emerald-600 dark:text-emerald-400 hover:underline truncate max-w-[150px]"
