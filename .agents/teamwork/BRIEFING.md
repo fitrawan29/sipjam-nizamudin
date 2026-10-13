@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-13T11:38:06Z
+# BRIEFING — 2026-10-13T12:16:30Z
 
 ## Mission
-Bangun fitur Portal Induk Jaringan Multi-Sekolah dengan Akses Superadmin Tunggal (Single Sign-On / School Switcher) pada aplikasi SIPJAM.
+Hapus dan bersihkan seluruh fitur, tab, dan modal usang (obsolete) pada role Superadmin yang sudah tidak diperlukan lagi akibat transisi ke arsitektur Jaringan Sekolah Satelit & Multi-School Switcher.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -22,6 +22,8 @@ Bangun fitur Portal Induk Jaringan Multi-Sekolah dengan Akses Superadmin Tunggal
 - Victory Auditor (current): 24ab1754-6da1-4fde-a60f-345ba204a634 (victory_auditor_30)
 - Orchestrator (current): ff45a26f-b6cf-4779-b111-0990eab12d72 (swe_19)
 - Victory Auditor (current): 0a222086-d0a2-4a8f-a306-398787ac97d1 (victory_auditor_31)
+- Orchestrator (current): 150d9d73-054f-4d29-b427-4a8f6e4dcd3d (swe_20)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -34,26 +36,24 @@ Bangun fitur Portal Induk Jaringan Multi-Sekolah dengan Akses Superadmin Tunggal
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (overhaul of GradebookView CP -> TP -> Asesmen -> Nilai Akhir)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Ponytail online-only transactions & 100% offline AI preservation)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained feature, small and focused; Portal Induk Jaringan Multi-Sekolah / Single Superadmin SSO / School Switcher)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained cleanup and removal of obsolete Superadmin tabs and modals, small and focused)
 
 ## User Context
-- **Last user request**: Bangun fitur Portal Induk Jaringan Multi-Sekolah dengan Akses Superadmin Tunggal (Single Sign-On / School Switcher) pada aplikasi SIPJAM.
+- **Last user request**: Hapus dan bersihkan seluruh fitur, tab, dan modal usang (obsolete) pada role Superadmin yang sudah tidak diperlukan lagi akibat transisi ke arsitektur Jaringan Sekolah Satelit & Multi-School Switcher.
 - **Pending clarifications**: none
-- **Delivered results**: Seluruh persyaratan R1-R4 selesai diimplementasikan, melalui 3 round adversarial review, diverifikasi independen oleh Victory Auditor 31 (VICTORY CONFIRMED), automated test 22 suites lulus 100%, Next.js production build berhasil bersih, dan git repo tersinkronisasi ke origin/main.
+- **Delivered results**: swe_20 dispatched with cron monitoring active
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (killed upon victory)
-- **Active Subagents**: none (killed upon victory)
+- **Active Crons**: task-22 (reporting, */8), task-24 (liveness, */10)
+- **Active Subagents**: 150d9d73-054f-4d29-b427-4a8f6e4dcd3d (swe_20)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_19\DISPATCH.md — Dispatch instructions for swe_19
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_19\handoff.md — Completion handoff from swe_19
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_31\DISPATCH.md — Dispatch instructions for victory_auditor_31
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_31\handoff.md — Independent post-victory audit report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_20\DISPATCH.md — Dispatch instructions for swe_20

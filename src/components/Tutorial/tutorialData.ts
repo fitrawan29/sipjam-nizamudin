@@ -547,41 +547,22 @@ export const TUTORIAL_DATA: TutorialItem[] = [
     ]
   },
   {
-    id: 'superadmin-sekolah',
-    viewId: 'view-superadmin-sekolah',
-    title: 'Kelola Sekolah & Lisensi',
-    icon: 'fa-school',
+    id: 'superadmin-jaringan',
+    viewId: 'view-superadmin-jaringan',
+    title: 'Jaringan Sekolah Satelit',
+    icon: 'fa-network-wired',
     role: 'superadmin',
-    summary: 'Pendaftaran sekolah baru, pengaktifan/penonaktifan lisensi sekolah, pengaturan paket langganan, dan konfigurasi fitur khusus per-sekolah.',
+    summary: 'Portal Induk Jaringan Multi-Sekolah: manajemen sekolah satelit, live ping status database Supabase, dan peralihan target sekolah (Multi-School Switcher).',
     prerequisites: 'Akun Superadmin platform.',
     steps: [
-      'Buka menu Kelola Sekolah dari sidebar Superadmin.',
-      'Klik "Tambah Sekolah Baru" untuk mendaftarkan institusi sekolah baru (Nama Sekolah, NPSN, Alamat, Jenjang).',
-      'Atur status keaktifan sekolah (Aktif / Non-aktif) dan masa berlaku lisensi.',
-      'Buka form "Edit Sekolah" untuk mengatur fitur per-sekolah: misalnya Mode Jurnal Pembelajaran (Live Camera saja atau Live Camera + Upload Galeri).',
-      'Simpan data sekolah. Sekolah baru langsung siap ditautkan dengan Administrator Sekolah.'
+      'Buka menu Jaringan Sekolah dari sidebar Superadmin.',
+      'Gunakan tombol "Periksa Status Live" untuk mengecek respon live database seluruh sekolah satelit.',
+      'Klik "Kelola Sekolah Ini" pada kartu sekolah untuk beralih konteks pemantauan ke database sekolah tersebut.',
+      'Klik "Buka Web Vercel" untuk mengakses web aplikasi sekolah satelit secara langsung.',
+      'Tambah, edit kredensial Supabase/Vercel, atau hapus sekolah dari jaringan monitoring.'
     ],
     keyTips: [
-      'Setiap data sekolah terisolasi secara aman menggunakan skema multi-tenant berbasis sekolah_id.'
-    ]
-  },
-  {
-    id: 'superadmin-admins',
-    viewId: 'view-superadmin-admins',
-    title: 'Manajemen Administrator Sekolah',
-    icon: 'fa-user-shield',
-    role: 'superadmin',
-    summary: 'Pengelolaan akun Administrator sekolah: pembuatan admin baru, penautan ke instansi sekolah, reset kredensial, dan pemantauan status akun.',
-    prerequisites: 'Akun Superadmin platform.',
-    steps: [
-      'Buka menu Admin Sekolah dari sidebar Superadmin.',
-      'Klik "Buat Akun Admin" untuk membuat kredensial baru bagi pengelola sekolah.',
-      'Isi Nama Admin, Username, Password, dan pilih Sekolah yang akan dikelola oleh admin tersebut.',
-      'Jika admin sekolah lupa password atau terkunci, gunakan tombol "Reset Password" untuk memperbarui kata sandi.',
-      'Pantau status login terakhir dan keaktifan akun admin.'
-    ],
-    keyTips: [
-      'Satu sekolah dapat memiliki lebih dari satu akun Administrator jika didelegasikan oleh Superadmin.'
+      'Peralihan target sekolah satelit memungkinkan Superadmin mengelola data master sekolah tujuan secara transparan tanpa login ulang.'
     ]
   }
 ];

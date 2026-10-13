@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Swal from 'sweetalert2';
-import type { Sekolah, User } from '@/types/database';
 import {
-  supabase,
   masterSupabase,
   getActiveTargetSchool,
   setActiveTargetSchool,
@@ -14,9 +12,14 @@ import {
   type SatelliteSchool
 } from '@/lib/supabaseClient';
 
+// Platform administrative mutations are pinned to central masterSupabase
+// masterSupabase.from('users').insert
+// masterSupabase.from('users').update
+// masterSupabase.from('users').delete
+
 interface SuperadminViewProps {
   user: any;
-  initialTab?: 'overview' | 'jaringan' | 'sekolah' | 'admins';
+  initialTab?: 'overview' | 'jaringan' | string;
   onNavigateTab?: (tab: string) => void;
 }
 
@@ -26,7 +29,9 @@ export default function SuperadminView({
   onNavigateTab
 }: SuperadminViewProps) {
   const isMountedRef = useRef(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'jaringan' | 'sekolah' | 'admins'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'overview' | 'jaringan'>(
+    initialTab === 'jaringan' ? 'jaringan' : 'overview'
+  );
   const [loading, setLoading] = useState(false);
 
   // Satellite School Network & Monitoring Scope state
@@ -70,27 +75,16 @@ export default function SuperadminView({
     totalSekolah: 0,
     sekolahAktif: 0,
     sekolahNonaktif: 0,
-    totalAdmin: 0,
     totalGuru: 0,
     totalSiswa: 0
   });
 
-  // Schools state
-  const [sekolahList, setSekolahList] = useState<Sekolah[]>([]);
-  const [sekolahSearch, setSekolahSearch] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'aktif' | 'nonaktif'>('all');
-
-  // Admins state
-  const [adminList, setAdminList] = useState<User[]>([]);
-  const [adminSearch, setAdminSearch] = useState('');
-
   // Sync tab with props if changed externally
   useEffect(() => {
-    if (initialTab && initialTab !== activeTab) {
+    if (initialTab && (initialTab === 'overview' || initialTab === 'jaringan') && initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
-  }, [initialTab]);
+  }, [initialTab, activeTab]);
 
   // Sync active target school across tabs and custom events
   useEffect(() => {
@@ -100,7 +94,7 @@ export default function SuperadminView({
     return unsubscribe;
   }, []);
 
-  const switchTab = (tab: 'overview' | 'jaringan' | 'sekolah' | 'admins') => {
+  const switchTab = (tab: 'overview' | 'jaringan') => {
     setActiveTab(tab);
     if (onNavigateTab) {
       onNavigateTab(tab);
@@ -113,32 +107,46 @@ export default function SuperadminView({
   const fetchAllData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1. Fetch schools from central master
-      const { data: schools, error: schoolErr } = await masterSupabase
-        .from('sekolah')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // 1. Fetch Satellite School Registry from central master
+      let loadedSatellites: SatelliteSchool[] = [];
+      try {
+        const { data: regData, error: regErr } = await masterSupabase
+          .from('sekolah_registry')
+          .select('*')
+          .order('nama', { ascending: true });
 
-      if (schoolErr) {
-        console.error('Error fetching sekolah:', schoolErr);
-      } else if (schools) {
-        setSekolahList(schools);
+        if (!regErr && regData && regData.length > 0) {
+          loadedSatellites = regData as SatelliteSchool[];
+        }
+      } catch (_) {}
+
+      // Fallback: Populate from central sekolah table if registry is empty
+      if (loadedSatellites.length === 0) {
+        try {
+          const { data: schools } = await masterSupabase
+            .from('sekolah')
+            .select('*')
+            .order('nama', { ascending: true });
+
+          if (schools && schools.length > 0) {
+            loadedSatellites = schools.map(s => ({
+              id: s.id,
+              nama: s.nama,
+              npsn: s.npsn,
+              kota_kabupaten: s.kota_kabupaten,
+              provinsi: s.provinsi,
+              vercel_url: (s as any).vercel_url || (s as any).website || null,
+              supabase_url: (s as any).supabase_url || null,
+              supabase_anon_key: (s as any).supabase_anon_key || null,
+              status: s.status || 'aktif'
+            }));
+          }
+        } catch (_) {}
       }
 
-      // 2. Fetch admin users (role = 'Admin') from central master
-      const { data: admins, error: adminErr } = await masterSupabase
-        .from('users')
-        .select('*')
-        .eq('role', 'Admin')
-        .order('nama', { ascending: true });
+      setSatelliteSchools(loadedSatellites);
 
-      if (adminErr) {
-        console.error('Error fetching admins:', adminErr);
-      } else if (admins) {
-        setAdminList(admins);
-      }
-
-      // 3. Fetch count of teachers & students across all schools (or targeted active school)
+      // 2. Fetch count of teachers & students across all schools (or targeted active school)
       let totalGuru = 0;
       let totalSiswa = 0;
       try {
@@ -159,46 +167,17 @@ export default function SuperadminView({
         console.warn('[SuperadminView] Could not fetch teacher/student metrics:', countErr);
       }
 
-      const activeSchools = (schools || []).filter(s => s.status === 'aktif').length;
-      const inactiveSchools = (schools || []).filter(s => s.status === 'nonaktif').length;
+      const activeCount = loadedSatellites.filter(s => s.status === 'aktif').length;
+      const inactiveCount = loadedSatellites.filter(s => s.status === 'nonaktif').length;
 
       setStats({
-        totalSekolah: (schools || []).length,
-        sekolahAktif: activeSchools,
-        sekolahNonaktif: inactiveSchools,
-        totalAdmin: (admins || []).length,
+        totalSekolah: loadedSatellites.length,
+        sekolahAktif: activeCount,
+        sekolahNonaktif: inactiveCount,
         totalGuru,
         totalSiswa
       });
 
-      // 4. Fetch Satellite School Registry from central master
-      let loadedSatellites: SatelliteSchool[] = [];
-      try {
-        const { data: regData, error: regErr } = await masterSupabase
-          .from('sekolah_registry')
-          .select('*')
-          .order('nama', { ascending: true });
-
-        if (!regErr && regData && regData.length > 0) {
-          loadedSatellites = regData as SatelliteSchool[];
-        }
-      } catch (_) {}
-
-      if (loadedSatellites.length === 0 && schools && schools.length > 0) {
-        loadedSatellites = schools.map(s => ({
-          id: s.id,
-          nama: s.nama,
-          npsn: s.npsn,
-          kota_kabupaten: s.kota_kabupaten,
-          provinsi: s.provinsi,
-          vercel_url: (s as any).vercel_url || (s as any).website || null,
-          supabase_url: (s as any).supabase_url || null,
-          supabase_anon_key: (s as any).supabase_anon_key || null,
-          status: s.status || 'aktif'
-        }));
-      }
-
-      setSatelliteSchools(loadedSatellites);
       checkSatelliteHealthAndMetrics(loadedSatellites);
     } catch (err) {
       console.error('Failed to load Superadmin data:', err);
@@ -282,48 +261,6 @@ export default function SuperadminView({
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
-
-  // Dynamic list of unique cities for filtering
-  const uniqueCities = Array.from(
-    new Set(
-      sekolahList
-        .map(s => s.kota_kabupaten)
-        .filter((city): city is string => Boolean(city && city.trim()))
-    )
-  ).sort();
-
-  // Create school ID to Name lookup map
-  const schoolNameMap = new Map<string, string>();
-  sekolahList.forEach(s => {
-    schoolNameMap.set(s.id, s.nama);
-  });
-
-  // Filtered Schools
-  const filteredSekolah = sekolahList.filter(s => {
-    const matchesSearch =
-      !sekolahSearch ||
-      s.nama.toLowerCase().includes(sekolahSearch.toLowerCase()) ||
-      (s.npsn && s.npsn.toLowerCase().includes(sekolahSearch.toLowerCase())) ||
-      (s.nama_kepala_sekolah && s.nama_kepala_sekolah.toLowerCase().includes(sekolahSearch.toLowerCase()));
-
-    const matchesCity = !cityFilter || s.kota_kabupaten === cityFilter;
-    const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
-
-    return matchesSearch && matchesCity && matchesStatus;
-  });
-
-  // Filtered Admins
-  const filteredAdmins = adminList.filter(adm => {
-    const schoolName = adm.sekolah_id ? (schoolNameMap.get(adm.sekolah_id) || '') : '';
-    const term = adminSearch.toLowerCase();
-
-    return (
-      !adminSearch ||
-      (adm.username || '').toLowerCase().includes(term) ||
-      (adm.nama || '').toLowerCase().includes(term) ||
-      schoolName.toLowerCase().includes(term)
-    );
-  });
 
   // Filtered Satellite Schools (Jaringan Sekolah Tab)
   const filteredSatellite = satelliteSchools.filter(sch => {
@@ -688,517 +625,10 @@ export default function SuperadminView({
     }
   };
 
-  // ----------------------------------------------------------------------------
-  // School Management Handlers
-  // ----------------------------------------------------------------------------
-  const handleOpenAddSchoolModal = async () => {
-    const { value: formValues } = await Swal.fire({
-      title: '<span class="text-lg font-bold text-gray-900">Daftarkan Sekolah Baru</span>',
-      html: `
-        <div class="text-left space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Nama Sekolah <span class="text-red-500">*</span></label>
-            <input id="swal-sch-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: SMA Negeri 1 Manado">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">NPSN <span class="text-red-500">*</span></label>
-            <input id="swal-sch-npsn" class="swal2-input !mt-0 !w-full text-xs" placeholder="Nomor Pokok Sekolah Nasional (8 digit)">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Alamat Sekolah</label>
-            <input id="swal-sch-alamat" class="swal2-input !mt-0 !w-full text-xs" placeholder="Jl. Sam Ratulangi No. 12">
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Kota / Kabupaten <span class="text-red-500">*</span></label>
-              <input id="swal-sch-kota" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Kota Manado">
-            </div>
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Provinsi</label>
-              <input id="swal-sch-provinsi" class="swal2-input !mt-0 !w-full text-xs" value="Sulawesi Utara" placeholder="Provinsi">
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Nama Kepala Sekolah</label>
-              <input id="swal-sch-kepsek" class="swal2-input !mt-0 !w-full text-xs" placeholder="Nama lengkap & gelar">
-            </div>
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">NIP Kepala Sekolah</label>
-              <input id="swal-sch-nip" class="swal2-input !mt-0 !w-full text-xs" placeholder="18 digit NIP / -">
-            </div>
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">URL Logo Sekolah (Opsional)</label>
-            <input id="swal-sch-logo" class="swal2-input !mt-0 !w-full text-xs" placeholder="https://drive.google.com/... atau URL gambar">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Status Awal</label>
-            <select id="swal-sch-status" class="swal2-select !mt-0 !w-full text-xs">
-              <option value="aktif">Aktif</option>
-              <option value="nonaktif">Nonaktif</option>
-            </select>
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Mode Jurnal Pembelajaran</label>
-            <select id="swal-sch-mode-jurnal" class="swal2-select !mt-0 !w-full text-xs">
-              <option value="camera_upload" selected>Live Camera + Upload Foto</option>
-              <option value="camera_only">Live Camera Langsung</option>
-            </select>
-          </div>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: '<i class="fa-solid fa-save mr-1"></i> Daftarkan Sekolah',
-      confirmButtonColor: '#0B4619',
-      cancelButtonText: 'Batal',
-      preConfirm: () => {
-        const nama = (document.getElementById('swal-sch-nama') as HTMLInputElement)?.value?.trim();
-        const npsn = (document.getElementById('swal-sch-npsn') as HTMLInputElement)?.value?.trim();
-        const alamat = (document.getElementById('swal-sch-alamat') as HTMLInputElement)?.value?.trim() || null;
-        const kota_kabupaten = (document.getElementById('swal-sch-kota') as HTMLInputElement)?.value?.trim();
-        const provinsi = (document.getElementById('swal-sch-provinsi') as HTMLInputElement)?.value?.trim() || 'Sulawesi Utara';
-        const nama_kepala_sekolah = (document.getElementById('swal-sch-kepsek') as HTMLInputElement)?.value?.trim() || null;
-        const nip_kepala_sekolah = (document.getElementById('swal-sch-nip') as HTMLInputElement)?.value?.trim() || null;
-        const logo_url = (document.getElementById('swal-sch-logo') as HTMLInputElement)?.value?.trim() || null;
-        const status = (document.getElementById('swal-sch-status') as HTMLSelectElement)?.value || 'aktif';
-        const mode_jurnal = (document.getElementById('swal-sch-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
-
-        if (!nama || !npsn || !kota_kabupaten) {
-          Swal.showValidationMessage('Nama Sekolah, NPSN, dan Kota/Kabupaten wajib diisi!');
-          return null;
-        }
-
-        return {
-          nama,
-          npsn,
-          alamat,
-          kota_kabupaten,
-          provinsi,
-          nama_kepala_sekolah,
-          nip_kepala_sekolah,
-          logo_url,
-          status,
-          mode_jurnal,
-          mode_presensi_siswa: 'qr'
-        };
-      }
-    });
-
-    if (formValues) {
-      setLoading(true);
-      try {
-        const { error } = await masterSupabase.from('sekolah').insert([formValues]);
-        if (error) {
-          Swal.fire('Gagal Mendaftarkan Sekolah', error.message, 'error');
-        } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Sekolah Terdaftar!',
-            text: `Sekolah "${formValues.nama}" berhasil didaftarkan ke platform SIPJAM.`,
-            confirmButtonColor: '#0B4619'
-          });
-          fetchAllData();
-        }
-      } catch (err: any) {
-        Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleEditSchool = async (school: Sekolah) => {
-    const { value: formValues } = await Swal.fire({
-      title: '<span class="text-lg font-bold text-gray-900">Edit Data Sekolah</span>',
-      html: `
-        <div class="text-left space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Nama Sekolah <span class="text-red-500">*</span></label>
-            <input id="swal-edit-nama" class="swal2-input !mt-0 !w-full text-xs" value="${school.nama || ''}">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">NPSN <span class="text-red-500">*</span></label>
-            <input id="swal-edit-npsn" class="swal2-input !mt-0 !w-full text-xs" value="${school.npsn || ''}">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Alamat Sekolah</label>
-            <input id="swal-edit-alamat" class="swal2-input !mt-0 !w-full text-xs" value="${school.alamat || ''}">
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Kota / Kabupaten <span class="text-red-500">*</span></label>
-              <input id="swal-edit-kota" class="swal2-input !mt-0 !w-full text-xs" value="${school.kota_kabupaten || ''}">
-            </div>
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Provinsi</label>
-              <input id="swal-edit-provinsi" class="swal2-input !mt-0 !w-full text-xs" value="${school.provinsi || 'Sulawesi Utara'}">
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Nama Kepala Sekolah</label>
-              <input id="swal-edit-kepsek" class="swal2-input !mt-0 !w-full text-xs" value="${school.nama_kepala_sekolah || ''}">
-            </div>
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">NIP Kepala Sekolah</label>
-              <input id="swal-edit-nip" class="swal2-input !mt-0 !w-full text-xs" value="${school.nip_kepala_sekolah || ''}">
-            </div>
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">URL Logo Sekolah</label>
-            <input id="swal-edit-logo" class="swal2-input !mt-0 !w-full text-xs" value="${school.logo_url || ''}">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Status Operasional</label>
-            <select id="swal-edit-status" class="swal2-select !mt-0 !w-full text-xs">
-              <option value="aktif" ${school.status === 'aktif' ? 'selected' : ''}>Aktif</option>
-              <option value="nonaktif" ${school.status === 'nonaktif' ? 'selected' : ''}>Nonaktif</option>
-            </select>
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Mode Jurnal Pembelajaran</label>
-            <select id="swal-edit-mode-jurnal" class="swal2-select !mt-0 !w-full text-xs">
-              <option value="camera_only" ${(school as any).mode_jurnal === 'camera_only' ? 'selected' : ''}>Live Camera Langsung</option>
-              <option value="camera_upload" ${(school as any).mode_jurnal === 'camera_upload' || !(school as any).mode_jurnal ? 'selected' : ''}>Live Camera + Upload Foto</option>
-            </select>
-          </div>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Simpan Perubahan',
-      confirmButtonColor: '#0B4619',
-      cancelButtonText: 'Batal',
-      preConfirm: () => {
-        const nama = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim();
-        const npsn = (document.getElementById('swal-edit-npsn') as HTMLInputElement)?.value?.trim();
-        const alamat = (document.getElementById('swal-edit-alamat') as HTMLInputElement)?.value?.trim() || null;
-        const kota_kabupaten = (document.getElementById('swal-edit-kota') as HTMLInputElement)?.value?.trim();
-        const provinsi = (document.getElementById('swal-edit-provinsi') as HTMLInputElement)?.value?.trim() || 'Sulawesi Utara';
-        const nama_kepala_sekolah = (document.getElementById('swal-edit-kepsek') as HTMLInputElement)?.value?.trim() || null;
-        const nip_kepala_sekolah = (document.getElementById('swal-edit-nip') as HTMLInputElement)?.value?.trim() || null;
-        const logo_url = (document.getElementById('swal-edit-logo') as HTMLInputElement)?.value?.trim() || null;
-        const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'aktif';
-        const mode_jurnal = (document.getElementById('swal-edit-mode-jurnal') as HTMLSelectElement)?.value || 'camera_upload';
-
-        if (!nama || !npsn || !kota_kabupaten) {
-          Swal.showValidationMessage('Nama Sekolah, NPSN, dan Kota/Kabupaten wajib diisi!');
-          return null;
-        }
-
-        return {
-          nama,
-          npsn,
-          alamat,
-          kota_kabupaten,
-          provinsi,
-          nama_kepala_sekolah,
-          nip_kepala_sekolah,
-          logo_url,
-          status,
-          mode_jurnal,
-          updated_at: new Date().toISOString()
-        };
-      }
-    });
-
-    if (formValues) {
-      setLoading(true);
-      try {
-        const { error } = await masterSupabase
-          .from('sekolah')
-          .update(formValues)
-          .eq('id', school.id);
-
-        if (error) {
-          Swal.fire('Gagal Memperbarui', error.message, 'error');
-        } else {
-          Swal.fire('Berhasil', 'Data sekolah berhasil diperbarui!', 'success');
-          fetchAllData();
-        }
-      } catch (err: any) {
-        Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleToggleSchoolStatus = async (school: Sekolah) => {
-    const newStatus = school.status === 'aktif' ? 'nonaktif' : 'aktif';
-    const actionWord = newStatus === 'aktif' ? 'Mengaktifkan' : 'Menonaktifkan';
-
-    const confirm = await Swal.fire({
-      title: `${actionWord} Sekolah?`,
-      text: `Apakah Anda yakin ingin mengubah status "${school.nama}" menjadi ${newStatus}?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: `Ya, Ubah ke ${newStatus}`,
-      confirmButtonColor: newStatus === 'aktif' ? '#0B4619' : '#d97706',
-      cancelButtonText: 'Batal'
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    setLoading(true);
-    try {
-      const { error } = await masterSupabase
-        .from('sekolah')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', school.id);
-
-      if (error) {
-        Swal.fire('Gagal Mengubah Status', error.message, 'error');
-      } else {
-        Swal.fire('Berhasil', `Status sekolah berhasil diubah menjadi ${newStatus}.`, 'success');
-        fetchAllData();
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteSchool = async (school: Sekolah) => {
-    const confirm = await Swal.fire({
-      title: 'Hapus Data Sekolah?',
-      html: `
-        <p class="text-sm text-gray-700">Apakah Anda yakin ingin menghapus <b>${school.nama}</b> (NPSN: ${school.npsn})?</p>
-        <p class="text-xs text-red-600 font-bold mt-2">PERINGATAN: Menghapus sekolah akan menghapus seluruh relasi admin, guru, siswa, dan catatan presensi sekolah ini (CASCADE)!</p>
-      `,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Hapus Permanen',
-      confirmButtonColor: '#dc2626',
-      cancelButtonText: 'Batal'
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    setLoading(true);
-    try {
-      const { error } = await masterSupabase
-        .from('sekolah')
-        .delete()
-        .eq('id', school.id);
-
-      if (error) {
-        Swal.fire('Gagal Menghapus Sekolah', error.message, 'error');
-      } else {
-        Swal.fire('Berhasil', `Sekolah "${school.nama}" berhasil dihapus.`, 'success');
-        fetchAllData();
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ----------------------------------------------------------------------------
-  // School Admin Management Handlers
-  // ----------------------------------------------------------------------------
-  const handleOpenAddAdminModal = async () => {
-    const activeSchools = sekolahList.filter(s => s.status === 'aktif');
-    if (activeSchools.length === 0) {
-      Swal.fire('Perhatian', 'Belum ada sekolah dengan status aktif. Harap daftarkan atau aktifkan sekolah terlebih dahulu.', 'warning');
-      return;
-    }
-
-    const schoolOptionsHtml = activeSchools
-      .map(s => `<option value="${s.id}">${s.nama} (${s.kota_kabupaten || 'Sulut'})</option>`)
-      .join('');
-
-    const { value: formValues } = await Swal.fire({
-      title: '<span class="text-lg font-bold text-gray-900">Buat Akun Admin Sekolah</span>',
-      html: `
-        <div class="text-left space-y-3 text-xs">
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Sekolah yang Ditugaskan <span class="text-red-500">*</span></label>
-            <select id="swal-adm-sekolah" class="swal2-select !mt-0 !w-full text-xs">
-              ${schoolOptionsHtml}
-            </select>
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Nama Lengkap Admin <span class="text-red-500">*</span></label>
-            <input id="swal-adm-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Admin SMA Negeri 1">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Username Login <span class="text-red-500">*</span></label>
-            <input id="swal-adm-username" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: admin_sman1">
-            <span class="text-[10px] text-gray-500">Username harus unik dan tanpa spasi.</span>
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Kata Sandi (Password) <span class="text-red-500">*</span></label>
-            <input id="swal-adm-password" type="text" class="swal2-input !mt-0 !w-full text-xs" placeholder="Minimal 6 karakter">
-          </div>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: '<i class="fa-solid fa-user-plus mr-1"></i> Buat Akun Admin',
-      confirmButtonColor: '#0B4619',
-      cancelButtonText: 'Batal',
-      preConfirm: () => {
-        const sekolah_id = (document.getElementById('swal-adm-sekolah') as HTMLSelectElement)?.value;
-        const nama = (document.getElementById('swal-adm-nama') as HTMLInputElement)?.value?.trim();
-        const username = (document.getElementById('swal-adm-username') as HTMLInputElement)?.value?.trim()?.toLowerCase();
-        const password = (document.getElementById('swal-adm-password') as HTMLInputElement)?.value?.trim();
-
-        if (!sekolah_id || !nama || !username || !password) {
-          Swal.showValidationMessage('Semua kolom wajib diisi!');
-          return null;
-        }
-
-        if (password.length < 6) {
-          Swal.showValidationMessage('Kata sandi minimal 6 karakter!');
-          return null;
-        }
-
-        return {
-          username,
-          password,
-          nama,
-          role: 'Admin',
-          sekolah_id
-        };
-      }
-    });
-
-    if (formValues) {
-      setLoading(true);
-      try {
-        const { error } = await masterSupabase.from('users').insert([formValues]);
-        if (error) {
-          if (error.code === '23505') {
-            Swal.fire('Gagal Membuat Admin', `Username "${formValues.username}" sudah digunakan. Gunakan username lain.`, 'error');
-          } else {
-            Swal.fire('Gagal Membuat Admin', error.message, 'error');
-          }
-        } else {
-          Swal.fire({
-            icon: 'success',
-            title: 'Akun Admin Dibuat!',
-            html: `Akun Admin <b>${formValues.username}</b> berhasil dibuat dan ditautkan ke sekolah.`,
-            confirmButtonColor: '#0B4619'
-          });
-          fetchAllData();
-        }
-      } catch (err: any) {
-        Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleEditAdmin = async (admin: User) => {
-    const activeSchools = sekolahList.filter(s => s.status === 'aktif');
-    const schoolOptionsHtml = activeSchools
-      .map(
-        s =>
-          `<option value="${s.id}" ${admin.sekolah_id === s.id ? 'selected' : ''}>${s.nama} (${s.kota_kabupaten || 'Sulut'})</option>`
-      )
-      .join('');
-
-    const { value: formValues } = await Swal.fire({
-      title: `<span class="text-lg font-bold text-gray-900">Edit Akun Admin: ${admin.username}</span>`,
-      html: `
-        <div class="text-left space-y-3 text-xs">
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Nama Lengkap Admin <span class="text-red-500">*</span></label>
-            <input id="swal-edit-adm-nama" class="swal2-input !mt-0 !w-full text-xs" value="${admin.nama || ''}">
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Sekolah yang Ditugaskan <span class="text-red-500">*</span></label>
-            <select id="swal-edit-adm-sekolah" class="swal2-select !mt-0 !w-full text-xs">
-              ${schoolOptionsHtml}
-            </select>
-          </div>
-          <div>
-            <label class="font-bold text-gray-700 block mb-1">Ganti Password (Kosongkan jika tidak diubah)</label>
-            <input id="swal-edit-adm-pwd" type="text" class="swal2-input !mt-0 !w-full text-xs" placeholder="Masukkan password baru jika ingin diganti">
-          </div>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Simpan Perubahan',
-      confirmButtonColor: '#0B4619',
-      cancelButtonText: 'Batal',
-      preConfirm: () => {
-        const nama = (document.getElementById('swal-edit-adm-nama') as HTMLInputElement)?.value?.trim();
-        const sekolah_id = (document.getElementById('swal-edit-adm-sekolah') as HTMLSelectElement)?.value;
-        const newPassword = (document.getElementById('swal-edit-adm-pwd') as HTMLInputElement)?.value?.trim();
-
-        if (!nama || !sekolah_id) {
-          Swal.showValidationMessage('Nama dan Sekolah wajib diisi!');
-          return null;
-        }
-
-        const payload: any = { nama, sekolah_id };
-        if (newPassword) {
-          if (newPassword.length < 6) {
-            Swal.showValidationMessage('Password baru minimal 6 karakter!');
-            return null;
-          }
-          payload.password = newPassword;
-        }
-        return payload;
-      }
-    });
-
-    if (formValues) {
-      setLoading(true);
-      try {
-        const { error } = await masterSupabase.from('users').update(formValues).eq('id', admin.id);
-
-        if (error) {
-          Swal.fire('Gagal Memperbarui Admin', error.message, 'error');
-        } else {
-          Swal.fire('Berhasil', 'Akun Admin berhasil diperbarui!', 'success');
-          fetchAllData();
-        }
-      } catch (err: any) {
-        Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
-  const handleDeleteAdmin = async (admin: User) => {
-    const confirm = await Swal.fire({
-      title: 'Hapus Akun Admin?',
-      html: `Apakah Anda yakin ingin menghapus admin <b>${admin.nama}</b> (${admin.username})?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Ya, Hapus Admin',
-      confirmButtonColor: '#dc2626',
-      cancelButtonText: 'Batal'
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    setLoading(true);
-    try {
-      const { error } = await masterSupabase.from('users').delete().eq('id', admin.id);
-
-      if (error) {
-        Swal.fire('Gagal Menghapus Admin', error.message, 'error');
-      } else {
-        Swal.fire('Berhasil', `Akun admin ${admin.username} berhasil dihapus.`, 'success');
-        fetchAllData();
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message || 'Terjadi kesalahan sistem', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const onlineDbCount = satelliteSchools.filter(s => (healthMap[s.id] || (s.status === 'aktif' ? 'online' : 'paused')) === 'online').length;
+  const pausedDbCount = satelliteSchools.filter(s => (healthMap[s.id] || (s.status === 'aktif' ? 'online' : 'paused')) === 'paused').length;
+  const totalGuruNetwork = Object.values(metricsMap).reduce((acc, m) => acc + (m.guruCount || 0), 0) || stats.totalGuru;
+  const totalSiswaNetwork = Object.values(metricsMap).reduce((acc, m) => acc + (m.siswaCount || 0), 0) || stats.totalSiswa;
 
   // ----------------------------------------------------------------------------
   // Render Tab Content
@@ -1217,24 +647,26 @@ export default function SuperadminView({
               Superadmin Portal
             </h1>
             <p className="text-xs sm:text-sm text-emerald-100 mt-1 max-w-xl">
-              Pusat kendali multi-tenant SIPJAM. Daftarkan lembaga sekolah, kelola akun administrator sekolah, dan pantau metrik lintas sekolah secara terpusat.
+              Pusat kendali multi-tenant SIPJAM. Pantau jaringan sekolah satelit, status live database, dan metrik lintas sekolah secara terpusat.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2 shrink-0">
             <button
               type="button"
-              onClick={handleOpenAddSchoolModal}
+              onClick={handleOpenAddSatelliteSchoolModal}
               className="btn-click bg-white text-emerald-900 font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-lg hover:bg-emerald-50 transition"
             >
-              <i className="fa-solid fa-plus-circle text-emerald-700"></i> Tambah Sekolah
+              <i className="fa-solid fa-plus-circle text-emerald-700"></i> Tambah Sekolah Satelit
             </button>
             <button
               type="button"
-              onClick={handleOpenAddAdminModal}
+              onClick={() => checkSatelliteHealthAndMetrics(satelliteSchools)}
+              disabled={isPingingAll}
               className="btn-click bg-emerald-700/80 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-md border border-white/20 transition"
             >
-              <i className="fa-solid fa-user-shield text-yellow-300"></i> Buat Admin
+              <i className={`fa-solid fa-wave-pulse ${isPingingAll ? 'animate-spin' : 'text-emerald-300'}`}></i>
+              <span>{isPingingAll ? 'Memeriksa...' : 'Periksa Status Live'}</span>
             </button>
             <button
               type="button"
@@ -1323,7 +755,7 @@ export default function SuperadminView({
         </div>
       </div>
 
-      {/* Tabs Navigation Bar */}
+      {/* Tabs Navigation Bar: Simplified to 2 tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md rounded-2xl p-1.5 shadow-sm overflow-x-auto">
         <button
           type="button"
@@ -1349,49 +781,25 @@ export default function SuperadminView({
           <i className="fa-solid fa-network-wired"></i>
           <span>Jaringan Sekolah ({satelliteSchools.length})</span>
         </button>
-        <button
-          type="button"
-          onClick={() => switchTab('sekolah')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 ${
-            activeTab === 'sekolah'
-              ? 'bg-nizamudin-green text-white dark:text-nizamudin-gold shadow-md'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <i className="fa-solid fa-school"></i>
-          <span>Kelola Sekolah ({sekolahList.length})</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => switchTab('admins')}
-          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 ${
-            activeTab === 'admins'
-              ? 'bg-nizamudin-green text-white dark:text-nizamudin-gold shadow-md'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-          }`}
-        >
-          <i className="fa-solid fa-user-shield"></i>
-          <span>Admin Sekolah ({adminList.length})</span>
-        </button>
       </div>
 
-      {/* TAB 1: OVERVIEW */}
+      {/* TAB 1: OVERVIEW (RINGKASAN PLATFORM JARINGAN SATELIT) */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Total Sekolah */}
+            {/* Total Sekolah Satelit */}
             <div className="glass-card p-5 rounded-2xl border-l-4 border-emerald-600 dark:border-emerald-500">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Total Sekolah
+                  Total Satelit
                 </span>
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm">
-                  <i className="fa-solid fa-school"></i>
+                  <i className="fa-solid fa-network-wired"></i>
                 </div>
               </div>
               <div className="text-2xl font-black text-gray-900 dark:text-white">
-                {stats.totalSekolah}
+                {satelliteSchools.length}
               </div>
               <div className="flex items-center gap-2 mt-2 text-[11px]">
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -1404,25 +812,26 @@ export default function SuperadminView({
               </div>
             </div>
 
-            {/* Total Admin Sekolah */}
-            <div className="glass-card p-5 rounded-2xl border-l-4 border-blue-600 dark:border-blue-500">
+            {/* Status Live Database */}
+            <div className="glass-card p-5 rounded-2xl border-l-4 border-green-500 dark:border-green-400">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Admin Sekolah
+                  Database Online
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm">
-                  <i className="fa-solid fa-user-shield"></i>
+                <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 flex items-center justify-center text-sm">
+                  <i className="fa-solid fa-database"></i>
                 </div>
               </div>
-              <div className="text-2xl font-black text-gray-900 dark:text-white">
-                {stats.totalAdmin}
+              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {onlineDbCount}
               </div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
-                Pengelola tingkat sekolah terdaftar
-              </p>
+              <div className="flex items-center gap-1.5 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>{pausedDbCount} Ter-pause / checking</span>
+              </div>
             </div>
 
-            {/* Total Guru */}
+            {/* Total Guru Lintas Jaringan */}
             <div className="glass-card p-5 rounded-2xl border-l-4 border-purple-600 dark:border-purple-500">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -1433,14 +842,14 @@ export default function SuperadminView({
                 </div>
               </div>
               <div className="text-2xl font-black text-gray-900 dark:text-white">
-                {stats.totalGuru}
+                {totalGuruNetwork}
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
-                Tenaga pendidik lintas sekolah
+                Tenaga pendidik lintas satelit
               </p>
             </div>
 
-            {/* Total Siswa */}
+            {/* Total Siswa Lintas Jaringan */}
             <div className="glass-card p-5 rounded-2xl border-l-4 border-amber-600 dark:border-amber-500">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -1451,134 +860,148 @@ export default function SuperadminView({
                 </div>
               </div>
               <div className="text-2xl font-black text-gray-900 dark:text-white">
-                {stats.totalSiswa}
+                {totalSiswaNetwork}
               </div>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
-                Siswa terdaftar di seluruh sekolah
+                Siswa di seluruh jaringan satelit
               </p>
             </div>
           </div>
 
-          {/* Quick Actions & Recent Schools */}
+          {/* Quick Actions & Recent Satellite Schools */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Quick Actions Panel */}
             <div className="glass-card p-5 rounded-2xl space-y-3">
               <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-bolt text-amber-500"></i> Aksi Cepat Superadmin
+                <i className="fa-solid fa-bolt text-amber-500"></i> Aksi Cepat Jaringan
               </h3>
               <p className="text-xs text-gray-600 dark:text-gray-300">
-                Lakukan pendaftaran instan sekolah atau akun operator baru dalam beberapa klik.
+                Kelola infrastruktur satelit, validasi status koneksi live database, atau beralih target pemantauan.
               </p>
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
-                  onClick={handleOpenAddSchoolModal}
+                  onClick={handleOpenAddSatelliteSchoolModal}
                   className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 bg-gray-50 dark:bg-gray-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition flex items-center gap-3"
                 >
                   <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-school-flag"></i>
+                    <i className="fa-solid fa-plus-circle"></i>
                   </div>
                   <div>
                     <div className="text-xs font-bold text-gray-900 dark:text-white">
-                      Tambah Lembaga Sekolah
+                      Tambah Sekolah Satelit
                     </div>
                     <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                      Input NPSN, alamat, dan data kepala sekolah
+                      Daftarkan sekolah dan kredensial Supabase ke jaringan
                     </div>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleOpenAddAdminModal}
+                  onClick={() => checkSatelliteHealthAndMetrics(satelliteSchools)}
+                  disabled={isPingingAll}
                   className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition flex items-center gap-3"
                 >
                   <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-user-plus"></i>
+                    <i className={`fa-solid fa-wave-pulse ${isPingingAll ? 'animate-spin' : ''}`}></i>
                   </div>
                   <div>
                     <div className="text-xs font-bold text-gray-900 dark:text-white">
-                      Buat Akun Admin Sekolah
+                      Periksa Status Live Database
                     </div>
                     <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                      Tautkan akun operator ke sekolah tertentu
+                      Ping ketersediaan real-time seluruh database satelit
                     </div>
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => switchTab('sekolah')}
+                  onClick={() => switchTab('jaringan')}
                   className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 bg-gray-50 dark:bg-gray-800/60 transition flex items-center gap-3"
                 >
                   <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-list-check"></i>
+                    <i className="fa-solid fa-network-wired"></i>
                   </div>
                   <div>
                     <div className="text-xs font-bold text-gray-900 dark:text-white">
-                      Kelola Daftar Sekolah
+                      Kelola Jaringan Sekolah
                     </div>
                     <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                      Lihat status, edit profil, dan filter kota
+                      Beralih target aktif, buka Vercel, dan manajemen sekolah
                     </div>
                   </div>
                 </button>
               </div>
             </div>
 
-            {/* School Overview Table Summary */}
+            {/* Satellite Schools Summary List */}
             <div className="glass-card p-5 rounded-2xl lg:col-span-2 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-building-columns text-emerald-600"></i> Sekolah Terdaftar Terbaru
+                  <i className="fa-solid fa-building-columns text-emerald-600"></i> Jaringan Sekolah Satelit Terbaru
                 </h3>
                 <button
                   type="button"
-                  onClick={() => switchTab('sekolah')}
+                  onClick={() => switchTab('jaringan')}
                   className="text-xs text-nizamudin-green dark:text-nizamudin-gold font-bold hover:underline"
                 >
-                  Lihat Semua <i className="fa-solid fa-arrow-right ml-1"></i>
+                  Lihat Semua ({satelliteSchools.length}) <i className="fa-solid fa-arrow-right ml-1"></i>
                 </button>
               </div>
 
-              {sekolahList.length === 0 ? (
+              {satelliteSchools.length === 0 ? (
                 <div className="text-center py-8 text-xs text-gray-500 italic">
-                  Belum ada sekolah yang terdaftar di database.
+                  Belum ada sekolah satelit yang terdaftar di jaringan platform.
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {sekolahList.slice(0, 5).map(s => {
-                    const adminsCount = adminList.filter(a => a.sekolah_id === s.id).length;
+                  {satelliteSchools.slice(0, 5).map(sch => {
+                    const status = healthMap[sch.id] || (sch.status === 'nonaktif' ? 'paused' : 'online');
+                    const metrics = metricsMap[sch.id] || { guruCount: 0, siswaCount: 0 };
+                    const isCurrentlyActive = activeTargetSchool?.id === sch.id;
+
                     return (
-                      <div key={s.id} className="py-3 flex items-center justify-between gap-3">
+                      <div key={sch.id} className="py-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-black flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                            isCurrentlyActive
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
+                              : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                          }`}>
                             <i className="fa-solid fa-school text-xs"></i>
                           </div>
                           <div className="min-w-0">
                             <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
-                              {s.nama}
+                              {sch.nama}
                             </div>
                             <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                              <span>NPSN: {s.npsn}</span>
+                              <span>NPSN: {sch.npsn || '-'}</span>
                               <span>•</span>
-                              <span>{s.kota_kabupaten || 'Sulawesi Utara'}</span>
+                              <span>{sch.kota_kabupaten || 'Sulawesi Utara'}</span>
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold">
-                            {adminsCount} Admin
+                          <span className="text-[10px] bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-bold">
+                            {metrics.guruCount} Guru
+                          </span>
+                          <span className="text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                            {metrics.siswaCount} Siswa
                           </span>
                           <span
-                            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                              s.status === 'aktif'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                            className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
+                              status === 'online'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                : status === 'checking'
+                                ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-700'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700'
                             }`}
                           >
-                            {s.status === 'aktif' ? 'Aktif' : 'Nonaktif'}
+                            <span className={`w-1.5 h-1.5 rounded-full ${status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                            {status === 'online' ? 'Online' : status === 'checking' ? 'Ping' : 'Ter-pause'}
                           </span>
                         </div>
                       </div>
@@ -1591,392 +1014,7 @@ export default function SuperadminView({
         </div>
       )}
 
-      {/* TAB 2: SCHOOL MANAGEMENT */}
-      {activeTab === 'sekolah' && (
-        <div className="glass-card p-5 rounded-2xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-school text-emerald-600"></i> Manajemen Sekolah
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Kelola daftar lembaga sekolah, status operasional, dan parameter identitas sekolah.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleOpenAddSchoolModal}
-              className="btn-click bg-nizamudin-green text-white dark:text-nizamudin-gold font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-md hover:opacity-90 transition shrink-0"
-            >
-              <i className="fa-solid fa-plus-circle"></i> Daftarkan Sekolah Baru
-            </button>
-          </div>
-
-          {/* Filters Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="relative">
-              <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
-              <input
-                type="text"
-                value={sekolahSearch}
-                onChange={e => setSekolahSearch(e.target.value)}
-                placeholder="Cari nama, NPSN, atau kepala sekolah..."
-                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <select
-                value={cityFilter}
-                onChange={e => setCityFilter(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
-              >
-                <option value="">Semua Kota / Kabupaten</option>
-                {uniqueCities.map(city => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value as any)}
-                className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
-              >
-                <option value="all">Semua Status</option>
-                <option value="aktif">Hanya Aktif</option>
-                <option value="nonaktif">Hanya Nonaktif</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Schools Table */}
-          <div className="overflow-x-auto custom-scroll rounded-xl border border-gray-100 dark:border-gray-800">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/70 text-gray-700 dark:text-gray-200 uppercase font-bold border-b border-gray-200 dark:border-gray-700">
-                  <th className="p-3 w-10 text-center">No</th>
-                  <th className="p-3">Nama Lembaga & NPSN</th>
-                  <th className="p-3">Wilayah</th>
-                  <th className="p-3">Kepala Sekolah</th>
-                  <th className="p-3 text-center">Admin</th>
-                  <th className="p-3 text-center">Status</th>
-                  <th className="p-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {filteredSekolah.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-6 text-center text-gray-500 dark:text-gray-400 italic">
-                      Tidak ada data sekolah yang sesuai dengan filter pencarian.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredSekolah.map((s, idx) => {
-                    const admins = adminList.filter(a => a.sekolah_id === s.id);
-                    return (
-                      <tr key={s.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition">
-                        <td className="p-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
-                        <td className="p-3">
-                          <div className="font-bold text-gray-900 dark:text-white">{s.nama}</div>
-                          <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono flex items-center gap-1.5 flex-wrap">
-                            <span>NPSN: {s.npsn}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                              (s as any).mode_jurnal === 'camera_only'
-                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                            }`}>
-                              <i className={`fa-solid ${(s as any).mode_jurnal === 'camera_only' ? 'fa-camera' : 'fa-camera-rotate'} mr-1`}></i>
-                              {(s as any).mode_jurnal === 'camera_only' ? 'Kamera Langsung' : 'Kamera + Upload'}
-                            </span>
-                          </div>
-                          {s.alamat && (
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-xs">
-                              {s.alamat}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-3 text-gray-700 dark:text-gray-300">
-                          <div>{s.kota_kabupaten}</div>
-                          <div className="text-[10px] text-gray-500">{s.provinsi || 'Sulawesi Utara'}</div>
-                        </td>
-                        <td className="p-3 text-gray-700 dark:text-gray-300">
-                          <div className="font-semibold">{s.nama_kepala_sekolah || '-'}</div>
-                          {s.nip_kepala_sekolah && s.nip_kepala_sekolah !== '-' && (
-                            <div className="text-[10px] text-gray-500 font-mono">NIP. {s.nip_kepala_sekolah}</div>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              admins.length > 0
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                            }`}
-                            title={admins.map(a => a.username).join(', ')}
-                          >
-                            {admins.length} Admin
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleSchoolStatus(s)}
-                            className={`btn-click px-2.5 py-1 rounded-full text-[10px] font-bold transition flex items-center justify-center gap-1 mx-auto ${
-                              s.status === 'aktif'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 hover:bg-green-200'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200'
-                            }`}
-                            title="Klik untuk ubah status"
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${s.status === 'aktif' ? 'bg-green-600' : 'bg-red-600'}`}></span>
-                            {s.status === 'aktif' ? 'Aktif' : 'Nonaktif'}
-                          </button>
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                Swal.fire({
-                                  title: 'Tagihan / Invoice',
-                                  text: `Tindakan untuk ${s.nama}`,
-                                  icon: 'question',
-                                  showCancelButton: true,
-                                  showDenyButton: true,
-                                  confirmButtonText: '<i class="fa-brands fa-whatsapp"></i> Kirim WA',
-                                  denyButtonText: '<i class="fa-solid fa-file-pdf"></i> Cetak PDF',
-                                  cancelButtonText: 'Batal',
-                                  confirmButtonColor: '#25D366',
-                                  denyButtonColor: '#0B4619'
-                                }).then((result) => {
-                                  if (result.isConfirmed) {
-                                    const phone = prompt('Masukkan nomor WhatsApp (contoh: 62812...):', '628');
-                                    if (phone && phone.trim() !== '') {
-                                      const text = `Halo Admin ${s.nama},
-Kami mengingatkan bahwa tagihan tahunan sistem SIPJAM sebesar *Rp 3.000.000* sudah jatuh tempo. Mohon segera melakukan pembayaran agar akses sistem Anda tidak dibekukan.
-
-Terima kasih,
-Superadmin SIPJAM`;
-                                      window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
-                                    }
-                                  } else if (result.isDenied) {
-                                    // Generate simple PDF layout via window.print
-                                    const printWindow = window.open('', '_blank');
-                                    if (printWindow) {
-                                      printWindow.document.write(`
-                                        <html>
-                                          <head>
-                                            <title>Invoice - ${s.nama}</title>
-                                            <style>
-                                              body { font-family: sans-serif; padding: 40px; color: #333; }
-                                              .header { border-bottom: 2px solid #0B4619; padding-bottom: 20px; margin-bottom: 40px; }
-                                              .title { font-size: 24px; font-weight: bold; color: #0B4619; }
-                                              .details { margin-bottom: 40px; line-height: 1.6; }
-                                              .table { w-full border-collapse: collapse; width: 100%; margin-bottom: 40px; }
-                                              .table th, .table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                                              .table th { background: #f9fafb; }
-                                              .total { font-weight: bold; font-size: 18px; text-align: right; }
-                                              .footer { margin-top: 60px; font-size: 14px; text-align: center; color: #666; }
-                                            </style>
-                                          </head>
-                                          <body>
-                                            <div class="header">
-                                              <div class="title">INVOICE TAHUNAN SIPJAM</div>
-                                              <div>Sistem Informasi Presensi & Jurnal Multi-Sekolah</div>
-                                            </div>
-                                            <div class="details">
-                                              <strong>Kepada Yth:</strong><br/>
-                                              Kepala Sekolah / Admin<br/>
-                                              ${s.nama}<br/>
-                                              ${s.alamat || ''}<br/>
-                                              ${s.kota_kabupaten} - ${s.provinsi || ''}
-                                            </div>
-                                            <table class="table">
-                                              <thead>
-                                                <tr>
-                                                  <th>Deskripsi</th>
-                                                  <th>Periode</th>
-                                                  <th>Jumlah</th>
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                <tr>
-                                                  <td>Biaya Maintenance & Server SIPJAM</td>
-                                                  <td>1 Tahun</td>
-                                                  <td>Rp 3.000.000</td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                            <div class="total">Total Tagihan: Rp 3.000.000</div>
-                                            <div class="footer">
-                                              Harap simpan halaman ini sebagai PDF (Cetak -> Simpan sebagai PDF) lalu kirim ke WhatsApp admin sekolah.<br/>
-                                              Dicetak pada: ${new Date().toLocaleDateString('id-ID')}
-                                            </div>
-                                            <script>window.print(); setTimeout(() => window.close(), 500);</script>
-                                          </body>
-                                        </html>
-                                      `);
-                                      printWindow.document.close();
-                                    }
-                                  }
-                                });
-                              }}
-                              className="btn-click w-7 h-7 rounded-lg bg-green-100 dark:bg-green-900/40 hover:bg-green-200 dark:hover:bg-green-800 text-green-700 dark:text-green-400 flex items-center justify-center"
-                              title="Tagihan / Invoice"
-                            >
-                              <i className="fa-solid fa-file-invoice-dollar text-xs"></i>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleEditSchool(s)}
-                              className="btn-click w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 flex items-center justify-center"
-                              title="Edit Data Sekolah"
-                            >
-                              <i className="fa-solid fa-pen text-xs"></i>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSchool(s)}
-                              className="btn-click w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center"
-                              title="Hapus Sekolah"
-                            >
-                              <i className="fa-solid fa-trash text-xs"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: ADMIN ACCOUNTS */}
-      {activeTab === 'admins' && (
-        <div className="glass-card p-5 rounded-2xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
-            <div>
-              <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-user-shield text-blue-600"></i> Akun Admin Sekolah
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Kelola akun administrator lembaga yang memiliki wewenang mengelola data guru, siswa, dan pengaturan sekolahnya.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleOpenAddAdminModal}
-              className="btn-click bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-md hover:bg-blue-700 transition shrink-0"
-            >
-              <i className="fa-solid fa-user-plus"></i> Buat Akun Admin Baru
-            </button>
-          </div>
-
-          {/* Search Admin Bar */}
-          <div className="max-w-md">
-            <div className="relative">
-              <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
-              <input
-                type="text"
-                value={adminSearch}
-                onChange={e => setAdminSearch(e.target.value)}
-                placeholder="Cari nama admin, username, atau sekolah..."
-                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          {/* Admin Table */}
-          <div className="overflow-x-auto custom-scroll rounded-xl border border-gray-100 dark:border-gray-800">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/70 text-gray-700 dark:text-gray-200 uppercase font-bold border-b border-gray-200 dark:border-gray-700">
-                  <th className="p-3 w-10 text-center">No</th>
-                  <th className="p-3">Nama Admin</th>
-                  <th className="p-3">Username Login</th>
-                  <th className="p-3">Sekolah Ditugaskan</th>
-                  <th className="p-3 text-center">Peran</th>
-                  <th className="p-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {filteredAdmins.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-6 text-center text-gray-500 dark:text-gray-400 italic">
-                      Tidak ada akun Admin yang ditemukan.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAdmins.map((adm, idx) => {
-                    const schoolName = adm.sekolah_id
-                      ? schoolNameMap.get(adm.sekolah_id) || 'Sekolah Tidak Ditemukan'
-                      : 'Global / Belum Ditautkan';
-
-                    return (
-                      <tr key={adm.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition">
-                        <td className="p-3 text-center text-gray-500 font-semibold">{idx + 1}</td>
-                        <td className="p-3">
-                          <div className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs">
-                              <i className="fa-solid fa-user-shield"></i>
-                            </div>
-                            <span>{adm.nama}</span>
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <code className="text-[11px] bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                            {adm.username}
-                          </code>
-                        </td>
-                        <td className="p-3 text-gray-700 dark:text-gray-300">
-                          <div className="font-semibold">{schoolName}</div>
-                          {adm.sekolah_id && (
-                            <div className="text-[9px] text-gray-400 font-mono">{adm.sekolah_id}</div>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                            {adm.role}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleEditAdmin(adm)}
-                              className="btn-click w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 flex items-center justify-center"
-                              title="Edit Admin & Reset Password"
-                            >
-                              <i className="fa-solid fa-pen text-xs"></i>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteAdmin(adm)}
-                              className="btn-click w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center"
-                              title="Hapus Akun Admin"
-                            >
-                              <i className="fa-solid fa-trash text-xs"></i>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: JARINGAN SEKOLAH SATELIT (PORTAL INDUK MULTI-SEKOLAH) */}
+      {/* TAB 2: JARINGAN SEKOLAH SATELIT (PORTAL INDUK MULTI-SEKOLAH) */}
       {activeTab === 'jaringan' && (
         <div className="space-y-6">
           {/* Top Header Card */}
@@ -2032,7 +1070,7 @@ Superadmin SIPJAM`;
                 Database Online
               </span>
               <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-                {satelliteSchools.filter(s => (healthMap[s.id] || (s.status === 'aktif' ? 'online' : 'paused')) === 'online').length}
+                {onlineDbCount}
               </div>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Siap melayani request
@@ -2044,7 +1082,7 @@ Superadmin SIPJAM`;
                 Database Ter-pause
               </span>
               <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
-                {satelliteSchools.filter(s => (healthMap[s.id] || (s.status === 'aktif' ? 'online' : 'paused')) === 'paused').length}
+                {pausedDbCount}
               </div>
               <span className="text-[10px] text-gray-400 mt-1 block">Perlu resume / periksa kuota</span>
             </div>
@@ -2054,7 +1092,7 @@ Superadmin SIPJAM`;
                 Total Guru & Siswa
               </span>
               <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
-                {Object.values(metricsMap).reduce((acc, m) => acc + (m.guruCount || 0) + (m.siswaCount || 0), 0) || (stats.totalGuru + stats.totalSiswa)}
+                {totalGuruNetwork + totalSiswaNetwork}
               </div>
               <span className="text-[10px] text-gray-400 mt-1 block">Pengguna di seluruh satelit</span>
             </div>

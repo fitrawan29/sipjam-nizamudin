@@ -332,8 +332,6 @@ export default function AppScreen({
   const menuItemsSuperadmin = [
     { id: 'view-superadmin-overview', icon: 'fa-gauge-high', label: 'Ringkasan Platform' },
     { id: 'view-superadmin-jaringan', icon: 'fa-network-wired', label: 'Jaringan Sekolah' },
-    { id: 'view-superadmin-sekolah', icon: 'fa-school', label: 'Kelola Sekolah' },
-    { id: 'view-superadmin-admins', icon: 'fa-user-shield', label: 'Admin Sekolah' },
     ...(activeTargetSchool ? [
       { id: 'view-admin-data', icon: 'fa-database', label: `Master (${activeTargetSchool.nama})` },
       { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
@@ -606,22 +604,12 @@ export default function AppScreen({
               initialTab={
                 currentView === 'view-superadmin-jaringan'
                   ? 'jaringan'
-                  : currentView === 'view-superadmin-sekolah'
-                  ? 'sekolah'
-                  : currentView === 'view-superadmin-admins'
-                  ? 'admins'
                   : 'overview'
               }
               onNavigateTab={(tab) => {
                 if (tab === 'jaringan') {
                   window.history.pushState(null, '', '?view=view-superadmin-jaringan');
                   setCurrentView('view-superadmin-jaringan');
-                } else if (tab === 'sekolah') {
-                  window.history.pushState(null, '', '?view=view-superadmin-sekolah');
-                  setCurrentView('view-superadmin-sekolah');
-                } else if (tab === 'admins') {
-                  window.history.pushState(null, '', '?view=view-superadmin-admins');
-                  setCurrentView('view-superadmin-admins');
                 } else {
                   window.history.pushState(null, '', '?view=view-superadmin-overview');
                   setCurrentView('view-superadmin-overview');
