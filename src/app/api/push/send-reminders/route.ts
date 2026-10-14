@@ -70,7 +70,9 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
     const isExemptTeacher = (t: any) => {
       if (!t) return false;
+      const hasExplicit = t.wajib_hadir_hanya_mengajar !== null && t.wajib_hadir_hanya_mengajar !== undefined;
       if (t.wajib_hadir_hanya_mengajar) return true;
+      if (hasExplicit && !t.wajib_hadir_hanya_mengajar) return false;
       if (isGlobalHariMengajarSaja) return true;
       if (guruHanyaMengajarList.includes(t.id) || guruHanyaMengajarList.includes(t.nama_guru) || (t.nip && guruHanyaMengajarList.includes(t.nip))) return true;
       return false;

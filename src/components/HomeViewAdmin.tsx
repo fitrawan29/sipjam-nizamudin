@@ -217,13 +217,14 @@ export default function HomeViewAdmin({
           uniqueTargetsMap.set(`${j.kelas}_${j.mata_pelajaran}`, j);
         });
         targetClasses = Array.from(uniqueTargetsMap.values());
-        
         const targetCount = targetClasses.length;
-        const isTeacherExempt = Boolean(teacher.wajib_hadir_hanya_mengajar) ||
-          aturanGlobal === 'Hari_Mengajar_Saja' ||
-          guruHanyaMengajarList.includes(teacher.id) ||
+        
+        const hasExplicitTeacherSetting = teacher.wajib_hadir_hanya_mengajar !== null && teacher.wajib_hadir_hanya_mengajar !== undefined;
+        const isTeacherInLegacyList = guruHanyaMengajarList.includes(teacher.id) ||
           guruHanyaMengajarList.includes(nama) ||
           (teacher.nip && guruHanyaMengajarList.includes(teacher.nip));
+        const isTeacherExempt = Boolean(teacher.wajib_hadir_hanya_mengajar) ||
+          (!hasExplicitTeacherSetting && (isTeacherInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja'));
         const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
 
         // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)

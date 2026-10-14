@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   getWitaDateLong, 
   getWitaTimeStr, 
@@ -237,7 +237,69 @@ export default function HomeViewGuru({
     }
   }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth]);
 
-    // Dynamic Target Journal Ratio Calculation (Teacher)
+  const refreshDailyWorkflow = useCallback(async () => {
+    if (!user?.nama) return;
+    try {
+      setLoadingState(true);
+      const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
+      setDailyState(state);
+    } catch (err) {
+      console.error('Error refreshing guru daily state:', err);
+    } finally {
+      setLoadingState(false);
+    }
+  }, [user?.nama, user?.username, user?.id, user?.sekolah_id]);
+
+  // Realtime subscription: postgres_changes on 'pengaturan' & 'data_guru', Supabase broadcast channel, and window/storage events
+  useEffect(() => {
+    if (!user?.nama) return;
+
+    const schoolId = user?.sekolah_id || 'global';
+    const channelName = `realtime-guru-state-${user?.id || user?.nama || 'anon'}`;
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
+        refreshDailyWorkflow();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru' }, () => {
+        refreshDailyWorkflow();
+      })
+      .on('broadcast', { event: 'config_updated' }, () => {
+        refreshDailyWorkflow();
+      })
+      .subscribe();
+
+    const schoolBroadcast = supabase
+      .channel(`school-config-${schoolId}`)
+      .on('broadcast', { event: 'config_updated' }, () => {
+        refreshDailyWorkflow();
+      })
+      .subscribe();
+
+    const handleWindowConfigSync = () => {
+      refreshDailyWorkflow();
+    };
+
+    const handleStorageSync = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync') {
+        refreshDailyWorkflow();
+      }
+    };
+
+    window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
+    window.addEventListener('sipjam:guru_updated', handleWindowConfigSync);
+    window.addEventListener('storage', handleStorageSync);
+
+    return () => {
+      supabase.removeChannel(channel);
+      supabase.removeChannel(schoolBroadcast);
+      window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
+      window.removeEventListener('sipjam:guru_updated', handleWindowConfigSync);
+      window.removeEventListener('storage', handleStorageSync);
+    };
+  }, [user?.nama, user?.id, user?.sekolah_id, refreshDailyWorkflow]);
+
+  // Dynamic Target Journal Ratio Calculation (Teacher)
   const journalRatioData = useMemo(() => {
     if (!dailyState) {
       return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };

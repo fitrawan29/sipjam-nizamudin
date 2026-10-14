@@ -226,7 +226,8 @@ export function evaluateReminderConditions(
     return reminders;
   }
 
-  const isExempt = dailyState.isNonTeachingDay || Boolean(teacherObj?.wajib_hadir_hanya_mengajar) || dailyState.aturanKehadiran === 'Hari_Mengajar_Saja';
+  const hasExplicitTeacherSetting = teacherObj?.wajib_hadir_hanya_mengajar !== null && teacherObj?.wajib_hadir_hanya_mengajar !== undefined;
+  const isExempt = dailyState.isNonTeachingDay || Boolean(teacherObj?.wajib_hadir_hanya_mengajar) || (!hasExplicitTeacherSetting && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja');
   const hasClassesToday = Boolean(dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0);
   const hasPiketDuty = Boolean(dailyState.isPiket);
   const hasObligationToday = hasClassesToday || hasPiketDuty;
@@ -525,11 +526,15 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     };
 
     window.addEventListener('sipjam_reminder_config_changed', handleConfigChange);
+    window.addEventListener('sipjam:config_updated', handleConfigChange);
+    window.addEventListener('sipjam:guru_updated', handleConfigChange);
     window.addEventListener('storage', handleConfigChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('sipjam_reminder_config_changed', handleConfigChange);
+      window.removeEventListener('sipjam:config_updated', handleConfigChange);
+      window.removeEventListener('sipjam:guru_updated', handleConfigChange);
       window.removeEventListener('storage', handleConfigChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

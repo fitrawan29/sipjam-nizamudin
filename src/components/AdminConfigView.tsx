@@ -46,6 +46,7 @@ export default function AdminConfigView({
   const [guruList, setGuruList] = useState<any[]>([]);
   const [exemptTeacherIds, setExemptTeacherIds] = useState<string[]>([]);
   const [teacherSearch, setTeacherSearch] = useState('');
+  const [attendanceFilterTab, setAttendanceFilterTab] = useState<'all' | 'setiap_hari' | 'hanya_kbm'>('all');
 
   const [loading, setLoading] = useState(false);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
@@ -118,7 +119,11 @@ export default function AdminConfigView({
             const dbExempt = teachers
               .filter(t => t.wajib_hadir_hanya_mengajar === true)
               .map(t => t.id);
-            setExemptTeacherIds(Array.from(new Set([...ghmList, ...dbExempt])));
+            const validLegacyGhm = ghmList.filter(idOrName => {
+              const matched = teachers.find(t => t.id === idOrName || t.nama_guru === idOrName);
+              return !matched || matched.wajib_hadir_hanya_mengajar !== false;
+            });
+            setExemptTeacherIds(Array.from(new Set([...validLegacyGhm, ...dbExempt])));
           } else if (ghmList.length > 0) {
             setExemptTeacherIds(Array.from(new Set(ghmList)));
           }
@@ -236,6 +241,39 @@ export default function AdminConfigView({
         if (nonExemptIds.length > 0) {
           await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: false }).in('id', nonExemptIds);
         }
+
+        // Update local guruList state so UI reflects the newly persisted values
+        setGuruList(prev => prev.map(t => ({
+          ...t,
+          wajib_hadir_hanya_mengajar: exemptIds.includes(t.id)
+        })));
+      }
+
+      // Realtime synchronization: dispatch local window custom events, storage event, and Supabase channel broadcast
+      const syncPayload = {
+        sekolah_id: targetSekolahId,
+        aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
+        exemptTeacherIds,
+        timestamp: Date.now()
+      };
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: syncPayload }));
+        window.dispatchEvent(new CustomEvent('sipjam:guru_updated', { detail: syncPayload }));
+        try {
+          localStorage.setItem('sipjam_config_sync', JSON.stringify(syncPayload));
+        } catch (_) {}
+      }
+
+      try {
+        const configChannel = supabase.channel(`school-config-${targetSekolahId}`);
+        await configChannel.send({
+          type: 'broadcast',
+          event: 'config_updated',
+          payload: syncPayload
+        });
+      } catch (broadcastErr) {
+        console.warn('Realtime channel broadcast warning:', broadcastErr);
       }
 
       if (error) {
@@ -329,48 +367,91 @@ export default function AdminConfigView({
                       </p>
                     </div>
 
-                    {/* Pengecualian Kehadiran Guru (Hanya wajib hadir saat hari mengajar) */}
+                    {/* Manajemen Kewajiban Kehadiran Guru (Pengecualian Kehadiran Guru) */}
                     <div className="mt-4 pt-4 border-t border-indigo-200/60 dark:border-indigo-800/60">
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                         <div>
                           <h4 className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
                             <i className="fa-solid fa-user-gear text-xs text-indigo-600 dark:text-indigo-400"></i>
-                            Pengecualian Kehadiran Guru
+                            Pengecualian Kehadiran Guru (Model B - Eksplisit per Guru)
                           </h4>
                           <p className="text-[10px] text-gray-600 dark:text-gray-300">
-                            Tentukan guru yang <strong>Hanya wajib hadir saat hari mengajar / piket</strong>. Guru yang tidak dipilih tetap wajib hadir setiap hari kerja.
+                            Tentukan status kewajiban kehadiran secara eksplisit per guru: <strong>Wajib Hadir Setiap Hari</strong> vs <strong>Hanya Hari KBM / Piket</strong>.
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setExemptTeacherIds(guruList.map(g => g.id))}
-                            className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                            onClick={() => setExemptTeacherIds([])}
+                            className="btn-click text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 transition cursor-pointer"
+                            title="Setel semua guru menjadi Wajib Hadir Setiap Hari"
                           >
-                            Pilih Semua
+                            <i className="fa-solid fa-calendar-check mr-1"></i>
+                            Set Semua Hadir Setiap Hari
                           </button>
-                          <span className="text-gray-300 dark:text-gray-600">|</span>
                           <button
                             type="button"
-                            onClick={() => setExemptTeacherIds([])}
-                            className="text-[10px] font-bold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                            onClick={() => setExemptTeacherIds(guruList.map(g => g.id))}
+                            className="btn-click text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 transition cursor-pointer"
+                            title="Setel semua guru menjadi Hanya Hari KBM / Piket"
                           >
-                            Reset Semua
+                            <i className="fa-solid fa-graduation-cap mr-1"></i>
+                            Set Semua Hanya Hari KBM
                           </button>
                         </div>
                       </div>
 
-                      <div className="mb-2">
-                        <input
-                          type="text"
-                          placeholder="Cari nama guru, NIP, atau mata pelajaran..."
-                          value={teacherSearch}
-                          onChange={e => setTeacherSearch(e.target.value)}
-                          className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                        />
+                      {/* Tab Filter Cepat & Search Box */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-1 p-0.5 bg-gray-200/80 dark:bg-gray-800 rounded-xl text-[11px] font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => setAttendanceFilterTab('all')}
+                            className={`px-2.5 py-1 rounded-lg transition ${
+                              attendanceFilterTab === 'all'
+                                ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Semua Guru <span className="ml-1 text-[10px] opacity-75 font-normal">({guruList.length})</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAttendanceFilterTab('setiap_hari')}
+                            className={`px-2.5 py-1 rounded-lg transition ${
+                              attendanceFilterTab === 'setiap_hari'
+                                ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-xs font-bold'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Wajib Setiap Hari <span className="ml-1 text-[10px] opacity-75 font-normal">({guruList.filter(g => !exemptTeacherIds.includes(g.id) && !(g.nama_guru && exemptTeacherIds.includes(g.nama_guru))).length})</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAttendanceFilterTab('hanya_kbm')}
+                            className={`px-2.5 py-1 rounded-lg transition ${
+                              attendanceFilterTab === 'hanya_kbm'
+                                ? 'bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-xs font-bold'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Hanya Hari KBM <span className="ml-1 text-[10px] opacity-75 font-normal">({guruList.filter(g => exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru))).length})</span>
+                          </button>
+                        </div>
+
+                        <div className="relative flex-1 sm:max-w-xs">
+                          <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                          <input
+                            type="text"
+                            placeholder="Cari guru, NIP, mapel..."
+                            value={teacherSearch}
+                            onChange={e => setTeacherSearch(e.target.value)}
+                            className="w-full pl-7 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                          />
+                        </div>
                       </div>
 
-                      <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 custom-scroll">
+                      <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1 custom-scroll">
                         {guruList.length === 0 ? (
                           <div className="text-center py-4 text-[11px] text-gray-500 italic">
                             Tidak ada data guru ditemukan.
@@ -378,6 +459,9 @@ export default function AdminConfigView({
                         ) : (
                           guruList
                             .filter(g => {
+                              const isExempt = exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru));
+                              if (attendanceFilterTab === 'setiap_hari' && isExempt) return false;
+                              if (attendanceFilterTab === 'hanya_kbm' && !isExempt) return false;
                               if (!teacherSearch) return true;
                               const s = teacherSearch.toLowerCase();
                               return (
@@ -389,44 +473,70 @@ export default function AdminConfigView({
                             .map(g => {
                               const isExempt = exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru));
                               return (
-                                <label
+                                <div
                                   key={g.id}
-                                  className={`flex items-center justify-between p-2 rounded-xl border text-xs cursor-pointer transition ${
+                                  className={`flex items-center justify-between p-2.5 rounded-xl border text-xs transition ${
                                     isExempt
-                                      ? 'bg-indigo-100/70 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700'
+                                      ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60'
                                       : 'bg-white dark:bg-gray-800/80 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                                   }`}
                                 >
-                                  <div className="flex items-center gap-2.5 min-w-0">
-                                    <input
-                                      type="checkbox"
-                                      checked={isExempt}
-                                      onChange={e => {
-                                        if (e.target.checked) {
-                                          setExemptTeacherIds(prev => [...prev, g.id]);
-                                        } else {
-                                          setExemptTeacherIds(prev => prev.filter(id => id !== g.id && id !== g.nama_guru));
-                                        }
-                                      }}
-                                      className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 shrink-0"
-                                    />
+                                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                      isExempt
+                                        ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                                        : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                                    }`}>
+                                      <i className={`text-xs ${isExempt ? 'fa-solid fa-graduation-cap' : 'fa-solid fa-user-check'}`}></i>
+                                    </div>
                                     <div className="min-w-0">
                                       <div className="font-bold text-gray-900 dark:text-white truncate">
                                         {g.nama_guru}
                                       </div>
-                                      <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                                        {g.mata_pelajaran ? `Mapel: ${g.mata_pelajaran}` : (g.nip ? `NIP: ${g.nip}` : 'Guru')}
+                                      <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1.5">
+                                        {g.nip && <span>NIP: {g.nip}</span>}
+                                        {g.nip && g.mata_pelajaran && <span>•</span>}
+                                        {g.mata_pelajaran ? <span>Mapel: {g.mata_pelajaran}</span> : (!g.nip && <span>Guru</span>)}
                                       </div>
                                     </div>
                                   </div>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
-                                    isExempt
-                                      ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700'
-                                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                  }`}>
-                                    {isExempt ? 'Hanya Hari Mengajar' : 'Setiap Hari Kerja'}
-                                  </span>
-                                </label>
+
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                      type="button"
+                                      role="switch"
+                                      aria-checked={isExempt}
+                                      onClick={() => {
+                                        if (isExempt) {
+                                          setExemptTeacherIds(prev => prev.filter(id => id !== g.id && id !== g.nama_guru));
+                                        } else {
+                                          setExemptTeacherIds(prev => [...prev, g.id]);
+                                        }
+                                      }}
+                                      className={`flex items-center gap-2 px-2.5 py-1 rounded-xl border text-[11px] font-semibold cursor-pointer transition select-none ${
+                                        isExempt
+                                          ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200'
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
+                                      }`}
+                                      title={isExempt ? 'Status: Hanya Hari KBM / Piket. Klik untuk ubah ke Wajib Hadir Setiap Hari.' : 'Status: Wajib Hadir Setiap Hari. Klik untuk ubah ke Hanya Hari KBM / Piket.'}
+                                    >
+                                      <span
+                                        className={`relative inline-block w-8 h-4 rounded-full transition-colors duration-200 ease-in-out ${
+                                          isExempt ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'
+                                        }`}
+                                      >
+                                        <span
+                                          className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform duration-200 ease-in-out shadow-xs mt-0.5 ml-0.5 ${
+                                            isExempt ? 'translate-x-4' : 'translate-x-0'
+                                          }`}
+                                        />
+                                      </span>
+                                      <span>
+                                        {isExempt ? 'Hanya Hari KBM / Piket' : 'Wajib Hadir Setiap Hari'}
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
                               );
                             })
                         )}

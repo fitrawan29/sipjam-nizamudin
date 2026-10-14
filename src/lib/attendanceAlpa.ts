@@ -362,12 +362,14 @@ export async function evaluateAndApplyAutoAlpa(
     }
 
     // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
-    const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar) ||
-      isSchoolHariMengajarSaja ||
-      (guru.id && guruHanyaMengajarList.includes(guru.id)) ||
+    const hasExplicitTeacherSetting = guru.wajib_hadir_hanya_mengajar !== null && guru.wajib_hadir_hanya_mengajar !== undefined;
+    const isTeacherInLegacyList = (guru.id && guruHanyaMengajarList.includes(guru.id)) ||
       (guru.nip && guruHanyaMengajarList.includes(guru.nip)) ||
       guruHanyaMengajarList.includes(guru.nama_guru) ||
       (guru.user_id && guruHanyaMengajarList.includes(guru.user_id));
+
+    const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar) ||
+      (!hasExplicitTeacherSetting && (isTeacherInLegacyList || isSchoolHariMengajarSaja));
 
     if (isTeacherExempt) {
       const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();

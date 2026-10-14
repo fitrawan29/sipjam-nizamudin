@@ -306,6 +306,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     let isTeacherExempt = false;
     let teacherDataGuruId: string | null = null;
     let teacherDataGuruNip: string | null = null;
+    let explicitTeacherSetting: boolean | null = null;
     try {
       let tQ = supabase.from('data_guru').select('id, nama_guru, nip, wajib_hadir_hanya_mengajar, sekolah_id');
       if (sekolahId) {
@@ -323,6 +324,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         for (const teacher of tData) {
           if (!teacherDataGuruId && teacher.id) teacherDataGuruId = String(teacher.id);
           if (!teacherDataGuruNip && teacher.nip) teacherDataGuruNip = String(teacher.nip);
+          if (teacher.wajib_hadir_hanya_mengajar !== null && teacher.wajib_hadir_hanya_mengajar !== undefined) {
+            explicitTeacherSetting = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true';
+          }
           if (teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true') {
             isTeacherExempt = true;
           }
@@ -343,9 +347,20 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       isTeacherExempt = true;
     }
 
-    // Global policy override
-    if (aturanKehadiran === 'Hari_Mengajar_Saja') {
+    // Bidirectional consistency:
+    // If teacher has explicit setting in data_guru:
+    // - true: exempt (only teaching / piket)
+    // - false: NOT exempt (must attend every day, global Hari_Mengajar_Saja does not override)
+    // If explicit setting is null/undefined (backward compatibility):
+    // Fall back to legacy guruHanyaMengajarList or global policy
+    if (explicitTeacherSetting === false) {
+      isTeacherExempt = false;
+    } else if (explicitTeacherSetting === true) {
       isTeacherExempt = true;
+    } else {
+      if (aturanKehadiran === 'Hari_Mengajar_Saja') {
+        isTeacherExempt = true;
+      }
     }
 
     state.aturanKehadiran = isTeacherExempt ? 'Hari_Mengajar_Saja' : 'Semua_Hari';
