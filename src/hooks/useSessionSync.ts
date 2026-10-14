@@ -91,16 +91,32 @@ export function useSessionSync(
       }
     };
 
+    const handleConfigSync = () => {
+      setSyncKey(k => k + 1);
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync') {
+        setSyncKey(k => k + 1);
+      }
+    };
+
     window.addEventListener('focus', checkIdleAndResume);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('pointerdown', checkIdleAndResume, { passive: true });
     window.addEventListener('keydown', checkIdleAndResume, { passive: true });
+    window.addEventListener('sipjam:config_updated', handleConfigSync);
+    window.addEventListener('sipjam:guru_updated', handleConfigSync);
+    window.addEventListener('storage', handleStorage);
 
     return () => {
       window.removeEventListener('focus', checkIdleAndResume);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('pointerdown', checkIdleAndResume);
       window.removeEventListener('keydown', checkIdleAndResume);
+      window.removeEventListener('sipjam:config_updated', handleConfigSync);
+      window.removeEventListener('sipjam:guru_updated', handleConfigSync);
+      window.removeEventListener('storage', handleStorage);
     };
   }, [currentUser?.id, currentUser?.session_token, user?.id, user?.session_token, onLogout, onUserUpdate]);
 

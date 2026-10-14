@@ -196,7 +196,13 @@ export default function AdminConfigView({
     };
 
     const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
-    const jsonExempt = JSON.stringify(exemptTeacherIds);
+    const exemptIds = guruList.length > 0
+      ? guruList.filter(t => exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id)
+      : exemptTeacherIds;
+    const nonExemptIds = guruList.length > 0
+      ? guruList.filter(t => !exemptTeacherIds.includes(t.id) && !(t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id)
+      : [];
+    const jsonExempt = JSON.stringify(exemptIds);
 
     const upsertData = Object.entries(saveConfig).map(([key, value]) => ({
       sekolah_id: targetSekolahId,
@@ -232,9 +238,6 @@ export default function AdminConfigView({
 
       // Also sync data_guru.wajib_hadir_hanya_mengajar
       if (guruList.length > 0) {
-        const exemptIds = guruList.filter(t => exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id);
-        const nonExemptIds = guruList.filter(t => !exemptTeacherIds.includes(t.id) && !(t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id);
-
         if (exemptIds.length > 0) {
           await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: true }).in('id', exemptIds);
         }
@@ -247,13 +250,14 @@ export default function AdminConfigView({
           ...t,
           wajib_hadir_hanya_mengajar: exemptIds.includes(t.id)
         })));
+        setExemptTeacherIds(exemptIds);
       }
 
       // Realtime synchronization: dispatch local window custom events, storage event, and Supabase channel broadcast
       const syncPayload = {
         sekolah_id: targetSekolahId,
         aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
-        exemptTeacherIds,
+        exemptTeacherIds: exemptIds,
         timestamp: Date.now()
       };
 
@@ -267,11 +271,26 @@ export default function AdminConfigView({
 
       try {
         const configChannel = supabase.channel(`school-config-${targetSekolahId}`);
-        await configChannel.send({
-          type: 'broadcast',
-          event: 'config_updated',
-          payload: syncPayload
-        });
+        await Promise.race([
+          new Promise<void>((resolve) => {
+            configChannel.subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                configChannel.send({
+                  type: 'broadcast',
+                  event: 'config_updated',
+                  payload: syncPayload
+                }).finally(() => {
+                  supabase.removeChannel(configChannel);
+                  resolve();
+                });
+              }
+            });
+          }),
+          new Promise<void>((resolve) => setTimeout(() => {
+            supabase.removeChannel(configChannel);
+            resolve();
+          }, 1500))
+        ]);
       } catch (broadcastErr) {
         console.warn('Realtime channel broadcast warning:', broadcastErr);
       }
@@ -391,7 +410,7 @@ export default function AdminConfigView({
                           </button>
                           <button
                             type="button"
-                            onClick={() => setExemptTeacherIds(guruList.map(g => g.id))}
+                            onClick={() => setExemptTeacherIds(guruList.map(g => g.id).filter(Boolean))}
                             className="btn-click text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 transition cursor-pointer"
                             title="Setel semua guru menjadi Hanya Hari KBM / Piket"
                           >
@@ -462,8 +481,8 @@ export default function AdminConfigView({
                               const isExempt = exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru));
                               if (attendanceFilterTab === 'setiap_hari' && isExempt) return false;
                               if (attendanceFilterTab === 'hanya_kbm' && !isExempt) return false;
-                              if (!teacherSearch) return true;
-                              const s = teacherSearch.toLowerCase();
+                              const s = teacherSearch.trim().toLowerCase();
+                              if (!s) return true;
                               return (
                                 (g.nama_guru && g.nama_guru.toLowerCase().includes(s)) ||
                                 (g.mata_pelajaran && g.mata_pelajaran.toLowerCase().includes(s)) ||

@@ -361,6 +361,13 @@ export async function evaluateAndApplyAutoAlpa(
       }
     }
 
+    // Normalisasi nilai string boolean agar evaluasi aman dan konsisten
+    if (guru.wajib_hadir_hanya_mengajar === 'false' || guru.wajib_hadir_hanya_mengajar === '0') {
+      guru.wajib_hadir_hanya_mengajar = false;
+    } else if (guru.wajib_hadir_hanya_mengajar === 'true' || guru.wajib_hadir_hanya_mengajar === '1') {
+      guru.wajib_hadir_hanya_mengajar = true;
+    }
+
     // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
     const hasExplicitTeacherSetting = guru.wajib_hadir_hanya_mengajar !== null && guru.wajib_hadir_hanya_mengajar !== undefined;
     const isTeacherInLegacyList = (guru.id && guruHanyaMengajarList.includes(guru.id)) ||

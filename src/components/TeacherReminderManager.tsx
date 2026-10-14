@@ -226,6 +226,14 @@ export function evaluateReminderConditions(
     return reminders;
   }
 
+  if (teacherObj) {
+    if (teacherObj.wajib_hadir_hanya_mengajar === 'false' || teacherObj.wajib_hadir_hanya_mengajar === '0') {
+      teacherObj.wajib_hadir_hanya_mengajar = false;
+    } else if (teacherObj.wajib_hadir_hanya_mengajar === 'true' || teacherObj.wajib_hadir_hanya_mengajar === '1') {
+      teacherObj.wajib_hadir_hanya_mengajar = true;
+    }
+  }
+
   const hasExplicitTeacherSetting = teacherObj?.wajib_hadir_hanya_mengajar !== null && teacherObj?.wajib_hadir_hanya_mengajar !== undefined;
   const isExempt = dailyState.isNonTeachingDay || Boolean(teacherObj?.wajib_hadir_hanya_mengajar) || (!hasExplicitTeacherSetting && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja');
   const hasClassesToday = Boolean(dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0);

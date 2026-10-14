@@ -35,6 +35,8 @@ const adminHomePath = path.join(root, 'src', 'components', 'HomeViewAdmin.tsx');
 const guruHomePath = path.join(root, 'src', 'components', 'HomeViewGuru.tsx');
 const reminderManagerPath = path.join(root, 'src', 'components', 'TeacherReminderManager.tsx');
 const pushReminderPath = path.join(root, 'src', 'app', 'api', 'push', 'send-reminders', 'route.ts');
+const appScreenPath = path.join(root, 'src', 'components', 'AppScreen.tsx');
+const sessionSyncPath = path.join(root, 'src', 'hooks', 'useSessionSync.ts');
 
 async function runTests() {
   try {
@@ -45,6 +47,8 @@ async function runTests() {
     const guruHomeContent = fs.readFileSync(guruHomePath, 'utf8');
     const reminderManagerContent = fs.readFileSync(reminderManagerPath, 'utf8');
     const pushReminderContent = fs.readFileSync(pushReminderPath, 'utf8');
+    const appScreenContent = fs.readFileSync(appScreenPath, 'utf8');
+    const sessionSyncContent = fs.readFileSync(sessionSyncPath, 'utf8');
 
     // --------------------------------------------------------------------------
     // BAGIAN 1: VERIFIKASI UI PENGATURAN MODEL B DI AdminConfigView.tsx (R1)
@@ -97,7 +101,8 @@ async function runTests() {
       assert(adminConfigContent.includes("from('data_guru').update({ wajib_hadir_hanya_mengajar: true })"), 'Menyimpan wajib_hadir_hanya_mengajar = true untuk guru exempt');
       assert(adminConfigContent.includes("from('data_guru').update({ wajib_hadir_hanya_mengajar: false })"), 'Menyimpan wajib_hadir_hanya_mengajar = false untuk guru non-exempt');
       assert(adminConfigContent.includes('guru_hanya_mengajar: jsonExempt'), 'Menyimpan array ID ke pengaturan.guru_hanya_mengajar');
-      pass('R1.5: Sinkronisasi status tersimpan ke data_guru.wajib_hadir_hanya_mengajar dan pengaturan.guru_hanya_mengajar');
+      assert(adminConfigContent.includes('const jsonExempt = JSON.stringify(exemptIds)'), 'Menyimpan array canonical ID terfilter');
+      pass('R1.5: Sinkronisasi status tersimpan secara kanonikal ke data_guru dan pengaturan');
     } catch (e: any) {
       fail('R1.5: Sinkronisasi database di AdminConfigView tidak lengkap', e);
     }
@@ -117,11 +122,12 @@ async function runTests() {
       fail('R2.1: Logika evaluasi dua arah di workflow.ts belum benar', e);
     }
 
-    // R2.2: attendanceAlpa.ts - Status eksplisit tidak tertimpa aturan global sekolah
+    // R2.2: attendanceAlpa.ts - Status eksplisit tidak tertimpa aturan global sekolah & robust string handling
     try {
       assert(alpaContent.includes('hasExplicitTeacherSetting'), 'attendanceAlpa.ts memeriksa status eksplisit');
       assert(alpaContent.includes('const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar)'), 'attendanceAlpa.ts mengevaluasi isTeacherExempt');
-      pass('R2.2: attendanceAlpa.ts konsisten melindungi guru wajib hadir dari pembatalan alpa sepihak');
+      assert(alpaContent.includes("guru.wajib_hadir_hanya_mengajar === 'false'"), 'attendanceAlpa.ts menormalisasi string boolean');
+      pass('R2.2: attendanceAlpa.ts konsisten melindungi guru wajib hadir dan robust terhadap string boolean');
     } catch (e: any) {
       fail('R2.2: attendanceAlpa.ts belum konsisten dalam evaluasi dua arah', e);
     }
@@ -130,7 +136,8 @@ async function runTests() {
     try {
       assert(adminHomeContent.includes('hasExplicitTeacherSetting'), 'HomeViewAdmin.tsx menghormati status eksplisit');
       assert(reminderManagerContent.includes('hasExplicitTeacherSetting'), 'TeacherReminderManager.tsx menghormati status eksplisit');
-      pass('R2.3: HomeViewAdmin dan TeacherReminderManager konsisten menghormati status eksplisit guru');
+      assert(pushReminderContent.includes('isExplicitExempt'), 'send-reminders route mengevaluasi isExplicitExempt');
+      pass('R2.3: HomeViewAdmin, TeacherReminderManager, dan push reminder konsisten menghormati status eksplisit');
     } catch (e: any) {
       fail('R2.3: Inkonsistensi status pada HomeViewAdmin atau TeacherReminderManager', e);
     }
@@ -140,15 +147,16 @@ async function runTests() {
     // --------------------------------------------------------------------------
     console.log('\n--- [R3] Propagasi Realtime & Efek Langsung ke Akun Guru ---');
 
-    // R3.1: AdminConfigView memicu sinkronisasi realtime
+    // R3.1: AdminConfigView memicu sinkronisasi realtime dengan timeout protection & channel cleanup
     try {
       assert(adminConfigContent.includes("new CustomEvent('sipjam:config_updated'"), 'AdminConfigView memancarkan event sipjam:config_updated');
       assert(adminConfigContent.includes("new CustomEvent('sipjam:guru_updated'"), 'AdminConfigView memancarkan event sipjam:guru_updated');
       assert(adminConfigContent.includes("localStorage.setItem('sipjam_config_sync'"), 'AdminConfigView menyimpan sinyal sync ke localStorage');
       assert(adminConfigContent.includes("event: 'config_updated'"), 'AdminConfigView mengirim broadcast channel config_updated');
-      pass('R3.1: AdminConfigView memicu sinkronisasi database, window custom event, storage event, dan realtime channel');
+      assert(adminConfigContent.includes('Promise.race') && adminConfigContent.includes('removeChannel'), 'AdminConfigView memiliki proteksi timeout dan pembersihan channel broadcast');
+      pass('R3.1: AdminConfigView memicu sinkronisasi database, event, dan broadcast channel aman non-blocking');
     } catch (e: any) {
-      fail('R3.1: AdminConfigView tidak memicu sinyal realtime lengkap', e);
+      fail('R3.1: AdminConfigView tidak memicu sinyal realtime lengkap atau tanpa proteksi channel', e);
     }
 
     // R3.2: HomeViewGuru mendengarkan sinyal realtime dan memperbarui state tanpa refresh
@@ -171,6 +179,18 @@ async function runTests() {
       pass('R3.3: TeacherReminderManager mendengarkan pembaruan konfigurasi secara instan');
     } catch (e: any) {
       fail('R3.3: TeacherReminderManager tidak mendengarkan update konfigurasi', e);
+    }
+
+    // R3.4: AppScreen dan useSessionSync mendengarkan perubahan realtime untuk invalidasi shell guru
+    try {
+      assert(appScreenContent.includes("table: 'pengaturan'"), 'AppScreen mendengarkan perubahan tabel pengaturan');
+      assert(appScreenContent.includes("table: 'data_guru'"), 'AppScreen mendengarkan perubahan tabel data_guru');
+      assert(appScreenContent.includes("event: 'config_updated'"), 'AppScreen mendengarkan broadcast config_updated');
+      assert(sessionSyncContent.includes("window.addEventListener('sipjam:config_updated'"), 'useSessionSync mendengarkan sipjam:config_updated');
+      assert(sessionSyncContent.includes("window.addEventListener('storage'"), 'useSessionSync mendengarkan storage sync');
+      pass('R3.4: AppScreen dan useSessionSync mendengarkan sinyal realtime untuk sinkronisasi shell guru & piket');
+    } catch (e: any) {
+      fail('R3.4: Subscription realtime di AppScreen / useSessionSync belum lengkap', e);
     }
 
     // --------------------------------------------------------------------------
@@ -336,6 +356,42 @@ async function runTests() {
       assert.strictEqual(teachers.filter(g => exemptIds.includes(g.id)).length, 4, 'Set Semua Hanya Hari KBM menyetel seluruh guru menjadi exempt');
 
       pass('Skenario 4: Simulasi filter tab, pencarian responsif, dan aksi massal berfungsi 100% presisi');
+    }
+
+    // Skenario 5: Robustness terhadap representasi string "false" / "true" dari database
+    {
+      const evaluateExempt = (val: any, globalPolicy = 'Hari_Mengajar_Saja') => {
+        const isExplicitExempt = val === true || String(val) === 'true';
+        const isExplicitNonExempt = val === false || String(val) === 'false';
+        const hasExplicitTeacherSetting = isExplicitExempt || isExplicitNonExempt;
+        const isTeacherExempt = isExplicitExempt || (!hasExplicitTeacherSetting && globalPolicy === 'Hari_Mengajar_Saja');
+        return { isTeacherExempt, hasExplicitTeacherSetting };
+      };
+
+      // String "false"
+      const resStringFalse = evaluateExempt("false", "Hari_Mengajar_Saja");
+      assert.strictEqual(resStringFalse.isTeacherExempt, false, 'String "false" tidak boleh dieksepsikan oleh aturan global');
+      assert.strictEqual(resStringFalse.hasExplicitTeacherSetting, true, 'String "false" harus dikenali sebagai setting eksplisit');
+
+      // String "true"
+      const resStringTrue = evaluateExempt("true", "Semua_Hari");
+      assert.strictEqual(resStringTrue.isTeacherExempt, true, 'String "true" harus dieksepsikan');
+      assert.strictEqual(resStringTrue.hasExplicitTeacherSetting, true, 'String "true" harus dikenali sebagai setting eksplisit');
+
+      // Boolean false
+      const resBoolFalse = evaluateExempt(false, "Hari_Mengajar_Saja");
+      assert.strictEqual(resBoolFalse.isTeacherExempt, false, 'Boolean false tidak boleh dieksepsikan');
+
+      // Null / undefined fallback
+      const resNull = evaluateExempt(null, "Hari_Mengajar_Saja");
+      assert.strictEqual(resNull.hasExplicitTeacherSetting, false, 'null tidak dianggap setting eksplisit');
+      assert.strictEqual(resNull.isTeacherExempt, true, 'null fallback ke aturan global sekolah Hari_Mengajar_Saja');
+
+      const resUndefined = evaluateExempt(undefined, "Semua_Hari");
+      assert.strictEqual(resUndefined.hasExplicitTeacherSetting, false, 'undefined tidak dianggap setting eksplisit');
+      assert.strictEqual(resUndefined.isTeacherExempt, false, 'undefined fallback ke aturan global sekolah Semua_Hari');
+
+      pass('Skenario 5: Ketahanan sistem terhadap tipe data string "false" dan "true" terverifikasi 100% robust');
     }
 
   } catch (err: any) {

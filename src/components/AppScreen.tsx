@@ -211,6 +211,33 @@ export default function AppScreen({
     }
   }, [user?.sekolah_id, syncKey]);
 
+  // Realtime subscription for school configuration and teacher data updates (R3)
+  useEffect(() => {
+    const schoolId = user?.sekolah_id || 'global';
+    const channelName = `app-school-sync-${schoolId}-${user?.id || 'anon'}`;
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru' }, () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sipjam:guru_updated', { detail: { sekolah_id: schoolId } }));
+        }
+      })
+      .on('broadcast', { event: 'config_updated' }, () => {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.sekolah_id, user?.id]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 

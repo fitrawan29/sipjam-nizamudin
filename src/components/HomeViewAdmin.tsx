@@ -219,11 +219,13 @@ export default function HomeViewAdmin({
         targetClasses = Array.from(uniqueTargetsMap.values());
         const targetCount = targetClasses.length;
         
-        const hasExplicitTeacherSetting = teacher.wajib_hadir_hanya_mengajar !== null && teacher.wajib_hadir_hanya_mengajar !== undefined;
+        const isExplicitExempt = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true';
+        const isExplicitNonExempt = teacher.wajib_hadir_hanya_mengajar === false || String(teacher.wajib_hadir_hanya_mengajar) === 'false';
+        const hasExplicitTeacherSetting = isExplicitExempt || isExplicitNonExempt;
         const isTeacherInLegacyList = guruHanyaMengajarList.includes(teacher.id) ||
           guruHanyaMengajarList.includes(nama) ||
           (teacher.nip && guruHanyaMengajarList.includes(teacher.nip));
-        const isTeacherExempt = Boolean(teacher.wajib_hadir_hanya_mengajar) ||
+        const isTeacherExempt = isExplicitExempt ||
           (!hasExplicitTeacherSetting && (isTeacherInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja'));
         const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
 
