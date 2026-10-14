@@ -200,8 +200,8 @@ async function runRound3Tests() {
       {
         id: testAttendanceId,
         sekolah_id: 'a0000000-0000-0000-0000-000000000001',
-        nama_guru: 'Ade Fitrawan Ibrahim',
-        user_id: 'fff9d836-b034-4a66-be96-1c1b7cfad277',
+        nama_guru: 'Dummy Automated Test Guru',
+        user_id: null,
         tipe_absen: 'Datang',
         jenis_presensi: 'Izin Terlambat',
         status_verifikasi: 'Menunggu',

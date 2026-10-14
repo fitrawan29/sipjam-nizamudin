@@ -316,8 +316,8 @@ async function runAllRequirementsVerification() {
   const testPresensiId = 'test-r3-' + Date.now();
   const testPayload = {
     id: testPresensiId,
-    user_id: 'fff9d836-b034-4a66-be96-1c1b7cfad277',
-    nama_guru: 'Ade Fitrawan Ibrahim',
+    user_id: null,
+    nama_guru: 'Dummy Automated Test Guru',
     tipe_absen: 'Datang',
     jenis_presensi: 'Izin Terlambat',
     detail_izin: 'Kendaraan mengalami kendala dalam perjalanan',
@@ -353,9 +353,16 @@ async function runAllRequirementsVerification() {
     'R3: Saved record captures keterlambatan_detik accurately'
   );
 
-  // Clean up test attendance record
+  // Clean up test attendance record using superadmin client
   try {
-    await supabase.from('presensi_guru').delete().eq('id', testPresensiId);
+    const { getTenantSupabaseClient } = await import('../src/lib/supabaseClient');
+    const { data: saLogin } = await supabase.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: process.env.SUPERADMIN_API_PASSWORD || 'SipjamSuperAdmin2026!'
+    });
+    const saToken = saLogin?.[0]?.session_token;
+    const adminClient = getTenantSupabaseClient(null, 'Superadmin', null, saToken);
+    await adminClient.from('presensi_guru').delete().eq('id', testPresensiId);
   } catch (cleanErr) {
     console.warn('Cleanup warning for test presensi:', cleanErr);
   }

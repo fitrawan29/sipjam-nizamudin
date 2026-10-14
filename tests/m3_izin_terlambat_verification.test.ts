@@ -75,8 +75,8 @@ async function runTests() {
   const testId = 'test-m3-' + Date.now();
   const testPayload = {
     id: testId,
-    user_id: 'fff9d836-b034-4a66-be96-1c1b7cfad277',
-    nama_guru: 'Ade Fitrawan Ibrahim',
+    user_id: null,
+    nama_guru: 'Dummy Automated Test Guru',
     tipe_absen: 'Datang',
     jenis_presensi: 'Izin Terlambat',
     detail_izin: 'Ban motor bocor dalam perjalanan ke sekolah',
@@ -100,9 +100,16 @@ async function runTests() {
   assert(postJson.data?.status_verifikasi === 'Menunggu', 'Saved record has status_verifikasi="Menunggu"');
   assert(postJson.data?.keterlambatan_detik === 1200, 'Saved record captures keterlambatan_detik');
 
-  // Cleanup test record from database
+  // Cleanup test record from database using superadmin client
   try {
-    await supabase.from('presensi_guru').delete().eq('id', testId);
+    const { getTenantSupabaseClient } = await import('../src/lib/supabaseClient');
+    const { data: saLogin } = await supabase.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: process.env.SUPERADMIN_API_PASSWORD || 'SipjamSuperAdmin2026!'
+    });
+    const saToken = saLogin?.[0]?.session_token;
+    const adminClient = getTenantSupabaseClient(null, 'Superadmin', null, saToken);
+    await adminClient.from('presensi_guru').delete().eq('id', testId);
     console.log(`Cleaned up test record: ${testId}`);
   } catch (cleanErr) {
     console.warn('Cleanup warning:', cleanErr);

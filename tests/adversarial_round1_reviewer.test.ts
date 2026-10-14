@@ -128,8 +128,8 @@ async function runReviewerAdversarialSuite() {
     const { POST } = await import('../src/app/api/attendance/route');
     const bypassPayload = {
       id: testBypassId,
-      user_id: 'fff9d836-b034-4a66-be96-1c1b7cfad277',
-      nama_guru: 'Ade Fitrawan Ibrahim',
+      user_id: null,
+      nama_guru: 'Dummy Automated Test Guru',
       tipe_absen: 'Datang',
       jenis_presensi: 'Izin Terlambat',
       status_verifikasi: 'Diverifikasi', // Malicious client attempt to bypass admin

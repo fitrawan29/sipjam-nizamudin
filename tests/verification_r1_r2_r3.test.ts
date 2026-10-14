@@ -129,8 +129,8 @@ async function runTestSuite() {
   const testAttendanceId = 'test-r2-' + Date.now();
   const testPayload = {
     id: testAttendanceId,
-    user_id: 'fff9d836-b034-4a66-be96-1c1b7cfad277',
-    nama_guru: 'Ade Fitrawan Ibrahim',
+    user_id: null,
+    nama_guru: 'Dummy Automated Test Guru',
     tipe_absen: 'Datang',
     jenis_presensi: 'Izin Terlambat',
     detail_izin: 'Uji Coba Alur Izin Terlambat',
@@ -154,9 +154,19 @@ async function runTestSuite() {
     `R2.7: Presensi Izin Terlambat tersimpan dengan status_verifikasi "Menunggu" (didapat: ${postJson.data?.status_verifikasi})`
   );
 
-  // Clean up test attendance
-  const { supabase } = await import('../src/lib/supabaseClient');
-  await supabase.from('presensi_guru').delete().eq('id', testAttendanceId);
+  // Clean up test attendance using superadmin client
+  try {
+    const { supabase, getTenantSupabaseClient } = await import('../src/lib/supabaseClient');
+    const { data: saLogin } = await supabase.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: process.env.SUPERADMIN_API_PASSWORD || 'SipjamSuperAdmin2026!'
+    });
+    const saToken = saLogin?.[0]?.session_token;
+    const adminClient = getTenantSupabaseClient(null, 'Superadmin', null, saToken);
+    await adminClient.from('presensi_guru').delete().eq('id', testAttendanceId);
+  } catch (cleanErr) {
+    console.warn('Cleanup warning for test presensi:', cleanErr);
+  }
 
   // ==========================================================================
   // R3: Penghapusan Input Username Guru

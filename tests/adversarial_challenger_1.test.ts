@@ -234,8 +234,8 @@ async function runAdversarialChallengerSuite() {
 
     const payload = {
       id: testId,
-      user_id: 'fff9d836-b034-4a66-be96-1c1b7cfad277',
-      nama_guru: 'Ade Fitrawan Ibrahim',
+      user_id: null,
+      nama_guru: 'Dummy Automated Test Teacher',
       tipe_absen: 'Datang',
       jenis_presensi: bCase.jenis || 'Izin Terlambat',
       detail_izin: 'Uji batas keterlambatan',
@@ -263,9 +263,16 @@ async function runAdversarialChallengerSuite() {
     );
   }
 
-  // Clean up test rows
+  // Clean up test rows using superadmin client so RLS allows deletion
   try {
-    await supabase.from('presensi_guru').delete().in('id', testIdsToClean);
+    const { getTenantSupabaseClient } = await import('../src/lib/supabaseClient');
+    const { data: saLogin } = await supabase.rpc('verify_login', {
+      p_username: 'superadmin',
+      p_password: process.env.SUPERADMIN_API_PASSWORD || 'SipjamSuperAdmin2026!'
+    });
+    const saToken = saLogin?.[0]?.session_token;
+    const adminClient = getTenantSupabaseClient(null, 'Superadmin', null, saToken);
+    await adminClient.from('presensi_guru').delete().in('id', testIdsToClean);
   } catch (cleanErr) {
     console.warn('Cleanup warning:', cleanErr);
   }
