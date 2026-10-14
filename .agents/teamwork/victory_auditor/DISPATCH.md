@@ -1,41 +1,61 @@
-## 2026-10-12T12:03:25Z
-You are teamwork_preview_victory_auditor.
-Your working directory is c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor.
-Project root is c:\Users\Fitra\OneDrive\Documents\sipjam-app.
+## 2026-10-14T10:55:49Z
+You are the independent post-victory auditor for this task.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
+Your parent orchestrator conversation ID is: cee80ad9-6743-4395-8d50-c686b97fb49d
 
 <original_task>
-This is a single self-contained fix; keep it small and focused.
-
-Sesuaikan aplikasi SIPJAM agar seluruh lini transaksi data (presensi, jurnal, piket, nilai) beroperasi secara online langsung ke cloud Supabase tanpa antrean offline lokal, dengan pengecualian khusus: Asisten AI tetap dipertahankan dalam mode 100% offline (FAQ lokal & knowledge base statis tanpa dependensi API eksternal). Implementasi harus menerapkan prinsip Ponytail (solusi paling efisien, ringkas, tanpa over-engineering, diff seminimal mungkin).
+Perbaiki aturan kehadiran guru agar opsi wajib hadir hanya pada hari mengajar berfungsi secara akurat tanpa error maupun bug di seluruh modul (workflow, presensi, dashboard admin, kalkulasi alpa otomatis, dan notifikasi pengingat), serta lakukan eliminasi file dan kode komponen usang yang sudah tidak dipakai.
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-Integrity mode: development
+Integrity mode: demo
 
 ## Requirements
 
-### R1. Online-Only Cloud Transaction Enforcement
-Seluruh pencatatan dan submission data operasional (khususnya Presensi Guru di `src/components/GuruPresensi.tsx`, Jurnal Pembelajaran, Presensi Siswa/Piket, Nilai) wajib terkirim langsung secara online ke Supabase. Hapus atau nonaktifkan mekanisme antrean offline lokal (`sipjam_offline_presensi`, `sipjam_offline_presensi_queue`). Jika perangkat terputus dari internet saat mencoba menyimpan/mengirim data, tampilkan peringatan interaktif kepada pengguna bahwa koneksi internet aktif diwajibkan untuk menyimpan transaksi.
+### R1. Keandalan Aturan Kehadiran Guru "Wajib Hadir Hanya Hari Mengajar"
+- Menyelaraskan status guru pada hari tanpa jadwal mengajar di seluruh alur sistem (`src/lib/workflow.ts`, `src/lib/attendanceAlpa.ts`, `src/components/HomeViewAdmin.tsx`, `src/components/HomeViewGuru.tsx`, dan `src/app/api/push/send-reminders/route.ts`).
+- Untuk guru dengan `wajib_hadir_hanya_mengajar = true` atau saat kebijakan global `aturan_kehadiran_guru = 'Hari_Mengajar_Saja'`:
+  1. Pada hari tanpa jadwal mengajar dan tidak ada tugas piket: guru dibebaskan dari kewajiban presensi (`isNonTeachingDay: true`, `bebasAlpa: true`, `isAlpa: false`), tidak dikenai Alpa otomatis di `attendanceAlpa.ts`, dan tidak dikirimi notifikasi tagihan presensi/jurnal.
+  2. Jika ditugaskan piket pada hari tanpa jam mengajar: guru tetap memiliki kewajiban hadir untuk menjalankan tugas piket.
+  3. Jika guru hadir ke sekolah secara sukarela pada hari tanpa jadwal mengajar (melakukan Presensi Datang): guru dapat melakukan Presensi Pulang secara normal tanpa terblokir oleh tagihan jurnal KBM fiktif.
+  4. Dashboard Admin (`HomeViewAdmin.tsx`) dan tampilan Guru (`HomeViewGuru.tsx`) konsisten menampilkan status bebas kehadiran/bebas mengajar tanpa anomali data.
 
-### R2. Offline AI Assistant Preservation
-Pertahankan arsitektur Asisten AI SIPJAM (`src/components/AIAssistant/`) tetap dalam mode 100% offline (menggunakan fuzzy matcher & knowledge base statis lokal, tanpa panggilan jaringan / API eksternal) sesuai indikator "100% Offline FAQ" yang sudah ada. Jaga agar tidak ada API network call yang ditambahkan ke modul AI.
+### R2. Eliminasi File dan Fitur Usang (Dead & Obsolete Code Cleanup)
+- Menghapus file komponen yatim yang sudah tidak di-mount dan tidak memiliki rute navigasi di aplikasi:
+  - `src/components/AdminMonitorView.tsx`
+  - `src/components/NotificationPermissionModal.tsx`
+  - `src/components/PushNotificationPrompt.tsx`
+- Membersihkan referensi/kode peninggalan usang (seperti antrean offline / sisa variabel legacy) secara bersih tanpa memengaruhi kestabilan transaksi cloud Supabase.
+- Memperbarui file test terkait agar tidak gagal saat memverifikasi file yang telah dihapus.
 
-### R3. Liveness, Network Status & Clean Error Handling
-Pastikan deteksi status koneksi dan penanganan error jaringan berjalan konsisten dan jelas, memberikan feedback langsung kepada user tanpa meninggalkan data tertahan di antrean lokal yang berpotensi menimbulkan desinkronisasi.
+### R3. Otomatisasi Verifikasi Pengujian
+- Buat file tes verifikasi otomatis (misal `tests/wajib_hadir_dan_pembersihan_usang.test.ts`) yang memvalidasi seluruh kondisi R1 dan R2 secara menyeluruh.
+- Seluruh suite tes yang terdaftar pada `package.json` (`npm test`) harus tetap berjalan 100% PASS.
 
 ## Acceptance Criteria
 
-### Online Data Transactions
-- [ ] Submisi presensi di `GuruPresensi.tsx` tidak lagi menyimpan antrean offline ke `localStorage` (`sipjam_offline_presensi` / `sipjam_offline_presensi_queue`) saat offline.
-- [ ] Saat perangkat offline, aplikasi memberikan peringatan/pesan interaktif bahwa koneksi internet aktif diperlukan untuk menyimpan data.
-- [ ] Seluruh data transaksi (presensi, jurnal, piket) langsung berkomunikasi ke Supabase cloud.
+### Aturan Kehadiran Hari Mengajar (R1)
+- [ ] Guru yang dikecualikan (exempt) pada hari tanpa jadwal KBM dan tanpa piket memperoleh status `isNonTeachingDay: true`, `bebasAlpa: true`, dan `isAlpa: false`.
+- [ ] `attendanceAlpa.ts` tidak memasukkan record Alpa untuk guru exempt pada hari tanpa jadwal mengajar & tanpa piket.
+- [ ] Guru exempt yang melakukan presensi datang sukarela dapat membuka dan mengirimkan presensi pulang tanpa terblokir oleh validasi jurnal KBM.
+- [ ] Jika guru exempt memiliki tugas piket hari ini, sistem tetap mendeteksi kewajiban piket dan mengharuskan presensi datang.
+- [ ] `send-reminders/route.ts` tidak mengirimkan push reminder pengingat presensi atau jurnal KBM ke guru exempt pada hari tanpa jadwal mengajar.
 
-### AI Assistant Offline Purity
-- [ ] Komponen Asisten AI tetap beroperasi 100% offline tanpa network call eksternal.
-- [ ] Test suite `ai_assistant_faq.test.ts` tetap valid dan lulus 100%.
+### Pembersihan Kode Usang (R2)
+- [ ] File `src/components/AdminMonitorView.tsx`, `src/components/NotificationPermissionModal.tsx`, dan `src/components/PushNotificationPrompt.tsx` berhasil dihapus.
+- [ ] Tidak ada broken import atau runtime error di seluruh aplikasi akibat penghapusan file tersebut.
+- [ ] Kode antrean offline usang yang tidak terpakai dibersihkan dengan aman.
 
-### Verification & Quality
-- [ ] Disesuaikan test suite otomatis untuk memverifikasi penegakan mode online pada transaksi data dan retensi offline pada AI assistant.
-- [ ] Seluruh pengujian automated test (`npm test`) berjalan dan lulus 100% tanpa regresi.
+### Verifikasi & Integritas Pengujian (R3)
+- [ ] Pengujian otomatis memverifikasi seluruh skenario batas (boundary conditions) untuk guru exempt dan non-exempt.
+- [ ] Perintah `npm test` berjalan sukses dengan 0 error dan seluruh tes lulus (PASS).
 </original_task>
 
-Conduct an independent post-victory audit (timeline audit, anti-cheating audit, independent test suite execution `npm test`, and production build `npm run build`). Provide a structured verdict: CONFIRMED or REJECTED.
+<instructions>
+Conduct your 3-phase audit:
+1. Timeline & requirements check: audit all requirements against commit history and current state.
+2. Cheating detection & test integrity: ensure tests are genuine and tests were not weakened or cheated.
+3. Independent test execution: run `npx tsx tests/wajib_hadir_dan_pembersihan_usang.test.ts`, `npm test`, and `npx tsc --noEmit`. Verify git status and commits.
+
+Write your final audit report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor\audit_report.md` with a structured verdict: CONFIRMED or REJECTED.
+Send a message back to orchestrator `cee80ad9-6743-4395-8d50-c686b97fb49d` with your verdict and findings.
+</instructions>
