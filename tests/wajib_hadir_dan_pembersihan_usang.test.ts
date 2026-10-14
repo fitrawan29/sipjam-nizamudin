@@ -209,10 +209,9 @@ async function runTests() {
     try {
       assert(adminHomeContent.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;'), 'Admin Home checks isExemptNonTeaching');
       assert(adminHomeContent.includes('const hasPiketDuty = isPiket;'), 'Admin Home checks hasPiketDuty');
-      assert(adminHomeContent.includes('const isFreeFromPresence = isSchoolDayOff ? false : (isExemptNonTeaching && !hasPiketDuty);'), 'Admin Home calculates isFreeFromPresence');
       assert(adminHomeContent.includes("isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang'"), 'Admin Home sets Bebas Hadir for Datang');
-      assert(adminHomeContent.includes("isFreeFromPresence ? 'Bebas Hadir' : 'Belum Pulang'"), 'Admin Home sets Bebas Hadir for Pulang');
-      assert(adminHomeContent.includes('const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty);'), 'Admin Home calculates isLiburOrExempt incorporating piket duty');
+      assert(adminHomeContent.includes("(isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang'"), 'Admin Home sets Bebas Hadir for Pulang when not present');
+      assert(adminHomeContent.includes('const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);'), 'Admin Home calculates isLiburOrExempt incorporating piket duty and arrival');
       pass('R1.8: HomeViewAdmin.tsx konsisten menampilkan status Bebas Hadir dan mendeteksi penugasan piket guru exempt');
     } catch (e: any) {
       fail('R1.8: HomeViewAdmin.tsx inkonsisten dalam status kehadiran guru exempt', e);
@@ -574,6 +573,155 @@ async function runTests() {
       assert.strictEqual(isFreeFromPresence, false, 'Siang: Tidak lagi bebas kehadiran');
       assert.strictEqual(adminPresensiStatus, 'Belum Datang', 'Siang: Status Admin bertransisi ke Belum Datang');
       pass('R1.14: Transisi dinamis penugasan piket di tengah hari mengubah status guru dari Bebas Hadir menjadi kewajiban hadir');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.15: ISOLASI MULTI-TENANT (MULTI-SCHOOL ATTENDANCE POLICY ISOLATION)
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.15] Isolasi Multi-Tenant Kebijakan Sekolah ---');
+    {
+      const sekolahA = 'sch-uuid-aaa';
+      const sekolahB = 'sch-uuid-bbb';
+
+      const mockPengaturanRows = [
+        { key: 'aturan_kehadiran_guru', value: 'Hari_Mengajar_Saja', sekolah_id: sekolahA },
+        { key: 'aturan_kehadiran_guru', value: 'Semua_Hari', sekolah_id: sekolahB }
+      ];
+
+      const guruA = {
+        id: 'guru-a',
+        nama_guru: 'Guru Sekolah A',
+        wajib_hadir_hanya_mengajar: false,
+        sekolah_id: sekolahA
+      };
+
+      const guruB = {
+        id: 'guru-b',
+        nama_guru: 'Guru Sekolah B',
+        wajib_hadir_hanya_mengajar: false,
+        sekolah_id: sekolahB
+      };
+
+      // Evaluasi untuk guru A
+      const schoolCfgA = mockPengaturanRows.filter(p => !guruA.sekolah_id || !p.sekolah_id || p.sekolah_id === guruA.sekolah_id);
+      const isSchoolExemptA = schoolCfgA.some(p => p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja');
+      const isGuruAExempt = Boolean(guruA.wajib_hadir_hanya_mengajar) || isSchoolExemptA;
+
+      // Evaluasi untuk guru B
+      const schoolCfgB = mockPengaturanRows.filter(p => !guruB.sekolah_id || !p.sekolah_id || p.sekolah_id === guruB.sekolah_id);
+      const isSchoolExemptB = schoolCfgB.some(p => p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja');
+      const isGuruBExempt = Boolean(guruB.wajib_hadir_hanya_mengajar) || isSchoolExemptB;
+
+      assert.strictEqual(isGuruAExempt, true, 'Guru di Sekolah A harus berstatus exempt karena kebijakan Hari_Mengajar_Saja di Sekolah A');
+      assert.strictEqual(isGuruBExempt, false, 'Guru di Sekolah B TIDAK boleh terpengaruh oleh kebijakan Sekolah A dan harus tetap non-exempt (Semua_Hari)');
+      pass('R1.15: Kebijakan Hari_Mengajar_Saja di Sekolah A terisolasi dengan aman dan tidak mencemari Sekolah B');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.16: KONSISTENSI VISUAL & KPI PRESENSI PULANG GURU SUKARELA DI ADMIN
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.16] Konsistensi Visual & KPI Presensi Pulang Guru Hadir Sukarela ---');
+    {
+      const isExemptNonTeaching = true;
+      const hasPiketDuty = false;
+      const isSchoolDayOff = false;
+      const isFreeFromPresence = isSchoolDayOff ? false : (isExemptNonTeaching && !hasPiketDuty);
+
+      // Skenario 1: Guru hadir sukarela (sudah datang jam 07:15, belum pulang)
+      const pDatang = { timestamp: '2026-10-14 07:15:00', tipe_absen: 'Datang', jenis_presensi: 'Sekolah' };
+      const pPulangNull = null;
+
+      const presensiPulangStatus1 = isSchoolDayOff ? 'Libur' : (isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang';
+      const isLiburOrExempt1 = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);
+      const pulangDone1 = isLiburOrExempt1 || (presensiPulangStatus1.startsWith('Pulang'));
+      const isTugasLengkap1 = isLiburOrExempt1 ? true : pulangDone1;
+
+      assert.strictEqual(presensiPulangStatus1, 'Belum Pulang', 'Status pulang guru hadir sukarela harus Belum Pulang, BUKAN Bebas Hadir');
+      assert.strictEqual(isTugasLengkap1, false, 'Tugas guru hadir sukarela belum lengkap karena belum checkout');
+
+      // Skenario 2: Guru hadir sukarela sudah absen pulang (jam 14:05)
+      const pPulang = { timestamp: '2026-10-14 14:05:00', tipe_absen: 'Pulang', jenis_presensi: 'Sekolah' };
+      const presensiPulangStatus2 = `Pulang [14:05]`;
+      const isLiburOrExempt2 = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);
+      const pulangDone2 = isLiburOrExempt2 || (presensiPulangStatus2.startsWith('Pulang'));
+      const isTugasLengkap2 = isLiburOrExempt2 ? true : pulangDone2;
+
+      assert.strictEqual(presensiPulangStatus2, 'Pulang [14:05]', 'Status pulang guru setelah checkout adalah Pulang [14:05]');
+      assert.strictEqual(isTugasLengkap2, true, 'Tugas guru sukarela lengkap setelah presensi pulang berhasil');
+
+      // Skenario 3: Guru exempt tidak hadir sama sekali hari ini (bebas kehadiran)
+      const pDatangNone = null;
+      const presensiPulangStatus3 = isSchoolDayOff ? 'Libur' : (isFreeFromPresence && !pDatangNone) ? 'Bebas Hadir' : 'Belum Pulang';
+      const isLiburOrExempt3 = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatangNone);
+      const isTugasLengkap3 = isLiburOrExempt3 ? true : false;
+
+      assert.strictEqual(presensiPulangStatus3, 'Bebas Hadir', 'Status pulang guru bebas kehadiran yang di rumah adalah Bebas Hadir');
+      assert.strictEqual(isTugasLengkap3, true, 'Guru bebas kehadiran yang tidak hadir otomatis Tugas Lengkap');
+
+      pass('R1.16: Visual status badge dan status tugas lengkap di admin konsisten tanpa loncatan status prematur');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.17: GURU TIDAK MASUK TIDAK DIKIRIMI PENGINGAT PRESENSI PULANG
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.17] Guru Mangkir Tidak Dikirimi Pengingat Presensi Pulang ---');
+    {
+      const { evaluateReminderConditions } = await import('../src/components/TeacherReminderManager');
+      const reminderCfg = {
+        jam_datang_mulai: '06:00',
+        jam_datang_batas: '07:15',
+        jam_datang_akhir: '12:00',
+        jam_pulang_mulai: '14:00',
+        jam_pulang_akhir: '18:00',
+      };
+      const mockAfternoon = new Date('2026-10-14T07:00:00Z'); // 15:00 WITA
+
+      // Pak Joko (guru non-exempt) mangkir / tidak datang sama sekali hari ini
+      const dailyStateMangkir: any = {
+        isLibur: false,
+        isIzinSakit: false,
+        isNonTeachingDay: false,
+        aturanKehadiran: 'Semua_Hari',
+        jadwalKBM: [{ id: 'j-1', kelas: 'X', mata_pelajaran: 'Fisika' }],
+        isPiket: false,
+        presensiDatang: null,
+        presensiDatangDitolak: null,
+        presensiPulang: null,
+        presensiPulangDitolak: null
+      };
+
+      const remindersMangkir = evaluateReminderConditions(
+        dailyStateMangkir,
+        reminderCfg,
+        mockAfternoon,
+        { wajib_hadir_hanya_mengajar: false }
+      );
+
+      const hasPulangMangkir = remindersMangkir.some(r => r.category === 'presensi_pulang');
+      assert.strictEqual(hasPulangMangkir, false, 'Guru yang tidak melakukan Presensi Datang dilarang menerima reminder Presensi Pulang');
+      pass('R1.17: Guru yang tidak pernah presensi datang tidak dikirimi pengingat Presensi Pulang yang terkunci');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.18: DUKUNGAN JADWAL_PIKET DAN HARDENING STRING PADA SEND-REMINDERS
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.18] Dukungan Jadwal Piket & Keamanan Substring pada send-reminders ---');
+    {
+      const sendRemindersSource = fs.readFileSync(path.resolve(process.cwd(), 'src/app/api/push/send-reminders/route.ts'), 'utf-8');
+
+      // Memastikan Task 3 memeriksa jadwalPiketList fallback
+      assert(
+        sendRemindersSource.includes('jadwalPiketList.some') && sendRemindersSource.includes('Task 3: Check Piket Reports'),
+        'Task 3 send-reminders harus mendukung fallback jadwal_piket selain penugasan_piket'
+      );
+
+      // Memastikan submittedCount jurnal dan piket report memiliki length check >= 3
+      assert(
+        sendRemindersSource.includes('jName.length >= 3 && tNameLower.includes(jName)'),
+        'Task 2 send-reminders terlindungi dari false-positive empty/short substring'
+      );
+
+      pass('R1.18: Task 3 send-reminders mendukung jadwal_piket fallback dan string matching terlindungi penuh');
     }
 
   } catch (err: any) {

@@ -278,8 +278,9 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
           // Teacher has classes today! Check if journals exist
           const submittedCount = journalList.filter(j => {
             const jName = (j.nama_guru || '').toLowerCase().trim();
+            if (!jName || !tNameLower) return false;
             if (j.status_verifikasi === 'Ditolak') return false;
-            return jName === tNameLower || tNameLower.includes(jName) || jName.includes(tNameLower);
+            return jName === tNameLower || (jName.length >= 3 && tNameLower.includes(jName)) || (tNameLower.length >= 3 && jName.includes(tNameLower));
           }).length;
 
           if (submittedCount < teacherSchedules.length) {
@@ -300,21 +301,36 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     // -------------------------------------------------------------
     // Task 3: Check Piket Reports
     // -------------------------------------------------------------
-    for (const assigned of assignedPiketList) {
-      const pName = (assigned.guru_nama || '').trim();
-      const pNameLower = pName.toLowerCase();
+    for (const teacher of teachers) {
+      const tName = (teacher.nama_guru || '').trim();
+      const tNameLower = tName.toLowerCase();
 
-      const hasReported = Array.from(reportedPiketSet).some(
-        rep => rep === pNameLower || rep.includes(pNameLower) || pNameLower.includes(rep)
+      const isAssignedPiketToday = assignedPiketList.some((p: any) => {
+        if (p.guru_id && (p.guru_id === teacher.id || p.guru_id === teacher.user_id)) return true;
+        if (teacher.nip && p.guru_nip && String(p.guru_nip).trim() === String(teacher.nip).trim()) return true;
+        const pName = (p.guru_nama || '').toLowerCase().trim();
+        if (!pName || !tNameLower) return false;
+        return pName === tNameLower || (pName.length >= 3 && tNameLower.includes(pName)) || (tNameLower.length >= 3 && pName.includes(tNameLower));
+      }) || jadwalPiketList.some((jp: any) =>
+        isGuruDiPiket(jp.daftar_guru, tName) || isGuruDiPiket(jp.daftar_guru, tNameLower)
       );
+
+      if (!isAssignedPiketToday) continue;
+
+      const hasReported = Array.from(reportedPiketSet).some(rep => {
+        if (!rep || !tNameLower) return false;
+        return rep === tNameLower || (rep.length >= 3 && tNameLower.includes(rep)) || (tNameLower.length >= 3 && rep.includes(tNameLower));
+      });
 
       if (!hasReported) {
         if (activeBlok) {
-          const teacherObj = teachers.find(t => (t.nama_guru || '').toLowerCase().trim() === pNameLower);
-          if (teacherObj?.wajib_hadir_hanya_mengajar || (teacherObj && isExemptTeacher(teacherObj))) {
+          const teacherObj = teacher;
+          if (teacherObj?.wajib_hadir_hanya_mengajar || isExemptTeacher(teacherObj)) {
             const hasTeachingToday = scheduleList.some(s => {
+              if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
               const sName = (s.nama_guru || '').toLowerCase().trim();
-              return sName === pNameLower || pNameLower.includes(sName) || sName.includes(pNameLower);
+              if (!sName || !tNameLower) return false;
+              return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
             });
             if (!hasTeachingToday) {
               continue;
@@ -323,12 +339,12 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         }
 
         reminders.push({
-          guru_id: assigned.guru_id || assigned.id,
-          guru_nama: pName,
+          guru_id: teacher.id,
+          guru_nama: tName,
           sekolah_id: sekolahId,
           category: 'piket',
           title: 'Pengingat Laporan Piket',
-          body: `Halo ${pName}, Anda bertugas piket hari ini (${todayDay}). Mohon lengkapi dan kirimkan laporan piket harian Anda.`,
+          body: `Halo ${tName}, Anda bertugas piket hari ini (${todayDay}). Mohon lengkapi dan kirimkan laporan piket harian Anda.`,
           url: '/?view=view-piket'
         });
       }

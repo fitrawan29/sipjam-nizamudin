@@ -253,9 +253,13 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     }
 
     // 2. Cek Libur Akhir Pekan & Aturan Kehadiran dari tabel pengaturan
-    const { data: pengaturanRows } = await supabase
+    let pengaturanQuery = supabase
       .from('pengaturan')
-      .select('key, value, aturan_kehadiran_guru');
+      .select('key, value, aturan_kehadiran_guru, sekolah_id');
+    if (sekolahId) {
+      pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
+    }
+    const { data: pengaturanRows } = await pengaturanQuery;
 
     let hariSekolah = 6;
     let aturanKehadiran = 'Semua_Hari';
@@ -293,7 +297,10 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     let teacherDataGuruId: string | null = null;
     let teacherDataGuruNip: string | null = null;
     try {
-      let tQ = supabase.from('data_guru').select('id, nama_guru, nip, wajib_hadir_hanya_mengajar');
+      let tQ = supabase.from('data_guru').select('id, nama_guru, nip, wajib_hadir_hanya_mengajar, sekolah_id');
+      if (sekolahId) {
+        tQ = tQ.eq('sekolah_id', sekolahId);
+      }
       if (userId) {
         tQ = tQ.or(`user_id.eq.${userId},nama_guru.eq."${cleanTeacherName}"`);
       } else if (username) {

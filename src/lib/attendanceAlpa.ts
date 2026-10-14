@@ -222,44 +222,28 @@ export async function evaluateAndApplyAutoAlpa(
   // Guard: skip Sabtu jika sekolah 5 hari kerja, dan load aturan kehadiran guru
   let pengaturanQuery = supabase
     .from('pengaturan')
-    .select('key, value, aturan_kehadiran_guru');
+    .select('key, value, aturan_kehadiran_guru, sekolah_id');
   if (sekolahId) {
     pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
   }
   const { data: pengaturanRows } = await pengaturanQuery;
 
-  const hsCfg = (pengaturanRows || []).find((p: any) => p.key === 'hari_sekolah');
-  if (parseInt(hsCfg?.value || '6', 10) === 5 && hariEvaluasi === 'Sabtu') {
-    return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
-  }
-
-  const isGlobalHariMengajarSaja = (pengaturanRows || []).some(
-    (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
-  );
-  const ghmRow = (pengaturanRows || []).find((p: any) => p.key === 'guru_hanya_mengajar');
-  let guruHanyaMengajarList: string[] = [];
-  if (ghmRow && ghmRow.value) {
-    try {
-      const parsed = JSON.parse(ghmRow.value);
-      if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
-      else if (parsed && typeof parsed === 'object') {
-        if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
-        if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
-      }
-    } catch {
-      guruHanyaMengajarList = [ghmRow.value];
+  // Global Saturday check if evaluating single school
+  if (sekolahId) {
+    const hsCfg = (pengaturanRows || []).find((p: any) => p.key === 'hari_sekolah');
+    if (parseInt(hsCfg?.value || '6', 10) === 5 && hariEvaluasi === 'Sabtu') {
+      return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
     }
   }
 
   // Fetch active sistem_blok for evaluatedDate
   let blokQuery = supabase
     .from('sistem_blok')
-    .select('id')
+    .select('id, sekolah_id')
     .lte('tanggal_mulai', evaluatedDate)
     .gte('tanggal_selesai', evaluatedDate);
   if (sekolahId) blokQuery = blokQuery.eq('sekolah_id', sekolahId);
   const { data: activeBloks } = await blokQuery;
-  const isBlokActive = Boolean(activeBloks && activeBloks.length > 0);
 
   // Fetch penugasan piket today
   let penugasanQuery = supabase
@@ -299,10 +283,20 @@ export async function evaluateAndApplyAutoAlpa(
   for (const guru of guruList || []) {
     if (!guru.nama_guru) continue;
 
+    // Per-school Saturday check if batch evaluating across schools
+    const schoolPengaturan = (pengaturanRows || []).filter((p: any) =>
+      !guru.sekolah_id || !p.sekolah_id || p.sekolah_id === guru.sekolah_id
+    );
+    const hsCfg = schoolPengaturan.find((p: any) => p.key === 'hari_sekolah');
+    if (parseInt(hsCfg?.value || '6', 10) === 5 && hariEvaluasi === 'Sabtu') {
+      continue;
+    }
+
     const namaNorm = guru.nama_guru.toLowerCase().trim();
 
     // Skip jika guru memiliki izin/sakit multi-hari aktif yang mencakup tanggal ini dan belum/tidak ditolak
     const hasActiveMultiDayLeave = activeMultiDayLeaves.some(leave => {
+      if (guru.sekolah_id && leave.sekolah_id && leave.sekolah_id !== guru.sekolah_id) return false;
       const matchName = (leave.nama_guru || '').toLowerCase().trim() === namaNorm;
       const matchUser = Boolean(guru.user_id && leave.user_id === guru.user_id);
       return matchName || matchUser;
@@ -312,15 +306,35 @@ export async function evaluateAndApplyAutoAlpa(
     }
 
     // Skip jika sudah ada record hari ini (match by nama atau user_id)
-    const hasRecord = presensiRecords.some(r =>
-      (r.nama_guru || '').toLowerCase().trim() === namaNorm
-      || (guru.user_id && r.user_id === guru.user_id)
-    );
+    const hasRecord = presensiRecords.some(r => {
+      if (guru.sekolah_id && r.sekolah_id && r.sekolah_id !== guru.sekolah_id) return false;
+      return (r.nama_guru || '').toLowerCase().trim() === namaNorm
+        || (guru.user_id && r.user_id === guru.user_id);
+    });
     if (hasRecord) continue;
+
+    // Evaluasi aturan kehadiran guru berbasis sekolahnya
+    const isSchoolHariMengajarSaja = schoolPengaturan.some(
+      (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
+    );
+    const ghmRow = schoolPengaturan.find((p: any) => p.key === 'guru_hanya_mengajar');
+    let guruHanyaMengajarList: string[] = [];
+    if (ghmRow && ghmRow.value) {
+      try {
+        const parsed = JSON.parse(ghmRow.value);
+        if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
+        else if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
+          if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
+        }
+      } catch {
+        guruHanyaMengajarList = [ghmRow.value];
+      }
+    }
 
     // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
     const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar) ||
-      isGlobalHariMengajarSaja ||
+      isSchoolHariMengajarSaja ||
       (guru.id && guruHanyaMengajarList.includes(guru.id)) ||
       (guru.nip && guruHanyaMengajarList.includes(guru.nip)) ||
       guruHanyaMengajarList.includes(guru.nama_guru) ||
@@ -330,6 +344,7 @@ export async function evaluateAndApplyAutoAlpa(
       const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
 
       const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
+        if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;
         if (guru.user_id && j.user_id && String(j.user_id) === String(guru.user_id)) return true;
         const jNama = (j.nama_guru || '').toLowerCase().trim();
         if (!jNama || !cleanName) return false;
@@ -337,6 +352,7 @@ export async function evaluateAndApplyAutoAlpa(
       });
 
       const inPenugasan = (penugasanList || []).some((p: any) => {
+        if (guru.sekolah_id && p.sekolah_id && p.sekolah_id !== guru.sekolah_id) return false;
         if (p.guru_id && ((guru.user_id && String(p.guru_id) === String(guru.user_id)) || (guru.id && String(p.guru_id) === String(guru.id)))) return true;
         if (guru.nip && p.guru_nip && String(p.guru_nip).trim() === String(guru.nip).trim()) return true;
         const pNama = (p.guru_nama || '').toLowerCase().trim();
@@ -344,9 +360,14 @@ export async function evaluateAndApplyAutoAlpa(
         return pNama === namaNorm || pNama === cleanName || (cleanName.length >= 3 && pNama.includes(cleanName)) || (pNama.length >= 3 && cleanName.includes(pNama));
       });
 
-      const inJadwalPiket = (jadwalPiketList || []).some((jp: any) =>
-        isGuruDiPiket(jp.daftar_guru, guru.nama_guru) || isGuruDiPiket(jp.daftar_guru, cleanName)
-      );
+      const inJadwalPiket = (jadwalPiketList || []).some((jp: any) => {
+        if (guru.sekolah_id && jp.sekolah_id && jp.sekolah_id !== guru.sekolah_id) return false;
+        return isGuruDiPiket(jp.daftar_guru, guru.nama_guru) || isGuruDiPiket(jp.daftar_guru, cleanName);
+      });
+
+      const isBlokActive = Boolean((activeBloks || []).some((b: any) =>
+        !guru.sekolah_id || !b.sekolah_id || b.sekolah_id === guru.sekolah_id
+      ));
 
       const hasPiketDuty = (inPenugasan || inJadwalPiket) && (!isBlokActive || hasTeachingToday);
 

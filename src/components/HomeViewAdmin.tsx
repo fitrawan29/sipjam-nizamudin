@@ -310,8 +310,8 @@ export default function HomeViewAdmin({
         const pPulang = presensiList.find((p: any) => 
           isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang'
         );
-        let presensiPulangStatus = isSchoolDayOff ? 'Libur' : isFreeFromPresence ? 'Bebas Hadir' : 'Belum Pulang';
-        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' = (isSchoolDayOff || isFreeFromPresence) ? 'blue' : 'gray';
+        let presensiPulangStatus = isSchoolDayOff ? 'Libur' : (isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang';
+        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' = (isSchoolDayOff || (isFreeFromPresence && !pDatang)) ? 'blue' : 'gray';
         let pulangTime = '';
 
         if (pPulang) {
@@ -392,7 +392,7 @@ export default function HomeViewAdmin({
 
         // 6. Aggregate: Tugas Lengkap?
         const isIzinSakit = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit';
-        const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty);
+        const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
@@ -481,7 +481,7 @@ export default function HomeViewAdmin({
     const totalPiket = matrixList.filter(r => r.laporanPiket.isPiket).length;
     const piketSelesai = matrixList.filter(r => r.laporanPiket.isPiket && r.laporanPiket.status === 'Sudah Lapor').length;
     
-    const wajibPulang = wajibDatang;
+    const wajibPulang = matrixList.filter(r => r.presensiPulang.status !== 'Libur' && r.presensiPulang.status !== 'Bebas Hadir').length;
     const sudahPulang = matrixList.filter(r => r.presensiPulang.status.startsWith('Pulang')).length;
 
     return { totalGuru, wajibDatang, sudahDatang, wajibJurnal, jurnalLengkap, totalPiket, piketSelesai, wajibPulang, sudahPulang };
