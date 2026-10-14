@@ -1,38 +1,47 @@
-# Sentinel Handoff Report — Milestone swe_23
+# Sentinel Handoff Report — Milestone swe_24
 
 ## 1. Observation
-User requested fixing teacher attendance rule "wajib hadir hanya hari mengajar" across all modules (workflow, presensi, admin dashboard, automatic alpa calculation, push reminder), as well as deleting obsolete components (`AdminMonitorView.tsx`, `NotificationPermissionModal.tsx`, `PushNotificationPrompt.tsx`) and leftover dead code (offline queues).
-- Path routed: SWE Light (`teamwork_preview_swe`) as a single self-contained focused fix.
-- Orchestrator `swe_23` managed 1 implementer and 3 sequential adversarial reviewer rounds.
-- Independent victory audit conducted by `teamwork_preview_victory_auditor` (`victory_auditor_36`).
-- Audit verdict: **VICTORY CONFIRMED**.
+Permintaan pengguna: Desain ulang sistem pengaturan kewajiban kehadiran guru di SIPJAM untuk memberikan penentuan eksplisit per guru antara 'Wajib Hadir Setiap Hari' dan 'Hanya Hari KBM', serta memastikan pembaruan pengaturan langsung berefek secara instan (real-time) pada akun guru tanpa perlu logout atau refresh manual.
+- Rute yang dipilih: SWE Light (`teamwork_preview_swe`) sebagai single self-contained focused fix.
+- Orchestrator `swe_24` mengelola 1 implementer dan 3 putaran review adversarial berurutan.
+- Audit kemenangan independen dilakukan oleh `teamwork_preview_victory_auditor` (`victory_auditor_37`).
+- Vonis audit: **VICTORY CONFIRMED**.
 
 ## 2. Logic Chain
-1. **Keandalan Aturan Kehadiran Guru "Wajib Hadir Hanya Hari Mengajar" (R1)**:
-   - Alur sistem di `src/lib/workflow.ts`, `src/lib/attendanceAlpa.ts`, `src/components/HomeViewAdmin.tsx`, `src/components/HomeViewGuru.tsx`, `src/components/TeacherReminderManager.tsx`, dan `src/app/api/push/send-reminders/route.ts` telah diselaraskan.
-   - Guru dengan opsi `wajib_hadir_hanya_mengajar = true` atau kebijakan `aturan_kehadiran_guru = 'Hari_Mengajar_Saja'` pada hari tanpa jadwal mengajar & tanpa tugas piket dibebaskan dari kewajiban presensi (`isNonTeachingDay: true`, `bebasAlpa: true`, `isAlpa: false`), tidak dikenai alpa otomatis, dan tidak dikirimi notifikasi tagihan presensi/jurnal.
-   - Guru exempt yang memiliki tugas piket hari ini tetap diwajibkan hadir dan presensi.
-   - Guru exempt yang hadir sukarela dapat melakukan presensi pulang tanpa terblokir validasi jurnal KBM.
-   - Dashboard Admin dan Guru konsisten menampilkan badge bebas kehadiran dan status mengajar tanpa anomali.
-   - Isolasi multi-tenant antar-sekolah diperkuat untuk kalender pendidikan, kebijakan kehadiran, dan penugasan piket.
-2. **Eliminasi File & Kode Usang (R2)**:
-   - 3 komponen yatim (`AdminMonitorView.tsx`, `NotificationPermissionModal.tsx`, `PushNotificationPrompt.tsx`) telah dihapus secara fisik tanpa meninggalkan broken import di seluruh `src/`.
-   - Kode antrean offline usang di `GuruPresensi.tsx` telah dibersihkan secara aman.
-3. **Otomatisasi Verifikasi Pengujian (R3)**:
-   - Suite verifikasi `tests/wajib_hadir_dan_pembersihan_usang.test.ts` berhasil memverifikasi seluruh skenario batas (33/33 PASS).
-   - Seluruh 26 test suite di repository (`npm test`) lulus 100% tanpa error.
-   - Typecheck `npx tsc --noEmit` lolos 0 error.
-   - Next.js production build (`npm run build`) sukses tanpa warning fatal.
+1. **Desain Ulang UI Pengaturan Kehadiran Guru Model B (R1)**:
+   - `AdminConfigView.tsx` menyediakan antarmuka eksplisit per guru dengan switch toggle individual (Wajib Hadir Setiap Hari vs Hanya Hari KBM / Piket).
+   - Dilengkapi 3 tab filter cepat (Semua Guru, Wajib Setiap Hari, Hanya Hari KBM), tombol aksi massal (*Set Semua Hadir Setiap Hari* & *Set Semua Hanya Hari KBM*), serta filter pencarian responsif (nama, NIP, mapel) dengan penanganan aman terhadap numeric NIP.
+   - Status tersimpan sinkron ke kolom `data_guru.wajib_hadir_hanya_mengajar` dan entri konfigurasi JSON kanonikal `pengaturan.guru_hanya_mengajar`.
+2. **Evaluasi Aturan Kehadiran Dua Arah yang Konsisten (R2)**:
+   - Menghilangkan hardcoded unconditional override pada kebijakan global `Hari_Mengajar_Saja` di seluruh sistem (`workflow.ts`, `attendanceAlpa.ts`, `HomeViewAdmin.tsx`, `TeacherReminderManager.tsx`, `send-reminders/route.ts`, dan `warningSystem.ts`).
+   - Guru dengan status `wajib_hadir_hanya_mengajar = true`: Hanya wajib hadir jika ada jadwal KBM atau tugas piket hari itu; jika kosong, bebas presensi dan bebas alpa.
+   - Guru dengan status `wajib_hadir_hanya_mengajar = false`: Wajib hadir setiap hari kerja sekolah terlepas dari jadwal KBM hari itu.
+   - Normalisasi boolean aman dari kerentanan string (`"false"`, `"true"`, `0`, `1`).
+   - Kompatibilitas mundur (backward compatibility) data guru lama tetap terjaga.
+3. **Propagasi Real-time & Efek Langsung ke Akun Guru (R3)**:
+   - `AdminConfigView` memancarkan sinkronisasi melalui update database, window event, storage event (`sipjam_config_sync`), dan Supabase Realtime Broadcast channel (`school-config-${targetSekolahId}`) non-blocking dengan timeout safeguard (1500ms).
+   - `HomeViewGuru.tsx` dan `AppScreen.tsx` mendengarkan perubahan realtime (`postgres_changes` pada tabel `pengaturan` dan `data_guru`, custom/storage events, serta event `visibilitychange`, `focus`, dan `online` reconnect sync).
+   - Layar guru langsung meng-update state kehadiran (`getGuruDailyState`), widget jadwal, timeline alur harian (Bebas Presensi vs Wajib Datang), dan pengingat secara otomatis tanpa reload browser atau logout.
+   - Dilengkapi perlindungan debounce anti-storming (200ms) dan pembatalan timer unmount untuk mencegah memory leak.
+4. **Verifikasi & Integritas Pengujian**:
+   - `tests/guru_attendance_exemption_redesign.test.ts`: 21/21 PASS (100%).
+   - `tests/wajib_hadir_dan_pembersihan_usang.test.ts`: 33/33 PASS (100%).
+   - Seluruh 26 test suite di repository (`npm test`): 183/183 PASS (100%).
+   - Typecheck `npx tsc --noEmit`: 0 errors.
+   - Next.js production build (`npm run build`): Berhasil bersih (Exit code 0).
+   - Git remote: Tersinkronisasi penuh ke branch `main` pada `origin/main` (`92d7e98`).
 
 ## 3. Caveats
-- Tidak ada catatan kendala. Seluruh verifikasi berjalan bersih dan independen.
+- Bila perangkat guru mengalami putus koneksi jaringan total (offline pesawat), sinkronisasi otomatis akan dieksekusi begitu koneksi online kembali via listener `online` dan re-subscribe channel Supabase.
+- Toggle massal berturut-turut dalam rentang sangat cepat (<200ms) dilindungi oleh trailing debounce untuk mencegah query storming ke Supabase.
 
 ## 4. Conclusion
-Milestone `swe_23` tuntas dan terverifikasi penuh (**VICTORY CONFIRMED**). Crons dan subagents telah dibersihkan, dan repositori disinkronkan ke `origin/main`.
+Milestone `swe_24` tuntas 100% dan terverifikasi independen dengan vonis **VICTORY CONFIRMED**. Seluruh background crons dan subagents telah dibersihkan sesuai tata kelola Sentinel, dan repositori bersih tersinkronisasi.
 
 ## 5. Verification Method
-- **Dedicated Test Suite**: `npx tsx tests/wajib_hadir_dan_pembersihan_usang.test.ts` (33/33 passed, 100%).
-- **Full Test Suite**: `npm test` (26/26 suites passed, 100%).
+- **Dedicated Redesign Suite**: `npx tsx tests/guru_attendance_exemption_redesign.test.ts` (21/21 PASS, 100%).
+- **Regression Test Suite**: `npx tsx tests/wajib_hadir_dan_pembersihan_usang.test.ts` (33/33 PASS, 100%).
+- **Full Test Suite**: `npm test` (26/26 suites, 183/183 tests PASS, 100%).
 - **TypeScript Typecheck**: `npx tsc --noEmit` (0 errors).
-- **Next.js Production Build**: `npm run build` (Turbopack, 0 errors).
-- **Git Sync**: Terkomit dan tersinkronisasi ke branch `main` remote `origin/main`.
+- **Production Build**: `npm run build` (Next.js 16.3.4, 0 errors).
+- **Git Sync**: Status bersih dan sinkron dengan `origin/main`.

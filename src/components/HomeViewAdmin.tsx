@@ -185,19 +185,37 @@ export default function HomeViewAdmin({
         return false;
       });
 
-      // Helper function for bidirectional normalized teacher name & NIP matching
-      const cleanStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+      // Helper function for normalized teacher name & NIP matching without substring collisions (ponytail: robust, minimal, exact tokens)
+      const cleanStr = (s?: string | null) => (s || '').toLowerCase()
+        .replace(/,.*$/, '') // Hapus gelar setelah koma (misal: ", S.Pd.")
+        .replace(/\b(s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Hapus singkatan gelar umum
+        .replace(/[^a-z0-9]/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ');
+
       const isTeacherMatch = (recordName?: string, recordNip?: string, targetName?: string, targetNip?: string): boolean => {
-        if (recordNip && targetNip && recordNip.trim() === targetNip.trim()) return true;
-        if (!recordName || !targetName) return false;
+        const rNip = cleanStr(recordNip);
+        const tNip = cleanStr(targetNip);
+        if (rNip && tNip && rNip === tNip) return true;
+
         const c1 = cleanStr(recordName);
         const c2 = cleanStr(targetName);
+        if (!c1 && !c2) return false;
+
+        // Exact match against NIP / username
+        if (c1 && tNip && c1 === tNip) return true;
+        if (c2 && rNip && c2 === rNip) return true;
+
         if (!c1 || !c2) return false;
         if (c1 === c2) return true;
-        if ((c1.length >= 3 && c2.includes(c1)) || (c2.length >= 3 && c1.includes(c2))) return true;
-        const t1 = c1.split(/\s+/).filter(w => w.length > 2);
-        const t2 = c2.split(/\s+/).filter(w => w.length > 2);
-        if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;
+
+        // First name match (first word token must match exactly, min 2 chars; prevents substring collision e.g. Fitrawan vs Fitra)
+        const t1 = c1.split(' ').filter(w => w.length >= 2);
+        const t2 = c2.split(' ').filter(w => w.length >= 2);
+        if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) {
+          return true;
+        }
+
         return false;
       };
 
@@ -222,9 +240,14 @@ export default function HomeViewAdmin({
         const isExplicitExempt = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true' || teacher.wajib_hadir_hanya_mengajar === 1 || String(teacher.wajib_hadir_hanya_mengajar) === '1';
         const isExplicitNonExempt = teacher.wajib_hadir_hanya_mengajar === false || String(teacher.wajib_hadir_hanya_mengajar) === 'false' || teacher.wajib_hadir_hanya_mengajar === 0 || String(teacher.wajib_hadir_hanya_mengajar) === '0';
         const hasExplicitTeacherSetting = isExplicitExempt || isExplicitNonExempt;
-        const isTeacherInLegacyList = guruHanyaMengajarList.includes(teacher.id) ||
-          guruHanyaMengajarList.includes(nama) ||
-          (teacher.nip && guruHanyaMengajarList.includes(teacher.nip));
+        const isTeacherInLegacyList = guruHanyaMengajarList.some((item: string) => {
+          const cItem = cleanStr(item);
+          return (
+            item === teacher.id ||
+            (teacher.user_id && item === teacher.user_id) ||
+            (cItem && (cItem === cleanStr(nama) || (teacher.nip && cItem === cleanStr(teacher.nip))))
+          );
+        });
         const isTeacherExempt = isExplicitExempt ||
           (!hasExplicitTeacherSetting && (isTeacherInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja'));
         const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
