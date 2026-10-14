@@ -188,8 +188,9 @@ export default function HomeViewAdmin({
         if (!recordName || !targetName) return false;
         const c1 = cleanStr(recordName);
         const c2 = cleanStr(targetName);
+        if (!c1 || !c2) return false;
         if (c1 === c2) return true;
-        if (c1.includes(c2) || c2.includes(c1)) return true;
+        if ((c1.length >= 3 && c2.includes(c1)) || (c2.length >= 3 && c1.includes(c2))) return true;
         const t1 = c1.split(/\s+/).filter(w => w.length > 2);
         const t2 = c2.split(/\s+/).filter(w => w.length > 2);
         if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;
@@ -223,9 +224,10 @@ export default function HomeViewAdmin({
 
         // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
         const inPenugasan = assignedPiketTeachers.some((p: any) =>
+          (p.guru_id && (p.guru_id === teacher.id || p.guru_id === teacher.user_id)) ||
           isTeacherMatch(p.guru_nama, p.guru_nip, nama, nip)
         );
-        const inJadwalPiket = piketSchedule ? isGuruDiPiket(piketSchedule.daftar_guru, nama) : false;
+        const inJadwalPiket = piketSchedule ? (isGuruDiPiket(piketSchedule.daftar_guru, nama) || isGuruDiPiket(piketSchedule.daftar_guru, nama.split(',')[0].trim())) : false;
         const isAssignedPiket = inPenugasan || inJadwalPiket;
         const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
         let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';

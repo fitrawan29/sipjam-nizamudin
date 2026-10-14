@@ -318,7 +318,7 @@ export function evaluateReminderConditions(
 
   // Condition 4: Presensi Pulang
   const needsPulang = !dailyState.presensiPulang || Boolean(dailyState.presensiPulangDitolak);
-  if (needsPulang && (!isExempt || hasClassesToday)) {
+  if (needsPulang && (dailyState.presensiDatang || !isExempt || hasObligationToday)) {
     // Only remind if within or past the checkout window
     if (currentMinutes >= pulangMulai && currentMinutes <= pulangAkhir) {
       reminders.push({

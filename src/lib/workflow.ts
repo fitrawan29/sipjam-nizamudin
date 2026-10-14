@@ -290,6 +290,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // Cek Pengecualian Kehadiran Guru:
     // Guru yang dikecualikan (wajib hadir HANYA saat hari mengajar)
     let isTeacherExempt = false;
+    let teacherDataGuruId: string | null = null;
+    let teacherDataGuruNip: string | null = null;
     try {
       let tQ = supabase.from('data_guru').select('id, nama_guru, nip, wajib_hadir_hanya_mengajar');
       if (userId) {
@@ -302,6 +304,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       const { data: tData } = await tQ;
       if (tData && tData.length > 0) {
         for (const teacher of tData) {
+          if (!teacherDataGuruId && teacher.id) teacherDataGuruId = String(teacher.id);
+          if (!teacherDataGuruNip && teacher.nip) teacherDataGuruNip = String(teacher.nip);
           if (teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true') {
             isTeacherExempt = true;
           }
@@ -369,14 +373,22 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
       const cleanStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
       const isTeacherPiketMatch = (recordName?: string | null, recordNip?: string | null, recordGuruId?: string | null): boolean => {
-        if (userId && recordGuruId && String(recordGuruId) === String(userId)) return true;
-        if (username && recordNip && String(recordNip).trim() === String(username).trim()) return true;
+        if (recordGuruId && (
+          (userId && String(recordGuruId) === String(userId)) ||
+          (teacherDataGuruId && String(recordGuruId) === String(teacherDataGuruId))
+        )) return true;
+        if (recordNip && (
+          (username && String(recordNip).trim() === String(username).trim()) ||
+          (teacherDataGuruNip && String(recordNip).trim() === String(teacherDataGuruNip).trim())
+        )) return true;
         if (!recordName || !namaGuru) return false;
         const c1 = cleanStr(recordName);
         const c2 = cleanStr(namaGuru);
         const cClean = cleanStr(cleanTeacherName);
-        if (c1 === c2 || c1 === cClean) return true;
-        if (c1.includes(c2) || c2.includes(c1) || c1.includes(cClean) || cClean.includes(c1)) return true;
+        if (!c1 || !c2) return false;
+        if (c1 === c2 || (cClean && c1 === cClean)) return true;
+        if ((c2.length >= 3 && c1.includes(c2)) || (c1.length >= 3 && c2.includes(c1))) return true;
+        if (cClean && cClean.length >= 3 && (c1.includes(cClean) || cClean.includes(c1))) return true;
         const t1 = c1.split(/\s+/).filter(w => w.length > 2);
         const t2 = c2.split(/\s+/).filter(w => w.length > 2);
         if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;

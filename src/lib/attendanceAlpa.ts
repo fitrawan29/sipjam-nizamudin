@@ -289,7 +289,7 @@ export async function evaluateAndApplyAutoAlpa(
   // Fetch semua guru aktif
   let guruQuery = supabase
     .from('data_guru')
-    .select('nama_guru, user_id, wajib_hadir_hanya_mengajar, sekolah_id')
+    .select('id, nip, nama_guru, user_id, wajib_hadir_hanya_mengajar, sekolah_id')
     .eq('status', 'Aktif');
   if (sekolahId) {
     guruQuery = guruQuery.eq('sekolah_id', sekolahId);
@@ -321,6 +321,8 @@ export async function evaluateAndApplyAutoAlpa(
     // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
     const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar) ||
       isGlobalHariMengajarSaja ||
+      (guru.id && guruHanyaMengajarList.includes(guru.id)) ||
+      (guru.nip && guruHanyaMengajarList.includes(guru.nip)) ||
       guruHanyaMengajarList.includes(guru.nama_guru) ||
       (guru.user_id && guruHanyaMengajarList.includes(guru.user_id));
 
@@ -330,13 +332,16 @@ export async function evaluateAndApplyAutoAlpa(
       const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
         if (guru.user_id && j.user_id && String(j.user_id) === String(guru.user_id)) return true;
         const jNama = (j.nama_guru || '').toLowerCase().trim();
-        return jNama === namaNorm || jNama === cleanName || jNama.includes(cleanName) || cleanName.includes(jNama);
+        if (!jNama || !cleanName) return false;
+        return jNama === namaNorm || jNama === cleanName || (cleanName.length >= 3 && jNama.includes(cleanName)) || (jNama.length >= 3 && cleanName.includes(jNama));
       });
 
       const inPenugasan = (penugasanList || []).some((p: any) => {
-        if (guru.user_id && p.guru_id && String(p.guru_id) === String(guru.user_id)) return true;
+        if (p.guru_id && ((guru.user_id && String(p.guru_id) === String(guru.user_id)) || (guru.id && String(p.guru_id) === String(guru.id)))) return true;
+        if (guru.nip && p.guru_nip && String(p.guru_nip).trim() === String(guru.nip).trim()) return true;
         const pNama = (p.guru_nama || '').toLowerCase().trim();
-        return pNama === namaNorm || pNama === cleanName || pNama.includes(cleanName) || cleanName.includes(pNama);
+        if (!pNama || !cleanName) return false;
+        return pNama === namaNorm || pNama === cleanName || (cleanName.length >= 3 && pNama.includes(cleanName)) || (pNama.length >= 3 && cleanName.includes(pNama));
       });
 
       const inJadwalPiket = (jadwalPiketList || []).some((jp: any) =>

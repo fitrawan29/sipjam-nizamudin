@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 import { sendWebPush, PushNotificationPayload } from '@/lib/vapid';
 import { getWitaDateStr, getWitaDayName } from '@/lib/wita';
+import { isGuruDiPiket } from '@/lib/workflow';
 
 export interface ReminderItem {
   guru_id: string;
@@ -123,6 +124,16 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     const { data: piketAssigned } = await penugasanQuery;
     const assignedPiketList = piketAssigned || [];
 
+    let jadwalPiketQuery = supabase
+      .from('jadwal_piket')
+      .select('*')
+      .eq('hari', todayDay);
+    if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
+      jadwalPiketQuery = jadwalPiketQuery.eq('sekolah_id', sekolahId);
+    }
+    const { data: jadwalPiketRes } = await jadwalPiketQuery;
+    const jadwalPiketList = jadwalPiketRes || [];
+
     let piketLaporanQuery = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       piketLaporanQuery = piketLaporanQuery.eq('sekolah_id', sekolahId);
@@ -155,15 +166,22 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
       if (!hasCheckedIn) {
         const isAssignedPiketToday = assignedPiketList.some((p: any) => {
+          if (p.guru_id && (p.guru_id === teacher.id || p.guru_id === teacher.user_id)) return true;
+          if (teacher.nip && p.guru_nip && String(p.guru_nip).trim() === String(teacher.nip).trim()) return true;
           const pName = (p.guru_nama || '').toLowerCase().trim();
-          return pName === tNameLower || tNameLower.includes(pName) || pName.includes(tNameLower);
-        });
+          if (!pName || !tNameLower) return false;
+          return pName === tNameLower || (pName.length >= 3 && tNameLower.includes(pName)) || (tNameLower.length >= 3 && pName.includes(tNameLower));
+        }) || jadwalPiketList.some((jp: any) =>
+          isGuruDiPiket(jp.daftar_guru, tName) || isGuruDiPiket(jp.daftar_guru, tNameLower)
+        );
 
         // If teacher is exempt on non-teaching days, check if they have schedule today
         if (teacher.wajib_hadir_hanya_mengajar) {
           const hasTeachingToday = scheduleList.some(s => {
+            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
             const sName = (s.nama_guru || '').toLowerCase().trim();
-            return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+            if (!sName || !tNameLower) return false;
+            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
           });
           const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
           if (!hasTeachingToday && !hasPiketDuty) {
@@ -172,8 +190,10 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
           }
         } else if (isExemptTeacher(teacher)) {
           const hasTeachingToday = scheduleList.some(s => {
+            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
             const sName = (s.nama_guru || '').toLowerCase().trim();
-            return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+            if (!sName || !tNameLower) return false;
+            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
           });
           const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
           if (!hasTeachingToday && !hasPiketDuty) {
@@ -204,16 +224,20 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         // Teachers exempt on non-teaching days do not need to fill block journals if they have no classes today
         if (teacher.wajib_hadir_hanya_mengajar) {
           const hasTeachingToday = scheduleList.some(s => {
+            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
             const sName = (s.nama_guru || '').toLowerCase().trim();
-            return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+            if (!sName || !tNameLower) return false;
+            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
           });
           if (!hasTeachingToday) {
             continue;
           }
         } else if (isExemptTeacher(teacher)) {
           const hasTeachingToday = scheduleList.some(s => {
+            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
             const sName = (s.nama_guru || '').toLowerCase().trim();
-            return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+            if (!sName || !tNameLower) return false;
+            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
           });
           if (!hasTeachingToday) {
             continue;
@@ -224,7 +248,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         // Teacher needs to submit 1 Jurnal Kegiatan.
         const hasSubmittedBlokJurnal = journalList.some(j => {
           const jName = (j.nama_guru || '').toLowerCase().trim();
-          const isThisTeacher = jName === tNameLower || tNameLower.includes(jName) || jName.includes(tNameLower);
+          const isThisTeacher = jName === tNameLower || (jName.length >= 3 && tNameLower.includes(jName)) || (tNameLower.length >= 3 && jName.includes(tNameLower));
           if (!isThisTeacher) return false;
           if (j.status_verifikasi === 'Ditolak') return false;
           return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (!j.kelas || j.kelas === '-');
@@ -244,8 +268,10 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       } else {
         // Find scheduled classes for this teacher today
         const teacherSchedules = scheduleList.filter(s => {
+          if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
           const sName = (s.nama_guru || '').toLowerCase().trim();
-          return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
+          if (!sName || !tNameLower) return false;
+          return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
         });
 
         if (teacherSchedules.length > 0) {

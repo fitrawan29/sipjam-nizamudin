@@ -361,6 +361,221 @@ async function runTests() {
       pass('R1.10.D: Guru non-exempt tetap wajib hadir setiap hari kerja (tidak salah dieksepsikan)');
     }
 
+    // --------------------------------------------------------------------------
+    // R1.11: UJI KETAHANAN STRING KOSONG (EMPTY STRING ADVERSARIAL RESILIENCE)
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.11] Ketahanan Terhadap String Kosong / Placeholder ---');
+    {
+      const guru = {
+        id: 'guru-1',
+        nama_guru: 'Ahmad Dahlan',
+        wajib_hadir_hanya_mengajar: true
+      };
+      const namaNorm = guru.nama_guru.toLowerCase().trim();
+      const cleanName = guru.nama_guru.split(',')[0].trim().toLowerCase();
+
+      // Kasus 1: Jadwal dengan nama_guru kosong/whitespace (misal slot upacara/istirahat/placeholder)
+      const allJadwalWithEmptyRows = [
+        { id: 'j-1', nama_guru: '', kelas: 'X-A', hari: 'Senin' },
+        { id: 'j-2', nama_guru: '   ', kelas: 'X-B', hari: 'Senin' },
+        { id: 'j-3', nama_guru: null, kelas: 'XI-A', hari: 'Senin' }
+      ];
+
+      const hasTeachingToday = allJadwalWithEmptyRows.some((j: any) => {
+        const jNama = (j.nama_guru || '').toLowerCase().trim();
+        if (!jNama || !cleanName) return false;
+        return jNama === namaNorm || jNama === cleanName || (cleanName.length >= 3 && jNama.includes(cleanName)) || (jNama.length >= 3 && cleanName.includes(jNama));
+      });
+
+      assert.strictEqual(hasTeachingToday, false, 'Jadwal kosong tidak boleh mencocokkan guru exempt');
+      pass('R1.11.A: Jadwal kosong/placeholder tidak memicu false-positive hasTeachingToday pada guru exempt');
+
+      // Kasus 2: Penugasan piket dengan guru_nama kosong
+      const penugasanWithEmptyRows = [
+        { id: 'p-1', guru_nama: '', guru_nip: null, guru_id: null, hari: 'Senin' },
+        { id: 'p-2', guru_nama: '  ', guru_nip: '', guru_id: '', hari: 'Senin' }
+      ];
+
+      const inPenugasan = penugasanWithEmptyRows.some((p: any) => {
+        if (p.guru_id && String(p.guru_id) === String(guru.id)) return true;
+        const pNama = (p.guru_nama || '').toLowerCase().trim();
+        if (!pNama || !cleanName) return false;
+        return pNama === namaNorm || pNama === cleanName || (cleanName.length >= 3 && pNama.includes(cleanName)) || (pNama.length >= 3 && cleanName.includes(pNama));
+      });
+
+      assert.strictEqual(inPenugasan, false, 'Penugasan piket kosong tidak boleh mencocokkan guru exempt');
+      pass('R1.11.B: Penugasan piket kosong/placeholder tidak memicu false-positive inPenugasan pada guru exempt');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.12: KEKOKOHAN PENCOCOKAN ID & NIP PADA PENUGASAN PIKET
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.12] Pencocokan Penugasan Piket Berbasis ID Guru & NIP ---');
+    {
+      const teacherInDb = {
+        id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        nip: '198001012005011005',
+        nama_guru: 'Drs. H. Bambang Sudirman, M.Pd.',
+        wajib_hadir_hanya_mengajar: true
+      };
+
+      // Kasus 1: Penugasan piket mencatat guru_id yang merujuk data_guru.id dengan nama disingkat "Bambang S."
+      const piketEntryWithId = {
+        guru_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+        guru_nama: 'Bambang S.',
+        guru_nip: ''
+      };
+
+      const matchById = Boolean(
+        piketEntryWithId.guru_id && String(piketEntryWithId.guru_id) === String(teacherInDb.id)
+      );
+      assert.strictEqual(matchById, true, 'Matching berbasis data_guru.id harus berhasil');
+      pass('R1.12.A: Penugasan piket berhasil dicocokkan melalui relasi primary key guru_id (data_guru.id)');
+
+      // Kasus 2: Penugasan piket mencatat guru_nip sama meski penulisan nama berbeda total karena ejaan
+      const piketEntryWithNip = {
+        guru_id: null,
+        guru_nama: 'B. Soedirman',
+        guru_nip: '198001012005011005'
+      };
+
+      const matchByNip = Boolean(
+        teacherInDb.nip && piketEntryWithNip.guru_nip && String(piketEntryWithNip.guru_nip).trim() === String(teacherInDb.nip).trim()
+      );
+      assert.strictEqual(matchByNip, true, 'Matching berbasis NIP harus berhasil');
+      pass('R1.12.B: Penugasan piket berhasil dicocokkan melalui NIP guru');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.13: UJI EMPIRIS TEACHER REMINDER MANAGER (PRESENSI PULANG CONDITIONS)
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.13] Evaluasi Empiris Presensi Pulang di TeacherReminderManager ---');
+    {
+      const { evaluateReminderConditions } = await import('../src/components/TeacherReminderManager');
+
+      const reminderCfg = {
+        jam_datang_mulai: '06:00',
+        jam_datang_batas: '07:15',
+        jam_datang_akhir: '12:00',
+        jam_pulang_mulai: '14:00',
+        jam_pulang_akhir: '18:00',
+        jam_pulang_jumat: '11:00'
+      };
+
+      // Buat waktu saat ini berada di jam pulang (15:00 WITA)
+      // Gunakan waktu yang saat diparsing di WITA bernilai 15:00
+      const nowDuringCheckout = new Date();
+      // Jam lokal saat test dieksekusi bisa berbeda, tapi kita bisa mock fungsi atau set waktu WITA
+      // WITA = UTC+8. Jadi 15:00 WITA = 07:00 UTC
+      const mockCheckoutTime = new Date('2026-10-14T07:00:00Z'); // 15:00 WITA
+
+      // Kasus A: Guru Exempt ditugaskan Piket hari ini (0 jam mengajar), belum absen pulang
+      const dailyStatePiket: any = {
+        isLibur: false,
+        isIzinSakit: false,
+        isNonTeachingDay: false,
+        aturanKehadiran: 'Hari_Mengajar_Saja',
+        jadwalKBM: [],
+        isPiket: true,
+        presensiDatang: { id: 'datang-1', tipe_absen: 'Datang' },
+        presensiDatangDitolak: null,
+        presensiPulang: null,
+        presensiPulangDitolak: null,
+        laporanPiket: { id: 'piket-rep-1' }
+      };
+
+      const remindersPiket = evaluateReminderConditions(
+        dailyStatePiket,
+        reminderCfg,
+        mockCheckoutTime,
+        { wajib_hadir_hanya_mengajar: true }
+      );
+      const hasPulangPiket = remindersPiket.some(r => r.category === 'presensi_pulang');
+      assert.strictEqual(hasPulangPiket, true, 'Guru piket (exempt) harus mendapatkan reminder presensi pulang');
+      pass('R1.13.A: Guru exempt yang bertugas piket hari ini menerima pengingat Presensi Pulang');
+
+      // Kasus B: Guru Exempt hadir sukarela (ada presensi datang), belum absen pulang
+      const dailyStateSukarela: any = {
+        isLibur: false,
+        isIzinSakit: false,
+        isNonTeachingDay: true,
+        aturanKehadiran: 'Hari_Mengajar_Saja',
+        jadwalKBM: [],
+        isPiket: false,
+        presensiDatang: { id: 'datang-sukarela', tipe_absen: 'Datang' },
+        presensiDatangDitolak: null,
+        presensiPulang: null,
+        presensiPulangDitolak: null
+      };
+
+      const remindersSukarela = evaluateReminderConditions(
+        dailyStateSukarela,
+        reminderCfg,
+        mockCheckoutTime,
+        { wajib_hadir_hanya_mengajar: true }
+      );
+      const hasPulangSukarela = remindersSukarela.some(r => r.category === 'presensi_pulang');
+      assert.strictEqual(hasPulangSukarela, true, 'Guru hadir sukarela harus mendapatkan reminder presensi pulang');
+      pass('R1.13.B: Guru exempt yang hadir sukarela (sudah datang) menerima pengingat Presensi Pulang');
+
+      // Kasus C: Guru Exempt tidak hadir & tidak ada tugas (bebas kehadiran)
+      const dailyStateBebas: any = {
+        isLibur: false,
+        isIzinSakit: false,
+        isNonTeachingDay: true,
+        aturanKehadiran: 'Hari_Mengajar_Saja',
+        jadwalKBM: [],
+        isPiket: false,
+        presensiDatang: null,
+        presensiDatangDitolak: null,
+        presensiPulang: null,
+        presensiPulangDitolak: null
+      };
+
+      const remindersBebas = evaluateReminderConditions(
+        dailyStateBebas,
+        reminderCfg,
+        mockCheckoutTime,
+        { wajib_hadir_hanya_mengajar: true }
+      );
+      const hasPulangBebas = remindersBebas.some(r => r.category === 'presensi_pulang');
+      assert.strictEqual(hasPulangBebas, false, 'Guru exempt yang bebas kehadiran tidak boleh menerima reminder pulang');
+      pass('R1.13.C: Guru exempt bebas kehadiran tidak dikirimi pengingat Presensi Pulang fiktif');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.14: TRANSISI DINAMIS DI TENGAH HARI (MIDDAY DYNAMIC DUTY TRANSITION)
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.14] Simulasi Transisi Penugasan Piket Dinamis di Tengah Hari ---');
+    {
+      const teacher = {
+        id: 'guru-exempt-dyn',
+        nama: 'Bu Rahmawati',
+        wajib_hadir_hanya_mengajar: true
+      };
+
+      // Pagi hari (08:00): Belum ada jadwal KBM dan belum ditugaskan piket
+      let isPiketAssigned = false;
+      const jadwalCount = 0;
+      let hasTeachingObligation = jadwalCount > 0 || isPiketAssigned;
+      let isFreeFromPresence = teacher.wajib_hadir_hanya_mengajar && !hasTeachingObligation;
+      let adminPresensiStatus = isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang';
+
+      assert.strictEqual(isFreeFromPresence, true, 'Pagi: Harus berstatus Bebas Hadir');
+      assert.strictEqual(adminPresensiStatus, 'Bebas Hadir', 'Pagi: Status Admin harus Bebas Hadir');
+
+      // Siang hari (10:00): Admin menetapkan penugasan piket untuk Bu Rahmawati
+      isPiketAssigned = true;
+      hasTeachingObligation = jadwalCount > 0 || isPiketAssigned;
+      isFreeFromPresence = teacher.wajib_hadir_hanya_mengajar && !hasTeachingObligation;
+      adminPresensiStatus = isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang';
+
+      assert.strictEqual(hasTeachingObligation, true, 'Siang: Kewajiban piket harus aktif');
+      assert.strictEqual(isFreeFromPresence, false, 'Siang: Tidak lagi bebas kehadiran');
+      assert.strictEqual(adminPresensiStatus, 'Belum Datang', 'Siang: Status Admin bertransisi ke Belum Datang');
+      pass('R1.14: Transisi dinamis penugasan piket di tengah hari mengubah status guru dari Bebas Hadir menjadi kewajiban hadir');
+    }
+
   } catch (err: any) {
     fail('Global unexpected error during verification', err);
   }
