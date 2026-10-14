@@ -213,8 +213,8 @@ export default function AppScreen({
 
   // Realtime subscription for school configuration and teacher data updates (R3)
   useEffect(() => {
-    const schoolId = user?.sekolah_id || 'global';
-    const channelName = `app-school-sync-${schoolId}-${user?.id || 'anon'}`;
+    const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+    const channelName = `school-config-${schoolId}`;
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
@@ -232,10 +232,27 @@ export default function AppScreen({
           window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED' && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
+        }
+      });
+
+    const handleResumeSync = () => {
+      if (typeof window !== 'undefined' && (!document || document.visibilityState === 'visible')) {
+        window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
+      }
+    };
+
+    window.addEventListener('focus', handleResumeSync);
+    window.addEventListener('online', handleResumeSync);
+    document.addEventListener('visibilitychange', handleResumeSync);
 
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('focus', handleResumeSync);
+      window.removeEventListener('online', handleResumeSync);
+      document.removeEventListener('visibilitychange', handleResumeSync);
     };
   }, [user?.sekolah_id, user?.id]);
 

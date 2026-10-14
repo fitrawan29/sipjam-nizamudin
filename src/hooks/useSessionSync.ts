@@ -102,6 +102,7 @@ export function useSessionSync(
     };
 
     window.addEventListener('focus', checkIdleAndResume);
+    window.addEventListener('online', checkIdleAndResume);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('pointerdown', checkIdleAndResume, { passive: true });
     window.addEventListener('keydown', checkIdleAndResume, { passive: true });
@@ -111,6 +112,7 @@ export function useSessionSync(
 
     return () => {
       window.removeEventListener('focus', checkIdleAndResume);
+      window.removeEventListener('online', checkIdleAndResume);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('pointerdown', checkIdleAndResume);
       window.removeEventListener('keydown', checkIdleAndResume);

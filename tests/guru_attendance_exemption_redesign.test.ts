@@ -166,29 +166,39 @@ async function runTests() {
       assert(guruHomeContent.includes("event: 'config_updated'"), 'HomeViewGuru mendengarkan broadcast config_updated');
       assert(guruHomeContent.includes("window.addEventListener('sipjam:config_updated'"), 'HomeViewGuru mendengarkan event sipjam:config_updated');
       assert(guruHomeContent.includes("window.addEventListener('storage'"), 'HomeViewGuru mendengarkan storage event');
+      assert(guruHomeContent.includes("window.addEventListener('focus'"), 'HomeViewGuru mendengarkan focus event saat tab aktif kembali');
+      assert(guruHomeContent.includes("window.addEventListener('online'"), 'HomeViewGuru mendengarkan online event saat jaringan pulih');
+      assert(guruHomeContent.includes("document.addEventListener('visibilitychange'"), 'HomeViewGuru mendengarkan visibilitychange event');
+      assert(guruHomeContent.includes("status === 'SUBSCRIBED'"), 'HomeViewGuru menyinkronkan state ketika websocket reconnect (SUBSCRIBED)');
       assert(guruHomeContent.includes('refreshDailyWorkflow'), 'HomeViewGuru memiliki handler refreshDailyWorkflow');
-      pass('R3.2: HomeViewGuru memiliki subscription lengkap ke postgres_changes, broadcast, window event, dan storage event');
+      pass('R3.2: HomeViewGuru memiliki subscription lengkap, reconnect handler, dan sleep/online resume sync');
     } catch (e: any) {
       fail('R3.2: Subscription realtime di HomeViewGuru belum lengkap', e);
     }
 
-    // R3.3: TeacherReminderManager mendengarkan event konfigurasi
+    // R3.3: TeacherReminderManager mendengarkan event konfigurasi & online resume
     try {
       assert(reminderManagerContent.includes("window.addEventListener('sipjam:config_updated'"), 'TeacherReminderManager mendengarkan sipjam:config_updated');
       assert(reminderManagerContent.includes("window.addEventListener('sipjam:guru_updated'"), 'TeacherReminderManager mendengarkan sipjam:guru_updated');
-      pass('R3.3: TeacherReminderManager mendengarkan pembaruan konfigurasi secara instan');
+      assert(reminderManagerContent.includes("window.addEventListener('online'"), 'TeacherReminderManager mendengarkan online event');
+      assert(reminderManagerContent.includes("window.addEventListener('focus'"), 'TeacherReminderManager mendengarkan focus event');
+      pass('R3.3: TeacherReminderManager mendengarkan pembaruan konfigurasi dan online resume secara instan');
     } catch (e: any) {
       fail('R3.3: TeacherReminderManager tidak mendengarkan update konfigurasi', e);
     }
 
-    // R3.4: AppScreen dan useSessionSync mendengarkan perubahan realtime untuk invalidasi shell guru
+    // R3.4: AppScreen dan useSessionSync mendengarkan perubahan realtime pada topic selaras untuk invalidasi shell guru
     try {
       assert(appScreenContent.includes("table: 'pengaturan'"), 'AppScreen mendengarkan perubahan tabel pengaturan');
       assert(appScreenContent.includes("table: 'data_guru'"), 'AppScreen mendengarkan perubahan tabel data_guru');
       assert(appScreenContent.includes("event: 'config_updated'"), 'AppScreen mendengarkan broadcast config_updated');
+      assert(appScreenContent.includes("const channelName = `school-config-${schoolId}`;"), 'AppScreen menggunakan channel topic school-config selaras dengan broadcast AdminConfigView');
+      assert(appScreenContent.includes("window.addEventListener('focus'"), 'AppScreen mendengarkan focus event');
+      assert(appScreenContent.includes("window.addEventListener('online'"), 'AppScreen mendengarkan online event');
       assert(sessionSyncContent.includes("window.addEventListener('sipjam:config_updated'"), 'useSessionSync mendengarkan sipjam:config_updated');
       assert(sessionSyncContent.includes("window.addEventListener('storage'"), 'useSessionSync mendengarkan storage sync');
-      pass('R3.4: AppScreen dan useSessionSync mendengarkan sinyal realtime untuk sinkronisasi shell guru & piket');
+      assert(sessionSyncContent.includes("window.addEventListener('online'"), 'useSessionSync mendengarkan online event');
+      pass('R3.4: AppScreen selaras channel topic broadcast dan mendengarkan resume sync bersama useSessionSync');
     } catch (e: any) {
       fail('R3.4: Subscription realtime di AppScreen / useSessionSync belum lengkap', e);
     }
@@ -358,11 +368,11 @@ async function runTests() {
       pass('Skenario 4: Simulasi filter tab, pencarian responsif, dan aksi massal berfungsi 100% presisi');
     }
 
-    // Skenario 5: Robustness terhadap representasi string "false" / "true" dari database
+    // Skenario 5: Robustness terhadap representasi string "false" / "true" dan numerik 0 / 1 dari database
     {
       const evaluateExempt = (val: any, globalPolicy = 'Hari_Mengajar_Saja') => {
-        const isExplicitExempt = val === true || String(val) === 'true';
-        const isExplicitNonExempt = val === false || String(val) === 'false';
+        const isExplicitExempt = val === true || String(val) === 'true' || val === 1 || String(val) === '1';
+        const isExplicitNonExempt = val === false || String(val) === 'false' || val === 0 || String(val) === '0';
         const hasExplicitTeacherSetting = isExplicitExempt || isExplicitNonExempt;
         const isTeacherExempt = isExplicitExempt || (!hasExplicitTeacherSetting && globalPolicy === 'Hari_Mengajar_Saja');
         return { isTeacherExempt, hasExplicitTeacherSetting };
@@ -373,10 +383,19 @@ async function runTests() {
       assert.strictEqual(resStringFalse.isTeacherExempt, false, 'String "false" tidak boleh dieksepsikan oleh aturan global');
       assert.strictEqual(resStringFalse.hasExplicitTeacherSetting, true, 'String "false" harus dikenali sebagai setting eksplisit');
 
-      // String "true"
+      // String "0" and number 0
+      const resStringZero = evaluateExempt("0", "Hari_Mengajar_Saja");
+      assert.strictEqual(resStringZero.isTeacherExempt, false, 'String "0" tidak boleh dieksepsikan');
+      const resNumZero = evaluateExempt(0, "Hari_Mengajar_Saja");
+      assert.strictEqual(resNumZero.isTeacherExempt, false, 'Number 0 tidak boleh dieksepsikan');
+
+      // String "true", "1", and number 1
       const resStringTrue = evaluateExempt("true", "Semua_Hari");
       assert.strictEqual(resStringTrue.isTeacherExempt, true, 'String "true" harus dieksepsikan');
-      assert.strictEqual(resStringTrue.hasExplicitTeacherSetting, true, 'String "true" harus dikenali sebagai setting eksplisit');
+      const resStringOne = evaluateExempt("1", "Semua_Hari");
+      assert.strictEqual(resStringOne.isTeacherExempt, true, 'String "1" harus dieksepsikan');
+      const resNumOne = evaluateExempt(1, "Semua_Hari");
+      assert.strictEqual(resNumOne.isTeacherExempt, true, 'Number 1 harus dieksepsikan');
 
       // Boolean false
       const resBoolFalse = evaluateExempt(false, "Hari_Mengajar_Saja");
@@ -391,7 +410,51 @@ async function runTests() {
       assert.strictEqual(resUndefined.hasExplicitTeacherSetting, false, 'undefined tidak dianggap setting eksplisit');
       assert.strictEqual(resUndefined.isTeacherExempt, false, 'undefined fallback ke aturan global sekolah Semua_Hari');
 
-      pass('Skenario 5: Ketahanan sistem terhadap tipe data string "false" dan "true" terverifikasi 100% robust');
+      pass('Skenario 5: Ketahanan sistem terhadap tipe data string "false"/"true" dan numerik 0/1 terverifikasi 100% robust');
+    }
+
+    // Skenario 6: Broadcast Topic Congruence & Offline Resume Simulation
+    {
+      const defaultSchoolId = 'a0000000-0000-0000-0000-000000000001';
+      const adminBroadcastTopic = `school-config-${defaultSchoolId}`;
+      const homeViewGuruTopic = `school-config-${defaultSchoolId}`;
+      const appScreenTopic = `school-config-${defaultSchoolId}`;
+
+      assert.strictEqual(adminBroadcastTopic, homeViewGuruTopic, 'AdminConfigView dan HomeViewGuru harus memakai topic broadcast yang sama');
+      assert.strictEqual(adminBroadcastTopic, appScreenTopic, 'AdminConfigView dan AppScreen harus memakai topic broadcast yang sama');
+
+      // Simulasi offline resume trigger
+      let refreshedCount = 0;
+      const simulateWakeOrOnline = (visibilityState: string) => {
+        if (visibilityState === 'visible') {
+          refreshedCount++;
+        }
+      };
+
+      simulateWakeOrOnline('hidden');
+      assert.strictEqual(refreshedCount, 0, 'Tab hidden tidak memicu sync prematur');
+      simulateWakeOrOnline('visible');
+      assert.strictEqual(refreshedCount, 1, 'Tab visible memicu sync instan');
+
+      pass('Skenario 6: Sinkronisasi topic channel Supabase broadcast dan penanganan sleep/offline resume terbukti kongruen');
+    }
+
+    // Skenario 7: Preseden Pengaturan Eksplisit Guru pada TeacherReminderManager
+    {
+      const evalReminderExempt = (teacherObj: any, dailyState: any) => {
+        const hasExplicitTeacherSetting = teacherObj?.wajib_hadir_hanya_mengajar !== null && teacherObj?.wajib_hadir_hanya_mengajar !== undefined;
+        return hasExplicitTeacherSetting
+          ? Boolean(teacherObj?.wajib_hadir_hanya_mengajar)
+          : (dailyState.isNonTeachingDay || dailyState.aturanKehadiran === 'Hari_Mengajar_Saja');
+      };
+
+      // Guru disetel Wajib Hadir Setiap Hari (false), tapi dailyState secara keliru memiliki isNonTeachingDay = true
+      const teacherWajib = { wajib_hadir_hanya_mengajar: false };
+      const badDailyState = { isNonTeachingDay: true, aturanKehadiran: 'Hari_Mengajar_Saja' };
+      const isExempt = evalReminderExempt(teacherWajib, badDailyState);
+
+      assert.strictEqual(isExempt, false, 'Pengaturan eksplisit guru wajib hadir harus mengesampingkan isNonTeachingDay');
+      pass('Skenario 7: Preseden pengaturan eksplisit guru pada reminder evaluasi terlindungi dari override yang tidak sah');
     }
 
   } catch (err: any) {

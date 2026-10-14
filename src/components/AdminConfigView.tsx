@@ -116,12 +116,14 @@ export default function AdminConfigView({
           const { data: teachers } = await guruQuery;
           if (teachers && teachers.length > 0) {
             setGuruList(teachers);
+            const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
+            const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
             const dbExempt = teachers
-              .filter(t => t.wajib_hadir_hanya_mengajar === true)
+              .filter(t => isValTrue(t.wajib_hadir_hanya_mengajar))
               .map(t => t.id);
             const validLegacyGhm = ghmList.filter(idOrName => {
               const matched = teachers.find(t => t.id === idOrName || t.nama_guru === idOrName);
-              return !matched || matched.wajib_hadir_hanya_mengajar !== false;
+              return !matched || !isValFalse(matched.wajib_hadir_hanya_mengajar);
             });
             setExemptTeacherIds(Array.from(new Set([...validLegacyGhm, ...dbExempt])));
           } else if (ghmList.length > 0) {

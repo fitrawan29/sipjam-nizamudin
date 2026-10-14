@@ -537,6 +537,8 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     window.addEventListener('sipjam:config_updated', handleConfigChange);
     window.addEventListener('sipjam:guru_updated', handleConfigChange);
     window.addEventListener('storage', handleConfigChange);
+    window.addEventListener('focus', handleConfigChange);
+    window.addEventListener('online', handleConfigChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
@@ -544,6 +546,8 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
       window.removeEventListener('sipjam:config_updated', handleConfigChange);
       window.removeEventListener('sipjam:guru_updated', handleConfigChange);
       window.removeEventListener('storage', handleConfigChange);
+      window.removeEventListener('focus', handleConfigChange);
+      window.removeEventListener('online', handleConfigChange);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isGuru, user?.id, checkReminders]);

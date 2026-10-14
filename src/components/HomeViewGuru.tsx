@@ -254,7 +254,7 @@ export default function HomeViewGuru({
   useEffect(() => {
     if (!user?.nama) return;
 
-    const schoolId = user?.sekolah_id || 'global';
+    const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
     const channelName = `realtime-guru-state-${user?.id || user?.nama || 'anon'}`;
     const channel = supabase
       .channel(channelName)
@@ -267,7 +267,11 @@ export default function HomeViewGuru({
       .on('broadcast', { event: 'config_updated' }, () => {
         refreshDailyWorkflow();
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          refreshDailyWorkflow();
+        }
+      });
 
     const schoolBroadcast = supabase
       .channel(`school-config-${schoolId}`)
@@ -286,9 +290,27 @@ export default function HomeViewGuru({
       }
     };
 
+    let lastResumeSync = 0;
+    const handleResumeOrOnline = () => {
+      const now = Date.now();
+      if (now - lastResumeSync > 1500) {
+        lastResumeSync = now;
+        refreshDailyWorkflow();
+      }
+    };
+
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        handleResumeOrOnline();
+      }
+    };
+
     window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
     window.addEventListener('sipjam:guru_updated', handleWindowConfigSync);
     window.addEventListener('storage', handleStorageSync);
+    window.addEventListener('focus', handleResumeOrOnline);
+    window.addEventListener('online', handleResumeOrOnline);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       supabase.removeChannel(channel);
@@ -296,6 +318,9 @@ export default function HomeViewGuru({
       window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
       window.removeEventListener('sipjam:guru_updated', handleWindowConfigSync);
       window.removeEventListener('storage', handleStorageSync);
+      window.removeEventListener('focus', handleResumeOrOnline);
+      window.removeEventListener('online', handleResumeOrOnline);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [user?.nama, user?.id, user?.sekolah_id, refreshDailyWorkflow]);
 

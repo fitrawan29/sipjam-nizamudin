@@ -219,8 +219,8 @@ export default function HomeViewAdmin({
         targetClasses = Array.from(uniqueTargetsMap.values());
         const targetCount = targetClasses.length;
         
-        const isExplicitExempt = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true';
-        const isExplicitNonExempt = teacher.wajib_hadir_hanya_mengajar === false || String(teacher.wajib_hadir_hanya_mengajar) === 'false';
+        const isExplicitExempt = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true' || teacher.wajib_hadir_hanya_mengajar === 1 || String(teacher.wajib_hadir_hanya_mengajar) === '1';
+        const isExplicitNonExempt = teacher.wajib_hadir_hanya_mengajar === false || String(teacher.wajib_hadir_hanya_mengajar) === 'false' || teacher.wajib_hadir_hanya_mengajar === 0 || String(teacher.wajib_hadir_hanya_mengajar) === '0';
         const hasExplicitTeacherSetting = isExplicitExempt || isExplicitNonExempt;
         const isTeacherInLegacyList = guruHanyaMengajarList.includes(teacher.id) ||
           guruHanyaMengajarList.includes(nama) ||

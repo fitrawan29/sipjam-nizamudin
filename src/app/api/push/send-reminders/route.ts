@@ -70,8 +70,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
     const isExemptTeacher = (t: any) => {
       if (!t) return false;
-      const isExplicitExempt = t.wajib_hadir_hanya_mengajar === true || String(t.wajib_hadir_hanya_mengajar) === 'true';
-      const isExplicitNonExempt = t.wajib_hadir_hanya_mengajar === false || String(t.wajib_hadir_hanya_mengajar) === 'false';
+      const isExplicitExempt = t.wajib_hadir_hanya_mengajar === true || String(t.wajib_hadir_hanya_mengajar) === 'true' || t.wajib_hadir_hanya_mengajar === 1 || String(t.wajib_hadir_hanya_mengajar) === '1';
+      const isExplicitNonExempt = t.wajib_hadir_hanya_mengajar === false || String(t.wajib_hadir_hanya_mengajar) === 'false' || t.wajib_hadir_hanya_mengajar === 0 || String(t.wajib_hadir_hanya_mengajar) === '0';
       if (isExplicitExempt) return true;
       if (isExplicitNonExempt) return false;
       if (isGlobalHariMengajarSaja) return true;
@@ -181,6 +181,11 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     // -------------------------------------------------------------
     if (!isSchoolDayOff) {
       for (const teacher of teachers) {
+      if (teacher.wajib_hadir_hanya_mengajar === 'false' || teacher.wajib_hadir_hanya_mengajar === '0') {
+        teacher.wajib_hadir_hanya_mengajar = false;
+      } else if (teacher.wajib_hadir_hanya_mengajar === 'true' || teacher.wajib_hadir_hanya_mengajar === '1') {
+        teacher.wajib_hadir_hanya_mengajar = true;
+      }
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
       const hasCheckedIn = checkedInSet.has(tNameLower);
@@ -245,17 +250,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
       if (activeBlok) {
         // Teachers exempt on non-teaching days do not need to fill block journals if they have no classes today
-        if (teacher.wajib_hadir_hanya_mengajar) {
-          const hasTeachingToday = scheduleList.some(s => {
-            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
-            const sName = (s.nama_guru || '').toLowerCase().trim();
-            if (!sName || !tNameLower) return false;
-            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
-          });
-          if (!hasTeachingToday) {
-            continue;
-          }
-        } else if (isExemptTeacher(teacher)) {
+        if (isExemptTeacher(teacher)) {
           const hasTeachingToday = scheduleList.some(s => {
             if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
             const sName = (s.nama_guru || '').toLowerCase().trim();
