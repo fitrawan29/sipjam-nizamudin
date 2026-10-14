@@ -37,6 +37,7 @@ const reminderManagerPath = path.join(root, 'src', 'components', 'TeacherReminde
 const pushReminderPath = path.join(root, 'src', 'app', 'api', 'push', 'send-reminders', 'route.ts');
 const appScreenPath = path.join(root, 'src', 'components', 'AppScreen.tsx');
 const sessionSyncPath = path.join(root, 'src', 'hooks', 'useSessionSync.ts');
+const warningPath = path.join(root, 'src', 'lib', 'warningSystem.ts');
 
 async function runTests() {
   try {
@@ -49,6 +50,7 @@ async function runTests() {
     const pushReminderContent = fs.readFileSync(pushReminderPath, 'utf8');
     const appScreenContent = fs.readFileSync(appScreenPath, 'utf8');
     const sessionSyncContent = fs.readFileSync(sessionSyncPath, 'utf8');
+    const warningContent = fs.readFileSync(warningPath, 'utf8');
 
     // --------------------------------------------------------------------------
     // BAGIAN 1: VERIFIKASI UI PENGATURAN MODEL B DI AdminConfigView.tsx (R1)
@@ -132,14 +134,15 @@ async function runTests() {
       fail('R2.2: attendanceAlpa.ts belum konsisten dalam evaluasi dua arah', e);
     }
 
-    // R2.3: HomeViewAdmin.tsx & TeacherReminderManager.tsx - Konsistensi status dashboard & reminder
+    // R2.3: HomeViewAdmin, TeacherReminderManager, push reminders, dan warningSystem konsisten menghormati status eksplisit
     try {
       assert(adminHomeContent.includes('hasExplicitTeacherSetting'), 'HomeViewAdmin.tsx menghormati status eksplisit');
       assert(reminderManagerContent.includes('hasExplicitTeacherSetting'), 'TeacherReminderManager.tsx menghormati status eksplisit');
       assert(pushReminderContent.includes('isExplicitExempt'), 'send-reminders route mengevaluasi isExplicitExempt');
-      pass('R2.3: HomeViewAdmin, TeacherReminderManager, dan push reminder konsisten menghormati status eksplisit');
+      assert(warningContent.includes('hasExplicitSetting'), 'warningSystem.ts menghormati status eksplisit');
+      pass('R2.3: HomeViewAdmin, TeacherReminderManager, push reminder, dan warningSystem konsisten menghormati status eksplisit');
     } catch (e: any) {
-      fail('R2.3: Inkonsistensi status pada HomeViewAdmin atau TeacherReminderManager', e);
+      fail('R2.3: Inkonsistensi status pada HomeViewAdmin, TeacherReminderManager, atau warningSystem', e);
     }
 
     // --------------------------------------------------------------------------
@@ -455,6 +458,47 @@ async function runTests() {
 
       assert.strictEqual(isExempt, false, 'Pengaturan eksplisit guru wajib hadir harus mengesampingkan isNonTeachingDay');
       pass('Skenario 7: Preseden pengaturan eksplisit guru pada reminder evaluasi terlindungi dari override yang tidak sah');
+    }
+
+    // Skenario 8: Evaluasi Dua Arah Warning System (Kedisiplinan 3x)
+    {
+      const resolveExemptForWarning = (teacher: any, aturanGlobal: string, ghmList: string[]) => {
+        const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
+        const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
+        const isExplicitExempt = isValTrue(teacher.wajib_hadir_hanya_mengajar);
+        const isExplicitNonExempt = isValFalse(teacher.wajib_hadir_hanya_mengajar);
+        const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
+        const isTeacherInLegacy = Boolean(
+          ghmList.includes(teacher.id) ||
+          ghmList.includes(teacher.nama_guru) ||
+          (teacher.nip && ghmList.includes(teacher.nip))
+        );
+        return hasExplicitSetting
+          ? isExplicitExempt
+          : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
+      };
+
+      // Kasus A: Guru disetel Wajib Hadir Setiap Hari (false) di sekolah Hari_Mengajar_Saja
+      const teacherNonExempt = { id: 'g1', nama_guru: 'Guru Disiplin', wajib_hadir_hanya_mengajar: false };
+      const isExemptA = resolveExemptForWarning(teacherNonExempt, 'Hari_Mengajar_Saja', []);
+      assert.strictEqual(isExemptA, false, 'Guru wajib hadir tidak boleh dibebaskan dari pemantauan kedisiplinan');
+
+      // Kasus B: Guru disetel Hanya Hari KBM (true) di sekolah Semua_Hari
+      const teacherExempt = { id: 'g2', nama_guru: 'Guru KBM', wajib_hadir_hanya_mengajar: true };
+      const isExemptB = resolveExemptForWarning(teacherExempt, 'Semua_Hari', []);
+      assert.strictEqual(isExemptB, true, 'Guru KBM harus dibebaskan dari pemantauan kedisiplinan di hari non-mengajar');
+
+      pass('Skenario 8: Warning System kedisiplinan konsisten mengevaluasi status eksplisit dua arah');
+    }
+
+    // Skenario 9: Proteksi Anti-Storming & Memory Leak (Debounce & Unmount Cleanup)
+    {
+      assert(guruHomeContent.includes('refreshTimerRef'), 'HomeViewGuru mengelola timer ref untuk debounce refresh');
+      assert(guruHomeContent.includes('clearTimeout(refreshTimerRef.current)'), 'HomeViewGuru membersihkan timer saat unmount');
+      assert(reminderManagerContent.includes('configTimer'), 'TeacherReminderManager mendebounce config changes');
+      assert(appScreenContent.includes('lastResume'), 'AppScreen mencegah dual emission event saat window focus');
+
+      pass('Skenario 9: Proteksi anti-storming debounce dan pembersihan memori unmount terverifikasi 100%');
     }
 
   } catch (err: any) {

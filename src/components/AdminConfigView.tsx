@@ -199,10 +199,10 @@ export default function AdminConfigView({
 
     const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
     const exemptIds = guruList.length > 0
-      ? guruList.filter(t => exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id)
+      ? guruList.filter(t => exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id).filter(Boolean)
       : exemptTeacherIds;
     const nonExemptIds = guruList.length > 0
-      ? guruList.filter(t => !exemptTeacherIds.includes(t.id) && !(t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id)
+      ? guruList.filter(t => !exemptTeacherIds.includes(t.id) && !(t.nama_guru && exemptTeacherIds.includes(t.nama_guru))).map(t => t.id).filter(Boolean)
       : [];
     const jsonExempt = JSON.stringify(exemptIds);
 
@@ -488,7 +488,7 @@ export default function AdminConfigView({
                               return (
                                 (g.nama_guru && g.nama_guru.toLowerCase().includes(s)) ||
                                 (g.mata_pelajaran && g.mata_pelajaran.toLowerCase().includes(s)) ||
-                                (g.nip && g.nip.toLowerCase().includes(s))
+                                (g.nip && String(g.nip).toLowerCase().includes(s))
                               );
                             })
                             .map(g => {

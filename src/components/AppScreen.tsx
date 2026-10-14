@@ -238,7 +238,11 @@ export default function AppScreen({
         }
       });
 
+    let lastResume = 0;
     const handleResumeSync = () => {
+      const now = Date.now();
+      if (now - lastResume < 800) return;
+      lastResume = now;
       if (typeof window !== 'undefined' && (!document || document.visibilityState === 'visible')) {
         window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
       }

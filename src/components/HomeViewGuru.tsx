@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   getWitaDateLong, 
   getWitaTimeStr, 
@@ -237,18 +237,34 @@ export default function HomeViewGuru({
     }
   }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth]);
 
-  const refreshDailyWorkflow = useCallback(async () => {
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const refreshDailyWorkflow = useCallback((immediate?: boolean) => {
     if (!user?.nama) return;
-    try {
-      setLoadingState(true);
-      const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
-      setDailyState(state);
-    } catch (err) {
-      console.error('Error refreshing guru daily state:', err);
-    } finally {
-      setLoadingState(false);
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
     }
-  }, [user?.nama, user?.username, user?.id, user?.sekolah_id]);
+    const run = async () => {
+      try {
+        setLoadingState(true);
+        const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
+        setDailyState(state);
+        getTeacherDisciplineWarnings(user.nama, user.sekolah_id, selectedMonth)
+          .then(setTeacherWarnings)
+          .catch(err => console.error('Error refreshing discipline warnings:', err));
+      } catch (err) {
+        console.error('Error refreshing guru daily state:', err);
+      } finally {
+        setLoadingState(false);
+      }
+    };
+
+    if (immediate === true) {
+      run();
+    } else {
+      refreshTimerRef.current = setTimeout(run, 200);
+    }
+  }, [user?.nama, user?.username, user?.id, user?.sekolah_id, selectedMonth]);
 
   // Realtime subscription: postgres_changes on 'pengaturan' & 'data_guru', Supabase broadcast channel, and window/storage events
   useEffect(() => {
@@ -313,6 +329,9 @@ export default function HomeViewGuru({
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
       supabase.removeChannel(channel);
       supabase.removeChannel(schoolBroadcast);
       window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);

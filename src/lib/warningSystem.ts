@@ -139,7 +139,11 @@ export function evaluateTeacherWarningsSync(
     const hasTeachingClass = teacherJadwal.some(j => j.hari === dayName);
     const isPiketDay = isTeacherPiketOnDay(dayName);
 
-    if (aturanKehadiran === 'Hari_Mengajar_Saja' || isExemptNonTeaching) {
+    const isExempt = typeof isExemptNonTeaching === 'boolean'
+      ? isExemptNonTeaching
+      : (aturanKehadiran === 'Hari_Mengajar_Saja');
+
+    if (isExempt) {
       if (!hasTeachingClass && !isPiketDay) {
         continue;
       }
@@ -222,7 +226,11 @@ export function evaluateTeacherWarningsSync(
     const scheduledOnDay = teacherJadwal.filter(j => j.hari === dayName);
     const isPiketDay = isTeacherPiketOnDay(dayName);
 
-    if (aturanKehadiran === 'Hari_Mengajar_Saja' || isExemptNonTeaching) {
+    const isExempt = typeof isExemptNonTeaching === 'boolean'
+      ? isExemptNonTeaching
+      : (aturanKehadiran === 'Hari_Mengajar_Saja');
+
+    if (isExempt) {
       if (scheduledOnDay.length === 0 && !isPiketDay) {
         continue;
       }
@@ -385,7 +393,6 @@ export async function getTeacherDisciplineWarnings(
   }
   const { data: guruData } = await guruQuery.maybeSingle();
   const teacherId = guruData?.id;
-  const isExemptNonTeaching = Boolean(guruData?.wajib_hadir_hanya_mengajar);
   const resolvedSekolahId = sekolahId || guruData?.sekolah_id;
 
   let configQuery = supabase.from('pengaturan').select('*');
@@ -439,6 +446,35 @@ export async function getTeacherDisciplineWarnings(
     presensiQuery, jurnalQuery, piketQuery
   ]);
 
+  const configMap = new Map((configs || []).map((c: any) => [c.key, c.value]));
+  const aturanGlobal = configMap.get('aturan_kehadiran_guru') ||
+    (configs || []).find((c: any) => c.aturan_kehadiran_guru)?.aturan_kehadiran_guru || 'Semua_Hari';
+  const ghmRow = (configs || []).find((c: any) => c.key === 'guru_hanya_mengajar');
+  let ghmList: string[] = [];
+  if (ghmRow && ghmRow.value) {
+    try {
+      const p = JSON.parse(ghmRow.value);
+      if (Array.isArray(p)) ghmList = p;
+    } catch {}
+  }
+
+  const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
+  const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
+  const isExplicitExempt = isValTrue(guruData?.wajib_hadir_hanya_mengajar);
+  const isExplicitNonExempt = isValFalse(guruData?.wajib_hadir_hanya_mengajar);
+  const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
+  const isTeacherInLegacy = Boolean(
+    guruData && (
+      ghmList.includes(guruData.id) ||
+      ghmList.includes(guruData.nama_guru) ||
+      (guruData.nip && ghmList.includes(guruData.nip))
+    )
+  );
+
+  const isExemptNonTeaching = hasExplicitSetting
+    ? isExplicitExempt
+    : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
+
   return evaluateTeacherWarningsSync(
     teacherId,
     normName,
@@ -460,7 +496,7 @@ export async function getAllTeachersDisciplineWarnings(
   sekolahId?: string,
   targetMonth?: string
 ): Promise<TeacherWarningSummary[]> {
-  let guruQuery = supabase.from('data_guru').select('id, nama_guru, sekolah_id, wajib_hadir_hanya_mengajar').order('nama_guru');
+  let guruQuery = supabase.from('data_guru').select('id, nama_guru, nip, sekolah_id, wajib_hadir_hanya_mengajar').order('nama_guru');
   if (sekolahId) {
     guruQuery = guruQuery.eq('sekolah_id', sekolahId);
   }
@@ -539,11 +575,34 @@ export async function getAllTeachersDisciplineWarnings(
     if (!teacher.nama_guru) continue;
     try {
       const resolvedSekolahId = teacher.sekolah_id || sekolahId;
-      const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar);
-      
       const teacherNameSplit = teacher.nama_guru.split(',')[0].trim().toLowerCase();
-
       const tConfigs = (configs || []).filter(c => c.sekolah_id === resolvedSekolahId || !c.sekolah_id);
+      const configMap = new Map((tConfigs || []).map((c: any) => [c.key, c.value]));
+      const aturanGlobal = configMap.get('aturan_kehadiran_guru') ||
+        (tConfigs || []).find((c: any) => c.aturan_kehadiran_guru)?.aturan_kehadiran_guru || 'Semua_Hari';
+      const ghmRow = (tConfigs || []).find((c: any) => c.key === 'guru_hanya_mengajar');
+      let ghmList: string[] = [];
+      if (ghmRow && ghmRow.value) {
+        try {
+          const p = JSON.parse(ghmRow.value);
+          if (Array.isArray(p)) ghmList = p;
+        } catch {}
+      }
+
+      const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
+      const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
+      const isExplicitExempt = isValTrue(teacher.wajib_hadir_hanya_mengajar);
+      const isExplicitNonExempt = isValFalse(teacher.wajib_hadir_hanya_mengajar);
+      const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
+      const isTeacherInLegacy = Boolean(
+        ghmList.includes(teacher.id) ||
+        ghmList.includes(teacher.nama_guru) ||
+        (teacher.nip && ghmList.includes(teacher.nip))
+      );
+
+      const isExemptNonTeaching = hasExplicitSetting
+        ? isExplicitExempt
+        : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
       const tHolidays = (holidaysData || []).filter(h => h.sekolah_id === resolvedSekolahId || !h.sekolah_id);
       const tJadwal = (jadwalData || []).filter(j => j.sekolah_id === resolvedSekolahId || !j.sekolah_id);
       const tPenugasan = (penugasanData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);

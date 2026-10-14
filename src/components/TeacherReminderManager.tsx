@@ -496,20 +496,24 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   useEffect(() => {
     if (!isGuru) return;
 
+    let configTimer: NodeJS.Timeout | null = null;
     const handleConfigChange = () => {
-      const cfg = getReminderConfig(user?.id);
-      setReminderConfig(cfg);
-      if (!cfg.enabled) {
-        setReminders([]);
-        return;
-      }
-      if (isReminderSnoozed(user?.id)) {
-        setIsSnoozed(true);
-        setReminders([]);
-      } else {
-        setIsSnoozed(false);
-        checkReminders();
-      }
+      if (configTimer) clearTimeout(configTimer);
+      configTimer = setTimeout(() => {
+        const cfg = getReminderConfig(user?.id);
+        setReminderConfig(cfg);
+        if (!cfg.enabled) {
+          setReminders([]);
+          return;
+        }
+        if (isReminderSnoozed(user?.id)) {
+          setIsSnoozed(true);
+          setReminders([]);
+        } else {
+          setIsSnoozed(false);
+          checkReminders();
+        }
+      }, 200);
     };
 
     const handleVisibilityChange = () => {
@@ -542,6 +546,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      if (configTimer) clearTimeout(configTimer);
       window.removeEventListener('sipjam_reminder_config_changed', handleConfigChange);
       window.removeEventListener('sipjam:config_updated', handleConfigChange);
       window.removeEventListener('sipjam:guru_updated', handleConfigChange);
