@@ -64,8 +64,8 @@ async function runAdversarialM3TestSuite() {
   const manifestPath = path.join(root, 'public', 'manifest.json');
   const cameraPath = path.join(root, 'src', 'components', 'CameraSelfieCapture.tsx');
 
-  const notifModalSrc = fs.readFileSync(notifModalPath, 'utf8');
-  const pushPromptSrc = fs.readFileSync(pushPromptPath, 'utf8');
+  const notifModalSrc = fs.existsSync(notifModalPath) ? fs.readFileSync(notifModalPath, 'utf8') : '';
+  const pushPromptSrc = fs.existsSync(pushPromptPath) ? fs.readFileSync(pushPromptPath, 'utf8') : '';
   const splashSrc = fs.readFileSync(splashPath, 'utf8');
   const loginSrc = fs.readFileSync(loginPath, 'utf8');
   const layoutSrc = fs.readFileSync(layoutPath, 'utf8');

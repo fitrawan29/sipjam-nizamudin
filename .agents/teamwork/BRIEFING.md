@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-13T19:43:14Z
+# BRIEFING — 2026-10-14T09:47:40Z
 
 ## Mission
-Otomatisasi verifikasi presensi guru, jurnal pembelajaran, dan laporan piket secara real-time saat pengajuan dibuat di aplikasi SIPJAM, dengan mempertahankan antrean persetujuan manual untuk pengajuan bersyarat khusus.
+Perbaiki aturan kehadiran guru agar opsi wajib hadir hanya pada hari mengajar berfungsi secara akurat tanpa error maupun bug di seluruh modul (workflow, presensi, dashboard admin, kalkulasi alpa otomatis, dan notifikasi pengingat), serta lakukan eliminasi file dan kode komponen usang yang sudah tidak dipakai.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -35,6 +35,10 @@ Otomatisasi verifikasi presensi guru, jurnal pembelajaran, dan laporan piket sec
 - Cron 1 (Progress Reporting): 4a4e3549-bafc-4324-b1e2-1c248f3e8fdd/task-44 (*/8 * * * *)
 - Cron 2 (Liveness Check): 4a4e3549-bafc-4324-b1e2-1c248f3e8fdd/task-46 (*/10 * * * *)
 - Victory Auditor (current): 5aea33be-f1a8-4a56-824b-094e929b9e31 (victory_auditor_35)
+- Orchestrator (current): cee80ad9-6743-4395-8d50-c686b97fb49d (swe_23)
+- Cron 1 (Progress Reporting): 67d0fcc1-2722-4817-bf1c-aac715599224/task-18 (*/8 * * * *)
+- Cron 2 (Liveness Check): 67d0fcc1-2722-4817-bf1c-aac715599224/task-20 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -50,26 +54,24 @@ Otomatisasi verifikasi presensi guru, jurnal pembelajaran, dan laporan piket sec
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained cleanup and removal of obsolete Superadmin tabs and modals, small and focused)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Dinas Luar camera presensi without radius restriction)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; real-time automated verification for attendance, journal, and piket with manual approval queue retention)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; teaching-only attendance rules and obsolete code removal)
 
 ## User Context
-- **Last user request**: Otomatisasi verifikasi presensi guru, jurnal pembelajaran, dan laporan piket secara real-time saat pengajuan dibuat di aplikasi SIPJAM, dengan mempertahankan antrean persetujuan manual untuk pengajuan bersyarat khusus.
+- **Last user request**: Perbaiki aturan kehadiran guru agar opsi wajib hadir hanya pada hari mengajar berfungsi secara akurat tanpa error maupun bug di seluruh modul, serta lakukan eliminasi file dan kode komponen usang yang sudah tidak dipakai.
 - **Pending clarifications**: none
-- **Delivered results**: Seluruh persyaratan R1-R4 selesai diimplementasikan, melalui 3 round adversarial review, diverifikasi independen oleh Victory Auditor 35 (VICTORY CONFIRMED), automated test 25 suites lulus 100%, TypeScript lolos 0 error, Next.js production build bersih, dan git repo tersinkronisasi ke origin/main.
+- **Delivered results**: Sedang diproses oleh swe_23 (SWE Light loop).
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (killed upon victory)
-- **Active Subagents**: none (killed upon victory)
+- **Active Crons**: task-18 (*/8 * * * *), task-20 (*/10 * * * *)
+- **Active Subagents**: swe_23 (cee80ad9-6743-4395-8d50-c686b97fb49d)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_22\DISPATCH.md — Dispatch instructions for swe_22
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_22\handoff.md — Completion report from swe_22
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_35\DISPATCH.md — Dispatch instructions for victory_auditor_35
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_35\handoff.md — Independent post-victory audit report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_23\DISPATCH.md — Dispatch instructions for swe_23

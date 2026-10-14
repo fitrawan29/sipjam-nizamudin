@@ -221,12 +221,38 @@ export default function HomeViewAdmin({
           (teacher.nip && guruHanyaMengajarList.includes(teacher.nip));
         const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
 
+        // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
+        const inPenugasan = assignedPiketTeachers.some((p: any) =>
+          isTeacherMatch(p.guru_nama, p.guru_nip, nama, nip)
+        );
+        const inJadwalPiket = piketSchedule ? isGuruDiPiket(piketSchedule.daftar_guru, nama) : false;
+        const isAssignedPiket = inPenugasan || inJadwalPiket;
+        const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
+        let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';
+        let piketColor: 'green' | 'rose' | 'gray' | 'blue' = isExemptNonTeaching && isAssignedPiket ? 'blue' : 'gray';
+
+        if (isPiket) {
+          const hasReport = piketReports.some((lp: any) => 
+            isTeacherMatch(lp.guru_pelapor, undefined, nama, nip)
+          );
+          if (hasReport) {
+            piketStatus = 'Sudah Lapor';
+            piketColor = 'green';
+          } else {
+            piketStatus = 'Belum Lapor';
+            piketColor = 'rose';
+          }
+        }
+
+        const hasPiketDuty = isPiket;
+        const isFreeFromPresence = isSchoolDayOff ? false : (isExemptNonTeaching && !hasPiketDuty);
+
         // 2. Presensi Datang
         const pDatang = presensiList.find((p: any) => 
           isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Datang'
         );
-        let presensiDatangStatus = isSchoolDayOff ? 'Libur' : isExemptNonTeaching ? 'Bebas Hadir' : 'Belum Datang';
-        let presensiDatangColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = (isSchoolDayOff || isExemptNonTeaching) ? 'blue' : 'gray';
+        let presensiDatangStatus = isSchoolDayOff ? 'Libur' : isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang';
+        let presensiDatangColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = (isSchoolDayOff || isFreeFromPresence) ? 'blue' : 'gray';
         let datangTime = '';
 
         if (pDatang) {
@@ -282,8 +308,8 @@ export default function HomeViewAdmin({
         const pPulang = presensiList.find((p: any) => 
           isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang'
         );
-        let presensiPulangStatus = isSchoolDayOff ? 'Libur' : isExemptNonTeaching ? 'Bebas Hadir' : 'Belum Pulang';
-        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' = (isSchoolDayOff || isExemptNonTeaching) ? 'blue' : 'gray';
+        let presensiPulangStatus = isSchoolDayOff ? 'Libur' : isFreeFromPresence ? 'Bebas Hadir' : 'Belum Pulang';
+        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' = (isSchoolDayOff || isFreeFromPresence) ? 'blue' : 'gray';
         let pulangTime = '';
 
         if (pPulang) {
@@ -293,29 +319,6 @@ export default function HomeViewAdmin({
             : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : '');
           presensiPulangStatus = `Pulang [${pulangTime}]`;
           presensiPulangColor = 'green';
-        }
-
-        // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
-        const inPenugasan = assignedPiketTeachers.some((p: any) =>
-          isTeacherMatch(p.guru_nama, p.guru_nip, nama, nip)
-        );
-        const inJadwalPiket = piketSchedule ? isGuruDiPiket(piketSchedule.daftar_guru, nama) : false;
-        const isAssignedPiket = inPenugasan || inJadwalPiket;
-        const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
-        let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';
-        let piketColor: 'green' | 'rose' | 'gray' | 'blue' = isExemptNonTeaching && isAssignedPiket ? 'blue' : 'gray';
-
-        if (isPiket) {
-          const hasReport = piketReports.some((lp: any) => 
-            isTeacherMatch(lp.guru_pelapor, undefined, nama, nip)
-          );
-          if (hasReport) {
-            piketStatus = 'Sudah Lapor';
-            piketColor = 'green';
-          } else {
-            piketStatus = 'Belum Lapor';
-            piketColor = 'rose';
-          }
         }
 
         // 5. Pengisian Jurnal (Handling regular KBM and Dinas Luar / Jurnal Kegiatan)
@@ -387,7 +390,7 @@ export default function HomeViewAdmin({
 
         // 6. Aggregate: Tugas Lengkap?
         const isIzinSakit = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit';
-        const isLiburOrExempt = isSchoolDayOff || isExemptNonTeaching;
+        const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty);
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;

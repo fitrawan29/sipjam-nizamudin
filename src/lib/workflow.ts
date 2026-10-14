@@ -301,16 +301,17 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       }
       const { data: tData } = await tQ;
       if (tData && tData.length > 0) {
-        const teacher = tData[0];
-        if (teacher.wajib_hadir_hanya_mengajar === true) {
-          isTeacherExempt = true;
-        }
-        if (
-          guruHanyaMengajarList.includes(teacher.id) || 
-          guruHanyaMengajarList.includes(teacher.nama_guru) || 
-          (teacher.nip && guruHanyaMengajarList.includes(teacher.nip))
-        ) {
-          isTeacherExempt = true;
+        for (const teacher of tData) {
+          if (teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true') {
+            isTeacherExempt = true;
+          }
+          if (
+            guruHanyaMengajarList.includes(teacher.id) || 
+            guruHanyaMengajarList.includes(teacher.nama_guru) || 
+            (teacher.nip && guruHanyaMengajarList.includes(teacher.nip))
+          ) {
+            isTeacherExempt = true;
+          }
         }
       }
     } catch (tErr) {
@@ -638,6 +639,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       isJurnalDone = true;
     } else if (state.isBlok || state.isDinasLuar || state.jadwalKBM.length === 0) {
       if (state.jurnalKegiatan) isJurnalDone = true;
+      if (isTeacherExempt && state.jadwalKBM.length === 0) isJurnalDone = true;
+      if (state.jadwalKBM.length === 0 && state.isPiket) isJurnalDone = true;
     } else {
       // Harus isi KBM sejumlah jadwal - gunakan fuzzy matching
       const fulfilled = state.jadwalKBM.every(jk => 

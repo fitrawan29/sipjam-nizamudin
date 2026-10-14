@@ -1,34 +1,49 @@
-> [!WARNING] **Skepticism Disclaimer**
-> High confidence (99%) — all obsolete Superadmin tabs and legacy modals/handlers were completely stripped, Overview tab aligned with satellite network data, and all 22 test suites (over 300 tests) passed cleanly alongside strict TypeScript and production build checks.
+# Handoff Report: Implementer 1 - Wajib Hadir Hari Mengajar & Pembersihan Kode Usang
 
-## 1. What I changed
-- `src/components/AppScreen.tsx`:
-  - Removed `view-superadmin-sekolah` ('Kelola Sekolah') and `view-superadmin-admins` ('Admin Sekolah') from `menuItemsSuperadmin`.
-  - Streamlined `initialTab` and `onNavigateTab` props passed to `SuperadminView` to toggle strictly between `overview` and `jaringan`.
-- `src/components/SuperadminView.tsx`:
-  - Stripped obsolete tabs: "Kelola Sekolah" (`sekolah`) and "Admin Sekolah" (`admins`) from tab navigation bar and JSX body.
-  - Removed legacy local school modals and handlers: `handleOpenAddSchoolModal`, `handleEditSchool`, `handleToggleSchoolStatus`, `handleDeleteSchool`.
-  - Removed legacy local admin modals and handlers: `handleOpenAddAdminModal`, `handleEditAdmin`, `handleDeleteAdmin`.
-  - Removed unused state and filter variables: `sekolahList`, `sekolahSearch`, `cityFilter`, `statusFilter`, `adminList`, `adminSearch`, `schoolNameMap`, `uniqueCities`, `filteredSekolah`, `filteredAdmins`.
-  - Aligned tab **Overview** (`overview`) with satellite network data: KPI cards now show total satellite schools, online database count (with pulse indicator), total teachers, and total students across the entire satellite network.
-  - Aligned Overview quick action buttons: replaced "Buat Akun Admin Sekolah" and "Kelola Daftar Sekolah" with direct shortcuts to "Tambah Sekolah Satelit" and "Periksa Status Live Database".
-  - Replaced legacy schools overview summary table with live "Jaringan Sekolah Satelit Terbaru" showing real-time database status badges and teacher/student counts.
-- `src/components/Tutorial/tutorialData.ts`:
-  - Replaced obsolete tutorial entries for `superadmin-sekolah` and `superadmin-admins` with unified tutorial item for `superadmin-jaringan` (Jaringan Sekolah Satelit).
+## 1. Ringkasan Pekerjaan (Summary of Changes)
+Telah diselesaikan implementasi aturan kehadiran guru "Wajib Hadir Hanya Hari Mengajar" secara akurat dan konsisten di seluruh modul, serta eliminasi kode & komponen yatim yang sudah tidak dipakai.
 
-## 2. Why
-- To complete the architectural transition to **Jaringan Sekolah Satelit & Multi-School Switcher**, removing redundant and confusing legacy local school and admin management features from the Superadmin role while keeping satellite network monitoring and management fully functional.
+### File yang Dihapus (R2)
+1. `src/components/AdminMonitorView.tsx`: Komponen yatim tanpa rute navigasi dan tidak di-mount di aplikasi.
+2. `src/components/NotificationPermissionModal.tsx`: Komponen modal izin notifikasi yatim yang tidak di-mount.
+3. `src/components/PushNotificationPrompt.tsx`: Komponen prompt notifikasi push yatim yang tidak di-mount.
 
-## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - Ran `npx tsc --noEmit`: Exited with code 0 (zero TypeScript errors).
-  - Ran `npm test`: All 22 test suites passed cleanly with 0 failures (including `portal_induk_jaringan_multi_sekolah.test.ts` (47/47 passed), `presensi_siswa_sync_and_superadmin.test.ts` (11/11 passed), `adversarial_presensi_sync_reviewer.test.ts` (12/12 passed), `adversarial_presensi_sync_reviewer_r2.test.ts` (10/10 passed), `adversarial_presensi_sync_reviewer_r3.test.ts` (12/12 passed), etc.).
-  - Ran `npm run build`: Production Next.js build compiled and generated static and dynamic routes cleanly with code 0.
-- **Shallow Verification (manual run only):** Eyeballed JSX structure for responsiveness and dark mode compatibility on the simplified 2-tab layout.
-- **Unverified aspects:** End-to-end interactive browser session in live production environment with real remote Supabase satellites (relying on passing automated mock/contract suites and build verification).
+### File yang Dimodifikasi (R1 & R2)
+1. `src/lib/workflow.ts`:
+   - Penyelarasan loop iterasi pengecekan eksepsi `wajib_hadir_hanya_mengajar` pada seluruh record guru yang cocok.
+   - Presensi Pulang: menambahkan `if (isTeacherExempt && state.jadwalKBM.length === 0) isJurnalDone = true;` sehingga guru exempt yang hadir sukarela atau bertugas piket pada hari tanpa jam mengajar tidak terblokir oleh tagihan jurnal KBM fiktif.
+2. `src/lib/attendanceAlpa.ts`:
+   - Evaluasi Auto-Alpa: mengambil data penugasan piket (`penugasan_piket` & `jadwal_piket`) dan jadwal KBM hari ini.
+   - Guru exempt dibebaskan dari Alpa hanya jika tidak memiliki jadwal mengajar DAN tidak memiliki tugas piket (`!hasTeachingToday && !hasPiketDuty`). Jika ditugaskan piket tapi mangkir, tetap dievaluasi untuk Alpa.
+3. `src/components/HomeViewAdmin.tsx`:
+   - Memajukan perhitungan kewajiban piket (`hasPiketDuty`) sebelum penentuan status Datang dan Pulang.
+   - Status Presensi Datang dan Pulang guru exempt pada hari tanpa KBM & tanpa piket diset ke `'Bebas Hadir'`. Jika memiliki tugas piket, tetap diwajibkan hadir (`'Belum Datang'` / `'Belum Pulang'`).
+   - `isLiburOrExempt` pada agregat tugas lengkap memperhitungkan `!hasPiketDuty`.
+4. `src/components/HomeViewGuru.tsx`:
+   - Menyelaraskan Step 3 (Jurnal) pada alur kerja guru: guru exempt pada hari tanpa jadwal mengajar diberikan status `'Bebas Jurnal'`.
+5. `src/app/api/push/send-reminders/route.ts`:
+   - Menambahkan pengecekan `hasPiketDuty` pada Task 1 (Pengingat Datang). Guru exempt hanya dilewati jika tidak memiliki jam mengajar DAN tidak bertugas piket hari ini.
+6. `src/components/TeacherReminderManager.tsx`:
+   - Menyelaraskan deteksi kewajiban (`hasObligationToday = hasClassesToday || hasPiketDuty`) untuk aktivasi pengingat datang in-app.
+7. File Tes Terkait Pembersihan Komponen:
+   - `tests/challenger_m2_empirical.test.ts`, `tests/m2_notifications_alpa_warning.test.ts`, `tests/m3_ui_ux_apple_compatibility.test.ts`, `tests/m3_adversarial_stress.test.ts`, `tests/adversarial_m3_challenger_2.test.ts`, `tests/m9_4_chat_and_notifications.test.ts`, `tests/m9_challenger2_e2e_verification.test.ts`: diupdate agar tidak crash akibat penghapusan file usang.
+8. `package.json`:
+   - Mendaftarkan suite tes baru `tests/wajib_hadir_dan_pembersihan_usang.test.ts` ke dalam script `"test"`.
+9. `tests/wajib_hadir_dan_pembersihan_usang.test.ts`:
+   - 18 pengujian komprehensif yang memvalidasi seluruh kondisi R1, R2, dan R3.
 
-## 4. Known Issues
-- `None` (verified with full test suite, build, and static type checks).
+---
 
-## 5. Untested Edge Cases & Next Step
-- Reviewers should verify that clicking the school switcher dropdown in the Superadmin header or Overview quick actions transitions smoothly to satellite target mode and back to master scope.
+## 2. Catatan Verifikasi (Verification Record)
+
+### Perintah Pengujian yang Dijalankan
+```bash
+npx tsc --noEmit
+npx tsx tests/wajib_hadir_dan_pembersihan_usang.test.ts
+npm test
+```
+
+### Hasil Pengujian
+1. `npx tsc --noEmit`: Exit code 0, 0 compiler error.
+2. `npx tsx tests/wajib_hadir_dan_pembersihan_usang.test.ts`: 18/18 PASS (100%).
+3. `npm test`: 26 test suite, 100% PASS, 0 failure.

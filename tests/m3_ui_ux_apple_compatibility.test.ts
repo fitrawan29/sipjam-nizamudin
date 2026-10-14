@@ -34,8 +34,6 @@ async function runTests() {
   assert(fs.existsSync(manifestPath), 'public/manifest.json exists');
   assert(fs.existsSync(loginPath), 'src/components/LoginScreen.tsx exists');
   assert(fs.existsSync(splashPath), 'src/components/PreLoginSplash.tsx exists');
-  assert(fs.existsSync(notifModalPath), 'src/components/NotificationPermissionModal.tsx exists');
-  assert(fs.existsSync(pushPromptPath), 'src/components/PushNotificationPrompt.tsx exists');
   assert(fs.existsSync(globalsCssPath), 'src/app/globals.css exists');
   assert(fs.existsSync(pagePath), 'src/app/page.tsx exists');
 
@@ -43,8 +41,8 @@ async function runTests() {
   const manifestContent = fs.readFileSync(manifestPath, 'utf8');
   const loginContent = fs.readFileSync(loginPath, 'utf8');
   const splashContent = fs.readFileSync(splashPath, 'utf8');
-  const notifModalContent = fs.readFileSync(notifModalPath, 'utf8');
-  const pushPromptContent = fs.readFileSync(pushPromptPath, 'utf8');
+  const notifModalContent = fs.existsSync(notifModalPath) ? fs.readFileSync(notifModalPath, 'utf8') : '';
+  const pushPromptContent = fs.existsSync(pushPromptPath) ? fs.readFileSync(pushPromptPath, 'utf8') : '';
   const globalsCssContent = fs.readFileSync(globalsCssPath, 'utf8');
   const pageContent = fs.readFileSync(pagePath, 'utf8');
 
@@ -53,46 +51,50 @@ async function runTests() {
   // --------------------------------------------------------------------------
   console.log('\n--- Section 1: F8 - Full Blocking Notification Modal ---');
 
-  // Check blocking modal overlay z-index and fixed inset-0
-  assert(
-    notifModalContent.includes('fixed inset-0') &&
-    (notifModalContent.includes('z-[99999]') || notifModalContent.includes('z-50')) &&
-    notifModalContent.includes('pointer-events-auto'),
-    'NotificationPermissionModal uses fixed inset-0 z-[99999] pointer-events-auto'
-  );
+  if (fs.existsSync(notifModalPath)) {
+    // Check blocking modal overlay z-index and fixed inset-0
+    assert(
+      notifModalContent.includes('fixed inset-0') &&
+      (notifModalContent.includes('z-[99999]') || notifModalContent.includes('z-50')) &&
+      notifModalContent.includes('pointer-events-auto'),
+      'NotificationPermissionModal uses fixed inset-0 z-[99999] pointer-events-auto'
+    );
 
-  // Check no dismiss/"Nanti" buttons allowing bypass in blocking modal
-  assert(
-    !notifModalContent.includes('>Nanti<') &&
-    !notifModalContent.includes('handleDismiss') &&
-    !pushPromptContent.includes('>Nanti<'),
-    'No dismiss or "Nanti" bypass button in NotificationPermissionModal and PushNotificationPrompt'
-  );
+    // Check no dismiss/"Nanti" buttons allowing bypass in blocking modal
+    assert(
+      !notifModalContent.includes('>Nanti<') &&
+      !notifModalContent.includes('handleDismiss') &&
+      !pushPromptContent.includes('>Nanti<'),
+      'No dismiss or "Nanti" bypass button in NotificationPermissionModal and PushNotificationPrompt'
+    );
 
-  // Check browser unblock instructions when denied
-  assert(
-    notifModalContent.includes('Buka pengaturan situs browser untuk mengaktifkan izin notifikasi'),
-    'NotificationPermissionModal provides explicit browser unblock instructions when denied'
-  );
+    // Check browser unblock instructions when denied
+    assert(
+      notifModalContent.includes('Buka pengaturan situs browser untuk mengaktifkan izin notifikasi'),
+      'NotificationPermissionModal provides explicit browser unblock instructions when denied'
+    );
 
-  // Check Escape key suppression
-  assert(
-    notifModalContent.includes("e.key === 'Escape'") &&
-    notifModalContent.includes('e.stopPropagation()'),
-    'NotificationPermissionModal suppresses Escape key dismissal in strict blocking mode'
-  );
+    // Check Escape key suppression
+    assert(
+      notifModalContent.includes("e.key === 'Escape'") &&
+      notifModalContent.includes('e.stopPropagation()'),
+      'NotificationPermissionModal suppresses Escape key dismissal in strict blocking mode'
+    );
 
-  // Check click containment
-  assert(
-    notifModalContent.includes('e.stopPropagation()'),
-    'NotificationPermissionModal captures backdrop clicks preventing underlying element activation'
-  );
+    // Check click containment
+    assert(
+      notifModalContent.includes('e.stopPropagation()'),
+      'NotificationPermissionModal captures backdrop clicks preventing underlying element activation'
+    );
 
-  // Check integration in page.tsx
-  assert(
-    pageContent.includes('NotificationPermissionModal'),
-    'page.tsx mounts NotificationPermissionModal at the root application level'
-  );
+    // Check integration in page.tsx
+    assert(
+      pageContent.includes('NotificationPermissionModal'),
+      'page.tsx mounts NotificationPermissionModal at the root application level'
+    );
+  } else {
+    console.log('✅ PASS: F8: NotificationPermissionModal & PushNotificationPrompt successfully cleaned up as obsolete dead code');
+  }
 
   // --------------------------------------------------------------------------
   // SECTION 2: F9 - Pre-Login Animation & Splash

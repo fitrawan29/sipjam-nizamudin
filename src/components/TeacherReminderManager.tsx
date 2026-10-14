@@ -226,8 +226,10 @@ export function evaluateReminderConditions(
     return reminders;
   }
 
-  const isExempt = dailyState.isNonTeachingDay || Boolean(teacherObj?.wajib_hadir_hanya_mengajar);
+  const isExempt = dailyState.isNonTeachingDay || Boolean(teacherObj?.wajib_hadir_hanya_mengajar) || dailyState.aturanKehadiran === 'Hari_Mengajar_Saja';
   const hasClassesToday = Boolean(dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0);
+  const hasPiketDuty = Boolean(dailyState.isPiket);
+  const hasObligationToday = hasClassesToday || hasPiketDuty;
 
   const currentWitaTime = getWitaTimeStr(now);
   const currentMinutes = parseTimeToMinutes(currentWitaTime);
@@ -245,7 +247,7 @@ export function evaluateReminderConditions(
 
   // Condition 1: Presensi Datang
   const needsDatang = !dailyState.presensiDatang || Boolean(dailyState.presensiDatangDitolak);
-  if (needsDatang && (!isExempt || hasClassesToday)) {
+  if (needsDatang && (!isExempt || hasObligationToday)) {
     if (currentMinutes >= datangMulai && currentMinutes <= datangAkhir) {
       const isPastBatas = currentMinutes > datangBatas;
       reminders.push({

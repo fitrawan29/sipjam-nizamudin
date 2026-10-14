@@ -494,7 +494,7 @@ export default function HomeViewGuru({
 
     // Step 3: Jurnal
     const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
-    if (dailyState.isNonTeachingDay) {
+    if (dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) {
       steps.push({ label: 'Bebas Jurnal', status: 'skipped', detail: 'Tidak ada jadwal mengajar hari ini', icon: 'fa-book-journal-whills' });
     } else if (dailyState.isBlok) {
       if (hasJurnalDitolak) {

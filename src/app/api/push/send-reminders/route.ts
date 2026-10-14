@@ -154,13 +154,19 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       const hasCheckedIn = checkedInSet.has(tNameLower);
 
       if (!hasCheckedIn) {
+        const isAssignedPiketToday = assignedPiketList.some((p: any) => {
+          const pName = (p.guru_nama || '').toLowerCase().trim();
+          return pName === tNameLower || tNameLower.includes(pName) || pName.includes(tNameLower);
+        });
+
         // If teacher is exempt on non-teaching days, check if they have schedule today
         if (teacher.wajib_hadir_hanya_mengajar) {
           const hasTeachingToday = scheduleList.some(s => {
             const sName = (s.nama_guru || '').toLowerCase().trim();
             return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
           });
-          if (!hasTeachingToday) {
+          const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
+          if (!hasTeachingToday && !hasPiketDuty) {
             // Teacher is exempt today, skip reminder
             continue;
           }
@@ -169,7 +175,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
             const sName = (s.nama_guru || '').toLowerCase().trim();
             return sName === tNameLower || tNameLower.includes(sName) || sName.includes(tNameLower);
           });
-          if (!hasTeachingToday) {
+          const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
+          if (!hasTeachingToday && !hasPiketDuty) {
             continue;
           }
         }

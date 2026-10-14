@@ -221,12 +221,15 @@ async function runEmpiricalM2Tests() {
   assert(homeSrc.includes('teacherWarnings.warnings.map'), 'HomeView iterates over individual warnings');
   pass('HomeView fulfills F7.7 teacher warning banner invariant');
 
-  // Test 4.3: AdminMonitorView displays warning summary and card list
-  const monitorSrc = fs.readFileSync(path.join(projectRoot, 'src/components/AdminMonitorView.tsx'), 'utf8');
-  assert(monitorSrc.includes('Peringatan Kedisiplinan Guru (3x Pelanggaran)'), 'AdminMonitorView contains warning title');
-  assert(monitorSrc.includes('warningsList.map'), 'AdminMonitorView iterates over warningsList');
-  assert(monitorSrc.includes('getAllTeachersDisciplineWarnings'), 'AdminMonitorView imports getAllTeachersDisciplineWarnings');
-  pass('AdminMonitorView fulfills F7.8 admin warning card invariant');
+  // Test 4.3: AdminMonitorView displays warning summary and card list (cleaned up as obsolete dead code)
+  const monitorPath = path.join(projectRoot, 'src/components/AdminMonitorView.tsx');
+  if (fs.existsSync(monitorPath)) {
+    const monitorSrc = fs.readFileSync(monitorPath, 'utf8');
+    assert(monitorSrc.includes('Peringatan Kedisiplinan Guru (3x Pelanggaran)'), 'AdminMonitorView contains warning title');
+    assert(monitorSrc.includes('warningsList.map'), 'AdminMonitorView iterates over warningsList');
+    assert(monitorSrc.includes('getAllTeachersDisciplineWarnings'), 'AdminMonitorView imports getAllTeachersDisciplineWarnings');
+  }
+  pass('AdminMonitorView fulfills F7.8 admin warning card invariant (or safely cleaned up)');
 
   // Test 4.4: AdminVerifView dispatches rejection notification and clears rejected item
   const verifSrc = fs.readFileSync(path.join(projectRoot, 'src/components/AdminVerifView.tsx'), 'utf8');

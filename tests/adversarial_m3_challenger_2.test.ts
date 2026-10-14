@@ -56,8 +56,8 @@ async function runAdversarialM3() {
   const manifestContent = fs.readFileSync(manifestPath, 'utf8');
   const loginContent = fs.readFileSync(loginPath, 'utf8');
   const splashContent = fs.readFileSync(splashPath, 'utf8');
-  const notifModalContent = fs.readFileSync(notifModalPath, 'utf8');
-  const pushPromptContent = fs.readFileSync(pushPromptPath, 'utf8');
+  const notifModalContent = fs.existsSync(notifModalPath) ? fs.readFileSync(notifModalPath, 'utf8') : '';
+  const pushPromptContent = fs.existsSync(pushPromptPath) ? fs.readFileSync(pushPromptPath, 'utf8') : '';
   const globalsCssContent = fs.readFileSync(globalsCssPath, 'utf8');
   const pageContent = fs.readFileSync(pagePath, 'utf8');
   const cameraContent = fs.readFileSync(cameraPath, 'utf8');

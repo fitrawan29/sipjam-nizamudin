@@ -5,6 +5,7 @@ import {
   getWitaStartOfDay, 
   getWitaEndOfDay 
 } from '@/lib/wita';
+import { isGuruDiPiket } from '@/lib/workflow';
 
 export interface AutoAlpaResult {
   affectedCount: number;
@@ -250,6 +251,41 @@ export async function evaluateAndApplyAutoAlpa(
     }
   }
 
+  // Fetch active sistem_blok for evaluatedDate
+  let blokQuery = supabase
+    .from('sistem_blok')
+    .select('id')
+    .lte('tanggal_mulai', evaluatedDate)
+    .gte('tanggal_selesai', evaluatedDate);
+  if (sekolahId) blokQuery = blokQuery.eq('sekolah_id', sekolahId);
+  const { data: activeBloks } = await blokQuery;
+  const isBlokActive = Boolean(activeBloks && activeBloks.length > 0);
+
+  // Fetch penugasan piket today
+  let penugasanQuery = supabase
+    .from('penugasan_piket')
+    .select('guru_nama, guru_nip, guru_id, sekolah_id')
+    .eq('hari', hariEvaluasi)
+    .eq('tipe_petugas', 'Guru');
+  if (sekolahId) penugasanQuery = penugasanQuery.eq('sekolah_id', sekolahId);
+  const { data: penugasanList } = await penugasanQuery;
+
+  // Fetch jadwal piket today fallback
+  let jadwalPiketQuery = supabase
+    .from('jadwal_piket')
+    .select('daftar_guru, sekolah_id')
+    .eq('hari', hariEvaluasi);
+  if (sekolahId) jadwalPiketQuery = jadwalPiketQuery.eq('sekolah_id', sekolahId);
+  const { data: jadwalPiketList } = await jadwalPiketQuery;
+
+  // Fetch all schedules today
+  let allJadwalQuery = supabase
+    .from('jadwal_pelajaran')
+    .select('id, nama_guru, user_id, sekolah_id')
+    .eq('hari', hariEvaluasi);
+  if (sekolahId) allJadwalQuery = allJadwalQuery.eq('sekolah_id', sekolahId);
+  const { data: allJadwalToday } = await allJadwalQuery;
+
   // Fetch semua guru aktif
   let guruQuery = supabase
     .from('data_guru')
@@ -282,20 +318,36 @@ export async function evaluateAndApplyAutoAlpa(
     );
     if (hasRecord) continue;
 
-    // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini
+    // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
     const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar) ||
       isGlobalHariMengajarSaja ||
       guruHanyaMengajarList.includes(guru.nama_guru) ||
       (guru.user_id && guruHanyaMengajarList.includes(guru.user_id));
 
     if (isTeacherExempt) {
-      const { data: jadwal } = await supabase
-        .from('jadwal_pelajaran')
-        .select('id')
-        .eq('hari', hariEvaluasi)
-        .ilike('nama_guru', `%${guru.nama_guru}%`)
-        .limit(1);
-      if (!jadwal || jadwal.length === 0) continue; // Tidak wajib hadir, bebas Alpa
+      const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
+
+      const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
+        if (guru.user_id && j.user_id && String(j.user_id) === String(guru.user_id)) return true;
+        const jNama = (j.nama_guru || '').toLowerCase().trim();
+        return jNama === namaNorm || jNama === cleanName || jNama.includes(cleanName) || cleanName.includes(jNama);
+      });
+
+      const inPenugasan = (penugasanList || []).some((p: any) => {
+        if (guru.user_id && p.guru_id && String(p.guru_id) === String(guru.user_id)) return true;
+        const pNama = (p.guru_nama || '').toLowerCase().trim();
+        return pNama === namaNorm || pNama === cleanName || pNama.includes(cleanName) || cleanName.includes(pNama);
+      });
+
+      const inJadwalPiket = (jadwalPiketList || []).some((jp: any) =>
+        isGuruDiPiket(jp.daftar_guru, guru.nama_guru) || isGuruDiPiket(jp.daftar_guru, cleanName)
+      );
+
+      const hasPiketDuty = (inPenugasan || inJadwalPiket) && (!isBlokActive || hasTeachingToday);
+
+      if (!hasTeachingToday && !hasPiketDuty) {
+        continue; // Tidak wajib hadir, bebas Alpa
+      }
     }
 
     // INSERT record Alpa baru
