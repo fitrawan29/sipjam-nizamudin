@@ -101,7 +101,7 @@ export default function HomeViewAdmin({
         piketScheduleQ = piketScheduleQ.eq('sekolah_id', user.sekolah_id);
         piketLaporanQ = piketLaporanQ.eq('sekolah_id', user.sekolah_id);
         penugasanPiketQ = penugasanPiketQ.eq('sekolah_id', user.sekolah_id);
-        kalenderQ = kalenderQ.eq('sekolah_id', user.sekolah_id);
+        kalenderQ = kalenderQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
         pengaturanQ = pengaturanQ.eq('sekolah_id', user.sekolah_id);
         blokQ = blokQ.eq('sekolah_id', user.sekolah_id);
       }
@@ -142,7 +142,11 @@ export default function HomeViewAdmin({
       const isBlokToday = Boolean(activeBlok);
 
       // Check holidays & weekend
-      const isLiburKalender = Boolean((kalenderRes.data || []).some((c: any) => c.tipe === 'Libur'));
+      const relevantCal = (kalenderRes.data || []).filter((c: any) =>
+        !c.sekolah_id || !user?.sekolah_id || c.sekolah_id === user.sekolah_id || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+      );
+      const isExplicitMasuk = relevantCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
+      const isLiburKalender = !isExplicitMasuk && relevantCal.some((c: any) => c.tipe === 'Libur');
       const hariSekolahVal = (pengaturanRes.data || []).find((p: any) => p.key === 'hari_sekolah')?.value || '6';
       const hariSekolah = parseInt(hariSekolahVal, 10);
       const isWeekendOff = dayName === 'Minggu' || (hariSekolah === 5 && dayName === 'Sabtu');

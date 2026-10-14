@@ -76,7 +76,24 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       return false;
     };
 
-    // B. Fetch schedule for today
+    // B. Check school holiday & weekend
+    const hsRow = (pengaturanRows || []).find((p: any) => p.key === 'hari_sekolah');
+    const hariSekolah = parseInt(hsRow?.value || '6', 10);
+    const isWeekendOff = todayDay === 'Minggu' || (hariSekolah === 5 && todayDay === 'Sabtu');
+
+    let kalenderQuery = supabase.from('kalender_pendidikan').select('id, tipe, sekolah_id').eq('tanggal', todayStr);
+    if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
+      kalenderQuery = kalenderQuery.or(`sekolah_id.eq.${sekolahId},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
+    }
+    const { data: kalenderRows } = await kalenderQuery;
+    const relevantCal = (kalenderRows || []).filter((c: any) =>
+      !c.sekolah_id || !sekolahId || c.sekolah_id === sekolahId || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+    );
+    const isExplicitMasuk = relevantCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
+    const isHoliday = !isExplicitMasuk && relevantCal.some((c: any) => c.tipe === 'Libur');
+    const isSchoolDayOff = isHoliday || isWeekendOff;
+
+    // C. Fetch schedule for today
     let scheduleQuery = supabase.from('jadwal_pelajaran').select('*').eq('hari', todayDay);
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       scheduleQuery = scheduleQuery.eq('sekolah_id', sekolahId);
@@ -159,7 +176,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     // -------------------------------------------------------------
     // Task 1: Check Datang Presensi
     // -------------------------------------------------------------
-    for (const teacher of teachers) {
+    if (!isSchoolDayOff) {
+      for (const teacher of teachers) {
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
       const hasCheckedIn = checkedInSet.has(tNameLower);
@@ -212,11 +230,13 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         });
       }
     }
+  }
 
     // -------------------------------------------------------------
     // Task 2: Check Journals (KBM vs Sistem Blok)
     // -------------------------------------------------------------
-    for (const teacher of teachers) {
+    if (!isSchoolDayOff) {
+      for (const teacher of teachers) {
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
 
@@ -297,11 +317,13 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         }
       }
     }
+  }
 
     // -------------------------------------------------------------
     // Task 3: Check Piket Reports
     // -------------------------------------------------------------
-    for (const teacher of teachers) {
+    if (!isSchoolDayOff) {
+      for (const teacher of teachers) {
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
 
@@ -349,6 +371,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         });
       }
     }
+  }
 
     // -------------------------------------------------------------
     // Task 4: Check Pulang Presensi

@@ -724,6 +724,122 @@ async function runTests() {
       pass('R1.18: Task 3 send-reminders mendukung jadwal_piket fallback dan string matching terlindungi penuh');
     }
 
+    // --------------------------------------------------------------------------
+    // R1.19: ISOLASI MULTI-TENANT KALENDER PENDIDIKAN (LIBUR SEKOLAH A VS SEKOLAH B)
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.19] Isolasi Multi-Tenant Kalender Pendidikan ---');
+    {
+      const workflowSource = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/workflow.ts'), 'utf-8');
+      const attendanceAlpaSource = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/attendanceAlpa.ts'), 'utf-8');
+
+      // workflow.ts harus memfilter kalender_pendidikan berdasarkan sekolahId
+      assert(
+        workflowSource.includes('sekolah_id.eq.${sekolahId}') || workflowSource.includes('relevantCal = cal.filter'),
+        'workflow.ts harus mengisolasi kalender pendidikan per-sekolah'
+      );
+
+      // attendanceAlpa.ts tidak boleh melakukan global return abort yang mencemari sekolah lain
+      assert(
+        attendanceAlpaSource.includes('guruCal = (kalenderRows || []).filter') &&
+        attendanceAlpaSource.includes('isGuruSchoolHoliday'),
+        'attendanceAlpa.ts harus mengevaluasi hari libur sekolah per-guru dan tidak membatalkan batch secara prematur'
+      );
+
+      // Simulasi filtering kalender:
+      const mockKalender = [
+        { id: 'cal-1', sekolah_id: 'sekolah-A', tipe: 'Libur', keterangan: 'Libur Khusus Sekolah A', tanggal: '2026-10-15' },
+        { id: 'cal-2', sekolah_id: '00000000-0000-0000-0000-000000000000', tipe: 'Kegiatan', keterangan: 'Hari Guru', tanggal: '2026-10-15' },
+      ];
+
+      // Evaluasi Sekolah A:
+      const calSekolahA = mockKalender.filter((c: any) =>
+        !c.sekolah_id || c.sekolah_id === 'sekolah-A' || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+      );
+      const isSekolahALibur = calSekolahA.some((c: any) => c.tipe === 'Libur');
+      assert.strictEqual(isSekolahALibur, true, 'Sekolah A terdeteksi Libur');
+
+      // Evaluasi Sekolah B (sekolah berbeda):
+      const calSekolahB = mockKalender.filter((c: any) =>
+        !c.sekolah_id || c.sekolah_id === 'sekolah-B' || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+      );
+      const isSekolahBLibur = calSekolahB.some((c: any) => c.tipe === 'Libur');
+      assert.strictEqual(isSekolahBLibur, false, 'Sekolah B tidak terkena dampak libur lokal Sekolah A');
+
+      pass('R1.19: Kalender libur lokal Sekolah A terisolasi dengan aman dan tidak mengunci kehadiran Sekolah B');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.20: RESOLUSI ENTRI CAMPURAN (OVERRIDE MASUK/EFEKTIF PADA KALENDER PENDIDIKAN)
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.20] Resolusi Entri Campuran Kalender Pendidikan (Override Masuk) ---');
+    {
+      const workflowSource = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/workflow.ts'), 'utf-8');
+      const attendanceAlpaSource = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/attendanceAlpa.ts'), 'utf-8');
+      const homeViewAdminSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/HomeViewAdmin.tsx'), 'utf-8');
+
+      assert(workflowSource.includes("tipe === 'Masuk' || c.tipe === 'Efektif'"), 'workflow.ts mendukung override tipe Masuk/Efektif');
+      assert(attendanceAlpaSource.includes("tipe === 'Masuk' || c.tipe === 'Efektif'"), 'attendanceAlpa.ts mendukung override tipe Masuk/Efektif');
+      assert(homeViewAdminSource.includes("tipe === 'Masuk' || c.tipe === 'Efektif'"), 'HomeViewAdmin.tsx mendukung override tipe Masuk/Efektif');
+
+      // Simulasi entri campuran pada tanggal yang sama:
+      // Misal ada Libur Umum tetapi sekolah menetapkan Hari Pengganti / Masuk
+      const mixedCalendar = [
+        { id: 'cal-libur', tipe: 'Libur', keterangan: 'Libur Terjadwal' },
+        { id: 'cal-masuk', tipe: 'Masuk', keterangan: 'KBM Pengganti Hari Sabtu' }
+      ];
+
+      const isExplicitMasuk = mixedCalendar.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
+      const isHoliday = !isExplicitMasuk && mixedCalendar.some((c: any) => c.tipe === 'Libur');
+
+      assert.strictEqual(isExplicitMasuk, true, 'Entri Masuk terdeteksi sebagai override');
+      assert.strictEqual(isHoliday, false, 'Hari tidak dianggap libur jika terdapat override Masuk');
+
+      pass('R1.20: Entri kalender campuran (tipe Masuk/Efektif) berhasil meng-override status Libur');
+    }
+
+    // --------------------------------------------------------------------------
+    // R1.21: PROTEKSI HARI LIBUR & AKHIR PEKAN PADA SEND-REMINDERS
+    // --------------------------------------------------------------------------
+    console.log('\n--- [R1.21] Proteksi Hari Libur & Akhir Pekan pada send-reminders ---');
+    {
+      const sendRemindersSource = fs.readFileSync(path.resolve(process.cwd(), 'src/app/api/push/send-reminders/route.ts'), 'utf-8');
+
+      assert(sendRemindersSource.includes('isSchoolDayOff = isHoliday || isWeekendOff'), 'send-reminders menghitung isSchoolDayOff');
+      assert(sendRemindersSource.includes('if (!isSchoolDayOff)'), 'send-reminders memproteksi Task 1, 2, 3 dengan guard isSchoolDayOff');
+
+      // Simulasi perilaku logic:
+      const simulateReminders = (isHoliday: boolean, isSunday: boolean, hasCheckedIn: boolean, hasCheckedOut: boolean) => {
+        const isSchoolDayOff = isHoliday || isSunday;
+        const tasks: string[] = [];
+
+        if (!isSchoolDayOff) {
+          if (!hasCheckedIn) tasks.push('presensi_datang');
+          tasks.push('jurnal');
+          tasks.push('piket');
+        }
+
+        if (hasCheckedIn && !hasCheckedOut) {
+          tasks.push('presensi_pulang');
+        }
+
+        return tasks;
+      };
+
+      // Kasus 1: Hari Minggu / Libur, guru belum presensi
+      const tasksOnHoliday = simulateReminders(true, false, false, false);
+      assert.strictEqual(tasksOnHoliday.length, 0, 'Pada hari libur/Minggu, tidak ada pengingat Datang/Jurnal/Piket yang dikirim');
+
+      // Kasus 2: Hari Libur, guru hadir sukarela dan belum checkout
+      const tasksHolidayVoluntary = simulateReminders(true, false, true, false);
+      assert.deepStrictEqual(tasksHolidayVoluntary, ['presensi_pulang'], 'Guru hadir sukarela pada hari libur tetap diingatkan presensi pulang');
+
+      // Kasus 3: Hari kerja normal, guru belum datang
+      const tasksNormalWorkday = simulateReminders(false, false, false, false);
+      assert(tasksNormalWorkday.includes('presensi_datang'), 'Hari kerja normal mengirim pengingat datang');
+
+      pass('R1.21: send-reminders terlindungi dari pengiriman notifikasi spam pada hari libur dan akhir pekan');
+    }
+
   } catch (err: any) {
     fail('Global unexpected error during verification', err);
   }

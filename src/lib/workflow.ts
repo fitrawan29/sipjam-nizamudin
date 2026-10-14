@@ -239,16 +239,26 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     }
 
     // 1. Cek Hari Libur dari kalender_pendidikan
-    const { data: cal } = await supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
+    let calQuery = supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
+    if (sekolahId) {
+      calQuery = calQuery.or(`sekolah_id.eq.${sekolahId},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
+    }
+    const { data: cal } = await calQuery;
     if (cal && cal.length > 0) {
-      const libur = cal.find((c: any) => c.tipe === 'Libur');
-      if (libur) {
-        state.isLibur = true;
-        state.bebasAlpa = true;
-        state.isAlpa = false;
-        state.keteranganLibur = libur.keterangan;
-        state.lockedReason = `Hari ini Libur: ${libur.keterangan}`;
-        return state;
+      const relevantCal = cal.filter((c: any) =>
+        !c.sekolah_id || !sekolahId || c.sekolah_id === sekolahId || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+      );
+      const isExplicitMasuk = relevantCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
+      if (!isExplicitMasuk) {
+        const libur = relevantCal.find((c: any) => c.tipe === 'Libur');
+        if (libur) {
+          state.isLibur = true;
+          state.bebasAlpa = true;
+          state.isAlpa = false;
+          state.keteranganLibur = libur.keterangan || 'Hari Libur';
+          state.lockedReason = `Hari ini Libur: ${libur.keterangan || 'Hari Libur'}`;
+          return state;
+        }
       }
     }
 

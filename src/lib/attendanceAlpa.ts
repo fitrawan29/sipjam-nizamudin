@@ -206,17 +206,36 @@ export async function evaluateAndApplyAutoAlpa(
     return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
   }
 
-  // Guard: skip hari libur dari kalender_pendidikan
-  const kalenderQuery = supabase
+  // Guard: cek hari libur dari kalender_pendidikan
+  let kalenderQuery = supabase
     .from('kalender_pendidikan')
-    .select('id')
-    .eq('tanggal', evaluatedDate)
-    .eq('tipe', 'Libur')
-    .limit(1);
-  // ponytail: no sekolah_id filter here — libur nasional tidak perlu scope sekolah
-  const { data: kalenderLibur } = await kalenderQuery;
-  if (kalenderLibur && kalenderLibur.length > 0) {
-    return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
+    .select('id, sekolah_id, tipe, keterangan')
+    .eq('tanggal', evaluatedDate);
+  if (sekolahId) {
+    kalenderQuery = kalenderQuery.or(`sekolah_id.eq.${sekolahId},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
+  }
+  const { data: kalenderRows } = await kalenderQuery;
+
+  // Jika evaluasi untuk satu sekolah spesifik, cek apakah hari ini libur bagi sekolah tersebut
+  if (sekolahId) {
+    const relevantCal = (kalenderRows || []).filter((c: any) =>
+      !c.sekolah_id || c.sekolah_id === sekolahId || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+    );
+    const isExplicitMasuk = relevantCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
+    const isHoliday = !isExplicitMasuk && relevantCal.some((c: any) => c.tipe === 'Libur');
+    if (isHoliday) {
+      return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
+    }
+  } else {
+    // Jika evaluasi batch semua sekolah, cek apakah hari ini Libur Nasional universal
+    const universalCal = (kalenderRows || []).filter((c: any) =>
+      !c.sekolah_id || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+    );
+    const isExplicitMasuk = universalCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
+    const isUniversalHoliday = !isExplicitMasuk && universalCal.some((c: any) => c.tipe === 'Libur');
+    if (isUniversalHoliday) {
+      return { affectedCount: details.length, details, cutoffTime, evaluatedDate };
+    }
   }
 
   // Guard: skip Sabtu jika sekolah 5 hari kerja, dan load aturan kehadiran guru
@@ -289,6 +308,16 @@ export async function evaluateAndApplyAutoAlpa(
     );
     const hsCfg = schoolPengaturan.find((p: any) => p.key === 'hari_sekolah');
     if (parseInt(hsCfg?.value || '6', 10) === 5 && hariEvaluasi === 'Sabtu') {
+      continue;
+    }
+
+    // Per-school holiday check if batch evaluating across schools
+    const guruCal = (kalenderRows || []).filter((c: any) =>
+      !c.sekolah_id || !guru.sekolah_id || c.sekolah_id === guru.sekolah_id || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
+    );
+    const isGuruExplicitMasuk = guruCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
+    const isGuruSchoolHoliday = !isGuruExplicitMasuk && guruCal.some((c: any) => c.tipe === 'Libur');
+    if (isGuruSchoolHoliday) {
       continue;
     }
 
