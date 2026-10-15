@@ -273,27 +273,39 @@ export default function AdminConfigView({
       }
 
       try {
-        const configChannel = supabase.channel(`school-config-${targetSekolahId}`);
-        await Promise.race([
-          new Promise<void>((resolve) => {
-            configChannel.subscribe((status) => {
-              if (status === 'SUBSCRIBED') {
-                configChannel.send({
-                  type: 'broadcast',
-                  event: 'config_updated',
-                  payload: syncPayload
-                }).finally(() => {
-                  supabase.removeChannel(configChannel);
-                  resolve();
-                });
-              }
-            });
-          }),
-          new Promise<void>((resolve) => setTimeout(() => {
-            supabase.removeChannel(configChannel);
-            resolve();
-          }, 1500))
-        ]);
+        const topic = `school-config-${targetSekolahId}`;
+        const existingChannel = supabase.getChannels().find(
+          (c: any) => c.topic === `realtime:${topic}` || c.topic === topic
+        );
+        if (existingChannel && (existingChannel.state === 'joined' || (existingChannel as any).state === 'SUBSCRIBED')) {
+          await existingChannel.send({
+            type: 'broadcast',
+            event: 'config_updated',
+            payload: syncPayload
+          });
+        } else {
+          const configChannel = supabase.channel(topic);
+          await Promise.race([
+            new Promise<void>((resolve) => {
+              configChannel.subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                  configChannel.send({
+                    type: 'broadcast',
+                    event: 'config_updated',
+                    payload: syncPayload
+                  }).finally(() => {
+                    supabase.removeChannel(configChannel);
+                    resolve();
+                  });
+                }
+              });
+            }),
+            new Promise<void>((resolve) => setTimeout(() => {
+              supabase.removeChannel(configChannel);
+              resolve();
+            }, 1500))
+          ]);
+        }
       } catch (broadcastErr) {
         console.warn('Realtime channel broadcast warning:', broadcastErr);
       }

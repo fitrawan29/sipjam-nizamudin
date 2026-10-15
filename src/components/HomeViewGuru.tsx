@@ -290,8 +290,19 @@ export default function HomeViewGuru({
   useEffect(() => {
     if (!user?.nama) return;
 
-    const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
     const channelName = `realtime-guru-state-${user?.id || user?.nama || 'anon'}`;
+    const existing = supabase.getChannels().find(
+      (ch: any) => ch.topic === `realtime:${channelName}` || ch.topic === channelName
+    );
+    if (existing) {
+      try {
+        (supabase as any).realtime?._remove?.(existing);
+        existing.unsubscribe();
+      } catch (_) {
+        supabase.removeChannel(existing);
+      }
+    }
+
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
@@ -308,13 +319,6 @@ export default function HomeViewGuru({
           refreshDailyWorkflow();
         }
       });
-
-    const schoolBroadcast = supabase
-      .channel(`school-config-${schoolId}`)
-      .on('broadcast', { event: 'config_updated' }, () => {
-        refreshDailyWorkflow();
-      })
-      .subscribe();
 
     const handleWindowConfigSync = () => {
       refreshDailyWorkflow();
@@ -352,8 +356,12 @@ export default function HomeViewGuru({
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
       }
-      supabase.removeChannel(channel);
-      supabase.removeChannel(schoolBroadcast);
+      try {
+        (supabase as any).realtime?._remove?.(channel);
+        channel.unsubscribe();
+      } catch (_) {
+        supabase.removeChannel(channel);
+      }
       window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
       window.removeEventListener('sipjam:guru_updated', handleWindowConfigSync);
       window.removeEventListener('storage', handleStorageSync);

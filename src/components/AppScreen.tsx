@@ -216,6 +216,20 @@ export default function AppScreen({
   useEffect(() => {
     const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
     const channelName = `school-config-${schoolId}`;
+
+    // Safely remove any pre-existing channel with this topic so callbacks can be registered cleanly
+    const existing = supabase.getChannels().find(
+      (ch: any) => ch.topic === `realtime:${channelName}` || ch.topic === channelName
+    );
+    if (existing) {
+      try {
+        (supabase as any).realtime?._remove?.(existing);
+        existing.unsubscribe();
+      } catch (_) {
+        supabase.removeChannel(existing);
+      }
+    }
+
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
@@ -254,7 +268,12 @@ export default function AppScreen({
     document.addEventListener('visibilitychange', handleResumeSync);
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        (supabase as any).realtime?._remove?.(channel);
+        channel.unsubscribe();
+      } catch (_) {
+        supabase.removeChannel(channel);
+      }
       window.removeEventListener('focus', handleResumeSync);
       window.removeEventListener('online', handleResumeSync);
       document.removeEventListener('visibilitychange', handleResumeSync);
