@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { isIntervensiAllowed, fetchBatasIntervensiSiswa } from '@/lib/presensiIntervensi';
+import { isIntervensiAllowed, fetchBatasIntervensiSiswa, isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali } from '@/lib/presensiIntervensi';
 import { getWitaDateStr } from '@/lib/wita';
 
 export default function RekapSiswaView({ 
@@ -53,12 +53,21 @@ export default function RekapSiswaView({
   const [waliLoading, setWaliLoading] = useState(false);
   const [waliSaving, setWaliSaving] = useState(false);
   const [masterLoaded, setMasterLoaded] = useState(false);
-  const [batasIntervensi, setBatasIntervensi] = useState<string>('08:00');
+  const [jadwalWali, setJadwalWali] = useState<JadwalIntervensiWali>({
+    batasPagi: '08:00',
+    jamPulangMulai: '11:00',
+    jamBatasMalam: '22:00'
+  });
 
   const todayWita = getWitaDateStr();
+  const waliIntervensiStatus = isWaliKelasIntervensiAllowed(
+    jadwalWali.batasPagi,
+    jadwalWali.jamPulangMulai,
+    jadwalWali.jamBatasMalam
+  );
   const isIntervensiExpired = !isAdmin && (
     waliTanggal < todayWita ||
-    (waliTanggal === todayWita && !isIntervensiAllowed(batasIntervensi))
+    (waliTanggal === todayWita && !waliIntervensiStatus.allowed)
   );
 
   useEffect(() => {
@@ -84,9 +93,9 @@ export default function RekapSiswaView({
           setMapelList(uniqueMapel);
         }
 
-        // Fetch batas intervensi presensi siswa
-        const batas = await fetchBatasIntervensiSiswa(supabase, user?.sekolah_id);
-        setBatasIntervensi(batas);
+        // Fetch jadwal intervensi presensi siswa bagi Wali Kelas (Pagi & Sore jam pulang s.d. 22:00 WITA)
+        const jadwal = await fetchJadwalIntervensiWali(supabase, user?.sekolah_id);
+        setJadwalWali(jadwal);
 
         // Fetch Wali Kelas assignments
         let wQuery = supabase.from('wali_kelas').select('*');
@@ -361,12 +370,15 @@ export default function RekapSiswaView({
     }
     if (!activeWaliKelas || waliStudents.length === 0) return;
 
-    // Guard: Batas intervensi presensi siswa (default 08:00 WITA)
+    // Guard: Batas intervensi presensi siswa bagi Wali Kelas (Pagi s.d. 08:00 & Sore jam pulang s.d. 22:00 WITA)
     if (isIntervensiExpired && !isAdmin) {
+      const alertTitle = waliIntervensiStatus.phase === 'kbm'
+        ? 'Presensi Dikelola Guru Mapel (KBM)'
+        : 'Intervensi Presensi Terkunci';
       return Swal.fire({
         icon: 'warning',
-        title: 'Batas Waktu Intervensi Berakhir',
-        text: `Batas waktu pengisian/intervensi presensi siswa (${batasIntervensi} WITA) telah berakhir untuk hari ini. Presensi dialihkan dan dikelola oleh Guru Mapel saat KBM.`,
+        title: alertTitle,
+        text: waliIntervensiStatus.pesan,
         confirmButtonColor: '#0d9488'
       });
     }
@@ -799,7 +811,7 @@ export default function RekapSiswaView({
                             : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
                         }`}>
                           <i className={`fa-solid ${isIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
-                          {isIntervensiExpired ? `Terkunci (Lewat pk. ${batasIntervensi})` : `Intervensi s.d. pk. ${batasIntervensi}`}
+                          {waliIntervensiStatus.label}
                         </span>
                       </h3>
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
@@ -839,17 +851,27 @@ export default function RekapSiswaView({
                 {/* EXPANDED WALI KELAS INPUT PANEL */}
                 {showWaliInput && (
                   <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800/60 space-y-4 fade-in">
-                    {isIntervensiExpired && (
+                    {isIntervensiExpired ? (
                       <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-3 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200">
                         <i className="fa-solid fa-triangle-exclamation text-amber-600 text-base shrink-0"></i>
                         <div>
-                          <div className="font-bold">Batas Waktu Intervensi Berakhir (pk. {batasIntervensi} WITA)</div>
-                          <div className="text-[11px] text-amber-800 dark:text-amber-300">
-                            Pengisian presensi siswa oleh Wali Kelas & Piket dibatasi hingga pukul {batasIntervensi} WITA. KBM saat ini sedang/telah berlangsung, sehingga presensi dikelola langsung oleh Guru Mata Pelajaran.
+                          <div className="font-bold">{waliIntervensiStatus.label}</div>
+                          <div className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                            {waliIntervensiStatus.pesan}
                           </div>
                         </div>
                       </div>
-                    )}
+                    ) : waliIntervensiStatus.phase === 'pulang' ? (
+                      <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 p-3 rounded-xl flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-200">
+                        <i className="fa-solid fa-clock-rotate-left text-emerald-600 text-base shrink-0"></i>
+                        <div>
+                          <div className="font-bold">Penyesuaian Presensi Siswa Sore (s.d. pk. 22:00 WITA)</div>
+                          <div className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">
+                            Jam presensi pulang guru telah aktif. Anda dapat menyesuaikan kembali data presensi siswa perwalian sebelum rekap harian dikunci pada pukul 22:00 WITA.
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-800/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
                       <div className="flex items-center gap-2">
                         <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Tanggal Presensi:</label>

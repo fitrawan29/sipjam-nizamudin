@@ -20,7 +20,7 @@ import { getTeacherDisciplineWarnings, TeacherWarningSummary } from '@/lib/warni
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
-import { isIntervensiAllowed, fetchBatasIntervensiSiswa } from '@/lib/presensiIntervensi';
+import { isIntervensiAllowed, fetchBatasIntervensiSiswa, isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali } from '@/lib/presensiIntervensi';
 
 const KURIKULUM_DOC_TYPES = [
   { key: 'CP', name: 'Analisis CP', full: 'Analisis Capaian Pembelajaran' },
@@ -70,11 +70,20 @@ export default function HomeViewGuru({
   const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, false);
-  const [batasIntervensi, setBatasIntervensi] = useState('08:00');
-  const isWaliIntervensiExpired = !isIntervensiAllowed(batasIntervensi);
+  const [jadwalWali, setJadwalWali] = useState<JadwalIntervensiWali>({
+    batasPagi: '08:00',
+    jamPulangMulai: '11:00',
+    jamBatasMalam: '22:00'
+  });
+  const waliStatus = isWaliKelasIntervensiAllowed(
+    jadwalWali.batasPagi,
+    jadwalWali.jamPulangMulai,
+    jadwalWali.jamBatasMalam
+  );
+  const isWaliIntervensiExpired = !waliStatus.allowed;
 
   useEffect(() => {
-    fetchBatasIntervensiSiswa(supabase, user?.sekolah_id).then(setBatasIntervensi).catch(() => {});
+    fetchJadwalIntervensiWali(supabase, user?.sekolah_id).then(setJadwalWali).catch(() => {});
   }, [user?.sekolah_id]);
 
 
@@ -870,13 +879,11 @@ export default function HomeViewGuru({
                           : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
                       }`}>
                         <i className={`fa-solid ${isWaliIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
-                        {isWaliIntervensiExpired ? `Terkunci (Lewat pk. ${batasIntervensi})` : `Dibuka s.d. pk. ${batasIntervensi}`}
+                        {waliStatus.label}
                       </span>
                     </div>
                     <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
-                      {isWaliIntervensiExpired 
-                        ? 'Batas waktu intervensi berakhir. Presensi siswa saat ini dikelola langsung oleh Guru Mapel saat KBM.'
-                        : 'Input atau perbarui kehadiran siswa kelas binaan Anda sebelum jam KBM dimulai.'}
+                      {waliStatus.pesan}
                     </p>
                   </div>
                 </div>

@@ -13,7 +13,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { isIntervensiAllowed } from '../src/lib/presensiIntervensi';
+import { isIntervensiAllowed, isWaliKelasIntervensiAllowed } from '../src/lib/presensiIntervensi';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -48,7 +48,7 @@ async function runTests() {
   console.log(`${CYAN}${BOLD}╚══════════════════════════════════════════════════════════════════════╝${RESET}\n`);
 
   // SECTION 1: CUTOFF HELPER LOGIC
-  console.log(`${YELLOW}${BOLD}━━━ 1. UNIT TEST: isIntervensiAllowed CUTOFF LOGIC ━━━${RESET}`);
+  console.log(`${YELLOW}${BOLD}━━━ 1. UNIT TEST: isIntervensiAllowed & isWaliKelasIntervensiAllowed ━━━${RESET}`);
   
   // 1.1 Before 08:00
   if (isIntervensiAllowed('08:00', '07:30') === true && isIntervensiAllowed('08:00', '07:59') === true) {
@@ -78,6 +78,38 @@ async function runTests() {
     fail('CUTOFF-04', 'isIntervensiAllowed gagal dengan waktu batas kustom');
   }
 
+  // 1.5 Wali Kelas Multi-Window (Pagi s.d. 08:00, Terkunci KBM, Buka Kembali Jam Pulang s.d. 22:00 WITA)
+  const resPagi = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '07:45');
+  const resKbm = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '09:15');
+  const resPulangMulai = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '11:00');
+  const resPulangSore = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '16:30');
+  const resTepat22 = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '22:00');
+  const resLewat22 = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '22:01');
+
+  if (resPagi.allowed && resPagi.phase === 'pagi') {
+    pass('WALI-WIN-01', 'Wali Kelas diizinkan input presensi pada jendela pagi (07:45 <= 08:00)');
+  } else {
+    fail('WALI-WIN-01', 'Gagal pada jendela pagi Wali Kelas');
+  }
+
+  if (!resKbm.allowed && resKbm.phase === 'kbm') {
+    pass('WALI-WIN-02', 'Wali Kelas terkunci saat KBM (09:15) sebelum jam presensi pulang guru');
+  } else {
+    fail('WALI-WIN-02', 'Wali Kelas tidak terkunci saat KBM');
+  }
+
+  if (resPulangMulai.allowed && resPulangSore.allowed && resPulangSore.phase === 'pulang') {
+    pass('WALI-WIN-03', 'Wali Kelas dapat menyesuaikan kembali presensi saat jam presensi pulang guru (11:00 - 16:30)');
+  } else {
+    fail('WALI-WIN-03', 'Wali Kelas gagal membuka kembali presensi saat jam pulang guru');
+  }
+
+  if (resTepat22.allowed && !resLewat22.allowed && resLewat22.phase === 'malam_tutup') {
+    pass('WALI-WIN-04', 'Wali Kelas hanya dapat menyesuaikan sampai batas pk. 22:00 WITA (22:01 terkunci)');
+  } else {
+    fail('WALI-WIN-04', 'Batas akhir 22:00 WITA tidak berfungsi dengan benar');
+  }
+
   // SECTION 2: ADMIN CONFIGURATION VERIFICATION
   console.log(`\n${YELLOW}${BOLD}━━━ 2. VERIFY ADMIN CONFIGURATION (AdminConfigView.tsx) ━━━${RESET}`);
   const adminConfigCode = fs.readFileSync(path.resolve('src/components/AdminConfigView.tsx'), 'utf-8');
@@ -98,10 +130,10 @@ async function runTests() {
   console.log(`\n${YELLOW}${BOLD}━━━ 3. VERIFY WALI KELAS PRESENSI (RekapSiswaView.tsx) ━━━${RESET}`);
   const rekapCode = fs.readFileSync(path.resolve('src/components/RekapSiswaView.tsx'), 'utf-8');
 
-  if (rekapCode.includes('fetchBatasIntervensiSiswa') && rekapCode.includes('isIntervensiAllowed')) {
-    pass('WALI-01', 'RekapSiswaView mengintegrasikan modul batas intervensi');
+  if (rekapCode.includes('isWaliKelasIntervensiAllowed') && rekapCode.includes('fetchJadwalIntervensiWali')) {
+    pass('WALI-01', 'RekapSiswaView mengintegrasikan isWaliKelasIntervensiAllowed dan fetchJadwalIntervensiWali');
   } else {
-    fail('WALI-01', 'Helper intervensi tidak diimpor di RekapSiswaView');
+    fail('WALI-01', 'Helper intervensi multi-window tidak diimpor di RekapSiswaView');
   }
 
   if (rekapCode.includes('isIntervensiExpired') && rekapCode.includes('disabled={isIntervensiExpired')) {
@@ -120,6 +152,12 @@ async function runTests() {
     pass('WALI-04', 'Presensi yang diisi wali kelas mencatat sumber_perubahan = Wali Kelas');
   } else {
     fail('WALI-04', 'sumber_perubahan Wali Kelas tidak tercatat');
+  }
+
+  if (rekapCode.includes('waliIntervensiStatus.label') && rekapCode.includes('Penyesuaian Presensi Siswa Sore (s.d. pk. 22:00 WITA)')) {
+    pass('WALI-05', 'RekapSiswaView menampilkan banner penyesuaian sore s.d. 22:00 WITA saat jam pulang guru');
+  } else {
+    fail('WALI-05', 'Banner penyesuaian sore wali kelas tidak ditemukan di RekapSiswaView');
   }
 
   // SECTION 4: PIKET COLLISION PREVENTION & LOCKING (PiketView.tsx)
@@ -174,6 +212,12 @@ async function runTests() {
     pass('DASH-01', 'Dashboard guru menyediakan kartu akses cepat presensi siswa untuk Wali Kelas');
   } else {
     fail('DASH-01', 'Kartu akses cepat presensi siswa wali kelas tidak ditemukan di HomeViewGuru');
+  }
+
+  if (homeGuruCode.includes('isWaliKelasIntervensiAllowed') && homeGuruCode.includes('fetchJadwalIntervensiWali')) {
+    pass('DASH-02', 'HomeViewGuru mengintegrasikan isWaliKelasIntervensiAllowed untuk badge dinamis penyesuaian sore');
+  } else {
+    fail('DASH-02', 'isWaliKelasIntervensiAllowed tidak diintegrasikan di HomeViewGuru');
   }
 
   // SUMMARY
