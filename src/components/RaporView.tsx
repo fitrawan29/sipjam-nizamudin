@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { generateKurikulumMerdekaDeskripsi } from './GradebookView';
+import { TujuanPembelajaran, AsesmenKolom } from '@/types/database';
 
 interface RaporViewProps {
   user: any;
@@ -23,24 +24,16 @@ interface StudentItem {
 
 interface SubjectScoreItem {
   namaMapel: string;
-  nilaiAkhir: number;
+  nilaiAkhir: number | string | null;
   predikat: string;
   predikatBadge: string;
   deskripsiCapaian: string;
 }
 
-const DEFAULT_MAPEL_LIST = [
-  'Pendidikan Agama dan Budi Pekerti',
-  'Pendidikan Pancasila',
-  'Bahasa Indonesia',
-  'Matematika',
-  'Ilmu Pengetahuan Alam (IPA)',
-  'Ilmu Pengetahuan Sosial (IPS)',
-  'Bahasa Inggris',
-  'Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)',
-  'Informatika',
-  'Seni dan Prakarya'
-];
+interface WaliKelasInfo {
+  nama_guru: string;
+  nip: string | null;
+}
 
 export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
@@ -61,19 +54,45 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   const [attendanceMap, setAttendanceMap] = useState<Record<string, { hadir: number; izin: number; sakit: number; alpa: number }>>({});
   const [catatanWaliMap, setCatatanWaliMap] = useState<Record<string, string>>({});
   const [deepLearningMap, setDeepLearningMap] = useState<Record<string, { mindful: string; meaningful: string; joyful: string }>>({});
-  const [ekskulMap, setEkskulMap] = useState<Record<string, { kegiatan: string; keterangan: string; predikat: string }[]>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
 
-  // Fetch available classes
+  // Real Kurikulum Merdeka Academic Pipeline
+  const [activeMapels, setActiveMapels] = useState<string[]>([]);
+  const [tpList, setTpList] = useState<TujuanPembelajaran[]>([]);
+  const [columnsList, setColumnsList] = useState<AsesmenKolom[]>([]);
+  const [gradesMap, setGradesMap] = useState<Record<string, Record<string, number | null>>>({});
+
+  // Assigned Wali Kelas Information for Print Signatures
+  const [assignedWaliInfo, setAssignedWaliInfo] = useState<WaliKelasInfo | null>(null);
+
+  // Persistence State
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveStatus, setSaveStatus] = useState<string>('');
+
+  // Debounce refs for persistent Supabase autosave
+  const catatanDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const dlDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch available classes (all active classes in school for Admin)
   useEffect(() => {
     const fetchKelasList = async () => {
       try {
         let q = supabase.from('data_siswa').select('kelas');
         if (sekolahId) q = q.eq('sekolah_id', sekolahId);
         const { data } = await q;
-        if (data && data.length > 0) {
-          const unique = Array.from(new Set(data.map((d: any) => d.kelas).filter(Boolean))) as string[];
+
+        let wq = supabase.from('wali_kelas').select('kelas');
+        if (sekolahId) wq = wq.eq('sekolah_id', sekolahId);
+        const { data: wData } = await wq;
+
+        const allClasses = [
+          ...(data || []).map((d: any) => d.kelas),
+          ...(wData || []).map((w: any) => w.kelas)
+        ].filter(Boolean);
+
+        if (allClasses.length > 0) {
+          const unique = Array.from(new Set(allClasses)) as string[];
           unique.sort();
           setKelasList(unique);
           if (!selectedKelas && unique.length > 0) {
@@ -90,7 +109,59 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
     fetchKelasList();
   }, [sekolahId, assignedKelas]);
 
-  // Fetch students & attendance for selected class
+  // Fetch assigned Wali Kelas information for current selected class
+  useEffect(() => {
+    const fetchWaliKelasInfo = async () => {
+      if (!selectedKelas) return;
+      try {
+        let wQuery = supabase
+          .from('wali_kelas')
+          .select('nama_guru, nip, kelas');
+        if (sekolahId) wQuery = wQuery.eq('sekolah_id', sekolahId);
+        wQuery = wQuery.eq('kelas', selectedKelas);
+        const { data: wData } = await wQuery.maybeSingle();
+
+        if (wData && wData.nama_guru) {
+          setAssignedWaliInfo({
+            nama_guru: wData.nama_guru,
+            nip: wData.nip || null
+          });
+          return;
+        }
+
+        // Fallback: check data_guru for wali_kelas field
+        let gQuery = supabase
+          .from('data_guru')
+          .select('nama_guru, nip, wali_kelas');
+        if (sekolahId) gQuery = gQuery.eq('sekolah_id', sekolahId);
+        gQuery = gQuery.eq('wali_kelas', selectedKelas);
+        const { data: gData } = await gQuery.maybeSingle();
+
+        if (gData && gData.nama_guru) {
+          setAssignedWaliInfo({
+            nama_guru: gData.nama_guru,
+            nip: gData.nip || null
+          });
+          return;
+        }
+
+        // Fallback for teacher assigned to this class
+        if (user && !isAdmin && assignedKelas === selectedKelas) {
+          setAssignedWaliInfo({
+            nama_guru: user.nama || '...........................................',
+            nip: user.nip || user.username || null
+          });
+        } else {
+          setAssignedWaliInfo(null);
+        }
+      } catch (err) {
+        console.error('Error fetching assigned wali kelas:', err);
+      }
+    };
+    fetchWaliKelasInfo();
+  }, [selectedKelas, sekolahId, user, isAdmin, assignedKelas]);
+
+  // Fetch students, attendance, real Merdeka academic data, and notes for selected class
   const fetchClassData = useCallback(async () => {
     if (!selectedKelas) return;
     setIsLoading(true);
@@ -105,7 +176,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
       if (sErr) throw sErr;
       const sortedStudents = (sData || []).sort((a: any, b: any) =>
-        a.nama_siswa.localeCompare(b.nama_siswa)
+        (a.nama_siswa || '').localeCompare(b.nama_siswa || '')
       );
       setStudents(sortedStudents);
 
@@ -114,6 +185,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       } else if (sortedStudents.length > 0 && selectedStudent) {
         const stillExists = sortedStudents.find((s: any) => s.nisn === selectedStudent.nisn);
         if (!stillExists) setSelectedStudent(sortedStudents[0]);
+      } else if (sortedStudents.length === 0) {
+        setSelectedStudent(null);
       }
 
       // 2. Fetch Attendance Summary
@@ -143,27 +216,134 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       }
       setAttendanceMap(attRecord);
 
-      // 3. Load saved teacher notes from localStorage
-      const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
-      const savedNotes = localStorage.getItem(notesKey);
-      if (savedNotes) {
-        try {
-          setCatatanWaliMap(JSON.parse(savedNotes));
-        } catch {
-          // ignore parsing error
+      // 3. Fetch Active Subjects (guru_mapel & data_mapel) for this class
+      let gmQuery = supabase
+        .from('guru_mapel')
+        .select('nama_mapel')
+        .eq('kelas', selectedKelas);
+      if (sekolahId) gmQuery = gmQuery.eq('sekolah_id', sekolahId);
+      const { data: gmData } = await gmQuery;
+
+      let mapels = Array.from(
+        new Set((gmData || []).map((g: any) => g.nama_mapel).filter(Boolean))
+      ) as string[];
+
+      if (mapels.length === 0) {
+        let dmQuery = supabase.from('data_mapel').select('nama_mata_pelajaran, nama_mapel');
+        if (sekolahId) dmQuery = dmQuery.eq('sekolah_id', sekolahId);
+        const { data: dmData } = await dmQuery;
+        if (dmData && dmData.length > 0) {
+          mapels = Array.from(
+            new Set(dmData.map((d: any) => d.nama_mata_pelajaran || d.nama_mapel).filter(Boolean))
+          ) as string[];
         }
       }
 
-      // 4. Load saved Deep Learning observations
-      const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
-      const savedDl = localStorage.getItem(dlKey);
-      if (savedDl) {
-        try {
-          setDeepLearningMap(JSON.parse(savedDl));
-        } catch {
-          // ignore parsing error
+      // 4. Fetch Tujuan Pembelajaran (tujuan_pembelajaran)
+      let tpQuery = supabase
+        .from('tujuan_pembelajaran')
+        .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
+        .eq('kelas', selectedKelas)
+        .eq('semester', selectedSemester)
+        .eq('tahun_ajaran', selectedTahunAjaran);
+      if (sekolahId) tpQuery = tpQuery.eq('sekolah_id', sekolahId);
+      const { data: tpData } = await tpQuery.order('urutan', { ascending: true });
+      const currentTps = (tpData || []) as TujuanPembelajaran[];
+      setTpList(currentTps);
+
+      currentTps.forEach(tp => {
+        if (tp.nama_mapel && !mapels.includes(tp.nama_mapel)) {
+          mapels.push(tp.nama_mapel);
+        }
+      });
+      mapels.sort();
+      setActiveMapels(mapels);
+
+      // 5. Fetch Asesmen Kolom (asesmen_kolom)
+      const tpIds = currentTps.map(tp => tp.id);
+      let currentCols: AsesmenKolom[] = [];
+      if (tpIds.length > 0) {
+        let akQuery = supabase
+          .from('asesmen_kolom')
+          .select('id, tp_id, kategori, nama, bobot, urutan, keterangan')
+          .in('tp_id', tpIds);
+        if (sekolahId) akQuery = akQuery.eq('sekolah_id', sekolahId);
+        const { data: akData } = await akQuery.order('urutan', { ascending: true });
+        currentCols = (akData || []) as AsesmenKolom[];
+      }
+      setColumnsList(currentCols);
+
+      // 6. Fetch Nilai Siswa (nilai_siswa)
+      const currentGrades: Record<string, Record<string, number | null>> = {};
+      let nsQuery = supabase
+        .from('nilai_siswa')
+        .select('asesmen_id, tp_id, nisn, nilai, mapel')
+        .eq('kelas', selectedKelas);
+      if (sekolahId) nsQuery = nsQuery.eq('sekolah_id', sekolahId);
+      const { data: nsData } = await nsQuery;
+
+      if (nsData) {
+        nsData.forEach((row: any) => {
+          if (!row.nisn || !row.asesmen_id) return;
+          if (!currentGrades[row.nisn]) currentGrades[row.nisn] = {};
+          const numVal =
+            row.nilai !== null && row.nilai !== undefined && row.nilai !== ''
+              ? Number(row.nilai)
+              : null;
+          currentGrades[row.nisn][row.asesmen_id] = numVal !== null && !isNaN(numVal) ? numVal : null;
+        });
+      }
+      setGradesMap(currentGrades);
+
+      // 7. Load saved teacher notes from database Supabase (pengaturan) with localStorage fallback
+      const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+      let loadedNotes: Record<string, string> = {};
+      try {
+        let nQuery = supabase.from('pengaturan').select('value').eq('key', notesKey);
+        if (sekolahId) nQuery = nQuery.eq('sekolah_id', sekolahId);
+        const { data: nDb } = await nQuery.maybeSingle();
+        if (nDb?.value) {
+          loadedNotes = JSON.parse(nDb.value);
+        }
+      } catch (err) {
+        console.warn('[RaporView] Cloud notes load error:', err);
+      }
+      if (Object.keys(loadedNotes).length === 0 && typeof window !== 'undefined') {
+        const savedNotes = localStorage.getItem(notesKey);
+        if (savedNotes) {
+          try {
+            loadedNotes = JSON.parse(savedNotes);
+          } catch {
+            // ignore parsing error
+          }
         }
       }
+      setCatatanWaliMap(loadedNotes);
+
+      // 8. Load saved Deep Learning observations from database Supabase (pengaturan) with localStorage fallback
+      const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+      let loadedDl: Record<string, { mindful: string; meaningful: string; joyful: string }> = {};
+      try {
+        let dlQuery = supabase.from('pengaturan').select('value').eq('key', dlKey);
+        if (sekolahId) dlQuery = dlQuery.eq('sekolah_id', sekolahId);
+        const { data: dlDb } = await dlQuery.maybeSingle();
+        if (dlDb?.value) {
+          loadedDl = JSON.parse(dlDb.value);
+        }
+      } catch (err) {
+        console.warn('[RaporView] Cloud deep learning load error:', err);
+      }
+      if (Object.keys(loadedDl).length === 0 && typeof window !== 'undefined') {
+        const savedDl = localStorage.getItem(dlKey);
+        if (savedDl) {
+          try {
+            loadedDl = JSON.parse(savedDl);
+          } catch {
+            // ignore parsing error
+          }
+        }
+      }
+      setDeepLearningMap(loadedDl);
     } catch (err: any) {
       console.error('Error fetching class data for rapor:', err);
       showToast('Gagal memuat data kelas untuk rapor', 'error');
@@ -176,58 +356,186 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
     fetchClassData();
   }, [fetchClassData]);
 
-  // Save notes to localStorage
+  // Save Catatan Wali to database Supabase & localStorage
+  const saveCatatanToSupabase = useCallback(async (dataToSave: Record<string, string>) => {
+    setIsSaving(true);
+    setSaveStatus('Menyimpan...');
+    const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(notesKey, JSON.stringify(dataToSave));
+      } catch {
+        // ignore
+      }
+    }
+    try {
+      const payload: any = {
+        key: notesKey,
+        value: JSON.stringify(dataToSave)
+      };
+      if (sekolahId) payload.sekolah_id = sekolahId;
+
+      const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: 'sekolah_id,key' });
+      if (error) throw error;
+      setSaveStatus('Tersimpan di database');
+    } catch (err) {
+      console.error('Error saving catatan to database:', err);
+      setSaveStatus('Tersimpan lokal');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedKelas, selectedSemester, selectedTahunAjaran, sekolahId]);
+
+  // Save Deep Learning observations to database Supabase & localStorage
+  const saveDlToSupabase = useCallback(async (dataToSave: Record<string, { mindful: string; meaningful: string; joyful: string }>) => {
+    setIsSaving(true);
+    setSaveStatus('Menyimpan...');
+    const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(dlKey, JSON.stringify(dataToSave));
+      } catch {
+        // ignore
+      }
+    }
+    try {
+      const payload: any = {
+        key: dlKey,
+        value: JSON.stringify(dataToSave)
+      };
+      if (sekolahId) payload.sekolah_id = sekolahId;
+
+      const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: 'sekolah_id,key' });
+      if (error) throw error;
+      setSaveStatus('Tersimpan di database');
+    } catch (err) {
+      console.error('Error saving deep learning to database:', err);
+      setSaveStatus('Tersimpan lokal');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedKelas, selectedSemester, selectedTahunAjaran, sekolahId]);
+
+  // Handle Catatan Change with Debounced Auto-save
   const handleCatatanChange = (nisn: string, text: string) => {
     const updated = { ...catatanWaliMap, [nisn]: text };
     setCatatanWaliMap(updated);
     const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
-    try {
-      localStorage.setItem(notesKey, JSON.stringify(updated));
-    } catch {
-      // ignore
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(notesKey, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
     }
+    if (catatanDebounceRef.current) clearTimeout(catatanDebounceRef.current);
+    catatanDebounceRef.current = setTimeout(() => {
+      saveCatatanToSupabase(updated);
+    }, 800);
   };
 
+  // Handle Deep Learning Change with Debounced Auto-save
   const handleDeepLearningChange = (nisn: string, field: 'mindful' | 'meaningful' | 'joyful', text: string) => {
     const prev = deepLearningMap[nisn] || { mindful: '', meaningful: '', joyful: '' };
     const updatedObj = { ...prev, [field]: text };
     const updatedMap = { ...deepLearningMap, [nisn]: updatedObj };
     setDeepLearningMap(updatedMap);
     const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(dlKey, JSON.stringify(updatedMap));
+      } catch {
+        // ignore
+      }
+    }
+    if (dlDebounceRef.current) clearTimeout(dlDebounceRef.current);
+    dlDebounceRef.current = setTimeout(() => {
+      saveDlToSupabase(updatedMap);
+    }, 800);
+  };
+
+  // Manual save trigger for Admin & Wali Kelas
+  const handleManualSave = async () => {
     try {
-      localStorage.setItem(dlKey, JSON.stringify(updatedMap));
-    } catch {
-      // ignore
+      setIsSaving(true);
+      await Promise.all([
+        saveCatatanToSupabase(catatanWaliMap),
+        saveDlToSupabase(deepLearningMap)
+      ]);
+      showToast('Tersimpan', 'Catatan wali & observasi deep learning berhasil disimpan ke database.', 'success');
+    } catch (err: any) {
+      showToast('Gagal', err.message || 'Gagal menyimpan data ke database', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Compute Kurikulum Merdeka subject scores & descriptions for a student
-  const getStudentSubjectScores = useCallback((student: StudentItem): SubjectScoreItem[] => {
-    // Generate deterministic yet realistic Kurikulum Merdeka scores per student based on their NISN and mapel
-    return DEFAULT_MAPEL_LIST.map((mapel, mIdx) => {
-      // Seeded score variation
-      const seed = (student.nisn.charCodeAt(student.nisn.length - 1) + mIdx * 7) % 25;
-      const baseScore = 75 + seed; // Range 75 to 99
+  // Compute Kurikulum Merdeka subject scores & descriptions from real Supabase data
+  const getStudentSubjectScores = useCallback(
+    (student: StudentItem): SubjectScoreItem[] => {
+      if (activeMapels.length === 0) return [];
 
-      const tpScores = [
-        { kode: 'TP 1', deskripsi: `memahami konsep dasar dan terminologi penting dalam ${mapel}`, score: Math.min(100, baseScore + ((seed % 5) - 2)) },
-        { kode: 'TP 2', deskripsi: `menerapkan prosedur analitis dan penyelesaian masalah materi ${mapel}`, score: Math.max(65, baseScore - (seed % 4)) },
-        { kode: 'TP 3', deskripsi: `mengkomunikasikan ide serta hasil karya kreatif dalam ruang lingkup ${mapel}`, score: Math.min(100, baseScore + ((seed % 3) - 1)) }
-      ];
+      return activeMapels.map(mapel => {
+        const subjectTps = tpList.filter(tp => tp.nama_mapel === mapel);
 
-      const res = generateKurikulumMerdekaDeskripsi(student.nama_siswa, tpScores);
+        const tpScoresList = subjectTps.map(tp => {
+          const cols = columnsList.filter(c => c.tp_id === tp.id);
+          const fCols = cols.filter(c => c.kategori === 'Formatif');
+          const sCols = cols.filter(c => c.kategori === 'Sumatif');
 
-      return {
-        namaMapel: mapel,
-        nilaiAkhir: res.nilaiRapor ?? baseScore,
-        predikat: res.predikat,
-        predikatBadge: res.predikatBadge,
-        deskripsiCapaian: res.deskripsiCapaian
-      };
-    });
-  }, []);
+          let sumF = 0, wF = 0;
+          fCols.forEach(c => {
+            const val = gradesMap[student.nisn]?.[c.id];
+            if (val !== null && val !== undefined && !isNaN(val)) {
+              const w = c.bobot ? Number(c.bobot) : 1;
+              sumF += val * w;
+              wF += w;
+            }
+          });
+          const avgF = wF > 0 ? sumF / wF : null;
 
-  // Filtered students for table
+          let sumS = 0, wS = 0;
+          sCols.forEach(c => {
+            const val = gradesMap[student.nisn]?.[c.id];
+            if (val !== null && val !== undefined && !isNaN(val)) {
+              const w = c.bobot ? Number(c.bobot) : 1;
+              sumS += val * w;
+              wS += w;
+            }
+          });
+          const avgS = wS > 0 ? sumS / wS : null;
+
+          let score: number | null = null;
+          if (avgF !== null && avgS !== null) {
+            score = parseFloat((avgF * 0.5 + avgS * 0.5).toFixed(1));
+          } else if (avgS !== null) {
+            score = parseFloat(avgS.toFixed(1));
+          } else if (avgF !== null) {
+            score = parseFloat(avgF.toFixed(1));
+          }
+
+          return {
+            kode: tp.kode_tp,
+            deskripsi: tp.deskripsi,
+            score
+          };
+        });
+
+        const res = generateKurikulumMerdekaDeskripsi(student.nama_siswa, tpScoresList);
+
+        return {
+          namaMapel: mapel,
+          nilaiAkhir: res.nilaiRapor,
+          predikat: res.predikat,
+          predikatBadge: res.predikatBadge,
+          deskripsiCapaian: res.deskripsiCapaian
+        };
+      });
+    },
+    [activeMapels, tpList, columnsList, gradesMap]
+  );
+
+  // Filtered students for table search
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return students;
     const q = searchQuery.toLowerCase();
@@ -236,18 +544,23 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
     );
   }, [students, searchQuery]);
 
-  // Overall student average
+  // Overall student average across graded subjects
   const studentAverageMap = useMemo(() => {
-    const map: Record<string, { avg: number; predikat: string }> = {};
+    const map: Record<string, { avg: number | string; predikat: string }> = {};
     students.forEach(s => {
       const scores = getStudentSubjectScores(s);
-      const total = scores.reduce((acc, curr) => acc + curr.nilaiAkhir, 0);
-      const avg = parseFloat((total / scores.length).toFixed(1));
-      let predikat = 'Perlu Bimbingan (D)';
-      if (avg >= 85) predikat = 'Sangat Baik (A)';
-      else if (avg >= 75) predikat = 'Baik (B)';
-      else if (avg >= 65) predikat = 'Cukup (C)';
-      map[s.nisn] = { avg, predikat };
+      const gradedScores = scores.filter(sc => typeof sc.nilaiAkhir === 'number' && !isNaN(sc.nilaiAkhir));
+      if (gradedScores.length === 0) {
+        map[s.nisn] = { avg: '-', predikat: '-' };
+      } else {
+        const total = gradedScores.reduce((acc, curr) => acc + (curr.nilaiAkhir as number), 0);
+        const avg = parseFloat((total / gradedScores.length).toFixed(1));
+        let predikat = 'Perlu Bimbingan (D)';
+        if (avg >= 85) predikat = 'Sangat Baik (A)';
+        else if (avg >= 75) predikat = 'Baik (B)';
+        else if (avg >= 65) predikat = 'Cukup (C)';
+        map[s.nisn] = { avg, predikat };
+      }
     });
     return map;
   }, [students, getStudentSubjectScores]);
@@ -267,7 +580,6 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         }
       });
       if (!success) {
-        // Fallback print if user insisted
         window.print();
       }
     } catch {
@@ -290,7 +602,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                 E-Rapor SMA (Kurikulum Deep Learning)
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
-                  Wali Kelas
+                  {isAdmin || isSuperadmin ? 'Administrator' : 'Wali Kelas'}
                 </span>
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -300,6 +612,30 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Status saving indicator */}
+            {isSaving ? (
+              <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1">
+                <i className="fa-solid fa-spinner fa-spin text-xs"></i>
+                Menyimpan...
+              </span>
+            ) : saveStatus ? (
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                <i className="fa-solid fa-circle-check text-xs"></i>
+                {saveStatus}
+              </span>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={handleManualSave}
+              disabled={isSaving}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-300 border border-teal-200 dark:border-teal-700/50 transition cursor-pointer flex items-center gap-1.5"
+              title="Simpan Catatan & Observasi ke Database"
+            >
+              <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
+              Simpan Rapor
+            </button>
+
             {/* Kelas selector */}
             <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs">
               <span className="font-semibold text-gray-600 dark:text-gray-300">Kelas:</span>
@@ -459,7 +795,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {filteredStudents.map((s, idx) => {
-                  const avgData = studentAverageMap[s.nisn] || { avg: 0, predikat: '-' };
+                  const avgData = studentAverageMap[s.nisn] || { avg: '-', predikat: '-' };
                   const att = attendanceMap[s.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
                   const note = catatanWaliMap[s.nisn] || '';
 
@@ -474,13 +810,15 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          avgData.avg >= 85
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                            : avgData.avg >= 75
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                            : avgData.avg >= 65
-                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                          typeof avgData.avg === 'number'
+                            ? avgData.avg >= 85
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              : avgData.avg >= 75
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                              : avgData.avg >= 65
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                            : 'text-gray-400'
                         }`}>
                           {avgData.predikat}
                         </span>
@@ -512,7 +850,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                             setSelectedStudent(s);
                             setActiveTab('cetak-individu');
                           }}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-300 transition inline-flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-300 transition inline-flex items-center gap-1 cursor-pointer"
                         >
                           <i className="fa-solid fa-eye text-[10px]"></i> Rapor
                         </button>
@@ -576,22 +914,30 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {getStudentSubjectScores(selectedStudent).map((item, idx) => (
-                      <tr key={item.namaMapel} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
-                        <td className="py-2.5 px-3 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">
-                          {idx + 1}
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
-                          {item.namaMapel}
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-black text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
-                          {item.nilaiAkhir}
-                        </td>
-                        <td className="py-2.5 px-3 text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed">
-                          {item.deskripsiCapaian}
+                    {getStudentSubjectScores(selectedStudent).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-4 text-center text-gray-500 italic">
+                          Belum ada mata pelajaran terdaftar untuk kelas ini.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      getStudentSubjectScores(selectedStudent).map((item, idx) => (
+                        <tr key={item.namaMapel} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
+                          <td className="py-2.5 px-3 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">
+                            {idx + 1}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
+                            {item.namaMapel}
+                          </td>
+                          <td className="py-2.5 px-3 text-center font-black text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
+                            {item.nilaiAkhir !== null && item.nilaiAkhir !== undefined ? item.nilaiAkhir : '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed">
+                            {item.deskripsiCapaian}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -672,7 +1018,14 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 D. Catatan Wali Kelas
               </h3>
               <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs min-h-[50px] bg-gray-50/30 dark:bg-gray-900/30 print:bg-transparent">
-                <p className="text-gray-800 dark:text-gray-200 leading-relaxed italic">
+                <textarea
+                  value={catatanWaliMap[selectedStudent.nisn] ?? ''}
+                  onChange={(e) => handleCatatanChange(selectedStudent.nisn, e.target.value)}
+                  placeholder="Tulis catatan wali kelas..."
+                  rows={2}
+                  className="w-full bg-transparent text-gray-800 dark:text-gray-200 leading-relaxed italic outline-none resize-none print:hidden border-none focus:ring-0 p-0 text-xs"
+                />
+                <p className="hidden print:block text-gray-800 dark:text-gray-200 leading-relaxed italic">
                   {catatanWaliMap[selectedStudent.nisn] ||
                     'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.'}
                 </p>
@@ -685,8 +1038,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               leftSubtitle="Orang Tua / Wali Murid"
               leftName="..........................................."
               rightTitle={`Wali Kelas ${selectedKelas}`}
-              rightName={user?.nama}
-              rightNip={user?.nip}
+              rightName={assignedWaliInfo?.nama_guru || (!isAdmin ? user?.nama : '') || '...........................................'}
+              rightNip={assignedWaliInfo?.nip ?? (!isAdmin ? user?.nip : undefined)}
               user={user}
               sekolahId={sekolahId || undefined}
             />
@@ -696,7 +1049,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               <button
                 type="button"
                 onClick={() => setActiveTab('ringkasan')}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition inline-flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition inline-flex items-center gap-1.5 cursor-pointer"
               >
                 <i className="fa-solid fa-arrow-left"></i>
                 Kembali ke Ringkasan

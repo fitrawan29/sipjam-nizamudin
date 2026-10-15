@@ -63,6 +63,7 @@ export default function AppScreen({
   onLogout: () => void;
   onUserUpdate?: (user: AppUser) => void;
 }) {
+  // Re-validate session token against database: dbUser.session_token !== user.session_token
   const { syncKey, currentUser, setCurrentUser } = useSessionSync(initialUser, onLogout, onUserUpdate);
   const baseUser = currentUser || initialUser;
   const isSuperadmin = (baseUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';

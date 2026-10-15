@@ -498,6 +498,7 @@ async function runAdversarialRaporSecurityTests() {
   await testStep('S5-03', 'In-memory search containment: Search query strictly filters within loaded students of assignedKelas', () => {
     // Simulate loaded students for assigned class VII-A
     const class7AStudents = [
+      { id: '1', nisn: '001', nama_siswa: 'Ahmad Santoso', kelas: 'VII-A' },
       { id: '2', nisn: '002', nama_siswa: 'Budi Utomo', kelas: 'VII-A' }
     ];
 

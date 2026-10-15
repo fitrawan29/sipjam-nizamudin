@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-15T13:09:33Z
+# BRIEFING — 2026-10-15T16:41:21Z
 
 ## Mission
-Redesign antarmuka dan alur modul Daftar Nilai (Gradebook Kurikulum Merdeka) pada SIPJAM agar alur persiapan CP (Capaian Pembelajaran), TP (Tujuan Pembelajaran), dan Kolom Asesmen menyatu dalam satu antarmuka terpadu yang ringkas tanpa modal bertingkat yang membingungkan, sehingga guru dapat langsung fokus mengisi nilai dengan cepat, jelas, dan nyaman.
+Sesuaikan menu E-Rapor pada akun Admin agar terhubung 100% dengan data real di database Supabase (menggantikan data mock dan skor pseudo-random seed), menyinkronkan catatan wali & observasi deep learning ke database, serta menyesuaikan UI dan tanda tangan wali kelas.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -55,6 +55,10 @@ Redesign antarmuka dan alur modul Daftar Nilai (Gradebook Kurikulum Merdeka) pad
 - Cron 1 (Progress Reporting): aff67180-8baf-49af-8530-d876ea934619/task-42 (*/8 * * * *)
 - Cron 2 (Liveness Check): aff67180-8baf-49af-8530-d876ea934619/task-44 (*/10 * * * *)
 - Victory Auditor (current): 0808cdfc-a52b-4476-af3c-66a357f0a416 (victory_auditor_38)
+- Orchestrator (current): 3ed6defa-41d1-4953-aad6-0d76760c6da8 (swe_27)
+- Cron 1 (Progress Reporting): cad48e6e-a89b-45d6-bbd9-437140081cd7/task-26 (*/8 * * * *)
+- Cron 2 (Liveness Check): cad48e6e-a89b-45d6-bbd9-437140081cd7/task-28 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -74,23 +78,24 @@ Redesign antarmuka dan alur modul Daftar Nilai (Gradebook Kurikulum Merdeka) pad
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; explicit per-teacher attendance obligation redesign & real-time sync)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; mobile QR fallback scanner for teacher smartphones & presensi datang recording)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; unified Gradebook Kurikulum Merdeka setup & frictionless grade entry)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor Admin real data Supabase sync, observations DB persistence, signatures)
 
 ## User Context
-- **Last user request**: Redesign antarmuka dan alur modul Daftar Nilai (Gradebook Kurikulum Merdeka) pada SIPJAM agar alur persiapan CP, TP, dan Kolom Asesmen menyatu dalam satu antarmuka terpadu yang ringkas tanpa modal bertingkat yang membingungkan, sehingga guru dapat langsung fokus mengisi nilai dengan cepat, jelas, dan nyaman.
+- **Last user request**: Sesuaikan menu E-Rapor pada akun Admin agar terhubung 100% dengan data real di database Supabase (menggantikan data mock dan skor pseudo-random seed), menyinkronkan catatan wali & observasi deep learning ke database, serta menyesuaikan UI dan tanda tangan wali kelas.
 - **Pending clarifications**: none
 - **Delivered results**: none
 
 ## Project Status
-- **Phase**: auditing
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: aff67180-8baf-49af-8530-d876ea934619/task-42 (progress), aff67180-8baf-49af-8530-d876ea934619/task-44 (liveness)
-- **Active Subagents**: 71546a73-28df-4be3-83bd-7cc2df22298d (swe_26), 0808cdfc-a52b-4476-af3c-66a357f0a416 (victory_auditor_38)
+- **Active Crons**: cad48e6e-a89b-45d6-bbd9-437140081cd7/task-26 (progress), cad48e6e-a89b-45d6-bbd9-437140081cd7/task-28 (liveness)
+- **Active Subagents**: 3ed6defa-41d1-4953-aad6-0d76760c6da8 (swe_27)
 
 ## Victory Audit Status
-- **Triggered**: yes
+- **Triggered**: no
 - **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_26\DISPATCH.md — Dispatch instructions for swe_26
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_27\DISPATCH.md — Dispatch instructions for swe_27
