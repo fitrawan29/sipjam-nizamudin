@@ -175,6 +175,41 @@ assert(
   'R4.5: CSV export for TP matrix and semester recap preserved'
 );
 
+// ━━━ 5. R5: ADVERSARIAL STRESS-TESTS & RESILIENCE HARDENING ━━━
+console.log('\n━━━ 5. R5: ADVERSARIAL STRESS-TESTS & RESILIENCE HARDENING ━━━');
+
+assert(
+  code.includes('createdNewCpId') &&
+  code.includes('createdTpId') &&
+  code.includes("from('tujuan_pembelajaran').delete().eq('id', createdTpId)") &&
+  code.includes("from('capaian_pembelajaran').delete().eq('id', createdNewCpId)"),
+  'R5.1: Atomic rollback cleans up partially created TP/CP on mid-flight initialization failure'
+);
+
+assert(
+  code.includes('cpList.length === 0 && (') &&
+  code.includes('Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu'),
+  'R5.2: Instructional guidance banner is gated by cpList.length === 0 to eliminate banner clutter'
+);
+
+assert(
+  code.includes('touch-pan-x') &&
+  code.includes('overscroll-x-contain'),
+  'R5.3: Horizontal TP navigation bar includes touch-pan-x and overscroll-x-contain for mobile touchscreens'
+);
+
+assert(
+  code.includes('disabled={isInitializing}') &&
+  code.includes('disabled:opacity-60 disabled:cursor-not-allowed'),
+  'R5.4: Action buttons display visual disabled feedback and prevent race conditions during initialization'
+);
+
+assert(
+  code.includes("setInlineMode('add-col')") &&
+  code.includes("setIsSetupPanelOpen(true)"),
+  'R5.5: Quick column action buttons route directly into Unified Setup Panel without popup modals'
+);
+
 console.log('\n══════════════════════════════════════════════════════════════════════');
 console.log(`TEST SUMMARY: Total ${passCount + failCount} | Passed: ${passCount} | Failed: ${failCount}`);
 if (failCount > 0) {

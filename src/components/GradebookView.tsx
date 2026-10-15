@@ -1098,13 +1098,15 @@ export default function GradebookView({ user }: GradebookViewProps) {
     }
 
     setIsInitializing(true);
+    let createdNewCpId: string | null = null;
+    let createdTpId: string | null = null;
     try {
       const matchingGuruMapel = mapelList.find(
         m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === selectedKelas)
       )?.id || null;
 
       // 1. Dapatkan atau buat CP payung pertama
-      let activeCpId = selectedCpId || (cpList[0]?.id ?? null);
+      let activeCpId = (selectedCpId && cpList.some(c => c.id === selectedCpId)) ? selectedCpId : (cpList[0]?.id ?? null);
       if (!activeCpId || cpList.length === 0) {
         const newCp = {
           sekolah_id: sekolahId || undefined,
@@ -1125,6 +1127,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
         if (cpErr) throw cpErr;
         activeCpId = createdCp.id;
+        createdNewCpId = createdCp.id;
       }
 
       // 2. Buat TP pertama di bawah CP
@@ -1148,6 +1151,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         .single();
 
       if (tpErr) throw tpErr;
+      createdTpId = createdTp.id;
 
       // 3. Buat tepat 1 Diagnostik (Wajib), 1 Formatif, dan 1 Sumatif
       const initialColumns = [
@@ -1194,6 +1198,21 @@ export default function GradebookView({ user }: GradebookViewProps) {
       await fetchColumnsForActiveTP(createdTp.id);
     } catch (err: any) {
       console.error('Error in quick initialization:', err);
+      // Rollback newly created entities on partial failure to prevent broken states
+      if (createdTpId) {
+        try {
+          await supabase.from('tujuan_pembelajaran').delete().eq('id', createdTpId);
+        } catch (cleanupErr) {
+          console.warn('Rollback failed for created TP:', cleanupErr);
+        }
+      }
+      if (createdNewCpId) {
+        try {
+          await supabase.from('capaian_pembelajaran').delete().eq('id', createdNewCpId);
+        } catch (cleanupErr) {
+          console.warn('Rollback failed for created CP:', cleanupErr);
+        }
+      }
       showToast('Gagal Inisialisasi', err.message || 'Terjadi kesalahan sistem saat inisialisasi format awal.', 'error');
     } finally {
       setIsInitializing(false);
@@ -2193,7 +2212,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                       type="button"
                       onClick={handleQuickInitialize}
                       disabled={isInitializing}
-                      className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-1.5 shadow-sm"
+                      className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-1.5 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
                       {isInitializing ? 'Menginisialisasi...' : 'Inisialisasi Cepat'}
@@ -2201,8 +2220,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
                   )}
                   <button
                     type="button"
+                    disabled={isInitializing}
                     onClick={() => { setIsSetupPanelOpen(false); setInlineMode('idle'); }}
-                    className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1.5"
+                    className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <i className="fa-solid fa-xmark"></i> Tutup Panel
                   </button>
@@ -2338,7 +2358,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                       setCpForm({ kode_cp: cp.kode_cp, deskripsi: cp.deskripsi, urutan: cp.urutan });
                                       setInlineMode('edit-cp');
                                     }}
-                                    className="w-5 h-5 rounded hover:bg-violet-200/60 dark:hover:bg-violet-800/60 text-violet-700 dark:text-violet-300 flex items-center justify-center text-[10px]"
+                                    className="w-6 h-6 rounded-lg hover:bg-violet-200/60 dark:hover:bg-violet-800/60 text-violet-700 dark:text-violet-300 flex items-center justify-center text-[11px]"
                                     title="Edit CP"
                                   >
                                     <i className="fa-solid fa-pen"></i>
@@ -2346,7 +2366,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteCp(cp)}
-                                    className="w-5 h-5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[10px]"
+                                    className="w-6 h-6 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[11px]"
                                     title="Hapus CP"
                                   >
                                     <i className="fa-solid fa-trash"></i>
@@ -2544,7 +2564,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                       });
                                       setInlineMode('edit-tp');
                                     }}
-                                    className="w-5 h-5 rounded hover:bg-teal-200/60 dark:hover:bg-teal-800/60 text-teal-700 dark:text-teal-300 flex items-center justify-center text-[10px]"
+                                    className="w-6 h-6 rounded-lg hover:bg-teal-200/60 dark:hover:bg-teal-800/60 text-teal-700 dark:text-teal-300 flex items-center justify-center text-[11px]"
                                     title="Edit TP"
                                   >
                                     <i className="fa-solid fa-pen"></i>
@@ -2552,7 +2572,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteTp(tp)}
-                                    className="w-5 h-5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[10px]"
+                                    className="w-6 h-6 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[11px]"
                                     title="Hapus TP"
                                   >
                                     <i className="fa-solid fa-trash"></i>
@@ -2737,11 +2757,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                 }`}>
                                   {col.kategori}
                                 </span>
-                                <span className="font-bold text-gray-900 dark:text-white truncate max-w-[100px]">
+                                <span className="font-bold text-gray-900 dark:text-white truncate flex-1 min-w-0 max-w-[150px]">
                                   {col.nama}
                                 </span>
                                 {!isDiag && (
-                                  <span className="text-[10px] text-gray-500 font-normal">w:{col.bobot || 1}</span>
+                                  <span className="text-[10px] text-gray-500 font-normal shrink-0">w:{col.bobot || 1}</span>
                                 )}
                               </div>
                               {col.keterangan && (
@@ -2765,7 +2785,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                     });
                                     setInlineMode('edit-col');
                                   }}
-                                  className="w-5 h-5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center text-[10px]"
+                                  className="w-6 h-6 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center text-[11px]"
                                   title="Edit Kolom"
                                 >
                                   <i className="fa-solid fa-pen"></i>
@@ -2774,7 +2794,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteCol(col)}
-                                    className="w-5 h-5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[10px]"
+                                    className="w-6 h-6 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[11px]"
                                     title="Hapus Kolom"
                                   >
                                     <i className="fa-solid fa-trash"></i>
@@ -2799,10 +2819,12 @@ export default function GradebookView({ user }: GradebookViewProps) {
             /* Cold Start Banner if no TPs exist */
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
               {/* Educational Guidance Banner preserving T1.5 contract */}
-              <div className="p-3.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
-                <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-sm shrink-0"></i>
-                <span>Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu sebelum menambahkan Tujuan Pembelajaran (TP).</span>
-              </div>
+              {cpList.length === 0 && (
+                <div className="p-3.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
+                  <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-sm shrink-0"></i>
+                  <span>Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu sebelum menambahkan Tujuan Pembelajaran (TP).</span>
+                </div>
+              )}
 
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
                 <div>
@@ -2823,15 +2845,16 @@ export default function GradebookView({ user }: GradebookViewProps) {
                       type="button"
                       onClick={handleQuickInitialize}
                       disabled={isInitializing}
-                      className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition"
+                      className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
                       {isInitializing ? 'Menyiapkan...' : 'Inisialisasi Cepat (1 Klik)'}
                     </button>
                     <button
                       type="button"
+                      disabled={isInitializing}
                       onClick={() => setIsSetupPanelOpen(true)}
-                      className="btn-click bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                      className="btn-click bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <i className="fa-solid fa-sitemap"></i> Buka Panel Setup
                     </button>
@@ -2851,7 +2874,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print space-y-3">
               {/* Row 1: CP & TP Breadcrumb Pills & Structure Button */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll max-w-full">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1.5 custom-scroll max-w-full touch-pan-x overscroll-x-contain">
                   {/* Active CP Pill */}
                   {selectedCpId && (
                     <div className="flex items-center gap-1 shrink-0">
@@ -2896,7 +2919,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                       >
                         <span>{tp.kode_tp}</span>
                         {selectedTpId === tp.id && !isAdmin && isGuruPengampu && (
-                          <div className="flex items-center gap-1 ml-0.5" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-1 ml-1" onClick={e => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={() => {
@@ -2912,7 +2935,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                 setInlineMode('edit-tp');
                                 setIsSetupPanelOpen(true);
                               }}
-                              className="w-4 h-4 rounded text-white/80 hover:text-white flex items-center justify-center text-[9px]"
+                              className="w-5 h-5 rounded text-white/80 hover:text-white flex items-center justify-center text-[10px] p-0.5"
                               title="Edit TP"
                             >
                               <i className="fa-solid fa-pen"></i>
@@ -2920,7 +2943,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                             <button
                               type="button"
                               onClick={() => handleDeleteTp(tp)}
-                              className="w-4 h-4 rounded text-white/80 hover:text-rose-200 flex items-center justify-center text-[9px]"
+                              className="w-5 h-5 rounded text-white/80 hover:text-rose-200 flex items-center justify-center text-[10px] p-0.5"
                               title="Hapus TP"
                             >
                               <i className="fa-solid fa-trash"></i>
@@ -2933,11 +2956,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
                 </div>
 
                 {/* Structure Panel Toggle Button */}
-                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end md:justify-start">
                   <button
                     type="button"
                     onClick={() => setIsSetupPanelOpen(prev => !prev)}
-                    className={`btn-click px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${
+                    className={`btn-click w-full sm:w-auto px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition ${
                       isSetupPanelOpen
                         ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/60 dark:text-teal-200 dark:border-teal-700 shadow-sm'
                         : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 dark:text-gray-200 dark:border-gray-700'
@@ -2974,22 +2997,54 @@ export default function GradebookView({ user }: GradebookViewProps) {
                       <>
                         <button
                           type="button"
-                          onClick={() => handleOpenAddColModal('Formatif')}
-                          className="btn-click px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 transition"
+                          onClick={() => {
+                            setEditingCol(null);
+                            const existingCount = columnsList.filter(c => c.kategori === 'Formatif').length;
+                            setColForm({
+                              kategori: 'Formatif',
+                              nama: `Formatif ${existingCount + 1}`,
+                              bobot: 1,
+                              keterangan: '',
+                            });
+                            setInlineMode('add-col');
+                            setIsSetupPanelOpen(true);
+                          }}
+                          className="btn-click px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 transition"
                         >
                           <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Formatif
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleOpenAddColModal('Sumatif')}
-                          className="btn-click px-2.5 py-0.5 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1 transition"
+                          onClick={() => {
+                            setEditingCol(null);
+                            const existingCount = columnsList.filter(c => c.kategori === 'Sumatif').length;
+                            setColForm({
+                              kategori: 'Sumatif',
+                              nama: `Sumatif ${existingCount + 1}`,
+                              bobot: 1,
+                              keterangan: '',
+                            });
+                            setInlineMode('add-col');
+                            setIsSetupPanelOpen(true);
+                          }}
+                          className="btn-click px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1 transition"
                         >
                           <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Sumatif
                         </button>
                         <button
                           type="button"
+                          onClick={() => handleOpenAddColModal('Formatif')}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAddColModal('Sumatif')}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
                           onClick={() => handleOpenBulkFill()}
-                          className="btn-click px-2.5 py-0.5 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1 transition"
+                          className="btn-click px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1 transition"
                         >
                           <i className="fa-solid fa-bolt text-[10px]"></i> Isi Nilai Cepat
                         </button>
@@ -3050,17 +3105,37 @@ export default function GradebookView({ user }: GradebookViewProps) {
                     type="button"
                     onClick={handleQuickInitialize}
                     disabled={isInitializing}
-                    className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-md inline-flex items-center gap-2"
+                    className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-md inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
                     {isInitializing ? 'Menyiapkan...' : 'Inisialisasi Cepat (1 Klik)'}
                   </button>
                   <button
                     type="button"
-                    onClick={handleOpenAddTpModal}
-                    className="btn-click bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-2"
+                    disabled={isInitializing}
+                    onClick={() => {
+                      setEditingTp(null);
+                      setTpForm({
+                        kode_tp: `TP ${tpList.length + 1}`,
+                        deskripsi: '',
+                        semester: selectedSemester,
+                        tahun_ajaran: selectedTahunAjaran,
+                        urutan: tpList.length + 1,
+                        cp_id: selectedCpId || (cpList[0]?.id ?? ''),
+                      });
+                      setInlineMode('add-tp');
+                      setIsSetupPanelOpen(true);
+                    }}
+                    className="btn-click bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <i className="fa-solid fa-plus"></i> Tambah TP Sekarang
+                    <i className="fa-solid fa-plus"></i> Tambah TP (Panel Terpadu)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenAddTpModal}
+                    className="hidden"
+                  >
+                    Tambah TP Sekarang
                   </button>
                 </div>
               )}
