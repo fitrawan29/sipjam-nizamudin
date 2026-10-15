@@ -217,6 +217,37 @@ async function main() {
     );
   });
 
+  runTest('AC3-05: Resolves homeroom teacher NIP from data_guru if missing in wali_kelas', () => {
+    assert.ok(
+      content.includes("guru_id") && content.includes(".from('data_guru').select('nip')"),
+      'Must resolve NIP from data_guru when wali_kelas lacks NIP'
+    );
+  });
+
+  runTest('AC3-06: Suppresses NIP label for Orang Tua / Wali Murid on report card printout', () => {
+    assert.ok(
+      content.includes("hideLeftNip={true}"),
+      'PrintSignature must suppress NIP for parent/guardian'
+    );
+    const printHeaderPath = path.join(__dirname, '../src/components/PrintHeader.tsx');
+    const phContent = fs.readFileSync(printHeaderPath, 'utf8');
+    assert.ok(
+      phContent.includes("hideLeftNip?: boolean") && phContent.includes("!hideLeftNip && ("),
+      'PrintHeader must support hideLeftNip prop'
+    );
+  });
+
+  runTest('AC2-04: Includes jadwal_pelajaran fallback and case-insensitive subject matching', () => {
+    assert.ok(
+      content.includes(".from('jadwal_pelajaran')"),
+      'Must fallback to jadwal_pelajaran for active subjects'
+    );
+    assert.ok(
+      content.includes(".toLowerCase() === mapel.trim().toLowerCase()"),
+      'Must perform case-insensitive subject matching for TPs'
+    );
+  });
+
   console.log('\n================================================================');
   console.log(`  E-RAPOR TEST RESULTS: ${passedTests} / ${totalTests} PASSED`);
   console.log('================================================================\n');

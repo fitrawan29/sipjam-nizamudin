@@ -136,7 +136,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       try {
         let wQuery = supabase
           .from('wali_kelas')
-          .select('nama_guru, nip, kelas, tahun_ajaran')
+          .select('nama_guru, nip, kelas, tahun_ajaran, guru_id')
           .eq('kelas', selectedKelas);
         if (sekolahId) wQuery = wQuery.eq('sekolah_id', sekolahId);
         const { data: wList } = await wQuery;
@@ -144,9 +144,27 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         const matchingWali = (wList || []).find((w: any) => w.tahun_ajaran === selectedTahunAjaran) || (wList || [])[0];
 
         if (matchingWali && matchingWali.nama_guru) {
+          let resolvedNip = matchingWali.nip && matchingWali.nip !== '-' ? matchingWali.nip : null;
+          if (!resolvedNip && matchingWali.guru_id) {
+            try {
+              let gQuery = supabase.from('data_guru').select('nip').eq('id', matchingWali.guru_id);
+              if (sekolahId) gQuery = gQuery.eq('sekolah_id', sekolahId);
+              const { data: g } = await gQuery.maybeSingle();
+              if (g?.nip && g.nip !== '-') resolvedNip = g.nip;
+            } catch {}
+          }
+          if (!resolvedNip) {
+            try {
+              let gQuery = supabase.from('data_guru').select('nip').ilike('nama_guru', matchingWali.nama_guru);
+              if (sekolahId) gQuery = gQuery.eq('sekolah_id', sekolahId);
+              const { data: g } = await gQuery.maybeSingle();
+              if (g?.nip && g.nip !== '-') resolvedNip = g.nip;
+            } catch {}
+          }
+
           setAssignedWaliInfo({
             nama_guru: matchingWali.nama_guru,
-            nip: matchingWali.nip && matchingWali.nip !== '-' ? matchingWali.nip : null
+            nip: resolvedNip
           });
           return;
         }
@@ -273,6 +291,19 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         }
       }
 
+      if (mapels.length === 0) {
+        try {
+          let jpQuery = supabase.from('jadwal_pelajaran').select('mata_pelajaran').eq('kelas', selectedKelas);
+          if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
+          const { data: jpData } = await jpQuery;
+          if (jpData && jpData.length > 0) {
+            mapels = Array.from(new Set(jpData.map((j: any) => j.mata_pelajaran).filter(Boolean))) as string[];
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       // 4. Fetch Capaian Pembelajaran (capaian_pembelajaran)
       let cpQuery = supabase
         .from('capaian_pembelajaran')
@@ -336,13 +367,19 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
       if (nsData) {
         nsData.forEach((row: any) => {
-          if (!row.nisn || !row.asesmen_id) return;
+          if (!row.nisn) return;
           if (!currentGrades[row.nisn]) currentGrades[row.nisn] = {};
           const numVal =
             row.nilai !== null && row.nilai !== undefined && row.nilai !== ''
               ? Number(row.nilai)
               : null;
-          currentGrades[row.nisn][row.asesmen_id] = numVal !== null && !isNaN(numVal) ? numVal : null;
+          const parsed = numVal !== null && !isNaN(numVal) ? numVal : null;
+          if (row.asesmen_id) {
+            currentGrades[row.nisn][row.asesmen_id] = parsed;
+          }
+          if (row.tp_id) {
+            currentGrades[row.nisn][`tp_${row.tp_id}`] = parsed;
+          }
         });
       }
       setGradesMap(currentGrades);
@@ -558,7 +595,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       if (activeMapels.length === 0) return [];
 
       return activeMapels.map(mapel => {
-        const subjectTps = tpList.filter(tp => tp.nama_mapel === mapel);
+        const subjectTps = tpList.filter(
+          tp => (tp.nama_mapel || '').trim().toLowerCase() === mapel.trim().toLowerCase()
+        );
 
         const tpScoresList = subjectTps.map(tp => {
           const cols = columnsList.filter(c => c.tp_id === tp.id);
@@ -594,6 +633,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
             score = parseFloat(avgS.toFixed(1));
           } else if (avgF !== null) {
             score = parseFloat(avgF.toFixed(1));
+          } else if (gradesMap[student.nisn]?.[`tp_${tp.id}`] !== undefined) {
+            score = gradesMap[student.nisn]?.[`tp_${tp.id}`];
           }
 
           return {
@@ -1128,6 +1169,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               leftTitle="Mengetahui,"
               leftSubtitle="Orang Tua / Wali Murid"
               leftName="..........................................."
+              hideLeftNip={true}
               rightTitle={`Wali Kelas ${selectedKelas}`}
               rightName={assignedWaliInfo?.nama_guru || (!isAdmin ? user?.nama : '') || '...........................................'}
               rightNip={assignedWaliInfo?.nip ?? (!isAdmin ? user?.nip : undefined)}

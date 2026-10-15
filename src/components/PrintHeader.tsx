@@ -191,6 +191,7 @@ export interface PrintSignatureProps {
   leftSubtitle?: string;
   leftName?: string;
   leftNip?: string;
+  hideLeftNip?: boolean;
   rightTitle?: string;
   rightName?: string;
   rightNip?: string;
@@ -211,6 +212,7 @@ export function PrintSignature({
   leftSubtitle,
   leftName,
   leftNip,
+  hideLeftNip,
   rightTitle,
   rightName,
   rightNip,
@@ -355,9 +357,11 @@ export function PrintSignature({
               <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
                 {leftName || '( ........................................ )'}
               </span>
-              <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
-                {leftNip && leftNip !== '-' ? `NIP. ${leftNip}` : 'NIP. -'}
-              </span>
+              {!hideLeftNip && (
+                <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+                  {leftNip && leftNip !== '-' ? `NIP. ${leftNip}` : 'NIP. -'}
+                </span>
+              )}
             </div>
           </div>
         )}
