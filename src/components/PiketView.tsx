@@ -23,6 +23,7 @@ import {
 } from '@/lib/qrSiswa';
 import { acquirePiketLock, refreshPiketLock, releasePiketLock, PiketLockInfo } from '@/lib/piketLock';
 import { isIntervensiAllowed, isPiketPulangAllowed, fetchBatasIntervensiSiswa, fetchJadwalIntervensiWali } from '@/lib/presensiIntervensi';
+import jsQR from 'jsqr';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
@@ -338,12 +339,12 @@ export default function PiketView({ user }: { user: any }) {
         try {
           stream = await navigator.mediaDevices.getUserMedia(constraints);
           break;
-        } catch (e: any) {
-          lastErr = e;
-          if (['NotReadableError', 'TrackStartError'].includes(e.name)) {
+        } catch (constraintErr: any) {
+          lastErr = constraintErr;
+          if (['NotReadableError', 'TrackStartError'].includes(constraintErr.name)) {
             await new Promise(r => setTimeout(r, 800));
           } else {
-            console.warn('[PiketView] Overconstrained, fallback to basic video:', e);
+            console.warn('[PiketView] Overconstrained, fallback to basic video:', constraintErr);
             stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }).catch(err => { lastErr = err; return null; });
             break;
           }
@@ -434,9 +435,12 @@ export default function PiketView({ user }: { user: any }) {
     };
   }, []);
 
-  // Frame detection loop with native BarcodeDetector
+  // Frame detection loop with native BarcodeDetector and client-side jsQR fallback
   useEffect(() => {
     let intervalId: any = null;
+    let canvas: HTMLCanvasElement | null = null;
+    let ctx: CanvasRenderingContext2D | null = null;
+
     if (cameraActive) {
       const BarcodeDetectorClass = typeof window !== 'undefined' ? (window as any).BarcodeDetector : undefined;
       let detector: any = null;
@@ -452,17 +456,63 @@ export default function PiketView({ user }: { user: any }) {
         if (!videoRef.current || videoRef.current.readyState < 2 || isDetectingRef.current) return;
         isDetectingRef.current = true;
         try {
+          let rawVal: string | null = null;
+
+          // 1. Try native BarcodeDetector if available in browser
           if (detector) {
-            const barcodes = await detector.detect(videoRef.current);
-            if (barcodes && barcodes.length > 0) {
-              const rawVal = barcodes[0].rawValue;
-              if (rawVal) {
-                const now = Date.now();
-                if (!lastCameraScannedRef.current || lastCameraScannedRef.current.code !== rawVal || (now - lastCameraScannedRef.current.time > 3000)) {
-                  lastCameraScannedRef.current = { code: rawVal, time: now };
-                  handleProcessScan(rawVal);
+            try {
+              const barcodes = await detector.detect(videoRef.current);
+              if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                rawVal = barcodes[0].rawValue;
+              }
+            } catch (detErr) {
+              // Ignore native detector runtime errors, fallback to jsQR
+            }
+          }
+
+          // 2. Client-side canvas decoding fallback (jsQR) for iOS Safari & browsers without native BarcodeDetector
+          if (!rawVal && videoRef.current) {
+            const video = videoRef.current;
+            const vw = video.videoWidth;
+            const vh = video.videoHeight;
+            if (vw > 0 && vh > 0) {
+              if (!canvas) {
+                canvas = document.createElement('canvas');
+              }
+              const maxDim = 800;
+              let w = vw;
+              let h = vh;
+              if (w > maxDim || h > maxDim) {
+                const scale = Math.min(maxDim / w, maxDim / h);
+                w = Math.round(w * scale);
+                h = Math.round(h * scale);
+              }
+              if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+              }
+              if (!ctx) {
+                ctx = canvas.getContext('2d', { willReadFrequently: true });
+              }
+              if (ctx) {
+                ctx.drawImage(video, 0, 0, w, h);
+                const imageData = ctx.getImageData(0, 0, w, h);
+                const qrResult = jsQR(imageData.data, imageData.width, imageData.height, {
+                  inversionAttempts: 'attemptBoth'
+                });
+                if (qrResult && qrResult.data) {
+                  rawVal = qrResult.data;
                 }
               }
+            }
+          }
+
+          // 3. Process scanned barcode/QR code
+          if (rawVal) {
+            const now = Date.now();
+            if (!lastCameraScannedRef.current || lastCameraScannedRef.current.code !== rawVal || (now - lastCameraScannedRef.current.time > 3000)) {
+              lastCameraScannedRef.current = { code: rawVal, time: now };
+              handleProcessScan(rawVal);
             }
           }
         } catch {
@@ -475,6 +525,8 @@ export default function PiketView({ user }: { user: any }) {
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      canvas = null;
+      ctx = null;
     };
   }, [cameraActive, scanMode]);
 
@@ -1374,9 +1426,7 @@ export default function PiketView({ user }: { user: any }) {
     // Otherwise remains 'Menunggu'.
     const isRekapLengkap = Boolean(piketAbsensi && Object.keys(piketAbsensi).length > 0);
     const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading' && fileUrl !== 'gagal_upload');
-    const statusVerifikasiPiket = (isPiketIntervensiExpired && !isAdmin)
-      ? (isFotoLengkap ? 'Disetujui' : 'Menunggu')
-      : ((isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu');
+    const statusVerifikasiPiket = (isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
 
     const newLaporan = {
       id: crypto.randomUUID(),
@@ -2244,7 +2294,7 @@ export default function PiketView({ user }: { user: any }) {
                             {typeof window !== 'undefined' && 'BarcodeDetector' in window ? (
                               <span><i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis</span>
                             ) : (
-                              <span><i className="fa-solid fa-circle-info mr-1 text-amber-400"></i> Browser ini tidak mendukung BarcodeDetector bawaan. Gunakan scanner USB HID atau ketik NISN.</span>
+                              <span><i className="fa-solid fa-camera mr-1 text-teal-400"></i> Browser ini tidak mendukung BarcodeDetector bawaan • Scanner Kamera HP aktif (Fallback Otomatis)</span>
                             )}
                           </div>
                         </div>
@@ -2880,7 +2930,7 @@ export default function PiketView({ user }: { user: any }) {
                           {typeof window !== 'undefined' && 'BarcodeDetector' in window ? (
                             <span><i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis</span>
                           ) : (
-                            <span><i className="fa-solid fa-circle-info mr-1 text-amber-400"></i> Browser ini tidak mendukung BarcodeDetector bawaan. Gunakan scanner USB HID atau ketik NISN.</span>
+                            <span><i className="fa-solid fa-camera mr-1 text-teal-400"></i> Browser ini tidak mendukung BarcodeDetector bawaan • Scanner Kamera HP aktif (Fallback Otomatis)</span>
                           )}
                         </div>
                       </div>

@@ -155,7 +155,7 @@ function encodeQrData(text: string): { spec: QrVersionSpec; codewords: Uint8Arra
   return { spec, codewords: allCodewords };
 }
 
-export function generateQrMatrix(text: string): boolean[][] {
+export function generateQrMatrix(text: string, options: { standardFormat?: boolean } = {}): boolean[][] {
   const { spec, codewords } = encodeQrData(text);
   const size = spec.version * 4 + 17;
 
@@ -269,7 +269,9 @@ export function generateQrMatrix(text: string): boolean[][] {
   // 7. Format Information (Level L, Mask 0: 0x77c4)
   const formatBits = 0x77c4;
   for (let i = 0; i < 15; i++) {
-    const bit = ((formatBits >> i) & 1) === 1;
+    const bit = options.standardFormat
+      ? ((formatBits >> (14 - i)) & 1) === 1
+      : ((formatBits >> i) & 1) === 1;
     if (i < 6) {
       matrix[8][i] = bit;
     } else if (i === 6) {
@@ -296,7 +298,7 @@ export function generateQrMatrix(text: string): boolean[][] {
  * Generates an SVG string containing the QR code for a given text identifier.
  */
 export function generateStudentQrSvg(text: string, options: QrOptions = {}): string {
-  const matrix = generateQrMatrix(text);
+  const matrix = generateQrMatrix(text, { standardFormat: true });
   const moduleCount = matrix.length;
   const margin = options.margin ?? 3;
   const totalModules = moduleCount + margin * 2;

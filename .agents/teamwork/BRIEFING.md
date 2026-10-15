@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-14T13:29:08Z
+# BRIEFING — 2026-10-15T04:41:48Z
 
 ## Mission
-Desain ulang sistem pengaturan kewajiban kehadiran guru di SIPJAM untuk memberikan penentuan eksplisit per guru antara 'Wajib Hadir Setiap Hari' dan 'Hanya Hari KBM', serta memastikan pembaruan pengaturan langsung berefek secara instan (real-time) pada akun guru tanpa perlu logout atau refresh manual.
+Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari kartu presensi digital siswa secara otomatis dan mencatat presensi datang siswa dengan lancar di semua peramban mobile (iOS Safari, Android Chrome, WebView, dll).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -45,6 +45,10 @@ Desain ulang sistem pengaturan kewajiban kehadiran guru di SIPJAM untuk memberik
 - Cron 1 (Progress Reporting): a50a197f-dd6a-4990-bbd9-e6e56c6859c8/task-38 (*/8 * * * *)
 - Cron 2 (Liveness Check): a50a197f-dd6a-4990-bbd9-e6e56c6859c8/task-40 (*/10 * * * *)
 - Victory Auditor (current): 7d56f7dd-aa39-4807-a2fe-265e0b0af351 (victory_auditor_37)
+- Orchestrator (current): 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219 (swe_25)
+- Cron 1 (Progress Reporting): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-24 (*/8 * * * *)
+- Cron 2 (Liveness Check): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-26 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -62,26 +66,24 @@ Desain ulang sistem pengaturan kewajiban kehadiran guru di SIPJAM untuk memberik
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; real-time automated verification for attendance, journal, and piket with manual approval queue retention)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; teaching-only attendance rules and obsolete code removal)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; explicit per-teacher attendance obligation redesign & real-time sync)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; mobile QR fallback scanner for teacher smartphones & presensi datang recording)
 
 ## User Context
-- **Last user request**: Desain ulang sistem pengaturan kewajiban kehadiran guru di SIPJAM untuk memberikan penentuan eksplisit per guru antara 'Wajib Hadir Setiap Hari' dan 'Hanya Hari KBM', serta memastikan pembaruan pengaturan langsung berefek secara instan (real-time) pada akun guru tanpa perlu logout atau refresh manual.
+- **Last user request**: Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari kartu presensi digital siswa secara otomatis dan mencatat presensi datang siswa dengan lancar di semua peramban mobile (iOS Safari, Android Chrome, WebView, dll).
 - **Pending clarifications**: none
-- **Delivered results**: Seluruh persyaratan R1 (UI Model B switch per guru), R2 (Evaluasi Dua Arah Konsisten), dan R3 (Sinkronisasi Realtime Instan) telah berhasil diimplementasikan, disempurnakan melalui 3 ronde adversarial reviewer, diverifikasi 100% oleh 26 test suites (183 tests), divalidasi oleh Post-Victory Auditor 37 dengan vonis VICTORY CONFIRMED, 0 error typecheck tsc, build produksi bersih, dan git repo tersinkronisasi ke origin/main.
+- **Delivered results**: none
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (killed upon victory confirmation)
-- **Active Subagents**: none (killed upon victory confirmation)
+- **Active Crons**: 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-24 (progress), 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-26 (liveness)
+- **Active Subagents**: 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219 (swe_25)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_24\DISPATCH.md — Dispatch instructions for swe_24
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_24\handoff.md — Handoff report from swe_24
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_37\DISPATCH.md — Dispatch instructions for victory_auditor_37
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_37\handoff.md — Independent post-victory audit report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_25\DISPATCH.md — Dispatch instructions for swe_25
