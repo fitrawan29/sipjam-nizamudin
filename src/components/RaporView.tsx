@@ -190,6 +190,14 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   // Fetch students, attendance, real Merdeka academic data, and notes for selected class
   const fetchClassData = useCallback(async () => {
     if (!selectedKelas) return;
+    if (catatanDebounceRef.current) {
+      clearTimeout(catatanDebounceRef.current);
+      catatanDebounceRef.current = null;
+    }
+    if (dlDebounceRef.current) {
+      clearTimeout(dlDebounceRef.current);
+      dlDebounceRef.current = null;
+    }
     setIsLoading(true);
     try {
       // 1. Fetch Students
@@ -409,7 +417,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   }, [fetchClassData]);
 
   // Save Catatan Wali to database Supabase & localStorage
-  const saveCatatanToSupabase = useCallback(async (dataToSave: Record<string, string>) => {
+  const saveCatatanToSupabase = useCallback(async (dataToSave: Record<string, string>, options: { throwOnError?: boolean } = {}) => {
+    if (!selectedKelas) return false;
     setIsSaving(true);
     setSaveStatus('Menyimpan...');
     const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
@@ -427,19 +436,24 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       };
       if (sekolahId) payload.sekolah_id = sekolahId;
 
-      const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: 'sekolah_id,key' });
+      const conflictTarget = sekolahId ? 'sekolah_id,key' : 'key';
+      const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: conflictTarget });
       if (error) throw error;
       setSaveStatus('Tersimpan di database');
+      return true;
     } catch (err) {
       console.error('Error saving catatan to database:', err);
       setSaveStatus('Tersimpan lokal');
+      if (options.throwOnError) throw err;
+      return false;
     } finally {
       setIsSaving(false);
     }
   }, [selectedKelas, selectedSemester, selectedTahunAjaran, sekolahId]);
 
   // Save Deep Learning observations to database Supabase & localStorage
-  const saveDlToSupabase = useCallback(async (dataToSave: Record<string, { mindful: string; meaningful: string; joyful: string }>) => {
+  const saveDlToSupabase = useCallback(async (dataToSave: Record<string, { mindful: string; meaningful: string; joyful: string }>, options: { throwOnError?: boolean } = {}) => {
+    if (!selectedKelas) return false;
     setIsSaving(true);
     setSaveStatus('Menyimpan...');
     const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
@@ -457,12 +471,16 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       };
       if (sekolahId) payload.sekolah_id = sekolahId;
 
-      const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: 'sekolah_id,key' });
+      const conflictTarget = sekolahId ? 'sekolah_id,key' : 'key';
+      const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: conflictTarget });
       if (error) throw error;
       setSaveStatus('Tersimpan di database');
+      return true;
     } catch (err) {
       console.error('Error saving deep learning to database:', err);
       setSaveStatus('Tersimpan lokal');
+      if (options.throwOnError) throw err;
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -510,17 +528,25 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Manual save trigger for Admin & Wali Kelas
   const handleManualSave = async () => {
+    if (!selectedKelas) {
+      showToast('Peringatan', 'Pilih kelas terlebih dahulu sebelum menyimpan rapor.', 'warning');
+      return;
+    }
     try {
       if (catatanDebounceRef.current) clearTimeout(catatanDebounceRef.current);
       if (dlDebounceRef.current) clearTimeout(dlDebounceRef.current);
       setIsSaving(true);
-      await Promise.all([
-        saveCatatanToSupabase(catatanRef.current),
-        saveDlToSupabase(dlRef.current)
+      const [catatanOk, dlOk] = await Promise.all([
+        saveCatatanToSupabase(catatanRef.current, { throwOnError: true }),
+        saveDlToSupabase(dlRef.current, { throwOnError: true })
       ]);
-      showToast('Tersimpan', 'Catatan wali & observasi deep learning berhasil disimpan ke database.', 'success');
+      if (catatanOk && dlOk) {
+        showToast('Tersimpan', 'Catatan wali & observasi deep learning berhasil disimpan ke database.', 'success');
+      } else {
+        showToast('Penyimpanan Lokal', 'Data disimpan di penyimpanan lokal.', 'info');
+      }
     } catch (err: any) {
-      showToast('Gagal', err.message || 'Gagal menyimpan data ke database', 'error');
+      showToast('Tersimpan Lokal', 'Data tersimpan di perangkat ini, namun gagal menyinkronkan ke server: ' + (err.message || 'Koneksi terputus'), 'warning');
     } finally {
       setIsSaving(false);
     }
@@ -920,7 +946,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         </div>
       ) : (
         /* TAB 2: CETAK INDIVIDU RAPOR KURIKULUM MERDEKA */
-        selectedStudent && (
+        selectedStudent ? (
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-10 shadow-sm border border-gray-100 dark:border-gray-700 print:p-0 print:border-none print:shadow-none">
             {/* SCHOOL PRINT HEADER */}
             <PrintHeader sekolahId={sekolahId} user={user} />
@@ -1038,31 +1064,40 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                     <span className="font-bold text-gray-900 dark:text-white">1. Mindful Learning (Kesadaran Belajar)</span>
                     <input 
                       type="text" 
-                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:border-none focus:border-teal-500" 
+                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
                       placeholder="Catatan mindfulness..." 
                       value={deepLearningMap[selectedStudent.nisn]?.mindful || ''}
                       onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'mindful', e.target.value)}
                     />
+                    <p className="hidden print:block text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs">
+                      {deepLearningMap[selectedStudent.nisn]?.mindful || '-'}
+                    </p>
                   </div>
                   <div className="flex flex-col py-1.5 px-3 border-b border-gray-100 dark:border-gray-700">
                     <span className="font-bold text-gray-900 dark:text-white">2. Meaningful Learning (Pemaknaan Materi)</span>
                     <input 
                       type="text" 
-                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:border-none focus:border-teal-500" 
+                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
                       placeholder="Catatan meaningfulness..." 
                       value={deepLearningMap[selectedStudent.nisn]?.meaningful || ''}
                       onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'meaningful', e.target.value)}
                     />
+                    <p className="hidden print:block text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs">
+                      {deepLearningMap[selectedStudent.nisn]?.meaningful || '-'}
+                    </p>
                   </div>
                   <div className="flex flex-col py-1.5 px-3">
                     <span className="font-bold text-gray-900 dark:text-white">3. Joyful Learning (Kegembiraan Belajar)</span>
                     <input 
                       type="text" 
-                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:border-none focus:border-teal-500" 
+                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
                       placeholder="Catatan joyfulness..." 
                       value={deepLearningMap[selectedStudent.nisn]?.joyful || ''}
                       onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'joyful', e.target.value)}
                     />
+                    <p className="hidden print:block text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs">
+                      {deepLearningMap[selectedStudent.nisn]?.joyful || '-'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1122,6 +1157,14 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 Cetak Rapor Resmi (GPS Verified)
               </button>
             </div>
+          </div>
+        ) : (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm border border-gray-100 dark:border-gray-700">
+            <i className="fa-solid fa-user-xmark text-3xl text-gray-400 mb-3"></i>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">Pilih Siswa Terlebih Dahulu</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Silakan pilih siswa dari menu dropdown di atas atau klik tombol &quot;Rapor&quot; pada tabel ringkasan.
+            </p>
           </div>
         )
       )}

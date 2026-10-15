@@ -185,6 +185,38 @@ async function main() {
     );
   });
 
+  runTest('AC4-04: Deep Learning observations support clean print formatting with hidden input and wrapped text', () => {
+    assert.ok(
+      content.includes('placeholder="Catatan mindfulness..."') &&
+      content.includes('deepLearningMap[selectedStudent.nisn]?.mindful || \'-\''),
+      'Must render print fallback paragraph for mindful learning'
+    );
+    assert.ok(
+      content.includes('placeholder="Catatan meaningfulness..."') &&
+      content.includes('deepLearningMap[selectedStudent.nisn]?.meaningful || \'-\''),
+      'Must render print fallback paragraph for meaningful learning'
+    );
+    assert.ok(
+      content.includes('placeholder="Catatan joyfulness..."') &&
+      content.includes('deepLearningMap[selectedStudent.nisn]?.joyful || \'-\''),
+      'Must render print fallback paragraph for joyful learning'
+    );
+  });
+
+  runTest('AC4-05: Safe multi-tenant onConflict resolution handles present and absent sekolah_id', () => {
+    assert.ok(
+      content.includes("const conflictTarget = sekolahId ? 'sekolah_id,key' : 'key';"),
+      'Must dynamically resolve conflict target for upserts'
+    );
+  });
+
+  runTest('AC4-06: Provides graceful UI fallback when no student is selected in Cetak Individu tab', () => {
+    assert.ok(
+      content.includes("Pilih Siswa Terlebih Dahulu"),
+      'Must render fallback card when selectedStudent is null in cetak-individu'
+    );
+  });
+
   console.log('\n================================================================');
   console.log(`  E-RAPOR TEST RESULTS: ${passedTests} / ${totalTests} PASSED`);
   console.log('================================================================\n');
