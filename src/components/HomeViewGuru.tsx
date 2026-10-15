@@ -394,7 +394,7 @@ export default function HomeViewGuru({
     
     const filledCount = Array.from(uniqueTargets).filter(target => {
        const [kelas, mapel] = target.split('_');
-       return dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel }));
+       return (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel }));
     }).length;
     
     const percentage = totalTarget > 0 ? Math.round((filledCount / totalTarget) * 100) : 100;
@@ -592,6 +592,7 @@ export default function HomeViewGuru({
     if (dailyState.presensiDatangDitolak) {
       // Presensi datang was rejected — show as needing re-submission
       steps.push({ label: 'Presensi Datang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-to-bracket' });
+      return steps;
     } else if (dailyState.presensiDatang) {
       const jp = dailyState.presensiDatang.jenis_presensi;
       const ts = dailyState.presensiDatang.timestamp || '';
@@ -603,7 +604,8 @@ export default function HomeViewGuru({
     }
 
     if (dailyState.isIzinSakit) {
-      steps.push({ label: 'Izin/Sakit', status: 'skipped', detail: `Status: ${dailyState.presensiDatang.jenis_presensi}`, icon: 'fa-bed' });
+      const statusLabel = dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.jenis_presensi || 'Izin/Sakit';
+      steps.push({ label: 'Izin/Sakit', status: 'skipped', detail: `Status: ${statusLabel}`, icon: 'fa-bed' });
       return steps;
     }
 
@@ -631,7 +633,7 @@ export default function HomeViewGuru({
         const canOpen = dailyState.canOpenJurnal;
         steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: canOpen ? 'active' : 'locked', detail: canOpen ? `Kegiatan: ${dailyState.blokInfo?.nama_kegiatan || 'Sistem Blok'}` : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
       }
-    } else if (dailyState.isDinasLuar || dailyState.jadwalKBM.length === 0) {
+    } else if (dailyState.isDinasLuar || (dailyState.jadwalKBM || []).length === 0) {
       if (hasJurnalDitolak) {
         steps.push({ label: 'Jurnal Kegiatan', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills' });
       } else if (dailyState.jurnalKegiatan) {
@@ -641,8 +643,8 @@ export default function HomeViewGuru({
         steps.push({ label: 'Jurnal Kegiatan', status: canOpen ? 'active' : 'locked', detail: canOpen ? 'Belum mengisi jurnal kegiatan' : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
       }
     } else {
-      const filled = dailyState.jurnalKBM.length;
-      const total = dailyState.jadwalKBM.length;
+      const filled = (dailyState.jurnalKBM || []).length;
+      const total = (dailyState.jadwalKBM || []).length;
       if (hasJurnalDitolak) {
         steps.push({ label: `Jurnal KBM`, status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri ditolak)`, icon: 'fa-book-journal-whills' });
       } else if (filled >= total) {
@@ -682,12 +684,12 @@ export default function HomeViewGuru({
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
-    if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
+    if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
     // Rejection messages take high priority — teacher must know to re-submit
     if (dailyState.presensiDatangDitolak) return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (!dailyState.presensiDatang) return { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.isPiket && dailyState.laporanPiketDitolak) return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan isi ulang di menu Piket.', color: 'text-red-600 dark:text-red-400' };
-    if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${dailyState.jurnalDitolak.length} jurnal Anda ditolak admin. Silakan isi ulang di menu Jurnal.`, color: 'text-red-600 dark:text-red-400' };
+    if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${(dailyState.jurnalDitolak || []).length} jurnal Anda ditolak admin. Silakan isi ulang di menu Jurnal.`, color: 'text-red-600 dark:text-red-400' };
     if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.isBlok && !dailyState.isNonTeachingDay && !dailyState.jurnalKegiatan) {
@@ -715,13 +717,13 @@ export default function HomeViewGuru({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm sm:text-base leading-tight truncate">{user.nama}</h2>
+                <h2 className="font-bold text-sm sm:text-base leading-tight truncate">{user?.nama || 'Guru'}</h2>
                 <span className="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">
-                  {user.role}
+                  {user?.role || 'Guru'}
                 </span>
               </div>
               <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
-                <span>{user.username}</span>
+                <span>{user?.username || ''}</span>
                 <span className="truncate font-sans font-medium">SMA NIZAMUDIN</span>
               </p>
             </div>
@@ -761,15 +763,15 @@ export default function HomeViewGuru({
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
               <div className="bg-emerald-50/80 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-900/30 flex flex-col items-center text-center shadow-sm">
                 <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">Presensi</span>
-                <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{teacherWarnings.stats.presensi.filled} <span className="text-[10px] sm:text-xs text-emerald-500 dark:text-emerald-600 font-bold">/ {teacherWarnings.stats.presensi.required}</span></span>
+                <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{teacherWarnings.stats.presensi?.filled ?? 0} <span className="text-[10px] sm:text-xs text-emerald-500 dark:text-emerald-600 font-bold">/ {teacherWarnings.stats.presensi?.required ?? 0}</span></span>
               </div>
               <div className="bg-indigo-50/80 dark:bg-indigo-950/20 p-2.5 rounded-xl border border-indigo-200/60 dark:border-indigo-900/30 flex flex-col items-center text-center shadow-sm">
                 <span className="text-[9px] sm:text-[10px] font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wide">Jurnal</span>
-                <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">{teacherWarnings.stats.jurnal.filled} <span className="text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-600 font-bold">/ {teacherWarnings.stats.jurnal.required}</span></span>
+                <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">{teacherWarnings.stats.jurnal?.filled ?? 0} <span className="text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-600 font-bold">/ {teacherWarnings.stats.jurnal?.required ?? 0}</span></span>
               </div>
               <div className="bg-teal-50/80 dark:bg-teal-950/20 p-2.5 rounded-xl border border-teal-200/60 dark:border-teal-900/30 flex flex-col items-center text-center shadow-sm">
                 <span className="text-[9px] sm:text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wide">Piket</span>
-                <span className="text-base sm:text-lg font-black text-teal-700 dark:text-teal-300 mt-0.5">{teacherWarnings.stats.piket.filled} <span className="text-[10px] sm:text-xs text-teal-500 dark:text-teal-600 font-bold">/ {teacherWarnings.stats.piket.required}</span></span>
+                <span className="text-base sm:text-lg font-black text-teal-700 dark:text-teal-300 mt-0.5">{teacherWarnings.stats.piket?.filled ?? 0} <span className="text-[10px] sm:text-xs text-teal-500 dark:text-teal-600 font-bold">/ {teacherWarnings.stats.piket?.required ?? 0}</span></span>
               </div>
             </div>
           )}
@@ -1156,8 +1158,8 @@ export default function HomeViewGuru({
             ) : (
               <div className="space-y-2.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {dailyState.jadwalKBM.map((jk: any, idx: number) => {
-                    const isFilled = dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk));
+                  {(dailyState.jadwalKBM || []).map((jk: any, idx: number) => {
+                    const isFilled = (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk));
                     const kelasStr = (jk.kelas || '').trim();
                     const gradeBadge = kelasStr.startsWith('X ') || kelasStr === 'X'
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
@@ -1211,8 +1213,8 @@ export default function HomeViewGuru({
                 <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-gray-500 dark:text-gray-400">
                   <span>
                     Progres Jurnal: <strong className="text-gray-900 dark:text-white">
-                      {dailyState.jadwalKBM.filter(jk => dailyState.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk))).length}
-                    </strong> dari <strong className="text-gray-900 dark:text-white">{dailyState.jadwalKBM.length}</strong> kelas selesai
+                      {(dailyState.jadwalKBM || []).filter(jk => (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk))).length}
+                    </strong> dari <strong className="text-gray-900 dark:text-white">{(dailyState.jadwalKBM || []).length}</strong> kelas selesai
                   </span>
                   <button
                     type="button"

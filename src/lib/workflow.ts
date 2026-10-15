@@ -164,6 +164,7 @@ export function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
  * Kita lakukan fuzzy matching.
  */
 export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
+  if (!jurnal || !jadwal) return false;
   const jMapel = (jurnal.mapel || '').toLowerCase();
   const jKelas = (jurnal.kelas || '').toLowerCase();
   const jdMapel = (jadwal.mata_pelajaran || '').toLowerCase();
@@ -577,13 +578,13 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       state.bebasAlpa = true;
     }
 
-    const jp = state.presensiDatang.jenis_presensi;
+    const jp = state.presensiDatang?.jenis_presensi;
     if (state.activeLeaveRecord || jp === 'Izin' || jp === 'Sakit') {
       state.isIzinSakit = true;
       state.bebasAlpa = true;
       state.isAlpa = false;
-      const rec = state.activeLeaveRecord || state.presensiDatang;
-      state.lockedReason = `Anda sedang ${rec.detail_izin || rec.jenis_presensi}${rec.durasi_hari ? ` (${rec.durasi_hari} hari)` : ''}. Tidak perlu mengisi Jurnal/Piket/Pulang.`;
+      const rec = state.activeLeaveRecord || state.presensiDatang || {};
+      state.lockedReason = `Anda sedang ${rec.detail_izin || rec.jenis_presensi || 'Izin/Sakit'}${rec.durasi_hari ? ` (${rec.durasi_hari} hari)` : ''}. Tidak perlu mengisi Jurnal/Piket/Pulang.`;
       return state;
     }
 

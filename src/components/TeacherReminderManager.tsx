@@ -221,8 +221,8 @@ export function evaluateReminderConditions(
 ): ReminderItem[] {
   const reminders: ReminderItem[] = [];
 
-  // If the day is a holiday or teacher is on approved sick/permission leave, skip all reminders
-  if (dailyState.isLibur || dailyState.isIzinSakit) {
+  // If dailyState is not ready, or the day is a holiday or teacher is on approved sick/permission leave, skip all reminders
+  if (!dailyState || dailyState.isLibur || dailyState.isIzinSakit) {
     return reminders;
   }
 
@@ -648,6 +648,9 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
   }
 
   const activeItem = reminders[currentIndex] || reminders[0];
+  if (!activeItem) {
+    return null;
+  }
   const hasMultiple = reminders.length > 1;
 
   const handleAction = () => {
