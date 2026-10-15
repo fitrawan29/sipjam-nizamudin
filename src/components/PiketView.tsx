@@ -130,13 +130,39 @@ export default function PiketView({ user }: { user: any }) {
   const [manualSearchQuery, setManualSearchQuery] = useState('');
   const [manualMarkLoading, setManualMarkLoading] = useState<string | null>(null);
 
-  // Audio feedback synthesizer via Web Audio API
+  // Audio feedback synthesizer via Web Audio API with shared context and lifecycle management
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  const getAudioContext = (): AudioContext | null => {
+    try {
+      if (typeof window === 'undefined') return null;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return null;
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new AudioCtx();
+      }
+      return audioCtxRef.current;
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+    };
+  }, []);
+
   const playAudioFeedback = (type: 'success' | 'warning' | 'error') => {
     try {
       if (typeof window === 'undefined') return;
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
-      const ctx = new AudioCtx();
+      const ctx = getAudioContext();
+      if (!ctx) return;
       if (ctx.state === 'suspended') {
         ctx.resume().catch(() => {});
       }
@@ -304,6 +330,7 @@ export default function PiketView({ user }: { user: any }) {
     if (isStartingCameraRef.current) return;
     isStartingCameraRef.current = true;
     setCameraError(null);
+    getAudioContext();
 
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraError('Browser ini tidak mendukung akses kamera langsung atau koneksi tidak aman (HTTPS diperlukan).');
@@ -361,6 +388,21 @@ export default function PiketView({ user }: { user: any }) {
         return;
       }
 
+      // Listen for unexpected track ending (e.g. phone call, app switch, camera seized by system)
+      stream.getVideoTracks().forEach(track => {
+        track.onended = () => {
+          if (isMountedRef.current && streamRef.current === stream) {
+            console.warn('[PiketView] Camera track ended unexpectedly');
+            if (videoRef.current) {
+              videoRef.current.srcObject = null;
+            }
+            streamRef.current = null;
+            setCameraActive(false);
+            setCameraError('Kamera terputus (aplikasi dialihkan atau digunakan sistem). Ketuk Buka Kamera untuk mengaktifkan kembali.');
+          }
+        };
+      });
+
       streamRef.current = stream;
 
       // Attach immediately if videoRef is already in DOM
@@ -398,6 +440,9 @@ export default function PiketView({ user }: { user: any }) {
 
   const stopCamera = () => {
     if (streamRef.current) {
+      try {
+        streamRef.current.getVideoTracks().forEach(track => { track.onended = null; });
+      } catch {}
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
@@ -429,6 +474,31 @@ export default function PiketView({ user }: { user: any }) {
     }
   }, [activeTab, cameraActive]);
 
+  // Handle visibility change to resume paused video or recover ended tracks
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && cameraActive && videoRef.current) {
+        const tracks = streamRef.current?.getVideoTracks() || [];
+        const anyEnded = tracks.some(t => t.readyState === 'ended');
+        if (anyEnded || (streamRef.current && !streamRef.current.active)) {
+          stopCamera();
+          setCameraError('Kamera terputus saat aplikasi di latar belakang. Ketuk Buka Kamera untuk melanjutkan.');
+        } else {
+          videoRef.current.play().catch(e => {
+            console.warn('[PiketView] Resume video play error on visible:', e);
+          });
+        }
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [cameraActive]);
+
   useEffect(() => {
     return () => {
       stopCamera();
@@ -454,7 +524,12 @@ export default function PiketView({ user }: { user: any }) {
       }
 
       intervalId = setInterval(async () => {
-        if (!videoRef.current || videoRef.current.readyState < 2 || isDetectingRef.current || isSubmittingPresensiRef.current) return;
+        if (!videoRef.current || videoRef.current.readyState < 2 || isDetectingRef.current || isSubmittingPresensiRef.current) {
+          if (videoRef.current && videoRef.current.paused && !videoRef.current.ended && cameraActive) {
+            videoRef.current.play().catch(() => {});
+          }
+          return;
+        }
         isDetectingRef.current = true;
         try {
           let rawVal: string | null = null;
@@ -551,6 +626,21 @@ export default function PiketView({ user }: { user: any }) {
       return;
     }
 
+    if (!user?.sekolah_id) {
+      playAudioFeedback('error');
+      setLastScanResult({
+        student: null,
+        status: scanMode,
+        success: false,
+        message: 'Akses ditolak: ID Sekolah belum terdefinisi pada akun guru piket.',
+        jam: getLocalCurrentTime()
+      });
+      showToast('Validasi Gagal', 'ID Sekolah akun belum terkonfigurasi. Silakan muat ulang.', 'error');
+      isSubmittingPresensiRef.current = false;
+      setScanProcessing(false);
+      return;
+    }
+
     try {
       // 1. Resolve student by code
       const { data: student, error: resolveErr } = await resolveStudentByCode(
@@ -568,6 +658,20 @@ export default function PiketView({ user }: { user: any }) {
           message: resolveErr?.message || `Siswa dengan kode "${code}" tidak ditemukan.`,
           jam: getLocalCurrentTime()
         });
+        return;
+      }
+
+      // Multi-tenant check: ensure student's sekolah_id strictly matches teacher's sekolah_id
+      if (student.sekolah_id && student.sekolah_id !== user.sekolah_id) {
+        playAudioFeedback('error');
+        setLastScanResult({
+          student: null,
+          status: scanMode,
+          success: false,
+          message: 'Akses ditolak: Siswa terdaftar di sekolah yang berbeda.',
+          jam: getLocalCurrentTime()
+        });
+        showToast('Akses Ditolak', 'Siswa terdaftar di sekolah yang berbeda.', 'error');
         return;
       }
 
@@ -2269,7 +2373,7 @@ export default function PiketView({ user }: { user: any }) {
                       )}
 
                       {cameraActive && (
-                        <div className="relative rounded-xl overflow-hidden bg-black aspect-video border-2 border-teal-500 shadow-inner">
+                        <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3] sm:aspect-video border-2 border-teal-500 shadow-inner">
                           <video
                             ref={(el) => {
                               videoRef.current = el;
@@ -2288,7 +2392,7 @@ export default function PiketView({ user }: { user: any }) {
                           />
                           {/* Scanner Reticle Overlay */}
                           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                            <div className="w-48 h-48 sm:w-56 sm:h-56 border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
+                            <div className="w-40 h-40 sm:w-56 sm:h-56 max-w-[75%] max-h-[75%] border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
                               <span className="text-[10px] text-teal-200 bg-black/60 px-2 py-0.5 rounded-full font-bold">
                                 Arahkan QR ke Sini
                               </span>
@@ -2906,7 +3010,7 @@ export default function PiketView({ user }: { user: any }) {
                     )}
 
                     {cameraActive && (
-                      <div className="relative rounded-xl overflow-hidden bg-black aspect-video max-w-md mx-auto border-2 border-teal-500 shadow-inner">
+                      <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3] sm:aspect-video max-w-md mx-auto border-2 border-teal-500 shadow-inner">
                         <video
                           ref={(el) => {
                             videoRef.current = el;
@@ -2924,7 +3028,7 @@ export default function PiketView({ user }: { user: any }) {
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                          <div className="w-44 h-44 border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
+                          <div className="w-36 h-36 xs:w-40 xs:h-40 sm:w-48 sm:h-48 max-w-[75%] max-h-[75%] border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
                             <span className="text-[10px] text-teal-200 bg-black/60 px-2 py-0.5 rounded-full font-bold">
                               Arahkan QR ke Sini
                             </span>

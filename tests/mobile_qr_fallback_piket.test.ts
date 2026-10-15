@@ -97,6 +97,36 @@ assert(
   'Scan mode toggle resets lastCameraScannedRef cooldown cache'
 );
 
+// 1.9 Unexpected camera track ending & visibility recovery handling
+assert(
+  piketCode.includes('track.onended') &&
+  piketCode.includes('visibilitychange') &&
+  piketCode.includes('Kamera terputus'),
+  'Camera lifecycle handles unexpected track disconnection and background visibility recovery'
+);
+
+// 1.10 Shared Web Audio context caching & gesture priming
+assert(
+  piketCode.includes('audioCtxRef') &&
+  piketCode.includes('getAudioContext') &&
+  piketCode.includes('getAudioContext()'),
+  'Web Audio API uses cached singleton AudioContext with gesture priming on camera activation'
+);
+
+// 1.11 Multi-tenant school isolation validation
+assert(
+  piketCode.includes('student.sekolah_id !== user.sekolah_id') &&
+  piketCode.includes('!user?.sekolah_id'),
+  'handleProcessScan enforces strict multi-tenant school isolation and rejects cross-school scans'
+);
+
+// 1.12 Responsive small-screen camera viewport (320px-428px)
+assert(
+  piketCode.includes('aspect-[4/3] sm:aspect-video') &&
+  piketCode.includes('max-w-[75%] max-h-[75%]'),
+  'Camera viewport and scanning reticle use responsive aspect ratio and bounds for small phone screens'
+);
+
 // ---------------------------------------------------------------------------
 // 2. Behavioral Simulation: Canvas jsQR Decoding of Student QR Cards
 // ---------------------------------------------------------------------------
@@ -321,6 +351,22 @@ async function testAttendanceFlow() {
   );
 
   assert(mockAttendanceStore.length === 2, 'Attendance store records both students consecutively');
+
+  // Step 6: Multi-tenant boundary check (cross-school lookup)
+  const crossResolve = await resolveStudentByCode(
+    mockSupabase,
+    decodedResult!.data,
+    'school-other-district'
+  );
+  assert(crossResolve.data === null, 'resolveStudentByCode enforces strict tenant isolation on QR scans');
+
+  // Step 7: Record without sekolah_id safety check
+  const noSchoolRecord = await recordPresensiSiswa(mockSupabase, {
+    siswa: { ...student!, sekolah_id: '' } as any,
+    status: 'datang',
+    sekolahId: ''
+  });
+  assert(noSchoolRecord.success === false && noSchoolRecord.error !== null, 'recordPresensiSiswa rejects attendance if sekolah_id is missing');
 
   console.log('\n====================================================');
   console.log(`RESULTS: Passed: ${passed} | Failed: ${failed}`);

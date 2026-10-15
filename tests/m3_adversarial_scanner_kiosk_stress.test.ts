@@ -240,7 +240,8 @@ async function runAdversarialScannerTests() {
   const crossRecord = await recordPresensiSiswa(mockClient, {
     siswa: mockStudentsSchoolB[0],
     status: 'datang',
-    sekolahId: SCHOOL_A
+    sekolahId: SCHOOL_A,
+    tanggal: '2026-10-04'
   });
   // Record should succeed or fail cleanly without cross-contaminating school data
   assert(
