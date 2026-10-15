@@ -42,6 +42,11 @@ export default function GuruJurnal({ user }: { user: any }) {
     sumber_perubahan: string;
     keterangan?: string | null;
   }>>({});
+  const [morningLockedAttendance, setMorningLockedAttendance] = useState<Record<string, {
+    status: 'H' | 'S' | 'I' | 'A';
+    label: string;
+    isLocked: boolean;
+  }>>({});
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
   const [dateBlok, setDateBlok] = useState<any | null>(null);
@@ -546,6 +551,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         setAbsensi({});
         setPiketAttendance({});
         setLastChangeMap({});
+        setMorningLockedAttendance({});
         setKehadiranMurid('');
         return;
       }
@@ -597,19 +603,36 @@ export default function GuruJurnal({ user }: { user: any }) {
         }
         setLastChangeMap(changeMap);
 
+        // Sinkronisasi Referensi Pagi:
+        // - Jika pagi diisi Sakit/Izin/Alfa: status di mapel otomatis terkunci sesuai status tersebut
+        // - Jika pagi diisi Hadir: status default awal di mapel adalah Hadir
         const initialAbsensi: Record<string, string> = {};
+        const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean }> = {};
+
         data.forEach(s => {
           const existing = absData?.find(a => a.nisn === s.nisn);
           if (existing) {
-            const st = existing.status || 'Hadir';
-            if (st === 'Sakit' || st === 'S') initialAbsensi[s.nisn] = 'S';
-            else if (st === 'Izin' || st === 'I') initialAbsensi[s.nisn] = 'I';
-            else if (st === 'Alpa' || st === 'A') initialAbsensi[s.nisn] = 'A';
-            else initialAbsensi[s.nisn] = 'H';
+            const rawSt = String(existing.status || '').trim().toLowerCase();
+            if (rawSt === 'sakit' || rawSt === 's') {
+              initialAbsensi[s.nisn] = 'S';
+              lockedMap[s.nisn] = { status: 'S', label: 'Sakit', isLocked: true };
+            } else if (rawSt === 'izin' || rawSt === 'i') {
+              initialAbsensi[s.nisn] = 'I';
+              lockedMap[s.nisn] = { status: 'I', label: 'Izin', isLocked: true };
+            } else if (rawSt === 'alpa' || rawSt === 'a' || rawSt === 'alfa') {
+              initialAbsensi[s.nisn] = 'A';
+              lockedMap[s.nisn] = { status: 'A', label: 'Alfa', isLocked: true };
+            } else {
+              initialAbsensi[s.nisn] = 'H';
+              lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false };
+            }
           } else {
             initialAbsensi[s.nisn] = 'H';
+            lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false };
           }
         });
+        setMorningLockedAttendance(lockedMap);
+
         setAbsensi((prevAbsensi) => {
           const hasMatchingStudent = data.some(s => s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
           if (hasMatchingStudent) {
@@ -631,6 +654,7 @@ export default function GuruJurnal({ user }: { user: any }) {
     let syncedCount = 0;
     const updatedLastChanges: Record<string, { diubah_oleh: string; sumber_perubahan: string; keterangan?: string | null }> = {};
     students.forEach(s => {
+      if (morningLockedAttendance[s.nisn]?.isLocked) return;
       const isPresentAtGate = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
       if (isPresentAtGate) {
         newAbsensi[s.nisn] = 'H';
@@ -650,6 +674,13 @@ export default function GuruJurnal({ user }: { user: any }) {
   };
 
   const handleAbsensiChange = async (nisn: string, status: string) => {
+    // Hak Intervensi Guru Mapel: Guru mapel hanya berhak mengubah siswa yang awalnya Hadir menjadi Alfa
+    if (morningLockedAttendance[nisn]?.isLocked) {
+      showToast('Presensi Terkunci', `Status ${morningLockedAttendance[nisn].label} ditentukan dari Presensi Kelas (Pagi) dan terkunci bagi Guru Mapel.`, 'info');
+      return;
+    }
+    if (status !== 'H' && status !== 'A') return;
+
     const newAbsensi = { ...absensi, [nisn]: status };
     setAbsensi(newAbsensi);
     setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
@@ -658,7 +689,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       [nisn]: {
         diubah_oleh: user?.nama || 'Guru Mapel',
         sumber_perubahan: 'Guru Mapel',
-        keterangan: prev[nisn]?.keterangan || null
+        keterangan: status === 'A' ? 'Alfa di Mapel (Memicu Status Bolos Harian)' : 'Hadir di Mapel'
       }
     }));
   };
@@ -1327,7 +1358,8 @@ export default function GuruJurnal({ user }: { user: any }) {
                             <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
                               {students.map((siswa, idx) => {
                                 const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
-                                const isTruant = Boolean(pRec && absensi[siswa.nisn] === 'A');
+                                const isMorningLocked = Boolean(morningLockedAttendance[siswa.nisn]?.isLocked);
+                                const isTruant = !isMorningLocked && absensi[siswa.nisn] === 'A';
                                 return (
                                   <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -1335,9 +1367,9 @@ export default function GuruJurnal({ user }: { user: any }) {
                                       <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 flex-wrap">
                                           <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
-                                          {isTruant && pRec ? (
+                                          {isTruant ? (
                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1 shrink-0 animate-pulse">
-                                              <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Hadir Gerbang {pRec.jam}, Alpa Mapel)
+                                              <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Alfa Mapel, Pagi Hadir)
                                             </span>
                                           ) : pRec ? (
                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
@@ -1364,24 +1396,42 @@ export default function GuruJurnal({ user }: { user: any }) {
                                         )}
                                       </div>
                                     </div>
-                                    <div className="flex gap-1 shrink-0">
-                                      {['H', 'S', 'I', 'A'].map(status => (
-                                        <button 
-                                          key={status}
-                                          type="button"
-                                          onClick={() => handleAbsensiChange(siswa.nisn, status)}
-                                          className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
-                                            absensi[siswa.nisn] === status 
-                                            ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
-                                               status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
-                                               status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
-                                               'bg-red-500 text-white shadow-sm') 
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                          }`}
-                                        >
-                                          {status}
-                                        </button>
-                                      ))}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {isMorningLocked ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs">
+                                          <i className="fa-solid fa-lock text-[9px] text-amber-600"></i>
+                                          <span>{morningLockedAttendance[siswa.nisn]?.label} (Terkunci)</span>
+                                        </span>
+                                      ) : (
+                                        <div className="flex items-center gap-1">
+                                          <button 
+                                            key="H"
+                                            type="button"
+                                            onClick={() => handleAbsensiChange(siswa.nisn, 'H')}
+                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                              absensi[siswa.nisn] === 'H' 
+                                                ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400' 
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                            }`}
+                                            title="Siswa hadir di jam pelajaran ini"
+                                          >
+                                            <i className="fa-solid fa-check text-[9px]"></i> Hadir
+                                          </button>
+                                          <button 
+                                            key="A"
+                                            type="button"
+                                            onClick={() => handleAbsensiChange(siswa.nisn, 'A')}
+                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                              absensi[siswa.nisn] === 'A' 
+                                                ? 'bg-red-600 text-white shadow-sm ring-1 ring-red-400' 
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                            }`}
+                                            title="Tandai Alfa (memicu status Bolos harian jika pagi hadir)"
+                                          >
+                                            <i className="fa-solid fa-xmark text-[9px]"></i> Alfa
+                                          </button>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                 );

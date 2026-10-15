@@ -268,6 +268,29 @@ async function runTests() {
     fail('DOMAIN-04', 'Perbedaan penamaan judul dan dropdown di RekapSiswaView belum lengkap');
   }
 
+  // 7.5 GuruJurnal implements morning locked attendance for Sakit/Izin/Alfa
+  if (jurnalCode.includes('morningLockedAttendance') && jurnalCode.includes('(Terkunci)') && jurnalCode.includes('isMorningLocked')) {
+    pass('DOMAIN-05', 'GuruJurnal mengunci status siswa yang di pagi hari berstatus Sakit/Izin/Alfa agar tidak dapat diubah Guru Mapel');
+  } else {
+    fail('DOMAIN-05', 'GuruJurnal belum mengunci status siswa Sakit/Izin/Alfa dari pagi');
+  }
+
+  // 7.6 GuruJurnal limits Guru Mapel intervention strictly to Hadir and Alfa
+  if (jurnalCode.includes("status !== 'H' && status !== 'A'") && jurnalCode.includes('Terindikasi Bolos (Alfa Mapel, Pagi Hadir)')) {
+    pass('DOMAIN-06', 'GuruJurnal membatasi hak intervensi Guru Mapel hanya pada opsi Hadir dan Alfa');
+  } else {
+    fail('DOMAIN-06', 'GuruJurnal belum membatasi opsi intervensi mapel hanya pada Hadir dan Alfa');
+  }
+
+  // 7.7 RekapSiswaView table and CSV display strictly Hadir, Alfa, and % Keaktifan KBM for Mapel
+  if (rekapCode.includes("mapel ? '% Keaktifan KBM' : '% Kehadiran'") &&
+      rekapCode.includes("['No', 'NISN', 'Nama Siswa', 'Hadir', 'Alfa', '% Keaktifan KBM']") &&
+      rekapCode.includes("['No', 'NISN', 'Nama Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Bolos', '% Kehadiran']")) {
+    pass('DOMAIN-07', 'RekapSiswaView memisahkan kolom UI dan CSV: Mapel (H/A/% Keaktifan KBM) vs Kelas Harian (H/S/I/A/B/% Kehadiran)');
+  } else {
+    fail('DOMAIN-07', 'Pemisahan kolom UI dan CSV antara mapel dan kelas harian di RekapSiswaView belum lengkap');
+  }
+
   // SECTION 8: STATUS BOLOS, FALLBACK SYSTEM, & 30-MINUTE PIKET PULANG WINDOW
   console.log(`\n${YELLOW}${BOLD}━━━ 8. VERIFY STATUS BOLOS, FALLBACK SYSTEM, & PIKET 30-MIN PULANG ━━━${RESET}`);
 

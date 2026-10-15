@@ -704,8 +704,10 @@ export default function RekapSiswaView({
 
       // Compute total sessions and attendance percentage per student: (total_present / total_students) * 100
       const result = Object.values(rekapMap).map(s => {
-        const total = s.hadir + s.sakit + s.izin + s.alpa + (s.bolos || 0);
-        // Formula: (total_present / total_students) * 100 with zero division guard
+        const total = !mapel
+          ? s.hadir + s.sakit + s.izin + s.alpa + (s.bolos || 0)
+          : s.hadir + s.alpa;
+        // Formula: (total_present / total_sessions) * 100 with zero division guard
         const persentase = total > 0 ? Math.round((s.hadir / total) * 100) : 0;
         return {
           ...s,
@@ -737,7 +739,9 @@ export default function RekapSiswaView({
   const totalIzin = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.izin || 0), 0) : 0;
   const totalAlpa = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.alpa || 0), 0) : 0;
   const totalBolos = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.bolos || 0), 0) : 0;
-  const totalAllSessions = totalHadir + totalSakit + totalIzin + totalAlpa + totalBolos;
+  const totalAllSessions = !mapel
+    ? totalHadir + totalSakit + totalIzin + totalAlpa + totalBolos
+    : totalHadir + totalAlpa;
   const avgKehadiran = totalAllSessions > 0 ? Math.round((totalHadir / totalAllSessions) * 100) : 0;
 
   // Calculate summary metrics for Gerbang Presensi
@@ -1457,35 +1461,42 @@ export default function RekapSiswaView({
             {rekapData ? (
               <div id="hasil-rekap-siswa" className="flex flex-col gap-4 fade-in">
                   {/* Summary Metric Cards */}
-                  <div className={`grid grid-cols-2 sm:grid-cols-3 ${!mapel ? 'md:grid-cols-7' : 'md:grid-cols-6'} gap-2 no-print`}>
+                  <div className={`grid grid-cols-2 sm:grid-cols-4 ${!mapel ? 'md:grid-cols-7' : 'md:grid-cols-4'} gap-2 no-print`}>
                       <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/50 p-2.5 rounded-xl text-center">
                           <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Total Siswa</div>
                           <div className="text-lg font-black text-teal-600 dark:text-teal-400">{totalSiswa}</div>
                       </div>
                       <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/50 p-2.5 rounded-xl text-center">
-                          <div className="text-xs font-bold text-green-800 dark:text-green-300">% Kehadiran</div>
+                          <div className="text-xs font-bold text-green-800 dark:text-green-300">{mapel ? '% Keaktifan KBM' : '% Kehadiran'}</div>
                           <div className="text-lg font-black text-green-600 dark:text-green-400">{avgKehadiran}%</div>
                       </div>
                       <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 p-2.5 rounded-xl text-center">
                           <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Total Hadir</div>
                           <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">{totalHadir}</div>
                       </div>
-                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/50 p-2.5 rounded-xl text-center">
-                          <div className="text-xs font-bold text-yellow-800 dark:text-yellow-300">Sakit</div>
-                          <div className="text-lg font-black text-yellow-600 dark:text-yellow-400">{totalSakit}</div>
-                      </div>
-                      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50 p-2.5 rounded-xl text-center">
-                          <div className="text-xs font-bold text-orange-800 dark:text-orange-300">Izin</div>
-                          <div className="text-lg font-black text-orange-600 dark:text-orange-400">{totalIzin}</div>
-                      </div>
-                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 p-2.5 rounded-xl text-center">
-                          <div className="text-xs font-bold text-red-800 dark:text-red-300">Alpa</div>
-                          <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
-                      </div>
-                      {!mapel && (
-                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/50 p-2.5 rounded-xl text-center">
-                            <div className="text-xs font-bold text-purple-800 dark:text-purple-300">Bolos</div>
-                            <div className="text-lg font-black text-purple-600 dark:text-purple-400">{totalBolos}</div>
+                      {!mapel ? (
+                        <>
+                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/50 p-2.5 rounded-xl text-center">
+                              <div className="text-xs font-bold text-yellow-800 dark:text-yellow-300">Sakit</div>
+                              <div className="text-lg font-black text-yellow-600 dark:text-yellow-400">{totalSakit}</div>
+                          </div>
+                          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50 p-2.5 rounded-xl text-center">
+                              <div className="text-xs font-bold text-orange-800 dark:text-orange-300">Izin</div>
+                              <div className="text-lg font-black text-orange-600 dark:text-orange-400">{totalIzin}</div>
+                          </div>
+                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 p-2.5 rounded-xl text-center">
+                              <div className="text-xs font-bold text-red-800 dark:text-red-300">Alpa</div>
+                              <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
+                          </div>
+                          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/50 p-2.5 rounded-xl text-center">
+                              <div className="text-xs font-bold text-purple-800 dark:text-purple-300">Bolos</div>
+                              <div className="text-lg font-black text-purple-600 dark:text-purple-400">{totalBolos}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 p-2.5 rounded-xl text-center">
+                            <div className="text-xs font-bold text-red-800 dark:text-red-300">Total Alfa</div>
+                            <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
                         </div>
                       )}
                   </div>
@@ -1522,13 +1533,19 @@ export default function RekapSiswaView({
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black w-28">NISN</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black">Nama Siswa</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-emerald-700 dark:text-emerald-400 print:text-black">Hadir</th>
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                              {!mapel && (
+                                <>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
+                                </>
+                              )}
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-red-700 dark:text-red-400 print:text-black">{mapel ? 'Alfa' : 'Alpa'}</th>
                               {!mapel && (
                                 <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-purple-700 dark:text-purple-400 print:text-black">Bolos</th>
                               )}
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-24 text-blue-700 dark:text-blue-400 print:text-black">% Kehadiran</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-24 text-blue-700 dark:text-blue-400 print:text-black">
+                                {mapel ? '% Keaktifan KBM' : '% Kehadiran'}
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1538,8 +1555,12 @@ export default function RekapSiswaView({
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-mono text-[11px] print:text-[8pt]">{s.nisn || '-'}</td>
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold">{s.nama_siswa}</td>
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-emerald-700 dark:text-emerald-400 print:text-black">{s.hadir > 0 ? s.hadir : '-'}</td>
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-yellow-700 dark:text-yellow-400 print:text-black">{s.sakit > 0 ? s.sakit : '-'}</td>
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-orange-700 dark:text-orange-400 print:text-black">{s.izin > 0 ? s.izin : '-'}</td>
+                                {!mapel && (
+                                  <>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-yellow-700 dark:text-yellow-400 print:text-black">{s.sakit > 0 ? s.sakit : '-'}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-orange-700 dark:text-orange-400 print:text-black">{s.izin > 0 ? s.izin : '-'}</td>
+                                  </>
+                                )}
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-red-700 dark:text-red-400 print:text-black">{s.alpa > 0 ? s.alpa : '-'}</td>
                                 {!mapel && (
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-purple-700 dark:text-purple-400 print:text-black">{s.bolos > 0 ? s.bolos : '-'}</td>
@@ -1551,7 +1572,7 @@ export default function RekapSiswaView({
                             ))}
                             {filteredData.length === 0 && (
                               <tr>
-                                <td colSpan={!mapel ? 9 : 8} className="text-center py-6 italic text-gray-500 dark:text-gray-400 text-xs">
+                                <td colSpan={!mapel ? 9 : 6} className="text-center py-6 italic text-gray-500 dark:text-gray-400 text-xs">
                                   {search ? 'Tidak ada siswa yang cocok dengan kata kunci pencarian.' : 'Tidak ada data siswa untuk kelas tersebut.'}
                                 </td>
                               </tr>
@@ -1572,14 +1593,14 @@ export default function RekapSiswaView({
                         if (!rekapData || rekapData.length === 0) return;
                         const headers = !mapel
                           ? ['No', 'NISN', 'Nama Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Bolos', '% Kehadiran']
-                          : ['No', 'NISN', 'Nama Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', '% Kehadiran'];
+                          : ['No', 'NISN', 'Nama Siswa', 'Hadir', 'Alfa', '% Keaktifan KBM'];
                         const csvRows = [headers.join(',')];
                         rekapData.forEach((r: any, i: number) => {
                           const persentaseStr = r.total > 0 ? `${r.persentase}%` : '0%';
                           if (!mapel) {
                             csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.hadir||0, r.sakit||0, r.izin||0, r.alpa||0, r.bolos||0, `"${persentaseStr}"`].join(','));
                           } else {
-                            csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.hadir||0, r.sakit||0, r.izin||0, r.alpa||0, `"${persentaseStr}"`].join(','));
+                            csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.hadir||0, r.alpa||0, `"${persentaseStr}"`].join(','));
                           }
                         });
                         const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
