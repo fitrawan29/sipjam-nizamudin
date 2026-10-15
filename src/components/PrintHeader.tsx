@@ -194,6 +194,7 @@ export interface PrintSignatureProps {
   rightTitle?: string;
   rightName?: string;
   rightNip?: string;
+  showKepalaSekolah?: boolean;
   singleColumn?: boolean;
   sekolahId?: string;
   user?: any;
@@ -213,6 +214,7 @@ export function PrintSignature({
   rightTitle,
   rightName,
   rightNip,
+  showKepalaSekolah = false,
   singleColumn = false,
   sekolahId,
   user,
@@ -379,6 +381,26 @@ export function PrintSignature({
           </div>
         </div>
       </div>
+
+      {showKepalaSekolah && (
+        <div className="print-only print-signature text-center mt-6 min-w-[200px] text-black mx-auto w-full flex flex-col items-center page-break-inside-avoid">
+          <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
+            Mengetahui,
+          </span>
+          <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
+            {defaultKepalaTitle}
+          </span>
+          <div className="h-16 sm:h-20" />
+          <div className="inline-block text-left">
+            <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+              {config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || 'Kepala Sekolah'}
+            </span>
+            <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+              {config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah ? `NIP. ${config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah}` : 'NIP. -'}
+            </span>
+          </div>
+        </div>
+      )}
       
       {/* Security Footer (2 baris di bawah NIP) with GPS Coordinates */}
       {(() => {

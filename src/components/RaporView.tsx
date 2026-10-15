@@ -7,7 +7,7 @@ import { showToast } from '@/lib/toast';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { generateKurikulumMerdekaDeskripsi } from './GradebookView';
-import { TujuanPembelajaran, AsesmenKolom } from '@/types/database';
+import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/database';
 
 interface RaporViewProps {
   user: any;
@@ -59,6 +59,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Real Kurikulum Merdeka Academic Pipeline
   const [activeMapels, setActiveMapels] = useState<string[]>([]);
+  const [cpList, setCpList] = useState<CapaianPembelajaran[]>([]);
   const [tpList, setTpList] = useState<TujuanPembelajaran[]>([]);
   const [columnsList, setColumnsList] = useState<AsesmenKolom[]>([]);
   const [gradesMap, setGradesMap] = useState<Record<string, Record<string, number | null>>>({});
@@ -73,6 +74,25 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   // Debounce refs for persistent Supabase autosave
   const catatanDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const dlDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const catatanRef = useRef(catatanWaliMap);
+  catatanRef.current = catatanWaliMap;
+  const dlRef = useRef(deepLearningMap);
+  dlRef.current = deepLearningMap;
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      if (catatanDebounceRef.current) clearTimeout(catatanDebounceRef.current);
+      if (dlDebounceRef.current) clearTimeout(dlDebounceRef.current);
+    };
+  }, []);
+
+  // Synchronize non-admin homeroom teacher's selectedKelas with assignedKelas
+  useEffect(() => {
+    if (!isAdmin && assignedKelas && selectedKelas !== assignedKelas) {
+      setSelectedKelas(assignedKelas);
+    }
+  }, [isAdmin, assignedKelas, selectedKelas]);
 
   // Fetch available classes (all active classes in school for Admin)
   useEffect(() => {
@@ -116,33 +136,39 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       try {
         let wQuery = supabase
           .from('wali_kelas')
-          .select('nama_guru, nip, kelas');
+          .select('nama_guru, nip, kelas, tahun_ajaran')
+          .eq('kelas', selectedKelas);
         if (sekolahId) wQuery = wQuery.eq('sekolah_id', sekolahId);
-        wQuery = wQuery.eq('kelas', selectedKelas);
-        const { data: wData } = await wQuery.maybeSingle();
+        const { data: wList } = await wQuery;
 
-        if (wData && wData.nama_guru) {
+        const matchingWali = (wList || []).find((w: any) => w.tahun_ajaran === selectedTahunAjaran) || (wList || [])[0];
+
+        if (matchingWali && matchingWali.nama_guru) {
           setAssignedWaliInfo({
-            nama_guru: wData.nama_guru,
-            nip: wData.nip || null
+            nama_guru: matchingWali.nama_guru,
+            nip: matchingWali.nip && matchingWali.nip !== '-' ? matchingWali.nip : null
           });
           return;
         }
 
-        // Fallback: check data_guru for wali_kelas field
-        let gQuery = supabase
-          .from('data_guru')
-          .select('nama_guru, nip, wali_kelas');
-        if (sekolahId) gQuery = gQuery.eq('sekolah_id', sekolahId);
-        gQuery = gQuery.eq('wali_kelas', selectedKelas);
-        const { data: gData } = await gQuery.maybeSingle();
+        // Fallback: check data_guru for wali_kelas field if schema permits
+        try {
+          let gQuery = supabase
+            .from('data_guru')
+            .select('nama_guru, nip, wali_kelas');
+          if (sekolahId) gQuery = gQuery.eq('sekolah_id', sekolahId);
+          gQuery = gQuery.eq('wali_kelas', selectedKelas);
+          const { data: gData } = await gQuery.maybeSingle();
 
-        if (gData && gData.nama_guru) {
-          setAssignedWaliInfo({
-            nama_guru: gData.nama_guru,
-            nip: gData.nip || null
-          });
-          return;
+          if (gData && gData.nama_guru) {
+            setAssignedWaliInfo({
+              nama_guru: gData.nama_guru,
+              nip: gData.nip || null
+            });
+            return;
+          }
+        } catch {
+          // ignore data_guru schema mismatch
         }
 
         // Fallback for teacher assigned to this class
@@ -159,7 +185,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       }
     };
     fetchWaliKelasInfo();
-  }, [selectedKelas, sekolahId, user, isAdmin, assignedKelas]);
+  }, [selectedKelas, sekolahId, user, isAdmin, assignedKelas, selectedTahunAjaran]);
 
   // Fetch students, attendance, real Merdeka academic data, and notes for selected class
   const fetchClassData = useCallback(async () => {
@@ -239,7 +265,25 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         }
       }
 
-      // 4. Fetch Tujuan Pembelajaran (tujuan_pembelajaran)
+      // 4. Fetch Capaian Pembelajaran (capaian_pembelajaran)
+      let cpQuery = supabase
+        .from('capaian_pembelajaran')
+        .select('id, kode_cp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
+        .eq('kelas', selectedKelas)
+        .eq('semester', selectedSemester)
+        .eq('tahun_ajaran', selectedTahunAjaran);
+      if (sekolahId) cpQuery = cpQuery.eq('sekolah_id', sekolahId);
+      const { data: cpData } = await cpQuery.order('urutan', { ascending: true });
+      const currentCps = (cpData || []) as CapaianPembelajaran[];
+      setCpList(currentCps);
+
+      currentCps.forEach(cp => {
+        if (cp.nama_mapel && !mapels.includes(cp.nama_mapel)) {
+          mapels.push(cp.nama_mapel);
+        }
+      });
+
+      // 5. Fetch Tujuan Pembelajaran (tujuan_pembelajaran)
       let tpQuery = supabase
         .from('tujuan_pembelajaran')
         .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
@@ -259,7 +303,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       mapels.sort();
       setActiveMapels(mapels);
 
-      // 5. Fetch Asesmen Kolom (asesmen_kolom)
+      // 6. Fetch Asesmen Kolom (asesmen_kolom)
       const tpIds = currentTps.map(tp => tp.id);
       let currentCols: AsesmenKolom[] = [];
       if (tpIds.length > 0) {
@@ -273,7 +317,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       }
       setColumnsList(currentCols);
 
-      // 6. Fetch Nilai Siswa (nilai_siswa)
+      // 7. Fetch Nilai Siswa (nilai_siswa)
       const currentGrades: Record<string, Record<string, number | null>> = {};
       let nsQuery = supabase
         .from('nilai_siswa')
@@ -295,7 +339,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       }
       setGradesMap(currentGrades);
 
-      // 7. Load saved teacher notes from database Supabase (pengaturan) with localStorage fallback
+      // 8. Load saved teacher notes from database Supabase (pengaturan) with localStorage fallback
       const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
       let loadedNotes: Record<string, string> = {};
       try {
@@ -304,6 +348,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         const { data: nDb } = await nQuery.maybeSingle();
         if (nDb?.value) {
           loadedNotes = JSON.parse(nDb.value);
+          if (typeof window !== 'undefined') {
+            try { localStorage.setItem(notesKey, nDb.value); } catch {}
+          }
         }
       } catch (err) {
         console.warn('[RaporView] Cloud notes load error:', err);
@@ -318,9 +365,10 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           }
         }
       }
+      catatanRef.current = loadedNotes;
       setCatatanWaliMap(loadedNotes);
 
-      // 8. Load saved Deep Learning observations from database Supabase (pengaturan) with localStorage fallback
+      // 9. Load saved Deep Learning observations from database Supabase (pengaturan) with localStorage fallback
       const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
       let loadedDl: Record<string, { mindful: string; meaningful: string; joyful: string }> = {};
       try {
@@ -329,6 +377,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         const { data: dlDb } = await dlQuery.maybeSingle();
         if (dlDb?.value) {
           loadedDl = JSON.parse(dlDb.value);
+          if (typeof window !== 'undefined') {
+            try { localStorage.setItem(dlKey, dlDb.value); } catch {}
+          }
         }
       } catch (err) {
         console.warn('[RaporView] Cloud deep learning load error:', err);
@@ -343,6 +394,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           }
         }
       }
+      dlRef.current = loadedDl;
       setDeepLearningMap(loadedDl);
     } catch (err: any) {
       console.error('Error fetching class data for rapor:', err);
@@ -418,7 +470,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Handle Catatan Change with Debounced Auto-save
   const handleCatatanChange = (nisn: string, text: string) => {
-    const updated = { ...catatanWaliMap, [nisn]: text };
+    const updated = { ...catatanRef.current, [nisn]: text };
+    catatanRef.current = updated;
     setCatatanWaliMap(updated);
     const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
     if (typeof window !== 'undefined') {
@@ -436,9 +489,10 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Handle Deep Learning Change with Debounced Auto-save
   const handleDeepLearningChange = (nisn: string, field: 'mindful' | 'meaningful' | 'joyful', text: string) => {
-    const prev = deepLearningMap[nisn] || { mindful: '', meaningful: '', joyful: '' };
+    const prev = dlRef.current[nisn] || { mindful: '', meaningful: '', joyful: '' };
     const updatedObj = { ...prev, [field]: text };
-    const updatedMap = { ...deepLearningMap, [nisn]: updatedObj };
+    const updatedMap = { ...dlRef.current, [nisn]: updatedObj };
+    dlRef.current = updatedMap;
     setDeepLearningMap(updatedMap);
     const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
     if (typeof window !== 'undefined') {
@@ -457,10 +511,12 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   // Manual save trigger for Admin & Wali Kelas
   const handleManualSave = async () => {
     try {
+      if (catatanDebounceRef.current) clearTimeout(catatanDebounceRef.current);
+      if (dlDebounceRef.current) clearTimeout(dlDebounceRef.current);
       setIsSaving(true);
       await Promise.all([
-        saveCatatanToSupabase(catatanWaliMap),
-        saveDlToSupabase(deepLearningMap)
+        saveCatatanToSupabase(catatanRef.current),
+        saveDlToSupabase(dlRef.current)
       ]);
       showToast('Tersimpan', 'Catatan wali & observasi deep learning berhasil disimpan ke database.', 'success');
     } catch (err: any) {
@@ -1040,6 +1096,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               rightTitle={`Wali Kelas ${selectedKelas}`}
               rightName={assignedWaliInfo?.nama_guru || (!isAdmin ? user?.nama : '') || '...........................................'}
               rightNip={assignedWaliInfo?.nip ?? (!isAdmin ? user?.nip : undefined)}
+              showKepalaSekolah={true}
               user={user}
               sekolahId={sekolahId || undefined}
             />

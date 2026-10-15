@@ -74,7 +74,11 @@ async function main() {
     );
   });
 
-  runTest('AC2-02: Queries tujuan_pembelajaran, asesmen_kolom, and nilai_siswa', () => {
+  runTest('AC2-02: Queries capaian_pembelajaran, tujuan_pembelajaran, asesmen_kolom, and nilai_siswa', () => {
+    assert.ok(
+      content.includes(".from('capaian_pembelajaran')"),
+      'Must query capaian_pembelajaran'
+    );
     assert.ok(
       content.includes(".from('tujuan_pembelajaran')"),
       'Must query tujuan_pembelajaran'
@@ -131,7 +135,7 @@ async function main() {
     assert.ok(html.includes('Wali Kelas'), 'Header must contain Wali Kelas badge for teacher');
   });
 
-  runTest('AC3-04: Queries assigned wali_kelas and data_guru for dynamic print signature', () => {
+  runTest('AC3-04: Queries assigned wali_kelas and data_guru for dynamic print signature and includes Kepala Sekolah', () => {
     assert.ok(
       content.includes(".from('wali_kelas')") && content.includes("setAssignedWaliInfo"),
       'Must fetch assigned wali kelas info for print signature'
@@ -139,6 +143,10 @@ async function main() {
     assert.ok(
       content.includes("rightName={assignedWaliInfo?.nama_guru"),
       'PrintSignature must prioritize assigned wali kelas name'
+    );
+    assert.ok(
+      content.includes("showKepalaSekolah={true}"),
+      'PrintSignature must include Kepala Sekolah accompanying Wali Kelas and Orang Tua'
     );
   });
 
