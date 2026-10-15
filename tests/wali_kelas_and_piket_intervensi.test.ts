@@ -220,6 +220,40 @@ async function runTests() {
     fail('DASH-02', 'isWaliKelasIntervensiAllowed tidak diintegrasikan di HomeViewGuru');
   }
 
+  // SECTION 7: SEPARATION OF ABSENSI KELAS (HARIAN) & PRESENSI MAPEL
+  console.log(`\n${YELLOW}${BOLD}━━━ 7. VERIFY SEPARATION OF ABSENSI KELAS VS PRESENSI MAPEL ━━━${RESET}`);
+
+  // 7.1 GuruJurnal does NOT overwrite public.absensi
+  if (!jurnalCode.includes("supabase.from('absensi').upsert")) {
+    pass('DOMAIN-01', 'GuruJurnal terisolasi dari tabel public.absensi (tidak menimpa absensi kelas harian)');
+  } else {
+    fail('DOMAIN-01', 'GuruJurnal masih melakukan upsert ke tabel public.absensi');
+  }
+
+  // 7.2 GuruJurnal UI states subject attendance clearly
+  if (jurnalCode.includes('Presensi Siswa Mapel:') && jurnalCode.includes('tidak mengubah absensi kelas harian')) {
+    pass('DOMAIN-02', 'Form GuruJurnal secara eksplisit melabeli presensi sebagai presensi mapel');
+  } else {
+    fail('DOMAIN-02', 'Label presensi mapel di GuruJurnal tidak ditemukan');
+  }
+
+  // 7.3 RekapSiswaView separates Domain 1 (absensi kelas harian) and Domain 2 (presensi mapel)
+  if (rekapCode.includes('DOMAIN 1: PRESENSI SISWA (ABSENSI KELAS HARIAN MEREKA)') &&
+      rekapCode.includes('DOMAIN 2: PRESENSI MAPEL (ABSENSI SESI MATA PELAJARAN TERSEBUT)')) {
+    pass('DOMAIN-03', 'RekapSiswaView memisahkan query absensi kelas harian (public.absensi) & presensi mapel (jurnal_pembelajaran)');
+  } else {
+    fail('DOMAIN-03', 'Pemisahan domain absensi kelas dan presensi mapel tidak ditemukan di RekapSiswaView');
+  }
+
+  // 7.4 RekapSiswaView UI header and options distinction
+  if (rekapCode.includes('Semua Mapel (Rekap Absensi Kelas Harian)') &&
+      rekapCode.includes('Rekapitulasi Presensi Mata Pelajaran:') &&
+      rekapCode.includes('Rekapitulasi Absensi Kelas (Harian)')) {
+    pass('DOMAIN-04', 'RekapSiswaView memberikan penamaan judul, dropdown, dan cetak yang membedakan absensi kelas vs presensi mapel');
+  } else {
+    fail('DOMAIN-04', 'Perbedaan penamaan judul dan dropdown di RekapSiswaView belum lengkap');
+  }
+
   // SUMMARY
   console.log(`\n${CYAN}══════════════════════════════════════════════════════════════════════${RESET}`);
   console.log(`${BOLD}SUMMARY: Total ${totalTests} | Passed: ${passedTests} | Failed: ${failedTests}${RESET}`);

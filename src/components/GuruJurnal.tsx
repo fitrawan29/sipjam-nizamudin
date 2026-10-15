@@ -661,50 +661,6 @@ export default function GuruJurnal({ user }: { user: any }) {
         keterangan: prev[nisn]?.keterangan || null
       }
     }));
-
-    // Live sync to public.absensi
-    const student = students.find(s => s.nisn === nisn);
-    if (student && tanggal && kelas) {
-      const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
-        H: 'Hadir',
-        S: 'Sakit',
-        I: 'Izin',
-        A: 'Alpa'
-      };
-      const fullStatus = statusMap[status] || 'Hadir';
-      const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-
-      const pRec = (student.nisn && piketAttendance[student.nisn]) || (student.id && piketAttendance[student.id]) || piketAttendance[nisn];
-      const isTruant = status === 'A' && Boolean(pRec);
-
-      let aQ = supabase.from('absensi').select('log_perubahan, keterangan').eq('tanggal', tanggal).eq('nisn', nisn);
-      if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
-      const { data: existing } = await aQ;
-      const prevLogs = (existing && existing[0]?.log_perubahan) || [];
-
-      let logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user?.nama || 'Guru Mapel'} (Guru Mapel)`;
-      let noteKeterangan = existing && existing[0]?.keterangan ? existing[0].keterangan : null;
-
-      if (isTruant && pRec) {
-        logEntry = `[${nowWita} WITA] Terindikasi Bolos: Hadir di Gerbang Piket (${pRec.jam}), tetapi ditandai Alpa oleh ${user?.nama || 'Guru Mapel'} (${mapel || 'Mapel'})`;
-        noteKeterangan = `Terindikasi Bolos (Hadir Gerbang ${pRec.jam}, Alpa Mapel)`;
-      }
-
-      supabase.from('absensi').upsert([{
-        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
-        tanggal: tanggal,
-        kelas: kelas,
-        siswa_id: student.id,
-        nisn: student.nisn,
-        nama_siswa: student.nama_siswa,
-        status: fullStatus,
-        sumber_perubahan: 'Guru Mapel',
-        diubah_oleh: user?.nama || 'Guru Mapel',
-        keterangan: noteKeterangan,
-        log_perubahan: [...prevLogs, logEntry],
-        updated_at: new Date().toISOString()
-      }], { onConflict: 'sekolah_id, tanggal, nisn' }).then(null, console.error);
-    }
   };
 
   // R4: Capture GPS Geolocation on gallery upload
@@ -888,51 +844,9 @@ export default function GuruJurnal({ user }: { user: any }) {
 
       if (error) {
         showToast('Gagal Menyimpan Jurnal', 'Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran. ' + (error.message || 'Silakan periksa koneksi Anda dan coba lagi.'), 'error');
-      } else {
-        // Sync student attendance to canonical public.absensi
-        if (tipeJurnal === 'Jurnal KBM' && students.length > 0) {
-          try {
-            const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
-              H: 'Hadir',
-              S: 'Sakit',
-              I: 'Izin',
-              A: 'Alpa'
-            };
-            const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-
-            let aQ = supabase.from('absensi').select('nisn, log_perubahan').eq('tanggal', tanggal).eq('kelas', kelas);
-            if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
-            const { data: existingAbs } = await aQ;
-            const existingMap = new Map(existingAbs?.map(a => [a.nisn, a.log_perubahan || []]));
-
-            const absensiRows = students.map(s => {
-              const statusCode = absensi[s.nisn] || 'H';
-              const fullStatus = statusMap[statusCode] || 'Hadir';
-              const prevLogs = existingMap.get(s.nisn) || [];
-              const logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user.nama} (Guru Mapel)`;
-
-              return {
-                sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
-                tanggal: tanggal,
-                kelas: kelas,
-                siswa_id: s.id,
-                nisn: s.nisn,
-                nama_siswa: s.nama_siswa,
-                status: fullStatus,
-                sumber_perubahan: 'Guru Mapel',
-                diubah_oleh: user.nama,
-                log_perubahan: [...prevLogs, logEntry],
-                updated_at: new Date().toISOString()
-              };
-            });
-
-            await supabase.from('absensi').upsert(absensiRows, { onConflict: 'sekolah_id, tanggal, nisn' });
-          } catch (syncErr) {
-            console.error('Error synchronizing attendance to public.absensi:', syncErr);
-          }
-        }
-
-        showToast('Berhasil', 'Jurnal berhasil disimpan dan presensi disinkronkan!', 'success', {
+        // Presensi mapel tersimpan di jurnal_pembelajaran (absensi_siswa & kehadiran_murid)
+        // Tanpa menimpa tabel public.absensi (absensi kelas harian tetap dipegang Wali Kelas & Piket)
+        showToast('Berhasil', 'Jurnal KBM dan presensi mapel berhasil disimpan!', 'success', {
           toast: true,
           position: 'top-end',
           timer: 3000,
@@ -1345,9 +1259,14 @@ export default function GuruJurnal({ user }: { user: any }) {
                               </div>
                             )}
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                              <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <i className="fa-solid fa-users text-blue-500 dark:text-blue-400"></i> Live Absensi Kelas {kelas}
-                              </h3>
+                              <div>
+                                <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                  <i className="fa-solid fa-book-open-reader text-blue-500 dark:text-blue-400"></i> Presensi Siswa Mapel: {mapel || 'Pembelajaran'} (Kelas {kelas})
+                                </h3>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                  Mencatat kehadiran khusus jam pelajaran ini (tidak mengubah absensi kelas harian).
+                                </p>
+                              </div>
                               <button
                                 type="button"
                                 onClick={handleApplyPiketAttendance}

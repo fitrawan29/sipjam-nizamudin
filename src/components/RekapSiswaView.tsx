@@ -497,30 +497,6 @@ export default function RekapSiswaView({
       if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
       const { data: siswa } = await siswaQuery;
 
-      // Fetch jurnal for this class & mapel within date
-      let query = supabase
-        .from('jurnal_pembelajaran')
-        .select('absensi_siswa, detail_absen, tanggal, kehadiran_murid')
-        .eq('kelas', targetKelas)
-        .order('tanggal', { ascending: true });
-
-      if (user?.sekolah_id) query = query.eq('sekolah_id', user.sekolah_id);
-      if (mapel) query = query.eq('mapel', mapel);
-      if (startDate) query = query.gte('tanggal', startDate);
-      if (endDate) query = query.lte('tanggal', endDate);
-
-      const { data: jurnal } = await query;
-
-      // Also fetch direct absensi (e.g. recorded by Wali Kelas)
-      let absensiQuery = supabase
-        .from('absensi')
-        .select('*')
-        .eq('kelas', targetKelas);
-      if (user?.sekolah_id) absensiQuery = absensiQuery.eq('sekolah_id', user.sekolah_id);
-      if (startDate) absensiQuery = absensiQuery.gte('tanggal', startDate);
-      if (endDate) absensiQuery = absensiQuery.lte('tanggal', endDate);
-      const { data: directAbsensi } = await absensiQuery;
-
       // Process rekap: initialize with hadir: 0
       const rekapMap: Record<string, any> = {};
       siswa?.forEach(s => {
@@ -535,114 +511,155 @@ export default function RekapSiswaView({
         };
       });
 
-      // Parse multi-format student attendance from journals
-      jurnal?.forEach(j => {
-        let absensiJson: Record<string, string> | null = null;
-        if (j.absensi_siswa && typeof j.absensi_siswa === 'string' && j.absensi_siswa.trim().startsWith('{')) {
-          try {
-            absensiJson = JSON.parse(j.absensi_siswa);
-          } catch (_) {
-            absensiJson = null;
-          }
+      if (!mapel) {
+        // =========================================================================
+        // DOMAIN 1: PRESENSI SISWA (ABSENSI KELAS HARIAN MEREKA)
+        // Sumber data: tabel public.absensi (dicatat oleh Wali Kelas & Piket)
+        // =========================================================================
+        let absensiQuery = supabase
+          .from('absensi')
+          .select('tanggal, nisn, nama_siswa, status')
+          .eq('kelas', targetKelas);
+        if (user?.sekolah_id) absensiQuery = absensiQuery.eq('sekolah_id', user.sekolah_id);
+        if (startDate) absensiQuery = absensiQuery.gte('tanggal', startDate);
+        if (endDate) absensiQuery = absensiQuery.lte('tanggal', endDate);
+        const { data: directAbsensi, error: absErr } = await absensiQuery;
+
+        if (absErr) {
+          console.error('Error fetching class absensi:', absErr);
         }
 
-        const combinedText = `${j.kehadiran_murid || ''} ${j.absensi_siswa || ''} ${j.detail_absen || ''}`.toLowerCase();
-        const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
-
-        if (isSemuaHadir) {
-          siswa?.forEach(s => {
-            const target = rekapMap[s.nama_siswa];
-            if (target) target.hadir++;
-          });
-          return;
-        }
-
-        // Check if JSON has explicit entries
-        if (absensiJson && Object.keys(absensiJson).length > 0) {
-          const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
-          const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
-
-          siswa?.forEach(s => {
-            const target = rekapMap[s.nama_siswa];
+        if (directAbsensi && directAbsensi.length > 0) {
+          directAbsensi.forEach(a => {
+            const student = siswa?.find(s => (a.nisn && s.nisn === a.nisn) || s.nama_siswa === a.nama_siswa);
+            if (!student) return;
+            const target = rekapMap[student.nama_siswa];
             if (!target) return;
-            const val = s.nisn && absensiJson![s.nisn] !== undefined 
-              ? absensiJson![s.nisn] 
-              : absensiJson![s.nama_siswa];
 
-            if (val !== undefined) {
-              const code = String(val).trim().toUpperCase();
-              if (code === 'H' || code === 'HADIR') target.hadir++;
-              else if (code === 'S' || code === 'SAKIT') target.sakit++;
-              else if (code === 'I' || code === 'IZIN') target.izin++;
-              else if (code === 'A' || code === 'ALPA') target.alpa++;
-            } else if (!hasExplicitHadir) {
-              // If JSON only listed absentees, unlisted students were present
-              target.hadir++;
-            }
+            const st = String(a.status || '').trim().toLowerCase();
+            if (st === 'hadir' || st === 'h') target.hadir++;
+            else if (st === 'sakit' || st === 's') target.sakit++;
+            else if (st === 'izin' || st === 'i') target.izin++;
+            else if (st === 'alpa' || st === 'a') target.alpa++;
           });
-          return;
+        }
+      } else {
+        // =========================================================================
+        // DOMAIN 2: PRESENSI MAPEL (ABSENSI SESI MATA PELAJARAN TERSEBUT)
+        // Sumber data: tabel public.jurnal_pembelajaran (dicatat oleh Guru Mapel)
+        // =========================================================================
+        let query = supabase
+          .from('jurnal_pembelajaran')
+          .select('absensi_siswa, detail_absen, tanggal, kehadiran_murid')
+          .eq('kelas', targetKelas)
+          .eq('mapel', mapel)
+          .order('tanggal', { ascending: true });
+
+        if (user?.sekolah_id) query = query.eq('sekolah_id', user.sekolah_id);
+        if (startDate) query = query.gte('tanggal', startDate);
+        if (endDate) query = query.lte('tanggal', endDate);
+
+        const { data: jurnal, error: jurErr } = await query;
+        if (jurErr) {
+          console.error('Error fetching jurnal mapel:', jurErr);
         }
 
-        // Parse detail_absen and keywords for absentees
-        const absentStatuses: Record<string, 'S' | 'I' | 'A' | 'H'> = {};
-        const detail = `${j.detail_absen || ''} ${j.kehadiran_murid || ''}`;
+        // Parse multi-format student attendance from journals
+        jurnal?.forEach(j => {
+          let absensiJson: Record<string, string> | null = null;
+          if (j.absensi_siswa) {
+            if (typeof j.absensi_siswa === 'object' && j.absensi_siswa !== null) {
+              absensiJson = j.absensi_siswa;
+            } else if (typeof j.absensi_siswa === 'string' && j.absensi_siswa.trim().startsWith('{')) {
+              try {
+                absensiJson = JSON.parse(j.absensi_siswa);
+              } catch (_) {
+                absensiJson = null;
+              }
+            }
+          }
 
-        siswa?.forEach(s => {
-          const nama = s.nama_siswa;
-          const escaped = nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const match = detail.match(new RegExp(`(?:\\b|^)${escaped}(?:\\b|$)\\s*\\(([HSIAhsia])\\)`, 'i'));
-          if (match) {
-            absentStatuses[nama] = match[1].toUpperCase() as 'S' | 'I' | 'A' | 'H';
+          const combinedText = `${j.kehadiran_murid || ''} ${typeof j.absensi_siswa === 'string' ? j.absensi_siswa : ''} ${j.detail_absen || ''}`.toLowerCase();
+          const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
+
+          if (isSemuaHadir) {
+            siswa?.forEach(s => {
+              const target = rekapMap[s.nama_siswa];
+              if (target) target.hadir++;
+            });
             return;
           }
 
-          // Keyword check: "Sakit: Nama, Izin: Nama"
-          const detailLower = detail.toLowerCase();
-          const namaLower = nama.toLowerCase();
-          if (detailLower.includes(namaLower)) {
-            const idxNama = detailLower.indexOf(namaLower);
-            const idxSakit = detailLower.lastIndexOf('sakit', idxNama);
-            const idxIzin = detailLower.lastIndexOf('izin', idxNama);
-            const idxAlpa = detailLower.lastIndexOf('alpa', idxNama);
-            const idxHadir = detailLower.lastIndexOf('hadir', idxNama);
+          // Check if JSON has explicit entries
+          if (absensiJson && Object.keys(absensiJson).length > 0) {
+            const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
+            const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
 
-            const maxIdx = Math.max(idxSakit, idxIzin, idxAlpa, idxHadir);
-            if (maxIdx === idxSakit && idxSakit !== -1) absentStatuses[nama] = 'S';
-            else if (maxIdx === idxIzin && idxIzin !== -1) absentStatuses[nama] = 'I';
-            else if (maxIdx === idxAlpa && idxAlpa !== -1) absentStatuses[nama] = 'A';
-            else if (maxIdx === idxHadir && idxHadir !== -1) absentStatuses[nama] = 'H';
-          }
-        });
-
-        // Credit students based on resolved status for this session
-        siswa?.forEach(s => {
-          const target = rekapMap[s.nama_siswa];
-          if (!target) return;
-          const st = absentStatuses[s.nama_siswa];
-
-          if (st === 'S') target.sakit++;
-          else if (st === 'I') target.izin++;
-          else if (st === 'A') target.alpa++;
-          else if (st === 'H') target.hadir++;
-          else {
-            // Unmentioned student: absent students were accounted for, remaining students were present
-            target.hadir++;
-          }
-        });
-      });
-
-      // Integrate direct absensi if journals are not present or for additional dates
-      if ((!jurnal || jurnal.length === 0) && directAbsensi && directAbsensi.length > 0) {
-        directAbsensi.forEach(a => {
-          siswa?.forEach(s => {
-            if (s.nisn === a.nisn || s.nama_siswa === a.nama_siswa) {
+            siswa?.forEach(s => {
               const target = rekapMap[s.nama_siswa];
               if (!target) return;
-              const st = String(a.status).toLowerCase();
-              if (st === 'hadir') target.hadir++;
-              else if (st === 'sakit') target.sakit++;
-              else if (st === 'izin') target.izin++;
-              else if (st === 'alpa') target.alpa++;
+              const val = s.nisn && absensiJson![s.nisn] !== undefined 
+                ? absensiJson![s.nisn] 
+                : absensiJson![s.nama_siswa];
+
+              if (val !== undefined) {
+                const code = String(val).trim().toUpperCase();
+                if (code === 'H' || code === 'HADIR') target.hadir++;
+                else if (code === 'S' || code === 'SAKIT') target.sakit++;
+                else if (code === 'I' || code === 'IZIN') target.izin++;
+                else if (code === 'A' || code === 'ALPA') target.alpa++;
+              } else if (!hasExplicitHadir) {
+                // If JSON only listed absentees, unlisted students were present
+                target.hadir++;
+              }
+            });
+            return;
+          }
+
+          // Parse detail_absen and keywords for absentees
+          const absentStatuses: Record<string, 'S' | 'I' | 'A' | 'H'> = {};
+          const detail = `${j.detail_absen || ''} ${j.kehadiran_murid || ''}`;
+
+          siswa?.forEach(s => {
+            const nama = s.nama_siswa;
+            const escaped = nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const match = detail.match(new RegExp(`(?:\\b|^)${escaped}(?:\\b|$)\\s*\\(([HSIAhsia])\\)`, 'i'));
+            if (match) {
+              absentStatuses[nama] = match[1].toUpperCase() as 'S' | 'I' | 'A' | 'H';
+              return;
+            }
+
+            // Keyword check: "Sakit: Nama, Izin: Nama"
+            const detailLower = detail.toLowerCase();
+            const namaLower = nama.toLowerCase();
+            if (detailLower.includes(namaLower)) {
+              const idxNama = detailLower.indexOf(namaLower);
+              const idxSakit = detailLower.lastIndexOf('sakit', idxNama);
+              const idxIzin = detailLower.lastIndexOf('izin', idxNama);
+              const idxAlpa = detailLower.lastIndexOf('alpa', idxNama);
+              const idxHadir = detailLower.lastIndexOf('hadir', idxNama);
+
+              const maxIdx = Math.max(idxSakit, idxIzin, idxAlpa, idxHadir);
+              if (maxIdx === idxSakit && idxSakit !== -1) absentStatuses[nama] = 'S';
+              else if (maxIdx === idxIzin && idxIzin !== -1) absentStatuses[nama] = 'I';
+              else if (maxIdx === idxAlpa && idxAlpa !== -1) absentStatuses[nama] = 'A';
+              else if (maxIdx === idxHadir && idxHadir !== -1) absentStatuses[nama] = 'H';
+            }
+          });
+
+          // Credit students based on resolved status for this session
+          siswa?.forEach(s => {
+            const target = rekapMap[s.nama_siswa];
+            if (!target) return;
+            const st = absentStatuses[s.nama_siswa];
+
+            if (st === 'S') target.sakit++;
+            else if (st === 'I') target.izin++;
+            else if (st === 'A') target.alpa++;
+            else if (st === 'H') target.hadir++;
+            else {
+              // Unmentioned student: absent students were accounted for, remaining students were present
+              target.hadir++;
             }
           });
         });
@@ -743,7 +760,11 @@ export default function RekapSiswaView({
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
-                {activeTab === 'gerbang' ? 'Laporan Presensi Gerbang Piket Siswa' : 'Rekapitulasi Presensi Kehadiran Siswa'}
+                {activeTab === 'gerbang' 
+                  ? 'Laporan Presensi Gerbang Piket Siswa' 
+                  : mapel 
+                    ? `Rekapitulasi Presensi Mata Pelajaran: ${mapel}` 
+                    : 'Rekapitulasi Absensi Kelas (Harian)'}
               </h3>
               <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
                 {activeTab === 'gerbang' ? (
@@ -757,7 +778,7 @@ export default function RekapSiswaView({
                     <span>Kelas: <strong>{kelas || '-'}</strong></span>
                     {mapel && <span>Mapel: <strong>{mapel}</strong></span>}
                     <span><strong>{formatPeriodHeader('', startDate, endDate)}</strong></span>
-                    <span>Guru: <strong>{user?.nama || '-'}</strong></span>
+                    <span>{mapel ? 'Guru Mapel' : 'Wali Kelas'}: <strong>{user?.nama || '-'}</strong></span>
                   </>
                 )}
               </div>
@@ -1313,7 +1334,7 @@ export default function RekapSiswaView({
             {activeTab === 'rekap' && (
               <div id="panel-rekap-absen-siswa" className="space-y-4 fade-in">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
-                  <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 text-base"></i> Rekap Absen Siswa
+                  <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 text-base"></i> {mapel ? `Rekap Presensi Mata Pelajaran (${mapel})` : 'Rekap Absensi Kelas (Harian)'}
                 </h2>
                 <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3 no-print">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1359,7 +1380,7 @@ export default function RekapSiswaView({
                     <div className="flex-1">
                       <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">MATA PELAJARAN</label>
                       <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800">
-                        <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel</option>
+                        <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel (Rekap Absensi Kelas Harian)</option>
                         {mapelList.map((m, i) => <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">{m}</option>)}
                       </select>
                     </div>
@@ -1465,7 +1486,7 @@ export default function RekapSiswaView({
                   
                   <PrintSignature
                     leftTitle="Mengetahui,"
-                    leftSubtitle={user?.role === 'guru' ? 'Guru Mata Pelajaran' : 'Wali Kelas'}
+                    leftSubtitle={user?.role === 'guru' ? (mapel ? 'Guru Mata Pelajaran' : 'Wali Kelas') : 'Wali Kelas'}
                     leftName={user?.nama}
                     leftNip={user?.nip}
                   />
@@ -1483,7 +1504,7 @@ export default function RekapSiswaView({
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `Rekap_Siswa_${kelas}.csv`;
+                        a.download = mapel ? `Rekap_Presensi_Mapel_${mapel}_${kelas}.csv` : `Rekap_Absensi_Kelas_${kelas}.csv`;
                         a.click();
                         URL.revokeObjectURL(url);
                       }} className="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
