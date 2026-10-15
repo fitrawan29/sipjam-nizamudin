@@ -37,6 +37,11 @@ export default function GuruJurnal({ user }: { user: any }) {
   const [students, setStudents] = useState<any[]>([]);
   const [absensi, setAbsensi] = useState<Record<string, string>>({});
   const [piketAttendance, setPiketAttendance] = useState<Record<string, { jam: string }>>({});
+  const [lastChangeMap, setLastChangeMap] = useState<Record<string, {
+    diubah_oleh: string;
+    sumber_perubahan: string;
+    keterangan?: string | null;
+  }>>({});
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
   const [dateBlok, setDateBlok] = useState<any | null>(null);
@@ -540,6 +545,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         setStudents([]);
         setAbsensi({});
         setPiketAttendance({});
+        setLastChangeMap({});
         setKehadiranMurid('');
         return;
       }
@@ -576,6 +582,21 @@ export default function GuruJurnal({ user }: { user: any }) {
         }
         setPiketAttendance(pMap);
 
+        // Ekstrak metadata perubahan terakhir presensi siswa (Wali Kelas / Piket / Guru)
+        const changeMap: Record<string, { diubah_oleh: string; sumber_perubahan: string; keterangan?: string | null }> = {};
+        if (absData) {
+          absData.forEach((a: any) => {
+            if (a.nisn && (a.diubah_oleh || a.sumber_perubahan)) {
+              changeMap[a.nisn] = {
+                diubah_oleh: a.diubah_oleh || (a.sumber_perubahan === 'Wali Kelas' ? 'Wali Kelas' : 'Guru Piket'),
+                sumber_perubahan: a.sumber_perubahan || 'Sistem',
+                keterangan: a.keterangan || null
+              };
+            }
+          });
+        }
+        setLastChangeMap(changeMap);
+
         const initialAbsensi: Record<string, string> = {};
         data.forEach(s => {
           const existing = absData?.find(a => a.nisn === s.nisn);
@@ -608,14 +629,22 @@ export default function GuruJurnal({ user }: { user: any }) {
     if (students.length === 0) return;
     const newAbsensi = { ...absensi };
     let syncedCount = 0;
+    const updatedLastChanges: Record<string, { diubah_oleh: string; sumber_perubahan: string; keterangan?: string | null }> = {};
     students.forEach(s => {
       const isPresentAtGate = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
       if (isPresentAtGate) {
         newAbsensi[s.nisn] = 'H';
         syncedCount++;
+        const jamGate = piketAttendance[s.nisn]?.jam || (s.id ? piketAttendance[s.id]?.jam : '');
+        updatedLastChanges[s.nisn] = {
+          diubah_oleh: 'Gerbang Piket',
+          sumber_perubahan: 'Piket',
+          keterangan: jamGate ? `Hadir di Gerbang pk. ${jamGate}` : 'Presensi Gerbang'
+        };
       }
     });
     setAbsensi(newAbsensi);
+    setLastChangeMap(prev => ({ ...prev, ...updatedLastChanges }));
     setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
     showToast(`Presensi piket berhasil diterapkan: ${syncedCount} siswa ditandai Hadir.`, 'success');
   };
@@ -624,6 +653,14 @@ export default function GuruJurnal({ user }: { user: any }) {
     const newAbsensi = { ...absensi, [nisn]: status };
     setAbsensi(newAbsensi);
     setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
+    setLastChangeMap(prev => ({
+      ...prev,
+      [nisn]: {
+        diubah_oleh: user?.nama || 'Guru Mapel',
+        sumber_perubahan: 'Guru Mapel',
+        keterangan: prev[nisn]?.keterangan || null
+      }
+    }));
 
     // Live sync to public.absensi
     const student = students.find(s => s.nisn === nisn);
@@ -1346,6 +1383,18 @@ export default function GuruJurnal({ user }: { user: any }) {
                                           )}
                                         </div>
                                         <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                                        {lastChangeMap[siswa.nisn] && (
+                                          <div className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
+                                            <i className="fa-solid fa-clock-rotate-left text-[8px] text-teal-600 dark:text-teal-400"></i>
+                                            <span>
+                                              Terakhir diubah oleh <strong className="text-slate-700 dark:text-slate-200">{lastChangeMap[siswa.nisn].diubah_oleh}</strong>
+                                              {' '}(<span className="font-semibold text-teal-700 dark:text-teal-300">{lastChangeMap[siswa.nisn].sumber_perubahan}</span>)
+                                              {lastChangeMap[siswa.nisn].keterangan ? (
+                                                <span className="italic text-slate-600 dark:text-slate-300"> — "{lastChangeMap[siswa.nisn].keterangan}"</span>
+                                              ) : null}
+                                            </span>
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                     <div className="flex gap-1 shrink-0">

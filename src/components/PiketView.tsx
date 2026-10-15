@@ -1340,10 +1340,13 @@ export default function PiketView({ user }: { user: any }) {
 
     // Automated Verification Evaluation for Piket:
     // Auto-approved ('Disetujui') if rekap_absen_kelas is filled AND foto bukti is attached.
+    // If intervention is expired, only require foto bukti for piket report.
     // Otherwise remains 'Menunggu'.
     const isRekapLengkap = Boolean(piketAbsensi && Object.keys(piketAbsensi).length > 0);
     const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading' && fileUrl !== 'gagal_upload');
-    const statusVerifikasiPiket = (isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
+    const statusVerifikasiPiket = (isPiketIntervensiExpired && !isAdmin)
+      ? (isFotoLengkap ? 'Disetujui' : 'Menunggu')
+      : ((isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu');
 
     const newLaporan = {
       id: crypto.randomUUID(),
@@ -1351,8 +1354,8 @@ export default function PiketView({ user }: { user: any }) {
       tanggal: getWitaDateStr(),
       guru_pelapor: user.nama,
       user_id: user.id,
-      rekap_absen_kelas: JSON.stringify(piketAbsensi),
-      catatan_apel: catatan || 'Tugas Utama: Mengisi Presensi Siswa',
+      rekap_absen_kelas: JSON.stringify((isPiketIntervensiExpired && !isAdmin) ? {} : piketAbsensi),
+      catatan_apel: catatan || ((isPiketIntervensiExpired && !isAdmin) ? 'Laporan Piket Harian' : 'Tugas Utama: Mengisi Presensi Siswa'),
       link_foto: fileUrl,
       status_verifikasi: statusVerifikasiPiket,
       kehadiran_guru_piket: 'Hadir',
@@ -1441,7 +1444,13 @@ export default function PiketView({ user }: { user: any }) {
       }
       setPiketLockInfo(null);
 
-      showToast('Berhasil', 'Presensi siswa berhasil disimpan.', 'success');
+      showToast(
+        'Berhasil',
+        isPiketIntervensiExpired && !isAdmin
+          ? 'Laporan piket berhasil disimpan.'
+          : 'Presensi siswa & laporan piket berhasil disimpan.',
+        'success'
+      );
       setCatatan('');
       setFile(null);
       setPhotoPreviewUrl(null);
@@ -3403,7 +3412,13 @@ export default function PiketView({ user }: { user: any }) {
                     </div>
                   )}
                   <div className="bg-orange-50 border border-orange-200 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-400 p-3 rounded-xl mb-4 text-[10px] text-orange-800 font-medium leading-relaxed">
-                      <i className="fa-solid fa-circle-info mr-1.5"></i> {isFormLocked ? "Anda tidak perlu mengisi presensi (sedang diisi piket lain). Silakan isi laporan piket pribadi Anda." : "Anda bertugas mengisi Presensi Siswa. Laporan piket pribadi (foto & catatan) tidak diwajibkan."}
+                      <i className="fa-solid fa-circle-info mr-1.5"></i> {
+                        isFormLocked 
+                          ? "Anda tidak perlu mengisi presensi (sedang diisi piket lain). Silakan isi laporan piket pribadi Anda." 
+                          : isPiketIntervensiExpired
+                          ? `Batas waktu intervensi presensi siswa (pk. ${batasIntervensi} WITA) telah berakhir. Presensi selanjutnya dicatat oleh Guru Mapel di Jurnal KBM. Silakan lengkapi dokumentasi & catatan untuk mengirim Laporan Piket.`
+                          : "Anda bertugas mengisi Presensi Siswa. Laporan piket pribadi (foto & catatan) tidak diwajibkan."
+                      }
                   </div>
                   <form onSubmit={handlePiketSubmit} className="space-y-4">
                       <div>
@@ -3411,81 +3426,88 @@ export default function PiketView({ user }: { user: any }) {
                         <input type="date" required value={getWitaDateStr()} readOnly className="w-full px-3 py-2.5 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed" />
                       </div>
                       
-                      {!isFormLocked && (<div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/50 rounded-xl p-3">
-                        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-                          <label className="block text-[11px] font-bold text-teal-800 dark:text-teal-400">
-                            <i className="fa-solid fa-clipboard-check mr-1.5"></i> Rekap Absensi Sekolah
-                          </label>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            isPiketIntervensiExpired
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                              : 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300'
-                          }`}>
-                            <i className={`fa-solid ${isPiketIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
-                            {isPiketIntervensiExpired ? `Terkunci (Lewat pk. ${batasIntervensi})` : `Batas pk. ${batasIntervensi}`}
-                          </span>
-                        </div>
-
-                        {isPiketIntervensiExpired && (
-                          <div className="mb-2.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-[10px] flex items-center gap-1.5">
-                            <i className="fa-solid fa-circle-info text-amber-600 shrink-0"></i>
-                            <span>Batas waktu intervensi presensi siswa (pk. {batasIntervensi} WITA) telah berakhir. Presensi selanjutnya dicatat langsung oleh Guru Mapel pada Jurnal KBM.</span>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 mb-2">
-                          {kelasList.map(k => (
-                            <button
-                              key={k}
-                              type="button"
-                              onClick={() => setActiveKelas(k)}
-                              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 transition-all ${
-                                activeKelas === k 
-                                ? 'bg-teal-600 text-white shadow-md' 
-                                : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'
-                              }`}
-                            >
-                              Kelas {k}
-                            </button>
-                          ))}
-                        </div>
-                        
-                        <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll pr-1">
-                          {allStudents.filter(s => s.kelas === activeKelas).map((siswa, idx) => (
-                            <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4">{idx + 1}.</span>
-                                <div>
-                                  <div className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</div>
-                                  <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
-                                </div>
+                      {!isFormLocked && (
+                        isPiketIntervensiExpired ? (
+                          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3.5 flex items-start gap-2.5">
+                            <div className="text-amber-600 dark:text-amber-400 text-lg shrink-0 mt-0.5">
+                              <i className="fa-solid fa-clock-rotate-left"></i>
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                                Presensi Siswa Ditutup (Batas pk. {batasIntervensi} WITA)
                               </div>
-                              <div className="flex gap-1 shrink-0">
-                                {['H', 'S', 'I', 'A'].map(status => (
-                                  <button 
-                                    key={status}
-                                    type="button"
-                                    disabled={isFormLocked || isPiketIntervensiExpired}
-                                    onClick={() => handlePiketAbsensiChange(siswa, status)}
-                                    className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
-                                      (isFormLocked || isPiketIntervensiExpired) ? 'opacity-50 cursor-not-allowed ' : ''
-                                    }${
-                                      piketAbsensi[siswa.nisn] === status 
-                                      ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
-                                         status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
-                                         status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
-                                         'bg-red-500 text-white shadow-sm') 
-                                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                    }`}
-                                  >
-                                    {status}
-                                  </button>
-                                ))}
+                              <div className="text-[11px] text-amber-800/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">
+                                Waktu input presensi siswa bagi Guru Piket telah melewati batas ({batasIntervensi} WITA). Presensi siswa hari ini dialihkan dan dicatat langsung oleh masing-masing Guru Mapel di Jurnal KBM. Anda tetap dapat mengirimkan Laporan Piket harian dengan mengisi catatan dan foto dokumentasi di bawah.
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>)}
+                          </div>
+                        ) : (
+                          <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/50 rounded-xl p-3">
+                            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                              <label className="block text-[11px] font-bold text-teal-800 dark:text-teal-400">
+                                <i className="fa-solid fa-clipboard-check mr-1.5"></i> Rekap Absensi Sekolah
+                              </label>
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
+                                <i className="fa-solid fa-clock mr-1"></i>
+                                Batas pk. {batasIntervensi}
+                              </span>
+                            </div>
+
+                            <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 mb-2">
+                              {kelasList.map(k => (
+                                <button
+                                  key={k}
+                                  type="button"
+                                  onClick={() => setActiveKelas(k)}
+                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 transition-all ${
+                                    activeKelas === k 
+                                    ? 'bg-teal-600 text-white shadow-md' 
+                                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700'
+                                  }`}
+                                >
+                                  Kelas {k}
+                                </button>
+                              ))}
+                            </div>
+                            
+                            <div className="space-y-2 max-h-64 overflow-y-auto custom-scroll pr-1">
+                              {allStudents.filter(s => s.kelas === activeKelas).map((siswa, idx) => (
+                                <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4">{idx + 1}.</span>
+                                    <div>
+                                      <div className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</div>
+                                      <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-1 shrink-0">
+                                    {['H', 'S', 'I', 'A'].map(status => (
+                                      <button 
+                                        key={status}
+                                        type="button"
+                                        disabled={isFormLocked || isPiketIntervensiExpired}
+                                        onClick={() => handlePiketAbsensiChange(siswa, status)}
+                                        className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
+                                          (isFormLocked || isPiketIntervensiExpired) ? 'opacity-50 cursor-not-allowed ' : ''
+                                        }${
+                                          piketAbsensi[siswa.nisn] === status 
+                                          ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
+                                             status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
+                                             status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
+                                             'bg-red-500 text-white shadow-sm') 
+                                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                        }`}
+                                      >
+                                        {status}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      )}
 
                       <div>
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Catatan Khusus</label>
@@ -3558,7 +3580,13 @@ export default function PiketView({ user }: { user: any }) {
                           className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {loading ? 'Menyimpan...' : (
-                              <><i className="fa-solid fa-paper-plane"></i> {isFormLocked ? "Kirim Laporan Pribadi" : "Simpan Presensi Siswa"}</>
+                              <><i className="fa-solid fa-paper-plane"></i> {
+                                isFormLocked 
+                                  ? "Kirim Laporan Pribadi" 
+                                  : isPiketIntervensiExpired 
+                                  ? "Kirim Laporan Piket" 
+                                  : "Simpan Presensi Siswa"
+                              }</>
                             )}
                           </button>
                       </div>

@@ -144,8 +144,30 @@ async function runTests() {
     fail('PIKET-03', 'PiketView tidak melindungi catatan dari Wali Kelas / Guru Mapel');
   }
 
-  // SECTION 5: HOME DASHBOARD SHORTCUT (HomeViewGuru.tsx)
-  console.log(`\n${YELLOW}${BOLD}━━━ 5. VERIFY DASHBOARD QUICK ACCESS (HomeViewGuru.tsx) ━━━${RESET}`);
+  if (piketCode.includes('Presensi Siswa Ditutup (Batas pk.') && piketCode.includes('"Kirim Laporan Piket"')) {
+    pass('PIKET-04', 'PiketView menyembunyikan tabel presensi saat expired & mengubah tombol menjadi Kirim Laporan Piket');
+  } else {
+    fail('PIKET-04', 'PiketView tidak menampilkan banner penutupan atau label tombol tidak sesuai saat expired');
+  }
+
+  // SECTION 5: JURNAL KBM FOOTNOTE (GuruJurnal.tsx)
+  console.log(`\n${YELLOW}${BOLD}━━━ 5. VERIFY JURNAL KBM FOOTNOTE (GuruJurnal.tsx) ━━━${RESET}`);
+  const jurnalCode = fs.readFileSync(path.resolve('src/components/GuruJurnal.tsx'), 'utf-8');
+
+  if (jurnalCode.includes('lastChangeMap') && jurnalCode.includes('setLastChangeMap')) {
+    pass('JURNAL-01', 'GuruJurnal memiliki state lastChangeMap untuk melacak riwayat perubahan presensi siswa');
+  } else {
+    fail('JURNAL-01', 'GuruJurnal tidak memiliki state lastChangeMap');
+  }
+
+  if (jurnalCode.includes('Terakhir diubah oleh') && jurnalCode.includes('lastChangeMap[siswa.nisn]')) {
+    pass('JURNAL-02', 'GuruJurnal merender catatan kaki nama pengubah terakhir & perannya (Wali Kelas / Piket) di bawah siswa');
+  } else {
+    fail('JURNAL-02', 'Catatan kaki pengubah terakhir tidak dirender pada baris siswa');
+  }
+
+  // SECTION 6: HOME DASHBOARD SHORTCUT (HomeViewGuru.tsx)
+  console.log(`\n${YELLOW}${BOLD}━━━ 6. VERIFY DASHBOARD QUICK ACCESS (HomeViewGuru.tsx) ━━━${RESET}`);
   const homeGuruCode = fs.readFileSync(path.resolve('src/components/HomeViewGuru.tsx'), 'utf-8');
 
   if (homeGuruCode.includes('Presensi Siswa Kelas') && homeGuruCode.includes("setView('view-rekap-siswa')")) {
