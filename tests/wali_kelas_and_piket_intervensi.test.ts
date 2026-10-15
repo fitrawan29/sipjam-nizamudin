@@ -13,7 +13,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { isIntervensiAllowed, isWaliKelasIntervensiAllowed } from '../src/lib/presensiIntervensi';
+import { isIntervensiAllowed, isWaliKelasIntervensiAllowed, isPiketPulangAllowed, addMinutesToTime } from '../src/lib/presensiIntervensi';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -78,10 +78,24 @@ async function runTests() {
     fail('CUTOFF-04', 'isIntervensiAllowed gagal dengan waktu batas kustom');
   }
 
-  // 1.5 Wali Kelas Multi-Window (Pagi s.d. 08:00, Terkunci KBM, Buka Kembali Jam Pulang s.d. 22:00 WITA)
+  // 1.5 Guru Piket Hak Akses Utama Pulang (Waktu Pulang s.d. 30 Menit Setelah Jam Pulang Guru)
+  const piketEarly = isPiketPulangAllowed('11:00', '10:45');
+  const piketActive1 = isPiketPulangAllowed('11:00', '11:00');
+  const piketActive2 = isPiketPulangAllowed('11:00', '11:20');
+  const piketAkhir = isPiketPulangAllowed('11:00', '11:30');
+  const piketExpired = isPiketPulangAllowed('11:00', '11:31');
+
+  if (!piketEarly.allowed && piketActive1.allowed && piketActive2.allowed && piketAkhir.allowed && !piketExpired.allowed) {
+    pass('PIKET-WIN-01', 'Guru Piket memiliki hak akses utama presensi pulang mulai jam pulang s.d. 30 menit setelahnya (11:00 - 11:30)');
+  } else {
+    fail('PIKET-WIN-01', 'Piket pulang 30-menit window gagal divalidasi');
+  }
+
+  // 1.6 Wali Kelas Multi-Window (Pagi s.d. 08:00, Terkunci KBM & Masa Piket Pulang, Ambil Alih Penuh setelah 30m s.d. 22:00 WITA)
   const resPagi = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '07:45');
   const resKbm = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '09:15');
-  const resPulangMulai = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '11:00');
+  const resPiketPulangWindow = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '11:15');
+  const resWaliTakeover = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '11:30');
   const resPulangSore = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '16:30');
   const resTepat22 = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '22:00');
   const resLewat22 = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '22:01');
@@ -98,10 +112,10 @@ async function runTests() {
     fail('WALI-WIN-02', 'Wali Kelas tidak terkunci saat KBM');
   }
 
-  if (resPulangMulai.allowed && resPulangSore.allowed && resPulangSore.phase === 'pulang') {
-    pass('WALI-WIN-03', 'Wali Kelas dapat menyesuaikan kembali presensi saat jam presensi pulang guru (11:00 - 16:30)');
+  if (!resPiketPulangWindow.allowed && resWaliTakeover.allowed && resPulangSore.allowed && resPulangSore.phase === 'pulang') {
+    pass('WALI-WIN-03', 'Wali Kelas terkunci saat 30m piket pulang, lalu mengambil alih penuh setelah 30m jam pulang guru s.d. 22:00 WITA');
   } else {
-    fail('WALI-WIN-03', 'Wali Kelas gagal membuka kembali presensi saat jam pulang guru');
+    fail('WALI-WIN-03', 'Wali Kelas gagal mengambil alih akses setelah 30m jam pulang guru');
   }
 
   if (resTepat22.allowed && !resLewat22.allowed && resLewat22.phase === 'malam_tutup') {
@@ -223,11 +237,11 @@ async function runTests() {
   // SECTION 7: SEPARATION OF ABSENSI KELAS (HARIAN) & PRESENSI MAPEL
   console.log(`\n${YELLOW}${BOLD}━━━ 7. VERIFY SEPARATION OF ABSENSI KELAS VS PRESENSI MAPEL ━━━${RESET}`);
 
-  // 7.1 GuruJurnal does NOT overwrite public.absensi
-  if (!jurnalCode.includes("supabase.from('absensi').upsert")) {
-    pass('DOMAIN-01', 'GuruJurnal terisolasi dari tabel public.absensi (tidak menimpa absensi kelas harian)');
+  // 7.1 GuruJurnal automatically triggers Bolos to public.absensi when student is Alfa in subject despite morning presence
+  if (jurnalCode.includes("status: 'Bolos'") && jurnalCode.includes("sumber_perubahan: 'Guru Mapel (Otomatis Bolos)'")) {
+    pass('DOMAIN-01', 'GuruJurnal otomatis menyinkronkan status Bolos ke public.absensi jika siswa Hadir pagi tetapi Alfa di mapel');
   } else {
-    fail('DOMAIN-01', 'GuruJurnal masih melakukan upsert ke tabel public.absensi');
+    fail('DOMAIN-01', 'GuruJurnal belum mengimplementasikan sinkronisasi otomatis status Bolos ke public.absensi');
   }
 
   // 7.2 GuruJurnal UI states subject attendance clearly
@@ -252,6 +266,37 @@ async function runTests() {
     pass('DOMAIN-04', 'RekapSiswaView memberikan penamaan judul, dropdown, dan cetak yang membedakan absensi kelas vs presensi mapel');
   } else {
     fail('DOMAIN-04', 'Perbedaan penamaan judul dan dropdown di RekapSiswaView belum lengkap');
+  }
+
+  // SECTION 8: STATUS BOLOS, FALLBACK SYSTEM, & 30-MINUTE PIKET PULANG WINDOW
+  console.log(`\n${YELLOW}${BOLD}━━━ 8. VERIFY STATUS BOLOS, FALLBACK SYSTEM, & PIKET 30-MIN PULANG ━━━${RESET}`);
+
+  // 8.1 Rekap Absensi Kelas (Harian) accumulates Hadir, Sakit, Izin, Alfa, Bolos
+  if (rekapCode.includes("st === 'bolos' || st === 'b'") && rekapCode.includes('totalBolos')) {
+    pass('BOLOS-01', 'Rekap Absensi Kelas (Harian) merekap akumulasi 5 status resmi: H, S, I, A, dan Bolos (B)');
+  } else {
+    fail('BOLOS-01', 'Rekap Absensi Kelas tidak menghitung akumulasi status Bolos');
+  }
+
+  // 8.2 Rekap UI table & CSV include Bolos column when !mapel
+  if (rekapCode.includes('<th>Bolos</th>') || rekapCode.includes('Bolos (B)') || rekapCode.includes("'Bolos'")) {
+    pass('BOLOS-02', 'Tabel rekapitulasi dan ekspor CSV menyertakan kolom Bolos pada mode Absensi Kelas Harian');
+  } else {
+    fail('BOLOS-02', 'Kolom Bolos tidak ditemukan pada tabel atau CSV rekap siswa');
+  }
+
+  // 8.3 Gerbang Presensi Fallback System & Validasi Bolos Mapel Terakhir
+  if (rekapCode.includes('Auto Fallback: Bolos') && rekapCode.includes('Pulang: Bolos') && rekapCode.includes('totalGerbangBolos')) {
+    pass('BOLOS-03', 'Gerbang Presensi memiliki fallback otomatis mapel terakhir & mendeteksi Pulang: Bolos jika Alfa di mapel terakhir');
+  } else {
+    fail('BOLOS-03', 'Fallback system gerbang presensi atau deteksi Pulang: Bolos belum lengkap');
+  }
+
+  // 8.4 PiketView enforces 30-minute pulang window
+  if (piketCode.includes('isPiketPulangAllowed') && (piketCode.includes("scanMode === 'pulang'") || piketCode.includes("status === 'pulang'"))) {
+    pass('BOLOS-04', 'PiketView menerapkan validasi batas 30 menit jam pulang guru untuk hak akses utama Guru Piket');
+  } else {
+    fail('BOLOS-04', 'PiketView belum menerapkan validasi isPiketPulangAllowed pada mode pulang');
   }
 
   // SUMMARY

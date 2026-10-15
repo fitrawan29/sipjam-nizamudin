@@ -844,8 +844,56 @@ export default function GuruJurnal({ user }: { user: any }) {
 
       if (error) {
         showToast('Gagal Menyimpan Jurnal', 'Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran. ' + (error.message || 'Silakan periksa koneksi Anda dan coba lagi.'), 'error');
+      } else {
+        // Aturan Khusus & Logika Status "Bolos" (Rule 2):
+        // Pemicu Otomatis: Jika siswa berstatus Hadir pada Absensi Kelas di pagi hari (diinput oleh Piket/Wali Kelas),
+        // namun pada mata pelajaran tengah hari atau mata pelajaran terakhir Guru Mapel menginput status Alfa (A),
+        // maka sistem secara otomatis mengubah status harian siswa tersebut menjadi 'Bolos'.
+        if (tipeJurnal === 'Jurnal KBM' && students.length > 0) {
+          try {
+            const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
+            let aQ = supabase.from('absensi').select('id, nisn, status, log_perubahan, keterangan').eq('tanggal', tanggal).eq('kelas', kelas);
+            if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
+            const { data: existingClassAbs } = await aQ;
+
+            const bolosUpdates: any[] = [];
+            students.forEach(s => {
+              const currentStatus = absensi[s.nisn];
+              if (currentStatus === 'A') {
+                const classRec = existingClassAbs?.find(a => a.nisn === s.nisn);
+                const isMorningHadir = (classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) ||
+                                       Boolean(piketAttendance[s.nisn] || (s.id && piketAttendance[s.id]));
+
+                if (isMorningHadir) {
+                  const prevLogs = classRec?.log_perubahan || [];
+                  const logEntry = `[${nowWita} WITA] Terdeteksi Bolos: Hadir pagi di kelas/gerbang, tetapi Alfa pada mapel ${mapel || 'KBM'} (Jam ${jamKe || '-'}) oleh ${user.nama}`;
+                  bolosUpdates.push({
+                    sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+                    tanggal: tanggal,
+                    kelas: kelas,
+                    siswa_id: s.id,
+                    nisn: s.nisn,
+                    nama_siswa: s.nama_siswa,
+                    status: 'Bolos',
+                    sumber_perubahan: 'Guru Mapel (Otomatis Bolos)',
+                    diubah_oleh: user.nama,
+                    keterangan: `Terindikasi Bolos (Hadir Pagi, Alfa Mapel ${mapel || 'KBM'})`,
+                    log_perubahan: [...prevLogs, logEntry],
+                    updated_at: new Date().toISOString()
+                  });
+                }
+              }
+            });
+
+            if (bolosUpdates.length > 0) {
+              await supabase.from('absensi').upsert(bolosUpdates, { onConflict: 'sekolah_id, tanggal, nisn' });
+            }
+          } catch (bolosErr) {
+            console.error('Error auto-syncing bolos status to public.absensi:', bolosErr);
+          }
+        }
+
         // Presensi mapel tersimpan di jurnal_pembelajaran (absensi_siswa & kehadiran_murid)
-        // Tanpa menimpa tabel public.absensi (absensi kelas harian tetap dipegang Wali Kelas & Piket)
         showToast('Berhasil', 'Jurnal KBM dan presensi mapel berhasil disimpan!', 'success', {
           toast: true,
           position: 'top-end',

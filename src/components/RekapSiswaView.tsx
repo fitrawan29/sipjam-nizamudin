@@ -40,7 +40,7 @@ export default function RekapSiswaView({
   const [gerbangStudents, setGerbangStudents] = useState<any[]>([]);
   const [gerbangLoading, setGerbangLoading] = useState(false);
   const [gerbangSearch, setGerbangSearch] = useState('');
-  const [gerbangFilterStatus, setGerbangFilterStatus] = useState<'semua' | 'datang' | 'pulang' | 'belum'>('semua');
+  const [gerbangFilterStatus, setGerbangFilterStatus] = useState<'semua' | 'datang' | 'pulang' | 'belum' | 'bolos'>('semua');
   const [waliGateLogs, setWaliGateLogs] = useState<Record<string, { datang?: any; pulang?: any }>>({});
 
   // Wali Kelas feature states
@@ -49,13 +49,14 @@ export default function RekapSiswaView({
   const [showWaliInput, setShowWaliInput] = useState(false);
   const [waliTanggal, setWaliTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
   const [waliStudents, setWaliStudents] = useState<any[]>([]);
-  const [waliAttendance, setWaliAttendance] = useState<Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | ''; keterangan: string; logs: string[] }>>({});
+  const [waliAttendance, setWaliAttendance] = useState<Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos' | ''; keterangan: string; logs: string[] }>>({});
   const [waliLoading, setWaliLoading] = useState(false);
   const [waliSaving, setWaliSaving] = useState(false);
   const [masterLoaded, setMasterLoaded] = useState(false);
   const [jadwalWali, setJadwalWali] = useState<JadwalIntervensiWali>({
     batasPagi: '08:00',
     jamPulangMulai: '11:00',
+    jamPulangPiketAkhir: '11:30',
     jamBatasMalam: '22:00'
   });
 
@@ -246,28 +247,60 @@ export default function RekapSiswaView({
           .eq('tanggal', gerbangTanggal);
         if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
         const { data: absensiLogs } = await aQ;
-          if (studentsData) {
-            const combined = studentsData.map(siswa => {
-              const datang = (gateLogs || []).find(p => 
-                (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'datang'
-              );
-              let pulang = (gateLogs || []).find(p => 
-                (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'pulang'
-              );
 
-              // Auto-fallback to mapel presensi if pulang gerbang is missing
-              if (!pulang && absensiLogs) {
-                const mapelLog = absensiLogs.find(a => a.nisn === siswa.nisn || a.nama_siswa === siswa.nama_siswa);
-                if (mapelLog && mapelLog.logs && mapelLog.logs.length > 0) {
-                  // The logs array contains strings like "[HH:MM WITA] Ditandai Hadir oleh ..."
-                  // We extract the latest timestamp.
-                  const latestLog = mapelLog.logs[mapelLog.logs.length - 1];
-                  const timeMatch = latestLog.match(/\[(\d{2}:\d{2})/);
-                  if (timeMatch && timeMatch[1]) {
-                    pulang = { jam: timeMatch[1] + ':00', device_id: 'Sistem Mapel Auto' };
-                  }
+        let jQ = supabase
+          .from('jurnal_pembelajaran')
+          .select('jam_ke, mapel, absensi_siswa, tanggal')
+          .eq('kelas', gerbangKelas)
+          .eq('tanggal', gerbangTanggal)
+          .order('jam_ke', { ascending: false });
+        if (user?.sekolah_id) jQ = jQ.eq('sekolah_id', user.sekolah_id);
+        const { data: dayJournals } = await jQ;
+
+        if (studentsData) {
+          const lastJurnal = (dayJournals && dayJournals.length > 0) ? dayJournals[0] : null;
+
+          const combined = studentsData.map(siswa => {
+            const datang = (gateLogs || []).find(p => 
+              (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'datang'
+            );
+            let pulang = (gateLogs || []).find(p => 
+              (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'pulang'
+            );
+
+            const classLog = absensiLogs?.find(a => a.nisn === siswa.nisn || a.nama_siswa === siswa.nama_siswa);
+            const isDailyBolos = classLog?.status === 'Bolos' || classLog?.status === 'B';
+
+            let lastMapelStatus: string | null = null;
+            if (lastJurnal?.absensi_siswa) {
+              try {
+                const parsed = typeof lastJurnal.absensi_siswa === 'string'
+                  ? JSON.parse(lastJurnal.absensi_siswa)
+                  : lastJurnal.absensi_siswa;
+                lastMapelStatus = parsed[siswa.nisn] || (siswa.nama_siswa && parsed[siswa.nama_siswa]) || null;
+              } catch {}
+            }
+
+            const isMorningHadir = Boolean(datang) || classLog?.status === 'Hadir' || classLog?.status === 'H';
+
+            // Auto-fallback to mapel presensi & validasi bolos (Rule 3)
+            let isBolosPulang = isDailyBolos;
+            if (!pulang) {
+              if (lastMapelStatus === 'A' && isMorningHadir) {
+                isBolosPulang = true;
+                pulang = { jam: '-', status: 'bolos', device_id: 'Auto Fallback: Bolos' };
+              } else if (lastMapelStatus === 'H' || isMorningHadir) {
+                pulang = { jam: 'Sistem Mapel Auto', status: 'pulang', device_id: 'Auto Fallback: Mapel' };
+              } else if (classLog && classLog.logs && classLog.logs.length > 0) {
+                const latestLog = classLog.logs[classLog.logs.length - 1];
+                const timeMatch = latestLog.match(/\[(\d{2}:\d{2})/);
+                if (timeMatch && timeMatch[1]) {
+                  pulang = { jam: timeMatch[1] + ':00', device_id: 'Sistem Mapel Auto' };
                 }
               }
+            } else if (isDailyBolos) {
+              isBolosPulang = true;
+            }
 
             const rawJamDatang = datang?.jam ? String(datang.jam).trim() : null;
             const jamDatang = rawJamDatang ? (rawJamDatang.length > 5 ? rawJamDatang.slice(0, 5) : rawJamDatang) : null;
@@ -281,7 +314,8 @@ export default function RekapSiswaView({
               jamDatang,
               jamPulang,
               hasDatang: !!datang,
-              hasPulang: !!pulang,
+              hasPulang: Boolean(pulang && pulang.status !== 'bolos'),
+              isBolos: isBolosPulang,
               deviceDatang: datang?.device_id || null,
               devicePulang: pulang?.device_id || null
             };
@@ -305,7 +339,7 @@ export default function RekapSiswaView({
     const headers = ['No', 'NISN', 'Nama Siswa', 'Kelas', 'Tanggal', 'Jam Datang', 'Jam Pulang', 'Status'];
     const rows = [headers.join(',')];
     gerbangStudents.forEach((s, idx) => {
-      const statusStr = s.hasPulang ? 'Sudah Pulang' : s.hasDatang ? 'Hadir Datang' : 'Belum Presensi';
+      const statusStr = s.isBolos ? 'Pulang: Bolos' : s.hasPulang ? 'Sudah Pulang' : s.hasDatang ? 'Hadir Datang' : 'Belum Presensi';
       rows.push([
         idx + 1,
         s.nisn || '',
@@ -326,7 +360,7 @@ export default function RekapSiswaView({
     URL.revokeObjectURL(url);
   };
 
-  const handleSetWaliStatus = (nisn: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
+  const handleSetWaliStatus = (nisn: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos') => {
     setWaliAttendance(prev => ({
       ...prev,
       [nisn]: {
@@ -346,7 +380,7 @@ export default function RekapSiswaView({
     }));
   };
 
-  const handleSetAllWaliStatus = (status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
+  const handleSetAllWaliStatus = (status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos') => {
     setWaliAttendance(prev => {
       const updated = { ...prev };
       waliStudents.forEach(s => {
@@ -506,6 +540,7 @@ export default function RekapSiswaView({
           sakit: 0,
           izin: 0,
           alpa: 0,
+          bolos: 0,
           total: 0,
           persentase: 0
         };
@@ -515,6 +550,7 @@ export default function RekapSiswaView({
         // =========================================================================
         // DOMAIN 1: PRESENSI SISWA (ABSENSI KELAS HARIAN MEREKA)
         // Sumber data: tabel public.absensi (dicatat oleh Wali Kelas & Piket)
+        // Opsi Status Resmi: Hadir (H), Sakit (S), Izin (I), Alfa (A), Bolos (B)
         // =========================================================================
         let absensiQuery = supabase
           .from('absensi')
@@ -541,6 +577,7 @@ export default function RekapSiswaView({
             else if (st === 'sakit' || st === 's') target.sakit++;
             else if (st === 'izin' || st === 'i') target.izin++;
             else if (st === 'alpa' || st === 'a') target.alpa++;
+            else if (st === 'bolos' || st === 'b') target.bolos++;
           });
         }
       } else {
@@ -667,7 +704,7 @@ export default function RekapSiswaView({
 
       // Compute total sessions and attendance percentage per student: (total_present / total_students) * 100
       const result = Object.values(rekapMap).map(s => {
-        const total = s.hadir + s.sakit + s.izin + s.alpa;
+        const total = s.hadir + s.sakit + s.izin + s.alpa + (s.bolos || 0);
         // Formula: (total_present / total_students) * 100 with zero division guard
         const persentase = total > 0 ? Math.round((s.hadir / total) * 100) : 0;
         return {
@@ -693,26 +730,29 @@ export default function RekapSiswaView({
            (s.nisn && s.nisn.toLowerCase().includes(query));
   });
 
-  // Calculate summary metrics for Rekap KBM
+  // Calculate summary metrics for Rekap KBM & Absensi Kelas Harian
   const totalSiswa = rekapData ? rekapData.length : 0;
   const totalHadir = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.hadir || 0), 0) : 0;
   const totalSakit = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.sakit || 0), 0) : 0;
   const totalIzin = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.izin || 0), 0) : 0;
   const totalAlpa = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.alpa || 0), 0) : 0;
-  const totalAllSessions = totalHadir + totalSakit + totalIzin + totalAlpa;
+  const totalBolos = rekapData ? rekapData.reduce((acc, curr) => acc + (curr.bolos || 0), 0) : 0;
+  const totalAllSessions = totalHadir + totalSakit + totalIzin + totalAlpa + totalBolos;
   const avgKehadiran = totalAllSessions > 0 ? Math.round((totalHadir / totalAllSessions) * 100) : 0;
 
   // Calculate summary metrics for Gerbang Presensi
   const totalGerbangSiswa = gerbangStudents.length;
   const totalGerbangDatang = gerbangStudents.filter(s => s.hasDatang).length;
-  const totalGerbangPulang = gerbangStudents.filter(s => s.hasPulang).length;
+  const totalGerbangPulang = gerbangStudents.filter(s => s.hasPulang && !s.isBolos).length;
+  const totalGerbangBolos = gerbangStudents.filter(s => s.isBolos).length;
   const totalGerbangBelumPresensi = totalGerbangSiswa - totalGerbangDatang;
   // Backward compatibility alias for legacy tests and metrics (Belum Scan / Belum Presensi)
   const totalGerbangBelumScan = totalGerbangBelumPresensi;
 
   const filteredGerbangStudents = gerbangStudents.filter(s => {
     if (gerbangFilterStatus === 'datang' && !s.hasDatang) return false;
-    if (gerbangFilterStatus === 'pulang' && !s.hasPulang) return false;
+    if (gerbangFilterStatus === 'pulang' && (!s.hasPulang || s.isBolos)) return false;
+    if (gerbangFilterStatus === 'bolos' && !s.isBolos) return false;
     if (gerbangFilterStatus === 'belum' && s.hasDatang) return false;
 
     if (!gerbangSearch) return true;
@@ -982,13 +1022,14 @@ export default function RekapSiswaView({
 
                               <div className="flex flex-wrap items-center gap-2 md:justify-end flex-1">
                                 <div className="flex gap-1">
-                                  {(['Hadir', 'Izin', 'Sakit', 'Alpa'] as const).map(st => {
+                                  {(['Hadir', 'Izin', 'Sakit', 'Alpa', 'Bolos'] as const).map(st => {
                                     const isSelected = currentRec.status === st;
                                     const colorClasses = 
                                       st === 'Hadir' ? (isSelected ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
                                       st === 'Izin' ? (isSelected ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
                                       st === 'Sakit' ? (isSelected ? 'bg-yellow-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
-                                      (isSelected ? 'bg-red-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300');
+                                      st === 'Alpa' ? (isSelected ? 'bg-red-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
+                                      (isSelected ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300');
 
                                     return (
                                       <button
@@ -1143,8 +1184,8 @@ export default function RekapSiswaView({
                   </div>
                 </div>
 
-                {/* Summary Metric Cards: Total Siswa, Hadir Datang, Pulang, Belum Presensi */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
+                {/* Summary Metric Cards: Total Siswa, Hadir Datang, Pulang, Bolos, Belum Presensi */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 no-print">
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 p-3 rounded-xl text-center shadow-sm">
                     <div className="text-xs font-bold text-blue-800 dark:text-blue-300 flex items-center justify-center gap-1.5 mb-1">
                       <i className="fa-solid fa-users text-blue-500"></i>
@@ -1167,6 +1208,14 @@ export default function RekapSiswaView({
                       <span>Pulang</span>
                     </div>
                     <div className="text-2xl font-black text-sky-600 dark:text-sky-400">{totalGerbangPulang}</div>
+                  </div>
+
+                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/50 p-3 rounded-xl text-center shadow-sm">
+                    <div className="text-xs font-bold text-purple-800 dark:text-purple-300 flex items-center justify-center gap-1.5 mb-1">
+                      <i className="fa-solid fa-triangle-exclamation text-purple-500"></i>
+                      <span>Bolos</span>
+                    </div>
+                    <div className="text-2xl font-black text-purple-600 dark:text-purple-400">{totalGerbangBolos}</div>
                   </div>
 
                   <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 p-3 rounded-xl text-center shadow-sm">
@@ -1214,6 +1263,17 @@ export default function RekapSiswaView({
                       }`}
                     >
                       Pulang ({totalGerbangPulang})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGerbangFilterStatus('bolos')}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                        gerbangFilterStatus === 'bolos'
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300'
+                      }`}
+                    >
+                      Bolos ({totalGerbangBolos})
                     </button>
                     <button
                       type="button"
@@ -1274,7 +1334,11 @@ export default function RekapSiswaView({
                               )}
                             </td>
                             <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center">
-                              {siswa.hasPulang ? (
+                              {siswa.isBolos ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                  <i className="fa-solid fa-triangle-exclamation text-[9px]"></i> Pulang: Bolos
+                                </span>
+                              ) : siswa.hasPulang ? (
                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
                                   <i className="fa-solid fa-person-walking-arrow-right text-[9px]"></i> Sudah Pulang
                                 </span>
@@ -1393,7 +1457,7 @@ export default function RekapSiswaView({
             {rekapData ? (
               <div id="hasil-rekap-siswa" className="flex flex-col gap-4 fade-in">
                   {/* Summary Metric Cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 no-print">
+                  <div className={`grid grid-cols-2 sm:grid-cols-3 ${!mapel ? 'md:grid-cols-7' : 'md:grid-cols-6'} gap-2 no-print`}>
                       <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/50 p-2.5 rounded-xl text-center">
                           <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Total Siswa</div>
                           <div className="text-lg font-black text-teal-600 dark:text-teal-400">{totalSiswa}</div>
@@ -1418,6 +1482,12 @@ export default function RekapSiswaView({
                           <div className="text-xs font-bold text-red-800 dark:text-red-300">Alpa</div>
                           <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
                       </div>
+                      {!mapel && (
+                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/50 p-2.5 rounded-xl text-center">
+                            <div className="text-xs font-bold text-purple-800 dark:text-purple-300">Bolos</div>
+                            <div className="text-lg font-black text-purple-600 dark:text-purple-400">{totalBolos}</div>
+                        </div>
+                      )}
                   </div>
 
                   {/* Student search input & Orientation Toolbar */}
@@ -1455,6 +1525,9 @@ export default function RekapSiswaView({
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                              {!mapel && (
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-purple-700 dark:text-purple-400 print:text-black">Bolos</th>
+                              )}
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-24 text-blue-700 dark:text-blue-400 print:text-black">% Kehadiran</th>
                             </tr>
                           </thead>
@@ -1468,6 +1541,9 @@ export default function RekapSiswaView({
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-yellow-700 dark:text-yellow-400 print:text-black">{s.sakit > 0 ? s.sakit : '-'}</td>
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-orange-700 dark:text-orange-400 print:text-black">{s.izin > 0 ? s.izin : '-'}</td>
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-red-700 dark:text-red-400 print:text-black">{s.alpa > 0 ? s.alpa : '-'}</td>
+                                {!mapel && (
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-purple-700 dark:text-purple-400 print:text-black">{s.bolos > 0 ? s.bolos : '-'}</td>
+                                )}
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">
                                   {s.total > 0 ? `${s.persentase}%` : '-'}
                                 </td>
@@ -1475,7 +1551,7 @@ export default function RekapSiswaView({
                             ))}
                             {filteredData.length === 0 && (
                               <tr>
-                                <td colSpan={8} className="text-center py-6 italic text-gray-500 dark:text-gray-400 text-xs">
+                                <td colSpan={!mapel ? 9 : 8} className="text-center py-6 italic text-gray-500 dark:text-gray-400 text-xs">
                                   {search ? 'Tidak ada siswa yang cocok dengan kata kunci pencarian.' : 'Tidak ada data siswa untuk kelas tersebut.'}
                                 </td>
                               </tr>
@@ -1494,11 +1570,17 @@ export default function RekapSiswaView({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 no-print">
                       <button type="button" onClick={() => {
                         if (!rekapData || rekapData.length === 0) return;
-                        const headers = ['No', 'NISN', 'Nama Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', '% Kehadiran'];
+                        const headers = !mapel
+                          ? ['No', 'NISN', 'Nama Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', 'Bolos', '% Kehadiran']
+                          : ['No', 'NISN', 'Nama Siswa', 'Hadir', 'Sakit', 'Izin', 'Alpa', '% Kehadiran'];
                         const csvRows = [headers.join(',')];
                         rekapData.forEach((r: any, i: number) => {
                           const persentaseStr = r.total > 0 ? `${r.persentase}%` : '0%';
-                          csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.hadir||0, r.sakit||0, r.izin||0, r.alpa||0, `"${persentaseStr}"`].join(','));
+                          if (!mapel) {
+                            csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.hadir||0, r.sakit||0, r.izin||0, r.alpa||0, r.bolos||0, `"${persentaseStr}"`].join(','));
+                          } else {
+                            csvRows.push([i+1, r.nisn||'', `"${r.nama_siswa}"`, r.hadir||0, r.sakit||0, r.izin||0, r.alpa||0, `"${persentaseStr}"`].join(','));
+                          }
                         });
                         const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
                         const url = URL.createObjectURL(blob);

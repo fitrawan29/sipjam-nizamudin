@@ -73,6 +73,7 @@ export default function HomeViewGuru({
   const [jadwalWali, setJadwalWali] = useState<JadwalIntervensiWali>({
     batasPagi: '08:00',
     jamPulangMulai: '11:00',
+    jamPulangPiketAkhir: '11:30',
     jamBatasMalam: '22:00'
   });
   const waliStatus = isWaliKelasIntervensiAllowed(

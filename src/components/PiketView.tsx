@@ -22,7 +22,7 @@ import {
   StudentReference
 } from '@/lib/qrSiswa';
 import { acquirePiketLock, refreshPiketLock, releasePiketLock, PiketLockInfo } from '@/lib/piketLock';
-import { isIntervensiAllowed, fetchBatasIntervensiSiswa } from '@/lib/presensiIntervensi';
+import { isIntervensiAllowed, isPiketPulangAllowed, fetchBatasIntervensiSiswa, fetchJadwalIntervensiWali } from '@/lib/presensiIntervensi';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
@@ -33,7 +33,9 @@ export default function PiketView({ user }: { user: any }) {
 
   // Batas intervensi presensi siswa
   const [batasIntervensi, setBatasIntervensi] = useState<string>('08:00');
+  const [jamPulangMulai, setJamPulangMulai] = useState<string>('11:00');
   const isPiketIntervensiExpired = !isAdmin && !isIntervensiAllowed(batasIntervensi);
+  const piketPulangCheck = isPiketPulangAllowed(jamPulangMulai);
 
   // Concurrency Lock states (M3)
   const [piketLockInfo, setPiketLockInfo] = useState<PiketLockInfo | null>(null);
@@ -516,7 +518,24 @@ export default function PiketView({ user }: { user: any }) {
         return;
       }
 
-      // 2. Record attendance
+      // 2. Validate Pulang access window for Guru Piket
+      if (scanMode === 'pulang' && !isAdmin) {
+        const checkPulang = isPiketPulangAllowed(jamPulangMulai);
+        if (!checkPulang.allowed) {
+          playAudioFeedback('error');
+          setLastScanResult({
+            student,
+            status: scanMode,
+            success: false,
+            message: checkPulang.pesan,
+            jam: getLocalCurrentTime()
+          });
+          showToast('Presensi Pulang Ditutup', checkPulang.pesan, 'warning');
+          return;
+        }
+      }
+
+      // 3. Record attendance
       const res = await recordPresensiSiswa(supabase, {
         siswa: student,
         status: scanMode,
@@ -679,6 +698,14 @@ export default function PiketView({ user }: { user: any }) {
   const handleManualMark = async (student: any, status: 'datang' | 'pulang') => {
     if (scanProcessing || manualMarkLoading) return;
     if (isSubmittingPresensiRef.current) return;
+
+    if (status === 'pulang' && !isAdmin) {
+      const checkPulang = isPiketPulangAllowed(jamPulangMulai);
+      if (!checkPulang.allowed) {
+        playAudioFeedback('warning');
+        return showToast('Presensi Pulang Ditutup', checkPulang.pesan, 'warning');
+      }
+    }
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       showToast('Koneksi Internet Diperlukan', 'Perangkat sedang offline. Koneksi internet aktif diwajibkan untuk mencatat presensi siswa.', 'warning');
@@ -953,7 +980,10 @@ export default function PiketView({ user }: { user: any }) {
 
   useEffect(() => {
     fetchDataPiket();
-    fetchBatasIntervensiSiswa(supabase, user?.sekolah_id).then(setBatasIntervensi).catch(() => {});
+    fetchJadwalIntervensiWali(supabase, user?.sekolah_id).then(cfg => {
+      if (cfg.batasPagi) setBatasIntervensi(cfg.batasPagi);
+      if (cfg.jamPulangMulai) setJamPulangMulai(cfg.jamPulangMulai);
+    }).catch(() => {});
 
     const fetchStudents = async () => {
       let query = supabase.from('data_siswa').select('*').order('kelas', { ascending: true }).order('nama_siswa', { ascending: true });
@@ -2052,6 +2082,20 @@ export default function PiketView({ user }: { user: any }) {
                         </div>
                       </button>
                     </div>
+
+                    {scanMode === 'pulang' && (
+                      <div className={`mt-3 p-3 rounded-xl border flex items-center gap-2.5 text-xs font-semibold ${
+                        piketPulangCheck.allowed
+                          ? 'bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800'
+                          : 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800'
+                      }`}>
+                        <i className={`fa-solid ${piketPulangCheck.allowed ? 'fa-circle-check text-blue-600' : 'fa-clock text-amber-600'} text-sm shrink-0`}></i>
+                        <div>
+                          <div className="font-bold">{piketPulangCheck.allowed ? 'Hak Akses Utama Guru Piket Aktif' : 'Presensi Pulang Dialihkan / Belum Aktif'}</div>
+                          <div className="text-[11px] font-normal opacity-90 mt-0.5">{piketPulangCheck.pesan}</div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
