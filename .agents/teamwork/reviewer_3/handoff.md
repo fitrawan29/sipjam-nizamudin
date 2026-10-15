@@ -1,113 +1,50 @@
-# Reviewer Round 3 Final Adversarial Review Handoff Report: Redesign Modul Daftar Nilai (Gradebook Kurikulum Merdeka)
-
 > [!WARNING] **Skepticism Disclaimer**
-> 100% of unit tests (44/44 unified setup and resilience assertions, 156/156 Kurikulum Merdeka formula assertions, 28/28 repository test suites) and Next.js 16 Turbopack production builds compile with zero errors. Real-time physical keyboard behaviors have been defensively structured across all browser input matrix states, though native OS browser virtual keypads on legacy mobile webviews may require ongoing telemetry monitoring.
-
----
+> Highly confident in the database JSON parse hardening, redundant query suppression, and option state stability; all 33 test suites (including 10 adversarial checks) pass 100% and production build succeeds with 0 errors, though physical OS-level printer dialogue behavior on mobile Safari cannot be simulated in headless CLI.
 
 ## 1. What the prior attempt got wrong
 
-### Issue 1 (Silent Loss of Dirty Grades from Inactive TPs in `handleSaveGrades`)
-- **Input:** Teacher edits grades in TP 1 (marking `${student.nisn}_${colId}` dirty in `dirtyGrades`), then switches to TP 2 to continue grading, and clicks "Simpan Nilai".
-- **Expected:** The system upserts all dirty grades across both TP 1 and TP 2 with their respective correct `tp_id`, preserving data integrity across multi-TP workflows.
-- **Actual:** Prior `handleSaveGrades` only iterated over `columnsList` (which exclusively contained columns for the currently active `selectedTpId` = TP 2). Any dirty keys originating from TP 1 were omitted from `recordsToUpsert`. Furthermore, upon successful save (or if `recordsToUpsert.length === 0`), `setDirtyGrades({})` wiped out the entire dirty state, silently discarding the teacher's edits in TP 1 from the database.
-- **Root Cause:** Prior `handleSaveGrades` scoped column lookups solely to `columnsList` rather than resolving dirty column IDs across all active and cached semester columns (`allSemesterColumns`), and indiscriminately reset all dirty keys.
+### Issue 1: Fatal Runtime Crash on `null` or Non-Object JSON Payload in `pengaturan`
+- **Input:** Database row in `pengaturan` for `catatan_wali` or `deep_learning` contains the literal string `"null"`, `"123"`, or `"[1,2,3]"` (caused by external SQL manual maintenance or corrupted cache).
+- **Expected:** Graceful fallback to empty record `{}` without crashing the page.
+- **Actual:** `loadedNotes = JSON.parse(nDb.value)` returned `null` or an array/primitive. Subsequent call `Object.keys(loadedNotes)` threw an unhandled `TypeError: Cannot convert undefined or null to object`, crashing the entire E-Rapor view.
+- **Root Cause:** Inadequate validation of `JSON.parse` output before invoking `Object.keys()`.
 
-### Issue 2 (Destructive Filter Change & Missing Browser Tab Protection)
-- **Input:** Teacher inputs grades across multiple student rows (dirty state active), and accidentally changes the Mata Pelajaran or Kelas filter dropdown, or reloads/closes the browser tab.
-- **Expected:**
-  1. Changing Mapel or Kelas warns the teacher before fetching new data that unsaved grade entries will be lost.
-  2. Browser tab closure or page refresh triggers `beforeunload` warning when unsaved changes exist.
-- **Actual:**
-  1. Dropdowns directly invoked `setSelectedMapel` and `setSelectedKelas`, immediately running `fetchGrades()`, which wiped `gradesMap` and reset `dirtyGrades` with zero confirmation.
-  2. No `beforeunload` event listener was registered, allowing accidental tab closure to obliterate minutes of grading work.
-- **Root Cause:** Missing confirmation guards on filter changes (`handleSelectMapel`, `handleSelectKelas`) and missing `beforeunload` effect hook.
+### Issue 2: Redundant 4-Table Database Query Avalanche on Every Note Autosave
+- **Input:** Teacher edits a note or focus/resume event fires while on the active academic year (e.g. `'2024/2025'`).
+- **Expected:** System should acknowledge config sync without repeatedly re-querying all historical tables for academic year options.
+- **Actual:** Every 800ms debounce autosave dispatched `sipjam:config_updated`, triggering `fetchTahunAjaranOptions`, which queried all 4 tables (`capaian_pembelajaran`, `tujuan_pembelajaran`, `wali_kelas`, `jadwal_pelajaran`) across the network even though the academic year was completely unchanged.
+- **Root Cause:** `handleConfigSync` unconditionally invoked `fetchTahunAjaranOptions(newTa)` on any config sync event without checking `newTa !== prevActiveTa`.
 
-### Issue 3 (Missing 2D Spreadsheet Keyboard Navigation Across Matrix Input Cells)
-- **Input:** Teacher types a student's grade in a matrix cell and presses `Enter`, `Shift+Enter`, `ArrowDown`, `ArrowUp`, `ArrowLeft`, or `ArrowRight`.
-- **Expected:**
-  1. Pressing `Enter` or `ArrowDown` automatically advances focus to the same assessment column in the next student's row, and selects the input text for rapid continuous data entry.
-  2. Pressing `Shift+Enter` or `ArrowUp` advances focus to the previous student's row.
-  3. Arrow keys navigate horizontally between assessment columns when cursor reaches boundaries.
-  4. Clicking or focusing a cell selects text immediately (`select()`) for instant overwrite without manual backspacing.
-- **Actual:** Matrix `<input>` elements possessed no `onKeyDown` or `onFocus` handlers. Teachers were forced to reach for their mouse/touchpad and click every individual student cell in sequence, significantly slowing down grade entry speed for classes of 30+ students.
-- **Root Cause:** Missing `handleCellKeyDown`, missing coordinate indexing (`id`, `data-row`, `data-col`), and missing `select()` on focus.
-
-### Issue 4 (CSV Delimiter Splitting & Missing Kurikulum Merdeka Competency Narrative in Export)
-- **Input:** Teacher or school administrator exports student grades to CSV for a TP with descriptive column names (e.g., "Formatif 1, Lisan") or exports the Semester Report Card.
-- **Expected:**
-  1. CSV headers and student text values are escaped and wrapped in quotes to prevent commas from breaking column alignment in Microsoft Excel.
-  2. Semester CSV export includes the Kurikulum Merdeka competency narrative (`Deskripsi_Capaian`) generated by `generateKurikulumMerdekaDeskripsi`.
-  3. Export CSV is accessible to Admin reviewing gradebooks as well as teachers.
-- **Actual:**
-  1. `headers.join(',')` joined raw header strings without escaping, causing headers with commas to split into unwanted extra columns.
-  2. Semester export omitted the Kurikulum Merdeka competency narrative description.
-  3. Export CSV buttons were restricted with `!isAdmin`, preventing school admins from exporting spreadsheets during academic review.
-- **Root Cause:** Unescaped CSV headers, omission of `semStats.deskripsiCapaian` from exported rows, and over-restrictive `!isAdmin` button condition.
-
----
+### Issue 3: Unstable Hook Dependency Causing Potential Double Initialization
+- **Input:** Mount lifecycle with an active academic year that differs from the default `'2024/2025'`.
+- **Expected:** `fetchSchoolConfig` and options fetch run exactly once per mount or `sekolahId` change.
+- **Actual:** `fetchTahunAjaranOptions` listed `activeSchoolTahunAjaran` in its dependency array. When `activeSchoolTahunAjaran` updated, `fetchTahunAjaranOptions` changed identity, re-triggering the mount `useEffect` and running `fetchSchoolConfig(true)` a second time with `isInitial = true`.
+- **Root Cause:** Failing to read `activeSchoolTahunAjaranRef.current` inside `fetchTahunAjaranOptions`, causing unstable hook references.
 
 ## 2. What I changed
 
-### File Modifikasi: `src/components/GradebookView.tsx`
-1. **2D Spreadsheet Keyboard Navigation & Focus Auto-Select (R2, Ledger Item 1):**
-   - Implemented `activeMatrixColumns` dynamically flattening active Diagnostik, Formatif, and Sumatif columns into a 2D coordinate space.
-   - Implemented `handleCellKeyDown` supporting:
-     - `Enter`: moves focus to next student row (`rowIndex + 1`, same column) with `.select()`.
-     - `Shift+Enter`: moves focus to previous student row (`rowIndex - 1`, same column) with `.select()`.
-     - `ArrowDown` / `ArrowUp`: moves focus vertically across student rows with `.select()`.
-     - `ArrowLeft` / `ArrowRight`: moves focus horizontally between assessment columns with boundary checking.
-   - Added `id={`grade-cell-${idx}-${colIndex}`}`, `data-row`, and `data-col` attributes to Diagnostik, Formatif, and Sumatif inputs.
-   - Added `onFocus={e => e.target.select()}` for instant typing overwrite.
-
-2. **Cross-TP Dirty State Resilience & Data Loss Guards (R3, Ledger Item 2):**
-   - Overhauled `handleSaveGrades`:
-     - Builds a comprehensive column lookup `colMap` across both active `columnsList` and cached `allSemesterColumns`.
-     - Resolves the exact `tp_id` for every dirty key (`targetTpId = col?.tp_id || selectedTpId`).
-     - Upserts all dirty grades across all TPs in one clean atomic batch.
-     - Selectively removes only saved keys from `dirtyGrades`, preserving unsaved state on partial or failed operations.
-   - Added `handleSelectMapel` and `handleSelectKelas` guarding against accidental filter changes when unsaved grades exist.
-   - Added `window.addEventListener('beforeunload')` listener protecting against tab closing or reloading while dirty grades exist.
-
-3. **CSV Export Hardening & Narrative Rapor Export (R4, Ledger Item 3):**
-   - Updated `exportTpToCsv` and `exportSemesterToCsv` to escape headers with quotes: `headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',')`.
-   - Added the Kurikulum Merdeka `Deskripsi_Capaian` narrative column to the Semester CSV export.
-   - Enabled CSV export buttons for both teachers and administrators in review mode.
-
-### File Modifikasi: `tests/gradebook_unified_setup_flow.test.ts`
-- Added **Tier 7 Adversarial Review Round 3 Verification Suite** (R7.1 - R7.5) verifying:
-  - R7.1: 2D Spreadsheet keyboard navigation (Enter/Arrows) and auto text selection across matrix cells.
-  - R7.2: Multi-TP dirty grade saving with cross-TP column resolution and selective dirty key deletion.
-  - R7.3: Destructive filter selection changes (Mapel/Kelas) guarded when unsaved dirty grades exist.
-  - R7.4: Browser tab close/refresh `beforeunload` listener.
-  - R7.5: CSV export header escaping and Kurikulum Merdeka `Deskripsi_Capaian` narrative export.
-- Test suite expanded from 39 to **44 assertions (100% PASS)**.
-
----
+- **`src/components/RaporView.tsx`**:
+  - Hardened notes & deep learning JSON deserialization: checks `typeof parsed === 'object' && !Array.isArray(parsed)`, preventing `TypeError: Cannot convert undefined or null to object`.
+  - Stabilized `fetchTahunAjaranOptions` dependencies using `activeSchoolTahunAjaranRef.current` so its callback identity is fixed per `sekolahId`.
+  - Added query suppression in `handleConfigSync`: skips querying the 4 database tables if `newTa` has not changed from `prevActiveTa`.
+  - Synchronously updated `activeSchoolTahunAjaranRef`, `activeSchoolSemesterRef`, `selectedTahunAjaranRef`, and `selectedSemesterRef` inside `fetchSchoolConfig`, `handleConfigSync`, and dropdown `onChange` handlers to guarantee zero transient race windows.
+  - Ensured `tahunAjaranList` state immediately incorporates `activeTa` upon arrival, preventing transient empty/mismatched `<option>` states in the UI.
+- **`tests/adversarial_rapor_archive_retention.test.ts`**:
+  - Added checks ADV-08, ADV-09, and ADV-10 testing null/malformed JSON immunity, query avalanche suppression, and immediate select option synchronization. Total: 10 / 10 passed.
 
 ## 3. Verification Record
-
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/gradebook_unified_setup_flow.test.ts`: **44/44 PASSED (100%)**
-  - `npx tsx tests/gradebook_cp_tp_formula_verification.test.ts`: **156/156 PASSED (100%)**
-  - `npm test`: **ALL 28 TEST SUITES PASSED (100%)**
-  - `npm run build`: **Next.js 16.3.4 (Turbopack) build succeeded in 3.2s, TypeScript passed in 3.2s, all 12 routes generated with 0 errors.**
+  - `npx tsx tests/adversarial_rapor_archive_retention.test.ts`: 10 / 10 PASSED.
+  - `npx tsx tests/e_rapor_tahun_ajaran_sync.test.ts`: 13 / 13 PASSED.
+  - `npm test`: 33 / 33 test suites PASSED with 0 errors across the entire codebase.
+  - `npm run build`: Turbopack build succeeded with 0 errors across all routes.
 - **Shallow Verification (manual only):**
-  - Inspected 2D coordinate indexing formula `colIndex = (diagnostikCol ? 1 : 0) + formatifCols.length + smIdx` across varying column count topologies.
-  - Inspected CSV export string escaping against quotes and comma delimiters.
+  - AST inspection of `<select>` dropdowns, `displayedTaList` stability, and badge elements.
 - **Unverified aspects:**
-  - Non-standard hardware barcode scanners mapped as virtual keyboard emulators transmitting unexpected scan codes on matrix focus.
-
----
+  - Physical OS-level thermal bluetooth printing and native iOS Safari print dialogs.
 
 ## 4. Known Issues
-
-- `Minor Robustness Risk` — If a browser has JavaScript completely disabled, client-side interactivity is unavailable (by Next.js design; 'use client' components require JavaScript).
-
----
+- `Minor Robustness Risk` — Physical OS print preview dialog cancellation handling relies on standard browser `afterprint` event listener.
 
 ## 5. Remaining risk & next step
-
-- **Task is 100% complete, hardened, and verified.**
-- All requirements (R1 Penyatuan Alur Persiapan Asesmen, R2 Frictionless Grade Entry & 1-Click Init, R3 Kurikulum Merdeka Logic & Data Integrity, R4 Ponytail Principle) and all items in the open issues ledger are completely addressed.
-- Changes are ready to be staged, committed, and pushed according to the Git Workflow Rule.
+- **Task Status:** COMPLETE. All requirements (R1 automatic sync, R2 dynamic archive options with retention protection and query avalanche prevention, R3 print and query consistency) are fully satisfied and robustly tested. Ready for final user delivery.

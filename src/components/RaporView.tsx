@@ -182,17 +182,22 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
         if (activeTa) {
           const prevActiveTa = activeSchoolTahunAjaranRef.current;
+          activeSchoolTahunAjaranRef.current = activeTa;
           setActiveSchoolTahunAjaran(activeTa);
+          setTahunAjaranList(prev => (prev.includes(activeTa) ? prev : [...prev, activeTa].sort()));
           // If initial mount, OR if user was following the previous active year, sync selectedTahunAjaran
           if (isInitial || !hasInitializedConfig.current || selectedTahunAjaranRef.current === prevActiveTa) {
+            selectedTahunAjaranRef.current = activeTa;
             setSelectedTahunAjaran(activeTa);
           }
         }
         if (normSem) {
           const prevActiveSem = activeSchoolSemesterRef.current;
+          activeSchoolSemesterRef.current = normSem;
           setActiveSchoolSemester(normSem);
           // If initial mount, OR if user was following the previous active semester, sync selectedSemester
           if (isInitial || !hasInitializedConfig.current || selectedSemesterRef.current === prevActiveSem) {
+            selectedSemesterRef.current = normSem;
             setSelectedSemester(normSem);
           }
         }
@@ -211,7 +216,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Dynamically build available academic year options combining active config, recorded database entries, and relevant surrounding years
   const fetchTahunAjaranOptions = useCallback(async (currentActiveTa?: string) => {
-    const activeTa = currentActiveTa || activeSchoolTahunAjaran || '2024/2025';
+    const activeTa = currentActiveTa || activeSchoolTahunAjaranRef.current || '2024/2025';
     const yearsSet = new Set<string>();
 
     if (activeTa) yearsSet.add(activeTa.trim());
@@ -256,10 +261,11 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
     const sorted = Array.from(yearsSet).filter(Boolean).sort();
     setTahunAjaranList(sorted);
-  }, [activeSchoolTahunAjaran, sekolahId]);
+  }, [sekolahId]);
 
   // Load active school config & dynamic academic year options on mount or sekolahId change
   useEffect(() => {
+    hasInitializedConfig.current = false;
     let isMounted = true;
     const init = async () => {
       const conf = await fetchSchoolConfig(true);
@@ -285,19 +291,22 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       let newTa = detail?.tahun_ajaran || detail?.config?.tahun_ajaran;
       let newSem = detail?.semester || detail?.config?.semester;
 
+      const prevActiveTa = activeSchoolTahunAjaranRef.current;
+      const prevActiveSem = activeSchoolSemesterRef.current;
+
       if (!newTa || !newSem) {
         const conf = await fetchSchoolConfig(false);
-        if (conf?.tahunAjaran) newTa = conf.tahunAjaran;
-        if (conf?.semester) newSem = conf.semester;
+        if (!newTa && conf?.tahunAjaran) newTa = conf.tahunAjaran;
+        if (!newSem && conf?.semester) newSem = conf.semester;
       } else {
-        const prevActiveTa = activeSchoolTahunAjaranRef.current;
-        const prevActiveSem = activeSchoolSemesterRef.current;
-
         if (newTa) {
           const trimmedTa = newTa.trim();
+          activeSchoolTahunAjaranRef.current = trimmedTa;
           setActiveSchoolTahunAjaran(trimmedTa);
+          setTahunAjaranList(prev => (prev.includes(trimmedTa) ? prev : [...prev, trimmedTa].sort()));
           // Only update selectedTahunAjaran if user was following the previous active year
           if (selectedTahunAjaranRef.current === prevActiveTa) {
+            selectedTahunAjaranRef.current = trimmedTa;
             setSelectedTahunAjaran(trimmedTa);
           }
         }
@@ -310,15 +319,18 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
             : null;
 
         if (normSem) {
+          activeSchoolSemesterRef.current = normSem;
           setActiveSchoolSemester(normSem);
           // Only update selectedSemester if user was following the previous active semester
           if (selectedSemesterRef.current === prevActiveSem) {
+            selectedSemesterRef.current = normSem;
             setSelectedSemester(normSem);
           }
         }
       }
 
-      if (newTa) {
+      // Avoid redundant 4-table queries if academic year did not change
+      if (newTa && (newTa.trim() !== prevActiveTa || tahunAjaranList.length <= 1)) {
         await fetchTahunAjaranOptions(newTa);
       }
     };
@@ -327,7 +339,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       if (e.key === 'sipjam:config_sync' || e.key === 'sipjam_config_sync') {
         try {
           const detail = e.newValue ? JSON.parse(e.newValue) : null;
-          if (detail) {
+          if (detail && typeof detail === 'object') {
             handleConfigSync({ detail });
           }
         } catch (_) {}
@@ -340,7 +352,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       window.removeEventListener('sipjam:config_updated', handleConfigSync);
       window.removeEventListener('storage', handleStorageSync);
     };
-  }, [sekolahId, fetchSchoolConfig, fetchTahunAjaranOptions]);
+  }, [sekolahId, fetchSchoolConfig, fetchTahunAjaranOptions, tahunAjaranList.length]);
 
   // Synchronize document.title for browser print jobs
   useEffect(() => {
@@ -633,23 +645,36 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         if (sekolahId) nQuery = nQuery.eq('sekolah_id', sekolahId);
         const { data: nDb } = await nQuery.maybeSingle();
         if (nDb?.value) {
-          loadedNotes = JSON.parse(nDb.value);
-          if (typeof window !== 'undefined') {
-            try { localStorage.setItem(notesKey, nDb.value); } catch {}
+          try {
+            const parsed = JSON.parse(nDb.value);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              loadedNotes = parsed;
+              if (typeof window !== 'undefined') {
+                try { localStorage.setItem(notesKey, nDb.value); } catch {}
+              }
+            }
+          } catch (jsonErr) {
+            console.warn('[RaporView] Malformed cloud notes JSON:', jsonErr);
           }
         }
       } catch (err) {
         console.warn('[RaporView] Cloud notes load error:', err);
       }
-      if (Object.keys(loadedNotes).length === 0 && typeof window !== 'undefined') {
+      if ((!loadedNotes || typeof loadedNotes !== 'object' || Array.isArray(loadedNotes) || Object.keys(loadedNotes).length === 0) && typeof window !== 'undefined') {
         const savedNotes = localStorage.getItem(notesKey);
         if (savedNotes) {
           try {
-            loadedNotes = JSON.parse(savedNotes);
+            const parsed = JSON.parse(savedNotes);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              loadedNotes = parsed;
+            }
           } catch {
             // ignore parsing error
           }
         }
+      }
+      if (!loadedNotes || typeof loadedNotes !== 'object' || Array.isArray(loadedNotes)) {
+        loadedNotes = {};
       }
       catatanRef.current = loadedNotes;
       setCatatanWaliMap(loadedNotes);
@@ -662,23 +687,36 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         if (sekolahId) dlQuery = dlQuery.eq('sekolah_id', sekolahId);
         const { data: dlDb } = await dlQuery.maybeSingle();
         if (dlDb?.value) {
-          loadedDl = JSON.parse(dlDb.value);
-          if (typeof window !== 'undefined') {
-            try { localStorage.setItem(dlKey, dlDb.value); } catch {}
+          try {
+            const parsed = JSON.parse(dlDb.value);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              loadedDl = parsed;
+              if (typeof window !== 'undefined') {
+                try { localStorage.setItem(dlKey, dlDb.value); } catch {}
+              }
+            }
+          } catch (jsonErr) {
+            console.warn('[RaporView] Malformed cloud deep learning JSON:', jsonErr);
           }
         }
       } catch (err) {
         console.warn('[RaporView] Cloud deep learning load error:', err);
       }
-      if (Object.keys(loadedDl).length === 0 && typeof window !== 'undefined') {
+      if ((!loadedDl || typeof loadedDl !== 'object' || Array.isArray(loadedDl) || Object.keys(loadedDl).length === 0) && typeof window !== 'undefined') {
         const savedDl = localStorage.getItem(dlKey);
         if (savedDl) {
           try {
-            loadedDl = JSON.parse(savedDl);
+            const parsed = JSON.parse(savedDl);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+              loadedDl = parsed;
+            }
           } catch {
             // ignore parsing error
           }
         }
+      }
+      if (!loadedDl || typeof loadedDl !== 'object' || Array.isArray(loadedDl)) {
+        loadedDl = {};
       }
       dlRef.current = loadedDl;
       setDeepLearningMap(loadedDl);
@@ -1055,7 +1093,11 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               <span className="font-semibold text-gray-600 dark:text-gray-300">Semester:</span>
               <select
                 value={selectedSemester}
-                onChange={(e) => setSelectedSemester(e.target.value as 'Ganjil' | 'Genap')}
+                onChange={(e) => {
+                  const val = e.target.value as 'Ganjil' | 'Genap';
+                  selectedSemesterRef.current = val;
+                  setSelectedSemester(val);
+                }}
                 className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
               >
                 <option value="Ganjil" className="dark:bg-gray-800">
@@ -1072,7 +1114,11 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               <span className="font-semibold text-gray-600 dark:text-gray-300">T.A.:</span>
               <select
                 value={selectedTahunAjaran}
-                onChange={(e) => setSelectedTahunAjaran(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  selectedTahunAjaranRef.current = val;
+                  setSelectedTahunAjaran(val);
+                }}
                 className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
               >
                 {tahunAjaranList.map(ta => (

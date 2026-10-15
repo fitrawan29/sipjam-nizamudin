@@ -1,17 +1,14 @@
-# Progress Log - Reviewer Round 3 (Gradebook Redesign)
+# Reviewer 3 Progress Log
+Last visited: 2026-10-15 22:56:00Z
 
-- [x] Independent analysis of task requirements (R1 Unified Setup, R2 Frictionless Grade Entry, R3 Kurikulum Merdeka Logic Integrity, R4 Ponytail Principle).
-- [x] Investigated open issues ledger:
-  - Keyboard navigation & Enter key behavior across matrix input cells.
-  - Cross-TP dirty state resilience & accidental data loss guards (filter changes, beforeunload).
-  - CSV export hardening & Kurikulum Merdeka competency narrative export.
-- [x] Identified and fixed 4 critical issues in `src/components/GradebookView.tsx`:
-  - Implemented 2D spreadsheet keyboard navigation (Enter, Shift+Enter, Arrow keys) and select-on-focus across all matrix inputs.
-  - Fixed cross-TP dirty grade saving in `handleSaveGrades` with comprehensive column lookup `colMap` and accurate `tp_id` mapping.
-  - Added filter selection change confirmation guards (`handleSelectMapel`, `handleSelectKelas`) and `beforeunload` window protection.
-  - Hardened CSV export with escaped headers/cells and Kurikulum Merdeka `Deskripsi_Capaian` column.
-- [x] Expanded test suite `tests/gradebook_unified_setup_flow.test.ts` to 44 assertions (Tier 7 added).
-- [x] Verified full regression suite (44/44 unified setup tests, 156/156 formula tests, 28/28 repository test suites).
-- [x] Verified production build (`npm run build`) passing with 0 TypeScript/lint errors.
-- [x] Executed Git Workflow Rule (git add, commit, push).
-- [x] Dispatched final handoff report to caller orchestrator.
+- Initialized independent requirement analysis for E-Rapor dynamic academic year & semester sync.
+- Performed adversarial review of prior attempt (`reviewer_2` / `implementer_1`).
+- Discovered 3 subtle latent bugs:
+  1. `Object.keys(null)` crash hazard when `pengaturan` table or `localStorage` contains `null` or non-object JSON values for `catatan_wali` or `deep_learning`.
+  2. Redundant 4-table query avalanche on every autosave / focus / repeat sync event when `tahun_ajaran` has not changed.
+  3. Effect re-run / double-initialization risk caused by unstable `fetchTahunAjaranOptions` dependency on `activeSchoolTahunAjaran`.
+- Applied surgical fixes in `src/components/RaporView.tsx`.
+- Expanded adversarial test suite `tests/adversarial_rapor_archive_retention.test.ts` with ADV-08, ADV-09, and ADV-10 (now 10 / 10 passed).
+- Ran full test suite (`npm test`) -> 33 / 33 test suites passed 100%.
+- Verified production build (`npm run build`) -> 0 errors.
+- Committing and preparing final handoff report.

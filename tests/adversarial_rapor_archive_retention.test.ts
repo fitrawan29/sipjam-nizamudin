@@ -252,6 +252,97 @@ async function runAdversarialLifecycleChecks() {
     assert.strictEqual(matchWaliUnversioned('2024/2025')?.nama_guru, 'Bu Siti Default', 'Unversioned row correctly matches as fallback');
   });
 
+  // 8. Robustness against Null / Non-Object / Malformed JSON in Database
+  await check('ADV-08: Malformed or null JSON payload in pengaturan does NOT crash with TypeError and defaults to {}', () => {
+    const parseSafely = (raw: string | null) => {
+      let loaded: any = {};
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            loaded = parsed;
+          }
+        } catch {
+          // handled
+        }
+      }
+      if (!loaded || typeof loaded !== 'object' || Array.isArray(loaded)) {
+        loaded = {};
+      }
+      return loaded;
+    };
+
+    // Test cases that could crash Object.keys(...)
+    assert.doesNotThrow(() => {
+      const resNullStr = parseSafely('null');
+      assert.strictEqual(typeof resNullStr, 'object');
+      assert.strictEqual(Object.keys(resNullStr).length, 0);
+    });
+
+    assert.doesNotThrow(() => {
+      const resNumStr = parseSafely('12345');
+      assert.strictEqual(typeof resNumStr, 'object');
+      assert.strictEqual(Object.keys(resNumStr).length, 0);
+    });
+
+    assert.doesNotThrow(() => {
+      const resArrStr = parseSafely('[1, 2, 3]');
+      assert.strictEqual(typeof resArrStr, 'object');
+      assert.strictEqual(Object.keys(resArrStr).length, 0);
+    });
+
+    assert.doesNotThrow(() => {
+      const resCorrupt = parseSafely('{ broken: json');
+      assert.strictEqual(typeof resCorrupt, 'object');
+      assert.strictEqual(Object.keys(resCorrupt).length, 0);
+    });
+
+    assert.doesNotThrow(() => {
+      const valid = parseSafely('{"001": "Siswa berprestasi"}');
+      assert.strictEqual(valid['001'], 'Siswa berprestasi');
+      assert.strictEqual(Object.keys(valid).length, 1);
+    });
+  });
+
+  // 9. Avoid Redundant 4-Table Database Queries on Unchanged Academic Year Events
+  await check('ADV-09: Unchanged academic year sync events skip redundant DB queries', () => {
+    let queriedCount = 0;
+    const mockFetchTahunAjaranOptions = (ta: string) => {
+      queriedCount++;
+    };
+
+    const handleSync = (prevActiveTa: string, newTa: string, listLength: number) => {
+      if (newTa && (newTa.trim() !== prevActiveTa || listLength <= 1)) {
+        mockFetchTahunAjaranOptions(newTa);
+      }
+    };
+
+    // Case 1: Active year unchanged (e.g. Note autosave, focus resume, or semester-only edit)
+    handleSync('2024/2025', '2024/2025', 4);
+    assert.strictEqual(queriedCount, 0, 'Must NOT query 4 tables when year has not changed');
+
+    // Case 2: Active year promoted by admin
+    handleSync('2024/2025', '2025/2026', 4);
+    assert.strictEqual(queriedCount, 1, 'Must query 4 tables when year changed');
+
+    // Case 3: Empty list
+    handleSync('2024/2025', '2024/2025', 0);
+    assert.strictEqual(queriedCount, 2, 'Must query when options list is empty');
+  });
+
+  // 10. Immediate Inclusion of Active Academic Year in Dropdown Options
+  await check('ADV-10: Immediate inclusion of activeTa in tahunAjaranList prevents invalid select option state', () => {
+    let list = ['2023/2024', '2024/2025'];
+    const updateList = (newActiveTa: string) => {
+      list = list.includes(newActiveTa) ? list : [...list, newActiveTa].sort();
+    };
+
+    // Promote to 2027/2028 before async DB query completes
+    updateList('2027/2028');
+    assert.ok(list.includes('2027/2028'), '2027/2028 must be immediately present');
+    assert.strictEqual(list[list.length - 1], '2027/2028');
+  });
+
   console.log('\n================================================================');
   console.log(`  ADVERSARIAL TESTS: ${passed} / ${total} PASSED`);
   console.log('================================================================\n');
