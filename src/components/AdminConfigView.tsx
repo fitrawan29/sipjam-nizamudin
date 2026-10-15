@@ -28,6 +28,7 @@ export default function AdminConfigView({
     jam_pulang_mulai: '11:00',
     jam_pulang_jumat: '11:00',
     jam_pulang_akhir: '22:00',
+    jam_batas_intervensi_siswa: '08:00',
     kop_yayasan: '',
     kop_sekolah: '',
     kop_alamat: '',
@@ -587,6 +588,24 @@ export default function AdminConfigView({
                           />
                         </div>
                         <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Pulang Tutup</label><input type="time" name="jam_pulang_akhir" value={config.jam_pulang_akhir || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-900/40 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-1">
+                            <i className="fa-solid fa-user-clock text-amber-600 dark:text-amber-400"></i> Batas Intervensi Presensi Siswa
+                          </label>
+                          <input 
+                            type="time" 
+                            name="jam_batas_intervensi_siswa" 
+                            value={config.jam_batas_intervensi_siswa || '08:00'} 
+                            onChange={handleChange} 
+                            required 
+                            className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium" 
+                          />
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                            Batas waktu bagi Wali Kelas & Piket untuk mengisi/mengubah presensi siswa. Setelah jam ini, presensi dikelola oleh Guru Mapel.
+                          </p>
+                        </div>
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total 4 jam keterlambatan = 1 Hari Alpa otomatis.</p>
                 </div>

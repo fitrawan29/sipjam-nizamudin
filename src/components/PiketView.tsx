@@ -22,6 +22,7 @@ import {
   StudentReference
 } from '@/lib/qrSiswa';
 import { acquirePiketLock, refreshPiketLock, releasePiketLock, PiketLockInfo } from '@/lib/piketLock';
+import { isIntervensiAllowed, fetchBatasIntervensiSiswa } from '@/lib/presensiIntervensi';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
@@ -29,6 +30,10 @@ export default function PiketView({ user }: { user: any }) {
   const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
   const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
   const isGuru = roleNormalized === 'guru';
+
+  // Batas intervensi presensi siswa
+  const [batasIntervensi, setBatasIntervensi] = useState<string>('08:00');
+  const isPiketIntervensiExpired = !isAdmin && !isIntervensiAllowed(batasIntervensi);
 
   // Concurrency Lock states (M3)
   const [piketLockInfo, setPiketLockInfo] = useState<PiketLockInfo | null>(null);
@@ -948,6 +953,7 @@ export default function PiketView({ user }: { user: any }) {
 
   useEffect(() => {
     fetchDataPiket();
+    fetchBatasIntervensiSiswa(supabase, user?.sekolah_id).then(setBatasIntervensi).catch(() => {});
 
     const fetchStudents = async () => {
       let query = supabase.from('data_siswa').select('*').order('kelas', { ascending: true }).order('nama_siswa', { ascending: true });
@@ -1366,8 +1372,8 @@ export default function PiketView({ user }: { user: any }) {
         .eq('tanggal', getWitaDateStr())
         .eq('status_verifikasi', 'Ditolak');
 
-      // Sync Piket student attendance to canonical public.absensi
-      if (allStudents.length > 0) {
+      // Sync Piket student attendance to canonical public.absensi (hanya sebelum batas intervensi berakhir)
+      if (allStudents.length > 0 && (!isPiketIntervensiExpired || isAdmin)) {
         try {
           const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
             H: 'Hadir',
@@ -1378,7 +1384,7 @@ export default function PiketView({ user }: { user: any }) {
           const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
           const todayDateStr = getWitaDateStr();
 
-          let aQ = supabase.from('absensi').select('nisn, status, log_perubahan').eq('tanggal', todayDateStr);
+          let aQ = supabase.from('absensi').select('nisn, status, log_perubahan, sumber_perubahan').eq('tanggal', todayDateStr);
           if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
           const { data: existingAbs } = await aQ;
           const existingMap = new Map(existingAbs?.map(a => [a.nisn, a]));
@@ -1389,8 +1395,18 @@ export default function PiketView({ user }: { user: any }) {
               return null;
             }
 
-            const statusCode = piketAbsensi[s.nisn] || 'H';
-            const fullStatus = statusMap[statusCode] || 'Hadir';
+            const statusCode = piketAbsensi[s.nisn];
+            // Mencegah bentrok dengan Wali Kelas & Guru Mapel:
+            // Jika status sudah diisi Wali Kelas atau Guru Mapel, dan Piket tidak mengubah secara eksplisit:
+            if (existing && (existing.sumber_perubahan === 'Wali Kelas' || existing.sumber_perubahan === 'Guru Mapel')) {
+              const existingCode = existing.status === 'Sakit' ? 'S' : existing.status === 'Izin' ? 'I' : existing.status === 'Alpa' ? 'A' : 'H';
+              if (!statusCode || statusCode === existingCode || statusCode === 'H') {
+                return null; // Pertahankan catatan Wali Kelas / Guru Mapel
+              }
+            }
+
+            const finalCode = statusCode || 'H';
+            const fullStatus = statusMap[finalCode] || 'Hadir';
             const prevLogs = existing?.log_perubahan || [];
             const logEntry = `[${nowWita} WITA] Diubah ke ${fullStatus} oleh ${user?.nama || 'Piket'} (Piket)`;
 
@@ -1409,7 +1425,9 @@ export default function PiketView({ user }: { user: any }) {
             };
           }).filter(Boolean);
 
-          await supabase.from('absensi').upsert(absensiRows as any[], { onConflict: 'sekolah_id, tanggal, nisn' });
+          if (absensiRows.length > 0) {
+            await supabase.from('absensi').upsert(absensiRows as any[], { onConflict: 'sekolah_id, tanggal, nisn' });
+          }
         } catch (syncErr) {
           console.error('Error synchronizing piket attendance to public.absensi:', syncErr);
         }
@@ -3394,9 +3412,27 @@ export default function PiketView({ user }: { user: any }) {
                       </div>
                       
                       {!isFormLocked && (<div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-200 dark:border-teal-900/50 rounded-xl p-3">
-                        <label className="block text-[11px] font-bold text-teal-800 dark:text-teal-400 mb-2">
-                          <i className="fa-solid fa-clipboard-check mr-1.5"></i> Rekap Absensi Sekolah
-                        </label>
+                        <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                          <label className="block text-[11px] font-bold text-teal-800 dark:text-teal-400">
+                            <i className="fa-solid fa-clipboard-check mr-1.5"></i> Rekap Absensi Sekolah
+                          </label>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                            isPiketIntervensiExpired
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                              : 'bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300'
+                          }`}>
+                            <i className={`fa-solid ${isPiketIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
+                            {isPiketIntervensiExpired ? `Terkunci (Lewat pk. ${batasIntervensi})` : `Batas pk. ${batasIntervensi}`}
+                          </span>
+                        </div>
+
+                        {isPiketIntervensiExpired && (
+                          <div className="mb-2.5 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-[10px] flex items-center gap-1.5">
+                            <i className="fa-solid fa-circle-info text-amber-600 shrink-0"></i>
+                            <span>Batas waktu intervensi presensi siswa (pk. {batasIntervensi} WITA) telah berakhir. Presensi selanjutnya dicatat langsung oleh Guru Mapel pada Jurnal KBM.</span>
+                          </div>
+                        )}
+
                         <div className="flex gap-2 overflow-x-auto custom-scroll pb-2 mb-2">
                           {kelasList.map(k => (
                             <button
@@ -3429,10 +3465,10 @@ export default function PiketView({ user }: { user: any }) {
                                   <button 
                                     key={status}
                                     type="button"
-                                    disabled={isFormLocked}
+                                    disabled={isFormLocked || isPiketIntervensiExpired}
                                     onClick={() => handlePiketAbsensiChange(siswa, status)}
                                     className={`w-7 h-7 rounded-md text-[10px] font-bold transition-all ${
-                                      isFormLocked ? 'opacity-50 cursor-not-allowed ' : ''
+                                      (isFormLocked || isPiketIntervensiExpired) ? 'opacity-50 cursor-not-allowed ' : ''
                                     }${
                                       piketAbsensi[siswa.nisn] === status 
                                       ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 

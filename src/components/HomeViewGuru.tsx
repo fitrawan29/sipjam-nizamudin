@@ -19,6 +19,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { getTeacherDisciplineWarnings, TeacherWarningSummary } from '@/lib/warningSystem';
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
+import { useWaliKelas } from '@/hooks/useWaliKelas';
+import { isIntervensiAllowed, fetchBatasIntervensiSiswa } from '@/lib/presensiIntervensi';
 
 const KURIKULUM_DOC_TYPES = [
   { key: 'CP', name: 'Analisis CP', full: 'Analisis Capaian Pembelajaran' },
@@ -66,6 +68,14 @@ export default function HomeViewGuru({
   const [teacherDocuments, setTeacherDocuments] = useState<any[]>([]);
   const [loadingTeacherExtra, setLoadingTeacherExtra] = useState(false);
   const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
+
+  const { isWaliKelas, assignedKelas } = useWaliKelas(user, false);
+  const [batasIntervensi, setBatasIntervensi] = useState('08:00');
+  const isWaliIntervensiExpired = !isIntervensiAllowed(batasIntervensi);
+
+  useEffect(() => {
+    fetchBatasIntervensiSiswa(supabase, user?.sekolah_id).then(setBatasIntervensi).catch(() => {});
+  }, [user?.sekolah_id]);
 
 
     useEffect(() => {
@@ -840,6 +850,47 @@ export default function HomeViewGuru({
               )}
             </div>
           </div>
+
+          {/* Kartu Akses Cepat Presensi Siswa untuk Wali Kelas */}
+          {isWaliKelas && (
+            <div className="glass-card p-4 border border-emerald-200/90 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                    <i className="fa-solid fa-user-shield"></i>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-xs sm:text-sm font-bold text-emerald-950 dark:text-emerald-200">
+                        Presensi Siswa Kelas {assignedKelas || ''}
+                      </h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                        isWaliIntervensiExpired 
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' 
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+                      }`}>
+                        <i className={`fa-solid ${isWaliIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
+                        {isWaliIntervensiExpired ? `Terkunci (Lewat pk. ${batasIntervensi})` : `Dibuka s.d. pk. ${batasIntervensi}`}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                      {isWaliIntervensiExpired 
+                        ? 'Batas waktu intervensi berakhir. Presensi siswa saat ini dikelola langsung oleh Guru Mapel saat KBM.'
+                        : 'Input atau perbarui kehadiran siswa kelas binaan Anda sebelum jam KBM dimulai.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setView('view-rekap-siswa')}
+                  className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition shrink-0"
+                >
+                  <i className="fa-solid fa-pen-to-square"></i>
+                  <span>Input Presensi Siswa</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/*
             M6 Legacy Test Anchors (retained for backward test compatibility):

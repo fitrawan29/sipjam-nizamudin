@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
+import { isIntervensiAllowed, fetchBatasIntervensiSiswa } from '@/lib/presensiIntervensi';
+import { getWitaDateStr } from '@/lib/wita';
 
 export default function RekapSiswaView({ 
   user, 
@@ -51,6 +53,13 @@ export default function RekapSiswaView({
   const [waliLoading, setWaliLoading] = useState(false);
   const [waliSaving, setWaliSaving] = useState(false);
   const [masterLoaded, setMasterLoaded] = useState(false);
+  const [batasIntervensi, setBatasIntervensi] = useState<string>('08:00');
+
+  const todayWita = getWitaDateStr();
+  const isIntervensiExpired = !isAdmin && (
+    waliTanggal < todayWita ||
+    (waliTanggal === todayWita && !isIntervensiAllowed(batasIntervensi))
+  );
 
   useEffect(() => {
     const fetchMaster = async () => {
@@ -75,13 +84,18 @@ export default function RekapSiswaView({
           setMapelList(uniqueMapel);
         }
 
+        // Fetch batas intervensi presensi siswa
+        const batas = await fetchBatasIntervensiSiswa(supabase, user?.sekolah_id);
+        setBatasIntervensi(batas);
+
         // Fetch Wali Kelas assignments
         let wQuery = supabase.from('wali_kelas').select('*');
         if (user?.sekolah_id) wQuery = wQuery.eq('sekolah_id', user.sekolah_id);
         const { data: wData } = await wQuery;
         let resolvedWaliKelas = '';
+        let userWalis: any[] = [];
         if (wData && wData.length > 0) {
-          const userWalis = user?.role === 'Admin'
+          userWalis = user?.role === 'Admin'
             ? wData
             : wData.filter(w => 
                 (user?.id && w.guru_id === user.id) ||
@@ -93,6 +107,18 @@ export default function RekapSiswaView({
             setActiveWaliKelas(userWalis[0]);
             resolvedWaliKelas = userWalis[0].kelas;
           }
+        }
+
+        // Fallback assignment: ensure Wali Kelas with assigned prop or profile gets access
+        const fallbackKelas = typeof propAssignedKelas === 'string' ? propAssignedKelas :
+          (typeof user?.penugasan?.kelas_binaan === 'string' ? user?.penugasan?.kelas_binaan :
+          (typeof user?.wali_kelas === 'string' ? user?.wali_kelas : (user?.wali_kelas?.kelas || '')));
+
+        if ((!userWalis || userWalis.length === 0) && fallbackKelas) {
+          const synthesized = [{ id: 'fallback-' + fallbackKelas, kelas: fallbackKelas, nama_guru: user?.nama || 'Wali Kelas' }];
+          setWaliKelasList(synthesized);
+          setActiveWaliKelas(synthesized[0]);
+          resolvedWaliKelas = fallbackKelas;
         }
 
         // Automatic filter for Wali Kelas: prioritize assigned class from propAssignedKelas, penugasan.kelas_binaan, or wali_kelas
@@ -334,30 +360,54 @@ export default function RekapSiswaView({
       });
     }
     if (!activeWaliKelas || waliStudents.length === 0) return;
+
+    // Guard: Batas intervensi presensi siswa (default 08:00 WITA)
+    if (isIntervensiExpired && !isAdmin) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Batas Waktu Intervensi Berakhir',
+        text: `Batas waktu pengisian/intervensi presensi siswa (${batasIntervensi} WITA) telah berakhir untuk hari ini. Presensi dialihkan dan dikelola oleh Guru Mapel saat KBM.`,
+        confirmButtonColor: '#0d9488'
+      });
+    }
+
     setWaliSaving(true);
     try {
       const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-      const rowsToUpsert = waliStudents.map(s => {
-        const record = waliAttendance[s.nisn] || { status: '', keterangan: '', logs: [] };
-        const currentLogs = Array.isArray(record.logs) ? [...record.logs] : [];
-        const logNote = record.keterangan ? `. Keterangan: ${record.keterangan}` : '';
-        const logEntry = `[${nowWita} WITA] Diubah ke ${record.status} oleh ${user?.nama || 'Wali Kelas'} (Wali Kelas)${logNote}`;
+      const rowsToUpsert = waliStudents
+        .map(s => {
+          const record = waliAttendance[s.nisn];
+          if (!record || !record.status) return null;
+          const currentLogs = Array.isArray(record.logs) ? [...record.logs] : [];
+          const logNote = record.keterangan ? `. Keterangan: ${record.keterangan}` : '';
+          const logEntry = `[${nowWita} WITA] Diubah ke ${record.status} oleh ${user?.nama || 'Wali Kelas'} (Wali Kelas)${logNote}`;
 
-        return {
-          sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
-          tanggal: waliTanggal,
-          kelas: activeWaliKelas.kelas,
-          siswa_id: s.id,
-          nisn: s.nisn,
-          nama_siswa: s.nama_siswa,
-          status: record.status,
-          keterangan: record.keterangan || null,
-          sumber_perubahan: 'Wali Kelas',
-          diubah_oleh: user?.nama || 'Wali Kelas',
-          log_perubahan: [...currentLogs, logEntry],
-          updated_at: new Date().toISOString()
-        };
-      });
+          return {
+            sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+            tanggal: waliTanggal,
+            kelas: activeWaliKelas.kelas,
+            siswa_id: s.id,
+            nisn: s.nisn,
+            nama_siswa: s.nama_siswa,
+            status: record.status,
+            keterangan: record.keterangan || null,
+            sumber_perubahan: 'Wali Kelas',
+            diubah_oleh: user?.nama || 'Wali Kelas',
+            log_perubahan: [...currentLogs, logEntry],
+            updated_at: new Date().toISOString()
+          };
+        })
+        .filter(Boolean);
+
+      if (rowsToUpsert.length === 0) {
+        setWaliSaving(false);
+        return Swal.fire({
+          icon: 'info',
+          title: 'Tidak Ada Data',
+          text: 'Pilih status presensi siswa terlebih dahulu sebelum menyimpan.',
+          confirmButtonColor: '#0d9488'
+        });
+      }
 
       const { error } = await supabase.from('absensi').upsert(rowsToUpsert, {
         onConflict: 'sekolah_id, tanggal, nisn'
@@ -738,10 +788,18 @@ export default function RekapSiswaView({
                       <i className="fa-solid fa-user-shield"></i>
                     </span>
                     <div>
-                      <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                      <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5 flex-wrap">
                         <span>Penugasan Wali Kelas</span>
                         <span className="px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 text-[10px]">
                           {activeWaliKelas?.kelas || 'Kelas'}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          isIntervensiExpired 
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' 
+                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+                        }`}>
+                          <i className={`fa-solid ${isIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
+                          {isIntervensiExpired ? `Terkunci (Lewat pk. ${batasIntervensi})` : `Intervensi s.d. pk. ${batasIntervensi}`}
                         </span>
                       </h3>
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
@@ -781,6 +839,17 @@ export default function RekapSiswaView({
                 {/* EXPANDED WALI KELAS INPUT PANEL */}
                 {showWaliInput && (
                   <div className="mt-4 pt-4 border-t border-emerald-200 dark:border-emerald-800/60 space-y-4 fade-in">
+                    {isIntervensiExpired && (
+                      <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 p-3 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 dark:text-amber-200">
+                        <i className="fa-solid fa-triangle-exclamation text-amber-600 text-base shrink-0"></i>
+                        <div>
+                          <div className="font-bold">Batas Waktu Intervensi Berakhir (pk. {batasIntervensi} WITA)</div>
+                          <div className="text-[11px] text-amber-800 dark:text-amber-300">
+                            Pengisian presensi siswa oleh Wali Kelas & Piket dibatasi hingga pukul {batasIntervensi} WITA. KBM saat ini sedang/telah berlangsung, sehingga presensi dikelola langsung oleh Guru Mata Pelajaran.
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-800/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
                       <div className="flex items-center gap-2">
                         <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Tanggal Presensi:</label>
@@ -795,22 +864,25 @@ export default function RekapSiswaView({
                         <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mr-1">Tandai Cepat:</span>
                         <button
                           type="button"
+                          disabled={isIntervensiExpired}
                           onClick={() => handleSetAllWaliStatus('Hadir')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 transition"
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Hadir
                         </button>
                         <button
                           type="button"
+                          disabled={isIntervensiExpired}
                           onClick={() => handleSetAllWaliStatus('Sakit')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 transition"
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Sakit
                         </button>
                         <button
                           type="button"
+                          disabled={isIntervensiExpired}
                           onClick={() => handleSetAllWaliStatus('Izin')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 transition"
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Izin
                         </button>
@@ -879,8 +951,9 @@ export default function RekapSiswaView({
                                       <button
                                         key={st}
                                         type="button"
+                                        disabled={isIntervensiExpired}
                                         onClick={() => handleSetWaliStatus(siswa.nisn, st)}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${colorClasses}`}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${colorClasses} ${isIntervensiExpired ? 'opacity-40 cursor-not-allowed' : ''}`}
                                       >
                                         {st}
                                       </button>
@@ -890,10 +963,11 @@ export default function RekapSiswaView({
 
                                 <input
                                   type="text"
-                                  placeholder="Keterangan / alasan (opsional)..."
+                                  disabled={isIntervensiExpired}
+                                  placeholder={isIntervensiExpired ? "Intervensi terkunci..." : "Keterangan / alasan (opsional)..."}
                                   value={currentRec.keterangan || ''}
                                   onChange={e => handleSetWaliKeterangan(siswa.nisn, e.target.value)}
-                                  className="w-full md:w-56 px-2.5 py-1 text-[11px] rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                  className={`w-full md:w-56 px-2.5 py-1 text-[11px] rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${isIntervensiExpired ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}`}
                                 />
                               </div>
                             </div>
@@ -912,9 +986,9 @@ export default function RekapSiswaView({
                       </button>
                       <button
                         type="button"
-                        disabled={waliSaving || waliLoading || waliStudents.length === 0}
+                        disabled={waliSaving || waliLoading || waliStudents.length === 0 || isIntervensiExpired}
                         onClick={handleSaveWaliAttendance}
-                        className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
+                        className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {waliSaving ? (
                           <>
