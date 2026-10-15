@@ -210,6 +210,42 @@ assert(
   'R5.5: Quick column action buttons route directly into Unified Setup Panel without popup modals'
 );
 
+// ━━━ 6. R6: ADVERSARIAL REVIEW ROUND 2 RESILIENCE HARDENING ━━━
+console.log('\n━━━ 6. R6: ADVERSARIAL REVIEW ROUND 2 RESILIENCE HARDENING ━━━');
+
+assert(
+  code.includes('if (cols.length === 0)') &&
+  code.includes('Auto-heal / provision full Kurikulum Merdeka assessment triplet for empty/orphaned TP') &&
+  code.includes("kategori: 'Diagnostik'") &&
+  code.includes("kategori: 'Formatif'") &&
+  code.includes("kategori: 'Sumatif'"),
+  'R6.1: Auto-heal provisions complete KM assessment triplet if orphaned TP has 0 columns'
+);
+
+assert(
+  code.includes('setAllSemesterColumns(prev => ({ ...prev, [activeTpId]: cols }))'),
+  'R6.2: Immediate synchronization of allSemesterColumns cache enables reactive grade recalculation without reload'
+);
+
+assert(
+  code.includes('setSelectedTpId(created.id)') &&
+  code.includes("showToast('TP Berhasil Dibuat'"),
+  'R6.3: Auto-select newly created TP on manual creation in handleSaveTp'
+);
+
+assert(
+  code.includes('dark:bg-gray-900/70 rounded-xl p-4 border border-gray-200 dark:border-gray-700') &&
+  code.includes('text-gray-500 dark:text-gray-400 text-xs italic'),
+  'R6.4: Unified setup cards and empty states adhere to solid OLED dark mode contrast standards'
+);
+
+assert(
+  code.includes('formatifCols.length === 0 ? (') &&
+  code.includes('sumatifCols.length === 0 ? (') &&
+  code.includes('border-r border-gray-200 dark:border-gray-700">\n                              -\n                            </td>'),
+  'R6.5: Spreadsheet matrix table rows in tbody and tfoot maintain cell alignment when columns are empty'
+);
+
 console.log('\n══════════════════════════════════════════════════════════════════════');
 console.log(`TEST SUMMARY: Total ${passCount + failCount} | Passed: ${passCount} | Failed: ${failCount}`);
 if (failCount > 0) {

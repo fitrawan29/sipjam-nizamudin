@@ -838,30 +838,70 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
       let cols = data || [];
 
-      // Check if Diagnostik exists. Strictly 1 Diagnostik is required per TP.
-      const hasDiagnostik = cols.some(c => c.kategori === 'Diagnostik');
-      if (!hasDiagnostik) {
-        // Auto-heal / initialize default Diagnostik column
-        const defaultDiag = {
-          sekolah_id: sekolahId || undefined,
-          tp_id: activeTpId,
-          kategori: 'Diagnostik',
-          nama: 'Diagnostik',
-          bobot: 1,
-          urutan: 1,
-        };
-        const { data: createdDiag, error: cErr } = await supabase
+      if (cols.length === 0) {
+        // Auto-heal / provision full Kurikulum Merdeka assessment triplet for empty/orphaned TP
+        const initialCols = [
+          {
+            sekolah_id: sekolahId || undefined,
+            tp_id: activeTpId,
+            kategori: 'Diagnostik',
+            nama: 'Diagnostik',
+            bobot: 1,
+            urutan: 1,
+          },
+          {
+            sekolah_id: sekolahId || undefined,
+            tp_id: activeTpId,
+            kategori: 'Formatif',
+            nama: 'Formatif 1',
+            bobot: 1,
+            urutan: 2,
+          },
+          {
+            sekolah_id: sekolahId || undefined,
+            tp_id: activeTpId,
+            kategori: 'Sumatif',
+            nama: 'Sumatif 1',
+            bobot: 1,
+            urutan: 3,
+          },
+        ];
+        const { data: createdCols, error: cErr } = await supabase
           .from('asesmen_kolom')
-          .insert(defaultDiag as any)
-          .select()
-          .single();
+          .insert(initialCols as any)
+          .select();
 
-        if (!cErr && createdDiag) {
-          cols = [createdDiag, ...cols];
+        if (!cErr && createdCols && createdCols.length > 0) {
+          cols = createdCols;
+        }
+      } else {
+        // Check if Diagnostik exists. Strictly 1 Diagnostik is required per TP.
+        const hasDiagnostik = cols.some(c => c.kategori === 'Diagnostik');
+        if (!hasDiagnostik) {
+          // Auto-heal / initialize default Diagnostik column
+          const defaultDiag = {
+            sekolah_id: sekolahId || undefined,
+            tp_id: activeTpId,
+            kategori: 'Diagnostik',
+            nama: 'Diagnostik',
+            bobot: 1,
+            urutan: 1,
+          };
+          const { data: createdDiag, error: cErr } = await supabase
+            .from('asesmen_kolom')
+            .insert(defaultDiag as any)
+            .select()
+            .single();
+
+          if (!cErr && createdDiag) {
+            cols = [createdDiag, ...cols];
+          }
         }
       }
 
       setColumnsList(cols);
+      // Immediately synchronize semester column cache for reactive grade recalculation
+      setAllSemesterColumns(prev => ({ ...prev, [activeTpId]: cols }));
     } catch (err) {
       console.error('Error fetching columns:', err);
     }
@@ -1349,6 +1389,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
           ];
 
           await supabase.from('asesmen_kolom').insert(initialColumns as any);
+          setSelectedTpId(created.id);
         }
 
         showToast('TP Berhasil Dibuat', 'Tujuan Pembelajaran dan kolom penilaian awal telah disiapkan.', 'success');
@@ -2232,7 +2273,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
               {/* 3-COLUMN STRUCTURED GRID */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-4">
                 {/* 1. KOLOM CP */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200/80 dark:border-gray-700/70 flex flex-col">
+                <div className="bg-gray-50 dark:bg-gray-900/70 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
                   {/* CP Header */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-1.5">
@@ -2324,7 +2365,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                   {/* CP List */}
                   <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
                     {cpList.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
                         Belum ada CP. Klik &quot;Tambah CP&quot; untuk memulai.
                       </div>
                     ) : (
@@ -2385,7 +2426,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                 </div>
 
                 {/* 2. KOLOM TP */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200/80 dark:border-gray-700/70 flex flex-col">
+                <div className="bg-gray-50 dark:bg-gray-900/70 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
                   {/* TP Header */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-1.5">
@@ -2514,7 +2555,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                   {/* TP List */}
                   <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
                     {displayedTpList.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
                         {cpList.length === 0
                           ? 'Buat CP di kolom sebelah kiri terlebih dahulu.'
                           : 'Belum ada TP untuk CP ini. Klik "+ Tambah TP Baru".'}
@@ -2601,7 +2642,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
                 </div>
 
                 {/* 3. KOLOM ASESMEN */}
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200/80 dark:border-gray-700/70 flex flex-col">
+                <div className="bg-gray-50 dark:bg-gray-900/70 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
                   {/* Kolom Header */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-1.5">
@@ -2724,11 +2765,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
                   {/* Column List for current TP */}
                   <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
                     {!currentTP ? (
-                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
                         Pilih Tujuan Pembelajaran (TP) terlebih dahulu.
                       </div>
                     ) : columnsList.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
                         Belum ada kolom asesmen.
                       </div>
                     ) : (
@@ -3359,68 +3400,80 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           )}
 
                           {/* Formatif Cells */}
-                          {formatifCols.map(col => {
-                            const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
-                            return (
-                              <td
-                                key={col.id}
-                                className="p-1 text-center bg-emerald-50/10 dark:bg-emerald-950/10 border-r border-gray-200 dark:border-gray-700"
-                              >
-                                {isAdmin || !isGuruPengampu ? (
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {sGrades[col.id] ?? '-'}
-                                  </span>
-                                ) : (
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.5"
-                                    value={sGrades[col.id] ?? ''}
-                                    onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
-                                    placeholder="-"
-                                    className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                                      isDirty
-                                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
-                                    }`}
-                                  />
-                                )}
-                              </td>
-                            );
-                          })}
+                          {formatifCols.length === 0 ? (
+                            <td className="p-2 text-center text-gray-400 italic text-[11px] border-r border-gray-200 dark:border-gray-700">
+                              -
+                            </td>
+                          ) : (
+                            formatifCols.map(col => {
+                              const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
+                              return (
+                                <td
+                                  key={col.id}
+                                  className="p-1 text-center bg-emerald-50/10 dark:bg-emerald-950/10 border-r border-gray-200 dark:border-gray-700"
+                                >
+                                  {isAdmin || !isGuruPengampu ? (
+                                    <span className="font-semibold text-gray-900 dark:text-white">
+                                      {sGrades[col.id] ?? '-'}
+                                    </span>
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.5"
+                                      value={sGrades[col.id] ?? ''}
+                                      onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
+                                      placeholder="-"
+                                      className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                                        isDirty
+                                          ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
+                                      }`}
+                                    />
+                                  )}
+                                </td>
+                              );
+                            })
+                          )}
 
                           {/* Sumatif Cells */}
-                          {sumatifCols.map(col => {
-                            const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
-                            return (
-                              <td
-                                key={col.id}
-                                className="p-1 text-center bg-purple-50/10 dark:bg-purple-950/10 border-r border-gray-200 dark:border-gray-700"
-                              >
-                                {isAdmin || !isGuruPengampu ? (
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {sGrades[col.id] ?? '-'}
-                                  </span>
-                                ) : (
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.5"
-                                    value={sGrades[col.id] ?? ''}
-                                    onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
-                                    placeholder="-"
-                                    className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-                                      isDirty
-                                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
-                                    }`}
-                                  />
-                                )}
-                              </td>
-                            );
-                          })}
+                          {sumatifCols.length === 0 ? (
+                            <td className="p-2 text-center text-gray-400 italic text-[11px] border-r border-gray-200 dark:border-gray-700">
+                              -
+                            </td>
+                          ) : (
+                            sumatifCols.map(col => {
+                              const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
+                              return (
+                                <td
+                                  key={col.id}
+                                  className="p-1 text-center bg-purple-50/10 dark:bg-purple-950/10 border-r border-gray-200 dark:border-gray-700"
+                                >
+                                  {isAdmin || !isGuruPengampu ? (
+                                    <span className="font-semibold text-gray-900 dark:text-white">
+                                      {sGrades[col.id] ?? '-'}
+                                    </span>
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.5"
+                                      value={sGrades[col.id] ?? ''}
+                                      onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
+                                      placeholder="-"
+                                      className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                                        isDirty
+                                          ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
+                                      }`}
+                                    />
+                                  )}
+                                </td>
+                              );
+                            })
+                          )}
 
                           {/* Calculated Summary Cells */}
                           <td className="py-2 px-2 text-center font-bold text-gray-700 dark:text-gray-300">
@@ -3464,30 +3517,42 @@ export default function GradebookView({ user }: GradebookViewProps) {
                           })()}
                         </td>
                       )}
-                      {formatifCols.map(col => (
-                        <td key={col.id} className="py-2.5 px-2 text-center text-emerald-700 dark:text-emerald-300 border-r border-gray-200 dark:border-gray-700">
-                          {(() => {
-                            let sum = 0, c = 0;
-                            students.forEach(s => {
-                              const v = gradesMap[s.nisn]?.[col.id];
-                              if (v !== null && v !== undefined && !isNaN(v)) { sum += v; c++; }
-                            });
-                            return c > 0 ? (sum / c).toFixed(1) : '-';
-                          })()}
+                      {formatifCols.length === 0 ? (
+                        <td className="py-2.5 px-2 text-center text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                          -
                         </td>
-                      ))}
-                      {sumatifCols.map(col => (
-                        <td key={col.id} className="py-2.5 px-2 text-center text-purple-700 dark:text-purple-300 border-r border-gray-200 dark:border-gray-700">
-                          {(() => {
-                            let sum = 0, c = 0;
-                            students.forEach(s => {
-                              const v = gradesMap[s.nisn]?.[col.id];
-                              if (v !== null && v !== undefined && !isNaN(v)) { sum += v; c++; }
-                            });
-                            return c > 0 ? (sum / c).toFixed(1) : '-';
-                          })()}
+                      ) : (
+                        formatifCols.map(col => (
+                          <td key={col.id} className="py-2.5 px-2 text-center text-emerald-700 dark:text-emerald-300 border-r border-gray-200 dark:border-gray-700">
+                            {(() => {
+                              let sum = 0, c = 0;
+                              students.forEach(s => {
+                                const v = gradesMap[s.nisn]?.[col.id];
+                                if (v !== null && v !== undefined && !isNaN(v)) { sum += v; c++; }
+                              });
+                              return c > 0 ? (sum / c).toFixed(1) : '-';
+                            })()}
+                          </td>
+                        ))
+                      )}
+                      {sumatifCols.length === 0 ? (
+                        <td className="py-2.5 px-2 text-center text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                          -
                         </td>
-                      ))}
+                      ) : (
+                        sumatifCols.map(col => (
+                          <td key={col.id} className="py-2.5 px-2 text-center text-purple-700 dark:text-purple-300 border-r border-gray-200 dark:border-gray-700">
+                            {(() => {
+                              let sum = 0, c = 0;
+                              students.forEach(s => {
+                                const v = gradesMap[s.nisn]?.[col.id];
+                                if (v !== null && v !== undefined && !isNaN(v)) { sum += v; c++; }
+                              });
+                              return c > 0 ? (sum / c).toFixed(1) : '-';
+                            })()}
+                          </td>
+                        ))
+                      )}
                       <td className="py-2.5 px-2 text-center text-gray-700 dark:text-gray-300">
                         {(() => {
                           let sum = 0, c = 0;
