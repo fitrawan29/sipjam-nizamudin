@@ -311,6 +311,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
   const [editingCp, setEditingCp] = useState<CapaianPembelajaran | null>(null);
   const [cpForm, setCpForm] = useState({ kode_cp: 'CP 1', deskripsi: '', urutan: 1 });
 
+  // Unified Setup Panel & Inline Editing State (Unified Flow R1 & R2)
+  const [isSetupPanelOpen, setIsSetupPanelOpen] = useState<boolean>(false);
+  const [inlineMode, setInlineMode] = useState<'idle' | 'add-cp' | 'edit-cp' | 'add-tp' | 'edit-tp' | 'add-col' | 'edit-col'>('idle');
+  const [isInitializing, setIsInitializing] = useState<boolean>(false);
+
 
   const [isBulkFillModalOpen, setIsBulkFillModalOpen] = useState(false);
   const [bulkFillColId, setBulkFillColId] = useState<string>('');
@@ -751,6 +756,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         showToast('CP Dibuat', '', 'success');
       }
       setIsCpModalOpen(false);
+      setInlineMode('idle');
       await fetchCPs();
     } catch (err: any) {
       showToast('Gagal Simpan CP', err.message || 'Terjadi kesalahan.', 'error');
@@ -1073,6 +1079,127 @@ export default function GradebookView({ user }: GradebookViewProps) {
     }
   };
 
+  // --- INISIALISASI CEPAT / FORMAT AWAL 1-KLIK (R2) ---
+  const handleQuickInitialize = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk inisialisasi penilaian.',
+        'warning'
+      );
+    }
+    if (isAdmin || !isGuruPengampu) {
+      showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak melakukan inisialisasi format nilai.', 'warning');
+      return;
+    }
+    if (!selectedMapel || !selectedKelas) {
+      showToast('Pilih Mapel & Kelas', 'Silakan pilih Mata Pelajaran dan Kelas terlebih dahulu.', 'warning');
+      return;
+    }
+
+    setIsInitializing(true);
+    try {
+      const matchingGuruMapel = mapelList.find(
+        m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === selectedKelas)
+      )?.id || null;
+
+      // 1. Dapatkan atau buat CP payung pertama
+      let activeCpId = selectedCpId || (cpList[0]?.id ?? null);
+      if (!activeCpId || cpList.length === 0) {
+        const newCp = {
+          sekolah_id: sekolahId || undefined,
+          guru_mapel_id: matchingGuruMapel,
+          nama_mapel: selectedMapel,
+          kelas: selectedKelas,
+          semester: selectedSemester,
+          tahun_ajaran: selectedTahunAjaran,
+          kode_cp: 'CP 1',
+          deskripsi: `Capaian Pembelajaran ${selectedMapel} - Semester ${selectedSemester}`,
+          urutan: 1,
+        };
+        const { data: createdCp, error: cpErr } = await supabase
+          .from('capaian_pembelajaran')
+          .insert(newCp as any)
+          .select()
+          .single();
+
+        if (cpErr) throw cpErr;
+        activeCpId = createdCp.id;
+      }
+
+      // 2. Buat TP pertama di bawah CP
+      const newTP = {
+        sekolah_id: sekolahId || undefined,
+        cp_id: activeCpId,
+        nama_guru: selectedGuru || user?.nama || 'Guru',
+        nama_mapel: selectedMapel,
+        kelas: selectedKelas,
+        kode_tp: `TP ${tpList.length + 1}`,
+        deskripsi: `Tujuan Pembelajaran ${tpList.length + 1}: Pemahaman dan Penguasaan Materi Pokok ${selectedMapel}`,
+        semester: selectedSemester,
+        tahun_ajaran: selectedTahunAjaran,
+        urutan: tpList.length + 1,
+      };
+
+      const { data: createdTp, error: tpErr } = await supabase
+        .from('tujuan_pembelajaran')
+        .insert(newTP as any)
+        .select()
+        .single();
+
+      if (tpErr) throw tpErr;
+
+      // 3. Buat tepat 1 Diagnostik (Wajib), 1 Formatif, dan 1 Sumatif
+      const initialColumns = [
+        {
+          sekolah_id: sekolahId || undefined,
+          tp_id: createdTp.id,
+          kategori: 'Diagnostik',
+          nama: 'Diagnostik',
+          bobot: 1,
+          urutan: 1,
+        },
+        {
+          sekolah_id: sekolahId || undefined,
+          tp_id: createdTp.id,
+          kategori: 'Formatif',
+          nama: 'Formatif 1',
+          bobot: 1,
+          urutan: 2,
+        },
+        {
+          sekolah_id: sekolahId || undefined,
+          tp_id: createdTp.id,
+          kategori: 'Sumatif',
+          nama: 'Sumatif 1',
+          bobot: 1,
+          urutan: 3,
+        },
+      ];
+
+      const { error: colErr } = await supabase.from('asesmen_kolom').insert(initialColumns as any);
+      if (colErr) throw colErr;
+
+      showToast(
+        'Inisialisasi Berhasil',
+        'Format awal asesmen (CP 1, TP 1, Diagnostik, Formatif, Sumatif) berhasil disiapkan. Anda dapat langsung menginput nilai.',
+        'success'
+      );
+
+      // Refresh seluruh struktur
+      await fetchCPs();
+      await fetchTPs();
+      setSelectedCpId(activeCpId);
+      setSelectedTpId(createdTp.id);
+      await fetchColumnsForActiveTP(createdTp.id);
+    } catch (err: any) {
+      console.error('Error in quick initialization:', err);
+      showToast('Gagal Inisialisasi', err.message || 'Terjadi kesalahan sistem saat inisialisasi format awal.', 'error');
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
   // --- CRUD: TUJUAN PEMBELAJARAN (TP) ---
   const handleOpenAddTpModal = () => {
     if (isAdmin || !isGuruPengampu) {
@@ -1209,6 +1336,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       }
 
       setIsTpModalOpen(false);
+      setInlineMode('idle');
       await fetchTPs();
     } catch (err: any) {
       console.error('Error saving TP:', err);
@@ -1355,6 +1483,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       }
 
       setIsColModalOpen(false);
+      setInlineMode('idle');
       if (selectedTpId) await fetchColumnsForActiveTP(selectedTpId);
     } catch (err: any) {
       console.error('Error saving column:', err);
@@ -2039,272 +2168,901 @@ export default function GradebookView({ user }: GradebookViewProps) {
       {/* ========================================================================= */}
       {activeTab === 'tp-matrix' && (
         <div className="space-y-4">
-          {/* ===== CP (Capaian Pembelajaran) SECTION ===== */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
-            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                  Capaian Pembelajaran (CP):
-                </span>
-                <span className="text-xs font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-2 py-0.5 rounded-lg">
-                  {cpList.length} CP Tersedia
-                </span>
-              </div>
-              {!isAdmin && isGuruPengampu && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddCpModal}
-                  className="btn-click bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
-                >
-                  <i className="fa-solid fa-plus text-xs"></i> Tambah CP
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll">
-              {cpList.length === 0 ? (
-                <div className="text-xs italic text-gray-400 dark:text-gray-500 py-2">
-                  Belum ada CP. {!isAdmin && isGuruPengampu ? 'Klik "Tambah CP" untuk memulai.' : ''}
-                </div>
-              ) : (
-                cpList.map(cp => (
-                  <div
-                    key={cp.id}
-                    onClick={() => { setSelectedCpId(cp.id); setShowAllTp(false); }}
-                    className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border transition shrink-0 ${
-                      selectedCpId === cp.id
-                        ? 'bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-200 dark:border-violet-700 shadow-sm'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    <span>{cp.kode_cp}</span>
-                    <span className="font-normal text-[11px] max-w-[160px] truncate text-gray-500 dark:text-gray-400">
-                      {cp.deskripsi}
+          {/* ========================================================================= */}
+          {/* 1. UNIFIED SETUP PANEL (PANEL TERPADU KELOLA STRUKTUR CP • TP • KOLOM)     */}
+          {/* ========================================================================= */}
+          {isSetupPanelOpen && (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-md border-2 border-teal-500/30 dark:border-teal-400/20 transition-all animate-in fade-in duration-200 no-print">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700 gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center text-sm font-black">
+                      <i className="fa-solid fa-sitemap"></i>
                     </span>
-                    {selectedCpId === cp.id && !isAdmin && isGuruPengampu && (
-                      <div className="flex items-center gap-1 ml-1">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setEditingCp(cp); setCpForm({ kode_cp: cp.kode_cp, deskripsi: cp.deskripsi, urutan: cp.urutan }); setIsCpModalOpen(true); }}
-                          className="w-5 h-5 rounded-md hover:bg-violet-100 dark:hover:bg-violet-800 flex items-center justify-center text-violet-700 dark:text-violet-300"
-                          title="Edit CP"
-                        >
-                          <i className="fa-solid fa-pen text-[10px]"></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteCp(cp); }}
-                          className="w-5 h-5 rounded-md hover:bg-red-100 dark:hover:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-400"
-                          title="Hapus CP"
-                        >
-                          <i className="fa-solid fa-trash text-[10px]"></i>
-                        </button>
-                      </div>
-                    )}
+                    <h2 className="text-sm md:text-base font-black text-gray-900 dark:text-white">
+                      Panel Terpadu: Struktur Capaian, Tujuan Pembelajaran & Asesmen
+                    </h2>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* TP Selector Bar */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
-
-            {/* Educational Guidance Banner if no CP exists */}
-            {cpList.length === 0 && (
-              <div className="p-3.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
-                <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-sm shrink-0"></i>
-                <span>Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu sebelum menambahkan Tujuan Pembelajaran (TP).</span>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-extrabold text-gray-700 dark:text-gray-200 uppercase tracking-wider">
-                  Tujuan Pembelajaran:
-                </span>
-                <span className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 px-2 py-0.5 rounded-lg">
-                  {displayedTpList.length} dari {tpList.length} TP
-                </span>
-                {selectedCpId && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Kelola relasi hierarki Capaian Pembelajaran (CP), Tujuan Pembelajaran (TP), dan Kolom Asesmen (Diagnostik, Formatif, Sumatif) dalam satu antarmuka terpadu tanpa dialog bertingkat.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                  {!isAdmin && isGuruPengampu && tpList.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={handleQuickInitialize}
+                      disabled={isInitializing}
+                      className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-1.5 shadow-sm"
+                    >
+                      <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
+                      {isInitializing ? 'Menginisialisasi...' : 'Inisialisasi Cepat'}
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setShowAllTp(prev => !prev)}
-                    className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition ${
-                      showAllTp
-                        ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/50 dark:text-teal-200 dark:border-teal-700'
-                        : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-                    }`}
+                    onClick={() => { setIsSetupPanelOpen(false); setInlineMode('idle'); }}
+                    className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1.5"
                   >
-                    <i className={`fa-solid ${showAllTp ? 'fa-filter-circle-xmark' : 'fa-filter'} mr-1 text-[10px]`}></i>
-                    {showAllTp ? 'Tampilkan TP Sesuai CP' : 'Tampilkan Semua TP'}
+                    <i className="fa-solid fa-xmark"></i> Tutup Panel
                   </button>
-                )}
-              </div>
-              {!isAdmin && isGuruPengampu && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddTpModal}
-                  disabled={cpList.length === 0}
-                  className={`btn-click px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition ${
-                    cpList.length === 0
-                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                      : 'bg-teal-600 hover:bg-teal-700 text-white'
-                  }`}
-                  title={cpList.length === 0 ? 'Buat CP terlebih dahulu' : 'Tambah TP Baru'}
-                >
-                  <i className="fa-solid fa-plus text-xs"></i> Tambah TP Baru
-                </button>
-              )}
-            </div>
-
-            {/* Horizontal TP Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll">
-              {displayedTpList.length === 0 ? (
-                <div className="text-xs italic text-gray-400 dark:text-gray-500 py-2">
-                  {cpList.length === 0
-                    ? 'Belum ada CP. Buat Capaian Pembelajaran (CP) di atas terlebih dahulu.'
-                    : tpList.length === 0
-                    ? 'Belum ada Tujuan Pembelajaran (TP) untuk mata pelajaran dan kelas ini. Klik "Tambah TP Baru".'
-                    : 'Tidak ada TP di bawah CP ini. Klik "Tampilkan Semua TP" atau tambah TP baru untuk CP ini.'}
                 </div>
-              ) : (
-                displayedTpList.map(tp => (
-                  <div
-                    key={tp.id}
-                    onClick={() => setSelectedTpId(tp.id)}
-                    className={`cursor-pointer px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 border transition shrink-0 ${
-                      selectedTpId === tp.id
-                        ? 'bg-teal-50 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-200 dark:border-teal-700 shadow-sm'
-                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    <span>{tp.kode_tp}</span>
-                    <span className="font-normal text-[11px] max-w-[140px] truncate text-gray-500 dark:text-gray-400">
-                      {tp.deskripsi}
+              </div>
+
+              {/* 3-COLUMN STRUCTURED GRID */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-4">
+                {/* 1. KOLOM CP */}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200/80 dark:border-gray-700/70 flex flex-col">
+                  {/* CP Header */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300 flex items-center justify-center text-[10px] font-bold">1</span>
+                      <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                        Capaian Pembelajaran (CP)
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/50 px-2 py-0.5 rounded-md">
+                      {cpList.length} CP
                     </span>
-                    {selectedTpId === tp.id && !isAdmin && isGuruPengampu && (
-                      <div className="flex items-center gap-1 ml-1">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditTpModal(tp);
-                          }}
-                          className="w-5 h-5 rounded-md hover:bg-teal-100 dark:hover:bg-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300"
-                          title="Edit TP"
-                        >
-                          <i className="fa-solid fa-pen text-[10px]"></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTp(tp);
-                          }}
-                          className="w-5 h-5 rounded-md hover:bg-red-100 dark:hover:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-400"
-                          title="Hapus TP"
-                        >
-                          <i className="fa-solid fa-trash text-[10px]"></i>
+                  </div>
+
+                  {/* Inline Add / Edit CP Form */}
+                  {(inlineMode === 'add-cp' || inlineMode === 'edit-cp') ? (
+                    <form onSubmit={handleSaveCp} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-violet-200 dark:border-violet-700 shadow-sm mb-3 space-y-2 text-xs">
+                      <div className="font-bold text-violet-700 dark:text-violet-300 pb-1 border-b border-gray-100 dark:border-gray-700 text-[11px] flex justify-between">
+                        <span>{inlineMode === 'edit-cp' ? 'Edit CP' : 'Tambah CP Baru'}</span>
+                        <button type="button" onClick={() => setInlineMode('idle')} className="text-gray-400 hover:text-gray-600">
+                          <i className="fa-solid fa-xmark"></i>
                         </button>
                       </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Kode CP</label>
+                          <input
+                            type="text"
+                            required
+                            value={cpForm.kode_cp}
+                            onChange={e => setCpForm({ ...cpForm, kode_cp: e.target.value })}
+                            placeholder="CP 1"
+                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Urutan</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={cpForm.urutan}
+                            onChange={e => setCpForm({ ...cpForm, urutan: parseInt(e.target.value) || 1 })}
+                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Deskripsi Capaian Pembelajaran</label>
+                        <textarea
+                          required
+                          rows={2}
+                          value={cpForm.deskripsi}
+                          onChange={e => setCpForm({ ...cpForm, deskripsi: e.target.value })}
+                          placeholder="Deskripsi CP..."
+                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setInlineMode('idle')}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn-click px-3 py-1 rounded-lg text-[11px] font-bold bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
+                        >
+                          Simpan CP
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    !isAdmin && isGuruPengampu && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCp(null);
+                          setCpForm({ kode_cp: `CP ${cpList.length + 1}`, deskripsi: '', urutan: cpList.length + 1 });
+                          setInlineMode('add-cp');
+                        }}
+                        className="w-full mb-2.5 py-1.5 px-3 rounded-lg border border-dashed border-violet-300 dark:border-violet-700 hover:bg-violet-50/50 dark:hover:bg-violet-950/30 text-violet-700 dark:text-violet-300 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                      >
+                        <i className="fa-solid fa-plus text-[10px]"></i> Tambah CP
+                      </button>
+                    )
+                  )}
+
+                  {/* CP List */}
+                  <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
+                    {cpList.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                        Belum ada CP. Klik &quot;Tambah CP&quot; untuk memulai.
+                      </div>
+                    ) : (
+                      cpList.map(cp => {
+                        const isSelected = selectedCpId === cp.id;
+                        const childTpCount = tpList.filter(t => t.cp_id === cp.id).length;
+                        return (
+                          <div
+                            key={cp.id}
+                            onClick={() => { setSelectedCpId(cp.id); setShowAllTp(false); }}
+                            className={`p-2.5 rounded-xl border text-xs cursor-pointer transition flex flex-col gap-1 ${
+                              isSelected
+                                ? 'bg-violet-50/80 border-violet-400 text-violet-950 dark:bg-violet-950/50 dark:border-violet-600 dark:text-violet-100 shadow-sm'
+                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="flex items-center gap-1.5 font-black">
+                                <span className="px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-900/60 dark:text-violet-200 text-[10px]">
+                                  {cp.kode_cp}
+                                </span>
+                                <span className="text-[10px] text-gray-400 font-semibold">#{cp.urutan}</span>
+                                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-normal">({childTpCount} TP)</span>
+                              </div>
+                              {!isAdmin && isGuruPengampu && (
+                                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingCp(cp);
+                                      setCpForm({ kode_cp: cp.kode_cp, deskripsi: cp.deskripsi, urutan: cp.urutan });
+                                      setInlineMode('edit-cp');
+                                    }}
+                                    className="w-5 h-5 rounded hover:bg-violet-200/60 dark:hover:bg-violet-800/60 text-violet-700 dark:text-violet-300 flex items-center justify-center text-[10px]"
+                                    title="Edit CP"
+                                  >
+                                    <i className="fa-solid fa-pen"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCp(cp)}
+                                    className="w-5 h-5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[10px]"
+                                    title="Hapus CP"
+                                  >
+                                    <i className="fa-solid fa-trash"></i>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
+                              {cp.deskripsi}
+                            </p>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
-                ))
-              )}
-            </div>
-
-            {/* Active TP Description Banner */}
-            {currentTP && (
-              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700/60 flex items-start justify-between gap-3 text-xs">
-                <div>
-                  <span className="font-black text-gray-900 dark:text-white mr-2">
-                    {currentTP.kode_tp}:
-                  </span>
-                  <span className="text-gray-700 dark:text-gray-300 font-medium">
-                    {currentTP.deskripsi}
-                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                    Urutan #{currentTP.urutan}
-                  </span>
+
+                {/* 2. KOLOM TP */}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200/80 dark:border-gray-700/70 flex flex-col">
+                  {/* TP Header */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300 flex items-center justify-center text-[10px] font-bold">2</span>
+                      <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                        Tujuan Pembelajaran (TP)
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 px-2 py-0.5 rounded-md">
+                        {displayedTpList.length} TP
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Inline Add / Edit TP Form */}
+                  {(inlineMode === 'add-tp' || inlineMode === 'edit-tp') ? (
+                    <form onSubmit={handleSaveTp} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-teal-200 dark:border-teal-700 shadow-sm mb-3 space-y-2 text-xs">
+                      <div className="font-bold text-teal-700 dark:text-teal-300 pb-1 border-b border-gray-100 dark:border-gray-700 text-[11px] flex justify-between">
+                        <span>{inlineMode === 'edit-tp' ? 'Edit TP' : 'Tambah TP Baru'}</span>
+                        <button type="button" onClick={() => setInlineMode('idle')} className="text-gray-400 hover:text-gray-600">
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">
+                          Capaian Pembelajaran (CP) Payung <span className="text-rose-500">*</span>
+                        </label>
+                        <select
+                          required
+                          value={tpForm.cp_id}
+                          onChange={e => setTpForm({ ...tpForm, cp_id: e.target.value })}
+                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="" disabled>-- Pilih Capaian Pembelajaran --</option>
+                          {cpList.map(cp => (
+                            <option key={cp.id} value={cp.id}>
+                              {cp.kode_cp} - {cp.deskripsi.slice(0, 45)}{cp.deskripsi.length > 45 ? '...' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Kode TP</label>
+                          <input
+                            type="text"
+                            required
+                            value={tpForm.kode_tp}
+                            onChange={e => setTpForm({ ...tpForm, kode_tp: e.target.value })}
+                            placeholder="TP 1"
+                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Urutan</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={tpForm.urutan}
+                            onChange={e => setTpForm({ ...tpForm, urutan: parseInt(e.target.value) || 1 })}
+                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Deskripsi Tujuan Pembelajaran</label>
+                        <textarea
+                          required
+                          rows={2}
+                          value={tpForm.deskripsi}
+                          onChange={e => setTpForm({ ...tpForm, deskripsi: e.target.value })}
+                          placeholder="Deskripsi TP..."
+                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setInlineMode('idle')}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn-click px-3 py-1 rounded-lg text-[11px] font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                        >
+                          Simpan TP
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    !isAdmin && isGuruPengampu && (
+                      <button
+                        type="button"
+                        disabled={cpList.length === 0}
+                        onClick={() => {
+                          if (cpList.length === 0) {
+                            showToast('Perhatian', 'Tambahkan Capaian Pembelajaran (CP) terlebih dahulu sebelum menambah TP.', 'warning');
+                            return;
+                          }
+                          setEditingTp(null);
+                          setTpForm({
+                            kode_tp: `TP ${tpList.length + 1}`,
+                            deskripsi: '',
+                            semester: selectedSemester,
+                            tahun_ajaran: selectedTahunAjaran,
+                            urutan: tpList.length + 1,
+                            cp_id: selectedCpId || (cpList[0]?.id ?? ''),
+                          });
+                          setInlineMode('add-tp');
+                        }}
+                        className={`w-full mb-2.5 py-1.5 px-3 rounded-lg border border-dashed text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                          cpList.length === 0
+                            ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                            : 'border-teal-300 dark:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/30 text-teal-700 dark:text-teal-300'
+                        }`}
+                        title={cpList.length === 0 ? 'Buat CP terlebih dahulu' : 'Tambah TP Baru'}
+                      >
+                        <i className="fa-solid fa-plus text-[10px]"></i> Tambah TP Baru
+                      </button>
+                    )
+                  )}
+
+                  {/* TP List */}
+                  <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
+                    {displayedTpList.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                        {cpList.length === 0
+                          ? 'Buat CP di kolom sebelah kiri terlebih dahulu.'
+                          : 'Belum ada TP untuk CP ini. Klik "+ Tambah TP Baru".'}
+                      </div>
+                    ) : (
+                      displayedTpList.map(tp => {
+                        const isSelected = selectedTpId === tp.id;
+                        const parentCp = cpList.find(c => c.id === tp.cp_id);
+                        const colsForThisTp = (allSemesterColumns[tp.id] || (selectedTpId === tp.id ? columnsList : []));
+                        const fCount = colsForThisTp.filter(c => c.kategori === 'Formatif').length;
+                        const sCount = colsForThisTp.filter(c => c.kategori === 'Sumatif').length;
+                        return (
+                          <div
+                            key={tp.id}
+                            onClick={() => setSelectedTpId(tp.id)}
+                            className={`p-2.5 rounded-xl border text-xs cursor-pointer transition flex flex-col gap-1 ${
+                              isSelected
+                                ? 'bg-teal-50/80 border-teal-400 text-teal-950 dark:bg-teal-950/50 dark:border-teal-600 dark:text-teal-100 shadow-sm ring-1 ring-teal-400/30'
+                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="flex items-center gap-1.5 font-black">
+                                <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200 text-[10px]">
+                                  {tp.kode_tp}
+                                </span>
+                                {parentCp && (
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300 font-semibold">
+                                    {parentCp.kode_cp}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-gray-400 font-semibold">#{tp.urutan}</span>
+                              </div>
+                              {!isAdmin && isGuruPengampu && (
+                                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingTp(tp);
+                                      setTpForm({
+                                        kode_tp: tp.kode_tp,
+                                        deskripsi: tp.deskripsi,
+                                        semester: tp.semester || selectedSemester,
+                                        tahun_ajaran: tp.tahun_ajaran || selectedTahunAjaran,
+                                        urutan: tp.urutan || 1,
+                                        cp_id: tp.cp_id || selectedCpId || (cpList[0]?.id ?? ''),
+                                      });
+                                      setInlineMode('edit-tp');
+                                    }}
+                                    className="w-5 h-5 rounded hover:bg-teal-200/60 dark:hover:bg-teal-800/60 text-teal-700 dark:text-teal-300 flex items-center justify-center text-[10px]"
+                                    title="Edit TP"
+                                  >
+                                    <i className="fa-solid fa-pen"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTp(tp)}
+                                    className="w-5 h-5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[10px]"
+                                    title="Hapus TP"
+                                  >
+                                    <i className="fa-solid fa-trash"></i>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
+                              {tp.deskripsi}
+                            </p>
+                            <div className="flex items-center gap-2 pt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                              <span>1 Diag</span>
+                              <span>• {fCount} Formatif</span>
+                              <span>• {sCount} Sumatif</span>
+                              {isSelected && (
+                                <span className="ml-auto font-bold text-teal-600 dark:text-teal-400">
+                                  <i className="fa-solid fa-check mr-0.5"></i> Aktif di Matriks
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
 
-          {/* Assessment Columns Toolbar & Student Search */}
-          {currentTP && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print flex flex-col md:flex-row md:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold text-gray-600 dark:text-gray-300">
-                  Kelola Kolom:
-                </span>
-                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
-                  <i className="fa-solid fa-check text-[10px]"></i> 1 Diagnostik (Wajib)
-                </span>
-                {!isAdmin && isGuruPengampu && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenAddColModal('Formatif')}
-                      className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 transition"
-                    >
-                      <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Formatif
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenAddColModal('Sumatif')}
-                      className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 transition"
-                    >
-                      <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Sumatif
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenBulkFill()}
-                      className="btn-click px-3 py-1 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1.5 transition"
-                    >
-                      <i className="fa-solid fa-bolt text-[10px]"></i> Isi Nilai Cepat
-                    </button>
-                  </>
-                )}
-              </div>
+                {/* 3. KOLOM ASESMEN */}
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200/80 dark:border-gray-700/70 flex flex-col">
+                  {/* Kolom Header */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 flex items-center justify-center text-[10px] font-bold">3</span>
+                      <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                        Kolom Asesmen ({currentTP ? currentTP.kode_tp : '-'})
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
+                      {columnsList.length} Kolom
+                    </span>
+                  </div>
 
-              <div className="w-full md:w-64">
-                <div className="relative">
-                  <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                  <input
-                    type="text"
-                    value={studentSearch}
-                    onChange={e => setStudentSearch(e.target.value)}
-                    placeholder="Cari nama atau NISN..."
-                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
+                  {/* Inline Add / Edit Column Form */}
+                  {(inlineMode === 'add-col' || inlineMode === 'edit-col') ? (
+                    <form onSubmit={handleSaveCol} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-blue-200 dark:border-blue-700 shadow-sm mb-3 space-y-2 text-xs">
+                      <div className="font-bold text-blue-700 dark:text-blue-300 pb-1 border-b border-gray-100 dark:border-gray-700 text-[11px] flex justify-between">
+                        <span>{inlineMode === 'edit-col' ? `Edit Kolom ${colForm.kategori}` : `Tambah Kolom ${colForm.kategori}`}</span>
+                        <button type="button" onClick={() => setInlineMode('idle')} className="text-gray-400 hover:text-gray-600">
+                          <i className="fa-solid fa-xmark"></i>
+                        </button>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Nama Asesmen</label>
+                        <input
+                          type="text"
+                          required
+                          value={colForm.nama}
+                          onChange={e => setColForm({ ...colForm, nama: e.target.value })}
+                          placeholder="Formatif 2, Quiz 1..."
+                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Bobot Nilai</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={colForm.bobot}
+                            onChange={e => setColForm({ ...colForm, bobot: parseFloat(e.target.value) || 1 })}
+                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Kategori</label>
+                          <span className="block px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-800 rounded-lg font-bold text-gray-700 dark:text-gray-300">
+                            {colForm.kategori}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Keterangan (opsional)</label>
+                        <input
+                          type="text"
+                          value={colForm.keterangan}
+                          onChange={e => setColForm({ ...colForm, keterangan: e.target.value })}
+                          placeholder="Catatan asesmen..."
+                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setInlineMode('idle')}
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          className="btn-click px-3 py-1 rounded-lg text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                        >
+                          Simpan Kolom
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    !isAdmin && isGuruPengampu && currentTP && (
+                      <div className="grid grid-cols-2 gap-2 mb-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCol(null);
+                            const existingCount = columnsList.filter(c => c.kategori === 'Formatif').length;
+                            setColForm({
+                              kategori: 'Formatif',
+                              nama: `Formatif ${existingCount + 1}`,
+                              bobot: 1,
+                              keterangan: '',
+                            });
+                            setInlineMode('add-col');
+                          }}
+                          className="py-1.5 px-2 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1 transition"
+                        >
+                          <i className="fa-solid fa-plus text-[10px]"></i> + Formatif
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCol(null);
+                            const existingCount = columnsList.filter(c => c.kategori === 'Sumatif').length;
+                            setColForm({
+                              kategori: 'Sumatif',
+                              nama: `Sumatif ${existingCount + 1}`,
+                              bobot: 1,
+                              keterangan: '',
+                            });
+                            setInlineMode('add-col');
+                          }}
+                          className="py-1.5 px-2 rounded-lg border border-dashed border-purple-300 dark:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-950/30 text-purple-700 dark:text-purple-300 text-xs font-bold flex items-center justify-center gap-1 transition"
+                        >
+                          <i className="fa-solid fa-plus text-[10px]"></i> + Sumatif
+                        </button>
+                      </div>
+                    )
+                  )}
+
+                  {/* Column List for current TP */}
+                  <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
+                    {!currentTP ? (
+                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                        Pilih Tujuan Pembelajaran (TP) terlebih dahulu.
+                      </div>
+                    ) : columnsList.length === 0 ? (
+                      <div className="text-center py-6 text-gray-400 dark:text-gray-500 text-xs italic">
+                        Belum ada kolom asesmen.
+                      </div>
+                    ) : (
+                      columnsList.map(col => {
+                        const isDiag = col.kategori === 'Diagnostik';
+                        const isForm = col.kategori === 'Formatif';
+                        return (
+                          <div
+                            key={col.id}
+                            className={`p-2 rounded-xl border text-xs flex items-center justify-between gap-2 ${
+                              isDiag
+                                ? 'bg-blue-50/50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
+                                : isForm
+                                ? 'bg-emerald-50/50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
+                                : 'bg-purple-50/50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                                  isDiag
+                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                                    : isForm
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
+                                    : 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200'
+                                }`}>
+                                  {col.kategori}
+                                </span>
+                                <span className="font-bold text-gray-900 dark:text-white truncate max-w-[100px]">
+                                  {col.nama}
+                                </span>
+                                {!isDiag && (
+                                  <span className="text-[10px] text-gray-500 font-normal">w:{col.bobot || 1}</span>
+                                )}
+                              </div>
+                              {col.keterangan && (
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[180px] mt-0.5">
+                                  {col.keterangan}
+                                </p>
+                              )}
+                            </div>
+
+                            {!isAdmin && isGuruPengampu && (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingCol(col);
+                                    setColForm({
+                                      kategori: col.kategori as any,
+                                      nama: col.nama,
+                                      bobot: col.bobot ? Number(col.bobot) : 1,
+                                      keterangan: col.keterangan || '',
+                                    });
+                                    setInlineMode('edit-col');
+                                  }}
+                                  className="w-5 h-5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center text-[10px]"
+                                  title="Edit Kolom"
+                                >
+                                  <i className="fa-solid fa-pen"></i>
+                                </button>
+                                {!isDiag && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCol(col)}
+                                    className="w-5 h-5 rounded hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[10px]"
+                                    title="Hapus Kolom"
+                                  >
+                                    <i className="fa-solid fa-trash"></i>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
+          {/* ========================================================================= */}
+          {/* 2. STREAMLINED STRUCTURE & NAVIGATION BAR (UNIFIED BAR)                    */}
+          {/* ========================================================================= */}
+          {tpList.length === 0 ? (
+            /* Cold Start Banner if no TPs exist */
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+              {/* Educational Guidance Banner preserving T1.5 contract */}
+              <div className="p-3.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
+                <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-sm shrink-0"></i>
+                <span>Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu sebelum menambahkan Tujuan Pembelajaran (TP).</span>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
+                <div>
+                  <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                    <span>Format Penilaian Belum Tersedia</span>
+                    <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                      ({selectedMapel} - {selectedKelas})
+                    </span>
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 max-w-xl">
+                    Mata pelajaran ini belum memiliki Tujuan Pembelajaran untuk penilaian. Klik <strong>Inisialisasi Cepat</strong> untuk langsung membuat format Kurikulum Merdeka (1 CP, 1 TP, 1 Diagnostik, 1 Formatif, 1 Sumatif) dengan 1 klik, atau atur manual melalui Panel Terpadu.
+                  </p>
+                </div>
+
+                {!isAdmin && isGuruPengampu && (
+                  <div className="flex items-center gap-2 flex-wrap shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleQuickInitialize}
+                      disabled={isInitializing}
+                      className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition"
+                    >
+                      <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
+                      {isInitializing ? 'Menyiapkan...' : 'Inisialisasi Cepat (1 Klik)'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSetupPanelOpen(true)}
+                      className="btn-click bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                    >
+                      <i className="fa-solid fa-sitemap"></i> Buka Panel Setup
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenAddTpModal}
+                      className="hidden"
+                    >
+                      Tambah TP Baru
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Streamlined Active Bar */
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print space-y-3">
+              {/* Row 1: CP & TP Breadcrumb Pills & Structure Button */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll max-w-full">
+                  {/* Active CP Pill */}
+                  {selectedCpId && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">CP:</span>
+                      <div className="flex items-center gap-1 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 text-violet-800 dark:text-violet-300 px-2.5 py-1 rounded-xl text-xs font-black">
+                        <span>{cpList.find(c => c.id === selectedCpId)?.kode_cp || 'CP'}</span>
+                        <span className="font-normal text-[11px] max-w-[120px] truncate hidden sm:inline">
+                          - {cpList.find(c => c.id === selectedCpId)?.deskripsi || ''}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowAllTp(prev => !prev)}
+                        className={`px-2 py-1 rounded-xl text-[11px] font-bold border transition shrink-0 ${
+                          showAllTp
+                            ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/50 dark:text-teal-200 dark:border-teal-700'
+                            : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+                        }`}
+                        title={showAllTp ? 'Tampilkan TP Sesuai CP' : 'Tampilkan Semua TP'}
+                      >
+                        <i className={`fa-solid ${showAllTp ? 'fa-filter-circle-xmark' : 'fa-filter'} mr-1 text-[10px]`}></i>
+                        {showAllTp ? 'Filter Sesuai CP' : 'Tampilkan Semua TP'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Divider */}
+                  <span className="text-gray-300 dark:text-gray-600 font-bold shrink-0">|</span>
+
+                  {/* TP Pills */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">TP:</span>
+                    {displayedTpList.map(tp => (
+                      <div
+                        key={tp.id}
+                        onClick={() => setSelectedTpId(tp.id)}
+                        className={`cursor-pointer px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border transition shrink-0 ${
+                          selectedTpId === tp.id
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/30'
+                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        <span>{tp.kode_tp}</span>
+                        {selectedTpId === tp.id && !isAdmin && isGuruPengampu && (
+                          <div className="flex items-center gap-1 ml-0.5" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingTp(tp);
+                                setTpForm({
+                                  kode_tp: tp.kode_tp,
+                                  deskripsi: tp.deskripsi,
+                                  semester: tp.semester || selectedSemester,
+                                  tahun_ajaran: tp.tahun_ajaran || selectedTahunAjaran,
+                                  urutan: tp.urutan || 1,
+                                  cp_id: tp.cp_id || selectedCpId || (cpList[0]?.id ?? ''),
+                                });
+                                setInlineMode('edit-tp');
+                                setIsSetupPanelOpen(true);
+                              }}
+                              className="w-4 h-4 rounded text-white/80 hover:text-white flex items-center justify-center text-[9px]"
+                              title="Edit TP"
+                            >
+                              <i className="fa-solid fa-pen"></i>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTp(tp)}
+                              className="w-4 h-4 rounded text-white/80 hover:text-rose-200 flex items-center justify-center text-[9px]"
+                              title="Hapus TP"
+                            >
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Structure Panel Toggle Button */}
+                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsSetupPanelOpen(prev => !prev)}
+                    className={`btn-click px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition ${
+                      isSetupPanelOpen
+                        ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/60 dark:text-teal-200 dark:border-teal-700 shadow-sm'
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 dark:text-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    <i className="fa-solid fa-sitemap text-teal-600 dark:text-teal-400"></i>
+                    <span>Kelola Struktur Asesmen</span>
+                    <span className="px-1.5 py-0.2 rounded-md bg-white dark:bg-gray-900 text-[10px] text-gray-600 dark:text-gray-300 font-normal">
+                      {cpList.length} CP • {tpList.length} TP
+                    </span>
+                    <i className={`fa-solid ${isSetupPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px] ml-0.5`}></i>
+                  </button>
+                </div>
+              </div>
+
+              {/* Row 2: Assessment Column Badges & Quick Action Buttons */}
+              {currentTP && (
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-gray-750">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      Kolom ({currentTP.kode_tp}):
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+                      <i className="fa-solid fa-check text-[10px]"></i> 1 Diagnostik (Wajib)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      {formatifCols.length} Formatif
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                      {sumatifCols.length} Sumatif
+                    </span>
+
+                    {!isAdmin && isGuruPengampu && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAddColModal('Formatif')}
+                          className="btn-click px-2.5 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 transition"
+                        >
+                          <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Formatif
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAddColModal('Sumatif')}
+                          className="btn-click px-2.5 py-0.5 rounded-lg text-xs font-bold bg-purple-50 hover:bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1 transition"
+                        >
+                          <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Sumatif
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenBulkFill()}
+                          className="btn-click px-2.5 py-0.5 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1 transition"
+                        >
+                          <i className="fa-solid fa-bolt text-[10px]"></i> Isi Nilai Cepat
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Student Search */}
+                  <div className="w-full md:w-60">
+                    <div className="relative">
+                      <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                      <input
+                        type="text"
+                        value={studentSearch}
+                        onChange={e => setStudentSearch(e.target.value)}
+                        placeholder="Cari nama atau NISN..."
+                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Active TP Description Banner */}
+              {currentTP && (
+                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-3 text-xs">
+                  <div className="truncate">
+                    <span className="font-black text-gray-900 dark:text-white mr-1.5">
+                      {currentTP.kode_tp}:
+                    </span>
+                    <span className="text-gray-700 dark:text-gray-300 font-medium">
+                      {currentTP.deskripsi}
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 shrink-0">
+                    Urutan #{currentTP.urutan}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* SPREADSHEET MATRIX TABLE */}
           {!currentTP ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-10 text-center shadow-sm border border-gray-100 dark:border-gray-700">
-              <div className="w-14 h-14 mx-auto rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center text-2xl mb-3">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center shadow-sm border border-gray-100 dark:border-gray-700">
+              <div className="w-12 h-12 mx-auto rounded-full bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xl mb-3">
                 <i className="fa-solid fa-book-bookmark"></i>
               </div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
                 Belum Ada Tujuan Pembelajaran Terpilih
               </h3>
               <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
                 Silakan buat Tujuan Pembelajaran (TP) terlebih dahulu untuk memulai pengisian asesmen Diagnostik, Formatif, dan Sumatif.
               </p>
               {!isAdmin && isGuruPengampu && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddTpModal}
-                  className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md inline-flex items-center gap-2"
-                >
-                  <i className="fa-solid fa-plus"></i> Tambah TP Sekarang
-                </button>
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleQuickInitialize}
+                    disabled={isInitializing}
+                    className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-md inline-flex items-center gap-2"
+                  >
+                    <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
+                    {isInitializing ? 'Menyiapkan...' : 'Inisialisasi Cepat (1 Klik)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenAddTpModal}
+                    className="btn-click bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 px-4 py-2 rounded-xl text-xs font-bold shadow-sm inline-flex items-center gap-2"
+                  >
+                    <i className="fa-solid fa-plus"></i> Tambah TP Sekarang
+                  </button>
+                </div>
               )}
             </div>
           ) : students.length === 0 ? (

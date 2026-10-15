@@ -20,6 +20,7 @@ const AdminBackupView = dynamic(() => import('./AdminBackupView'));
 const AdminConfigView = dynamic(() => import('./AdminConfigView'));
 const AnalitikView = dynamic(() => import('./AnalitikView'));
 const SuperadminView = dynamic(() => import('./SuperadminView'));
+// import GradebookView from './GradebookView';
 const GradebookView = dynamic(() => import('./GradebookView'));
 const SistemBlokView = dynamic(() => import('./SistemBlokView'));
 const RaporView = dynamic(() => import('./RaporView'));

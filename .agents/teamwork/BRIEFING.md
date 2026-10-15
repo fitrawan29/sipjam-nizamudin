@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-15T04:41:48Z
+# BRIEFING — 2026-10-15T13:09:33Z
 
 ## Mission
-Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari kartu presensi digital siswa secara otomatis dan mencatat presensi datang siswa dengan lancar di semua peramban mobile (iOS Safari, Android Chrome, WebView, dll).
+Redesign antarmuka dan alur modul Daftar Nilai (Gradebook Kurikulum Merdeka) pada SIPJAM agar alur persiapan CP (Capaian Pembelajaran), TP (Tujuan Pembelajaran), dan Kolom Asesmen menyatu dalam satu antarmuka terpadu yang ringkas tanpa modal bertingkat yang membingungkan, sehingga guru dapat langsung fokus mengisi nilai dengan cepat, jelas, dan nyaman.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -51,6 +51,10 @@ Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari k
 - Cron 1 (Rescheduled): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-115 (*/8 * * * *)
 - Cron 2 (Rescheduled): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-117 (*/10 * * * *)
 - Victory Auditor (current): to be spawned on victory claim
+- Orchestrator (current): 71546a73-28df-4be3-83bd-7cc2df22298d (swe_26)
+- Cron 1 (Progress Reporting): aff67180-8baf-49af-8530-d876ea934619/task-42 (*/8 * * * *)
+- Cron 2 (Liveness Check): aff67180-8baf-49af-8530-d876ea934619/task-44 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -69,17 +73,18 @@ Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari k
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; teaching-only attendance rules and obsolete code removal)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; explicit per-teacher attendance obligation redesign & real-time sync)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; mobile QR fallback scanner for teacher smartphones & presensi datang recording)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; unified Gradebook Kurikulum Merdeka setup & frictionless grade entry)
 
 ## User Context
-- **Last user request**: Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari kartu presensi digital siswa secara otomatis dan mencatat presensi datang siswa dengan lancar di semua peramban mobile (iOS Safari, Android Chrome, WebView, dll).
+- **Last user request**: Redesign antarmuka dan alur modul Daftar Nilai (Gradebook Kurikulum Merdeka) pada SIPJAM agar alur persiapan CP, TP, dan Kolom Asesmen menyatu dalam satu antarmuka terpadu yang ringkas tanpa modal bertingkat yang membingungkan, sehingga guru dapat langsung fokus mengisi nilai dengan cepat, jelas, dan nyaman.
 - **Pending clarifications**: none
 - **Delivered results**: none
 
 ## Project Status
-- **Phase**: in progress (resumed post-server restart)
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-115 (progress), 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-117 (liveness)
-- **Active Subagents**: 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219 (swe_25)
+- **Active Crons**: aff67180-8baf-49af-8530-d876ea934619/task-42 (progress), aff67180-8baf-49af-8530-d876ea934619/task-44 (liveness)
+- **Active Subagents**: 71546a73-28df-4be3-83bd-7cc2df22298d (swe_26)
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -88,4 +93,4 @@ Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari k
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requirements
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_25\DISPATCH.md — Dispatch instructions for swe_25
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_26\DISPATCH.md — Dispatch instructions for swe_26
