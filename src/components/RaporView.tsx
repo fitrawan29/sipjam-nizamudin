@@ -89,6 +89,13 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   const hasInitializedConfig = useRef(false);
   const selectedTahunAjaranRef = useRef(selectedTahunAjaran);
   selectedTahunAjaranRef.current = selectedTahunAjaran;
+  const selectedSemesterRef = useRef(selectedSemester);
+  selectedSemesterRef.current = selectedSemester;
+  const activeSchoolTahunAjaranRef = useRef(activeSchoolTahunAjaran);
+  activeSchoolTahunAjaranRef.current = activeSchoolTahunAjaran;
+  const activeSchoolSemesterRef = useRef(activeSchoolSemester);
+  activeSchoolSemesterRef.current = activeSchoolSemester;
+  const fetchClassRequestId = useRef(0);
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
@@ -141,7 +148,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   }, [sekolahId, assignedKelas]);
 
   // Fetch active school configuration from pengaturan table
-  const fetchSchoolConfig = useCallback(async (forceSelect = false) => {
+  const fetchSchoolConfig = useCallback(async (isInitial = false) => {
     try {
       let query = supabase.from('pengaturan').select('*');
       if (sekolahId) {
@@ -157,31 +164,43 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       if (!error && data && data.length > 0) {
         let activeTa = '';
         let activeSem = '';
+
         data.forEach((item: any) => {
           const k = item.key?.toLowerCase();
           if (k === 'tahun_ajaran' && item.value) activeTa = item.value;
           if (k === 'semester' && item.value) activeSem = item.value;
-          if (item.tahun_ajaran) activeTa = item.tahun_ajaran;
-          if (item.semester) activeSem = item.semester;
+          if (item.tahun_ajaran && !activeTa) activeTa = item.tahun_ajaran;
+          if (item.semester && !activeSem) activeSem = item.semester;
         });
 
+        const normSem: 'Ganjil' | 'Genap' | null =
+          activeSem.toLowerCase() === 'genap'
+            ? 'Genap'
+            : activeSem.toLowerCase() === 'ganjil'
+            ? 'Ganjil'
+            : null;
+
         if (activeTa) {
+          const prevActiveTa = activeSchoolTahunAjaranRef.current;
           setActiveSchoolTahunAjaran(activeTa);
-          if (forceSelect || !hasInitializedConfig.current) {
+          // If initial mount, OR if user was following the previous active year, sync selectedTahunAjaran
+          if (isInitial || !hasInitializedConfig.current || selectedTahunAjaranRef.current === prevActiveTa) {
             setSelectedTahunAjaran(activeTa);
           }
         }
-        if (activeSem === 'Ganjil' || activeSem === 'Genap') {
-          setActiveSchoolSemester(activeSem as 'Ganjil' | 'Genap');
-          if (forceSelect || !hasInitializedConfig.current) {
-            setSelectedSemester(activeSem as 'Ganjil' | 'Genap');
+        if (normSem) {
+          const prevActiveSem = activeSchoolSemesterRef.current;
+          setActiveSchoolSemester(normSem);
+          // If initial mount, OR if user was following the previous active semester, sync selectedSemester
+          if (isInitial || !hasInitializedConfig.current || selectedSemesterRef.current === prevActiveSem) {
+            setSelectedSemester(normSem);
           }
         }
         hasInitializedConfig.current = true;
 
         return {
           tahunAjaran: activeTa || null,
-          semester: (activeSem === 'Ganjil' || activeSem === 'Genap') ? activeSem : null
+          semester: normSem
         };
       }
     } catch (err) {
@@ -243,7 +262,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
-      const conf = await fetchSchoolConfig(false);
+      const conf = await fetchSchoolConfig(true);
       if (isMounted) {
         await fetchTahunAjaranOptions(conf?.tahunAjaran || undefined);
       }
@@ -267,17 +286,35 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       let newSem = detail?.semester || detail?.config?.semester;
 
       if (!newTa || !newSem) {
-        const conf = await fetchSchoolConfig(true);
+        const conf = await fetchSchoolConfig(false);
         if (conf?.tahunAjaran) newTa = conf.tahunAjaran;
         if (conf?.semester) newSem = conf.semester;
       } else {
+        const prevActiveTa = activeSchoolTahunAjaranRef.current;
+        const prevActiveSem = activeSchoolSemesterRef.current;
+
         if (newTa) {
-          setActiveSchoolTahunAjaran(newTa);
-          setSelectedTahunAjaran(newTa);
+          const trimmedTa = newTa.trim();
+          setActiveSchoolTahunAjaran(trimmedTa);
+          // Only update selectedTahunAjaran if user was following the previous active year
+          if (selectedTahunAjaranRef.current === prevActiveTa) {
+            setSelectedTahunAjaran(trimmedTa);
+          }
         }
-        if (newSem && (newSem === 'Ganjil' || newSem === 'Genap')) {
-          setActiveSchoolSemester(newSem as 'Ganjil' | 'Genap');
-          setSelectedSemester(newSem as 'Ganjil' | 'Genap');
+
+        const normSem: 'Ganjil' | 'Genap' | null =
+          newSem?.toLowerCase() === 'genap'
+            ? 'Genap'
+            : newSem?.toLowerCase() === 'ganjil'
+            ? 'Ganjil'
+            : null;
+
+        if (normSem) {
+          setActiveSchoolSemester(normSem);
+          // Only update selectedSemester if user was following the previous active semester
+          if (selectedSemesterRef.current === prevActiveSem) {
+            setSelectedSemester(normSem);
+          }
         }
       }
 
@@ -342,7 +379,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         if (sekolahId) wQuery = wQuery.eq('sekolah_id', sekolahId);
         const { data: wList } = await wQuery;
 
-        const matchingWali = (wList || []).find((w: any) => w.tahun_ajaran === selectedTahunAjaran) || (wList || [])[0];
+        const matchingWali =
+          (wList || []).find((w: any) => w.tahun_ajaran === selectedTahunAjaran) ||
+          (wList || []).find((w: any) => !w.tahun_ajaran);
 
         if (matchingWali && matchingWali.nama_guru) {
           let resolvedNip = matchingWali.nip && matchingWali.nip !== '-' ? matchingWali.nip : null;
@@ -409,6 +448,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   // Fetch students, attendance, real Merdeka academic data, and notes for selected class
   const fetchClassData = useCallback(async () => {
     if (!selectedKelas) return;
+    const currentReqId = ++fetchClassRequestId.current;
     if (catatanDebounceRef.current) {
       clearTimeout(catatanDebounceRef.current);
       catatanDebounceRef.current = null;
@@ -643,10 +683,14 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       dlRef.current = loadedDl;
       setDeepLearningMap(loadedDl);
     } catch (err: any) {
-      console.error('Error fetching class data for rapor:', err);
-      showToast('Gagal memuat data kelas untuk rapor', 'error');
+      if (currentReqId === fetchClassRequestId.current) {
+        console.error('Error fetching class data for rapor:', err);
+        showToast('Gagal memuat data kelas untuk rapor', 'error');
+      }
     } finally {
-      setIsLoading(false);
+      if (currentReqId === fetchClassRequestId.current) {
+        setIsLoading(false);
+      }
     }
   }, [selectedKelas, sekolahId, selectedSemester, selectedTahunAjaran]);
 
