@@ -1,7 +1,7 @@
 # BRIEFING — 2026-10-15T17:50:34Z
 
 ## Mission
-Sesuaikan menu E-Rapor pada akun Admin agar terhubung 100% dengan data real di database Supabase (menggantikan data mock dan skor pseudo-random seed), menyinkronkan catatan wali & observasi deep learning ke database, serta menyesuaikan UI dan tanda tangan wali kelas.
+Sesuaikan tahun ajaran dan semester pada modul E-Rapor (src/components/RaporView.tsx) agar secara otomatis menyelaraskan diri dengan pengaturan aktif sekolah di tabel pengaturan, menyediakan dropdown pilihan dinamis yang memuat tahun ajaran yang diatur beserta arsip, serta mendengarkan update realtime.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -59,6 +59,10 @@ Sesuaikan menu E-Rapor pada akun Admin agar terhubung 100% dengan data real di d
 - Cron 1 (Progress Reporting): cad48e6e-a89b-45d6-bbd9-437140081cd7/task-26 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): cad48e6e-a89b-45d6-bbd9-437140081cd7/task-28 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 48aef867-1180-4d3f-a28e-02dc27abaac5 (victory_auditor_39) [VICTORY CONFIRMED]
+- Orchestrator (current): fa7229f6-3aa9-4497-9791-3045cd5a5b97 (swe_28)
+- Cron 1 (Progress Reporting): ced1012c-360b-4f7d-a95e-ca6ddec32b4a/task-32 (*/8 * * * *)
+- Cron 2 (Liveness Check): ced1012c-360b-4f7d-a95e-ca6ddec32b4a/task-34 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -79,9 +83,10 @@ Sesuaikan menu E-Rapor pada akun Admin agar terhubung 100% dengan data real di d
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; mobile QR fallback scanner for teacher smartphones & presensi datang recording)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; unified Gradebook Kurikulum Merdeka setup & frictionless grade entry)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor Admin real data Supabase sync, observations DB persistence, signatures)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor tahun ajaran & semester auto-sync, dynamic dropdown, realtime)
 
 ## User Context
-- **Last user request**: Sesuaikan menu E-Rapor pada akun Admin agar terhubung 100% dengan data real di database Supabase (menggantikan data mock dan skor pseudo-random seed), menyinkronkan catatan wali & observasi deep learning ke database, serta menyesuaikan UI dan tanda tangan wali kelas.
+- **Last user request**: Sesuaikan tahun ajaran dan semester pada modul E-Rapor (src/components/RaporView.tsx) agar secara otomatis menyelaraskan diri dengan pengaturan aktif sekolah di tabel pengaturan, menyediakan dropdown pilihan dinamis yang memuat tahun ajaran yang diatur beserta arsip, serta mendengarkan update realtime.
 - **Pending clarifications**: none
 - **Delivered results**:
   - Connected E-Rapor 100% to live Supabase academic data (`guru_mapel`, `capaian_pembelajaran`, `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa`).
@@ -93,17 +98,18 @@ Sesuaikan menu E-Rapor pada akun Admin agar terhubung 100% dengan data real di d
   - All unit & adversarial tests pass (100%), clean Next.js Turbopack build, clean Git working tree.
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none
-- **Active Subagents**: none
+- **Active Crons**: Cron 1 (ced1012c-360b-4f7d-a95e-ca6ddec32b4a/task-32), Cron 2 (ced1012c-360b-4f7d-a95e-ca6ddec32b4a/task-34)
+- **Active Subagents**: swe_28 (fa7229f6-3aa9-4497-9791-3045cd5a5b97)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_27\handoff.md — Orchestrator handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_39\handoff.md — Victory Auditor report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_27\handoff.md — Previous orchestrator handoff
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_39\handoff.md — Previous Victory Auditor report (VICTORY CONFIRMED)
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_28\handoff.md — Current swe handoff (pending)

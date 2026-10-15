@@ -46,6 +46,14 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   const [selectedKelas, setSelectedKelas] = useState<string>(assignedKelas || '');
   const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
   const [selectedTahunAjaran, setSelectedTahunAjaran] = useState<string>('2024/2025');
+  const [activeSchoolTahunAjaran, setActiveSchoolTahunAjaran] = useState<string>('2024/2025');
+  const [activeSchoolSemester, setActiveSchoolSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
+  const [tahunAjaranList, setTahunAjaranList] = useState<string[]>([
+    '2023/2024',
+    '2024/2025',
+    '2025/2026',
+    '2026/2027'
+  ]);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Data state
@@ -128,6 +136,176 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
     };
     fetchKelasList();
   }, [sekolahId, assignedKelas]);
+
+  // Fetch active school configuration from pengaturan table
+  const fetchSchoolConfig = useCallback(async () => {
+    try {
+      let query = supabase.from('pengaturan').select('*');
+      if (sekolahId) {
+        query = query.eq('sekolah_id', sekolahId);
+      }
+      let { data, error } = await query;
+      if ((!data || data.length === 0) && sekolahId) {
+        const fallback = await supabase.from('pengaturan').select('*');
+        if (fallback.data && fallback.data.length > 0) {
+          data = fallback.data;
+        }
+      }
+      if (!error && data && data.length > 0) {
+        let activeTa = '';
+        let activeSem = '';
+        data.forEach((item: any) => {
+          const k = item.key?.toLowerCase();
+          if (k === 'tahun_ajaran' && item.value) activeTa = item.value;
+          if (k === 'semester' && item.value) activeSem = item.value;
+          if (item.tahun_ajaran) activeTa = item.tahun_ajaran;
+          if (item.semester) activeSem = item.semester;
+        });
+
+        if (activeTa) {
+          setActiveSchoolTahunAjaran(activeTa);
+          setSelectedTahunAjaran(activeTa);
+        }
+        if (activeSem === 'Ganjil' || activeSem === 'Genap') {
+          setActiveSchoolSemester(activeSem as 'Ganjil' | 'Genap');
+          setSelectedSemester(activeSem as 'Ganjil' | 'Genap');
+        }
+
+        return {
+          tahunAjaran: activeTa || null,
+          semester: (activeSem === 'Ganjil' || activeSem === 'Genap') ? activeSem : null
+        };
+      }
+    } catch (err) {
+      console.warn('[RaporView] Error fetching school config:', err);
+    }
+    return {};
+  }, [sekolahId]);
+
+  // Dynamically build available academic year options combining active config, recorded database entries, and relevant surrounding years
+  const fetchTahunAjaranOptions = useCallback(async (currentActiveTa?: string) => {
+    const activeTa = currentActiveTa || activeSchoolTahunAjaran || '2024/2025';
+    const yearsSet = new Set<string>();
+
+    if (activeTa) yearsSet.add(activeTa.trim());
+    if (selectedTahunAjaran) yearsSet.add(selectedTahunAjaran.trim());
+
+    // Generate surrounding years around active configuration
+    const match = activeTa.match(/^(\d{4})\/(\d{4})$/);
+    const baseYear = match ? parseInt(match[1], 10) : new Date().getFullYear();
+    for (let offset = -2; offset <= 2; offset++) {
+      const y = baseYear + offset;
+      yearsSet.add(`${y}/${y + 1}`);
+    }
+
+    // Query recorded academic years from capaian_pembelajaran, tujuan_pembelajaran, wali_kelas, jadwal_pelajaran
+    try {
+      let cpQ = supabase.from('capaian_pembelajaran').select('tahun_ajaran');
+      if (sekolahId) cpQ = cpQ.eq('sekolah_id', sekolahId);
+      let tpQ = supabase.from('tujuan_pembelajaran').select('tahun_ajaran');
+      if (sekolahId) tpQ = tpQ.eq('sekolah_id', sekolahId);
+      let wkQ = supabase.from('wali_kelas').select('tahun_ajaran');
+      if (sekolahId) wkQ = wkQ.eq('sekolah_id', sekolahId);
+      let jpQ = supabase.from('jadwal_pelajaran').select('tahun_ajaran');
+      if (sekolahId) jpQ = jpQ.eq('sekolah_id', sekolahId);
+
+      const [cpRes, tpRes, wkRes, jpRes] = await Promise.allSettled([cpQ, tpQ, wkQ, jpQ]);
+
+      if (cpRes.status === 'fulfilled' && cpRes.value.data) {
+        cpRes.value.data.forEach((r: any) => { if (r.tahun_ajaran) yearsSet.add(r.tahun_ajaran.trim()); });
+      }
+      if (tpRes.status === 'fulfilled' && tpRes.value.data) {
+        tpRes.value.data.forEach((r: any) => { if (r.tahun_ajaran) yearsSet.add(r.tahun_ajaran.trim()); });
+      }
+      if (wkRes.status === 'fulfilled' && wkRes.value.data) {
+        wkRes.value.data.forEach((r: any) => { if (r.tahun_ajaran) yearsSet.add(r.tahun_ajaran.trim()); });
+      }
+      if (jpRes.status === 'fulfilled' && jpRes.value.data) {
+        jpRes.value.data.forEach((r: any) => { if (r.tahun_ajaran) yearsSet.add(r.tahun_ajaran.trim()); });
+      }
+    } catch (err) {
+      console.warn('[RaporView] Error querying recorded academic years:', err);
+    }
+
+    const sorted = Array.from(yearsSet).filter(Boolean).sort();
+    setTahunAjaranList(sorted);
+  }, [activeSchoolTahunAjaran, selectedTahunAjaran, sekolahId]);
+
+  // Load active school config & dynamic academic year options on mount or sekolahId change
+  useEffect(() => {
+    let isMounted = true;
+    const init = async () => {
+      const conf = await fetchSchoolConfig();
+      if (isMounted) {
+        await fetchTahunAjaranOptions(conf?.tahunAjaran || undefined);
+      }
+    };
+    init();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchSchoolConfig, fetchTahunAjaranOptions]);
+
+  // Realtime synchronization: listen to 'sipjam:config_updated' event from AdminConfigView or AppScreen
+  useEffect(() => {
+    const handleConfigSync = async (event: any) => {
+      const detail = event?.detail;
+      if (detail?.sekolah_id && sekolahId && detail.sekolah_id !== sekolahId) {
+        return;
+      }
+
+      let newTa = detail?.tahun_ajaran || detail?.config?.tahun_ajaran;
+      let newSem = detail?.semester || detail?.config?.semester;
+
+      if (!newTa || !newSem) {
+        const conf = await fetchSchoolConfig();
+        if (conf?.tahunAjaran) newTa = conf.tahunAjaran;
+        if (conf?.semester) newSem = conf.semester;
+      } else {
+        if (newTa) {
+          setActiveSchoolTahunAjaran(newTa);
+          setSelectedTahunAjaran(newTa);
+        }
+        if (newSem && (newSem === 'Ganjil' || newSem === 'Genap')) {
+          setActiveSchoolSemester(newSem as 'Ganjil' | 'Genap');
+          setSelectedSemester(newSem as 'Ganjil' | 'Genap');
+        }
+      }
+
+      if (newTa) {
+        await fetchTahunAjaranOptions(newTa);
+      }
+    };
+
+    window.addEventListener('sipjam:config_updated', handleConfigSync);
+    return () => {
+      window.removeEventListener('sipjam:config_updated', handleConfigSync);
+    };
+  }, [sekolahId, fetchSchoolConfig, fetchTahunAjaranOptions]);
+
+  // Synchronize document.title for browser print jobs
+  useEffect(() => {
+    let originalTitle = '';
+    const handleBeforePrint = () => {
+      originalTitle = document.title;
+      if (selectedStudent) {
+        const cleanTa = selectedTahunAjaran.replace(/\//g, '-');
+        document.title = `E-Rapor_${selectedStudent.nama_siswa}_Kelas_${selectedKelas}_Semester_${selectedSemester}_TA_${cleanTa}`;
+      }
+    };
+    const handleAfterPrint = () => {
+      if (originalTitle) {
+        document.title = originalTitle;
+      }
+    };
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [selectedStudent, selectedKelas, selectedSemester, selectedTahunAjaran]);
 
   // Fetch assigned Wali Kelas information for current selected class
   useEffect(() => {
@@ -691,6 +869,25 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   // Handle GPS-verified print
   const handlePrintRapor = async () => {
     setIsPrinting(true);
+    const origTitle = typeof document !== 'undefined' ? document.title : '';
+    const cleanTa = selectedTahunAjaran.replace(/\//g, '-');
+    const studentName = selectedStudent?.nama_siswa || 'Siswa';
+    const printDocTitle = `E-Rapor_${studentName}_Kelas_${selectedKelas}_Semester_${selectedSemester}_TA_${cleanTa}`;
+
+    if (typeof document !== 'undefined') {
+      document.title = printDocTitle;
+    }
+
+    const restoreTitle = () => {
+      if (typeof document !== 'undefined') {
+        document.title = origTitle || 'SIPJAM';
+      }
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('afterprint', restoreTitle);
+    }
+
     try {
       const success = await triggerPrintWithGps({
         onErrorAlert: (msg) => {
@@ -709,6 +906,11 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       window.print();
     } finally {
       setIsPrinting(false);
+      setTimeout(() => {
+        if (typeof document !== 'undefined' && document.title === printDocTitle) {
+          document.title = origTitle || 'SIPJAM';
+        }
+      }, 2000);
     }
   };
 
@@ -787,8 +989,12 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 onChange={(e) => setSelectedSemester(e.target.value as 'Ganjil' | 'Genap')}
                 className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
               >
-                <option value="Ganjil" className="dark:bg-gray-800">Ganjil</option>
-                <option value="Genap" className="dark:bg-gray-800">Genap</option>
+                <option value="Ganjil" className="dark:bg-gray-800">
+                  Ganjil{activeSchoolSemester === 'Ganjil' ? ' (Aktif)' : ''}
+                </option>
+                <option value="Genap" className="dark:bg-gray-800">
+                  Genap{activeSchoolSemester === 'Genap' ? ' (Aktif)' : ''}
+                </option>
               </select>
             </div>
 
@@ -800,8 +1006,11 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 onChange={(e) => setSelectedTahunAjaran(e.target.value)}
                 className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
               >
-                <option value="2024/2025" className="dark:bg-gray-800">2024/2025</option>
-                <option value="2025/2026" className="dark:bg-gray-800">2025/2026</option>
+                {tahunAjaranList.map(ta => (
+                  <option key={ta} value={ta} className="dark:bg-gray-800">
+                    {ta}{ta === activeSchoolTahunAjaran ? ' (Aktif)' : ''}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -997,7 +1206,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 LAPORAN HASIL BELAJAR (E-RAPOR SMA)
               </h2>
               <p className="text-xs text-gray-600 dark:text-gray-300 font-semibold mt-1">
-                KURIKULUM DEEP LEARNING — TAHUN AJARAN {selectedTahunAjaran}
+                KURIKULUM DEEP LEARNING — SEMESTER {selectedSemester.toUpperCase()} TAHUN AJARAN {selectedTahunAjaran}
               </p>
             </div>
 
@@ -1018,6 +1227,10 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               <div className="flex">
                 <span className="w-28 font-bold text-gray-600 dark:text-gray-400">Semester</span>
                 <span className="text-gray-800 dark:text-gray-200">: {selectedSemester}</span>
+              </div>
+              <div className="flex">
+                <span className="w-28 font-bold text-gray-600 dark:text-gray-400">Tahun Ajaran</span>
+                <span className="text-gray-800 dark:text-gray-200">: {selectedTahunAjaran}</span>
               </div>
             </div>
 

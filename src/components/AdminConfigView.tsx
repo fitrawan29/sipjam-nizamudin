@@ -259,9 +259,12 @@ export default function AdminConfigView({
       // Realtime synchronization: dispatch local window custom events, storage event, and Supabase channel broadcast
       const syncPayload = {
         sekolah_id: targetSekolahId,
+        tahun_ajaran: saveConfig.tahun_ajaran,
+        semester: saveConfig.semester,
         aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
         exemptTeacherIds: exemptIds,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        config: saveConfig
       };
 
       if (typeof window !== 'undefined') {
