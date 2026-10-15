@@ -409,7 +409,7 @@ export default function RekapSiswaView({
         });
       }
 
-      const { error } = await supabase.from('absensi').upsert(rowsToUpsert, {
+      const { error } = await supabase.from('absensi').upsert(rowsToUpsert as any[], {
         onConflict: 'sekolah_id, tanggal, nisn'
       });
 
