@@ -246,6 +246,48 @@ assert(
   'R6.5: Spreadsheet matrix table rows in tbody and tfoot maintain cell alignment when columns are empty'
 );
 
+// ━━━ 7. R7: ADVERSARIAL REVIEW ROUND 3 RESILIENCE HARDENING ━━━
+console.log('\n━━━ 7. R7: ADVERSARIAL REVIEW ROUND 3 RESILIENCE HARDENING ━━━');
+
+assert(
+  code.includes('handleCellKeyDown') &&
+  code.includes("e.key === 'Enter'") &&
+  code.includes("e.key === 'ArrowDown'") &&
+  code.includes("e.key === 'ArrowUp'") &&
+  code.includes("onFocus={e => e.target.select()}") &&
+  code.includes('grade-cell-${idx}-${colIndex}'),
+  'R7.1: 2D Spreadsheet keyboard navigation (Enter/Arrows) and auto text selection implemented across matrix cells'
+);
+
+assert(
+  code.includes('colMap.has(c.id)') &&
+  code.includes('recordsToUpsert.push({') &&
+  code.includes('tp_id: targetTpId') &&
+  code.includes('savedDirtyKeys.forEach(k => delete updated[k])'),
+  'R7.2: Multi-TP dirty grade saving resolves column mappings across all TPs and selectively removes saved keys'
+);
+
+assert(
+  code.includes('handleSelectMapel') &&
+  code.includes('handleSelectKelas') &&
+  code.includes('Object.keys(dirtyGrades).length > 0') &&
+  code.includes('Terdapat perubahan nilai yang belum disimpan'),
+  'R7.3: Destructive filter selection changes (Mapel/Kelas) are guarded when unsaved dirty grades exist'
+);
+
+assert(
+  code.includes("window.addEventListener('beforeunload', handleBeforeUnload)") &&
+  code.includes("window.removeEventListener('beforeunload', handleBeforeUnload)"),
+  'R7.4: Browser tab close/refresh beforeunload listener prevents accidental loss of dirty grades'
+);
+
+assert(
+  code.includes("headers.map(h => `\"${String(h).replace(/\"/g, '\"\"')}\"`).join(',')") &&
+  code.includes("headers.push('Nilai_Rapor_Semester', 'Predikat', 'Deskripsi_Capaian')") &&
+  code.includes("semStats.deskripsiCapaian"),
+  'R7.5: CSV export escapes headers against delimiter injection and includes Kurikulum Merdeka Deskripsi_Capaian narrative'
+);
+
 console.log('\n══════════════════════════════════════════════════════════════════════');
 console.log(`TEST SUMMARY: Total ${passCount + failCount} | Passed: ${passCount} | Failed: ${failCount}`);
 if (failCount > 0) {

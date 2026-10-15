@@ -153,6 +153,37 @@ export default function GradebookView({ user }: GradebookViewProps) {
   const [gradesMap, setGradesMap] = useState<Record<string, Record<string, number | null>>>({});
   const [dirtyGrades, setDirtyGrades] = useState<Record<string, boolean>>({});
 
+  // Browser beforeunload protection against accidental tab close/refresh with unsaved grades
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (Object.keys(dirtyGrades).length > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [dirtyGrades]);
+
+  // Safe Filter Selection Handlers guarding unsaved grade changes
+  const handleSelectMapel = (newMapel: string) => {
+    if (Object.keys(dirtyGrades).length > 0) {
+      if (!window.confirm('Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti mata pelajaran? Perubahan belum disimpan akan hilang.')) {
+        return;
+      }
+    }
+    setSelectedMapel(newMapel);
+  };
+
+  const handleSelectKelas = (newKelas: string) => {
+    if (Object.keys(dirtyGrades).length > 0) {
+      if (!window.confirm('Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti kelas? Perubahan belum disimpan akan hilang.')) {
+        return;
+      }
+    }
+    setSelectedKelas(newKelas);
+  };
+
   // Loading & Saving States
   const [isLoadingMaster, setIsLoadingMaster] = useState(false);
   const [isLoadingTP, setIsLoadingTP] = useState(false);
@@ -1017,6 +1048,69 @@ export default function GradebookView({ user }: GradebookViewProps) {
     return columnsList.filter(c => c.kategori === 'Sumatif');
   }, [columnsList]);
 
+  // Active Matrix Columns for 2D Spreadsheet Keyboard Navigation
+  const activeMatrixColumns = useMemo(() => {
+    const cols: AsesmenKolom[] = [];
+    if (diagnostikCol) cols.push(diagnostikCol);
+    formatifCols.forEach(c => cols.push(c));
+    sumatifCols.forEach(c => cols.push(c));
+    return cols;
+  }, [diagnostikCol, formatifCols, sumatifCols]);
+
+  // Keyboard Navigation Across Matrix Input Cells (Arrow keys, Enter, Shift+Enter)
+  const handleCellKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    rowIndex: number,
+    colIndex: number
+  ) => {
+    const totalRows = filteredStudents.length;
+    const totalCols = activeMatrixColumns.length;
+
+    let targetRow = rowIndex;
+    let targetCol = colIndex;
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        targetRow = Math.max(0, rowIndex - 1);
+      } else {
+        targetRow = Math.min(totalRows - 1, rowIndex + 1);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      targetRow = Math.min(totalRows - 1, rowIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      targetRow = Math.max(0, rowIndex - 1);
+    } else if (e.key === 'ArrowRight') {
+      const input = e.currentTarget;
+      if (input.selectionEnd === input.value.length) {
+        if (colIndex < totalCols - 1) {
+          e.preventDefault();
+          targetCol = colIndex + 1;
+        }
+      }
+    } else if (e.key === 'ArrowLeft') {
+      const input = e.currentTarget;
+      if (input.selectionStart === 0) {
+        if (colIndex > 0) {
+          e.preventDefault();
+          targetCol = colIndex - 1;
+        }
+      }
+    } else {
+      return;
+    }
+
+    if (targetRow !== rowIndex || targetCol !== colIndex) {
+      const nextInput = document.getElementById(`grade-cell-${targetRow}-${targetCol}`) as HTMLInputElement | null;
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    }
+  };
+
   // Cell Grade Change Handler
   const handleGradeChange = (nisn: string, colId: string, valStr: string) => {
     let parsed: number | null = null;
@@ -1073,33 +1167,52 @@ export default function GradebookView({ user }: GradebookViewProps) {
     setIsSaving(true);
     try {
       const recordsToUpsert: any[] = [];
+      const studentMap = new Map<string, StudentItem>();
+      students.forEach(s => studentMap.set(s.nisn, s));
 
-      students.forEach(student => {
-        const studentGrades = gradesMap[student.nisn] || {};
-        columnsList.forEach(col => {
-          const key = `${student.nisn}_${col.id}`;
-          if (dirtyGrades[key]) {
-            const rawVal = studentGrades[col.id];
-            recordsToUpsert.push({
-              sekolah_id: sekolahId || undefined,
-              tp_id: selectedTpId,
-              asesmen_id: col.id,
-              siswa_id: student.id || null,
-              nisn: student.nisn,
-              nama_siswa: student.nama_siswa,
-              kelas: selectedKelas,
-              mapel: selectedMapel,
-              nama_guru: selectedGuru || user?.nama || 'Guru',
-              nilai: rawVal !== null && rawVal !== undefined && !isNaN(rawVal) ? rawVal : null,
-              catatan: null,
-            });
-          }
+      // Build column lookup map across active columns & allSemesterColumns
+      const colMap = new Map<string, AsesmenKolom>();
+      columnsList.forEach(c => colMap.set(c.id, c));
+      Object.values(allSemesterColumns).flat().forEach(c => {
+        if (!colMap.has(c.id)) colMap.set(c.id, c);
+      });
+
+      const savedDirtyKeys: string[] = [];
+
+      dirtyKeys.forEach(key => {
+        const lastUnderscore = key.lastIndexOf('_');
+        if (lastUnderscore === -1) return;
+        const nisn = key.substring(0, lastUnderscore);
+        const colId = key.substring(lastUnderscore + 1);
+
+        const student = studentMap.get(nisn);
+        if (!student) return;
+
+        const col = colMap.get(colId);
+        const targetTpId = col?.tp_id || selectedTpId;
+        if (!targetTpId) return;
+
+        const studentGrades = gradesMap[nisn] || {};
+        const rawVal = studentGrades[colId];
+
+        recordsToUpsert.push({
+          sekolah_id: sekolahId || undefined,
+          tp_id: targetTpId,
+          asesmen_id: colId,
+          siswa_id: student.id || null,
+          nisn: student.nisn,
+          nama_siswa: student.nama_siswa,
+          kelas: selectedKelas,
+          mapel: selectedMapel,
+          nama_guru: selectedGuru || user?.nama || 'Guru',
+          nilai: rawVal !== null && rawVal !== undefined && !isNaN(rawVal) ? rawVal : null,
+          catatan: null,
         });
+        savedDirtyKeys.push(key);
       });
 
       if (recordsToUpsert.length === 0) {
         setIsSaving(false);
-        setDirtyGrades({});
         return;
       }
 
@@ -1109,7 +1222,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
       if (error) throw error;
 
-      setDirtyGrades({});
+      setDirtyGrades(prev => {
+        const updated = { ...prev };
+        savedDirtyKeys.forEach(k => delete updated[k]);
+        return updated;
+      });
       showToast('Nilai Berhasil Disimpan', `${recordsToUpsert.length} entri nilai telah tersimpan di database.`, 'success');
     } catch (err: any) {
       console.error('Error saving grades:', err);
@@ -1874,7 +1991,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
     sumatifCols.forEach(c => headers.push(`Sumatif_${c.nama}`));
     headers.push('Rata_Formatif', 'Rata_Sumatif', 'Nilai_Akhir_TP', 'Predikat');
 
-    const csvRows = [headers.join(',')];
+    const csvRows = [headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',')];
 
     students.forEach((s, idx) => {
       const stats = calculateStudentTpStats(s.nisn);
@@ -1882,7 +1999,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         idx + 1,
         `"${s.nisn}"`,
         `"${s.nama_siswa.replace(/"/g, '""')}"`,
-        s.gender || '-',
+        `"${s.gender || '-'}"`,
       ];
 
       if (diagnostikCol) row.push(stats.diagnostik !== null ? stats.diagnostik : '');
@@ -1920,9 +2037,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
     const headers = ['No', 'NISN', 'Nama Siswa', 'L/P'];
     tpList.forEach(tp => headers.push(`Nilai_${tp.kode_tp}`));
-    headers.push('Nilai_Rapor_Semester', 'Predikat');
+    headers.push('Nilai_Rapor_Semester', 'Predikat', 'Deskripsi_Capaian');
 
-    const csvRows = [headers.join(',')];
+    const csvRows = [headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',')];
 
     students.forEach((s, idx) => {
       const semStats = calculateStudentSemesterStats(s.nisn);
@@ -1930,7 +2047,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         idx + 1,
         `"${s.nisn}"`,
         `"${s.nama_siswa.replace(/"/g, '""')}"`,
-        s.gender || '-',
+        `"${s.gender || '-'}"`,
       ];
 
       tpList.forEach(tp => {
@@ -1940,7 +2057,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
       row.push(
         semStats.semesterFinal !== null ? semStats.semesterFinal : '',
-        `"${semStats.predikat}"`
+        `"${semStats.predikat}"`,
+        `"${(semStats.deskripsiCapaian || '').replace(/"/g, '""')}"`
       );
 
       csvRows.push(row.join(','));
@@ -2062,7 +2180,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
             </label>
             <select
               value={selectedMapel}
-              onChange={e => setSelectedMapel(e.target.value)}
+              onChange={e => handleSelectMapel(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
             >
               {mapelList.map((m, idx) => (
@@ -2080,7 +2198,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
             </label>
             <select
               value={selectedKelas}
-              onChange={e => setSelectedKelas(e.target.value)}
+              onChange={e => handleSelectKelas(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
             >
               {kelasList.map((k, idx) => (
@@ -2174,7 +2292,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
         {/* Action Buttons: Export & Print */}
         <div className="flex items-center gap-2">
-          {!isAdmin && activeTab === 'tp-matrix' && (
+          {activeTab === 'tp-matrix' && (
             <button
               type="button"
               onClick={exportTpToCsv}
@@ -2183,7 +2301,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
               <i className="fa-solid fa-file-excel"></i> Export CSV
             </button>
           )}
-          {!isAdmin && activeTab === 'rekap-semester' && (
+          {activeTab === 'rekap-semester' && (
             <button
               type="button"
               onClick={exportSemesterToCsv}
@@ -3382,12 +3500,17 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                 </span>
                               ) : (
                                 <input
+                                  id={`grade-cell-${idx}-0`}
+                                  data-row={idx}
+                                  data-col={0}
                                   type="number"
                                   min="0"
                                   max="100"
                                   step="0.5"
                                   value={sGrades[diagnostikCol.id] ?? ''}
                                   onChange={e => handleGradeChange(student.nisn, diagnostikCol.id, e.target.value)}
+                                  onKeyDown={e => handleCellKeyDown(e, idx, 0)}
+                                  onFocus={e => e.target.select()}
                                   placeholder="-"
                                   className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                                     dirtyGrades[`${student.nisn}_${diagnostikCol.id}`]
@@ -3405,8 +3528,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
                               -
                             </td>
                           ) : (
-                            formatifCols.map(col => {
+                            formatifCols.map((col, fIdx) => {
                               const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
+                              const colIndex = (diagnostikCol ? 1 : 0) + fIdx;
                               return (
                                 <td
                                   key={col.id}
@@ -3418,12 +3542,17 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                     </span>
                                   ) : (
                                     <input
+                                      id={`grade-cell-${idx}-${colIndex}`}
+                                      data-row={idx}
+                                      data-col={colIndex}
                                       type="number"
                                       min="0"
                                       max="100"
                                       step="0.5"
                                       value={sGrades[col.id] ?? ''}
                                       onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
+                                      onKeyDown={e => handleCellKeyDown(e, idx, colIndex)}
+                                      onFocus={e => e.target.select()}
                                       placeholder="-"
                                       className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                                         isDirty
@@ -3443,8 +3572,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
                               -
                             </td>
                           ) : (
-                            sumatifCols.map(col => {
+                            sumatifCols.map((col, smIdx) => {
                               const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
+                              const colIndex = (diagnostikCol ? 1 : 0) + formatifCols.length + smIdx;
                               return (
                                 <td
                                   key={col.id}
@@ -3456,12 +3586,17 @@ export default function GradebookView({ user }: GradebookViewProps) {
                                     </span>
                                   ) : (
                                     <input
+                                      id={`grade-cell-${idx}-${colIndex}`}
+                                      data-row={idx}
+                                      data-col={colIndex}
                                       type="number"
                                       min="0"
                                       max="100"
                                       step="0.5"
                                       value={sGrades[col.id] ?? ''}
                                       onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
+                                      onKeyDown={e => handleCellKeyDown(e, idx, colIndex)}
+                                      onFocus={e => e.target.select()}
                                       placeholder="-"
                                       className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                                         isDirty
