@@ -86,6 +86,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   catatanRef.current = catatanWaliMap;
   const dlRef = useRef(deepLearningMap);
   dlRef.current = deepLearningMap;
+  const hasInitializedConfig = useRef(false);
+  const selectedTahunAjaranRef = useRef(selectedTahunAjaran);
+  selectedTahunAjaranRef.current = selectedTahunAjaran;
 
   // Cleanup debounce timers on unmount
   useEffect(() => {
@@ -138,7 +141,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   }, [sekolahId, assignedKelas]);
 
   // Fetch active school configuration from pengaturan table
-  const fetchSchoolConfig = useCallback(async () => {
+  const fetchSchoolConfig = useCallback(async (forceSelect = false) => {
     try {
       let query = supabase.from('pengaturan').select('*');
       if (sekolahId) {
@@ -164,12 +167,17 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
         if (activeTa) {
           setActiveSchoolTahunAjaran(activeTa);
-          setSelectedTahunAjaran(activeTa);
+          if (forceSelect || !hasInitializedConfig.current) {
+            setSelectedTahunAjaran(activeTa);
+          }
         }
         if (activeSem === 'Ganjil' || activeSem === 'Genap') {
           setActiveSchoolSemester(activeSem as 'Ganjil' | 'Genap');
-          setSelectedSemester(activeSem as 'Ganjil' | 'Genap');
+          if (forceSelect || !hasInitializedConfig.current) {
+            setSelectedSemester(activeSem as 'Ganjil' | 'Genap');
+          }
         }
+        hasInitializedConfig.current = true;
 
         return {
           tahunAjaran: activeTa || null,
@@ -188,10 +196,10 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
     const yearsSet = new Set<string>();
 
     if (activeTa) yearsSet.add(activeTa.trim());
-    if (selectedTahunAjaran) yearsSet.add(selectedTahunAjaran.trim());
+    if (selectedTahunAjaranRef.current) yearsSet.add(selectedTahunAjaranRef.current.trim());
 
-    // Generate surrounding years around active configuration
-    const match = activeTa.match(/^(\d{4})\/(\d{4})$/);
+    // Generate surrounding years around active configuration (supporting / or - with optional whitespace)
+    const match = activeTa.match(/(\d{4})\s*[-/]\s*(\d{4})/);
     const baseYear = match ? parseInt(match[1], 10) : new Date().getFullYear();
     for (let offset = -2; offset <= 2; offset++) {
       const y = baseYear + offset;
@@ -229,13 +237,13 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
     const sorted = Array.from(yearsSet).filter(Boolean).sort();
     setTahunAjaranList(sorted);
-  }, [activeSchoolTahunAjaran, selectedTahunAjaran, sekolahId]);
+  }, [activeSchoolTahunAjaran, sekolahId]);
 
   // Load active school config & dynamic academic year options on mount or sekolahId change
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
-      const conf = await fetchSchoolConfig();
+      const conf = await fetchSchoolConfig(false);
       if (isMounted) {
         await fetchTahunAjaranOptions(conf?.tahunAjaran || undefined);
       }
@@ -245,9 +253,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
     return () => {
       isMounted = false;
     };
-  }, [fetchSchoolConfig, fetchTahunAjaranOptions]);
+  }, [sekolahId, fetchSchoolConfig, fetchTahunAjaranOptions]);
 
-  // Realtime synchronization: listen to 'sipjam:config_updated' event from AdminConfigView or AppScreen
+  // Realtime synchronization: listen to 'sipjam:config_updated' event from AdminConfigView or AppScreen, plus storage event for multi-tab sync
   useEffect(() => {
     const handleConfigSync = async (event: any) => {
       const detail = event?.detail;
@@ -259,7 +267,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       let newSem = detail?.semester || detail?.config?.semester;
 
       if (!newTa || !newSem) {
-        const conf = await fetchSchoolConfig();
+        const conf = await fetchSchoolConfig(true);
         if (conf?.tahunAjaran) newTa = conf.tahunAjaran;
         if (conf?.semester) newSem = conf.semester;
       } else {
@@ -278,9 +286,22 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       }
     };
 
+    const handleStorageSync = (e: StorageEvent) => {
+      if (e.key === 'sipjam:config_sync' || e.key === 'sipjam_config_sync') {
+        try {
+          const detail = e.newValue ? JSON.parse(e.newValue) : null;
+          if (detail) {
+            handleConfigSync({ detail });
+          }
+        } catch (_) {}
+      }
+    };
+
     window.addEventListener('sipjam:config_updated', handleConfigSync);
+    window.addEventListener('storage', handleStorageSync);
     return () => {
       window.removeEventListener('sipjam:config_updated', handleConfigSync);
+      window.removeEventListener('storage', handleStorageSync);
     };
   }, [sekolahId, fetchSchoolConfig, fetchTahunAjaranOptions]);
 
@@ -288,7 +309,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   useEffect(() => {
     let originalTitle = '';
     const handleBeforePrint = () => {
-      originalTitle = document.title;
+      if (!document.title.startsWith('E-Rapor_')) {
+        originalTitle = document.title;
+      }
       if (selectedStudent) {
         const cleanTa = selectedTahunAjaran.replace(/\//g, '-');
         document.title = `E-Rapor_${selectedStudent.nama_siswa}_Kelas_${selectedKelas}_Semester_${selectedSemester}_TA_${cleanTa}`;
@@ -869,7 +892,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   // Handle GPS-verified print
   const handlePrintRapor = async () => {
     setIsPrinting(true);
-    const origTitle = typeof document !== 'undefined' ? document.title : '';
+    const origTitle = typeof document !== 'undefined' && !document.title.startsWith('E-Rapor_') ? document.title : 'SIPJAM';
     const cleanTa = selectedTahunAjaran.replace(/\//g, '-');
     const studentName = selectedStudent?.nama_siswa || 'Siswa';
     const printDocTitle = `E-Rapor_${studentName}_Kelas_${selectedKelas}_Semester_${selectedSemester}_TA_${cleanTa}`;
@@ -882,7 +905,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       if (typeof document !== 'undefined') {
         document.title = origTitle || 'SIPJAM';
       }
-      window.removeEventListener('afterprint', restoreTitle);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('afterprint', restoreTitle);
+      }
     };
     if (typeof window !== 'undefined') {
       window.addEventListener('afterprint', restoreTitle);
@@ -910,7 +935,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         if (typeof document !== 'undefined' && document.title === printDocTitle) {
           document.title = origTitle || 'SIPJAM';
         }
-      }, 2000);
+      }, 5000);
     }
   };
 

@@ -84,6 +84,17 @@ async function main() {
     );
   });
 
+  runTest('R1-04: RaporView listens to storage event for multi-tab realtime sync', () => {
+    assert.ok(
+      raporContent.includes("window.addEventListener('storage', handleStorageSync)"),
+      'Must listen to storage event for multi-tab sync'
+    );
+    assert.ok(
+      raporContent.includes("e.key === 'sipjam:config_sync' || e.key === 'sipjam_config_sync'"),
+      'Must handle sipjam:config_sync from other browser tabs'
+    );
+  });
+
   console.log('\n━━━ R2. DYNAMIC ACADEMIC YEAR DROPDOWN & VISUAL INDICATOR ━━━');
 
   runTest('R2-01: Academic year options are dynamically constructed from DB & surrounding years', () => {
@@ -108,6 +119,24 @@ async function main() {
     assert.ok(
       raporContent.includes("ta === activeSchoolTahunAjaran ? ' (Aktif)' : ''"),
       'Active school year must be tagged with (Aktif)'
+    );
+  });
+
+  runTest('R2-03: Archive selection retention guard (no unwanted state resets)', () => {
+    assert.ok(
+      raporContent.includes('hasInitializedConfig'),
+      'Must track initialization state with ref to prevent wiping user archive selection'
+    );
+    assert.ok(
+      raporContent.includes('selectedTahunAjaranRef'),
+      'Must use selectedTahunAjaranRef to detach fetchTahunAjaranOptions from triggering mount re-runs'
+    );
+  });
+
+  runTest('R2-04: Academic year parser supports slash, dash, and whitespace formats', () => {
+    assert.ok(
+      raporContent.includes("activeTa.match(/(\\d{4})\\s*[-/]\\s*(\\d{4})/)"),
+      'Must match both YYYY/YYYY and YYYY-YYYY year patterns'
     );
   });
 
@@ -147,6 +176,13 @@ async function main() {
       raporContent.includes("window.addEventListener('beforeprint'") &&
       raporContent.includes("window.addEventListener('afterprint'"),
       'Must handle beforeprint and afterprint to synchronize document.title cleanly'
+    );
+  });
+
+  runTest('R3-04: Beforeprint handler protects originalTitle from print title collisions', () => {
+    assert.ok(
+      raporContent.includes("!document.title.startsWith('E-Rapor_')"),
+      'Must guard against overriding original document.title when print title was already applied'
     );
   });
 
