@@ -437,6 +437,7 @@ export default function PiketView({ user }: { user: any }) {
 
   // Frame detection loop with native BarcodeDetector and client-side jsQR fallback
   useEffect(() => {
+    lastCameraScannedRef.current = null;
     let intervalId: any = null;
     let canvas: HTMLCanvasElement | null = null;
     let ctx: CanvasRenderingContext2D | null = null;
@@ -453,7 +454,7 @@ export default function PiketView({ user }: { user: any }) {
       }
 
       intervalId = setInterval(async () => {
-        if (!videoRef.current || videoRef.current.readyState < 2 || isDetectingRef.current) return;
+        if (!videoRef.current || videoRef.current.readyState < 2 || isDetectingRef.current || isSubmittingPresensiRef.current) return;
         isDetectingRef.current = true;
         try {
           let rawVal: string | null = null;
@@ -512,7 +513,7 @@ export default function PiketView({ user }: { user: any }) {
             const now = Date.now();
             if (!lastCameraScannedRef.current || lastCameraScannedRef.current.code !== rawVal || (now - lastCameraScannedRef.current.time > 3000)) {
               lastCameraScannedRef.current = { code: rawVal, time: now };
-              handleProcessScan(rawVal);
+              await handleProcessScan(rawVal);
             }
           }
         } catch {
@@ -1426,7 +1427,10 @@ export default function PiketView({ user }: { user: any }) {
     // Otherwise remains 'Menunggu'.
     const isRekapLengkap = Boolean(piketAbsensi && Object.keys(piketAbsensi).length > 0);
     const isFotoLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading' && fileUrl !== 'gagal_upload');
-    const statusVerifikasiPiket = (isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
+    let statusVerifikasiPiket = (isRekapLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
+    if (isPiketIntervensiExpired && !isAdmin) {
+      statusVerifikasiPiket = isFotoLengkap ? 'Disetujui' : 'Menunggu';
+    }
 
     const newLaporan = {
       id: crypto.randomUUID(),

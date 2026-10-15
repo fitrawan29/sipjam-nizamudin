@@ -76,6 +76,27 @@ assert(
   'Capability badge provides clear feedback for both BarcodeDetector and fallback mode'
 );
 
+// 1.6 Concurrency protection & async scan handler in detection loop
+assert(
+  piketCode.includes('isSubmittingPresensiRef.current') &&
+  piketCode.includes('await handleProcessScan(rawVal)'),
+  'Frame detection loop guards against race conditions with isSubmittingPresensiRef and awaits scan handler'
+);
+
+// 1.7 Piket report verification condition preservation
+assert(
+  piketCode.includes('statusVerifikasiPiket = (isRekapLengkap && isFotoLengkap) ? \'Disetujui\' : \'Menunggu\'') &&
+  piketCode.includes('if (isPiketIntervensiExpired && !isAdmin)') &&
+  piketCode.includes('statusVerifikasiPiket = isFotoLengkap ? \'Disetujui\' : \'Menunggu\''),
+  'statusVerifikasiPiket correctly auto-approves expired piket reports when foto bukti is complete while satisfying m22'
+);
+
+// 1.8 Mode toggle cache reset
+assert(
+  piketCode.includes('lastCameraScannedRef.current = null;'),
+  'Scan mode toggle resets lastCameraScannedRef cooldown cache'
+);
+
 // ---------------------------------------------------------------------------
 // 2. Behavioral Simulation: Canvas jsQR Decoding of Student QR Cards
 // ---------------------------------------------------------------------------
@@ -143,6 +164,14 @@ const mockStudents: StudentReference[] = [
     kelas: 'X-RPL-1',
     sekolah_id: 'school-mobile-test',
     qr_code: studentNisn
+  },
+  {
+    id: 'b2222222-2222-2222-2222-222222222222',
+    nisn: '114367408',
+    nama_siswa: 'Budi Santoso',
+    kelas: 'X-RPL-1',
+    sekolah_id: 'school-mobile-test',
+    qr_code: '114367408'
   }
 ];
 
@@ -264,6 +293,34 @@ async function testAttendanceFlow() {
     duplicateResult.message.includes('sudah tercatat'),
     'Duplicate response provides user-friendly warning message'
   );
+
+  // Step 5: Rapid consecutive student scanning simulation
+  const matrixSecond = generateQrMatrix('114367408', { standardFormat: true });
+  const imgSecond = matrixToImageData(matrixSecond);
+  const decodedSecond = jsQR(imgSecond.data, imgSecond.width, imgSecond.height);
+  assert(Boolean(decodedSecond?.data === '114367408'), 'jsQR decodes second student QR code in rapid queue');
+
+  const { data: student2, error: err2 } = await resolveStudentByCode(
+    mockSupabase,
+    decodedSecond!.data,
+    'school-mobile-test'
+  );
+  assert(Boolean(student2 && student2.nama_siswa === 'Budi Santoso'), 'resolveStudentByCode resolves second student');
+
+  const attendanceResult2 = await recordPresensiSiswa(mockSupabase, {
+    siswa: student2!,
+    status: 'datang',
+    sekolahId: 'school-mobile-test',
+    deviceId: 'mobile-guru-iphone',
+    tanggal: getLocalTodayDate(),
+    jam: getLocalCurrentTime()
+  });
+  assert(
+    attendanceResult2.success === true && attendanceResult2.alreadyExists === false,
+    'recordPresensiSiswa successfully records second student in rapid queue without lockout'
+  );
+
+  assert(mockAttendanceStore.length === 2, 'Attendance store records both students consecutively');
 
   console.log('\n====================================================');
   console.log(`RESULTS: Passed: ${passed} | Failed: ${failed}`);

@@ -48,6 +48,8 @@ Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari k
 - Orchestrator (current): 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219 (swe_25)
 - Cron 1 (Progress Reporting): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-24 (*/8 * * * *)
 - Cron 2 (Liveness Check): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-26 (*/10 * * * *)
+- Cron 1 (Rescheduled): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-115 (*/8 * * * *)
+- Cron 2 (Rescheduled): 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-117 (*/10 * * * *)
 - Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
@@ -74,9 +76,9 @@ Perbaiki QR Scanner di HP guru (smartphone) agar dapat mendeteksi kode QR dari k
 - **Delivered results**: none
 
 ## Project Status
-- **Phase**: in progress
+- **Phase**: in progress (resumed post-server restart)
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-24 (progress), 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-26 (liveness)
+- **Active Crons**: 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-115 (progress), 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6/task-117 (liveness)
 - **Active Subagents**: 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219 (swe_25)
 
 ## Victory Audit Status

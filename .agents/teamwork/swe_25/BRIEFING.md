@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-15T04:44:30Z
+# BRIEFING — 2026-10-15T05:31:00Z
 
 ## Mission
 Universal Mobile QR Scanner Fallback & Presensi Datang Siswa on Teacher Smartphones (PiketView.tsx)
@@ -22,7 +22,7 @@ Universal Mobile QR Scanner Fallback & Presensi Datang Siswa on Teacher Smartpho
 - **Work items**:
   1. Universal Mobile QR Scanner Fallback & Presensi Datang [in-progress]
 - **Current phase**: 2 (Dispatch & Execute)
-- **Current focus**: Iteration 1 - teamwork_preview_implementer
+- **Current focus**: Iteration 2 - teamwork_preview_reviewer (Round 1)
 
 ## 🔒 Key Constraints
 - Never write or edit source code files directly (dispatch-only orchestrator)
@@ -35,31 +35,34 @@ Universal Mobile QR Scanner Fallback & Presensi Datang Siswa on Teacher Smartpho
 
 ## Current Parent
 - Conversation ID: 9c9f5fad-93e4-43d3-9104-e7098ab1f4f6
-- Updated: not yet
+- Updated: 2026-10-15T05:25:15Z
 
 ## Key Decisions Made
 - Initialized swe_25 orchestrator workspace
-- Dispatched teamwork_preview_implementer (eb3db89c-aaad-499d-977a-5f76a56c91cb)
+- Iteration 1 completed by implementer_1; verified tests pass
+- Replaced stalled reviewer_1 with fresh subagent (69a361b1-0637-4bcb-ba17-518cd896ce19)
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| implementer_1 | teamwork_preview_implementer | Initial Implementation (R1, R2, R3) | in-progress | eb3db89c-aaad-499d-977a-5f76a56c91cb |
+| implementer_1 | teamwork_preview_implementer | Initial Implementation (R1, R2, R3) | completed | eb3db89c-aaad-499d-977a-5f76a56c91cb |
+| reviewer_1 | teamwork_preview_reviewer | Review Round 1 (Adversarial stress) | in-progress | 69a361b1-0637-4bcb-ba17-518cd896ce19 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: eb3db89c-aaad-499d-977a-5f76a56c91cb
+- Spawn count: 3 / 16
+- Pending subagents: 69a361b1-0637-4bcb-ba17-518cd896ce19
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219/task-12
-- Safety timer: scheduled for implementer_1
+- Heartbeat cron: 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219/task-116
+- Safety timer: 4d23fa5b-fa1b-4449-b2f2-e65ccae9b219/task-140
 
 ## Artifact Index
 - DISPATCH.md — Task assignment and instructions
 - ORIGINAL_REQUEST.md — Authoritative user requests
-- progress.md — Liveness and iteration status
+- progress.md — Liveness, open issues ledger, and iteration status
 - BRIEFING.md — Persistent state index
-- .agents/teamwork/implementer_1/handoff.md — Target handoff for implementer
+- .agents/teamwork/implementer_1/handoff.md — Implementer 1 handoff
+- .agents/teamwork/reviewer_1/handoff.md — Target handoff for Reviewer 1

@@ -36,3 +36,8 @@ Hubungkan hasil pemindaian kode QR kartu presensi digital siswa secara langsung 
 2. **Git Workflow Rule (GEMINI.md)**: Setiap selesai modifikasi/penambahan file (menyelesaikan tugas/fitur), lakukan: `git status`, `git add .`, `git commit -m "..."`, `git push origin main`.
 3. **Next.js Rule (AGENTS.md)**: Baca petunjuk di `node_modules/next/dist/docs/` jika relevan sebelum menulis kode Next.js.
 4. **Lifecycle**: Jalankan SWE Light cycle: implementasi oleh `teamwork_preview_implementer`, kemudian review adversarial oleh `teamwork_preview_reviewer` sampai clean, verifikasi dengan test suite dan build produksi. Setelah tervalidasi, buat `handoff.md` dan laporkan selesai ke Sentinel.
+
+
+## 2026-10-15T05:25:15Z
+
+Server telah di-restart. Lanjutkan proses pengerjaan: resume review rounds, jalankan verifikasi pengujian, dan selesaikan finalisasi hingga tuntas.
