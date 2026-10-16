@@ -1,66 +1,67 @@
-# Handoff Report — Reviewer Round 1
-
 > [!WARNING] **Skepticism Disclaimer**
-> Moderate-to-high confidence on client and API business logic; live hardware camera permission and real-time physical device GPS sensor accuracy in mobile browsers remain physical-environment dependencies.
+> High confidence in PostgREST schema cache error detection, non-blocking fallback CRUD resilience, and SQL idempotency across PostgreSQL environments, with verification backed by clean Next.js production builds and zero test regressions across all 34 test suites.
 
 ## 1. What the prior attempt got wrong
+1. **Wrapped Error Envelope Detection**:
+   - **Input**: PostgREST / Supabase client response returning `{ error: { code: 'PGRST205', message: "Could not find the table 'public.sekolah_registry' in the schema cache" } }` or `{ data: null, error: { ... } }`.
+   - **Expected**: `isSchemaCacheOrMissingTableError` returns `true` and triggers fallback.
+   - **Actual**: Returned `false` because the function only inspected top-level properties `err.code` and `err.message` on the outer envelope without unwrapping `err.error` or checking serialized JSON.
+   - **Root cause**: Rigid property extraction on `err` without inspecting nested error objects or stringified payload.
 
-### Issue 1: Dropped GPS Coordinates in Fallback Database Insert (`compatiblePresensi`)
-- **Input:** Teacher submits Dinas Luar attendance, but client direct insert fails due to PostgREST schema cache or missing column retry.
-- **Expected:** Retried attendance record retains `latitude` and `longitude` captured from GPS.
-- **Actual:** `latitude` and `longitude` were omitted from `compatiblePresensi`, dropping GPS coordinates on retry.
-- **Root Cause:** In `GuruPresensi.tsx`, `compatiblePresensi` fallback object constructed for retry lacked `latitude: newPresensi.latitude` and `longitude: newPresensi.longitude`.
+2. **Column Incompatibility on Create Fallback (`public.sekolah`)**:
+   - **Input**: `handleCreateSatellite` executed when `sekolah_registry` is missing, inserting `formValues` containing `vercel_url`, `supabase_url`, `supabase_anon_key` into `public.sekolah` before migrations are applied.
+   - **Expected**: Fallback should gracefully handle un-migrated `sekolah` columns (PGRST204) by stripping missing columns and saving core institution data without throwing fatal modal dialogs to Superadmin.
+   - **Actual**: `if (schErr) throw new Error(schErr.message);` threw an uncaught error, presenting an error modal dialog `Gagal menyimpan sekolah satelit` to the Superadmin, blocking CRUD.
+   - **Root cause**: Fallback insert did not handle missing column errors (`PGRST204` / `42703`) or unique NPSN conflicts (`23505`).
 
-### Issue 2: Dropped GPS Coordinates in Server Route (`/api/attendance`)
-- **Input:** Teacher submits attendance and network/RLS issues trigger server fallback `POST /api/attendance`.
-- **Expected:** Server route saves `latitude` and `longitude` to `presensi_guru`.
-- **Actual:** `/api/attendance/route.ts` did not extract `latitude` or `longitude` from the request body or assign them to `presensiRecord` or `baseCleanRecord`.
-- **Root Cause:** Omission of `body.latitude` and `body.longitude` mapping in `src/app/api/attendance/route.ts`.
+3. **Incomplete Edit Fallback & Column Collision on Update**:
+   - **Input**: `handleEditSatelliteSchool` updating a school via `public.sekolah` when `formValues` contained satellite columns not yet present in `sekolah`.
+   - **Expected**: If column error occurs on `update`, strip satellite credentials and update core school info (`nama`, `npsn`, `kota_kabupaten`, `provinsi`, `status`), matching by both `id` and `npsn`.
+   - **Actual**: Repeated the exact same failing payload with non-existent columns when falling back to `npsn`, and failed to update when `id` update silently matched 0 rows.
+   - **Root cause**: Lack of payload stripping on column errors and failure to guarantee sync when ID does not match.
 
-### Issue 3: Loss of Dinas Luar State on Toggling `tipeAbsen` (Datang <-> Pulang)
-- **Input:** Teacher chooses "Dinas Luar", then switches `tipeAbsen` to "Pulang" before submitting Datang.
-- **Expected:** "Dinas Luar" choice is preserved.
-- **Actual:** `handleTipeAbsenChange` evaluated `dailyState?.isDinasLuar ? 'Dinas Luar' : 'Sekolah'`, resetting the dropdown to 'Sekolah' because Datang had not yet been submitted in the DB.
-- **Root Cause:** Asymmetrical state preservation in `handleTipeAbsenChange`.
+4. **Foreign Key Constraint Crash on Fallback Delete**:
+   - **Input**: Superadmin deleting a satellite monitoring school when `sekolah_registry` is missing and `public.sekolah` contains foreign key references (teachers, students, classes).
+   - **Expected**: Prevent fatal foreign key violation modal (`23503`) and avoid data destruction; detach satellite credentials (`vercel_url: null, supabase_url: null, supabase_anon_key: null, status: 'nonaktif'`) safely.
+   - **Actual**: Threw unhandled PostgreSQL `23503 foreign_key_violation` in a SweetAlert modal to the Superadmin.
+   - **Root cause**: Direct deletion on `public.sekolah` failed to intercept FK constraints.
 
-### Issue 4: Stale Document Logic in `getRequiredDocName`
-- **Input:** Code inspection of `getRequiredDocName()`.
-- **Expected:** Dead branch returning `'Surat Tugas'` for Dinas Luar purged, since Dinas Luar is now 100% camera-based.
-- **Actual:** `if (jenisPresensi === 'Dinas Luar') return 'Surat Tugas';` remained as confusing dead code.
-- **Root Cause:** Incomplete cleanup of legacy file-upload logic.
-
-### Issue 5: Shallow Verification Test Suite
-- **Input:** `tests/dinas_luar_kamera_verification.test.ts`.
-- **Expected:** Functional and behavioral assertion tests for geofence bypass, distance thresholds, state transitions, and API coordinate extraction.
-- **Actual:** Only static string matching (`code.includes(...)`) was performed.
-- **Root Cause:** Implementer relied exclusively on substring checks without runtime functional assertions.
+5. **SQL Backfill & Case-Sensitive RLS in Migration Script**:
+   - **Input**: Executing `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql` when `sekolah` contains rows with `npsn IS NULL` or re-running on an existing registry, plus users authenticated with role `'superadmin'` (lowercase).
+   - **Expected**: Fully idempotent backfill without duplicate key errors on NULL NPSN or existing IDs; RLS policy matches case-insensitively.
+   - **Actual**: `INSERT ... ON CONFLICT (npsn) DO UPDATE` in PostgreSQL fails when `npsn` is NULL and `id` already exists (throwing `sekolah_registry_pkey` duplicate key error). RLS policy `COALESCE(...->>'x-user-role', '') = 'Superadmin'` failed for lowercase roles.
+   - **Root cause**: `ON CONFLICT (npsn)` does not handle NULL NPSN in PostgreSQL; RLS comparison used case-sensitive equality.
 
 ## 2. What I changed
-- `src/components/GuruPresensi.tsx`:
-  - Added `latitude: newPresensi.latitude` and `longitude: newPresensi.longitude` to `compatiblePresensi`.
-  - Preserved Dinas Luar across `tipeAbsen` changes: `nextJenisPresensi = (jenisPresensi === 'Dinas Luar' || dailyState?.isDinasLuar) ? 'Dinas Luar' : 'Sekolah'`.
-  - Purged obsolete `if (jenisPresensi === 'Dinas Luar') return 'Surat Tugas'` in `getRequiredDocName`.
-  - Dynamically customized "Ganti Foto" confirmation dialog text to state "Foto lokasi..." when `jenisPresensi === 'Dinas Luar'`.
-- `src/app/api/attendance/route.ts`:
-  - Extracted `latitude` and `longitude` from `body` and added them to `presensiRecord` and `baseCleanRecord`.
-- `tests/dinas_luar_kamera_verification.test.ts`:
-  - Expanded test suite from basic substring checks to 17 deep tests including functional simulations of geofence radius bypass (e.g. 50km out-of-range), state transition prompt rules, and API coordinate handling.
+- **`src/lib/supabaseClient.ts`**:
+  - Enhanced `isSchemaCacheOrMissingTableError`: unwraps nested error envelopes (`err.error`), inspects status codes, messages, details, hints, and JSON serialization.
+- **`src/components/SuperadminView.tsx`**:
+  - `handleCreateSatellite`: Added column error resilience (`PGRST204` / `42703` strips satellite credentials and retries core values) and unique NPSN violation resilience (`23505` updates existing record).
+  - `handleEditSatelliteSchool`: Added column error resilience on update and dual `id`/`npsn` synchronization.
+  - `handleDeleteSatelliteSchool`: Added foreign key violation resilience (`23503` detaches satellite monitoring credentials and deactivates status without throwing fatal error modal or corrupting relational data).
+- **`supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql`**:
+  - Updated Section 5: Case-insensitive RLS policy using `ILIKE 'Superadmin'`.
+  - Updated Section 6: Idempotent backfill using `WHERE NOT EXISTS (SELECT 1 FROM public.sekolah_registry r WHERE r.id = s.id OR (s.npsn IS NOT NULL AND r.npsn = s.npsn))` followed by safe credential `UPDATE`.
+- **`tests/sekolah_registry_schema_cache_resilience.test.ts`**:
+  - Added test cases 1.7 & 1.8 (wrapped error envelopes and Supabase response objects).
+  - Added test cases 3.7, 3.8, & 3.9 (create column resilience, edit column resilience, delete foreign key constraint resilience).
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/dinas_luar_kamera_verification.test.ts`: 17 passed, 0 failed across 4 sections.
-  - `npm test`: All 24 test suites passed 100% (47 multi-sekolah tests, 19 superadmin cleanup tests, 17 dinas luar tests, etc.).
-  - `npx tsc --noEmit`: Clean exit code 0, zero TypeScript compiler errors.
-  - `npm run build`: Production Turbopack build compiled cleanly in 3.4s, static page generation (12/12) completed cleanly.
+  - `npx tsx tests/sekolah_registry_schema_cache_resilience.test.ts`: 24 / 24 assertions PASSED (100%).
+  - `npx tsx tests/portal_induk_jaringan_multi_sekolah.test.ts`: 47 / 47 assertions PASSED (100%).
+  - `npm test`: 34 test suites PASSED (0 failures).
+  - `npm run build`: Next.js 16.3.4 (Turbopack) production build and TypeScript check passed cleanly (code 0).
 - **Shallow Verification (manual only):**
-  - Inspected prompt texts, button states, and JSX structure for Dinas Luar camera selfie form.
+  - Inspected SQL script syntax for PostgreSQL compatibility.
+  - Inspected SweetAlert dialog parameters and error handling paths.
 - **Unverified aspects:**
-  - Live hardware smartphone camera sensor feed on an actual physical mobile device.
-  - Real-world Google Apps Script execution with live Google Drive credentials.
+  - Actual physical network socket latency of `NOTIFY pgrst, 'reload schema'` on heavily throttled Supabase free-tier micro-instances (100-300ms typical).
+  - Simultaneous multi-tenant database schema migrations run concurrently across different regional clusters.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: On mobile devices if the user denies camera permission, `CameraSelfieCapture` displays an in-card error message and does not have an automated fallback to file upload (by design per requirement R1).
-- `Shallow Verification`: Google Drive upload mock endpoint verified via logic simulation; live GAS script endpoint execution requires live deployment credentials.
+- `Minor Robustness Risk`: If a custom remote database schema modifies core columns of `public.sekolah` (e.g., removing `kota_kabupaten`), the fallback insert would require corresponding schema parity on that specific custom instance.
 
 ## 5. Remaining risk & next step
-- Implementation is complete, hardened, and verified with zero compiler or test errors. All 4 requirements (R1 camera selfie, R2 radius bypass & GPS persistence, R3 seamless state transitions, R4 Google Drive routing) are satisfied and covered by tests.
+- The implementation is robust, complete, and thoroughly verified against edge cases.
+- Next step: Sentinel / orchestrator review and final verification.

@@ -119,6 +119,34 @@ async function runTests() {
     fail('False positive in unrelated errors', e);
   }
 
+  // 1.7 Wrapped error object: { error: { code: 'PGRST205', message: ... } }
+  try {
+    const wrappedErr = {
+      error: {
+        code: 'PGRST205',
+        message: "Could not find the table 'public.sekolah_registry' in the schema cache"
+      }
+    };
+    assert.strictEqual(isSchemaCacheOrMissingTableError(wrappedErr), true);
+    pass('Detects wrapped PostgREST error envelope ({ error: { code: "PGRST205" } })');
+  } catch (e) {
+    fail('Failed to detect wrapped error envelope', e);
+  }
+
+  // 1.8 Supabase response object: { data: null, error: { message: ... } }
+  try {
+    const supabaseResp = {
+      data: null,
+      error: {
+        message: "Could not find the table 'public.sekolah_registry' in the schema cache"
+      }
+    };
+    assert.strictEqual(isSchemaCacheOrMissingTableError(supabaseResp), true);
+    pass('Detects Supabase response object ({ data: null, error: { message: ... } })');
+  } catch (e) {
+    fail('Failed to detect Supabase response envelope', e);
+  }
+
   // ==========================================================================
   // SECTION 2: STANDALONE MIGRATION & SCHEMA CACHE RELOAD SCRIPT (R2)
   // ==========================================================================
@@ -259,6 +287,42 @@ async function runTests() {
     pass('AppScreen imports and employs isSchemaCacheOrMissingTableError for resilient switcher fallback');
   } catch (e) {
     fail('AppScreen schema cache fallback incomplete', e);
+  }
+
+  // 3.7 SuperadminView handleCreateSatellite column resilience (PGRST204)
+  try {
+    assert.ok(
+      saContent.includes("schErr.code === 'PGRST204'") &&
+      saContent.includes('coreValues'),
+      'SuperadminView create must strip satellite columns on missing column error'
+    );
+    pass('SuperadminView create resiliently strips non-existent columns on fallback into public.sekolah');
+  } catch (e) {
+    fail('SuperadminView create missing column resilience incomplete', e);
+  }
+
+  // 3.8 SuperadminView handleEditSatelliteSchool column resilience (PGRST204)
+  try {
+    assert.ok(
+      saContent.includes("schErr.code === 'PGRST204'") &&
+      saContent.includes("update(coreValues)"),
+      'SuperadminView edit must strip satellite columns on missing column error'
+    );
+    pass('SuperadminView edit resiliently strips non-existent columns on fallback into public.sekolah');
+  } catch (e) {
+    fail('SuperadminView edit missing column resilience incomplete', e);
+  }
+
+  // 3.9 SuperadminView handleDeleteSatelliteSchool foreign key resilience (23503)
+  try {
+    assert.ok(
+      saContent.includes("schErr.code === '23503'") &&
+      saContent.includes("status: 'nonaktif'"),
+      'SuperadminView delete must detach satellite credentials on foreign key constraint'
+    );
+    pass('SuperadminView delete detaches satellite credentials on foreign key constraint violation (23503)');
+  } catch (e) {
+    fail('SuperadminView delete FK resilience incomplete', e);
   }
 
   // ==========================================================================

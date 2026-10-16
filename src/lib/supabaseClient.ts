@@ -40,11 +40,30 @@ export interface SatelliteSchool {
  */
 export function isSchemaCacheOrMissingTableError(err: any): boolean {
   if (!err) return false;
-  const rawStr = typeof err === 'string' ? err.toLowerCase() : '';
-  const code = String(err.code || err.status || '').trim().toUpperCase();
-  const message = String(err.message || err.error_description || rawStr).toLowerCase();
-  const details = String(err.details || '').toLowerCase();
-  const hint = String(err.hint || '').toLowerCase();
+
+  // Unwrap nested error property if error was returned as { error: { ... } } or { data: null, error: ... }
+  const target = (typeof err === 'object' && err !== null && 'error' in err && err.error && typeof err.error === 'object')
+    ? err.error
+    : err;
+
+  const rawStr = typeof err === 'string' ? err.toLowerCase() : (typeof target === 'string' ? target.toLowerCase() : '');
+  const code = String(target.code || target.status || err.code || err.status || '').trim().toUpperCase();
+  const message = String(
+    target.message ||
+    target.error_description ||
+    (typeof target.error === 'string' ? target.error : '') ||
+    err.message ||
+    err.error_description ||
+    (typeof err.error === 'string' ? err.error : '') ||
+    rawStr
+  ).toLowerCase();
+  const details = String(target.details || err.details || '').toLowerCase();
+  const hint = String(target.hint || err.hint || '').toLowerCase();
+
+  let jsonStr = '';
+  try {
+    jsonStr = typeof err === 'object' ? JSON.stringify(err).toLowerCase() : '';
+  } catch (_) {}
 
   return (
     code === 'PGRST205' || // PostgREST: Table not found in schema cache
@@ -58,7 +77,10 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (message.includes('sekolah_registry') && message.includes('schema cache')) ||
     (details.includes('sekolah_registry') && details.includes('schema cache')) ||
     details.includes('could not find the table') ||
-    hint.includes('reload schema')
+    hint.includes('reload schema') ||
+    jsonStr.includes('pgrst205') ||
+    (jsonStr.includes('could not find the table') && jsonStr.includes('sekolah_registry')) ||
+    (jsonStr.includes('sekolah_registry') && jsonStr.includes('schema cache'))
   );
 }
 

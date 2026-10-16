@@ -59,16 +59,17 @@ ON public.sekolah_registry
 FOR ALL
 TO authenticated, anon
 USING (
-  COALESCE(current_setting('request.headers', true)::json->>'x-user-role', '') = 'Superadmin'
+  COALESCE(current_setting('request.headers', true)::json->>'x-user-role', '') ILIKE 'Superadmin'
 )
 WITH CHECK (
-  COALESCE(current_setting('request.headers', true)::json->>'x-user-role', '') = 'Superadmin'
+  COALESCE(current_setting('request.headers', true)::json->>'x-user-role', '') ILIKE 'Superadmin'
 );
 
 -- 6. Sinkronisasi data awal (backfill) dari public.sekolah ke public.sekolah_registry jika tabel sekolah sudah berisi data
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'sekolah') THEN
+        -- 6a. Insert sekolah yang belum ada di sekolah_registry (aman terhadap npsn null dan duplicate id)
         INSERT INTO public.sekolah_registry (id, nama, npsn, kota_kabupaten, provinsi, vercel_url, supabase_url, supabase_anon_key, status)
         SELECT 
             s.id,
@@ -81,12 +82,20 @@ BEGIN
             s.supabase_anon_key,
             COALESCE(s.status, 'aktif')
         FROM public.sekolah s
-        ON CONFLICT (npsn) DO UPDATE
+        WHERE NOT EXISTS (
+            SELECT 1 FROM public.sekolah_registry r 
+            WHERE r.id = s.id OR (s.npsn IS NOT NULL AND r.npsn = s.npsn)
+        );
+
+        -- 6b. Sinkronisasikan kredensial satelit untuk sekolah yang sudah terdaftar
+        UPDATE public.sekolah_registry r
         SET 
-            vercel_url = COALESCE(EXCLUDED.vercel_url, public.sekolah_registry.vercel_url),
-            supabase_url = COALESCE(EXCLUDED.supabase_url, public.sekolah_registry.supabase_url),
-            supabase_anon_key = COALESCE(EXCLUDED.supabase_anon_key, public.sekolah_registry.supabase_anon_key),
-            updated_at = now();
+            vercel_url = COALESCE(r.vercel_url, s.vercel_url),
+            supabase_url = COALESCE(r.supabase_url, s.supabase_url),
+            supabase_anon_key = COALESCE(r.supabase_anon_key, s.supabase_anon_key),
+            updated_at = now()
+        FROM public.sekolah s
+        WHERE r.id = s.id OR (s.npsn IS NOT NULL AND r.npsn = s.npsn);
     END IF;
 END $$;
 

@@ -433,10 +433,27 @@ export default function SuperadminView({
         if (regErr) {
           if (isSchemaCacheOrMissingTableError(regErr)) {
             console.warn('[sekolah_registry] Schema cache / missing table detected on create, falling back to public.sekolah:', regErr.message);
-            const { error: schErr } = await masterSupabase.from('sekolah').insert([{
+            let { error: schErr } = await masterSupabase.from('sekolah').insert([{
               ...formValues,
               mode_presensi_siswa: 'qr'
             }]);
+
+            // Resilience: If public.sekolah does not have satellite credential columns yet (PGRST204 or missing column)
+            if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
+              const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
+              const retry = await masterSupabase.from('sekolah').insert([{
+                ...coreValues,
+                mode_presensi_siswa: 'qr'
+              }]);
+              schErr = retry.error;
+            }
+
+            // Resilience: If school with same NPSN already exists (23505 unique violation), update instead of failing
+            if (schErr && (schErr.code === '23505' || String(schErr.message).includes('unique'))) {
+              const updateRes = await masterSupabase.from('sekolah').update(formValues).eq('npsn', formValues.npsn);
+              schErr = updateRes.error;
+            }
+
             if (schErr) throw new Error(schErr.message);
           } else {
             throw new Error(regErr.message);
@@ -567,20 +584,35 @@ export default function SuperadminView({
         if (regErr) {
           if (isSchemaCacheOrMissingTableError(regErr)) {
             console.warn('[sekolah_registry] Schema cache / missing table detected on update, falling back to public.sekolah:', regErr.message);
-            const { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
+            let { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
             if (schErr && school.npsn) {
               const { error: schErrNpsn } = await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
-              if (schErrNpsn) throw new Error(schErrNpsn.message);
-            } else if (schErr) {
-              throw new Error(schErr.message);
+              schErr = schErrNpsn;
+            } else if (!schErr && school.npsn) {
+              // Ensure update matches if id was not found in sekolah
+              await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
             }
+
+            // Resilience: If public.sekolah does not have satellite credential columns yet (PGRST204 or missing column)
+            if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
+              const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
+              let retry = await masterSupabase.from('sekolah').update(coreValues).eq('id', school.id);
+              if (retry.error && school.npsn) {
+                retry = await masterSupabase.from('sekolah').update(coreValues).eq('npsn', school.npsn);
+              }
+              schErr = retry.error;
+            }
+
+            if (schErr) throw new Error(schErr.message);
           } else {
             throw new Error(regErr.message);
           }
         } else {
           try {
-            const { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
+            let { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
             if (schErr && school.npsn) {
+              await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
+            } else if (!schErr && school.npsn) {
               await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
             }
           } catch (_) {}
@@ -628,21 +660,41 @@ export default function SuperadminView({
       if (regErr) {
         if (isSchemaCacheOrMissingTableError(regErr)) {
           console.warn('[sekolah_registry] Schema cache / missing table detected on delete, falling back to public.sekolah:', regErr.message);
-          const { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
-          if (schErr && school.npsn) {
+          let { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
+          if (schErr && school.npsn && schErr.code !== '23503') {
             const { error: schErrNpsn } = await masterSupabase.from('sekolah').delete().eq('npsn', school.npsn);
-            if (schErrNpsn) throw new Error(schErrNpsn.message);
-          } else if (schErr) {
-            throw new Error(schErr.message);
+            schErr = schErrNpsn;
           }
+
+          // Resilience: If foreign key constraint blocks deletion (23503), detach satellite credentials
+          // and mark non-operational instead of crashing or showing fatal error dialog
+          if (schErr && (schErr.code === '23503' || String(schErr.message).includes('foreign key'))) {
+            console.warn('[sekolah] Relational FK constraint detected on delete, detaching satellite credentials instead.');
+            await masterSupabase.from('sekolah').update({
+              vercel_url: null,
+              supabase_url: null,
+              supabase_anon_key: null,
+              status: 'nonaktif'
+            }).eq('id', school.id);
+            schErr = null;
+          }
+
+          if (schErr) throw new Error(schErr.message);
         } else {
           throw new Error(regErr.message);
         }
       } else {
         try {
-          const { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
-          if (schErr && school.npsn) {
+          let { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
+          if (schErr && school.npsn && schErr.code !== '23503') {
             await masterSupabase.from('sekolah').delete().eq('npsn', school.npsn);
+          }
+          if (schErr && (schErr.code === '23503' || String(schErr.message).includes('foreign key'))) {
+            await masterSupabase.from('sekolah').update({
+              vercel_url: null,
+              supabase_url: null,
+              supabase_anon_key: null
+            }).eq('id', school.id);
           }
         } catch (_) {}
       }
