@@ -43,6 +43,7 @@ BEGIN
         ALTER TABLE public.sekolah ADD COLUMN IF NOT EXISTS vercel_url TEXT;
         ALTER TABLE public.sekolah ADD COLUMN IF NOT EXISTS supabase_url TEXT;
         ALTER TABLE public.sekolah ADD COLUMN IF NOT EXISTS supabase_anon_key TEXT;
+        ALTER TABLE public.sekolah ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'aktif';
     END IF;
 END $$;
 
@@ -69,7 +70,7 @@ WITH CHECK (
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'sekolah') THEN
-        -- 6a. Insert sekolah yang belum ada di sekolah_registry (aman terhadap npsn null dan duplicate id)
+        -- 6a. Insert sekolah yang belum ada di sekolah_registry (aman terhadap npsn null, duplicate id, dan duplicate npsn di tabel sumber)
         INSERT INTO public.sekolah_registry (id, nama, npsn, kota_kabupaten, provinsi, vercel_url, supabase_url, supabase_anon_key, status)
         SELECT 
             s.id,
@@ -80,8 +81,12 @@ BEGIN
             s.vercel_url,
             s.supabase_url,
             s.supabase_anon_key,
-            COALESCE(s.status, 'aktif')
-        FROM public.sekolah s
+            CASE WHEN lower(COALESCE(s.status, 'aktif')) = 'nonaktif' THEN 'nonaktif' ELSE 'aktif' END
+        FROM (
+            SELECT DISTINCT ON (COALESCE(s_inner.npsn, s_inner.id::text)) s_inner.*
+            FROM public.sekolah s_inner
+            ORDER BY COALESCE(s_inner.npsn, s_inner.id::text), s_inner.id
+        ) s
         WHERE NOT EXISTS (
             SELECT 1 FROM public.sekolah_registry r 
             WHERE r.id = s.id OR (s.npsn IS NOT NULL AND r.npsn = s.npsn)
@@ -93,6 +98,7 @@ BEGIN
             vercel_url = COALESCE(r.vercel_url, s.vercel_url),
             supabase_url = COALESCE(r.supabase_url, s.supabase_url),
             supabase_anon_key = COALESCE(r.supabase_anon_key, s.supabase_anon_key),
+            status = CASE WHEN lower(COALESCE(s.status, 'aktif')) = 'nonaktif' THEN 'nonaktif' ELSE 'aktif' END,
             updated_at = now()
         FROM public.sekolah s
         WHERE r.id = s.id OR (s.npsn IS NOT NULL AND r.npsn = s.npsn);

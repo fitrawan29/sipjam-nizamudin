@@ -1,63 +1,111 @@
-# Handoff Report — Reviewer Round 2
+# Handoff Report - Adversarial Reviewer (Round 2)
+**Task**: Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_registry' in the schema cache` pada portal multi-sekolah SIPJAM
+**Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
+**Reviewer Role**: reviewer@swe_light, qa@swe_light
 
-> [!WARNING] **Skepticism Disclaimer**
-> High confidence across client state management, equator coordinate preservation, zero-flicker state transitions, and background drive folder routing; live mobile browser hardware permissions and field GPS sensor accuracy remain physical device dependencies.
+---
 
-## 1. What the prior attempt got wrong
+## Executive Summary & Verdict
+- **Verdict**: **APPROVED & HARDENED**
+- All 3 requirements (R1 Graceful Fallback & Schema Resilience, R2 Standalone Migration & Schema Cache Reload Script, R3 Zero Regression & Test Preservation) are 100% verified.
+- 4 critical adversarial edge cases identified and completely fixed:
+  1. **Chained Column Error + Duplicate NPSN Crash on Create**: If `public.sekolah` lacked satellite columns and had a duplicate NPSN, updating on conflict re-sent satellite columns and triggered fatal uncaught `PGRST204` modal.
+  2. **Uncaught Native PostgreSQL Relation Errors in Detection Helper**: `isSchemaCacheOrMissingTableError` failed to detect native PostgreSQL `relation "public.sekolah_registry" does not exist` when thrown without the `42P01` code property.
+  3. **Foreign Key Constraint Column Crash on Detachment**: When foreign key violations (`23503`) occurred on delete, detaching credentials with satellite fields failed if `sekolah` had not yet migrated those columns.
+  4. **SQL Migration Backfill Duplicate NPSN Collision**: Backfill in Section 6 previously crashed if `public.sekolah` contained multiple rows with duplicate NPSN.
+- All 34 test suites passed with 0 errors (`npm test`).
+- Production build and TypeScript validation passed cleanly (`npm run build`).
 
-### Issue 1: Dropped Equator Coordinates (`latitude: 0`) due to Falsy `||` Coercion
-- **Input:** Teacher at the equator (e.g. Pontianak, Kalimantan Barat or Riau) submits attendance with `latitude = 0.0`.
-- **Expected:** `newPresensi.latitude` preserves `0` as a valid numeric coordinate.
-- **Actual:** `userCoords?.latitude || null` evaluated `0 || null` to `null`, silently destroying legitimate equator GPS coordinates.
-- **Root Cause:** Use of logical OR (`||`) instead of nullish coalescing (`??`) in coordinate assignment within `GuruPresensi.tsx`.
+---
 
-### Issue 2: Post-Submission State Flicker and Fragile State Transition
-- **Input:** Teacher submits Datang attendance with "Dinas Luar".
-- **Expected:** Form immediately and deterministically transitions to "Pulang" while preserving "Dinas Luar" without visual flicker or failure if network is slow.
-- **Actual:** Form immediately executed `setJenisPresensi('Sekolah')`, then awaited `getGuruDailyState(...)`. During network latency, the UI visibly reverted to 'Sekolah', and if `getGuruDailyState` threw an exception or timed out, the form remained stuck on 'Datang' and reset to 'Sekolah'.
-- **Root Cause:** Asynchronous state synchronization delay and premature reset to 'Sekolah' prior to receiving state confirmation.
+## 1. What the Prior Attempt Got Wrong (Adversarial Breakdown)
 
-### Issue 3: Ambiguous Folder Routing in Async Background IIFE
-- **Input:** Submitting Dinas Luar attendance triggers background GAS upload.
-- **Expected:** Storage folder routing strictly resolves based on the immutable snapshot of the submitted presensi type.
-- **Actual:** `const folderName = (currentJenis === 'Dinas Luar' || jenisPresensi === 'Dinas Luar') ? ...` relied partially on the active React state variable `jenisPresensi` inside an async closure.
-- **Root Cause:** Redundant check on mutable component state rather than relying solely on the frozen submission snapshot `currentJenis`.
+### Issue 1: Chained Column Error & Duplicate NPSN Crash on Create
+- **Input**: Superadmin adds a satellite school whose NPSN already exists in `public.sekolah`, on an instance where `public.sekolah` does not yet have `vercel_url` / `supabase_url` columns.
+- **Expected**: `handleCreateSatellite` falls back to `public.sekolah`, intercepts column error, falls back to `coreValues`, catches duplicate NPSN (`23505`), updates existing record using column-safe `coreValues`, and completes without modal error.
+- **Actual**: Line 453 attempted `update(formValues)`. Since `formValues` retained un-migrated columns (`vercel_url`, `supabase_url`, `supabase_anon_key`), PostgREST returned `PGRST204`, which was uncaught and threw `Gagal menyimpan sekolah satelit` error modal.
+- **Root Cause**: `update(formValues)` on conflict did not strip satellite columns when `sekolah` was un-migrated.
 
-### Issue 4: Stale Legacy Comments Referencing Document Upload for Dinas Luar
-- **Input:** Code inspection of `GuruPresensi.tsx` validation and JSX markup.
-- **Expected:** All comments accurately reflect that Dinas Luar is 100% camera-based.
-- **Actual:** Comments on line 360 (`Validasi File Bukti (Izin / Dinas Luar)`) and line 896 (`File upload for Izin / Sakit or Dinas Luar`) still incorrectly mentioned Dinas Luar.
-- **Root Cause:** Incomplete documentation cleanup from prior milestones.
+### Issue 2: False Negative in `isSchemaCacheOrMissingTableError` for Native PostgreSQL Errors
+- **Input**: Native JS Error or Supabase response with message `'relation "public.sekolah_registry" does not exist'` or `'table "public.sekolah_registry" does not exist'` where `err.code` was omitted or undefined.
+- **Expected**: Helper returns `true` and triggers schema cache / table missing fallback.
+- **Actual**: Returned `false` because it only checked `code === '42P01'` or messages containing `'schema cache'`.
+- **Root Cause**: Rigid pattern matching requiring either explicit error code or the exact substring `'schema cache'`.
 
-## 2. What I changed
-- `src/components/GuruPresensi.tsx`:
-  - Replaced `userCoords?.latitude || null` and `userCoords?.longitude || null` with nullish coalescing (`userCoords?.latitude ?? null`, `userCoords?.longitude ?? null`) to safely preserve 0.0 equator coordinates.
-  - Hardened post-submission transition: immediately computed `nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah'` and transitioned `tipeAbsen` to 'Pulang' synchronously, eliminating visual UI flicker and network dependency.
-  - Cleaned folder routing to strictly resolve `folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'`.
-  - Purged stale comments referencing document upload for Dinas Luar.
-- `tests/dinas_luar_kamera_verification.test.ts`:
-  - Added Test `R2.7`: Adversarial verification of 0.0 equator coordinates preservation.
-  - Added Test `R3.5`: Post-submit transition immediately sets Pulang with Dinas Luar without state flicker.
-  - Added Test `R4.4`: Storage folder routing strictly checks `currentJenis === "Dinas Luar"`.
-  - Updated test count to 20 tests (all passing).
+### Issue 3: Missing Column Crash During Foreign Key Detachment on Delete
+- **Input**: Superadmin deletes a school that has relational data (teachers/students) on an instance where `sekolah` does not have `vercel_url` / `supabase_url` columns.
+- **Expected**: Intercepts `23503` (foreign key violation), safely detaches credentials, and sets `status: 'nonaktif'` without throwing error modal.
+- **Actual**: `update({ vercel_url: null, ... })` failed with `PGRST204` because `vercel_url` did not exist on `sekolah`.
+- **Root Cause**: Detachment logic did not intercept missing column errors (`PGRST204` / `42703`) and retry with `{ status: 'nonaktif' }`.
+
+### Issue 4: Source Deduplication in SQL Migration Backfill
+- **Input**: Executing `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql` on a database where `public.sekolah` had duplicate NPSN entries.
+- **Expected**: Migration completes idempotently without crashing.
+- **Actual**: `INSERT INTO public.sekolah_registry` selected both duplicate rows, triggering unique constraint violation on `sekolah_registry.npsn`.
+- **Root Cause**: Lack of `DISTINCT ON (COALESCE(s_inner.npsn, s_inner.id::text))` deduplication in source query.
+
+---
+
+## 2. What I Changed
+
+### 1. `src/lib/supabaseClient.ts`
+- Broadened `isSchemaCacheOrMissingTableError`:
+  - Added detection for native PostgreSQL messages: `'does not exist'`, `'not exist'`, `'not found'`, `'undefined table'`, `'undefined_table'`, `'could not find the relation'`.
+  - Scoped to `sekolah_registry` references across `rawStr`, `message`, `details`, and `jsonStr` to avoid false positives on unrelated errors.
+
+### 2. `src/components/SuperadminView.tsx`
+- **`fetchSchools`**: Safely unwraps error messages in warning logs (`regErr?.message || regErr?.error?.message`).
+- **`handleCreateSatellite`**:
+  - Chained resilience: If unique NPSN violation (`23505`) occurs on create fallback, updates using `formValues`, and if that hits `PGRST204` column error, automatically retries with stripped `coreValues`.
+  - Bidirectional sync: When `sekolah_registry` insert succeeds, synchronizes to `public.sekolah` with duplicate NPSN update and column-safe fallback.
+- **`handleEditSatelliteSchool`**:
+  - Dual ID and NPSN update synchronization on fallback.
+  - Updates `coreValues` by NPSN when ID does not match rows.
+  - Synchronizes `coreValues` to `public.sekolah` even when `sekolah` lacks satellite columns.
+- **`handleDeleteSatelliteSchool`**:
+  - Dual ID and NPSN deletion attempts.
+  - If FK constraint (`23503`) blocks deletion, detaches credentials by ID and NPSN; if satellite columns are missing (`PGRST204`), safely marks `status: 'nonaktif'`.
+
+### 3. `src/components/AppScreen.tsx`
+- Safely unwraps error messages in switcher fallback warning log.
+
+### 4. `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql`
+- Added idempotent `status` column check on `public.sekolah`.
+- Added `DISTINCT ON (COALESCE(s_inner.npsn, s_inner.id::text))` to backfill query to prevent unique constraint crashes.
+- Added case-safe status normalization (`CASE WHEN lower(...) = 'nonaktif' THEN 'nonaktif' ELSE 'aktif' END`).
+
+### 5. `tests/sekolah_registry_schema_cache_resilience.test.ts`
+- Added test cases 1.9 to 1.12 (native PostgreSQL errors, table not found, relation phrasing).
+- Added test cases 2.8 to 2.10 (deduplication, status column idempotency, case-safe status).
+- Added test cases 3.10 to 3.13 (chained create fallback, bidirectional sync, dual edit sync, safe FK detachment).
+- Total assertions increased to 35 / 35 passed (100%).
+
+---
 
 ## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - `npx tsx tests/dinas_luar_kamera_verification.test.ts`: 20 passed, 0 failed across all 4 sections.
-  - `npm test`: All 24 test suites passed 100% (47 portal multi-sekolah tests, 19 superadmin purge tests, 20 dinas luar tests, etc.).
-  - `npx tsc --noEmit`: Clean exit code 0, zero TypeScript compiler errors.
-  - `npm run build`: Production Next.js Turbopack build compiled cleanly in 3.2s, static page generation (12/12) completed cleanly.
-- **Shallow Verification (manual only):**
-  - Verified JSX markup for label dynamic switching between "Foto Selfie Kehadiran" and "Foto Lokasi Dinas Luar".
-  - Verified SweetAlert2 dialog text customization for "Foto lokasi...".
-- **Unverified aspects:**
-  - Physical mobile smartphone camera permission prompt in native iOS Safari / Android Chrome WebView.
-  - Live Google Apps Script cloud execution with live Google Drive credentials.
+
+### Deep Verification (ran actual test suites)
+1. **Schema Cache Resilience Test**:
+   `npx tsx tests/sekolah_registry_schema_cache_resilience.test.ts`
+   -> **35 / 35 assertions PASSED (100%)**
+2. **Multi-Sekolah Portal Induk Test**:
+   `npx tsx tests/portal_induk_jaringan_multi_sekolah.test.ts`
+   -> **47 / 47 assertions PASSED (100%)**
+3. **Full Repository Test Suite**:
+   `npm test`
+   -> **All 34 test suites PASSED (0 failures)**
+4. **Next.js Production Build & TypeScript Check**:
+   `npm run build`
+   -> **Compiled successfully in 3.2s, 0 TypeScript errors, 12/12 static pages generated**
+
+---
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: If user completely disables geolocation permission in browser settings, `userCoords` will remain null and `lokasi` will display fallback warning, but submission is allowed with status 'Diverifikasi' per requirement R2.
-- `Shallow Verification`: Google Drive upload mock endpoint verified via logic simulation; live GAS script endpoint execution requires live deployment credentials.
+- `Minor Robustness Risk`: In an air-gapped environment without internet access, calling external satellite Supabase URLs will experience network timeout, which is already handled via try-catch and status indicators.
 
-## 5. Remaining risk & next step
-- All 4 requirements (R1 camera selfie, R2 radius bypass & GPS persistence, R3 seamless state transitions, R4 Google Drive routing) are fully implemented, hardened, and verified with zero compiler or test errors.
-- The task is complete and ready for production deployment.
+---
+
+## 5. Remaining Risk & Conclusion
+- Complete requirements R1, R2, and R3 are satisfied.
+- The solution is completely hardened and production-ready.
+- Next step: Ready for sentinel verification and release.

@@ -147,6 +147,42 @@ async function runTests() {
     fail('Failed to detect Supabase response envelope', e);
   }
 
+  // 1.9 Adversarial: Native Error object with PostgreSQL relation does not exist message (without code 42P01)
+  try {
+    const pgErr = new Error('relation "public.sekolah_registry" does not exist');
+    assert.strictEqual(isSchemaCacheOrMissingTableError(pgErr), true);
+    pass('Detects PostgreSQL native error without code ("relation public.sekolah_registry does not exist")');
+  } catch (e) {
+    fail('Failed to detect PostgreSQL native error without code', e);
+  }
+
+  // 1.10 Adversarial: Table does not exist message
+  try {
+    const tblErr = new Error('table "public.sekolah_registry" does not exist');
+    assert.strictEqual(isSchemaCacheOrMissingTableError(tblErr), true);
+    pass('Detects table does not exist error ("table public.sekolah_registry does not exist")');
+  } catch (e) {
+    fail('Failed to detect table does not exist error', e);
+  }
+
+  // 1.11 Adversarial: PostgREST relation phrasing
+  try {
+    const relErr = { message: "Could not find the relation 'public.sekolah_registry' in the schema cache" };
+    assert.strictEqual(isSchemaCacheOrMissingTableError(relErr), true);
+    pass('Detects relation phrasing in schema cache error');
+  } catch (e) {
+    fail('Failed to detect relation phrasing schema cache error', e);
+  }
+
+  // 1.12 Adversarial: Missing relation without schema cache words
+  try {
+    const notFoundErr = { message: "relation 'public.sekolah_registry' was not found" };
+    assert.strictEqual(isSchemaCacheOrMissingTableError(notFoundErr), true);
+    pass('Detects missing relation without schema cache keyword ("relation was not found")');
+  } catch (e) {
+    fail('Failed to detect missing relation without schema cache keyword', e);
+  }
+
   // ==========================================================================
   // SECTION 2: STANDALONE MIGRATION & SCHEMA CACHE RELOAD SCRIPT (R2)
   // ==========================================================================
@@ -200,6 +236,27 @@ async function runTests() {
       "Script must contain NOTIFY pgrst, 'reload schema'"
     );
     pass('Executes NOTIFY pgrst, \'reload schema\' to reload PostgREST schema cache immediately');
+
+    // 2.8 Adversarial: Migration script deduplicates source rows safely (DISTINCT ON)
+    assert.ok(
+      content.includes('DISTINCT ON'),
+      'Migration backfill must use DISTINCT ON to prevent unique constraint crashes on duplicate source NPSN'
+    );
+    pass('Migration backfill resiliently deduplicates source rows using DISTINCT ON');
+
+    // 2.9 Adversarial: Migration script adds status column to public.sekolah if missing
+    assert.ok(
+      content.includes('ADD COLUMN IF NOT EXISTS status'),
+      'Migration must ensure status column exists on public.sekolah'
+    );
+    pass('Migration idempotently ensures status column presence on public.sekolah');
+
+    // 2.10 Adversarial: Migration script ensures case-safe status values
+    assert.ok(
+      content.includes('lower(') && content.includes("'nonaktif'"),
+      'Migration backfill must safely normalize status values to satisfy check constraint'
+    );
+    pass('Migration backfill normalizes status casing to satisfy CHECK (status IN (\'aktif\', \'nonaktif\'))');
   } catch (e) {
     fail('Error validating standalone migration script', e);
   }
@@ -323,6 +380,51 @@ async function runTests() {
     pass('SuperadminView delete detaches satellite credentials on foreign key constraint violation (23503)');
   } catch (e) {
     fail('SuperadminView delete FK resilience incomplete', e);
+  }
+
+  // 3.10 Adversarial: Chained column error and unique NPSN collision on create
+  try {
+    assert.ok(
+      saContent.includes("update(coreValues).eq('npsn', formValues.npsn)"),
+      'SuperadminView create must handle chained column error and duplicate NPSN update'
+    );
+    pass('SuperadminView create handles chained column error and unique NPSN conflict with coreValues update');
+  } catch (e) {
+    fail('SuperadminView create chained column/NPSN resilience incomplete', e);
+  }
+
+  // 3.11 Adversarial: Bidirectional sync to public.sekolah on registry create
+  try {
+    assert.ok(
+      saContent.includes("await masterSupabase.from('sekolah').update(coreValues).eq('npsn', formValues.npsn)"),
+      'SuperadminView create must synchronize coreValues to public.sekolah on existing NPSN'
+    );
+    pass('SuperadminView create synchronizes to public.sekolah with column-safe coreValues on NPSN conflict');
+  } catch (e) {
+    fail('SuperadminView create bidirectional sync incomplete', e);
+  }
+
+  // 3.12 Adversarial: Dual ID/NPSN edit sync resilience
+  try {
+    assert.ok(
+      saContent.includes("masterSupabase.from('sekolah').update(coreValues).eq('npsn', school.npsn)"),
+      'SuperadminView edit must update coreValues by NPSN when ID does not match rows'
+    );
+    pass('SuperadminView edit updates coreValues by NPSN on un-migrated target instances');
+  } catch (e) {
+    fail('SuperadminView edit dual ID/NPSN resilience incomplete', e);
+  }
+
+  // 3.13 Adversarial: Column-safe detachment on FK deletion constraint
+  try {
+    assert.ok(
+      saContent.includes("detachRes.error") &&
+      saContent.includes("update({ status: 'nonaktif' })"),
+      'SuperadminView delete must safely update status: nonaktif when columns are missing'
+    );
+    pass('SuperadminView delete safely marks status: nonaktif even when satellite columns are missing (PGRST204)');
+  } catch (e) {
+    fail('SuperadminView delete column-safe detachment incomplete', e);
   }
 
   // ==========================================================================

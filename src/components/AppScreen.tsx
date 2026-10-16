@@ -95,7 +95,7 @@ export default function AppScreen({
           setSatelliteSchools(regData as SatelliteSchool[]);
           return;
         } else if (regErr && isSchemaCacheOrMissingTableError(regErr)) {
-          console.warn('[sekolah_registry] Schema cache / missing table detected in AppScreen switcher, falling back to public.sekolah:', regErr.message);
+          console.warn('[sekolah_registry] Schema cache / missing table detected in AppScreen switcher, falling back to public.sekolah:', regErr?.message || (regErr as any)?.error?.message || String(regErr));
         }
       } catch (_) {}
 

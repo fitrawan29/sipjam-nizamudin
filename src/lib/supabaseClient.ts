@@ -65,6 +65,28 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     jsonStr = typeof err === 'object' ? JSON.stringify(err).toLowerCase() : '';
   } catch (_) {}
 
+  const hasSekolahRegistry =
+    rawStr.includes('sekolah_registry') ||
+    message.includes('sekolah_registry') ||
+    details.includes('sekolah_registry') ||
+    jsonStr.includes('sekolah_registry');
+
+  const isMissingTableOrRelation =
+    hasSekolahRegistry && (
+      message.includes('does not exist') ||
+      message.includes('not exist') ||
+      message.includes('not found') ||
+      message.includes('undefined table') ||
+      message.includes('undefined_table') ||
+      message.includes('could not find the relation') ||
+      details.includes('does not exist') ||
+      details.includes('not found') ||
+      rawStr.includes('does not exist') ||
+      rawStr.includes('not found') ||
+      jsonStr.includes('does not exist') ||
+      jsonStr.includes('not found')
+    );
+
   return (
     code === 'PGRST205' || // PostgREST: Table not found in schema cache
     code === '42P01' ||    // PostgreSQL: undefined_table
@@ -80,7 +102,8 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     hint.includes('reload schema') ||
     jsonStr.includes('pgrst205') ||
     (jsonStr.includes('could not find the table') && jsonStr.includes('sekolah_registry')) ||
-    (jsonStr.includes('sekolah_registry') && jsonStr.includes('schema cache'))
+    (jsonStr.includes('sekolah_registry') && jsonStr.includes('schema cache')) ||
+    isMissingTableOrRelation
   );
 }
 
