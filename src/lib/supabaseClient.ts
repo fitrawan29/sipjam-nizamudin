@@ -33,6 +33,35 @@ export interface SatelliteSchool {
   updated_at?: string | null;
 }
 
+/**
+ * Helper to detect PostgREST schema cache errors or missing table errors (e.g. PGRST205 or undefined_table).
+ * Enables graceful fallback to secondary tables (like public.sekolah) when optional or migration-pending tables
+ * (like public.sekolah_registry) are not yet loaded in PostgREST schema cache.
+ */
+export function isSchemaCacheOrMissingTableError(err: any): boolean {
+  if (!err) return false;
+  const rawStr = typeof err === 'string' ? err.toLowerCase() : '';
+  const code = String(err.code || err.status || '').trim().toUpperCase();
+  const message = String(err.message || err.error_description || rawStr).toLowerCase();
+  const details = String(err.details || '').toLowerCase();
+  const hint = String(err.hint || '').toLowerCase();
+
+  return (
+    code === 'PGRST205' || // PostgREST: Table not found in schema cache
+    code === '42P01' ||    // PostgreSQL: undefined_table
+    code === 'PGRST200' || // PostgREST: Schema cache relation error
+    code === 'PGRST204' || // PostgREST: Column / schema error
+    rawStr.includes('pgrst205') ||
+    rawStr.includes('could not find the table') ||
+    (rawStr.includes('sekolah_registry') && rawStr.includes('schema cache')) ||
+    message.includes('could not find the table') ||
+    (message.includes('sekolah_registry') && message.includes('schema cache')) ||
+    (details.includes('sekolah_registry') && details.includes('schema cache')) ||
+    details.includes('could not find the table') ||
+    hint.includes('reload schema')
+  );
+}
+
 // In-memory fallback context for Server-Side / Node / Test environments
 let serverTenantContext: TenantContext = {};
 let serverActiveTargetSchool: SatelliteSchool | null = null;

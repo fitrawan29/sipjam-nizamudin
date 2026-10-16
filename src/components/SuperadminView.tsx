@@ -9,6 +9,7 @@ import {
   onActiveTargetSchoolChange,
   getSatelliteSupabaseClient,
   normalizeSupabaseUrl,
+  isSchemaCacheOrMissingTableError,
   type SatelliteSchool
 } from '@/lib/supabaseClient';
 
@@ -118,6 +119,8 @@ export default function SuperadminView({
 
         if (!regErr && regData && regData.length > 0) {
           loadedSatellites = regData as SatelliteSchool[];
+        } else if (regErr && isSchemaCacheOrMissingTableError(regErr)) {
+          console.warn('[sekolah_registry] Schema cache / missing table detected on fetch, falling back to public.sekolah:', regErr.message);
         }
       } catch (_) {}
 
@@ -428,16 +431,25 @@ export default function SuperadminView({
           .select()
           .maybeSingle();
         if (regErr) {
-          throw new Error(regErr.message);
+          if (isSchemaCacheOrMissingTableError(regErr)) {
+            console.warn('[sekolah_registry] Schema cache / missing table detected on create, falling back to public.sekolah:', regErr.message);
+            const { error: schErr } = await masterSupabase.from('sekolah').insert([{
+              ...formValues,
+              mode_presensi_siswa: 'qr'
+            }]);
+            if (schErr) throw new Error(schErr.message);
+          } else {
+            throw new Error(regErr.message);
+          }
+        } else {
+          try {
+            await masterSupabase.from('sekolah').insert([{
+              ...(insertedReg?.id ? { id: insertedReg.id } : {}),
+              ...formValues,
+              mode_presensi_siswa: 'qr'
+            }]);
+          } catch (_) {}
         }
-
-        try {
-          await masterSupabase.from('sekolah').insert([{
-            ...(insertedReg?.id ? { id: insertedReg.id } : {}),
-            ...formValues,
-            mode_presensi_siswa: 'qr'
-          }]);
-        } catch (_) {}
 
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('sipjam_satellite_schools_updated'));
@@ -552,14 +564,27 @@ export default function SuperadminView({
       setLoading(true);
       try {
         const { error: regErr } = await masterSupabase.from('sekolah_registry').update(formValues).eq('id', school.id);
-        if (regErr) throw new Error(regErr.message);
-
-        try {
-          const { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
-          if (schErr && school.npsn) {
-            await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
+        if (regErr) {
+          if (isSchemaCacheOrMissingTableError(regErr)) {
+            console.warn('[sekolah_registry] Schema cache / missing table detected on update, falling back to public.sekolah:', regErr.message);
+            const { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
+            if (schErr && school.npsn) {
+              const { error: schErrNpsn } = await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
+              if (schErrNpsn) throw new Error(schErrNpsn.message);
+            } else if (schErr) {
+              throw new Error(schErr.message);
+            }
+          } else {
+            throw new Error(regErr.message);
           }
-        } catch (_) {}
+        } else {
+          try {
+            const { error: schErr } = await masterSupabase.from('sekolah').update(formValues).eq('id', school.id);
+            if (schErr && school.npsn) {
+              await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
+            }
+          } catch (_) {}
+        }
 
         if (activeTargetSchool?.id === school.id) {
           const updatedTarget: SatelliteSchool = { ...school, ...formValues };
@@ -600,14 +625,27 @@ export default function SuperadminView({
     setLoading(true);
     try {
       const { error: regErr } = await masterSupabase.from('sekolah_registry').delete().eq('id', school.id);
-      if (regErr) throw new Error(regErr.message);
-
-      try {
-        const { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
-        if (schErr && school.npsn) {
-          await masterSupabase.from('sekolah').delete().eq('npsn', school.npsn);
+      if (regErr) {
+        if (isSchemaCacheOrMissingTableError(regErr)) {
+          console.warn('[sekolah_registry] Schema cache / missing table detected on delete, falling back to public.sekolah:', regErr.message);
+          const { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
+          if (schErr && school.npsn) {
+            const { error: schErrNpsn } = await masterSupabase.from('sekolah').delete().eq('npsn', school.npsn);
+            if (schErrNpsn) throw new Error(schErrNpsn.message);
+          } else if (schErr) {
+            throw new Error(schErr.message);
+          }
+        } else {
+          throw new Error(regErr.message);
         }
-      } catch (_) {}
+      } else {
+        try {
+          const { error: schErr } = await masterSupabase.from('sekolah').delete().eq('id', school.id);
+          if (schErr && school.npsn) {
+            await masterSupabase.from('sekolah').delete().eq('npsn', school.npsn);
+          }
+        } catch (_) {}
+      }
 
       if (activeTargetSchool?.id === school.id) {
         handleSelectTargetSchool(null);

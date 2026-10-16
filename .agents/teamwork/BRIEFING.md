@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-15T17:50:34Z
+# BRIEFING — 2026-10-16T05:05:00Z
 
 ## Mission
-Sesuaikan tahun ajaran dan semester pada modul E-Rapor (src/components/RaporView.tsx) agar secara otomatis menyelaraskan diri dengan pengaturan aktif sekolah di tabel pengaturan, menyediakan dropdown pilihan dinamis yang memuat tahun ajaran yang diatur beserta arsip, serta mendengarkan update realtime.
+Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_registry' in the schema cache` pada portal multi-sekolah SIPJAM agar aplikasi tetap berfungsi secara tangguh baik ketika tabel `sekolah_registry` belum di-migrate maupun ketika sudah ada, serta sediakan script SQL perbaikan schema cache untuk database Supabase.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -63,6 +63,10 @@ Sesuaikan tahun ajaran dan semester pada modul E-Rapor (src/components/RaporView
 - Cron 1 (Progress Reporting): ced1012c-360b-4f7d-a95e-ca6ddec32b4a/task-32 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): ced1012c-360b-4f7d-a95e-ca6ddec32b4a/task-34 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 4938261e-3978-455c-ad02-c03b10f04479 (victory_auditor_40) [VICTORY CONFIRMED]
+- Orchestrator (current): 6f4c24c7-d929-4b55-9d56-319b3896ebaa (swe_29)
+- Cron 1 (Progress Reporting): 764746a5-6133-468b-899e-e8ed1bc19f6b/task-135 (*/8 * * * *)
+- Cron 2 (Liveness Check): 764746a5-6133-468b-899e-e8ed1bc19f6b/task-137 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -84,30 +88,23 @@ Sesuaikan tahun ajaran dan semester pada modul E-Rapor (src/components/RaporView
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; unified Gradebook Kurikulum Merdeka setup & frictionless grade entry)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor Admin real data Supabase sync, observations DB persistence, signatures)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor tahun ajaran & semester auto-sync, dynamic dropdown, realtime)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; PostgREST schema cache error handling & Supabase schema reload script)
 
 ## User Context
-- **Last user request**: Sesuaikan tahun ajaran dan semester pada modul E-Rapor (src/components/RaporView.tsx) agar secara otomatis menyelaraskan diri dengan pengaturan aktif sekolah di tabel pengaturan, menyediakan dropdown pilihan dinamis yang memuat tahun ajaran yang diatur beserta arsip, serta mendengarkan update realtime.
+- **Last user request**: Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_registry' in the schema cache` pada portal multi-sekolah SIPJAM agar aplikasi tetap berfungsi secara tangguh baik ketika tabel `sekolah_registry` belum di-migrate maupun ketika sudah ada, serta sediakan script SQL perbaikan schema cache untuk database Supabase.
 - **Pending clarifications**: none
-- **Delivered results**:
-  - Implemented automatic sync in `RaporView.tsx` fetching active `tahun_ajaran` and `semester` from Supabase `pengaturan` table for the user's school.
-  - Built dynamic `tahun_ajaran` options combining active settings, database records (across `capaian_pembelajaran`, `tujuan_pembelajaran`, `wali_kelas`, `jadwal_pelajaran`), and surrounding offset years with clear `(Aktif)` visual indicator.
-  - Subscribed to both in-window `sipjam:config_updated` event and multi-tab `storage` events (`sipjam:config_sync`) for realtime synchronization without stomping intentional archive explorations.
-  - Hardened state against window focus/resume events, race conditions (request ID guards), and malformed/null database JSON payloads.
-  - Ensured document print layout and dynamic `document.title` accurately reflect selected academic year and semester.
-  - 100% pass across all 33 unit and adversarial test suites (`npm test`) and 0-error Turbopack build (`npm run build`).
+- **Delivered results**: none yet (in progress)
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none
-- **Active Subagents**: none
+- **Active Crons**: to be scheduled
+- **Active Subagents**: to be spawned
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_28\handoff.md — Orchestrator handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_40\handoff.md — Victory Auditor report (VICTORY CONFIRMED)

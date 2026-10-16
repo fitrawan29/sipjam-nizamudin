@@ -37,6 +37,7 @@ import {
   getActiveTargetSchool,
   setActiveTargetSchool,
   onActiveTargetSchoolChange,
+  isSchemaCacheOrMissingTableError,
   type SatelliteSchool
 } from '@/lib/supabaseClient';
 import { getGuruDailyState } from '@/lib/workflow';
@@ -89,17 +90,29 @@ export default function AppScreen({
 
     const fetchSchoolsForSwitcher = async () => {
       try {
-        const { data: regData } = await masterSupabase.from('sekolah_registry').select('*').order('nama');
-        if (regData && regData.length > 0) {
+        const { data: regData, error: regErr } = await masterSupabase.from('sekolah_registry').select('*').order('nama');
+        if (!regErr && regData && regData.length > 0) {
           setSatelliteSchools(regData as SatelliteSchool[]);
           return;
+        } else if (regErr && isSchemaCacheOrMissingTableError(regErr)) {
+          console.warn('[sekolah_registry] Schema cache / missing table detected in AppScreen switcher, falling back to public.sekolah:', regErr.message);
         }
       } catch (_) {}
 
       try {
         const { data: schData } = await masterSupabase.from('sekolah').select('*').order('nama');
         if (schData && schData.length > 0) {
-          setSatelliteSchools(schData as SatelliteSchool[]);
+          setSatelliteSchools(schData.map((s: any) => ({
+            id: s.id,
+            nama: s.nama,
+            npsn: s.npsn,
+            kota_kabupaten: s.kota_kabupaten,
+            provinsi: s.provinsi,
+            vercel_url: s.vercel_url || s.website || null,
+            supabase_url: s.supabase_url || null,
+            supabase_anon_key: s.supabase_anon_key || null,
+            status: s.status || 'aktif'
+          })));
         }
       } catch (_) {}
     };
