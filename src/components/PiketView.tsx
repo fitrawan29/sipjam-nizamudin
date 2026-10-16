@@ -24,6 +24,7 @@ import {
 import { acquirePiketLock, refreshPiketLock, releasePiketLock, PiketLockInfo } from '@/lib/piketLock';
 import { isIntervensiAllowed, isPiketPulangAllowed, fetchBatasIntervensiSiswa, fetchJadwalIntervensiWali } from '@/lib/presensiIntervensi';
 import jsQR from 'jsqr';
+import { triggerParentWhatsApp, normalizeIndonesianPhoneNumber } from '@/utils/whatsappUtils';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
@@ -2638,12 +2639,13 @@ export default function PiketView({ user }: { user: any }) {
                             <th className="py-3 px-3">Kelas</th>
                             <th className="py-3 px-3 text-center min-w-[140px]">Presensi Datang</th>
                             <th className="py-3 px-3 text-center min-w-[140px]">Presensi Pulang</th>
+                            <th className="py-3 px-3 text-center w-20">WA Ortu</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
                           {filteredManualStudents.length === 0 ? (
                             <tr>
-                              <td colSpan={6} className="py-10 text-center text-gray-400 dark:text-gray-500 text-xs">
+                              <td colSpan={7} className="py-10 text-center text-gray-400 dark:text-gray-500 text-xs">
                                 <div className="flex flex-col items-center justify-center space-y-2">
                                   <i className="fa-solid fa-user-slash text-2xl text-gray-300 dark:text-gray-600"></i>
                                   <span>Tidak ada siswa ditemukan sesuai filter / pencarian.</span>
@@ -2745,6 +2747,29 @@ export default function PiketView({ user }: { user: any }) {
                                         <span>Tandai Pulang</span>
                                       </button>
                                     )}
+                                  </td>
+                                  <td className="py-3 px-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => triggerParentWhatsApp(
+                                        s,
+                                        {
+                                          status: pulangRecord
+                                            ? 'Hadir (Sudah Pulang)'
+                                            : datangRecord
+                                            ? 'Hadir Datang'
+                                            : 'Belum Presensi',
+                                          tanggal: getWitaDateStr(),
+                                          timeStr: pulangRecord?.jam ? pulangRecord.jam.slice(0, 5) : datangRecord?.jam ? datangRecord.jam.slice(0, 5) : undefined,
+                                          note: datangRecord ? 'Tercatat pada sistem presensi piket' : undefined
+                                        },
+                                        user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
+                                      )}
+                                      title="Kirim WhatsApp ke Orang Tua"
+                                      className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 transition inline-flex items-center justify-center cursor-pointer"
+                                    >
+                                      <i className="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                                    </button>
                                   </td>
                                 </tr>
                               );
@@ -2851,51 +2876,82 @@ export default function PiketView({ user }: { user: any }) {
                           <th className="py-2.5 px-3">NISN</th>
                           <th className="py-2.5 px-3">Status</th>
                           <th className="py-2.5 px-3">Kios</th>
+                          <th className="py-2.5 px-3 text-center w-20">WA Ortu</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
                         {filteredTodayScans.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="py-8 text-center text-gray-400 dark:text-gray-500 text-xs">
+                            <td colSpan={8} className="py-8 text-center text-gray-400 dark:text-gray-500 text-xs">
                               Belum ada catatan presensi siswa hari ini.
                             </td>
                           </tr>
                         ) : (
-                          filteredTodayScans.map((item, idx) => (
-                            <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                              <td className="py-2.5 px-3 text-gray-400 text-[11px]">{idx + 1}</td>
-                              <td className="py-2.5 px-3 font-mono font-semibold text-gray-900 dark:text-white">
-                                {item.jam ? item.jam.slice(0, 8) : '-'}
-                              </td>
-                              <td className="py-2.5 px-3 font-bold text-gray-900 dark:text-white">
-                                {item.nama_siswa}
-                              </td>
-                              <td className="py-2.5 px-3">
-                                <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-bold text-[10px]">
-                                  {item.kelas}
-                                </span>
-                              </td>
-                              <td className="py-2.5 px-3 font-mono text-[11px] text-gray-500 dark:text-gray-400">
-                                {item.nisn || '-'}
-                              </td>
-                              <td className="py-2.5 px-3">
-                                {item.status === 'datang' ? (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1">
-                                    <i className="fa-solid fa-right-to-bracket text-[9px]"></i> Datang
+                          filteredTodayScans.map((item, idx) => {
+                            const studentRec = allStudents.find(
+                              st => st.id === item.siswa_id || (item.nisn && st.nisn === item.nisn)
+                            );
+                            const studentData = {
+                              nama_siswa: item.nama_siswa,
+                              kelas: item.kelas,
+                              no_hp_ortu: studentRec?.no_hp_ortu || item.no_hp_ortu || null
+                            };
+
+                            return (
+                              <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                                <td className="py-2.5 px-3 text-gray-400 text-[11px]">{idx + 1}</td>
+                                <td className="py-2.5 px-3 font-mono font-semibold text-gray-900 dark:text-white">
+                                  {item.jam ? item.jam.slice(0, 8) : '-'}
+                                </td>
+                                <td className="py-2.5 px-3 font-bold text-gray-900 dark:text-white">
+                                  {item.nama_siswa}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-bold text-[10px]">
+                                    {item.kelas}
                                   </span>
-                                ) : (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1">
-                                    <i className="fa-solid fa-right-from-bracket text-[9px]"></i> Pulang
+                                </td>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-gray-500 dark:text-gray-400">
+                                  {item.nisn || '-'}
+                                </td>
+                                <td className="py-2.5 px-3">
+                                  {item.status === 'datang' ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1">
+                                      <i className="fa-solid fa-right-to-bracket text-[9px]"></i> Datang
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1">
+                                      <i className="fa-solid fa-right-from-bracket text-[9px]"></i> Pulang
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 font-mono text-[10px] text-gray-500 dark:text-gray-400">
+                                  <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                    {item.device_id || 'kiosk-default'}
                                   </span>
-                                )}
-                              </td>
-                              <td className="py-2.5 px-3 font-mono text-[10px] text-gray-500 dark:text-gray-400">
-                                <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                                  {item.device_id || 'kiosk-default'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
+                                </td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerParentWhatsApp(
+                                      studentData,
+                                      {
+                                        status: item.status === 'datang' ? 'Hadir Datang' : 'Hadir Pulang',
+                                        tanggal: item.tanggal || getWitaDateStr(),
+                                        timeStr: item.jam ? item.jam.slice(0, 8) : undefined,
+                                        note: `Presensi scan QR via ${item.device_id || 'kiosk'}`
+                                      },
+                                      user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
+                                    )}
+                                    title="Kirim WhatsApp ke Orang Tua"
+                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 transition inline-flex items-center justify-center cursor-pointer"
+                                  >
+                                    <i className="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -3298,6 +3354,28 @@ export default function PiketView({ user }: { user: any }) {
                                       <span>Pulang</span>
                                     </button>
                                   )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerParentWhatsApp(
+                                      s,
+                                      {
+                                        status: pulangRecord
+                                          ? 'Hadir (Sudah Pulang)'
+                                          : datangRecord
+                                          ? 'Hadir Datang'
+                                          : 'Belum Presensi',
+                                        tanggal: getWitaDateStr(),
+                                        timeStr: pulangRecord?.jam ? pulangRecord.jam.slice(0, 5) : datangRecord?.jam ? datangRecord.jam.slice(0, 5) : undefined,
+                                        note: datangRecord ? 'Tercatat pada sistem presensi piket' : undefined
+                                      },
+                                      user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
+                                    )}
+                                    title="Kirim WhatsApp ke Orang Tua"
+                                    className="w-9 h-9 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center justify-center transition shrink-0 cursor-pointer"
+                                  >
+                                    <i className="fa-brands fa-whatsapp text-base"></i>
+                                  </button>
                                 </div>
                               </div>
                             );

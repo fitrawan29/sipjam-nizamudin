@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { TujuanPembelajaran, AsesmenKolom, NilaiSiswa, CapaianPembelajaran } from '@/types/database';
+import { getGradebookDraftKey, saveGradebookDraft, loadGradebookDraft, clearGradebookDraft } from '@/utils/draftStorage';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -152,6 +153,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
   // Matrix Grades: gradesMap[nisn][asesmenId] = number | null
   const [gradesMap, setGradesMap] = useState<Record<string, Record<string, number | null>>>({});
   const [dirtyGrades, setDirtyGrades] = useState<Record<string, boolean>>({});
+  const [hasLocalDraft, setHasLocalDraft] = useState<boolean>(false);
+  const draftDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Browser beforeunload protection against accidental tab close/refresh with unsaved grades
   useEffect(() => {
@@ -1030,6 +1033,85 @@ export default function GradebookView({ user }: GradebookViewProps) {
     }
   }, [displayedTpList, selectedTpId]);
 
+  // Restore local draft when selection settles and loading completes
+  useEffect(() => {
+    if (isLoadingGrades || !selectedMapel || !selectedKelas) {
+      return;
+    }
+    const draftKey = getGradebookDraftKey(sekolahId, selectedMapel, selectedKelas, selectedTpId);
+    const draftScores = loadGradebookDraft(draftKey);
+
+    if (draftScores && Object.keys(draftScores).length > 0) {
+      setGradesMap(prev => {
+        const next = { ...prev };
+        for (const [nisn, cols] of Object.entries(draftScores)) {
+          next[nisn] = { ...(next[nisn] || {}), ...cols };
+        }
+        return next;
+      });
+
+      setDirtyGrades(prev => {
+        const next = { ...prev };
+        for (const [nisn, cols] of Object.entries(draftScores)) {
+          for (const colId of Object.keys(cols)) {
+            next[`${nisn}_${colId}`] = true;
+          }
+        }
+        return next;
+      });
+
+      setHasLocalDraft(true);
+    } else {
+      setHasLocalDraft(false);
+    }
+  }, [selectedTpId, selectedMapel, selectedKelas, isLoadingGrades, sekolahId]);
+
+  // Debounced auto-save of dirty scores to localStorage
+  useEffect(() => {
+    if (!selectedMapel || !selectedKelas) return;
+    const dirtyCount = Object.keys(dirtyGrades).length;
+
+    if (draftDebounceRef.current) {
+      clearTimeout(draftDebounceRef.current);
+      draftDebounceRef.current = null;
+    }
+
+    if (dirtyCount === 0) {
+      return;
+    }
+
+    draftDebounceRef.current = setTimeout(() => {
+      const draftKey = getGradebookDraftKey(sekolahId, selectedMapel, selectedKelas, selectedTpId);
+      const dirtyKeys = Object.keys(dirtyGrades);
+      const dirtyScores: Record<string, Record<string, number | null>> = {};
+      const currentTpColIds = new Set(columnsList.map(c => c.id));
+
+      dirtyKeys.forEach(key => {
+        const lastUnderscore = key.lastIndexOf('_');
+        if (lastUnderscore === -1) return;
+        const nisn = key.substring(0, lastUnderscore);
+        const colId = key.substring(lastUnderscore + 1);
+
+        if (currentTpColIds.size === 0 || currentTpColIds.has(colId)) {
+          if (!dirtyScores[nisn]) dirtyScores[nisn] = {};
+          const val = gradesMap[nisn]?.[colId];
+          dirtyScores[nisn][colId] = val !== undefined ? val : null;
+        }
+      });
+
+      if (Object.keys(dirtyScores).length > 0) {
+        saveGradebookDraft(draftKey, dirtyScores);
+        setHasLocalDraft(true);
+      }
+    }, 600);
+
+    return () => {
+      if (draftDebounceRef.current) {
+        clearTimeout(draftDebounceRef.current);
+      }
+    };
+  }, [dirtyGrades, gradesMap, selectedTpId, selectedMapel, selectedKelas, sekolahId, columnsList]);
+
   // Active TP Object
   const currentTP = useMemo(() => {
     return tpList.find(t => t.id === selectedTpId) || null;
@@ -1221,6 +1303,11 @@ export default function GradebookView({ user }: GradebookViewProps) {
         .upsert(recordsToUpsert, { onConflict: 'sekolah_id,asesmen_id,nisn' });
 
       if (error) throw error;
+
+      // Clear local draft upon confirmed successful Supabase upsert
+      const draftKey = getGradebookDraftKey(sekolahId, selectedMapel, selectedKelas, selectedTpId);
+      clearGradebookDraft(draftKey);
+      setHasLocalDraft(false);
 
       setDirtyGrades(prev => {
         const updated = { ...prev };
@@ -2109,6 +2196,12 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
           {!isAdmin && isGuruPengampu && (
             <div className="flex items-center gap-2 flex-wrap">
+              {hasLocalDraft && (
+                <span className="text-xs font-bold text-teal-700 bg-teal-50 dark:bg-teal-900/30 dark:text-teal-300 px-3 py-1.5 rounded-xl border border-teal-200 dark:border-teal-700 flex items-center gap-1.5 shadow-sm">
+                  <i className="fa-solid fa-floppy-disk text-teal-600 dark:text-teal-400"></i>
+                  Draft Lokal Tersimpan
+                </span>
+              )}
               {unsavedCount > 0 && (
                 <span className="text-xs font-bold text-amber-600 dark:text-amber-400 animate-pulse bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800">
                   <i className="fa-solid fa-circle-exclamation mr-1.5"></i>

@@ -1741,3 +1741,64 @@ User requested to continue (lanjutkan). Server restarted previously. Please revi
 1. Finish R2: Create the standalone migration & schema cache reload script (e.g. `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql` with idempotent table creation, RLS, and `NOTIFY pgrst, 'reload schema';`).
 2. Verify R1, R2, R3 by running `npx tsx tests/portal_induk_jaringan_multi_sekolah.test.ts` and `npm test`.
 3. Complete the review/auditor rounds and conclude.
+
+
+## 2026-10-16T11:30:56Z
+
+# Teamwork Project Prompt — Draft
+
+> Status: Launched
+> Goal: Delegate to teamwork_preview
+> Requested team: Full Team
+
+Implementasi dua fitur operasional esensial berprinsip Ponytail (zero-bloat, minimal diff, native first) pada SIPJAM: (1) Notifikasi WhatsApp Orang Tua 1-Click via Native URI di Modul Piket dan Rekap Siswa, serta (2) Auto-Save Draft Lokal & Ketahanan Offline pada Jurnal KBM dan Daftar Nilai (Gradebook).
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Notifikasi WhatsApp Orang Tua 1-Click (PiketView & RekapSiswaView)
+- Manfaatkan data `no_hp_ortu` yang sudah tersedia pada tabel `data_siswa` (tanpa membuat skema atau tabel baru).
+- Tambahkan aksi 1-klik "Kirim WA ke Orang Tua" pada setiap baris siswa di:
+  1. `src/components/PiketView.tsx` (khususnya tab Rekap Harian / Hasil Scan / Daftar Hadir Siswa).
+  2. `src/components/RekapSiswaView.tsx` (khususnya tab Presensi Gerbang & Rekap Absen).
+- Normalisasi nomor telepon standar Indonesia (`08...`, `+62...`, `62...`) menjadi format internasional murni tanpa karakter non-digit (`628...`).
+- Bangun tautan langsung menggunakan native URI WhatsApp (`https://wa.me/{nomor}?text={encodedText}`) dengan pesan informatif dan sopan mencakup: nama siswa, kelas, tanggal, status kehadiran (Alpa, Bolos, Terlambat, Izin, Sakit), nama sekolah, dan catatan waktu.
+- Jika `no_hp_ortu` siswa belum terdaftar, tampilkan dialog ramah (SweetAlert) yang memungkinkan guru/piket menginput nomor manual sementara atau menyalin teks pesan ke clipboard.
+
+### R2. Auto-Save Draft Lokal & Ketahanan Koneksi Lemah (GradebookView & GuruJurnal)
+- **Daftar Nilai (`GradebookView.tsx`)**:
+  - Terapkan mekanisme auto-save debounce ke `localStorage` untuk perubahan nilai (`localScores`) berdasarkan kunci scoped (`sipjam_gradebook_draft_{sekolahId}_{mapel}_{kelas}_{tpId}`).
+  - Jika halaman termuat dan terdeteksi draft nilai lokal yang belum tersimpan ke database, berikan notifikasi atau pulihkan secara otomatis dengan indikator "Draft Lokal Tersimpan".
+  - Saat guru berhasil menekan "Simpan Semua Nilai" ke database Supabase, bersihkan draft lokal terkait.
+- **Jurnal KBM (`GuruJurnal.tsx`)**:
+  - Pertahankan draft formulir di `localStorage` jika pengiriman gagal akibat kendala jaringan (`!navigator.onLine` atau network error timeout).
+  - Tampilkan indikator status draft yang jelas agar guru tahu ketikan mereka aman dan tidak hilang saat sinyal terputus.
+
+## Verification Resources
+- Test suite verifikasi baru yang harus dibuat: `tests/whatsapp_parent_notify_and_autosave.test.ts`
+  - Validasi normalisasi nomor HP (`0812...` -> `62812...`, spasi, strip, tanda kurung).
+  - Validasi formatting pesan WhatsApp dan parameter encodeURIComponent.
+  - Validasi siklus hidup storage draft (save, restore, clear on success) pada Gradebook dan Jurnal KBM.
+- Verifikasi build & type safety: `npx tsc --noEmit` dan `npm run build`.
+- Verifikasi git workflow sesuai `GEMINI.md` (git status, add, commit, push origin main).
+
+## Acceptance Criteria
+
+### Fungsionalitas Notifikasi WhatsApp (R1)
+- [ ] Tombol aksi WhatsApp tersedia pada `PiketView` dan `RekapSiswaView` untuk setiap baris data siswa.
+- [ ] Nomor telepon Indonesia dinormalisasi secara tepat ke format internasional WhatsApp (`628xxx`).
+- [ ] Tautan membuka WhatsApp Web / Aplikasi WhatsApp dengan teks yang terformat rapi sesuai status kehadiran siswa (Hadir/Terlambat/Alpa/Bolos).
+- [ ] Penanganan fallback ketika `no_hp_ortu` kosong menyediakan opsi input manual atau salin pesan.
+
+### Fungsionalitas Auto-Save & Offline Resilience (R2)
+- [ ] Input nilai di `GradebookView` otomatis tersimpan ke `localStorage` dan tidak hilang saat reload atau koneksi terputus mendak.
+- [ ] Draft nilai di `GradebookView` dibersihkan secara bersih setelah data sukses di-upsert ke Supabase.
+- [ ] Formulir di `GuruJurnal` tidak menghapus teks refleksi/kegiatan guru jika tombol kirim gagal akibat gangguan internet.
+
+### Standar Teknis & Kualitas Ponytail
+- [ ] Tidak ada dependensi eksternal baru yang ditambahkan ke `package.json` (100% menggunakan native browser feature & pustaka yang sudah ada).
+- [ ] Test baru `tests/whatsapp_parent_notify_and_autosave.test.ts` lulus pengujian 100%.
+- [ ] `npx tsc --noEmit` dan `npm run build` berhasil tanpa error.
+- [ ] Perubahan di-commit dan di-push ke git sesuai aturan `GEMINI.md`.

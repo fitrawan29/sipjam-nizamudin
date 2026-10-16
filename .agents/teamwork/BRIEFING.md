@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-16T05:05:00Z
+# BRIEFING — 2026-10-16T11:31:00Z
 
 ## Mission
-Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_registry' in the schema cache` pada portal multi-sekolah SIPJAM agar aplikasi tetap berfungsi secara tangguh baik ketika tabel `sekolah_registry` belum di-migrate maupun ketika sudah ada, serta sediakan script SQL perbaikan schema cache untuk database Supabase.
+Implementasi dua fitur operasional esensial berprinsip Ponytail (zero-bloat, minimal diff, native first) pada SIPJAM: (1) Notifikasi WhatsApp Orang Tua 1-Click via Native URI di Modul Piket dan Rekap Siswa, serta (2) Auto-Save Draft Lokal & Ketahanan Offline pada Jurnal KBM dan Daftar Nilai (Gradebook).
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -67,6 +67,10 @@ Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_regi
 - Cron 1 (Progress Reporting): 764746a5-6133-468b-899e-e8ed1bc19f6b/task-135 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 764746a5-6133-468b-899e-e8ed1bc19f6b/task-137 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 12fd5758-b8ff-4f40-b278-ba8db9682d18 (victory_auditor_41) [VICTORY CONFIRMED]
+- Orchestrator (current): b8a13b7c-6c39-493c-96de-cd823a6f72d9 (orchestrator_22)
+- Cron 1 (Progress Reporting): 236419fa-353a-4138-bed7-f9c6fbac9d3f/task-32 (*/8 * * * *)
+- Cron 2 (Liveness Check): 236419fa-353a-4138-bed7-f9c6fbac9d3f/task-34 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -89,29 +93,25 @@ Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_regi
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor Admin real data Supabase sync, observations DB persistence, signatures)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor tahun ajaran & semester auto-sync, dynamic dropdown, realtime)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; PostgREST schema cache error handling & Supabase schema reload script)
+- Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (two operational features: WhatsApp 1-Click & Auto-Save Draft/Offline Resilience)
 
 ## User Context
-- **Last user request**: Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_registry' in the schema cache` pada portal multi-sekolah SIPJAM agar aplikasi tetap berfungsi secara tangguh baik ketika tabel `sekolah_registry` belum di-migrate maupun ketika sudah ada, serta sediakan script SQL perbaikan schema cache untuk database Supabase.
+- **Last user request**: Implementasi dua fitur operasional esensial berprinsip Ponytail (zero-bloat, minimal diff, native first) pada SIPJAM: (1) Notifikasi WhatsApp Orang Tua 1-Click via Native URI di Modul Piket dan Rekap Siswa, serta (2) Auto-Save Draft Lokal & Ketahanan Offline pada Jurnal KBM dan Daftar Nilai (Gradebook).
 - **Pending clarifications**: none
-- **Delivered results**:
-  - Resilient Supabase PostgREST error handling for `sekolah_registry` schema cache (`PGRST205`, `42P01`, statusText, relation strings) across `SuperadminView.tsx` and `AppScreen.tsx`.
-  - Cascading column-stripping fallback, unique NPSN conflict resolution, dual ID/NPSN active target school scope synchronization, and foreign key constraint handling (`23503`) without blocking operations or surfacing fatal modal dialogs.
-  - Idempotent standalone migration script `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql` with RLS policies, performance indexes, deduplicated source backfill (`DISTINCT ON`), and `NOTIFY pgrst, 'reload schema';`.
-  - Zero regression: 47/47 assertions passed in `tests/portal_induk_jaringan_multi_sekolah.test.ts`, 40/40 assertions passed in `tests/sekolah_registry_schema_cache_resilience.test.ts`, 34/34 test suites passed in `npm test`, and 0 TypeScript errors in `npm run build`.
+- **Delivered results**: none yet (project started)
 
 ## Project Status
-- **Phase**: complete
-- **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none
-- **Active Subagents**: none
+- **Phase**: in progress
+- **Route**: General (teamwork_preview_orchestrator)
+- **Active Crons**: task-32 (Progress Reporting), task-34 (Liveness Check)
+- **Active Subagents**: b8a13b7c-6c39-493c-96de-cd823a6f72d9 (orchestrator_22)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_29\handoff.md — Orchestrator handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_41\handoff.md — Victory Auditor report (VICTORY CONFIRMED)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\supabase\migrations\20261016_fix_sekolah_registry_schema_cache.sql — Standalone idempotent migration script
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_22 — Orchestrator workspace
+

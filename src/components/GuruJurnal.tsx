@@ -8,8 +8,10 @@ import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
+import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft } from '@/utils/draftStorage';
 
 export default function GuruJurnal({ user }: { user: any }) {
+  const [hasDraft, setHasDraft] = useState(false);
   const [tipeJurnal, setTipeJurnal] = useState('Jurnal KBM');
   const [mapel, setMapel] = useState('');
   const [kelas, setKelas] = useState('');
@@ -150,9 +152,8 @@ export default function GuruJurnal({ user }: { user: any }) {
   // Auto-restore draft from localStorage on initial mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('sipjam_jurnal_autosave');
-      if (saved) {
-        const draft = JSON.parse(saved);
+      const draft = loadJurnalDraft();
+      if (draft) {
         if (draft.tipeJurnal !== undefined) setTipeJurnal(draft.tipeJurnal);
         if (draft.mapel !== undefined) setMapel(draft.mapel);
         if (draft.kelas !== undefined) setKelas(draft.kelas);
@@ -169,6 +170,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         if (draft.konten !== undefined) setKonten(draft.konten);
         if (draft.lokasiKbm !== undefined) setLokasiKbm(draft.lokasiKbm);
         if (draft.absensi !== undefined) setAbsensi(draft.absensi);
+        setHasDraft(true);
       }
     } catch (err) {
       console.warn('[GuruJurnal] Failed restoring auto-saved draft:', err);
@@ -209,15 +211,11 @@ export default function GuruJurnal({ user }: { user: any }) {
         lokasiKbm,
         absensi
       };
-      try {
-        localStorage.setItem('sipjam_jurnal_autosave', JSON.stringify(draft));
-      } catch (err) {
-        console.warn('[GuruJurnal] Auto-save error:', err);
-      }
+      saveJurnalDraft(draft);
+      setHasDraft(true);
     } else {
-      try {
-        localStorage.removeItem('sipjam_jurnal_autosave');
-      } catch {}
+      clearJurnalDraft();
+      setHasDraft(false);
     }
   }, [
     tipeJurnal, mapel, kelas, tanggal, materi, kegiatan, catatanSiswa,
@@ -731,7 +729,7 @@ export default function GuruJurnal({ user }: { user: any }) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return showToast(
         'Koneksi Internet Diperlukan',
-        'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran.',
+        'Perangkat Anda sedang offline / terjadi kendala jaringan. Draft formulir tetap tersimpan aman di perangkat.',
         'warning'
       );
     }
@@ -931,9 +929,8 @@ export default function GuruJurnal({ user }: { user: any }) {
           timer: 3000,
           showConfirmButton: false,
         });
-        try {
-          localStorage.removeItem('sipjam_jurnal_autosave');
-        } catch {}
+        clearJurnalDraft();
+        setHasDraft(false);
         setMateri('');
         setKegiatan('');
         setCatatanSiswa('');
@@ -969,7 +966,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       setLoading(false);
     } catch (err: any) {
       setLoading(false);
-      return showToast('Gagal Menyimpan Jurnal', 'Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran: ' + (err?.message || 'Silakan periksa koneksi Anda dan coba lagi.'), 'error');
+      return showToast('Gagal Menyimpan Jurnal', 'Perangkat Anda sedang offline / terjadi kendala jaringan: ' + (err?.message || 'Silakan periksa koneksi Anda dan coba lagi.') + ' Draft formulir tetap tersimpan aman di perangkat.', 'error');
     }
   };
 
@@ -1066,9 +1063,17 @@ export default function GuruJurnal({ user }: { user: any }) {
   return (
     <section id="view-guru-jurnal" className="view-section fade-in">
         <div className="glass-card p-5">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
-                <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal
+                </h2>
+                {hasDraft && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold shadow-sm">
+                    <i className="fa-solid fa-cloud-arrow-down text-emerald-500"></i>
+                    <span>Draft Lokal Tersimpan</span>
+                  </div>
+                )}
+            </div>
 
             {isLocked && (
               <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">

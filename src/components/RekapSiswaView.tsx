@@ -7,6 +7,7 @@ import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { isIntervensiAllowed, fetchBatasIntervensiSiswa, isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali } from '@/lib/presensiIntervensi';
 import { getWitaDateStr } from '@/lib/wita';
+import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 
 export default function RekapSiswaView({ 
   user, 
@@ -1311,6 +1312,7 @@ export default function RekapSiswaView({
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-32">Jam Datang</th>
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-32">Jam Pulang</th>
                           <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-36">Status</th>
+                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:hidden text-center w-20">WA Ortu</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1356,11 +1358,44 @@ export default function RekapSiswaView({
                                 </span>
                               )}
                             </td>
+                            <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:hidden text-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const statusStr = siswa.isBolos
+                                    ? 'Bolos (Tidak Presensi Pulang)'
+                                    : siswa.hasPulang
+                                    ? 'Sudah Pulang'
+                                    : siswa.hasDatang
+                                    ? 'Hadir Datang'
+                                    : 'Belum Presensi';
+                                  const timeStr = siswa.jamPulang || siswa.jamDatang || undefined;
+                                  triggerParentWhatsApp(
+                                    {
+                                      nama_siswa: siswa.nama_siswa,
+                                      kelas: siswa.kelas || gerbangKelas,
+                                      no_hp_ortu: siswa.no_hp_ortu
+                                    },
+                                    {
+                                      status: statusStr,
+                                      tanggal: gerbangTanggal || getWitaDateStr(),
+                                      timeStr,
+                                      note: siswa.isBolos ? 'Catatan: Terindikasi meninggalkan sekolah tanpa izin' : undefined
+                                    },
+                                    user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
+                                  );
+                                }}
+                                title="Kirim WhatsApp ke Orang Tua"
+                                className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 transition inline-flex items-center justify-center cursor-pointer"
+                              >
+                                <i className="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                              </button>
+                            </td>
                           </tr>
                         ))}
                         {filteredGerbangStudents.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="text-center py-8 italic text-gray-500 dark:text-gray-400 text-xs">
+                            <td colSpan={7} className="text-center py-8 italic text-gray-500 dark:text-gray-400 text-xs">
                               {gerbangSearch ? 'Tidak ada siswa yang cocok dengan pencarian.' : 'Tidak ada data siswa untuk kelas ini.'}
                             </td>
                           </tr>
@@ -1546,6 +1581,7 @@ export default function RekapSiswaView({
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-24 text-blue-700 dark:text-blue-400 print:text-black">
                                 {mapel ? '% Keaktifan KBM' : '% Kehadiran'}
                               </th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:hidden text-center w-20">WA Ortu</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1568,11 +1604,36 @@ export default function RekapSiswaView({
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">
                                   {s.total > 0 ? `${s.persentase}%` : '-'}
                                 </td>
+                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:hidden text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const summaryNote = `Rekap kehadiran: Hadir: ${s.hadir}, Sakit: ${s.sakit || 0}, Izin: ${s.izin || 0}, Alpa: ${s.alpa || 0}${s.bolos ? `, Bolos: ${s.bolos}` : ''} (Tingkat kehadiran: ${s.total > 0 ? s.persentase + '%' : '-'})`;
+                                      triggerParentWhatsApp(
+                                        {
+                                          nama_siswa: s.nama_siswa,
+                                          kelas: s.kelas || kelas,
+                                          no_hp_ortu: s.no_hp_ortu
+                                        },
+                                        {
+                                          status: `Rekap Presensi (${s.total > 0 ? s.persentase + '%' : 'Belum Ada Data'})`,
+                                          tanggal: getWitaDateStr(),
+                                          note: summaryNote
+                                        },
+                                        user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
+                                      );
+                                    }}
+                                    title="Kirim Rekap WhatsApp ke Orang Tua"
+                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 transition inline-flex items-center justify-center cursor-pointer"
+                                  >
+                                    <i className="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                                  </button>
+                                </td>
                               </tr>
                             ))}
                             {filteredData.length === 0 && (
                               <tr>
-                                <td colSpan={!mapel ? 9 : 6} className="text-center py-6 italic text-gray-500 dark:text-gray-400 text-xs">
+                                <td colSpan={!mapel ? 10 : 7} className="text-center py-6 italic text-gray-500 dark:text-gray-400 text-xs">
                                   {search ? 'Tidak ada siswa yang cocok dengan kata kunci pencarian.' : 'Tidak ada data siswa untuk kelas tersebut.'}
                                 </td>
                               </tr>
