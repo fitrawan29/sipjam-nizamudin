@@ -3,7 +3,7 @@
  * Conforms to Ponytail principles: minimal diff, standard web storage, zero dependencies.
  */
 
-const JURNAL_DRAFT_KEY = 'sipjam_jurnal_autosave';
+export const JURNAL_DRAFT_KEY = 'sipjam_jurnal_autosave';
 
 function getStorage(): Storage | null {
   try {

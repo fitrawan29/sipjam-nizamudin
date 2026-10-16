@@ -8,7 +8,7 @@ import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
-import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft } from '@/utils/draftStorage';
+import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft, JURNAL_DRAFT_KEY } from '@/utils/draftStorage';
 
 export default function GuruJurnal({ user }: { user: any }) {
   const [hasDraft, setHasDraft] = useState(false);
@@ -152,7 +152,8 @@ export default function GuruJurnal({ user }: { user: any }) {
   // Auto-restore draft from localStorage on initial mount
   useEffect(() => {
     try {
-      const draft = loadJurnalDraft();
+      const saved = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('sipjam_jurnal_autosave') : null;
+      const draft = saved ? JSON.parse(saved) : loadJurnalDraft();
       if (draft) {
         if (draft.tipeJurnal !== undefined) setTipeJurnal(draft.tipeJurnal);
         if (draft.mapel !== undefined) setMapel(draft.mapel);
@@ -212,10 +213,17 @@ export default function GuruJurnal({ user }: { user: any }) {
         absensi
       };
       saveJurnalDraft(draft);
+      try {
+        localStorage.setItem('sipjam_jurnal_autosave', JSON.stringify(draft));
+      } catch (err) {
+        console.warn('[GuruJurnal] Auto-save error:', err);
+      }
       setHasDraft(true);
     } else {
       clearJurnalDraft();
-      try { localStorage.removeItem('sipjam_jurnal_autosave'); } catch {}
+      try {
+        localStorage.removeItem('sipjam_jurnal_autosave');
+      } catch {}
       setHasDraft(false);
     }
   }, [
