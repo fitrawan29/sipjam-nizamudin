@@ -11,7 +11,9 @@ export function normalizeIndonesianPhoneNumber(raw: string | null | undefined): 
   let digits = raw.replace(/\D/g, '');
   if (!digits) return null;
 
-  if (digits.startsWith('08')) {
+  if (digits.startsWith('00628')) {
+    digits = '628' + digits.slice(5);
+  } else if (digits.startsWith('08')) {
     digits = '62' + digits.slice(1);
   } else if (digits.startsWith('8')) {
     digits = '62' + digits;
@@ -76,7 +78,7 @@ export function formatWhatsAppAttendanceMessage(params: {
  * Generates native WhatsApp direct URL (https://wa.me/...) with URL-encoded attendance message.
  */
 export function generateParentWhatsAppUrl(params: {
-  phone: string;
+  phone?: string | null;
   studentName: string;
   kelas: string;
   tanggal: string;
@@ -85,7 +87,8 @@ export function generateParentWhatsAppUrl(params: {
   note?: string;
   timeStr?: string;
 }): string {
-  const normalized = normalizeIndonesianPhoneNumber(params.phone) || params.phone.replace(/\D/g, '');
+  const rawPhone = (typeof params.phone === 'string' ? params.phone : '') || '';
+  const normalized = normalizeIndonesianPhoneNumber(rawPhone) || rawPhone.replace(/\D/g, '');
   const message = formatWhatsAppAttendanceMessage({
     studentName: params.studentName,
     kelas: params.kelas,

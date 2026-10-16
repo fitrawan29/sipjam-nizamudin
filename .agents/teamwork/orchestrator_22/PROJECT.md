@@ -37,8 +37,8 @@
 |---|------|-------|-------------|--------|
 | M1 | WhatsApp Parent 1-Click | `src/utils/whatsappUtils.ts`, `src/components/PiketView.tsx`, `src/components/RekapSiswaView.tsx` | none | DONE |
 | M2 | Local Draft Auto-Save & Offline | `src/utils/draftStorage.ts`, `src/components/GradebookView.tsx`, `src/components/GuruJurnal.tsx` | none | DONE |
-| M3 | Test Suite & Build Verification | `tests/whatsapp_parent_notify_and_autosave.test.ts`, `package.json` | M1, M2 | IN_PROGRESS (1f359503-80b0-463e-88ed-f6dadbd38a5a) |
-| M4 | Gate & Multi-agent Verification | Reviewers, Challengers, Forensic Auditor | M3 | PLANNED |
+| M3 | Test Suite & Build Verification | `tests/whatsapp_parent_notify_and_autosave.test.ts`, `package.json` | M1, M2 | DONE |
+| M4 | Gate & Multi-agent Verification | Reviewers, Challengers, Forensic Auditor | M3 | PAUSED (HTTP 429 Quota) |
 | M5 | Final Git & Sentinel Report | Git commit & push, handoff.md, report to Sentinel | M4 | PLANNED |
 
 ## Code Layout & Boundaries

@@ -215,6 +215,7 @@ export default function GuruJurnal({ user }: { user: any }) {
       setHasDraft(true);
     } else {
       clearJurnalDraft();
+      try { localStorage.removeItem('sipjam_jurnal_autosave'); } catch {}
       setHasDraft(false);
     }
   }, [
@@ -930,6 +931,7 @@ export default function GuruJurnal({ user }: { user: any }) {
           showConfirmButton: false,
         });
         clearJurnalDraft();
+        try { localStorage.removeItem('sipjam_jurnal_autosave'); } catch {}
         setHasDraft(false);
         setMateri('');
         setKegiatan('');

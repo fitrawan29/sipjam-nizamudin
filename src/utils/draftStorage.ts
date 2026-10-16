@@ -70,9 +70,13 @@ export function loadGradebookDraft(
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return null;
 
-    if ('scores' in parsed && typeof parsed.scores === 'object' && parsed.scores !== null) {
-      return parsed.scores as Record<string, Record<string, number | null>>;
+    if ('scores' in parsed) {
+      if (parsed.scores && typeof parsed.scores === 'object' && !Array.isArray(parsed.scores)) {
+        return parsed.scores as Record<string, Record<string, number | null>>;
+      }
+      return null;
     }
+    if (Array.isArray(parsed)) return null;
     return parsed as Record<string, Record<string, number | null>>;
   } catch (err) {
     console.warn('[draftStorage] Failed to load gradebook draft:', err);
