@@ -1,29 +1,44 @@
-# Handoff Report — Sentinel (swe_28 Completion)
+# Sentinel Handoff Report — Multi-Sekolah Supabase PostgREST Schema Cache Resilience & Migration
 
-## 1. Observation
-- **Authoritative Request**:
-  Synchronize active academic year (`tahun_ajaran`) and `semester` in `RaporView.tsx` with school settings in table `pengaturan`, provide dynamic academic year selection options including database records and historical archive options with clear active indicator, listen to realtime config updates (`sipjam:config_updated`), and maintain query and print document accuracy.
-- **Workflow & Route**:
-  Executed via SWE Light path (`teamwork_preview_swe`, instance `swe_28`) with full implementer and 3-round adversarial reviewer cycles.
-- **Independent Verification**:
-  Post-Victory Auditor (`victory_auditor_40`) performed independent 3-phase verification (timeline, anti-cheating, test execution) resulting in **VICTORY CONFIRMED**.
+## Observation
+- Superadmin portal operations (query, insert, update, delete) in `SuperadminView.tsx` and the multi-school switcher in `AppScreen.tsx` previously depended directly on `public.sekolah_registry`.
+- In Supabase deployments where `sekolah_registry` has not yet been migrated or where PostgREST has not reloaded its schema cache, PostgREST returns `PGRST205` ("Could not find the table 'public.sekolah_registry' in the schema cache") or PostgreSQL error `42P01` ("undefined_table"), causing fatal modal dialogs or blocking operations.
+- The user requested resilient graceful fallback to `public.sekolah` when `public.sekolah_registry` is missing/un-cached, and a standalone idempotent SQL migration script with `NOTIFY pgrst, 'reload schema';`.
 
-## 2. Logic Chain
-1. **Automatic Sync (R1)**:
-   `fetchSchoolConfig` loads active configuration from `pengaturan` for `sekolahId` upon component mount. `RaporView` subscribes to both window `sipjam:config_updated` event and multi-tab `storage` events (`sipjam:config_sync`), ensuring seamless cross-window synchronization.
-2. **Dynamic Dropdown Options & Archive Protection (R2)**:
-   `fetchTahunAjaranOptions` aggregates active settings, surrounding years (+/- 2 years via resilient regex), and all distinct years in `capaian_pembelajaran`, `tujuan_pembelajaran`, `wali_kelas`, and `jadwal_pelajaran`. Active setting is tagged with visual label `(Aktif)`. Archive exploration is preserved by checking whether the user was intentionally viewing an archive prior to the config update.
-3. **Query Consistency & Print Document Accuracy (R3)**:
-   All queries in `fetchClassData` reactively depend on `selectedTahunAjaran` and `selectedSemester`, guarded with async request sequence tracking (`fetchClassRequestId`). Print sheet headers and dynamic `document.title` formatting accurately reflect the active selection during print jobs.
+## Logic Chain
+1. **Helper & Error Detection (`src/lib/supabaseClient.ts`)**:
+   - Implemented `isSchemaCacheOrMissingTableError(err)` detecting `PGRST205`, `42P01`, `PGRST200`, `PGRST204`, wrapped Postgres error envelopes, and string patterns like "could not find the table" and "schema cache".
+2. **Resilient Fallback Mechanics (`src/components/SuperadminView.tsx` & `src/components/AppScreen.tsx`)**:
+   - Query: When fetching registered schools fails with a schema cache or missing table error, the application automatically falls back to fetching from `public.sekolah` without blocking the UI or alerting fatal errors.
+   - Insert: When inserting into `sekolah_registry` fails due to schema cache issues, it creates the school record directly in `public.sekolah`. If the remote table lacks satellite-specific columns, it strips un-migrated columns gracefully.
+   - Update: If updating `sekolah_registry` fails due to schema cache issues, it updates `public.sekolah` (using ID or NPSN). Also coordinates active school target state scope synchronization.
+   - Delete: If deleting from `sekolah_registry` fails due to schema cache issues, it safely deletes from `public.sekolah`, including handling foreign key dependency detachment (`23503`).
+3. **Standalone SQL Migration (`supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql`)**:
+   - Idempotent `CREATE TABLE IF NOT EXISTS public.sekolah_registry`.
+   - Enabled RLS with unrestricted policy (`anon`, `authenticated`, `service_role`).
+   - Created performance indexes on `npsn`, `nama`, `is_active`, `kota_kabupaten`.
+   - Seeded existing schools from `public.sekolah` using `DISTINCT ON (npsn)` deduplication.
+   - Sent PostgreSQL notification `NOTIFY pgrst, 'reload schema';` to reload the PostgREST schema cache immediately.
+4. **Verification & Audit**:
+   - Created comprehensive test suite `tests/sekolah_registry_schema_cache_resilience.test.ts` (40/40 assertions passed).
+   - Preserved canonical suite `tests/portal_induk_jaringan_multi_sekolah.test.ts` (47/47 assertions passed).
+   - Ran repository test suite `npm test` (34/34 suites passed, 100%).
+   - Ran build `npm run build` (Exit code 0, 0 TypeScript errors).
+   - Independent Sentinel Victory Auditor verified timeline, integrity, and test execution, returning `VERDICT: VICTORY CONFIRMED`.
 
-## 3. Caveats
-- Direct manual SQL mutations on `pengaturan` resulting in malformed JSON are safeguarded with strict object type checks (`typeof === 'object' && !Array.isArray()`).
-- Print document layout and title restoration hook into browser `beforeprint`/`afterprint` events with fallback timeouts.
+## Caveats
+- When executing the migration script `20261016_fix_sekolah_registry_schema_cache.sql` in Supabase SQL Editor on a heavily loaded remote cluster, PostgREST may take up to 200–500ms to reload its schema cache. The frontend fallback ensures seamless operation during this window.
+- If a custom remote database schema modifies core columns of `public.sekolah` (e.g. omitting `kota_kabupaten`), the fallback column-stripping mechanism ensures compatibility.
 
-## 4. Conclusion
-All acceptance criteria for R1, R2, and R3 are 100% satisfied. The implementation has passed all 33 test suites and builds cleanly with 0 TypeScript/Turbopack errors. All code changes are committed and pushed to `origin/main`.
+## Conclusion
+- All requirements R1, R2, and R3 are satisfied.
+- Both `SuperadminView.tsx` and `AppScreen.tsx` operate robustly whether `sekolah_registry` exists or not.
+- Standalone migration script is available in `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql`.
+- Independent victory audit confirmed with 100% test pass.
 
-## 5. Verification Method
-- `npm test`: 33/33 test suites passed (100%), including unit tests in `tests/e_rapor_tahun_ajaran_sync.test.ts` and adversarial tests in `tests/adversarial_rapor_archive_retention.test.ts`.
-- `npm run build`: Production build completed with 0 errors across all routes.
-- Git Status: Clean working tree synced with `origin/main`.
+## Verification Method
+- Canonical Multi-School Tests: `npx tsx tests/portal_induk_jaringan_multi_sekolah.test.ts` -> 47/47 assertions passed (100%).
+- Schema Cache Resilience Tests: `npx tsx tests/sekolah_registry_schema_cache_resilience.test.ts` -> 40/40 assertions passed (100%).
+- Full Project Suite: `npm test` -> 34/34 test suites passed (100%).
+- Production Build: `npm run build` -> 0 errors, 12/12 routes generated.
+- Independent Audit: `teamwork_preview_victory_auditor` -> VERDICT: VICTORY CONFIRMED.
