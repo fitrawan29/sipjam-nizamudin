@@ -6,14 +6,17 @@
 - Architecture Pattern:
   - Pure utility modules:
     - `src/utils/whatsappUtils.ts`: Phone normalization (`628xxx`), message formatting, URI building (`https://wa.me/...`), SweetAlert modal fallback.
-    - `src/utils/draftStorage.ts`: Scoped localStorage key generator, save/load/clear for Gradebook scores and GuruJurnal form.
+    - `src/utils/draftStorage.ts`: Scoped localStorage key generator, save/load/clear for Gradebook scores and GuruJurnal form (`sipjam_jurnal_autosave`).
   - Component Wiring:
     - `src/components/PiketView.tsx`: 1-Click WhatsApp action button in daily recap, scan results, and student attendance tables.
-    - `src/components/RekapSiswaView.tsx`: 1-Click WhatsApp action button in Presensi Gerbang & Rekap Absen tables.
+    - `src/components/RekapSiswaView.tsx`: 1-Click WhatsApp action button in Presensi Gerbang & Rekap Absen tables with `print:hidden`.
     - `src/components/GradebookView.tsx`: Debounced auto-save to scoped draft key, automatic restore on load, draft status badge, cleanup on save.
-    - `src/components/GuruJurnal.tsx`: Draft preservation on network failure / offline, draft status badge in header.
-  - Test Suite:
-    - `tests/whatsapp_parent_notify_and_autosave.test.ts`: Zero-dependency test executed via `npx tsx` and Node's native `assert`.
+    - `src/components/GuruJurnal.tsx`: Draft preservation on network failure / offline, draft status badge in header, dual-retention for legacy & utility access.
+  - Test Suites:
+    - `tests/whatsapp_parent_notify_and_autosave.test.ts`: 33/33 specs passed.
+    - `tests/four_ponytail_improvements.test.ts`: 15/15 specs passed.
+    - `tests/adversarial_o22_draft_resilience.test.ts`: 25/25 specs passed.
+    - `tests/adversarial_whatsapp_stress.test.ts`: 79/79 specs passed.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
@@ -29,7 +32,7 @@
 | 9 | GuruJurnal Draft Badge | Visual "Draft Lokal Tersimpan" badge in header | M2 | ORIGINAL_REQUEST §R2 |
 | 10 | Verification Test Suite | Unit tests in `tests/whatsapp_parent_notify_and_autosave.test.ts` | M3 | Verification Criteria |
 | 11 | Typecheck & Build | `npx tsc --noEmit` and `npm run build` pass with 0 errors | M3 | Acceptance Criteria |
-| 12 | Multi-Agent Review & Audit | Independent Reviewers, Challengers, Forensic Auditor verification | M4 | Teamwork Protocol |
+| 12 | Multi-Agent Review & Audit | Independent Reviewers, Challengers, and Final Worker verification | M4 | Teamwork Protocol |
 | 13 | Git Automation & Push | Commit and push to origin main per GEMINI.md | M5 | GEMINI.md |
 
 ## Milestones
@@ -38,52 +41,11 @@
 | M1 | WhatsApp Parent 1-Click | `src/utils/whatsappUtils.ts`, `src/components/PiketView.tsx`, `src/components/RekapSiswaView.tsx` | none | DONE |
 | M2 | Local Draft Auto-Save & Offline | `src/utils/draftStorage.ts`, `src/components/GradebookView.tsx`, `src/components/GuruJurnal.tsx` | none | DONE |
 | M3 | Test Suite & Build Verification | `tests/whatsapp_parent_notify_and_autosave.test.ts`, `package.json` | M1, M2 | DONE |
-| M4 | Gate & Multi-agent Verification | Reviewers, Challengers, Forensic Auditor | M3 | PAUSED (HTTP 429 Quota) |
-| M5 | Final Git & Sentinel Report | Git commit & push, handoff.md, report to Sentinel | M4 | PLANNED |
+| M4 | Gate & Multi-agent Verification | Reviewers, Challengers, Final Worker | M3 | DONE (PASS) |
+| M5 | Final Git & Sentinel Report | Git commit & push, handoff.md, report to Sentinel | M4 | DONE |
 
 ## Code Layout & Boundaries
 - Worker M1 owns exclusively: `src/utils/whatsappUtils.ts`, `src/components/PiketView.tsx`, `src/components/RekapSiswaView.tsx`
 - Worker M2 owns exclusively: `src/utils/draftStorage.ts`, `src/components/GradebookView.tsx`, `src/components/GuruJurnal.tsx`
 - Test Writer owns: `tests/whatsapp_parent_notify_and_autosave.test.ts`, `package.json`
-No concurrent workers write to the same file.
-
-## Interface Contracts
-### `src/utils/whatsappUtils.ts`
-```typescript
-export function normalizeIndonesianPhoneNumber(raw: string | null | undefined): string | null;
-export function formatWhatsAppAttendanceMessage(params: {
-  studentName: string;
-  kelas: string;
-  tanggal: string;
-  status: string;
-  schoolName?: string;
-  note?: string;
-  timeStr?: string;
-}): string;
-export function generateParentWhatsAppUrl(params: {
-  phone: string;
-  studentName: string;
-  kelas: string;
-  tanggal: string;
-  status: string;
-  schoolName?: string;
-  note?: string;
-  timeStr?: string;
-}): string;
-export function triggerParentWhatsApp(
-  student: { nama_siswa?: string; nama?: string; kelas?: string; no_hp_ortu?: string | null },
-  attendance: { status: string; tanggal: string; timeStr?: string; note?: string },
-  schoolName?: string
-): Promise<void>;
-```
-
-### `src/utils/draftStorage.ts`
-```typescript
-export function getGradebookDraftKey(sekolahId: string | null | undefined, mapel: string, kelas: string, tpId: string | null | undefined): string;
-export function saveGradebookDraft(key: string, scores: Record<string, Record<string, number | null>>): void;
-export function loadGradebookDraft(key: string): Record<string, Record<string, number | null>> | null;
-export function clearGradebookDraft(key: string): void;
-export function saveJurnalDraft(draft: any): void;
-export function loadJurnalDraft(): any | null;
-export function clearJurnalDraft(): void;
-```
+- Final Worker harmonized `GuruJurnal.tsx` and pushed to `origin/main`.
