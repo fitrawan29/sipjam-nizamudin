@@ -52,9 +52,11 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     target.message ||
     target.error_description ||
     (typeof target.error === 'string' ? target.error : '') ||
+    target.statusText ||
     err.message ||
     err.error_description ||
     (typeof err.error === 'string' ? err.error : '') ||
+    err.statusText ||
     rawStr
   ).toLowerCase();
   const details = String(target.details || err.details || '').toLowerCase();

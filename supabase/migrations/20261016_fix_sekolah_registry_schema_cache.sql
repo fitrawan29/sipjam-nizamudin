@@ -100,7 +100,11 @@ BEGIN
             supabase_anon_key = COALESCE(r.supabase_anon_key, s.supabase_anon_key),
             status = CASE WHEN lower(COALESCE(s.status, 'aktif')) = 'nonaktif' THEN 'nonaktif' ELSE 'aktif' END,
             updated_at = now()
-        FROM public.sekolah s
+        FROM (
+            SELECT DISTINCT ON (COALESCE(s_inner.npsn, s_inner.id::text)) s_inner.*
+            FROM public.sekolah s_inner
+            ORDER BY COALESCE(s_inner.npsn, s_inner.id::text), s_inner.id
+        ) s
         WHERE r.id = s.id OR (s.npsn IS NOT NULL AND r.npsn = s.npsn);
     END IF;
 END $$;

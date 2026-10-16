@@ -183,6 +183,19 @@ async function runTests() {
     fail('Failed to detect missing relation without schema cache keyword', e);
   }
 
+  // 1.13 Adversarial: HTTP Response statusText Not Found for sekolah_registry
+  try {
+    const httpNotFoundErr = {
+      status: 404,
+      statusText: 'Not Found',
+      message: "The resource 'public.sekolah_registry' was not found"
+    };
+    assert.strictEqual(isSchemaCacheOrMissingTableError(httpNotFoundErr), true);
+    pass('Detects HTTP Response statusText Not Found for sekolah_registry');
+  } catch (e) {
+    fail('Failed to detect HTTP Response statusText error', e);
+  }
+
   // ==========================================================================
   // SECTION 2: STANDALONE MIGRATION & SCHEMA CACHE RELOAD SCRIPT (R2)
   // ==========================================================================
@@ -257,6 +270,14 @@ async function runTests() {
       'Migration backfill must safely normalize status values to satisfy check constraint'
     );
     pass('Migration backfill normalizes status casing to satisfy CHECK (status IN (\'aktif\', \'nonaktif\'))');
+
+    // 2.11 Adversarial: Migration backfill Section 6b uses deduplicated source rows
+    const update6bMatch = content.match(/-- 6b[\s\S]*?UPDATE\s+public\.sekolah_registry\s+r[\s\S]*?FROM\s*\(([\s\S]*?)\)\s*s/);
+    assert.ok(
+      update6bMatch && update6bMatch[1].includes('DISTINCT ON'),
+      'Migration backfill Section 6b must also use DISTINCT ON to avoid multi-match update indeterminism'
+    );
+    pass('Migration backfill Section 6b uses DISTINCT ON deduplicated source rows');
   } catch (e) {
     fail('Error validating standalone migration script', e);
   }
@@ -425,6 +446,40 @@ async function runTests() {
     pass('SuperadminView delete safely marks status: nonaktif even when satellite columns are missing (PGRST204)');
   } catch (e) {
     fail('SuperadminView delete column-safe detachment incomplete', e);
+  }
+
+  // 3.14 Adversarial: Resilience when mode_presensi_siswa column is missing on create fallback
+  try {
+    assert.ok(
+      saContent.includes("retry = await masterSupabase.from('sekolah').insert([coreValues])"),
+      'SuperadminView create must retry inserting coreValues without mode_presensi_siswa if column error occurs'
+    );
+    pass('SuperadminView create safely strips mode_presensi_siswa on legacy instance fallback');
+  } catch (e) {
+    fail('SuperadminView mode_presensi_siswa fallback incomplete', e);
+  }
+
+  // 3.15 Adversarial: Dual ID and NPSN matching when updating/clearing activeTargetSchool
+  try {
+    assert.ok(
+      saContent.includes('school.npsn && activeTargetSchool.npsn === school.npsn'),
+      'SuperadminView edit/delete must check dual ID and NPSN for activeTargetSchool update and reset'
+    );
+    pass('SuperadminView synchronizes activeTargetSchool scope across dual ID and NPSN references');
+  } catch (e) {
+    fail('SuperadminView activeTargetSchool dual ID/NPSN sync incomplete', e);
+  }
+
+  // 3.16 Adversarial: Consistent status: nonaktif on FK detachment across both branches
+  try {
+    const detachmentBlocks = saContent.match(/schErr\.code === '23503'[\s\S]*?detachRes = await masterSupabase[\s\S]*?status:\s*'nonaktif'/g);
+    assert.ok(
+      detachmentBlocks && detachmentBlocks.length >= 2,
+      'SuperadminView delete must set status: nonaktif on FK detachment across both fallback and registry branches'
+    );
+    pass('SuperadminView delete uniformly marks status: nonaktif on foreign key constraint across all branches');
+  } catch (e) {
+    fail('SuperadminView delete uniform FK status detachment incomplete', e);
   }
 
   // ==========================================================================

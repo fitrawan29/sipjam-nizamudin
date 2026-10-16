@@ -441,10 +441,13 @@ export default function SuperadminView({
             // Resilience: If public.sekolah does not have satellite credential columns yet (PGRST204 or missing column)
             if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
               const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
-              const retry = await masterSupabase.from('sekolah').insert([{
+              let retry = await masterSupabase.from('sekolah').insert([{
                 ...coreValues,
                 mode_presensi_siswa: 'qr'
               }]);
+              if (retry.error && (retry.error.code === 'PGRST204' || String(retry.error.message).includes('column') || retry.error.code === '42703')) {
+                retry = await masterSupabase.from('sekolah').insert([coreValues]);
+              }
               schErr = retry.error;
             }
 
@@ -473,11 +476,17 @@ export default function SuperadminView({
             }]);
             if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
               const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
-              const retry = await masterSupabase.from('sekolah').insert([{
+              let retry = await masterSupabase.from('sekolah').insert([{
                 ...(insertedReg?.id ? { id: insertedReg.id } : {}),
                 ...coreValues,
                 mode_presensi_siswa: 'qr'
               }]);
+              if (retry.error && (retry.error.code === 'PGRST204' || String(retry.error.message).includes('column') || retry.error.code === '42703')) {
+                retry = await masterSupabase.from('sekolah').insert([{
+                  ...(insertedReg?.id ? { id: insertedReg.id } : {}),
+                  ...coreValues
+                }]);
+              }
               schErr = retry.error;
             }
             if (schErr && (schErr.code === '23505' || String(schErr.message).includes('unique'))) {
@@ -650,7 +659,7 @@ export default function SuperadminView({
           } catch (_) {}
         }
 
-        if (activeTargetSchool?.id === school.id) {
+        if (activeTargetSchool?.id === school.id || (activeTargetSchool?.npsn && school.npsn && activeTargetSchool.npsn === school.npsn)) {
           const updatedTarget: SatelliteSchool = { ...school, ...formValues };
           setActiveTargetSchool(updatedTarget);
           setActiveTargetSchoolState(updatedTarget);
@@ -750,13 +759,15 @@ export default function SuperadminView({
             let detachRes = await masterSupabase.from('sekolah').update({
               vercel_url: null,
               supabase_url: null,
-              supabase_anon_key: null
+              supabase_anon_key: null,
+              status: 'nonaktif'
             }).eq('id', school.id);
             if (school.npsn) {
               await masterSupabase.from('sekolah').update({
                 vercel_url: null,
                 supabase_url: null,
-                supabase_anon_key: null
+                supabase_anon_key: null,
+                status: 'nonaktif'
               }).eq('npsn', school.npsn);
             }
             if (detachRes.error && (detachRes.error.code === 'PGRST204' || String(detachRes.error.message).includes('column') || detachRes.error.code === '42703')) {
@@ -769,7 +780,7 @@ export default function SuperadminView({
         } catch (_) {}
       }
 
-      if (activeTargetSchool?.id === school.id) {
+      if (activeTargetSchool?.id === school.id || (activeTargetSchool?.npsn && school.npsn && activeTargetSchool.npsn === school.npsn)) {
         handleSelectTargetSchool(null);
       }
 
