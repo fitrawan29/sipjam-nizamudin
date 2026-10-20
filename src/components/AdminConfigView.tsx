@@ -37,6 +37,11 @@ export default function AdminConfigView({
     logo_kanan: '',
     ttd_kepsek_nama: '',
     ttd_kepsek_nip: '',
+    kepala_sekolah_id: '',
+    ttd_pengawas_aktif: 'false',
+    ttd_pengawas_nama: '',
+    ttd_pengawas_nip: '',
+    ttd_pengawas_jabatan: 'Pengawas Pembina',
     kota_ttd: '',
     kota_kabupaten: '',
     gps_lat: '-6.200000',
@@ -68,6 +73,25 @@ export default function AdminConfigView({
               (newConfig as any)[item.key] = item.value;
             } else if (item.key && item.key.toLowerCase() in newConfig) {
               (newConfig as any)[item.key.toLowerCase()] = item.value;
+            }
+            // Aliases for pengawas bina and kepala sekolah
+            if (item.key === 'opsi_ttd_pengawas' || item.key === 'pengawas_bina_aktif') {
+              newConfig.ttd_pengawas_aktif = item.value;
+            }
+            if (item.key === 'nama_pengawas_bina' || item.key === 'NAMA_PENGAWAS_BINA') {
+              newConfig.ttd_pengawas_nama = item.value;
+            }
+            if (item.key === 'nip_pengawas_bina' || item.key === 'NIP_PENGAWAS_BINA') {
+              newConfig.ttd_pengawas_nip = item.value;
+            }
+            if (item.key === 'jabatan_pengawas_bina') {
+              newConfig.ttd_pengawas_jabatan = item.value;
+            }
+            if (item.key === 'NAMA_KEPALA_SEKOLAH' && !newConfig.ttd_kepsek_nama) {
+              newConfig.ttd_kepsek_nama = item.value;
+            }
+            if (item.key === 'NIP_KEPALA_SEKOLAH' && !newConfig.ttd_kepsek_nip) {
+              newConfig.ttd_kepsek_nip = item.value;
             }
             if (item.aturan_kehadiran_guru) {
               newConfig.aturan_kehadiran_guru = item.aturan_kehadiran_guru;
@@ -107,7 +131,6 @@ export default function AdminConfigView({
           if (!newConfig.kota_ttd && newConfig.kota_kabupaten) {
             newConfig.kota_ttd = newConfig.kota_kabupaten;
           }
-          setConfig(newConfig);
 
           // Fetch teachers from data_guru
           let guruQuery = supabase.from('data_guru').select('*').order('nama_guru', { ascending: true });
@@ -117,6 +140,21 @@ export default function AdminConfigView({
           const { data: teachers } = await guruQuery;
           if (teachers && teachers.length > 0) {
             setGuruList(teachers);
+
+            // Auto-match kepala_sekolah_id if not explicitly set
+            if (!newConfig.kepala_sekolah_id && (newConfig.ttd_kepsek_nama || newConfig.ttd_kepsek_nip)) {
+              const matched = teachers.find(t => 
+                (newConfig.ttd_kepsek_nip && t.nip && t.nip === newConfig.ttd_kepsek_nip) ||
+                (newConfig.ttd_kepsek_nama && t.nama_guru && (
+                  t.nama_guru.toLowerCase().trim() === newConfig.ttd_kepsek_nama.toLowerCase().trim() ||
+                  newConfig.ttd_kepsek_nama.toLowerCase().includes(t.nama_guru.toLowerCase().trim())
+                ))
+              );
+              if (matched) {
+                newConfig.kepala_sekolah_id = matched.id;
+              }
+            }
+
             const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
             const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
             const dbExempt = teachers
@@ -130,6 +168,8 @@ export default function AdminConfigView({
           } else if (ghmList.length > 0) {
             setExemptTeacherIds(Array.from(new Set(ghmList)));
           }
+
+          setConfig(newConfig);
         }
       } catch (err) {
         console.error('Config fetch error:', err);
@@ -147,6 +187,31 @@ export default function AdminConfigView({
     } else {
       setConfig(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleKepsekChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    if (!selectedId) {
+      setConfig(prev => ({ ...prev, kepala_sekolah_id: '' }));
+      return;
+    }
+    const selectedTeacher = guruList.find(g => g.id === selectedId);
+    if (selectedTeacher) {
+      setConfig(prev => ({
+        ...prev,
+        kepala_sekolah_id: selectedTeacher.id,
+        ttd_kepsek_nama: selectedTeacher.nama_guru || prev.ttd_kepsek_nama,
+        ttd_kepsek_nip: selectedTeacher.nip || prev.ttd_kepsek_nip || ''
+      }));
+    }
+  };
+
+  const handleTogglePengawas = () => {
+    const isCurrentlyActive = config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true;
+    setConfig(prev => ({
+      ...prev,
+      ttd_pengawas_aktif: (!isCurrentlyActive).toString()
+    }));
   };
 
   const handleDetectGps = () => {
@@ -238,6 +303,28 @@ export default function AdminConfigView({
         jam_pulang_jumat: saveConfig.jam_pulang_jumat,
         guru_hanya_mengajar: jsonExempt
       }).eq('sekolah_id', targetSekolahId);
+
+      // Synchronize headmaster name, NIP, and ID to sekolah table
+      if (saveConfig.ttd_kepsek_nama || saveConfig.ttd_kepsek_nip || saveConfig.kepala_sekolah_id) {
+        try {
+          const updatePayload: Record<string, any> = {
+            nama_kepala_sekolah: saveConfig.ttd_kepsek_nama,
+            nip_kepala_sekolah: saveConfig.ttd_kepsek_nip
+          };
+          if (saveConfig.kepala_sekolah_id) {
+            updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id;
+          }
+          await supabase.from('sekolah').update(updatePayload).eq('id', targetSekolahId);
+        } catch (_) {}
+      }
+
+      // Sync Kepala Sekolah designation in data_guru
+      if (saveConfig.kepala_sekolah_id) {
+        try {
+          await supabase.from('data_guru').update({ is_kepala_sekolah: false }).eq('sekolah_id', targetSekolahId);
+          await supabase.from('data_guru').update({ is_kepala_sekolah: true }).eq('id', saveConfig.kepala_sekolah_id);
+        } catch (_) {}
+      }
 
       // Also sync data_guru.wajib_hadir_hanya_mengajar
       if (guruList.length > 0) {
@@ -666,7 +753,31 @@ export default function AdminConfigView({
                     </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                    <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-signature text-xs text-blue-600 dark:text-blue-400"></i> Tanda Tangan Laporan</h3>
+                    <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-signature text-xs text-blue-600 dark:text-blue-400"></i> Tanda Tangan Laporan & Kepala Sekolah</h3>
+                    
+                    {/* Penunjukan Akun Kepala Sekolah */}
+                    <div className="mb-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40">
+                        <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-1.5">
+                          <i className="fa-solid fa-user-tie text-blue-600 dark:text-blue-400"></i> Penunjukan Kepala Sekolah (Dari Data Guru)
+                        </label>
+                        <select
+                          name="kepala_sekolah_id"
+                          value={config.kepala_sekolah_id || ''}
+                          onChange={handleKepsekChange}
+                          className="w-full px-2.5 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                        >
+                          <option value="">-- Pilih Guru yang Ditunjuk sebagai Kepala Sekolah --</option>
+                          {guruList.map(g => (
+                            <option key={g.id} value={g.id}>
+                              {g.nama_guru} {g.nip ? `(NIP: ${g.nip})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          Guru yang ditunjuk sebagai Kepala Sekolah memperoleh akses peninjauan/monitoring fitur Administrator (antara lain Rekap Presensi, Verifikasi, Analitik, Jurnal, dan Presensi Siswa) dalam mode read-only.
+                        </p>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
                             <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Nama Kepala Sekolah</label>
@@ -677,9 +788,82 @@ export default function AdminConfigView({
                             <input type="text" name="ttd_kepsek_nip" value={config.ttd_kepsek_nip} onChange={handleChange} className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Kosongkan jika tidak ada" />
                         </div>
                     </div>
-                    <div>
+                    <div className="mb-3">
                         <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Nama Kota/Kabupaten</label>
                         <input type="text" name="kota_kabupaten" value={config.kota_kabupaten || config.kota_ttd || ''} onChange={handleChange} placeholder="Contoh: Kab. Bolaangmongondow Timur" className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                    </div>
+
+                    {/* Pengaturan Tanda Tangan Pengawas Bina */}
+                    <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                            <div>
+                                <h4 className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                                    <i className="fa-solid fa-user-check text-indigo-600 dark:text-indigo-400"></i>
+                                    Opsi Tanda Tangan Pengawas Bina
+                                </h4>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Aktifkan pembubuhan tanda tangan Pengawas Bina pada seluruh laporan cetak (Jurnal Pembelajaran, Jurnal Kegiatan, dan Rekap Presensi).
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true}
+                                onClick={handleTogglePengawas}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition select-none self-start sm:self-auto ${
+                                    config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true
+                                        ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-200'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
+                                }`}
+                            >
+                                <span
+                                    className={`relative inline-block w-8 h-4 rounded-full transition-colors duration-200 ease-in-out ${
+                                        config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                                    }`}
+                                >
+                                    <span
+                                        className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform duration-200 ease-in-out shadow-xs mt-0.5 ml-0.5 ${
+                                            config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true ? 'translate-x-4' : 'translate-x-0'
+                                        }`}
+                                    />
+                                </span>
+                                <span>
+                                    {config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true ? 'Aktif' : 'Nonaktif'}
+                                </span>
+                            </button>
+                        </div>
+
+                        {(config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
+                                        Nama Lengkap Pengawas Bina
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="ttd_pengawas_nama"
+                                        value={config.ttd_pengawas_nama}
+                                        onChange={handleChange}
+                                        required={config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true}
+                                        placeholder="Contoh: Drs. H. Ahmad Dahlan, M.Pd."
+                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
+                                        NIP / NIK Pengawas Bina
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="ttd_pengawas_nip"
+                                        value={config.ttd_pengawas_nip}
+                                        onChange={handleChange}
+                                        placeholder="Contoh: 19680512 199303 1 004"
+                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">

@@ -14,7 +14,17 @@ import {
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { isGuruDiPiket } from '@/lib/workflow';
 
-export default function AdminVerifView({ user }: { user: any }) {
+export default function AdminVerifView({ 
+  user, 
+  isReadOnly: propReadOnly 
+}: { 
+  user: any; 
+  isReadOnly?: boolean; 
+}) {
+  const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
+  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
+  const isReadOnly = propReadOnly !== undefined ? propReadOnly : (!isAdmin && !isSuperadmin);
+
   const [date, setDate] = useState('');
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'Presensi' | 'Jurnal' | 'Piket'>('Presensi');
@@ -143,6 +153,9 @@ export default function AdminVerifView({ user }: { user: any }) {
   };
 
   const verifyItem = async (id: number | string, status: 'Disetujui' | 'Ditolak') => {
+    if (isReadOnly) {
+      return showToast('Mode Peninjau', 'Aksi dinonaktifkan: Anda dalam mode peninjauan (read-only).', 'warning');
+    }
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return showToast(
         'Koneksi Internet Diperlukan',
@@ -268,6 +281,9 @@ export default function AdminVerifView({ user }: { user: any }) {
   };
 
   const bulkVerifyCurrent = async () => {
+    if (isReadOnly) {
+      return showToast('Mode Peninjau', 'Aksi dinonaktifkan: Anda dalam mode peninjauan (read-only).', 'warning');
+    }
     if (taskFilter === 'Belum') return;
     const { table, label } = getActiveConfig();
     const pendingItems = displayList.filter(item => !item.isUnsubmitted && item.status_verifikasi !== 'Disetujui' && item.status_verifikasi !== 'Diverifikasi' && item.status_verifikasi !== 'Ditolak');
@@ -592,6 +608,19 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
           </button>
         </div>
 
+        {/* Read-Only Notice for Headmaster / Viewers */}
+        {isReadOnly && (
+          <div data-testid="readonly-notice" className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-2.5 shadow-xs">
+            <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <i className="fa-solid fa-eye text-xs"></i>
+            </div>
+            <div>
+              <span className="font-bold block">Mode Peninjauan (Monitoring Read-Only)</span>
+              <span className="text-[11px] opacity-90">Akses pemantauan verifikasi aktif. Aksi modifikasi data dan persetujuan verifikasi dinonaktifkan.</span>
+            </div>
+          </div>
+        )}
+
         {/* Filter Bar Controls */}
         <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-200 dark:border-gray-800 mb-4 space-y-3">
           {/* Date Picker Row */}
@@ -660,13 +689,19 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
           {/* Bulk Action Button or Indicator */}
           {taskFilter !== 'Belum' ? (
-            <button 
-              type="button" 
-              onClick={bulkVerifyCurrent} 
-              className="btn-click w-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 py-2.5 rounded-xl text-xs font-bold border border-green-200 dark:border-green-800 flex justify-center items-center gap-2 hover:bg-green-200 dark:hover:bg-green-900/50 transition"
-            >
-              <i className="fa-solid fa-check-double"></i> Setujui Semua Tampil
-            </button>
+            isReadOnly ? (
+              <div className="w-full py-2.5 px-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-semibold flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 cursor-not-allowed select-none">
+                <i className="fa-solid fa-lock text-xs"></i> Setujui Semua (Dinonaktifkan - Mode Peninjau)
+              </div>
+            ) : (
+              <button 
+                type="button" 
+                onClick={bulkVerifyCurrent} 
+                className="btn-click w-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 py-2.5 rounded-xl text-xs font-bold border border-green-200 dark:border-green-800 flex justify-center items-center gap-2 hover:bg-green-200 dark:hover:bg-green-900/50 transition"
+              >
+                <i className="fa-solid fa-check-double"></i> Setujui Semua Tampil
+              </button>
+            )
           ) : (
             <div className="py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center gap-2">
               <i className="fa-solid fa-triangle-exclamation text-amber-600"></i>
@@ -951,13 +986,15 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                 <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                   {item.status_verifikasi !== 'Ditolak' && (
                     <button 
-                      disabled={processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
-                      onClick={() => verifyItem(item.id, 'Disetujui')} 
-                      title="Terima / Setujui Pengajuan"
+                      disabled={isReadOnly || processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
+                      onClick={() => !isReadOnly && verifyItem(item.id, 'Disetujui')} 
+                      title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan verifikasi dinonaktifkan' : 'Terima / Setujui Pengajuan'}
                       aria-label="Terima / Setujui"
                       className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
                         item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'
                           ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
+                          : isReadOnly
+                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700'
                           : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
                       }`}
                     >
@@ -970,12 +1007,14 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                   )}
                   <button 
                     disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
-                    onClick={() => verifyItem(item.id, 'Ditolak')} 
-                    title="Tolak Pengajuan"
+                    onClick={() => !isReadOnly && verifyItem(item.id, 'Ditolak')} 
+                    title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan penolakan dinonaktifkan' : 'Tolak Pengajuan'}
                     aria-label="Tolak"
                     className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
                       item.status_verifikasi === 'Ditolak'
                         ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 cursor-default opacity-80'
+                        : isReadOnly
+                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none border border-gray-200 dark:border-gray-700'
                         : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
                     }`}
                   >

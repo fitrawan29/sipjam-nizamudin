@@ -1,2 +1,2 @@
-# implementer_1 workspace
-Work directory for teamwork_preview_implementer
+# Implementer 1 Workspace
+Working directory for teamwork_preview_implementer (Round 1).

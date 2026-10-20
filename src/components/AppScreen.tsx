@@ -47,6 +47,7 @@ import { useSessionSync } from '@/hooks/useSessionSync';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
 import { usePiket } from '@/hooks/usePiket';
 import { useBroadcasts } from '@/hooks/useBroadcasts';
+import { useKepalaSekolah } from '@/hooks/useKepalaSekolah';
 
 declare module '@/components/AIAssistant' {
   interface AIAssistantProps {
@@ -192,6 +193,7 @@ export default function AppScreen({
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, isAdmin, syncKey);
   const { isPiketHariIni } = usePiket(user, isAdmin, isSuperadmin, syncKey);
+  const { isKepalaSekolah } = useKepalaSekolah(user, schoolData, syncKey);
   const {
     unreadCount,
     broadcastModalOpen,
@@ -310,7 +312,7 @@ export default function AppScreen({
       const restrictedViews = ['view-guru-jurnal', 'view-piket', 'view-guru-presensi'];
       
       if (targetId === 'view-jurnal-kelas') {
-        if (!isAdmin && !isWaliKelas) {
+        if (!isAdmin && !isSuperadmin && !isWaliKelas && !isKepalaSekolah) {
           Swal.fire({
             icon: 'warning',
             title: 'Akses Ditolak',
@@ -346,7 +348,7 @@ export default function AppScreen({
       }
 
       if (targetId === 'view-rekap-siswa') {
-        if (!isAdmin && !isSuperadmin && !isWaliKelas) {
+        if (!isAdmin && !isSuperadmin && !isWaliKelas && !isKepalaSekolah) {
           Swal.fire({
             icon: 'warning',
             title: 'Akses Ditolak',
@@ -358,11 +360,35 @@ export default function AppScreen({
       }
 
       if (targetId === 'view-rapor') {
-        if (!isAdmin && !isSuperadmin && !isWaliKelas) {
+        if (!isAdmin && !isSuperadmin && !isWaliKelas && !isKepalaSekolah) {
           Swal.fire({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Halaman Rapor secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+      }
+
+      if (['view-admin-verif', 'view-admin-rekap', 'view-analitik'].includes(targetId)) {
+        if (!isAdmin && !isSuperadmin && !isKepalaSekolah) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Fitur monitoring administrasi hanya dapat diakses oleh Administrator dan Kepala Sekolah.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+      }
+
+      if (['view-admin-config', 'view-admin-backup', 'view-admin-data'].includes(targetId)) {
+        if (!isAdmin && !isSuperadmin) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Halaman Konfigurasi dan Manajemen Data secara eksklusif hanya dapat diakses oleh Administrator.',
             confirmButtonColor: '#0B4619'
           });
           return;
@@ -436,7 +462,25 @@ export default function AppScreen({
     { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
     { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
     { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' },
-    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }
+    ...(isWaliKelas ? [{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }] : [])
+  ];
+
+  const menuItemsKepalaSekolah = [
+    { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
+    { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
+    { id: 'view-admin-rekap', icon: 'fa-file-invoice', label: 'Rekap Presensi' },
+    { id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik' },
+    { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' },
+    { id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' },
+    { id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor' },
+    { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', label: 'Presensi Guru' },
+    { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
+    ...(isPiketHariIni ? [{ id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' }] : []),
+    { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
+    { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Daftar Nilai' },
+    { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
+    { id: 'view-history', icon: 'fa-clock-rotate-left', label: 'Riwayat' },
+    { id: 'view-guru-rekap-jurnal', icon: 'fa-book-open', label: 'Rekap Jurnal' }
   ];
 
   const menuItemsAdmin = [
@@ -462,6 +506,8 @@ export default function AppScreen({
     menuItems = menuItemsSuperadmin;
   } else if (isAdmin) {
     menuItems = menuItemsAdmin;
+  } else if (isKepalaSekolah) {
+    menuItems = menuItemsKepalaSekolah;
   }
 
   const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : 'view-home';
@@ -581,12 +627,14 @@ export default function AppScreen({
                         ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200/50'
                         : isAdmin
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'
+                        : isKepalaSekolah
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200/50'
                         : isWaliKelas
                         ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
                     }`}>
-                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isAdmin ? 'fa-user-shield' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
-                      {isSuperadmin ? 'Superadmin' : isAdmin ? 'Administrator' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
+                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isAdmin ? 'fa-user-shield' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
+                      {isSuperadmin ? 'Superadmin' : isAdmin ? 'Administrator' : isKepalaSekolah ? 'Kepala Sekolah' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
                     </span>
                     {(user?.username || user?.nip) && (
                       <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
@@ -740,6 +788,8 @@ export default function AppScreen({
               {currentView === 'view-jurnal-kelas' && (
                 isAdmin || isWaliKelas ? (
                   <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} />
+                ) : isKepalaSekolah ? (
+                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -761,7 +811,9 @@ export default function AppScreen({
               )}
               {currentView === 'view-rekap-siswa' && (
                 isAdmin || isSuperadmin || isWaliKelas ? (
-                  <RekapSiswaView user={user} assignedKelas={assignedKelas} />
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} />
+                ) : isKepalaSekolah ? (
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={true} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -784,6 +836,8 @@ export default function AppScreen({
               {currentView === 'view-rapor' && (
                 isAdmin || isSuperadmin || isWaliKelas ? (
                   <RaporView user={user} assignedKelas={assignedKelas} />
+                ) : isKepalaSekolah ? (
+                  <RaporView user={user} assignedKelas={assignedKelas} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -803,7 +857,7 @@ export default function AppScreen({
                   </div>
                 )
               )}
-              {currentView === 'view-admin-verif' && <AdminVerifView user={user} />}
+              {currentView === 'view-admin-verif' && <AdminVerifView user={user} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} />}
               {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
               {currentView === 'view-admin-data' && <AdminDataView user={user} />}
               {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
@@ -843,7 +897,28 @@ export default function AppScreen({
                   </div>
                 )
               )}
-              {currentView === 'view-analitik' && <AnalitikView user={user} />}
+              {currentView === 'view-analitik' && (
+                isAdmin || isSuperadmin || isKepalaSekolah ? (
+                  <AnalitikView user={user} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Analitik</strong> hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
             </>
           )}
         </div>

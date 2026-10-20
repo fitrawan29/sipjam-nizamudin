@@ -197,6 +197,10 @@ export interface PrintSignatureProps {
   rightNip?: string;
   showKepalaSekolah?: boolean;
   singleColumn?: boolean;
+  showPengawas?: boolean;
+  pengawasNama?: string;
+  pengawasNip?: string;
+  pengawasJabatan?: string;
   sekolahId?: string;
   user?: any;
   gpsCoordinates?: {
@@ -218,6 +222,10 @@ export function PrintSignature({
   rightNip,
   showKepalaSekolah = false,
   singleColumn = false,
+  showPengawas,
+  pengawasNama,
+  pengawasNip,
+  pengawasJabatan,
   sekolahId,
   user,
   gpsCoordinates
@@ -285,6 +293,14 @@ export function PrintSignature({
       year: 'numeric'
     });
     setDateStr(formattedDate);
+
+    if (typeof window !== 'undefined') {
+      const handleConfigUpdate = () => fetchConfig();
+      window.addEventListener('sipjam:config_updated', handleConfigUpdate);
+      return () => {
+        window.removeEventListener('sipjam:config_updated', handleConfigUpdate);
+      };
+    }
   }, [sekolahId, user?.sekolah_id]);
 
   // Dynamically resolve region (Kabupaten / Kota) from config or extract from kop_alamat or schoolInfo
@@ -321,11 +337,25 @@ export function PrintSignature({
     ? (rightTitle.toLowerCase().includes('kepala') ? formatKepalaSekolahTitle(rightTitle) : rightTitle)
     : defaultKepalaTitle;
 
-  const containerClass = singleColumn
+  const isPengawasActive = Boolean(
+    showPengawas !== undefined
+      ? showPengawas
+      : (config.ttd_pengawas_aktif === true ||
+         config.ttd_pengawas_aktif === 'true' ||
+         config.opsi_ttd_pengawas === true ||
+         config.opsi_ttd_pengawas === 'true' ||
+         config.pengawas_bina_aktif === true ||
+         config.pengawas_bina_aktif === 'true')
+  );
+  const finalPengawasNama = pengawasNama || config.ttd_pengawas_nama || config.nama_pengawas_bina || config.NAMA_PENGAWAS_BINA || '';
+  const finalPengawasNip = pengawasNip || config.ttd_pengawas_nip || config.nip_pengawas_bina || config.NIP_PENGAWAS_BINA || '';
+  const finalPengawasJabatan = pengawasJabatan || config.ttd_pengawas_jabatan || config.jabatan_pengawas_bina || 'Pengawas Pembina';
+
+  const containerClass = (singleColumn && !isPengawasActive)
     ? "print-only print-signature mt-10 flex justify-end ml-auto text-black"
     : "print-only print-signature w-full flex justify-between items-start mt-8 pt-4 page-break-inside-avoid text-black";
 
-  const containerStyle = singleColumn
+  const containerStyle = (singleColumn && !isPengawasActive)
     ? { display: 'flex', justifyContent: 'flex-end', marginLeft: 'auto' }
     : { display: 'flex', justifyContent: 'space-between', width: '100%' };
 
@@ -343,9 +373,9 @@ export function PrintSignature({
   return (
     <div className="w-full">
       <div className={containerClass} style={containerStyle}>
-        {/* Left Signer: Guru Mata Pelajaran / Wali Kelas */}
-        {!singleColumn && (
-          <div className="text-center min-w-[200px] text-black">
+        {/* Left Signer: Guru Mata Pelajaran / Wali Kelas (or Pengawas when singleColumn + Pengawas active) */}
+        {!singleColumn ? (
+          <div className="text-center min-w-[180px] sm:min-w-[200px] text-black">
             <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
               {leftTitle || 'Mengetahui,'}
             </span>
@@ -364,10 +394,50 @@ export function PrintSignature({
               )}
             </div>
           </div>
+        ) : isPengawasActive ? (
+          /* When singleColumn is requested but Pengawas is active, place Pengawas Bina on the left/center */
+          <div className="text-center min-w-[180px] sm:min-w-[200px] text-black signature-pengawas" data-testid="signature-pengawas">
+            <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
+              Mengetahui,
+            </span>
+            <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
+              {finalPengawasJabatan}
+            </span>
+            <div className="h-20 sm:h-24" />
+            <div className="inline-block text-left">
+              <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+                {finalPengawasNama || '( ........................................ )'}
+              </span>
+              <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+                {finalPengawasNip && finalPengawasNip !== '-' ? `NIP. ${finalPengawasNip}` : 'NIP. -'}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Middle Signer: Pengawas Bina (when 3-column layout is active) */}
+        {!singleColumn && isPengawasActive && (
+          <div className="text-center min-w-[180px] sm:min-w-[200px] text-black signature-pengawas" data-testid="signature-pengawas">
+            <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
+              Mengetahui,
+            </span>
+            <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
+              {finalPengawasJabatan}
+            </span>
+            <div className="h-20 sm:h-24" />
+            <div className="inline-block text-left">
+              <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
+                {finalPengawasNama || '( ........................................ )'}
+              </span>
+              <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
+                {finalPengawasNip && finalPengawasNip !== '-' ? `NIP. ${finalPengawasNip}` : 'NIP. -'}
+              </span>
+            </div>
+          </div>
         )}
 
         {/* Right Signer: Kepala Sekolah with [Kabupaten/Kota], [Date] */}
-        <div className={`text-center min-w-[200px] text-black ${singleColumn ? 'w-64 ml-auto' : ''}`}>
+        <div className={`text-center min-w-[180px] sm:min-w-[200px] text-black ${singleColumn && !isPengawasActive ? 'w-64 ml-auto' : ''}`}>
           <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
             {region ? `${region}, ` : ''}{dateStr}
           </span>

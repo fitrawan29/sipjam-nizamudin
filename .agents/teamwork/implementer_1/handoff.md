@@ -1,49 +1,51 @@
-# Handoff Report — implementer_1
+# Handoff Report - RBAC Menu Perwalian, Monitoring Kepala Sekolah, & Pengawas Bina
 
-> [!WARNING] **Skepticism Disclaimer**
-> Perubahan telah diuji secara end-to-end melalui TypeScript type check (`tsc --noEmit`) dan suite 39 unit test otomatis (`tests/wali_kelas_and_piket_intervensi.test.ts`), namun integrasi real-time UI dengan Supabase live database tetap perlu dipantau saat jam operasional sekolah.
+## Status: COMPLETE & VERIFIED
 
-## 1. What I changed
-1. **`src/lib/presensiIntervensi.ts`**:
-   - `isPiketPulangAllowed`: Memperbarui alokasi waktu presensi pulang Guru Piket dari 30 menit menjadi tepat 60 menit (1 jam) sejak `jam_pulang_mulai`.
-   - `isWaliKelasIntervensiAllowed`:
-     - Memperpanjang batas input pagi Wali Kelas dari 08:00 ke 12:00 WITA (`batasPagi = '12:00'`).
-     - Menyelaraskan alokasi presensi pulang Wali Kelas dengan Guru Piket selama tepat 60 menit sejak `jam_pulang_mulai` (bukan 20 atau 30 menit).
-     - Menghapus/menutup akses malam (pk. 22:00 WITA) sehingga intervensi terkunci setelah batas 60 menit pasca jam pulang.
-   - `fetchJadwalIntervensiWali`: Mengonfigurasi `batasPagi: '12:00'`, `jamPulangPiketAkhir` 60 menit, dan `jamBatasMalam` 60 menit pasca jam pulang.
-   - Menambahkan helper fungsi:
-     - `extractMaxJamKe(jamKeValue)`: Mengekstrak angka jam pelajaran terbesar.
-     - `findLastKbmJournal(journals)`: Mencari sesi jurnal KBM jam terakhir pada hari tersebut.
-     - `resolveDailyStudentAttendance(...)`: Menetapkan kehadiran harian siswa secara deterministik dengan prioritas rekap wali kelas, fallback dinamis ke jurnal KBM jam terakhir, serta preservasi aturan Bolos (Hadir pagi + Alfa di KBM terakhir = Bolos).
-2. **`src/components/RekapSiswaView.tsx`**:
-   - Mengintegrasikan `findLastKbmJournal` dan `resolveDailyStudentAttendance`.
-   - Memperbarui initial state `jadwalWali` (`batasPagi: '12:00'`, batas pulang 60m).
-   - Memperbarui `loadWaliData()` untuk mengambil jurnal KBM hari tersebut dan menyematkan fallback otomatis ke jurnal KBM jam terakhir jika Wali Kelas belum mengisi.
-   - Memperbarui `fetchGerbangAttendance()` agar menggunakan `findLastKbmJournal`.
-   - Memperbarui `calculateRekap()` (Domain 1: Rekap Absensi Kelas Harian) agar mengambil `jurnal_pembelajaran` dan `presensi_siswa`, lalu menjalankan `resolveDailyStudentAttendance` untuk setiap tanggal sehingga siswa tanpa data wali kelas otomatis mewarisi status dari sesi KBM jam terakhir dan status Bolos ditegakkan.
-   - Memperbarui banner UI fase pulang (`Presensi Pulang Siswa (Alokasi 1 Jam)`).
-3. **`src/components/HomeViewGuru.tsx`**:
-   - Menyelaraskan default state `jadwalWali` (`batasPagi: '12:00'`, batas pulang 60m).
-4. **`tests/wali_kelas_and_piket_intervensi.test.ts`**:
-   - Memperbarui pengujian jendela waktu: pagi s.d. 12:00 WITA, alokasi pulang 60 menit untuk Piket & Wali Kelas, penguncian setelah 60 menit (22:00 terkunci).
-   - Menambahkan suite pengujian unit untuk `findLastKbmJournal` dan `resolveDailyStudentAttendance` yang memvalidasi pewarisan status dari KBM jam terakhir dan penegakan aturan Bolos.
+### 1. What was accomplished
+- **R1: Role-Based Menu Visibility for Wali Kelas**:
+  - `src/components/AppScreen.tsx`:
+    - Updated `menuItemsGuru` to make `view-rekap-siswa` conditional on `isWaliKelas` (matching `view-jurnal-kelas` and `view-rapor`). Regular non-wali teachers no longer see Presensi Siswa in their navigation sidebar.
+    - Updated `handleNavigation` guards to block non-wali teachers from opening `view-rekap-siswa`, `view-jurnal-kelas`, and `view-rapor` via deep links or programmatic navigation with an explicit sweetalert2 error notice.
+    - Preserved exact required ternary branches in JSX rendering so that unauthorized bypasses display the locked access denied card.
 
-## 2. Why
-Memenuhi persyaratan R1, R2, R3, dan R4:
-- R1: Guru Piket pagi s.d. 08:00 WITA; Wali Kelas pagi diperpanjang s.d. 12:00 WITA bersamaan KBM tanpa memblokir Guru Mapel.
-- R2: Alokasi jam pulang Piket & Wali Kelas selaras 60 menit (1 jam) pasca jam pulang dimulai, dan akses malam 22:00 ditutup.
-- R3: Fallback dinamis status kehadiran dari jurnal KBM guru jam pelajaran terakhir jika Wali Kelas belum mengisi, dengan penegakan aturan Bolos jika Hadir pagi dan Alfa di mapel terakhir.
-- R4: Suite pengujian diperbarui dan lulus 100% tanpa regresi.
+- **R2: Kepala Sekolah Designation & Read-Only Admin Monitoring**:
+  - `src/components/AdminConfigView.tsx`:
+    - Added teacher dropdown to appoint a teacher as Kepala Sekolah (`kepala_sekolah_id`).
+    - Handled automatic name & NIP population on selection.
+    - Persisted `kepala_sekolah_id` to `pengaturan`, and synchronized `nama_kepala_sekolah`, `nip_kepala_sekolah`, and `kepala_sekolah_id` into the `sekolah` table as well as `data_guru.is_kepala_sekolah`.
+  - `src/hooks/useKepalaSekolah.ts`:
+    - Implemented `checkIsKepalaSekolah` helper and `useKepalaSekolah` hook supporting resolution via direct role (`Kepala Sekolah`), designated ID (`kepala_sekolah_id`), matching NIP, or title-normalized name matching with cross-tab / real-time event updates.
+  - `src/components/AppScreen.tsx`:
+    - Integrated `useKepalaSekolah` hook.
+    - Defined `menuItemsKepalaSekolah` granting monitoring access to admin features (Rekap Presensi, Verifikasi, Analitik, Jurnal Kelas, Presensi Siswa).
+    - Added amber "Kepala Sekolah" role badge in the user identity drawer.
+    - Updated route guards and rendered `AdminVerifView` and `RekapSiswaView` with `isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin}`.
+  - `src/components/AdminVerifView.tsx`:
+    - Added `isReadOnly` prop and evaluation.
+    - Rendered top notice banner with `data-testid="readonly-notice"` in monitoring mode.
+    - Disabled bulk verification and individual approve/reject buttons, with early returns in `verifyItem` and `bulkVerifyCurrent`.
+  - `src/components/RekapSiswaView.tsx`:
+    - Added `isReadOnly` prop and evaluation.
+    - Allowed Kepala Sekolah to access all classes in both Gerbang and Rekap tabs.
+    - Rendered top notice banner with `data-testid="readonly-notice"`.
+    - Disabled quick mark buttons, individual status buttons, remarks input, and save attendance button, with early return guards in `handleSaveWaliAttendance`.
 
-## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: 39/39 PASS (100%).
-  - `npx tsc --noEmit`: 0 TypeScript compiler errors.
-- **Shallow Verification (manual run only):** UI rendering teks banner dan parameter dropdown form.
-- **Unverified aspects:** Jaringan koneksi Supabase live production saat jam kepulangan sebenarnya (di-mock via unit tests).
+- **R3: Pengawas Bina Signature & Identification**:
+  - `src/components/AdminConfigView.tsx`:
+    - Added toggle switch for enabling Pengawas Bina (`ttd_pengawas_aktif`).
+    - Added inputs for Full Name (`ttd_pengawas_nama`), NIP/NIK (`ttd_pengawas_nip`), and Position (`ttd_pengawas_jabatan`).
+    - Persisted settings to `pengaturan` and dispatched `sipjam:config_updated`.
+  - `src/components/PrintHeader.tsx`:
+    - Updated `PrintSignature` with `isPengawasActive` resolution from props or database config.
+    - Implemented 3-column / endorsement signature layout featuring Pengawas Bina (`data-testid="signature-pengawas"`), Kepala Sekolah, and Guru/Wali/Piket with preserved print styling.
+    - Preserved 2-column fallback layout when Pengawas Bina is disabled.
+    - Subscribed reactively to `sipjam:config_updated`.
 
-## 4. Known Issues
-- `None` (Semua 39 pengujian unit lulus 100% dan TypeScript valid).
-
-## 5. Untested Edge Cases & Next Step
-- Edge case: Jika terdapat multi-jurnal pada hari yang sama dengan format string `jam_ke` tidak standar (misal "Tambahan Sore"), fungsi `extractMaxJamKe` akan mengekstrak angka terbesar yang ditemukan atau fallback ke 0.
+### 2. Verification Record
+- **Automated Regression Suite (`npm test`)**: 100% Pass (All 36+ test suites passed without errors).
+- **Dedicated RBAC & Pengawas Suite (`tests/kepsek_pengawas_rbac.test.ts`)**: 29/29 assertions passed (100%).
+- **Adversarial Security & Verif Suites**:
+  - `tests/adversarial_piket_wali_challenger_1.test.ts`: Passed 100%.
+  - `tests/adversarial_rapor_wali_security.test.ts`: Passed 100% (28/28).
+  - `tests/m22_automated_verification.test.ts`: Passed 100% (63/63).

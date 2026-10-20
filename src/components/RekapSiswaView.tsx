@@ -11,13 +11,22 @@ import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 
 export default function RekapSiswaView({ 
   user, 
-  assignedKelas: propAssignedKelas 
+  assignedKelas: propAssignedKelas,
+  isReadOnly: propReadOnly
 }: { 
   user: any; 
   assignedKelas?: string | null; 
+  isReadOnly?: boolean;
 }) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
+  const isKepalaSekolah = Boolean(
+    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'kepalasekolah' ||
+    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'kepsek' ||
+    user?.is_kepala_sekolah === true ||
+    user?.isKepalaSekolah === true
+  );
+  const isReadOnly = propReadOnly !== undefined ? propReadOnly : (!isAdmin && !isSuperadmin && isKepalaSekolah);
 
   
   const [startDate, setStartDate] = useState('');
@@ -106,7 +115,7 @@ export default function RekapSiswaView({
         let resolvedWaliKelas = '';
         let userWalis: any[] = [];
         if (wData && wData.length > 0) {
-          userWalis = user?.role === 'Admin'
+          userWalis = (isAdmin || isKepalaSekolah || isReadOnly)
             ? wData
             : wData.filter(w => 
                 (user?.id && w.guru_id === user.id) ||
@@ -134,7 +143,7 @@ export default function RekapSiswaView({
 
         // Automatic filter for Wali Kelas: prioritize assigned class from propAssignedKelas, penugasan.kelas_binaan, or wali_kelas
         const assignedWali = propAssignedKelas || user?.penugasan?.kelas_binaan || user?.wali_kelas || resolvedWaliKelas;
-        if (user?.role !== 'Admin' && assignedWali) {
+        if (!isAdmin && !isKepalaSekolah && !isReadOnly && assignedWali) {
           setGerbangKelas(assignedWali);
           setKelas(assignedWali);
         } else if (uniqueKelas.length > 0) {
@@ -386,6 +395,7 @@ export default function RekapSiswaView({
   };
 
   const handleSetWaliStatus = (nisn: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos') => {
+    if (isReadOnly) return;
     setWaliAttendance(prev => ({
       ...prev,
       [nisn]: {
@@ -396,6 +406,7 @@ export default function RekapSiswaView({
   };
 
   const handleSetWaliKeterangan = (nisn: string, keterangan: string) => {
+    if (isReadOnly) return;
     setWaliAttendance(prev => ({
       ...prev,
       [nisn]: {
@@ -406,6 +417,7 @@ export default function RekapSiswaView({
   };
 
   const handleSetAllWaliStatus = (status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos') => {
+    if (isReadOnly) return;
     setWaliAttendance(prev => {
       const updated = { ...prev };
       waliStudents.forEach(s => {
@@ -419,6 +431,14 @@ export default function RekapSiswaView({
   };
 
   const handleSaveWaliAttendance = async () => {
+    if (isReadOnly) {
+      return Swal.fire({
+        icon: 'info',
+        title: 'Mode Monitoring',
+        text: 'Aksi simpan presensi dinonaktifkan dalam mode pemantauan Kepala Sekolah.',
+        confirmButtonColor: '#0d9488'
+      });
+    }
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return Swal.fire({
         icon: 'warning',
@@ -516,12 +536,12 @@ export default function RekapSiswaView({
     userWaliKelasString,
     ...waliKelasList.map(w => w.kelas)
   ].filter(Boolean);
-  const allowedClasses = (isAdmin || user?.role === 'Admin')
-    ? kelasList
+  const allowedClasses = (isAdmin || user?.role === 'Admin' || isKepalaSekolah || isReadOnly)
+    ? (kelasList.length > 0 ? kelasList : (Array.from(new Set(rawAllowed)) as string[]))
     : (Array.from(new Set(rawAllowed)) as string[]);
 
   const tarikRekap = async () => {
-    const targetKelas = !isAdmin && allowedClasses.length > 0 
+    const targetKelas = (!isAdmin && !isKepalaSekolah && !isReadOnly) && allowedClasses.length > 0 
       ? (allowedClasses.includes(kelas) ? kelas : allowedClasses[0]) 
       : kelas;
 
@@ -535,7 +555,7 @@ export default function RekapSiswaView({
       return;
     }
 
-    if (!isAdmin && allowedClasses.length > 0 && !allowedClasses.includes(targetKelas)) {
+    if (!isAdmin && !isKepalaSekolah && !isReadOnly && allowedClasses.length > 0 && !allowedClasses.includes(targetKelas)) {
       Swal.fire({
         icon: 'warning',
         title: 'Akses Ditolak',
@@ -840,7 +860,7 @@ export default function RekapSiswaView({
     return dStr;
   };
 
-  const isWaliKelasUser = isAdmin || user?.role === 'Admin' || Boolean(
+  const isWaliKelasUser = isAdmin || user?.role === 'Admin' || isKepalaSekolah || isReadOnly || Boolean(
     propAssignedKelas || 
     user?.wali_kelas || 
     user?.penugasan?.kelas_binaan || 
@@ -866,6 +886,12 @@ export default function RekapSiswaView({
   return (
     <section id="view-rekap-siswa" className="view-section fade-in">
         <div className="glass-card p-4">
+            {isReadOnly && (
+              <div data-testid="readonly-notice" className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 no-print">
+                <i className="fa-solid fa-eye text-amber-600 text-sm"></i>
+                <span><strong>Mode Monitoring:</strong> Anda masuk sebagai pemantau (Kepala Sekolah). Data presensi siswa bersifat hanya-baca (read-only).</span>
+              </div>
+            )}
             <PrintHeader />
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
@@ -1017,7 +1043,7 @@ export default function RekapSiswaView({
                         <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mr-1">Tandai Cepat:</span>
                         <button
                           type="button"
-                          disabled={isIntervensiExpired}
+                          disabled={isIntervensiExpired || isReadOnly}
                           onClick={() => handleSetAllWaliStatus('Hadir')}
                           className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
@@ -1025,7 +1051,7 @@ export default function RekapSiswaView({
                         </button>
                         <button
                           type="button"
-                          disabled={isIntervensiExpired}
+                          disabled={isIntervensiExpired || isReadOnly}
                           onClick={() => handleSetAllWaliStatus('Sakit')}
                           className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
@@ -1033,7 +1059,7 @@ export default function RekapSiswaView({
                         </button>
                         <button
                           type="button"
-                          disabled={isIntervensiExpired}
+                          disabled={isIntervensiExpired || isReadOnly}
                           onClick={() => handleSetAllWaliStatus('Izin')}
                           className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
@@ -1105,9 +1131,9 @@ export default function RekapSiswaView({
                                       <button
                                         key={st}
                                         type="button"
-                                        disabled={isIntervensiExpired}
+                                        disabled={isIntervensiExpired || isReadOnly}
                                         onClick={() => handleSetWaliStatus(siswa.nisn, st)}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${colorClasses} ${isIntervensiExpired ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${colorClasses} ${(isIntervensiExpired || isReadOnly) ? 'opacity-40 cursor-not-allowed' : ''}`}
                                       >
                                         {st}
                                       </button>
@@ -1117,11 +1143,11 @@ export default function RekapSiswaView({
 
                                 <input
                                   type="text"
-                                  disabled={isIntervensiExpired}
-                                  placeholder={isIntervensiExpired ? "Intervensi terkunci..." : "Keterangan / alasan (opsional)..."}
+                                  disabled={isIntervensiExpired || isReadOnly}
+                                  placeholder={isReadOnly ? "Mode monitoring (hanya lihat)..." : isIntervensiExpired ? "Intervensi terkunci..." : "Keterangan / alasan (opsional)..."}
                                   value={currentRec.keterangan || ''}
                                   onChange={e => handleSetWaliKeterangan(siswa.nisn, e.target.value)}
-                                  className={`w-full md:w-56 px-2.5 py-1 text-[11px] rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${isIntervensiExpired ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}`}
+                                  className={`w-full md:w-56 px-2.5 py-1 text-[11px] rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${(isIntervensiExpired || isReadOnly) ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}`}
                                 />
                               </div>
                             </div>
@@ -1140,7 +1166,7 @@ export default function RekapSiswaView({
                       </button>
                       <button
                         type="button"
-                        disabled={waliSaving || waliLoading || waliStudents.length === 0 || isIntervensiExpired}
+                        disabled={waliSaving || waliLoading || waliStudents.length === 0 || isIntervensiExpired || isReadOnly}
                         onClick={handleSaveWaliAttendance}
                         className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -1179,9 +1205,9 @@ export default function RekapSiswaView({
                     {/* Class Selection: automatic for Wali Kelas, dropdown for Admin */}
                     <div>
                       <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
-                        KELAS {user?.role !== 'Admin' && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Binaan)</span>}
+                        KELAS {!isAdmin && !isKepalaSekolah && !isReadOnly && user?.role !== 'Admin' && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Binaan)</span>}
                       </label>
-                      {user?.role === 'Admin' ? (
+                      {(user?.role === 'Admin' || isAdmin || isKepalaSekolah || isReadOnly) ? (
                         <select
                           value={gerbangKelas}
                           onChange={e => setGerbangKelas(e.target.value)}
@@ -1519,9 +1545,9 @@ export default function RekapSiswaView({
                     <div className="flex-1">
                       <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
                         KELAS <span className="text-red-500 dark:text-red-400">*</span>
-                        {user?.role !== 'Admin' && <span className="text-emerald-600 dark:text-emerald-400 font-normal ml-1">(Binaan)</span>}
+                        {!isAdmin && !isKepalaSekolah && !isReadOnly && user?.role !== 'Admin' && <span className="text-emerald-600 dark:text-emerald-400 font-normal ml-1">(Binaan)</span>}
                       </label>
-                      {user?.role === 'Admin' ? (
+                      {(user?.role === 'Admin' || isAdmin || isKepalaSekolah || isReadOnly) ? (
                         <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 font-semibold">
                           <option value="" disabled className="text-gray-900 dark:text-white dark:bg-gray-800">Pilih...</option>
                           {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}

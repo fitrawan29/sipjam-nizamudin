@@ -17,3 +17,14 @@ Implementasi dua fitur operasional esensial berprinsip Ponytail (zero-bloat, min
 - Phase: complete
 - Route: General (teamwork_preview_orchestrator)
 - Victory Audit Status: VICTORY CONFIRMED (victory_auditor_42)
+
+## Previous Mission (2026-10-20 - swe_30)
+Penyesuaian batas jendela waktu input absensi kelas (Piket pagi s.d. 08:00 WITA, Wali Kelas pagi s.d. 12:00 WITA bersamaan KBM mapel, alokasi jam pulang Piket & Wali Kelas 1 jam setelah jam pulang mulai) serta fallback dinamis absensi harian siswa dari jurnal mapel guru jam terakhir dengan preservasi aturan Bolos.
+
+### Delivered Results:
+- R1: Jendela waktu input absensi pagi Wali Kelas diperpanjang hingga pk. 12:00 WITA, Guru Piket tetap 08:00 WITA, dan KBM Guru Mapel berjalan independen tanpa saling bertabrakan.
+- R2: Jendela waktu kepulangan Piket dan Wali Kelas diselaraskan tepat 60 menit sejak jam pulang dimulai, dan akses malam 22:00 WITA dinonaktifkan/ditutup.
+- R3: Fallback otomatis kehadiran harian dari sesi jurnal KBM jam pelajaran terakhir saat absensi kelas belum terisi, dengan preservasi status Bolos (B) bagi siswa hadir pagi namun alfa di sesi terakhir serta proteksi status Sakit/Izin resmi.
+- R4: Pengujian otomatis lulus 100%: tests/wali_kelas_and_piket_intervensi.test.ts (56/56 PASS), tests/adversarial_challenge_r1_r2_r3.test.ts (42/42 PASS), npx tsc --noEmit (0 error), npm run build (0 error), npm test (35/35 suites PASS).
+- Git Workflow: commits 4e4593e, 7937b11, 5394126, a22c80f pushed to origin/main.
+- Victory Audit: victory_auditor_43 confirmed VICTORY CONFIRMED.
