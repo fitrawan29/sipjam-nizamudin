@@ -31,7 +31,7 @@ function countWorkdays(
   return count;
 }
 
-export default function AdminRekapView({ user }: { user: any }) {
+export default function AdminRekapView({ user, isKepalaSekolah }: { user: any; isKepalaSekolah?: boolean }) {
     const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });
@@ -239,7 +239,7 @@ export default function AdminRekapView({ user }: { user: any }) {
   return (
     <section id="view-admin-rekap" className="view-section fade-in">
         <div className="glass-card p-4">
-            <PrintHeader />
+            <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
@@ -397,8 +397,8 @@ export default function AdminRekapView({ user }: { user: any }) {
                   <PrintSignature
                     leftTitle="Mengetahui,"
                     leftSubtitle="Pengelola Data / Admin"
-                    leftName={user?.nama}
-                    leftNip={user?.nip}
+                    leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}
+                    leftNip={isKepalaSekolah ? '-' : user?.nip}
                     user={user}
                     sekolahId={user?.sekolah_id}
                   />

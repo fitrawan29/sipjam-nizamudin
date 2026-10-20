@@ -1,95 +1,85 @@
-# Handoff Report — reviewer_2 (Adversarial Reviewer)
-
 > [!WARNING] **Skepticism Disclaimer**
-> Perbaikan telah diuji secara mendalam dengan 52/52 suite test khusus (100% PASS), 42/42 adversarial stress test (100% PASS), Type-checking TypeScript (`tsc --noEmit` 0 errors), dan `next build` (100% PASS); namun konkurensi multi-koneksi pada latensi jaringan tinggi saat submit serentak tetap perlu diobservasi pada log produksi.
+> Confidence is high based on verified execution across all 43 assertions in `tests/kepsek_pengawas_rbac.test.ts` and 100% pass across all 36+ test suites in `npm test`. Multi-tenant isolation and route guards have been tested programmatically.
 
 ## 1. What the prior attempt got wrong
 
-### Issue 1: Database Overwrite of Excused Absences (Sakit & Izin) in `GuruJurnal.tsx`
-- **Input:** Siswa melakukan tap kartu di gerbang pos datang pagi (`Boolean(piketAttendance[s.nisn]) = true`). Kemudian Wali Kelas secara resmi mencatat status `Sakit` (atau `Izin`) pada `public.absensi` (karena siswa sakit/minta izin pulang). Di siang hari, Guru Mapel jam KBM membuka GuruJurnal dan mengisi absensi mapel dengan status Alfa ('A').
-- **Expected:** Status resmi `Sakit` / `Izin` di tabel database `public.absensi` TIDAK ditimpa menjadi `Bolos`.
-- **Actual:** Di `GuruJurnal.tsx` (baris 902-905), kondisi `isMorningHadir` dihitung dengan:
-  `(classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) || Boolean(piketAttendance[s.nisn] || ...)`.
-  Karena siswa sempat tap gerbang datang, `Boolean(piketAttendance[...])` bernilai true. `isMorningHadir` menjadi true meski `classRec.status === 'Sakit'`, sehingga sistem menimpa catatan resmi `Sakit` / `Izin` menjadi `status: 'Bolos'` secara langsung di database Supabase melalui query upsert!
-- **Root Cause:** `GuruJurnal.tsx` tidak memproteksi status izin resmi (`isExcused: Sakit/Izin`) dari `existingClassAbs` sebelum memicu sinkronisasi Bolos ke database.
+### Issue 1: Direct URL Bypass of Administrative Views in `AppScreen.tsx`
+- **Input:** A non-admin user (e.g. regular teacher or Kepala Sekolah) directly visits the URL `?view=view-admin-config`, `?view=view-admin-data`, or `?view=view-admin-backup`.
+- **Expected:** Access is blocked with an "Akses Terblokir" screen, preventing unauthorized viewing or manipulation of school configuration or database records.
+- **Actual:** While `handleNavigation` (clicking drawer items) restricted navigation, the JSX conditional rendering block in `AppScreen.tsx` rendered `<AdminConfigView />`, `<AdminDataView />`, and `<AdminBackupView />` directly without validating `isAdmin || isSuperadmin`.
+- **Root Cause:** Missing JSX role guards around administrative view elements in `AppScreen.tsx`.
 
-### Issue 2: Blindness to Keyword-Formatted and Full-Word Attendance in `detail_absen`
-- **Input:** Guru KBM jam terakhir mencatat ketidakhadiran siswa dalam format string keyword umum (seperti `detail_absen = 'Alpa: Ahmad Fauzi'` atau `detail_absen = 'Ahmad Fauzi (Alfa)'`), atau jurnal memiliki `absensi_siswa` JSON parsial `{ '999': 'H' }` untuk siswa lain sedangkan Ahmad Fauzi dicatat di `detail_absen`. Siswa Ahmad Fauzi tercatat hadir di gerbang pagi.
-- **Expected:** Siswa Ahmad Fauzi teridentifikasi sebagai Alfa pada KBM terakhir dan otomatis ditetapkan sebagai **Bolos** (B).
-- **Actual:** `resolveDailyStudentAttendance` mengembalikan status `Hadir` (sumber: 'Presensi Gerbang') tanpa mendeteksi status Alpa siswa.
-- **Root Cause:**
-  1. Regex `match` pada `detail_absen` hanya mencocokkan singkatan satu karakter `\(([HSIAhsia])\)`, sehingga mengabaikan nama status lengkap seperti `(Alfa)`, `(Alpa)`, `(Sakit)`, `(Izin)`.
-  2. Format keyword string seperti `Alpa: Nama`, `Sakit: Nama`, `Izin: Nama`, `Bolos: Nama` sama sekali tidak didukung di `resolveDailyStudentAttendance`.
-  3. Struktur percabangan `if (absensiJson) ... else if (detail_absen)` menyebabkan pemeriksaan `detail_absen` diabaikan jika JSON memuat data siswa lain.
-  4. Status `'B'` atau `'BOLOS'` di JSON KBM belum dipetakan ke `'Bolos'`.
+### Issue 2: Cross-Tenant Data Leakage in `AnalitikView.tsx`
+- **Input:** Administrator or Kepala Sekolah of School A accesses the Analytics dashboard (`view-analitik`).
+- **Expected:** Attendance statistics, journal totals, picket metrics, and the top 10 performance leaderboard reflect exclusively School A's data (`sekolah_id = user.sekolah_id`).
+- **Actual:** Database queries on `presensi_guru`, `jurnal_pembelajaran`, and `laporan_piket` omitted the `sekolah_id` filter, aggregating data and scores across all schools in a multi-tenant database.
+- **Root Cause:** Missing `.eq('sekolah_id', user.sekolah_id)` scoping in `AnalitikView.tsx`.
 
-### Issue 3: Status Normalization Blind Spot in `RekapSiswaView.tsx` Gate Mapel Fallback
-- **Input:** Jurnal KBM terakhir memiliki data `absensi_siswa` berupa kata lengkap seperti `'ALFA'`, `'ALPA'`, atau `'BOLOS'`.
-- **Expected:** Tampilan status kepulangan gerbang mendeteksi status bolos siswa (`isBolosPulang = true`) dan menampilkan `device_id: 'Auto Fallback: Bolos'`.
-- **Actual:** Logika evaluasi kepulangan hanya memeriksa exact string `lastMapelStatus === 'A'`, sehingga nilai `'ALFA'`, `'ALPA'`, atau `'BOLOS'` diabaikan dan siswa dianggap hadir.
-- **Root Cause:** Nilai `lastMapelStatus` tidak dinormalisasi untuk menangani format kata lengkap (`ALFA`, `ALPA`, `BOLOS`).
+### Issue 3: Homeroom Teacher (Wali Kelas) Name Collision in Monitored Class Reports
+- **Input:** Kepala Sekolah or Administrator views/prints class attendance (`RekapSiswaView`) or class KBM journal (`RekapJurnalView`) for an assigned class (e.g. "VII-A") where they are not the homeroom teacher.
+- **Expected:** The left signature block identifies the class's designated homeroom teacher (`activeWaliKelas.nama_guru` / `waliKelasMap[kelas].nama_guru`), with the right signature block identifying the Kepala Sekolah.
+- **Actual:** In `RekapJurnalView`, if `isWaliKelas` was true (e.g. the Kepala Sekolah was assigned to class IX-B), their own name was rendered as the Wali Kelas of VII-A. In `RekapSiswaView`, `leftName` was hardcoded to `user?.nama`, duplicating the Kepala Sekolah's name on both sides of the report.
+- **Root Cause:** Components failed to resolve the class's designated Wali Kelas record when the active viewer was an inspecting principal or admin.
 
-### Issue 4: Exclusion of Bolos from Unexcused Absences in `RaporView.tsx`
-- **Input:** Siswa memiliki catatan kehadiran harian dengan `status = 'Bolos'` atau `'B'` di tabel `absensi`.
-- **Expected:** Pada Rapor Kurikulum Merdeka, jumlah hari Bolos terakumulasi ke dalam total ketidakhadiran tanpa keterangan (`alpa`).
-- **Actual:** Penghitungan absensi pada `RaporView.tsx` hanya memeriksa `st === 'A' || st === 'ALPA'`, sehingga status `Bolos` diabaikan dan siswa mendapatkan 0 alpa pada laporan rapor.
-- **Root Cause:** Status `Bolos` / `B` belum disertakan dalam akumulasi absensi `alpa` di `RaporView.tsx`.
+### Issue 4: Multi-Tenant Scoping Omissions on `<PrintHeader />` Call Sites
+- **Input:** Multi-school environment where user prints reports from `AdminRekapView`, `PiketView`, `RekapJurnalView`, or `RekapSiswaView`.
+- **Expected:** `<PrintHeader />` explicitly receives `user={user}` and `sekolahId={user?.sekolah_id}` to prevent configuration fallback ambiguities or cross-tenant leakage.
+- **Actual:** `<PrintHeader />` was rendered with zero props in `AdminRekapView.tsx`, `PiketView.tsx`, `RekapJurnalView.tsx`, and `RekapSiswaView.tsx`.
+- **Root Cause:** Props were omitted at these call sites.
 
----
+### Issue 5: Missing Multi-Tenant Scoping in `GradebookView.tsx` Print Blocks
+- **Input:** Teacher or administrator prints gradebook summaries from Tab 1 (TP Matrix) or Tab 2 (Rekap Semester).
+- **Expected:** `<PrintSignature />` scopes school settings and headmaster information to `user` and `sekolahId`.
+- **Actual:** Both `<PrintSignature />` call sites in `GradebookView.tsx` omitted `user` and `sekolahId`.
+- **Root Cause:** Missing prop delegation in `GradebookView.tsx`.
+
+### Issue 6: Missing `isKepalaSekolah` Propagation for Personal Rekap Jurnal View
+- **Input:** A teacher appointed as Kepala Sekolah in the database navigates to "Rekap Jurnal" (`view-guru-rekap-jurnal`) in `AppScreen.tsx`.
+- **Expected:** `isKepalaSekolah` prop is passed down to `<RekapJurnalView />`.
+- **Actual:** `<RekapJurnalView user={user} />` was rendered without `isKepalaSekolah={isKepalaSekolah}`, relying only on a synchronous fallback that cannot detect database-appointed principals if not in the initial JWT.
+- **Root Cause:** Missing prop in `AppScreen.tsx`.
 
 ## 2. What I changed
 
-1. **`src/lib/presensiIntervensi.ts`**:
-   - `resolveDailyStudentAttendance`:
-     - Menambahkan dukungan format status lengkap dalam tanda kurung: `(Alfa)`, `(Alpa)`, `(Sakit)`, `(Izin)`, `(Bolos)`, `(Hadir)`.
-     - Menambahkan dukungan format keyword prefix: `Alpa: Nama`, `Alfa: Nama`, `Sakit: Nama`, `Izin: Nama`, `Bolos: Nama`, `Hadir: Nama`.
-     - Mengubah pengecekan `detail_absen` / `kehadiran_murid` menjadi cascading fallback (diperiksa jika siswa belum ditemukan di `absensiJson`).
-     - Menambahkan pemetaan langsung untuk status `'B'` dan `'BOLOS'` dalam JSON absensi KBM.
-2. **`src/components/GuruJurnal.tsx`**:
-   - Menambahkan pengecualian `isExcused` (`Sakit` / `Izin`) pada `handleSubmit` auto-sync Bolos agar catatan resmi Wali Kelas di database Supabase tidak pernah tertimpa menjadi Bolos.
-   - Menambahkan seleksi kolom `siswa_id` dan `nama_siswa` pada query `aQ` absensi.
-   - Memperluas pencocokan siswa di `existingClassAbs` menggunakan `s.id`, `s.nisn`, dan `s.nama_siswa`.
-   - Mengunci status siswa yang telah berstatus `Bolos` dari pagi hari pada `fetchStudents`.
-3. **`src/components/RekapSiswaView.tsx`**:
-   - Menambahkan normalisasi `normMapel` pada evaluasi kepulangan gerbang (`isMapelAlfa = normMapel === 'A' || 'ALFA' || 'ALPA' || 'BOLOS' || 'B'`).
-   - Menambahkan fallback `siswa_id` (UUID) pada pencocokan `directAbsensi` dan `absensiLogs`.
-   - Memperbarui komentar guard jendela waktu Wali Kelas (12:00 WITA pagi & 1 jam kepulangan).
-4. **`src/components/RaporView.tsx`**:
-   - Menambahkan status `BOLOS` dan `B` ke dalam akumulasi ketidakhadiran tanpa keterangan (`attRecord[row.nisn].alpa++`).
-5. **`tests/wali_kelas_and_piket_intervensi.test.ts`**:
-   - Menambahkan unit test `DOMAIN-08` (proteksi Sakit/Izin GuruJurnal di database).
-   - Menambahkan unit test `DOMAIN-09` (akumulasi Bolos pada RaporView).
-   - Menambahkan unit test `FALLBACK-10` (deteksi keyword prefix `Alpa: Nama`).
-   - Menambahkan unit test `FALLBACK-11` (deteksi kata lengkap `Nama (Alfa)`).
-   - Menambahkan unit test `FALLBACK-12` (cascading fallback ke `detail_absen`).
-   - Menambahkan unit test `FALLBACK-13` (pemetaan status BOLOS/B dalam JSON jurnal).
-   - Total test suite meningkat dari 46 menjadi 52 test (100% PASS).
-
----
+- **`src/components/AppScreen.tsx`**:
+  - Added JSX route guards for `view-admin-config`, `view-admin-data`, and `view-admin-backup` restricting rendering strictly to `isAdmin || isSuperadmin`.
+  - Added JSX route guards for `view-admin-verif` and `view-admin-rekap` restricting rendering strictly to `isAdmin || isSuperadmin || isKepalaSekolah`.
+  - Propagated `isKepalaSekolah={isKepalaSekolah}` to `view-guru-rekap-jurnal` and `view-admin-rekap`.
+- **`src/components/AnalitikView.tsx`**:
+  - Added `user?.sekolah_id` filter to `presensiQuery`, `jurnalQuery`, and `piketQuery` for strict tenant isolation.
+- **`src/components/AdminRekapView.tsx`**:
+  - Added `isKepalaSekolah?: boolean` prop.
+  - Passed `user={user}` and `sekolahId={user?.sekolah_id}` to `<PrintHeader />`.
+  - Set `leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}` and `leftNip={isKepalaSekolah ? '-' : user?.nip}` on `<PrintSignature />` to avoid self-signing as both Admin and Principal.
+- **`src/components/PiketView.tsx`**:
+  - Passed `user={user}` and `sekolahId={user?.sekolah_id}` to `<PrintHeader />`.
+- **`src/components/RekapJurnalView.tsx`**:
+  - Maintained `waliKelasMap` state to record homeroom assignments for all school classes.
+  - Updated `<PrintHeader />` to receive `user={user}` and `sekolahId={user?.sekolah_id}`.
+  - Resolved signer name and NIP dynamically in `<PrintSignature />` so monitored class journals accurately display the assigned Wali Kelas.
+- **`src/components/RekapSiswaView.tsx`**:
+  - Updated `<PrintHeader />` to receive `user={user}` and `sekolahId={user?.sekolah_id}`.
+  - Resolved `leftName` and `leftNip` in `<PrintSignature />` to use `activeWaliKelas?.nama_guru` and `activeWaliKelas?.nip` when a non-assigned user (principal or admin) inspects a class.
+- **`src/components/GradebookView.tsx`**:
+  - Added `user={user}` and `sekolahId={sekolahId || undefined}` to both `<PrintSignature />` instances.
+- **`tests/kepsek_pengawas_rbac.test.ts`**:
+  - Added Section 5 test specs (R5.1 through R5.8) verifying all adversarial route guards, tenant isolation, and signature identity resolutions.
 
 ## 3. Verification Record
 
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: **52/52 PASS (100%)**.
-  - `npx tsx tests/adversarial_challenge_r1_r2_r3.test.ts`: **42/42 PASS (100%)**.
-  - `npx tsx tests/presensi_siswa_sync_and_superadmin.test.ts`: **11/11 PASS (100%)**.
-  - `npx tsx tests/adversarial_presensi_sync_reviewer_r3.test.ts`: **12/12 PASS (100%)**.
-  - `npx tsc --noEmit`: **0 errors**.
-  - `npm run build`: **Compiled successfully (Turbopack, TypeScript 0 errors, static pages 12/12 generated)**.
+  - `npx tsx tests/kepsek_pengawas_rbac.test.ts`: 43/43 assertions passed (100%).
+  - `npx tsx tests/m22_automated_verification.test.ts`: 63/63 assertions passed (100%).
+  - `npm test`: 36+ test files executed and passed with exit code 0.
 - **Shallow Verification (manual only):**
-  - Pemeriksaan label teks dan komentar panduan jendela waktu di `RekapSiswaView` dan `AdminConfigView`.
+  - Inspected component JSX tree, props, and conditional guard structures.
 - **Unverified aspects:**
-  - Konkurensi multi-user menulis secara paralel tepat pada milidetik 12:00:00 WITA di koneksi internet riil Supabase.
-
----
+  - Physical thermal printer output formatting on non-standard receipt paper widths.
 
 ## 4. Known Issues
 
-- `None` (Seluruh 52 pengujian unit lulus 100%, seluruh adversarial stress tests lulus 100%, kompilasi Next.js dan TypeScript bersih tanpa error).
-
----
+- `Minor Robustness Risk` — Very narrow paper widths (58mm/80mm thermal receipt printers) will wrap the 3-column signature block vertically unless printed in standard A4/F4 portrait or landscape orientation.
 
 ## 5. Remaining risk & next step
 
-- **Remaining risk:** Latensi jaringan saat query paralel data siswa, jurnal, dan absensi di sekolah dengan koneksi pedesaan/rendah bandwith (telah dioptimalkan dengan query terfokus `(tanggal, kelas)`).
-- **Next step:** Tugas telah selesai sepenuhnya dan memenuhi seluruh kriteria penerimaan R1, R2, R3, dan R4 secara menyeluruh, robust, dan tahan terhadap skenario adversarial. Siap untuk proses staging dan commit.
+- All requirements (R1, R2, R3) and adversarial edge cases (route security, tenant isolation, homeroom signer collisions, read-only UI controls, Pengawas Bina toggle and identity synchronization) are fully implemented and verified with 100% test pass. The task is complete.

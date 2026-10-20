@@ -47,6 +47,7 @@ export default function RekapJurnalView({
   
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [mapelList, setMapelList] = useState<string[]>([]);
+  const [waliKelasMap, setWaliKelasMap] = useState<Record<string, { nama_guru: string; nip?: string }>>({});
   
   const [loading, setLoading] = useState(false);
   const [jurnalData, setJurnalData] = useState<any[] | null>(null);
@@ -81,6 +82,17 @@ export default function RekapJurnalView({
 
         const assignedWalis: string[] = [...waliClasses];
         if (wData && wData.length > 0) {
+          const map: Record<string, { nama_guru: string; nip?: string }> = {};
+          wData.forEach((w: any) => {
+            if (w.kelas) {
+              map[w.kelas] = {
+                nama_guru: w.nama_guru || '',
+                nip: w.nip || '-'
+              };
+            }
+          });
+          setWaliKelasMap(map);
+
           const userWalis = wData.filter(w => 
             (user?.id && w.guru_id === user.id) ||
             (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
@@ -345,7 +357,7 @@ export default function RekapJurnalView({
   return (
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
         <div className="glass-card p-4">
-            <PrintHeader />
+            <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             
             {/* View Header with Tab Toggle */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5 no-print">
@@ -835,14 +847,32 @@ export default function RekapJurnalView({
                 )}
             </div>
 
-            <PrintSignature
-              leftTitle="Mengetahui,"
-              leftSubtitle={tabMode === 'kelas' ? 'Wali Kelas' : 'Guru Mata Pelajaran'}
-              leftName={tabMode === 'kelas' ? ((isWaliKelas || waliClasses.length > 0) ? (user?.nama || '( ........................................ )') : '( ........................................ )') : user?.nama}
-              leftNip={tabMode === 'kelas' ? ((isWaliKelas || waliClasses.length > 0) ? (user?.nip || '-') : '-') : user?.nip}
-              user={user}
-              sekolahId={user?.sekolah_id}
-            />
+            {(() => {
+              let signerName = user?.nama || '( ........................................ )';
+              let signerNip = user?.nip || '-';
+              if (tabMode === 'kelas') {
+                if (kelas && waliClasses.includes(kelas)) {
+                  signerName = user?.nama || '( ........................................ )';
+                  signerNip = user?.nip || '-';
+                } else if (kelas && waliKelasMap[kelas]?.nama_guru) {
+                  signerName = waliKelasMap[kelas].nama_guru;
+                  signerNip = waliKelasMap[kelas].nip || '-';
+                } else if (!isWaliKelas && waliClasses.length === 0) {
+                  signerName = '( ........................................ )';
+                  signerNip = '-';
+                }
+              }
+              return (
+                <PrintSignature
+                  leftTitle="Mengetahui,"
+                  leftSubtitle={tabMode === 'kelas' ? 'Wali Kelas' : 'Guru Mata Pelajaran'}
+                  leftName={signerName}
+                  leftNip={signerNip}
+                  user={user}
+                  sekolahId={user?.sekolah_id}
+                />
+              );
+            })()}
 
             {jurnalData && jurnalData.length > 0 && (
               <div id="btn-group-jurnal-guru" className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 fade-in no-print">

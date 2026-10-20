@@ -29,29 +29,41 @@ export default function AnalitikView({ user }: { user: any }) {
       const endDateStr = lastDayStr;
 
       // 1. Fetch Presensi
-      const { data: presensi } = await supabase
+      let presensiQuery = supabase
         .from('presensi_guru')
         .select('nama_guru, jenis_presensi')
         .gte('timestamp', start)
         .lte('timestamp', end)
         .eq('tipe_absen', 'Datang')
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
+      if (user?.sekolah_id) {
+        presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: presensi } = await presensiQuery;
 
       // 2. Fetch Jurnal
-      const { data: jurnal } = await supabase
+      let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
         .select('nama_guru')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
+      if (user?.sekolah_id) {
+        jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: jurnal } = await jurnalQuery;
 
       // 3. Fetch Piket
-      const { data: piket } = await supabase
+      let piketQuery = supabase
         .from('laporan_piket')
         .select('guru_pelapor, tanggal, status_verifikasi')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
+      if (user?.sekolah_id) {
+        piketQuery = piketQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: piket } = await piketQuery;
 
       // Aggregate stats
       let h = 0, i = 0, d = 0;

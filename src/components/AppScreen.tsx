@@ -784,7 +784,7 @@ export default function AppScreen({
               {currentView === 'view-gradebook' && <GradebookView user={user} />}
               {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
               {currentView === 'view-history' && <HistoryView user={user} />}
-              {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} />}
+              {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}
               {currentView === 'view-jurnal-kelas' && (
                 isAdmin || isWaliKelas ? (
                   <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={isKepalaSekolah} />
@@ -855,23 +855,126 @@ export default function AppScreen({
                   </div>
                 )
               )}
-              {currentView === 'view-admin-verif' && <AdminVerifView user={user} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} />}
-              {currentView === 'view-admin-rekap' && <AdminRekapView user={user} />}
-              {currentView === 'view-admin-data' && <AdminDataView user={user} />}
-              {currentView === 'view-admin-backup' && <AdminBackupView user={user} />}
+              {currentView === 'view-admin-verif' && (
+                isAdmin || isSuperadmin || isKepalaSekolah ? (
+                  <AdminVerifView user={user} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Verifikasi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
+              {currentView === 'view-admin-rekap' && (
+                isAdmin || isSuperadmin || isKepalaSekolah ? (
+                  <AdminRekapView user={user} isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Rekap Presensi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
+              {currentView === 'view-admin-data' && (
+                isAdmin || isSuperadmin ? (
+                  <AdminDataView user={user} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Data Master</strong> secara eksklusif hanya dapat diakses oleh Administrator. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
+              {currentView === 'view-admin-backup' && (
+                isAdmin || isSuperadmin ? (
+                  <AdminBackupView user={user} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Backup Data</strong> secara eksklusif hanya dapat diakses oleh Administrator. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
               {currentView === 'view-admin-config' && (
-                <AdminConfigView
-                  user={user}
-                  onUserUpdated={(updatedUser: any) => {
-                    try {
-                      localStorage.setItem('sipjam_user', JSON.stringify(updatedUser));
-                    } catch (e) {
-                      console.warn('Failed to update localStorage:', e);
-                    }
-                    setCurrentUser(updatedUser);
-                    if (onUserUpdate) onUserUpdate(updatedUser);
-                  }}
-                />
+                isAdmin || isSuperadmin ? (
+                  <AdminConfigView
+                    user={user}
+                    onUserUpdated={(updatedUser: any) => {
+                      try {
+                        localStorage.setItem('sipjam_user', JSON.stringify(updatedUser));
+                      } catch (e) {
+                        console.warn('Failed to update localStorage:', e);
+                      }
+                      setCurrentUser(updatedUser);
+                      if (onUserUpdate) onUserUpdate(updatedUser);
+                    }}
+                  />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Pengaturan Sistem</strong> secara eksklusif hanya dapat diakses oleh Administrator. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
               )}
               {currentView === 'view-sistem-blok' && (
                 isAdmin || isSuperadmin ? (

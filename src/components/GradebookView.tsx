@@ -3820,6 +3820,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
             leftSubtitle="Guru Mata Pelajaran"
             leftName={selectedGuru || user?.nama}
             leftNip={user?.nip}
+            user={user}
+            sekolahId={sekolahId || undefined}
           />
         </div>
       )}
@@ -3964,6 +3966,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
             leftSubtitle="Guru Mata Pelajaran"
             leftName={selectedGuru || user?.nama}
             leftNip={user?.nip}
+            user={user}
+            sekolahId={sekolahId || undefined}
           />
         </div>
       )}

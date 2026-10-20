@@ -3886,7 +3886,7 @@ export default function PiketView({ user }: { user: any }) {
             {/* TAB 3: REKAP PIKET */}
             {activeTab === 'rekap' && (
               <div id="piket-content-rekap" className="space-y-4 fade-in w-full max-w-full overflow-x-auto">
-                  <PrintHeader />
+                  <PrintHeader user={user} sekolahId={user?.sekolah_id} />
 
                   {/* Filter Area (Hidden in Print) */}
                   <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl space-y-3 no-print">

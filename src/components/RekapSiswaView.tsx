@@ -900,7 +900,7 @@ export default function RekapSiswaView({
                 </span>
               </div>
             )}
-            <PrintHeader />
+            <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
@@ -1507,8 +1507,8 @@ export default function RekapSiswaView({
                 <PrintSignature
                   leftTitle="Mengetahui,"
                   leftSubtitle={user?.role === 'guru' ? 'Wali Kelas' : 'Kepala Sekolah / Admin'}
-                  leftName={user?.nama}
-                  leftNip={user?.nip}
+                  leftName={isOwnHomeroomClass ? user?.nama : (activeWaliKelas?.nama_guru || user?.nama)}
+                  leftNip={isOwnHomeroomClass ? user?.nip : (activeWaliKelas?.nip || user?.nip)}
                   user={user}
                   sekolahId={user?.sekolah_id}
                 />
@@ -1746,8 +1746,8 @@ export default function RekapSiswaView({
                   <PrintSignature
                     leftTitle="Mengetahui,"
                     leftSubtitle={user?.role === 'guru' ? (mapel ? 'Guru Mata Pelajaran' : 'Wali Kelas') : 'Wali Kelas'}
-                    leftName={user?.nama}
-                    leftNip={user?.nip}
+                    leftName={mapel ? user?.nama : (isOwnHomeroomClass ? user?.nama : (activeWaliKelas?.nama_guru || user?.nama))}
+                    leftNip={mapel ? user?.nip : (isOwnHomeroomClass ? user?.nip : (activeWaliKelas?.nip || user?.nip))}
                     user={user}
                     sekolahId={user?.sekolah_id}
                   />

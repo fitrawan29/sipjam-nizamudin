@@ -67,6 +67,8 @@ async function runTests() {
   const rekapJurnalCode = fs.readFileSync(path.join(projectRoot, 'src/components/RekapJurnalView.tsx'), 'utf-8');
   const adminRekapCode = fs.readFileSync(path.join(projectRoot, 'src/components/AdminRekapView.tsx'), 'utf-8');
   const piketCode = fs.readFileSync(path.join(projectRoot, 'src/components/PiketView.tsx'), 'utf-8');
+  const analitikCode = fs.readFileSync(path.join(projectRoot, 'src/components/AnalitikView.tsx'), 'utf-8');
+  const gradebookCode = fs.readFileSync(path.join(projectRoot, 'src/components/GradebookView.tsx'), 'utf-8');
 
   // ==========================================================================
   // SECTION 1: R1 - ROLE-BASED MENU VISIBILITY
@@ -402,6 +404,83 @@ async function runTests() {
     configCode.includes("supabase.from('data_guru').update({ is_kepala_sekolah: false }).eq('sekolah_id', targetSekolahId)"),
     'R4.6',
     'AdminConfigView handles clearing/unassigning Kepala Sekolah with complete database synchronization'
+  );
+
+  // ==========================================================================
+  // SECTION 5: REVIEWER 2 ADVERSARIAL VERIFICATION & DATA ISOLATION
+  // ==========================================================================
+  console.log(`\n${BOLD}━━━ SECTION 5: Reviewer 2 Adversarial Edge Cases & Route Security ━━━${RESET}`);
+
+  // Test 5.1: AppScreen JSX route guards protect direct URL query parameter entry for admin views
+  assert(
+    /currentView === 'view-admin-config'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin)/.test(appScreenCode) &&
+    /currentView === 'view-admin-data'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin)/.test(appScreenCode) &&
+    /currentView === 'view-admin-backup'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin)/.test(appScreenCode) &&
+    /currentView === 'view-admin-verif'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin \|\| isKepalaSekolah)/.test(appScreenCode) &&
+    /currentView === 'view-admin-rekap'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin \|\| isKepalaSekolah)/.test(appScreenCode),
+    'R5.1',
+    'AppScreen provides strict JSX role guards against direct URL manipulation for all administrative views'
+  );
+
+  // Test 5.2: AppScreen passes isKepalaSekolah to view-guru-rekap-jurnal
+  assert(
+    appScreenCode.includes("{currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}"),
+    'R5.2',
+    'AppScreen propagates isKepalaSekolah state to personal rekap jurnal view'
+  );
+
+  // Test 5.3: AdminVerifView Tolak button is guarded when isReadOnly is true
+  assert(
+    verifCode.includes("onClick={() => !isReadOnly && verifyItem(item.id, 'Ditolak')}") &&
+    verifCode.includes("pointer-events-none"),
+    'R5.3',
+    'AdminVerifView explicitly disables rejection actions and interactions when isReadOnly is true'
+  );
+
+  // Test 5.4: AnalitikView scopes presensi, jurnal, and piket queries by user.sekolah_id
+  assert(
+    analitikCode.includes('if (user?.sekolah_id) {') &&
+    analitikCode.includes("presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);") &&
+    analitikCode.includes("jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);") &&
+    analitikCode.includes("piketQuery = piketQuery.eq('sekolah_id', user.sekolah_id);"),
+    'R5.4',
+    'AnalitikView strictly scopes presensi, jurnal, and piket queries to active school tenant'
+  );
+
+  // Test 5.5: PrintHeader across AdminRekapView, PiketView, RekapJurnalView, and RekapSiswaView passes user and sekolahId
+  assert(
+    adminRekapCode.includes('<PrintHeader user={user} sekolahId={user?.sekolah_id} />') &&
+    piketCode.includes('<PrintHeader user={user} sekolahId={user?.sekolah_id} />') &&
+    rekapJurnalCode.includes('<PrintHeader user={user} sekolahId={user?.sekolah_id} />') &&
+    rekapSiswaCode.includes('<PrintHeader user={user} sekolahId={user?.sekolah_id} />'),
+    'R5.5',
+    'PrintHeader across AdminRekapView, PiketView, RekapJurnalView, and RekapSiswaView receives user and sekolahId'
+  );
+
+  // Test 5.6: GradebookView PrintSignature instances receive user and sekolahId
+  assert(
+    gradebookCode.includes('<PrintSignature') &&
+    gradebookCode.includes('sekolahId={sekolahId || undefined}') &&
+    gradebookCode.includes('user={user}'),
+    'R5.6',
+    'GradebookView PrintSignature blocks receive user and sekolahId for multi-tenant isolation'
+  );
+
+  // Test 5.7: RekapJurnalView dynamically resolves designated homeroom teacher (Wali Kelas) when monitored by Admin or Kepala Sekolah
+  assert(
+    rekapJurnalCode.includes('waliKelasMap') &&
+    rekapJurnalCode.includes('signerName = waliKelasMap[kelas].nama_guru') &&
+    rekapJurnalCode.includes('signerNip = waliKelasMap[kelas].nip'),
+    'R5.7',
+    'RekapJurnalView resolves designated class Wali Kelas when monitored by Kepala Sekolah or Admin'
+  );
+
+  // Test 5.8: RekapSiswaView resolves designated homeroom teacher (Wali Kelas) when monitored by non-assigned teacher
+  assert(
+    rekapSiswaCode.includes('leftName={isOwnHomeroomClass ? user?.nama : (activeWaliKelas?.nama_guru || user?.nama)}') &&
+    rekapSiswaCode.includes('leftName={mapel ? user?.nama : (isOwnHomeroomClass ? user?.nama : (activeWaliKelas?.nama_guru || user?.nama))}'),
+    'R5.8',
+    'RekapSiswaView resolves designated class Wali Kelas when monitored by Kepala Sekolah or Admin'
   );
 
   // ==========================================================================
