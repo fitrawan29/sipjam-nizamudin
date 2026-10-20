@@ -1,41 +1,5 @@
-# Victory Audit Handoff Report
+# Handoff Report — Victory Auditor
 
-## 1. Observation
-- Code inspection of `src/components/RaporView.tsx`:
-  - `fetchSchoolConfig` dynamically fetches `tahun_ajaran` and `semester` from the `pengaturan` table for the school context (`sekolah_id`), supporting fallback to system defaults.
-  - Initial mount initializes `selectedTahunAjaran` and `selectedSemester` with the active school configuration using `hasInitializedConfig` guard ref.
-  - Event listeners on `window` for `sipjam:config_updated` and `storage` (for `sipjam:config_sync`) receive realtime updates from `AdminConfigView` or concurrent browser tabs, automatically updating active school configuration and syncing users following the active year.
-  - Dynamic academic year options are constructed in `fetchTahunAjaranOptions` combining active year, surrounding years (parsed via regex `activeTa.match(/(\d{4})\s*[-/]\s*(\d{4})/)`), and historical database records across `capaian_pembelajaran`, `tujuan_pembelajaran`, `wali_kelas`, and `jadwal_pelajaran`.
-  - Dropdown options prominently display visual indicator ` (Aktif)` next to the active school year and semester.
-  - Archive selection retention guards (`selectedTahunAjaranRef`, `selectedSemesterRef`) prevent focus, resume, or autosave events from wiping user archive exploration.
-  - All data queries in `fetchClassData` explicitly bind `selectedTahunAjaran` and `selectedSemester` in the dependency array and database query clauses.
-  - Printed report card headers explicitly render `KURIKULUM DEEP LEARNING — SEMESTER {selectedSemester.toUpperCase()} TAHUN AJARAN {selectedTahunAjaran}`, identity fields include `Tahun Ajaran: {selectedTahunAjaran}` and `Semester: {selectedSemester}`, and `document.title` is formatted as `E-Rapor_${studentName}_Kelas_${selectedKelas}_Semester_${selectedSemester}_TA_${cleanTa}` with lifecycle restoration.
-- Code inspection of `src/components/AdminConfigView.tsx`:
-  - `syncPayload` includes `tahun_ajaran` and `semester`, properly propagated to `sipjam:config_updated` custom event and `sipjam:config_sync` storage event.
-- Independent Execution Results:
-  - `npm test`: 33 of 33 test suites passed with 0 failures (exit code 0).
-  - `npx tsc --noEmit`: 0 TypeScript compilation errors (exit code 0).
-  - `npm run build`: Production build succeeded in 3.0s, all routes compiled cleanly (exit code 0).
-- Git History and Integrity:
-  - 4 incremental commits (`4da03c3`, `e1f176d`, `94dacc9`, `d9e42e7`) demonstrate authentic, iterative peer-review and code hardening.
-  - No existing tests were modified or weakened. No hardcoded test results, facade implementations, or fabricated outputs were detected.
-
-## 2. Logic Chain
-1. Requirement R1 demands automatic synchronization of `tahun_ajaran` and `semester` from `pengaturan` and realtime updates on admin config changes.
-   - Observation shows `fetchSchoolConfig` and the `sipjam:config_updated` / `storage` event listeners directly satisfy this requirement.
-2. Requirement R2 demands dynamic academic year dropdown options with archive support and clear visual indicators.
-   - Observation shows `fetchTahunAjaranOptions` queries four database tables, generates surrounding offsets, and marks the active school year with ` (Aktif)`, while allowing users to select and retain archive academic years.
-3. Requirement R3 demands query consistency across reactive state and accurate print documents.
-   - Observation shows `fetchClassData` reactively re-executes upon changes to `selectedTahunAjaran` or `selectedSemester`, and the printed report card document cleanly displays accurate metadata in the header, identity table, and window title.
-4. Acceptance criteria stipulate 100% pass on all unit and adversarial test suites and 0 build errors.
-   - Independent test execution confirmed 33/33 test suites passing and `npm run build` exiting with code 0.
-5. Therefore, the implementation is authentic, comprehensive, and non-regressive.
-
-## 3. Caveats
-- Browser multi-tab storage events rely on localStorage changes from the same origin; multi-window setups across different domains/origins are out of scope (SIPJAM is a single-origin Next.js application).
-- No other caveats or unverified assumptions remain.
-
-## 4. Conclusion
 === VICTORY AUDIT REPORT ===
 
 VERDICT: VICTORY CONFIRMED
@@ -46,17 +10,73 @@ PHASE A — TIMELINE:
 
 PHASE B — INTEGRITY CHECK:
   Result: PASS
-  Details: Clean implementation; no hardcoded test values, facades, or test tampering. Full Ponytail compliance.
+  Details: Verified zero hardcoded outputs, zero facade/dummy implementations, and zero fabricated verification artifacts in all modified modules (`src/lib/presensiIntervensi.ts`, `src/components/GuruJurnal.tsx`, `src/components/RekapSiswaView.tsx`, `src/components/PiketView.tsx`, `src/components/AdminConfigView.tsx`, `src/components/HomeViewGuru.tsx`, and `src/components/RaporView.tsx`). The implementation executes genuine logic for multi-window calculations, regex text parsing, timestamp-based tie-breaking, Sakit/Izin preservation, and dynamic fallback.
 
 PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npm test && npx tsc --noEmit && npm run build
-  Your results: 33/33 test suites passed, 0 compiler errors, production build succeeded (exit code 0).
-  Claimed results: 33/33 test suites passed, 0 errors.
-  Match: YES
+  Test command: npx tsx tests/wali_kelas_and_piket_intervensi.test.ts && npm test && npx tsc --noEmit && npm run build
+  Your results:
+    - `tests/wali_kelas_and_piket_intervensi.test.ts`: 56/56 PASS (100%)
+    - `tests/adversarial_challenge_r1_r2_r3.test.ts`: 42/42 PASS (100%)
+    - `npm test`: 35/35 test suites passed (100%)
+    - `npx tsc --noEmit`: 0 TypeScript errors
+    - `npm run build`: Compiled successfully in 2.8s (12/12 static pages generated)
+  Claimed results: 56/56 unit tests passed, 42/42 adversarial tests passed, tsc 0 errors, build successful
+  Match: YES — Identical 100% pass rate with zero discrepancies.
+
+===========================
+
+## 1. Observation
+- **Git Commit Provenance:** Reconstructed commit history across 4 iterative cycles:
+  1. `4e4593e` (14:53:04 +0800): Implementer baseline feature implementation.
+  2. `7937b11` (15:07:17 +0800): Reviewer 1 hardening (Sakit/Izin bolos preservation, early dismissal window locking).
+  3. `5394126` (15:28:11 +0800): Reviewer 2 hardening (protect Sakit/Izin DB overwrite in GuruJurnal, keyword/full-word fallback, RaporView Bolos aggregation).
+  4. `a22c80f` (15:43:14 +0800): Reviewer 3 hardening (prevent UI false-positive bolos indicators, support dash/colon postfix formats, tie-breaking journals).
+  Commits span ~50 minutes of authentic, iterative progress addressing adversarial review challenges.
+- **R1 Verification (Pagi Window & KBM Independence):**
+  - In `src/lib/presensiIntervensi.ts` (lines 41-63, 122-189, 218-261): Guru Piket cutoff defaults to `08:00` WITA (`isIntervensiAllowed`), while Wali Kelas cutoff is extended to `12:00` WITA (`isWaliKelasIntervensiAllowed`, `fetchJadwalIntervensiWali`).
+  - In `src/components/GuruJurnal.tsx` (lines 615-645, 890-930): Guru Mapel records subject-specific attendance (`Presensi Siswa Mapel:`) independently without being locked by the morning window or Wali Kelas attendance.
+- **R2 Verification (Pulang Window 1 Jam & Night Lock):**
+  - In `src/lib/presensiIntervensi.ts` (lines 69-114, 139-163): Both Guru Piket and Wali Kelas departure windows are strictly locked to 60 minutes (`addMinutesToTime(pulangStart, 60)`). When `current > pulangEnd`, phase returns `malam_tutup` with `allowed: false`. The legacy 22:00 WITA evening window is eliminated.
+- **R3 Verification (Dynamic Last KBM Fallback & Bolos Rule):**
+  - In `src/lib/presensiIntervensi.ts` (lines 288-305, 321-549): `findLastKbmJournal` selects the journal with the maximum `jam_ke` (with timestamp tie-breaking), and `resolveDailyStudentAttendance` falls back to this journal if no class attendance was recorded by the Wali Kelas.
+  - If a student had morning presence (`isMorningHadir: true` from gate or morning class) but is marked Alfa in the last KBM session, status resolves to `Bolos` (B).
+  - Canonical `Sakit` and `Izin` statuses from Wali Kelas are strictly preserved (lines 483-490) and never overwritten as `Bolos`.
+  - In `src/components/RekapSiswaView.tsx` (lines 592-648): Domain 1 queries `absensi`, `jurnal_pembelajaran`, and `presensi_siswa` (gate) across all dates in the range, invoking `resolveDailyStudentAttendance` for every student.
+- **R4 Verification (Test Suite & Quality):**
+  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: 56 assertions across all time window boundaries, multi-window configs, fallback algorithms, regex variations, and UI components; 56/56 PASS.
+  - `npm test`: 35 test suites executing over 250 assertions across all modules; 100% PASS.
+  - `npx tsc --noEmit`: Exited code 0 with 0 errors.
+  - `npm run build`: Exited code 0 with 0 errors in 2.8s.
+
+## 2. Logic Chain
+1. *Observation 1 (Commit History)* reveals a step-by-step engineering progression across 4 distinct commits, reflecting genuine adversarial test feedback rather than pre-fabricated or single-drop code.
+2. *Observation 2 (Integrity Analysis)* confirms that all logic in `presensiIntervensi.ts`, `GuruJurnal.tsx`, and `RekapSiswaView.tsx` evaluates input parameters dynamically with zero hardcoded student names, UUIDs, or fabricated return values.
+3. *Observation 3 (Independent Execution)* demonstrated that every unit test, adversarial suite, TypeScript typecheck, and Next.js production build succeeded with 0 errors upon clean, independent execution.
+4. *Conclusion:* All requirements (R1, R2, R3, R4) and acceptance criteria from `ORIGINAL_REQUEST.md` are genuinely satisfied.
+
+## 3. Caveats
+No caveats. All four requirements were tested empirically and verified with independent execution.
+
+## 4. Conclusion
+The implementation fully complies with all specifications:
+- Guru Piket morning attendance window remains 08:00 WITA; Wali Kelas morning window is extended to 12:00 WITA.
+- Guru Mapel KBM attendance functions independently without conflict.
+- Departure window for Piket and Wali Kelas is unified to 60 minutes post-`jam_pulang_mulai`, and the 22:00 WITA evening window is eliminated.
+- Dynamic fallback from the last KBM teaching journal is implemented with full Bolos preservation and Sakit/Izin protection.
+- All test suites pass 100% without regression.
+VERDICT: **VICTORY CONFIRMED**.
 
 ## 5. Verification Method
-To independently reproduce this verification:
-1. Run `npm test` from repository root: confirms 33/33 test suites pass.
-2. Run `npx tsc --noEmit`: confirms 0 type errors.
-3. Run `npm run build`: confirms successful production build.
-4. Inspect `git diff 1cd75bcc..HEAD -- src/components/RaporView.tsx`: confirms authentic implementation of dynamic sync, options query, archive retention, and print formatting.
+To independently reproduce the audit results:
+```bash
+npx tsx tests/wali_kelas_and_piket_intervensi.test.ts
+npx tsx tests/adversarial_challenge_r1_r2_r3.test.ts
+npm test
+npx tsc --noEmit
+npm run build
+```
+Invalidation conditions:
+- Any test in `tests/wali_kelas_and_piket_intervensi.test.ts` fails.
+- `isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', '12:05').allowed` returns `true`.
+- A student marked `Sakit` by Wali Kelas is resolved as `Bolos` upon Alfa in the last KBM session.
+- TypeScript compiler or Next.js build emits errors.
