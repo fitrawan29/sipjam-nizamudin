@@ -333,7 +333,7 @@ export function resolveDailyStudentAttendance(
   };
 
   // 1. Extract status from last KBM journal if available
-  let lastKbmStatus: 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | '' = '';
+  let lastKbmStatus: 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' = '';
   if (lastKbmJournal) {
     let absensiJson: Record<string, any> | null = null;
     if (lastKbmJournal.absensi_siswa) {
@@ -368,28 +368,64 @@ export function resolveDailyStudentAttendance(
       if (val !== undefined) {
         const raw = String(val).trim().toUpperCase();
         if (raw === 'A' || raw === 'ALFA' || raw === 'ALPA') lastKbmStatus = 'Alpa';
+        else if (raw === 'B' || raw === 'BOLOS') lastKbmStatus = 'Bolos';
         else if (raw === 'S' || raw === 'SAKIT') lastKbmStatus = 'Sakit';
         else if (raw === 'I' || raw === 'IZIN') lastKbmStatus = 'Izin';
         else if (raw === 'H' || raw === 'HADIR') lastKbmStatus = 'Hadir';
-      } else {
-        const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
-        const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
-        if (!hasExplicitHadir || isSemuaHadir) {
-          lastKbmStatus = 'Hadir';
+      }
+    }
+
+    // If not found in absensiJson, check detail_absen / kehadiran_murid
+    if (!lastKbmStatus && (lastKbmJournal.detail_absen || lastKbmJournal.kehadiran_murid)) {
+      const detail = `${lastKbmJournal.detail_absen || ''} ${lastKbmJournal.kehadiran_murid || ''}`;
+      if (student.nama_siswa) {
+        const escaped = student.nama_siswa.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match format: "Nama (A)", "Nama (Alfa)", "Nama (Alpa)", "Nama (Sakit)", etc.
+        const match = detail.match(new RegExp(`(?:\\b|^)${escaped}(?:\\b|$)\\s*\\(([a-zA-Z]+)\\)`, 'i'));
+        if (match) {
+          const rawCode = match[1].toUpperCase();
+          if (rawCode === 'A' || rawCode === 'ALFA' || rawCode === 'ALPA') lastKbmStatus = 'Alpa';
+          else if (rawCode === 'B' || rawCode === 'BOLOS') lastKbmStatus = 'Bolos';
+          else if (rawCode === 'S' || rawCode === 'SAKIT') lastKbmStatus = 'Sakit';
+          else if (rawCode === 'I' || rawCode === 'IZIN') lastKbmStatus = 'Izin';
+          else if (rawCode === 'H' || rawCode === 'HADIR') lastKbmStatus = 'Hadir';
+        }
+
+        // Match keyword prefix: "Alpa: Nama", "Alfa: Nama", "Sakit: Nama", "Izin: Nama", "Bolos: Nama"
+        if (!lastKbmStatus) {
+          const detailLower = detail.toLowerCase();
+          const namaLower = student.nama_siswa.trim().toLowerCase();
+          if (detailLower.includes(namaLower)) {
+            const idxNama = detailLower.indexOf(namaLower);
+            const idxSakit = detailLower.lastIndexOf('sakit', idxNama);
+            const idxIzin = detailLower.lastIndexOf('izin', idxNama);
+            const idxAlpa = Math.max(detailLower.lastIndexOf('alpa', idxNama), detailLower.lastIndexOf('alfa', idxNama));
+            const idxBolos = detailLower.lastIndexOf('bolos', idxNama);
+            const idxHadir = detailLower.lastIndexOf('hadir', idxNama);
+
+            const maxIdx = Math.max(idxSakit, idxIzin, idxAlpa, idxBolos, idxHadir);
+            if (maxIdx !== -1) {
+              if (maxIdx === idxBolos) lastKbmStatus = 'Bolos';
+              else if (maxIdx === idxAlpa) lastKbmStatus = 'Alpa';
+              else if (maxIdx === idxSakit) lastKbmStatus = 'Sakit';
+              else if (maxIdx === idxIzin) lastKbmStatus = 'Izin';
+              else if (maxIdx === idxHadir) lastKbmStatus = 'Hadir';
+            }
+          }
         }
       }
-    } else if (isSemuaHadir) {
-      lastKbmStatus = 'Hadir';
-    } else if (lastKbmJournal.detail_absen || lastKbmJournal.kehadiran_murid) {
-      const detail = `${lastKbmJournal.detail_absen || ''} ${lastKbmJournal.kehadiran_murid || ''}`;
-      const escaped = student.nama_siswa.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const match = detail.match(new RegExp(`(?:\\b|^)${escaped}(?:\\b|$)\\s*\\(([HSIAhsia])\\)`, 'i'));
-      if (match) {
-        const code = match[1].toUpperCase();
-        if (code === 'A') lastKbmStatus = 'Alpa';
-        else if (code === 'S') lastKbmStatus = 'Sakit';
-        else if (code === 'I') lastKbmStatus = 'Izin';
-        else if (code === 'H') lastKbmStatus = 'Hadir';
+    }
+
+    // Default to Hadir if "semua hadir" or if absensiJson was an absentee-only list
+    if (!lastKbmStatus) {
+      if (isSemuaHadir) {
+        lastKbmStatus = 'Hadir';
+      } else if (absensiJson && Object.keys(absensiJson).length > 0) {
+        const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
+        const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
+        if (!hasExplicitHadir) {
+          lastKbmStatus = 'Hadir';
+        }
       }
     }
   }
@@ -420,7 +456,7 @@ export function resolveDailyStudentAttendance(
   // 5. Aturan Bolos: Hadir di awal (datang pagi gerbang / kelas pagi) namun Alfa pada sesi KBM jam terakhir
   const isMorningHadir = recordedStatus === 'Hadir' || (!recordedStatus && hasMorningPresence);
 
-  if (isMorningHadir && lastKbmStatus === 'Alpa') {
+  if (isMorningHadir && (lastKbmStatus === 'Alpa' || lastKbmStatus === 'Bolos')) {
     return {
       status: 'Bolos',
       isFallback: !recordedStatus,

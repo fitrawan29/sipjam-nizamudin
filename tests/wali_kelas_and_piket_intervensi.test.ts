@@ -309,6 +309,21 @@ async function runTests() {
     fail('DOMAIN-07', 'Pemisahan kolom UI dan CSV antara mapel dan kelas harian di RekapSiswaView belum lengkap');
   }
 
+  // 7.8 GuruJurnal protects existing Sakit & Izin from being overwritten by Bolos updates
+  if (jurnalCode.includes("const isExcused = classRec && (classRec.status === 'Sakit' || classRec.status === 'Izin'")) {
+    pass('DOMAIN-08', 'GuruJurnal melindungi status Sakit & Izin resmi Wali Kelas agar tidak tertimpa menjadi Bolos saat submit mapel');
+  } else {
+    fail('DOMAIN-08', 'GuruJurnal belum memproteksi status Sakit/Izin resmi saat auto-sync Bolos');
+  }
+
+  // 7.9 RaporView includes Bolos / B in unexcused absence (alpa) accumulation
+  const raporCode = fs.readFileSync(path.resolve('src/components/RaporView.tsx'), 'utf-8');
+  if (raporCode.includes("st === 'BOLOS' || st === 'B'")) {
+    pass('DOMAIN-09', 'RaporView mengakumulasikan status Bolos (B) ke dalam total ketidakhadiran tanpa keterangan (alpa) di rapor');
+  } else {
+    fail('DOMAIN-09', 'RaporView belum memasukkan status Bolos ke dalam akumulasi alpa rapor');
+  }
+
   // SECTION 8: STATUS BOLOS, FALLBACK SYSTEM, & 30-MINUTE PIKET PULANG WINDOW
   console.log(`\n${YELLOW}${BOLD}━━━ 8. VERIFY STATUS BOLOS, FALLBACK SYSTEM, & PIKET 30-MIN PULANG ━━━${RESET}`);
 
@@ -441,6 +456,63 @@ async function runTests() {
     pass('FALLBACK-09', 'resolveDailyStudentAttendance mendukung pencocokan nama siswa case-insensitive');
   } else {
     fail('FALLBACK-09', 'Pencocokan case-insensitive nama siswa gagal');
+  }
+
+  // 8.5.10 Keyword prefix in detail_absen ("Alpa: Nama") triggers Bolos if morning presence
+  const studentKw = { id: 's-kw', nisn: '112233', nama_siswa: 'Ahmad Fauzi' };
+  const journalWithKeyword = {
+    jam_ke: 'Jam ke-5',
+    mapel: 'Matematika',
+    absensi_siswa: null,
+    detail_absen: 'Alpa: Ahmad Fauzi'
+  };
+  const resKw = resolveDailyStudentAttendance(studentKw, null, true, journalWithKeyword);
+  if (resKw.status === 'Bolos') {
+    pass('FALLBACK-10', 'resolveDailyStudentAttendance mendeteksi format keyword (Alpa: Nama) dan menetapkan Bolos saat hadir pagi');
+  } else {
+    fail('FALLBACK-10', `Format keyword gagal dideteksi (status: ${resKw.status})`);
+  }
+
+  // 8.5.11 Full word in parentheses ("Nama (Alfa)") in detail_absen triggers Bolos if morning presence
+  const journalWithFullWord = {
+    jam_ke: 'Jam ke-5',
+    mapel: 'Fisika',
+    absensi_siswa: null,
+    detail_absen: 'Ahmad Fauzi (Alfa)'
+  };
+  const resFullWord = resolveDailyStudentAttendance(studentKw, null, true, journalWithFullWord);
+  if (resFullWord.status === 'Bolos') {
+    pass('FALLBACK-11', 'resolveDailyStudentAttendance mendeteksi format kata lengkap (Nama (Alfa)) dan menetapkan Bolos saat hadir pagi');
+  } else {
+    fail('FALLBACK-11', `Format kata lengkap dalam tanda kurung gagal dideteksi (status: ${resFullWord.status})`);
+  }
+
+  // 8.5.12 Cascading fallback to detail_absen when absensi_siswa only lists other students
+  const journalMixed = {
+    jam_ke: 'Jam ke-4',
+    mapel: 'Kimia',
+    absensi_siswa: { '999': 'H' },
+    detail_absen: 'Alpa: Ahmad Fauzi'
+  };
+  const resMixed = resolveDailyStudentAttendance(studentKw, null, true, journalMixed);
+  if (resMixed.status === 'Bolos') {
+    pass('FALLBACK-12', 'resolveDailyStudentAttendance melakukan cascading lookup ke detail_absen saat siswa tidak ada di absensi_siswa JSON');
+  } else {
+    fail('FALLBACK-12', `Cascading lookup ke detail_absen gagal (status: ${resMixed.status})`);
+  }
+
+  // 8.5.13 Status Bolos / B in absensi_siswa JSON is correctly recognized
+  const studentBolosDirect = { id: 's-bolos-direct', nisn: '445566', nama_siswa: 'Candra Wijaya' };
+  const journalWithBolosStatus = {
+    jam_ke: 'Jam ke-3',
+    mapel: 'Biologi',
+    absensi_siswa: { '445566': 'BOLOS' }
+  };
+  const resBolosDirect = resolveDailyStudentAttendance(studentBolosDirect, null, false, journalWithBolosStatus);
+  if (resBolosDirect.status === 'Bolos') {
+    pass('FALLBACK-13', 'resolveDailyStudentAttendance mengenali status BOLOS/B dalam JSON jurnal KBM');
+  } else {
+    fail('FALLBACK-13', `Status BOLOS dalam JSON gagal dikenali (status: ${resBolosDirect.status})`);
   }
 
   // SUMMARY

@@ -208,7 +208,7 @@ export default function RekapSiswaView({
 
           const map: Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos' | ''; keterangan: string; logs: string[] }> = {};
           studentsData.forEach(s => {
-            const found = absensiData?.find(a => (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
+            const found = absensiData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
             const hasGate = Boolean(gateMap[s.nisn]?.datang || (s.id && gateMap[s.id]?.datang));
             const resolved = resolveDailyStudentAttendance(s, found, hasGate, lastJurnal);
 
@@ -281,7 +281,7 @@ export default function RekapSiswaView({
               (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'pulang'
             );
 
-            const classLog = absensiLogs?.find(a => a.nisn === siswa.nisn || a.nama_siswa === siswa.nama_siswa);
+            const classLog = absensiLogs?.find(a => (a.siswa_id && siswa.id && a.siswa_id === siswa.id) || (a.nisn && a.nisn === siswa.nisn) || a.nama_siswa === siswa.nama_siswa);
             const isDailyBolos = classLog?.status === 'Bolos' || classLog?.status === 'B';
 
             let lastMapelStatus: string | null = null;
@@ -302,13 +302,17 @@ export default function RekapSiswaView({
             const isExcused = classLog?.status === 'Sakit' || classLog?.status === 'Izin' || classLog?.status === 'S' || classLog?.status === 'I';
             const isMorningHadir = !isExcused && (Boolean(datang) || classLog?.status === 'Hadir' || classLog?.status === 'H');
 
+            const normMapel = lastMapelStatus ? String(lastMapelStatus).trim().toUpperCase() : null;
+            const isMapelAlfa = normMapel === 'A' || normMapel === 'ALFA' || normMapel === 'ALPA' || normMapel === 'BOLOS' || normMapel === 'B';
+            const isMapelHadir = normMapel === 'H' || normMapel === 'HADIR';
+
             // Auto-fallback to mapel presensi & validasi bolos (Rule 3)
             let isBolosPulang = isDailyBolos;
             if (!pulang) {
-              if (lastMapelStatus === 'A' && isMorningHadir) {
+              if (isMapelAlfa && isMorningHadir) {
                 isBolosPulang = true;
                 pulang = { jam: '-', status: 'bolos', device_id: 'Auto Fallback: Bolos' };
-              } else if (lastMapelStatus === 'H' || isMorningHadir) {
+              } else if (isMapelHadir || isMorningHadir) {
                 pulang = { jam: 'Sistem Mapel Auto', status: 'pulang', device_id: 'Auto Fallback: Mapel' };
               } else if (classLog && classLog.logs && classLog.logs.length > 0) {
                 const latestLog = classLog.logs[classLog.logs.length - 1];
@@ -423,7 +427,7 @@ export default function RekapSiswaView({
     }
     if (!activeWaliKelas || waliStudents.length === 0) return;
 
-    // Guard: Batas intervensi presensi siswa bagi Wali Kelas (Pagi s.d. 08:00 & Sore jam pulang s.d. 22:00 WITA)
+    // Guard: Batas intervensi presensi siswa bagi Wali Kelas (Pagi s.d. 12:00 & Pulang 1 jam pasca jam pulang WITA)
     if (isIntervensiExpired && !isAdmin) {
       const alertTitle = waliIntervensiStatus.phase === 'kbm'
         ? 'Presensi Dikelola Guru Mapel (KBM)'
@@ -575,7 +579,7 @@ export default function RekapSiswaView({
         // =========================================================================
         let absensiQuery = supabase
           .from('absensi')
-          .select('tanggal, nisn, nama_siswa, status, keterangan')
+          .select('tanggal, siswa_id, nisn, nama_siswa, status, keterangan')
           .eq('kelas', targetKelas);
         if (user?.sekolah_id) absensiQuery = absensiQuery.eq('sekolah_id', user.sekolah_id);
         if (startDate) absensiQuery = absensiQuery.gte('tanggal', startDate);
@@ -628,7 +632,7 @@ export default function RekapSiswaView({
             const target = rekapMap[s.nama_siswa];
             if (!target) return;
 
-            const absRecord = directAbsensi?.find(a => a.tanggal === d && ((a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa));
+            const absRecord = directAbsensi?.find(a => a.tanggal === d && ((a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa));
             const hasGate = Boolean((s.nisn && dateGateDatang.has(s.nisn)) || (s.id && dateGateDatang.has(s.id)));
 
             const resolved = resolveDailyStudentAttendance(s, absRecord, hasGate, lastJurnal);

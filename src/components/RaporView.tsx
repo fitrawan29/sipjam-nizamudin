@@ -516,7 +516,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           if (st === 'H' || st === 'HADIR') attRecord[row.nisn].hadir++;
           else if (st === 'I' || st === 'IZIN') attRecord[row.nisn].izin++;
           else if (st === 'S' || st === 'SAKIT') attRecord[row.nisn].sakit++;
-          else if (st === 'A' || st === 'ALPA') attRecord[row.nisn].alpa++;
+          else if (st === 'A' || st === 'ALPA' || st === 'ALFA' || st === 'BOLOS' || st === 'B') attRecord[row.nisn].alpa++;
         });
       }
       setAttendanceMap(attRecord);

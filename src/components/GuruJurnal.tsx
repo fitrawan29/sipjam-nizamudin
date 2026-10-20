@@ -617,7 +617,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean }> = {};
 
         data.forEach(s => {
-          const existing = absData?.find(a => a.nisn === s.nisn);
+          const existing = absData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
           if (existing) {
             const rawSt = String(existing.status || '').trim().toLowerCase();
             if (rawSt === 'sakit' || rawSt === 's') {
@@ -629,6 +629,9 @@ export default function GuruJurnal({ user }: { user: any }) {
             } else if (rawSt === 'alpa' || rawSt === 'a' || rawSt === 'alfa') {
               initialAbsensi[s.nisn] = 'A';
               lockedMap[s.nisn] = { status: 'A', label: 'Alfa', isLocked: true };
+            } else if (rawSt === 'bolos' || rawSt === 'b') {
+              initialAbsensi[s.nisn] = 'A';
+              lockedMap[s.nisn] = { status: 'A', label: 'Bolos', isLocked: true };
             } else {
               initialAbsensi[s.nisn] = 'H';
               lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false };
@@ -890,7 +893,7 @@ export default function GuruJurnal({ user }: { user: any }) {
         if (tipeJurnal === 'Jurnal KBM' && students.length > 0) {
           try {
             const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-            let aQ = supabase.from('absensi').select('id, nisn, status, log_perubahan, keterangan').eq('tanggal', tanggal).eq('kelas', kelas);
+            let aQ = supabase.from('absensi').select('id, siswa_id, nisn, nama_siswa, status, log_perubahan, keterangan').eq('tanggal', tanggal).eq('kelas', kelas);
             if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
             const { data: existingClassAbs } = await aQ;
 
@@ -898,9 +901,10 @@ export default function GuruJurnal({ user }: { user: any }) {
             students.forEach(s => {
               const currentStatus = absensi[s.nisn];
               if (currentStatus === 'A') {
-                const classRec = existingClassAbs?.find(a => a.nisn === s.nisn);
-                const isMorningHadir = (classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) ||
-                                       Boolean(piketAttendance[s.nisn] || (s.id && piketAttendance[s.id]));
+                const classRec = existingClassAbs?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
+                const isExcused = classRec && (classRec.status === 'Sakit' || classRec.status === 'Izin' || classRec.status === 'S' || classRec.status === 'I');
+                const isMorningHadir = !isExcused && ((classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) ||
+                                       Boolean(piketAttendance[s.nisn] || (s.id && piketAttendance[s.id])));
 
                 if (isMorningHadir) {
                   const prevLogs = classRec?.log_perubahan || [];

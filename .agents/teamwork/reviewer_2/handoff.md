@@ -1,56 +1,95 @@
-# Handoff Report — reviewer_2
+# Handoff Report — reviewer_2 (Adversarial Reviewer)
 
 > [!WARNING] **Skepticism Disclaimer**
-> High confidence in the state retention, synchronization, and race-protection fixes; all 33 test suites (including 7 adversarial retention tests) pass 100% and production build compiles with 0 errors, though browser print layout fidelity on third-party mobile webviews cannot be simulated in headless terminal environments.
+> Perbaikan telah diuji secara mendalam dengan 52/52 suite test khusus (100% PASS), 42/42 adversarial stress test (100% PASS), Type-checking TypeScript (`tsc --noEmit` 0 errors), dan `next build` (100% PASS); namun konkurensi multi-koneksi pada latensi jaringan tinggi saat submit serentak tetap perlu diobservasi pada log produksi.
 
 ## 1. What the prior attempt got wrong
 
-### Defect 1: Archive Dropdown Reset on Window Focus / App Resume and Autosave (Violating R2)
-- **Input:** User selects an archive academic year (e.g. `'2023/2024'`) or semester in `RaporView`, then blurs/focuses the window, switches tabs, or edits a Catatan Wali / Deep Learning observation (which autosaves to table `pengaturan`).
-- **Expected:** `selectedTahunAjaran` and `selectedSemester` stay on the user's selected archive values (`'2023/2024'`).
-- **Actual:** The view abruptly resets back to active school configuration (`'2024/2025'` and `'Ganjil'`).
+### Issue 1: Database Overwrite of Excused Absences (Sakit & Izin) in `GuruJurnal.tsx`
+- **Input:** Siswa melakukan tap kartu di gerbang pos datang pagi (`Boolean(piketAttendance[s.nisn]) = true`). Kemudian Wali Kelas secara resmi mencatat status `Sakit` (atau `Izin`) pada `public.absensi` (karena siswa sakit/minta izin pulang). Di siang hari, Guru Mapel jam KBM membuka GuruJurnal dan mengisi absensi mapel dengan status Alfa ('A').
+- **Expected:** Status resmi `Sakit` / `Izin` di tabel database `public.absensi` TIDAK ditimpa menjadi `Bolos`.
+- **Actual:** Di `GuruJurnal.tsx` (baris 902-905), kondisi `isMorningHadir` dihitung dengan:
+  `(classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) || Boolean(piketAttendance[s.nisn] || ...)`.
+  Karena siswa sempat tap gerbang datang, `Boolean(piketAttendance[...])` bernilai true. `isMorningHadir` menjadi true meski `classRec.status === 'Sakit'`, sehingga sistem menimpa catatan resmi `Sakit` / `Izin` menjadi `status: 'Bolos'` secara langsung di database Supabase melalui query upsert!
+- **Root Cause:** `GuruJurnal.tsx` tidak memproteksi status izin resmi (`isExcused: Sakit/Izin`) dari `existingClassAbs` sebelum memicu sinkronisasi Bolos ke database.
+
+### Issue 2: Blindness to Keyword-Formatted and Full-Word Attendance in `detail_absen`
+- **Input:** Guru KBM jam terakhir mencatat ketidakhadiran siswa dalam format string keyword umum (seperti `detail_absen = 'Alpa: Ahmad Fauzi'` atau `detail_absen = 'Ahmad Fauzi (Alfa)'`), atau jurnal memiliki `absensi_siswa` JSON parsial `{ '999': 'H' }` untuk siswa lain sedangkan Ahmad Fauzi dicatat di `detail_absen`. Siswa Ahmad Fauzi tercatat hadir di gerbang pagi.
+- **Expected:** Siswa Ahmad Fauzi teridentifikasi sebagai Alfa pada KBM terakhir dan otomatis ditetapkan sebagai **Bolos** (B).
+- **Actual:** `resolveDailyStudentAttendance` mengembalikan status `Hadir` (sumber: 'Presensi Gerbang') tanpa mendeteksi status Alpa siswa.
 - **Root Cause:**
-  1. `AppScreen` listens to window `focus`, `online`, `visibilitychange`, and Supabase `postgres_changes` on `pengaturan`, dispatching `sipjam:config_updated` with detail `{ sekolah_id }` (no `tahun_ajaran` or `semester` fields).
-  2. In `RaporView`, `handleConfigSync` detected `!newTa || !newSem` and called `fetchSchoolConfig(true)` with `forceSelect = true`.
-  3. `fetchSchoolConfig(true)` unconditionally overrode `selectedTahunAjaran(activeTa)` and `selectedSemester(activeSem)`.
-  4. Even when `newTa` was provided (e.g. admin saving general settings in `AdminConfigView`), `handleConfigSync` unconditionally invoked `setSelectedTahunAjaran(newTa)` without checking whether the user was viewing an archive.
+  1. Regex `match` pada `detail_absen` hanya mencocokkan singkatan satu karakter `\(([HSIAhsia])\)`, sehingga mengabaikan nama status lengkap seperti `(Alfa)`, `(Alpa)`, `(Sakit)`, `(Izin)`.
+  2. Format keyword string seperti `Alpa: Nama`, `Sakit: Nama`, `Izin: Nama`, `Bolos: Nama` sama sekali tidak didukung di `resolveDailyStudentAttendance`.
+  3. Struktur percabangan `if (absensiJson) ... else if (detail_absen)` menyebabkan pemeriksaan `detail_absen` diabaikan jika JSON memuat data siswa lain.
+  4. Status `'B'` atau `'BOLOS'` di JSON KBM belum dipetakan ke `'Bolos'`.
 
-### Defect 2: False Wali Kelas Fallback from Historical Database Entries
-- **Input:** A class has a recorded wali kelas in `wali_kelas` for an older academic year (e.g. `'2022/2023'`), but no row for current/selected year `'2024/2025'`.
-- **Expected:** Since no assignment exists for `'2024/2025'` in `wali_kelas`, fallback cleanly checks `data_guru.wali_kelas` or the logged-in homeroom teacher (`assignedKelas === selectedKelas`).
-- **Actual:** `(wList || []).find(...) || (wList || [])[0]` matched the first row in `wList`, incorrectly assigning the older year's teacher signature to the current report.
-- **Root Cause:** Injudicious fallback to `(wList || [])[0]` regardless of whether `w.tahun_ajaran` matched or belonged to a different year.
+### Issue 3: Status Normalization Blind Spot in `RekapSiswaView.tsx` Gate Mapel Fallback
+- **Input:** Jurnal KBM terakhir memiliki data `absensi_siswa` berupa kata lengkap seperti `'ALFA'`, `'ALPA'`, atau `'BOLOS'`.
+- **Expected:** Tampilan status kepulangan gerbang mendeteksi status bolos siswa (`isBolosPulang = true`) dan menampilkan `device_id: 'Auto Fallback: Bolos'`.
+- **Actual:** Logika evaluasi kepulangan hanya memeriksa exact string `lastMapelStatus === 'A'`, sehingga nilai `'ALFA'`, `'ALPA'`, atau `'BOLOS'` diabaikan dan siswa dianggap hadir.
+- **Root Cause:** Nilai `lastMapelStatus` tidak dinormalisasi untuk menangani format kata lengkap (`ALFA`, `ALPA`, `BOLOS`).
 
-### Defect 3: Out-of-Order Async Fetch Race Condition in `fetchClassData`
-- **Input:** Teacher rapidly changes selected classes or academic years.
-- **Expected:** The UI displays data corresponding strictly to the latest selected combination.
-- **Actual:** If a prior fetch took longer over the network than a subsequent fetch, the slower response could overwrite the newer state.
-- **Root Cause:** `fetchClassData` lacked a request ID tracking guard to discard stale async query responses.
+### Issue 4: Exclusion of Bolos from Unexcused Absences in `RaporView.tsx`
+- **Input:** Siswa memiliki catatan kehadiran harian dengan `status = 'Bolos'` atau `'B'` di tabel `absensi`.
+- **Expected:** Pada Rapor Kurikulum Merdeka, jumlah hari Bolos terakumulasi ke dalam total ketidakhadiran tanpa keterangan (`alpa`).
+- **Actual:** Penghitungan absensi pada `RaporView.tsx` hanya memeriksa `st === 'A' || st === 'ALPA'`, sehingga status `Bolos` diabaikan dan siswa mendapatkan 0 alpa pada laporan rapor.
+- **Root Cause:** Status `Bolos` / `B` belum disertakan dalam akumulasi absensi `alpa` di `RaporView.tsx`.
+
+---
 
 ## 2. What I changed
 
-- **`src/components/RaporView.tsx`**:
-  - Added refs: `selectedSemesterRef`, `activeSchoolTahunAjaranRef`, `activeSchoolSemesterRef`, and `fetchClassRequestId`.
-  - Refactored `fetchSchoolConfig(isInitial = false)`: Compares database configuration with previous active refs. Only updates `selectedTahunAjaran` and `selectedSemester` if on initial component mount or if the user was actively following the previous active setting.
-  - Refactored `handleConfigSync`: When active school year is promoted, updates users following the active year to the new year while strictly protecting users who selected archive years from disruption.
-  - Refactored `matchingWali`: Only falls back to unversioned rows (`!w.tahun_ajaran`), preventing false matches from historical records of other years.
-  - Added `fetchClassRequestId` guard to `fetchClassData` to safely discard out-of-order stale responses.
-- **`tests/adversarial_rapor_archive_retention.test.ts`**:
-  - Added assertions ADV-04 through ADV-07 covering window focus retention, admin save event archive preservation, active promotion isolation, and wali kelas year matching precision.
+1. **`src/lib/presensiIntervensi.ts`**:
+   - `resolveDailyStudentAttendance`:
+     - Menambahkan dukungan format status lengkap dalam tanda kurung: `(Alfa)`, `(Alpa)`, `(Sakit)`, `(Izin)`, `(Bolos)`, `(Hadir)`.
+     - Menambahkan dukungan format keyword prefix: `Alpa: Nama`, `Alfa: Nama`, `Sakit: Nama`, `Izin: Nama`, `Bolos: Nama`, `Hadir: Nama`.
+     - Mengubah pengecekan `detail_absen` / `kehadiran_murid` menjadi cascading fallback (diperiksa jika siswa belum ditemukan di `absensiJson`).
+     - Menambahkan pemetaan langsung untuk status `'B'` dan `'BOLOS'` dalam JSON absensi KBM.
+2. **`src/components/GuruJurnal.tsx`**:
+   - Menambahkan pengecualian `isExcused` (`Sakit` / `Izin`) pada `handleSubmit` auto-sync Bolos agar catatan resmi Wali Kelas di database Supabase tidak pernah tertimpa menjadi Bolos.
+   - Menambahkan seleksi kolom `siswa_id` dan `nama_siswa` pada query `aQ` absensi.
+   - Memperluas pencocokan siswa di `existingClassAbs` menggunakan `s.id`, `s.nisn`, dan `s.nama_siswa`.
+   - Mengunci status siswa yang telah berstatus `Bolos` dari pagi hari pada `fetchStudents`.
+3. **`src/components/RekapSiswaView.tsx`**:
+   - Menambahkan normalisasi `normMapel` pada evaluasi kepulangan gerbang (`isMapelAlfa = normMapel === 'A' || 'ALFA' || 'ALPA' || 'BOLOS' || 'B'`).
+   - Menambahkan fallback `siswa_id` (UUID) pada pencocokan `directAbsensi` dan `absensiLogs`.
+   - Memperbarui komentar guard jendela waktu Wali Kelas (12:00 WITA pagi & 1 jam kepulangan).
+4. **`src/components/RaporView.tsx`**:
+   - Menambahkan status `BOLOS` dan `B` ke dalam akumulasi ketidakhadiran tanpa keterangan (`attRecord[row.nisn].alpa++`).
+5. **`tests/wali_kelas_and_piket_intervensi.test.ts`**:
+   - Menambahkan unit test `DOMAIN-08` (proteksi Sakit/Izin GuruJurnal di database).
+   - Menambahkan unit test `DOMAIN-09` (akumulasi Bolos pada RaporView).
+   - Menambahkan unit test `FALLBACK-10` (deteksi keyword prefix `Alpa: Nama`).
+   - Menambahkan unit test `FALLBACK-11` (deteksi kata lengkap `Nama (Alfa)`).
+   - Menambahkan unit test `FALLBACK-12` (cascading fallback ke `detail_absen`).
+   - Menambahkan unit test `FALLBACK-13` (pemetaan status BOLOS/B dalam JSON jurnal).
+   - Total test suite meningkat dari 46 menjadi 52 test (100% PASS).
+
+---
 
 ## 3. Verification Record
+
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/adversarial_rapor_archive_retention.test.ts`: 7 / 7 PASSED.
-  - `npx tsx tests/e_rapor_tahun_ajaran_sync.test.ts`: 13 / 13 PASSED.
-  - `npm test`: 33 / 33 test suites PASSED (0 failures across all unit & adversarial suites).
-  - `npm run build`: Turbopack build succeeded with 0 errors across all routes.
+  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: **52/52 PASS (100%)**.
+  - `npx tsx tests/adversarial_challenge_r1_r2_r3.test.ts`: **42/42 PASS (100%)**.
+  - `npx tsx tests/presensi_siswa_sync_and_superadmin.test.ts`: **11/11 PASS (100%)**.
+  - `npx tsx tests/adversarial_presensi_sync_reviewer_r3.test.ts`: **12/12 PASS (100%)**.
+  - `npx tsc --noEmit`: **0 errors**.
+  - `npm run build`: **Compiled successfully (Turbopack, TypeScript 0 errors, static pages 12/12 generated)**.
 - **Shallow Verification (manual only):**
-  - Inspected AST & DOM structure of dropdowns, badge indicators, and print sheet layouts.
+  - Pemeriksaan label teks dan komentar panduan jendela waktu di `RekapSiswaView` dan `AdminConfigView`.
 - **Unverified aspects:**
-  - Physical OS-level Bluetooth thermal printing and mobile Safari webview print dialogs.
+  - Konkurensi multi-user menulis secara paralel tepat pada milidetik 12:00:00 WITA di koneksi internet riil Supabase.
+
+---
 
 ## 4. Known Issues
-- `Minor Robustness Risk` — If an external direct SQL script inserts a row in `pengaturan` with unparseable invalid JSON in `catatan_wali` or `deep_learning`, it is gracefully caught by JSON parse try/catch blocks.
+
+- `None` (Seluruh 52 pengujian unit lulus 100%, seluruh adversarial stress tests lulus 100%, kompilasi Next.js dan TypeScript bersih tanpa error).
+
+---
 
 ## 5. Remaining risk & next step
-- Implementation is complete, tested with adversarial scenarios, and verified with 0-error production build.
+
+- **Remaining risk:** Latensi jaringan saat query paralel data siswa, jurnal, dan absensi di sekolah dengan koneksi pedesaan/rendah bandwith (telah dioptimalkan dengan query terfokus `(tanggal, kelas)`).
+- **Next step:** Tugas telah selesai sepenuhnya dan memenuhi seluruh kriteria penerimaan R1, R2, R3, dan R4 secara menyeluruh, robust, dan tahan terhadap skenario adversarial. Siap untuk proses staging dan commit.
