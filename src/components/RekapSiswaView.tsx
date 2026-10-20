@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { isIntervensiAllowed, fetchBatasIntervensiSiswa, isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali } from '@/lib/presensiIntervensi';
+import { isIntervensiAllowed, fetchBatasIntervensiSiswa, isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance } from '@/lib/presensiIntervensi';
 import { getWitaDateStr } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 
@@ -55,10 +55,10 @@ export default function RekapSiswaView({
   const [waliSaving, setWaliSaving] = useState(false);
   const [masterLoaded, setMasterLoaded] = useState(false);
   const [jadwalWali, setJadwalWali] = useState<JadwalIntervensiWali>({
-    batasPagi: '08:00',
+    batasPagi: '12:00',
     jamPulangMulai: '11:00',
-    jamPulangPiketAkhir: '11:30',
-    jamBatasMalam: '22:00'
+    jamPulangPiketAkhir: '12:00',
+    jamBatasMalam: '12:00'
   });
 
   const todayWita = getWitaDateStr();
@@ -186,6 +186,15 @@ export default function RekapSiswaView({
           if (user?.sekolah_id) pQ = pQ.eq('sekolah_id', user.sekolah_id);
           const { data: gateData } = await pQ;
 
+          let jQ = supabase
+            .from('jurnal_pembelajaran')
+            .select('jam_ke, mapel, absensi_siswa, detail_absen, kehadiran_murid, tanggal')
+            .eq('kelas', activeWaliKelas.kelas)
+            .eq('tanggal', waliTanggal);
+          if (user?.sekolah_id) jQ = jQ.eq('sekolah_id', user.sekolah_id);
+          const { data: dayJournals } = await jQ;
+          const lastJurnal = findLastKbmJournal(dayJournals || []);
+
           const gateMap: Record<string, { datang?: any; pulang?: any }> = {};
           if (gateData) {
             gateData.forEach((g: any) => {
@@ -197,12 +206,15 @@ export default function RekapSiswaView({
           }
           setWaliGateLogs(gateMap);
 
-          const map: Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | ''; keterangan: string; logs: string[] }> = {};
+          const map: Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos' | ''; keterangan: string; logs: string[] }> = {};
           studentsData.forEach(s => {
-            const found = absensiData?.find(a => a.nisn === s.nisn);
+            const found = absensiData?.find(a => (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
+            const hasGate = Boolean(gateMap[s.nisn]?.datang || (s.id && gateMap[s.id]?.datang));
+            const resolved = resolveDailyStudentAttendance(s, found, hasGate, lastJurnal);
+
             map[s.nisn] = {
-              status: (found?.status as any) || '',
-              keterangan: found?.keterangan || '',
+              status: resolved.status,
+              keterangan: found?.keterangan || resolved.keterangan || '',
               logs: Array.isArray(found?.log_perubahan) ? (found.log_perubahan as string[]) : []
             };
           });
@@ -259,7 +271,7 @@ export default function RekapSiswaView({
         const { data: dayJournals } = await jQ;
 
         if (studentsData) {
-          const lastJurnal = (dayJournals && dayJournals.length > 0) ? dayJournals[0] : null;
+          const lastJurnal = findLastKbmJournal(dayJournals || []);
 
           const combined = studentsData.map(siswa => {
             const datang = (gateLogs || []).find(p => 
@@ -551,11 +563,13 @@ export default function RekapSiswaView({
         // =========================================================================
         // DOMAIN 1: PRESENSI SISWA (ABSENSI KELAS HARIAN MEREKA)
         // Sumber data: tabel public.absensi (dicatat oleh Wali Kelas & Piket)
+        // Fallback dinamis: jurnal KBM jam pelajaran terakhir jika wali kelas belum mengisi
+        // Preservasi Aturan Bolos: hadir pagi + alfa jam KBM terakhir -> Bolos (B)
         // Opsi Status Resmi: Hadir (H), Sakit (S), Izin (I), Alfa (A), Bolos (B)
         // =========================================================================
         let absensiQuery = supabase
           .from('absensi')
-          .select('tanggal, nisn, nama_siswa, status')
+          .select('tanggal, nisn, nama_siswa, status, keterangan')
           .eq('kelas', targetKelas);
         if (user?.sekolah_id) absensiQuery = absensiQuery.eq('sekolah_id', user.sekolah_id);
         if (startDate) absensiQuery = absensiQuery.gte('tanggal', startDate);
@@ -566,21 +580,60 @@ export default function RekapSiswaView({
           console.error('Error fetching class absensi:', absErr);
         }
 
-        if (directAbsensi && directAbsensi.length > 0) {
-          directAbsensi.forEach(a => {
-            const student = siswa?.find(s => (a.nisn && s.nisn === a.nisn) || s.nama_siswa === a.nama_siswa);
-            if (!student) return;
-            const target = rekapMap[student.nama_siswa];
+        // Fetch journals for this class & date range to support dynamic fallback from last KBM
+        let journalQuery = supabase
+          .from('jurnal_pembelajaran')
+          .select('tanggal, jam_ke, mapel, absensi_siswa, detail_absen, kehadiran_murid')
+          .eq('kelas', targetKelas);
+        if (user?.sekolah_id) journalQuery = journalQuery.eq('sekolah_id', user.sekolah_id);
+        if (startDate) journalQuery = journalQuery.gte('tanggal', startDate);
+        if (endDate) journalQuery = journalQuery.lte('tanggal', endDate);
+        const { data: allJournals } = await journalQuery;
+
+        // Fetch morning gate attendance to support morning hadir check
+        let gateQuery = supabase
+          .from('presensi_siswa')
+          .select('tanggal, siswa_id, nisn, status')
+          .eq('kelas', targetKelas)
+          .eq('status', 'datang');
+        if (user?.sekolah_id) gateQuery = gateQuery.eq('sekolah_id', user.sekolah_id);
+        if (startDate) gateQuery = gateQuery.gte('tanggal', startDate);
+        if (endDate) gateQuery = gateQuery.lte('tanggal', endDate);
+        const { data: gateLogs } = await gateQuery;
+
+        // Collect all dates from all available sources
+        const dateSet = new Set<string>();
+        directAbsensi?.forEach(a => { if (a.tanggal) dateSet.add(a.tanggal); });
+        allJournals?.forEach(j => { if (j.tanggal) dateSet.add(j.tanggal); });
+        gateLogs?.forEach(g => { if (g.tanggal) dateSet.add(g.tanggal); });
+        const allDates = Array.from(dateSet).sort();
+
+        allDates.forEach(d => {
+          const dateJournals = (allJournals || []).filter(j => j.tanggal === d);
+          const lastJurnal = findLastKbmJournal(dateJournals);
+
+          const dateGateDatang = new Set<string>();
+          (gateLogs || []).filter(g => g.tanggal === d).forEach(g => {
+            if (g.nisn) dateGateDatang.add(g.nisn);
+            if (g.siswa_id) dateGateDatang.add(g.siswa_id);
+          });
+
+          siswa?.forEach(s => {
+            const target = rekapMap[s.nama_siswa];
             if (!target) return;
 
-            const st = String(a.status || '').trim().toLowerCase();
+            const absRecord = directAbsensi?.find(a => a.tanggal === d && ((a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa));
+            const hasGate = Boolean((s.nisn && dateGateDatang.has(s.nisn)) || (s.id && dateGateDatang.has(s.id)));
+
+            const resolved = resolveDailyStudentAttendance(s, absRecord, hasGate, lastJurnal);
+            const st = String(resolved.status || '').trim().toLowerCase();
             if (st === 'hadir' || st === 'h') target.hadir++;
             else if (st === 'sakit' || st === 's') target.sakit++;
             else if (st === 'izin' || st === 'i') target.izin++;
-            else if (st === 'alpa' || st === 'a') target.alpa++;
+            else if (st === 'alpa' || st === 'a' || st === 'alfa') target.alpa++;
             else if (st === 'bolos' || st === 'b') target.bolos++;
           });
-        }
+        });
       } else {
         // =========================================================================
         // DOMAIN 2: PRESENSI MAPEL (ABSENSI SESI MATA PELAJARAN TERSEBUT)
@@ -931,9 +984,9 @@ export default function RekapSiswaView({
                       <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 p-3 rounded-xl flex items-center gap-2.5 text-xs text-emerald-900 dark:text-emerald-200">
                         <i className="fa-solid fa-clock-rotate-left text-emerald-600 text-base shrink-0"></i>
                         <div>
-                          <div className="font-bold">Penyesuaian Presensi Siswa Sore (s.d. pk. 22:00 WITA)</div>
+                          <div className="font-bold">Presensi Pulang Siswa (Alokasi 1 Jam)</div>
                           <div className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">
-                            Jam presensi pulang guru telah aktif. Anda dapat menyesuaikan kembali data presensi siswa perwalian sebelum rekap harian dikunci pada pukul 22:00 WITA.
+                            {waliIntervensiStatus.pesan}
                           </div>
                         </div>
                       </div>

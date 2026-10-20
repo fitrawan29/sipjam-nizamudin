@@ -13,7 +13,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { isIntervensiAllowed, isWaliKelasIntervensiAllowed, isPiketPulangAllowed, addMinutesToTime } from '../src/lib/presensiIntervensi';
+import { isIntervensiAllowed, isWaliKelasIntervensiAllowed, isPiketPulangAllowed, addMinutesToTime, findLastKbmJournal, resolveDailyStudentAttendance } from '../src/lib/presensiIntervensi';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -78,50 +78,53 @@ async function runTests() {
     fail('CUTOFF-04', 'isIntervensiAllowed gagal dengan waktu batas kustom');
   }
 
-  // 1.5 Guru Piket Hak Akses Utama Pulang (Waktu Pulang s.d. 30 Menit Setelah Jam Pulang Guru)
+  // 1.5 Guru Piket Hak Akses Pulang (Waktu Pulang s.d. 60 Menit Setelah Jam Pulang Guru)
   const piketEarly = isPiketPulangAllowed('11:00', '10:45');
   const piketActive1 = isPiketPulangAllowed('11:00', '11:00');
-  const piketActive2 = isPiketPulangAllowed('11:00', '11:20');
-  const piketAkhir = isPiketPulangAllowed('11:00', '11:30');
-  const piketExpired = isPiketPulangAllowed('11:00', '11:31');
+  const piketActive2 = isPiketPulangAllowed('11:00', '11:30');
+  const piketAkhir = isPiketPulangAllowed('11:00', '12:00');
+  const piketExpired = isPiketPulangAllowed('11:00', '12:01');
 
   if (!piketEarly.allowed && piketActive1.allowed && piketActive2.allowed && piketAkhir.allowed && !piketExpired.allowed) {
-    pass('PIKET-WIN-01', 'Guru Piket memiliki hak akses utama presensi pulang mulai jam pulang s.d. 30 menit setelahnya (11:00 - 11:30)');
+    pass('PIKET-WIN-01', 'Guru Piket memiliki hak akses presensi pulang mulai jam pulang s.d. 60 menit setelahnya (11:00 - 12:00)');
   } else {
-    fail('PIKET-WIN-01', 'Piket pulang 30-menit window gagal divalidasi');
+    fail('PIKET-WIN-01', 'Piket pulang 60-menit window gagal divalidasi');
   }
 
-  // 1.6 Wali Kelas Multi-Window (Pagi s.d. 08:00, Terkunci KBM & Masa Piket Pulang, Ambil Alih Penuh setelah 30m s.d. 22:00 WITA)
-  const resPagi = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '07:45');
-  const resKbm = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '09:15');
-  const resPiketPulangWindow = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '11:15');
-  const resWaliTakeover = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '11:30');
-  const resPulangSore = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '16:30');
-  const resTepat22 = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '22:00');
-  const resLewat22 = isWaliKelasIntervensiAllowed('08:00', '11:00', '22:00', '22:01');
+  // 1.6 Wali Kelas Multi-Window (Pagi s.d. 12:00, Terkunci KBM jika jam pulang belum mulai, Alokasi Pulang Selaras 1 Jam, Akses Malam 22:00 Ditutup)
+  const resPagi = isWaliKelasIntervensiAllowed('12:00', '13:00', '14:00', '07:45');
+  const resPagi10 = isWaliKelasIntervensiAllowed('12:00', '13:00', '14:00', '10:30');
+  const resPagi12 = isWaliKelasIntervensiAllowed('12:00', '13:00', '14:00', '12:00');
+  const resKbm = isWaliKelasIntervensiAllowed('12:00', '13:00', '14:00', '12:15');
+  const resPulangMulai = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', '11:00');
+  const resPulangMid = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', '11:30');
+  const resPulangAkhir = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', '12:00');
+  const resLewat60m = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', '12:01');
+  const resSore16 = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', '16:30');
+  const resMalam22 = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', '22:00');
 
-  if (resPagi.allowed && resPagi.phase === 'pagi') {
-    pass('WALI-WIN-01', 'Wali Kelas diizinkan input presensi pada jendela pagi (07:45 <= 08:00)');
+  if (resPagi.allowed && resPagi10.allowed && resPagi12.allowed && resPagi.phase === 'pagi') {
+    pass('WALI-WIN-01', 'Wali Kelas diizinkan input presensi pada jendela pagi diperpanjang hingga pk. 12:00 WITA');
   } else {
     fail('WALI-WIN-01', 'Gagal pada jendela pagi Wali Kelas');
   }
 
   if (!resKbm.allowed && resKbm.phase === 'kbm') {
-    pass('WALI-WIN-02', 'Wali Kelas terkunci saat KBM (09:15) sebelum jam presensi pulang guru');
+    pass('WALI-WIN-02', 'Wali Kelas terkunci saat KBM (12:15) sebelum jam presensi pulang guru dimulai (13:00)');
   } else {
-    fail('WALI-WIN-02', 'Wali Kelas tidak terkunci saat KBM');
+    fail('WALI-WIN-02', 'Wali Kelas tidak terkunci saat KBM sebelum jam pulang');
   }
 
-  if (!resPiketPulangWindow.allowed && resWaliTakeover.allowed && resPulangSore.allowed && resPulangSore.phase === 'pulang') {
-    pass('WALI-WIN-03', 'Wali Kelas terkunci saat 30m piket pulang, lalu mengambil alih penuh setelah 30m jam pulang guru s.d. 22:00 WITA');
+  if (resPulangMulai.allowed && resPulangMid.allowed && resPulangAkhir.allowed && resPulangMulai.phase === 'pulang') {
+    pass('WALI-WIN-03', 'Wali Kelas memiliki alokasi waktu presensi pulang selaras 1 jam (60 menit) sejak jam pulang dimulai (11:00 - 12:00)');
   } else {
-    fail('WALI-WIN-03', 'Wali Kelas gagal mengambil alih akses setelah 30m jam pulang guru');
+    fail('WALI-WIN-03', 'Wali Kelas gagal mengakses jendela presensi pulang 60 menit');
   }
 
-  if (resTepat22.allowed && !resLewat22.allowed && resLewat22.phase === 'malam_tutup') {
-    pass('WALI-WIN-04', 'Wali Kelas hanya dapat menyesuaikan sampai batas pk. 22:00 WITA (22:01 terkunci)');
+  if (!resLewat60m.allowed && !resSore16.allowed && !resMalam22.allowed && resLewat60m.phase === 'malam_tutup') {
+    pass('WALI-WIN-04', 'Akses penyesuaian malam (pk. 22:00 WITA) telah dinonaktifkan sehingga intervensi terkunci setelah batas 60 menit (12:01 dan 22:00 terkunci)');
   } else {
-    fail('WALI-WIN-04', 'Batas akhir 22:00 WITA tidak berfungsi dengan benar');
+    fail('WALI-WIN-04', 'Penguncian setelah batas 60 menit pasca jam pulang tidak berfungsi dengan benar');
   }
 
   // SECTION 2: ADMIN CONFIGURATION VERIFICATION
@@ -168,10 +171,10 @@ async function runTests() {
     fail('WALI-04', 'sumber_perubahan Wali Kelas tidak tercatat');
   }
 
-  if (rekapCode.includes('waliIntervensiStatus.label') && rekapCode.includes('Penyesuaian Presensi Siswa Sore (s.d. pk. 22:00 WITA)')) {
-    pass('WALI-05', 'RekapSiswaView menampilkan banner penyesuaian sore s.d. 22:00 WITA saat jam pulang guru');
+  if (rekapCode.includes('waliIntervensiStatus.label') && (rekapCode.includes('Presensi Pulang Siswa (Alokasi 1 Jam)') || rekapCode.includes("waliIntervensiStatus.phase === 'pulang'"))) {
+    pass('WALI-05', 'RekapSiswaView menampilkan banner presensi pulang siswa alokasi 1 jam saat jam pulang guru');
   } else {
-    fail('WALI-05', 'Banner penyesuaian sore wali kelas tidak ditemukan di RekapSiswaView');
+    fail('WALI-05', 'Banner presensi pulang siswa wali kelas tidak ditemukan di RekapSiswaView');
   }
 
   // SECTION 4: PIKET COLLISION PREVENTION & LOCKING (PiketView.tsx)
@@ -315,11 +318,59 @@ async function runTests() {
     fail('BOLOS-03', 'Fallback system gerbang presensi atau deteksi Pulang: Bolos belum lengkap');
   }
 
-  // 8.4 PiketView enforces 30-minute pulang window
+  // 8.4 PiketView enforces 1-hour (60-minute) pulang window
   if (piketCode.includes('isPiketPulangAllowed') && (piketCode.includes("scanMode === 'pulang'") || piketCode.includes("status === 'pulang'"))) {
-    pass('BOLOS-04', 'PiketView menerapkan validasi batas 30 menit jam pulang guru untuk hak akses utama Guru Piket');
+    pass('BOLOS-04', 'PiketView menerapkan validasi batas 1 jam (60 menit) jam pulang guru untuk hak akses presensi pulang Guru Piket');
   } else {
     fail('BOLOS-04', 'PiketView belum menerapkan validasi isPiketPulangAllowed pada mode pulang');
+  }
+
+  // 8.5 Dynamic Fallback dari Jurnal KBM Jam Terakhir & Preservasi Aturan Bolos (R3)
+  const studentA = { id: 's-1', nisn: '0011223344', nama_siswa: 'Budi Santoso' };
+  const studentB = { id: 's-2', nisn: '0055667788', nama_siswa: 'Siti Aminah' };
+  const studentC = { id: 's-3', nisn: '0099887766', nama_siswa: 'Ahmad Fauzi' };
+
+  const journalJam3 = {
+    jam_ke: 'Jam ke-3',
+    mapel: 'Bahasa Indonesia',
+    absensi_siswa: { '0011223344': 'H', '0055667788': 'H', '0099887766': 'H' }
+  };
+  const journalJam5 = {
+    jam_ke: 'Jam ke-5',
+    mapel: 'Matematika',
+    absensi_siswa: { '0011223344': 'H', '0055667788': 'A', '0099887766': 'S' }
+  };
+
+  // 8.5.1 Verify findLastKbmJournal picks Jam ke-5 over Jam ke-3
+  const lastPicked = findLastKbmJournal([journalJam3, journalJam5]);
+  if (lastPicked && lastPicked.jam_ke === 'Jam ke-5') {
+    pass('FALLBACK-01', 'findLastKbmJournal berhasil memprioritaskan sesi jurnal KBM dengan jam pelajaran terakhir (Jam ke-5)');
+  } else {
+    fail('FALLBACK-01', 'findLastKbmJournal gagal mendeteksi jam terakhir');
+  }
+
+  // 8.5.2 Student A has no class record from wali kelas -> inherits 'Hadir' from Jam ke-5
+  const resA = resolveDailyStudentAttendance(studentA, null, false, lastPicked);
+  if (resA.status === 'Hadir' && resA.isFallback === true) {
+    pass('FALLBACK-02', 'Siswa tanpa absensi wali kelas otomatis mewarisi status Hadir dari jurnal KBM jam terakhir');
+  } else {
+    fail('FALLBACK-02', 'Fallback status Hadir dari KBM terakhir gagal');
+  }
+
+  // 8.5.3 Student B has morning presence (gate datang) but Alfa in Jam ke-5 -> strictly resolved to Bolos (B)
+  const resB = resolveDailyStudentAttendance(studentB, null, true, lastPicked);
+  if (resB.status === 'Bolos') {
+    pass('FALLBACK-03', 'Aturan Bolos ditegakkan: Siswa tercatat Hadir pagi di gerbang/kelas namun Alfa pada KBM terakhir otomatis menjadi Bolos (B)');
+  } else {
+    fail('FALLBACK-03', 'Aturan Bolos gagal ditegakkan untuk siswa Hadir pagi & Alfa mapel terakhir');
+  }
+
+  // 8.5.4 Student C has no morning presence and Sakit in Jam ke-5 -> strictly Sakit
+  const resC = resolveDailyStudentAttendance(studentC, null, false, lastPicked);
+  if (resC.status === 'Sakit') {
+    pass('FALLBACK-04', 'Siswa tanpa absensi kelas mewarisi status Sakit dari jurnal KBM jam terakhir tanpa false-positive Bolos');
+  } else {
+    fail('FALLBACK-04', 'Pewarisan status Sakit dari KBM terakhir gagal');
   }
 
   // SUMMARY

@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-16T11:31:00Z
+# BRIEFING — 2026-10-20T06:35:00Z
 
 ## Mission
-Implementasi dua fitur operasional esensial berprinsip Ponytail (zero-bloat, minimal diff, native first) pada SIPJAM: (1) Notifikasi WhatsApp Orang Tua 1-Click via Native URI di Modul Piket dan Rekap Siswa, serta (2) Auto-Save Draft Lokal & Ketahanan Offline pada Jurnal KBM dan Daftar Nilai (Gradebook).
+Penyesuaian batas jendela waktu input absensi kelas (Piket pagi s.d. 08:00 WITA, Wali Kelas pagi s.d. 12:00 WITA bersamaan KBM mapel, alokasi jam pulang Piket & Wali Kelas 1 jam setelah jam pulang mulai) serta fallback dinamis absensi harian siswa dari jurnal mapel guru jam terakhir dengan preservasi aturan Bolos.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -70,8 +70,13 @@ Implementasi dua fitur operasional esensial berprinsip Ponytail (zero-bloat, min
 - Orchestrator (current): b8a13b7c-6c39-493c-96de-cd823a6f72d9 (orchestrator_22)
 - Cron 1 (Progress Reporting): 236419fa-353a-4138-bed7-f9c6fbac9d3f/task-32 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 236419fa-353a-4138-bed7-f9c6fbac9d3f/task-34 (*/10 * * * *) [Terminated on victory]
-- Victory Auditor (current): to be spawned on victory claim
 - Victory Auditor (current): c740f9af-34bb-4803-b1fb-9c57b9ddf6cf (victory_auditor_42) [VICTORY CONFIRMED]
+- Orchestrator (current): to be spawned (swe_30)
+- Victory Auditor (current): to be spawned on victory claim
+- Orchestrator (current): 3534717f-ac7e-478e-998f-907c2ab8b38b (swe_30)
+- Cron 1 (Progress Reporting): 4414290f-5168-42be-87ec-7b2c84086ffe/task-42 (*/8 * * * *)
+- Cron 2 (Liveness Check): 4414290f-5168-42be-87ec-7b2c84086ffe/task-44 (*/10 * * * *)
+
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -95,33 +100,25 @@ Implementasi dua fitur operasional esensial berprinsip Ponytail (zero-bloat, min
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; E-Rapor tahun ajaran & semester auto-sync, dynamic dropdown, realtime)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; PostgREST schema cache error handling & Supabase schema reload script)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (two operational features: WhatsApp 1-Click & Auto-Save Draft/Offline Resilience)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Penyesuaian batas jendela waktu input absensi kelas & fallback dinamis KBM terakhir)
 
 ## User Context
-- **Last user request**: "lanjutkan" (Lanjutkan verifikasi gerbang mutu, eksekusi test regresi, git workflow, dan pelaporan kemenangan)
+- **Last user request**: Penyesuaian batas jendela waktu input absensi kelas (Piket 08:00, Wali Kelas 12:00, kepulangan 60m) & fallback dinamis KBM terakhir dengan aturan Bolos.
 - **Pending clarifications**: none
-- **Delivered results**:
-  - R1: WhatsApp Parent 1-Click Notifications in `PiketView.tsx` & `RekapSiswaView.tsx` with standard phone normalization (`628xxx`), polite URI messaging (`https://wa.me/`), SweetAlert fallback, and `print:hidden` styling.
-  - R2: Local Draft Autosave & Offline Resilience in `GradebookView.tsx` & `GuruJurnal.tsx` with debounced scoped keys, visual badge indicators, and automatic cleanup on save success.
-  - Test suites: `whatsapp_parent_notify_and_autosave.test.ts` (33/33 PASS), `four_ponytail_improvements.test.ts` (15/15 PASS), `adversarial_o22_draft_resilience.test.ts` (25/25 PASS), `adversarial_whatsapp_stress.test.ts` (79/79 PASS).
-  - Production build: `npx tsc --noEmit` (0 error), `npm run build` (0 error, 12/12 routes).
-  - Git workflow: commit `64839f3` pushed to `origin main`.
-  - Independent Victory Audit: `victory_auditor_42` confirmed VICTORY CONFIRMED.
+- **Delivered results**: none
 
 ## Project Status
-- **Phase**: complete
-- **Route**: General (teamwork_preview_orchestrator)
-- **Active Crons**: none
-- **Active Subagents**: none
+- **Phase**: in progress
+- **Route**: SWE Light (teamwork_preview_swe)
+- **Active Crons**: 4414290f-5168-42be-87ec-7b2c84086ffe/task-42 (Cron 1), 4414290f-5168-42be-87ec-7b2c84086ffe/task-44 (Cron 2)
+- **Active Subagents**: 3534717f-ac7e-478e-998f-907c2ab8b38b (swe_30)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_22\handoff.md — Orchestrator handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_42\handoff.md — Victory Auditor report (VICTORY CONFIRMED)
-
-
-
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING_ARCHIVE.md — Archived previous briefing content
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_30\DISPATCH.md — Dispatch prompt for SWE Light agent

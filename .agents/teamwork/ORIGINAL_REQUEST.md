@@ -1807,3 +1807,48 @@ Integrity mode: development
 ## 2026-10-16T13:36:18Z
 
 lanjutkan
+
+
+## 2026-10-20T06:34:52Z
+
+# Teamwork Project Prompt
+
+Penyesuaian batas jendela waktu input absensi kelas (Piket pagi s.d. 08:00 WITA, Wali Kelas pagi s.d. 12:00 WITA bersamaan KBM mapel, alokasi jam pulang Piket & Wali Kelas 1 jam setelah jam pulang mulai) serta fallback dinamis absensi harian siswa dari jurnal mapel guru jam terakhir dengan preservasi aturan Bolos.
+
+Working directory: c:/Users/Fitra/OneDrive/Documents/sipjam-app
+Integrity mode: development
+
+This is a single self-contained fix; keep it small and focused.
+
+## Requirements
+
+### R1. Jendela Waktu Input Absensi Siswa Pagi & KBM Independen
+- Guru Piket: batas input presensi pagi siswa tetap hingga pk. 08:00 WITA.
+- Wali Kelas: batas input absensi kelas pagi diperpanjang hingga pk. 12:00 WITA.
+- Koeksistensi KBM: Selama periode pagi s.d. pk. 12:00 WITA, Guru Mapel yang masuk kelas tetap dapat mengisi presensi sesi KBM di jurnal pembelajaran secara independen tanpa saling bertabrakan atau terblokir oleh akses Wali Kelas.
+
+### R2. Jendela Waktu Presensi Pulang (Piket & Wali Kelas Selaras 1 Jam)
+- Guru Piket dan Wali Kelas memiliki alokasi waktu presensi pulang yang selaras: aktif sejak `jam_pulang_mulai` hingga tepat maksimal 1 jam (60 menit) setelah jam pulang dimulai (bukan 20 menit atau 30 menit).
+- Akses penyesuaian malam (pk. 22:00 WITA) dihapus/ditutup setelah batas 1 jam kepulangan tersebut berakhir.
+
+### R3. Fallback Dinamis Jurnal KBM Terakhir & Preservasi Aturan Bolos
+- Jika Wali Kelas tidak ada atau belum mengisi absensi kelas, tampilan dan rekapitulasi harian kelas secara otomatis mengambil data status kehadiran dari jurnal KBM guru jam pelajaran terakhir pada hari tersebut (misal jam ke-3, ke-4, atau ke-5).
+- Aturan Bolos tetap ditegakkan: jika siswa tercatat Hadir di awal (datang pagi / gerbang / kelas pagi) namun tercatat Alfa pada sesi KBM jam terakhir, sistem secara otomatis menetapkan status siswa sebagai **Bolos** (B).
+
+### R4. Pembaruan dan Verifikasi Suite Pengujian
+- Seluruh unit test dan suite pengujian terkait (termasuk `tests/wali_kelas_and_piket_intervensi.test.ts`) diperbarui agar mencerminkan parameter waktu baru (12:00 WITA pagi, alokasi pulang 60 menit / 1 jam untuk Piket & Wali Kelas, tidak saling bertabrakan dengan KBM, dan fallback bolos) serta lulus 100% tanpa regresi.
+
+## Acceptance Criteria
+
+### Verifikasi Jendela Waktu & Independensi
+- [ ] Wali Kelas dapat menginput absensi kelas hingga pk. 12:00 WITA, dan Guru Mapel dapat menginput jurnal KBM tanpa saling memblokir.
+- [ ] Fungsi validasi pulang untuk Guru Piket dan Wali Kelas mengizinkan input tepat dalam rentang 60 menit sejak `jam_pulang_mulai` (misal jam pulang 11:00 WITA, maka s.d. 12:00 WITA diizinkan; 12:01 WITA terkunci).
+- [ ] Akses malam (pk. 22:00 WITA) telah dinonaktifkan sehingga intervensi terkunci setelah batas 60 menit pasca jam pulang.
+
+### Verifikasi Logika Fallback & Bolos
+- [ ] Siswa tanpa absensi kelas dari wali kelas otomatis mewarisi status dari jurnal KBM sesi jam terakhir hari itu.
+- [ ] Siswa yang berstatus Hadir pagi dan Alfa di jurnal KBM jam terakhir diverifikasi berstatus Bolos (B) pada laporan/rekap.
+
+### Verifikasi Kualitas & Regresi
+- [ ] Pengujian `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts` berjalan dan lulus 100%.
+- [ ] Perubahan file bersih dan siap di-commit ke Git sesuai aturan repositori.
