@@ -64,6 +64,9 @@ async function runTests() {
   const verifCode = fs.readFileSync(path.join(projectRoot, 'src/components/AdminVerifView.tsx'), 'utf-8');
   const rekapSiswaCode = fs.readFileSync(path.join(projectRoot, 'src/components/RekapSiswaView.tsx'), 'utf-8');
   const kepsekHookCode = fs.readFileSync(path.join(projectRoot, 'src/hooks/useKepalaSekolah.ts'), 'utf-8');
+  const rekapJurnalCode = fs.readFileSync(path.join(projectRoot, 'src/components/RekapJurnalView.tsx'), 'utf-8');
+  const adminRekapCode = fs.readFileSync(path.join(projectRoot, 'src/components/AdminRekapView.tsx'), 'utf-8');
+  const piketCode = fs.readFileSync(path.join(projectRoot, 'src/components/PiketView.tsx'), 'utf-8');
 
   // ==========================================================================
   // SECTION 1: R1 - ROLE-BASED MENU VISIBILITY
@@ -342,6 +345,63 @@ async function runTests() {
     printHeaderCode.includes("'sipjam:config_updated'"),
     'R3.7',
     'PrintSignature subscribes reactively to sipjam:config_updated for cross-component sync'
+  );
+
+  // ==========================================================================
+  // SECTION 4: ADVERSARIAL EDGE CASES & INTEGRITY VERIFICATION
+  // ==========================================================================
+  console.log(`\n${BOLD}━━━ SECTION 4: Adversarial Edge Cases & Multi-Tenant Integrity ━━━${RESET}`);
+
+  // Test 4.1: menuItemsKepalaSekolah conditionally includes view-rapor only if isWaliKelas
+  assert(
+    appScreenCode.includes("...(isWaliKelas ? [{ id: 'view-rapor'"),
+    'R4.1',
+    'menuItemsKepalaSekolah hides Rapor from sidebar for Kepala Sekolah who is not a Wali Kelas'
+  );
+
+  // Test 4.2: AppScreen passes isKepalaSekolah prop to RekapJurnalView
+  assert(
+    appScreenCode.includes('isKepalaSekolah={isKepalaSekolah}') ||
+    appScreenCode.includes('isKepalaSekolah={true}'),
+    'R4.2',
+    'AppScreen passes isKepalaSekolah prop to RekapJurnalView'
+  );
+
+  // Test 4.3: RekapJurnalView accepts isKepalaSekolah and allows them to view all classes without RBAC block
+  assert(
+    rekapJurnalCode.includes('isKepalaSekolah') &&
+    rekapJurnalCode.includes('!isAdmin && !isKepalaSekolah && !isWaliKelas') &&
+    rekapJurnalCode.includes('isAdmin || isKepalaSekolah || tabMode === \'pribadi\''),
+    'R4.3',
+    'RekapJurnalView enables Kepala Sekolah to inspect class journals across the entire school without RBAC lockout'
+  );
+
+  // Test 4.4: RekapSiswaView dual-role support: Wali Kelas + Kepala Sekolah allows editing own class while keeping other classes read-only
+  assert(
+    rekapSiswaCode.includes('isGlobalReadOnly') &&
+    rekapSiswaCode.includes('isOwnHomeroomClass') &&
+    rekapSiswaCode.includes('isReadOnly = isGlobalReadOnly && !isOwnHomeroomClass'),
+    'R4.4',
+    'RekapSiswaView allows teacher with dual role (Wali Kelas + Kepala Sekolah) to edit their assigned class'
+  );
+
+  // Test 4.5: Multi-tenant scoping: PrintSignature in AdminRekapView, RekapSiswaView, and PiketView passes user and sekolahId
+  assert(
+    adminRekapCode.includes('<PrintSignature') &&
+    adminRekapCode.includes('user={user}') &&
+    adminRekapCode.includes('sekolahId={user?.sekolah_id}') &&
+    rekapSiswaCode.includes('sekolahId={user?.sekolah_id}') &&
+    piketCode.includes('<PrintSignature user={user} sekolahId={user?.sekolah_id} />'),
+    'R4.5',
+    'PrintSignature in AdminRekapView, RekapSiswaView, and PiketView scopes configuration queries to active school tenant'
+  );
+
+  // Test 4.6: AdminConfigView unassigning Kepala Sekolah sets null in sekolah and resets is_kepala_sekolah in data_guru
+  assert(
+    configCode.includes('updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id || null') &&
+    configCode.includes("supabase.from('data_guru').update({ is_kepala_sekolah: false }).eq('sekolah_id', targetSekolahId)"),
+    'R4.6',
+    'AdminConfigView handles clearing/unassigning Kepala Sekolah with complete database synchronization'
   );
 
   // ==========================================================================

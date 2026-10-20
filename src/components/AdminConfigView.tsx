@@ -305,26 +305,24 @@ export default function AdminConfigView({
       }).eq('sekolah_id', targetSekolahId);
 
       // Synchronize headmaster name, NIP, and ID to sekolah table
-      if (saveConfig.ttd_kepsek_nama || saveConfig.ttd_kepsek_nip || saveConfig.kepala_sekolah_id) {
+      if (saveConfig.ttd_kepsek_nama || saveConfig.ttd_kepsek_nip || saveConfig.kepala_sekolah_id !== undefined) {
         try {
           const updatePayload: Record<string, any> = {
             nama_kepala_sekolah: saveConfig.ttd_kepsek_nama,
             nip_kepala_sekolah: saveConfig.ttd_kepsek_nip
           };
-          if (saveConfig.kepala_sekolah_id) {
-            updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id;
-          }
+          updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id || null;
           await supabase.from('sekolah').update(updatePayload).eq('id', targetSekolahId);
         } catch (_) {}
       }
 
       // Sync Kepala Sekolah designation in data_guru
-      if (saveConfig.kepala_sekolah_id) {
-        try {
-          await supabase.from('data_guru').update({ is_kepala_sekolah: false }).eq('sekolah_id', targetSekolahId);
+      try {
+        await supabase.from('data_guru').update({ is_kepala_sekolah: false }).eq('sekolah_id', targetSekolahId);
+        if (saveConfig.kepala_sekolah_id) {
           await supabase.from('data_guru').update({ is_kepala_sekolah: true }).eq('id', saveConfig.kepala_sekolah_id);
-        } catch (_) {}
-      }
+        }
+      } catch (_) {}
 
       // Also sync data_guru.wajib_hadir_hanya_mengajar
       if (guruList.length > 0) {

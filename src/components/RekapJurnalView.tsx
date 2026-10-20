@@ -7,19 +7,26 @@ import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/image
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { showToast } from '@/lib/toast';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
+import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 
 export default function RekapJurnalView({ 
   user,
   initialMode = 'pribadi',
-  assignedKelas: propAssignedKelas = null
+  assignedKelas: propAssignedKelas = null,
+  isKepalaSekolah: propIsKepalaSekolah
 }: { 
   user: any;
   initialMode?: 'pribadi' | 'kelas';
   assignedKelas?: string | null;
+  isKepalaSekolah?: boolean;
 }) {
-  const isAdmin = user?.role === 'Admin' || user?.role === 'admin' || user?.role === 'Superadmin' || user?.role === 'superadmin';
+  const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
+  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
+  const isKepalaSekolah = propIsKepalaSekolah !== undefined 
+    ? propIsKepalaSekolah 
+    : checkIsKepalaSekolah(user);
   const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>(initialMode);
-  const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin);
+  const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin || isKepalaSekolah);
   const [waliClasses, setWaliClasses] = useState<string[]>(() => {
     if (propAssignedKelas) return [propAssignedKelas];
     if (user?.wali_kelas) {
@@ -100,10 +107,10 @@ export default function RekapJurnalView({
           }
         }
 
-        if (isAdmin || assignedWalis.length > 0) {
+        if (isAdmin || isKepalaSekolah || assignedWalis.length > 0) {
           setIsWaliKelas(true);
           setWaliClasses(assignedWalis);
-          if (!isAdmin && assignedWalis.length > 0) {
+          if (!isAdmin && !isKepalaSekolah && assignedWalis.length > 0) {
             setKelas(prev => prev || assignedWalis[0]);
           }
         }
@@ -122,16 +129,16 @@ export default function RekapJurnalView({
   const tarikRekap = async (overrideMode?: 'pribadi' | 'kelas', overrideKelas?: string) => {
     const activeMode = overrideMode || tabMode;
     
-    // RBAC: If attempting to view kelas mode but user is regular teacher (not admin and not wali kelas)
-    if (activeMode === 'kelas' && !isAdmin && !isWaliKelas && waliClasses.length === 0) {
+    // RBAC: If attempting to view kelas mode but user is regular teacher (not admin, not kepala sekolah, and not wali kelas)
+    if (activeMode === 'kelas' && !isAdmin && !isKepalaSekolah && !isWaliKelas && waliClasses.length === 0) {
       setJurnalData([]);
       setLoading(false);
       return;
     }
 
     let activeKelas = overrideKelas !== undefined ? overrideKelas : kelas;
-    // For Wali Kelas (non-admin), restrict strictly to assigned classes
-    if (activeMode === 'kelas' && !isAdmin && waliClasses.length > 0) {
+    // For Wali Kelas (non-admin, non-kepala-sekolah), restrict strictly to assigned classes
+    if (activeMode === 'kelas' && !isAdmin && !isKepalaSekolah && waliClasses.length > 0) {
       if (!activeKelas || !waliClasses.includes(activeKelas)) {
         activeKelas = waliClasses[0];
         setKelas(activeKelas);
@@ -168,7 +175,7 @@ export default function RekapJurnalView({
       }
 
       if (activeMode === 'kelas') {
-        if (!isAdmin && waliClasses.length > 0) {
+        if (!isAdmin && !isKepalaSekolah && waliClasses.length > 0) {
           query = query.eq('kelas', activeKelas || waliClasses[0]);
         } else if (activeKelas) {
           query = query.eq('kelas', activeKelas);
@@ -189,10 +196,10 @@ export default function RekapJurnalView({
   };
 
   const handleTabChange = (newMode: 'pribadi' | 'kelas') => {
-    if (newMode === 'kelas' && !isAdmin && !isWaliKelas && waliClasses.length === 0) {
+    if (newMode === 'kelas' && !isAdmin && !isKepalaSekolah && !isWaliKelas && waliClasses.length === 0) {
       showToast(
         'Akses Terblokir',
-        'Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
+        'Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator, Kepala Sekolah, dan Wali Kelas yang ditugaskan.',
         'warning'
       );
       return;
@@ -201,7 +208,7 @@ export default function RekapJurnalView({
     setTabMode(newMode);
     let targetKelas = kelas;
     if (newMode === 'kelas') {
-      if (!isAdmin && waliClasses.length > 0) {
+      if (!isAdmin && !isKepalaSekolah && waliClasses.length > 0) {
         targetKelas = waliClasses[0];
         setKelas(targetKelas);
       } else if (!targetKelas && kelasList.length > 0) {
@@ -348,7 +355,7 @@ export default function RekapJurnalView({
               </h2>
 
               {/* Mode Toggle: Jurnal Guru Pribadi vs Rekapan Jurnal Per Kelas */}
-              {(isAdmin || isWaliKelas || waliClasses.length > 0) && (
+              {(isAdmin || isKepalaSekolah || isWaliKelas || waliClasses.length > 0) && (
                 <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
                   <button
                     type="button"
@@ -435,15 +442,15 @@ export default function RekapJurnalView({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
-                        KELAS / ANGKATAN {tabMode === 'kelas' && !isAdmin && waliClasses.length > 0 ? '(Wali Kelas)' : ''}
+                        KELAS / ANGKATAN {tabMode === 'kelas' && !isAdmin && !isKepalaSekolah && waliClasses.length > 0 ? '(Wali Kelas)' : ''}
                       </label>
                       <select 
                         value={kelas} 
                         onChange={e => setKelas(e.target.value)} 
-                        disabled={!isAdmin && tabMode === 'kelas' && waliClasses.length === 1}
+                        disabled={!isAdmin && !isKepalaSekolah && tabMode === 'kelas' && waliClasses.length === 1}
                         className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 disabled:opacity-80"
                       >
-                        {isAdmin || tabMode === 'pribadi' ? (
+                        {isAdmin || isKepalaSekolah || tabMode === 'pribadi' ? (
                           <>
                             <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Kelas</option>
                             {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
@@ -520,7 +527,7 @@ export default function RekapJurnalView({
             </div>
 
             <div id="hasil-rekap-jurnal-guru" className="min-h-[150px]">
-                {tabMode === 'kelas' && !isAdmin && !isWaliKelas && waliClasses.length === 0 ? (
+                {tabMode === 'kelas' && !isAdmin && !isKepalaSekolah && !isWaliKelas && waliClasses.length === 0 ? (
                   <div className="p-8 text-center bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl my-4 no-print">
                     <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-3 text-xl shadow-inner">
                       <i className="fa-solid fa-lock"></i>

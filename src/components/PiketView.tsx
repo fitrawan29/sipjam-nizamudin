@@ -4085,7 +4085,7 @@ export default function PiketView({ user }: { user: any }) {
                       )}
                   </div>
 
-                  <PrintSignature />
+                  <PrintSignature user={user} sekolahId={user?.sekolah_id} />
 
                   {/* Print & Export Actions */}
                   {filteredRekap.length > 0 && (

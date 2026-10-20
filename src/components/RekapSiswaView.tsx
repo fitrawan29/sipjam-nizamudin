@@ -26,9 +26,8 @@ export default function RekapSiswaView({
     user?.is_kepala_sekolah === true ||
     user?.isKepalaSekolah === true
   );
-  const isReadOnly = propReadOnly !== undefined ? propReadOnly : (!isAdmin && !isSuperadmin && isKepalaSekolah);
+  const isGlobalReadOnly = propReadOnly !== undefined ? propReadOnly : (!isAdmin && !isSuperadmin && isKepalaSekolah);
 
-  
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [kelas, setKelas] = useState(propAssignedKelas || '');
@@ -56,6 +55,9 @@ export default function RekapSiswaView({
   // Wali Kelas feature states
   const [waliKelasList, setWaliKelasList] = useState<any[]>([]);
   const [activeWaliKelas, setActiveWaliKelas] = useState<any | null>(null);
+  const userAssignedKelas = propAssignedKelas || user?.penugasan?.kelas_binaan || (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas);
+  const isOwnHomeroomClass = Boolean(userAssignedKelas && activeWaliKelas?.kelas && activeWaliKelas.kelas === userAssignedKelas);
+  const isReadOnly = isGlobalReadOnly && !isOwnHomeroomClass;
   const [showWaliInput, setShowWaliInput] = useState(false);
   const [waliTanggal, setWaliTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
   const [waliStudents, setWaliStudents] = useState<any[]>([]);
@@ -886,10 +888,16 @@ export default function RekapSiswaView({
   return (
     <section id="view-rekap-siswa" className="view-section fade-in">
         <div className="glass-card p-4">
-            {isReadOnly && (
+            {isGlobalReadOnly && (
               <div data-testid="readonly-notice" className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 no-print">
                 <i className="fa-solid fa-eye text-amber-600 text-sm"></i>
-                <span><strong>Mode Monitoring:</strong> Anda masuk sebagai pemantau (Kepala Sekolah). Data presensi siswa bersifat hanya-baca (read-only).</span>
+                <span>
+                  {isOwnHomeroomClass ? (
+                    <><strong>Mode Penugasan Wali Kelas ({activeWaliKelas?.kelas}):</strong> Anda dapat mengelola presensi siswa kelas binaan Anda. Untuk kelas lainnya, akses Anda adalah peninjauan (read-only).</>
+                  ) : (
+                    <><strong>Mode Monitoring:</strong> Anda masuk sebagai pemantau (Kepala Sekolah). Data presensi siswa bersifat hanya-baca (read-only).</>
+                  )}
+                </span>
               </div>
             )}
             <PrintHeader />
@@ -1501,6 +1509,8 @@ export default function RekapSiswaView({
                   leftSubtitle={user?.role === 'guru' ? 'Wali Kelas' : 'Kepala Sekolah / Admin'}
                   leftName={user?.nama}
                   leftNip={user?.nip}
+                  user={user}
+                  sekolahId={user?.sekolah_id}
                 />
 
                 {/* Export buttons */}
@@ -1738,6 +1748,8 @@ export default function RekapSiswaView({
                     leftSubtitle={user?.role === 'guru' ? (mapel ? 'Guru Mata Pelajaran' : 'Wali Kelas') : 'Wali Kelas'}
                     leftName={user?.nama}
                     leftNip={user?.nip}
+                    user={user}
+                    sekolahId={user?.sekolah_id}
                   />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 no-print">

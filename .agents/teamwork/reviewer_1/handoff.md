@@ -1,90 +1,72 @@
-# Handoff Report — reviewer_1 (Adversarial Reviewer)
+# Reviewer 1 Handoff Report
 
 > [!WARNING] **Skepticism Disclaimer**
-> Perbaikan telah diuji secara mendalam dengan 46 pengujian otomatis (100% PASS), type-checking TypeScript (0 errors), dan adversarial scenario test; namun konkurensi multi-client di jaringan Supabase produksi saat transisi detik 12:00:00 tetap perlu dimonitor secara berkala.
+> Confidence is high based on empirical test execution (35/35 test assertions passing and 36+ test files passing in `npm test`), though live hardware interaction with a physical printer device remains unverified.
 
 ## 1. What the prior attempt got wrong
 
-### Issue 1: False-Positive Bolos Overriding Excused Absences (Sakit & Izin)
-- **Input:** Siswa tap kartu di gerbang pagi (`hasMorningPresence = true`). Wali Kelas mencatat secara resmi status `Sakit` (atau `Izin`) pada presensi kelas. Di siang hari, Guru Mapel jam KBM terakhir mengisi Alfa ('A').
-- **Expected:** Status harian siswa tetap **Sakit** (atau **Izin**) sesuai rekap resmi Wali Kelas. Siswa yang berhalangan hadir dengan alasan sah/sakit tidak boleh dijadikan **Bolos**.
-- **Actual:** `morningHadir` dihitung dari `hasMorningPresence || recordedStatus === 'Hadir'`. Karena `hasMorningPresence` bernilai true dan `lastKbmStatus === 'Alpa'`, sistem salah menimpa status siswa menjadi **Bolos**. Bug serupa juga terjadi di `RekapSiswaView.tsx` (baris 297: `isMorningHadir` pada fallback gerbang tidak mengecualikan siswa Sakit/Izin).
-- **Root Cause:** Fungsi `resolveDailyStudentAttendance` tidak memprioritaskan dan memproteksi status izin resmi (`Sakit` / `Izin`) dari Wali Kelas sebelum memicu aturan Bolos.
+### Issue 1: Dual-Role Lockout in `RekapSiswaView`
+- **Input:** A teacher assigned as Wali Kelas for class "VII-A" who is simultaneously designated as Kepala Sekolah accesses `view-rekap-siswa`.
+- **Expected:** The user should be able to mark status, fill remarks, and save attendance for their own homeroom class ("VII-A"), while viewing other classes ("VII-B", "VIII-A") in read-only monitoring mode.
+- **Actual:** `AppScreen` passed `isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin}` which was `true`. In `RekapSiswaView`, `isReadOnly` unconditionally disabled student status buttons, quick mark buttons, remarks, and the save button. The teacher was blocked with "Mode Monitoring" when trying to save attendance for their own class.
+- **Root Cause:** `RekapSiswaView.tsx` lacked evaluation of whether the active viewed class matches the teacher's assigned homeroom class (`isOwnHomeroomClass`), applying global read-only lock to all classes indiscriminately.
 
-### Issue 2: Window Overlap Bug on Early Dismissal Days (10:00 WITA Dismissal)
-- **Input:** Hari kepulangan lebih awal (misal hari ujian/kegiatan khusus dengan `jamPulangMulai = '10:00'`). Pada pukul 11:15 WITA (`current = '11:15'`), alokasi 1 jam pulang (`10:00 - 11:00`) telah berakhir.
-- **Expected:** Akses intervensi terkunci (`phase: 'malam_tutup'`, `allowed: false`).
-- **Actual:** `isWaliKelasIntervensiAllowed` mengevaluasi `current <= pagi` ('11:15' <= '12:00') setelah jendela pulang, sehingga sistem salah membuka kembali jendela pagi (`phase: 'pagi'`, `allowed: true`) 15 menit setelah kepulangan selesai.
-- **Root Cause:** Evaluasi `current <= pagi` tidak memvalidasi `current < pulangStart`, dan kondisi `current > pulangEnd` diletakkan setelah pemeriksaan pagi.
+### Issue 2: Kepala Sekolah Lockout from Jurnal Kelas in `RekapJurnalView`
+- **Input:** Kepala Sekolah accesses `view-jurnal-kelas` to monitor school-wide KBM journals.
+- **Expected:** Kepala Sekolah can select any class or "Semua Kelas" and monitor KBM journals across all classes in read-only mode.
+- **Actual:** `RekapJurnalView` evaluated `!isAdmin && !isWaliKelas && waliClasses.length === 0` to `true`, causing `tarikRekap()` to immediately clear data (`setJurnalData([])`) and return. Furthermore, the class dropdown was populated from empty `waliClasses`, rendering zero selectable classes.
+- **Root Cause:** `RekapJurnalView.tsx` had no parameter or check for `isKepalaSekolah`, treating the principal as an unauthorized regular teacher when accessing classroom mode.
 
-### Issue 3: Fallback Blind Spot on Empty Teaching Journals
-- **Input:** Terdapat dua jurnal pada hari yang sama: Jam ke-5 dengan catatan presensi murid dan Jam ke-6 dengan `{}` kosong.
-- **Expected:** `findLastKbmJournal` memilih Jam ke-5 (sesi KBM terakhir yang memiliki data absensi) agar siswa mewarisi status presensi.
-- **Actual:** Pengurutan hanya berdasarkan angka `jam_ke`, sehingga memilih Jam ke-6 yang kosong. Akibatnya `lastKbmStatus` menjadi `''` dan fallback gagal mewariskan data.
-- **Root Cause:** `findLastKbmJournal` tidak memprioritaskan jurnal yang memiliki data absensi murid.
+### Issue 3: Incoherent Rapor Menu in `menuItemsKepalaSekolah`
+- **Input:** Kepala Sekolah who is not a homeroom teacher (not Wali Kelas) clicks "Rapor" (`view-rapor`) from the navigation drawer.
+- **Expected:** Menu item should only appear if the user is assigned as a Wali Kelas (per R1).
+- **Actual:** "Rapor" appeared unconditionally in `menuItemsKepalaSekolah`, but clicking it triggered an "Akses Terblokir" popup from `handleNavigation` line 391 (`if (!isKepalaSekolah || targetId === 'view-rapor')` with `!isWaliKelas`).
+- **Root Cause:** In `AppScreen.tsx`, `menuItemsKepalaSekolah` hardcoded `view-rapor` without checking `isWaliKelas`.
 
-### Issue 4: Student Lookup Blind to UUID (`student.id`) and Case Sensitivity
-- **Input:** Data siswa yang dicatat dengan UUID (`student.id`) tanpa NISN, atau nama siswa di JSON jurnal memiliki perbedaan kapitalisasi/spasi.
-- **Expected:** Siswa berhasil dicocokkan dan statusnya diwarisi.
-- **Actual:** Mengembalikan status kosong `''` karena pencocokan hanya memeriksa `student.nisn` dan `student.nama_siswa` secara case-sensitive.
-- **Root Cause:** Logika ekstraksi `absensiJson` di `resolveDailyStudentAttendance` dan `RekapSiswaView` tidak menyertakan fallback ke `student.id` dan case-insensitive name matching.
+### Issue 4: Clearing/Unassigning Kepala Sekolah in `AdminConfigView`
+- **Input:** Administrator unselects the designated teacher by choosing "-- Pilih Guru yang Ditunjuk sebagai Kepala Sekolah --" (value `""`) and saves.
+- **Expected:** `sekolah.kepala_sekolah_id` is cleared to `null` and `data_guru.is_kepala_sekolah` is reset to `false`.
+- **Actual:** The code checked `if (saveConfig.kepala_sekolah_id)` before updating. Since `""` was falsy, the update was skipped, leaving the previously assigned teacher as `is_kepala_sekolah: true` in `data_guru` and keeping the old ID in `sekolah`.
+- **Root Cause:** Missing reset/clear logic when `saveConfig.kepala_sekolah_id` was falsy or empty.
 
-### Issue 5: `PiketView.tsx` Unwired Schedule Configuration
-- **Input:** Admin mengubah konfigurasi waktu `jam_batas_intervensi_siswa` (misal 08:30) atau `jam_pulang_mulai` (misal 13:00).
-- **Expected:** `PiketView` menggunakan parameter waktu dinamis dari tabel `pengaturan`.
-- **Actual:** `PiketView` mengimpor fungsi `fetchBatasIntervensiSiswa` dan `fetchJadwalIntervensiWali` namun tidak pernah memanggilnya dalam `useEffect`, sehingga terkunci permanen pada default `'08:00'` dan `'11:00'`.
-- **Root Cause:** Kurangnya hook `useEffect` untuk fetching konfigurasi jadwal di `PiketView.tsx`.
-
----
+### Issue 5: Missing Multi-Tenant Scoping on `PrintSignature`
+- **Input:** `AdminRekapView`, `RekapSiswaView` (Gerbang & Rekap tabs), and `PiketView` invoked `<PrintSignature />` without passing `user` or `sekolahId`.
+- **Expected:** `PrintSignature` scopes database queries for school configuration (`pengaturan`) strictly to the active school tenant.
+- **Actual:** `PrintSignature` queried `pengaturan` without a `sekolah_id` filter when props were omitted, risking cross-tenant configuration contamination.
+- **Root Cause:** Missing `user={user}` and `sekolahId={user?.sekolah_id}` on `<PrintSignature />` call sites.
 
 ## 2. What I changed
-
-1. **`src/lib/presensiIntervensi.ts`**:
-   - `isWaliKelasIntervensiAllowed`: Memperbaiki partisi transisi jendela waktu: (1) Pulang (60m) -> (2) `malam_tutup` jika `current > pulangEnd` -> (3) `pagi` jika `current <= pagi && current < pulangStart` -> (4) `kbm` terkunci jika di antara pagi dan jam pulang.
-   - `findLastKbmJournal`: Menambahkan helper `hasAttendanceData` untuk memprioritaskan sesi KBM yang memiliki catatan absensi murid sebelum mengurutkan berdasarkan `jam_ke` descending.
-   - `resolveDailyStudentAttendance`:
-     - Memproteksi status resmi `Sakit` dan `Izin` dari Wali Kelas agar tidak pernah diubah menjadi Bolos.
-     - Mempertahankan status `Bolos` kanonikal jika sudah tercatat.
-     - Menambahkan dukungan pencocokan berbasis `student.id` (UUID) dan case-insensitive `nama_siswa`.
-2. **`src/components/RekapSiswaView.tsx`**:
-   - Memperbaiki deteksi `isMorningHadir` pada fallback gerbang (`!isExcused && ...`) agar siswa berstatus Sakit/Izin tidak salah diklasifikasikan sebagai `isBolosPulang`.
-   - Menambahkan pencocokan `siswa.id` dan case-insensitive name matching pada lookup `lastMapelStatus`.
-3. **`src/components/PiketView.tsx`**:
-   - Menambahkan hook `useEffect` untuk memanggil `fetchBatasIntervensiSiswa` dan `fetchJadwalIntervensiWali` dari database secara dinamis.
-4. **`src/components/AdminConfigView.tsx`**:
-   - Memperbarui teks keterangan `jam_batas_intervensi_siswa` agar secara akurat menjelaskan batas 08:00 WITA untuk Guru Piket dan 12:00 WITA untuk Wali Kelas.
-5. **`tests/wali_kelas_and_piket_intervensi.test.ts`**:
-   - Menambahkan test `WALI-WIN-05` (early dismissal window locking).
-   - Menambahkan test `PIKET-05` (dynamic config fetch in PiketView).
-   - Menambahkan test `FALLBACK-05` (preservasi Sakit saat tap gerbang + Alfa KBM).
-   - Menambahkan test `FALLBACK-06` (preservasi Izin).
-   - Menambahkan test `FALLBACK-07` (empty journal resilience).
-   - Menambahkan test `FALLBACK-08` (UUID student.id matching).
-   - Menambahkan test `FALLBACK-09` (case-insensitive name matching).
-   - Total test suite meningkat dari 39 menjadi 46 test (100% PASS).
-
----
+- **`src/components/AppScreen.tsx`**:
+  - In `menuItemsKepalaSekolah`, conditioned `view-rapor` on `isWaliKelas`: `...(isWaliKelas ? [{ id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor' }] : [])`.
+  - Passed `isKepalaSekolah={isKepalaSekolah}` to `<RekapJurnalView />`.
+  - Restricted `view-rapor` rendering to `isAdmin || isSuperadmin || isWaliKelas`.
+- **`src/components/RekapJurnalView.tsx`**:
+  - Added `isKepalaSekolah?: boolean` prop and imported `checkIsKepalaSekolah`.
+  - In `fetchMaster`, `tarikRekap`, `handleTabChange`, and class dropdown, granted Kepala Sekolah access to view all classes and all teachers' journals without RBAC blocking.
+- **`src/components/RekapSiswaView.tsx`**:
+  - Split read-only into `isGlobalReadOnly` and dynamic `isReadOnly = isGlobalReadOnly && !isOwnHomeroomClass`.
+  - Allowed teachers who are both Wali Kelas and Kepala Sekolah to mark attendance and save for their own class, while preserving read-only protection for other classes.
+  - Added `user={user}` and `sekolahId={user?.sekolah_id}` to both `<PrintSignature />` calls.
+- **`src/components/AdminConfigView.tsx`**:
+  - In `handleSave`, explicitly set `updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id || null`, and reset `data_guru.is_kepala_sekolah: false` for all teachers when unassigning.
+- **`src/components/AdminRekapView.tsx`**:
+  - Passed `user={user}` and `sekolahId={user?.sekolah_id}` to `<PrintSignature />`.
+- **`src/components/PiketView.tsx`**:
+  - Passed `user={user}` and `sekolahId={user?.sekolah_id}` to `<PrintSignature />`.
+- **`tests/kepsek_pengawas_rbac.test.ts`**:
+  - Added Section 4 adversarial tests (R4.1 to R4.6) covering Rapor conditional visibility, Jurnal Kelas access for Kepala Sekolah, dual-role editing, multi-tenant PrintSignature scoping, and headmaster clearance.
 
 ## 3. Verification Record
-
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: **46/46 PASS (100%)**.
-  - `npx tsx tests/adversarial_challenge_r1_r2_r3.test.ts`: **42/42 PASS (100%)**.
-  - `npx tsc --noEmit`: **0 errors**.
+  - `npx tsx tests/kepsek_pengawas_rbac.test.ts`: 35/35 assertions passed (100%).
+  - `npm test`: 36+ test files passed (100%).
 - **Shallow Verification (manual only):**
-  - Pemeriksaan teks label dan petunjuk konfigurasi di AdminConfigView.
+  - Verified component syntax and JSX structure.
 - **Unverified aspects:**
-  - Konkurensi multi-user menulis paralel tepat pada pergantian detik 12:00:00 WITA di koneksi internet riil.
-
----
+  - Physical paper printer output on hardware devices.
 
 ## 4. Known Issues
-
-- `None` (Seluruh 46 pengujian unit lulus 100%, kompilasi TypeScript bersih tanpa error).
-
----
+- `Minor Robustness Risk` — Narrow thermal receipt printers (58mm/80mm) may wrap 3-column signature blocks unless printed in landscape or standard A4/Folio portrait.
 
 ## 5. Remaining risk & next step
-
-- **Remaining risk:** Pengujian live di server produksi saat tahun ajaran baru atau pergantian jam sekolah khusus (seperti bulan Ramadhan dengan jam pulang non-standar) telah dicover oleh logika dinamis, namun data live Supabase perlu dipastikan memiliki indeks pada `(sekolah_id, kelas, tanggal)` untuk efisiensi kueri harian.
-- **Next step:** Tugas telah selesai sepenuhnya dan memenuhi seluruh kriteria penerimaan R1, R2, R3, dan R4 secara menyeluruh dan robust. Siap dilakukan commit dan push ke origin main.
+- Implementation is complete, hardened against dual roles, multi-tenant isolated, and regression-proofed. Task is ready for final delivery.

@@ -399,6 +399,8 @@ export default function AdminRekapView({ user }: { user: any }) {
                     leftSubtitle="Pengelola Data / Admin"
                     leftName={user?.nama}
                     leftNip={user?.nip}
+                    user={user}
+                    sekolahId={user?.sekolah_id}
                   />
                   
                   <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">

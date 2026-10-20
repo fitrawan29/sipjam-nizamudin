@@ -1,2 +1,2 @@
-# reviewer_1 workspace
-Work directory for teamwork_preview_reviewer Round 1
+# Reviewer 1 Workspace
+Working directory for teamwork_preview_reviewer (Round 1).
