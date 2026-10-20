@@ -95,7 +95,7 @@ export default function RekapSiswaView({
           setMapelList(uniqueMapel);
         }
 
-        // Fetch jadwal intervensi presensi siswa bagi Wali Kelas (Pagi & Sore jam pulang s.d. 22:00 WITA)
+        // Fetch jadwal intervensi presensi siswa bagi Wali Kelas (Pagi s.d. 12:00 WITA & alokasi pulang 1 jam setelah jam pulang mulai)
         const jadwal = await fetchJadwalIntervensiWali(supabase, user?.sekolah_id);
         setJadwalWali(jadwal);
 
@@ -208,7 +208,7 @@ export default function RekapSiswaView({
 
           const map: Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos' | ''; keterangan: string; logs: string[] }> = {};
           studentsData.forEach(s => {
-            const found = absensiData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
+            const found = absensiData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
             const hasGate = Boolean(gateMap[s.nisn]?.datang || (s.id && gateMap[s.id]?.datang));
             const resolved = resolveDailyStudentAttendance(s, found, hasGate, lastJurnal);
 
@@ -281,8 +281,10 @@ export default function RekapSiswaView({
               (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'pulang'
             );
 
-            const classLog = absensiLogs?.find(a => (a.siswa_id && siswa.id && a.siswa_id === siswa.id) || (a.nisn && a.nisn === siswa.nisn) || a.nama_siswa === siswa.nama_siswa);
+            const classLog = absensiLogs?.find(a => (a.siswa_id && siswa.id && a.siswa_id === siswa.id) || (a.nisn && a.nisn === siswa.nisn) || (a.nama_siswa && siswa.nama_siswa && a.nama_siswa.trim().toLowerCase() === siswa.nama_siswa.trim().toLowerCase()));
             const isDailyBolos = classLog?.status === 'Bolos' || classLog?.status === 'B';
+            const resolvedDaily = resolveDailyStudentAttendance(siswa, classLog, Boolean(datang), lastJurnal);
+            const isResolvedBolos = resolvedDaily.status === 'Bolos';
 
             let lastMapelStatus: string | null = null;
             if (lastJurnal?.absensi_siswa) {
@@ -307,9 +309,9 @@ export default function RekapSiswaView({
             const isMapelHadir = normMapel === 'H' || normMapel === 'HADIR';
 
             // Auto-fallback to mapel presensi & validasi bolos (Rule 3)
-            let isBolosPulang = isDailyBolos;
+            let isBolosPulang = isDailyBolos || isResolvedBolos;
             if (!pulang) {
-              if (isMapelAlfa && isMorningHadir) {
+              if (isBolosPulang || (isMapelAlfa && isMorningHadir)) {
                 isBolosPulang = true;
                 pulang = { jam: '-', status: 'bolos', device_id: 'Auto Fallback: Bolos' };
               } else if (isMapelHadir || isMorningHadir) {
@@ -321,7 +323,7 @@ export default function RekapSiswaView({
                   pulang = { jam: timeMatch[1] + ':00', device_id: 'Sistem Mapel Auto' };
                 }
               }
-            } else if (isDailyBolos) {
+            } else if (isDailyBolos || isResolvedBolos) {
               isBolosPulang = true;
             }
 
@@ -632,7 +634,7 @@ export default function RekapSiswaView({
             const target = rekapMap[s.nama_siswa];
             if (!target) return;
 
-            const absRecord = directAbsensi?.find(a => a.tanggal === d && ((a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa));
+            const absRecord = directAbsensi?.find(a => a.tanggal === d && ((a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase())));
             const hasGate = Boolean((s.nisn && dateGateDatang.has(s.nisn)) || (s.id && dateGateDatang.has(s.id)));
 
             const resolved = resolveDailyStudentAttendance(s, absRecord, hasGate, lastJurnal);

@@ -515,6 +515,62 @@ async function runTests() {
     fail('FALLBACK-13', `Status BOLOS dalam JSON gagal dikenali (status: ${resBolosDirect.status})`);
   }
 
+  // 8.5.14 Dash/colon postfix format in detail_absen ("Nama - Alfa", "Nama: A") triggers Bolos if morning presence
+  const studentDash = { id: 's-dash', nisn: '778899', nama_siswa: 'Bambang Sudiro' };
+  const journalDash = {
+    jam_ke: 'Jam ke-5',
+    mapel: 'Sejarah',
+    detail_absen: '1. Bambang Sudiro - Alfa\n2. Ratna - Sakit'
+  };
+  const resDash = resolveDailyStudentAttendance(studentDash, null, true, journalDash);
+  if (resDash.status === 'Bolos') {
+    pass('FALLBACK-14', 'resolveDailyStudentAttendance mendeteksi format postfix tanda hubung/titik dua (Nama - Alfa) dan menetapkan Bolos');
+  } else {
+    fail('FALLBACK-14', `Format postfix (Nama - Alfa) gagal dideteksi (status: ${resDash.status})`);
+  }
+
+  // 8.5.15 NISN format in detail_absen ("778899 - Alfa") triggers Bolos if morning presence
+  const journalNisn = {
+    jam_ke: 'Jam ke-5',
+    mapel: 'Geografi',
+    detail_absen: 'Absen KBM:\n778899 - Alfa'
+  };
+  const resNisn = resolveDailyStudentAttendance(studentDash, null, true, journalNisn);
+  if (resNisn.status === 'Bolos') {
+    pass('FALLBACK-15', 'resolveDailyStudentAttendance mengenali NISN dalam detail_absen (NISN - Alfa) dan menetapkan Bolos');
+  } else {
+    fail('FALLBACK-15', `Pencocokan NISN dalam detail_absen gagal dideteksi (status: ${resNisn.status})`);
+  }
+
+  // 8.5.16 Tie-breaking in findLastKbmJournal with identical jam_ke prioritizes newer timestamp
+  const journalSameJamA = {
+    jam_ke: '4',
+    mapel: 'Fisika',
+    timestamp: '2026-10-20 10:00:00 WITA',
+    absensi_siswa: { '1': 'H' }
+  };
+  const journalSameJamB = {
+    jam_ke: '4',
+    mapel: 'Fisika Praktikum',
+    timestamp: '2026-10-20 11:30:00 WITA',
+    absensi_siswa: { '1': 'A' }
+  };
+  const pickedTie = findLastKbmJournal([journalSameJamA, journalSameJamB]);
+  if (pickedTie && pickedTie.mapel === 'Fisika Praktikum') {
+    pass('FALLBACK-16', 'findLastKbmJournal melakukan tie-breaking berdasarkan timestamp ketika jam_ke sama');
+  } else {
+    fail('FALLBACK-16', 'Tie-breaking findLastKbmJournal gagal');
+  }
+
+  // 7.10 GuruJurnal UI prevents false-positive truant indicator when student was not present in the morning
+  if (jurnalCode.includes('isMorningHadir') &&
+      jurnalCode.includes('const isTruant = !isMorningLocked && isMorningHadir && absensi[siswa.nisn] === \'A\'') &&
+      jurnalCode.includes('Boolean(!morningLockedAttendance[s.nisn]?.isLocked && isMorningHadir && absensi[s.nisn] === \'A\')')) {
+    pass('DOMAIN-10', 'GuruJurnal memproteksi indikator truant (Bolos) di UI agar hanya aktif jika siswa hadir di pagi hari');
+  } else {
+    fail('DOMAIN-10', 'Indikator truant di GuruJurnal belum diproteksi dengan isMorningHadir');
+  }
+
   // SUMMARY
   console.log(`\n${CYAN}══════════════════════════════════════════════════════════════════════${RESET}`);
   console.log(`${BOLD}SUMMARY: Total ${totalTests} | Passed: ${passedTests} | Failed: ${failedTests}${RESET}`);

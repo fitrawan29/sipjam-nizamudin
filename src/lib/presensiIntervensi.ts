@@ -296,7 +296,10 @@ export function findLastKbmJournal(journals: any[]): any {
   const sorted = candidates.slice().sort((a, b) => {
     const jamA = extractMaxJamKe(a.jam_ke);
     const jamB = extractMaxJamKe(b.jam_ke);
-    return jamB - jamA;
+    if (jamB !== jamA) return jamB - jamA;
+    const timeA = String(a.timestamp || a.created_at || '');
+    const timeB = String(b.timestamp || b.created_at || '');
+    return timeB.localeCompare(timeA);
   });
   return sorted[0] || null;
 }
@@ -332,6 +335,16 @@ export function resolveDailyStudentAttendance(
     return '';
   };
 
+  const mapCode = (rawCode: string): 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' => {
+    const code = rawCode.trim().toUpperCase();
+    if (code === 'A' || code === 'ALFA' || code === 'ALPA') return 'Alpa';
+    if (code === 'B' || code === 'BOLOS') return 'Bolos';
+    if (code === 'S' || code === 'SAKIT') return 'Sakit';
+    if (code === 'I' || code === 'IZIN') return 'Izin';
+    if (code === 'H' || code === 'HADIR') return 'Hadir';
+    return '';
+  };
+
   // 1. Extract status from last KBM journal if available
   let lastKbmStatus: 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' = '';
   if (lastKbmJournal) {
@@ -358,6 +371,13 @@ export function resolveDailyStudentAttendance(
             ? absensiJson[student.id]
             : undefined;
 
+      // Whitespace-insensitive lookup for NISN
+      if (val === undefined && student.nisn) {
+        const cleanNisn = student.nisn.trim();
+        const foundNisnKey = Object.keys(absensiJson).find(k => k.trim() === cleanNisn);
+        if (foundNisnKey) val = absensiJson[foundNisnKey];
+      }
+
       // Case-insensitive lookup for nama_siswa if not directly found
       if (val === undefined && student.nama_siswa) {
         const lowerName = student.nama_siswa.trim().toLowerCase();
@@ -366,42 +386,68 @@ export function resolveDailyStudentAttendance(
       }
 
       if (val !== undefined) {
-        const raw = String(val).trim().toUpperCase();
-        if (raw === 'A' || raw === 'ALFA' || raw === 'ALPA') lastKbmStatus = 'Alpa';
-        else if (raw === 'B' || raw === 'BOLOS') lastKbmStatus = 'Bolos';
-        else if (raw === 'S' || raw === 'SAKIT') lastKbmStatus = 'Sakit';
-        else if (raw === 'I' || raw === 'IZIN') lastKbmStatus = 'Izin';
-        else if (raw === 'H' || raw === 'HADIR') lastKbmStatus = 'Hadir';
+        lastKbmStatus = mapCode(String(val));
       }
     }
 
     // If not found in absensiJson, check detail_absen / kehadiran_murid
     if (!lastKbmStatus && (lastKbmJournal.detail_absen || lastKbmJournal.kehadiran_murid)) {
       const detail = `${lastKbmJournal.detail_absen || ''} ${lastKbmJournal.kehadiran_murid || ''}`;
-      if (student.nama_siswa) {
-        const escaped = student.nama_siswa.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Match format: "Nama (A)", "Nama (Alfa)", "Nama (Alpa)", "Nama (Sakit)", etc.
-        const match = detail.match(new RegExp(`(?:\\b|^)${escaped}(?:\\b|$)\\s*\\(([a-zA-Z]+)\\)`, 'i'));
-        if (match) {
-          const rawCode = match[1].toUpperCase();
-          if (rawCode === 'A' || rawCode === 'ALFA' || rawCode === 'ALPA') lastKbmStatus = 'Alpa';
-          else if (rawCode === 'B' || rawCode === 'BOLOS') lastKbmStatus = 'Bolos';
-          else if (rawCode === 'S' || rawCode === 'SAKIT') lastKbmStatus = 'Sakit';
-          else if (rawCode === 'I' || rawCode === 'IZIN') lastKbmStatus = 'Izin';
-          else if (rawCode === 'H' || rawCode === 'HADIR') lastKbmStatus = 'Hadir';
+      const identifiers = [
+        student.nama_siswa?.trim(),
+        student.nisn?.trim()
+      ].filter(Boolean) as string[];
+
+      for (const idStr of identifiers) {
+        if (lastKbmStatus) break;
+        const escaped = idStr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // Pattern 1: Postfix status (e.g. "Nama (Alfa)", "Nama (A)", "Nama - Alfa", "Nama - A", "Nama: Alfa", "Nama: A", "Nama = Sakit")
+        const postfixRegex = new RegExp(`(?:^|\\b)${escaped}\\b\\s*(?:[-:=—–]|\\(|\\b)\\s*([a-zA-Z]+)\\)?`, 'i');
+        const match = detail.match(postfixRegex);
+        if (match && match[1]) {
+          const parsed = mapCode(match[1]);
+          if (parsed) {
+            lastKbmStatus = parsed;
+            break;
+          }
         }
 
-        // Match keyword prefix: "Alpa: Nama", "Alfa: Nama", "Sakit: Nama", "Izin: Nama", "Bolos: Nama"
+        // Pattern 2: Prefix status within lines/clauses (e.g. "Alpa: Nama", "Alfa: Nama", "Sakit: Nama", "Izin: Nama", "Bolos: Nama")
+        const linesOrClauses = detail.split(/[\r\n;]+/).map(s => s.trim()).filter(Boolean);
+        const lowerId = idStr.toLowerCase();
+        for (const segment of linesOrClauses) {
+          const segLower = segment.toLowerCase();
+          if (segLower.includes(lowerId)) {
+            const idxId = segLower.indexOf(lowerId);
+            const idxSakit = segLower.lastIndexOf('sakit', idxId);
+            const idxIzin = segLower.lastIndexOf('izin', idxId);
+            const idxAlpa = Math.max(segLower.lastIndexOf('alpa', idxId), segLower.lastIndexOf('alfa', idxId));
+            const idxBolos = segLower.lastIndexOf('bolos', idxId);
+            const idxHadir = segLower.lastIndexOf('hadir', idxId);
+
+            const maxIdx = Math.max(idxSakit, idxIzin, idxAlpa, idxBolos, idxHadir);
+            if (maxIdx !== -1) {
+              if (maxIdx === idxBolos) lastKbmStatus = 'Bolos';
+              else if (maxIdx === idxAlpa) lastKbmStatus = 'Alpa';
+              else if (maxIdx === idxSakit) lastKbmStatus = 'Sakit';
+              else if (maxIdx === idxIzin) lastKbmStatus = 'Izin';
+              else if (maxIdx === idxHadir) lastKbmStatus = 'Hadir';
+              break;
+            }
+          }
+        }
+
+        // Pattern 3: Fallback full text prefix search if not matched in segmented clauses
         if (!lastKbmStatus) {
           const detailLower = detail.toLowerCase();
-          const namaLower = student.nama_siswa.trim().toLowerCase();
-          if (detailLower.includes(namaLower)) {
-            const idxNama = detailLower.indexOf(namaLower);
-            const idxSakit = detailLower.lastIndexOf('sakit', idxNama);
-            const idxIzin = detailLower.lastIndexOf('izin', idxNama);
-            const idxAlpa = Math.max(detailLower.lastIndexOf('alpa', idxNama), detailLower.lastIndexOf('alfa', idxNama));
-            const idxBolos = detailLower.lastIndexOf('bolos', idxNama);
-            const idxHadir = detailLower.lastIndexOf('hadir', idxNama);
+          if (detailLower.includes(lowerId)) {
+            const idxId = detailLower.indexOf(lowerId);
+            const idxSakit = detailLower.lastIndexOf('sakit', idxId);
+            const idxIzin = detailLower.lastIndexOf('izin', idxId);
+            const idxAlpa = Math.max(detailLower.lastIndexOf('alpa', idxId), detailLower.lastIndexOf('alfa', idxId));
+            const idxBolos = detailLower.lastIndexOf('bolos', idxId);
+            const idxHadir = detailLower.lastIndexOf('hadir', idxId);
 
             const maxIdx = Math.max(idxSakit, idxIzin, idxAlpa, idxBolos, idxHadir);
             if (maxIdx !== -1) {

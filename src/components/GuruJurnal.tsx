@@ -48,6 +48,7 @@ export default function GuruJurnal({ user }: { user: any }) {
     status: 'H' | 'S' | 'I' | 'A';
     label: string;
     isLocked: boolean;
+    isMorningHadir?: boolean;
   }>>({});
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
@@ -614,31 +615,34 @@ export default function GuruJurnal({ user }: { user: any }) {
         // - Jika pagi diisi Sakit/Izin/Alfa: status di mapel otomatis terkunci sesuai status tersebut
         // - Jika pagi diisi Hadir: status default awal di mapel adalah Hadir
         const initialAbsensi: Record<string, string> = {};
-        const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean }> = {};
+        const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean; isMorningHadir?: boolean }> = {};
 
         data.forEach(s => {
-          const existing = absData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
+          const existing = absData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
           if (existing) {
             const rawSt = String(existing.status || '').trim().toLowerCase();
             if (rawSt === 'sakit' || rawSt === 's') {
               initialAbsensi[s.nisn] = 'S';
-              lockedMap[s.nisn] = { status: 'S', label: 'Sakit', isLocked: true };
+              lockedMap[s.nisn] = { status: 'S', label: 'Sakit', isLocked: true, isMorningHadir: false };
             } else if (rawSt === 'izin' || rawSt === 'i') {
               initialAbsensi[s.nisn] = 'I';
-              lockedMap[s.nisn] = { status: 'I', label: 'Izin', isLocked: true };
+              lockedMap[s.nisn] = { status: 'I', label: 'Izin', isLocked: true, isMorningHadir: false };
             } else if (rawSt === 'alpa' || rawSt === 'a' || rawSt === 'alfa') {
               initialAbsensi[s.nisn] = 'A';
-              lockedMap[s.nisn] = { status: 'A', label: 'Alfa', isLocked: true };
+              lockedMap[s.nisn] = { status: 'A', label: 'Alfa', isLocked: true, isMorningHadir: false };
             } else if (rawSt === 'bolos' || rawSt === 'b') {
               initialAbsensi[s.nisn] = 'A';
-              lockedMap[s.nisn] = { status: 'A', label: 'Bolos', isLocked: true };
+              lockedMap[s.nisn] = { status: 'A', label: 'Bolos', isLocked: true, isMorningHadir: false };
+            } else if (rawSt === 'hadir' || rawSt === 'h') {
+              initialAbsensi[s.nisn] = 'H';
+              lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false, isMorningHadir: true };
             } else {
               initialAbsensi[s.nisn] = 'H';
-              lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false };
+              lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false, isMorningHadir: false };
             }
           } else {
             initialAbsensi[s.nisn] = 'H';
-            lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false };
+            lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false, isMorningHadir: false };
           }
         });
         setMorningLockedAttendance(lockedMap);
@@ -901,7 +905,7 @@ export default function GuruJurnal({ user }: { user: any }) {
             students.forEach(s => {
               const currentStatus = absensi[s.nisn];
               if (currentStatus === 'A') {
-                const classRec = existingClassAbs?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || a.nama_siswa === s.nama_siswa);
+                const classRec = existingClassAbs?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
                 const isExcused = classRec && (classRec.status === 'Sakit' || classRec.status === 'Izin' || classRec.status === 'S' || classRec.status === 'I');
                 const isMorningHadir = !isExcused && ((classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) ||
                                        Boolean(piketAttendance[s.nisn] || (s.id && piketAttendance[s.id])));
@@ -1342,7 +1346,8 @@ export default function GuruJurnal({ user }: { user: any }) {
                       {students.length > 0 && (() => {
                         const truantCount = students.filter(s => {
                           const pRec = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
-                          return Boolean(pRec && absensi[s.nisn] === 'A');
+                          const isMorningHadir = Boolean(pRec || morningLockedAttendance[s.nisn]?.isMorningHadir);
+                          return Boolean(!morningLockedAttendance[s.nisn]?.isLocked && isMorningHadir && absensi[s.nisn] === 'A');
                         }).length;
 
                         return (
@@ -1378,7 +1383,8 @@ export default function GuruJurnal({ user }: { user: any }) {
                               {students.map((siswa, idx) => {
                                 const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
                                 const isMorningLocked = Boolean(morningLockedAttendance[siswa.nisn]?.isLocked);
-                                const isTruant = !isMorningLocked && absensi[siswa.nisn] === 'A';
+                                const isMorningHadir = Boolean(pRec || morningLockedAttendance[siswa.nisn]?.isMorningHadir);
+                                const isTruant = !isMorningLocked && isMorningHadir && absensi[siswa.nisn] === 'A';
                                 return (
                                   <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
                                     <div className="flex items-center gap-2 flex-1 min-w-0">
