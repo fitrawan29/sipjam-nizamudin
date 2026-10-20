@@ -120,6 +120,15 @@ export default function PiketView({ user }: { user: any }) {
     };
   }, []);
 
+  useEffect(() => {
+    fetchBatasIntervensiSiswa(supabase, user?.sekolah_id)
+      .then(b => { if (b) setBatasIntervensi(b); })
+      .catch(() => {});
+    fetchJadwalIntervensiWali(supabase, user?.sekolah_id)
+      .then(j => { if (j?.jamPulangMulai) setJamPulangMulai(j.jamPulangMulai); })
+      .catch(() => {});
+  }, [user?.sekolah_id]);
+
   // Live Attendance Log & Summary
   const [scanSummary, setScanSummary] = useState({ totalDatang: 0, totalPulang: 0, totalUnik: 0 });
   const [todayScans, setTodayScans] = useState<any[]>([]);

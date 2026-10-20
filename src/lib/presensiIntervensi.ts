@@ -150,8 +150,19 @@ export function isWaliKelasIntervensiAllowed(
       };
     }
 
-    // 2. Jendela Pagi (s.d. 12:00 WITA)
-    if (current <= pagi) {
+    // 2. Jika sudah melewati batas 1 jam kepulangan (current > pulangEnd)
+    // Akses malam 22:00 dihapus sehingga intervensi terkunci penuh
+    if (current > pulangEnd) {
+      return {
+        allowed: false,
+        phase: 'malam_tutup',
+        label: `Terkunci (Lewat pk. ${pulangEnd})`,
+        pesan: `Batas waktu penyesuaian presensi siswa untuk hari ini telah berakhir (hanya aktif hingga 1 jam setelah jam pulang pk. ${pulangEnd} WITA).`
+      };
+    }
+
+    // 3. Jendela Pagi (s.d. 12:00 WITA dan sebelum jam pulang mulai)
+    if (current <= pagi && current < pulangStart) {
       return {
         allowed: true,
         phase: 'pagi',
@@ -160,22 +171,12 @@ export function isWaliKelasIntervensiAllowed(
       };
     }
 
-    // 3. Jendela KBM (antara batas pagi 12:00 dan jam pulang mulai, jika jam pulang > 12:00)
-    if (current > pagi && current < pulangStart) {
-      return {
-        allowed: false,
-        phase: 'kbm',
-        label: `Terkunci KBM (Buka pk. ${pulangStart})`,
-        pesan: `KBM sedang berlangsung dan presensi dikelola oleh Guru Mapel. Wali Kelas dapat menginput presensi pulang mulai pk. ${pulangStart} s.d. ${pulangEnd} WITA.`
-      };
-    }
-
-    // 4. Setelah batas alokasi 1 jam kepulangan berakhir (Akses malam 22:00 dihapus)
+    // 4. Jendela KBM (antara batas pagi 12:00 dan jam pulang mulai, jika jam pulang > 12:00)
     return {
       allowed: false,
-      phase: 'malam_tutup',
-      label: `Terkunci (Lewat pk. ${pulangEnd})`,
-      pesan: `Batas waktu penyesuaian presensi siswa untuk hari ini telah berakhir (hanya aktif hingga 1 jam setelah jam pulang pk. ${pulangEnd} WITA).`
+      phase: 'kbm',
+      label: `Terkunci KBM (Buka pk. ${pulangStart})`,
+      pesan: `KBM sedang berlangsung dan presensi dikelola oleh Guru Mapel. Wali Kelas dapat menginput presensi pulang mulai pk. ${pulangStart} s.d. ${pulangEnd} WITA.`
     };
   } catch {
     return {
@@ -273,12 +274,26 @@ export function extractMaxJamKe(jamKeValue: any): number {
   return numbers.length > 0 ? Math.max(...numbers) : 0;
 }
 
+function hasAttendanceData(journal: any): boolean {
+  if (!journal) return false;
+  if (journal.absensi_siswa) {
+    if (typeof journal.absensi_siswa === 'object' && Object.keys(journal.absensi_siswa).length > 0) return true;
+    if (typeof journal.absensi_siswa === 'string' && journal.absensi_siswa.trim() !== '' && journal.absensi_siswa.trim() !== '{}') return true;
+  }
+  if (journal.kehadiran_murid && String(journal.kehadiran_murid).trim() !== '') return true;
+  if (journal.detail_absen && String(journal.detail_absen).trim() !== '') return true;
+  return false;
+}
+
 /**
- * Finds the KBM teaching journal with the latest teaching hour (jam_ke) for that day.
+ * Finds the KBM teaching journal with the latest teaching hour (jam_ke) for that day,
+ * prioritizing journals with recorded student attendance data.
  */
 export function findLastKbmJournal(journals: any[]): any {
   if (!journals || journals.length === 0) return null;
-  const sorted = journals.slice().sort((a, b) => {
+  const withAttendance = journals.filter(hasAttendanceData);
+  const candidates = withAttendance.length > 0 ? withAttendance : journals;
+  const sorted = candidates.slice().sort((a, b) => {
     const jamA = extractMaxJamKe(a.jam_ke);
     const jamB = extractMaxJamKe(b.jam_ke);
     return jamB - jamA;
@@ -295,7 +310,8 @@ export interface DailyAttendanceResolved {
 
 /**
  * Resolves daily attendance for a student:
- * - If Wali Kelas already recorded attendance, that record is canonical (unless Bolos detected).
+ * - If Wali Kelas already recorded attendance, that record is canonical.
+ * - Canonical excused statuses (Sakit / Izin) from Wali Kelas are preserved and never overridden as Bolos.
  * - If Wali Kelas has not recorded attendance, dynamically falls back to the last KBM session's attendance.
  * - Aturan Bolos: Hadir di awal (datang pagi / gerbang / kelas pagi) namun Alfa di sesi KBM jam terakhir -> Otomatis Bolos (B).
  */
@@ -334,11 +350,20 @@ export function resolveDailyStudentAttendance(
     const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
 
     if (absensiJson && Object.keys(absensiJson).length > 0) {
-      const val = (student.nisn && absensiJson[student.nisn] !== undefined)
+      let val = (student.nisn && absensiJson[student.nisn] !== undefined)
         ? absensiJson[student.nisn]
         : (student.nama_siswa && absensiJson[student.nama_siswa] !== undefined)
           ? absensiJson[student.nama_siswa]
-          : undefined;
+          : (student.id && absensiJson[student.id] !== undefined)
+            ? absensiJson[student.id]
+            : undefined;
+
+      // Case-insensitive lookup for nama_siswa if not directly found
+      if (val === undefined && student.nama_siswa) {
+        const lowerName = student.nama_siswa.trim().toLowerCase();
+        const foundKey = Object.keys(absensiJson).find(k => k.trim().toLowerCase() === lowerName);
+        if (foundKey) val = absensiJson[foundKey];
+      }
 
       if (val !== undefined) {
         const raw = String(val).trim().toUpperCase();
@@ -369,12 +394,33 @@ export function resolveDailyStudentAttendance(
     }
   }
 
-  // 2. Check canonical class absensi record
+  // 2. Canonical status from Wali Kelas
   const recordedStatus = normStatus(classAbsensiRecord?.status);
-  const morningHadir = hasMorningPresence || recordedStatus === 'Hadir';
 
-  // 3. Rule Bolos: Hadir di awal (datang pagi / gerbang / kelas pagi) namun Alfa pada sesi KBM jam terakhir
-  if (morningHadir && lastKbmStatus === 'Alpa') {
+  // 3. Excused statuses (Sakit / Izin) recorded by Wali Kelas must NEVER be overwritten as Bolos
+  if (recordedStatus === 'Sakit' || recordedStatus === 'Izin') {
+    return {
+      status: recordedStatus,
+      isFallback: false,
+      source: 'Wali Kelas',
+      keterangan: classAbsensiRecord?.keterangan || undefined
+    };
+  }
+
+  // 4. Pre-existing canonical Bolos is preserved
+  if (recordedStatus === 'Bolos') {
+    return {
+      status: 'Bolos',
+      isFallback: false,
+      source: 'Wali Kelas',
+      keterangan: classAbsensiRecord?.keterangan || undefined
+    };
+  }
+
+  // 5. Aturan Bolos: Hadir di awal (datang pagi gerbang / kelas pagi) namun Alfa pada sesi KBM jam terakhir
+  const isMorningHadir = recordedStatus === 'Hadir' || (!recordedStatus && hasMorningPresence);
+
+  if (isMorningHadir && lastKbmStatus === 'Alpa') {
     return {
       status: 'Bolos',
       isFallback: !recordedStatus,
@@ -383,7 +429,7 @@ export function resolveDailyStudentAttendance(
     };
   }
 
-  // 4. If class absensi record exists from Wali Kelas, preserve it
+  // 6. If class absensi record exists from Wali Kelas (e.g. Hadir or Alpa), preserve it
   if (recordedStatus) {
     return {
       status: recordedStatus,
@@ -393,7 +439,7 @@ export function resolveDailyStudentAttendance(
     };
   }
 
-  // 5. Fallback dinamis ke Jurnal KBM Jam Terakhir jika Wali Kelas belum mengisi / tidak ada
+  // 7. Fallback dinamis ke Jurnal KBM Jam Terakhir jika Wali Kelas belum mengisi / tidak ada
   if (lastKbmStatus) {
     return {
       status: lastKbmStatus,
@@ -403,7 +449,7 @@ export function resolveDailyStudentAttendance(
     };
   }
 
-  // 6. Fallback gerbang pagi jika hanya ada presensi gerbang
+  // 8. Fallback gerbang pagi jika hanya ada presensi gerbang
   if (hasMorningPresence) {
     return {
       status: 'Hadir',

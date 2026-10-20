@@ -15,11 +15,11 @@ Execute SWE Light protocol for swe_30: adjust attendance window limits (Piket mo
 - **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_30\DISPATCH.md
 1. **Decompose**: No decomposition (SWE Light: sequential refinement implementer -> reviewer -> reviewer -> reviewer -> auditor)
 2. **Dispatch & Execute** (Direct iteration loop):
-   - teamwork_preview_implementer
-   - teamwork_preview_reviewer (Round 1)
-   - teamwork_preview_reviewer (Round 2)
-   - teamwork_preview_reviewer (Round 3)
-   - teamwork_preview_victory_auditor
+   - teamwork_preview_implementer [completed]
+   - teamwork_preview_reviewer (Round 1) [in-progress]
+   - teamwork_preview_reviewer (Round 2) [pending]
+   - teamwork_preview_reviewer (Round 3) [pending]
+   - teamwork_preview_victory_auditor [pending]
 3. **On failure** (in this order):
    - Retry: nudge stuck agent or re-send task
    - Replace: spawn fresh agent with partial progress
@@ -29,13 +29,13 @@ Execute SWE Light protocol for swe_30: adjust attendance window limits (Piket mo
    - Escalate: report to parent (sub-orchestrators only, last resort)
 4. **Succession**: At 16 spawns, write handoff.md, spawn successor
 - **Work items**:
-  1. teamwork_preview_implementer [in-progress]
-  2. teamwork_preview_reviewer_r1 [pending]
+  1. teamwork_preview_implementer [completed]
+  2. teamwork_preview_reviewer_r1 [in-progress]
   3. teamwork_preview_reviewer_r2 [pending]
   4. teamwork_preview_reviewer_r3 [pending]
   5. teamwork_preview_victory_auditor [pending]
-- **Current phase**: 1
-- **Current focus**: teamwork_preview_implementer
+- **Current phase**: 2
+- **Current focus**: teamwork_preview_reviewer_r1
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files yourself. Delegate all implementation and repair.
@@ -53,17 +53,19 @@ Execute SWE Light protocol for swe_30: adjust attendance window limits (Piket mo
 
 ## Key Decisions Made
 - Initialized swe_30 orchestrator following SWE Light protocol.
-- Dispatched teamwork_preview_implementer (convId: b2ec4aa0-9933-4333-abc8-be380e03efa2).
+- Dispatched teamwork_preview_implementer -> completed with commit 4e4593e.
+- Dispatched teamwork_preview_reviewer Round 1 (convId: 416bd829-9f51-4ec3-8c01-42b69395ebb7).
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| implementer_1 | teamwork_preview_implementer | Initial implementation & verification | in-progress | b2ec4aa0-9933-4333-abc8-be380e03efa2 |
+| implementer_1 | teamwork_preview_implementer | Initial implementation & verification | completed | b2ec4aa0-9933-4333-abc8-be380e03efa2 |
+| reviewer_1 | teamwork_preview_reviewer | Review Round 1 - Adversarial stress test | in-progress | 416bd829-9f51-4ec3-8c01-42b69395ebb7 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: b2ec4aa0-9933-4333-abc8-be380e03efa2
+- Spawn count: 2 / 16
+- Pending subagents: 416bd829-9f51-4ec3-8c01-42b69395ebb7
 - Predecessor: none
 - Successor: not yet spawned
 
@@ -78,3 +80,4 @@ Execute SWE Light protocol for swe_30: adjust attendance window limits (Piket mo
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_30\progress.md — Progress tracking
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_30\BRIEFING.md — Situational awareness
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\implementer_1\handoff.md — Implementer handoff
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_1\handoff.md — Reviewer 1 handoff

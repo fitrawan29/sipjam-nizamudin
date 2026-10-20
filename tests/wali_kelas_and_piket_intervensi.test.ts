@@ -127,6 +127,15 @@ async function runTests() {
     fail('WALI-WIN-04', 'Penguncian setelah batas 60 menit pasca jam pulang tidak berfungsi dengan benar');
   }
 
+  // 1.7 Wali Kelas Early Dismissal (misal jam pulang 10:00 WITA, alokasi s.d. 11:00 WITA)
+  // Pada pk. 11:15 WITA (setelah alokasi 1 jam selesai), intervensi HARUS terkunci (malam_tutup), BUKAN terbuka sebagai 'pagi'
+  const resEarlyDismissalPostWindow = isWaliKelasIntervensiAllowed('12:00', '10:00', '11:00', '11:15');
+  if (!resEarlyDismissalPostWindow.allowed && resEarlyDismissalPostWindow.phase === 'malam_tutup') {
+    pass('WALI-WIN-05', 'Hari kepulangan lebih awal (10:00) terkunci penuh setelah 60 menit (11:15 terkunci malam_tutup, tidak kembali ke pagi)');
+  } else {
+    fail('WALI-WIN-05', 'Hari kepulangan lebih awal salah membuka kembali jendela pagi setelah jam pulang selesai');
+  }
+
   // SECTION 2: ADMIN CONFIGURATION VERIFICATION
   console.log(`\n${YELLOW}${BOLD}━━━ 2. VERIFY ADMIN CONFIGURATION (AdminConfigView.tsx) ━━━${RESET}`);
   const adminConfigCode = fs.readFileSync(path.resolve('src/components/AdminConfigView.tsx'), 'utf-8');
@@ -203,6 +212,12 @@ async function runTests() {
     pass('PIKET-04', 'PiketView menyembunyikan tabel presensi saat expired & mengubah tombol menjadi Kirim Laporan Piket');
   } else {
     fail('PIKET-04', 'PiketView tidak menampilkan banner penutupan atau label tombol tidak sesuai saat expired');
+  }
+
+  if (piketCode.includes('fetchBatasIntervensiSiswa') && piketCode.includes('fetchJadwalIntervensiWali') && piketCode.includes('setJamPulangMulai')) {
+    pass('PIKET-05', 'PiketView mengambil konfigurasi jam_batas_intervensi_siswa dan jam_pulang_mulai dari database secara dinamis');
+  } else {
+    fail('PIKET-05', 'PiketView tidak mengambil konfigurasi intervensi dinamis dari database');
   }
 
   // SECTION 5: JURNAL KBM FOOTNOTE (GuruJurnal.tsx)
@@ -371,6 +386,61 @@ async function runTests() {
     pass('FALLBACK-04', 'Siswa tanpa absensi kelas mewarisi status Sakit dari jurnal KBM jam terakhir tanpa false-positive Bolos');
   } else {
     fail('FALLBACK-04', 'Pewarisan status Sakit dari KBM terakhir gagal');
+  }
+
+  // 8.5.5 Student has canonical Sakit from Wali Kelas + tapped gate morning + Alfa in last KBM -> STRICTLY PRESERVED AS Sakit (NOT Bolos)
+  const studentD = { id: 's-4', nisn: '0077889900', nama_siswa: 'Dewi Lestari' };
+  const resD = resolveDailyStudentAttendance(studentD, { status: 'Sakit' }, true, lastPicked);
+  if (resD.status === 'Sakit' && resD.isFallback === false) {
+    pass('FALLBACK-05', 'Preservasi status Sakit Wali Kelas: Siswa berstatus Sakit tidak diubah menjadi Bolos meskipun tap gerbang dan Alfa di mapel');
+  } else {
+    fail('FALLBACK-05', `False-positive Bolos terdeteksi untuk siswa Sakit (status: ${resD.status})`);
+  }
+
+  // 8.5.6 Student has canonical Izin from Wali Kelas + tapped gate morning + Alfa in last KBM -> STRICTLY PRESERVED AS Izin (NOT Bolos)
+  const studentE = { id: 's-5', nisn: '0033445566', nama_siswa: 'Eko Prasetyo' };
+  const resE = resolveDailyStudentAttendance(studentE, { status: 'Izin' }, true, lastPicked);
+  if (resE.status === 'Izin' && resE.isFallback === false) {
+    pass('FALLBACK-06', 'Preservasi status Izin Wali Kelas: Siswa berstatus Izin tidak diubah menjadi Bolos');
+  } else {
+    fail('FALLBACK-06', `False-positive Bolos terdeteksi untuk siswa Izin (status: ${resE.status})`);
+  }
+
+  // 8.5.7 Empty journal at higher jam_ke does not blind the fallback (picks last journal with attendance)
+  const journalEmptyJam6 = { jam_ke: 'Jam ke-6', mapel: 'Pramuka', absensi_siswa: {} };
+  const pickedNonEmpty = findLastKbmJournal([journalJam3, journalJam5, journalEmptyJam6]);
+  if (pickedNonEmpty && pickedNonEmpty.jam_ke === 'Jam ke-5') {
+    pass('FALLBACK-07', 'findLastKbmJournal memprioritaskan jurnal yang memiliki data absensi murid (mengabaikan placeholder kosong jam ke-6)');
+  } else {
+    fail('FALLBACK-07', 'findLastKbmJournal tertipu oleh jurnal kosong pada jam ke-6');
+  }
+
+  // 8.5.8 Student identified by UUID without NISN is successfully resolved
+  const studentUuid = { id: 'uuid-student-999', nisn: '', nama_siswa: 'Gita Gutawa' };
+  const journalWithUuid = {
+    jam_ke: 'Jam ke-4',
+    mapel: 'Seni Musik',
+    absensi_siswa: { 'uuid-student-999': 'H' }
+  };
+  const resUuid = resolveDailyStudentAttendance(studentUuid, null, false, journalWithUuid);
+  if (resUuid.status === 'Hadir' && resUuid.isFallback === true) {
+    pass('FALLBACK-08', 'resolveDailyStudentAttendance berhasil mencocokkan siswa berdasarkan student.id (UUID)');
+  } else {
+    fail('FALLBACK-08', 'Pencocokan student.id pada absensi_siswa gagal');
+  }
+
+  // 8.5.9 Case-insensitive student name matching in absensi_siswa JSON
+  const studentCase = { id: 's-case', nisn: '', nama_siswa: 'Muhammad Ali' };
+  const journalWithCaseName = {
+    jam_ke: 'Jam ke-2',
+    mapel: 'PJOK',
+    absensi_siswa: { 'muhammad ali': 'H' }
+  };
+  const resCase = resolveDailyStudentAttendance(studentCase, null, false, journalWithCaseName);
+  if (resCase.status === 'Hadir') {
+    pass('FALLBACK-09', 'resolveDailyStudentAttendance mendukung pencocokan nama siswa case-insensitive');
+  } else {
+    fail('FALLBACK-09', 'Pencocokan case-insensitive nama siswa gagal');
   }
 
   // SUMMARY

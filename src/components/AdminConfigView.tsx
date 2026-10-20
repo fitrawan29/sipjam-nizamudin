@@ -618,7 +618,7 @@ export default function AdminConfigView({
                             className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium" 
                           />
                           <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
-                            Batas waktu bagi Wali Kelas & Piket untuk mengisi/mengubah presensi siswa. Setelah jam ini, presensi dikelola oleh Guru Mapel.
+                            Batas waktu bagi Guru Piket untuk mengisi presensi pagi siswa (default 08:00 WITA). Wali Kelas memiliki akses pagi diperpanjang hingga pk. 12:00 WITA.
                           </p>
                         </div>
                     </div>

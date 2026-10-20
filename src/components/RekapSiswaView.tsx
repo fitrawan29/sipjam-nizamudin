@@ -290,11 +290,17 @@ export default function RekapSiswaView({
                 const parsed = typeof lastJurnal.absensi_siswa === 'string'
                   ? JSON.parse(lastJurnal.absensi_siswa)
                   : lastJurnal.absensi_siswa;
-                lastMapelStatus = parsed[siswa.nisn] || (siswa.nama_siswa && parsed[siswa.nama_siswa]) || null;
+                lastMapelStatus = parsed[siswa.nisn] || (siswa.nama_siswa && parsed[siswa.nama_siswa]) || (siswa.id && parsed[siswa.id]) || null;
+                if (!lastMapelStatus && siswa.nama_siswa) {
+                  const lower = siswa.nama_siswa.trim().toLowerCase();
+                  const foundKey = Object.keys(parsed).find(k => k.trim().toLowerCase() === lower);
+                  if (foundKey) lastMapelStatus = parsed[foundKey];
+                }
               } catch {}
             }
 
-            const isMorningHadir = Boolean(datang) || classLog?.status === 'Hadir' || classLog?.status === 'H';
+            const isExcused = classLog?.status === 'Sakit' || classLog?.status === 'Izin' || classLog?.status === 'S' || classLog?.status === 'I';
+            const isMorningHadir = !isExcused && (Boolean(datang) || classLog?.status === 'Hadir' || classLog?.status === 'H');
 
             // Auto-fallback to mapel presensi & validasi bolos (Rule 3)
             let isBolosPulang = isDailyBolos;

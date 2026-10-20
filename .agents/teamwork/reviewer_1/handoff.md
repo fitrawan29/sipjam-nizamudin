@@ -1,81 +1,90 @@
 # Handoff Report — reviewer_1 (Adversarial Reviewer)
 
 > [!WARNING] **Skepticism Disclaimer**
-> I am confident that the archive selection reset bug and multi-tab storage desynchronization have been diagnosed and permanently resolved; local automated tests (33 suites) and production builds pass with 100% success, though physical multi-client hardware printing across diverse mobile OS print previewers remains inherently empirical.
+> Perbaikan telah diuji secara mendalam dengan 46 pengujian otomatis (100% PASS), type-checking TypeScript (0 errors), dan adversarial scenario test; namun konkurensi multi-client di jaringan Supabase produksi saat transisi detik 12:00:00 tetap perlu dimonitor secara berkala.
 
 ## 1. What the prior attempt got wrong
 
-### Issue 1: Fatal Archive Selection Reset Bug (Violating R2)
-- **Input:** User changes academic year dropdown in `RaporView` to an archive year (e.g. `'2023/2024'` or `'2021/2022'`).
-- **Expected:** `selectedTahunAjaran` stays `'2023/2024'`, loads historical student grades, notes, and learning achievements for that selected year.
-- **Actual:** The dropdown immediately snaps back to active school year (`activeSchoolTahunAjaran`, e.g. `'2024/2025'`), preventing teachers and admins from viewing past reports.
-- **Root Cause:**
-  1. `fetchTahunAjaranOptions` included `selectedTahunAjaran` in its `useCallback` dependency array `[activeSchoolTahunAjaran, selectedTahunAjaran, sekolahId]`.
-  2. The initial mount `useEffect` had `[fetchSchoolConfig, fetchTahunAjaranOptions]` in its dependency array.
-  3. Consequently, whenever the user selected a different academic year from the dropdown, `fetchTahunAjaranOptions` was recreated with a new reference, re-triggering the mount `useEffect`.
-  4. That `useEffect` re-invoked `fetchSchoolConfig()`, which unconditionally executed `setSelectedTahunAjaran(activeTa)` and `setSelectedSemester(activeSem)`, completely wiping the user's archive selection.
+### Issue 1: False-Positive Bolos Overriding Excused Absences (Sakit & Izin)
+- **Input:** Siswa tap kartu di gerbang pagi (`hasMorningPresence = true`). Wali Kelas mencatat secara resmi status `Sakit` (atau `Izin`) pada presensi kelas. Di siang hari, Guru Mapel jam KBM terakhir mengisi Alfa ('A').
+- **Expected:** Status harian siswa tetap **Sakit** (atau **Izin**) sesuai rekap resmi Wali Kelas. Siswa yang berhalangan hadir dengan alasan sah/sakit tidak boleh dijadikan **Bolos**.
+- **Actual:** `morningHadir` dihitung dari `hasMorningPresence || recordedStatus === 'Hadir'`. Karena `hasMorningPresence` bernilai true dan `lastKbmStatus === 'Alpa'`, sistem salah menimpa status siswa menjadi **Bolos**. Bug serupa juga terjadi di `RekapSiswaView.tsx` (baris 297: `isMorningHadir` pada fallback gerbang tidak mengecualikan siswa Sakit/Izin).
+- **Root Cause:** Fungsi `resolveDailyStudentAttendance` tidak memprioritaskan dan memproteksi status izin resmi (`Sakit` / `Izin`) dari Wali Kelas sebelum memicu aturan Bolos.
 
-### Issue 2: Cross-Tab / Multi-Window Realtime Desynchronization (Violating R1 Realtime Guarantee)
-- **Input:** School Administrator updates `tahun_ajaran` or `semester` in `AdminConfigView` in Tab 1 while a Homeroom Teacher or Admin is viewing `RaporView` in Tab 2.
-- **Expected:** Tab 2 immediately synchronizes its active school configuration and updates without requiring manual browser page reload.
-- **Actual:** Tab 2 never received the update if Supabase realtime channels were offline or mock/placeholder was active. `AdminConfigView` dispatches `sipjam:config_updated` via `window.dispatchEvent`, which is scoped strictly to Tab 1's window.
-- **Root Cause:** `RaporView` did not listen to the standard `storage` event for `sipjam:config_sync` / `sipjam_config_sync`, which `AdminConfigView` writes to `localStorage` specifically for multi-tab notification.
+### Issue 2: Window Overlap Bug on Early Dismissal Days (10:00 WITA Dismissal)
+- **Input:** Hari kepulangan lebih awal (misal hari ujian/kegiatan khusus dengan `jamPulangMulai = '10:00'`). Pada pukul 11:15 WITA (`current = '11:15'`), alokasi 1 jam pulang (`10:00 - 11:00`) telah berakhir.
+- **Expected:** Akses intervensi terkunci (`phase: 'malam_tutup'`, `allowed: false`).
+- **Actual:** `isWaliKelasIntervensiAllowed` mengevaluasi `current <= pagi` ('11:15' <= '12:00') setelah jendela pulang, sehingga sistem salah membuka kembali jendela pagi (`phase: 'pagi'`, `allowed: true`) 15 menit setelah kepulangan selesai.
+- **Root Cause:** Evaluasi `current <= pagi` tidak memvalidasi `current < pulangStart`, dan kondisi `current > pulangEnd` diletakkan setelah pemeriksaan pagi.
 
-### Issue 3: Surrounding Academic Year Calculation Failure on Non-Standard Year Formatting (Known Issue Weakness)
-- **Input:** School database contains or configures an academic year with dashes or surrounding spaces (e.g. `'2024-2025'` or `' 2024 / 2025 '`).
-- **Expected:** Correctly extracts `2024` as base year and generates surrounding offset years (`2022/2023` to `2026/2027`).
-- **Actual:** Strict regex `/^(\d{4})\/(\d{4})$/` returned `null`, falling back to `new Date().getFullYear()` (e.g. `2026`), generating mismatched surrounding years.
-- **Root Cause:** Inflexible regular expression that only allowed exact 4-digit slashes without supporting dashes or whitespace.
+### Issue 3: Fallback Blind Spot on Empty Teaching Journals
+- **Input:** Terdapat dua jurnal pada hari yang sama: Jam ke-5 dengan catatan presensi murid dan Jam ke-6 dengan `{}` kosong.
+- **Expected:** `findLastKbmJournal` memilih Jam ke-5 (sesi KBM terakhir yang memiliki data absensi) agar siswa mewarisi status presensi.
+- **Actual:** Pengurutan hanya berdasarkan angka `jam_ke`, sehingga memilih Jam ke-6 yang kosong. Akibatnya `lastKbmStatus` menjadi `''` dan fallback gagal mewariskan data.
+- **Root Cause:** `findLastKbmJournal` tidak memprioritaskan jurnal yang memiliki data absensi murid.
 
-### Issue 4: Document Print Title Collision and Premature Reversion
-- **Input:** User prints E-Rapor via `handlePrintRapor`.
-- **Expected:** `document.title` sets the clean filename for PDF export (`E-Rapor_[Name]_[Class]_[Semester]_[TA]`) and cleanly restores the application title when printing finishes.
-- **Actual:** `handleBeforePrint` grabbed `document.title` after `handlePrintRapor` already modified it to `E-Rapor_...`, causing `handleAfterPrint` to restore `E-Rapor_...` instead of the original title `'SIPJAM'`, while a 2000ms hardcoded timeout prematurely reverted the title while user was still in the print dialog.
-- **Root Cause:** Lack of prefix guard (`!document.title.startsWith('E-Rapor_')`) in `handleBeforePrint` and `handlePrintRapor`.
+### Issue 4: Student Lookup Blind to UUID (`student.id`) and Case Sensitivity
+- **Input:** Data siswa yang dicatat dengan UUID (`student.id`) tanpa NISN, atau nama siswa di JSON jurnal memiliki perbedaan kapitalisasi/spasi.
+- **Expected:** Siswa berhasil dicocokkan dan statusnya diwarisi.
+- **Actual:** Mengembalikan status kosong `''` karena pencocokan hanya memeriksa `student.nisn` dan `student.nama_siswa` secara case-sensitive.
+- **Root Cause:** Logika ekstraksi `absensiJson` di `resolveDailyStudentAttendance` dan `RekapSiswaView` tidak menyertakan fallback ke `student.id` dan case-insensitive name matching.
+
+### Issue 5: `PiketView.tsx` Unwired Schedule Configuration
+- **Input:** Admin mengubah konfigurasi waktu `jam_batas_intervensi_siswa` (misal 08:30) atau `jam_pulang_mulai` (misal 13:00).
+- **Expected:** `PiketView` menggunakan parameter waktu dinamis dari tabel `pengaturan`.
+- **Actual:** `PiketView` mengimpor fungsi `fetchBatasIntervensiSiswa` dan `fetchJadwalIntervensiWali` namun tidak pernah memanggilnya dalam `useEffect`, sehingga terkunci permanen pada default `'08:00'` dan `'11:00'`.
+- **Root Cause:** Kurangnya hook `useEffect` untuk fetching konfigurasi jadwal di `PiketView.tsx`.
 
 ---
 
 ## 2. What I changed
 
-1. **`src/components/RaporView.tsx`**:
-   - Added `hasInitializedConfig` ref and `selectedTahunAjaranRef` to isolate the dynamic options builder from dropdown selection state.
-   - Refactored `fetchSchoolConfig` with `(forceSelect = false)` parameter. It sets `selectedTahunAjaran` and `selectedSemester` on initial mount (`!hasInitializedConfig.current`) or when explicitly forced by a realtime config event, but NEVER overwrites active archive selections during dropdown interaction.
-   - Decoupled `fetchTahunAjaranOptions` dependency array from `selectedTahunAjaran`, removing it from the mount `useEffect` re-run loop.
-   - Made the academic year regex parser resilient (`/(\d{4})\s*[-/]\s*(\d{4})/`) to handle slashes, dashes, and whitespace seamlessly.
-   - Added `storage` event listener for `sipjam:config_sync` and `sipjam_config_sync` to guarantee multi-tab synchronization even when Supabase web sockets are disconnected or mocked.
-   - Added prefix collision protection (`!document.title.startsWith('E-Rapor_')`) to `handleBeforePrint` and `handlePrintRapor`, extending safety fallback timeout to 5000ms.
-
-2. **`tests/e_rapor_tahun_ajaran_sync.test.ts`**:
-   - Added adversarial test assertions for multi-tab `storage` event listener (R1-04), archive selection retention (R2-03), resilient year parsing (R2-04), and print title isolation (R3-04). Total passed: 13 / 13.
-
-3. **`tests/adversarial_rapor_archive_retention.test.ts` & `package.json`**:
-   - Created comprehensive adversarial test suite validating storage event parsing, whitespace/dash format tolerance, and print title preservation cycles.
-   - Registered test suite in `package.json` `npm test` pipeline. Total passed: 3 / 3.
+1. **`src/lib/presensiIntervensi.ts`**:
+   - `isWaliKelasIntervensiAllowed`: Memperbaiki partisi transisi jendela waktu: (1) Pulang (60m) -> (2) `malam_tutup` jika `current > pulangEnd` -> (3) `pagi` jika `current <= pagi && current < pulangStart` -> (4) `kbm` terkunci jika di antara pagi dan jam pulang.
+   - `findLastKbmJournal`: Menambahkan helper `hasAttendanceData` untuk memprioritaskan sesi KBM yang memiliki catatan absensi murid sebelum mengurutkan berdasarkan `jam_ke` descending.
+   - `resolveDailyStudentAttendance`:
+     - Memproteksi status resmi `Sakit` dan `Izin` dari Wali Kelas agar tidak pernah diubah menjadi Bolos.
+     - Mempertahankan status `Bolos` kanonikal jika sudah tercatat.
+     - Menambahkan dukungan pencocokan berbasis `student.id` (UUID) dan case-insensitive `nama_siswa`.
+2. **`src/components/RekapSiswaView.tsx`**:
+   - Memperbaiki deteksi `isMorningHadir` pada fallback gerbang (`!isExcused && ...`) agar siswa berstatus Sakit/Izin tidak salah diklasifikasikan sebagai `isBolosPulang`.
+   - Menambahkan pencocokan `siswa.id` dan case-insensitive name matching pada lookup `lastMapelStatus`.
+3. **`src/components/PiketView.tsx`**:
+   - Menambahkan hook `useEffect` untuk memanggil `fetchBatasIntervensiSiswa` dan `fetchJadwalIntervensiWali` dari database secara dinamis.
+4. **`src/components/AdminConfigView.tsx`**:
+   - Memperbarui teks keterangan `jam_batas_intervensi_siswa` agar secara akurat menjelaskan batas 08:00 WITA untuk Guru Piket dan 12:00 WITA untuk Wali Kelas.
+5. **`tests/wali_kelas_and_piket_intervensi.test.ts`**:
+   - Menambahkan test `WALI-WIN-05` (early dismissal window locking).
+   - Menambahkan test `PIKET-05` (dynamic config fetch in PiketView).
+   - Menambahkan test `FALLBACK-05` (preservasi Sakit saat tap gerbang + Alfa KBM).
+   - Menambahkan test `FALLBACK-06` (preservasi Izin).
+   - Menambahkan test `FALLBACK-07` (empty journal resilience).
+   - Menambahkan test `FALLBACK-08` (UUID student.id matching).
+   - Menambahkan test `FALLBACK-09` (case-insensitive name matching).
+   - Total test suite meningkat dari 39 menjadi 46 test (100% PASS).
 
 ---
 
 ## 3. Verification Record
 
 - **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/e_rapor_tahun_ajaran_sync.test.ts`: 13 / 13 assertions PASSED.
-  - Ran `npx tsx tests/adversarial_rapor_archive_retention.test.ts`: 3 / 3 assertions PASSED.
-  - Ran `npm test`: all 33 unit and adversarial test suites PASSED with 0 errors.
-  - Ran `npm run build`: Turbopack build and TypeScript check completed with 0 errors across all routes.
+  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: **46/46 PASS (100%)**.
+  - `npx tsx tests/adversarial_challenge_r1_r2_r3.test.ts`: **42/42 PASS (100%)**.
+  - `npx tsc --noEmit`: **0 errors**.
 - **Shallow Verification (manual only):**
-  - Simulated `StorageEvent` dispatch and year regex extraction across edge cases (`2024-2025`, `2024 / 2025`, etc.).
-  - Verified static SSR markup renders Administrator and (Aktif) indicators accurately.
+  - Pemeriksaan teks label dan petunjuk konfigurasi di AdminConfigView.
 - **Unverified aspects:**
-  - Physical OS-level PDF rendering on mobile printer hardware devices (e.g. thermal Bluetooth receipt printers vs AirPrint).
+  - Konkurensi multi-user menulis paralel tepat pada pergantian detik 12:00:00 WITA di koneksi internet riil.
 
 ---
 
 ## 4. Known Issues
 
-- `Minor Robustness Risk` — If a database row in `pengaturan` has a malformed JSON payload in `catatan_wali` or `deep_learning` caused by external SQL manual tampering, it falls back gracefully to localStorage or empty map via existing try/catch blocks.
+- `None` (Seluruh 46 pengujian unit lulus 100%, kompilasi TypeScript bersih tanpa error).
 
 ---
 
 ## 5. Remaining risk & next step
 
-- **Task Completion Status:** COMPLETE. All requirements R1, R2, and R3 are satisfied, verified by 33 automated test suites and a clean production build (`npm run build`).
-- **Next Step:** Commit and push changes per Git Workflow Rule, then hand off to parent orchestrator.
+- **Remaining risk:** Pengujian live di server produksi saat tahun ajaran baru atau pergantian jam sekolah khusus (seperti bulan Ramadhan dengan jam pulang non-standar) telah dicover oleh logika dinamis, namun data live Supabase perlu dipastikan memiliki indeks pada `(sekolah_id, kelas, tanggal)` untuk efisiensi kueri harian.
+- **Next step:** Tugas telah selesai sepenuhnya dan memenuhi seluruh kriteria penerimaan R1, R2, R3, dan R4 secara menyeluruh dan robust. Siap dilakukan commit dan push ke origin main.
