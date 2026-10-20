@@ -84,7 +84,7 @@ export default function AdminConfigView({
             if (item.key === 'nip_pengawas_bina' || item.key === 'NIP_PENGAWAS_BINA') {
               newConfig.ttd_pengawas_nip = item.value;
             }
-            if (item.key === 'jabatan_pengawas_bina') {
+            if (item.key === 'jabatan_pengawas_bina' || item.key === 'JABATAN_PENGAWAS_BINA') {
               newConfig.ttd_pengawas_jabatan = item.value;
             }
             if (item.key === 'NAMA_KEPALA_SEKOLAH' && !newConfig.ttd_kepsek_nama) {
@@ -832,7 +832,7 @@ export default function AdminConfigView({
                         </div>
 
                         {(config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true) && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
                                 <div>
                                     <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
                                         Nama Lengkap Pengawas Bina
@@ -857,6 +857,19 @@ export default function AdminConfigView({
                                         value={config.ttd_pengawas_nip}
                                         onChange={handleChange}
                                         placeholder="Contoh: 19680512 199303 1 004"
+                                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
+                                        Jabatan / Sebutan Pengawas
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="ttd_pengawas_jabatan"
+                                        value={config.ttd_pengawas_jabatan || ''}
+                                        onChange={handleChange}
+                                        placeholder="Contoh: Pengawas Pembina"
                                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
                                     />
                                 </div>

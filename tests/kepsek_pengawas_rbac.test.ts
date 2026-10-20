@@ -484,6 +484,42 @@ async function runTests() {
   );
 
   // ==========================================================================
+  // SECTION 6: REVIEWER 3 FINAL VERIFICATION & ADVERSARIAL STRESS-TESTS
+  // ==========================================================================
+  console.log(`\n${BOLD}━━━ SECTION 6: Reviewer 3 Final Verification & Adversarial Stress-Tests ━━━${RESET}`);
+
+  // Test 6.1: AdminConfigView contains dedicated text input for ttd_pengawas_jabatan and handles uppercase alias
+  assert(
+    configCode.includes('name="ttd_pengawas_jabatan"') &&
+    configCode.includes("item.key === 'jabatan_pengawas_bina' || item.key === 'JABATAN_PENGAWAS_BINA'"),
+    'R6.1',
+    'AdminConfigView contains text input for Pengawas position and handles JABATAN_PENGAWAS_BINA alias'
+  );
+
+  // Test 6.2: checkIsKepalaSekolah recognizes designated teacher by data_guru_id
+  assert(
+    checkIsKepalaSekolah({ id: 'auth-user-999', data_guru_id: 'guru-row-456' }, null, { kepala_sekolah_id: 'guru-row-456' }),
+    'R6.2',
+    'checkIsKepalaSekolah recognizes designated teacher by data_guru_id property'
+  );
+
+  // Test 6.3: useKepalaSekolah verifyFromDatabase matches data_guru row ID against designatedId
+  assert(
+    kepsekHookCode.includes('(designatedId && (g.id === designatedId || g.user_id === designatedId))'),
+    'R6.3',
+    'useKepalaSekolah verifyFromDatabase matches data_guru ID and user_id to designatedId'
+  );
+
+  // Test 6.4: Cross-tab and intra-app synchronization mechanism via window events and localStorage
+  assert(
+    configCode.includes("window.dispatchEvent(new CustomEvent('sipjam:config_updated'") &&
+    configCode.includes("localStorage.setItem('sipjam_config_sync'") &&
+    printHeaderCode.includes("window.addEventListener('sipjam:config_updated'"),
+    'R6.4',
+    'AdminConfigView and PrintSignature synchronize reactively across components and tabs'
+  );
+
+  // ==========================================================================
   // FINAL SUMMARY
   // ==========================================================================
   console.log(`\n${BOLD}========================================================================${RESET}`);

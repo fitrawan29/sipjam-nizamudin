@@ -38,7 +38,7 @@ export function checkIsKepalaSekolah(
 
   // 2. Check designated teacher ID in school configuration or school profile
   const designatedId = configData?.kepala_sekolah_id || configData?.KEPALA_SEKOLAH_ID || schoolData?.kepala_sekolah_id;
-  if (designatedId && (user.id === designatedId || user.guru_id === designatedId)) {
+  if (designatedId && (user.id === designatedId || user.guru_id === designatedId || user.data_guru_id === designatedId)) {
     return true;
   }
 
@@ -120,7 +120,9 @@ export function useKepalaSekolah(
 
           if (gData && gData.length > 0) {
             const g = gData[0] as any;
+            const designatedId = configMap?.kepala_sekolah_id || configMap?.KEPALA_SEKOLAH_ID || schoolData?.kepala_sekolah_id;
             if (
+              (designatedId && (g.id === designatedId || g.user_id === designatedId)) ||
               g.is_kepala_sekolah === true || 
               g.is_kepala_sekolah === 'true' ||
               (g.jabatan && g.jabatan.toLowerCase().includes('kepala sekolah'))
