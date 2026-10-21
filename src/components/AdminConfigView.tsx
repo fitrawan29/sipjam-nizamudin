@@ -207,7 +207,7 @@ export default function AdminConfigView({
   };
 
   const handleTogglePengawas = () => {
-    const isCurrentlyActive = config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true;
+    const isCurrentlyActive = String(config.ttd_pengawas_aktif) === 'true';
     setConfig(prev => ({
       ...prev,
       ttd_pengawas_aktif: (!isCurrentlyActive).toString()
@@ -409,6 +409,8 @@ export default function AdminConfigView({
       setLoading(false);
     }
   };
+
+  const isPengawasAktif = String(config.ttd_pengawas_aktif) === 'true';
 
   return (
     <section id="view-admin-config" className="view-section fade-in">
@@ -806,32 +808,32 @@ export default function AdminConfigView({
                             <button
                                 type="button"
                                 role="switch"
-                                aria-checked={config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true}
+                                aria-checked={isPengawasAktif}
                                 onClick={handleTogglePengawas}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition select-none self-start sm:self-auto ${
-                                    config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true
+                                    isPengawasAktif
                                         ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700 hover:bg-indigo-200'
                                         : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
                                 }`}
                             >
                                 <span
                                     className={`relative inline-block w-8 h-4 rounded-full transition-colors duration-200 ease-in-out ${
-                                        config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                                        isPengawasAktif ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
                                     }`}
                                 >
                                     <span
                                         className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform duration-200 ease-in-out shadow-xs mt-0.5 ml-0.5 ${
-                                            config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true ? 'translate-x-4' : 'translate-x-0'
+                                            isPengawasAktif ? 'translate-x-4' : 'translate-x-0'
                                         }`}
                                     />
                                 </span>
                                 <span>
-                                    {config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true ? 'Aktif' : 'Nonaktif'}
+                                    {isPengawasAktif ? 'Aktif' : 'Nonaktif'}
                                 </span>
                             </button>
                         </div>
 
-                        {(config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true) && (
+                        {isPengawasAktif && (
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
                                 <div>
                                     <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
@@ -842,7 +844,7 @@ export default function AdminConfigView({
                                         name="ttd_pengawas_nama"
                                         value={config.ttd_pengawas_nama}
                                         onChange={handleChange}
-                                        required={config.ttd_pengawas_aktif === 'true' || config.ttd_pengawas_aktif === true}
+                                        required={isPengawasAktif}
                                         placeholder="Contoh: Drs. H. Ahmad Dahlan, M.Pd."
                                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
                                     />
