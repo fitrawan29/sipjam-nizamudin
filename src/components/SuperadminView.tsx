@@ -98,10 +98,10 @@ export default function SuperadminView({
   // Sync tab with props if changed externally
   useEffect(() => {
     const resolvedTab = initialTab === 'jaringan' ? 'jaringan' : initialTab === 'dinas' ? 'dinas' : 'overview';
-    if (resolvedTab !== activeTab && (activeTab !== 'dinas' || resolvedTab !== 'overview')) {
+    if (resolvedTab !== activeTab) {
       setActiveTab(resolvedTab);
     }
-  }, [initialTab, activeTab]);
+  }, [initialTab]);
 
   // Sync active target school across tabs and custom events
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function SuperadminView({
 
   const switchTab = (tab: 'overview' | 'jaringan' | 'dinas') => {
     setActiveTab(tab);
-    if (onNavigateTab && tab !== 'dinas') {
+    if (onNavigateTab) {
       onNavigateTab(tab);
     }
   };

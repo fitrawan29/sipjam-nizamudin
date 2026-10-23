@@ -480,6 +480,7 @@ export default function AppScreen({
   const menuItemsSuperadmin = [
     { id: 'view-superadmin-overview', icon: 'fa-gauge-high', label: 'Ringkasan Platform' },
     { id: 'view-superadmin-jaringan', icon: 'fa-network-wired', label: 'Jaringan Sekolah' },
+    { id: 'view-superadmin-dinas', icon: 'fa-building-columns', label: 'Akun Dinas Pendidikan' },
     ...(activeTargetSchool ? [
       { id: 'view-admin-data', icon: 'fa-database', label: `Master (${activeTargetSchool.nama})` },
       { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' },
@@ -820,12 +821,17 @@ export default function AppScreen({
               initialTab={
                 currentView === 'view-superadmin-jaringan'
                   ? 'jaringan'
+                  : currentView === 'view-superadmin-dinas'
+                  ? 'dinas'
                   : 'overview'
               }
               onNavigateTab={(tab) => {
                 if (tab === 'jaringan') {
                   window.history.pushState(null, '', '?view=view-superadmin-jaringan');
                   setCurrentView('view-superadmin-jaringan');
+                } else if (tab === 'dinas') {
+                  window.history.pushState(null, '', '?view=view-superadmin-dinas');
+                  setCurrentView('view-superadmin-dinas');
                 } else {
                   window.history.pushState(null, '', '?view=view-superadmin-overview');
                   setCurrentView('view-superadmin-overview');
