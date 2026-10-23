@@ -1039,7 +1039,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                 </div>
 
                 <div className="pt-2">
-                    <button type="submit" disabled={loading || isPulangLocked || dailyState?.isLibur} className="btn-click w-full bg-nizamudin-green text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                    <button type="submit" disabled={loading || isPulangLocked || dailyState?.isLibur} className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                         {loading ? 'Menyimpan Presensi...' : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
                     </button>
                 </div>

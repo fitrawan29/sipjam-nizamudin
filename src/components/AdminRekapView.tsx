@@ -257,7 +257,7 @@ export default function AdminRekapView({ user, isKepalaSekolah }: { user: any; i
                 <label className="block text-xs font-bold text-gray-900 dark:text-white mb-2">Pilih Bulan</label>
                 <div className="flex gap-2">
                     <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2.5 rounded-xl input-premium text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-                    <button type="button" onClick={() => tarikDataRekap(false)} disabled={loading} className="btn-click bg-blue-600 text-white px-4 rounded-xl text-xs font-bold shadow-md border border-blue-700 hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center">
+                    <button type="button" onClick={() => tarikDataRekap(false)} disabled={loading} className="clay-btn clay-btn-blue text-white px-4 rounded-xl text-xs font-bold shadow-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center">
                       {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-download"></i>}
                     </button>
                 </div>
@@ -285,23 +285,23 @@ export default function AdminRekapView({ user, isKepalaSekolah }: { user: any; i
               <div id="hasil-rekap" className="space-y-5 fade-in">
                   {/* Summary Metric Badges */}
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 p-3 rounded-xl text-center">
+                      <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
                           <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Total Guru</div>
                           <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalGuru}</div>
                       </div>
-                      <div className="bg-slate-50 dark:bg-slate-900/20 border border-slate-100 dark:border-slate-800/50 p-3 rounded-xl text-center">
-                          <div className="text-xs font-bold text-slate-800 dark:text-slate-300">Hari Kerja</div>
-                          <div className="text-xl font-black text-slate-600 dark:text-slate-400">{totalHariKerjaBadge}</div>
+                      <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
+                          <div className="text-xs font-bold text-amber-900 dark:text-amber-300">Hari Kerja</div>
+                          <div className="text-xl font-black text-amber-700 dark:text-amber-400">{totalHariKerjaBadge}</div>
                       </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/50 p-3 rounded-xl text-center">
+                      <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
                           <div className="text-xs font-bold text-green-800 dark:text-green-300">Total Hadir</div>
                           <div className="text-xl font-black text-green-600 dark:text-green-400">{totalHadirSemua}</div>
                       </div>
-                      <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 p-3 rounded-xl text-center">
+                      <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 text-center shadow-sm">
                           <div className="text-xs font-bold text-indigo-800 dark:text-indigo-300">Jurnal Disetujui</div>
                           <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalJurnalSemua}</div>
                       </div>
-                      <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/50 p-3 rounded-xl text-center">
+                      <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 text-center shadow-sm">
                           <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Piket Disetujui</div>
                           <div className="text-xl font-black text-teal-600 dark:text-teal-400">{totalPiketSemua}</div>
                       </div>

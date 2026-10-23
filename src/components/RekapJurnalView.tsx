@@ -398,21 +398,21 @@ export default function RekapJurnalView({
             {/* Summary Metric Cards */}
             {jurnalData && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 no-print">
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 p-3 rounded-xl text-center">
-                      <div className="text-xs font-bold text-indigo-800 dark:text-indigo-300">Total Jurnal</div>
-                      <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalJurnal}</div>
+                  <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
+                      <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Total Jurnal</div>
+                      <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalJurnal}</div>
                   </div>
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/50 p-3 rounded-xl text-center">
+                  <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
                       <div className="text-xs font-bold text-green-800 dark:text-green-300">Disetujui</div>
                       <div className="text-xl font-black text-green-600 dark:text-green-400">{totalDisetujui}</div>
                   </div>
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/50 p-3 rounded-xl text-center">
-                      <div className="text-xs font-bold text-yellow-800 dark:text-yellow-300">Menunggu</div>
-                      <div className="text-xl font-black text-yellow-600 dark:text-yellow-400">{totalMenunggu}</div>
+                  <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
+                      <div className="text-xs font-bold text-amber-800 dark:text-amber-300">Menunggu</div>
+                      <div className="text-xl font-black text-amber-600 dark:text-amber-400">{totalMenunggu}</div>
                   </div>
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 p-3 rounded-xl text-center">
-                      <div className="text-xs font-bold text-red-800 dark:text-red-300">Ditolak</div>
-                      <div className="text-xl font-black text-red-600 dark:text-red-400">{totalDitolak}</div>
+                  <div className="clay-card clay-card-rose p-3.5 rounded-2xl border-2 border-white/90 dark:border-rose-800/50 text-center shadow-sm">
+                      <div className="text-xs font-bold text-rose-800 dark:text-rose-300">Ditolak</div>
+                      <div className="text-xl font-black text-rose-600 dark:text-rose-400">{totalDitolak}</div>
                   </div>
               </div>
             )}

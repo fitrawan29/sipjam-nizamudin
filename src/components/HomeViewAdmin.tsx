@@ -631,7 +631,7 @@ export default function HomeViewAdmin({
             </div>
 
             {/* Presensi Pulang */}
-            <div className="glass-card p-3 rounded-xl border border-amber-200/80 dark:border-amber-800/50 shadow-sm flex items-center gap-3 col-span-2 sm:col-span-1">
+            <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 shadow-sm flex items-center gap-3 col-span-2 sm:col-span-1">
               <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-right-from-bracket"></i>
               </div>

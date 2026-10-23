@@ -1902,7 +1902,7 @@ export default function PiketView({ user }: { user: any }) {
   if (isGuru && dailyState && !dailyState.isPiket && !isAdmin) {
     return (
       <section id="view-piket" className="view-section page-enter w-full max-w-full">
-        <div className="glass-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20 shadow-sm">
+        <div className="clay-card clay-card-amber p-8 text-center max-w-lg mx-auto mt-6 rounded-3xl border-2 border-white/90 dark:border-amber-900/50 shadow-md">
           <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
             <i className="fa-solid fa-shield-halved"></i>
           </div>
@@ -1952,7 +1952,7 @@ export default function PiketView({ user }: { user: any }) {
               <button 
                 type="button"
                 onClick={() => setActiveTab('beranda')} 
-                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'beranda' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'beranda' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
               >
                 Beranda Piket
               </button>
@@ -1960,7 +1960,7 @@ export default function PiketView({ user }: { user: any }) {
               <button 
                 type="button"
                 onClick={() => setActiveTab('scan')} 
-                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'scan' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'scan' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
               >
                 <i className="fa-solid fa-qrcode mr-1.5 text-teal-600 dark:text-teal-400"></i> Presensi Siswa (QR & Manual)
               </button>
@@ -1969,7 +1969,7 @@ export default function PiketView({ user }: { user: any }) {
                 <button 
                   type="button"
                   onClick={() => setActiveTab('penugasan')} 
-                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'penugasan' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                  className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'penugasan' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
                 >
                   <i className="fa-solid fa-user-gear mr-1.5 text-teal-600 dark:text-teal-400"></i> Penugasan Piket
                 </button>
@@ -1979,7 +1979,7 @@ export default function PiketView({ user }: { user: any }) {
                 <button 
                   type="button"
                   onClick={() => setActiveTab('lapor')} 
-                  className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'lapor' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                  className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'lapor' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
                 >
                   <i className="fa-solid fa-pen-to-square mr-1.5 text-teal-600 dark:text-teal-400"></i> Isi Laporan
                 </button>
@@ -1988,7 +1988,7 @@ export default function PiketView({ user }: { user: any }) {
               <button 
                 type="button"
                 onClick={() => setActiveTab('rekap')} 
-                className={`px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all pill-interactive ${activeTab === 'rekap' ? 'bg-teal-50 text-teal-700 border border-teal-200 font-bold dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-800' : 'bg-gray-50 text-gray-700 border border-transparent dark:bg-gray-800 dark:text-gray-200'}`}
+                className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'rekap' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
               >
                 <i className="fa-solid fa-chart-pie mr-1.5 text-teal-600 dark:text-teal-400"></i> Rekap Piket
               </button>

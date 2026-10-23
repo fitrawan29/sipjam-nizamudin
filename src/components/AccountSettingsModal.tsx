@@ -335,7 +335,7 @@ export default function AccountSettingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+      <div className="clay-card bg-[#FAF7F2] dark:bg-gray-900 border-2 border-white/90 dark:border-gray-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40">
           <div className="flex items-center gap-3">
@@ -686,14 +686,14 @@ export default function AccountSettingsModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-xl transition"
+              className="clay-btn clay-btn-secondary px-4 py-2 text-xs font-semibold rounded-2xl transition"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              className="clay-btn clay-btn-primary px-5 py-2 text-xs font-bold text-white rounded-2xl transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
             >
               {saving ? (
                 <>

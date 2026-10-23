@@ -588,9 +588,9 @@ export default function AppScreen({
             <button type="button" onClick={toggleTheme} className="clay-btn btn-click w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-sm`}></i>
             </button>
-            <button type="button" onClick={onLogout} className="clay-btn clay-btn-rose btn-click text-red-600 dark:text-white px-3 py-1.5 rounded-2xl text-xs font-bold border border-red-200 dark:border-red-800/50 flex items-center gap-1.5 shadow-sm">
-                <i className="fa-solid fa-power-off text-xs"></i> <span className="hidden sm:inline">Keluar</span>
-            </button>
+            <ClayButton variant="rose" size="sm" onClick={onLogout} className="btn-click text-red-600 dark:text-white border border-red-200 dark:border-red-800/50 shadow-sm" icon={<i className="fa-solid fa-power-off text-xs"></i>}>
+                <span className="hidden sm:inline">Keluar</span>
+            </ClayButton>
         </div>
       </header>
 
@@ -614,7 +614,7 @@ export default function AppScreen({
               </div>
 
               {/* User Identity Card */}
-              <div className="clay-card mb-3 p-3 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-green-50/40 dark:from-gray-800/90 dark:to-gray-800/40 border-2 border-white/90 dark:border-gray-700/60 shadow-[4px_4px_12px_rgba(180,210,190,0.35),inset_1px_1px_2px_rgba(255,255,255,0.9)] flex items-center gap-3">
+              <ClayCard variant="mint" rounded="2xl" className="mb-3 p-3 bg-gradient-to-br from-emerald-50/90 to-green-50/40 dark:from-gray-800/90 dark:to-gray-800/40 border-2 border-white/90 dark:border-gray-700/60 shadow-[4px_4px_12px_rgba(180,210,190,0.35),inset_1px_1px_2px_rgba(255,255,255,0.9)] flex items-center gap-3">
                 <div className="relative w-11 h-11 rounded-full bg-white dark:bg-gray-700 p-0.5 shadow-xs shrink-0 overflow-hidden border border-emerald-200 dark:border-gray-600 flex items-center justify-center">
                   {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')}
                   <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-800" title="Aktif"></span>
@@ -645,7 +645,7 @@ export default function AppScreen({
                     )}
                   </div>
                 </div>
-              </div>
+              </ClayCard>
 
               {isSuperadmin && (
                 <div className="mb-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800">
@@ -1033,7 +1033,7 @@ export default function AppScreen({
       {/* Broadcast Modal / Drawer */}
       {broadcastModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="clay-card bg-[#FAF7F2] dark:bg-slate-900 rounded-3xl shadow-2xl border-2 border-white/90 dark:border-slate-800 w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+          <ClayCard rounded="3xl" className="bg-[#FAF7F2] dark:bg-slate-900 shadow-2xl border-2 border-white/90 dark:border-slate-800 w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
             {/* Modal Header */}
             <div className="px-5 py-4 bg-gradient-to-r from-nizamudin-green to-emerald-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -1170,7 +1170,7 @@ export default function AppScreen({
                 Tutup
               </button>
             </div>
-          </div>
+          </ClayCard>
         </div>
       )}
 

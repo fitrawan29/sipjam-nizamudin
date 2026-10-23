@@ -933,10 +933,10 @@ export default function RekapSiswaView({
               <button
                 type="button"
                 onClick={() => setActiveTab('gerbang')}
-                className={`btn-click px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                className={`clay-btn btn-click px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
                   activeTab === 'gerbang'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                    ? 'clay-btn-mint bg-emerald-600 text-white shadow-md'
+                    : 'clay-btn-secondary text-gray-700 hover:bg-gray-200 dark:text-gray-300'
                 }`}
               >
                 <i className="fa-solid fa-school-flag"></i>
@@ -945,10 +945,10 @@ export default function RekapSiswaView({
               <button
                 type="button"
                 onClick={() => setActiveTab('rekap')}
-                className={`btn-click px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+                className={`clay-btn btn-click px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
                   activeTab === 'rekap'
-                    ? 'bg-teal-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                    ? 'clay-btn-mint bg-teal-600 text-white shadow-md'
+                    : 'clay-btn-secondary text-gray-700 hover:bg-gray-200 dark:text-gray-300'
                 }`}
               >
                 <i className="fa-solid fa-users-viewfinder"></i>
@@ -958,7 +958,7 @@ export default function RekapSiswaView({
 
             {/* WALI KELAS BANNER & TOGGLE */}
             {waliKelasList.length > 0 && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 p-4 rounded-2xl mb-5 no-print shadow-sm">
+              <div className="clay-card clay-card-mint border-2 border-white/90 dark:border-emerald-800/60 p-4 rounded-3xl mb-5 no-print shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <span className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base shadow-sm shrink-0">
