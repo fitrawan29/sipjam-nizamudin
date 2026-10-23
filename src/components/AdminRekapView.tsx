@@ -31,7 +31,7 @@ function countWorkdays(
   return count;
 }
 
-export default function AdminRekapView({ user, isKepalaSekolah }: { user: any; isKepalaSekolah?: boolean }) {
+export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { user: any; isKepalaSekolah?: boolean; isReadOnly?: boolean }) {
     const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });

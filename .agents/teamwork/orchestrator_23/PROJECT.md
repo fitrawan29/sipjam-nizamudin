@@ -5,7 +5,7 @@
 - **Core RBAC & Context Layer**:
   - `src/types/user.ts`: `AppUser` interface updated with `role: 'superadmin' | 'admin' | 'guru' | 'dinas_pendidikan'` and `kota_kabupaten?: string | null`.
   - `src/types/database.ts`: `users` table type updated with `kota_kabupaten?: string | null`.
-  - `src/lib/supabaseClient.ts`: `getActiveTargetSchool()` updated to allow `dinas_pendidikan` with regional validation (`targetSchool.kota_kabupaten === user.kota_kabupaten`). Client-side mutation guard to reject POST/PUT/PATCH/DELETE for `dinas_pendidikan`.
+  - `src/lib/supabaseClient.ts`: `getActiveTargetSchool()` updated to allow `dinas_pendidikan` with regional validation (`targetSchool.kota_kabupaten === user.kota_kabupaten`). Client-side mutation guard to reject POST/PUT/PATCH/DELETE for `dinas_pendidikan` with strict pathname checking.
 - **Superadmin Assignment Layer**:
   - `src/components/SuperadminView.tsx`: Management panel for Dinas Pendidikan accounts (`users` with role `'dinas_pendidikan'`). Dropdown selection of `kota_kabupaten` derived from registered schools (`sekolah` / `sekolah_registry`).
 - **Navigation & Dashboard Layer**:
@@ -28,10 +28,10 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | R1: RBAC Types & AppUser Interface | Add `dinas_pendidikan` role and `kota_kabupaten` to `src/types/user.ts` & `src/types/database.ts` | M1 | Survey 1, 2 | PLANNED |
-| 2 | R1: Database Schema / Migration for Users Region | Migration SQL adding `kota_kabupaten` to `public.users` (nullable) | M1 | Survey 1 | PLANNED |
-| 3 | R1: Superadmin Dinas Account Management | Add panel/tab in `SuperadminView.tsx` to create, edit region, and manage `dinas_pendidikan` accounts | M1 | Survey 1 | PLANNED |
-| 4 | R1: Target School Regional Bound & Client Mutation Guard | Update `getActiveTargetSchool()` in `supabaseClient.ts` to authorize `dinas_pendidikan` with region check + reject mutations | M1 | Survey 1, 3 | PLANNED |
+| 1 | R1: RBAC Types & AppUser Interface | Add `dinas_pendidikan` role and `kota_kabupaten` to `src/types/user.ts` & `src/types/database.ts` | M1 | Survey 1, 2 | DONE |
+| 2 | R1: Database Schema / Migration for Users Region | Migration SQL adding `kota_kabupaten` to `public.users` (nullable) | M1 | Survey 1 | DONE |
+| 3 | R1: Superadmin Dinas Account Management | Add panel/tab in `SuperadminView.tsx` to create, edit region, and manage `dinas_pendidikan` accounts | M1 | Survey 1 | DONE |
+| 4 | R1: Target School Regional Bound & Client Mutation Guard | Update `getActiveTargetSchool()` in `supabaseClient.ts` to authorize `dinas_pendidikan` with region check + reject mutations | M1 | Survey 1, 3 | DONE |
 | 5 | R2: AppScreen Navigation & Role Gating | Add `isDinas`, `menuItemsDinas`, default view `'view-dinas-overview'`, and route-level mutation blocking in `AppScreen.tsx` | M2 | Survey 1, 2 | PLANNED |
 | 6 | R2: ClaySidebar Dinas Badge & Regional Scoped Switcher | Add `Dinas Pendidikan` badge and regional filter on school switcher in `ClaySidebar.tsx` | M2 | Survey 2 | PLANNED |
 | 7 | R2: Executive Cross-School Dashboard (`DinasDashboard.tsx`) | 5 metric cards, region-locked search & filter, school table, and aggregate data fetching | M2 | Survey 2 | PLANNED |
@@ -46,7 +46,7 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | RBAC, Data Model, & Superadmin Regional Assignment | `src/types/user.ts`, `src/types/database.ts`, migration SQL, `src/components/SuperadminView.tsx`, `src/lib/supabaseClient.ts` | none | PLANNED |
+| M1 | RBAC, Data Model, & Superadmin Regional Assignment | `src/types/user.ts`, `src/types/database.ts`, migration SQL, `src/components/SuperadminView.tsx`, `src/lib/supabaseClient.ts` | none | DONE |
 | M2 | Executive Scoped Dashboard & Navigation | `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/DinasDashboard.tsx` | M1 | PLANNED |
 | M3 | Read-Only School Drilldown & Recaps + Printing | Integration of drilldown in `DinasDashboard`, `AppScreen`, `AdminRekapView`, `RekapSiswaView`, `RekapJurnalView` | M2 | PLANNED |
 | M4 | Automated Test Suite & Security Guard | `tests/dinas_pendidikan_monitoring.test.ts` (6 suites) running via `npx tsx` | M1, M2, M3 | PLANNED |

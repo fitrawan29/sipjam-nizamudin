@@ -19,6 +19,7 @@ export interface ClaySidebarProps {
   onNavigate: (viewId: string) => void;
   menuItems: MenuItem[];
   isSuperadmin?: boolean;
+  isDinas?: boolean;
   isAdmin?: boolean;
   isKepalaSekolah?: boolean;
   isWaliKelas?: boolean;
@@ -39,6 +40,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
   onNavigate,
   menuItems,
   isSuperadmin = false,
+  isDinas = false,
   isAdmin = false,
   isKepalaSekolah = false,
   isWaliKelas = false,
@@ -54,6 +56,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
 
   const roleBadgeStyle = isSuperadmin
     ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-300/60'
+    : isDinas
+    ? 'bg-[#EDE9FE] text-[#5B21B6] dark:bg-indigo-900/50 dark:text-indigo-300 border border-[#C4B5FD] dark:border-indigo-700/60'
     : isAdmin
     ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-300/60'
     : isKepalaSekolah
@@ -64,6 +68,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
 
   const roleLabel = isSuperadmin
     ? 'Superadmin'
+    : isDinas
+    ? 'Dinas Pendidikan'
     : isAdmin
     ? 'Administrator'
     : isKepalaSekolah
@@ -74,11 +80,21 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
 
   const roleIcon = isSuperadmin
     ? 'fa-crown'
+    : isDinas
+    ? 'fa-building-columns'
     : isAdmin
     ? 'fa-user-shield'
     : isKepalaSekolah
     ? 'fa-user-tie'
     : 'fa-chalkboard-user';
+
+  const availableSchools = isDinas
+    ? satelliteSchools.filter((s) => {
+        const userRegion = (user?.kota_kabupaten || '').trim().toLowerCase();
+        const schoolRegion = (s.kota_kabupaten || '').trim().toLowerCase();
+        return userRegion && schoolRegion && userRegion === schoolRegion;
+      })
+    : satelliteSchools;
 
   return (
     <div
@@ -94,14 +110,14 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
           <div className="flex justify-between items-center pb-4 mb-3 border-b-2 border-amber-900/5 dark:border-white/5">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#0B4619] to-[#156E2A] flex items-center justify-center text-amber-300 shadow-[2px_2px_6px_rgba(11,70,25,0.35),inset_1px_1px_2px_rgba(255,255,255,0.4)] border border-white/30 font-bold">
-                <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : 'fa-mosque'} text-sm`}></i>
+                <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : 'fa-mosque'} text-sm`}></i>
               </div>
               <div>
                 <span className="font-extrabold text-sm text-gray-900 dark:text-white tracking-tight">
-                  {isSuperadmin ? 'Portal Superadmin' : 'SIPJAM Menu'}
+                  {isSuperadmin ? 'Portal Superadmin' : isDinas ? 'Dinas Pendidikan' : 'SIPJAM Menu'}
                 </span>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-none mt-0.5">
-                  {schoolName}
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium leading-none mt-0.5 truncate max-w-[170px]">
+                  {isDinas ? (user?.kota_kabupaten ? `Wilayah: ${user.kota_kabupaten}` : 'Pengawas Wilayah') : schoolName}
                 </p>
               </div>
             </div>
@@ -147,14 +163,20 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
                   </span>
                 )}
               </div>
+              {isDinas && user?.kota_kabupaten && (
+                <div className="text-[10px] text-indigo-700 dark:text-indigo-300 font-semibold truncate mt-1 flex items-center gap-1">
+                  <i className="fa-solid fa-map-location-dot text-[9px] text-indigo-600 dark:text-indigo-400"></i>
+                  <span>Wilayah: {user.kota_kabupaten}</span>
+                </div>
+              )}
             </div>
           </ClayCard>
 
-          {/* Superadmin Multi-Tenant Selector */}
-          {isSuperadmin && onTargetSchoolChange && (
+          {/* Superadmin & Dinas Multi-Tenant Selector */}
+          {(isSuperadmin || isDinas) && onTargetSchoolChange && (
             <div className="mb-3 p-2.5 rounded-2xl bg-amber-50/70 dark:bg-gray-800/60 border-2 border-amber-200/60 dark:border-amber-800/40 shadow-[inset_1px_1px_3px_rgba(200,180,150,0.2)]">
               <div className="text-[10px] font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider mb-1 flex items-center gap-1">
-                <i className="fa-solid fa-satellite-dish text-emerald-600"></i> Sekolah yang Dipantau:
+                <i className="fa-solid fa-satellite-dish text-emerald-600"></i> {isDinas ? 'Sekolah Binaan:' : 'Sekolah yang Dipantau:'}
               </div>
               <select
                 aria-label="Ganti Sekolah yang Dipantau di Sidebar"
@@ -162,8 +184,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
                 onChange={(e) => onTargetSchoolChange(e.target.value)}
                 className="w-full text-xs font-semibold py-1.5 px-2.5 rounded-xl bg-white dark:bg-gray-900 border border-amber-200 dark:border-gray-700 text-gray-900 dark:text-white cursor-pointer shadow-xs focus:outline-none"
               >
-                <option value="">🌐 Master Platform (Semua)</option>
-                {satelliteSchools.map((sch) => (
+                <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform (Semua)'}</option>
+                {availableSchools.map((sch) => (
                   <option key={sch.id} value={sch.id}>
                     🏫 {sch.nama}
                   </option>

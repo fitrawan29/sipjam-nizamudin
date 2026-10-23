@@ -13,12 +13,14 @@ export default function RekapJurnalView({
   user,
   initialMode = 'pribadi',
   assignedKelas: propAssignedKelas = null,
-  isKepalaSekolah: propIsKepalaSekolah
+  isKepalaSekolah: propIsKepalaSekolah,
+  isReadOnly = false
 }: { 
   user: any;
   initialMode?: 'pribadi' | 'kelas';
   assignedKelas?: string | null;
   isKepalaSekolah?: boolean;
+  isReadOnly?: boolean;
 }) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
@@ -26,7 +28,7 @@ export default function RekapJurnalView({
     ? propIsKepalaSekolah 
     : checkIsKepalaSekolah(user);
   const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>(initialMode);
-  const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin || isKepalaSekolah);
+  const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin || isKepalaSekolah || Boolean(isReadOnly));
   const [waliClasses, setWaliClasses] = useState<string[]>(() => {
     if (propAssignedKelas) return [propAssignedKelas];
     if (user?.wali_kelas) {

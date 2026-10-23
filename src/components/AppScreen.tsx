@@ -20,6 +20,7 @@ const AdminBackupView = dynamic(() => import('./AdminBackupView'));
 const AdminConfigView = dynamic(() => import('./AdminConfigView'));
 const AnalitikView = dynamic(() => import('./AnalitikView'));
 const SuperadminView = dynamic(() => import('./SuperadminView'));
+const DinasDashboard = dynamic(() => import('./DinasDashboard'));
 // import GradebookView from './GradebookView';
 const GradebookView = dynamic(() => import('./GradebookView'));
 const SistemBlokView = dynamic(() => import('./SistemBlokView'));
@@ -38,6 +39,7 @@ import {
   masterSupabase,
   getActiveTargetSchool,
   setActiveTargetSchool,
+  clearActiveTargetSchool,
   onActiveTargetSchoolChange,
   isSchemaCacheOrMissingTableError,
   type SatelliteSchool
@@ -71,15 +73,16 @@ export default function AppScreen({
   const { syncKey, currentUser, setCurrentUser } = useSessionSync(initialUser, onLogout, onUserUpdate);
   const baseUser = currentUser || initialUser;
   const isSuperadmin = (baseUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
+  const isDinas = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'dinaspendidikan';
   const isAdmin = isSuperadmin || (baseUser?.role || '').toLowerCase() === 'admin';
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
-    return isSuperadmin ? getActiveTargetSchool() : null;
+    return (isSuperadmin || isDinas) ? getActiveTargetSchool() : null;
   });
   const [satelliteSchools, setSatelliteSchools] = useState<SatelliteSchool[]>([]);
 
   // When Superadmin selects an active target satellite school, inject its school ID and name into effectiveUser
-  const effectiveUser: AppUser = (isSuperadmin && activeTargetSchool)
+  const effectiveUser: AppUser = (isSuperadmin && activeTargetSchool) || (isDinas && activeTargetSchool)
     ? {
         ...baseUser,
         sekolah_id: activeTargetSchool.id,
@@ -89,7 +92,7 @@ export default function AppScreen({
   const user = effectiveUser;
 
   useEffect(() => {
-    if (!isSuperadmin) return;
+    if (!isSuperadmin && !isDinas) return;
 
     const fetchSchoolsForSwitcher = async () => {
       try {
@@ -148,7 +151,7 @@ export default function AppScreen({
       window.removeEventListener('sipjam_satellite_error', handleSatelliteErr);
       unsubscribe();
     };
-  }, [isSuperadmin]);
+  }, [isSuperadmin, isDinas]);
 
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -157,6 +160,7 @@ export default function AppScreen({
       if (view) return view;
     }
     if (isSuperadmin) return 'view-superadmin-overview';
+    if (isDinas) return 'view-dinas-overview';
     return 'view-home';
   });
 
@@ -167,12 +171,12 @@ export default function AppScreen({
       if (view) {
         setCurrentView(view);
       } else {
-        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : 'view-home');
+        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : 'view-home');
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isSuperadmin]);
+  }, [isSuperadmin, isDinas]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -304,6 +308,40 @@ export default function AppScreen({
     try {
       // Superadmin and Admin bypass all daily guru checks
       if (isSuperadmin || isAdmin) {
+        window.history.pushState(null, '', `?view=${targetId}`);
+        setCurrentView(targetId);
+        setSidebarOpen(false);
+        return;
+      }
+
+      // Dinas Pendidikan navigation guard: strictly read-only, block mutative admin views
+      if (isDinas) {
+        const blockedMutationViews = [
+          'view-admin-data',
+          'view-admin-config',
+          'view-admin-backup',
+          'view-sistem-blok',
+          'view-admin-verif'
+        ];
+        const allowedDinasViews = [
+          'view-dinas-overview',
+          'view-admin-rekap',
+          'view-rekap-guru',
+          'view-rekap-siswa',
+          'view-jurnal-kelas',
+          'view-informasi'
+        ];
+
+        if (blockedMutationViews.includes(targetId) || !allowedDinasViews.includes(targetId)) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Akun Dinas Pendidikan hanya memiliki wewenang monitoring read-only pada wilayah binaan.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+
         window.history.pushState(null, '', `?view=${targetId}`);
         setCurrentView(targetId);
         setSidebarOpen(false);
@@ -503,16 +541,27 @@ export default function AppScreen({
     { id: 'view-admin-config', icon: 'fa-gears', label: 'Sistem' }
   ];
 
+  const menuItemsDinas = [
+    { id: 'view-dinas-overview', icon: 'fa-chart-pie', label: 'Dashboard Eksekutif' },
+    ...(activeTargetSchool ? [
+      { id: 'view-rekap-guru', icon: 'fa-clipboard-user', label: `Rekap Guru (${activeTargetSchool.nama})` },
+      { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: `Presensi Siswa (${activeTargetSchool.nama})` },
+      { id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: `Jurnal Kelas (${activeTargetSchool.nama})` },
+    ] : [])
+  ];
+
   let menuItems = menuItemsGuru;
   if (isSuperadmin) {
     menuItems = menuItemsSuperadmin;
+  } else if (isDinas) {
+    menuItems = menuItemsDinas;
   } else if (isAdmin) {
     menuItems = menuItemsAdmin;
   } else if (isKepalaSekolah) {
     menuItems = menuItemsKepalaSekolah;
   }
 
-  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : 'view-home';
+  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : 'view-home';
 
   return (
     <div className="flex-col h-full w-full flex">
@@ -523,10 +572,10 @@ export default function AppScreen({
             </button>
             <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
               SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">
-                {isSuperadmin ? 'Superadmin' : (schoolData?.nama || 'Sekolah')}
+                {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : (schoolData?.nama || 'Sekolah')}
               </span>
             </div>
-            {isSuperadmin && (
+            {(isSuperadmin || isDinas) && (
               <div className="hidden sm:flex items-center ml-2">
                 <select
                   aria-label="Ganti Sekolah yang Dipantau"
@@ -534,7 +583,7 @@ export default function AppScreen({
                   onChange={(e) => {
                     const val = e.target.value;
                     if (!val) {
-                      setActiveTargetSchool(null);
+                      clearActiveTargetSchool();
                       setActiveTargetSchoolState(null);
                     } else {
                       const sch = satelliteSchools.find(s => s.id === val);
@@ -547,8 +596,11 @@ export default function AppScreen({
                   className="text-[11px] font-semibold py-1 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 cursor-pointer max-w-[170px] truncate"
                   title="Ganti Sekolah yang Dipantau"
                 >
-                  <option value="">🌐 Master Platform</option>
-                  {satelliteSchools.map(sch => (
+                  <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform'}</option>
+                  {(isDinas
+                    ? satelliteSchools.filter(s => (s.kota_kabupaten || '').trim().toLowerCase() === (user?.kota_kabupaten || '').trim().toLowerCase())
+                    : satelliteSchools
+                  ).map(sch => (
                     <option key={sch.id} value={sch.id}>
                       🏫 {sch.nama}
                     </option>
@@ -602,10 +654,10 @@ export default function AppScreen({
               <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
-                        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : 'fa-mosque'}`}></i>
+                        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : 'fa-mosque'}`}></i>
                     </div>
                     <span className="font-bold text-sm text-gray-900 dark:text-white">
-                      {isSuperadmin ? 'Portal Superadmin' : 'SIPJAM Menu'}
+                      {isSuperadmin ? 'Portal Superadmin' : isDinas ? 'Dinas Pendidikan' : 'SIPJAM Menu'}
                     </span>
                 </div>
                 <button type="button" onClick={toggleSidebar} className="clay-btn w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white border border-gray-200 dark:border-gray-700 shadow-xs">
@@ -627,6 +679,8 @@ export default function AppScreen({
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                       isSuperadmin
                         ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200/50'
+                        : isDinas
+                        ? 'bg-[#EDE9FE] text-[#5B21B6] dark:bg-indigo-900/50 dark:text-indigo-300 border border-[#C4B5FD] dark:border-indigo-700/60'
                         : isAdmin
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'
                         : isKepalaSekolah
@@ -635,22 +689,28 @@ export default function AppScreen({
                         ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
                     }`}>
-                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isAdmin ? 'fa-user-shield' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
-                      {isSuperadmin ? 'Superadmin' : isAdmin ? 'Administrator' : isKepalaSekolah ? 'Kepala Sekolah' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
+                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
+                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isKepalaSekolah ? 'Kepala Sekolah' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
                     </span>
                     {(user?.username || user?.nip) && (
                       <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
                         {user?.username || user?.nip}
                       </span>
                     )}
+                    {isDinas && user?.kota_kabupaten && (
+                      <div className="w-full text-[10px] text-indigo-700 dark:text-indigo-300 font-semibold truncate mt-1 flex items-center gap-1">
+                        <i className="fa-solid fa-map-location-dot text-[9px] text-indigo-600 dark:text-indigo-400"></i>
+                        <span>Wilayah: {user.kota_kabupaten}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </ClayCard>
 
-              {isSuperadmin && (
+              {(isSuperadmin || isDinas) && (
                 <div className="mb-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800">
                   <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <i className="fa-solid fa-satellite-dish text-emerald-600"></i> Sekolah yang Dipantau:
+                    <i className="fa-solid fa-satellite-dish text-emerald-600"></i> {isDinas ? 'Sekolah Binaan:' : 'Sekolah yang Dipantau:'}
                   </div>
                   <select
                     aria-label="Ganti Sekolah yang Dipantau di Sidebar"
@@ -658,7 +718,7 @@ export default function AppScreen({
                     onChange={(e) => {
                       const val = e.target.value;
                       if (!val) {
-                        setActiveTargetSchool(null);
+                        clearActiveTargetSchool();
                         setActiveTargetSchoolState(null);
                       } else {
                         const sch = satelliteSchools.find(s => s.id === val);
@@ -670,8 +730,11 @@ export default function AppScreen({
                     }}
                     className="w-full text-xs font-semibold py-1.5 px-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white cursor-pointer"
                   >
-                    <option value="">🌐 Master Platform (Semua)</option>
-                    {satelliteSchools.map(sch => (
+                    <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform (Semua)'}</option>
+                    {(isDinas
+                      ? satelliteSchools.filter(s => (s.kota_kabupaten || '').trim().toLowerCase() === (user?.kota_kabupaten || '').trim().toLowerCase())
+                      : satelliteSchools
+                    ).map(sch => (
                       <option key={sch.id} value={sch.id}>
                         🏫 {sch.nama}
                       </option>
@@ -729,6 +792,27 @@ export default function AppScreen({
       )}
 
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
+        {/* Active Target School Banner for Dinas Drilldown */}
+        {isDinas && activeTargetSchool && currentView !== 'view-dinas-overview' && (
+          <div className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-3 mb-4 flex items-center justify-between no-print shadow-xs">
+            <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
+              <i className="fa-solid fa-eye text-indigo-600 dark:text-indigo-400"></i>
+              <span>Memantau Sekolah: <b>{activeTargetSchool.nama}</b> ({activeTargetSchool.kota_kabupaten || user?.kota_kabupaten || 'Wilayah Binaan'}) &bull; Mode Peninjau (Read-Only)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                clearActiveTargetSchool();
+                setActiveTargetSchoolState(null);
+                handleNavigation('view-dinas-overview');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition flex items-center gap-1 shadow-xs"
+            >
+              <i className="fa-solid fa-arrow-left mr-1"></i> Kembali ke Dashboard
+            </button>
+          </div>
+        )}
+
         <div key={`${currentView}-${syncKey}`} className="page-transition">
           {isSuperadmin && currentView.startsWith('view-superadmin-') ? (
             <SuperadminView
@@ -750,6 +834,23 @@ export default function AppScreen({
             />
           ) : (
             <>
+              {currentView === 'view-dinas-overview' && (
+                <DinasDashboard
+                  user={user}
+                  onSelectSchool={(school) => {
+                    setActiveTargetSchool(school);
+                    setActiveTargetSchoolState(school);
+                    handleNavigation('view-rekap-guru');
+                  }}
+                  onSelectTargetSchool={(school) => {
+                    setActiveTargetSchool(school);
+                    setActiveTargetSchoolState(school);
+                    handleNavigation('view-rekap-guru');
+                  }}
+                  satelliteSchools={satelliteSchools}
+                  setView={handleNavigation}
+                />
+              )}
               {currentView === 'view-home' && (
                 <HomeView 
                   user={user} 
@@ -788,8 +889,8 @@ export default function AppScreen({
               {currentView === 'view-history' && <HistoryView user={user} />}
               {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}
               {currentView === 'view-jurnal-kelas' && (
-                isAdmin || isWaliKelas ? (
-                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={isKepalaSekolah} />
+                isAdmin || isWaliKelas || isDinas ? (
+                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={isKepalaSekolah} isReadOnly={isDinas} />
                 ) : isKepalaSekolah ? (
                   <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={true} />
                 ) : (
@@ -812,8 +913,8 @@ export default function AppScreen({
                 )
               )}
               {currentView === 'view-rekap-siswa' && (
-                isAdmin || isSuperadmin || isWaliKelas ? (
-                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} />
+                isAdmin || isSuperadmin || isWaliKelas || isDinas ? (
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={isDinas || (isKepalaSekolah && !isAdmin && !isSuperadmin)} />
                 ) : isKepalaSekolah ? (
                   <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={true} />
                 ) : (
@@ -880,8 +981,8 @@ export default function AppScreen({
                 )
               )}
               {currentView === 'view-admin-rekap' && (
-                isAdmin || isSuperadmin || isKepalaSekolah ? (
-                  <AdminRekapView user={user} isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin} />
+                isAdmin || isSuperadmin || isKepalaSekolah || isDinas ? (
+                  <AdminRekapView user={user} isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin} isReadOnly={isDinas} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -890,6 +991,28 @@ export default function AppScreen({
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                       Halaman <strong>Rekap Presensi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
+              {currentView === 'view-rekap-guru' && (
+                isAdmin || isSuperadmin || isKepalaSekolah || isDinas ? (
+                  <AdminRekapView user={user} isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin} isReadOnly={isDinas} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Rekap Presensi Guru</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
