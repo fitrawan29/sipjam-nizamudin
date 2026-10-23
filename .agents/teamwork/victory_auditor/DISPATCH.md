@@ -157,3 +157,68 @@ This is a single self-contained fix; keep it small and focused.
 - [ ] Pengujian `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts` berjalan dan lulus 100%.
 - [ ] Perubahan file bersih dan siap di-commit ke Git sesuai aturan repositori.
 </original_task>
+
+## 2026-10-23T07:40:59Z
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
+Your caller/orchestrator ID is: 6a34a9ec-d2a4-4634-92f5-2f27eda28b69
+When finished, write your audit report to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor\handoff.md and send a message back with your structured verdict.
+
+<original_task>
+This is a single self-contained fix; keep it small and focused.
+Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay aesthetic with reusable components (ClayCard, ClayButton, ClaySidebar) while strictly preserving all existing database structures and business logic.
+MANDATORY: All changes must be committed and pushed to the `dev` branch (`git push origin dev`). Never push to `main`. After pushing, provide the GitHub link to inspect the `dev` branch: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Reusable Claymorphism Design System Primitives
+Implement modular, reusable components (`ClayCard`, `ClayButton`, `ClaySidebar`):
+- Soft 3D clay aesthetic: rounded contours (`rounded-2xl` / `rounded-3xl`), thick light/white borders, layered inner highlight and soft diffused drop shadows.
+- Pastel color palette with `#FDF6EC` as the primary background canvas and soft pastel accents for cards and buttons.
+- Fully responsive across mobile, tablet, and desktop breakpoints.
+
+### R2. Comprehensive UI Refactoring Across Screens
+Refactor the application screens and components (`AppScreen`, `HomeViewAdmin`, `HomeViewGuru`, `PiketView`, `GuruPresensi`, `GuruJurnal`, Rekap views, modals, and navigation) to use the new Claymorphism style and components without altering any underlying state logic, hooks, database calls, API endpoints, or prop contracts.
+
+### R3. Automated Quality & Non-Regression Verification
+Verify that the codebase builds cleanly, TypeScript passes without errors, and the existing automated test suite (`npm test`) passes with zero logic or database regressions.
+
+### R4. Development Server & Visual Verification
+Run the dev server (`npm run dev`) and ensure the application boots cleanly on `http://localhost:3000` with visual confirmation of claymorphism aesthetics across dashboard screens.
+
+### R5. Mandatory Git Workflow & Branch Link Delivery
+Upon completion, the agent MUST automatically:
+1. Run `git status` and stage changes (`git add .`).
+2. Commit with a clear, descriptive message (`git commit -m "..."`).
+3. Push directly to the development branch: `git push origin dev`.
+4. STRICT RULE: DO NOT push or merge to `main`.
+5. Provide the clickable link to the pushed branch: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev
+
+## Acceptance Criteria
+
+### Component Design & Styling
+- [ ] `ClayCard`, `ClayButton`, and `ClaySidebar` exist as clean, reusable TypeScript components.
+- [ ] Application background uses `#FDF6EC` with consistent soft 3D clay aesthetic (dual shadow, rounded borders, pastel accents) applied across all views.
+- [ ] Responsive navigation and layouts work seamlessly on mobile, tablet, and desktop.
+
+### Logic Preservation & Stability
+- [ ] Zero modifications to database schema, queries, authentication, or business logic.
+- [ ] `npx tsc --noEmit` and `npm run build` pass with 0 errors.
+- [ ] Existing automated test suite (`npm test`) passes with 0 failures.
+- [ ] Local dev server (`npm run dev`) launches and loads pages without runtime crashes.
+
+### Git Delivery & Link
+- [ ] Changes committed and verified pushed to branch `dev` (`git push origin dev`).
+- [ ] Branch `main` untouched.
+- [ ] Clickable link to `dev` branch (https://github.com/fitrawan29/sipjam-nizamudin/tree/dev) presented in the final summary.
+</original_task>
+
+<audit_instructions>
+Conduct an independent 3-phase audit:
+Phase 1: Timeline & commit history audit against git log and remote dev branch.
+Phase 2: Cheating detection (verify no tests were commented out, bypassed, weakened, or altered to pass).
+Phase 3: Independent test execution (`npm test`, `npx tsc --noEmit`, `npm run build`, and dev server check).
+Report your structured verdict: CONFIRMED or REJECTED.
+</audit_instructions>
