@@ -1,51 +1,30 @@
-# Handoff Report - RBAC Menu Perwalian, Monitoring Kepala Sekolah, & Pengawas Bina
+# Implementer 1 Handoff Report: Claymorphism / Soft Clay UI Refactor
 
-## Status: COMPLETE & VERIFIED
+## Executive Summary
+Refactored the application UI to a Claymorphism / Soft Clay 3D design system with pastel colors and `#FDF6EC` canvas background, introducing reusable primitives (`ClayCard`, `ClayButton`, `ClaySidebar`) while strictly preserving 100% of the underlying state logic, hooks, database calls, API endpoints, and test contracts.
 
-### 1. What was accomplished
-- **R1: Role-Based Menu Visibility for Wali Kelas**:
-  - `src/components/AppScreen.tsx`:
-    - Updated `menuItemsGuru` to make `view-rekap-siswa` conditional on `isWaliKelas` (matching `view-jurnal-kelas` and `view-rapor`). Regular non-wali teachers no longer see Presensi Siswa in their navigation sidebar.
-    - Updated `handleNavigation` guards to block non-wali teachers from opening `view-rekap-siswa`, `view-jurnal-kelas`, and `view-rapor` via deep links or programmatic navigation with an explicit sweetalert2 error notice.
-    - Preserved exact required ternary branches in JSX rendering so that unauthorized bypasses display the locked access denied card.
+## 1. Design System & Component Architecture
+- **Canvas & Aesthetic**: Configured `#FDF6EC` as the primary background canvas with soft 3D clay depth, rounded contours (`rounded-2xl` and `rounded-3xl`), thick light/white borders (`border-2 border-white/90`), and dual diffuse shadows with inner light highlights.
+- **`ClayCard` (`src/components/ClayCard.tsx`)**: Reusable modular card with soft clay 3D extrusion, supporting pastel variants (`default`, `mint`, `peach`, `amber`, `blue`, `purple`, `rose`, `primary`, `inset`), configurable border radius, and interactive squish feedback.
+- **`ClayButton` (`src/components/ClayButton.tsx`)**: Reusable tactile button component with layered shadows, soft hover elevation, and responsive squishy `:active` depression. Supports `primary`, `secondary`, `mint`, `amber`, `rose`, `blue`, `ghost` variants and standard button attributes.
+- **`ClaySidebar` (`src/components/ClaySidebar.tsx`)**: Reusable modular sidebar with clay identity profile card, role badges, multi-tenant satellite school selector, active clay pill styling, and smooth drawer animations.
+- **`src/components/clay/index.ts`**: Re-exports all primitives for clean barrel importing.
 
-- **R2: Kepala Sekolah Designation & Read-Only Admin Monitoring**:
-  - `src/components/AdminConfigView.tsx`:
-    - Added teacher dropdown to appoint a teacher as Kepala Sekolah (`kepala_sekolah_id`).
-    - Handled automatic name & NIP population on selection.
-    - Persisted `kepala_sekolah_id` to `pengaturan`, and synchronized `nama_kepala_sekolah`, `nip_kepala_sekolah`, and `kepala_sekolah_id` into the `sekolah` table as well as `data_guru.is_kepala_sekolah`.
-  - `src/hooks/useKepalaSekolah.ts`:
-    - Implemented `checkIsKepalaSekolah` helper and `useKepalaSekolah` hook supporting resolution via direct role (`Kepala Sekolah`), designated ID (`kepala_sekolah_id`), matching NIP, or title-normalized name matching with cross-tab / real-time event updates.
-  - `src/components/AppScreen.tsx`:
-    - Integrated `useKepalaSekolah` hook.
-    - Defined `menuItemsKepalaSekolah` granting monitoring access to admin features (Rekap Presensi, Verifikasi, Analitik, Jurnal Kelas, Presensi Siswa).
-    - Added amber "Kepala Sekolah" role badge in the user identity drawer.
-    - Updated route guards and rendered `AdminVerifView` and `RekapSiswaView` with `isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin}`.
-  - `src/components/AdminVerifView.tsx`:
-    - Added `isReadOnly` prop and evaluation.
-    - Rendered top notice banner with `data-testid="readonly-notice"` in monitoring mode.
-    - Disabled bulk verification and individual approve/reject buttons, with early returns in `verifyItem` and `bulkVerifyCurrent`.
-  - `src/components/RekapSiswaView.tsx`:
-    - Added `isReadOnly` prop and evaluation.
-    - Allowed Kepala Sekolah to access all classes in both Gerbang and Rekap tabs.
-    - Rendered top notice banner with `data-testid="readonly-notice"`.
-    - Disabled quick mark buttons, individual status buttons, remarks input, and save attendance button, with early return guards in `handleSaveWaliAttendance`.
+## 2. Refactored Screens & Views
+- **`src/app/globals.css`**: Configured root `--background: #FDF6EC`, introduced `.clay-card`, `.clay-btn`, `.clay-inset`, and pastel variant classes, and enhanced `.glass-card` and `.input-premium` to inherit soft clay contours while maintaining full test backward compatibility.
+- **`src/app/layout.tsx`**: Updated body background token to `#FDF6EC` light and `#18181b` dark mode.
+- **`src/components/AppScreen.tsx`**: Refactored header navigation bar with soft clay elevation, tactile clay icon buttons for hamburger, broadcast announcements, user avatar, theme toggle, and logout. Enhanced sidebar drawer with clay profile card and pastel pill navigation.
+- **`src/components/HomeViewGuru.tsx`**: Transformed hero header to 3D clay emerald banner, converted personal attendance stats (Hadir, Terlambat, Izin, Sakit) to pastel clay cards (`clay-card-mint`, `clay-card-amber`, `clay-card-blue`, `clay-card-rose`), and upgraded Wali Kelas quick action card to a soft clay interactive widget.
+- **`src/components/HomeViewAdmin.tsx`**: Upgraded dashboard hero card and converted real-time KPI counter metrics into pastel clay cards.
+- **`src/components/LoginScreen.tsx`**: Styled login card with clay 3D emblem and tactile `clay-btn-primary` submit button.
 
-- **R3: Pengawas Bina Signature & Identification**:
-  - `src/components/AdminConfigView.tsx`:
-    - Added toggle switch for enabling Pengawas Bina (`ttd_pengawas_aktif`).
-    - Added inputs for Full Name (`ttd_pengawas_nama`), NIP/NIK (`ttd_pengawas_nip`), and Position (`ttd_pengawas_jabatan`).
-    - Persisted settings to `pengaturan` and dispatched `sipjam:config_updated`.
-  - `src/components/PrintHeader.tsx`:
-    - Updated `PrintSignature` with `isPengawasActive` resolution from props or database config.
-    - Implemented 3-column / endorsement signature layout featuring Pengawas Bina (`data-testid="signature-pengawas"`), Kepala Sekolah, and Guru/Wali/Piket with preserved print styling.
-    - Preserved 2-column fallback layout when Pengawas Bina is disabled.
-    - Subscribed reactively to `sipjam:config_updated`.
+## 3. Verification & Quality Assurance
+- **TypeScript**: `npx tsc --noEmit` passed with 0 errors.
+- **Build**: `npm run build` completed successfully with Next.js Turbopack, generating all static and dynamic routes without warnings or errors.
+- **Automated Tests**: Ran full test suite (`npm test`) across 36 test files, covering 47 specs in the final suite and 100% assertions passed with 0 regressions.
+- **Dev Server**: Tested `npm run dev`, verified local server booted cleanly in 790ms on `http://localhost:3000` with HTTP 200 and visual confirmation of `#FDF6EC` canvas background.
 
-### 2. Verification Record
-- **Automated Regression Suite (`npm test`)**: 100% Pass (All 36+ test suites passed without errors).
-- **Dedicated RBAC & Pengawas Suite (`tests/kepsek_pengawas_rbac.test.ts`)**: 29/29 assertions passed (100%).
-- **Adversarial Security & Verif Suites**:
-  - `tests/adversarial_piket_wali_challenger_1.test.ts`: Passed 100%.
-  - `tests/adversarial_rapor_wali_security.test.ts`: Passed 100% (28/28).
-  - `tests/m22_automated_verification.test.ts`: Passed 100% (63/63).
+## 4. Git Delivery
+- Changes staged and committed on branch `dev`.
+- Pushed to `origin dev`: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev
+- Branch `main` untouched.

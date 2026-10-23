@@ -77,7 +77,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
       <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-yellow-100 dark:bg-yellow-900/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       
       <div className="glass-card w-full max-w-md p-6 sm:p-8 border-t-4 border-nizamudin-green dark:border-nizamudin-gold text-center relative z-10 mx-auto">
-        <div className="w-20 h-20 bg-nizamudin-green rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg border-4 border-white dark:border-gray-800">
+        <div className="w-20 h-20 bg-gradient-to-br from-[#0B4619] to-[#156E2A] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-[4px_4px_12px_rgba(11,70,25,0.35),inset_2px_2px_4px_rgba(255,255,255,0.4)] border-4 border-white dark:border-gray-800">
             <i className="fa-solid fa-graduation-cap text-3xl text-nizamudin-gold"></i>
         </div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight mb-1">SIPJAM Portal</h1>
@@ -107,7 +107,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
             <button 
               type="submit" 
               disabled={loading}
-              className="btn-click w-full bg-nizamudin-green text-white dark:text-nizamudin-gold font-bold py-3.5 rounded-2xl shadow-md mt-6 text-sm flex justify-center items-center gap-2 disabled:opacity-50"
+              className="clay-btn clay-btn-primary btn-click w-full text-white dark:text-nizamudin-gold font-bold py-3.5 rounded-2xl shadow-md mt-6 text-sm flex justify-center items-center gap-2 disabled:opacity-50"
             >
                 {loading ? 'Memproses...' : <>Masuk Sistem <i className="fa-solid fa-arrow-right"></i></>}
             </button>

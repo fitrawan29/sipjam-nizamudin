@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-20T22:37:00Z
+# BRIEFING — 2026-10-23T06:08:00Z
 
 ## Mission
-Penyesuaian kontrol akses menu berbasis peran (Wali Kelas vs Guru biasa), konfigurasi penunjukan akun Kepala Sekolah dengan mode peninjauan/monitoring fitur Admin (read-only), serta penambahan opsi pembubuhan tanda tangan Pengawas Bina (dengan konfigurasi Nama dan NIP) yang berlaku untuk seluruh dokumen cetak jurnal dan rekap presensi tanpa memandang role.
+Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay aesthetic with reusable components (ClayCard, ClayButton, ClaySidebar) while strictly preserving all existing database structures and business logic. All changes must be committed and pushed to the `dev` branch (`git push origin dev`). Never push to `main`. Deliver link: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -79,6 +79,10 @@ Penyesuaian kontrol akses menu berbasis peran (Wali Kelas vs Guru biasa), konfig
 - Cron 1 (Progress Reporting): 2894e868-4e54-4310-a67e-1fe8757cd5b7/task-32 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 2894e868-4e54-4310-a67e-1fe8757cd5b7/task-34 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 8e874f43-c488-4b6f-8480-126eb3e7b319 (victory_auditor_45) [VICTORY CONFIRMED]
+- Orchestrator (current): 6a34a9ec-d2a4-4634-92f5-2f27eda28b69 (swe_32)
+- Cron 1 (Progress Reporting): 75492adc-9c7a-44bc-b65f-bdc20ccfbbc1/task-34 (*/8 * * * *)
+- Cron 2 (Liveness Check): 75492adc-9c7a-44bc-b65f-bdc20ccfbbc1/task-36 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -104,35 +108,26 @@ Penyesuaian kontrol akses menu berbasis peran (Wali Kelas vs Guru biasa), konfig
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (two operational features: WhatsApp 1-Click & Auto-Save Draft/Offline Resilience)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Penyesuaian batas jendela waktu input absensi kelas & fallback dinamis KBM terakhir)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Role-based menu visibility for Wali Kelas vs Guru biasa, Kepala Sekolah admin viewer, Pengawas Bina print signature)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Claymorphism / Soft Clay aesthetic refactoring with reusable ClayCard, ClayButton, ClaySidebar preserving DB and business logic, push to dev branch)
 
 ## User Context
-- **Last user request**: Penyesuaian kontrol akses menu berbasis peran (Wali Kelas vs Guru biasa), konfigurasi penunjukan akun Kepala Sekolah dengan mode peninjauan/monitoring fitur Admin (read-only), serta penambahan opsi pembubuhan tanda tangan Pengawas Bina (dengan konfigurasi Nama dan NIP) yang berlaku untuk seluruh dokumen cetak jurnal dan rekap presensi tanpa memandang role.
+- **Last user request**: Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay aesthetic with reusable components (ClayCard, ClayButton, ClaySidebar) while strictly preserving all existing database structures and business logic. Mandatory git push to `dev` branch.
 - **Pending clarifications**: none
-- **Delivered results**:
-  - R1: Visibilitas menu perwalian (`view-rekap-siswa`, `view-jurnal-kelas`, `view-rapor`) terproteksi khusus Wali Kelas / Admin; disembunyikan untuk guru biasa; proteksi route guard direct URL aktif.
-  - R2: Penunjukan Kepala Sekolah di Pengaturan Sistem (`AdminConfigView`), akses monitoring admin (`menuItemsKepalaSekolah`), dan mode peninjauan read-only tanpa aksi mutasi/persetujuan/penolakan data. Dukungan dual-role (Wali Kelas + Kepala Sekolah).
-  - R3: Opsi sakelar tanda tangan Pengawas Bina dan input Nama/NIP di Pengaturan Sistem (`AdminConfigView`). Tata letak 3-kolom tanda tangan pengesahan Pengawas Bina aktif di seluruh dokumen cetak jurnal dan rekap presensi tanpa memandang role; layout standar 2-kolom jika nonaktif.
-  - Verifikasi: 47/47 assertions passed di `tests/kepsek_pengawas_rbac.test.ts`, 36/36 test suites passed di `npm test`, `npx tsc --noEmit` 0 error, `npm run build` sukses 100%.
+- **Delivered results**: [pending]
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none
-- **Active Subagents**: none
+- **Active Crons**: to be scheduled
+- **Active Subagents**: to be spawned
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
-- **Auditor ID**: 8e874f43-c488-4b6f-8480-126eb3e7b319 (victory_auditor_45)
-- **Retry count**: 1
+- **Triggered**: no
+- **Verdict**: pending
+- **Auditor ID**: none
+- **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING_ARCHIVE.md — Archived previous briefing content
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_31\DISPATCH.md — Dispatch prompt for SWE Light agent
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_31\handoff.md — SWE Light Orchestrator handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_44\DISPATCH.md — Post-Victory Auditor dispatch prompt
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_44\handoff.md — Victory Auditor report (VICTORY REJECTED)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_45\DISPATCH.md — Post-Remediation Auditor dispatch prompt
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_45\handoff.md — Victory Auditor report (VICTORY CONFIRMED)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\handoff.md — Sentinel final handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING.md — Persistent working memory
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_32\DISPATCH.md — Dispatch prompt for SWE Light agent

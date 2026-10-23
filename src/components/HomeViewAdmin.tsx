@@ -522,7 +522,7 @@ export default function HomeViewAdmin({
   return (
     <section id="view-home" className="fade-in block space-y-4">
             {/* Header Banner */}
-      <div className="bg-gradient-to-br from-[#0B4619] to-[#1a7031] rounded-2xl p-3.5 sm:p-4 shadow-lg shadow-green-900/20 text-white relative overflow-hidden border border-green-700/50">
+      <div className="clay-card bg-gradient-to-br from-[#0B4619] via-[#0F5A22] to-[#17732D] rounded-3xl p-4 sm:p-5 text-white relative overflow-hidden border-2 border-white/30 shadow-[8px_8px_20px_rgba(11,70,25,0.3),-4px_-4px_12px_rgba(255,255,255,0.9),inset_2px_2px_4px_rgba(255,255,255,0.35),inset_-2px_-2px_4px_rgba(0,0,0,0.25)]">
         <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
         
         <div className="relative z-10 flex items-center justify-between gap-3 mb-2.5">
@@ -577,7 +577,7 @@ export default function HomeViewAdmin({
           {/* Summary KPI Counter Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
             {/* Total Guru */}
-            <div className="glass-card p-3 rounded-xl border border-gray-200/80 dark:border-gray-700/80 shadow-sm flex items-center gap-3">
+            <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-gray-700/80 shadow-sm flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-users"></i>
               </div>
@@ -589,7 +589,7 @@ export default function HomeViewAdmin({
             </div>
 
             {/* Presensi Datang */}
-            <div className="glass-card p-3 rounded-xl border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
+            <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-right-to-bracket"></i>
               </div>
@@ -603,7 +603,7 @@ export default function HomeViewAdmin({
             </div>
 
             {/* Jurnal Lengkap */}
-            <div className="glass-card p-3 rounded-xl border border-indigo-200/80 dark:border-indigo-800/50 shadow-sm flex items-center gap-3">
+            <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-indigo-800/50 shadow-sm flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-book-journal-whills"></i>
               </div>
@@ -617,7 +617,7 @@ export default function HomeViewAdmin({
             </div>
 
             {/* Piket Selesai */}
-            <div className="glass-card p-3 rounded-xl border border-teal-200/80 dark:border-teal-800/50 shadow-sm flex items-center gap-3">
+            <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 shadow-sm flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-shield-halved"></i>
               </div>

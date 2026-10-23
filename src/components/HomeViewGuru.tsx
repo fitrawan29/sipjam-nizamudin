@@ -715,7 +715,7 @@ export default function HomeViewGuru({
   return (
     <section id="view-home" className="fade-in block space-y-4">
             {/* Header Banner */}
-      <div className="bg-gradient-to-br from-[#0B4619] to-[#1a7031] rounded-2xl p-3.5 sm:p-4 shadow-lg shadow-green-900/20 text-white relative overflow-hidden border border-green-700/50">
+      <div className="clay-card bg-gradient-to-br from-[#0B4619] via-[#0F5A22] to-[#17732D] rounded-3xl p-4 sm:p-5 text-white relative overflow-hidden border-2 border-white/30 shadow-[8px_8px_20px_rgba(11,70,25,0.3),-4px_-4px_12px_rgba(255,255,255,0.9),inset_2px_2px_4px_rgba(255,255,255,0.35),inset_-2px_-2px_4px_rgba(0,0,0,0.25)]">
         <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
         
         <div className="relative z-10 flex items-center justify-between gap-3 mb-2.5">
@@ -801,7 +801,7 @@ export default function HomeViewGuru({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
               {/* Hadir (H) */}
-              <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
+              <div className="clay-card-mint p-3 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-user-check"></i>
                 </div>
@@ -813,7 +813,7 @@ export default function HomeViewGuru({
               </div>
 
               {/* Terlambat (TL) */}
-              <div className="p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 shadow-sm flex items-center gap-3">
+              <div className="clay-card-amber p-3 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 shadow-sm flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-clock-rotate-left"></i>
                 </div>
@@ -825,7 +825,7 @@ export default function HomeViewGuru({
               </div>
 
               {/* Izin */}
-              <div className="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-800/50 shadow-sm flex items-center gap-3">
+              <div className="clay-card-blue p-3 rounded-2xl border-2 border-white/90 dark:border-sky-800/50 shadow-sm flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-envelope-open-text"></i>
                 </div>
@@ -837,7 +837,7 @@ export default function HomeViewGuru({
               </div>
 
               {/* Sakit */}
-              <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-800/50 shadow-sm flex items-center gap-3">
+              <div className="clay-card-rose p-3 rounded-2xl border-2 border-white/90 dark:border-rose-800/50 shadow-sm flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-heart-pulse"></i>
                 </div>
@@ -850,7 +850,7 @@ export default function HomeViewGuru({
             </div>
 
             {/* Akumulasi Keterlambatan Info */}
-            <div className="mt-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
+            <div className="mt-3 clay-inset rounded-2xl p-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-white">
                   <i className="fa-solid fa-stopwatch text-sm"></i>
@@ -873,7 +873,7 @@ export default function HomeViewGuru({
 
           {/* Kartu Akses Cepat Presensi Siswa untuk Wali Kelas */}
           {isWaliKelas && (
-            <div className="glass-card p-4 border border-emerald-200/90 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20">
+            <div className="glass-card clay-card-mint p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-emerald-800/60 shadow-[6px_6px_16px_rgba(180,210,190,0.35)]">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
@@ -901,7 +901,7 @@ export default function HomeViewGuru({
                 <button
                   type="button"
                   onClick={() => setView('view-rekap-siswa')}
-                  className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition shrink-0"
+                  className="clay-btn clay-btn-primary btn-click px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition shrink-0"
                 >
                   <i className="fa-solid fa-pen-to-square"></i>
                   <span>Input Presensi Siswa</span>
@@ -941,7 +941,7 @@ export default function HomeViewGuru({
                       key={idx} 
                       className={`flex items-start gap-3 relative rounded-xl p-2 transition-all ${
                         isClickable 
-                          ? 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 bg-amber-50/40 dark:bg-amber-950/20' 
+                          ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99] border-2 border-amber-300/80 dark:border-amber-800/50 bg-amber-50/70 dark:bg-amber-950/30 shadow-[4px_4px_10px_rgba(230,200,160,0.35),inset_1px_1px_2px_rgba(255,255,255,0.9)] rounded-2xl' 
                           : 'border border-transparent'
                       }`}
                       onClick={() => {

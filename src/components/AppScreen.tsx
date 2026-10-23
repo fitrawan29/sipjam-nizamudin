@@ -24,6 +24,8 @@ const SuperadminView = dynamic(() => import('./SuperadminView'));
 const GradebookView = dynamic(() => import('./GradebookView'));
 const SistemBlokView = dynamic(() => import('./SistemBlokView'));
 const RaporView = dynamic(() => import('./RaporView'));
+import ClayCard from './ClayCard';
+import ClayButton from './ClayButton';
 import AccountSettingsModal from './AccountSettingsModal';
 import { renderUserAvatar } from '@/lib/avatars';
 import PWAInstallPrompt from './PWAInstallPrompt';
@@ -514,9 +516,9 @@ export default function AppScreen({
 
   return (
     <div className="flex-col h-full w-full flex">
-      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
+      <header className="clay-card bg-[#FDF6EC]/95 dark:bg-[#1C1C20]/95 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-[0_6px_20px_rgba(215,198,180,0.35)] dark:shadow-[0_6px_20px_rgba(0,0,0,0.5)] border-b-2 border-white/80 dark:border-white/10 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
         <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" data-tour="hamburger-btn" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
+            <button type="button" data-tour="hamburger-btn" onClick={toggleSidebar} className="clay-btn btn-click w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className="fa-solid fa-bars text-sm"></i>
             </button>
             <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
@@ -561,7 +563,7 @@ export default function AppScreen({
             <button
               type="button"
               onClick={() => setBroadcastModalOpen(true)}
-              className="btn-click relative w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700"
+              className="clay-btn btn-click relative w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700"
               title="Pengumuman Siaran"
             >
               <i
@@ -578,15 +580,15 @@ export default function AppScreen({
             <button
               type="button"
               onClick={() => setIsAccountModalOpen(true)}
-              className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden p-0.5"
+              className="clay-btn btn-click w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden p-0.5"
               title="Pengaturan Akun & Profil"
             >
               {renderUserAvatar(currentUser?.avatar, 'w-7 h-7')}
             </button>
-            <button type="button" onClick={toggleTheme} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
+            <button type="button" onClick={toggleTheme} className="clay-btn btn-click w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
                 <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-sm`}></i>
             </button>
-            <button type="button" onClick={onLogout} className="btn-click bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-white px-3 py-1.5 rounded-xl text-xs font-bold border border-red-200 dark:border-red-800/50 flex items-center gap-1.5 shadow-sm">
+            <button type="button" onClick={onLogout} className="clay-btn clay-btn-rose btn-click text-red-600 dark:text-white px-3 py-1.5 rounded-2xl text-xs font-bold border border-red-200 dark:border-red-800/50 flex items-center gap-1.5 shadow-sm">
                 <i className="fa-solid fa-power-off text-xs"></i> <span className="hidden sm:inline">Keluar</span>
             </button>
         </div>
@@ -595,7 +597,7 @@ export default function AppScreen({
       {/* Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" onClick={toggleSidebar}>
-          <div className="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
+          <div className="w-72 max-w-[85%] bg-[#FAF7F2] dark:bg-[#1C1C20] border-r-2 border-white/80 dark:border-white/10 h-full shadow-[12px_0_35px_rgba(180,160,140,0.35)] dark:shadow-[12px_0_35px_rgba(0,0,0,0.6)] p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
             <div>
               <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2">
@@ -612,7 +614,7 @@ export default function AppScreen({
               </div>
 
               {/* User Identity Card */}
-              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-green-50/40 dark:from-gray-800/90 dark:to-gray-800/40 border border-emerald-100/90 dark:border-gray-700/60 shadow-xs flex items-center gap-3">
+              <div className="clay-card mb-3 p-3 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-green-50/40 dark:from-gray-800/90 dark:to-gray-800/40 border-2 border-white/90 dark:border-gray-700/60 shadow-[4px_4px_12px_rgba(180,210,190,0.35),inset_1px_1px_2px_rgba(255,255,255,0.9)] flex items-center gap-3">
                 <div className="relative w-11 h-11 rounded-full bg-white dark:bg-gray-700 p-0.5 shadow-xs shrink-0 overflow-hidden border border-emerald-200 dark:border-gray-600 flex items-center justify-center">
                   {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')}
                   <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-800" title="Aktif"></span>
@@ -1031,7 +1033,7 @@ export default function AppScreen({
       {/* Broadcast Modal / Drawer */}
       {broadcastModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="clay-card bg-[#FAF7F2] dark:bg-slate-900 rounded-3xl shadow-2xl border-2 border-white/90 dark:border-slate-800 w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
             {/* Modal Header */}
             <div className="px-5 py-4 bg-gradient-to-r from-nizamudin-green to-emerald-800 text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
