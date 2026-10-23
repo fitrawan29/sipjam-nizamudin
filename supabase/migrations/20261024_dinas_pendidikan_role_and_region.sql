@@ -97,3 +97,67 @@ USING (
     OR (public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id())
     OR (id = public.get_auth_user_id())
 );
+
+-- 5. Helper function to extract assigned region for authenticated dinas_pendidikan user
+CREATE OR REPLACE FUNCTION public.get_auth_dinas_user_region()
+RETURNS TEXT AS $$
+DECLARE
+  v_user_id UUID;
+  v_raw TEXT;
+  v_region TEXT;
+BEGIN
+  -- 1. Try public.get_auth_user_id()
+  v_user_id := public.get_auth_user_id();
+  
+  -- 2. Fallback to x-user-id header
+  IF v_user_id IS NULL THEN
+    BEGIN
+      v_raw := current_setting('request.headers', true)::json->>'x-user-id';
+      IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
+        v_user_id := trim(v_raw)::uuid;
+      END IF;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+  END IF;
+
+  IF v_user_id IS NOT NULL THEN
+    SELECT u.kota_kabupaten INTO v_region
+    FROM public.users u
+    WHERE u.id = v_user_id
+      AND lower(replace(u.role, ' ', '')) = 'dinaspendidikan'
+    LIMIT 1;
+
+    RETURN v_region;
+  END IF;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp;
+
+REVOKE EXECUTE ON FUNCTION public.get_auth_dinas_user_region() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_auth_dinas_user_region() TO anon, authenticated, service_role;
+
+-- 6. Update public.sekolah SELECT RLS policy
+-- Allows Superadmin, school tenant users (matching sekolah_id), and dinas_pendidikan in their assigned region
+DROP POLICY IF EXISTS "sekolah_select_policy" ON public.sekolah;
+CREATE POLICY "sekolah_select_policy" ON public.sekolah FOR SELECT
+USING (
+    is_superadmin()
+    OR id = public.get_auth_user_sekolah_id()
+    OR (
+        public.get_auth_dinas_user_region() IS NOT NULL
+        AND public.sekolah.kota_kabupaten IS NOT NULL
+        AND lower(trim(public.sekolah.kota_kabupaten)) = lower(trim(public.get_auth_dinas_user_region()))
+    )
+);
+
+-- 7. Add public.sekolah_registry SELECT policy for dinas_pendidikan
+DROP POLICY IF EXISTS "dinas_pendidikan_select_sekolah_registry" ON public.sekolah_registry;
+CREATE POLICY "dinas_pendidikan_select_sekolah_registry" ON public.sekolah_registry FOR SELECT
+TO authenticated, anon
+USING (
+    public.get_auth_dinas_user_region() IS NOT NULL
+    AND public.sekolah_registry.kota_kabupaten IS NOT NULL
+    AND lower(trim(public.sekolah_registry.kota_kabupaten)) = lower(trim(public.get_auth_dinas_user_region()))
+);
+

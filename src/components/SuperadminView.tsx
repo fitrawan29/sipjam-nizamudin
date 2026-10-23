@@ -98,7 +98,7 @@ export default function SuperadminView({
   // Sync tab with props if changed externally
   useEffect(() => {
     const resolvedTab = initialTab === 'jaringan' ? 'jaringan' : initialTab === 'dinas' ? 'dinas' : 'overview';
-    if (resolvedTab !== activeTab) {
+    if (resolvedTab !== activeTab && (activeTab !== 'dinas' || resolvedTab !== 'overview')) {
       setActiveTab(resolvedTab);
     }
   }, [initialTab, activeTab]);
@@ -113,7 +113,7 @@ export default function SuperadminView({
 
   const switchTab = (tab: 'overview' | 'jaringan' | 'dinas') => {
     setActiveTab(tab);
-    if (onNavigateTab) {
+    if (onNavigateTab && tab !== 'dinas') {
       onNavigateTab(tab);
     }
   };
@@ -126,7 +126,7 @@ export default function SuperadminView({
     try {
       const { data, error } = await masterSupabase
         .from('users')
-        .select('id, username, nama, role, sekolah_id, kota_kabupaten, created_at')
+        .select('id, username, nama, role, sekolah_id, kota_kabupaten')
         .ilike('role', '%dinas%')
         .order('nama', { ascending: true });
 
@@ -343,13 +343,17 @@ export default function SuperadminView({
 
   // Extract distinct regions (kota_kabupaten) from registered schools
   const getDistinctRegions = () => {
-    return Array.from(
-      new Set(
-        satelliteSchools
-          .map(s => s.kota_kabupaten?.trim())
-          .filter((r): r is string => Boolean(r && r.length > 0))
-      )
-    ).sort((a, b) => a.localeCompare(b));
+    const regionMap = new Map<string, string>();
+    for (const s of satelliteSchools) {
+      const trimmed = s.kota_kabupaten?.trim();
+      if (trimmed && trimmed.length > 0) {
+        const lower = trimmed.toLowerCase();
+        if (!regionMap.has(lower)) {
+          regionMap.set(lower, trimmed);
+        }
+      }
+    }
+    return Array.from(regionMap.values()).sort((a, b) => a.localeCompare(b));
   };
 
   // ----------------------------------------------------------------------------
@@ -1965,9 +1969,11 @@ export default function SuperadminView({
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
                     {filteredDinasUsers.map((dinasUser) => {
                       const userRegion = (dinasUser.kota_kabupaten || '').trim().toLowerCase();
-                      const matchingSchoolsCount = satelliteSchools.filter(
-                        s => (s.kota_kabupaten || '').trim().toLowerCase() === userRegion
-                      ).length;
+                      const matchingSchoolsCount = userRegion
+                        ? satelliteSchools.filter(
+                            s => (s.kota_kabupaten || '').trim().toLowerCase() === userRegion
+                          ).length
+                        : 0;
 
                       return (
                         <tr

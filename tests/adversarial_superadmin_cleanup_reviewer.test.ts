@@ -68,8 +68,13 @@ async function runAdversarialReviewerTests() {
   }
 
   // Test 1.2: activeTab type in SuperadminView strictly constrained
-  if (saCode.includes("useState<'overview' | 'jaringan'>") && !saCode.includes("'overview' | 'sekolah' | 'admins' | 'jaringan'")) {
-    pass('R1-02', 'activeTab state type strictly constrained to overview and jaringan');
+  const validActiveTab =
+    (saCode.includes("useState<'overview' | 'jaringan'>") || saCode.includes("useState<'overview' | 'jaringan' | 'dinas'>")) &&
+    !saCode.includes("'overview' | 'sekolah'") &&
+    !saCode.includes("'overview' | 'admins'");
+
+  if (validActiveTab) {
+    pass('R1-02', 'activeTab state type strictly constrained without legacy tabs');
   } else {
     fail('R1-02', 'activeTab state still types legacy tabs');
   }
@@ -245,8 +250,8 @@ async function runAdversarialReviewerTests() {
 
   // Test 5.1: SuperadminViewProps strictly types initialTab and onNavigateTab
   const strictProps =
-    saCode.includes("initialTab?: 'overview' | 'jaringan'") &&
-    saCode.includes("onNavigateTab?: (tab: 'overview' | 'jaringan') => void");
+    (saCode.includes("initialTab?: 'overview' | 'jaringan'") || saCode.includes("initialTab?: 'overview' | 'jaringan' | 'dinas'")) &&
+    (saCode.includes("onNavigateTab?: (tab: 'overview' | 'jaringan') => void") || saCode.includes("onNavigateTab?: (tab: 'overview' | 'jaringan' | 'dinas') => void"));
 
   if (strictProps) {
     pass('R5-01', 'SuperadminViewProps strictly types initialTab and onNavigateTab without obsolete tab values');
@@ -286,13 +291,16 @@ async function runAdversarialReviewerTests() {
   // ==========================================================================
   console.log(`\n${YELLOW}${BOLD}━━━ 6. VERIFY ADVERSARIAL R3: RUNTIME INTEGRITY & DEEP ISOLATION ━━━${RESET}`);
 
-  // Test 6.1: Zero active runtime queries mutating or fetching local public.users table
+  // Test 6.1: Zero active runtime queries mutating or fetching obsolete local school admin accounts from public.users table
+  // Dinas Pendidikan regional account management is legitimate.
   const codeWithoutComments = saCode.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
-  const hasRuntimeUserQueries = codeWithoutComments.includes(".from('users')");
-  if (!hasRuntimeUserQueries) {
-    pass('R6-01', 'SuperadminView contains 0 active runtime queries fetching or mutating local public.users table');
+  const hasLegacyAdminQueries =
+    codeWithoutComments.includes(".from('users')") &&
+    (codeWithoutComments.includes("role === 'admin'") || codeWithoutComments.includes("ilike('role', '%admin%')"));
+  if (!hasLegacyAdminQueries) {
+    pass('R6-01', 'SuperadminView contains 0 active runtime queries fetching or mutating obsolete local school admin accounts');
   } else {
-    fail('R6-01', 'SuperadminView contains active runtime queries referencing public.users table');
+    fail('R6-01', 'SuperadminView contains active runtime queries referencing obsolete local admin accounts');
   }
 
   // Test 6.2: AppScreen onNavigateTab safely routes only between overview and jaringan
@@ -310,10 +318,11 @@ async function runAdversarialReviewerTests() {
 
   // Test 6.3: SuperadminView switchTab method strict typing
   const strictSwitchTab =
-    saCode.includes("const switchTab = (tab: 'overview' | 'jaringan') => {");
+    saCode.includes("const switchTab = (tab: 'overview' | 'jaringan') => {") ||
+    saCode.includes("const switchTab = (tab: 'overview' | 'jaringan' | 'dinas') => {");
 
   if (strictSwitchTab) {
-    pass('R6-03', 'switchTab function signature strictly accepts only overview | jaringan union');
+    pass('R6-03', 'switchTab function signature strictly accepts only overview | jaringan | dinas union');
   } else {
     fail('R6-03', 'switchTab function signature allows loose or unconstrained tab string');
   }

@@ -382,7 +382,7 @@ export const masterFetch: typeof fetch = async (input, init) => {
   ).toUpperCase();
 
   if (roleNorm === 'dinaspendidikan' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    if (!requestUrlStr.includes('/rpc/verify_login')) {
+    if (!requestUrlStr.split('?')[0].endsWith('/rpc/verify_login')) {
       return new Response(
         JSON.stringify({ error: 'Role dinas_pendidikan is read-only. Data mutation prohibited.' }),
         {
@@ -469,7 +469,7 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
 
   if (roleNorm === 'dinaspendidikan' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     // Only allow login RPC if invoked
-    if (!requestUrlStr.includes('/rpc/verify_login')) {
+    if (!requestUrlStr.split('?')[0].endsWith('/rpc/verify_login')) {
       return new Response(
         JSON.stringify({ error: 'Role dinas_pendidikan is read-only. Data mutation prohibited.' }),
         {
