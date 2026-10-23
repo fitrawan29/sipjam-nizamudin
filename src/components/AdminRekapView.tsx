@@ -238,7 +238,7 @@ export default function AdminRekapView({ user, isKepalaSekolah }: { user: any; i
 
   return (
     <section id="view-admin-rekap" className="view-section fade-in">
-        <div className="glass-card p-4">
+        <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">

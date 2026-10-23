@@ -608,7 +608,7 @@ export default function AppScreen({
                       {isSuperadmin ? 'Portal Superadmin' : 'SIPJAM Menu'}
                     </span>
                 </div>
-                <button type="button" onClick={toggleSidebar} className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                <button type="button" onClick={toggleSidebar} className="clay-btn w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white border border-gray-200 dark:border-gray-700 shadow-xs">
                     <i className="fa-solid fa-xmark text-sm"></i>
                 </button>
               </div>
@@ -686,10 +686,10 @@ export default function AppScreen({
                     key={item.id}
                     data-tour={item.id}
                     onClick={() => handleNavigation(item.id)}
-                    className={`w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
+                    className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-200 select-none ${
                       currentView === item.id 
-                        ? 'bg-green-50 text-nizamudin-green border border-green-200 dark:bg-green-900/20 dark:text-nizamudin-gold dark:border-green-800/50' 
-                        : 'text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800 border border-transparent'
+                        ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-950 dark:from-emerald-900/40 dark:to-green-900/30 dark:text-amber-300 border-2 border-white dark:border-emerald-700/50 shadow-[3px_3px_8px_rgba(180,210,190,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1' 
+                        : 'text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 hover:shadow-xs border-2 border-transparent'
                     }`}
                   >
                     <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
@@ -698,14 +698,14 @@ export default function AppScreen({
                 <button
                   type="button"
                   onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
-                  className="w-full text-left px-3 py-2.5 text-xs font-bold rounded-xl flex items-center gap-2 text-gray-900 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800 border border-transparent transition-all"
+                  className="w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 border-2 border-transparent transition-all"
                 >
                   <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
                 </button>
                 <button
                   type="button"
                   onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-all border border-emerald-200 dark:border-emerald-800/60 mt-2 mb-1 cursor-pointer"
+                  className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100/90 transition-all border-2 border-emerald-200/60 dark:border-emerald-800/60 mt-2 mb-1 shadow-xs cursor-pointer"
                   title="Buka panduan & tutorial lengkap seluruh menu"
                 >
                   <i className="fa-solid fa-book-bookmark text-sm"></i>
@@ -715,7 +715,7 @@ export default function AppScreen({
                   <button
                     type="button"
                     onClick={() => { setTourOpen(true); setSidebarOpen(false); }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all border border-amber-200/60 dark:border-amber-800/40 mt-1 mb-2 cursor-pointer"
+                    className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-amber-800 dark:text-amber-400 hover:bg-amber-100/60 transition-all border-2 border-amber-200/70 dark:border-amber-800/40 mt-1 mb-2 shadow-xs cursor-pointer"
                     title="Buka kembali panduan tutorial interaktif"
                   >
                     <i className="fa-solid fa-graduation-cap text-sm"></i>
@@ -1165,7 +1165,7 @@ export default function AppScreen({
               <button
                 type="button"
                 onClick={() => setBroadcastModalOpen(false)}
-                className="btn-click px-4 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold"
+                className="clay-btn clay-btn-secondary px-4 py-1.5 rounded-2xl text-xs font-bold"
               >
                 Tutup
               </button>

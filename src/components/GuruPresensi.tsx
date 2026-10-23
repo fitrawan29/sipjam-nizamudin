@@ -651,7 +651,7 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
 
   return (
     <section id="view-guru-presensi" className="view-section fade-in">
-        <div className="glass-card p-5">
+        <div className="clay-card p-5 sm:p-6 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
                 <i className="fa-solid fa-right-to-bracket text-green-500 dark:text-green-400"></i> Form Presensi
             </h2>

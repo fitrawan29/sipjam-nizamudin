@@ -76,7 +76,7 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
       <div className="absolute -top-20 -right-20 w-64 h-64 bg-green-100 dark:bg-green-900/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-yellow-100 dark:bg-yellow-900/10 rounded-full blur-3xl opacity-40 z-0 pointer-events-none"></div>
       
-      <div className="glass-card w-full max-w-md p-6 sm:p-8 border-t-4 border-nizamudin-green dark:border-nizamudin-gold text-center relative z-10 mx-auto">
+      <div className="clay-card w-full max-w-md p-6 sm:p-8 rounded-3xl border-2 border-white/90 dark:border-gray-800 text-center relative z-10 mx-auto shadow-2xl">
         <div className="w-20 h-20 bg-gradient-to-br from-[#0B4619] to-[#156E2A] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-[4px_4px_12px_rgba(11,70,25,0.35),inset_2px_2px_4px_rgba(255,255,255,0.4)] border-4 border-white dark:border-gray-800">
             <i className="fa-solid fa-graduation-cap text-3xl text-nizamudin-gold"></i>
         </div>

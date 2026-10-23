@@ -1080,7 +1080,7 @@ export default function GuruJurnal({ user }: { user: any }) {
 
   return (
     <section id="view-guru-jurnal" className="view-section fade-in">
-        <div className="glass-card p-5">
+        <div className="clay-card p-5 sm:p-6 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal

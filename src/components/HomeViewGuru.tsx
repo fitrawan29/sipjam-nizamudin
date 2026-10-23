@@ -769,15 +769,15 @@ export default function HomeViewGuru({
                 {/* Monthly Stats Summary */}
           {teacherWarnings?.stats && (
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
-              <div className="bg-emerald-50/80 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-900/30 flex flex-col items-center text-center shadow-sm">
+              <div className="clay-card clay-card-mint p-2.5 rounded-2xl border-2 border-white/90 dark:border-emerald-900/40 flex flex-col items-center text-center shadow-sm">
                 <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">Presensi</span>
                 <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{teacherWarnings.stats.presensi?.filled ?? 0} <span className="text-[10px] sm:text-xs text-emerald-500 dark:text-emerald-600 font-bold">/ {teacherWarnings.stats.presensi?.required ?? 0}</span></span>
               </div>
-              <div className="bg-indigo-50/80 dark:bg-indigo-950/20 p-2.5 rounded-xl border border-indigo-200/60 dark:border-indigo-900/30 flex flex-col items-center text-center shadow-sm">
+              <div className="clay-card clay-card-blue p-2.5 rounded-2xl border-2 border-white/90 dark:border-indigo-900/40 flex flex-col items-center text-center shadow-sm">
                 <span className="text-[9px] sm:text-[10px] font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wide">Jurnal</span>
                 <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">{teacherWarnings.stats.jurnal?.filled ?? 0} <span className="text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-600 font-bold">/ {teacherWarnings.stats.jurnal?.required ?? 0}</span></span>
               </div>
-              <div className="bg-teal-50/80 dark:bg-teal-950/20 p-2.5 rounded-xl border border-teal-200/60 dark:border-teal-900/30 flex flex-col items-center text-center shadow-sm">
+              <div className="clay-card clay-card-purple p-2.5 rounded-2xl border-2 border-white/90 dark:border-teal-900/40 flex flex-col items-center text-center shadow-sm">
                 <span className="text-[9px] sm:text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wide">Piket</span>
                 <span className="text-base sm:text-lg font-black text-teal-700 dark:text-teal-300 mt-0.5">{teacherWarnings.stats.piket?.filled ?? 0} <span className="text-[10px] sm:text-xs text-teal-500 dark:text-teal-600 font-bold">/ {teacherWarnings.stats.piket?.required ?? 0}</span></span>
               </div>
@@ -785,7 +785,7 @@ export default function HomeViewGuru({
           )}
 
           {/* Section 1: Personal Attendance Stat Cards (H, TL, Izin, Sakit) */}
-          <div className="glass-card p-4">
+          <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <i className="fa-solid fa-chart-pie text-emerald-600 dark:text-emerald-400"></i> Statistik Presensi Pribadi
@@ -916,7 +916,7 @@ export default function HomeViewGuru({
           */}
 
           {/* Section 2: Workflow Status Tracker (Status Tugas Hari Ini) */}
-          <div className="glass-card p-4">
+          <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <i className="fa-solid fa-list-check text-emerald-500"></i> Status Tugas Hari Ini
             </h3>
@@ -1022,7 +1022,7 @@ export default function HomeViewGuru({
           */}
 
           {/* Section 3: Jadwal Mengajar Hari Ini Widget */}
-          <div className="glass-card p-4">
+          <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm shadow-sm">

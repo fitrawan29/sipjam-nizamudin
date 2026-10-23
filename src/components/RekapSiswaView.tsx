@@ -887,7 +887,7 @@ export default function RekapSiswaView({
 
   return (
     <section id="view-rekap-siswa" className="view-section fade-in">
-        <div className="glass-card p-4">
+        <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             {isGlobalReadOnly && (
               <div data-testid="readonly-notice" className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 no-print">
                 <i className="fa-solid fa-eye text-amber-600 text-sm"></i>

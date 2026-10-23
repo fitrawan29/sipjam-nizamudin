@@ -647,7 +647,7 @@ export default function HomeViewAdmin({
 
           {/* Active Blok Alert for Admin */}
           {activeBlokToday && (
-            <div className="glass-card p-4 border-l-4 border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="clay-card clay-card-amber p-4 rounded-2xl border-2 border-white/90 dark:border-amber-800/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
                   <i className="fa-solid fa-layer-group"></i>
@@ -675,7 +675,7 @@ export default function HomeViewAdmin({
               <button
                 type="button"
                 onClick={() => setView('view-sistem-blok')}
-                className="btn-click self-start sm:self-auto px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm flex items-center gap-1.5 transition"
+                className="clay-btn clay-btn-amber btn-click self-start sm:self-auto px-3.5 py-2 rounded-xl text-xs font-bold text-amber-950 dark:text-amber-100 shadow-sm flex items-center gap-1.5 transition"
               >
                 <i className="fa-solid fa-gear text-[11px]"></i> Kelola Sistem Blok
               </button>
@@ -683,7 +683,7 @@ export default function HomeViewAdmin({
           )}
 
           {/* Matrix Controls: Search & Filter Pills */}
-          <div className="glass-card p-4 space-y-3">
+          <div className="clay-card p-4 sm:p-5 space-y-3 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -699,7 +699,7 @@ export default function HomeViewAdmin({
                   type="button"
                   onClick={loadAdminMatrix}
                   disabled={adminLoading}
-                  className="btn-click px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition"
+                  className="clay-btn btn-click px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 shadow-xs flex items-center gap-1.5 transition"
                 >
                   <i className={`fa-solid fa-rotate-right ${adminLoading ? 'animate-spin' : ''}`}></i>
                   <span>Refresh</span>

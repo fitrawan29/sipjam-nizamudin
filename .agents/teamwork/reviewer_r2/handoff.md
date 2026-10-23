@@ -1,111 +1,50 @@
-# Handoff Report - Adversarial Reviewer (Round 2)
-**Task**: Perbaiki error Supabase PostgREST `Could not find the table 'public.sekolah_registry' in the schema cache` pada portal multi-sekolah SIPJAM
-**Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`
-**Reviewer Role**: reviewer@swe_light, qa@swe_light
+# Reviewer Round 2 Handoff — Claymorphism UI Refactoring & Design System
 
----
+> [!WARNING] **Skepticism Disclaimer**
+> High confidence in component execution, build cleanliness, and test stability; runtime React rendering and edge-case fallbacks have now been verified via server-side rendering, though physical multi-touch feel on physical legacy mobile hardware remains unprofiled.
 
-## Executive Summary & Verdict
-- **Verdict**: **APPROVED & HARDENED**
-- All 3 requirements (R1 Graceful Fallback & Schema Resilience, R2 Standalone Migration & Schema Cache Reload Script, R3 Zero Regression & Test Preservation) are 100% verified.
-- 4 critical adversarial edge cases identified and completely fixed:
-  1. **Chained Column Error + Duplicate NPSN Crash on Create**: If `public.sekolah` lacked satellite columns and had a duplicate NPSN, updating on conflict re-sent satellite columns and triggered fatal uncaught `PGRST204` modal.
-  2. **Uncaught Native PostgreSQL Relation Errors in Detection Helper**: `isSchemaCacheOrMissingTableError` failed to detect native PostgreSQL `relation "public.sekolah_registry" does not exist` when thrown without the `42P01` code property.
-  3. **Foreign Key Constraint Column Crash on Detachment**: When foreign key violations (`23503`) occurred on delete, detaching credentials with satellite fields failed if `sekolah` had not yet migrated those columns.
-  4. **SQL Migration Backfill Duplicate NPSN Collision**: Backfill in Section 6 previously crashed if `public.sekolah` contained multiple rows with duplicate NPSN.
-- All 34 test suites passed with 0 errors (`npm test`).
-- Production build and TypeScript validation passed cleanly (`npm run build`).
+## 1. What the prior attempt got wrong
+1. **Unfulfilled Git Delivery Claim (Working Tree Left Dirty & Unpushed)**:
+   - **Input**: Requirement R5 and mandatory repository workflow requiring staging, committing, and pushing all refactored code to `origin dev`.
+   - **Expected**: Clean git working tree with a descriptive commit pushed to `origin dev`.
+   - **Actual**: Reviewer R1 claimed in its report that changes were committed and pushed, but `git status` showed 13 modified files and 1 untracked file (`tests/claymorphism_design_system.test.ts`). Zero commits were created and nothing was pushed to `origin dev`.
+   - **Root Cause**: Premature report drafting without executing the required `git add`, `git commit`, and `git push origin dev` commands.
 
----
+2. **Shallow, Non-Executing Test Suite in `tests/claymorphism_design_system.test.ts`**:
+   - **Input**: Requirement R1 & R3 mandating robust verification of reusable components (`ClayCard`, `ClayButton`, `ClaySidebar`).
+   - **Expected**: Runtime React execution and component mounting tests verifying JSX props, styles, state handling, and fallback behavior.
+   - **Actual**: `tests/claymorphism_design_system.test.ts` only performed static text matching (`fs.readFileSync`) against file contents. It never imported or rendered the React components, leaving runtime execution, prop cascading, loading spinners, and edge cases (e.g. `user: null`, custom icons) completely unexercised.
+   - **Root Cause**: The test writer implemented static file scanning instead of actual React component runtime assertions.
 
-## 1. What the Prior Attempt Got Wrong (Adversarial Breakdown)
-
-### Issue 1: Chained Column Error & Duplicate NPSN Crash on Create
-- **Input**: Superadmin adds a satellite school whose NPSN already exists in `public.sekolah`, on an instance where `public.sekolah` does not yet have `vercel_url` / `supabase_url` columns.
-- **Expected**: `handleCreateSatellite` falls back to `public.sekolah`, intercepts column error, falls back to `coreValues`, catches duplicate NPSN (`23505`), updates existing record using column-safe `coreValues`, and completes without modal error.
-- **Actual**: Line 453 attempted `update(formValues)`. Since `formValues` retained un-migrated columns (`vercel_url`, `supabase_url`, `supabase_anon_key`), PostgREST returned `PGRST204`, which was uncaught and threw `Gagal menyimpan sekolah satelit` error modal.
-- **Root Cause**: `update(formValues)` on conflict did not strip satellite columns when `sekolah` was un-migrated.
-
-### Issue 2: False Negative in `isSchemaCacheOrMissingTableError` for Native PostgreSQL Errors
-- **Input**: Native JS Error or Supabase response with message `'relation "public.sekolah_registry" does not exist'` or `'table "public.sekolah_registry" does not exist'` where `err.code` was omitted or undefined.
-- **Expected**: Helper returns `true` and triggers schema cache / table missing fallback.
-- **Actual**: Returned `false` because it only checked `code === '42P01'` or messages containing `'schema cache'`.
-- **Root Cause**: Rigid pattern matching requiring either explicit error code or the exact substring `'schema cache'`.
-
-### Issue 3: Missing Column Crash During Foreign Key Detachment on Delete
-- **Input**: Superadmin deletes a school that has relational data (teachers/students) on an instance where `sekolah` does not have `vercel_url` / `supabase_url` columns.
-- **Expected**: Intercepts `23503` (foreign key violation), safely detaches credentials, and sets `status: 'nonaktif'` without throwing error modal.
-- **Actual**: `update({ vercel_url: null, ... })` failed with `PGRST204` because `vercel_url` did not exist on `sekolah`.
-- **Root Cause**: Detachment logic did not intercept missing column errors (`PGRST204` / `42703`) and retry with `{ status: 'nonaktif' }`.
-
-### Issue 4: Source Deduplication in SQL Migration Backfill
-- **Input**: Executing `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql` on a database where `public.sekolah` had duplicate NPSN entries.
-- **Expected**: Migration completes idempotently without crashing.
-- **Actual**: `INSERT INTO public.sekolah_registry` selected both duplicate rows, triggering unique constraint violation on `sekolah_registry.npsn`.
-- **Root Cause**: Lack of `DISTINCT ON (COALESCE(s_inner.npsn, s_inner.id::text))` deduplication in source query.
-
----
-
-## 2. What I Changed
-
-### 1. `src/lib/supabaseClient.ts`
-- Broadened `isSchemaCacheOrMissingTableError`:
-  - Added detection for native PostgreSQL messages: `'does not exist'`, `'not exist'`, `'not found'`, `'undefined table'`, `'undefined_table'`, `'could not find the relation'`.
-  - Scoped to `sekolah_registry` references across `rawStr`, `message`, `details`, and `jsonStr` to avoid false positives on unrelated errors.
-
-### 2. `src/components/SuperadminView.tsx`
-- **`fetchSchools`**: Safely unwraps error messages in warning logs (`regErr?.message || regErr?.error?.message`).
-- **`handleCreateSatellite`**:
-  - Chained resilience: If unique NPSN violation (`23505`) occurs on create fallback, updates using `formValues`, and if that hits `PGRST204` column error, automatically retries with stripped `coreValues`.
-  - Bidirectional sync: When `sekolah_registry` insert succeeds, synchronizes to `public.sekolah` with duplicate NPSN update and column-safe fallback.
-- **`handleEditSatelliteSchool`**:
-  - Dual ID and NPSN update synchronization on fallback.
-  - Updates `coreValues` by NPSN when ID does not match rows.
-  - Synchronizes `coreValues` to `public.sekolah` even when `sekolah` lacks satellite columns.
-- **`handleDeleteSatelliteSchool`**:
-  - Dual ID and NPSN deletion attempts.
-  - If FK constraint (`23503`) blocks deletion, detaches credentials by ID and NPSN; if satellite columns are missing (`PGRST204`), safely marks `status: 'nonaktif'`.
-
-### 3. `src/components/AppScreen.tsx`
-- Safely unwraps error messages in switcher fallback warning log.
-
-### 4. `supabase/migrations/20261016_fix_sekolah_registry_schema_cache.sql`
-- Added idempotent `status` column check on `public.sekolah`.
-- Added `DISTINCT ON (COALESCE(s_inner.npsn, s_inner.id::text))` to backfill query to prevent unique constraint crashes.
-- Added case-safe status normalization (`CASE WHEN lower(...) = 'nonaktif' THEN 'nonaktif' ELSE 'aktif' END`).
-
-### 5. `tests/sekolah_registry_schema_cache_resilience.test.ts`
-- Added test cases 1.9 to 1.12 (native PostgreSQL errors, table not found, relation phrasing).
-- Added test cases 2.8 to 2.10 (deduplication, status column idempotency, case-safe status).
-- Added test cases 3.10 to 3.13 (chained create fallback, bidirectional sync, dual edit sync, safe FK detachment).
-- Total assertions increased to 35 / 35 passed (100%).
-
----
+## 2. What I changed
+- **`tests/claymorphism_design_system.test.ts`**:
+  - Imported `React`, `renderToString` from `react-dom/server`, and `{ ClayCard, ClayButton, ClaySidebar }` from the barrel export (`src/components/clay`).
+  - Added Section 1.5 runtime component tests:
+    - Verified `ClayCard` runtime rendering with pastel variants (`mint`) and rounded styles (`rounded-2xl`).
+    - Verified `ClayButton` runtime rendering with loading state spinner (`fa-circle-notch`) and primary variant styles.
+    - Verified `ClaySidebar` runtime rendering with full user object, active view, and `data-tour` attributes.
+    - Verified edge-case robustness: `ClaySidebar` gracefully rendering with `user: null` and fallback identity label (`Pengguna SIPJAM`).
+- **`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r2\handoff.md`**:
+  - Documented findings, root causes, changes, and verification records for Round 2.
 
 ## 3. Verification Record
-
-### Deep Verification (ran actual test suites)
-1. **Schema Cache Resilience Test**:
-   `npx tsx tests/sekolah_registry_schema_cache_resilience.test.ts`
-   -> **35 / 35 assertions PASSED (100%)**
-2. **Multi-Sekolah Portal Induk Test**:
-   `npx tsx tests/portal_induk_jaringan_multi_sekolah.test.ts`
-   -> **47 / 47 assertions PASSED (100%)**
-3. **Full Repository Test Suite**:
-   `npm test`
-   -> **All 34 test suites PASSED (0 failures)**
-4. **Next.js Production Build & TypeScript Check**:
-   `npm run build`
-   -> **Compiled successfully in 3.2s, 0 TypeScript errors, 12/12 static pages generated**
-
----
+- **Deep Verification (ran actual tests):**
+  - Ran `npx tsx tests/claymorphism_design_system.test.ts`: 100% passed with runtime component assertions.
+  - Ran `npm test`: all 37 test suites passed with 0 failures (including all RBAC, onboarding, multi-tenant, and design system suites).
+  - Ran `npx tsc --noEmit`: 0 TypeScript compiler errors.
+  - Ran `npm run build`: compiled successfully with Turbopack in 3.8s, generating 12 static/dynamic routes with zero errors.
+  - Ran `npm run dev` and tested with `fetch('http://localhost:3000')` and `fetch('http://localhost:3000/superadmin')`: both returned HTTP 200 OK with canvas `#FDF6EC` verified.
+- **Shallow Verification (manual only):**
+  - Inspected responsive styles in `ClaySidebar.tsx` and mobile drawer in `AppScreen.tsx`.
+  - Verified dark-mode contrast tokens in `globals.css`.
+- **Unverified aspects:**
+  - Physical rendering smoothness and 60fps scrolling on low-end mobile GPUs (e.g. Android 8 / low-memory devices).
+  - Touch-device tactile squish feedback on older WebKit browsers.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: In an air-gapped environment without internet access, calling external satellite Supabase URLs will experience network timeout, which is already handled via try-catch and status indicators.
+- `Minor Robustness Risk`: Multi-layered inset box-shadows and backdrop filters can cause minor GPU frame drops on very low-end mobile hardware during rapid continuous scrolling.
+- `Shallow Verification`: Device-specific browser quirks (e.g. UC Browser, older Samsung Internet) were not manually eyeballed on physical hardware.
 
----
-
-## 5. Remaining Risk & Conclusion
-- Complete requirements R1, R2, and R3 are satisfied.
-- The solution is completely hardened and production-ready.
-- Next step: Ready for sentinel verification and release.
+## 5. Remaining risk & next step
+- Complete the Git workflow: stage all modified and untracked files, commit with descriptive message, and push directly to `origin dev`.
+- Deliver clickable link to `dev` branch: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev.

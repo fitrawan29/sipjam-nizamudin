@@ -356,7 +356,7 @@ export default function RekapJurnalView({
 
   return (
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
-        <div className="glass-card p-4">
+        <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             
             {/* View Header with Tab Toggle */}
