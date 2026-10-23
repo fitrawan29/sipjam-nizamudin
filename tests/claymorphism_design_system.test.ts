@@ -110,6 +110,22 @@ assert(cssSrc.includes('.clay-btn {') && cssSrc.includes(':active'), 'clay-btn i
 assert(cssSrc.includes('.clay-btn-primary') && cssSrc.includes('.clay-btn-secondary'), 'clay-btn defines primary and secondary variants');
 console.log('  ✔ [PASS] Tactile clay button push feedback tokens verified');
 
+// 2.4 Print Layout & @media print Audit (Resets borders, shadows, and pagination)
+assert(cssSrc.includes('.clay-card,') && cssSrc.includes('.clay-inset {') && cssSrc.includes('box-shadow: none !important;'), 'Print resets strip clay box-shadows');
+assert(cssSrc.includes('.clay-card,') && cssSrc.includes('border: none !important;'), 'Print resets strip clay borders');
+assert(cssSrc.includes('overflow: visible !important;') && cssSrc.includes('.clay-card'), 'Print resets include .clay-card in continuous multi-page pagination');
+console.log('  ✔ [PASS] Print layout & @media print resets verified for claymorphism cards');
+
+// 2.5 High-Contrast OS Accessibility Adaptation (WCAG 2.1 AAA)
+assert(cssSrc.includes('@media (prefers-contrast: more)'), 'globals.css includes prefers-contrast: more high contrast styles');
+assert(cssSrc.includes('border: 2px solid currentColor !important;'), 'High contrast styles enforce currentColor semantic borders');
+console.log('  ✔ [PASS] High-contrast OS accessibility adaptations verified');
+
+// 2.6 Mobile Touch Tap Responsiveness & GPU Layering
+assert(cssSrc.includes('touch-action: manipulation;'), 'clay-btn includes touch-action: manipulation for instant touch response');
+assert(cssSrc.includes('transform: translateZ(0);'), 'clay-card includes GPU compositor layer for 60fps mobile scrolling');
+console.log('  ✔ [PASS] Touch-action manipulation & GPU hardware layering verified');
+
 
 // SECTION 3: COMPREHENSIVE UI REFACTORING ACROSS SCREENS
 console.log('\n━━━ SECTION 3: Comprehensive Screen Refactoring ━━━');

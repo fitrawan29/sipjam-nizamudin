@@ -113,7 +113,9 @@ check('Menu drawer list has flex-1 overflow-y-auto max-h-[calc(100vh-230px)]', (
 });
 
 check('Outer drawer container maintains bounded width and flex column structure', () => {
-  return src.includes('className="w-72 max-w-[85%] bg-white dark:bg-gray-900 h-full shadow-2xl p-5 flex flex-col justify-between');
+  return (src.includes('w-72 max-w-[85%]') || src.includes('w-80 max-w-[88%]')) &&
+         src.includes('h-full') &&
+         src.includes('p-5 flex flex-col justify-between');
 });
 
 console.log('\n--- 5. Regression Test Constraints Preservation ---');

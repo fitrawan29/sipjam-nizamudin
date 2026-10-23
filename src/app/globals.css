@@ -75,6 +75,8 @@ body.fade-out {
       inset 2px 2px 4px 0px rgba(255, 255, 255, 0.9),
       inset -2px -2px 4px 0px rgba(215, 198, 180, 0.2);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateZ(0);
+    -webkit-font-smoothing: antialiased;
   }
   .dark .clay-card {
     background-color: #222228;
@@ -203,6 +205,8 @@ body.fade-out {
     @apply cursor-pointer relative z-20 font-bold transition-all duration-200 select-none inline-flex items-center justify-center;
     border-radius: 1rem;
     border: 2px solid rgba(255, 255, 255, 0.85);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
     box-shadow: 
       4px 4px 10px rgba(195, 175, 155, 0.35),
       -3px -3px 8px rgba(255, 255, 255, 0.95),
@@ -314,6 +318,17 @@ body.fade-out {
     box-shadow: 
       inset 3px 3px 6px rgba(0, 0, 0, 0.6),
       inset -2px -2px 4px rgba(255, 255, 255, 0.05);
+  }
+
+  /* High-Contrast OS Accessibility Adaptation (WCAG 2.1 AAA) */
+  @media (prefers-contrast: more), (forced-colors: active) {
+    .clay-card,
+    [class*="clay-card-"],
+    .clay-btn,
+    .clay-inset {
+      border: 2px solid currentColor !important;
+      box-shadow: none !important;
+    }
   }
 
   .input-premium {
@@ -712,7 +727,10 @@ body.fade-out {
   [class*="overflow-y-"],
   [class*="overflow-x-"],
   .mobile-container,
-  .glass-card {
+  .glass-card,
+  .clay-card,
+  [class*="clay-card-"],
+  .clay-inset {
     overflow: visible !important;
     max-height: none !important;
     height: auto !important;
@@ -727,7 +745,10 @@ body.fade-out {
     border: none !important;
     background: white !important;
   }
-  .glass-card {
+  .glass-card,
+  .clay-card,
+  [class*="clay-card-"],
+  .clay-inset {
     border: none !important;
     box-shadow: none !important;
     background: white !important;
