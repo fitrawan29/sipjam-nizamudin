@@ -17,6 +17,8 @@ export interface TenantContext {
   sekolahId?: string | null;
   role?: string | null;
   userId?: string | null;
+  kotaKabupaten?: string | null;
+  kota_kabupaten?: string | null;
 }
 
 export interface SatelliteSchool {
@@ -166,29 +168,47 @@ export function setActiveTargetSchool(school: SatelliteSchool | null): void {
 
 /**
  * Retrieves the currently active target school.
- * Enforces strict RBAC: only Superadmin is authorized to use an active target scope.
- * For local Admin or Guru roles, this unconditionally returns null to preserve data isolation.
+ * Enforces strict RBAC:
+ * - Superadmin is authorized to use any active target scope.
+ * - Role dinas_pendidikan (or dinaspendidikan) is authorized to use target schools
+ *   strictly within their assigned kota_kabupaten (trimmed, case-insensitive).
+ * - For local Admin or Guru roles, this unconditionally returns null to preserve data isolation.
  */
 export function getActiveTargetSchool(): SatelliteSchool | null {
   const tenant = getActiveTenantContext();
-  const roleNorm = (tenant.role || '').toLowerCase().replace(/\s+/g, '');
-  if (roleNorm !== 'superadmin') {
+  const roleNorm = (tenant.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  if (roleNorm !== 'superadmin' && roleNorm !== 'dinaspendidikan') {
     return null;
   }
 
+  let school: SatelliteSchool | null = null;
   if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
     try {
       const raw = localStorage.getItem('sipjam_active_target_school');
       if (raw) {
-        return JSON.parse(raw);
+        school = JSON.parse(raw);
       }
     } catch (e) {
       console.warn('[supabaseClient] Failed to parse sipjam_active_target_school:', e);
     }
+  } else {
+    school = serverActiveTargetSchool;
+  }
+
+  if (!school) {
     return null;
   }
 
-  return serverActiveTargetSchool;
+  // If role is dinas_pendidikan, enforce that targetSchool.kota_kabupaten matches the user's kota_kabupaten (trimmed, case-insensitive)
+  if (roleNorm === 'dinaspendidikan') {
+    const userRegion = (tenant.kotaKabupaten || tenant.kota_kabupaten || '').trim().toLowerCase();
+    const schoolRegion = (school.kota_kabupaten || '').trim().toLowerCase();
+    if (!userRegion || !schoolRegion || userRegion !== schoolRegion) {
+      return null;
+    }
+  }
+
+  return school;
 }
 
 /**
@@ -224,19 +244,23 @@ export function getActiveTenantContext(): TenantContext {
       const rawUser = localStorage.getItem('sipjam_user');
       if (rawUser) {
         const user = JSON.parse(rawUser);
+        const userRegion = user?.kota_kabupaten || user?.kotaKabupaten;
         return {
           sekolahId: user?.sekolah_id ? String(user.sekolah_id).trim() : null,
           role: user?.role ? String(user.role).trim() : null,
           userId: user?.id ? String(user.id).trim() : null,
           sessionToken: user?.session_token ? String(user.session_token).trim() : null,
+          kotaKabupaten: userRegion ? String(userRegion).trim() : null,
+          kota_kabupaten: userRegion ? String(userRegion).trim() : null,
         };
       }
     } catch (e) {
       console.warn('[supabaseClient] Failed to parse sipjam_user from localStorage:', e);
     }
-    return { sekolahId: null, role: null, userId: null, sessionToken: null };
+    return { sekolahId: null, role: null, userId: null, sessionToken: null, kotaKabupaten: null, kota_kabupaten: null };
   }
 
+  const rawServerRegion = serverTenantContext.kotaKabupaten || serverTenantContext.kota_kabupaten;
   return {
     sekolahId:
       serverTenantContext.sekolahId ??
@@ -248,6 +272,12 @@ export function getActiveTenantContext(): TenantContext {
     userId:
       serverTenantContext.userId ??
       (typeof process !== 'undefined' ? process.env.DEFAULT_USER_ID ?? null : null),
+    kotaKabupaten:
+      rawServerRegion ??
+      (typeof process !== 'undefined' ? process.env.DEFAULT_KOTA_KABUPATEN ?? null : null),
+    kota_kabupaten:
+      rawServerRegion ??
+      (typeof process !== 'undefined' ? process.env.DEFAULT_KOTA_KABUPATEN ?? null : null),
   };
 }
 
@@ -336,6 +366,36 @@ export const masterFetch: typeof fetch = async (input, init) => {
     headers.delete('x-target-scope');
   }
 
+  const requestUrlStr = typeof input === 'string'
+    ? input
+    : (typeof Request !== 'undefined' && input instanceof Request)
+      ? input.url
+      : (typeof URL !== 'undefined' && input instanceof URL)
+        ? input.href
+        : '';
+
+  // Client-side guard rejecting mutating methods (POST, PUT, PATCH, DELETE) when role is dinas_pendidikan
+  const roleNorm = (role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const method = (
+    init?.method ||
+    (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')
+  ).toUpperCase();
+
+  if (roleNorm === 'dinaspendidikan' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    if (!requestUrlStr.includes('/rpc/verify_login')) {
+      return new Response(
+        JSON.stringify({ error: 'Role dinas_pendidikan is read-only. Data mutation prohibited.' }),
+        {
+          status: 403,
+          statusText: 'Forbidden',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+  }
+
   return fetch(input, {
     ...init,
     cache: 'no-store',
@@ -399,6 +459,29 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
       : (typeof URL !== 'undefined' && input instanceof URL)
         ? input.href
         : '';
+
+  // Client-side guard rejecting mutating methods (POST, PUT, PATCH, DELETE) when role is dinas_pendidikan
+  const roleNorm = (role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const method = (
+    init?.method ||
+    (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')
+  ).toUpperCase();
+
+  if (roleNorm === 'dinaspendidikan' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    // Only allow login RPC if invoked
+    if (!requestUrlStr.includes('/rpc/verify_login')) {
+      return new Response(
+        JSON.stringify({ error: 'Role dinas_pendidikan is read-only. Data mutation prohibited.' }),
+        {
+          status: 403,
+          statusText: 'Forbidden',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+  }
 
   // Central tables and RPCs that must NEVER be rewritten to satellite instances
   const isMasterOnlyRequest =

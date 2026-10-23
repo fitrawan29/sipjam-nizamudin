@@ -1640,6 +1640,7 @@ export type Database = {
         Row: {
           avatar: string | null
           id: string
+          kota_kabupaten: string | null
           nama: string | null
           password: string | null
           role: string | null
@@ -1650,6 +1651,7 @@ export type Database = {
         Insert: {
           avatar?: string | null
           id?: string
+          kota_kabupaten?: string | null
           nama?: string | null
           password?: string | null
           role?: string | null
@@ -1660,6 +1662,7 @@ export type Database = {
         Update: {
           avatar?: string | null
           id?: string
+          kota_kabupaten?: string | null
           nama?: string | null
           password?: string | null
           role?: string | null
@@ -2132,7 +2135,7 @@ export type JenisDokumenKurikulum =
   | "Program Semester (Promes)"
   | "Rencana Pembelajaran Mendalam / Modul Ajar (RPM)"
   | string;
-export type RoleUser = "Superadmin" | "Admin" | "Guru";
+export type RoleUser = "Superadmin" | "Admin" | "Guru" | "dinas_pendidikan" | "Dinas Pendidikan";
 export type StatusSekolah = "aktif" | "nonaktif";
 export type StatusKehadiranSiswa = "Hadir" | "Izin" | "Sakit" | "Alpa";
 export type KategoriAsesmen = "Diagnostik" | "Formatif" | "Sumatif";

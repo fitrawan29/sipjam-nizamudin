@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-23T06:08:00Z
+# BRIEFING — 2026-10-23T19:46:00Z
 
 ## Mission
-Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay aesthetic with reusable components (ClayCard, ClayButton, ClaySidebar) while strictly preserving all existing database structures and business logic. All changes must be committed and pushed to the `dev` branch (`git push origin dev`). Never push to `main`. Deliver link: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev.
+Implementasi role baru `dinas_pendidikan` pada aplikasi SIPJAM untuk monitoring eksekutif kehadiran guru dan siswa lintas sekolah binaan, di mana wilayah binaan ditentukan oleh akun Superadmin sehingga Dinas Pendidikan hanya dapat melihat, merekap, dan mencetak laporan sekolah dalam daerah binaannya secara read-only tanpa hak mutasi data sekolah, dengan pengiriman akhir otomatis ter-push ke branch `dev`.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -83,6 +83,12 @@ Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay 
 - Cron 1 (Progress Reporting): 75492adc-9c7a-44bc-b65f-bdc20ccfbbc1/task-34 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 75492adc-9c7a-44bc-b65f-bdc20ccfbbc1/task-36 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 5a2c4c6f-e58d-4f70-8b24-6cc1e6660441 (victory_auditor_46) [VICTORY CONFIRMED]
+- Orchestrator (current): b9c240a0-6ada-4834-ac97-9bf90cc14baf (orchestrator_23)
+- Cron 1 (Progress Reporting): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-38 (*/8 * * * *)
+- Cron 2 (Liveness Check): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-40 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
+- Cron 1 (Rescheduled): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-137 (*/8 * * * *)
+- Cron 2 (Rescheduled): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-139 (*/10 * * * *)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -109,34 +115,29 @@ Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay 
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Penyesuaian batas jendela waktu input absensi kelas & fallback dinamis KBM terakhir)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Role-based menu visibility for Wali Kelas vs Guru biasa, Kepala Sekolah admin viewer, Pengawas Bina print signature)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Claymorphism / Soft Clay aesthetic refactoring with reusable ClayCard, ClayButton, ClaySidebar preserving DB and business logic, push to dev branch)
+- Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (comprehensive multi-requirement update across RBAC, region assignment, executive dashboard, school drilldown, security tests, and git delivery to dev)
 
 ## User Context
-- **Last user request**: Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay aesthetic with reusable components (ClayCard, ClayButton, ClaySidebar) while strictly preserving all existing database structures and business logic. Mandatory git push to `dev` branch.
+- **Last user request**: Implementasi role baru `dinas_pendidikan` pada aplikasi SIPJAM untuk monitoring eksekutif kehadiran guru dan siswa lintas sekolah binaan, di mana wilayah binaan ditentukan oleh akun Superadmin sehingga Dinas Pendidikan hanya dapat melihat, merekap, dan mencetak laporan sekolah dalam daerah binaannya secara read-only tanpa hak mutasi data sekolah, dengan pengiriman akhir otomatis ter-push ke branch `dev`.
 - **Pending clarifications**: none
-- **Delivered results**:
-  - R1: Reusable Claymorphism design primitives implemented (`ClayCard`, `ClayButton`, `ClaySidebar`) with pastel tokens, tactile squish effects, and responsive breakpoints. Primary background configured as `#FDF6EC`.
-  - R2: Comprehensive UI refactor across screens (`AppScreen`, `HomeViewAdmin`, `HomeViewGuru`, `PiketView`, `GuruPresensi`, `GuruJurnal`, Rekap views, modals, navigation) with 100% preservation of database schemas, queries, state hooks, and API endpoints.
-  - R3: Quality & non-regression verified with 0 errors on `npx tsc --noEmit`, clean production build (`npm run build`), and 100% pass across all test suites (`npm test`).
-  - R4: Local dev server booted cleanly on `http://localhost:3000` with visual confirmation of clay aesthetic and `#FDF6EC` canvas.
-  - R5: Automated Git workflow executed: committed and verified pushed to branch `dev` (`git push origin dev`), `main` untouched, link delivered.
+- **Delivered results**: [in progress]
 
 ## Project Status
-- **Phase**: complete
-- **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (terminated on victory)
-- **Active Subagents**: none (killed on completion)
+- **Phase**: in progress
+- **Route**: General (teamwork_preview_orchestrator)
+- **Active Crons**:
+  - Cron 1 (Progress Reporting): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-137 (*/8 * * * *)
+  - Cron 2 (Liveness Check): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-139 (*/10 * * * *)
+- **Active Subagents**:
+  - b9c240a0-6ada-4834-ac97-9bf90cc14baf (orchestrator_23)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
-- **Auditor ID**: 5a2c4c6f-e58d-4f70-8b24-6cc1e6660441 (victory_auditor_46)
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING.md — Persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_32\DISPATCH.md — Dispatch prompt for SWE Light agent
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_32\handoff.md — Orchestrator handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_46\DISPATCH.md — Victory Auditor dispatch prompt
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_46\handoff.md — Independent Victory Audit report (VICTORY CONFIRMED)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\handoff.md — Sentinel final handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_23\DISPATCH.md — Dispatch prompt for Orchestrator 23
+

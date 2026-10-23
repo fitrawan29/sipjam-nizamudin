@@ -35,7 +35,7 @@ export function useSessionSync(
           // Re-validate session token against master database (never rewritten by satellite scope)
           const { data: dbUser, error } = await masterSupabase
             .from('users')
-            .select('id, username, nama, role, sekolah_id, session_token, avatar')
+            .select('id, username, nama, role, sekolah_id, session_token, avatar, kota_kabupaten')
             .eq('id', activeUser.id)
             .single();
 

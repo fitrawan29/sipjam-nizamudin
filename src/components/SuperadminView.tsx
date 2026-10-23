@@ -20,8 +20,18 @@ import {
 
 interface SuperadminViewProps {
   user: any;
-  initialTab?: 'overview' | 'jaringan';
-  onNavigateTab?: (tab: 'overview' | 'jaringan') => void;
+  initialTab?: 'overview' | 'jaringan' | 'dinas';
+  onNavigateTab?: (tab: 'overview' | 'jaringan' | 'dinas') => void;
+}
+
+export interface DinasAccount {
+  id: string;
+  username: string;
+  nama: string;
+  role: string;
+  sekolah_id: string | null;
+  kota_kabupaten: string | null;
+  created_at?: string | null;
 }
 
 export default function SuperadminView({
@@ -30,8 +40,8 @@ export default function SuperadminView({
   onNavigateTab
 }: SuperadminViewProps) {
   const isMountedRef = useRef(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'jaringan'>(
-    initialTab === 'jaringan' ? 'jaringan' : 'overview'
+  const [activeTab, setActiveTab] = useState<'overview' | 'jaringan' | 'dinas'>(
+    initialTab === 'jaringan' ? 'jaringan' : initialTab === 'dinas' ? 'dinas' : 'overview'
   );
   const [loading, setLoading] = useState(false);
 
@@ -43,6 +53,11 @@ export default function SuperadminView({
   const [healthMap, setHealthMap] = useState<Record<string, 'online' | 'paused' | 'checking'>>({});
   const [metricsMap, setMetricsMap] = useState<Record<string, { guruCount: number; siswaCount: number }>>({});
   const [isPingingAll, setIsPingingAll] = useState(false);
+
+  // Dinas Pendidikan Accounts State
+  const [dinasUsers, setDinasUsers] = useState<DinasAccount[]>([]);
+  const [dinasSearch, setDinasSearch] = useState('');
+  const [loadingDinas, setLoadingDinas] = useState(false);
 
   // Track component lifecycle to prevent setting state on unmounted component
   useEffect(() => {
@@ -82,7 +97,7 @@ export default function SuperadminView({
 
   // Sync tab with props if changed externally
   useEffect(() => {
-    const resolvedTab = initialTab === 'jaringan' ? 'jaringan' : 'overview';
+    const resolvedTab = initialTab === 'jaringan' ? 'jaringan' : initialTab === 'dinas' ? 'dinas' : 'overview';
     if (resolvedTab !== activeTab) {
       setActiveTab(resolvedTab);
     }
@@ -96,7 +111,7 @@ export default function SuperadminView({
     return unsubscribe;
   }, []);
 
-  const switchTab = (tab: 'overview' | 'jaringan') => {
+  const switchTab = (tab: 'overview' | 'jaringan' | 'dinas') => {
     setActiveTab(tab);
     if (onNavigateTab) {
       onNavigateTab(tab);
@@ -104,11 +119,42 @@ export default function SuperadminView({
   };
 
   // ----------------------------------------------------------------------------
+  // Data Fetching: Dinas Pendidikan Accounts
+  // ----------------------------------------------------------------------------
+  const fetchDinasUsers = useCallback(async () => {
+    setLoadingDinas(true);
+    try {
+      const { data, error } = await masterSupabase
+        .from('users')
+        .select('id, username, nama, role, sekolah_id, kota_kabupaten, created_at')
+        .ilike('role', '%dinas%')
+        .order('nama', { ascending: true });
+
+      if (!error && data) {
+        if (isMountedRef.current) {
+          setDinasUsers(data as DinasAccount[]);
+        }
+      } else if (error) {
+        console.warn('[SuperadminView] Error fetching dinas users:', error);
+      }
+    } catch (e) {
+      console.warn('[SuperadminView] Exception fetching dinas users:', e);
+    } finally {
+      if (isMountedRef.current) {
+        setLoadingDinas(false);
+      }
+    }
+  }, []);
+
+  // ----------------------------------------------------------------------------
   // Data Fetching
   // ----------------------------------------------------------------------------
   const fetchAllData = useCallback(async () => {
     setLoading(true);
     try {
+      // 0. Fetch Dinas accounts in parallel
+      fetchDinasUsers();
+
       // 1. Fetch Satellite School Registry from central master
       let loadedSatellites: SatelliteSchool[] = [];
       try {
@@ -283,6 +329,297 @@ export default function SuperadminView({
 
     return matchesSearch && matchesStatus;
   });
+
+  // Filtered Dinas Accounts (Akun Dinas Pendidikan Tab)
+  const filteredDinasUsers = dinasUsers.filter(u => {
+    const term = dinasSearch.toLowerCase().trim();
+    if (!term) return true;
+    return (
+      (u.nama && u.nama.toLowerCase().includes(term)) ||
+      (u.username && u.username.toLowerCase().includes(term)) ||
+      (u.kota_kabupaten && u.kota_kabupaten.toLowerCase().includes(term))
+    );
+  });
+
+  // Extract distinct regions (kota_kabupaten) from registered schools
+  const getDistinctRegions = () => {
+    return Array.from(
+      new Set(
+        satelliteSchools
+          .map(s => s.kota_kabupaten?.trim())
+          .filter((r): r is string => Boolean(r && r.length > 0))
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  };
+
+  // ----------------------------------------------------------------------------
+  // Dinas Pendidikan Account Management Handlers
+  // ----------------------------------------------------------------------------
+  const handleOpenAddDinasUserModal = async () => {
+    const regions = getDistinctRegions();
+    const regionOptionsHtml = regions.length > 0
+      ? regions.map(r => `<option value="${r}">${r}</option>`).join('')
+      : '<option value="Kab. Bolaang Mongondow Timur">Kab. Bolaang Mongondow Timur</option><option value="Kota Kotamobagu">Kota Kotamobagu</option>';
+
+    const { value: formValues } = await Swal.fire({
+      title: '<span class="text-lg font-bold text-gray-900">Tambah Akun Dinas Pendidikan</span>',
+      html: `
+        <div class="text-left space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Nama Petugas / Kantor Dinas <span class="text-red-500">*</span></label>
+            <input id="swal-dinas-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Dinas Pendidikan Kab. Boltim">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Username Login <span class="text-red-500">*</span></label>
+            <input id="swal-dinas-username" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: dinas_boltim">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Kata Sandi (Password) <span class="text-red-500">*</span></label>
+            <input id="swal-dinas-password" type="password" class="swal2-input !mt-0 !w-full text-xs" placeholder="Minimal 6 karakter">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Daerah Binaan (Kota / Kabupaten) <span class="text-red-500">*</span></label>
+            <select id="swal-dinas-region" class="swal2-select !mt-0 !w-full text-xs">
+              <option value="">-- Pilih Daerah Binaan --</option>
+              ${regionOptionsHtml}
+              <option value="__custom__">+ Input Wilayah Baru...</option>
+            </select>
+          </div>
+          <div id="swal-dinas-custom-container" style="display: none;">
+            <label class="font-bold text-gray-700 block mb-1">Nama Wilayah Baru</label>
+            <input id="swal-dinas-custom-region" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Kab. Bolaang Mongondow">
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        const selectEl = document.getElementById('swal-dinas-region') as HTMLSelectElement;
+        const customContainer = document.getElementById('swal-dinas-custom-container') as HTMLDivElement;
+        if (selectEl && customContainer) {
+          selectEl.addEventListener('change', () => {
+            customContainer.style.display = selectEl.value === '__custom__' ? 'block' : 'none';
+          });
+        }
+      },
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: '<i class="fa-solid fa-plus-circle mr-1"></i> Buat Akun Dinas',
+      confirmButtonColor: '#0B4619',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const nama = (document.getElementById('swal-dinas-nama') as HTMLInputElement)?.value?.trim();
+        const username = (document.getElementById('swal-dinas-username') as HTMLInputElement)?.value?.trim();
+        const password = (document.getElementById('swal-dinas-password') as HTMLInputElement)?.value;
+        const selectRegion = (document.getElementById('swal-dinas-region') as HTMLSelectElement)?.value?.trim();
+        const customRegion = (document.getElementById('swal-dinas-custom-region') as HTMLInputElement)?.value?.trim();
+
+        const region = selectRegion === '__custom__' ? customRegion : selectRegion;
+
+        if (!nama || !username || !password || !region) {
+          Swal.showValidationMessage('Seluruh kolom bertanda bintang (*) dan Daerah Binaan wajib diisi!');
+          return null;
+        }
+
+        return { nama, username, password, kota_kabupaten: region };
+      }
+    });
+
+    if (formValues) {
+      setLoading(true);
+      try {
+        const { error } = await masterSupabase.from('users').insert({
+          nama: formValues.nama,
+          username: formValues.username,
+          password: formValues.password,
+          role: 'dinas_pendidikan',
+          sekolah_id: null,
+          kota_kabupaten: formValues.kota_kabupaten
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Akun Dinas Berhasil Dibuat',
+          text: `Akun ${formValues.nama} untuk wilayah ${formValues.kota_kabupaten} telah aktif.`,
+          confirmButtonColor: '#0B4619'
+        });
+
+        fetchDinasUsers();
+      } catch (err: any) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal Membuat Akun Dinas',
+          text: err.message || 'Terjadi kesalahan sistem saat menyimpan ke database.',
+          confirmButtonColor: '#0B4619'
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleEditDinasUser = async (dinasUser: DinasAccount) => {
+    const regions = getDistinctRegions();
+    if (dinasUser.kota_kabupaten && !regions.includes(dinasUser.kota_kabupaten)) {
+      regions.unshift(dinasUser.kota_kabupaten);
+    }
+
+    const regionOptionsHtml = regions.map(r => `
+      <option value="${r}" ${r === dinasUser.kota_kabupaten ? 'selected' : ''}>${r}</option>
+    `).join('');
+
+    const { value: formValues } = await Swal.fire({
+      title: '<span class="text-lg font-bold text-gray-900">Edit Akun Dinas Pendidikan</span>',
+      html: `
+        <div class="text-left space-y-3 text-xs max-h-[70vh] overflow-y-auto pr-1">
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Nama Petugas / Kantor Dinas <span class="text-red-500">*</span></label>
+            <input id="swal-edit-dinas-nama" class="swal2-input !mt-0 !w-full text-xs" value="${dinasUser.nama || ''}">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Username Login <span class="text-red-500">*</span></label>
+            <input id="swal-edit-dinas-username" class="swal2-input !mt-0 !w-full text-xs" value="${dinasUser.username || ''}">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Kata Sandi Baru (Kosongkan jika tidak diubah)</label>
+            <input id="swal-edit-dinas-password" type="password" class="swal2-input !mt-0 !w-full text-xs" placeholder="Ganti kata sandi baru">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 block mb-1">Daerah Binaan (Kota / Kabupaten) <span class="text-red-500">*</span></label>
+            <select id="swal-edit-dinas-region" class="swal2-select !mt-0 !w-full text-xs">
+              <option value="">-- Pilih Daerah Binaan --</option>
+              ${regionOptionsHtml}
+              <option value="__custom__">+ Input Wilayah Baru...</option>
+            </select>
+          </div>
+          <div id="swal-edit-dinas-custom-container" style="display: none;">
+            <label class="font-bold text-gray-700 block mb-1">Nama Wilayah Baru</label>
+            <input id="swal-edit-dinas-custom-region" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Kab. Bolaang Mongondow">
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        const selectEl = document.getElementById('swal-edit-dinas-region') as HTMLSelectElement;
+        const customContainer = document.getElementById('swal-edit-dinas-custom-container') as HTMLDivElement;
+        if (selectEl && customContainer) {
+          selectEl.addEventListener('change', () => {
+            customContainer.style.display = selectEl.value === '__custom__' ? 'block' : 'none';
+          });
+        }
+      },
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: '<i class="fa-solid fa-save mr-1"></i> Simpan Perubahan',
+      confirmButtonColor: '#0B4619',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const nama = (document.getElementById('swal-edit-dinas-nama') as HTMLInputElement)?.value?.trim();
+        const username = (document.getElementById('swal-edit-dinas-username') as HTMLInputElement)?.value?.trim();
+        const password = (document.getElementById('swal-edit-dinas-password') as HTMLInputElement)?.value;
+        const selectRegion = (document.getElementById('swal-edit-dinas-region') as HTMLSelectElement)?.value?.trim();
+        const customRegion = (document.getElementById('swal-edit-dinas-custom-region') as HTMLInputElement)?.value?.trim();
+
+        const region = selectRegion === '__custom__' ? customRegion : selectRegion;
+
+        if (!nama || !username || !region) {
+          Swal.showValidationMessage('Nama, Username, dan Daerah Binaan wajib diisi!');
+          return null;
+        }
+
+        return { nama, username, password, kota_kabupaten: region };
+      }
+    });
+
+    if (formValues) {
+      setLoading(true);
+      try {
+        const updatePayload: Record<string, any> = {
+          nama: formValues.nama,
+          username: formValues.username,
+          kota_kabupaten: formValues.kota_kabupaten,
+          role: 'dinas_pendidikan',
+          sekolah_id: null
+        };
+        if (formValues.password && formValues.password.trim().length > 0) {
+          updatePayload.password = formValues.password;
+        }
+
+        const { error } = await masterSupabase
+          .from('users')
+          .update(updatePayload)
+          .eq('id', dinasUser.id);
+
+        if (error) {
+          throw error;
+        }
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Akun Dinas Diperbarui',
+          text: `Data akun ${formValues.nama} berhasil diperbarui.`,
+          confirmButtonColor: '#0B4619'
+        });
+
+        fetchDinasUsers();
+      } catch (err: any) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal Memperbarui Akun Dinas',
+          text: err.message || 'Terjadi kesalahan sistem saat memperbarui ke database.',
+          confirmButtonColor: '#0B4619'
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleDeleteDinasUser = async (dinasUser: DinasAccount) => {
+    const result = await Swal.fire({
+      title: 'Hapus Akun Dinas?',
+      html: `Apakah Anda yakin ingin menghapus akun <b>${dinasUser.nama}</b> (${dinasUser.username}) untuk wilayah <b>${dinasUser.kota_kabupaten || 'Semua'}</b>?<br><span class="text-xs text-red-600 font-semibold">Tindakan ini tidak dapat dibatalkan.</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fa-solid fa-trash mr-1"></i> Ya, Hapus Akun',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#b91c1c',
+      cancelButtonColor: '#6b7280'
+    });
+
+    if (result.isConfirmed) {
+      setLoading(true);
+      try {
+        const { error } = await masterSupabase
+          .from('users')
+          .delete()
+          .eq('id', dinasUser.id);
+
+        if (error) {
+          throw error;
+        }
+
+        await Swal.fire({
+          icon: 'success',
+          title: 'Akun Dihapus',
+          text: `Akun dinas ${dinasUser.nama} telah berhasil dihapus.`,
+          confirmButtonColor: '#0B4619'
+        });
+
+        fetchDinasUsers();
+      } catch (err: any) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal Menghapus Akun',
+          text: err.message || 'Terjadi kesalahan saat menghapus dari database.',
+          confirmButtonColor: '#0B4619'
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   // ----------------------------------------------------------------------------
   // Satellite School Management Handlers (Jaringan Sekolah Satelit)
@@ -927,7 +1264,7 @@ export default function SuperadminView({
         </div>
       </div>
 
-      {/* Tabs Navigation Bar: Simplified to 2 tabs */}
+      {/* Tabs Navigation Bar: 3 tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md rounded-2xl p-1.5 shadow-sm overflow-x-auto">
         <button
           type="button"
@@ -952,6 +1289,18 @@ export default function SuperadminView({
         >
           <i className="fa-solid fa-network-wired"></i>
           <span>Jaringan Sekolah ({satelliteSchools.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => switchTab('dinas')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 ${
+            activeTab === 'dinas'
+              ? 'bg-nizamudin-green text-white dark:text-nizamudin-gold shadow-md'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+          }`}
+        >
+          <i className="fa-solid fa-building-columns"></i>
+          <span>Akun Dinas Pendidikan ({dinasUsers.length})</span>
         </button>
       </div>
 
@@ -1497,6 +1846,194 @@ export default function SuperadminView({
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: AKUN DINAS PENDIDIKAN & PENUGASAN WILAYAH */}
+      {activeTab === 'dinas' && (
+        <div className="space-y-6">
+          {/* Header Action Bar */}
+          <div className="glass-card p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm">
+                  <i className="fa-solid fa-building-columns"></i>
+                </div>
+                <h2 className="text-base font-black text-gray-900 dark:text-white">
+                  Akun Dinas Pendidikan & Penugasan Daerah Binaan
+                </h2>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
+                Superadmin berwenang menetapkan kota/kabupaten tugas pada setiap akun Dinas Pendidikan. Akun dinas beroperasi secara strictly read-only dan hanya dapat memantau sekolah di wilayah binaannya.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <button
+                type="button"
+                onClick={handleOpenAddDinasUserModal}
+                className="btn-click flex-1 sm:flex-initial bg-nizamudin-green hover:bg-emerald-800 text-white dark:text-nizamudin-gold font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition"
+              >
+                <i className="fa-solid fa-plus-circle"></i>
+                <span>Tambah Akun Dinas</span>
+              </button>
+              <button
+                type="button"
+                onClick={fetchDinasUsers}
+                disabled={loadingDinas}
+                className="btn-click bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-2xl text-xs flex items-center justify-center transition"
+                title="Muat Ulang Akun Dinas"
+              >
+                <i className={`fa-solid fa-rotate-right ${loadingDinas ? 'animate-spin' : ''}`}></i>
+              </button>
+            </div>
+          </div>
+
+          {/* Search & Statistics Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80">
+              <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+              <input
+                type="text"
+                placeholder="Cari dinas, username, kota/kabupaten..."
+                value={dinasSearch}
+                onChange={(e) => setDinasSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+              />
+              {dinasSearch && (
+                <button
+                  type="button"
+                  onClick={() => setDinasSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                >
+                  <i className="fa-solid fa-times"></i>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 self-end sm:self-center">
+              <span className="font-semibold">
+                Total Akun Dinas: <b className="text-gray-900 dark:text-white">{dinasUsers.length}</b>
+              </span>
+              <span>•</span>
+              <span className="font-semibold">
+                Terfilter: <b className="text-gray-900 dark:text-white">{filteredDinasUsers.length}</b>
+              </span>
+            </div>
+          </div>
+
+          {/* Table / List of Dinas Accounts */}
+          {filteredDinasUsers.length === 0 ? (
+            <div className="glass-card p-12 rounded-2xl text-center space-y-3">
+              <div className="w-16 h-16 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl">
+                <i className="fa-solid fa-building-columns"></i>
+              </div>
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                {dinasSearch ? 'Tidak ada akun dinas yang cocok' : 'Belum Ada Akun Dinas Pendidikan'}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                {dinasSearch
+                  ? `Tidak ditemukan akun dinas dengan kata kunci "${dinasSearch}". Periksa kembali ejaan pencarian.`
+                  : 'Daftarkan akun pengawas atau perwakilan Dinas Pendidikan untuk mulai memantau kehadiran sekolah di wilayah binaan.'}
+              </p>
+              {!dinasSearch && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddDinasUserModal}
+                  className="btn-click inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-nizamudin-green text-white font-bold text-xs mt-2"
+                >
+                  <i className="fa-solid fa-plus-circle"></i> Tambah Akun Dinas Pertama
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="glass-card rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider text-[10px]">
+                      <th className="py-3.5 px-4">Petugas / Instansi Dinas</th>
+                      <th className="py-3.5 px-4">Username</th>
+                      <th className="py-3.5 px-4">Daerah Binaan (Wilayah)</th>
+                      <th className="py-3.5 px-4">Sekolah di Wilayah</th>
+                      <th className="py-3.5 px-4">Hak Akses</th>
+                      <th className="py-3.5 px-4 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                    {filteredDinasUsers.map((dinasUser) => {
+                      const userRegion = (dinasUser.kota_kabupaten || '').trim().toLowerCase();
+                      const matchingSchoolsCount = satelliteSchools.filter(
+                        s => (s.kota_kabupaten || '').trim().toLowerCase() === userRegion
+                      ).length;
+
+                      return (
+                        <tr
+                          key={dinasUser.id}
+                          className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
+                        >
+                          <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs shrink-0">
+                                <i className="fa-solid fa-building-user"></i>
+                              </div>
+                              <div>
+                                <div className="font-bold text-xs">{dinasUser.nama}</div>
+                                <div className="text-[10px] text-gray-400 font-normal">
+                                  ID: {dinasUser.id.substring(0, 8)}...
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 font-mono text-[11px] text-gray-600 dark:text-gray-400">
+                            @{dinasUser.username}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                              <i className="fa-solid fa-location-dot text-[10px]"></i>
+                              <span>{dinasUser.kota_kabupaten || 'Belum Ditugaskan'}</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                              <i className="fa-solid fa-school text-[10px]"></i>
+                              <span>{matchingSchoolsCount} Sekolah</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              <i className="fa-solid fa-shield-halved text-[9px]"></i>
+                              <span>Read-Only</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleEditDinasUser(dinasUser)}
+                                className="btn-click w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 flex items-center justify-center transition"
+                                title="Edit Wilayah / Akun"
+                              >
+                                <i className="fa-solid fa-pen text-xs"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDinasUser(dinasUser)}
+                                className="btn-click w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 dark:bg-gray-800 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center transition"
+                                title="Hapus Akun Dinas"
+                              >
+                                <i className="fa-solid fa-trash text-xs"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

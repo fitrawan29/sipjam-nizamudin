@@ -1,90 +1,64 @@
-# Project: SIPJAM — GradebookView CP → TP → Asesmen → Nilai Akhir Refactor (R1-R5)
+# Project: SIPJAM — Role Baru `dinas_pendidikan` Executive Monitoring (R1-R5)
 
 ## Architecture
-- **Stack**: Next.js 15 (App Router, `'use client'`), React 19, TypeScript, Tailwind CSS, SweetAlert2, Supabase (PostgreSQL + RLS).
-- **Core Component**: `src/components/GradebookView.tsx` (3,147 lines).
-- **Database Schema**:
-  - `capaian_pembelajaran`: New table storing Capaian Pembelajaran (`id`, `sekolah_id`, `guru_mapel_id`, `nama_mapel`, `kelas`, `semester`, `tahun_ajaran`, `kode_cp`, `deskripsi`, `urutan`, timestamps).
-  - `tujuan_pembelajaran`: Column `cp_id UUID REFERENCES capaian_pembelajaran(id) ON DELETE SET NULL` linking TP to parent CP.
-  - `asesmen_kolom`: Column `keterangan TEXT` for free-text assessment notes.
-  - `asesmen_kolom`: Partial unique index `uq_asesmen_tp_diagnostik` enforcing max 1 Diagnostik column per TP.
-  - `pengaturan`: Key `bobot_nilai_mapel` storing JSON string `{"kehadiran":40,"formatif":30,"sumatif":30}` with unique constraint `(sekolah_id, key)`.
-- **UI Hierarchy & Data Flow**:
-  - CP is the top parent entity for a subject/class/semester.
-  - Teachers must define CP before creating TPs.
-  - Each TP has 3 assessment types: Diagnostik (exactly 1, excluded from final grade), Formatif (min 1), Sumatif (min 1).
-  - Nilai Akhir Formula: `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)`.
-  - Attendance Rate: Computed from subject's KBM sessions in `jurnal_pembelajaran` with fallback to `absensi` table.
-  - Admin/Superadmin Bobot Settings: Customizable percentage weights with strict 100% sum validation.
+- **Stack**: Next.js 16 (App Router, `'use client'`), React 19, TypeScript, Tailwind CSS, Font Awesome 6 (CDN), SweetAlert2, Supabase (PostgreSQL + RLS).
+- **Core RBAC & Context Layer**:
+  - `src/types/user.ts`: `AppUser` interface updated with `role: 'superadmin' | 'admin' | 'guru' | 'dinas_pendidikan'` and `kota_kabupaten?: string | null`.
+  - `src/types/database.ts`: `users` table type updated with `kota_kabupaten?: string | null`.
+  - `src/lib/supabaseClient.ts`: `getActiveTargetSchool()` updated to allow `dinas_pendidikan` with regional validation (`targetSchool.kota_kabupaten === user.kota_kabupaten`). Client-side mutation guard to reject POST/PUT/PATCH/DELETE for `dinas_pendidikan`.
+- **Superadmin Assignment Layer**:
+  - `src/components/SuperadminView.tsx`: Management panel for Dinas Pendidikan accounts (`users` with role `'dinas_pendidikan'`). Dropdown selection of `kota_kabupaten` derived from registered schools (`sekolah` / `sekolah_registry`).
+- **Navigation & Dashboard Layer**:
+  - `src/components/AppScreen.tsx`: Role detection `isDinas`, redirect on login to `view-dinas-overview`, menu list `menuItemsDinas`, UI navigation guard preventing access to data mutation views (`view-admin-data`, `view-admin-config`, `view-admin-backup`, `view-sistem-blok`, `view-admin-verif`).
+  - `src/components/ClaySidebar.tsx`: Role badge `Dinas Pendidikan` (`fa-building-columns`), scoped target school switcher locked to `user.kota_kabupaten`.
+  - `src/components/DinasDashboard.tsx`: Executive cross-school monitoring dashboard with Claymorphism aesthetic (ClayCard, ClayButton):
+    - 5 Key Aggregate Metrics: Total Active Schools, Today's Teacher Attendance %, Today's Student Attendance %, Satellite Connection Health, Schools Needing Attention (High Alpa).
+    - Regional Search and Status Filter (intra-wilayah).
+    - School Drilldown button linking to school recaps via `setActiveTargetSchool`.
+    - Official Regional Summary Print feature via `triggerPrintWithGps`, `PrintHeader`, and `PrintSignature`.
+- **Drilldown & Print System**:
+  - Views (`AdminRekapView`, `RekapSiswaView`, `RekapJurnalView`) receive `isReadOnly={true}` when accessed by `isDinas`. All mutation controls (add/edit/delete/verify) are hidden.
+  - Documents printed from drilldown automatically use target school's Kop Surat & signatures.
+  - Return to dashboard button in header/sidebar clears `sipjam_active_target_school` without session corruption.
+- **Verification & Testing Layer**:
+  - Test suite `tests/dinas_pendidikan_monitoring.test.ts` executed with `npx tsx` verifying 6 test suites (Superadmin assignment, regional scoping, read-only RBAC, aggregate metrics, drilldown lifecycle, and print system).
+  - TypeScript compilation `npx tsc --noEmit` and `npm run build`.
+  - Git delivery: `git add .`, `git commit -m "..."`, and `git push origin dev`.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | R5: Database Migration SQL | New table `capaian_pembelajaran`, `cp_id` in `tujuan_pembelajaran`, `keterangan` in `asesmen_kolom`, `uq_asesmen_tp_diagnostik` index, and default seed in `pengaturan` | M1 | Survey 2 | DONE |
-| 2 | R5: TypeScript Database Types | Update `src/types/database.ts` with `CapaianPembelajaran`, updated `tujuan_pembelajaran`, updated `asesmen_kolom`, `BobotNilaiMapel`, `DEFAULT_BOBOT_NILAI_MAPEL` | M1 | Survey 2 | DONE |
-| 3 | Syntax Fix in GradebookView | Remove premature closing tag at lines 3056–3058 so `Modal Bulk Fill Grades` compiles cleanly | M2 | Survey 1, 2, 3 | DONE |
-| 4 | R1: UI CP Management & State | Add/edit/delete Capaian Pembelajaran, modal, form validation, and save with `guru_mapel_id` linking | M2 | Survey 1 | DONE |
-| 5 | R1: UI CP → TP Hierarchy & Linking | Require CP before TP, add `cp_id` dropdown in TP modal, link TP to selected CP, filter TP pills by active CP | M2 | Survey 1 | DONE |
-| 6 | R2: Asesmen Diagnostik Rule | Enforce max 1 Diagnostik per TP in UI and DB, auto-heal if missing, block adding 2nd Diagnostik, block deleting Diagnostik | M2 | Survey 1, 3 | DONE |
-| 7 | R2: Asesmen Formatif & Sumatif Multi-Add | Allow multiple Formatif and multiple Sumatif columns with customizable weights | M2 | Survey 1, 3 | DONE |
-| 8 | R2: Asesmen Field Keterangan | Input, edit, save, and display free-text `keterangan` for each assessment column | M2 | Survey 1, 2 | DONE |
-| 9 | R4: Admin Bobot Settings Modal & Validation | Admin/Superadmin form to adjust percentage weights, validate total = 100%, save to `pengaturan` table | M2 | Survey 1, 2 | DONE |
-| 10 | R4: Bobot Settings Loading & State | Load saved weights on mount per `sekolah_id`, apply dynamically to grade calculations | M2 | Survey 1, 2 | DONE |
-| 11 | R3: Nilai Akhir Mathematical Formula | Implement `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)` | M2 | Survey 3 | DONE |
-| 12 | R3: Diagnostik Exclusion from Nilai Akhir | Guarantee Diagnostik is never included in student subject final score | M2 | Survey 3 | DONE |
-| 13 | R3: Missing Data Handling | If formatif or sumatif is missing/null, return `null` / display `'-'` without runtime errors | M2 | Survey 3 | DONE |
-| 14 | R3: Attendance Integration per Mapel | Query student attendance percentage from `jurnal_pembelajaran` / `absensi` for the subject/class | M2 | Survey 1, 3 | DONE |
-| 15 | R3: Rekap Semester & Rapor Preservation | Ensure Tab 2 Rekap Semester, CSV export, and `generateKurikulumMerdekaDeskripsi` work with 0 regressions | M2 | Survey 3 | DONE |
-| 16 | E2E & Adversarial Testing Track | Complete test suite covering Tiers 1-5 (Feature, Boundary, Combinations, Real-world, Adversarial) | M3 | E2E Track | DONE |
-| 17 | Final Build & Git Delivery | Verify `npx tsc --noEmit`, `npm test`, `npm run build`, and execute automatic Git workflow (status, add, commit, push) | M3 | GEMINI.md | DONE |
+| 1 | R1: RBAC Types & AppUser Interface | Add `dinas_pendidikan` role and `kota_kabupaten` to `src/types/user.ts` & `src/types/database.ts` | M1 | Survey 1, 2 | PLANNED |
+| 2 | R1: Database Schema / Migration for Users Region | Migration SQL adding `kota_kabupaten` to `public.users` (nullable) | M1 | Survey 1 | PLANNED |
+| 3 | R1: Superadmin Dinas Account Management | Add panel/tab in `SuperadminView.tsx` to create, edit region, and manage `dinas_pendidikan` accounts | M1 | Survey 1 | PLANNED |
+| 4 | R1: Target School Regional Bound & Client Mutation Guard | Update `getActiveTargetSchool()` in `supabaseClient.ts` to authorize `dinas_pendidikan` with region check + reject mutations | M1 | Survey 1, 3 | PLANNED |
+| 5 | R2: AppScreen Navigation & Role Gating | Add `isDinas`, `menuItemsDinas`, default view `'view-dinas-overview'`, and route-level mutation blocking in `AppScreen.tsx` | M2 | Survey 1, 2 | PLANNED |
+| 6 | R2: ClaySidebar Dinas Badge & Regional Scoped Switcher | Add `Dinas Pendidikan` badge and regional filter on school switcher in `ClaySidebar.tsx` | M2 | Survey 2 | PLANNED |
+| 7 | R2: Executive Cross-School Dashboard (`DinasDashboard.tsx`) | 5 metric cards, region-locked search & filter, school table, and aggregate data fetching | M2 | Survey 2 | PLANNED |
+| 8 | R2: Official Regional Summary Printing | Print button in `DinasDashboard.tsx` with GPS coordinates, `PrintHeader`, and official regional table format | M2 | Survey 2, 3 | PLANNED |
+| 9 | R3: Read-Only School Drilldown Integration | Select school to inspect teacher attendance, student attendance, and class journals via `activeTargetSchool` | M3 | Survey 2, 3 | PLANNED |
+| 10 | R3: Drilldown Views Read-Only Mode & Mutation Protection | Pass `isReadOnly={true}` to `AdminRekapView`, `RekapSiswaView`, `RekapJurnalView` to hide mutation buttons | M3 | Survey 1, 3 | PLANNED |
+| 11 | R3: Drilldown Target School Official Printing | Verify official Kop Surat & signatures print correctly for drilldown school views | M3 | Survey 3 | PLANNED |
+| 12 | R4: Automated Test Suite (`tests/dinas_pendidikan_monitoring.test.ts`) | 6-suite programmatic verification covering R1-R4 passing via `npx tsx` | M4 | Survey 3 | PLANNED |
+| 13 | R5: Build & TypeScript Verification | Run `npx tsc --noEmit` and `npm run build` with 0 errors | M5 | R5 | PLANNED |
+| 14 | R5: Mandatory Git Delivery to `dev` | Execute `git status`, `git add .`, `git commit -m "..."`, and `git push origin dev` | M5 | GEMINI.md | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Data Layer (Database Migration & TypeScript Types) | `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql` & `src/types/database.ts` | none | DONE |
-| M2 | UI & Logic Layer (`GradebookView.tsx`) | Syntax fix, CP->TP hierarchy, Asesmen per TP, Admin Bobot modal, Nilai Akhir formula & attendance | M1 | DONE |
-| M3 | Verification, E2E Testing, Build & Git Delivery | Automated test suite `tests/gradebook_cp_tp_formula_verification.test.ts`, `npm test`, `npm run build`, Git push | M1, M2 | DONE |
-
-## Interface Contracts
-
-### 1. Database Schema (`capaian_pembelajaran`)
-- Table: `public.capaian_pembelajaran`
-  - `id`: UUID PRIMARY KEY DEFAULT gen_random_uuid()
-  - `sekolah_id`: UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE
-  - `guru_mapel_id`: UUID REFERENCES public.guru_mapel(id) ON DELETE SET NULL
-  - `nama_mapel`: TEXT NOT NULL
-  - `kelas`: TEXT NOT NULL
-  - `semester`: TEXT NOT NULL DEFAULT 'Ganjil'
-  - `tahun_ajaran`: TEXT NOT NULL DEFAULT '2024/2025'
-  - `kode_cp`: TEXT NOT NULL
-  - `deskripsi`: TEXT NOT NULL
-  - `urutan`: INTEGER NOT NULL DEFAULT 1
-  - `created_at`: TIMESTAMPTZ DEFAULT now()
-  - `updated_at`: TIMESTAMPTZ DEFAULT now()
-
-### 2. Table Adjustments
-- `public.tujuan_pembelajaran`:
-  - `cp_id`: UUID REFERENCES public.capaian_pembelajaran(id) ON DELETE SET NULL
-- `public.asesmen_kolom`:
-  - `keterangan`: TEXT (nullable)
-  - Constraint: `UNIQUE INDEX uq_asesmen_tp_diagnostik ON public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik')`
-- `public.pengaturan`:
-  - Row key: `'bobot_nilai_mapel'`
-  - Row value: JSON string `{"kehadiran": 40, "formatif": 30, "sumatif": 30}`
-
-### 3. Nilai Akhir Formula Contract
-- Inputs:
-  - `rata_kehadiran`: number (0-100)
-  - `rata_formatif`: number (0-100) or null
-  - `rata_sumatif`: number (0-100) or null
-  - `bobot_kehadiran`, `bobot_formatif`, `bobot_sumatif`: numbers summing to 100
-- Formula:
-  `if (rata_formatif !== null && rata_sumatif !== null) { return ((rata_kehadiran * bobot_kehadiran / 100) + (rata_formatif * bobot_formatif / 100) + (rata_sumatif * bobot_sumatif / 100)).toFixed(1); } else { return null; }`
-- Display:
-  `finalScore !== null ? finalScore : '-'`
+| M1 | RBAC, Data Model, & Superadmin Regional Assignment | `src/types/user.ts`, `src/types/database.ts`, migration SQL, `src/components/SuperadminView.tsx`, `src/lib/supabaseClient.ts` | none | PLANNED |
+| M2 | Executive Scoped Dashboard & Navigation | `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/DinasDashboard.tsx` | M1 | PLANNED |
+| M3 | Read-Only School Drilldown & Recaps + Printing | Integration of drilldown in `DinasDashboard`, `AppScreen`, `AdminRekapView`, `RekapSiswaView`, `RekapJurnalView` | M2 | PLANNED |
+| M4 | Automated Test Suite & Security Guard | `tests/dinas_pendidikan_monitoring.test.ts` (6 suites) running via `npx tsx` | M1, M2, M3 | PLANNED |
+| M5 | Final Verification, Build, & Git Delivery to `dev` | `npx tsc --noEmit`, `npm run build`, `npm test`, `git add .`, `git commit`, `git push origin dev` | M4 | PLANNED |
 
 ## Code Layout
-- `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql`: Owned by M1.
-- `src/types/database.ts`: Owned by M1.
-- `src/components/GradebookView.tsx`: Owned by M2.
-- `tests/gradebook_cp_tp_formula_verification.test.ts`: Owned by M3.
+- `src/types/user.ts`: Type definition for `AppUser` and roles.
+- `src/types/database.ts`: Supabase database schema types.
+- `supabase/migrations/20261024_dinas_pendidikan_role_and_region.sql`: Migration for `users.kota_kabupaten`.
+- `src/lib/supabaseClient.ts`: `getActiveTargetSchool` and client-side mutation prevention guard.
+- `src/components/SuperadminView.tsx`: Superadmin UI for managing Dinas Pendidikan accounts and assigning regions.
+- `src/components/AppScreen.tsx`: Routing, navigation items, role detection, and route protection.
+- `src/components/ClaySidebar.tsx`: Sidebar styling and scoped target school selection.
+- `src/components/DinasDashboard.tsx`: Executive cross-school monitoring dashboard component.
+- `tests/dinas_pendidikan_monitoring.test.ts`: Automated test suite.

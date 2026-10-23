@@ -24,7 +24,7 @@ function MainApp() {
     try {
       const { data: dbUser, error } = await masterSupabase
         .from('users')
-        .select('id, username, nama, role, sekolah_id, session_token, avatar')
+        .select('id, username, nama, role, sekolah_id, session_token, avatar, kota_kabupaten')
         .eq('id', storedUserObj.id)
         .single();
 
