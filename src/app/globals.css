@@ -633,6 +633,10 @@ body.fade-out {
   .print-signature > div {
     min-width: 180px;
   }
+  /* Pastikan baris tempat & tanggal tidak terpotong saat cetak */
+  .print-signature span {
+    white-space: nowrap !important;
+  }
 
   /* === TABLE PRINTING === */
   table {
