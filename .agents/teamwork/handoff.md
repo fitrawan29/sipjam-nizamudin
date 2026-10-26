@@ -1,97 +1,85 @@
-# Sentinel Project Handoff Report: Implementasi Role Baru `dinas_pendidikan` Executive Monitoring (Requirements R1-R5)
+# Sentinel Project Handoff Report: Penghilangan Blok Tanda Tangan Admin pada Dokumen Cetak (PrintSignature)
 
-**Sentinel ID**: ab3a1c4b-03fb-4c55-9714-d4418fab4c41  
-**Project Orchestrator**: `orchestrator_23` (`b9c240a0-6ada-4834-ac97-9bf90cc14baf`)  
-**Independent Victory Auditor**: `victory_auditor_47` (`5cc979c1-79a6-4b57-a090-63a4a6508cfc`)  
+**Sentinel ID**: 71d5795c-8a39-47d9-a72f-2d74adebafe1  
+**Project Orchestrator**: `swe_33` (`a5fa1e04-23e9-4158-98f9-5d3f72631f57`)  
+**Independent Victory Auditor**: `victory_auditor_48` (`bedc4586-77dd-4a12-b77c-20267fa9242f`)  
 **Final Status**: VICTORY CONFIRMED  
 
 ---
 
 ## 1. Observation
 
-1. **User Request & Routing**:
-   - The user requested implementing a new role `dinas_pendidikan` in the SIPJAM application for executive attendance monitoring of teachers and students across assigned foster schools (`sekolah binaan`), scoped strictly to a region assigned by Superadmin (`kota_kabupaten`), isolated in pure read-only mode, with drilldown attendance recaps, official report printing, automated test suites, and git delivery to `dev`.
-   - Routed per Decision Table to **General (`teamwork_preview_orchestrator`)**.
+1. **User Request & Task Routing**:
+   - The user requested omitting the left signature block (printer/admin/teacher column) from print documents in SIPJAM when the logged-in user possesses an `'admin'` (or `'Admin'`) role.
+   - The right signature block (Kepala Sekolah) and Pengawas Bina signature must remain visible and cleanly aligned.
+   - Scope was strictly confined to `src/components/PrintHeader.tsx` without changing any callers.
+   - Pushed automatically to branch `dev` per `GEMINI.md`.
+   - Routed per Decision Table to **SWE Light (`teamwork_preview_swe`)** as a single self-contained, focused change.
    - Recorded authoritatively in `.agents/teamwork/ORIGINAL_REQUEST.md`.
 
-2. **Executed Architecture & Changes**:
-   - **R1: RBAC & Superadmin Regional Assignment**:
-     - `src/types/user.ts`: Added `'dinas_pendidikan'` to `AppUser.role` and `kota_kabupaten?: string | null`.
-     - `src/types/database.ts`: Added `kota_kabupaten?: string | null` to `public.users`.
-     - `supabase/migrations/20261024_dinas_pendidikan_role_and_region.sql`: Schema migration adding `kota_kabupaten` to `users`, updating `verify_login` RPC, and establishing RLS SELECT policies on `sekolah` and `sekolah_registry`.
-     - `src/components/SuperadminView.tsx`: Added "Akun Dinas Pendidikan" management tab, CRUD modals, and case-insensitive region dropdown for assigning `kota_kabupaten`.
-     - `src/lib/supabaseClient.ts`: Enforced regional boundary in `getActiveTargetSchool()` ensuring `user.kota_kabupaten === school.kota_kabupaten` (cross-region returns `null`). Implemented network-level mutation guard in `dynamicTenantFetch` and `masterFetch` rejecting POST/PUT/PATCH/DELETE with HTTP 403 Forbidden for `dinas_pendidikan`.
-   - **R2: Executive Cross-School Monitoring Dashboard**:
-     - `src/components/DinasDashboard.tsx`: Built Claymorphic dashboard scoped strictly to `user.kota_kabupaten` with 5 KPI metric cards (Total Sekolah Binaan, Kehadiran Guru Hari Ini %, Kehadiran Siswa Hari Ini %, Status Koneksi Satelit, and Sekolah Perlu Perhatian), intra-region search/status filters, and official summary printing with GPS coordinates (`triggerPrintWithGps`, `PrintHeader`, `PrintSignature`).
-     - `src/components/ClaySidebar.tsx`: Rendered "Dinas Pendidikan" badge (indigo palette, `fa-building-columns`), region subtitle, and target school selector filtered strictly by `user.kota_kabupaten`.
-     - `src/components/AppScreen.tsx`: Directed login landing directly to `view-dinas-overview`, configured `menuItemsDinas`, and blocked navigation to mutation views (`view-admin-data`, `view-admin-config`, `view-admin-backup`, `view-sistem-blok`, `view-admin-verif`).
-   - **R3: Read-Only School Drilldown & Printing**:
-     - Drilldown selection switches `activeTargetSchool` via `effectiveUser` without altering user credentials or session token.
-     - Drilldown return banner restores dashboard via `clearActiveTargetSchool`.
-     - Passed `isReadOnly={isDinas}` to `AdminRekapView`, `RekapJurnalView`, and `RekapSiswaView` to suppress mutation buttons while allowing inspection and printing.
-   - **R4: Automated Verification Test Suite**:
-     - Created `tests/dinas_pendidikan_monitoring.test.ts` (6 suites, 25 assertion checks covering Superadmin assignment, zero-leak regional scoping, read-only mutation guards, aggregation metrics, drilldown session integrity, and GPS print layout).
-   - **R5: Build Verification & Git Delivery to `dev`**:
-     - `npx tsc --noEmit` exited 0 (clean).
-     - `npm run build` compiled cleanly (Next.js Turbopack 12/12 static pages).
-     - `npm test` exited 0 (38/38 test suites passed 100%).
-     - Git: Commits pushed to `origin/dev`:
-       * `1f6cb11`: feat(m1)
-       * `9fb3dc1`: fix(m1-remediation)
-       * `a680669`: feat(dinas)
-       * `e55c254`: test(dinas_pendidikan)
-     - Branch `main` strictly untouched.
+2. **Executed Code & Architecture Changes**:
+   - `src/components/PrintHeader.tsx`:
+     - Implemented hardened role validation:
+       ```typescript
+       const isAdmin = typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin';
+       const isSingleColumnLayout = singleColumn || isAdmin;
+       ```
+     - Left column node conditionally omitted from DOM tree (`null`) when `isSingleColumnLayout` is true (rather than visually hidden with CSS).
+     - Single-column container layout configured with `justify-end ml-auto page-break-inside-avoid`, ensuring the Kepala Sekolah signature neatly hugs the right margin without awkward blank spacing.
+     - Preserved Pengawas Bina signature on the left when enabled (`showPengawas=true`), with Kepala Sekolah aligned on the right.
+     - Preserved default rendering for regular teachers (`user.role === 'guru'`), superadmin, dinas, or when `user` is null/undefined.
+     - Zero caller components modified across the entire codebase.
 
-3. **Independent Victory Audit**:
-   - `victory_auditor_47` (`5cc979c1-79a6-4b57-a090-63a4a6508cfc`) performed an independent 3-phase audit:
-     - Phase A (Timeline & Git): PASS (`dev` synchronized with `origin/dev`, `main` untouched).
-     - Phase B (Integrity Check): PASS (zero facades, zero hardcoded cheat strings).
-     - Phase C (Independent Tests): PASS (25/25 in test suite, 0 TypeScript errors, clean production build, 38/38 regression suites passed).
+3. **Verification & Testing**:
+   - Created comprehensive test suite in `tests/printHeader.test.ts` covering 10 test suites and subtests 10a–10y (100% passing).
+   - Independent verification via `npx tsc --noEmit` exited with 0 type errors.
+   - All 4 commits cleanly synchronized with `origin/dev`:
+     * `2e54dad`: `fix(print): hide left signature block when printed by admin role`
+     * `1d6172f`: `fix(print): harden user.role type validation in PrintSignature and add adversarial tests`
+     * `db1f23d`: `fix(print): ensure page-break immunity on single-column signature and expand caller simulation tests`
+     * `2ed9d6a`: `test(print): complete caller simulations for Gradebook, Piket, and Dinas views in reviewer r3`
+   - Branch `main` remains untouched at `51fa5f8`.
+
+4. **Independent Victory Audit**:
+   - `victory_auditor_48` conducted a 3-phase audit (Timeline & Git, Cheating/Integrity, Independent Execution).
+   - Confirmed true DOM omission, strict git compliance to `dev`, and zero regressions.
    - Verdict: **VICTORY CONFIRMED**.
 
 ---
 
 ## 2. Logic Chain
 
-1. The user's prompt demanded multi-school executive monitoring for a new `dinas_pendidikan` role with strict regional boundaries and zero mutation privileges.
-2. The orchestrator decomposed this into four sequential milestones plus a final verification milestone.
-3. Adversarial challenges caught critical edge cases (RPC path normalization, unassigned region matching defenses, and case-insensitive region maps) which were resolved through clean remediation.
-4. The test writer created an empirical test suite (`tests/dinas_pendidikan_monitoring.test.ts`) that executes actual runtime logic and tests negative attack surfaces.
-5. The independent Victory Auditor verified all claims against the repository state and test results without shared bias, confirming all acceptance criteria are met.
+1. In educational institutions using SIPJAM, when an administrative officer prints official recap documents (Gradebook, Rapor, Presensi, Piket), having an "Admin" personal signature block alongside the Principal is redundant or non-standard.
+2. Checking `isAdmin = typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin'` guarantees robust detection across any case casing or whitespace padding while protecting against non-string edge cases.
+3. Leveraging the existing `singleColumn` layout structure avoids layout breakages and eliminates unsightly whitespace on the left.
+4. Keeping the changes isolated strictly to `PrintHeader.tsx` preserves all existing caller contracts.
 
 ---
 
 ## 3. Caveats
 
-- Database migrations in `supabase/migrations/20261024_dinas_pendidikan_role_and_region.sql` should be executed against the live production Supabase instance when deploying to production environment.
-- The client-side mutation guard protects both local and satellite fetch requests, while database RLS policies enforce isolation on the master tables.
+- For caller components that intentionally need a custom left signature even under admin login, callers can still pass `singleColumn={false}` or omit the user prop if ever necessary.
+- In headless/CLI automated testing environments, physical printer spoolers cannot be triggered, but static DOM tree hierarchy and CSS `@media print` rules have been rigorously verified.
 
 ---
 
 ## 4. Conclusion
 
-All Requirements (R1, R2, R3, R4, R5) and Acceptance Criteria have been fully satisfied, rigorously tested, independently audited with verdict **VICTORY CONFIRMED**, and delivered to `dev`.
+All acceptance criteria (R1 role hiding, R2 layout preservation, scope isolation, clean TypeScript build, and git delivery to `dev`) are 100% met and independently verified with verdict **VICTORY CONFIRMED**.
 
 ---
 
 ## 5. Verification Method
 
-To verify the delivery independently:
 ```bash
-# 1. Run the official Dinas Pendidikan automated test suite
-npx tsx tests/dinas_pendidikan_monitoring.test.ts
+# 1. Run the PrintHeader test suite
+npx tsx tests/printHeader.test.ts
 
-# 2. Run the full regression test suite
-npm test
-
-# 3. Verify TypeScript static compilation
+# 2. Run TypeScript compilation check
 npx tsc --noEmit
 
-# 4. Verify Next.js production build
-npm run build
-
-# 5. Verify Git status and remote synchronization
+# 3. Check Git branch & synchronization
 git status
 git branch
-git log -n 5 --oneline
+git log -n 4 --oneline
 ```

@@ -1,55 +1,63 @@
-# Dispatch to Victory Auditor
+## 2026-10-26T07:10:33Z
 
-## 2026-09-25T20:27:15Z
-
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1
-Parent Orchestrator: swe_1 (Conversation ID: 9dd52156-c90d-404b-9593-7446ffab66bb)
+You are victory_auditor_1. Your working directory is `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1`.
+Conduct a 3-phase independent victory audit (timeline & commit audit, cheating & scope detection, independent test execution) with zero shared context from the implementation swarm.
 
 <original_task>
-# Teamwork Project Prompt — Draft
+Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app: ketika user yang sedang login memiliki role `admin` (atau `Admin`), komponen `PrintSignature` di `src/components/PrintHeader.tsx` tidak boleh merender blok tanda tangan sisi kiri (kolom admin/guru yang mencetak). Kolom tanda tangan Kepala Sekolah dan Pengawas tetap ditampilkan seperti biasa.
 
-> Status: Launched
-> Goal: Craft prompt → get user approval → delegate to teamwork_preview
-> Requested team: Small, focused team
-
-This is a single self-contained fix; keep it small and focused.
-
-This project involves implementing a series of UI/UX improvements across the Sipjam application based on a recent audit. The primary goals are replacing blocking SweetAlert modals with non-intrusive toasts, fixing destructive form resets in attendance, and making data tables responsive on mobile devices.
+**This is a single self-contained fix; keep it small and focused.**
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+
 Integrity mode: development
+
+---
+
+## Context
+
+- Komponen utama: `PrintSignature` di `src/components/PrintHeader.tsx`
+- Interface `PrintSignatureProps` sudah memiliki prop `user?: any`
+- Pengecekan role admin yang sudah ada di codebase: `(user?.role || '').toLowerCase() === 'admin'` (lihat `AdminVerifView.tsx` L25)
+- `PrintSignature` dipanggil dari: `AdminRekapView`, `DinasDashboard`, `DokumenView`, `GradebookView`, `PiketView`, `RaporView`, `RekapJurnalView`, `RekapSiswaView`
+- Tanda tangan kiri adalah kolom pertama di layout flex `PrintSignature` — berisi jabatan + nama + NIP dari props `leftTitle/leftName/leftNip`
 
 ## Requirements
 
-### R1. Non-Intrusive Notifications
-Replace generic blocking `Swal.fire` (SweetAlert2) calls for success, info, and validation errors with non-intrusive Toast notifications (e.g., using `react-hot-toast` or similar) across the application (especially in `GuruPresensi.tsx`). Critical alerts (like confirmation to delete) may still use modals.
+### R1. Sembunyikan tanda tangan kiri saat pencetak adalah admin
 
-### R2. Preserving Form State
-In `GuruPresensi.tsx`, prevent the automatic deletion of the user's uploaded photo/selfie when they toggle between different attendance types (`tipeAbsen` or `jenisPresensi`). If state must be cleared, implement a confirmation warning first.
+Jika `user?.role` (case-insensitive) adalah `'admin'`, `PrintSignature` tidak merender blok tanda tangan kiri (kolom `leftTitle`, `leftName`, `leftNip`, `leftSubtitle`). Kolom tanda tangan kanan (Kepala Sekolah) dan Pengawas tetap dirender normal.
 
-### R3. Mobile-Responsive Tables
-Refactor data-heavy tables in `AdminDataView.tsx`, `PiketView.tsx`, and `GradebookView` to be mobile-friendly. Either wrap them in horizontally scrollable containers (`overflow-x-auto whitespace-nowrap`) or convert the rows into a stacked "Card" layout on small screens.
+Ubah hanya `PrintHeader.tsx`. Jangan ubah caller — prop `user` sudah diteruskan dari setiap caller.
+
+### R2. Layout tidak rusak saat kolom kiri tidak ada
+
+Ketika kolom kiri disembunyikan, kolom tanda tangan kanan (Kepala Sekolah) tetap terposisi rapi — tidak ada ruang kosong besar di kiri, tidak ada pergeseran layout yang aneh. Gunakan flag `singleColumn` yang sudah ada jika applicable, atau sesuaikan CSS minimal.
 
 ## Acceptance Criteria
 
-### UI Behavior Validation
-- [ ] Programmatic/Visual Check: Submitting a successful attendance record triggers a non-blocking toast. The UI does not present a popup requiring an "OK" click to proceed.
-- [ ] Programmatic/Visual Check: Toggling between "Datang" and "Pulang" in `GuruPresensi.tsx` after attaching a mock file does not erase the file state without explicit user confirmation.
-- [ ] Programmatic/Visual Check: Tables in `PiketView.tsx` and `AdminDataView.tsx` scroll horizontally (or stack) when the viewport width is simulated to be < 640px, without causing horizontal layout overflow on the main body.
+### Logika role
+- [ ] `user.role === 'admin'` → blok tanda tangan kiri tidak dirender sama sekali (tidak hanya invisible/hidden, benar-benar tidak ada di DOM)
+- [ ] `user.role === 'Admin'` (kapital) → sama, tidak dirender
+- [ ] `user.role === 'guru'` atau role lain → blok kiri tetap dirender seperti biasa
+- [ ] `user` undefined/null → perilaku default tidak berubah (blok kiri tetap ada)
+
+### Layout
+- [ ] Saat role admin, kolom Kepala Sekolah masih terlihat dan posisinya tidak bergeser ekstrem
+- [ ] Tidak ada TypeScript error baru
+
+### Scope
+- [ ] Hanya `PrintHeader.tsx` yang diubah
+- [ ] Tidak ada prop baru yang ditambahkan ke caller manapun
+- [ ] Commit dan push ke branch `dev` setelah selesai sesuai Git Workflow Rule
+
+---
+*Expecting this to run as one contained change on a small focused team — say so if you want it broken up.*
 </original_task>
 
-<audit_context>
-The implementation swarm has completed:
-- Implementer (c53b2e3)
-- Reviewer Round 1 (5757327)
-- Reviewer Round 2 (6028a3e)
-- Reviewer Round 3 (ee98313)
-
-Please conduct your independent 3-phase audit:
-1. Timeline & Commit Verification
-2. Anti-Cheating & Integrity Verification (ensure no tests were altered to pass artificially, real functionality implemented)
-3. Independent Test & Build Execution (`npm test`, `npm run test:e2e`, `npm run build`)
-
-Write your audit report and deliver your structured verdict (CONFIRMED or REJECTED).
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1
-</audit_context>
+<audit_instructions>
+1. Conduct Phase 1: Timeline & Commit audit (verify commits on branch `dev`, check git log and git status).
+2. Conduct Phase 2: Cheating & Scope detection (verify that tests in `tests/printHeader.test.ts` test real logic and were not mocked to trivially pass, verify only `PrintHeader.tsx` was modified in source code, no callers were modified).
+3. Conduct Phase 3: Independent Test Execution (run `npx tsx tests/printHeader.test.ts` and `npx tsc --noEmit`).
+4. Write your full audit report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1\handoff.md` with explicit structured verdict: CONFIRMED or REJECTED, and send a message back with your verdict.
+</audit_instructions>
