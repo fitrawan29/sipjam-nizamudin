@@ -101,6 +101,10 @@ Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SI
 - Cron 1 (Progress Reporting): 37a27514-a346-4f46-90b4-91e2684d169b/task-34 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 37a27514-a346-4f46-90b4-91e2684d169b/task-36 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 60a4279b-4540-45e3-a69b-65985ac43f18 (victory_auditor_49) [VICTORY CONFIRMED]
+- Orchestrator (current): 438501ba-ddc1-44a6-bdcc-0efa3a7d46ee (swe_35)
+- Cron 1 (Progress Reporting): a32f9cf7-7c2d-4972-983d-a24dd25d775e/task-38 (*/8 * * * *)
+- Cron 2 (Liveness Check): a32f9cf7-7c2d-4972-983d-a24dd25d775e/task-40 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -131,35 +135,27 @@ Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SI
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (restoration of Superadmin layout/header/sidebar, satelite dropdown, while preserving dinas_pendidikan features)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; hide admin left signature in PrintHeader, dev branch)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; session auto-logout stability resilience and test guru recap filtration, push to dev branch)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Ponytail dead code, orphaned utilities, and obsolete dependency pruning, push to dev branch)
 
 ## User Context
-- **Last user request**: Stabilitas Sesi & Pencegahan Auto-Logout + Pembersihan & Filtrasi "Test Guru" pada Rekap Presensi
+- **Last user request**: Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SIPJAM (Next.js) dengan prinsip Ponytail (minimalis, YAGNI, dan eliminasi kode mati tanpa regresi).
 - **Pending clarifications**: none
 - **Delivered results**:
-  - Resilient session synchronization in `useSessionSync.ts`, `src/app/page.tsx`, `src/app/superadmin/page.tsx`, and `src/components/AppScreen.tsx` preventing unexpected auto-logout during internet dropouts, mobile background idle, and transient server blips.
-  - Multi-layer filtering and complete database sanitization of "Test Guru" records in `AdminRekapView.tsx` and database tables (`presensi_guru`, `data_guru`).
-  - 100% pass across all 39 test suites in `npm test` and targeted test suite `tests/session_resilience_and_clean_rekap.test.ts`.
-  - Clean TypeScript compilation (`npx tsc --noEmit` 0 errors) and successful Next.js 16 production build (`npm run build`).
-  - All changes pushed to branch `dev` (`git push origin dev`). Branch `main` strictly untouched.
-  - Independent Victory Audit confirmed: `VICTORY CONFIRMED` by `victory_auditor_49`.
+  - Task received, recorded to ORIGINAL_REQUEST.md, preparing dispatch of swe_35.
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (terminated on victory)
-- **Active Subagents**: none (killed on completion)
+- **Active Crons**: a32f9cf7-7c2d-4972-983d-a24dd25d775e/task-38 (Progress Reporting), a32f9cf7-7c2d-4972-983d-a24dd25d775e/task-40 (Liveness Check)
+- **Active Subagents**: 438501ba-ddc1-44a6-bdcc-0efa3a7d46ee (swe_35)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING.md — Persistent working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING_ARCHIVE.md — Archived memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34\DISPATCH.md — Dispatch prompt for swe_34
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34\handoff.md — Handoff from swe_34
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_49\DISPATCH.md — Dispatch prompt for victory_auditor_49
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_49\handoff.md — Independent Victory Auditor handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\handoff.md — Sentinel final handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_35\DISPATCH.md — Dispatch prompt for swe_35
