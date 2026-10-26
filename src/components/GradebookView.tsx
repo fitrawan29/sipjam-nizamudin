@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { TujuanPembelajaran, AsesmenKolom, NilaiSiswa, CapaianPembelajaran } from '@/types/database';
+import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/database';
 import { getGradebookDraftKey, saveGradebookDraft, loadGradebookDraft, clearGradebookDraft } from '@/utils/draftStorage';
 
 export interface CapaianDeskripsiResult {
@@ -124,8 +124,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   // Guru Pengampu & Sync State
   const [isGuruPengampu, setIsGuruPengampu] = useState<boolean>(false);
-  const [syncedTahunAjaran, setSyncedTahunAjaran] = useState<string>('');
-  const [syncedSemester, setSyncedSemester] = useState<string>('');
+  const [_syncedTahunAjaran, setSyncedTahunAjaran] = useState<string>('');
+  const [_syncedSemester, setSyncedSemester] = useState<string>('');
 
   // Active Filters
   const [selectedGuru, setSelectedGuru] = useState<string>(user?.nama || '');
@@ -188,8 +188,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
   };
 
   // Loading & Saving States
-  const [isLoadingMaster, setIsLoadingMaster] = useState(false);
-  const [isLoadingTP, setIsLoadingTP] = useState(false);
+  const [_isLoadingMaster, setIsLoadingMaster] = useState(false);
+  const [_isLoadingTP, setIsLoadingTP] = useState(false);
   const [isLoadingGrades, setIsLoadingGrades] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -740,15 +740,6 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   useEffect(() => { fetchCPs(); }, [fetchCPs]);
 
-  // CP CRUD handlers
-  const handleOpenAddCpModal = () => {
-    if (isAdmin || !isGuruPengampu) {
-      showToast('Akses Ditolak', 'Hanya guru pengampu yang berhak menambah CP.', 'warning'); return;
-    }
-    setEditingCp(null);
-    setCpForm({ kode_cp: `CP ${cpList.length + 1}`, deskripsi: '', urutan: cpList.length + 1 });
-    setIsCpModalOpen(true);
-  };
 
   const handleSaveCp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -867,7 +858,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
         query = query.eq('sekolah_id', sekolahId);
       }
 
-      let { data, error } = await query;
+      const { data, error } = await query;
       if (error) throw error;
 
       let cols = data || [];
@@ -1485,22 +1476,6 @@ export default function GradebookView({ user }: GradebookViewProps) {
     setIsTpModalOpen(true);
   };
 
-  const handleOpenEditTpModal = (tp: TujuanPembelajaran) => {
-    if (isAdmin || !isGuruPengampu) {
-      showToast('Akses Ditolak', 'Hanya guru pengampu mata pelajaran ini yang berhak mengedit Tujuan Pembelajaran (TP).', 'warning');
-      return;
-    }
-    setEditingTp(tp);
-    setTpForm({
-      kode_tp: tp.kode_tp,
-      deskripsi: tp.deskripsi,
-      semester: tp.semester || selectedSemester,
-      tahun_ajaran: tp.tahun_ajaran || selectedTahunAjaran,
-      urutan: tp.urutan || 1,
-      cp_id: tp.cp_id || selectedCpId || (cpList[0]?.id ?? ''),
-    });
-    setIsTpModalOpen(true);
-  };
 
   const handleSaveTp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1938,8 +1913,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
     const tpResults: Record<string, number | null> = {};
     const validTpScores: number[] = [];
 
-    let allAvgF: number[] = [];
-    let allAvgS: number[] = [];
+    const allAvgF: number[] = [];
+    const allAvgS: number[] = [];
 
     tpList.forEach(tp => {
       const cols = allSemesterColumns[tp.id] || [];

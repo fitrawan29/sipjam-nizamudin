@@ -781,7 +781,7 @@ export default function SuperadminView({
 
             // Resilience: If public.sekolah does not have satellite credential columns yet (PGRST204 or missing column)
             if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
-              const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
+              const { vercel_url: _v, supabase_url: _s, supabase_anon_key: _a, ...coreValues } = formValues;
               let retry = await masterSupabase.from('sekolah').insert([{
                 ...coreValues,
                 mode_presensi_siswa: 'qr'
@@ -798,7 +798,7 @@ export default function SuperadminView({
               schErr = updateRes.error;
               // Resilience: If update failed because of missing satellite columns in public.sekolah
               if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
-                const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
+                const { vercel_url: _v, supabase_url: _s, supabase_anon_key: _a, ...coreValues } = formValues;
                 const retryUpdate = await masterSupabase.from('sekolah').update(coreValues).eq('npsn', formValues.npsn);
                 schErr = retryUpdate.error;
               }
@@ -816,7 +816,7 @@ export default function SuperadminView({
               mode_presensi_siswa: 'qr'
             }]);
             if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
-              const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
+              const { vercel_url: _v, supabase_url: _s, supabase_anon_key: _a, ...coreValues } = formValues;
               let retry = await masterSupabase.from('sekolah').insert([{
                 ...(insertedReg?.id ? { id: insertedReg.id } : {}),
                 ...coreValues,
@@ -831,9 +831,9 @@ export default function SuperadminView({
               schErr = retry.error;
             }
             if (schErr && (schErr.code === '23505' || String(schErr.message).includes('unique'))) {
-              let updateRes = await masterSupabase.from('sekolah').update(formValues).eq('npsn', formValues.npsn);
+              const updateRes = await masterSupabase.from('sekolah').update(formValues).eq('npsn', formValues.npsn);
               if (updateRes.error && (updateRes.error.code === 'PGRST204' || String(updateRes.error.message).includes('column') || updateRes.error.code === '42703')) {
-                const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
+                const { vercel_url: _v, supabase_url: _s, supabase_anon_key: _a, ...coreValues } = formValues;
                 await masterSupabase.from('sekolah').update(coreValues).eq('npsn', formValues.npsn);
               }
             }
@@ -967,8 +967,8 @@ export default function SuperadminView({
 
             // Resilience: If public.sekolah does not have satellite credential columns yet (PGRST204 or missing column)
             if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
-              const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
-              let retry = await masterSupabase.from('sekolah').update(coreValues).eq('id', school.id);
+              const { vercel_url: _v, supabase_url: _s, supabase_anon_key: _a, ...coreValues } = formValues;
+              const retry = await masterSupabase.from('sekolah').update(coreValues).eq('id', school.id);
               if (school.npsn) {
                 const retryNpsn = await masterSupabase.from('sekolah').update(coreValues).eq('npsn', school.npsn);
                 schErr = retryNpsn.error || retry.error;
@@ -991,7 +991,7 @@ export default function SuperadminView({
               await masterSupabase.from('sekolah').update(formValues).eq('npsn', school.npsn);
             }
             if (schErr && (schErr.code === 'PGRST204' || String(schErr.message).includes('column') || schErr.code === '42703')) {
-              const { vercel_url, supabase_url, supabase_anon_key, ...coreValues } = formValues;
+              const { vercel_url: _v, supabase_url: _s, supabase_anon_key: _a, ...coreValues } = formValues;
               await masterSupabase.from('sekolah').update(coreValues).eq('id', school.id);
               if (school.npsn) {
                 await masterSupabase.from('sekolah').update(coreValues).eq('npsn', school.npsn);
@@ -1056,7 +1056,7 @@ export default function SuperadminView({
           // and mark non-operational instead of crashing or showing fatal error dialog
           if (schErr && (schErr.code === '23503' || String(schErr.message).includes('foreign key'))) {
             console.warn('[sekolah] Relational FK constraint detected on delete, detaching satellite credentials instead.');
-            let detachRes = await masterSupabase.from('sekolah').update({
+            const detachRes = await masterSupabase.from('sekolah').update({
               vercel_url: null,
               supabase_url: null,
               supabase_anon_key: null,
@@ -1097,7 +1097,7 @@ export default function SuperadminView({
             if (schErrNpsn) schErr = schErrNpsn;
           }
           if (schErr && (schErr.code === '23503' || String(schErr.message).includes('foreign key'))) {
-            let detachRes = await masterSupabase.from('sekolah').update({
+            const detachRes = await masterSupabase.from('sekolah').update({
               vercel_url: null,
               supabase_url: null,
               supabase_anon_key: null,

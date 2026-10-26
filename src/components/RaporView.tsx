@@ -67,7 +67,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Real Kurikulum Merdeka Academic Pipeline
   const [activeMapels, setActiveMapels] = useState<string[]>([]);
-  const [cpList, setCpList] = useState<CapaianPembelajaran[]>([]);
+  const [_cpList, setCpList] = useState<CapaianPembelajaran[]>([]);
   const [tpList, setTpList] = useState<TujuanPembelajaran[]>([]);
   const [columnsList, setColumnsList] = useState<AsesmenKolom[]>([]);
   const [gradesMap, setGradesMap] = useState<Record<string, Record<string, number | null>>>({});
@@ -154,7 +154,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       if (sekolahId) {
         query = query.eq('sekolah_id', sekolahId);
       }
-      let { data, error } = await query;
+      const { data: initialData, error } = await query;
+      let data = initialData;
       if ((!data || data.length === 0) && sekolahId) {
         const fallback = await supabase.from('pengaturan').select('*');
         if (fallback.data && fallback.data.length > 0) {

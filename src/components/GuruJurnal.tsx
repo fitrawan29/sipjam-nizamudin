@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { showToast, Toast } from '@/lib/toast';
+import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
-import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft, JURNAL_DRAFT_KEY } from '@/utils/draftStorage';
+import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft } from '@/utils/draftStorage';
 
 export default function GuruJurnal({ user }: { user: any }) {
   const [hasDraft, setHasDraft] = useState(false);
@@ -421,7 +421,7 @@ export default function GuruJurnal({ user }: { user: any }) {
     const fetchSchoolConfig = async () => {
       if (!user?.sekolah_id) return;
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('sekolah')
           .select('mode_jurnal')
           .eq('id', user.sekolah_id)

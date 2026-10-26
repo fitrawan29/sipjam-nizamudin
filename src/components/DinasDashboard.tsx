@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { masterSupabase, supabase } from '@/lib/supabaseClient';
+import { masterSupabase } from '@/lib/supabaseClient';
 import type { SatelliteSchool } from '@/lib/supabaseClient';
 import type { AppUser } from '@/types/user';
 import ClayCard from './ClayCard';
@@ -41,7 +41,7 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
   onSelectTargetSchool,
   satelliteSchools: propSatelliteSchools,
   schools: propSchools,
-  setView,
+  setView: _setView,
 }) => {
   const userRegion = useMemo(() => {
     return (user?.kota_kabupaten || '').trim();

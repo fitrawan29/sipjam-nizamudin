@@ -206,7 +206,6 @@ export default function AppScreen({
     broadcastModalOpen,
     setBroadcastModalOpen,
     allAnnouncements,
-    unreadAnnouncements,
     readMap,
     handleMarkAsRead,
     handleMarkAllAsRead,

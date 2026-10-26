@@ -158,7 +158,6 @@ export default function CameraSelfieCapture({
 
     try {
       // Locked strictly to 4:3 landscape ratio across all camera instances
-      const isPortrait = false;
       const constraints: MediaStreamConstraints = {
         video: {
           // Defaults to facingMode: 'user', with resilient mode switching via { ideal: mode }

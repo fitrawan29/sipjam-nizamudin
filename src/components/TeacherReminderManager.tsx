@@ -371,10 +371,6 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
   const [reminderConfig, setReminderConfig] = useState(() => getReminderConfig(user?.id));
 
-  // Read config on mount and when tab becomes visible
-  const loadReminderConfig = useCallback(() => {
-    return getReminderConfig(user?.id);
-  }, [user?.id]);
 
   // Reset all states cleanly when user changes (multi-user isolation)
   useEffect(() => {

@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { formatDateWita, formatTimestampWita } from '@/lib/wita';
 import { Pengumuman, PengumumanTanggapan } from '@/types/database';
 
-export default function InformasiView({ user, setView }: { user: any; setView?: (view: string) => void }) {
+export default function InformasiView({ user, setView: _setView }: { user: any; setView?: (view: string) => void }) {
   const [pengumumanList, setPengumumanList] = useState<Pengumuman[]>([]);
   const [tanggapanMap, setTanggapanMap] = useState<Record<string, PengumumanTanggapan[]>>({});
   const [loading, setLoading] = useState(true);

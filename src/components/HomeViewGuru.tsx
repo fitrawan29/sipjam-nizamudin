@@ -2,34 +2,21 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
-  getWitaDateLong, 
   getWitaTimeStr, 
   getWitaDayName, 
-  getWitaDateStr, 
-  getWitaStartOfDay, 
-  getWitaEndOfDay 
+  getWitaDateStr 
 } from '@/lib/wita';
 import { 
   getGuruDailyState, 
   GuruDailyState, 
-  isJurnalMatchJadwal, 
-  isGuruDiPiket 
+  isJurnalMatchJadwal 
 } from '@/lib/workflow';
 import { supabase } from '@/lib/supabaseClient';
 import { getTeacherDisciplineWarnings, TeacherWarningSummary } from '@/lib/warningSystem';
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
-import { isIntervensiAllowed, fetchBatasIntervensiSiswa, isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali } from '@/lib/presensiIntervensi';
-
-const KURIKULUM_DOC_TYPES = [
-  { key: 'CP', name: 'Analisis CP', full: 'Analisis Capaian Pembelajaran' },
-  { key: 'ATP', name: 'ATP', full: 'Alur Tujuan Pembelajaran' },
-  { key: 'RPE', name: 'RPE', full: 'Rencana Pekan Efektif' },
-  { key: 'Prota', name: 'Prota', full: 'Program Tahunan' },
-  { key: 'Promes', name: 'Promes', full: 'Program Semester' },
-  { key: 'RPM', name: 'Modul Ajar / RPM', full: 'Rencana Pembelajaran Mendalam' },
-];
+import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali } from '@/lib/presensiIntervensi';
 
 export interface HomeViewGuruProps {
   user: AppUser;
@@ -41,10 +28,9 @@ export interface HomeViewGuruProps {
 export default function HomeViewGuru({
   user,
   setView,
-  menuItems = [],
+  menuItems: _menuItems = [],
   onOpenAccountSettings,
 }: HomeViewGuruProps) {
-  const dateStr = getWitaDateLong();
   const timeStr = getWitaTimeStr();
   const hariIni = getWitaDayName();
   
@@ -62,11 +48,6 @@ export default function HomeViewGuru({
   });
   const [selectedMonth, setSelectedMonth] = useState(() => getWitaDateStr().substring(0, 7));
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
-
-  const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
-  const [teacherJournals, setTeacherJournals] = useState<any[]>([]);
-  const [teacherDocuments, setTeacherDocuments] = useState<any[]>([]);
-  const [loadingTeacherExtra, setLoadingTeacherExtra] = useState(false);
   const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, false);
@@ -188,72 +169,6 @@ export default function HomeViewGuru({
         }
       };
 
-      // Fetch Subjects, Journals, and Bank Dokumen for Subject Attendance & Doc Completeness
-      const fetchTeacherDetails = async () => {
-        setLoadingTeacherExtra(true);
-        try {
-          const cleanNama = (user.nama || '').split(',')[0].trim();
-          let mapelQuery = supabase.from('guru_mapel').select('*');
-          if (user.username && cleanNama) {
-            mapelQuery = mapelQuery.or(`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`);
-          } else if (user.username) {
-            mapelQuery = mapelQuery.eq('nip', user.username);
-          } else if (cleanNama) {
-            mapelQuery = mapelQuery.ilike('nama_guru', `%${cleanNama}%`);
-          }
-
-          const [mapelRes, journalRes, docRes] = await Promise.all([
-            mapelQuery.order('nama_mapel', { ascending: true }),
-            supabase
-              .from('jurnal_pembelajaran')
-              .select('id, tanggal, nama_guru, mapel, kelas, materi, absensi_siswa, detail_absen')
-              .ilike('nama_guru', `%${cleanNama}%`)
-              .order('tanggal', { ascending: false }),
-            supabase
-              .from('bank_dokumen')
-              .select('*')
-              .ilike('nama_guru', `%${cleanNama}%`)
-              .order('timestamp', { ascending: false }),
-          ]);
-
-          let teacherMapels = mapelRes.data || [];
-          if (teacherMapels.length === 0 && cleanNama) {
-            const { data: jadwalData } = await supabase.from('jadwal_pelajaran')
-              .select('*')
-              .ilike('nama_guru', `%${cleanNama}%`);
-            if (jadwalData && jadwalData.length > 0) {
-              const uniqueMapels = new Map();
-              jadwalData.forEach((j: any) => {
-                const mapel = j.mata_pelajaran || '-';
-                const kls = j.kelas || '-';
-                const key = `${mapel}-${kls}`;
-                if (!uniqueMapels.has(key)) {
-                  uniqueMapels.set(key, {
-                    id: j.id,
-                    nama_mapel: mapel,
-                    kelas: kls,
-                    mapel_singkat: mapel,
-                    nip: user.username || '',
-                    nama_guru: j.nama_guru
-                  });
-                }
-              });
-              teacherMapels = Array.from(uniqueMapels.values());
-            }
-          }
-
-          setTeacherSubjects(teacherMapels);
-          if (journalRes.data) setTeacherJournals(journalRes.data);
-          if (docRes.data) setTeacherDocuments(docRes.data);
-        } catch (err) {
-          console.error('Failed to load teacher details:', err);
-        } finally {
-          setLoadingTeacherExtra(false);
-        }
-      };
-
-      fetchAttendanceStats();
-      fetchTeacherDetails();
     }
   }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth]);
 
@@ -370,214 +285,6 @@ export default function HomeViewGuru({
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [user?.nama, user?.id, user?.sekolah_id, refreshDailyWorkflow]);
-
-  // Dynamic Target Journal Ratio Calculation (Teacher)
-  const journalRatioData = useMemo(() => {
-    if (!dailyState) {
-      return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };
-    }
-    
-    // Jika guru exempt dan tidak mengajar hari ini, ratio jurnal bebas
-    if (dailyState.isNonTeachingDay || (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0) && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja') {
-      return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };
-    }
-
-    // Jika sistem blok atau dinas luar, target cukup 1 jurnal kegiatan
-    if (dailyState.isBlok || dailyState.isDinasLuar) {
-      const isDone = !!dailyState.jurnalKegiatan;
-      return { 
-        totalTarget: 1, 
-        filledCount: isDone ? 1 : 0, 
-        percentage: isDone ? 100 : 0, 
-        statusBadge: isDone ? 'Selesai' : 'Belum Lengkap' 
-      };
-    }
-    
-    if (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0) {
-      return { totalTarget: 0, filledCount: 0, percentage: 100, statusBadge: 'Bebas Mengajar Hari Ini' };
-    }
-    
-    const uniqueTargets = new Set(dailyState.jadwalKBM.map((j: any) => `${j.kelas}_${j.mata_pelajaran}`));
-    const totalTarget = uniqueTargets.size;
-    
-    const filledCount = Array.from(uniqueTargets).filter(target => {
-       const [kelas, mapel] = target.split('_');
-       return (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel }));
-    }).length;
-    
-    const percentage = totalTarget > 0 ? Math.round((filledCount / totalTarget) * 100) : 100;
-    
-    let statusBadge = 'Bebas Mengajar Hari Ini';
-    if (totalTarget > 0) {
-      statusBadge = filledCount >= totalTarget ? 'Selesai' : 'Belum Lengkap';
-    }
-
-    return { totalTarget, filledCount, percentage, statusBadge };
-  }, [dailyState]);
-
-  // Student Attendance per Subject Calculation
-  const subjectAttendanceList = useMemo(() => {
-    if (!teacherSubjects || teacherSubjects.length === 0) return [];
-
-    return teacherSubjects.map(gm => {
-      const subjectJournals = teacherJournals.filter(j => {
-        const matchClass = !gm.kelas || (j.kelas || '').trim().toLowerCase() === gm.kelas.trim().toLowerCase();
-        const jm = (j.mapel || '').trim().toLowerCase();
-        const gmNama = (gm.nama_mapel || '').trim().toLowerCase();
-        const gmSingkat = (gm.mapel_singkat || '').trim().toLowerCase();
-        const matchMapel = jm === gmNama || jm === gmSingkat || 
-          (gmSingkat && jm.includes(gmSingkat)) || 
-          (gmNama && jm.includes(gmNama));
-        return matchClass && matchMapel;
-      });
-
-      let totalH = 0;
-      let totalS = 0;
-      let totalI = 0;
-      let totalA = 0;
-      let totalRecords = 0;
-
-      subjectJournals.forEach(j => {
-        let parsed: Record<string, string> | null = null;
-        if (j.absensi_siswa && typeof j.absensi_siswa === 'string' && j.absensi_siswa.trim().startsWith('{')) {
-          try {
-            parsed = JSON.parse(j.absensi_siswa);
-          } catch (_) {
-            parsed = null;
-          }
-        }
-
-        if (parsed) {
-          Object.values(parsed).forEach(status => {
-            const code = String(status).trim().toUpperCase();
-            if (['H', 'S', 'I', 'A'].includes(code)) {
-              totalRecords++;
-              if (code === 'H') totalH++;
-              else if (code === 'S') totalS++;
-              else if (code === 'I') totalI++;
-              else if (code === 'A') totalA++;
-            }
-          });
-        } else if (j.detail_absen) {
-          const matches = j.detail_absen.match(/\(([HSIAhsia])\)/g);
-          if (matches) {
-            matches.forEach((m: string) => {
-              const code = m.replace(/[()]/g, '').toUpperCase();
-              totalRecords++;
-              if (code === 'H') totalH++;
-              else if (code === 'S') totalS++;
-              else if (code === 'I') totalI++;
-              else if (code === 'A') totalA++;
-            });
-          }
-        }
-      });
-
-      const percentage = totalRecords > 0 ? Math.round((totalH / totalRecords) * 100) : 0;
-
-      return {
-        id: gm.id,
-        nama_mapel: gm.nama_mapel,
-        mapel_singkat: gm.mapel_singkat || gm.nama_mapel,
-        kelas: gm.kelas,
-        meetingCount: subjectJournals.length,
-        totalRecords,
-        totalH,
-        totalS,
-        totalI,
-        totalA,
-        percentage
-      };
-    });
-  }, [teacherSubjects, teacherJournals]);
-
-  // Document Upload Completeness per Subject Calculation
-  const subjectDocCompletenessList = useMemo(() => {
-    if (!teacherSubjects || teacherSubjects.length === 0) {
-      // Fallback for teachers without direct guru_mapel assignments (e.g. Assyfa)
-      const checks = KURIKULUM_DOC_TYPES.map(t => {
-        const found = teacherDocuments.find(d => 
-          (d.jenis_dokumen === t.full) ||
-          (d.jenis_dokumen && d.jenis_dokumen.toLowerCase().includes(t.key.toLowerCase())) ||
-          (t.key === 'RPM' && (d.jenis_dokumen?.includes('Mendalam') || d.jenis_dokumen?.includes('Modul Ajar'))) ||
-          (t.key === 'CP' && d.jenis_dokumen?.includes('Capaian')) ||
-          (t.key === 'ATP' && d.jenis_dokumen?.includes('Alur Tujuan')) ||
-          (t.key === 'RPE' && d.jenis_dokumen?.includes('Pekan Efektif')) ||
-          (t.key === 'Prota' && d.jenis_dokumen?.includes('Tahunan')) ||
-          (t.key === 'Promes' && d.jenis_dokumen?.includes('Semester'))
-        );
-        return {
-          typeKey: t.key,
-          typeName: t.name,
-          isUploaded: Boolean(found),
-          doc: found || null
-        };
-      });
-      const uploadedCount = checks.filter(c => c.isUploaded).length;
-      return [{
-        key: 'general',
-        title: 'Perangkat Pembelajaran Umum',
-        kelas: 'Semua Tingkat',
-        checks,
-        uploadedCount,
-        totalDocs: KURIKULUM_DOC_TYPES.length,
-        isComplete: uploadedCount === KURIKULUM_DOC_TYPES.length
-      }];
-    }
-
-    return teacherSubjects.map(gm => {
-      const subjectDocs = teacherDocuments.filter(d => {
-        const dMapel = (d.mapel || '').toLowerCase();
-        const gmNama = (gm.nama_mapel || '').toLowerCase();
-        const gmSingkat = (gm.mapel_singkat || '').toLowerCase();
-        const gmKelas = (gm.kelas || '').toLowerCase();
-        const dJudul = (d.judul || '').toLowerCase();
-
-        // 1. Direct mapel match
-        if (dMapel && (dMapel === gmNama || dMapel === gmSingkat || dMapel === gmKelas)) {
-          return true;
-        }
-        // 2. Keyword match in judul
-        if (gmSingkat && dJudul.includes(gmSingkat)) return true;
-        if (gmKelas && dJudul.includes(gmKelas)) return true;
-        // 3. If teacher only has 1 subject, any document applies
-        if (teacherSubjects.length === 1) return true;
-
-        return false;
-      });
-
-      const checks = KURIKULUM_DOC_TYPES.map(t => {
-        const found = subjectDocs.find(d => 
-          (d.jenis_dokumen === t.full) ||
-          (d.jenis_dokumen && d.jenis_dokumen.toLowerCase().includes(t.key.toLowerCase())) ||
-          (t.key === 'RPM' && (d.jenis_dokumen?.includes('Mendalam') || d.jenis_dokumen?.includes('Modul Ajar'))) ||
-          (t.key === 'CP' && d.jenis_dokumen?.includes('Capaian')) ||
-          (t.key === 'ATP' && d.jenis_dokumen?.includes('Alur Tujuan')) ||
-          (t.key === 'RPE' && d.jenis_dokumen?.includes('Pekan Efektif')) ||
-          (t.key === 'Prota' && d.jenis_dokumen?.includes('Tahunan')) ||
-          (t.key === 'Promes' && d.jenis_dokumen?.includes('Semester'))
-        );
-        return {
-          typeKey: t.key,
-          typeName: t.name,
-          isUploaded: Boolean(found),
-          doc: found || null
-        };
-      });
-
-      const uploadedCount = checks.filter(c => c.isUploaded).length;
-
-      return {
-        key: gm.id,
-        title: gm.nama_mapel,
-        kelas: gm.kelas,
-        checks,
-        uploadedCount,
-        totalDocs: KURIKULUM_DOC_TYPES.length,
-        isComplete: uploadedCount === KURIKULUM_DOC_TYPES.length
-      };
-    });
-  }, [teacherSubjects, teacherDocuments]);
 
   // Workflow steps for teacher
   const getWorkflowSteps = () => {
@@ -1166,7 +873,7 @@ export default function HomeViewGuru({
             ) : (
               <div className="space-y-2.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {(dailyState.jadwalKBM || []).map((jk: any, idx: number) => {
+                  {dailyState.jadwalKBM.map((jk: any, idx: number) => {
                     const isFilled = (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk));
                     const kelasStr = (jk.kelas || '').trim();
                     const gradeBadge = kelasStr.startsWith('X ') || kelasStr === 'X'

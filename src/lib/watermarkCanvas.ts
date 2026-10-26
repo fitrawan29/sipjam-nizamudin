@@ -133,7 +133,7 @@ export function drawWatermarkedCanvas(
   videoElement: HTMLVideoElement | HTMLImageElement,
   options: WatermarkOptions,
   mirror: boolean = false,
-  orientation?: 'portrait' | 'landscape'
+  _orientation?: 'portrait' | 'landscape'
 ): string {
   // Determine width and height based on element type
   let width = 640;
@@ -149,8 +149,8 @@ export function drawWatermarkedCanvas(
 
   let drawWidth = width;
     let drawHeight = height;
-    let offsetX = 0;
-    let offsetY = 0;
+    const offsetX = 0;
+    const offsetY = 0;
 
     const canvas = document.createElement('canvas');
   // Canvas dimensions conform to target ratio (3:4 portrait or 4:3 landscape)

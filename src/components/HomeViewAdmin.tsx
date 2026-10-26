@@ -2,16 +2,11 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
-  getWitaDateLong, 
   getWitaTimeStr, 
   getWitaDayName, 
-  getWitaDateStr, 
-  getWitaStartOfDay, 
-  getWitaEndOfDay 
+  getWitaDateStr 
 } from '@/lib/wita';
 import { 
-  getGuruDailyState, 
-  GuruDailyState, 
   isJurnalMatchJadwal, 
   isGuruDiPiket 
 } from '@/lib/workflow';
@@ -58,10 +53,9 @@ export interface HomeViewAdminProps {
 export default function HomeViewAdmin({
   user,
   setView,
-  menuItems = [],
+  menuItems: _menuItems = [],
   onOpenAccountSettings,
 }: HomeViewAdminProps) {
-  const dateStr = getWitaDateLong();
   const timeStr = getWitaTimeStr();
   const hariIni = getWitaDayName();
   

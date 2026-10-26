@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
-import { showToast, Toast } from '@/lib/toast';
+import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName } from '@/lib/wita';
@@ -24,7 +24,7 @@ import {
 import { acquirePiketLock, refreshPiketLock, releasePiketLock, PiketLockInfo } from '@/lib/piketLock';
 import { isIntervensiAllowed, isPiketPulangAllowed, fetchBatasIntervensiSiswa, fetchJadwalIntervensiWali } from '@/lib/presensiIntervensi';
 import jsQR from 'jsqr';
-import { triggerParentWhatsApp, normalizeIndonesianPhoneNumber } from '@/utils/whatsappUtils';
+import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
@@ -41,7 +41,7 @@ export default function PiketView({ user }: { user: any }) {
 
   // Concurrency Lock states (M3)
   const [piketLockInfo, setPiketLockInfo] = useState<PiketLockInfo | null>(null);
-  const [isFormLockChecking, setIsFormLockChecking] = useState(false);
+  const [_isFormLockChecking, setIsFormLockChecking] = useState(false);
   const activeLockIdRef = useRef<string | null>(null);
   const isFormLocked = Boolean(piketLockInfo?.lockedByOther);
 
@@ -551,7 +551,7 @@ export default function PiketView({ user }: { user: any }) {
               if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
                 rawVal = barcodes[0].rawValue;
               }
-            } catch (detErr) {
+            } catch {
               // Ignore native detector runtime errors, fallback to jsQR
             }
           }
@@ -1464,7 +1464,7 @@ export default function PiketView({ user }: { user: any }) {
       if (error) {
         showToast('Gagal Mencatat Absensi', 'Koneksi internet aktif diwajibkan untuk mencatat absensi siswa. ' + error.message, 'error');
       }
-    }, (err) => {
+    }, () => {
       showToast('Gagal Mencatat Absensi', 'Koneksi internet aktif diwajibkan untuk mencatat absensi siswa.', 'error');
     });
   };

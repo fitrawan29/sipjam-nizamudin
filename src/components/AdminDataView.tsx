@@ -22,6 +22,7 @@ export default function AdminDataView({ user }: { user: any }) {
   const filterKelas = activeTab === 'Data_Siswa' || activeTab === 'Jadwal_Pelajaran' || activeTab === 'Wali_Kelas' ? filter1 : 'ALL';
   const filterStatus = activeTab === 'Data_Siswa' ? filter2 : activeTab === 'Data_Guru' ? filter1 : 'ALL';
   const filterMapel = activeTab === 'Data_Guru' ? filter2 : 'ALL';
+  void filterKelas; void filterStatus; void filterMapel;
 
   const [dataList, setDataList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

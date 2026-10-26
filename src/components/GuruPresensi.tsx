@@ -3,12 +3,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
-import { showToast, Toast } from '@/lib/toast';
+import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, getWitaDayName, getWitaDateStr } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
-import { WatermarkCoordinates, dataUrlToFile } from '@/lib/watermarkCanvas';
+import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 import { AppUser } from '@/types/user';
 
 export default function GuruPresensi({ user }: { user: AppUser }) {
@@ -137,8 +137,8 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
   useEffect(() => {
     const initConfig = async () => {
       const { data } = await supabase.from('pengaturan').select('*').in('key', ['gps_lat', 'gps_lng', 'gps_radius', 'jam_datang_mulai', 'jam_datang_batas', 'jam_datang_akhir', 'jam_pulang_mulai', 'jam_pulang_jumat', 'jam_pulang_akhir']);
-      let newConfig = { lat: -6.200000, lng: 106.816666, radius: 100 };
-      let newJam = { ...jamPresensi };
+      const newConfig = { lat: -6.200000, lng: 106.816666, radius: 100 };
+      const newJam = { ...jamPresensi };
       if (data) {
         data.forEach((item: any) => {
           if (item.key === 'gps_lat') newConfig.lat = parseFloat(item.value);

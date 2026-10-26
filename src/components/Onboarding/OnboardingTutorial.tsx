@@ -34,7 +34,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
   const steps = getStepsForRole(userRole);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
-  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [_isMeasuring, setIsMeasuring] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   // Reset step index to 0 whenever the tutorial opens

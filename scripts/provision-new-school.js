@@ -10,7 +10,12 @@
  * 4. Menampilkan ringkasan konfigurasi ENV untuk di-paste ke Vercel
  */
 
-const { Client } = require('pg');
+let Client;
+try {
+  Client = require('pg').Client;
+} catch {
+  // pg is intentionally omitted from package.json dependencies to uphold Ponytail minimalism
+}
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
@@ -25,6 +30,14 @@ function ask(query) {
 }
 
 async function main() {
+  if (!Client) {
+    console.error('\n❌ Modul "pg" belum terpasang.');
+    console.log('Untuk menjalankan skrip ini tanpa menambah dependensi ke package.json (prinsip Ponytail):');
+    console.log('   npx --package=pg node scripts/provision-new-school.js\n');
+    console.log('Atau gunakan Cara B (Manual via Supabase SQL Editor) pada docs/PANDUAN_DEPLOY_5_SEKOLAH_GRATIS.md.\n');
+    process.exit(1);
+  }
+
   console.log('\n======================================================');
   console.log('🏫 SIPJAM: PROVISI INSTANCE SEKOLAH BARU (SUPABASE FREE)');
   console.log('======================================================\n');

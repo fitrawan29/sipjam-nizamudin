@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { isIntervensiAllowed, fetchBatasIntervensiSiswa, isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance } from '@/lib/presensiIntervensi';
+import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance } from '@/lib/presensiIntervensi';
 import { getWitaDateStr } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 
@@ -840,6 +840,7 @@ export default function RekapSiswaView({
   const totalGerbangBelumPresensi = totalGerbangSiswa - totalGerbangDatang;
   // Backward compatibility alias for legacy tests and metrics (Belum Scan / Belum Presensi)
   const totalGerbangBelumScan = totalGerbangBelumPresensi;
+  void totalGerbangBelumScan;
 
   const filteredGerbangStudents = gerbangStudents.filter(s => {
     if (gerbangFilterStatus === 'datang' && !s.hasDatang) return false;

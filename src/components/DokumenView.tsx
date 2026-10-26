@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
 import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from '@/types/database';
-import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
+import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 export const KURIKULUM_DOCS = [

@@ -51,7 +51,7 @@ export function AIAssistant({
   userRole,
   userName,
   user,
-  className = '',
+  className: _className = '',
   initialOpen = false,
 }: AIAssistantProps) {
   const [isOpen, setIsOpen] = useState(initialOpen);
