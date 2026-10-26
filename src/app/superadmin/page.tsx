@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
+import { supabase, masterSupabase, clearAllClientSessionState, clearActiveTargetSchool } from '@/lib/supabaseClient';
 import AppScreen from '@/components/AppScreen';
 
 export default function SuperadminPage() {
@@ -48,6 +48,7 @@ export default function SuperadminPage() {
               error.message?.includes('Failed to fetch') ||
               error.message?.includes('NetworkError') ||
               (error as any).name === 'AbortError' ||
+              (error as any).name === 'TimeoutError' ||
               (error as any).status >= 500 ||
               (error as any).status === 429 ||
               (error as any).status === 408 ||
@@ -64,6 +65,7 @@ export default function SuperadminPage() {
               error.message?.includes('ETIMEDOUT') ||
               error.message?.includes('ECONNREFUSED') ||
               error.message?.includes('ECONNRESET') ||
+              error.message?.includes('ENOTFOUND') ||
               error.code === '57014' ||
               error.code?.startsWith?.('PGRST0')
             )
@@ -99,6 +101,7 @@ export default function SuperadminPage() {
           console.warn('[SuperadminPage] User role in DB is not superadmin. Redirecting.');
           const synced = { ...parsed, ...dbUser };
           localStorage.setItem('sipjam_user', JSON.stringify(synced));
+          clearActiveTargetSchool();
           router.replace('/');
           return;
         }
@@ -131,8 +134,15 @@ export default function SuperadminPage() {
           try {
             const parsed = JSON.parse(e.newValue);
             const isSa = (parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
-            if (!isSa || !parsed.session_token) {
+            if (!parsed?.id || !parsed?.session_token) {
               clearAllClientSessionState();
+              setUser(null);
+              router.replace('/');
+            } else if (!isSa) {
+              // Legitimate non-superadmin session updated in another tab (e.g. Guru/Admin)
+              // Clear satellite scope so it doesn't linger, but DO NOT wipe the valid user session!
+              clearActiveTargetSchool();
+              setUser(null);
               router.replace('/');
             } else {
               setUser(parsed);

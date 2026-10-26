@@ -47,6 +47,7 @@ export function useSessionSync(
                 error.message?.includes('Failed to fetch') ||
                 error.message?.includes('NetworkError') ||
                 (error as any).name === 'AbortError' ||
+                (error as any).name === 'TimeoutError' ||
                 (error as any).status >= 500 ||
                 (error as any).status === 429 ||
                 (error as any).status === 408 ||
@@ -63,6 +64,7 @@ export function useSessionSync(
                 error.message?.includes('ETIMEDOUT') ||
                 error.message?.includes('ECONNREFUSED') ||
                 error.message?.includes('ECONNRESET') ||
+                error.message?.includes('ENOTFOUND') ||
                 error.code === '57014' ||
                 error.code?.startsWith?.('PGRST0')
               )
