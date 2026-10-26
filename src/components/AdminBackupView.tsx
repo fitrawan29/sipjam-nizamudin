@@ -158,7 +158,7 @@ export default function AdminBackupView({ user }: { user: any }) {
       const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
 
       const presensiToInsert = json.data.filter((r: any) => r.Tabel === 'presensi_guru').map((r: any) => {
-        const { Tabel, ...rest } = r;
+        const { Tabel: _, ...rest } = r;
         return {
           ...rest,
           sekolah_id: rest.sekolah_id || targetSekolahId
@@ -166,7 +166,7 @@ export default function AdminBackupView({ user }: { user: any }) {
       });
 
       const jurnalToInsert = json.data.filter((r: any) => r.Tabel === 'jurnal_pembelajaran').map((r: any) => {
-        const { Tabel, ...rest } = r;
+        const { Tabel: _, ...rest } = r;
         return {
           ...rest,
           sekolah_id: rest.sekolah_id || targetSekolahId

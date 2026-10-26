@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
-import { showToast, Toast } from '@/lib/toast';
+import { showToast } from '@/lib/toast';
 import NaikKelasModal from './NaikKelasModal';
 import {
   getStudentQrIdentifier,
@@ -11,7 +11,6 @@ import {
   downloadStudentCardPng,
   printStudentQrCardWithSchool,
 } from '@/lib/qrSiswa';
-import { triggerPrintWithGps } from '@/utils/printWithGps';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
@@ -926,7 +925,7 @@ export default function AdminDataView({ user }: { user: any }) {
       cancelButtonColor: '#6B7280',
     }).then((result) => {
       if (result.isConfirmed) {
-        printStudentQrCardWithSchool({ student, schoolName, qrSvg, qrIdentifier });
+        printStudentQrCard(student, qrSvg, qrIdentifier);
       } else if (result.isDenied) {
         handleDownloadStudentCard(student);
       }

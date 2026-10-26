@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, masterSupabase, clearAllClientSessionState, clearActiveTargetSchool } from '@/lib/supabaseClient';
+import { masterSupabase, clearAllClientSessionState, clearActiveTargetSchool } from '@/lib/supabaseClient';
 import AppScreen from '@/components/AppScreen';
 
 export default function SuperadminPage() {

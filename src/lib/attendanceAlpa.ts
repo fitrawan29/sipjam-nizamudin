@@ -574,7 +574,7 @@ export async function evaluateAndApplyAutoCheckout(
 
     let { error: insErr } = await supabase.from('presensi_guru').insert(autoRecord);
     if (insErr && (insErr.message.includes('schema cache') || insErr.message.includes('column'))) {
-      const { is_auto_checkout, ...baseAutoRecord } = autoRecord;
+      const { is_auto_checkout: _, ...baseAutoRecord } = autoRecord;
       const retry = await supabase.from('presensi_guru').insert(baseAutoRecord);
       if (!retry.error) {
         insErr = null;

@@ -16,9 +16,7 @@ import {
   clearReminderSnooze,
   getReminderSnoozeRemainingMs,
   getReminderConfig,
-  setReminderConfig,
-  getReminderEnabledKey,
-  getReminderIntervalKey
+  setReminderConfig
 } from './TeacherReminderManager';
 
 interface AccountSettingsModalProps {

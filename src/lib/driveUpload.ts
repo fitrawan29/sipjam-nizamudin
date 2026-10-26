@@ -32,7 +32,7 @@ async function getTargetEmail(): Promise<string | undefined> {
         return email;
       }
     }
-  } catch (err) {
+  } catch {
     // Non-blocking fallback if offline or during local testing
   }
   return undefined;
@@ -42,7 +42,7 @@ async function getTargetEmail(): Promise<string | undefined> {
 async function compressImage(file: File, maxWidth = 1600, quality = 0.7): Promise<File> {
   if (!file.type.startsWith('image/')) return file;
   
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (event) => {

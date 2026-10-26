@@ -365,7 +365,7 @@ export async function resolveStudentByCode(
       .select('*')
       .eq('qr_code', cleanCode);
     if (sekolahId) queryQr = queryQr.eq('sekolah_id', sekolahId);
-    const { data: byQr, error: errQr } = await queryQr.maybeSingle();
+    const { data: byQr } = await queryQr.maybeSingle();
 
     if (byQr) {
       return { data: byQr as StudentReference, error: null };
@@ -472,7 +472,7 @@ export async function recordPresensiSiswa(
 
   try {
     // 1. Check existing record for today
-    const { data: existing, error: errCheck } = await supabaseClient
+    const { data: existing } = await supabaseClient
       .from('presensi_siswa')
       .select('*')
       .eq('sekolah_id', sekolahId)

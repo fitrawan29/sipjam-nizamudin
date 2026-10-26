@@ -1,5 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
-import { evaluateAndApplyAutoAlpa, evaluateAndApplyAutoCheckout } from '@/lib/attendanceAlpa';
+import { NextRequest, NextResponse } from 'next/server';
+import { evaluateAndApplyAutoAlpa } from '@/lib/attendanceAlpa';
 
 export async function GET(req: NextRequest) {
   try {

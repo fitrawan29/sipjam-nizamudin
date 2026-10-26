@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { FAQItem, MENU_CATEGORIES } from './knowledgeBase';
+import { FAQItem } from './knowledgeBase';
 import {
   findBestAnswers,
   getContextSuggestions,

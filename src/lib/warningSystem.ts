@@ -1,8 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { 
   getWitaDateStr, 
-  getWitaDayName, 
-  getWitaTimeStr 
+  getWitaDayName 
 } from '@/lib/wita';
 
 export interface DisciplineWarning {
@@ -385,7 +384,6 @@ export async function getTeacherDisciplineWarnings(
   targetMonth?: string
 ): Promise<TeacherWarningSummary> {
   const normName = (teacherName || '').trim();
-  const normLower = normName.toLowerCase();
 
   let guruQuery = supabase.from('data_guru').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`);
   if (sekolahId) {
@@ -434,9 +432,9 @@ export async function getTeacherDisciplineWarnings(
   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
   const minTimestamp = minDate + 'T00:00:00+08:00';
 
-  let presensiQuery = supabase.from('presensi_guru').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`).gte('timestamp', minTimestamp).lte('timestamp', maxDate);
-  let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
-  let piketQuery = supabase.from('laporan_piket').select('*').or(`guru_pelapor.ilike.%${normName.split(',')[0].trim()}%,kehadiran_guru_piket.ilike.%${normName.split(',')[0].trim()}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
+  const presensiQuery = supabase.from('presensi_guru').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`).gte('timestamp', minTimestamp).lte('timestamp', maxDate);
+  const jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
+  const piketQuery = supabase.from('laporan_piket').select('*').or(`guru_pelapor.ilike.%${normName.split(',')[0].trim()}%,kehadiran_guru_piket.ilike.%${normName.split(',')[0].trim()}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
 
   const [
     { data: presensiRes },

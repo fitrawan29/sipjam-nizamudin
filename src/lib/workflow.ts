@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay, getWitaDayName } from './wita';
+import { getWitaDateStr, getWitaDayName } from './wita';
 
 export type GuruDailyState = {
   tanggal: string;
@@ -296,7 +296,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
             if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
             if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
           }
-        } catch (e) {
+        } catch {
           guruHanyaMengajarList = [ghmRow.value];
         }
       }
@@ -450,9 +450,6 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     }
 
     // 4. Cek Presensi Hari Ini
-    const startOfDay = getWitaStartOfDay(todayStr);
-    const endOfDay = getWitaEndOfDay(todayStr);
-
     // Ambil SEMUA presensi guru ini (tanpa filter timestamp range yang bisa gagal karena format campuran)
     // Lalu filter manual berdasarkan tanggal
     let presensiQuery = supabase

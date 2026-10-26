@@ -70,7 +70,7 @@ function isTestGuruName(nama?: string | null): boolean {
   );
 }
 
-export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { user: any; isKepalaSekolah?: boolean; isReadOnly?: boolean }) {
+export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly: _isReadOnly }: { user: any; isKepalaSekolah?: boolean; isReadOnly?: boolean }) {
     const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });

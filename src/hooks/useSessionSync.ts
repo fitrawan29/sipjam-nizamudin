@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
+import { masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
 import { AppUser } from '@/types/user';
 
 export function useSessionSync(

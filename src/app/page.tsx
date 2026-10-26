@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
+import { masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
 import LoginScreen from '@/components/LoginScreen';
 import AppScreen from '@/components/AppScreen';
 import PreLoginSplash from '@/components/PreLoginSplash';
