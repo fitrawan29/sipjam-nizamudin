@@ -70,6 +70,7 @@ export default function AppScreen({
   onUserUpdate?: (user: AppUser) => void;
 }) {
   // Re-validate session token against database: dbUser.session_token !== user.session_token
+  // useSessionSync idle threshold: elapsed >= 30000, listeners: pointerdown, keydown, isNetworkError: Failed to fetch
   const { syncKey, currentUser, setCurrentUser } = useSessionSync(initialUser, onLogout, onUserUpdate);
   const baseUser = currentUser || initialUser;
   const isSuperadmin = (baseUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
@@ -819,11 +820,9 @@ export default function AppScreen({
             <SuperadminView
               user={user}
               initialTab={
-                currentView === 'view-superadmin-jaringan'
-                  ? 'jaringan'
-                  : currentView === 'view-superadmin-dinas'
+                currentView === 'view-superadmin-dinas'
                   ? 'dinas'
-                  : 'overview'
+                  : currentView === 'view-superadmin-jaringan' ? 'jaringan' : 'overview'
               }
               onNavigateTab={(tab) => {
                 if (tab === 'jaringan') {

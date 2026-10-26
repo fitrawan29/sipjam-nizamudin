@@ -1,0 +1,65 @@
+# BRIEFING — 2026-10-26T09:27:50Z
+
+## Mission
+Resolve session auto-logout stability and remove lingering test guru data from teacher attendance recap reports.
+
+## 🔒 My Identity
+- Archetype: teamwork_preview_swe
+- Roles: orchestrator, user_liaison, human_reporter, successor
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34
+- Original parent: parent (Sentinel)
+- Original parent conversation ID: 37a27514-a346-4f46-90b4-91e2684d169b
+
+## 🔒 My Workflow
+- **Pattern**: SWE Light
+- **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34\DISPATCH.md
+1. **Decompose**: No decomposition (SWE Light runs whole task sequentially through implementer and reviewers)
+2. **Dispatch & Execute**: Direct (iteration loop: implementer -> reviewer 1 -> reviewer 2 -> reviewer 3 -> auditor)
+3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate
+4. **Succession**: At 16 spawns, write handoff.md, spawn successor
+- **Work items**:
+  1. Implement fix (teamwork_preview_implementer) [in-progress]
+  2. Review round 1 (teamwork_preview_reviewer) [pending]
+  3. Review round 2 (teamwork_preview_reviewer) [pending]
+  4. Review round 3 (teamwork_preview_reviewer) [pending]
+  5. Independent Victory Audit (teamwork_preview_victory_auditor) [pending]
+- **Current phase**: 1
+- **Current focus**: Waiting for teamwork_preview_implementer (implementer_swe34_r1)
+
+## 🔒 Key Constraints
+- NEVER write, modify, or create source code files yourself. Delegate all implementation and all repair to workers.
+- NEVER explore or debug codebase to solve task yourself.
+- Verify independently: re-run tests and check diffs.
+- Maintain Open Issues Ledger across all rounds.
+- Git Workflow: Commit changes and push to `dev` branch (`git push origin dev`, never `main`).
+- Never reuse a subagent after it has delivered its handoff — always spawn fresh.
+
+## Current Parent
+- Conversation ID: 37a27514-a346-4f46-90b4-91e2684d169b
+- Updated: 2026-10-26T09:16:00Z
+
+## Key Decisions Made
+- SWE Light sequential loop initiated for session stability and test guru filter.
+- Round 0 implementer dispatched: implementer_swe34_r1.
+
+## Team Roster
+| Agent | Type | Work Item | Status | Conv ID |
+|-------|------|-----------|--------|---------|
+| implementer_swe34_r1 | teamwork_preview_implementer | Implement fix & test suite | in-progress | 6eacae60-0c71-4212-ad55-20c2800f3cad |
+
+## Succession Status
+- Succession required: no
+- Spawn count: 1 / 16
+- Pending subagents: 6eacae60-0c71-4212-ad55-20c2800f3cad
+- Predecessor: none
+- Successor: not yet spawned
+
+## Active Timers
+- Heartbeat cron: 755f952b-9c0e-40bd-9b18-cad07244f726/task-14
+- Safety timer: 755f952b-9c0e-40bd-9b18-cad07244f726/task-40
+
+## Artifact Index
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34\DISPATCH.md — Dispatch instructions
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34\BRIEFING.md — Working memory
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34\progress.md — Progress tracking
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\implementer_swe34_r1\handoff.md — Implementer handoff (expected)

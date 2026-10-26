@@ -41,23 +41,59 @@ export function useSessionSync(
 
           const isNetworkError =
             (typeof navigator !== 'undefined' && !navigator.onLine) ||
-            (error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || (error as any).name === 'AbortError'));
+            Boolean(
+              error &&
+              (
+                error.message?.includes('Failed to fetch') ||
+                error.message?.includes('NetworkError') ||
+                (error as any).name === 'AbortError' ||
+                (error as any).status >= 500 ||
+                (error as any).status === 429 ||
+                (error as any).status === 408 ||
+                error.message?.includes('timeout') ||
+                error.message?.includes('Timeout') ||
+                error.message?.includes('fetch failed') ||
+                error.message?.includes('Load failed') ||
+                error.message?.includes('Bad Gateway') ||
+                error.message?.includes('Gateway Timeout') ||
+                error.message?.includes('Service Unavailable') ||
+                error.code === '57014' ||
+                error.code?.startsWith?.('PGRST0')
+              )
+            );
 
           if (isNetworkError) {
             console.warn('[AppScreen] Network unavailable during resume. Retaining active session.');
             return;
           }
 
-          if (error || !dbUser || dbUser.session_token !== activeUser.session_token) {
+          // If a transient database/network error occurred, preserve cached session
+          if (error && error.code !== 'PGRST116') {
+            console.warn('[AppScreen] Transient database error during resume. Retaining active session:', error.message);
+            return;
+          }
+
+          // Only logout if database explicitly confirmed session token mismatch or revoked account
+          if (dbUser && dbUser.session_token !== activeUser.session_token) {
             console.warn('[AppScreen] Session invalidated or expired after idle. Logging out.');
             onLogout();
             return;
           }
 
+          if (!dbUser && error?.code === 'PGRST116') {
+            console.warn('[AppScreen] Account not found or session revoked in database. Logging out.');
+            onLogout();
+            return;
+          }
+
           // If superadmin role was changed/revoked in DB, log out
-          if (isSuperadmin && (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') !== 'superadmin') {
+          if (dbUser && isSuperadmin && (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') !== 'superadmin') {
             console.warn('[AppScreen] Superadmin role revoked after idle. Logging out.');
             onLogout();
+            return;
+          }
+
+          if (!dbUser) {
             return;
           }
 

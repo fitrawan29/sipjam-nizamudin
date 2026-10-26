@@ -31,6 +31,21 @@ function countWorkdays(
   return count;
 }
 
+/**
+ * Filter entri pengujian / dummy guru agar rekapitulasi dan dokumen cetak resmi bersih dari data tiruan.
+ */
+function isTestGuruName(nama?: string | null): boolean {
+  if (!nama) return true;
+  const n = nama.toLowerCase().trim();
+  return (
+    n === 'test guru' ||
+    n.includes('test guru') ||
+    n.includes('dummy automated test guru') ||
+    n === 'guru test' ||
+    n === 'guru uji'
+  );
+}
+
 export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { user: any; isKepalaSekolah?: boolean; isReadOnly?: boolean }) {
     const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
@@ -75,6 +90,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       let guruQuery = supabase
         .from('data_guru')
         .select('nama_guru')
+        .not('nama_guru', 'ilike', '%test guru%')
         .order('nama_guru', { ascending: true });
       if (user?.sekolah_id) {
         guruQuery = guruQuery.eq('sekolah_id', user.sekolah_id);
@@ -85,6 +101,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       let presensiQuery = supabase
         .from('presensi_guru')
         .select('*')
+        .not('nama_guru', 'ilike', '%test guru%')
         .gte('timestamp', start)
         .lte('timestamp', end)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi'])
@@ -98,6 +115,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')
+        .not('nama_guru', 'ilike', '%test guru%')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .eq('status_verifikasi', 'Disetujui')
@@ -112,6 +130,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       let piketQuery = supabase
         .from('laporan_piket')
         .select('guru_pelapor, tanggal, status_verifikasi')
+        .not('guru_pelapor', 'ilike', '%test guru%')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .eq('status_verifikasi', 'Disetujui')
@@ -134,10 +153,10 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       const liburDates = new Set<string>((kalenderLibur || []).map((k: any) => k.tanggal as string));
       const totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates);
 
-      // Seed map with all teachers from data_guru
+      // Seed map with all teachers from data_guru (excluding test accounts)
       const pMap: Record<string, any> = {};
       guruList?.forEach(g => {
-        if (g.nama_guru) {
+        if (g.nama_guru && !isTestGuruName(g.nama_guru)) {
           pMap[g.nama_guru] = {
             nama: g.nama_guru,
             hadir: 0,
@@ -154,7 +173,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       // Aggregate presensi
       presensi?.forEach(p => {
         const nama = p.nama_guru;
-        if (!nama) return;
+        if (!nama || isTestGuruName(nama)) return;
         if (!pMap[nama]) {
           pMap[nama] = {
             nama,
@@ -185,7 +204,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       const jMap: Record<string, number> = {};
       jurnal?.forEach(j => {
         const nama = j.nama_guru;
-        if (!nama) return;
+        if (!nama || isTestGuruName(nama)) return;
         if (pMap[nama]) pMap[nama].jurnal++;
         jMap[nama] = (jMap[nama] || 0) + 1;
       });
@@ -194,28 +213,36 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       const pkMap: Record<string, number> = {};
       piket?.forEach(pk => {
         const nama = pk.guru_pelapor;
-        if (!nama) return;
+        if (!nama || isTestGuruName(nama)) return;
         if (pMap[nama]) pMap[nama].piket++;
         pkMap[nama] = (pkMap[nama] || 0) + 1;
       });
 
-      const pArr = Object.keys(pMap).map(k => {
-        const { hadir, dinasLuar, sakit, izin, telatDetik } = pMap[k];
-        // Keterlambatan >= 4 jam (14400 detik) dihitung sebagai 1 alpa otomatis
-        const alpaOtomatis = Math.floor((telatDetik || 0) / 14400);
-        const hadirEfektif = Math.max(0, hadir - alpaOtomatis);
-        // Alpa = Total Wajib Hadir − Hadir − Dinas Luar − Sakit − Izin
-        const alpa = Math.max(0, totalHariKerja - hadirEfektif - dinasLuar - sakit - izin);
-        return {
-          ...pMap[k],
-          hadir: hadirEfektif,
-          alpa,
-          totalWajib: totalHariKerja,
-        };
-      }).sort((a, b) => a.nama.localeCompare(b.nama));
+      const pArr = Object.keys(pMap)
+        .filter(k => !isTestGuruName(k))
+        .map(k => {
+          const { hadir, dinasLuar, sakit, izin, telatDetik } = pMap[k];
+          // Keterlambatan >= 4 jam (14400 detik) dihitung sebagai 1 alpa otomatis
+          const alpaOtomatis = Math.floor((telatDetik || 0) / 14400);
+          const hadirEfektif = Math.max(0, hadir - alpaOtomatis);
+          // Alpa = Total Wajib Hadir − Hadir − Dinas Luar − Sakit − Izin
+          const alpa = Math.max(0, totalHariKerja - hadirEfektif - dinasLuar - sakit - izin);
+          return {
+            ...pMap[k],
+            hadir: hadirEfektif,
+            alpa,
+            totalWajib: totalHariKerja,
+          };
+        }).sort((a, b) => a.nama.localeCompare(b.nama));
 
-      const jArr = Object.keys(jMap).map(k => ({ nama: k, total: jMap[k] })).sort((a, b) => b.total - a.total);
-      const piketArr = Object.keys(pkMap).map(k => ({ nama: k, total: pkMap[k] })).sort((a, b) => b.total - a.total);
+      const jArr = Object.keys(jMap)
+        .filter(k => !isTestGuruName(k))
+        .map(k => ({ nama: k, total: jMap[k] }))
+        .sort((a, b) => b.total - a.total);
+      const piketArr = Object.keys(pkMap)
+        .filter(k => !isTestGuruName(k))
+        .map(k => ({ nama: k, total: pkMap[k] }))
+        .sort((a, b) => b.total - a.total);
 
       setRekapData({ presensi: pArr, jurnal: jArr, piket: piketArr });
     } catch (error) {
@@ -226,7 +253,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
   };
 
   const filteredPresensi = (rekapData?.presensi || []).filter(p =>
-    p.nama.toLowerCase().includes(search.toLowerCase())
+    !isTestGuruName(p.nama) && p.nama.toLowerCase().includes(search.toLowerCase())
   );
 
   // Summary counts

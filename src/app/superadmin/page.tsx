@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase } from '@/lib/supabaseClient';
 import AppScreen from '@/components/AppScreen';
 
 export default function SuperadminPage() {
@@ -34,7 +34,7 @@ export default function SuperadminPage() {
         }
 
         // Validate session token with live database
-        const { data: dbUser, error } = await supabase
+        const { data: dbUser, error } = await masterSupabase
           .from('users')
           .select('id, username, nama, role, session_token, avatar')
           .eq('id', parsed.id)
@@ -42,7 +42,26 @@ export default function SuperadminPage() {
 
         const isNetworkError =
           (typeof navigator !== 'undefined' && !navigator.onLine) ||
-          (error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || (error as any).name === 'AbortError'));
+          Boolean(
+            error &&
+            (
+              error.message?.includes('Failed to fetch') ||
+              error.message?.includes('NetworkError') ||
+              (error as any).name === 'AbortError' ||
+              (error as any).status >= 500 ||
+              (error as any).status === 429 ||
+              (error as any).status === 408 ||
+              error.message?.includes('timeout') ||
+              error.message?.includes('Timeout') ||
+              error.message?.includes('fetch failed') ||
+              error.message?.includes('Load failed') ||
+              error.message?.includes('Bad Gateway') ||
+              error.message?.includes('Gateway Timeout') ||
+              error.message?.includes('Service Unavailable') ||
+              error.code === '57014' ||
+              error.code?.startsWith?.('PGRST0')
+            )
+          );
 
         if (isNetworkError) {
           console.warn('[SuperadminPage] Network offline, retaining cached session.');
@@ -50,10 +69,22 @@ export default function SuperadminPage() {
           return;
         }
 
-        if (error || !dbUser || dbUser.session_token !== parsed.session_token) {
+        // If a transient database/network error occurred, preserve cached session
+        if (error && error.code !== 'PGRST116') {
+          console.warn('[SuperadminPage] Transient database error during validation. Retaining cached session:', error.message);
+          setUser(parsed);
+          return;
+        }
+
+        if ((dbUser && dbUser.session_token !== parsed.session_token) || (!dbUser && error?.code === 'PGRST116')) {
           console.warn('[SuperadminPage] Stale or invalid session. Purging cache.');
           localStorage.removeItem('sipjam_user');
           router.replace('/');
+          return;
+        }
+
+        if (!dbUser) {
+          setUser(parsed);
           return;
         }
 
@@ -70,9 +101,11 @@ export default function SuperadminPage() {
         localStorage.setItem('sipjam_user', JSON.stringify(synced));
         setUser(synced);
       } catch (err) {
-        console.error('Error checking superadmin session:', err);
-        localStorage.removeItem('sipjam_user');
-        router.replace('/');
+        console.warn('Error checking superadmin session, retaining cached session:', err);
+        try {
+          const stored = localStorage.getItem('sipjam_user');
+          if (stored) setUser(JSON.parse(stored));
+        } catch (_) {}
       } finally {
         setLoading(false);
       }

@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-26T07:22:00Z
+# BRIEFING — 2026-10-26T09:16:00Z
 
 ## Mission
-Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (`PrintSignature` di `src/components/PrintHeader.tsx`): ketika user yang login memiliki role `admin`/`Admin`, sembunyikan blok tanda tangan sisi kiri (pencetak) dan rapikan layout tanda tangan Kepala Sekolah & Pengawas, lalu lakukan commit dan push ke branch `dev`.
+Selesaikan perbaikan stabilitas sesi login (mencegah auto-logout saat koneksi berfluktuasi/idle di background) dan pembersihan data "Test Guru" pada tabel dan dokumen rekapitulasi presensi guru (`AdminRekapView.tsx` dan database `presensi_guru`), pastikan test suite `npm test` lulus 100%, serta commit dan push otomatis ke branch `dev`.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -75,7 +75,7 @@ Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (`PrintSignat
 - Cron 1 (Progress Reporting): 4414290f-5168-42be-87ec-7b2c84086ffe/task-42 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 4414290f-5168-42be-87ec-7b2c84086ffe/task-44 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): fe7fd14d-0801-49d4-ab8f-f9a4c5739d5d (victory_auditor_43) [VICTORY CONFIRMED]
-- Orchestrator (current): 15093133-9810-45a9-bedd-e852f7b3d537 (swe_31)
+- Orchestrator (current): 150d9d73-054f-4d29-b427-4a8f6e4dcd3d (swe_31)
 - Cron 1 (Progress Reporting): 2894e868-4e54-4310-a67e-1fe8757cd5b7/task-32 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 2894e868-4e54-4310-a67e-1fe8757cd5b7/task-34 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 8e874f43-c488-4b6f-8480-126eb3e7b319 (victory_auditor_45) [VICTORY CONFIRMED]
@@ -97,6 +97,10 @@ Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (`PrintSignat
 - Cron 1 (Progress Reporting): 71d5795c-8a39-47d9-a72f-2d74adebafe1/task-28 [Terminated on victory]
 - Cron 2 (Liveness Check): 71d5795c-8a39-47d9-a72f-2d74adebafe1/task-30 [Terminated on victory]
 - Victory Auditor (current): bedc4586-77dd-4a12-b77c-20267fa9242f (victory_auditor_48) [VICTORY CONFIRMED]
+- Orchestrator (current): 755f952b-9c0e-40bd-9b18-cad07244f726 (swe_34)
+- Cron 1 (Progress Reporting): 37a27514-a346-4f46-90b4-91e2684d169b/task-34 (*/8 * * * *)
+- Cron 2 (Liveness Check): 37a27514-a346-4f46-90b4-91e2684d169b/task-36 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -126,33 +130,26 @@ Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (`PrintSignat
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (comprehensive multi-requirement update across RBAC, region assignment, executive dashboard, school drilldown, security tests, and git delivery to dev)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (restoration of Superadmin layout/header/sidebar, satelite dropdown, while preserving dinas_pendidikan features)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; hide admin left signature in PrintHeader, dev branch)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; session auto-logout stability resilience and test guru recap filtration, push to dev branch)
 
 ## User Context
-- **Last user request**: Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (`PrintSignature` di `src/components/PrintHeader.tsx`).
+- **Last user request**: Stabilitas Sesi & Pencegahan Auto-Logout + Pembersihan & Filtrasi "Test Guru" pada Rekap Presensi
 - **Pending clarifications**: none
-- **Delivered results**:
-  - Left signature block cleanly removed from DOM when user is admin / Admin
-  - Layout alignment preserved for Kepala Sekolah and Pengawas columns
-  - 10 automated test suites with subtests 10a-10y passing 100%
-  - Pushed to branch `dev` (`git push origin dev`)
-  - Victory confirmed by independent auditor `victory_auditor_48`
+- **Delivered results**: in progress
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (terminated on victory)
-- **Active Subagents**: none (killed on completion)
+- **Active Crons**: 37a27514-a346-4f46-90b4-91e2684d169b/task-34, 37a27514-a346-4f46-90b4-91e2684d169b/task-36
+- **Active Subagents**: 755f952b-9c0e-40bd-9b18-cad07244f726 (swe_34)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING.md — Persistent working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING_ARCHIVE.md — Archived memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_33\DISPATCH.md — Dispatch prompt for swe_33
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_33\handoff.md — Handoff from swe_33
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_48\DISPATCH.md — Dispatch prompt for victory_auditor_48
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_48\handoff.md — Victory Auditor handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_34\DISPATCH.md — Dispatch prompt for swe_34

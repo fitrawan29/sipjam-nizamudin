@@ -30,7 +30,26 @@ function MainApp() {
 
       const isNetworkError =
         (typeof navigator !== 'undefined' && !navigator.onLine) ||
-        (error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || (error as any).name === 'AbortError'));
+        Boolean(
+          error &&
+          (
+            error.message?.includes('Failed to fetch') ||
+            error.message?.includes('NetworkError') ||
+            (error as any).name === 'AbortError' ||
+            (error as any).status >= 500 ||
+            (error as any).status === 429 ||
+            (error as any).status === 408 ||
+            error.message?.includes('timeout') ||
+            error.message?.includes('Timeout') ||
+            error.message?.includes('fetch failed') ||
+            error.message?.includes('Load failed') ||
+            error.message?.includes('Bad Gateway') ||
+            error.message?.includes('Gateway Timeout') ||
+            error.message?.includes('Service Unavailable') ||
+            error.code === '57014' ||
+            error.code?.startsWith?.('PGRST0')
+          )
+        );
 
       if (isNetworkError) {
         console.warn('[MainApp] Network offline, retaining cached session.');
@@ -39,10 +58,24 @@ function MainApp() {
         return;
       }
 
-      if (error || !dbUser || dbUser.session_token !== storedUserObj.session_token) {
+      // If a transient database/network error occurred, preserve cached session
+      if (error && error.code !== 'PGRST116') {
+        console.warn('[MainApp] Transient database error during validation. Retaining cached session:', error.message);
+        setUser(storedUserObj);
+        setShowSplash(false);
+        return;
+      }
+
+      if ((dbUser && dbUser.session_token !== storedUserObj.session_token) || (!dbUser && error?.code === 'PGRST116')) {
         console.warn('[MainApp] Stale or expired session token detected. Purging cache.');
         clearAllClientSessionState();
         setUser(null);
+        setShowSplash(false);
+        return;
+      }
+
+      if (!dbUser) {
+        setUser(storedUserObj);
         setShowSplash(false);
         return;
       }

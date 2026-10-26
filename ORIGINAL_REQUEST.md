@@ -1067,3 +1067,34 @@ Buat file pengujian otomatis (`tests/dinas_pendidikan_monitoring.test.ts`) yang 
 - [ ] Test suite baru lolos pengujian tanpa error (`npx vitest run tests/dinas_pendidikan_monitoring.test.ts` atau test runner yang relevan).
 - [ ] `npx tsc --noEmit` lolos tanpa kompilasi error.
 - [ ] Seluruh perubahan file ter-staging, ter-commit, dan ter-push ke branch **`dev`** (`git push origin dev`).
+
+## 2026-10-26T09:13:14Z
+
+This is a single self-contained fix; keep it small and focused. Resolve session auto-logout stability and remove lingering test guru data from teacher attendance recap reports.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Stabilitas Sesi & Pencegahan Auto-Logout
+Aplikasi tidak boleh melakukan auto-logout atau melempar pengguna ke halaman login saat terjadi fluktuasi koneksi internet, timeout, respons server lambat, atau error non-fatal saat kembali dari idle/background. Cache sesi lokal harus dipertahankan secara resilien. Sesi hanya boleh di-logout jika database secara eksplisit mengonfirmasi bahwa sesi telah dirotasi/dicabut di tempat lain atau akun tidak lagi valid.
+
+### R2. Pembersihan & Filtrasi "Test Guru" pada Rekap Presensi
+Hilangkan entri "Test Guru" dari dokumen dan tabel rekapitulasi presensi guru (`AdminRekapView.tsx` dan database `presensi_guru`). Bersihkan record uji coba usang dari database dan pastikan logika agregasi rekapitulasi memfilter entri pengujian sehingga dokumen cetak resmi bersih dari data tiruan.
+
+### R3. Keutuhan & Validitas Test Suite
+Pastikan seluruh pengujian automated (`npm test`) tetap lulus 100% tanpa regresi.
+
+## Acceptance Criteria
+
+### Session Resilience
+- [ ] Pengguna tidak terlempar ke halaman login saat koneksi internet lambat, terputus sejenak, atau setelah aplikasi ditinggal idle di latar belakang.
+- [ ] Validasi sesi pada `useSessionSync.ts`, `page.tsx`, dan `superadmin/page.tsx` mempertahankan sesi saat terjadi network error / transient server error dan hanya logout saat `dbUser.session_token !== activeUser.session_token`.
+
+### Clean Attendance Print
+- [ ] Tabel Rekapitulasi Presensi dan dokumen cetak tidak memuat "Test Guru".
+- [ ] Record "Test Guru" pada tabel `presensi_guru` di database bersih.
+
+### Regression & Verification
+- [ ] Semua automated tests pada `npm test` lulus tanpa kegagalan.
