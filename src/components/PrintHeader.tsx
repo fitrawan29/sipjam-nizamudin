@@ -351,7 +351,7 @@ export function PrintSignature({
   const finalPengawasNip = pengawasNip || config.ttd_pengawas_nip || config.nip_pengawas_bina || config.NIP_PENGAWAS_BINA || '';
   const finalPengawasJabatan = pengawasJabatan || config.ttd_pengawas_jabatan || config.jabatan_pengawas_bina || 'Pengawas Pembina';
 
-  const isAdmin = (user?.role || '').trim().toLowerCase() === 'admin';
+  const isAdmin = typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin';
   const isSingleColumnLayout = Boolean(singleColumn || isAdmin);
 
   const containerClass = (isSingleColumnLayout && !isPengawasActive)

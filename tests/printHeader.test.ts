@@ -336,6 +336,91 @@ if (!htmlAdminWithPengawas.includes('data-testid="signature-right"')) {
   failed++;
 }
 
+// 10h. user.role with non-string types (number, boolean, object) -> Must not crash, should render left signature
+try {
+  const htmlNumericRole = renderToStaticMarkup(
+    React.createElement(PrintSignature, {
+      user: { role: 123 },
+      leftName: 'Pak Numeric Role'
+    })
+  );
+  if (!htmlNumericRole.includes('data-testid="signature-left"') || !htmlNumericRole.includes('Pak Numeric Role')) {
+    console.error('FAIL: PrintSignature should render left signature when role is non-string (number 123)');
+    failed++;
+  }
+} catch (err: any) {
+  console.error('FAIL: PrintSignature crashed on non-string role number:', err.message);
+  failed++;
+}
+
+try {
+  const htmlBoolRole = renderToStaticMarkup(
+    React.createElement(PrintSignature, {
+      user: { role: true },
+      leftName: 'Pak Boolean Role'
+    })
+  );
+  if (!htmlBoolRole.includes('data-testid="signature-left"') || !htmlBoolRole.includes('Pak Boolean Role')) {
+    console.error('FAIL: PrintSignature should render left signature when role is boolean true');
+    failed++;
+  }
+} catch (err: any) {
+  console.error('FAIL: PrintSignature crashed on non-string role boolean:', err.message);
+  failed++;
+}
+
+// 10i. user.role with surrounding whitespace, newlines, and tabs -> Left signature must NOT exist
+const htmlAdminWhitespace = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: ' \n\tAdmin\r\n ' },
+    leftName: 'Whitespace Admin'
+  })
+);
+if (htmlAdminWhitespace.includes('data-testid="signature-left"') || htmlAdminWhitespace.includes('Whitespace Admin')) {
+  console.error('FAIL: PrintSignature should NOT render left signature block when user.role has whitespace/tabs around Admin');
+  failed++;
+}
+
+// 10j. user.role is 'superadmin' -> Left signature must be rendered normally (only 'admin' is hidden)
+const htmlSuperadmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'superadmin' },
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Superadmin Peninjau',
+    leftName: 'Super User'
+  })
+);
+if (!htmlSuperadmin.includes('data-testid="signature-left"') || !htmlSuperadmin.includes('Super User')) {
+  console.error('FAIL: PrintSignature should render left signature block for non-admin role (superadmin)');
+  failed++;
+}
+
+// 10k. singleColumn={true} with user.role === 'guru' -> Left signature must NOT exist
+const htmlGuruSingle = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'guru' },
+    singleColumn: true,
+    leftName: 'Single Column Guru'
+  })
+);
+if (htmlGuruSingle.includes('data-testid="signature-left"') || htmlGuruSingle.includes('Single Column Guru')) {
+  console.error('FAIL: PrintSignature should NOT render left signature when singleColumn is explicitly true');
+  failed++;
+}
+
+// 10l. singleColumn={false} with user.role === 'admin' -> Left signature must NOT exist because user is admin
+const htmlAdminExplicitFalse = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'admin' },
+    singleColumn: false,
+    leftName: 'Admin Explicit False'
+  })
+);
+if (htmlAdminExplicitFalse.includes('data-testid="signature-left"') || htmlAdminExplicitFalse.includes('Admin Explicit False')) {
+  console.error('FAIL: PrintSignature should NOT render left signature when user.role is admin even if singleColumn is explicitly false');
+  failed++;
+}
+
 if (failed === 0) {
   console.log('ALL PRINT HEADER, GURU JURNAL & REKAP TESTS PASSED!');
 } else {

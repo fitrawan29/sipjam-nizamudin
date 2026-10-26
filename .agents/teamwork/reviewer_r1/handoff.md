@@ -1,69 +1,44 @@
 > [!WARNING] **Skepticism Disclaimer**
-> High confidence in code correctness, build cleanliness, and test stability; however, tactile feel and GPU frame rates on low-end mobile devices during rapid scrolling remain physically unprofiled.
+> High confidence in DOM omission and layout logic based on automated static React markup assertions and TypeScript type check, but physical print spooling via browser print dialog onto physical paper/PDF printer driver remains unverified in headless CLI.
 
 ## 1. What the prior attempt got wrong
-1. **Partial Implementation of Requirement R2 (Omission of 6 Screens & Modals)**:
-   - **Input**: Requirement R2 mandating comprehensive refactoring across `AppScreen`, `HomeViewAdmin`, `HomeViewGuru`, `PiketView`, `GuruPresensi`, `GuruJurnal`, Rekap views, modals, and navigation.
-   - **Expected**: Every specified view (`PiketView`, `GuruPresensi`, `GuruJurnal`, `AdminRekapView`, `RekapJurnalView`, `RekapSiswaView`, `AccountSettingsModal`) refactored with the claymorphic soft 3D design system (clay cards, pastel tones, and tactile clay buttons).
-   - **Actual**: The prior attempt only refactored 3 screens (`HomeViewGuru`, `HomeViewAdmin`, `LoginScreen`) plus a minor class edit in `AppScreen`. `PiketView`, `GuruPresensi`, `GuruJurnal`, `AdminRekapView`, `RekapJurnalView`, `RekapSiswaView`, and `AccountSettingsModal` were completely untouched and remained in flat/standard CSS.
-   - **Root Cause**: Scope truncation by implementer 1, prioritizing initial design system primitives over screen-by-screen application.
+1. **Fatal Runtime Crash on Non-String `user.role`**:
+   - **Input**: `<PrintSignature user={{ role: 123 }} />`, `user={{ role: true }}`, or `user={{ role: {} }}`
+   - **Expected**: Graceful fallback without crashing; renders default left signature block since role is not string `'admin'`.
+   - **Actual**: Threw uncaught `TypeError: ((intermediate value) || "").trim is not a function`, causing a fatal crash of the React render tree.
+   - **Root Cause**: In `src/components/PrintHeader.tsx`, line 354 used `(user?.role || '').trim().toLowerCase() === 'admin'`. Because `user` is typed as `any`, non-string truthy values for `user?.role` bypass `|| ''`, and calling `.trim()` on a number, boolean, or object immediately throws a TypeError.
 
-2. **Dead / Unused Component Architecture (`ClayCard`, `ClayButton`, `ClaySidebar`)**:
-   - **Input**: Creation of reusable components `ClayCard.tsx`, `ClayButton.tsx`, and `ClaySidebar.tsx`.
-   - **Expected**: Active utilization of `ClayCard` and `ClayButton` across components, and integration/availability of `ClaySidebar`.
-   - **Actual**: `AppScreen.tsx` imported `ClayCard` and `ClayButton` as dead imports without ever rendering `<ClayCard>` or `<ClayButton>` anywhere in its JSX. `ClaySidebar` was never imported anywhere in the application.
-   - **Root Cause**: Implementer 1 created primitive wrappers but avoided using them in `AppScreen.tsx` out of caution over static AST test assertions, leaving them orphaned.
-
-3. **Inconsistent KPI Metric Cards in `HomeViewAdmin.tsx`**:
-   - **Input**: 5 summary KPI counter cards on the Admin Dashboard.
-   - **Expected**: Uniform soft clay pastel card styling across all 5 cards.
-   - **Actual**: 4 of the 5 cards were styled as `clay-card clay-card-*`, but the 5th card (`Presensi Pulang`) was left with the legacy `glass-card p-3 rounded-xl border border-amber-200/80` style.
-   - **Root Cause**: Incomplete search-and-replace during implementer 1's refactor.
+2. **Omission of Adversarial Edge-Case Tests**:
+   - **Input**: Non-string roles (`123`, `true`), whitespace variants (`' \n\tAdmin\r\n '`), non-admin roles (`'superadmin'`), and explicit `singleColumn={false}` with admin user.
+   - **Expected**: Automated test assertions verifying all these edge cases.
+   - **Actual**: Prior attempt only tested basic string variations (`'admin'`, `'Admin'`, `'ADMIN '`, `'guru'`, `undefined`, `null`).
+   - **Root Cause**: Implementer did not write adversarial edge-case tests probing type boundaries or layout prop permutations.
 
 ## 2. What I changed
-- **`src/components/HomeViewAdmin.tsx`**:
-  - Upgraded the 5th KPI card (`Presensi Pulang`) to `clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 shadow-sm`, matching the rest of the dashboard KPI counters.
-- **`src/components/AppScreen.tsx`**:
-  - Integrated `<ClayCard variant="mint" rounded="2xl">` for the User Identity Card in the sidebar drawer while strictly preserving all AST-tested text and data properties (`renderUserAvatar`, `Aktif`, role badges).
-  - Integrated `<ClayCard rounded="3xl">` for the Broadcast announcement modal container.
-  - Replaced native logout button with `<ClayButton variant="rose" size="sm">`.
-- **`src/components/PiketView.tsx`**:
-  - Upgraded fallback card for non-duty teachers to `clay-card clay-card-amber rounded-3xl border-2 border-white/90 shadow-md`.
-  - Upgraded all 5 tab navigation buttons (`Beranda Piket`, `Presensi Siswa`, `Penugasan Piket`, `Isi Laporan`, `Rekap Piket`) to `clay-btn` with active `clay-btn-mint` and inactive `clay-btn-secondary`.
-- **`src/components/GuruPresensi.tsx`**:
-  - Styled primary submission button with `clay-btn clay-btn-primary btn-click rounded-2xl shadow-lg shadow-green-900/20`.
-- **`src/components/GuruJurnal.tsx`**:
-  - Styled primary submission button with `clay-btn clay-btn-blue btn-click rounded-2xl shadow-lg shadow-blue-900/20`.
-- **`src/components/AdminRekapView.tsx`**:
-  - Styled download button with `clay-btn clay-btn-blue`.
-  - Refactored all 5 Summary Metric Badges into pastel clay cards (`clay-card-blue`, `clay-card-peach`, `clay-card-mint`, `clay-card-purple`, `clay-card-amber`) with `rounded-2xl border-2 border-white/90`.
-- **`src/components/RekapJurnalView.tsx`**:
-  - Refactored all 4 Summary Metric Cards (`Total Jurnal`, `Disetujui`, `Menunggu`, `Ditolak`) into pastel clay cards (`clay-card-blue`, `clay-card-mint`, `clay-card-amber`, `clay-card-rose`) with `rounded-2xl border-2 border-white/90`.
-- **`src/components/RekapSiswaView.tsx`**:
-  - Refactored tab buttons (`Presensi Gerbang Piket` and `Rekap Absen Siswa`) to use `clay-btn` with `clay-btn-mint` active states.
-  - Styled Wali Kelas assignment banner to use `clay-card clay-card-mint rounded-3xl border-2 border-white/90`.
-- **`src/components/AccountSettingsModal.tsx`**:
-  - Upgraded modal dialog container to `clay-card bg-[#FAF7F2] dark:bg-gray-900 border-2 border-white/90 dark:border-gray-800 rounded-3xl shadow-2xl`.
-  - Refactored action buttons to use `clay-btn clay-btn-secondary` (`Batal`) and `clay-btn clay-btn-primary` (`Simpan Perubahan`).
+- `src/components/PrintHeader.tsx`:
+  - Hardened role validation: changed `const isAdmin = (user?.role || '').trim().toLowerCase() === 'admin'` to `const isAdmin = typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin'`. This ensures crash immunity against non-string role types (`number`, `boolean`, `object`) while safely preserving case-insensitive and trimmed string role matching.
+- `tests/printHeader.test.ts`:
+  - Added adversarial subtests 10h to 10l:
+    - 10h: Non-string role (`number: 123`, `boolean: true`) - verifies no crash and left signature is rendered.
+    - 10i: Whitespace/tabs/newlines (`' \n\tAdmin\r\n '`) - verifies left signature is omitted.
+    - 10j: Non-admin role (`'superadmin'`) - verifies left signature is rendered.
+    - 10k: Explicit `singleColumn={true}` with `user.role === 'guru'` - verifies single column layout works.
+    - 10l: Explicit `singleColumn={false}` with `user.role === 'admin'` - verifies admin hides left signature even if `singleColumn={false}` is explicitly provided.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - Ran `npm test`: executed all 36 test files, covering 47 specs in the final suite; 100% passed (0 failed).
-  - Ran `npx tsc --noEmit`: 0 TypeScript compiler errors.
-  - Ran `npm run build`: compiled successfully with Turbopack in 4.3s, generating 12 static/dynamic routes with zero errors.
-  - Ran `npm run dev` and tested with `Invoke-WebRequest -Uri 'http://localhost:3000'`: returned HTTP 200 OK.
+  - `npx tsx tests/printHeader.test.ts`: 10/10 test suites passed (all subtests 10a–10l PASSED).
+  - `npx tsc --noEmit`: 0 TypeScript compiler errors.
+  - `npx tsx tests/kepsek_pengawas_rbac.test.ts`: 47/47 passed.
+  - `npx tsx tests/dinas_pendidikan_monitoring.test.ts`: 25/25 passed.
 - **Shallow Verification (manual only):**
-  - Inspected CSS rule hierarchy in `src/app/globals.css` ensuring `.glass-card` and `.clay-card` layered box-shadows coexist without breaking print media styles (`@media print`).
-  - Verified dark mode variants for all new clay components.
+  - Verified static HTML string emitted by `renderToStaticMarkup` ensures `data-testid="signature-left"` is completely absent from DOM rather than hidden via CSS, and `data-testid="signature-right"` is aligned right.
 - **Unverified aspects:**
-  - Physical rendering smoothness and 60fps scrolling on low-end mobile GPUs (e.g. Android 8 / low-memory devices).
-  - Touch-device tactile squish feedback on older WebKit browsers.
+  - Physical CSS print media rendering via actual browser print dialog (`window.print()`) onto physical paper/PDF.
+  - Mobile device print dialog preview (iOS Safari and Android Chrome print stylesheets).
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: Multi-layered inset box-shadows and backdrop filters can cause minor GPU frame drops on very low-end mobile hardware during rapid continuous scrolling.
-- `Shallow Verification`: Device-specific browser quirks (e.g. UC Browser, older Samsung Internet) were not manually eyeballed on physical hardware.
+- `Shallow Verification`: Physical printer driver page pagination and margins cannot be directly inspected in a headless CLI environment; static DOM tree layout and CSS rules are verified.
 
 ## 5. Remaining risk & next step
-- **Status**: The task is complete. All 5 requirements (R1 design system primitives, R2 comprehensive screen refactoring, R3 test and build verification, R4 dev server boot verification, R5 git delivery to `dev`) are verified and satisfied.
-- **Git Delivery**: Committed and pushed to `origin dev`: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev
-- **Branch `main`**: Untouched.
+- No remaining defect or functional risk. All requirements (R1, R2, and all acceptance criteria) are satisfied. The task is complete.
