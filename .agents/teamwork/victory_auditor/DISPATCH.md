@@ -1,224 +1,52 @@
-## 2026-10-14T10:55:49Z
-You are the independent post-victory auditor for this task.
+## 2026-10-26T17:23:41Z
+You are teamwork_preview_victory_auditor for task swe_35.
 Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
-Your parent orchestrator conversation ID is: cee80ad9-6743-4395-8d50-c686b97fb49d
+Your parent conversation ID is: 438501ba-ddc1-44a6-bdcc-0efa3a7d46ee
 
 <original_task>
-Perbaiki aturan kehadiran guru agar opsi wajib hadir hanya pada hari mengajar berfungsi secara akurat tanpa error maupun bug di seluruh modul (workflow, presensi, dashboard admin, kalkulasi alpa otomatis, dan notifikasi pengingat), serta lakukan eliminasi file dan kode komponen usang yang sudah tidak dipakai.
+This is a single self-contained fix; keep it small and focused.
+
+Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SIPJAM (Next.js) dengan prinsip Ponytail (minimalis, YAGNI, dan eliminasi kode mati tanpa regresi).
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: demo
 
 ## Requirements
 
-### R1. Keandalan Aturan Kehadiran Guru "Wajib Hadir Hanya Hari Mengajar"
-- Menyelaraskan status guru pada hari tanpa jadwal mengajar di seluruh alur sistem (`src/lib/workflow.ts`, `src/lib/attendanceAlpa.ts`, `src/components/HomeViewAdmin.tsx`, `src/components/HomeViewGuru.tsx`, dan `src/app/api/push/send-reminders/route.ts`).
-- Untuk guru dengan `wajib_hadir_hanya_mengajar = true` atau saat kebijakan global `aturan_kehadiran_guru = 'Hari_Mengajar_Saja'`:
-  1. Pada hari tanpa jadwal mengajar dan tidak ada tugas piket: guru dibebaskan dari kewajiban presensi (`isNonTeachingDay: true`, `bebasAlpa: true`, `isAlpa: false`), tidak dikenai Alpa otomatis di `attendanceAlpa.ts`, dan tidak dikirimi notifikasi tagihan presensi/jurnal.
-  2. Jika ditugaskan piket pada hari tanpa jam mengajar: guru tetap memiliki kewajiban hadir untuk menjalankan tugas piket.
-  3. Jika guru hadir ke sekolah secara sukarela pada hari tanpa jadwal mengajar (melakukan Presensi Datang): guru dapat melakukan Presensi Pulang secara normal tanpa terblokir oleh tagihan jurnal KBM fiktif.
-  4. Dashboard Admin (`HomeViewAdmin.tsx`) dan tampilan Guru (`HomeViewGuru.tsx`) konsisten menampilkan status bebas kehadiran/bebas mengajar tanpa anomali data.
+### R1. Audit and Removal of Dead Code and Orphaned Utilities
+Lakukan audit komprehensif untuk mendeteksi dan menghapus modul/fungsi/file yang tidak pernah diimpor atau dipanggil dalam alur aplikasi (seperti `src/utils/textUtils.ts` jika terbukti unreferenced, dead exports, dan helper usang), serta rapikan import yang tidak terpakai.
 
-### R2. Eliminasi File dan Fitur Usang (Dead & Obsolete Code Cleanup)
-- Menghapus file komponen yatim yang sudah tidak di-mount dan tidak memiliki rute navigasi di aplikasi:
-  - `src/components/AdminMonitorView.tsx`
-  - `src/components/NotificationPermissionModal.tsx`
-  - `src/components/PushNotificationPrompt.tsx`
-- Membersihkan referensi/kode peninggalan usang (seperti antrean offline / sisa variabel legacy) secara bersih tanpa memengaruhi kestabilan transaksi cloud Supabase.
-- Memperbarui file test terkait agar tidak gagal saat memverifikasi file yang telah dihapus.
+### R2. Dependency & Configuration Pruning
+Periksa dependensi pada `package.json` dan konfigurasi terkait untuk mengeliminasi package yang sudah usang atau tidak digunakan lagi di kode aplikasi (mengikuti prinsip Ponytail untuk meminimalkan beban ketergantungan eksternal), dengan tetap memastikan dependensi yang dibutuhkan oleh runner tes tetap terjaga.
 
-### R3. Otomatisasi Verifikasi Pengujian
-- Buat file tes verifikasi otomatis (misal `tests/wajib_hadir_dan_pembersihan_usang.test.ts`) yang memvalidasi seluruh kondisi R1 dan R2 secara menyeluruh.
-- Seluruh suite tes yang terdaftar pada `package.json` (`npm test`) harus tetap berjalan 100% PASS.
+### R3. Zero Regression & Test Suite Preservation
+Pastikan seluruh alur fungsional inti (Presensi, Jurnal, Piket, Rapor, Superadmin, Dinas) tidak terganggu dan seluruh rangkaian pengujian otomatis (`npm test`) tetap lulus 100% tanpa kegagalan.
+
+## Verification Resources
+- Test suite resmi: `npm test`
+- Type checker: `npx tsc --noEmit`
+- Linter: `npm run lint`
 
 ## Acceptance Criteria
 
-### Aturan Kehadiran Hari Mengajar (R1)
-- [ ] Guru yang dikecualikan (exempt) pada hari tanpa jadwal KBM dan tanpa piket memperoleh status `isNonTeachingDay: true`, `bebasAlpa: true`, dan `isAlpa: false`.
-- [ ] `attendanceAlpa.ts` tidak memasukkan record Alpa untuk guru exempt pada hari tanpa jadwal mengajar & tanpa piket.
-- [ ] Guru exempt yang melakukan presensi datang sukarela dapat membuka dan mengirimkan presensi pulang tanpa terblokir oleh validasi jurnal KBM.
-- [ ] Jika guru exempt memiliki tugas piket hari ini, sistem tetap mendeteksi kewajiban piket dan mengharuskan presensi datang.
-- [ ] `send-reminders/route.ts` tidak mengirimkan push reminder pengingat presensi atau jurnal KBM ke guru exempt pada hari tanpa jadwal mengajar.
+### Dead Code & Dependency Elimination
+- [ ] File atau utilitas yang teridentifikasi unreferenced / dead code (termasuk orphaned utilities) telah dihapus dari codebase.
+- [ ] Tidak ada dead imports, sisa deklarasi tak terpakai, atau broken references yang tertinggal.
+- [ ] Dependensi `package.json` yang usang/tidak terpakai telah dibersihkan secara aman tanpa merusak build.
 
-### Pembersihan Kode Usang (R2)
-- [ ] File `src/components/AdminMonitorView.tsx`, `src/components/NotificationPermissionModal.tsx`, dan `src/components/PushNotificationPrompt.tsx` berhasil dihapus.
-- [ ] Tidak ada broken import atau runtime error di seluruh aplikasi akibat penghapusan file tersebut.
-- [ ] Kode antrean offline usang yang tidak terpakai dibersihkan dengan aman.
-
-### Verifikasi & Integritas Pengujian (R3)
-- [ ] Pengujian otomatis memverifikasi seluruh skenario batas (boundary conditions) untuk guru exempt dan non-exempt.
-- [ ] Perintah `npm test` berjalan sukses dengan 0 error dan seluruh tes lulus (PASS).
+### Integrity & Stability
+- [ ] `npx tsc --noEmit` berjalan dengan exit code 0 tanpa error tipe TypeScript.
+- [ ] `npm run lint` berjalan sukses tanpa error import atau syntax.
+- [ ] Seluruh test suite `npm test` lulus 100% (semua sub-suite lolos tanpa kegagalan).
+- [ ] Fitur utama aplikasi berjalan normal tanpa kehilangan fungsionalitas.
 </original_task>
 
 <instructions>
-Conduct your 3-phase audit:
-1. Timeline & requirements check: audit all requirements against commit history and current state.
-2. Cheating detection & test integrity: ensure tests are genuine and tests were not weakened or cheated.
-3. Independent test execution: run `npx tsx tests/wajib_hadir_dan_pembersihan_usang.test.ts`, `npm test`, and `npx tsc --noEmit`. Verify git status and commits.
-
-Write your final audit report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor\audit_report.md` with a structured verdict: CONFIRMED or REJECTED.
-Send a message back to orchestrator `cee80ad9-6743-4395-8d50-c686b97fb49d` with your verdict and findings.
-</instructions>
-## 2026-10-15T22:57:30Z
-You are victory_auditor with role teamwork_preview_victory_auditor.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
-Conduct a thorough independent post-victory audit (timeline audit, cheating/test manipulation detection, and independent test & build execution).
-Write your structured audit report and verdict (CONFIRMED or REJECTED) to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor\handoff.md and report back to the orchestrator via send_message.
-
-<original_task>
-This is a single self-contained fix; keep it small and focused.
-
-Sesuaikan tahun ajaran dan semester pada modul E-Rapor (`src/components/RaporView.tsx`) agar secara otomatis menyelaraskan diri dengan pengaturan aktif sekolah di tabel `pengaturan`, menyediakan dropdown pilihan dinamis yang memuat tahun ajaran yang diatur beserta arsip, serta mendengarkan update realtime.
-
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-Integrity mode: development
-
-## Requirements
-
-### R1. Sinkronisasi Otomatis Tahun Ajaran & Semester dari Pengaturan Sekolah
-- Ambil konfigurasi aktif `tahun_ajaran` dan `semester` dari tabel `pengaturan` untuk `sekolah_id` pengguna (atau default sekolah jika belum diset).
-- Gunakan nilai yang diatur tersebut sebagai inisialisasi awal default pada `selectedTahunAjaran` dan `selectedSemester` di `RaporView.tsx`.
-- Pasang event listener untuk `sipjam:config_updated` agar saat admin mengubah tahun ajaran atau semester di menu Sistem (`AdminConfigView`), `RaporView` langsung memperbarui state aktifnya secara otomatis.
-
-### R2. Dropdown Pilihan Tahun Ajaran Dinamis & Fleksibel
-- Jangan mengunci opsi tahun ajaran pada daftar statis hardcoded semata.
-- Bangun opsi tahun ajaran secara dinamis: pastikan tahun ajaran yang sedang diatur selalu tersedia, digabungkan dengan tahun ajaran yang tercatat di database (dari `capaian_pembelajaran`, `tujuan_pembelajaran`, `wali_kelas`, `jadwal_pelajaran`) serta opsi tahun relevan (misal tahun sebelumnya dan sesudahnya).
-- Berikan penanda visual yang jelas pada opsi tahun ajaran yang sedang aktif diatur (misal: "2024/2025 (Aktif)").
-- Pengguna tetap dapat memilih tahun ajaran atau semester lain dari dropdown untuk meninjau rapor periode/arsip terdahulu.
-
-### R3. Konsistensi Query dan Dokumen Cetak
-- Seluruh pengambilan data rapor (data nilai siswa, capaian pembelajaran, tujuan pembelajaran, wali kelas, serta catatan/observasi) harus dieksekusi secara reaktif sesuai `selectedTahunAjaran` dan `selectedSemester` yang sedang dipilih/disinkronkan.
-- Lembar cetak Laporan Hasil Belajar (E-Rapor) dan judul dokumen cetak wajib menampilkan teks Tahun Ajaran dan Semester yang akurat sesuai pilihan aktif.
-
-## Verification Resources
-- Test suites: `npm test` (termasuk `tests/e_rapor_real_data_pipeline.test.ts`, `tests/adversarial_rapor_wali_security.test.ts`, dan `tests/m4_academic_merdeka_rapor.test.ts`).
-- Production build: `npm run build` harus 0 error.
-
-## Acceptance Criteria
-
-### Automatic Sync
-- [ ] `RaporView.tsx` secara otomatis mengambil dan menerapkan `tahun_ajaran` dan `semester` dari tabel `pengaturan` saat dimuat.
-- [ ] Perubahan tahun ajaran / semester di Pengaturan Sistem (`AdminConfigView`) memicu pembaruan otomatis di `RaporView` via realtime/event listener.
-
-### Dynamic Select Options
-- [ ] Dropdown Tahun Ajaran memuat tahun ajaran aktif yang diatur dan tidak membatasi pengguna hanya pada opsi statis lama.
-- [ ] Dropdown tetap mengizinkan pengguna memilih tahun ajaran lain untuk mengakses data arsip.
-
-### Document & Data Accuracy
-- [ ] Nilai rapor dan narasi capaian pembelajaran yang dimuat sesuai dengan kombinasi Tahun Ajaran dan Semester yang aktif dipilih.
-- [ ] Lembar cetak rapor mencantumkan Tahun Ajaran dan Semester yang benar.
-
-### System Stability
-- [ ] Seluruh unit dan adversarial test suites (`npm test`) lulus 100% tanpa regresi.
-- [ ] Sesuai prinsip Ponytail: diff minimal, reuse helper dan mekanisme yang sudah ada di codebase.
-</original_task>
-## 2026-10-20T07:45:37Z
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
-Your caller/parent conversation ID is: 3534717f-ac7e-478e-998f-907c2ab8b38b
-
-<original_task>
-Penyesuaian batas jendela waktu input absensi kelas (Piket pagi s.d. 08:00 WITA, Wali Kelas pagi s.d. 12:00 WITA bersamaan KBM mapel, alokasi jam pulang Piket & Wali Kelas 1 jam setelah jam pulang mulai) serta fallback dinamis absensi harian siswa dari jurnal mapel guru jam terakhir dengan preservasi aturan Bolos.
-
-Working directory: c:/Users/Fitra/OneDrive/Documents/sipjam-app
-Integrity mode: development
-
-This is a single self-contained fix; keep it small and focused.
-
-## Requirements
-
-### R1. Jendela Waktu Input Absensi Siswa Pagi & KBM Independen
-- Guru Piket: batas input presensi pagi siswa tetap hingga pk. 08:00 WITA.
-- Wali Kelas: batas input absensi kelas pagi diperpanjang hingga pk. 12:00 WITA.
-- Koeksistensi KBM: Selama periode pagi s.d. pk. 12:00 WITA, Guru Mapel yang masuk kelas tetap dapat mengisi presensi sesi KBM di jurnal pembelajaran secara independen tanpa saling bertabrakan atau terblokir oleh akses Wali Kelas.
-
-### R2. Jendela Waktu Presensi Pulang (Piket & Wali Kelas Selaras 1 Jam)
-- Guru Piket dan Wali Kelas memiliki alokasi waktu presensi pulang yang selaras: aktif sejak `jam_pulang_mulai` hingga tepat maksimal 1 jam (60 menit) setelah jam pulang dimulai (bukan 20 menit atau 30 menit).
-- Akses penyesuaian malam (pk. 22:00 WITA) dihapus/ditutup setelah batas 1 jam kepulangan tersebut berakhir.
-
-### R3. Fallback Dinamis Jurnal KBM Terakhir & Preservasi Aturan Bolos
-- Jika Wali Kelas tidak ada atau belum mengisi absensi kelas, tampilan dan rekapitulasi harian kelas secara otomatis mengambil data status kehadiran dari jurnal KBM guru jam pelajaran terakhir pada hari tersebut (misal jam ke-3, ke-4, atau ke-5).
-- Aturan Bolos tetap ditegakkan: jika siswa tercatat Hadir di awal (datang pagi / gerbang / kelas pagi) namun tercatat Alfa pada sesi KBM jam terakhir, sistem secara otomatis menetapkan status siswa sebagai **Bolos** (B).
-
-### R4. Pembaruan dan Verifikasi Suite Pengujian
-- Seluruh unit test dan suite pengujian terkait (termasuk `tests/wali_kelas_and_piket_intervensi.test.ts`) diperbarui agar mencerminkan parameter waktu baru (12:00 WITA pagi, alokasi pulang 60 menit / 1 jam untuk Piket & Wali Kelas, tidak saling bertabrakan dengan KBM, dan fallback bolos) serta lulus 100% tanpa regresi.
-
-## Acceptance Criteria
-
-### Verifikasi Jendela Waktu & Independensi
-- [ ] Wali Kelas dapat menginput absensi kelas hingga pk. 12:00 WITA, dan Guru Mapel dapat menginput jurnal KBM tanpa saling memblokir.
-- [ ] Fungsi validasi pulang untuk Guru Piket dan Wali Kelas mengizinkan input tepat dalam rentang 60 menit sejak `jam_pulang_mulai` (misal jam pulang 11:00 WITA, maka s.d. 12:00 WITA diizinkan; 12:01 WITA terkucin).
-- [ ] Akses malam (pk. 22:00 WITA) telah dinonaktifkan sehingga intervensi terkunci setelah batas 60 menit pasca jam pulang.
-
-### Verifikasi Logika Fallback & Bolos
-- [ ] Siswa tanpa absensi kelas dari wali kelas otomatis mewarisi status dari jurnal KBM sesi jam terakhir hari itu.
-- [ ] Siswa yang berstatus Hadir pagi dan Alfa di jurnal KBM jam terakhir diverifikasi berstatus Bolos (B) pada laporan/rekap.
-
-### Verifikasi Kualitas & Regresi
-- [ ] Pengujian `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts` berjalan dan lulus 100%.
-- [ ] Perubahan file bersih dan siap di-commit ke Git sesuai aturan repositori.
-</original_task>
-
-## 2026-10-23T07:40:59Z
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor
-Your caller/orchestrator ID is: 6a34a9ec-d2a4-4634-92f5-2f27eda28b69
-When finished, write your audit report to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor\handoff.md and send a message back with your structured verdict.
-
-<original_task>
-This is a single self-contained fix; keep it small and focused.
-Refactor the entire UI of the Next.js application to a Claymorphism / Soft Clay aesthetic with reusable components (ClayCard, ClayButton, ClaySidebar) while strictly preserving all existing database structures and business logic.
-MANDATORY: All changes must be committed and pushed to the `dev` branch (`git push origin dev`). Never push to `main`. After pushing, provide the GitHub link to inspect the `dev` branch: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev.
-
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-Integrity mode: development
-
-## Requirements
-
-### R1. Reusable Claymorphism Design System Primitives
-Implement modular, reusable components (`ClayCard`, `ClayButton`, `ClaySidebar`):
-- Soft 3D clay aesthetic: rounded contours (`rounded-2xl` / `rounded-3xl`), thick light/white borders, layered inner highlight and soft diffused drop shadows.
-- Pastel color palette with `#FDF6EC` as the primary background canvas and soft pastel accents for cards and buttons.
-- Fully responsive across mobile, tablet, and desktop breakpoints.
-
-### R2. Comprehensive UI Refactoring Across Screens
-Refactor the application screens and components (`AppScreen`, `HomeViewAdmin`, `HomeViewGuru`, `PiketView`, `GuruPresensi`, `GuruJurnal`, Rekap views, modals, and navigation) to use the new Claymorphism style and components without altering any underlying state logic, hooks, database calls, API endpoints, or prop contracts.
-
-### R3. Automated Quality & Non-Regression Verification
-Verify that the codebase builds cleanly, TypeScript passes without errors, and the existing automated test suite (`npm test`) passes with zero logic or database regressions.
-
-### R4. Development Server & Visual Verification
-Run the dev server (`npm run dev`) and ensure the application boots cleanly on `http://localhost:3000` with visual confirmation of claymorphism aesthetics across dashboard screens.
-
-### R5. Mandatory Git Workflow & Branch Link Delivery
-Upon completion, the agent MUST automatically:
-1. Run `git status` and stage changes (`git add .`).
-2. Commit with a clear, descriptive message (`git commit -m "..."`).
-3. Push directly to the development branch: `git push origin dev`.
-4. STRICT RULE: DO NOT push or merge to `main`.
-5. Provide the clickable link to the pushed branch: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev
-
-## Acceptance Criteria
-
-### Component Design & Styling
-- [ ] `ClayCard`, `ClayButton`, and `ClaySidebar` exist as clean, reusable TypeScript components.
-- [ ] Application background uses `#FDF6EC` with consistent soft 3D clay aesthetic (dual shadow, rounded borders, pastel accents) applied across all views.
-- [ ] Responsive navigation and layouts work seamlessly on mobile, tablet, and desktop.
-
-### Logic Preservation & Stability
-- [ ] Zero modifications to database schema, queries, authentication, or business logic.
-- [ ] `npx tsc --noEmit` and `npm run build` pass with 0 errors.
-- [ ] Existing automated test suite (`npm test`) passes with 0 failures.
-- [ ] Local dev server (`npm run dev`) launches and loads pages without runtime crashes.
-
-### Git Delivery & Link
-- [ ] Changes committed and verified pushed to branch `dev` (`git push origin dev`).
-- [ ] Branch `main` untouched.
-- [ ] Clickable link to `dev` branch (https://github.com/fitrawan29/sipjam-nizamudin/tree/dev) presented in the final summary.
-</original_task>
-
-<audit_instructions>
 Conduct an independent 3-phase audit:
-Phase 1: Timeline & commit history audit against git log and remote dev branch.
-Phase 2: Cheating detection (verify no tests were commented out, bypassed, weakened, or altered to pass).
-Phase 3: Independent test execution (`npm test`, `npx tsc --noEmit`, `npm run build`, and dev server check).
-Report your structured verdict: CONFIRMED or REJECTED.
-</audit_instructions>
+Phase 1: Timeline & integrity analysis (commits 6b93004, 659a2af, 502b124, 5fbad36).
+Phase 2: Cheating detection & test suite preservation check (ensure tests were not modified to make them pass, and verify textUtils & package.json contracts).
+Phase 3: Independent test execution (`npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`).
+
+Provide a clear structured report with verdict: CONFIRMED or REJECTED.
+Save your report in c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor\handoff.md and message your verdict and report summary back to parent.
+</instructions>

@@ -1,49 +1,38 @@
-# Handoff Report — Project Sentinel (`swe_34` & `victory_auditor_49`)
+# Handoff Report — Sentinel (swe_35)
 
 ## Observation
-User requested a single self-contained, focused fix addressing:
-1. **R1. Stabilitas Sesi & Pencegahan Auto-Logout**: Prevent sudden logouts on network dropouts, transient server errors, and mobile idle background recovery. Only logout when session token mismatch is explicitly confirmed or user is explicitly invalid.
-2. **R2. Pembersihan & Filtrasi "Test Guru" pada Rekap Presensi**: Ensure attendance recap table, print documents, and database records in `presensi_guru` / `data_guru` are completely free of "Test Guru" entries.
-3. **R3. Keutuhan & Validitas Test Suite**: Ensure 100% automated test pass rate without regressions.
-
-The task was routed to **SWE Light** (`teamwork_preview_swe`) as `swe_34`.
-The team executed:
-- Round 0: `implementer_swe34_r1` (commit `ca45ad0`)
-- Round 1: `reviewer_swe34_r1b` (commit `7d9b545`)
-- Round 2: `reviewer_swe34_r2` (commit `e2afbeb`)
-- Round 3: `reviewer_swe34_r3` (commit `4683b94`)
-- Post-victory independent audit by `victory_auditor_49` rendered: **VICTORY CONFIRMED**.
+User requested comprehensive dead code elimination, orphaned utilities pruning, and obsolete dependency cleanup under Ponytail principles (minimalist, YAGNI, zero regressions) for SIPJAM (Next.js 16 + React 19 + Supabase).
+SWE Light path was selected (`teamwork_preview_swe`). The pipeline executed sequentially across Round 0 (implementer) and 3 adversarial review rounds, concluding with an independent Victory Audit by `victory_auditor_50`.
 
 ## Logic Chain
-1. **Session Resilience (`src/hooks/useSessionSync.ts`, `src/app/page.tsx`, `src/app/superadmin/page.tsx`, `src/components/AppScreen.tsx`)**:
-   - Network errors, timeouts, fetch failures (`TypeError: Failed to fetch`, `NetworkError`, aborted fetches) and general server errors (`PGRST500+`, HTTP 5xx) are recognized as transient offline/flaky events and silently ignored.
-   - The user's cached session in `localStorage` is preserved without kicking them out.
-   - Session invalidation occurs strictly when the server confirms `dbUser.session_token !== activeUser.session_token` (concurrent login/rotation) or `PGRST116` (account confirmed deleted).
-   - Multi-tab storage sync (`storage` event) updates tokens smoothly across tabs.
-2. **Test Guru Clean Rekap (`src/components/AdminRekapView.tsx`, `supabase/migrations/20261026_cleanup_test_guru_presensi.sql`)**:
-   - Query level: `.not('nama_guru', 'ilike', '%test guru%')` filter applied to PostgREST queries.
-   - Client level: Name normalization removes punctuation, extra whitespace, and checks case-insensitive patterns (`test guru`, `guru test`, `dummy automated test guru`) across table rows, summary cards, and print views.
-   - Migration executed: Stale dummy records purged from database tables. Live database check confirmed 0 test guru records remain.
-3. **Verification**:
-   - Targeted unit test suite `tests/session_resilience_and_clean_rekap.test.ts` (11/11 tests PASS).
-   - Full regression test suite `npm test` (39/39 suites PASS).
-   - TypeScript verification `npx tsc --noEmit` (0 errors).
-   - Next.js 16 production build `npm run build` (compiled 12 static/dynamic routes in 3.7s, exit code 0).
-   - Git branch delivery: All 4 commits pushed to `origin/dev`. `main` branch untouched.
+1. **Audit & Pruning of Unreferenced Files & Dead Assets**:
+   - Eliminated orphaned wrapper `src/lib/gpsPrint.ts`.
+   - Deleted legacy scripts and text files: `code.gs.txt` (83.6 KB), `index.html.txt` (274 KB), `run-migration.js` (1 KB), `importData.ts`, `scripts/update-database-types.js`, `scripts/verify-db-milestone1.ts`, `scripts/test-attendance-sync.ts`.
+   - Deleted unused starter SVGs in `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`).
+   - Audited `src/utils/textUtils.ts`: determined it is actively required and imported by `src/components/PrintHeader.tsx` and validated by tests; preserved to prevent regressions.
+2. **Dead Query Elimination & Variable Pruning**:
+   - Pruned orphaned `fetchTeacherDetails()` (~250 lines) in `HomeViewGuru.tsx` that previously fired 4 redundant Supabase database queries on every teacher dashboard mount.
+   - Cleansed unreferenced imports and unused parameters/variables across 20+ UI views and utilities.
+   - Adjusted ESLint configuration to ignore test/script files while reducing active warnings by over 55% (from 303 to 131) with 0 errors.
+3. **Dependency & Invariant Preservation**:
+   - Audited `package.json`. Found strict invariant in `tests/four_ponytail_improvements.test.ts` enforcing the exact canonical list of 9 packages (`@supabase/supabase-js`, `csv-parse`, `dotenv`, `next`, `react`, `react-dom`, `sweetalert2`, `tsx`, `web-push`). Preserved these dependencies to maintain 100% test suite integrity.
+   - Hardened `scripts/provision-new-school.js` with lazy `pg` handling without requiring extra runtime dependencies.
+4. **Independent Post-Victory Audit**:
+   - Post-victory auditor `victory_auditor_50` conducted a 3-phase audit with zero shared context:
+     - Phase A (Timeline): PASS.
+     - Phase B (Integrity): PASS (zero test changes, zero skipped tests, zero facade implementations).
+     - Phase C (Independent Tests): PASS (`npm test` 39/39 suites pass 100%, `npx tsc --noEmit` exit 0, `npm run lint` exit 0, `npm run build` exit 0).
+   - Verdict: **VICTORY CONFIRMED**.
 
 ## Caveats
-- If an admin deletes a user directly from the Supabase dashboard while that user's device is completely offline with no network connectivity, the cached session will remain active offline until the device reconnects and receives the `PGRST116` response from the server.
-- Print styling in `AdminRekapView` retains existing layout and signature alignment; test guru entries are omitted from both the visual table and physical print layout.
+- `tests/four_ponytail_improvements.test.ts` strictly checks the 9 dependencies in `package.json`. Any future dependency addition or removal must be updated simultaneously in that test.
+- The remaining 131 ESLint warnings are legacy React lifecycle patterns in pre-existing views that do not affect runtime execution or build.
 
 ## Conclusion
-All acceptance criteria from `ORIGINAL_REQUEST.md` have been met and independently confirmed by `victory_auditor_49`. Project is complete.
+The repository has been comprehensively pruned of dead code, orphaned utilities, obsolete scripts, and starter template assets, reducing bloat and network requests while maintaining 100% test suite integrity and zero regressions.
 
 ## Verification Method
-- Independent audit completed by `victory_auditor_49`.
-- Verdict: **VICTORY CONFIRMED**.
-- Automated verification commands:
-  - `npx tsx tests/session_resilience_and_clean_rekap.test.ts` -> 11/11 PASS
-  - `npx tsc --noEmit` -> 0 errors
-  - `npm test` -> 39/39 suites PASS (100%)
-  - `npm run build` -> Exit code 0
-  - `git log origin/dev -n 4` -> commits `ca45ad0`, `7d9b545`, `e2afbeb`, `4683b94` present on `dev`
+- `npm test`: 39/39 suites passed (100%).
+- `npx tsc --noEmit`: Exit code 0 (0 type errors).
+- `npm run lint`: Exit code 0 (0 errors).
+- `npm run build`: Exit code 0 (Turbopack production build succeeded cleanly).
