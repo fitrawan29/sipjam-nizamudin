@@ -355,7 +355,7 @@ export function PrintSignature({
   const isSingleColumnLayout = Boolean(singleColumn || isAdmin);
 
   const containerClass = (isSingleColumnLayout && !isPengawasActive)
-    ? "print-only print-signature mt-10 flex justify-end ml-auto text-black"
+    ? "print-only print-signature mt-10 flex justify-end ml-auto page-break-inside-avoid text-black"
     : "print-only print-signature w-full flex justify-between items-start mt-8 pt-4 page-break-inside-avoid text-black";
 
   const containerStyle = (isSingleColumnLayout && !isPengawasActive)

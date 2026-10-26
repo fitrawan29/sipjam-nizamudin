@@ -421,6 +421,190 @@ if (htmlAdminExplicitFalse.includes('data-testid="signature-left"') || htmlAdmin
   failed++;
 }
 
+// 10m. page-break-inside-avoid must be present in both single-column (admin) and multi-column (guru) containers
+if (!htmlAdmin.includes('page-break-inside-avoid')) {
+  console.error('FAIL: PrintSignature must contain page-break-inside-avoid in singleColumn/admin container');
+  failed++;
+}
+if (!htmlGuru.includes('page-break-inside-avoid')) {
+  console.error('FAIL: PrintSignature must contain page-break-inside-avoid in multiColumn/guru container');
+  failed++;
+}
+
+// 10n. mixed-case role: 'aDmIn' -> Left signature must NOT exist in DOM
+const htmlAdminMixedCase = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'aDmIn', nama: 'Admin Mixed' },
+    leftName: 'LeftAdminMixed'
+  })
+);
+if (htmlAdminMixedCase.includes('data-testid="signature-left"') || htmlAdminMixedCase.includes('LeftAdminMixed')) {
+  console.error('FAIL: PrintSignature should NOT render left signature for mixed-case role aDmIn');
+  failed++;
+}
+
+// 10o. primitive values passed for user ('admin', 42, true) -> must not crash and must not falsely match user.role
+try {
+  const htmlUserString = renderToStaticMarkup(
+    React.createElement(PrintSignature, {
+      user: 'admin' as any,
+      leftName: 'Primitive String User'
+    })
+  );
+  if (!htmlUserString.includes('data-testid="signature-left"') || !htmlUserString.includes('Primitive String User')) {
+    console.error('FAIL: Primitive string user should render default left signature');
+    failed++;
+  }
+
+  const htmlUserNum = renderToStaticMarkup(
+    React.createElement(PrintSignature, {
+      user: 42 as any,
+      leftName: 'Primitive Number User'
+    })
+  );
+  if (!htmlUserNum.includes('data-testid="signature-left"') || !htmlUserNum.includes('Primitive Number User')) {
+    console.error('FAIL: Primitive number user should render default left signature');
+    failed++;
+  }
+} catch (err: any) {
+  console.error('FAIL: PrintSignature crashed on primitive user prop:', err.message);
+  failed++;
+}
+
+// 10p. null, undefined, empty string, or whitespace string role -> render left signature
+const emptyRoles = [null, undefined, '', '   '];
+for (const emptyRole of emptyRoles) {
+  const htmlEmptyRole = renderToStaticMarkup(
+    React.createElement(PrintSignature, {
+      user: { role: emptyRole },
+      leftName: `LeftEmptyRole_${String(emptyRole)}`
+    })
+  );
+  if (!htmlEmptyRole.includes('data-testid="signature-left"') || !htmlEmptyRole.includes(`LeftEmptyRole_${String(emptyRole)}`)) {
+    console.error(`FAIL: PrintSignature should render left signature when role is ${JSON.stringify(emptyRole)}`);
+    failed++;
+  }
+}
+
+// 10q. Caller Simulation: AdminRekapView
+// AdminRekapView passes leftSubtitle="Pengelola Data / Admin" and leftName=user?.nama
+const htmlAdminRekapCaller = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Pengelola Data / Admin',
+    leftName: 'Admin Operator Rekap',
+    leftNip: '198101012005011001',
+    user: { role: 'admin', nama: 'Admin Operator Rekap', sekolah_id: 'sch-1' },
+    sekolahId: 'sch-1'
+  })
+);
+if (htmlAdminRekapCaller.includes('data-testid="signature-left"') || htmlAdminRekapCaller.includes('Pengelola Data / Admin')) {
+  console.error('FAIL [AdminRekapView caller]: Admin signature block must NOT be rendered');
+  failed++;
+}
+if (!htmlAdminRekapCaller.includes('data-testid="signature-right"')) {
+  console.error('FAIL [AdminRekapView caller]: Right signature (Kepsek) must be rendered');
+  failed++;
+}
+
+// 10r. Caller Simulation: DokumenView
+const htmlDokumenCallerAdmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Pengelola Data / Admin',
+    leftName: 'Dokumen Admin',
+    leftNip: '198202022006021002',
+    user: { role: 'admin', sekolah_id: 'sch-1' },
+    sekolahId: 'sch-1'
+  })
+);
+if (htmlDokumenCallerAdmin.includes('data-testid="signature-left"') || htmlDokumenCallerAdmin.includes('Pengelola Data / Admin')) {
+  console.error('FAIL [DokumenView caller admin]: Admin signature block must NOT be rendered');
+  failed++;
+}
+
+// 10s. Caller Simulation: RaporView with showKepalaSekolah={true}
+const htmlRaporCallerAdmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Orang Tua / Wali Murid',
+    leftName: '...........................................',
+    hideLeftNip: true,
+    rightTitle: 'Wali Kelas 7A',
+    rightName: 'Dra. Wali Kelas',
+    showKepalaSekolah: true,
+    user: { role: 'admin', sekolah_id: 'sch-1' }
+  })
+);
+if (htmlRaporCallerAdmin.includes('data-testid="signature-left"')) {
+  console.error('FAIL [RaporView caller admin]: Left block must NOT be rendered for admin');
+  failed++;
+}
+if (!htmlRaporCallerAdmin.includes('data-testid="signature-right"') || !htmlRaporCallerAdmin.includes('Wali Kelas 7A')) {
+  console.error('FAIL [RaporView caller admin]: Right signature (Wali Kelas) must be rendered');
+  failed++;
+}
+if (!htmlRaporCallerAdmin.includes('Kepala Sekolah')) {
+  console.error('FAIL [RaporView caller admin]: Centered Kepala Sekolah block must be rendered via showKepalaSekolah');
+  failed++;
+}
+
+// 10t. Caller Simulation: RekapJurnalView
+const htmlJurnalCallerAdmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Guru Mata Pelajaran',
+    leftName: 'Guru Matematika',
+    user: { role: 'admin' }
+  })
+);
+if (htmlJurnalCallerAdmin.includes('data-testid="signature-left"')) {
+  console.error('FAIL [RekapJurnalView caller admin]: Left signature block must NOT be rendered for admin');
+  failed++;
+}
+const htmlJurnalCallerGuru = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Guru Mata Pelajaran',
+    leftName: 'Guru Matematika',
+    user: { role: 'guru' }
+  })
+);
+if (!htmlJurnalCallerGuru.includes('data-testid="signature-left"') || !htmlJurnalCallerGuru.includes('Guru Matematika')) {
+  console.error('FAIL [RekapJurnalView caller guru]: Left signature block must be rendered for guru');
+  failed++;
+}
+
+// 10u. Caller Simulation: RekapSiswaView
+const htmlSiswaCallerAdmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Kepala Sekolah / Admin',
+    leftName: 'Pak Admin Siswa',
+    user: { role: 'Admin' }
+  })
+);
+if (htmlSiswaCallerAdmin.includes('data-testid="signature-left"') || htmlSiswaCallerAdmin.includes('Kepala Sekolah / Admin')) {
+  console.error('FAIL [RekapSiswaView caller Admin]: Left signature block must NOT be rendered for Admin');
+  failed++;
+}
+
+// 10v. Explicit showPengawas={false} overrides config fallback when user is admin
+const htmlAdminNoPengawasExplicit = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'admin' },
+    showPengawas: false
+  })
+);
+if (htmlAdminNoPengawasExplicit.includes('data-testid="signature-pengawas"')) {
+  console.error('FAIL: Pengawas must NOT be rendered when showPengawas is explicitly false');
+  failed++;
+}
+if (!htmlAdminNoPengawasExplicit.includes('justify-end') || !htmlAdminNoPengawasExplicit.includes('ml-auto')) {
+  console.error('FAIL: Layout must remain right-aligned when showPengawas is explicitly false');
+  failed++;
+}
+
 if (failed === 0) {
   console.log('ALL PRINT HEADER, GURU JURNAL & REKAP TESTS PASSED!');
 } else {

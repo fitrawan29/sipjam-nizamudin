@@ -49,12 +49,13 @@ Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (PrintSignatu
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
 | implementer_1 | teamwork_preview_implementer | Hide admin signature block & tests | completed | a1502ac0-7e10-4782-ac32-d13879d06a07 |
-| reviewer_r1 | teamwork_preview_reviewer | Adversarial review round 1 | in-progress | c13b1c1e-30ba-4bbc-a3cd-b03e11b3e7bc |
+| reviewer_r1 | teamwork_preview_reviewer | Adversarial review round 1 | completed | c13b1c1e-30ba-4bbc-a3cd-b03e11b3e7bc |
+| reviewer_r2 | teamwork_preview_reviewer | Adversarial review round 2 | in-progress | 7cf65177-98e5-4293-bb01-3b933bbd2dab |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 2 / 16
-- Pending subagents: c13b1c1e-30ba-4bbc-a3cd-b03e11b3e7bc
+- Spawn count: 3 / 16
+- Pending subagents: 7cf65177-98e5-4293-bb01-3b933bbd2dab
 - Predecessor: none
 - Successor: not yet spawned
 
