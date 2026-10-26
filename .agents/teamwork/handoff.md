@@ -1,85 +1,49 @@
-# Sentinel Project Handoff Report: Penghilangan Blok Tanda Tangan Admin pada Dokumen Cetak (PrintSignature)
+# Handoff Report — Project Sentinel (`swe_34` & `victory_auditor_49`)
 
-**Sentinel ID**: 71d5795c-8a39-47d9-a72f-2d74adebafe1  
-**Project Orchestrator**: `swe_33` (`a5fa1e04-23e9-4158-98f9-5d3f72631f57`)  
-**Independent Victory Auditor**: `victory_auditor_48` (`bedc4586-77dd-4a12-b77c-20267fa9242f`)  
-**Final Status**: VICTORY CONFIRMED  
+## Observation
+User requested a single self-contained, focused fix addressing:
+1. **R1. Stabilitas Sesi & Pencegahan Auto-Logout**: Prevent sudden logouts on network dropouts, transient server errors, and mobile idle background recovery. Only logout when session token mismatch is explicitly confirmed or user is explicitly invalid.
+2. **R2. Pembersihan & Filtrasi "Test Guru" pada Rekap Presensi**: Ensure attendance recap table, print documents, and database records in `presensi_guru` / `data_guru` are completely free of "Test Guru" entries.
+3. **R3. Keutuhan & Validitas Test Suite**: Ensure 100% automated test pass rate without regressions.
 
----
+The task was routed to **SWE Light** (`teamwork_preview_swe`) as `swe_34`.
+The team executed:
+- Round 0: `implementer_swe34_r1` (commit `ca45ad0`)
+- Round 1: `reviewer_swe34_r1b` (commit `7d9b545`)
+- Round 2: `reviewer_swe34_r2` (commit `e2afbeb`)
+- Round 3: `reviewer_swe34_r3` (commit `4683b94`)
+- Post-victory independent audit by `victory_auditor_49` rendered: **VICTORY CONFIRMED**.
 
-## 1. Observation
+## Logic Chain
+1. **Session Resilience (`src/hooks/useSessionSync.ts`, `src/app/page.tsx`, `src/app/superadmin/page.tsx`, `src/components/AppScreen.tsx`)**:
+   - Network errors, timeouts, fetch failures (`TypeError: Failed to fetch`, `NetworkError`, aborted fetches) and general server errors (`PGRST500+`, HTTP 5xx) are recognized as transient offline/flaky events and silently ignored.
+   - The user's cached session in `localStorage` is preserved without kicking them out.
+   - Session invalidation occurs strictly when the server confirms `dbUser.session_token !== activeUser.session_token` (concurrent login/rotation) or `PGRST116` (account confirmed deleted).
+   - Multi-tab storage sync (`storage` event) updates tokens smoothly across tabs.
+2. **Test Guru Clean Rekap (`src/components/AdminRekapView.tsx`, `supabase/migrations/20261026_cleanup_test_guru_presensi.sql`)**:
+   - Query level: `.not('nama_guru', 'ilike', '%test guru%')` filter applied to PostgREST queries.
+   - Client level: Name normalization removes punctuation, extra whitespace, and checks case-insensitive patterns (`test guru`, `guru test`, `dummy automated test guru`) across table rows, summary cards, and print views.
+   - Migration executed: Stale dummy records purged from database tables. Live database check confirmed 0 test guru records remain.
+3. **Verification**:
+   - Targeted unit test suite `tests/session_resilience_and_clean_rekap.test.ts` (11/11 tests PASS).
+   - Full regression test suite `npm test` (39/39 suites PASS).
+   - TypeScript verification `npx tsc --noEmit` (0 errors).
+   - Next.js 16 production build `npm run build` (compiled 12 static/dynamic routes in 3.7s, exit code 0).
+   - Git branch delivery: All 4 commits pushed to `origin/dev`. `main` branch untouched.
 
-1. **User Request & Task Routing**:
-   - The user requested omitting the left signature block (printer/admin/teacher column) from print documents in SIPJAM when the logged-in user possesses an `'admin'` (or `'Admin'`) role.
-   - The right signature block (Kepala Sekolah) and Pengawas Bina signature must remain visible and cleanly aligned.
-   - Scope was strictly confined to `src/components/PrintHeader.tsx` without changing any callers.
-   - Pushed automatically to branch `dev` per `GEMINI.md`.
-   - Routed per Decision Table to **SWE Light (`teamwork_preview_swe`)** as a single self-contained, focused change.
-   - Recorded authoritatively in `.agents/teamwork/ORIGINAL_REQUEST.md`.
+## Caveats
+- If an admin deletes a user directly from the Supabase dashboard while that user's device is completely offline with no network connectivity, the cached session will remain active offline until the device reconnects and receives the `PGRST116` response from the server.
+- Print styling in `AdminRekapView` retains existing layout and signature alignment; test guru entries are omitted from both the visual table and physical print layout.
 
-2. **Executed Code & Architecture Changes**:
-   - `src/components/PrintHeader.tsx`:
-     - Implemented hardened role validation:
-       ```typescript
-       const isAdmin = typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin';
-       const isSingleColumnLayout = singleColumn || isAdmin;
-       ```
-     - Left column node conditionally omitted from DOM tree (`null`) when `isSingleColumnLayout` is true (rather than visually hidden with CSS).
-     - Single-column container layout configured with `justify-end ml-auto page-break-inside-avoid`, ensuring the Kepala Sekolah signature neatly hugs the right margin without awkward blank spacing.
-     - Preserved Pengawas Bina signature on the left when enabled (`showPengawas=true`), with Kepala Sekolah aligned on the right.
-     - Preserved default rendering for regular teachers (`user.role === 'guru'`), superadmin, dinas, or when `user` is null/undefined.
-     - Zero caller components modified across the entire codebase.
+## Conclusion
+All acceptance criteria from `ORIGINAL_REQUEST.md` have been met and independently confirmed by `victory_auditor_49`. Project is complete.
 
-3. **Verification & Testing**:
-   - Created comprehensive test suite in `tests/printHeader.test.ts` covering 10 test suites and subtests 10a–10y (100% passing).
-   - Independent verification via `npx tsc --noEmit` exited with 0 type errors.
-   - All 4 commits cleanly synchronized with `origin/dev`:
-     * `2e54dad`: `fix(print): hide left signature block when printed by admin role`
-     * `1d6172f`: `fix(print): harden user.role type validation in PrintSignature and add adversarial tests`
-     * `db1f23d`: `fix(print): ensure page-break immunity on single-column signature and expand caller simulation tests`
-     * `2ed9d6a`: `test(print): complete caller simulations for Gradebook, Piket, and Dinas views in reviewer r3`
-   - Branch `main` remains untouched at `51fa5f8`.
-
-4. **Independent Victory Audit**:
-   - `victory_auditor_48` conducted a 3-phase audit (Timeline & Git, Cheating/Integrity, Independent Execution).
-   - Confirmed true DOM omission, strict git compliance to `dev`, and zero regressions.
-   - Verdict: **VICTORY CONFIRMED**.
-
----
-
-## 2. Logic Chain
-
-1. In educational institutions using SIPJAM, when an administrative officer prints official recap documents (Gradebook, Rapor, Presensi, Piket), having an "Admin" personal signature block alongside the Principal is redundant or non-standard.
-2. Checking `isAdmin = typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin'` guarantees robust detection across any case casing or whitespace padding while protecting against non-string edge cases.
-3. Leveraging the existing `singleColumn` layout structure avoids layout breakages and eliminates unsightly whitespace on the left.
-4. Keeping the changes isolated strictly to `PrintHeader.tsx` preserves all existing caller contracts.
-
----
-
-## 3. Caveats
-
-- For caller components that intentionally need a custom left signature even under admin login, callers can still pass `singleColumn={false}` or omit the user prop if ever necessary.
-- In headless/CLI automated testing environments, physical printer spoolers cannot be triggered, but static DOM tree hierarchy and CSS `@media print` rules have been rigorously verified.
-
----
-
-## 4. Conclusion
-
-All acceptance criteria (R1 role hiding, R2 layout preservation, scope isolation, clean TypeScript build, and git delivery to `dev`) are 100% met and independently verified with verdict **VICTORY CONFIRMED**.
-
----
-
-## 5. Verification Method
-
-```bash
-# 1. Run the PrintHeader test suite
-npx tsx tests/printHeader.test.ts
-
-# 2. Run TypeScript compilation check
-npx tsc --noEmit
-
-# 3. Check Git branch & synchronization
-git status
-git branch
-git log -n 4 --oneline
-```
+## Verification Method
+- Independent audit completed by `victory_auditor_49`.
+- Verdict: **VICTORY CONFIRMED**.
+- Automated verification commands:
+  - `npx tsx tests/session_resilience_and_clean_rekap.test.ts` -> 11/11 PASS
+  - `npx tsc --noEmit` -> 0 errors
+  - `npm test` -> 39/39 suites PASS (100%)
+  - `npm run build` -> Exit code 0
+  - `git log origin/dev -n 4` -> commits `ca45ad0`, `7d9b545`, `e2afbeb`, `4683b94` present on `dev`
