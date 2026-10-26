@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-26T10:49:07Z
+# BRIEFING — 2026-10-26T14:27:41Z
 
 ## Mission
-Selesaikan perbaikan stabilitas sesi login (mencegah auto-logout saat koneksi berfluktuasi/idle di background) dan pembersihan data "Test Guru" pada tabel dan dokumen rekapitulasi presensi guru (`AdminRekapView.tsx` dan database `presensi_guru`), pastikan test suite `npm test` lulus 100%, serta commit dan push otomatis ke branch `dev`.
+Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SIPJAM (Next.js) dengan prinsip Ponytail (minimalis, YAGNI, eliminasi kode mati tanpa regresi), memastikan npm test lulus 100%, tsc 0 error, npm run lint sukses, dan push otomatis ke dev branch.
 
 ## 🔒 My Identity
 - Archetype: sentinel
