@@ -605,10 +605,80 @@ if (!htmlAdminNoPengawasExplicit.includes('justify-end') || !htmlAdminNoPengawas
   failed++;
 }
 
+// 10w. Caller Simulation: GradebookView
+// Admin printing GradebookView
+const htmlGradebookAdmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Guru Mata Pelajaran',
+    leftName: 'Guru Matematika',
+    leftNip: '198303032007031003',
+    user: { role: 'admin', nama: 'Admin Kurikulum' },
+    sekolahId: 'sch-1'
+  })
+);
+if (htmlGradebookAdmin.includes('data-testid="signature-left"') || htmlGradebookAdmin.includes('Guru Matematika')) {
+  console.error('FAIL [GradebookView caller admin]: Left signature block must NOT be rendered for admin');
+  failed++;
+}
+if (!htmlGradebookAdmin.includes('data-testid="signature-right"')) {
+  console.error('FAIL [GradebookView caller admin]: Right signature (Kepsek) must be rendered');
+  failed++;
+}
+
+// 10x. Caller Simulation: PiketView
+// PiketView passes only user and sekolahId
+const htmlPiketCallerAdmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'admin', nama: 'Admin Piket' },
+    sekolahId: 'sch-1'
+  })
+);
+if (htmlPiketCallerAdmin.includes('data-testid="signature-left"')) {
+  console.error('FAIL [PiketView caller admin]: Left signature block must NOT be rendered for admin');
+  failed++;
+}
+if (!htmlPiketCallerAdmin.includes('data-testid="signature-right"')) {
+  console.error('FAIL [PiketView caller admin]: Right signature (Kepsek) must be rendered');
+  failed++;
+}
+
+const htmlPiketCallerGuru = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'guru', nama: 'Guru Petugas Piket' },
+    sekolahId: 'sch-1'
+  })
+);
+if (!htmlPiketCallerGuru.includes('data-testid="signature-left"')) {
+  console.error('FAIL [PiketView caller guru]: Left signature block must be rendered for guru');
+  failed++;
+}
+
+// 10y. Caller Simulation: DinasDashboard
+// DinasDashboard passes singleColumn={true} and user with role='dinas_pendidikan'
+const htmlDinasDashboardCaller = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'dinas_pendidikan', nama: 'Pengawas Dinas' },
+    singleColumn: true,
+    rightTitle: 'Pengawas Pembina / Pejabat Dinas',
+    rightName: 'Drs. H. Pejabat Dinas',
+    rightNip: '197001011995011001'
+  })
+);
+if (htmlDinasDashboardCaller.includes('data-testid="signature-left"')) {
+  console.error('FAIL [DinasDashboard caller]: Left signature block must NOT be rendered when singleColumn is true');
+  failed++;
+}
+if (!htmlDinasDashboardCaller.includes('Pengawas Pembina / Pejabat Dinas') || !htmlDinasDashboardCaller.includes('Drs. H. Pejabat Dinas')) {
+  console.error('FAIL [DinasDashboard caller]: Pejabat Dinas signature must be rendered at right');
+  failed++;
+}
+
 if (failed === 0) {
   console.log('ALL PRINT HEADER, GURU JURNAL & REKAP TESTS PASSED!');
 } else {
   console.error(`${failed} tests failed!`);
   process.exit(1);
 }
+
 
