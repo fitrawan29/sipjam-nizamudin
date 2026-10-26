@@ -471,7 +471,7 @@ export default function AppScreen({
       window.history.pushState(null, '', `?view=${targetId}`);
       setCurrentView(targetId);
       setSidebarOpen(false);
-    } catch (err) {
+    } catch {
       Swal.close();
       Swal.fire('Error', 'Gagal memeriksa status harian. Periksa koneksi internet Anda.', 'error');
     }

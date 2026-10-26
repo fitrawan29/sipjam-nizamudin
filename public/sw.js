@@ -50,7 +50,7 @@ self.addEventListener('fetch', (event) => {
   try {
     const url = new URL(event.request.url);
     if (url.pathname.startsWith('/api/')) return;
-  } catch (e) {
+  } catch {
     // ignore URL parsing error
   }
 
@@ -106,14 +106,14 @@ self.addEventListener('push', (event) => {
       } else if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object' && parsed[0] !== null) {
         payload = parsed[0];
       }
-    } catch (err) {
+    } catch {
       try {
         const text = event.data.text();
         payload = {
           title: 'SIPJAM Notifikasi',
           body: text || 'Pemberitahuan baru dari sistem SIPJAM.'
         };
-      } catch (textErr) {
+      } catch {
         payload = {
           title: 'SIPJAM Notifikasi',
           body: 'Pemberitahuan baru dari sistem SIPJAM.'

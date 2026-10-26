@@ -76,7 +76,7 @@ export default function AccountSettingsModal({
         } else {
           setSnoozeRemainingMinutes(0);
         }
-      } catch (e) {}
+      } catch {}
     }
   }, [user, isOpen]);
 
@@ -96,7 +96,7 @@ export default function AccountSettingsModal({
         } else {
           setSnoozeRemainingMinutes(0);
         }
-      } catch (e) {}
+      } catch {}
     };
 
     const ticker = setInterval(() => {
@@ -123,7 +123,7 @@ export default function AccountSettingsModal({
     try {
       // Writes to sipjam_reminder_enabled_${user.id}
       setReminderConfig(user?.id, enabled, autoReminderInterval);
-    } catch (e) {}
+    } catch {}
   };
 
   const handleChangeReminderInterval = (interval: number) => {
@@ -132,7 +132,7 @@ export default function AccountSettingsModal({
     try {
       // Writes to sipjam_reminder_interval_${user.id}
       setReminderConfig(user?.id, autoReminderEnabled, validInterval);
-    } catch (e) {}
+    } catch {}
   };
 
   const handleCancelSnoozeFromModal = () => {
@@ -318,7 +318,7 @@ export default function AccountSettingsModal({
       try {
         // Persist sipjam_reminder_enabled_${user.id} and sipjam_reminder_interval_${user.id}
         setReminderConfig(user.id, autoReminderEnabled, autoReminderInterval);
-      } catch (e) {}
+      } catch {}
 
       showToast('Profil Berhasil Disimpan', 'Perubahan avatar, identitas, dan pengaturan akun telah disimpan.', 'success');
 

@@ -37,7 +37,7 @@ export default function PWAInstallPrompt() {
       if (isDismissed || isInstalled) {
         return;
       }
-    } catch (e) {
+    } catch {
       // Ignore localStorage access restrictions
     }
 
@@ -52,7 +52,7 @@ export default function PWAInstallPrompt() {
     const handleAppInstalled = () => {
       try {
         localStorage.setItem('sipjam_pwa_installed', 'true');
-      } catch (e) {}
+      } catch {}
       setShowPrompt(false);
       setDeferredPrompt(null);
     };
@@ -74,7 +74,7 @@ export default function PWAInstallPrompt() {
         if (choice && choice.outcome === 'accepted') {
           try {
             localStorage.setItem('sipjam_pwa_installed', 'true');
-          } catch (e) {}
+          } catch {}
         }
       } catch (err) {
         console.error('Error invoking PWA prompt:', err);
@@ -85,7 +85,7 @@ export default function PWAInstallPrompt() {
       // Fallback for browsers that don't pass beforeinstallprompt object
       try {
         localStorage.setItem('sipjam_pwa_installed', 'true');
-      } catch (e) {}
+      } catch {}
       setShowPrompt(false);
     }
   };
@@ -93,7 +93,7 @@ export default function PWAInstallPrompt() {
   const handleDismiss = () => {
     try {
       localStorage.setItem('sipjam_pwa_dismissed', 'true');
-    } catch (e) {}
+    } catch {}
     setShowPrompt(false);
   };
 

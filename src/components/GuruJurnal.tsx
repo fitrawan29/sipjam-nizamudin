@@ -315,7 +315,9 @@ export default function GuruJurnal({ user }: { user: any }) {
           query = query.ilike('nama_guru', `%${cleanNama}%`);
         }
 
-        let { data, error } = await query.order('nama_mapel', { ascending: true });
+        const queryRes = await query.order('nama_mapel', { ascending: true });
+        let data = queryRes.data;
+        const error = queryRes.error;
 
         if (error) {
           console.error('Error fetching guru_mapel:', error);

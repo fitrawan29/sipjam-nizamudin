@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getWitaTimeStr, 
   getWitaDayName, 
@@ -169,6 +169,7 @@ export default function HomeViewGuru({
         }
       };
 
+      fetchAttendanceStats();
     }
   }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth]);
 

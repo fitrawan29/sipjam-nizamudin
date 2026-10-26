@@ -28,7 +28,7 @@ export function PrintHeader({ sekolahId, user }: PrintHeaderProps = {}) {
             const parsed = JSON.parse(stored);
             if (parsed?.sekolah_id) return parsed.sekolah_id;
           }
-        } catch (e) {
+        } catch {
           // ignore parsing error
         }
       }
@@ -245,7 +245,7 @@ export function PrintSignature({
             const parsed = JSON.parse(stored);
             if (parsed?.sekolah_id) return parsed.sekolah_id;
           }
-        } catch (e) {
+        } catch {
           // ignore parsing error
         }
       }
@@ -369,7 +369,7 @@ export function PrintSignature({
       if (stored) {
         namaPencetak = JSON.parse(stored).nama;
       }
-    } catch (e) {}
+    } catch {}
   }
   const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
 

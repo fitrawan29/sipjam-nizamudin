@@ -376,7 +376,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
               return;
             }
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
       }
