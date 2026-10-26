@@ -1,30 +1,43 @@
-# Implementer 1 Handoff Report: Claymorphism / Soft Clay UI Refactor
+# Implementer 1 Handoff Report: Sembunyikan Blok Tanda Tangan Admin Pada Dokumen Cetak
 
-## Executive Summary
-Refactored the application UI to a Claymorphism / Soft Clay 3D design system with pastel colors and `#FDF6EC` canvas background, introducing reusable primitives (`ClayCard`, `ClayButton`, `ClaySidebar`) while strictly preserving 100% of the underlying state logic, hooks, database calls, API endpoints, and test contracts.
+## 1. What was changed
+- **`src/components/PrintHeader.tsx`**:
+  - Ditambahkan deteksi role admin secara case-insensitive:
+    ```tsx
+    const isAdmin = (user?.role || '').trim().toLowerCase() === 'admin';
+    const isSingleColumnLayout = Boolean(singleColumn || isAdmin);
+    ```
+  - Variabel `isSingleColumnLayout` digunakan untuk mengontrol `containerClass`, `containerStyle`, blok tanda tangan kiri (`data-testid="signature-left"`), blok tanda tangan pengawas (`data-testid="signature-pengawas"`), dan blok tanda tangan kanan Kepala Sekolah (`data-testid="signature-right"`).
+  - Ketika `user.role` bernilai `'admin'` (atau `'Admin'`, `'ADMIN'`):
+    - Kolom tanda tangan kiri (jabatan, nama, NIP admin/pencetak) tidak dirender sama sekali ke dalam DOM (`null`).
+    - Kolom tanda tangan Kepala Sekolah tetap terposisi rapi di sisi kanan dengan class `w-64 ml-auto` dan container `flex justify-end ml-auto`.
+    - Jika opsi tanda tangan Pengawas aktif, kolom Pengawas tetap dirender normal di sisi kiri dan Kepala Sekolah di sisi kanan dengan `justify-between`.
+  - Jika `user` undefined, `null`, atau memiliki role selain admin (seperti `guru`), perilaku default tidak berubah sama sekali (blok tanda tangan kiri tetap dirender).
+  - Tidak ada perubahan pada pemanggil (callers) mana pun; interface `PrintSignatureProps` tetap utuh.
+- **`tests/printHeader.test.ts`**:
+  - Ditambahkan unit test suite (Suite 10a - 10g) yang merender komponen `PrintSignature` ke HTML via `renderToStaticMarkup` untuk memvalidasi:
+    - 10a: `user.role === 'admin'` -> blok kiri tidak ada di DOM, blok kanan Kepala Sekolah ada, container `justify-end` `ml-auto`.
+    - 10b: `user.role === 'Admin'` (kapital) -> blok kiri tidak ada di DOM.
+    - 10c: `user.role === 'ADMIN '` (uppercase + whitespace) -> blok kiri tidak ada di DOM.
+    - 10d: `user.role === 'guru'` -> blok kiri dirender normal beserta nama dan NIP guru.
+    - 10e: `user` undefined -> blok kiri dirender normal.
+    - 10f: `user` null -> blok kiri dirender normal.
+    - 10g: `user.role === 'admin'` dengan `showPengawas={true}` -> blok tanda tangan admin tidak ada, blok Pengawas ada di kiri, blok Kepala Sekolah ada di kanan.
 
-## 1. Design System & Component Architecture
-- **Canvas & Aesthetic**: Configured `#FDF6EC` as the primary background canvas with soft 3D clay depth, rounded contours (`rounded-2xl` and `rounded-3xl`), thick light/white borders (`border-2 border-white/90`), and dual diffuse shadows with inner light highlights.
-- **`ClayCard` (`src/components/ClayCard.tsx`)**: Reusable modular card with soft clay 3D extrusion, supporting pastel variants (`default`, `mint`, `peach`, `amber`, `blue`, `purple`, `rose`, `primary`, `inset`), configurable border radius, and interactive squish feedback.
-- **`ClayButton` (`src/components/ClayButton.tsx`)**: Reusable tactile button component with layered shadows, soft hover elevation, and responsive squishy `:active` depression. Supports `primary`, `secondary`, `mint`, `amber`, `rose`, `blue`, `ghost` variants and standard button attributes.
-- **`ClaySidebar` (`src/components/ClaySidebar.tsx`)**: Reusable modular sidebar with clay identity profile card, role badges, multi-tenant satellite school selector, active clay pill styling, and smooth drawer animations.
-- **`src/components/clay/index.ts`**: Re-exports all primitives for clean barrel importing.
+## 2. Rationale
+Menghilangkan blok tanda tangan kiri saat admin mencetak dokumen untuk menghindari kolom tanda tangan yang redundan/tidak perlu bagi staf tata usaha/admin, sembari menjaga estetika dokumen cetak agar kolom Kepala Sekolah tetap rapi di sisi kanan (atau berdampingan dengan Pengawas Pembina jika aktif) tanpa celah kosong aneh di sisi kiri.
 
-## 2. Refactored Screens & Views
-- **`src/app/globals.css`**: Configured root `--background: #FDF6EC`, introduced `.clay-card`, `.clay-btn`, `.clay-inset`, and pastel variant classes, and enhanced `.glass-card` and `.input-premium` to inherit soft clay contours while maintaining full test backward compatibility.
-- **`src/app/layout.tsx`**: Updated body background token to `#FDF6EC` light and `#18181b` dark mode.
-- **`src/components/AppScreen.tsx`**: Refactored header navigation bar with soft clay elevation, tactile clay icon buttons for hamburger, broadcast announcements, user avatar, theme toggle, and logout. Enhanced sidebar drawer with clay profile card and pastel pill navigation.
-- **`src/components/HomeViewGuru.tsx`**: Transformed hero header to 3D clay emerald banner, converted personal attendance stats (Hadir, Terlambat, Izin, Sakit) to pastel clay cards (`clay-card-mint`, `clay-card-amber`, `clay-card-blue`, `clay-card-rose`), and upgraded Wali Kelas quick action card to a soft clay interactive widget.
-- **`src/components/HomeViewAdmin.tsx`**: Upgraded dashboard hero card and converted real-time KPI counter metrics into pastel clay cards.
-- **`src/components/LoginScreen.tsx`**: Styled login card with clay 3D emblem and tactile `clay-btn-primary` submit button.
+## 3. Verification Record
+- **Deep Verification (ran actual tests):**
+  - `npx tsx tests/printHeader.test.ts`: PASS (10/10 test suites passed, including all sub-tests for R1 & R2).
+  - `npx tsc --noEmit`: PASS (0 type errors).
+- **Shallow Verification (manual run only):**
+  - Evaluasi struktur DOM string dari `renderToStaticMarkup` untuk memastikan elemen HTML benar-benar tidak dirender (bukan disembunyikan via CSS `hidden` / `display:none`).
+- **Unverified aspects:**
+  - Browser physical print preview render to paper/PDF printer driver (tested via synthetic SSR HTML markup rendering and DOM structure assertions).
 
-## 3. Verification & Quality Assurance
-- **TypeScript**: `npx tsc --noEmit` passed with 0 errors.
-- **Build**: `npm run build` completed successfully with Next.js Turbopack, generating all static and dynamic routes without warnings or errors.
-- **Automated Tests**: Ran full test suite (`npm test`) across 36 test files, covering 47 specs in the final suite and 100% assertions passed with 0 regressions.
-- **Dev Server**: Tested `npm run dev`, verified local server booted cleanly in 790ms on `http://localhost:3000` with HTTP 200 and visual confirmation of `#FDF6EC` canvas background.
+## 4. Known Issues
+None.
 
-## 4. Git Delivery
-- Changes staged and committed on branch `dev`.
-- Pushed to `origin dev`: https://github.com/fitrawan29/sipjam-nizamudin/tree/dev
-- Branch `main` untouched.
+## 5. Untested Edge Cases & Next Step
+- Perilaku pada browser mobile print dialog (CSS print media query) — direkomendasikan untuk diverifikasi secara visual pada saat QA manual print preview di berbagai ukuran kertas (A4 vs F4).

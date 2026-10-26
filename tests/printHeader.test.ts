@@ -1,4 +1,7 @@
 import { transformGoogleDriveUrl } from '../src/lib/imageUrl';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { PrintSignature } from '../src/components/PrintHeader';
 
 // 1. Test Address Font Size Scaling Logic
 const getAddressFontSize = (text: string) => {
@@ -223,9 +226,120 @@ if (requiredHeaders.length !== 8) {
   failed++;
 }
 
+// 10. Test PrintSignature Role-Based Left Column Hiding & Layout (R1 & R2)
+// 10a. user.role === 'admin' -> Left signature must NOT exist in DOM, right signature neatly aligned right
+const htmlAdmin = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'admin', nama: 'Admin Operator' },
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Pengelola Data / Admin',
+    leftName: 'LeftAdminOperatorName',
+    leftNip: '19800101'
+  })
+);
+if (htmlAdmin.includes('data-testid="signature-left"') || htmlAdmin.includes('LeftAdminOperatorName') || htmlAdmin.includes('Pengelola Data / Admin')) {
+  console.error('FAIL: PrintSignature should NOT render left signature block when user.role === "admin"');
+  failed++;
+}
+if (!htmlAdmin.includes('data-testid="signature-right"')) {
+  console.error('FAIL: PrintSignature should render right signature (Kepala Sekolah) when user.role === "admin"');
+  failed++;
+}
+if (!htmlAdmin.includes('justify-end') || !htmlAdmin.includes('ml-auto')) {
+  console.error('FAIL: PrintSignature should use right-aligned singleColumn layout when user.role === "admin" without pengawas');
+  failed++;
+}
+
+// 10b. user.role === 'Admin' (capitalized) -> Left signature must NOT exist in DOM
+const htmlAdminCap = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'Admin', nama: 'Admin Boss' },
+    leftName: 'LeftAdminBossName'
+  })
+);
+if (htmlAdminCap.includes('data-testid="signature-left"') || htmlAdminCap.includes('LeftAdminBossName')) {
+  console.error('FAIL: PrintSignature should NOT render left signature block when user.role === "Admin"');
+  failed++;
+}
+
+// 10c. user.role === 'ADMIN ' (uppercase + trailing space) -> Left signature must NOT exist in DOM
+const htmlAdminUpper = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'ADMIN ', nama: 'Admin Upper' },
+    leftName: 'LeftAdminUpperName'
+  })
+);
+if (htmlAdminUpper.includes('data-testid="signature-left"') || htmlAdminUpper.includes('LeftAdminUpperName')) {
+  console.error('FAIL: PrintSignature should NOT render left signature block when user.role is uppercase ADMIN');
+  failed++;
+}
+
+// 10d. user.role === 'guru' -> Left signature must be rendered normally
+const htmlGuru = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'guru', nama: 'Ibu Guru' },
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Guru Mata Pelajaran',
+    leftName: 'Ibu Guru',
+    leftNip: '19850202'
+  })
+);
+if (!htmlGuru.includes('data-testid="signature-left"') || !htmlGuru.includes('Ibu Guru') || !htmlGuru.includes('19850202')) {
+  console.error('FAIL: PrintSignature must render left signature block when user.role === "guru"');
+  failed++;
+}
+
+// 10e. user is undefined -> Default behavior preserved (left signature rendered)
+const htmlNoUser = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftName: 'Guru Default',
+    leftNip: '12345'
+  })
+);
+if (!htmlNoUser.includes('data-testid="signature-left"') || !htmlNoUser.includes('Guru Default')) {
+  console.error('FAIL: PrintSignature must render left signature when user prop is undefined');
+  failed++;
+}
+
+// 10f. user is null -> Default behavior preserved (left signature rendered)
+const htmlNullUser = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: null,
+    leftName: 'Guru Null',
+    leftNip: '67890'
+  })
+);
+if (!htmlNullUser.includes('data-testid="signature-left"') || !htmlNullUser.includes('Guru Null')) {
+  console.error('FAIL: PrintSignature must render left signature when user prop is null');
+  failed++;
+}
+
+// 10g. user.role === 'admin' with Pengawas active -> Pengawas on left, Kepsek on right, no admin signature
+const htmlAdminWithPengawas = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'admin' },
+    showPengawas: true,
+    pengawasNama: 'Drs. H. Pengawas',
+    leftName: 'Admin Should Not Appear'
+  })
+);
+if (htmlAdminWithPengawas.includes('data-testid="signature-left"') || htmlAdminWithPengawas.includes('Admin Should Not Appear')) {
+  console.error('FAIL: PrintSignature should not render admin signature when pengawas is active');
+  failed++;
+}
+if (!htmlAdminWithPengawas.includes('data-testid="signature-pengawas"') || !htmlAdminWithPengawas.includes('Drs. H. Pengawas')) {
+  console.error('FAIL: PrintSignature should render pengawas signature when showPengawas is true');
+  failed++;
+}
+if (!htmlAdminWithPengawas.includes('data-testid="signature-right"')) {
+  console.error('FAIL: PrintSignature should render kepala sekolah signature when admin + pengawas');
+  failed++;
+}
+
 if (failed === 0) {
   console.log('ALL PRINT HEADER, GURU JURNAL & REKAP TESTS PASSED!');
 } else {
   console.error(`${failed} tests failed!`);
   process.exit(1);
 }
+

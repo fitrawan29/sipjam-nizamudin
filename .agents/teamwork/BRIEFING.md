@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-23T19:46:00Z
+# BRIEFING — 2026-10-26T06:30:00Z
 
 ## Mission
-Implementasi role baru `dinas_pendidikan` pada aplikasi SIPJAM untuk monitoring eksekutif kehadiran guru dan siswa lintas sekolah binaan, di mana wilayah binaan ditentukan oleh akun Superadmin sehingga Dinas Pendidikan hanya dapat melihat, merekap, dan mencetak laporan sekolah dalam daerah binaannya secara read-only tanpa hak mutasi data sekolah, dengan pengiriman akhir otomatis ter-push ke branch `dev`.
+Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (`PrintSignature` di `src/components/PrintHeader.tsx`): ketika user yang login memiliki role `admin`/`Admin`, sembunyikan blok tanda tangan sisi kiri (pencetak) dan rapikan layout tanda tangan Kepala Sekolah & Pengawas, lalu lakukan commit dan push ke branch `dev`.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -84,12 +84,19 @@ Implementasi role baru `dinas_pendidikan` pada aplikasi SIPJAM untuk monitoring 
 - Cron 2 (Liveness Check): 75492adc-9c7a-44bc-b65f-bdc20ccfbbc1/task-36 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 5a2c4c6f-e58d-4f70-8b24-6cc1e6660441 (victory_auditor_46) [VICTORY CONFIRMED]
 - Orchestrator (current): b9c240a0-6ada-4834-ac97-9bf90cc14baf (orchestrator_23)
-- Cron 1 (Progress Reporting): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-38 (*/8 * * * *)
-- Cron 2 (Liveness Check): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-40 (*/10 * * * *)
-- Victory Auditor (current): to be spawned on victory claim
-- Cron 1 (Rescheduled): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-137 (*/8 * * * *)
-- Cron 2 (Rescheduled): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-139 (*/10 * * * *)
+- Cron 1 (Progress Reporting): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-38 (*/8 * * * *) [Terminated on victory]
+- Cron 2 (Liveness Check): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-40 (*/10 * * * *) [Terminated on victory]
+- Cron 1 (Rescheduled): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-137 (*/8 * * * *) [Terminated on victory]
+- Cron 2 (Rescheduled): ab3a1c4b-03fb-4c55-9714-d4418fab4c41/task-139 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor (current): 5cc979c1-79a6-4b57-a090-63a4a6508cfc (victory_auditor_47) [VICTORY CONFIRMED]
+- Orchestrator (current): 90d93d5d-b906-4cf2-940b-b03501fdc13d (orchestrator_24)
+- Cron 1 (Progress Reporting): 97d88aea-aa34-489f-b046-f852354a77ff/task-32 (*/8 * * * *) [Terminated on victory]
+- Cron 2 (Liveness Check): 97d88aea-aa34-489f-b046-f852354a77ff/task-34 (*/10 * * * *) [Terminated on victory]
+- Victory Auditor (current): to be spawned on victory claim
+- Orchestrator (current): a5fa1e04-23e9-4158-98f9-5d3f72631f57 (swe_33)
+- Cron 1 (Progress Reporting): 71d5795c-8a39-47d9-a72f-2d74adebafe1/task-28 (*/8 * * * *)
+- Cron 2 (Liveness Check): 71d5795c-8a39-47d9-a72f-2d74adebafe1/task-30 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -117,36 +124,28 @@ Implementasi role baru `dinas_pendidikan` pada aplikasi SIPJAM untuk monitoring 
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Role-based menu visibility for Wali Kelas vs Guru biasa, Kepala Sekolah admin viewer, Pengawas Bina print signature)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Claymorphism / Soft Clay aesthetic refactoring with reusable ClayCard, ClayButton, ClaySidebar preserving DB and business logic, push to dev branch)
 - Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (comprehensive multi-requirement update across RBAC, region assignment, executive dashboard, school drilldown, security tests, and git delivery to dev)
+- Route (current): General (teamwork_preview_orchestrator) per Routing Decision Table (restoration of Superadmin layout/header/sidebar, satelite dropdown, while preserving dinas_pendidikan features)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; hide admin left signature in PrintHeader, dev branch)
 
 ## User Context
-- **Last user request**: Implementasi role baru `dinas_pendidikan` pada aplikasi SIPJAM untuk monitoring eksekutif kehadiran guru dan siswa lintas sekolah binaan, di mana wilayah binaan ditentukan oleh akun Superadmin sehingga Dinas Pendidikan hanya dapat melihat, merekap, dan mencetak laporan sekolah dalam daerah binaannya secara read-only tanpa hak mutasi data sekolah, dengan pengiriman akhir otomatis ter-push ke branch `dev`.
+- **Last user request**: Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app (`PrintSignature` di `src/components/PrintHeader.tsx`).
 - **Pending clarifications**: none
 - **Delivered results**:
-  - R1: RBAC `dinas_pendidikan`, `AppUser` interface update, database migration `20261024_dinas_pendidikan_role_and_region.sql`, Superadmin regional assignment panel with case-insensitive distinct regions dropdown, and network-level mutation guard (`dynamicTenantFetch` & `masterFetch`) rejecting POST/PUT/PATCH/DELETE with HTTP 403 Forbidden.
-  - R2: Executive Cross-School Monitoring Dashboard (`DinasDashboard.tsx`) with Claymorphism aesthetic (`ClayCard`, `ClayButton`), 5 aggregate metric cards (Total Sekolah, Kehadiran Guru %, Kehadiran Siswa %, Status Satelit, Sekolah Perlu Perhatian), intra-region search & filters, and official summary printing via `triggerPrintWithGps`.
-  - R3: Read-only school drilldown integrating `getActiveTargetSchool` and `effectiveUser`, returning banner via `clearActiveTargetSchool` preserving session tokens, AppScreen navigation mutation blocker, and read-only propagation to `AdminRekapView`, `RekapJurnalView`, and `RekapSiswaView`.
-  - R4: Comprehensive automated test suite `tests/dinas_pendidikan_monitoring.test.ts` (6 suites, 25/25 assertions passed, 0 failures) verified by independent Victory Auditor.
-  - R5: Build & Type safety verified (`npx tsc --noEmit` 0 errors, `npm run build` exit code 0, `npm test` 38/38 test suites passed 100%). Git delivery pushed to `origin/dev` (`git push origin dev`). Branch `main` strictly untouched.
+  - Detailed earlier results archived in BRIEFING_ARCHIVE.md
 
 ## Project Status
-- **Phase**: complete
-- **Route**: General (teamwork_preview_orchestrator)
-- **Active Crons**: none (terminated on victory)
-- **Active Subagents**: none (killed on completion)
+- **Phase**: in progress
+- **Route**: SWE Light (teamwork_preview_swe)
+- **Active Crons**: 71d5795c-8a39-47d9-a72f-2d74adebafe1/task-28 (Progress Reporting), 71d5795c-8a39-47d9-a72f-2d74adebafe1/task-30 (Liveness Check)
+- **Active Subagents**: a5fa1e04-23e9-4158-98f9-5d3f72631f57 (swe_33)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
-- **Auditor ID**: 5cc979c1-79a6-4b57-a090-63a4a6508cfc (victory_auditor_47)
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING.md — Persistent working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_23\DISPATCH.md — Dispatch prompt for Orchestrator 23
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_23\handoff.md — Orchestrator completion handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_47\DISPATCH.md — Victory Auditor dispatch prompt
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_47\handoff.md — Independent Victory Audit report (VICTORY CONFIRMED)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\handoff.md — Sentinel final handoff report
-
-
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING_ARCHIVE.md — Archived memory
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_33\DISPATCH.md — Dispatch prompt for swe_33

@@ -1,20 +1,12 @@
-# Implementer Progress: Role-Based Menu Visibility, Kepala Sekolah Admin Viewer & Pengawas Bina Signature
+# Implementer 1 Progress: Sembunyikan Blok Tanda Tangan Admin Pada Dokumen Cetak
 
-## Status: In Progress
-
-### Completed Analyses:
-- Checked existing test suite: 100% pass (33/33 tests pass).
-- Identified menu visibility issue in `AppScreen.tsx`: `view-rekap-siswa` was unconditionally present in `menuItemsGuru`.
-- Explored `AdminConfigView.tsx`: `guruList` is already loaded; can add Kepala Sekolah appointment dropdown and Pengawas Bina toggle + inputs.
-- Explored `PrintHeader.tsx`: `PrintSignature` handles all document printing across the app; can support Pengawas Bina 3-column / endorsement signature block when enabled.
-- Explored read-only / monitoring mode for Kepala Sekolah: `AdminVerifView.tsx`, `RekapSiswaView.tsx`, and `AppScreen.tsx`.
-
-### Implementation Steps:
-1. [ ] R1: Fix `AppScreen.tsx` `menuItemsGuru` so `view-rekap-siswa`, `view-jurnal-kelas`, and `view-rapor` only appear for active Wali Kelas (or Admin).
-2. [ ] R2: In `AdminConfigView.tsx`, add Kepala Sekolah appointment dropdown that populates name/NIP and saves `kepala_sekolah_id` and updates school profile.
-3. [ ] R2: In `AppScreen.tsx`, recognize Kepala Sekolah role/assignment and provide Admin monitoring access in read-only mode.
-4. [ ] R2: In `AdminVerifView.tsx` and `RekapSiswaView.tsx`, enforce read-only / viewer mode (disable/hide modify, save, verify, delete buttons).
-5. [ ] R3: In `AdminConfigView.tsx`, add toggle for Pengawas Bina signature with Nama Lengkap and NIP inputs, persisted to `pengaturan`.
-6. [ ] R3: In `PrintHeader.tsx` (`PrintSignature`), add Pengawas Bina signature layout (3-column / endorsement) when enabled, and standard layout when disabled.
-7. [ ] Verification: Run all existing tests and create comprehensive new tests covering all acceptance criteria.
-8. [ ] Git Workflow: Follow git commit and push requirements.
+- [x] Analisis kebutuhan task dan inspeksi komponen `PrintSignature` di `src/components/PrintHeader.tsx`
+- [x] Implementasi pengecekan role admin case-insensitive: `const isAdmin = (user?.role || '').trim().toLowerCase() === 'admin'`
+- [x] Mengatur flag layout `isSingleColumnLayout = Boolean(singleColumn || isAdmin)` sehingga saat admin mencetak, kolom tanda tangan kiri tidak dirender sama sekali di DOM
+- [x] Memastikan kolom tanda tangan Kepala Sekolah tetap terposisi rapi di sisi kanan menggunakan layout single-column (`justify-end ml-auto`) tanpa pergeseran layout yang rusak
+- [x] Memastikan tanda tangan Pengawas tetap ditampilkan normal di sisi kiri ketika opsi pengawas aktif (`isPengawasActive === true`) bersamaan dengan tanda tangan Kepala Sekolah di sisi kanan
+- [x] Memastikan perilaku default tetap terjaga jika `user` null/undefined atau role lain (`guru`, dsb.)
+- [x] Menambahkan unit test komprehensif di `tests/printHeader.test.ts` (test case 10a - 10g)
+- [x] Verifikasi TypeScript dengan `npx tsc --noEmit` (0 error)
+- [x] Eksekusi unit test `npx tsx tests/printHeader.test.ts` (100% PASS)
+- [x] Handoff documentation dan git commit & push ke `origin dev`

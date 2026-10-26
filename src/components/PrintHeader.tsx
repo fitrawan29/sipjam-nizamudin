@@ -351,11 +351,14 @@ export function PrintSignature({
   const finalPengawasNip = pengawasNip || config.ttd_pengawas_nip || config.nip_pengawas_bina || config.NIP_PENGAWAS_BINA || '';
   const finalPengawasJabatan = pengawasJabatan || config.ttd_pengawas_jabatan || config.jabatan_pengawas_bina || 'Pengawas Pembina';
 
-  const containerClass = (singleColumn && !isPengawasActive)
+  const isAdmin = (user?.role || '').trim().toLowerCase() === 'admin';
+  const isSingleColumnLayout = Boolean(singleColumn || isAdmin);
+
+  const containerClass = (isSingleColumnLayout && !isPengawasActive)
     ? "print-only print-signature mt-10 flex justify-end ml-auto text-black"
     : "print-only print-signature w-full flex justify-between items-start mt-8 pt-4 page-break-inside-avoid text-black";
 
-  const containerStyle = (singleColumn && !isPengawasActive)
+  const containerStyle = (isSingleColumnLayout && !isPengawasActive)
     ? { display: 'flex', justifyContent: 'flex-end', marginLeft: 'auto' }
     : { display: 'flex', justifyContent: 'space-between', width: '100%' };
 
@@ -374,8 +377,8 @@ export function PrintSignature({
     <div className="w-full">
       <div className={containerClass} style={containerStyle}>
         {/* Left Signer: Guru Mata Pelajaran / Wali Kelas (or Pengawas when singleColumn + Pengawas active) */}
-        {!singleColumn ? (
-          <div className="text-center min-w-[180px] sm:min-w-[200px] text-black">
+        {!isSingleColumnLayout ? (
+          <div className="text-center min-w-[180px] sm:min-w-[200px] text-black signature-left" data-testid="signature-left">
             <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
               {leftTitle || 'Mengetahui,'}
             </span>
@@ -416,7 +419,7 @@ export function PrintSignature({
         ) : null}
 
         {/* Middle Signer: Pengawas Bina (when 3-column layout is active) */}
-        {!singleColumn && isPengawasActive && (
+        {!isSingleColumnLayout && isPengawasActive && (
           <div className="text-center min-w-[180px] sm:min-w-[200px] text-black signature-pengawas" data-testid="signature-pengawas">
             <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
               Mengetahui,
@@ -437,7 +440,7 @@ export function PrintSignature({
         )}
 
         {/* Right Signer: Kepala Sekolah with [Kabupaten/Kota], [Date] */}
-        <div className={`text-center min-w-[180px] sm:min-w-[200px] text-black ${singleColumn && !isPengawasActive ? 'w-64 ml-auto' : ''}`}>
+        <div className={`text-center min-w-[180px] sm:min-w-[200px] text-black ${isSingleColumnLayout && !isPengawasActive ? 'w-64 ml-auto' : ''}`} data-testid="signature-right">
           <span className="block whitespace-nowrap text-xs sm:text-sm font-medium leading-normal">
             {region ? `${region}, ` : ''}{dateStr}
           </span>
