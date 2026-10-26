@@ -46,6 +46,12 @@ function MainApp() {
             error.message?.includes('Bad Gateway') ||
             error.message?.includes('Gateway Timeout') ||
             error.message?.includes('Service Unavailable') ||
+            error.message?.includes('connection was lost') ||
+            error.message?.includes('offline') ||
+            error.message?.includes('ERR_') ||
+            error.message?.includes('ETIMEDOUT') ||
+            error.message?.includes('ECONNREFUSED') ||
+            error.message?.includes('ECONNRESET') ||
             error.code === '57014' ||
             error.code?.startsWith?.('PGRST0')
           )
@@ -112,8 +118,8 @@ function MainApp() {
       const storedUser = localStorage.getItem('sipjam_user');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
-        if (!parsed || !parsed.session_token || typeof parsed.session_token !== 'string' || !parsed.session_token.trim()) {
-          console.warn('[MainApp] Stored user session lacks session_token. Clearing legacy session.');
+        if (!parsed || !parsed.id || !parsed.session_token || typeof parsed.session_token !== 'string' || !parsed.session_token.trim()) {
+          console.warn('[MainApp] Stored user session lacks valid id or session_token. Clearing legacy session.');
           clearAllClientSessionState();
           setUser(null);
           setIsUserLoaded(true);

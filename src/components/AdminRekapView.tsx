@@ -37,6 +37,14 @@ function countWorkdays(
 function isTestGuruName(nama?: string | null): boolean {
   if (!nama || !nama.trim()) return true;
   const n = nama.toLowerCase().trim();
+  const normalized = n.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = normalized.split(' ');
+  const hasWord = (w: string) => words.includes(w);
+  const hasGuru = hasWord('guru');
+  const hasTest = hasWord('test') || hasWord('tester') || hasWord('testing');
+  const hasDummy = hasWord('dummy');
+  const hasUji = hasWord('uji');
+
   return (
     n === 'test guru' ||
     n.includes('test guru') ||
@@ -48,7 +56,17 @@ function isTestGuruName(nama?: string | null): boolean {
     n.includes('guru testing') ||
     n.includes('testing guru') ||
     n.includes('guru dummy') ||
-    n.includes('dummy guru')
+    n.includes('dummy guru') ||
+    normalized.includes('test guru') ||
+    normalized.includes('guru test') ||
+    normalized.includes('guru uji') ||
+    normalized.includes('uji guru') ||
+    normalized.includes('guru dummy') ||
+    normalized.includes('dummy guru') ||
+    (hasGuru && (hasTest || hasDummy || hasUji)) ||
+    (hasDummy && (hasTest || hasWord('teacher') || hasWord('automated') || words.length === 1)) ||
+    (hasTest && words.length === 1) ||
+    (hasWord('dummy') && words.length === 1)
   );
 }
 
@@ -446,7 +464,9 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
                         if (!rekapData || rekapData.presensi.length === 0) return;
                         const headers = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
                         const csvRows = [headers.join(',')];
-                        rekapData.presensi.forEach((r: any, i: number) => {
+                        rekapData.presensi
+                          .filter((r: any) => !isTestGuruName(r?.nama))
+                          .forEach((r: any, i: number) => {
                           const telatStr = `"${Math.floor((r.telatDetik||0) / 3600)}j ${Math.floor(((r.telatDetik||0) % 3600) / 60)}m"`;
                           csvRows.push([
                             i + 1,

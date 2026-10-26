@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, masterSupabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
 import { AppUser } from '@/types/user';
 
 export function useSessionSync(
@@ -57,6 +57,12 @@ export function useSessionSync(
                 error.message?.includes('Bad Gateway') ||
                 error.message?.includes('Gateway Timeout') ||
                 error.message?.includes('Service Unavailable') ||
+                error.message?.includes('connection was lost') ||
+                error.message?.includes('offline') ||
+                error.message?.includes('ERR_') ||
+                error.message?.includes('ETIMEDOUT') ||
+                error.message?.includes('ECONNREFUSED') ||
+                error.message?.includes('ECONNRESET') ||
                 error.code === '57014' ||
                 error.code?.startsWith?.('PGRST0')
               )
@@ -76,12 +82,14 @@ export function useSessionSync(
           // Only logout if database explicitly confirmed session token mismatch or revoked account
           if (dbUser && dbUser.session_token !== activeUser.session_token) {
             console.warn('[AppScreen] Session invalidated or expired after idle. Logging out.');
+            clearAllClientSessionState();
             onLogout();
             return;
           }
 
           if (!dbUser && error?.code === 'PGRST116') {
             console.warn('[AppScreen] Account not found or session revoked in database. Logging out.');
+            clearAllClientSessionState();
             onLogout();
             return;
           }
@@ -89,6 +97,7 @@ export function useSessionSync(
           // If superadmin role was changed/revoked in DB, log out
           if (dbUser && isSuperadmin && (dbUser?.role || '').toLowerCase().replace(/\s+/g, '') !== 'superadmin') {
             console.warn('[AppScreen] Superadmin role revoked after idle. Logging out.');
+            clearAllClientSessionState();
             onLogout();
             return;
           }

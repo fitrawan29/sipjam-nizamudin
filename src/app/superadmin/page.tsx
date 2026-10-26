@@ -58,6 +58,12 @@ export default function SuperadminPage() {
               error.message?.includes('Bad Gateway') ||
               error.message?.includes('Gateway Timeout') ||
               error.message?.includes('Service Unavailable') ||
+              error.message?.includes('connection was lost') ||
+              error.message?.includes('offline') ||
+              error.message?.includes('ERR_') ||
+              error.message?.includes('ETIMEDOUT') ||
+              error.message?.includes('ECONNREFUSED') ||
+              error.message?.includes('ECONNRESET') ||
               error.code === '57014' ||
               error.code?.startsWith?.('PGRST0')
             )
@@ -118,6 +124,7 @@ export default function SuperadminPage() {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'sipjam_user') {
         if (!e.newValue) {
+          clearAllClientSessionState();
           setUser(null);
           router.replace('/');
         } else {
@@ -125,6 +132,7 @@ export default function SuperadminPage() {
             const parsed = JSON.parse(e.newValue);
             const isSa = (parsed?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
             if (!isSa || !parsed.session_token) {
+              clearAllClientSessionState();
               router.replace('/');
             } else {
               setUser(parsed);

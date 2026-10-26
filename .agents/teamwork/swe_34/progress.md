@@ -1,14 +1,14 @@
 # Progress — swe_34
 
-Last visited: 2026-10-26T10:07:10Z
+Last visited: 2026-10-26T10:21:20Z
 
 ## Iteration Status
-Current iteration: 3 / 32
+Current iteration: 4 / 32
 
 ## Current Status
 - [x] Round 0: Dispatch `teamwork_preview_implementer` (completed: `implementer_swe34_r1`, verified passing)
-- [ ] Round 1: Dispatch `teamwork_preview_reviewer` (active: `reviewer_swe34_r1b`, Conv ID: `141463ef-8210-4abd-adae-225b0d355be7`, state: writing enhanced verification test)
-- [ ] Round 2: Dispatch `teamwork_preview_reviewer` (Round 2)
+- [x] Round 1: Dispatch `teamwork_preview_reviewer` (completed: `reviewer_swe34_r1b`, verified passing 10/10)
+- [ ] Round 2: Dispatch `teamwork_preview_reviewer` (active: `reviewer_swe34_r2`, Conv ID: `3ad9485f-4bca-40bb-ac82-e2e8f0286554`, state: running edits on migration and code)
 - [ ] Round 3: Dispatch `teamwork_preview_reviewer` (Round 3)
 - [ ] Verification & Independent Test Run
 - [ ] Independent Victory Audit (`teamwork_preview_victory_auditor`)
@@ -16,7 +16,7 @@ Current iteration: 3 / 32
 - [ ] Report to Sentinel
 
 ## Open Issues Ledger
-- Real hardware mobile browser running in the background for 12 hours undergoing cellular tower handover while transitioning to sleep mode (Raised by Implementer Round 0)
-- Printer spooler rendering the physical paper output from AdminRekapView via browser print dialog (Raised by Implementer Round 0)
-- Minor Robustness Risk: If a user account is deleted by an admin while the user is offline, the client will retain their cached session until connectivity is restored and an explicit PGRST116 response is received from the server (Raised by Implementer Round 0)
-- Reviewers should test rapid airplane mode toggling on a mobile device immediately after waking up from a 30+ second lock screen to verify that the app remains authenticated and seamlessly resumes state once internet is restored (Raised by Implementer Round 0)
+- Physical mobile device hardware lock screen transitions exceeding 12 hours during cellular tower handover (Raised by Reviewer 1b)
+- Physical thermal printer / laser printer spooler driver rendering via browser print dialog (Raised by Reviewer 1b)
+- Minor Robustness Risk: If an administrator purges a user record directly in the database while the user is offline, the client continues using cached session state until the device reconnects and receives an explicit PGRST116 response (Raised by Reviewer 1b)
+- Background tab suspension behavior across non-Chromium browsers (Safari iOS WebKit memory pruning) relies on standard visibilitychange / focus events (Raised by Reviewer 1b)

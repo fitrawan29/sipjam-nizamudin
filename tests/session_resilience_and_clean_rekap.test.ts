@@ -36,6 +36,14 @@ function fail(code: string, desc: string, err?: any) {
 function isTestGuruName(nama?: string | null): boolean {
   if (!nama || !nama.trim()) return true;
   const n = nama.toLowerCase().trim();
+  const normalized = n.replace(/[^a-z0-9]/g, ' ').replace(/\s+/g, ' ').trim();
+  const words = normalized.split(' ');
+  const hasWord = (w: string) => words.includes(w);
+  const hasGuru = hasWord('guru');
+  const hasTest = hasWord('test') || hasWord('tester') || hasWord('testing');
+  const hasDummy = hasWord('dummy');
+  const hasUji = hasWord('uji');
+
   return (
     n === 'test guru' ||
     n.includes('test guru') ||
@@ -47,7 +55,17 @@ function isTestGuruName(nama?: string | null): boolean {
     n.includes('guru testing') ||
     n.includes('testing guru') ||
     n.includes('guru dummy') ||
-    n.includes('dummy guru')
+    n.includes('dummy guru') ||
+    normalized.includes('test guru') ||
+    normalized.includes('guru test') ||
+    normalized.includes('guru uji') ||
+    normalized.includes('uji guru') ||
+    normalized.includes('guru dummy') ||
+    normalized.includes('dummy guru') ||
+    (hasGuru && (hasTest || hasDummy || hasUji)) ||
+    (hasDummy && (hasTest || hasWord('teacher') || hasWord('automated') || words.length === 1)) ||
+    (hasTest && words.length === 1) ||
+    (hasWord('dummy') && words.length === 1)
   );
 }
 
@@ -71,6 +89,12 @@ function classifySessionError(error: any, onLine: boolean = true): 'RETAIN_SESSI
         error.message?.includes('Bad Gateway') ||
         error.message?.includes('Gateway Timeout') ||
         error.message?.includes('Service Unavailable') ||
+        error.message?.includes('connection was lost') ||
+        error.message?.includes('offline') ||
+        error.message?.includes('ERR_') ||
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('ECONNREFUSED') ||
+        error.message?.includes('ECONNRESET') ||
         error.code === '57014' ||
         error.code?.startsWith?.('PGRST0')
       )
@@ -157,13 +181,18 @@ async function runTests() {
     assert.strictEqual(classifySessionError({ status: 408, message: 'Request Timeout' }), 'RETAIN_SESSION', '408 Request Timeout must retain session');
     assert.strictEqual(classifySessionError({ code: '57014', message: 'canceling statement due to statement timeout' }), 'RETAIN_SESSION', '57014 Timeout must retain session');
     assert.strictEqual(classifySessionError({ code: 'PGRST000', message: 'PostgREST connection pool error' }), 'RETAIN_SESSION', 'PGRST000 must retain session');
-    // 4. Any other non-PGRST116 database error (e.g. Postgres lock / connection drop)
+    // 4. Mobile & native network drops (Safari WebKit & Chrome)
+    assert.strictEqual(classifySessionError({ message: 'The network connection was lost.' }), 'RETAIN_SESSION', 'Safari connection lost must retain session');
+    assert.strictEqual(classifySessionError({ message: 'The Internet connection appears to be offline.' }), 'RETAIN_SESSION', 'Safari offline must retain session');
+    assert.strictEqual(classifySessionError({ message: 'net::ERR_INTERNET_DISCONNECTED' }), 'RETAIN_SESSION', 'Chrome net::ERR_ must retain session');
+    assert.strictEqual(classifySessionError({ message: 'connect ECONNREFUSED 127.0.0.1:54321' }), 'RETAIN_SESSION', 'ECONNREFUSED must retain session');
+    // 5. Any other non-PGRST116 database error (e.g. Postgres lock / connection drop)
     assert.strictEqual(classifySessionError({ code: '40001', message: 'serialization_failure' }), 'RETAIN_SESSION', 'Generic non-PGRST116 error must retain session');
-    // 5. Explicit PGRST116 (0 rows returned = account deleted or revoked in DB)
+    // 6. Explicit PGRST116 (0 rows returned = account deleted or revoked in DB)
     assert.strictEqual(classifySessionError({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' }), 'LOGOUT', 'PGRST116 must trigger logout');
 
-    pass('R1-04', 'Behavioral Error Classification Matrix proven across 13 error conditions',
-      'All network blips, 5xx server drops, timeouts, and rate limits retain session without false logout');
+    pass('R1-04', 'Behavioral Error Classification Matrix proven across 17 error conditions',
+      'All network blips, 5xx server drops, timeouts, rate limits, and mobile drops retain session without false logout');
   } catch (e) {
     fail('R1-04', 'Behavioral Error Classification Matrix failed', e);
   }
@@ -219,6 +248,16 @@ async function runTests() {
       'Testing Guru',
       'Guru Dummy',
       'Dummy Guru',
+      'Guru (Test)',
+      'Guru   Test',
+      'Guru-Test',
+      '[TEST] Guru',
+      'Guru_Test',
+      'Test-Guru',
+      'Test_Guru',
+      'Guru.Test',
+      'Test.Guru',
+      'Guru (Uji Coba)',
       '',
       '   ',
       null,
@@ -240,6 +279,10 @@ async function runTests() {
       'Maria Magdalena, S.Si',
       'Eko Prasetyo',
       'Rina Wulandari',
+      'Uji Waluyo, S.Pd',
+      'Guruh Soekarnoputra',
+      'Agus Setiawan, S.Kom',
+      'Dewi Lestari, M.Pd',
     ];
 
     legitimateNames.forEach(name => {
@@ -250,8 +293,8 @@ async function runTests() {
       );
     });
 
-    pass('R2-03', 'isTestGuruName passes 26 boundary and casing permutations',
-      'Verified test variants, whitespace padding, null/undefined, and verified zero false-positives on real teacher names');
+    pass('R2-03', 'isTestGuruName passes 40 boundary, punctuation, and casing permutations',
+      'Verified test variants, punctuation separators, whitespace padding, null/undefined, and verified zero false-positives on real teacher names');
   } catch (e) {
     fail('R2-03', 'isTestGuruName permutation test failed', e);
   }
