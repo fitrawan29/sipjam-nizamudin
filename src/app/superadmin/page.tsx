@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, masterSupabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase, clearAllClientSessionState } from '@/lib/supabaseClient';
 import AppScreen from '@/components/AppScreen';
 
 export default function SuperadminPage() {
@@ -28,7 +28,7 @@ export default function SuperadminPage() {
         }
 
         if (!parsed.session_token || !parsed.id) {
-          localStorage.removeItem('sipjam_user');
+          clearAllClientSessionState();
           router.replace('/');
           return;
         }
@@ -78,7 +78,7 @@ export default function SuperadminPage() {
 
         if ((dbUser && dbUser.session_token !== parsed.session_token) || (!dbUser && error?.code === 'PGRST116')) {
           console.warn('[SuperadminPage] Stale or invalid session. Purging cache.');
-          localStorage.removeItem('sipjam_user');
+          clearAllClientSessionState();
           router.replace('/');
           return;
         }
@@ -135,7 +135,7 @@ export default function SuperadminPage() {
     };
 
     const handleUnauthorized = () => {
-      localStorage.removeItem('sipjam_user');
+      clearAllClientSessionState();
       setUser(null);
       router.replace('/');
     };
@@ -149,7 +149,7 @@ export default function SuperadminPage() {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('sipjam_user');
+    clearAllClientSessionState();
     setUser(null);
     router.replace('/');
   };

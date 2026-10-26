@@ -35,14 +35,20 @@ function countWorkdays(
  * Filter entri pengujian / dummy guru agar rekapitulasi dan dokumen cetak resmi bersih dari data tiruan.
  */
 function isTestGuruName(nama?: string | null): boolean {
-  if (!nama) return true;
+  if (!nama || !nama.trim()) return true;
   const n = nama.toLowerCase().trim();
   return (
     n === 'test guru' ||
     n.includes('test guru') ||
     n.includes('dummy automated test guru') ||
     n === 'guru test' ||
-    n === 'guru uji'
+    n.includes('guru test') ||
+    n.includes('guru uji') ||
+    n.includes('guru tester') ||
+    n.includes('guru testing') ||
+    n.includes('testing guru') ||
+    n.includes('guru dummy') ||
+    n.includes('dummy guru')
   );
 }
 
@@ -91,6 +97,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
         .from('data_guru')
         .select('nama_guru')
         .not('nama_guru', 'ilike', '%test guru%')
+        .not('nama_guru', 'ilike', '%guru test%')
         .order('nama_guru', { ascending: true });
       if (user?.sekolah_id) {
         guruQuery = guruQuery.eq('sekolah_id', user.sekolah_id);
@@ -102,6 +109,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
         .from('presensi_guru')
         .select('*')
         .not('nama_guru', 'ilike', '%test guru%')
+        .not('nama_guru', 'ilike', '%guru test%')
         .gte('timestamp', start)
         .lte('timestamp', end)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi'])
@@ -116,6 +124,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
         .from('jurnal_pembelajaran')
         .select('*')
         .not('nama_guru', 'ilike', '%test guru%')
+        .not('nama_guru', 'ilike', '%guru test%')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .eq('status_verifikasi', 'Disetujui')
@@ -131,6 +140,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
         .from('laporan_piket')
         .select('guru_pelapor, tanggal, status_verifikasi')
         .not('guru_pelapor', 'ilike', '%test guru%')
+        .not('guru_pelapor', 'ilike', '%guru test%')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .eq('status_verifikasi', 'Disetujui')
@@ -156,9 +166,10 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       // Seed map with all teachers from data_guru (excluding test accounts)
       const pMap: Record<string, any> = {};
       guruList?.forEach(g => {
-        if (g.nama_guru && !isTestGuruName(g.nama_guru)) {
-          pMap[g.nama_guru] = {
-            nama: g.nama_guru,
+        const rawName = g.nama_guru?.trim();
+        if (g.nama_guru && rawName && !isTestGuruName(g.nama_guru) && !isTestGuruName(rawName)) {
+          pMap[rawName] = {
+            nama: rawName,
             hadir: 0,
             izin: 0,
             sakit: 0,
@@ -172,7 +183,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
 
       // Aggregate presensi
       presensi?.forEach(p => {
-        const nama = p.nama_guru;
+        const nama = p.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
         if (!pMap[nama]) {
           pMap[nama] = {
@@ -203,7 +214,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       // Aggregate jurnal
       const jMap: Record<string, number> = {};
       jurnal?.forEach(j => {
-        const nama = j.nama_guru;
+        const nama = j.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
         if (pMap[nama]) pMap[nama].jurnal++;
         jMap[nama] = (jMap[nama] || 0) + 1;
@@ -212,7 +223,7 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly }: { 
       // Aggregate piket
       const pkMap: Record<string, number> = {};
       piket?.forEach(pk => {
-        const nama = pk.guru_pelapor;
+        const nama = pk.guru_pelapor?.trim();
         if (!nama || isTestGuruName(nama)) return;
         if (pMap[nama]) pMap[nama].piket++;
         pkMap[nama] = (pkMap[nama] || 0) + 1;
