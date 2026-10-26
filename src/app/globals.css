@@ -631,11 +631,14 @@ body.fade-out {
     break-inside: avoid !important;
   }
   .print-signature > div {
-    min-width: 180px;
+    min-width: 0;
+    flex-shrink: 0;
+    overflow: visible;
   }
   /* Pastikan baris tempat & tanggal tidak terpotong saat cetak */
   .print-signature span {
     white-space: nowrap !important;
+    font-size: 8pt !important;
   }
 
   /* === TABLE PRINTING === */
