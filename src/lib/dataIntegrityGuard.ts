@@ -1,15 +1,10 @@
 /**
  * Data Integrity & Realness Guard (Ponytail Approach)
- * Native validation to prevent duplicate users/teachers and prevent dummy/fictitious records.
+ * Native validation to prevent duplicate users/teachers/students and prevent dummy/fictitious records.
  */
 
 // Patterns indicating test, dummy, or fictitious data
 const DUMMY_PATTERN = /\b(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\b/i;
-
-// Forbidden legacy identities
-const FORBIDDEN_EXACT_NAMES = [
-  'FITRA SURYAZANA MAMONTO', // Replaced with title-case 'Fitra Suryazana Mamonto'
-];
 
 export interface ValidationResult {
   valid: boolean;
@@ -17,21 +12,53 @@ export interface ValidationResult {
 }
 
 /**
- * Checks if a string contains dummy or test indicators
+ * Normalizes name strings:
+ * - Strips zero-width characters (\u200B-\u200D\uFEFF)
+ * - Normalizes Unicode diacritics / accents (e.g. é -> e)
+ * - Collapses multiple spaces, tabs, and non-breaking spaces into a single space
  */
-export function isDummyOrTestString(value?: string | null): boolean {
-  if (!value) return false;
-  return DUMMY_PATTERN.test(value.trim());
+export function normalizeName(value?: string | null): string {
+  if (!value) return '';
+  return value
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
- * Checks if a name is one of the forbidden historical/deprecated names
+ * Checks if a string contains dummy or test indicators.
+ * Robust against separators (snake_case, kebab-case, dots) and appended numbers (dummy1, test123).
+ */
+export function isDummyOrTestString(value?: string | null): boolean {
+  if (!value) return false;
+  const raw = value.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+  if (!raw) return false;
+  // Replace underscores, hyphens, dots, and trailing digits with spaces to expose word boundaries
+  const normalizedWords = raw.toLowerCase().replace(/[_.\-\d]+/g, ' ').trim();
+  return DUMMY_PATTERN.test(raw) || DUMMY_PATTERN.test(normalizedWords);
+}
+
+/**
+ * Checks if a name is one of the forbidden historical/deprecated names.
+ * Catches uppercase/malformed variations of 'FITRA SURYAZANA MAMONTO' and all permutations of 'Ahmad Dahlan'.
  */
 export function isForbiddenName(name?: string | null): boolean {
   if (!name) return false;
-  const trimmed = name.trim();
-  if (FORBIDDEN_EXACT_NAMES.includes(trimmed)) return true;
-  if (/ahmad\s*dahlan/i.test(trimmed)) return true;
+  const normalized = normalizeName(name);
+  if (!normalized) return false;
+
+  // Catch uppercase variations of FITRA SURYAZANA MAMONTO (must be official Title Case)
+  if (normalized === 'FITRA SURYAZANA MAMONTO') {
+    return true;
+  }
+
+  // Catch deprecated Ahmad Dahlan
+  if (/ahmad\s*dahlan/i.test(normalized)) {
+    return true;
+  }
+
   return false;
 }
 
@@ -44,7 +71,7 @@ export function validateTeacherData(
   existingTeachers: Array<{ id?: string; nip?: string; nama_guru?: string }>,
   currentId?: string
 ): ValidationResult {
-  const cleanNama = (namaGuru || '').trim();
+  const cleanNama = normalizeName(namaGuru);
   const cleanNip = (nip || '').trim();
 
   if (!cleanNama) {
@@ -60,18 +87,19 @@ export function validateTeacherData(
   }
 
   // 2. Forbidden legacy names
-  if (isForbiddenName(cleanNama)) {
+  if (isForbiddenName(namaGuru)) {
     return {
       valid: false,
-      message: cleanNama === 'FITRA SURYAZANA MAMONTO'
+      message: cleanNama.toUpperCase() === 'FITRA SURYAZANA MAMONTO'
         ? 'Gunakan format penulisan resmi Title Case: "Fitra Suryazana Mamonto".'
         : 'Nama tersebut telah dinonaktifkan dari sistem.'
     };
   }
 
   // 3. Uniqueness Check: Name
+  const normCleanNama = cleanNama.toLowerCase();
   const duplicateName = existingTeachers.find(
-    t => t.id !== currentId && (t.nama_guru || '').trim().toLowerCase() === cleanNama.toLowerCase()
+    t => t.id !== currentId && normalizeName(t.nama_guru).toLowerCase() === normCleanNama
   );
   if (duplicateName) {
     return {
@@ -82,8 +110,9 @@ export function validateTeacherData(
 
   // 4. Uniqueness Check: NIP (if provided and not '-')
   if (cleanNip && cleanNip !== '-') {
+    const normCleanNip = cleanNip.toLowerCase();
     const duplicateNip = existingTeachers.find(
-      t => t.id !== currentId && (t.nip || '').trim().toLowerCase() === cleanNip.toLowerCase()
+      t => t.id !== currentId && (t.nip || '').trim().toLowerCase() === normCleanNip
     );
     if (duplicateNip) {
       return {
@@ -106,7 +135,7 @@ export function validateUserData(
   currentId?: string
 ): ValidationResult {
   const cleanUsername = (username || '').trim();
-  const cleanNama = (nama || '').trim();
+  const cleanNama = normalizeName(nama);
 
   if (!cleanUsername || !cleanNama) {
     return { valid: false, message: 'Username dan Nama wajib diisi!' };
@@ -121,18 +150,19 @@ export function validateUserData(
   }
 
   // 2. Forbidden legacy names
-  if (isForbiddenName(cleanNama) || isForbiddenName(cleanUsername)) {
+  if (isForbiddenName(nama) || isForbiddenName(username)) {
     return {
       valid: false,
-      message: cleanNama === 'FITRA SURYAZANA MAMONTO'
+      message: cleanNama.toUpperCase() === 'FITRA SURYAZANA MAMONTO'
         ? 'Gunakan format penulisan resmi Title Case: "Fitra Suryazana Mamonto".'
         : 'Nama/Username tersebut telah dinonaktifkan dari sistem.'
     };
   }
 
   // 3. Uniqueness Check: Username
+  const normCleanUsername = cleanUsername.toLowerCase();
   const duplicateUsername = existingUsers.find(
-    u => u.id !== currentId && (u.username || '').trim().toLowerCase() === cleanUsername.toLowerCase()
+    u => u.id !== currentId && (u.username || '').trim().toLowerCase() === normCleanUsername
   );
   if (duplicateUsername) {
     return {
@@ -142,8 +172,9 @@ export function validateUserData(
   }
 
   // 4. Uniqueness Check: Name
+  const normCleanNama = cleanNama.toLowerCase();
   const duplicateNama = existingUsers.find(
-    u => u.id !== currentId && (u.nama || '').trim().toLowerCase() === cleanNama.toLowerCase()
+    u => u.id !== currentId && normalizeName(u.nama).toLowerCase() === normCleanNama
   );
   if (duplicateNama) {
     return {
@@ -164,7 +195,7 @@ export function validateStudentData(
   existingStudents: Array<{ id?: string; nama_siswa?: string; kelas?: string }>,
   currentId?: string
 ): ValidationResult {
-  const cleanNama = (namaSiswa || '').trim();
+  const cleanNama = normalizeName(namaSiswa);
   const cleanKelas = (kelas || '').trim();
 
   if (!cleanNama || !cleanKelas) {
@@ -180,16 +211,18 @@ export function validateStudentData(
   }
 
   // 2. Forbidden legacy names
-  if (isForbiddenName(cleanNama)) {
+  if (isForbiddenName(namaSiswa)) {
     return { valid: false, message: 'Nama siswa tidak diperbolehkan!' };
   }
 
   // 3. Uniqueness Check: Same name in same class
+  const normCleanNama = cleanNama.toLowerCase();
+  const normCleanKelas = cleanKelas.toLowerCase();
   const duplicate = existingStudents.find(
     s =>
       s.id !== currentId &&
-      (s.kelas || '').trim().toLowerCase() === cleanKelas.toLowerCase() &&
-      (s.nama_siswa || '').trim().toLowerCase() === cleanNama.toLowerCase()
+      (s.kelas || '').trim().toLowerCase() === normCleanKelas &&
+      normalizeName(s.nama_siswa).toLowerCase() === normCleanNama
   );
   if (duplicate) {
     return {

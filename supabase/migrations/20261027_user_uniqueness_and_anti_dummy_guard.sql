@@ -28,11 +28,11 @@ ON public.users (lower(trim(username)));
 
 -- Prevent duplicate user name within the same school/tenant (or system level for superadmin/dinas)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_users_sekolah_nama_lower 
-ON public.users (COALESCE(sekolah_id, '00000000-0000-0000-0000-000000000000'::uuid), lower(trim(nama)));
+ON public.users (COALESCE(sekolah_id, '00000000-0000-0000-0000-000000000000'::uuid), lower(regexp_replace(trim(nama), '\s+', ' ', 'g')));
 
 -- Prevent duplicate teacher name within the same school
 CREATE UNIQUE INDEX IF NOT EXISTS uq_data_guru_sekolah_nama_lower 
-ON public.data_guru (sekolah_id, lower(trim(nama_guru)));
+ON public.data_guru (sekolah_id, lower(regexp_replace(trim(nama_guru), '\s+', ' ', 'g')));
 
 -- Prevent duplicate teacher NIP within the same school (when NIP is set and not placeholder '-')
 CREATE UNIQUE INDEX IF NOT EXISTS uq_data_guru_sekolah_nip_lower 
@@ -45,29 +45,38 @@ CREATE OR REPLACE FUNCTION public.check_anti_dummy_guard()
 RETURNS TRIGGER AS $$
 DECLARE
     v_name TEXT;
+    v_norm TEXT;
 BEGIN
     IF TG_TABLE_NAME = 'users' THEN
         v_name := NEW.nama;
-        IF NEW.username ILIKE '%test%' OR NEW.username ILIKE '%dummy%' THEN
+        IF regexp_replace(NEW.username, '[_\.\-\d]+', ' ', 'g') ~* '\y(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\y' THEN
             RAISE EXCEPTION 'Username fiktif/dummy dilarang: %', NEW.username;
         END IF;
     ELSIF TG_TABLE_NAME = 'data_guru' THEN
         v_name := NEW.nama_guru;
+        IF NEW.nip IS NOT NULL AND NEW.nip <> '-' THEN
+            IF regexp_replace(NEW.nip, '[_\.\-\d]+', ' ', 'g') ~* '\y(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\y' THEN
+                RAISE EXCEPTION 'NIP fiktif/dummy dilarang: %', NEW.nip;
+            END IF;
+        END IF;
     ELSIF TG_TABLE_NAME = 'data_siswa' THEN
         v_name := NEW.nama_siswa;
     END IF;
 
+    -- Normalize multiple spaces in name
+    v_norm := regexp_replace(trim(COALESCE(v_name, '')), '\s+', ' ', 'g');
+
     -- Disallow dummy patterns in operational tables
-    IF v_name ~* '\y(dummy automated test guru|test guru|guru test|dummy guru|guru dummy|akun dummy|dummy user)\y' THEN
+    IF regexp_replace(v_norm, '[_\.\-\d]+', ' ', 'g') ~* '\y(dummy automated test guru|test guru|guru test|dummy guru|guru dummy|akun dummy|dummy user|test|dummy|fiktif|fake|percobaan|uji\s*coba)\y' THEN
         RAISE EXCEPTION 'Data identitas dummy/fiktif dilarang di tabel operasional: %', v_name;
     END IF;
 
-    -- Disallow legacy deprecated identities
-    IF v_name = 'FITRA SURYAZANA MAMONTO' THEN
+    -- Disallow legacy uppercase FITRA SURYAZANA MAMONTO
+    IF upper(v_norm) = 'FITRA SURYAZANA MAMONTO' AND v_norm <> 'Fitra Suryazana Mamonto' THEN
         RAISE EXCEPTION 'Format nama kapital dilarang. Harap gunakan format resmi Title Case: Fitra Suryazana Mamonto';
     END IF;
 
-    IF v_name ILIKE '%ahmad dahlan%' THEN
+    IF v_norm ILIKE '%ahmad dahlan%' THEN
         RAISE EXCEPTION 'Akun / nama % telah dinonaktifkan permanen dari sistem.', v_name;
     END IF;
 

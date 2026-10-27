@@ -384,7 +384,8 @@ export default function AdminDataView({ user }: { user: any }) {
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nisn = (document.getElementById('swal-nisn') as HTMLInputElement)?.value?.trim();
-          const nama_siswa = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim();
+          const rawNamaSiswa = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim() || '';
+          const nama_siswa = rawNamaSiswa.replace(/\s+/g, ' ');
           const kelas = (document.getElementById('swal-kelas') as HTMLInputElement)?.value?.trim();
           const gender = (document.getElementById('swal-gender') as HTMLSelectElement)?.value;
           const no_hp_ortu = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '';
@@ -458,7 +459,8 @@ export default function AdminDataView({ user }: { user: any }) {
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nip = (document.getElementById('swal-nip') as HTMLInputElement)?.value?.trim() || '-';
-          const nama_guru = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim();
+          const rawNamaGuru = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim() || '';
+          const nama_guru = rawNamaGuru.replace(/\s+/g, ' ');
           const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLInputElement)?.value?.trim();
           const no_hp = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || '-';
@@ -1067,7 +1069,8 @@ export default function AdminDataView({ user }: { user: any }) {
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nisn = (document.getElementById('swal-edit-nisn') as HTMLInputElement)?.value?.trim();
-          const nama_siswa = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim();
+          const rawNamaSiswa = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim() || '';
+          const nama_siswa = rawNamaSiswa.replace(/\s+/g, ' ');
           const kelas = (document.getElementById('swal-edit-kelas') as HTMLInputElement)?.value?.trim();
           const gender = (document.getElementById('swal-edit-gender') as HTMLSelectElement)?.value;
           const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
@@ -1152,7 +1155,8 @@ export default function AdminDataView({ user }: { user: any }) {
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nip = (document.getElementById('swal-edit-nip') as HTMLInputElement)?.value?.trim() || '-';
-          const nama_guru = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim();
+          const rawNamaGuru = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim() || '';
+          const nama_guru = rawNamaGuru.replace(/\s+/g, ' ');
           const mata_pelajaran = (document.getElementById('swal-edit-mapel') as HTMLInputElement)?.value?.trim();
           const no_hp = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-edit-email') as HTMLInputElement)?.value?.trim() || '-';

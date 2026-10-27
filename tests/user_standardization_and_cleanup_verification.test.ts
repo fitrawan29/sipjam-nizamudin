@@ -346,7 +346,7 @@ async function run() {
 
   const mockExistingGuru = [
     { id: 'g1', nip: 'Fitra', nama_guru: 'Fitra Suryazana Mamonto' },
-    { id: 'g2', nip: '19800101', nama_guru: 'Guru Contoh Riil' }
+    { id: 'g2', nip: '19800101', nama_guru: 'Guru Budiman Riil' }
   ];
   const dupTeacherNameRes = validateTeacherData('19999999', 'Fitra Suryazana Mamonto', mockExistingGuru);
   if (!dupTeacherNameRes.valid && dupTeacherNameRes.message?.includes('sudah terdaftar')) {
@@ -360,6 +360,31 @@ async function run() {
     pass('validateTeacherData: successfully blocks duplicate teacher NIP');
   } else {
     fail('validateTeacherData: failed to block duplicate teacher NIP', dupTeacherNipRes);
+  }
+
+  const dupTeacherWhitespaceRes = validateTeacherData('19999999', 'Guru  Budiman   Riil', mockExistingGuru);
+  if (!dupTeacherWhitespaceRes.valid && dupTeacherWhitespaceRes.message?.includes('sudah terdaftar')) {
+    pass('validateTeacherData: successfully blocks duplicate teacher name with internal multi-spaces');
+  } else {
+    fail('validateTeacherData: failed to block duplicate teacher with multi-spaces', dupTeacherWhitespaceRes);
+  }
+
+  const dupUserWhitespaceRes = validateUserData('user_baru_ws', 'Fitra   Suryazana   Mamonto', mockExistingUsers);
+  if (!dupUserWhitespaceRes.valid && dupUserWhitespaceRes.message?.includes('sudah terdaftar')) {
+    pass('validateUserData: successfully blocks duplicate user name with internal multi-spaces');
+  } else {
+    fail('validateUserData: failed to block duplicate user name with multi-spaces', dupUserWhitespaceRes);
+  }
+
+  const dupStudentWhitespaceRes = validateStudentData(
+    'Siswa  Budi  Santoso',
+    'X Merdeka',
+    [{ id: 's1', nama_siswa: 'Siswa Budi Santoso', kelas: 'X Merdeka' }]
+  );
+  if (!dupStudentWhitespaceRes.valid && dupStudentWhitespaceRes.message?.includes('sudah terdaftar')) {
+    pass('validateStudentData: successfully blocks duplicate student with multi-space variations');
+  } else {
+    fail('validateStudentData: failed to block duplicate student with multi-spaces', dupStudentWhitespaceRes);
   }
 
   const selfEditTeacherRes = validateTeacherData('Fitra', 'Fitra Suryazana Mamonto', mockExistingGuru, 'g1');
@@ -425,11 +450,39 @@ async function run() {
     fail('validateTeacherData: failed to reject "Drs. Ahmad Dahlan, M.Pd."', dummyTeacherTest3);
   }
 
+  const dummyTeacherDiacriticTest = validateTeacherData('12345', 'Drs. Ahmád Dahlan, M.Pd.', []);
+  if (!dummyTeacherDiacriticTest.valid && dummyTeacherDiacriticTest.message?.includes('dinonaktifkan')) {
+    pass('validateTeacherData: rejects deprecated Ahmad Dahlan with diacritics');
+  } else {
+    fail('validateTeacherData: failed to reject Ahmad Dahlan with diacritics', dummyTeacherDiacriticTest);
+  }
+
+  const dummyTeacherFitraMultiSpace = validateTeacherData('12345', 'FITRA   SURYAZANA   MAMONTO', []);
+  if (!dummyTeacherFitraMultiSpace.valid && dummyTeacherFitraMultiSpace.message?.includes('Title Case')) {
+    pass('validateTeacherData: rejects uppercase FITRA SURYAZANA MAMONTO with internal multi-spaces');
+  } else {
+    fail('validateTeacherData: failed to reject uppercase FITRA with multi-spaces', dummyTeacherFitraMultiSpace);
+  }
+
   const dummyUserTest = validateUserData('test_admin', 'Administrator Testing', []);
   if (!dummyUserTest.valid && dummyUserTest.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
     pass('validateUserData: rejects dummy username/name');
   } else {
     fail('validateUserData: failed to reject dummy account', dummyUserTest);
+  }
+
+  const dummyUserUnderscoreTest = validateUserData('test_user', 'Nama Pengguna Sah', []);
+  if (!dummyUserUnderscoreTest.valid && dummyUserUnderscoreTest.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
+    pass('validateUserData: rejects dummy username with underscore (test_user)');
+  } else {
+    fail('validateUserData: failed to reject test_user', dummyUserUnderscoreTest);
+  }
+
+  const dummyUserNumberTest = validateUserData('dummy1', 'Nama Pengguna Sah', []);
+  if (!dummyUserNumberTest.valid && dummyUserNumberTest.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
+    pass('validateUserData: rejects dummy username with appended digit (dummy1)');
+  } else {
+    fail('validateUserData: failed to reject dummy1', dummyUserNumberTest);
   }
 
   const dummyStudentTest = validateStudentData('Dummy Siswa Test', 'X Merdeka', []);

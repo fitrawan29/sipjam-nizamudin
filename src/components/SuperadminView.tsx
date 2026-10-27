@@ -411,7 +411,8 @@ export default function SuperadminView({
       confirmButtonColor: '#0B4619',
       cancelButtonText: 'Batal',
       preConfirm: () => {
-        const nama = (document.getElementById('swal-dinas-nama') as HTMLInputElement)?.value?.trim();
+        const rawNama = (document.getElementById('swal-dinas-nama') as HTMLInputElement)?.value?.trim() || '';
+        const nama = rawNama.replace(/\s+/g, ' ');
         const username = (document.getElementById('swal-dinas-username') as HTMLInputElement)?.value?.trim();
         const password = (document.getElementById('swal-dinas-password') as HTMLInputElement)?.value;
         const selectRegion = (document.getElementById('swal-dinas-region') as HTMLSelectElement)?.value?.trim();
@@ -526,7 +527,8 @@ export default function SuperadminView({
       confirmButtonColor: '#0B4619',
       cancelButtonText: 'Batal',
       preConfirm: () => {
-        const nama = (document.getElementById('swal-edit-dinas-nama') as HTMLInputElement)?.value?.trim();
+        const rawNama = (document.getElementById('swal-edit-dinas-nama') as HTMLInputElement)?.value?.trim() || '';
+        const nama = rawNama.replace(/\s+/g, ' ');
         const username = (document.getElementById('swal-edit-dinas-username') as HTMLInputElement)?.value?.trim();
         const password = (document.getElementById('swal-edit-dinas-password') as HTMLInputElement)?.value;
         const selectRegion = (document.getElementById('swal-edit-dinas-region') as HTMLSelectElement)?.value?.trim();
