@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-26T14:27:41Z
+# BRIEFING — 2026-10-27T02:19:25Z
 
 ## Mission
-Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SIPJAM (Next.js) dengan prinsip Ponytail (minimalis, YAGNI, eliminasi kode mati tanpa regresi), memastikan npm test lulus 100%, tsc 0 error, npm run lint sukses, dan push otomatis ke dev branch.
+Perbaikan data user di sistem: standardisasi akun & riwayat guru Fitra Suryazana Mamonto di tabel users, presensi_guru, jurnal_pembelajaran, laporan_piket, dan file CSV sumber, serta pembersihan total seluruh rekaman milik Drs. Ahmad Dahlan, M.Pd. dari seluruh tabel database dengan verifikasi 100% test lulus.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -105,6 +105,12 @@ Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SI
 - Cron 1 (Progress Reporting): a32f9cf7-7c2d-4972-983d-a24dd25d775e/task-38 (*/8 * * * *)
 - Cron 2 (Liveness Check): a32f9cf7-7c2d-4972-983d-a24dd25d775e/task-40 (*/10 * * * *)
 - Victory Auditor (current): 32f27f99-1397-4953-a2d3-336b71e0910e (victory_auditor_50)
+- Orchestrator (current): c8555ce7-a07e-4737-a78b-22a73cd81654 (swe_36)
+- Cron 1 (Progress Reporting): 3e23ca71-21f3-4685-ab13-d2d08c1c86a6/task-47 (*/8 * * * *)
+- Cron 2 (Liveness Check): 3e23ca71-21f3-4685-ab13-d2d08c1c86a6/task-49 (*/10 * * * *)
+- Victory Auditor (current): to be spawned on victory claim
+
+
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -136,32 +142,30 @@ Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SI
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; hide admin left signature in PrintHeader, dev branch)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; session auto-logout stability resilience and test guru recap filtration, push to dev branch)
 - Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; Ponytail dead code, orphaned utilities, and obsolete dependency pruning, push to dev branch)
+- Route (current): SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused; standardisasi nama guru Fitra Suryazana Mamonto dan pembersihan total data usang Drs. Ahmad Dahlan, M.Pd.)
 
 ## User Context
-- **Last user request**: Pembersihan dead code, orphaned utilities, dan dependensi usang pada aplikasi SIPJAM (Next.js) dengan prinsip Ponytail (minimalis, YAGNI, dan eliminasi kode mati tanpa regresi).
+- **Last user request**: Perbaikan data user di sistem: menggantikan user "FITRA SURYAZANA MAMONTO" menjadi "Fitra Suryazana Mamonto" (standardisasi nama akun dan data transaksi terkait), serta menghapus seluruh data user / presensi tersisa milik "Drs. Ahmad Dahlan, M.Pd.".
 - **Pending clarifications**: none
 - **Delivered results**:
-  - Implementer completed Round 0: pruned orphaned `src/lib/gpsPrint.ts`, legacy `code.gs.txt`, `index.html.txt`, `run-migration.js`; adjusted `eslint.config.mjs` (0 errors).
-  - All 39 test suites pass 100%, `tsc --noEmit` exit 0, Next.js build clean.
-  - Dispatched Reviewer Round 1 (`7b2f06bb-5e87-40b4-baa0-f3c83995b337`): completed in commit `659a2af` (deleted 4 orphaned scripts, pruned 26 dead imports/vars across 14 files, 39/39 tests pass).
-  - Dispatched Reviewer Round 2 (`2d9e8acb-7b3e-433f-b09a-d744a8dc01bd`): completed in commit `502b124` (pruned dead database queries in `HomeViewGuru.tsx`, deleted 5 starter SVGs in `public/`, hardened `scripts/provision-new-school.js`, reduced warnings from 276 to 152).
-  - Dispatched Reviewer Round 3 (`1469ff31-0418-4879-871d-8a2ef4779e72`): completed in commit `5fbad36` (fixed restored attendance invocation in `HomeViewGuru.tsx`, verified 39/39 suites, zero errors).
-  - Independent Victory Auditor `victory_auditor_50` (`32f27f99-1397-4953-a2d3-336b71e0910e`): VICTORY CONFIRMED.
+  - Previous task swe_35 (Ponytail dead code pruning) completed and verified by victory_auditor_50.
+  - New task swe_36 dispatched for database & CSV standardization.
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (terminated on victory)
-- **Active Subagents**: none (terminated on victory)
+- **Active Crons**: [to be scheduled]
+- **Active Subagents**: swe_36 (to be spawned)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
-- **Auditor**: 32f27f99-1397-4953-a2d3-336b71e0910e (victory_auditor_50) [VICTORY CONFIRMED]
+- **Auditor**: to be spawned on victory claim
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING.md — Persistent working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING_ARCHIVE.md — Archived memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_35\DISPATCH.md — Dispatch prompt for swe_35
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_36\DISPATCH.md — Dispatch prompt for swe_36
