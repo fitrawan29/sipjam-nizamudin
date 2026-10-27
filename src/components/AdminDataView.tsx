@@ -312,7 +312,7 @@ export default function AdminDataView({ user }: { user: any }) {
         if (tabObj.table === 'wali_kelas' && !row.tahun_ajaran) row.tahun_ajaran = '2024/2025';
 
         // Integrity & Anti-Dummy Guards for CSV
-        if (tabObj.table === 'data_guru') {
+        if (tabObj.table === 'data_guru' || tabObj.table === 'jadwal_pelajaran' || tabObj.table === 'wali_kelas') {
           if (row.nama_guru) {
             // Auto-standardize uppercase FITRA SURYAZANA MAMONTO
             if (/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(row.nama_guru)) {
@@ -320,17 +320,26 @@ export default function AdminDataView({ user }: { user: any }) {
             } else if (isForbiddenName(row.nama_guru)) {
               throw new Error(`Baris ${i}: Nama guru "${row.nama_guru}" dilarang atau dinonaktifkan.`);
             }
-            if (isDummyOrTestString(row.nama_guru) || (row.nip && row.nip !== '-' && isDummyOrTestString(row.nip))) {
+            if (isDummyOrTestString(row.nama_guru)) {
               throw new Error(`Baris ${i}: Terdeteksi data guru dummy/percobaan ("${row.nama_guru}").`);
             }
             row.nama_guru = normalizeName(row.nama_guru);
-            const lowerName = row.nama_guru.toLowerCase();
-            if (seenTeacherNames.has(lowerName)) {
-              throw new Error(`Baris ${i}: Duplikat nama guru "${row.nama_guru}" dalam file CSV.`);
+            if (tabObj.table === 'data_guru') {
+              const lowerName = row.nama_guru.toLowerCase();
+              if (seenTeacherNames.has(lowerName)) {
+                throw new Error(`Baris ${i}: Duplikat nama guru "${row.nama_guru}" dalam file CSV.`);
+              }
+              seenTeacherNames.add(lowerName);
             }
-            seenTeacherNames.add(lowerName);
-
-            if (row.nip && row.nip !== '-') {
+          }
+          if (row.nip && row.nip !== '-') {
+            if (isForbiddenName(row.nip)) {
+              throw new Error(`Baris ${i}: NIP guru "${row.nip}" dilarang atau dinonaktifkan.`);
+            }
+            if (isDummyOrTestString(row.nip)) {
+              throw new Error(`Baris ${i}: Terdeteksi NIP guru dummy/percobaan ("${row.nip}").`);
+            }
+            if (tabObj.table === 'data_guru') {
               const lowerNip = String(row.nip).trim().toLowerCase();
               if (seenTeacherNips.has(lowerNip)) {
                 throw new Error(`Baris ${i}: Duplikat NIP guru "${row.nip}" dalam file CSV.`);
@@ -708,11 +717,24 @@ export default function AdminDataView({ user }: { user: any }) {
             Swal.showValidationMessage('Nama Guru, Mapel, dan Kelas wajib diisi!');
             return null;
           }
+
+          let cleanGuru = normalizeName(nama_guru);
+          if (/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanGuru)) {
+            cleanGuru = 'Fitra Suryazana Mamonto';
+          } else if (isForbiddenName(cleanGuru)) {
+            Swal.showValidationMessage('Nama guru tersebut telah dinonaktifkan dari sistem.');
+            return null;
+          }
+          if (isDummyOrTestString(cleanGuru)) {
+            Swal.showValidationMessage('Nama guru terdeteksi sebagai data percobaan/dummy.');
+            return null;
+          }
+
           return {
             id: crypto.randomUUID(),
             sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
             hari,
-            nama_guru,
+            nama_guru: cleanGuru,
             mata_pelajaran,
             kelas
           };
@@ -1446,12 +1468,25 @@ export default function AdminDataView({ user }: { user: any }) {
             Swal.showValidationMessage('Hari, Kelas, Mapel, dan Nama Guru wajib diisi!');
             return null;
           }
+
+          let cleanGuru = normalizeName(nama_guru);
+          if (/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanGuru)) {
+            cleanGuru = 'Fitra Suryazana Mamonto';
+          } else if (isForbiddenName(cleanGuru)) {
+            Swal.showValidationMessage('Nama guru tersebut telah dinonaktifkan dari sistem.');
+            return null;
+          }
+          if (isDummyOrTestString(cleanGuru)) {
+            Swal.showValidationMessage('Nama guru terdeteksi sebagai data percobaan/dummy.');
+            return null;
+          }
+
           return {
             hari,
             kelas,
             mapel,
             mata_pelajaran: mapel,
-            nama_guru,
+            nama_guru: cleanGuru,
             jam_mulai,
             jam_selesai
           };

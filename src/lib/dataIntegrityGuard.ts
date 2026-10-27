@@ -6,7 +6,7 @@
 // Patterns indicating test, dummy, or fictitious data
 const DUMMY_WORDS = /\b(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\b/i;
 const DUMMY_SUBSTRINGS = /(dummy|fiktif|fake|asdf|ujicoba|percobaan)/i;
-const DUMMY_COMPOUNDS = /(^|[_.\-\d\s])(test|tester|testing)(user|guru|siswa|admin|account|akun|sekolah)?([_.\-\d\s]|$)|(user|guru|siswa|admin|account|akun)(test|tester|testing)/i;
+const DUMMY_COMPOUNDS = /(^|[_.\-\d\s])(test|tester|testing|dummy)[a-z0-9_.-]*$|^[a-z0-9_.-]*(test|tester|testing|dummy)([_.\-\d\s]|$)/i;
 
 export interface ValidationResult {
   valid: boolean;
@@ -95,12 +95,12 @@ export function validateTeacherData(
   }
 
   // 2. Forbidden legacy names
-  if (isForbiddenName(namaGuru)) {
+  if (isForbiddenName(namaGuru) || (cleanNip !== '-' && isForbiddenName(cleanNip))) {
     return {
       valid: false,
-      message: /\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanNama)
+      message: (/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanNama) || /\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanNip))
         ? 'Gunakan format penulisan resmi Title Case: "Fitra Suryazana Mamonto".'
-        : 'Nama tersebut telah dinonaktifkan dari sistem.'
+        : 'Nama atau NIP tersebut telah dinonaktifkan dari sistem.'
     };
   }
 

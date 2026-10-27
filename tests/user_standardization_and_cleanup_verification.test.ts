@@ -571,6 +571,43 @@ async function run() {
     fail('validateStudentData: failed to reject dummy student', dummyStudentTest);
   }
 
+  // Adversarial R3 Checks: NIP forbidden and dummy protection, role compound dummies, and jadwal trigger
+  const dummyTeacherNipAhmad = validateTeacherData('ahmad_dahlan', 'Guru Nama Sah', []);
+  if (!dummyTeacherNipAhmad.valid && dummyTeacherNipAhmad.message?.includes('dinonaktifkan')) {
+    pass('validateTeacherData: rejects deprecated NIP (ahmad_dahlan)');
+  } else {
+    fail('validateTeacherData: failed to reject deprecated NIP', dummyTeacherNipAhmad);
+  }
+
+  const dummyTeacherNipFitraUpper = validateTeacherData('FITRA SURYAZANA MAMONTO', 'Guru Nama Sah', []);
+  if (!dummyTeacherNipFitraUpper.valid && dummyTeacherNipFitraUpper.message?.includes('Title Case')) {
+    pass('validateTeacherData: rejects uppercase FITRA in NIP');
+  } else {
+    fail('validateTeacherData: failed to reject uppercase FITRA in NIP', dummyTeacherNipFitraUpper);
+  }
+
+  const dummyTeacherNipCompound = validateTeacherData('testuser', 'Guru Nama Sah', []);
+  if (!dummyTeacherNipCompound.valid && dummyTeacherNipCompound.message?.includes('terdeteksi sebagai data percobaan/dummy')) {
+    pass('validateTeacherData: rejects compound dummy NIP (testuser)');
+  } else {
+    fail('validateTeacherData: failed to reject compound dummy NIP', dummyTeacherNipCompound);
+  }
+
+  const dummyRoleCompounds = ['teststudent', 'studenttest', 'testwali', 'walitest', 'testpiket', 'pikettest', 'testoperator', 'testkepsek'];
+  const failedRoleCompounds = dummyRoleCompounds.filter(d => !isDummyOrTestString(d));
+  if (failedRoleCompounds.length === 0) {
+    pass('isDummyOrTestString: flags all role compounds (teststudent, testwali, testpiket, etc.)');
+  } else {
+    fail(`isDummyOrTestString: failed to flag role compounds: ${failedRoleCompounds.join(', ')}`);
+  }
+
+  const userAhmadUsername = validateUserData('ahmad_dahlan', 'Pengguna Sah', []);
+  if (!userAhmadUsername.valid && userAhmadUsername.message?.includes('dinonaktifkan')) {
+    pass('validateUserData: rejects deprecated username (ahmad_dahlan)');
+  } else {
+    fail('validateUserData: failed to reject deprecated username', userAhmadUsername);
+  }
+
   // 5.3: Schema Migration File Guard Verification
   const migFilePath = path.join(root, 'supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql');
   if (fs.existsSync(migFilePath)) {
@@ -581,9 +618,10 @@ async function run() {
     const hasGuruNipIdx = migContent.includes('uq_data_guru_sekolah_nip_lower');
     const hasAntiDummyTrg = migContent.includes('check_anti_dummy_guard');
     const hasSiswaTrg = migContent.includes('trg_anti_dummy_data_siswa');
+    const hasJadwalTrg = migContent.includes('trg_anti_dummy_jadwal_pelajaran');
 
-    if (hasUserUsernameIdx && hasUserNamaIdx && hasGuruNamaIdx && hasGuruNipIdx && hasAntiDummyTrg && hasSiswaTrg) {
-      pass('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql: contains all DB indexes, triggers (including data_siswa), and guards');
+    if (hasUserUsernameIdx && hasUserNamaIdx && hasGuruNamaIdx && hasGuruNipIdx && hasAntiDummyTrg && hasSiswaTrg && hasJadwalTrg) {
+      pass('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql: contains all DB indexes, triggers (including data_siswa & jadwal_pelajaran), and guards');
     } else {
       fail('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql is missing required constraints');
     }

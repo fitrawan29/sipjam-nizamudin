@@ -46,21 +46,34 @@ RETURNS TRIGGER AS $$
 DECLARE
     v_name TEXT;
     v_norm TEXT;
+    v_id_col TEXT;
 BEGIN
     IF TG_TABLE_NAME = 'users' THEN
         v_name := NEW.nama;
-        IF regexp_replace(NEW.username, '[_\.\-\d]+', ' ', 'g') ~* '\y(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\y' THEN
-            RAISE EXCEPTION 'Username fiktif/dummy dilarang: %', NEW.username;
+        v_id_col := NEW.username;
+        IF v_id_col ~* 'ahmad[\s._-]*dahlan' OR v_id_col ~ '\yFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\y' THEN
+            RAISE EXCEPTION 'Username dinonaktifkan / dilarang: %', v_id_col;
+        END IF;
+        IF regexp_replace(v_id_col, '[_\.\-\d]+', ' ', 'g') ~* '\y(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\y'
+           OR v_id_col ~* '(dummy|fiktif|fake|ujicoba|percobaan|testuser|dummyuser|usertest|testguru)' THEN
+            RAISE EXCEPTION 'Username fiktif/dummy dilarang: %', v_id_col;
         END IF;
     ELSIF TG_TABLE_NAME = 'data_guru' THEN
         v_name := NEW.nama_guru;
-        IF NEW.nip IS NOT NULL AND NEW.nip <> '-' THEN
-            IF regexp_replace(NEW.nip, '[_\.\-\d]+', ' ', 'g') ~* '\y(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\y' THEN
-                RAISE EXCEPTION 'NIP fiktif/dummy dilarang: %', NEW.nip;
+        v_id_col := NEW.nip;
+        IF v_id_col IS NOT NULL AND v_id_col <> '-' THEN
+            IF v_id_col ~* 'ahmad[\s._-]*dahlan' OR v_id_col ~ '\yFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\y' THEN
+                RAISE EXCEPTION 'NIP guru dinonaktifkan / dilarang: %', v_id_col;
+            END IF;
+            IF regexp_replace(v_id_col, '[_\.\-\d]+', ' ', 'g') ~* '\y(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\y'
+               OR v_id_col ~* '(dummy|fiktif|fake|ujicoba|percobaan|testuser|dummyuser|usertest|testguru)' THEN
+                RAISE EXCEPTION 'NIP fiktif/dummy dilarang: %', v_id_col;
             END IF;
         END IF;
     ELSIF TG_TABLE_NAME = 'data_siswa' THEN
         v_name := NEW.nama_siswa;
+    ELSIF TG_TABLE_NAME = 'jadwal_pelajaran' THEN
+        v_name := NEW.nama_guru;
     END IF;
 
     -- Normalize multiple spaces in name
@@ -100,4 +113,9 @@ FOR EACH ROW EXECUTE FUNCTION public.check_anti_dummy_guard();
 DROP TRIGGER IF EXISTS trg_anti_dummy_data_siswa ON public.data_siswa;
 CREATE TRIGGER trg_anti_dummy_data_siswa
 BEFORE INSERT OR UPDATE ON public.data_siswa
+FOR EACH ROW EXECUTE FUNCTION public.check_anti_dummy_guard();
+
+DROP TRIGGER IF EXISTS trg_anti_dummy_jadwal_pelajaran ON public.jadwal_pelajaran;
+CREATE TRIGGER trg_anti_dummy_jadwal_pelajaran
+BEFORE INSERT OR UPDATE ON public.jadwal_pelajaran
 FOR EACH ROW EXECUTE FUNCTION public.check_anti_dummy_guard();
