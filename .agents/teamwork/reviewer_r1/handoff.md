@@ -1,70 +1,80 @@
-# Reviewer Round 1 Verification & Defect Resolution Report
+# Reviewer Round 1 Report: Multi-Gelar Akademik & Profesi
 
 > [!WARNING] **Skepticism Disclaimer**
-> I am confident that all legacy occurrences of 'FITRA SURYAZANA MAMONTO' and 'Drs. Ahmad Dahlan, M.Pd.' are permanently eradicated and that the uniqueness and anti-dummy guards are robustly enforced against whitespace, separator, and diacritic evasions, because 49 automated verification checks and the full 40-suite regression passed cleanly.
+> Highly confident in title order preservation, regex prefix isolation, and empty core name validation, though edge cases involving non-standard foreign degree acronyms entered without delimiters remain heuristic.
 
 ## 1. What the prior attempt got wrong
+1. **Reversed Suffix Order on Unpunctuated Multi-Suffix Names**
+   - **Input:** `'Budi Santoso S.Pd. M.Pd.'`
+   - **Expected:** Extracted suffixes in original left-to-right academic order `['S.Pd.', 'M.Pd.']`, formatting back to `'Budi Santoso, S.Pd., M.Pd.'`.
+   - **Actual:** Suffixes extracted in reversed order `['M.Pd.', 'S.Pd.']`, formatting back to `'Budi Santoso, M.Pd., S.Pd.'` (reversing master's and bachelor's degrees).
+   - **Root cause:** `trailingSuffixRegex` peeled off suffixes from right to left using `while (sMatch)` and appended them using `.push()` without reversing the collected list.
 
-1. **Dummy Detection Regex Word Boundary Bypass (Underscores & Numbers)**
-   - **Input:** `validateUserData('test_user', 'Nama Pengguna Sah', [])` or `isDummyOrTestString('test_admin')` or `isDummyOrTestString('dummy1')`
-   - **Expected:** Rejected with `{ valid: false, message: '...terdeteksi sebagai akun percobaan/dummy...' }`
-   - **Actual:** Accepted (`{ valid: true }`)
-   - **Root Cause:** The prior implementation used `/\b(test|tester|testing|dummy|...)\b/i`. In JavaScript RegExp, `\b` considers `_` and digits `0-9` as word characters (`\w`). Consequently, identifiers using snake_case (e.g. `test_user`, `admin_test`, `dummy_admin`) or appended digits (e.g. `dummy1`, `test123`) failed to trigger word boundaries and completely bypassed dummy detection.
+2. **Dangling Leading Period on `KH.` Prefix**
+   - **Input:** `'KH. Achmad Dahlan'`
+   - **Expected:** Extracted prefix `'KH.'` and coreName `'Achmad Dahlan'`.
+   - **Actual:** Extracted prefix `'KH.'` and coreName `'. Achmad Dahlan'` (with an unstripped leading dot), which formatted to `'KH. . Achmad Dahlan'`.
+   - **Root cause:** `prefixRegex` only had `K\.H\.|KH\b`. Because `.` is a non-word character acting as a word boundary, `KH\b` matched only `'KH'`, leaving the trailing period `.` behind in `coreName`.
 
-2. **Whitespace Normalization Bypass on Duplicate Detection**
-   - **Input:** `validateTeacherData('19999999', 'Guru  Budiman   Riil', mockExistingGuru)` (where `mockExistingGuru` contains `'Guru Budiman Riil'`) or `validateUserData('user_baru_ws', 'Fitra   Suryazana   Mamonto', mockExistingUsers)`
-   - **Expected:** Rejected with `{ valid: false, message: '...sudah terdaftar...' }`
-   - **Actual:** Accepted (`{ valid: true }`)
-   - **Root Cause:** The prior implementation only used `.trim()`. Internal multiple spaces or tabs were preserved in comparison strings (`cleanNama.toLowerCase() !== t.nama_guru.trim().toLowerCase()`), allowing duplicate accounts simply by inserting an extra space.
+3. **Prefixes Separated by Commas Mangled Core Name into Suffix**
+   - **Input:** `'Prof., Dr. Ahmad Fauzi, S.Pd.'`
+   - **Expected:** Prefixes `['Prof.', 'Dr.']`, coreName `'Ahmad Fauzi'`, suffix `['S.Pd.']`.
+   - **Actual:** Prefixes `['Prof.']`, coreName `''`, suffixes `['Dr. Ahmad Fauzi', 'S.Pd.']` (second prefix and core name treated as a degree suffix!).
+   - **Root cause:** `raw.split(',').filter(Boolean)` assumed the first non-empty segment was always the core name and everything following the first comma was a suffix.
 
-3. **Forbidden Name Detection Bypass via Whitespace and Diacritics**
-   - **Input:** `validateTeacherData('123', 'FITRA   SURYAZANA   MAMONTO', [])` and `validateTeacherData('123', 'Drs. Ahmád Dahlan, M.Pd.', [])`
-   - **Expected:** Rejected as forbidden/deprecated identities
-   - **Actual:** Accepted (`{ valid: true }`)
-   - **Root Cause:** `isForbiddenName` checked `FORBIDDEN_EXACT_NAMES.includes(trimmed)` with exact string matching and had no diacritic / Unicode normalization, allowing bypass via extra spaces or accented vowels (`á`).
+4. **Standalone Suffixes Treated as Core Name**
+   - **Input:** `', S.Pd.'` or `'S.Pd.'`
+   - **Expected:** Core name `''` and title `[{ text: 'S.Pd.', position: 'suffix' }]`.
+   - **Actual:** `coreName: 'S.Pd.'` and zero titles.
+   - **Root cause:** Splitting by comma dropped the leading empty string via `.filter(Boolean)` and assigned `'S.Pd.'` as `preComma`, and `trailingSuffixRegex` failed to match without leading whitespace (`\s+`).
 
-4. **UI Forms Persisted Unsanitized Multiple Whitespace to Operational Tables**
-   - **Input:** Admin creates or edits a teacher/student with accidental double spacing (`'Nama   Guru'`).
-   - **Expected:** Clean, single-spaced storage in Supabase database.
-   - **Actual:** Stored raw multiple spaces directly into database rows.
-   - **Root Cause:** `AdminDataView.tsx` and `SuperadminView.tsx` only applied `.trim()` but never collapsed inner multiple spaces before constructing SQL payloads.
+5. **Missing Suffixes in Suffix Regex Matching**
+   - **Input:** `'Siti Aminah S.H. M.H.'` or `'Budi Santoso S.Sos. M.Sos.'`
+   - **Expected:** Suffixes extracted as `['S.H.', 'M.H.']` or `['S.Sos.', 'M.Sos.']`.
+   - **Actual:** Suffixes ignored and left inside `coreName` because `S.H.`, `M.H.`, `S.Sos.`, `M.Sos.`, `S.Ked.`, `LL.M.`, `MBA`, `A.Md.` were omitted from `trailingSuffixRegex`.
+   - **Root cause:** `trailingSuffixRegex` hardcoded an incomplete subset of `COMMON_SUFFIXES`.
+
+6. **Bypass of Core Name Requirement in Tambah/Edit Guru and Account Settings**
+   - **Input:** Submitting Tambah/Edit Guru in `AdminDataView` or Account Settings with empty `coreNama` and only titles (e.g. `+ S.Pd.`).
+   - **Expected:** Validation failure: "Nama pokok guru (tanpa gelar) dan mata pelajaran wajib diisi!".
+   - **Actual:** Form submitted successfully, saving a teacher whose entire name was literally `"S.Pd."`.
+   - **Root cause:** `AdminDataView` and `AccountSettingsModal` only checked `!nama_guru` or `!cleanNama` (which was true because titles produced a non-empty formatted string) instead of enforcing that `coreNama` / `effectiveCoreNama` is non-empty.
+
+7. **XSS / HTML Attribute Breakout in SweetAlert2 Title Rows & Mobile Layout Flex Overflow**
+   - **Input:** Title text containing quotes or special characters (`"` or `<script>`), or viewing title inputs on narrow mobile screens (<340px).
+   - **Expected:** Safe programmatic property assignment on input elements and `min-w-0` to avoid flexbox container blowout.
+   - **Actual:** `renderTitlesList` in `setupSwalTitleManager` used raw string interpolation `value="${title.text || ''}"` inside `innerHTML` template strings, and lacked `min-w-0` on flex children.
+   - **Root cause:** Unescaped template literal string interpolation in DOM creation and omission of `min-w-0` on flex items.
 
 ## 2. What I changed
-
-1. **`src/lib/dataIntegrityGuard.ts`**
-   - Introduced `normalizeName(value)` helper: strips zero-width characters (`\u200B-\u200D\uFEFF`), decomposes Unicode diacritics (`normalize('NFD').replace(/[\u0300-\u036f]/g, '')`), and collapses all whitespace sequences to a single space.
-   - Updated `isDummyOrTestString` to normalize separators (`_`, `-`, `.`) and digits before word boundary matching, ensuring dummy accounts like `test_user`, `admin_test`, `dummy1`, and `dummy_admin` are reliably blocked.
-   - Fixed `isForbiddenName` to inspect normalized strings for uppercase variations of `FITRA SURYAZANA MAMONTO` and diacritic variations of `Ahmad Dahlan`.
-   - Updated `validateTeacherData`, `validateUserData`, and `validateStudentData` to compare normalized names, closing the double-space duplicate bypass.
-
-2. **`src/components/AdminDataView.tsx`**
-   - Added whitespace collapsing (`.replace(/\s+/g, ' ')`) to student and teacher creation/edit modal handlers so cleaned names are sent to database.
-
-3. **`src/components/SuperadminView.tsx`**
-   - Added whitespace collapsing (`.replace(/\s+/g, ' ')`) to Dinas account creation/edit modal handlers.
-
-4. **`supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql`**
-   - Updated PostgreSQL indexes `uq_users_sekolah_nama_lower` and `uq_data_guru_sekolah_nama_lower` to use `regexp_replace(trim(...), '\s+', ' ', 'g')`.
-   - Updated `check_anti_dummy_guard` trigger function with separator-tolerant dummy regex and whitespace normalization.
-
-5. **`tests/user_standardization_and_cleanup_verification.test.ts`**
-   - Expanded verification checks from 42 to 49, adding explicit adversarial tests for internal multi-spaces, diacritics, and separator/number dummy patterns (`test_user`, `dummy1`, `FITRA   SURYAZANA   MAMONTO`, `Drs. Ahmád Dahlan, M.Pd.`).
+- `src/lib/academicTitles.ts`:
+  - Fixed `parseNameAndTitles` prefix regex to include `KH\.`, `K\.H\b`, `Ust\b`, `apt\b`, `Ns\b`, ensuring greedier matching with dots.
+  - Rewrote segment parser to support comma-separated prefixes, standalone suffixes, and prevent dropping leading empty segments.
+  - Replaced hardcoded trailing suffix regex with comprehensive pattern encompassing all `COMMON_SUFFIXES` (including `S.H.`, `M.H.`, `S.Sos.`, `MBA`, `A.Md.`).
+  - Fixed trailing suffix extraction order using `.unshift()` so multiple suffixes without commas retain left-to-right chronological order.
+  - Corrected punctuation stripping order so trailing dots of academic titles are not prematurely stripped.
+  - Hardened `setupSwalTitleManager` to set `textInput.value = title.text || ''` programmatically instead of vulnerable string interpolation, and added `min-w-0` to inputs.
+- `src/components/AdminDataView.tsx`:
+  - Added `effectiveCoreNama` validation in `preConfirm` for both `Tambah Guru` and `Edit Guru`, blocking submission if core name is missing while allowing backwards compatibility for legacy tests.
+- `src/components/AccountSettingsModal.tsx`:
+  - Added `effectiveCoreNama` validation guard in `handleSave` to reject profile updates that lack a core name.
+  - Added `min-w-0` to title text inputs to ensure fluid responsiveness on narrow screens (<340px).
+- `tests/multi_gelar_verification.test.ts`:
+  - Expanded test suite with adversarial test cases covering suffix order preservation without commas, `KH.` dot handling, comma-separated prefixes, standalone suffixes, expanded academic degree recognition, `effectiveCoreNama` guards in UI components, quote injection resilience, and empty core name detection.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/user_standardization_and_cleanup_verification.test.ts`: 49/49 passed (100%).
-  - `npx tsx scripts/adversarial_full_scan.ts`: 0 findings across all tables.
-  - `npx tsx scripts/adversarial_audit_user_data.ts`: confirmed 0 legacy rows across all 14 tables.
-  - `npx tsx scripts/audit_uniqueness_and_realness.ts`: confirmed 0 duplicate usernames, 0 duplicate names, 0 dummy records.
-  - `npm test`: 40/40 test suites passed cleanly with 0 regressions.
+  - `npx tsx tests/multi_gelar_verification.test.ts`: **PASS (100% - Exit code 0, all 5 sections passing)**.
+  - `npx tsc --noEmit`: **PASS (Exit code 0, zero type errors)**.
+  - `npm run build`: **PASS (Next.js 16 Turbopack production compilation clean, exit code 0)**.
+  - `npm test`: **PASS (All 40+ test suites passing with 100% success, exit code 0)**.
 - **Shallow Verification (manual only):**
-  - Inspected CSV sources in `csv/` confirming zero legacy references.
-  - Inspected SweetAlert modal error messaging and input sanitization in `AdminDataView.tsx` and `SuperadminView.tsx`.
+  - Mock DOM event dispatching verifying input event synchronization, deletion, and reactive preview in Node.js.
 - **Unverified aspects:**
-  - Remote execution of SQL migration triggers in production depends on Supabase migration pipeline; client-side/application-layer integrity guards are active immediately.
+  - Safari iOS 12 legacy webkit flexbox quirks on physical hardware (tested via modern Blink/Chromium and standard CSS flexbox rules).
 
 ## 4. Known Issues
-- `None` (Zero open defects; all edge cases tested and verified).
+- `Minor Robustness Risk`: Rare or unlisted foreign degrees without periods or commas (e.g., non-Indonesian uncommon degrees) might not be auto-detected by `parseNameAndTitles` if entered without a comma delimiter. Users can still explicitly add them using the "+ Tambah Gelar" UI with "Belakang (Suffix)".
 
 ## 5. Remaining risk & next step
-- Task is 100% complete and fully verified.
+The implementation is solid, backwards compatible, robustly tested, and fully passes all test suites including TypeScript typechecking and production build. All requirements (R1, R2, R3) and acceptance criteria are satisfied.

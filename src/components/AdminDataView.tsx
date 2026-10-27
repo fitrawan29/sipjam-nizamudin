@@ -578,14 +578,16 @@ export default function AdminDataView({ user }: { user: any }) {
         },
         preConfirm: () => {
           const nip = (document.getElementById('swal-nip') as HTMLInputElement)?.value?.trim() || '-';
+          const rawCoreNama = (document.getElementById('swal-core-nama') as HTMLInputElement)?.value?.trim() || '';
           const rawNamaGuru = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim() || '';
+          const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
           const nama_guru = rawNamaGuru.replace(/\s+/g, ' ');
           const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLInputElement)?.value?.trim();
           const no_hp = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || '-';
 
-          if (!nama_guru || !mata_pelajaran) {
-            Swal.showValidationMessage('Nama Guru dan Mata Pelajaran wajib diisi!');
+          if (!effectiveCoreNama || !nama_guru || !mata_pelajaran) {
+            Swal.showValidationMessage('Nama pokok guru (tanpa gelar) dan mata pelajaran wajib diisi!');
             return null;
           }
 
@@ -1341,15 +1343,17 @@ export default function AdminDataView({ user }: { user: any }) {
         },
         preConfirm: () => {
           const nip = (document.getElementById('swal-edit-nip') as HTMLInputElement)?.value?.trim() || '-';
+          const rawCoreNama = (document.getElementById('swal-edit-core-nama') as HTMLInputElement)?.value?.trim() || '';
           const rawNamaGuru = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim() || '';
+          const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
           const nama_guru = rawNamaGuru.replace(/\s+/g, ' ');
           const mata_pelajaran = (document.getElementById('swal-edit-mapel') as HTMLInputElement)?.value?.trim();
           const no_hp = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-edit-email') as HTMLInputElement)?.value?.trim() || '-';
           const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
 
-          if (!nama_guru || !mata_pelajaran) {
-            Swal.showValidationMessage('Nama Guru dan Mata Pelajaran wajib diisi!');
+          if (!effectiveCoreNama || !nama_guru || !mata_pelajaran) {
+            Swal.showValidationMessage('Nama pokok guru (tanpa gelar) dan mata pelajaran wajib diisi!');
             return null;
           }
 

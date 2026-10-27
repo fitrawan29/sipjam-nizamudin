@@ -284,6 +284,12 @@ export default function AccountSettingsModal({
     const cleanNama = normalizeName(formattedFullNama || nama || user.nama);
     const cleanUsername = (isAdmin ? username : (user.username || username || '')).trim();
 
+    const effectiveCoreNama = (coreNama || '').trim() || parseNameAndTitles(cleanNama).coreName;
+    if (!effectiveCoreNama) {
+      showToast('Validasi Gagal', 'Nama pokok (tanpa gelar) wajib diisi.', 'warning');
+      return;
+    }
+
     if (!cleanNama) {
       showToast('Validasi Gagal', 'Nama lengkap tidak boleh kosong.', 'warning');
       return;
@@ -581,7 +587,7 @@ export default function AccountSettingsModal({
                         value={title.text}
                         onChange={(e) => updateTitle(idx, { text: e.target.value })}
                         placeholder="Contoh: S.Pd. atau Dr."
-                        className="flex-1 px-2.5 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded-md bg-transparent text-gray-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
+                        className="flex-1 min-w-0 px-2.5 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded-md bg-transparent text-gray-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                       />
                       <button
                         type="button"

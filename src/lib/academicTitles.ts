@@ -72,7 +72,7 @@ export function formatFullName(
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
-    .replace(/^,+|,+$/g, '')
+    .replace(/^[,;\s]+|[,;\s]+$/g, '')
     .trim();
 
   const cleanTitles = (titles || [])
@@ -80,7 +80,7 @@ export function formatFullName(
       position: t.position,
       text: (t.text || '')
         .replace(/[\u200B-\u200D\uFEFF]/g, '')
-        .replace(/^,+|,+$/g, '')
+        .replace(/^[,;\s]+|[,;\s]+$/g, '')
         .trim()
     }))
     .filter(t => t.text.length > 0);
@@ -122,6 +122,71 @@ export function formatFullName(
     .trim();
 }
 
+export const PREFIX_PATTERNS = [
+  'Prof\\.',
+  'Prof\\b',
+  'Dr\\.',
+  'Dr\\b',
+  'Drs\\.',
+  'Drs\\b',
+  'Dra\\.',
+  'Dra\\b',
+  'Ir\\.',
+  'Ir\\b',
+  'H\\.',
+  'H\\b',
+  'Hj\\.',
+  'Hj\\b',
+  'K\\.H\\.',
+  'KH\\.',
+  'KH\\b',
+  'K\\.H\\b',
+  'Ust\\.',
+  'Ust\\b',
+  'Ustadz\\b',
+  'dr\\.',
+  'dr\\b',
+  'drg\\.',
+  'drg\\b',
+  'Ns\\.',
+  'Ns\\b',
+  'apt\\.',
+  'apt\\b'
+];
+
+const prefixRegex = new RegExp(`^(${PREFIX_PATTERNS.join('|')})\\s*`, 'i');
+
+const SUFFIX_PATTERNS = [
+  'S\\.Pd\\.?',
+  'M\\.Pd\\.?',
+  'S\\.Kom\\.?',
+  'M\\.Kom\\.?',
+  'S\\.T\\.?',
+  'M\\.T\\.?',
+  'S\\.Si\\.?',
+  'M\\.Si\\.?',
+  'S\\.E\\.?',
+  'M\\.M\\.?',
+  'S\\.Ag\\.?',
+  'M\\.Ag\\.?',
+  'S\\.Sos\\.?',
+  'M\\.Sos\\.?',
+  'S\\.H\\.?',
+  'M\\.H\\.?',
+  'S\\.Ked\\.?',
+  'Gr\\.?',
+  'Ph\\.D\\.?',
+  'M\\.Sc\\.?',
+  'B\\.Sc\\.?',
+  'LL\\.M\\.?',
+  'MBA',
+  'A\\.Md\\.?'
+];
+
+const SUFFIX_REGEX_STR = `(${SUFFIX_PATTERNS.join('|')})`;
+const standaloneSuffixRegex = new RegExp(`^${SUFFIX_REGEX_STR}$`, 'i');
+const trailingSuffixRegex = new RegExp(`\\s+${SUFFIX_REGEX_STR}$`, 'i');
+
 /**
  * Parses an existing full name string into core name and extracted titles.
  * Useful when populating edit forms for users or teachers.
@@ -140,60 +205,81 @@ export function parseNameAndTitles(fullName?: string | null): {
   }
 
   const titles: AcademicTitle[] = [];
+  const commaParts = raw.split(',').map(p => p.trim());
+  let coreName = '';
+  let coreFound = false;
 
-  // Known prefix regex with word boundaries to avoid false matching words like "Hadi", "Irwan", etc.
-  const prefixRegex = /^(Prof\.|Prof\b|Dr\.|Dr\b|Drs\.|Drs\b|Dra\.|Dra\b|Ir\.|Ir\b|H\.|H\b|Hj\.|Hj\b|K\.H\.|KH\b|Ust\.|Ustadz\b|dr\.|dr\b|drg\.|drg\b|Ns\.|apt\.)\s*/i;
+  for (let i = 0; i < commaParts.length; i++) {
+    let part = commaParts[i];
+    if (!part) continue;
 
-  // Split by comma for suffixes
-  // Format: "Prefixes CoreName, Suffix1, Suffix2"
-  const commaParts = raw.split(',').map(p => p.trim()).filter(Boolean);
+    if (!coreFound) {
+      // Extract any leading prefixes
+      let pMatch: RegExpExecArray | null = null;
+      while ((pMatch = prefixRegex.exec(part)) !== null) {
+        let matched = pMatch[1].trim();
+        if (!matched.endsWith('.') && matched.length <= 4) {
+          matched += '.';
+        }
+        titles.push({
+          id: Math.random().toString(36).substring(2, 9),
+          text: matched,
+          position: 'prefix'
+        });
+        part = part.slice(pMatch[0].length).trim();
+      }
 
-  let preComma = commaParts[0] || '';
-  const postComma = commaParts.slice(1);
+      // Clean leading punctuation after prefix stripping
+      part = part.replace(/^[,.\s]+/, '').trim();
 
-  // Extract prefixes from preComma
-  let match: RegExpExecArray | null = null;
-  while ((match = prefixRegex.exec(preComma)) !== null) {
-    let matchedPrefix = match[1].trim();
-    if (!matchedPrefix.endsWith('.') && matchedPrefix.length <= 4) {
-      matchedPrefix += '.';
-    }
-    titles.push({
-      id: Math.random().toString(36).substring(2, 9),
-      text: matchedPrefix,
-      position: 'prefix'
-    });
-    preComma = preComma.slice(match[0].length).trim();
-  }
+      if (!part) {
+        // This part consisted only of prefix titles
+        continue;
+      }
 
-  // Extract suffixes from postComma
-  for (const suffix of postComma) {
-    if (suffix) {
-      titles.push({
-        id: Math.random().toString(36).substring(2, 9),
-        text: suffix,
-        position: 'suffix'
-      });
-    }
-  }
+      // Check if the remaining part is a standalone suffix (e.g. in ', S.Pd.')
+      if (standaloneSuffixRegex.test(part)) {
+        titles.push({
+          id: Math.random().toString(36).substring(2, 9),
+          text: part,
+          position: 'suffix'
+        });
+        continue;
+      }
 
-  // If there was no comma, check if preComma ends with a common suffix (e.g. "Budi Santoso S.Pd.")
-  if (postComma.length === 0) {
-    const trailingSuffixRegex = /\s+(S\.Pd\.?|M\.Pd\.?|S\.Kom\.?|M\.Kom\.?|S\.T\.?|M\.T\.?|S\.Si\.?|M\.Si\.?|S\.E\.?|M\.M\.?|S\.Ag\.?|M\.Ag\.?|Gr\.?|Ph\.D\.?|M\.Sc\.?|B\.Sc\.?)$/i;
-    let sMatch = trailingSuffixRegex.exec(preComma);
-    while (sMatch) {
-      titles.push({
-        id: Math.random().toString(36).substring(2, 9),
-        text: sMatch[1],
-        position: 'suffix'
-      });
-      preComma = preComma.slice(0, sMatch.index).trim();
-      sMatch = trailingSuffixRegex.exec(preComma);
+      // If this is the last part (or all subsequent parts are empty), check for trailing suffixes without comma
+      const remainingCommaParts = commaParts.slice(i + 1).filter(Boolean);
+      if (remainingCommaParts.length === 0) {
+        const trailing: AcademicTitle[] = [];
+        let sMatch = trailingSuffixRegex.exec(part);
+        while (sMatch) {
+          trailing.unshift({
+            id: Math.random().toString(36).substring(2, 9),
+            text: sMatch[1],
+            position: 'suffix'
+          });
+          part = part.slice(0, sMatch.index).trim();
+          sMatch = trailingSuffixRegex.exec(part);
+        }
+        titles.push(...trailing);
+      }
+
+      coreName = part.replace(/^[,.\s]+|[,.\s]+$/g, '').trim();
+      coreFound = true;
+    } else {
+      // All subsequent comma-separated parts are suffixes
+      if (part) {
+        titles.push({
+          id: Math.random().toString(36).substring(2, 9),
+          text: part,
+          position: 'suffix'
+        });
+      }
     }
   }
 
   return {
-    coreName: preComma.trim(),
+    coreName: coreName.trim(),
     titles
   };
 }
@@ -271,7 +357,7 @@ export function setupSwalTitleManager(options: {
           <option value="prefix" ${title.position === 'prefix' ? 'selected' : ''}>Depan (Prefix)</option>
           <option value="suffix" ${title.position === 'suffix' ? 'selected' : ''}>Belakang (Suffix)</option>
         </select>
-        <input type="text" class="swal-title-text flex-1 px-2 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded bg-transparent text-gray-900 dark:text-white focus:outline-hidden" placeholder="Contoh: S.Pd. atau Dr." value="${title.text || ''}">
+        <input type="text" class="swal-title-text flex-1 min-w-0 px-2 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded bg-transparent text-gray-900 dark:text-white focus:outline-hidden" placeholder="Contoh: S.Pd. atau Dr.">
         <button type="button" class="swal-title-del w-7 h-7 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition cursor-pointer" title="Hapus Gelar">
           <i class="fa-solid fa-trash-can text-xs"></i>
         </button>
@@ -281,21 +367,28 @@ export function setupSwalTitleManager(options: {
       const textInput = row.querySelector('.swal-title-text') as HTMLInputElement;
       const delBtn = row.querySelector('.swal-title-del') as HTMLButtonElement;
 
-      posSelect.addEventListener('change', () => {
-        currentTitles[idx].position = posSelect.value as TitlePosition;
-        updatePreviewAndHidden();
-      });
+      if (textInput) {
+        textInput.value = title.text || '';
+        textInput.addEventListener('input', () => {
+          currentTitles[idx].text = textInput.value;
+          updatePreviewAndHidden();
+        });
+      }
 
-      textInput.addEventListener('input', () => {
-        currentTitles[idx].text = textInput.value;
-        updatePreviewAndHidden();
-      });
+      if (posSelect) {
+        posSelect.addEventListener('change', () => {
+          currentTitles[idx].position = posSelect.value as TitlePosition;
+          updatePreviewAndHidden();
+        });
+      }
 
-      delBtn.addEventListener('click', () => {
-        currentTitles.splice(idx, 1);
-        renderTitlesList();
-        updatePreviewAndHidden();
-      });
+      if (delBtn) {
+        delBtn.addEventListener('click', () => {
+          currentTitles.splice(idx, 1);
+          renderTitlesList();
+          updatePreviewAndHidden();
+        });
+      }
 
       titlesContainer.appendChild(row);
     });
