@@ -340,6 +340,53 @@ console.log('\n--- Section 2: parseNameAndTitles & Round-trip ---');
       expectedCore: 'Ahmad Fauzi',
       expectedPrefixes: [],
       expectedSuffixes: ['S. Pd.']
+    },
+    // Adversarial: Semicolon delimited degrees
+    {
+      input: 'Budi Santoso, S.Pd.; M.Pd.',
+      expectedCore: 'Budi Santoso',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Pd.', 'M.Pd.'],
+      expectedFormatted: 'Budi Santoso, S.Pd., M.Pd.'
+    },
+    {
+      input: 'Budi Santoso; S.Pd.; M.Pd.',
+      expectedCore: 'Budi Santoso',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Pd.', 'M.Pd.'],
+      expectedFormatted: 'Budi Santoso, S.Pd., M.Pd.'
+    },
+    // Adversarial: Custom degree order preserved before recognized suffix
+    {
+      input: 'Budi, CustomDegree S.Pd.',
+      expectedCore: 'Budi',
+      expectedPrefixes: [],
+      expectedSuffixes: ['CustomDegree', 'S.Pd.'],
+      expectedFormatted: 'Budi, CustomDegree, S.Pd.'
+    },
+    // Adversarial: Misplaced multi-prefix after comma
+    {
+      input: 'Ahmad Fauzi, Dr. Ir.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: ['Dr.', 'Ir.'],
+      expectedSuffixes: [],
+      expectedFormatted: 'Dr. Ir. Ahmad Fauzi'
+    },
+    // Adversarial: Trailing suffix in core name followed by comma parts
+    {
+      input: 'Budi Santoso S.Pd., M.Pd.',
+      expectedCore: 'Budi Santoso',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Pd.', 'M.Pd.'],
+      expectedFormatted: 'Budi Santoso, S.Pd., M.Pd.'
+    },
+    // Adversarial: Complex mixed comma/semicolon with multi-prefix and multi-suffix
+    {
+      input: 'Prof.; Dr. Ahmad Fauzi; S.Pd., M.Pd.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: ['Prof.', 'Dr.'],
+      expectedSuffixes: ['S.Pd.', 'M.Pd.'],
+      expectedFormatted: 'Prof. Dr. Ahmad Fauzi, S.Pd., M.Pd.'
     }
   ];
 

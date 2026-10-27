@@ -248,7 +248,7 @@ export function parseNameAndTitles(fullName?: string | null): {
   }
 
   const titles: AcademicTitle[] = [];
-  const commaParts = raw.split(',').map(p => p.trim());
+  const commaParts = raw.split(/[,;]+/).map(p => p.trim());
   let coreName = '';
   let coreFound = false;
 
@@ -290,22 +290,19 @@ export function parseNameAndTitles(fullName?: string | null): {
         continue;
       }
 
-      // If this is the last part (or all subsequent parts are empty), check for trailing suffixes without comma
-      const remainingCommaParts = commaParts.slice(i + 1).filter(Boolean);
-      if (remainingCommaParts.length === 0) {
-        const trailing: AcademicTitle[] = [];
-        let sMatch = trailingSuffixRegex.exec(part);
-        while (sMatch) {
-          trailing.unshift({
-            id: Math.random().toString(36).substring(2, 9),
-            text: sMatch[1],
-            position: 'suffix'
-          });
-          part = part.slice(0, sMatch.index).trim();
-          sMatch = trailingSuffixRegex.exec(part);
-        }
-        titles.push(...trailing);
+      // Extract trailing suffixes without comma (e.g. 'Budi Santoso S.Pd.' or 'Budi Santoso S.Pd., M.Pd.')
+      const trailing: AcademicTitle[] = [];
+      let sMatch = trailingSuffixRegex.exec(part);
+      while (sMatch) {
+        trailing.unshift({
+          id: Math.random().toString(36).substring(2, 9),
+          text: sMatch[1],
+          position: 'suffix'
+        });
+        part = part.slice(0, sMatch.index).trim();
+        sMatch = trailingSuffixRegex.exec(part);
       }
+      titles.push(...trailing);
 
       // Preserve trailing dot for initials (e.g. 'Budi S.') while removing commas/spaces
       coreName = part.replace(/^[,;\s]+|[,;\s]+$/g, '').trim();
@@ -313,22 +310,29 @@ export function parseNameAndTitles(fullName?: string | null): {
     } else {
       // Subsequent comma-separated parts
       if (part) {
-        // If this part is purely a known prefix title (e.g. misplaced "Ahmad Fauzi, Dr.")
-        const pMatch = prefixRegex.exec(part);
-        if (pMatch && pMatch[0].trim() === part.trim()) {
+        // If this part is purely known prefix title(s) (e.g. misplaced "Ahmad Fauzi, Dr." or "Ahmad Fauzi, Dr. Ir.")
+        let tempPrefixPart = part;
+        const misplacedPrefixes: AcademicTitle[] = [];
+        let pMatch: RegExpExecArray | null = null;
+        while ((pMatch = prefixRegex.exec(tempPrefixPart)) !== null) {
           let matched = pMatch[1].trim();
           if (!matched.endsWith('.') && matched.length <= 4) {
             matched += '.';
           }
-          titles.push({
+          misplacedPrefixes.push({
             id: Math.random().toString(36).substring(2, 9),
             text: matched,
             position: 'prefix'
           });
+          tempPrefixPart = tempPrefixPart.slice(pMatch[0].length).trim();
+        }
+
+        if (misplacedPrefixes.length > 0 && !tempPrefixPart) {
+          titles.push(...misplacedPrefixes);
           continue;
         }
 
-        // Check if this part contains multiple space-separated suffixes (e.g. "S.Pd. M.Pd.")
+        // Check if this part contains multiple space-separated suffixes (e.g. "S.Pd. M.Pd." or "CustomDegree S.Pd.")
         const subSuffixes: AcademicTitle[] = [];
         let sMatch = trailingSuffixRegex.exec(part);
         while (sMatch) {
@@ -342,7 +346,7 @@ export function parseNameAndTitles(fullName?: string | null): {
         }
 
         if (subSuffixes.length > 0) {
-          if (standaloneSuffixRegex.test(part)) {
+          if (part) {
             subSuffixes.unshift({
               id: Math.random().toString(36).substring(2, 9),
               text: part,
