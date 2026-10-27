@@ -1,7 +1,7 @@
-# BRIEFING — 2026-10-27T06:01:05Z
+# BRIEFING — 2026-10-27T10:24:00Z
 
 ## Mission
-Perbaikan dan penguatan integritas data pengguna SIPJAM: penghilangan total user "FITRA SURYAZANA MAMONTO" dan digantikan dengan "Fitra Suryazana Mamonto", penghilangan total user "Drs. Ahmad Dahlan, M.Pd.", serta penerapan proteksi integritas data (uniqueness guard & realness/anti-dummy guard) via pendekatan Ponytail, dan git push origin main.
+Penyesuaian sistem profil pengguna dan manajemen guru untuk mendukung multi-gelar akademik/profesi dengan fleksibilitas penempatan prefix/suffix nama pokok, real-time preview, integrasi data integrity guard tanpa modifikasi schema yang merusak, automatisasi git workflow (push ke main), dan verifikasi testing otomatis.
 
 ## 🔒 My Identity
 - Archetype: sentinel
@@ -10,6 +10,10 @@ Perbaikan dan penguatan integritas data pengguna SIPJAM: penghilangan total user
 - Cron 1 (Progress Reporting): 4ac7b240-c602-4adb-969a-78372fcd035f/task-40 (*/8 * * * *) [Terminated on victory]
 - Cron 2 (Liveness Check): 4ac7b240-c602-4adb-969a-78372fcd035f/task-42 (*/10 * * * *) [Terminated on victory]
 - Victory Auditor: 05775710-0e48-43c2-905a-e00c3bed320a (victory_auditor_51) [VICTORY CONFIRMED]
+- Active Orchestrator: d9fd4d02-291e-4017-baae-15802a4fcd35 (swe_38) [Running]
+- Active Cron 1 (Progress Reporting): 844b278e-47a5-46bc-8e04-f2e5009d0d3d/task-36 (*/8 * * * *)
+- Active Cron 2 (Liveness Check): 844b278e-47a5-46bc-8e04-f2e5009d0d3d/task-38 (*/10 * * * *)
+- Victory Auditor: TBD (to be spawned on victory claim)
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
@@ -18,33 +22,26 @@ Perbaikan dan penguatan integritas data pengguna SIPJAM: penghilangan total user
 - Route: SWE Light (teamwork_preview_swe) per Routing Decision Table (single self-contained fix, small and focused)
 
 ## User Context
-- **Last user request**: Perbaikan dan penguatan integritas data pengguna SIPJAM (FITRA SURYAZANA MAMONTO -> Fitra Suryazana Mamonto, penghilangan Drs. Ahmad Dahlan, M.Pd., uniqueness guard, realness/anti-dummy guard).
+- **Last user request**: Dukungan input multi-gelar (prefix/suffix) pada AccountSettingsModal dan AdminDataView, formatting nama baku, data integrity guard compliance, ponytails/minimalist React UI, automated test `tests/multi_gelar_verification.test.ts`, dan git push origin main.
 - **Pending clarifications**: none
 - **Delivered results**:
-  - R1: Eliminasi total 'FITRA SURYAZANA MAMONTO' di database & file CSV sumber, terstandardisasi menjadi 'Fitra Suryazana Mamonto' dengan username 'Fitra'. Relasi data_guru aktif dan valid.
-  - R2: Eliminasi total 'Drs. Ahmad Dahlan, M.Pd.' dari 27 tabel database. Rekaman presensi usang e1144f72-2ec4-43f2-aebb-10a59063a906 terhapus permanen.
-  - R3: Data uniqueness guard aktif via PostgreSQL unique indexes & validator aplikasi native (validateUserData, validateTeacherData, validateStudentData).
-  - R4: Anti-dummy realness guard aktif (regex native Ponytail, modal integrasi, sanitasi CSV, dan trigger DB).
-  - Verifikasi: 65/65 checks passed pada user_standardization_and_cleanup_verification.test.ts, 0 pelanggaran pada 27 tabel scan, 40/40 npm test suites passed 100%, 0 tsc error.
-  - Git delivery: Seluruh commit ter-push ke origin main.
-  - Independent Victory Audit: VICTORY CONFIRMED oleh victory_auditor_51.
+  - Task dispatched to swe_38 (teamwork_preview_swe)
+  - Crons activated for progress reporting & liveness monitoring
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 - **Route**: SWE Light (teamwork_preview_swe)
-- **Active Crons**: none (cleaned up)
-- **Active Subagents**: none (cleaned up)
+- **Active Crons**: 2 (task-36, task-38)
+- **Active Subagents**: swe_38 (d9fd4d02-291e-4017-baae-15802a4fcd35)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
-- **Auditor**: victory_auditor_51 (05775710-0e48-43c2-905a-e00c3bed320a)
+- **Auditor**: TBD
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user requests
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING.md — Persistent working memory
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\BRIEFING_ARCHIVE.md — Archived memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_37\DISPATCH.md — Dispatch prompt for swe_37
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_37\handoff.md — Orchestrator handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_51\handoff.md — Auditor handoff
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_38\DISPATCH.md — Dispatch prompt for swe_38
