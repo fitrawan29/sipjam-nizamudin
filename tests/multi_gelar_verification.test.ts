@@ -138,7 +138,36 @@ console.log('--- Section 1: formatFullName & Title Positioning ---');
   ]);
   assert.strictEqual(result2, 'Fitri Aprilia, S.Pd.');
 
-  console.log('  ✔ [PASS] 1.8: Penanganan Edge Cases (spasi berlebih, koma ganda, gelar kosong)');
+  // Consecutive commas with spaces collapsed cleanly
+  const result3 = formatFullName('Budi', [
+    { id: '1', text: 'S.Pd., , M.Pd.', position: 'suffix' }
+  ]);
+  assert.strictEqual(result3, 'Budi, S.Pd., M.Pd.', 'Consecutive commas inside titles collapsed');
+
+  // Internal multi-spaces inside title strings collapsed
+  const result4 = formatFullName('Budi Santoso', [
+    { id: '1', text: 'Dr.   Ir.', position: 'prefix' },
+    { id: '2', text: 'S.   Pd.', position: 'suffix' }
+  ]);
+  assert.strictEqual(result4, 'Dr. Ir. Budi Santoso, S. Pd.', 'Multi-spaces within titles collapsed');
+
+  // High title count performance & stress test (25 titles)
+  const heavyTitles: AcademicTitle[] = [];
+  for (let i = 1; i <= 10; i++) {
+    heavyTitles.push({ id: `p${i}`, text: `Pref${i}.`, position: 'prefix' });
+  }
+  for (let i = 1; i <= 15; i++) {
+    heavyTitles.push({ id: `s${i}`, text: `Suff${i}.`, position: 'suffix' });
+  }
+  const t0 = performance.now();
+  const heavyResult = formatFullName('Guru Teladan', heavyTitles);
+  const t1 = performance.now();
+  assert.ok(t1 - t0 < 50, `Formatting 25 titles must complete in under 50ms, took ${t1 - t0}ms`);
+  assert.ok(heavyResult.startsWith('Pref1. Pref2.'), 'Prefixes joined cleanly in heavy load');
+  assert.ok(heavyResult.includes('Guru Teladan,'), 'Core name separated by comma before suffixes');
+  assert.ok(heavyResult.endsWith('Suff15.'), 'All 15 suffixes appended properly');
+
+  console.log('  ✔ [PASS] 1.8: Penanganan Edge Cases (spasi berlebih, koma ganda, collapse koma beruntun, stress test 25 gelar)');
 }
 
 // ============================================================================
@@ -231,6 +260,86 @@ console.log('\n--- Section 2: parseNameAndTitles & Round-trip ---');
       expectedCore: 'Budi Santoso',
       expectedPrefixes: [],
       expectedSuffixes: ['S.Sos.', 'M.Sos.']
+    },
+    // Adversarial: Core name with trailing dot for abbreviation/initials preserved
+    {
+      input: 'Budi S., S.Pd.',
+      expectedCore: 'Budi S.',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Pd.']
+    },
+    {
+      input: 'Budi S. S.Pd.',
+      expectedCore: 'Budi S.',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Pd.']
+    },
+    // Adversarial: Space-separated multiple suffixes in subsequent comma part
+    {
+      input: 'Siti Aminah, S.Pd. M.Pd. Gr.',
+      expectedCore: 'Siti Aminah',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Pd.', 'M.Pd.', 'Gr.'],
+      expectedFormatted: 'Siti Aminah, S.Pd., M.Pd., Gr.'
+    },
+    // Adversarial: Islamic madrasah & psychological counseling degrees
+    {
+      input: 'Ahmad Fauzi S.Pd.I.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Pd.I.']
+    },
+    {
+      input: 'Siti Aminah S.Psi.',
+      expectedCore: 'Siti Aminah',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S.Psi.']
+    },
+    {
+      input: 'Fitra Mamonto M.Hum.',
+      expectedCore: 'Fitra Mamonto',
+      expectedPrefixes: [],
+      expectedSuffixes: ['M.Hum.']
+    },
+    {
+      input: 'Budi Santoso M.P.',
+      expectedCore: 'Budi Santoso',
+      expectedPrefixes: [],
+      expectedSuffixes: ['M.P.']
+    },
+    {
+      input: 'Ahmad Fauzi M.B.A.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: [],
+      expectedSuffixes: ['M.B.A.']
+    },
+    {
+      input: 'Ahmad Fauzi A.Md.Kom.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: [],
+      expectedSuffixes: ['A.Md.Kom.']
+    },
+    // Adversarial: Misplaced prefix after comma auto-assigned to prefix
+    {
+      input: 'Ahmad Fauzi, Dr.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: ['Dr.'],
+      expectedSuffixes: [],
+      expectedFormatted: 'Dr. Ahmad Fauzi'
+    },
+    {
+      input: 'Ahmad Fauzi, Prof.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: ['Prof.'],
+      expectedSuffixes: [],
+      expectedFormatted: 'Prof. Ahmad Fauzi'
+    },
+    // Adversarial: Suffix with space after period
+    {
+      input: 'Ahmad Fauzi S. Pd.',
+      expectedCore: 'Ahmad Fauzi',
+      expectedPrefixes: [],
+      expectedSuffixes: ['S. Pd.']
     }
   ];
 
@@ -242,10 +351,11 @@ console.log('\n--- Section 2: parseNameAndTitles & Round-trip ---');
     assert.deepStrictEqual(actualPrefixes, tc.expectedPrefixes, `Prefixes mismatch for "${tc.input}"`);
     assert.deepStrictEqual(actualSuffixes, tc.expectedSuffixes, `Suffixes mismatch for "${tc.input}"`);
 
-    // Round-trip verification if input was well-formed
-    if (tc.expectedCore && tc.input.includes(',') && !tc.input.includes('Prof.,')) {
-      const roundTrip = formatFullName(parsed.coreName, parsed.titles);
-      assert.strictEqual(roundTrip, tc.input, `Round-trip format mismatch for "${tc.input}"`);
+    // Formatted verification
+    const expectedFormatted = (tc as any).expectedFormatted ?? (tc.expectedCore && tc.input.includes(',') && !tc.input.includes('Prof.,') ? tc.input : null);
+    if (expectedFormatted) {
+      const formatted = formatFullName(parsed.coreName, parsed.titles);
+      assert.strictEqual(formatted, expectedFormatted, `Formatted name mismatch for "${tc.input}"`);
     }
   }
 
@@ -433,8 +543,22 @@ console.log('\n--- Section 4: Source Code Inspection (AccountSettingsModal & Adm
     'Inputs contain min-w-0 class to prevent flex layout overflow on narrow mobile screens'
   );
 
+  // Verify break-words on preview elements for fluid multi-title display
+  assert.ok(
+    modalSrc.includes('break-words') &&
+    adminDataContent.includes('swal-name-preview" class="font-bold text-xs text-gray-900 break-words') &&
+    adminDataContent.includes('swal-edit-name-preview" class="font-bold text-xs text-gray-900 break-words'),
+    'Preview cards use break-words to wrap long multi-title names on mobile'
+  );
+
+  // Verify fallback (rawNamaGuru || rawCoreNama) in AdminDataView
+  assert.ok(
+    adminDataContent.includes('(rawNamaGuru || rawCoreNama)'),
+    'AdminDataView preConfirm uses rawNamaGuru || rawCoreNama fallback'
+  );
+
   console.log('  ✔ [PASS] 4.2: AdminDataView.tsx implements multi-title management in Tambah and Edit Guru');
-  console.log('  ✔ [PASS] 4.3: Validasi effectiveCoreNama dan class min-w-0 aktif pada modal & swal');
+  console.log('  ✔ [PASS] 4.3: Validasi effectiveCoreNama, class min-w-0, dan break-words aktif pada modal & swal');
 }
 
 // ============================================================================

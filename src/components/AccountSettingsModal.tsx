@@ -280,15 +280,15 @@ export default function AccountSettingsModal({
       return;
     }
 
-    const formattedFullNama = formatFullName(coreNama, titles);
-    const cleanNama = normalizeName(formattedFullNama || nama || user.nama);
-    const cleanUsername = (isAdmin ? username : (user.username || username || '')).trim();
-
-    const effectiveCoreNama = (coreNama || '').trim() || parseNameAndTitles(cleanNama).coreName;
+    const effectiveCoreNama = (coreNama || '').trim();
     if (!effectiveCoreNama) {
       showToast('Validasi Gagal', 'Nama pokok (tanpa gelar) wajib diisi.', 'warning');
       return;
     }
+
+    const formattedFullNama = formatFullName(effectiveCoreNama, titles);
+    const cleanNama = normalizeName(formattedFullNama);
+    const cleanUsername = (isAdmin ? username : (user.username || username || '')).trim();
 
     if (!cleanNama) {
       showToast('Validasi Gagal', 'Nama lengkap tidak boleh kosong.', 'warning');
@@ -616,7 +616,10 @@ export default function AccountSettingsModal({
                   </span>
                 )}
               </div>
-              <div className="text-sm font-bold text-gray-900 dark:text-white truncate">
+              <div
+                className="text-sm font-bold text-gray-900 dark:text-white break-words"
+                title={formatFullName(coreNama, titles)}
+              >
                 {formatFullName(coreNama, titles) || (
                   <span className="text-gray-400 dark:text-gray-500 italic font-normal text-xs">
                     Nama lengkap akan tampil di sini...

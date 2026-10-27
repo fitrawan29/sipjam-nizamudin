@@ -538,7 +538,7 @@ export default function AdminDataView({ user }: { user: any }) {
                 <span>Preview Nama Lengkap Terformat:</span>
                 <span id="swal-titles-summary" class="text-[10px] text-blue-700 font-normal"></span>
               </div>
-              <div id="swal-name-preview" class="font-bold text-xs text-gray-900 truncate"></div>
+              <div id="swal-name-preview" class="font-bold text-xs text-gray-900 break-words"></div>
             </div>
 
             <!-- Synced input with id="swal-nama" for backwards-compatibility & submission -->
@@ -581,7 +581,7 @@ export default function AdminDataView({ user }: { user: any }) {
           const rawCoreNama = (document.getElementById('swal-core-nama') as HTMLInputElement)?.value?.trim() || '';
           const rawNamaGuru = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim() || '';
           const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
-          const nama_guru = rawNamaGuru.replace(/\s+/g, ' ');
+          const nama_guru = (rawNamaGuru || rawCoreNama).replace(/\s+/g, ' ');
           const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLInputElement)?.value?.trim();
           const no_hp = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || '-';
@@ -1294,11 +1294,11 @@ export default function AdminDataView({ user }: { user: any }) {
                 <span>Preview Nama Lengkap Terformat:</span>
                 <span id="swal-edit-titles-summary" class="text-[10px] text-blue-700 font-normal"></span>
               </div>
-              <div id="swal-edit-name-preview" class="font-bold text-xs text-gray-900 truncate"></div>
+              <div id="swal-edit-name-preview" class="font-bold text-xs text-gray-900 break-words"></div>
             </div>
 
             <!-- Synced input with id="swal-edit-nama" for assertions and submission -->
-            <input type="hidden" id="swal-edit-nama" value="${item.nama_guru || ''}">
+            <input type="hidden" id="swal-edit-nama" value="">
 
             <div>
               <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran Diampu *</label>
@@ -1346,7 +1346,7 @@ export default function AdminDataView({ user }: { user: any }) {
           const rawCoreNama = (document.getElementById('swal-edit-core-nama') as HTMLInputElement)?.value?.trim() || '';
           const rawNamaGuru = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim() || '';
           const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
-          const nama_guru = rawNamaGuru.replace(/\s+/g, ' ');
+          const nama_guru = (rawNamaGuru || rawCoreNama).replace(/\s+/g, ' ');
           const mata_pelajaran = (document.getElementById('swal-edit-mapel') as HTMLInputElement)?.value?.trim();
           const no_hp = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-edit-email') as HTMLInputElement)?.value?.trim() || '-';

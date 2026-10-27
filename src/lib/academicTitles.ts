@@ -30,6 +30,8 @@ export const COMMON_PREFIXES = [
 export const COMMON_SUFFIXES = [
   'S.Pd.',
   'M.Pd.',
+  'S.Pd.I.',
+  'M.Pd.I.',
   'S.Kom.',
   'M.Kom.',
   'S.T.',
@@ -44,14 +46,31 @@ export const COMMON_SUFFIXES = [
   'M.Sos.',
   'S.H.',
   'M.H.',
+  'S.Psi.',
+  'M.Psi.',
   'S.Ked.',
+  'S.Hum.',
+  'M.Hum.',
+  'S.S.',
+  'S.Farm.',
+  'M.Farm.',
+  'S.Sn.',
+  'M.Sn.',
+  'S.P.',
+  'M.P.',
   'Gr.',
   'Ph.D.',
   'M.Sc.',
   'B.Sc.',
+  'M.A.',
+  'B.A.',
+  'M.Ed.',
+  'B.Ed.',
   'LL.M.',
   'MBA',
-  'A.Md.'
+  'M.B.A.',
+  'A.Md.',
+  'Ak.'
 ];
 
 /**
@@ -80,6 +99,7 @@ export function formatFullName(
       position: t.position,
       text: (t.text || '')
         .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/\s+/g, ' ')
         .replace(/^[,;\s]+|[,;\s]+$/g, '')
         .trim()
     }))
@@ -116,7 +136,7 @@ export function formatFullName(
 
   return formatted
     .replace(/\s+/g, ' ')
-    .replace(/\s*,\s*/g, ', ')
+    .replace(/(?:\s*,\s*)+/g, ', ')
     .replace(/^,\s*/, '')
     .replace(/,\s*$/, '')
     .trim();
@@ -157,30 +177,53 @@ export const PREFIX_PATTERNS = [
 const prefixRegex = new RegExp(`^(${PREFIX_PATTERNS.join('|')})\\s*`, 'i');
 
 const SUFFIX_PATTERNS = [
-  'S\\.Pd\\.?',
-  'M\\.Pd\\.?',
-  'S\\.Kom\\.?',
-  'M\\.Kom\\.?',
-  'S\\.T\\.?',
-  'M\\.T\\.?',
-  'S\\.Si\\.?',
-  'M\\.Si\\.?',
-  'S\\.E\\.?',
-  'M\\.M\\.?',
-  'S\\.Ag\\.?',
-  'M\\.Ag\\.?',
-  'S\\.Sos\\.?',
-  'M\\.Sos\\.?',
-  'S\\.H\\.?',
-  'M\\.H\\.?',
-  'S\\.Ked\\.?',
+  'S\\.\\s*Pd\\.\\s*I\\.?',
+  'S\\.\\s*Pd\\.?',
+  'M\\.\\s*Pd\\.\\s*I\\.?',
+  'M\\.\\s*Pd\\.?',
+  'S\\.\\s*Kom\\.\\s*I\\.?',
+  'S\\.\\s*Kom\\.?',
+  'M\\.\\s*Kom\\.?',
+  'S\\.\\s*T\\.?',
+  'M\\.\\s*T\\.?',
+  'S\\.\\s*Si\\.?',
+  'M\\.\\s*Si\\.?',
+  'S\\.\\s*E\\.?',
+  'M\\.\\s*M\\.?',
+  'S\\.\\s*Ag\\.?',
+  'M\\.\\s*Ag\\.?',
+  'S\\.\\s*Sos\\.?',
+  'M\\.\\s*Sos\\.?',
+  'S\\.\\s*H\\.?',
+  'M\\.\\s*H\\.?',
+  'S\\.\\s*Psi\\.?',
+  'M\\.\\s*Psi\\.?',
+  'S\\.\\s*Ked\\.?',
+  'S\\.\\s*Hum\\.?',
+  'M\\.\\s*Hum\\.?',
+  'S\\.\\s*S\\.?',
+  'S\\.\\s*Farm\\.?',
+  'M\\.\\s*Farm\\.?',
+  'S\\.\\s*Sn\\.?',
+  'M\\.\\s*Sn\\.?',
+  'S\\.\\s*P\\.?',
+  'M\\.\\s*P\\.?',
   'Gr\\.?',
   'Ph\\.D\\.?',
-  'M\\.Sc\\.?',
-  'B\\.Sc\\.?',
+  'M\\.\\s*Sc\\.?',
+  'B\\.\\s*Sc\\.?',
+  'M\\.\\s*A\\.?',
+  'B\\.\\s*A\\.?',
+  'M\\.\\s*Ed\\.?',
+  'B\\.\\s*Ed\\.?',
+  'M\\.\\s*Eng\\.?',
+  'B\\.\\s*Eng\\.?',
   'LL\\.M\\.?',
-  'MBA',
-  'A\\.Md\\.?'
+  'M\\.\\s*B\\.\\s*A\\.?',
+  'MBA\\b',
+  'A\\.\\s*Md\\.[A-Za-z]+\\.?',
+  'A\\.\\s*Md\\.?',
+  'Ak\\.?'
 ];
 
 const SUFFIX_REGEX_STR = `(${SUFFIX_PATTERNS.join('|')})`;
@@ -264,16 +307,59 @@ export function parseNameAndTitles(fullName?: string | null): {
         titles.push(...trailing);
       }
 
-      coreName = part.replace(/^[,.\s]+|[,.\s]+$/g, '').trim();
+      // Preserve trailing dot for initials (e.g. 'Budi S.') while removing commas/spaces
+      coreName = part.replace(/^[,;\s]+|[,;\s]+$/g, '').trim();
       coreFound = true;
     } else {
-      // All subsequent comma-separated parts are suffixes
+      // Subsequent comma-separated parts
       if (part) {
-        titles.push({
-          id: Math.random().toString(36).substring(2, 9),
-          text: part,
-          position: 'suffix'
-        });
+        // If this part is purely a known prefix title (e.g. misplaced "Ahmad Fauzi, Dr.")
+        const pMatch = prefixRegex.exec(part);
+        if (pMatch && pMatch[0].trim() === part.trim()) {
+          let matched = pMatch[1].trim();
+          if (!matched.endsWith('.') && matched.length <= 4) {
+            matched += '.';
+          }
+          titles.push({
+            id: Math.random().toString(36).substring(2, 9),
+            text: matched,
+            position: 'prefix'
+          });
+          continue;
+        }
+
+        // Check if this part contains multiple space-separated suffixes (e.g. "S.Pd. M.Pd.")
+        const subSuffixes: AcademicTitle[] = [];
+        let sMatch = trailingSuffixRegex.exec(part);
+        while (sMatch) {
+          subSuffixes.unshift({
+            id: Math.random().toString(36).substring(2, 9),
+            text: sMatch[1],
+            position: 'suffix'
+          });
+          part = part.slice(0, sMatch.index).trim();
+          sMatch = trailingSuffixRegex.exec(part);
+        }
+
+        if (subSuffixes.length > 0) {
+          if (standaloneSuffixRegex.test(part)) {
+            subSuffixes.unshift({
+              id: Math.random().toString(36).substring(2, 9),
+              text: part,
+              position: 'suffix'
+            });
+            part = '';
+          }
+          titles.push(...subSuffixes);
+        }
+
+        if (part) {
+          titles.push({
+            id: Math.random().toString(36).substring(2, 9),
+            text: part,
+            position: 'suffix'
+          });
+        }
       }
     }
   }
@@ -317,6 +403,9 @@ export function setupSwalTitleManager(options: {
     const formatted = formatFullName(currentCoreName, currentTitles);
     if (previewEl) {
       previewEl.textContent = formatted || '(Nama belum diisi)';
+      if (typeof previewEl.setAttribute === 'function') {
+        previewEl.setAttribute('title', formatted || '');
+      }
     }
     if (hiddenInput) {
       hiddenInput.value = formatted;

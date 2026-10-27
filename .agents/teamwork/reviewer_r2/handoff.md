@@ -1,90 +1,100 @@
 > [!WARNING] **Skepticism Disclaimer**
-> I am confident that the system's uniqueness guards, anti-dummy validation, and eradication of deprecated identities are hardened against compound words, academic titles, prefixes, and non-space separators across forms, modals, CSV imports, and database triggers, because 60 automated verification checks and 40 full test suites passed cleanly with 0 regressions.
+> Confident in the multi-title formatting, initial dot preservation, misplaced prefix correction, and mobile responsiveness after rigorously running 70+ automated tests, full test suites, TypeScript compilation, and production Next.js Turbopack build.
 
 ## 1. What the prior attempt got wrong
 
-1. **Academic Title & Prefix/Suffix Bypass in `isForbiddenName`**
-   - **Input:** `validateTeacherData('123', 'FITRA SURYAZANA MAMONTO, S.Pd.', [])`, `validateTeacherData('123', 'Drs. FITRA SURYAZANA MAMONTO', [])`, or `validateTeacherData('123', 'FITRA_SURYAZANA_MAMONTO', [])`
-   - **Expected:** Rejected with `{ valid: false, message: 'Gunakan format penulisan resmi Title Case: "Fitra Suryazana Mamonto".' }`
-   - **Actual:** Accepted (`{ valid: true }`)
-   - **Root Cause:** `isForbiddenName` relied on exact string equality `normalized === 'FITRA SURYAZANA MAMONTO'`. Any presence of academic titles (`S.Pd.`, `M.Pd.`), prefixes (`Drs.`), trailing punctuation, or non-space separators prevented the equality check from matching, completely bypassing detection.
+1. **Consecutive Commas Not Collapsed in `formatFullName`**
+   - **Input:** `formatFullName('Budi', [{ position: 'suffix', text: 'S.Pd., , M.Pd.' }])`
+   - **Expected:** `'Budi, S.Pd., M.Pd.'`
+   - **Actual:** `'Budi, S.Pd., , M.Pd.'` (awkward `, , ` double punctuation)
+   - **Root cause:** `replace(/\s*,\s*/g, ', ')` only replaced individual commas, leaving consecutive commas intact.
 
-2. **Separator Bypass in `isForbiddenName` for Deprecated Ahmad Dahlan**
-   - **Input:** `validateTeacherData('123', 'Ahmad-Dahlan', [])` or `validateTeacherData('123', 'Ahmad.Dahlan', [])`
-   - **Expected:** Rejected as deprecated/disabled identity
-   - **Actual:** Accepted (`{ valid: true }`)
-   - **Root Cause:** `isForbiddenName` checked `/ahmad\s*dahlan/i`. Hyphens, dots, or underscores are not whitespace characters (`\s`), allowing bypass.
+2. **Accidental Period Stripping from Core Name Initials in `parseNameAndTitles`**
+   - **Input:** `parseNameAndTitles('Budi S., S.Pd.')` or `'Budi S.'`
+   - **Expected:** `coreName: 'Budi S.'`, `titles: ['S.Pd.']`
+   - **Actual:** `coreName: 'Budi S'`, trailing period of abbreviation was stripped
+   - **Root cause:** Line 267 used `part.replace(/^[,.\s]+|[,.\s]+$/g, '').trim()`, including `.` in the trailing strip set, which stripped valid abbreviation dots.
 
-3. **Compound Dummy Identifiers Bypass in `isDummyOrTestString`**
-   - **Input:** `isDummyOrTestString('testuser')`, `isDummyOrTestString('dummyuser')`, `isDummyOrTestString('usertest')`, or `isDummyOrTestString('testguru')`
-   - **Expected:** `true` (flagged as dummy string)
-   - **Actual:** `false` (bypassed)
-   - **Root Cause:** `DUMMY_PATTERN` exclusively used word boundaries (`\b(test|tester|testing|dummy...)\b`). Compound words without whitespace, digit, or punctuation delimiters fail `\b` word boundary conditions.
+3. **Missing Critical Indonesian Academic Degrees in `SUFFIX_PATTERNS` & `COMMON_SUFFIXES`**
+   - **Input:** Unpunctuated common Indonesian degrees, e.g. `'Ahmad Fauzi S.Pd.I.'`, `'Siti Aminah S.Psi.'`, `'Fitra Mamonto M.Hum.'`, `'Budi Santoso M.P.'`, `'Ahmad M.B.A.'`
+   - **Expected:** Extracted as academic suffixes (`S.Pd.I.`, `S.Psi.`, `M.Hum.`, `M.P.`, `M.B.A.`)
+   - **Actual:** Ignored as suffixes and treated as part of core name with stripped dot (e.g. `coreName: 'Ahmad Fauzi S.Pd.I'`)
+   - **Root cause:** `SUFFIX_PATTERNS` and `COMMON_SUFFIXES` omitted standard Indonesian school degrees (Islamic education, psychology, humanities, agriculture, business).
 
-4. **CSV Bulk Import Lacked Data Integrity, Anti-Dummy, and Forbidden Name Guards**
-   - **Input:** Admin imports a CSV file for `Data_Guru` or `Data_Siswa` containing uppercase `'FITRA SURYAZANA MAMONTO'`, deprecated `'Drs. Ahmad Dahlan'`, `'Test Guru'`, or batch duplicates
-   - **Expected:** Pre-sanitized / validated: auto-standardize uppercase Fitra to Title Case `'Fitra Suryazana Mamonto'`, reject forbidden/dummy rows with clear error feedback, normalize whitespace, and prevent batch duplicate injection
-   - **Actual:** `handleFileUpload` in `AdminDataView.tsx` directly generated random UUIDs and issued batch upserts without inspecting row contents for dummy data, forbidden identities, or batch duplicates
-   - **Root Cause:** `handleFileUpload` had no row-level validation pipeline before batching to Supabase.
+4. **Multi-Suffix Strings in Subsequent Comma Segments Left Un-split**
+   - **Input:** `'Siti Aminah, S.Pd. M.Pd. Gr.'` (common format where only a single comma precedes multiple degrees)
+   - **Expected:** Extracted as multiple separate titles `['S.Pd.', 'M.Pd.', 'Gr.']`, formatting to `'Siti Aminah, S.Pd., M.Pd., Gr.'`
+   - **Actual:** Pushed as one single combined title `[{ text: 'S.Pd. M.Pd. Gr.', position: 'suffix' }]`, which formatted back without comma separators between degrees
+   - **Root cause:** In `parseNameAndTitles`, subsequent comma segments were pushed as an unexamined monolith without checking for multiple trailing suffixes.
 
-5. **`AccountSettingsModal` Had No Client-Side Integrity & Realness Guards**
-   - **Input:** User/Admin updates profile name to uppercase `'FITRA SURYAZANA MAMONTO'`, deprecated `'Drs. Ahmad Dahlan'`, dummy names, or unsanitized whitespace
-   - **Expected:** Client validation blocks submission with clear warning toast, and sanitizes name before dispatching RPC
-   - **Actual:** Passed directly to `supabase.rpc('update_user_profile')`, which cascaded unvalidated names into transactional tables
-   - **Root Cause:** `AccountSettingsModal.tsx` lacked imports and integration with `dataIntegrityGuard.ts`.
+5. **Misplaced Known Prefixes After Comma Treated as Suffixes**
+   - **Input:** `'Ahmad Fauzi, Dr.'` or `'Ahmad Fauzi, Prof.'`
+   - **Expected:** Extracted with `position: 'prefix'`, formatting to `'Dr. Ahmad Fauzi'`
+   - **Actual:** Extracted with `position: 'suffix'`, formatting to `'Ahmad Fauzi, Dr.'`
+   - **Root cause:** Any segment following core name was unconditionally assigned `position: 'suffix'`, even when matching a recognized prefix pattern.
 
-6. **PostgreSQL Migration Missing `data_siswa` Trigger and Title-Tolerant Uppercase Matcher**
-   - **Input:** SQL migration defined `check_anti_dummy_guard()` handling `data_siswa`, but omitted `CREATE TRIGGER trg_anti_dummy_data_siswa ON public.data_siswa`. Furthermore, `IF upper(v_norm) = 'FITRA SURYAZANA MAMONTO'` in the SQL trigger failed on titles like `'FITRA SURYAZANA MAMONTO, S.Pd.'`.
-   - **Expected:** `data_siswa` protected by trigger; SQL trigger catches uppercase Fitra with titles/punctuation (`\yFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\y`)
-   - **Actual:** `data_siswa` had no active trigger in migration; title variations bypassed the SQL check
-   - **Root Cause:** Incomplete trigger attachment and strict equality instead of regex in SQL migration.
+6. **AccountSettingsModal Overwrote Explicitly Cleared Core Name**
+   - **Input:** User clears their core name input in Account Settings and submits
+   - **Expected:** Validation failure: "Nama pokok (tanpa gelar) wajib diisi."
+   - **Actual:** Form fell back to `user.nama`, resurrecting the old name from props/session and bypassing validation
+   - **Root cause:** Fallback chain `const cleanNama = normalizeName(formattedFullNama || nama || user.nama);` executed before checking `coreNama`.
 
-7. **Teacher Edit in `AdminDataView` Did Not Sync `users.nama`**
-   - **Input:** Admin edits teacher name in `AdminDataView`
-   - **Expected:** Both `users.username` and `users.nama` kept consistent
-   - **Actual:** Only `users.username` was synced; `users.nama` remained stale
-   - **Root Cause:** Update payload only passed `{ username: formValues.nip }`.
+7. **AdminDataView Tambah & Edit Guru `nama_guru` Fallback Risk**
+   - **Input:** Form submission where `swal-nama` or `swal-edit-nama` was not updated by input event (e.g. autofill or test script setting `core-nama.value` directly)
+   - **Expected:** Constructs `nama_guru` using `rawCoreNama` fallback
+   - **Actual:** `nama_guru` evaluated to `""`, failing validation even if core name was present
+   - **Root cause:** `nama_guru` was derived purely from `rawNamaGuru` without fallback to `rawCoreNama`.
+
+8. **Truncated Preview in Mobile and Narrow Screens Hides Combined Multi-Titles**
+   - **Input:** User enters multiple prefix/suffix titles on a mobile phone or narrow viewport (<360px)
+   - **Expected:** Full name preview wraps to multi-line (`break-words`) so user can review the full combined name before saving
+   - **Actual:** `truncate` class cut off the name with ellipsis (`...`), hiding suffixes on narrow viewports
+   - **Root cause:** Use of `truncate` (nowrap) instead of `break-words`.
+
+9. **Quote / Attribute Breakout in Edit Guru SweetAlert2 Template**
+   - **Input:** `item.nama_guru` containing quotes `"` in Edit Guru
+   - **Expected:** Safe programmatic assignment
+   - **Actual:** In `AdminDataView.tsx` line 1301: `<input type="hidden" id="swal-edit-nama" value="${item.nama_guru || ''}">` directly interpolated unescaped string into HTML
+   - **Root cause:** Inline string interpolation in template literal instead of relying on `setupSwalTitleManager`'s safe DOM property assignment.
 
 ## 2. What I changed
 
-1. **`src/lib/dataIntegrityGuard.ts`**
-   - Updated `isDummyOrTestString` with `DUMMY_SUBSTRINGS` and `DUMMY_COMPOUNDS` to detect compound identifiers like `testuser`, `dummyuser`, `usertest`, `testguru`, and `dummyaccount`.
-   - Updated `isForbiddenName` with title/separator-tolerant regex: `/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/` and `/ahmad[\s._-]*dahlan/i`.
-   - Updated error message checks in `validateTeacherData` and `validateUserData` to provide Title Case guidance even when academic titles (`S.Pd.`, `M.Pd.`, `Gr.`) or prefixes (`Drs.`) are present.
+- `src/lib/academicTitles.ts`:
+  - Updated `formatFullName` to collapse multiple consecutive commas `(?:\s*,\s*)+` into `, ` and collapse multi-spaces in title strings.
+  - Expanded `COMMON_SUFFIXES` and `SUFFIX_PATTERNS` with common Indonesian school degrees (`S.Pd.I.`, `M.Pd.I.`, `S.Psi.`, `M.Psi.`, `S.Hum.`, `M.Hum.`, `S.S.`, `S.Farm.`, `M.Farm.`, `S.Sn.`, `M.Sn.`, `S.P.`, `M.P.`, `M.A.`, `B.A.`, `M.Ed.`, `B.Ed.`, `M.B.A.`, `A.Md.Kom.`, `Ak.`) and allowed optional spaces after dots (`S\.\s*Pd\.`).
+  - Fixed line 267 `part.replace(/^[,;\s]+|[,;\s]+$/g, '').trim()` to preserve trailing initial dots (`Budi S.`).
+  - Enhanced subsequent comma segment parsing in `parseNameAndTitles` to automatically detect misplaced prefixes (re-routing them to `prefix`) and extract space-separated multiple suffixes.
+  - Added `previewEl.setAttribute('title', formatted || '')` to provide tooltip preview on hover.
 
-2. **`src/components/AdminDataView.tsx`**
-   - Hardened `handleFileUpload` CSV import pipeline: auto-standardizes uppercase Fitra to `'Fitra Suryazana Mamonto'`, rejects forbidden names, blocks dummy data, normalizes whitespace, and checks within-batch duplicates.
-   - Updated teacher edit handler to sync both `users.username` and `users.nama`.
-   - Used `normalizeName` when creating or editing students and teachers.
+- `src/components/AccountSettingsModal.tsx`:
+  - Enforced strict `effectiveCoreNama = (coreNama || '').trim()` validation before computing `cleanNama`, preventing resurrecting stale `user.nama`.
+  - Replaced `truncate` with `break-words` and added `title={formatFullName(coreNama, titles)}` on preview card.
 
-3. **`src/components/AccountSettingsModal.tsx`**
-   - Integrated `normalizeName`, `isForbiddenName`, and `isDummyOrTestString` into profile update handler `handleSave`.
+- `src/components/AdminDataView.tsx`:
+  - Updated preview containers in Tambah and Edit Guru from `truncate` to `break-words`.
+  - Immunized `swal-edit-nama` against quote injection breakout by initializing with empty string and letting `setupSwalTitleManager` populate it safely via DOM property assignment.
+  - Hardened `nama_guru` extraction in `preConfirm` with `(rawNamaGuru || rawCoreNama)`.
 
-4. **`src/components/SuperadminView.tsx`**
-   - Used `normalizeName` for Dinas account create and edit handlers.
-
-5. **`supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql`**
-   - Updated `check_anti_dummy_guard` to use `\yFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\y` and `ahmad[\s._-]*dahlan`.
-   - Attached `trg_anti_dummy_data_siswa` on `data_siswa`.
-
-6. **`tests/user_standardization_and_cleanup_verification.test.ts`**
-   - Expanded verification checks from 49 to 60, testing academic titles (`S.Pd.`), prefixes (`Drs.`), non-space separators (`_`, `-`, `.`), compound dummy strings (`testuser`, `dummyuser`, `usertest`, `testguru`), legitimate titles (`Fitra Suryazana Mamonto, S.Pd.`), and migration triggers.
+- `tests/multi_gelar_verification.test.ts`:
+  - Added test cases for consecutive comma collapsing, multi-space collapse, and 25-title stress test (<50ms).
+  - Added adversarial cases for initial dot preservation (`Budi S.`), space-separated comma suffixes (`Siti Aminah, S.Pd. M.Pd. Gr.`), expanded degrees (`S.Pd.I.`, `S.Psi.`, `M.Hum.`, `M.P.`, `M.B.A.`, `A.Md.Kom.`), misplaced prefixes (`Ahmad Fauzi, Dr.`), and spaced suffixes (`Ahmad Fauzi S. Pd.`).
+  - Added source assertions verifying `break-words` and `(rawNamaGuru || rawCoreNama)` fallback.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/user_standardization_and_cleanup_verification.test.ts`: 60/60 checks passed (100%).
-  - `npx tsx scripts/adversarial_full_scan.ts`: 0 findings across all database tables.
-  - `npx tsx scripts/adversarial_audit_user_data.ts`: confirmed 0 legacy rows across 14 tables; active user 'Fitra' with name 'Fitra Suryazana Mamonto' and teacher 'Fitra' active.
-  - `npm test`: 40/40 test suites passed cleanly with 0 regressions.
+  - `npx tsx tests/multi_gelar_verification.test.ts`: **PASS (100% - Exit code 0, all 5 sections passing)**.
+  - `npx tsc --noEmit`: **PASS (Exit code 0, zero type errors)**.
+  - `npm test`: **PASS (All 40+ test suites passing with 100% success, exit code 0)**.
+  - `npm run build`: **PASS (Next.js 16 Turbopack production compilation clean, exit code 0)**.
 - **Shallow Verification (manual only):**
-  - Verified CSV files in `csv/` contain zero uppercase 'FITRA SURYAZANA MAMONTO' and zero 'Ahmad Dahlan'.
-  - Inspected modal validation and error messaging across `AccountSettingsModal.tsx`, `AdminDataView.tsx`, and `SuperadminView.tsx`.
+  - Layout wrap verification for narrow viewport (<340px) via `break-words` and CSS property validation.
+  - Tooltip verification via DOM `title` attribute assignment.
 - **Unverified aspects:**
-  - Remote deployment execution of Supabase migrations occurs during CI/CD deploy; client-side application guards are immediately active.
+  - Physical interaction on actual Safari iOS 12 hardware (validated against modern Blink/Chromium and standard CSS flexbox/word-break rules).
 
 ## 4. Known Issues
-- `None` (Zero open defects; all edge cases tested and verified).
+- `Minor Robustness Risk`: Highly obscure non-Indonesian foreign professional credentials with neither punctuation nor comma (e.g. `Budi Santoso AWS`) will be retained as part of the core name unless the user adds them via "+ Tambah Gelar" with position Belakang (Suffix) or separates them with a comma.
 
 ## 5. Remaining risk & next step
-- Task is 100% complete, fully verified, and hardened.
-- Changes are committed and pushed directly to `main` as required.
+All requirements (R1, R2, R3) and acceptance criteria are thoroughly satisfied, hardened against edge cases, stress-tested, and verified against the full suite of regression tests.
+Next step: Git workflow automation (commit and push to `origin/main`).
