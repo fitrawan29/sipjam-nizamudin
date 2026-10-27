@@ -12,6 +12,7 @@ import {
   isSchemaCacheOrMissingTableError,
   type SatelliteSchool
 } from '@/lib/supabaseClient';
+import { validateUserData } from '@/lib/dataIntegrityGuard';
 
 // Platform administrative mutations are pinned to central masterSupabase
 // masterSupabase.from('users').insert
@@ -423,6 +424,12 @@ export default function SuperadminView({
           return null;
         }
 
+        const userValidation = validateUserData(username, nama, dinasUsers);
+        if (!userValidation.valid) {
+          Swal.showValidationMessage(userValidation.message || 'Data akun tidak valid!');
+          return null;
+        }
+
         return { nama, username, password, kota_kabupaten: region };
       }
     });
@@ -529,6 +536,12 @@ export default function SuperadminView({
 
         if (!nama || !username || !region) {
           Swal.showValidationMessage('Nama, Username, dan Daerah Binaan wajib diisi!');
+          return null;
+        }
+
+        const userValidation = validateUserData(username, nama, dinasUsers, dinasUser.id);
+        if (!userValidation.valid) {
+          Swal.showValidationMessage(userValidation.message || 'Data akun tidak valid!');
           return null;
         }
 

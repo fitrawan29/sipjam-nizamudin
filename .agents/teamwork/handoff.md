@@ -1,38 +1,23 @@
-# Handoff Report — Sentinel (swe_35)
+# Handoff Report — Sentinel Dispatch
 
 ## Observation
-User requested comprehensive dead code elimination, orphaned utilities pruning, and obsolete dependency cleanup under Ponytail principles (minimalist, YAGNI, zero regressions) for SIPJAM (Next.js 16 + React 19 + Supabase).
-SWE Light path was selected (`teamwork_preview_swe`). The pipeline executed sequentially across Round 0 (implementer) and 3 adversarial review rounds, concluding with an independent Victory Audit by `victory_auditor_50`.
+User request received at 2026-10-27T06:01:05Z requesting user data integrity fixes: total removal of "FITRA SURYAZANA MAMONTO" replaced by "Fitra Suryazana Mamonto", total removal of "Drs. Ahmad Dahlan, M.Pd.", uniqueness guard, and data realness / anti-dummy guard via the Ponytail approach. The request explicitly indicates: "This is a single self-contained fix; keep it small and focused."
 
 ## Logic Chain
-1. **Audit & Pruning of Unreferenced Files & Dead Assets**:
-   - Eliminated orphaned wrapper `src/lib/gpsPrint.ts`.
-   - Deleted legacy scripts and text files: `code.gs.txt` (83.6 KB), `index.html.txt` (274 KB), `run-migration.js` (1 KB), `importData.ts`, `scripts/update-database-types.js`, `scripts/verify-db-milestone1.ts`, `scripts/test-attendance-sync.ts`.
-   - Deleted unused starter SVGs in `public/` (`file.svg`, `globe.svg`, `next.svg`, `vercel.svg`, `window.svg`).
-   - Audited `src/utils/textUtils.ts`: determined it is actively required and imported by `src/components/PrintHeader.tsx` and validated by tests; preserved to prevent regressions.
-2. **Dead Query Elimination & Variable Pruning**:
-   - Pruned orphaned `fetchTeacherDetails()` (~250 lines) in `HomeViewGuru.tsx` that previously fired 4 redundant Supabase database queries on every teacher dashboard mount.
-   - Cleansed unreferenced imports and unused parameters/variables across 20+ UI views and utilities.
-   - Adjusted ESLint configuration to ignore test/script files while reducing active warnings by over 55% (from 303 to 131) with 0 errors.
-3. **Dependency & Invariant Preservation**:
-   - Audited `package.json`. Found strict invariant in `tests/four_ponytail_improvements.test.ts` enforcing the exact canonical list of 9 packages (`@supabase/supabase-js`, `csv-parse`, `dotenv`, `next`, `react`, `react-dom`, `sweetalert2`, `tsx`, `web-push`). Preserved these dependencies to maintain 100% test suite integrity.
-   - Hardened `scripts/provision-new-school.js` with lazy `pg` handling without requiring extra runtime dependencies.
-4. **Independent Post-Victory Audit**:
-   - Post-victory auditor `victory_auditor_50` conducted a 3-phase audit with zero shared context:
-     - Phase A (Timeline): PASS.
-     - Phase B (Integrity): PASS (zero test changes, zero skipped tests, zero facade implementations).
-     - Phase C (Independent Tests): PASS (`npm test` 39/39 suites pass 100%, `npx tsc --noEmit` exit 0, `npm run lint` exit 0, `npm run build` exit 0).
-   - Verdict: **VICTORY CONFIRMED**.
+1. Evaluated task per Routing Decision Table: single self-contained fix with explicit lightness signal routes to SWE Light (`teamwork_preview_swe`).
+2. Logged verbatim user request in `.agents/teamwork/ORIGINAL_REQUEST.md` and workspace root `ORIGINAL_REQUEST.md`.
+3. Created `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_37\DISPATCH.md` with complete requirement specifications and verification requirements.
+4. Spawned subagent `swe_37` (`22d0962b-1df6-4e7d-b6e2-ae81def07030`) using `teamwork_preview_swe`.
+5. Scheduled Cron 1 (progress reporting every 8 minutes) and Cron 2 (liveness checking every 10 minutes).
+6. Updated `BRIEFING.md` with active agent and cron task IDs.
 
 ## Caveats
-- `tests/four_ponytail_improvements.test.ts` strictly checks the 9 dependencies in `package.json`. Any future dependency addition or removal must be updated simultaneously in that test.
-- The remaining 131 ESLint warnings are legacy React lifecycle patterns in pre-existing views that do not affect runtime execution or build.
+- Completion claim from `swe_37` will NOT be taken at face value. An independent `teamwork_preview_victory_auditor` will be dispatched upon victory claim.
+- Git push directly to `origin main` is required per GEMINI.md.
 
 ## Conclusion
-The repository has been comprehensively pruned of dead code, orphaned utilities, obsolete scripts, and starter template assets, reducing bloat and network requests while maintaining 100% test suite integrity and zero regressions.
+Subagent `swe_37` is running in background. Sentinel is monitoring lifecycle and awaiting progress updates or completion claim.
 
 ## Verification Method
-- `npm test`: 39/39 suites passed (100%).
-- `npx tsc --noEmit`: Exit code 0 (0 type errors).
-- `npm run lint`: Exit code 0 (0 errors).
-- `npm run build`: Exit code 0 (Turbopack production build succeeded cleanly).
+- Monitor `swe_37` progress and log outputs.
+- Post-victory independent audit via `teamwork_preview_victory_auditor`.

@@ -11,6 +11,7 @@ import {
   downloadStudentCardPng,
   printStudentQrCardWithSchool,
 } from '@/lib/qrSiswa';
+import { validateTeacherData, validateStudentData } from '@/lib/dataIntegrityGuard';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
@@ -392,6 +393,12 @@ export default function AdminDataView({ user }: { user: any }) {
             Swal.showValidationMessage('NISN, Nama Siswa, dan Kelas wajib diisi!');
             return null;
           }
+
+          const studentValidation = validateStudentData(nama_siswa, kelas, dataList);
+          if (!studentValidation.valid) {
+            Swal.showValidationMessage(studentValidation.message || 'Data siswa tidak valid!');
+            return null;
+          }
           return {
             id: crypto.randomUUID(),
             sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
@@ -458,6 +465,12 @@ export default function AdminDataView({ user }: { user: any }) {
 
           if (!nama_guru || !mata_pelajaran) {
             Swal.showValidationMessage('Nama Guru dan Mata Pelajaran wajib diisi!');
+            return null;
+          }
+
+          const teacherValidation = validateTeacherData(nip, nama_guru, dataList);
+          if (!teacherValidation.valid) {
+            Swal.showValidationMessage(teacherValidation.message || 'Data guru tidak valid!');
             return null;
           }
           return {
@@ -1064,6 +1077,12 @@ export default function AdminDataView({ user }: { user: any }) {
             Swal.showValidationMessage('NISN, Nama Siswa, dan Kelas wajib diisi!');
             return null;
           }
+
+          const studentValidation = validateStudentData(nama_siswa, kelas, dataList, item.id);
+          if (!studentValidation.valid) {
+            Swal.showValidationMessage(studentValidation.message || 'Data siswa tidak valid!');
+            return null;
+          }
           return {
             nisn,
             nama_siswa,
@@ -1141,6 +1160,12 @@ export default function AdminDataView({ user }: { user: any }) {
 
           if (!nama_guru || !mata_pelajaran) {
             Swal.showValidationMessage('Nama Guru dan Mata Pelajaran wajib diisi!');
+            return null;
+          }
+
+          const teacherValidation = validateTeacherData(nip, nama_guru, dataList, item.id);
+          if (!teacherValidation.valid) {
+            Swal.showValidationMessage(teacherValidation.message || 'Data guru tidak valid!');
             return null;
           }
           return {

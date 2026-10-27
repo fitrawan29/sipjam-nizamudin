@@ -7,6 +7,13 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import fs from 'fs';
+import {
+  validateTeacherData,
+  validateUserData,
+  validateStudentData,
+  isDummyOrTestString,
+  isForbiddenName
+} from '../src/lib/dataIntegrityGuard';
 
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
 dotenv.config();
@@ -241,6 +248,214 @@ async function run() {
     pass("Table laporan_piket: 0 references to 'ahmad dahlan' across all fields");
   } else {
     fail(`Table laporan_piket: ${piketAhmad.length} references found to 'ahmad dahlan'`);
+  }
+
+  // --------------------------------------------------------------------------
+  // SUITE 4: DATA UNIQUENESS GUARD (R3)
+  // --------------------------------------------------------------------------
+  console.log('\n--- SUITE 4: DATA UNIQUENESS GUARD (R3) ---');
+
+  // 4.1: Database Users Uniqueness
+  const { data: dbUsers, error: errDbUsers } = await supabase.from('users').select('*');
+  if (errDbUsers) {
+    fail('Query all users for uniqueness check', errDbUsers);
+  } else {
+    const usernameMap = new Map<string, number>();
+    const userNameMap = new Map<string, number>();
+    for (const u of dbUsers || []) {
+      const uKey = (u.username || '').toLowerCase().trim();
+      usernameMap.set(uKey, (usernameMap.get(uKey) || 0) + 1);
+
+      const nKey = `${u.sekolah_id || 'global'}::${(u.nama || '').toLowerCase().trim()}`;
+      userNameMap.set(nKey, (userNameMap.get(nKey) || 0) + 1);
+    }
+
+    const dupUsernames = [...usernameMap.entries()].filter(([_, c]) => c > 1);
+    if (dupUsernames.length === 0) {
+      pass(`Table users: exactly 0 duplicate usernames (${dbUsers.length} users checked)`);
+    } else {
+      fail(`Table users: found ${dupUsernames.length} duplicate usernames: ${JSON.stringify(dupUsernames)}`);
+    }
+
+    const dupUserNames = [...userNameMap.entries()].filter(([_, c]) => c > 1);
+    if (dupUserNames.length === 0) {
+      pass(`Table users: exactly 0 duplicate user names within school scope`);
+    } else {
+      fail(`Table users: found ${dupUserNames.length} duplicate user names: ${JSON.stringify(dupUserNames)}`);
+    }
+  }
+
+  // 4.2: Database Data Guru Uniqueness
+  const { data: dbGuru, error: errDbGuru } = await supabase.from('data_guru').select('*');
+  if (errDbGuru) {
+    fail('Query all data_guru for uniqueness check', errDbGuru);
+  } else {
+    const guruNameMap = new Map<string, number>();
+    const guruNipMap = new Map<string, number>();
+    for (const g of dbGuru || []) {
+      const gKey = `${g.sekolah_id || 'global'}::${(g.nama_guru || '').toLowerCase().trim()}`;
+      guruNameMap.set(gKey, (guruNameMap.get(gKey) || 0) + 1);
+
+      const nip = (g.nip || '').trim();
+      if (nip && nip !== '-') {
+        const nipKey = `${g.sekolah_id || 'global'}::${nip.toLowerCase()}`;
+        guruNipMap.set(nipKey, (guruNipMap.get(nipKey) || 0) + 1);
+      }
+    }
+
+    const dupGuruNames = [...guruNameMap.entries()].filter(([_, c]) => c > 1);
+    if (dupGuruNames.length === 0) {
+      pass(`Table data_guru: exactly 0 duplicate teacher names (${dbGuru.length} teachers checked)`);
+    } else {
+      fail(`Table data_guru: found duplicate teacher names: ${JSON.stringify(dupGuruNames)}`);
+    }
+
+    const dupGuruNips = [...guruNipMap.entries()].filter(([_, c]) => c > 1);
+    if (dupGuruNips.length === 0) {
+      pass(`Table data_guru: exactly 0 duplicate teacher NIPs`);
+    } else {
+      fail(`Table data_guru: found duplicate teacher NIPs: ${JSON.stringify(dupGuruNips)}`);
+    }
+  }
+
+  // 4.3: Uniqueness Validation Guard Unit Tests
+  const mockExistingUsers = [
+    { id: 'u1', username: 'Fitra', nama: 'Fitra Suryazana Mamonto' },
+    { id: 'u2', username: 'Fitri', nama: 'Fitri Aprilia Dotulong' },
+  ];
+  const dupUserRes = validateUserData('fitra', 'User Baru', mockExistingUsers);
+  if (!dupUserRes.valid && dupUserRes.message?.includes('sudah digunakan')) {
+    pass('validateUserData: successfully blocks duplicate username (case-insensitive)');
+  } else {
+    fail('validateUserData: failed to block duplicate username', dupUserRes);
+  }
+
+  const dupNameRes = validateUserData('user_baru', 'Fitra Suryazana Mamonto', mockExistingUsers);
+  if (!dupNameRes.valid && dupNameRes.message?.includes('sudah terdaftar')) {
+    pass('validateUserData: successfully blocks duplicate user name');
+  } else {
+    fail('validateUserData: failed to block duplicate user name', dupNameRes);
+  }
+
+  const validUserRes = validateUserData('guru_unik', 'Guru Nama Unik', mockExistingUsers);
+  if (validUserRes.valid) {
+    pass('validateUserData: accepts unique user credentials');
+  } else {
+    fail('validateUserData: rejected valid user credentials', validUserRes);
+  }
+
+  const mockExistingGuru = [
+    { id: 'g1', nip: 'Fitra', nama_guru: 'Fitra Suryazana Mamonto' },
+    { id: 'g2', nip: '19800101', nama_guru: 'Guru Contoh Riil' }
+  ];
+  const dupTeacherNameRes = validateTeacherData('19999999', 'Fitra Suryazana Mamonto', mockExistingGuru);
+  if (!dupTeacherNameRes.valid && dupTeacherNameRes.message?.includes('sudah terdaftar')) {
+    pass('validateTeacherData: successfully blocks duplicate teacher name in same school');
+  } else {
+    fail('validateTeacherData: failed to block duplicate teacher name', dupTeacherNameRes);
+  }
+
+  const dupTeacherNipRes = validateTeacherData('Fitra', 'Guru Nama Baru', mockExistingGuru);
+  if (!dupTeacherNipRes.valid && dupTeacherNipRes.message?.includes('sudah terdaftar')) {
+    pass('validateTeacherData: successfully blocks duplicate teacher NIP');
+  } else {
+    fail('validateTeacherData: failed to block duplicate teacher NIP', dupTeacherNipRes);
+  }
+
+  const selfEditTeacherRes = validateTeacherData('Fitra', 'Fitra Suryazana Mamonto', mockExistingGuru, 'g1');
+  if (selfEditTeacherRes.valid) {
+    pass('validateTeacherData: allows editing existing teacher without self-collision');
+  } else {
+    fail('validateTeacherData: false positive collision when editing own record', selfEditTeacherRes);
+  }
+
+  // --------------------------------------------------------------------------
+  // SUITE 5: ANTI-DUMMY & DATA REALNESS GUARD (R4)
+  // --------------------------------------------------------------------------
+  console.log('\n--- SUITE 5: ANTI-DUMMY & DATA REALNESS GUARD (R4) ---');
+
+  // 5.1: Live Database Anti-Dummy Scan
+  const dummyIdentityRegex = /\b(test|testing|tester|dummy|fiktif|fake|percobaan|uji coba|contoh|sample|foo|bar|asdf)\b/i;
+  
+  const dummyUsersInDb = (dbUsers || []).filter(u => 
+    dummyIdentityRegex.test(u.nama) || (u.username !== 'superadmin' && dummyIdentityRegex.test(u.username))
+  );
+  if (dummyUsersInDb.length === 0) {
+    pass(`Table users: exactly 0 dummy or test accounts in operational database`);
+  } else {
+    fail(`Table users: found ${dummyUsersInDb.length} dummy accounts:`, dummyUsersInDb);
+  }
+
+  const dummyGuruInDb = (dbGuru || []).filter(g => 
+    dummyIdentityRegex.test(g.nama_guru) || (g.nip !== '-' && dummyIdentityRegex.test(g.nip))
+  );
+  if (dummyGuruInDb.length === 0) {
+    pass(`Table data_guru: exactly 0 dummy or test records in operational database`);
+  } else {
+    fail(`Table data_guru: found ${dummyGuruInDb.length} dummy records:`, dummyGuruInDb);
+  }
+
+  const { data: dbPresensi } = await supabase.from('presensi_guru').select('id, nama_guru');
+  const dummyPresensiInDb = (dbPresensi || []).filter(p => dummyIdentityRegex.test(p.nama_guru));
+  if (dummyPresensiInDb.length === 0) {
+    pass(`Table presensi_guru: exactly 0 lingering dummy or test attendance records`);
+  } else {
+    fail(`Table presensi_guru: found ${dummyPresensiInDb.length} dummy presensi records:`, dummyPresensiInDb);
+  }
+
+  // 5.2: Anti-Dummy Validation Guard Tests
+  const dummyTeacherTest1 = validateTeacherData('12345', 'Test Guru', []);
+  if (!dummyTeacherTest1.valid && dummyTeacherTest1.message?.includes('terdeteksi sebagai data percobaan/dummy')) {
+    pass('validateTeacherData: rejects "Test Guru" dummy identity');
+  } else {
+    fail('validateTeacherData: failed to reject "Test Guru"', dummyTeacherTest1);
+  }
+
+  const dummyTeacherTest2 = validateTeacherData('12345', 'FITRA SURYAZANA MAMONTO', []);
+  if (!dummyTeacherTest2.valid && dummyTeacherTest2.message?.includes('Title Case')) {
+    pass('validateTeacherData: rejects uppercase "FITRA SURYAZANA MAMONTO" with helpful guidance');
+  } else {
+    fail('validateTeacherData: failed to reject uppercase "FITRA SURYAZANA MAMONTO"', dummyTeacherTest2);
+  }
+
+  const dummyTeacherTest3 = validateTeacherData('12345', 'Drs. Ahmad Dahlan, M.Pd.', []);
+  if (!dummyTeacherTest3.valid && dummyTeacherTest3.message?.includes('dinonaktifkan')) {
+    pass('validateTeacherData: rejects deprecated "Drs. Ahmad Dahlan, M.Pd."');
+  } else {
+    fail('validateTeacherData: failed to reject "Drs. Ahmad Dahlan, M.Pd."', dummyTeacherTest3);
+  }
+
+  const dummyUserTest = validateUserData('test_admin', 'Administrator Testing', []);
+  if (!dummyUserTest.valid && dummyUserTest.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
+    pass('validateUserData: rejects dummy username/name');
+  } else {
+    fail('validateUserData: failed to reject dummy account', dummyUserTest);
+  }
+
+  const dummyStudentTest = validateStudentData('Dummy Siswa Test', 'X Merdeka', []);
+  if (!dummyStudentTest.valid && dummyStudentTest.message?.includes('terdeteksi sebagai data percobaan/dummy')) {
+    pass('validateStudentData: rejects dummy student name');
+  } else {
+    fail('validateStudentData: failed to reject dummy student', dummyStudentTest);
+  }
+
+  // 5.3: Schema Migration File Guard Verification
+  const migFilePath = path.join(root, 'supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql');
+  if (fs.existsSync(migFilePath)) {
+    const migContent = fs.readFileSync(migFilePath, 'utf8');
+    const hasUserUsernameIdx = migContent.includes('uq_users_username_lower');
+    const hasUserNamaIdx = migContent.includes('uq_users_sekolah_nama_lower');
+    const hasGuruNamaIdx = migContent.includes('uq_data_guru_sekolah_nama_lower');
+    const hasGuruNipIdx = migContent.includes('uq_data_guru_sekolah_nip_lower');
+    const hasAntiDummyTrg = migContent.includes('check_anti_dummy_guard');
+
+    if (hasUserUsernameIdx && hasUserNamaIdx && hasGuruNamaIdx && hasGuruNipIdx && hasAntiDummyTrg) {
+      pass('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql: contains all DB indexes and guards');
+    } else {
+      fail('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql is missing required constraints');
+    }
+  } else {
+    fail('Migration file 20261027_user_uniqueness_and_anti_dummy_guard.sql does not exist');
   }
 
   console.log('\n========================================================================');
