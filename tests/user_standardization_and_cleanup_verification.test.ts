@@ -464,6 +464,56 @@ async function run() {
     fail('validateTeacherData: failed to reject uppercase FITRA with multi-spaces', dummyTeacherFitraMultiSpace);
   }
 
+  // Adversarial R2 Checks: Academic titles, prefixes, and separators
+  const dummyTeacherFitraTitle = validateTeacherData('12345', 'FITRA SURYAZANA MAMONTO, S.Pd.', []);
+  if (!dummyTeacherFitraTitle.valid && dummyTeacherFitraTitle.message?.includes('Title Case')) {
+    pass('validateTeacherData: rejects uppercase FITRA SURYAZANA MAMONTO with academic suffix (S.Pd.)');
+  } else {
+    fail('validateTeacherData: failed to reject uppercase FITRA with academic suffix', dummyTeacherFitraTitle);
+  }
+
+  const dummyTeacherFitraPrefix = validateTeacherData('12345', 'Drs. FITRA SURYAZANA MAMONTO', []);
+  if (!dummyTeacherFitraPrefix.valid && dummyTeacherFitraPrefix.message?.includes('Title Case')) {
+    pass('validateTeacherData: rejects uppercase FITRA SURYAZANA MAMONTO with academic prefix (Drs.)');
+  } else {
+    fail('validateTeacherData: failed to reject uppercase FITRA with academic prefix', dummyTeacherFitraPrefix);
+  }
+
+  const dummyTeacherFitraUnderscore = validateTeacherData('12345', 'FITRA_SURYAZANA_MAMONTO', []);
+  if (!dummyTeacherFitraUnderscore.valid && dummyTeacherFitraUnderscore.message?.includes('Title Case')) {
+    pass('validateTeacherData: rejects uppercase FITRA with underscore separators');
+  } else {
+    fail('validateTeacherData: failed to reject uppercase FITRA with underscores', dummyTeacherFitraUnderscore);
+  }
+
+  const dummyTeacherAhmadDash = validateTeacherData('12345', 'Ahmad-Dahlan', []);
+  if (!dummyTeacherAhmadDash.valid && dummyTeacherAhmadDash.message?.includes('dinonaktifkan')) {
+    pass('validateTeacherData: rejects deprecated Ahmad Dahlan with dash separator (Ahmad-Dahlan)');
+  } else {
+    fail('validateTeacherData: failed to reject Ahmad-Dahlan', dummyTeacherAhmadDash);
+  }
+
+  const dummyTeacherAhmadDot = validateTeacherData('12345', 'Ahmad.Dahlan', []);
+  if (!dummyTeacherAhmadDot.valid && dummyTeacherAhmadDot.message?.includes('dinonaktifkan')) {
+    pass('validateTeacherData: rejects deprecated Ahmad Dahlan with dot separator (Ahmad.Dahlan)');
+  } else {
+    fail('validateTeacherData: failed to reject Ahmad.Dahlan', dummyTeacherAhmadDot);
+  }
+
+  const validFitraTitleRes = validateTeacherData('12345', 'Fitra Suryazana Mamonto, S.Pd.', []);
+  if (validFitraTitleRes.valid) {
+    pass('validateTeacherData: accepts legitimate Title Case Fitra with academic title');
+  } else {
+    fail('validateTeacherData: false positive on Title Case Fitra with academic title', validFitraTitleRes);
+  }
+
+  const validRealTeacherRes = validateTeacherData('12345', 'Tika Mamonto, S.Pd.', []);
+  if (validRealTeacherRes.valid) {
+    pass('validateTeacherData: accepts legitimate real teacher with academic title');
+  } else {
+    fail('validateTeacherData: false positive on real teacher with academic title', validRealTeacherRes);
+  }
+
   const dummyUserTest = validateUserData('test_admin', 'Administrator Testing', []);
   if (!dummyUserTest.valid && dummyUserTest.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
     pass('validateUserData: rejects dummy username/name');
@@ -485,6 +535,35 @@ async function run() {
     fail('validateUserData: failed to reject dummy1', dummyUserNumberTest);
   }
 
+  // Adversarial R2 Checks: Compound dummy words without separators
+  const dummyUserCompound1 = validateUserData('testuser', 'Nama Pengguna Sah', []);
+  if (!dummyUserCompound1.valid && dummyUserCompound1.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
+    pass('validateUserData: rejects compound dummy username without separators (testuser)');
+  } else {
+    fail('validateUserData: failed to reject testuser', dummyUserCompound1);
+  }
+
+  const dummyUserCompound2 = validateUserData('dummyuser', 'Nama Pengguna Sah', []);
+  if (!dummyUserCompound2.valid && dummyUserCompound2.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
+    pass('validateUserData: rejects compound dummy username without separators (dummyuser)');
+  } else {
+    fail('validateUserData: failed to reject dummyuser', dummyUserCompound2);
+  }
+
+  const dummyUserCompound3 = validateUserData('usertest', 'Nama Pengguna Sah', []);
+  if (!dummyUserCompound3.valid && dummyUserCompound3.message?.includes('terdeteksi sebagai akun percobaan/dummy')) {
+    pass('validateUserData: rejects suffix compound dummy username (usertest)');
+  } else {
+    fail('validateUserData: failed to reject usertest', dummyUserCompound3);
+  }
+
+  const dummyTeacherCompound = validateTeacherData('12345', 'testguru', []);
+  if (!dummyTeacherCompound.valid && dummyTeacherCompound.message?.includes('terdeteksi sebagai data percobaan/dummy')) {
+    pass('validateTeacherData: rejects compound dummy teacher name (testguru)');
+  } else {
+    fail('validateTeacherData: failed to reject testguru', dummyTeacherCompound);
+  }
+
   const dummyStudentTest = validateStudentData('Dummy Siswa Test', 'X Merdeka', []);
   if (!dummyStudentTest.valid && dummyStudentTest.message?.includes('terdeteksi sebagai data percobaan/dummy')) {
     pass('validateStudentData: rejects dummy student name');
@@ -501,9 +580,10 @@ async function run() {
     const hasGuruNamaIdx = migContent.includes('uq_data_guru_sekolah_nama_lower');
     const hasGuruNipIdx = migContent.includes('uq_data_guru_sekolah_nip_lower');
     const hasAntiDummyTrg = migContent.includes('check_anti_dummy_guard');
+    const hasSiswaTrg = migContent.includes('trg_anti_dummy_data_siswa');
 
-    if (hasUserUsernameIdx && hasUserNamaIdx && hasGuruNamaIdx && hasGuruNipIdx && hasAntiDummyTrg) {
-      pass('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql: contains all DB indexes and guards');
+    if (hasUserUsernameIdx && hasUserNamaIdx && hasGuruNamaIdx && hasGuruNipIdx && hasAntiDummyTrg && hasSiswaTrg) {
+      pass('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql: contains all DB indexes, triggers (including data_siswa), and guards');
     } else {
       fail('Migration 20261027_user_uniqueness_and_anti_dummy_guard.sql is missing required constraints');
     }

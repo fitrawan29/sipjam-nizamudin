@@ -4,7 +4,9 @@
  */
 
 // Patterns indicating test, dummy, or fictitious data
-const DUMMY_PATTERN = /\b(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\b/i;
+const DUMMY_WORDS = /\b(test|tester|testing|dummy|fiktif|fake|percobaan|uji\s*coba|contoh|sample|foo|bar|asdf)\b/i;
+const DUMMY_SUBSTRINGS = /(dummy|fiktif|fake|asdf|ujicoba|percobaan)/i;
+const DUMMY_COMPOUNDS = /(^|[_.\-\d\s])(test|tester|testing)(user|guru|siswa|admin|account|akun|sekolah)?([_.\-\d\s]|$)|(user|guru|siswa|admin|account|akun)(test|tester|testing)/i;
 
 export interface ValidationResult {
   valid: boolean;
@@ -29,7 +31,7 @@ export function normalizeName(value?: string | null): string {
 
 /**
  * Checks if a string contains dummy or test indicators.
- * Robust against separators (snake_case, kebab-case, dots) and appended numbers (dummy1, test123).
+ * Robust against compound identifiers (testuser, dummyaccount), separators (snake_case, kebab-case, dots), and appended numbers (dummy1, test123).
  */
 export function isDummyOrTestString(value?: string | null): boolean {
   if (!value) return false;
@@ -37,25 +39,31 @@ export function isDummyOrTestString(value?: string | null): boolean {
   if (!raw) return false;
   // Replace underscores, hyphens, dots, and trailing digits with spaces to expose word boundaries
   const normalizedWords = raw.toLowerCase().replace(/[_.\-\d]+/g, ' ').trim();
-  return DUMMY_PATTERN.test(raw) || DUMMY_PATTERN.test(normalizedWords);
+  return (
+    DUMMY_WORDS.test(raw) ||
+    DUMMY_WORDS.test(normalizedWords) ||
+    DUMMY_SUBSTRINGS.test(raw) ||
+    DUMMY_COMPOUNDS.test(raw)
+  );
 }
 
 /**
  * Checks if a name is one of the forbidden historical/deprecated names.
- * Catches uppercase/malformed variations of 'FITRA SURYAZANA MAMONTO' and all permutations of 'Ahmad Dahlan'.
+ * Catches uppercase variations of 'FITRA SURYAZANA MAMONTO' (even with titles/prefixes/punctuation)
+ * and all permutations of 'Ahmad Dahlan' (case-insensitive, diacritics, and punctuation-tolerant).
  */
 export function isForbiddenName(name?: string | null): boolean {
   if (!name) return false;
   const normalized = normalizeName(name);
   if (!normalized) return false;
 
-  // Catch uppercase variations of FITRA SURYAZANA MAMONTO (must be official Title Case)
-  if (normalized === 'FITRA SURYAZANA MAMONTO') {
+  // Catch uppercase variations of FITRA SURYAZANA MAMONTO with any separators/academic titles
+  if (/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(normalized)) {
     return true;
   }
 
-  // Catch deprecated Ahmad Dahlan
-  if (/ahmad\s*dahlan/i.test(normalized)) {
+  // Catch deprecated Ahmad Dahlan with any separators/punctuation/titles
+  if (/ahmad[\s._-]*dahlan/i.test(normalized)) {
     return true;
   }
 
@@ -90,7 +98,7 @@ export function validateTeacherData(
   if (isForbiddenName(namaGuru)) {
     return {
       valid: false,
-      message: cleanNama.toUpperCase() === 'FITRA SURYAZANA MAMONTO'
+      message: /\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanNama)
         ? 'Gunakan format penulisan resmi Title Case: "Fitra Suryazana Mamonto".'
         : 'Nama tersebut telah dinonaktifkan dari sistem.'
     };
@@ -153,7 +161,7 @@ export function validateUserData(
   if (isForbiddenName(nama) || isForbiddenName(username)) {
     return {
       valid: false,
-      message: cleanNama.toUpperCase() === 'FITRA SURYAZANA MAMONTO'
+      message: /\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanNama)
         ? 'Gunakan format penulisan resmi Title Case: "Fitra Suryazana Mamonto".'
         : 'Nama/Username tersebut telah dinonaktifkan dari sistem.'
     };

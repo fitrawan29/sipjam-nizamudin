@@ -11,7 +11,13 @@ import {
   downloadStudentCardPng,
   printStudentQrCardWithSchool,
 } from '@/lib/qrSiswa';
-import { validateTeacherData, validateStudentData } from '@/lib/dataIntegrityGuard';
+import {
+  validateTeacherData,
+  validateStudentData,
+  normalizeName,
+  isForbiddenName,
+  isDummyOrTestString
+} from '@/lib/dataIntegrityGuard';
 
 export default function AdminDataView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState('Data_Siswa');
@@ -277,6 +283,9 @@ export default function AdminDataView({ user }: { user: any }) {
       });
 
       const rows: Record<string, any>[] = [];
+      const seenTeacherNames = new Set<string>();
+      const seenTeacherNips = new Set<string>();
+      const seenStudentKeys = new Set<string>();
 
       for (let i = 1; i < lines.length; i++) {
         const vals = parseCsvLine(lines[i]);
@@ -301,6 +310,50 @@ export default function AdminDataView({ user }: { user: any }) {
         if (tabObj.table === 'data_siswa' && !row.status) row.status = 'Aktif';
         if (tabObj.table === 'data_guru' && !row.status) row.status = 'Aktif';
         if (tabObj.table === 'wali_kelas' && !row.tahun_ajaran) row.tahun_ajaran = '2024/2025';
+
+        // Integrity & Anti-Dummy Guards for CSV
+        if (tabObj.table === 'data_guru') {
+          if (row.nama_guru) {
+            // Auto-standardize uppercase FITRA SURYAZANA MAMONTO
+            if (/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(row.nama_guru)) {
+              row.nama_guru = 'Fitra Suryazana Mamonto';
+            } else if (isForbiddenName(row.nama_guru)) {
+              throw new Error(`Baris ${i}: Nama guru "${row.nama_guru}" dilarang atau dinonaktifkan.`);
+            }
+            if (isDummyOrTestString(row.nama_guru) || (row.nip && row.nip !== '-' && isDummyOrTestString(row.nip))) {
+              throw new Error(`Baris ${i}: Terdeteksi data guru dummy/percobaan ("${row.nama_guru}").`);
+            }
+            row.nama_guru = normalizeName(row.nama_guru);
+            const lowerName = row.nama_guru.toLowerCase();
+            if (seenTeacherNames.has(lowerName)) {
+              throw new Error(`Baris ${i}: Duplikat nama guru "${row.nama_guru}" dalam file CSV.`);
+            }
+            seenTeacherNames.add(lowerName);
+
+            if (row.nip && row.nip !== '-') {
+              const lowerNip = String(row.nip).trim().toLowerCase();
+              if (seenTeacherNips.has(lowerNip)) {
+                throw new Error(`Baris ${i}: Duplikat NIP guru "${row.nip}" dalam file CSV.`);
+              }
+              seenTeacherNips.add(lowerNip);
+            }
+          }
+        } else if (tabObj.table === 'data_siswa') {
+          if (row.nama_siswa) {
+            if (isForbiddenName(row.nama_siswa)) {
+              throw new Error(`Baris ${i}: Nama siswa "${row.nama_siswa}" dilarang.`);
+            }
+            if (isDummyOrTestString(row.nama_siswa)) {
+              throw new Error(`Baris ${i}: Terdeteksi data siswa dummy/percobaan ("${row.nama_siswa}").`);
+            }
+            row.nama_siswa = normalizeName(row.nama_siswa);
+            const studentKey = `${(row.kelas || '').trim().toLowerCase()}_${row.nama_siswa.toLowerCase()}`;
+            if (seenStudentKeys.has(studentKey)) {
+              throw new Error(`Baris ${i}: Duplikat siswa "${row.nama_siswa}" di kelas ${row.kelas} dalam file CSV.`);
+            }
+            seenStudentKeys.add(studentKey);
+          }
+        }
 
         rows.push(row);
       }
@@ -1198,12 +1251,12 @@ export default function AdminDataView({ user }: { user: any }) {
           if (formValues.nip && formValues.nip !== '-') {
             try {
               if (item.user_id) {
-                await supabase.from('users').update({ username: formValues.nip }).eq('id', item.user_id);
+                await supabase.from('users').update({ username: formValues.nip, nama: formValues.nama_guru }).eq('id', item.user_id);
               } else if (item.nip && item.nip !== '-') {
-                await supabase.from('users').update({ username: formValues.nip }).eq('username', item.nip);
+                await supabase.from('users').update({ username: formValues.nip, nama: formValues.nama_guru }).eq('username', item.nip);
               }
             } catch (syncErr) {
-              console.warn('[AdminDataView] Failed to sync users.username:', syncErr);
+              console.warn('[AdminDataView] Failed to sync users.username & nama:', syncErr);
             }
           }
           setLoading(false);

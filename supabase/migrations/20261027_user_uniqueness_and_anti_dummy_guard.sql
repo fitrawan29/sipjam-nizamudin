@@ -67,16 +67,18 @@ BEGIN
     v_norm := regexp_replace(trim(COALESCE(v_name, '')), '\s+', ' ', 'g');
 
     -- Disallow dummy patterns in operational tables
-    IF regexp_replace(v_norm, '[_\.\-\d]+', ' ', 'g') ~* '\y(dummy automated test guru|test guru|guru test|dummy guru|guru dummy|akun dummy|dummy user|test|dummy|fiktif|fake|percobaan|uji\s*coba)\y' THEN
+    IF regexp_replace(v_norm, '[_\.\-\d]+', ' ', 'g') ~* '\y(dummy automated test guru|test guru|guru test|dummy guru|guru dummy|akun dummy|dummy user|test|dummy|fiktif|fake|percobaan|uji\s*coba)\y' 
+       OR v_norm ~* '(dummy|fiktif|fake|ujicoba|percobaan|testuser|dummyuser|usertest|testguru)' THEN
         RAISE EXCEPTION 'Data identitas dummy/fiktif dilarang di tabel operasional: %', v_name;
     END IF;
 
-    -- Disallow legacy uppercase FITRA SURYAZANA MAMONTO
-    IF upper(v_norm) = 'FITRA SURYAZANA MAMONTO' AND v_norm <> 'Fitra Suryazana Mamonto' THEN
+    -- Disallow legacy uppercase FITRA SURYAZANA MAMONTO (even with titles/prefixes/punctuation)
+    IF v_norm ~ '\yFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\y' THEN
         RAISE EXCEPTION 'Format nama kapital dilarang. Harap gunakan format resmi Title Case: Fitra Suryazana Mamonto';
     END IF;
 
-    IF v_norm ILIKE '%ahmad dahlan%' THEN
+    -- Disallow deprecated Ahmad Dahlan (all separator/title variations)
+    IF v_norm ~* 'ahmad[\s._-]*dahlan' THEN
         RAISE EXCEPTION 'Akun / nama % telah dinonaktifkan permanen dari sistem.', v_name;
     END IF;
 
@@ -93,4 +95,9 @@ FOR EACH ROW EXECUTE FUNCTION public.check_anti_dummy_guard();
 DROP TRIGGER IF EXISTS trg_anti_dummy_data_guru ON public.data_guru;
 CREATE TRIGGER trg_anti_dummy_data_guru
 BEFORE INSERT OR UPDATE ON public.data_guru
+FOR EACH ROW EXECUTE FUNCTION public.check_anti_dummy_guard();
+
+DROP TRIGGER IF EXISTS trg_anti_dummy_data_siswa ON public.data_siswa;
+CREATE TRIGGER trg_anti_dummy_data_siswa
+BEFORE INSERT OR UPDATE ON public.data_siswa
 FOR EACH ROW EXECUTE FUNCTION public.check_anti_dummy_guard();

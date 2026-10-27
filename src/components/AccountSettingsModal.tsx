@@ -18,6 +18,7 @@ import {
   getReminderConfig,
   setReminderConfig
 } from './TeacherReminderManager';
+import { normalizeName, isForbiddenName, isDummyOrTestString } from '@/lib/dataIntegrityGuard';
 
 interface AccountSettingsModalProps {
   isOpen: boolean;
@@ -245,6 +246,37 @@ export default function AccountSettingsModal({
       return;
     }
 
+    const cleanNama = normalizeName(nama || user.nama);
+    const cleanUsername = (isAdmin ? username : (user.username || username || '')).trim();
+
+    if (nama) {
+      if (isForbiddenName(cleanNama)) {
+        showToast(
+          'Validasi Gagal',
+          /\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(cleanNama)
+            ? 'Gunakan format penulisan resmi Title Case: "Fitra Suryazana Mamonto".'
+            : 'Nama tersebut telah dinonaktifkan dari sistem.',
+          'warning'
+        );
+        return;
+      }
+      if (isDummyOrTestString(cleanNama)) {
+        showToast('Validasi Gagal', 'Nama terdeteksi sebagai data percobaan/dummy.', 'warning');
+        return;
+      }
+    }
+
+    if (isAdmin && username) {
+      if (isForbiddenName(cleanUsername)) {
+        showToast('Validasi Gagal', 'Username tersebut telah dinonaktifkan dari sistem.', 'warning');
+        return;
+      }
+      if (isDummyOrTestString(cleanUsername)) {
+        showToast('Validasi Gagal', 'Username terdeteksi sebagai akun percobaan/dummy.', 'warning');
+        return;
+      }
+    }
+
     // Password validation if requested
     if (changePassword) {
       if (!currentPassword) {
@@ -280,9 +312,9 @@ export default function AccountSettingsModal({
       } = {
         p_user_id: user.id,
         p_avatar: selectedAvatar,
-        p_username: isAdmin ? username.trim() : (user.username || username || ''),
+        p_username: cleanUsername,
         p_password: changePassword ? newPassword : null,
-        p_nama: nama.trim() || user.nama
+        p_nama: cleanNama || user.nama
       };
 
       const { data, error } = await supabase.rpc('update_user_profile', payload);
@@ -301,8 +333,8 @@ export default function AccountSettingsModal({
       const updatedUser = {
         ...user,
         avatar: selectedAvatar,
-        nama: nama.trim() || user.nama,
-        username: isAdmin ? username.trim() : user.username,
+        nama: cleanNama || user.nama,
+        username: cleanUsername,
       };
 
       try {

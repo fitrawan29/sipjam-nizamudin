@@ -12,7 +12,7 @@ import {
   isSchemaCacheOrMissingTableError,
   type SatelliteSchool
 } from '@/lib/supabaseClient';
-import { validateUserData } from '@/lib/dataIntegrityGuard';
+import { validateUserData, normalizeName } from '@/lib/dataIntegrityGuard';
 
 // Platform administrative mutations are pinned to central masterSupabase
 // masterSupabase.from('users').insert
@@ -411,8 +411,8 @@ export default function SuperadminView({
       confirmButtonColor: '#0B4619',
       cancelButtonText: 'Batal',
       preConfirm: () => {
-        const rawNama = (document.getElementById('swal-dinas-nama') as HTMLInputElement)?.value?.trim() || '';
-        const nama = rawNama.replace(/\s+/g, ' ');
+        const rawNama = (document.getElementById('swal-dinas-nama') as HTMLInputElement)?.value || '';
+        const nama = normalizeName(rawNama);
         const username = (document.getElementById('swal-dinas-username') as HTMLInputElement)?.value?.trim();
         const password = (document.getElementById('swal-dinas-password') as HTMLInputElement)?.value;
         const selectRegion = (document.getElementById('swal-dinas-region') as HTMLSelectElement)?.value?.trim();
@@ -527,8 +527,8 @@ export default function SuperadminView({
       confirmButtonColor: '#0B4619',
       cancelButtonText: 'Batal',
       preConfirm: () => {
-        const rawNama = (document.getElementById('swal-edit-dinas-nama') as HTMLInputElement)?.value?.trim() || '';
-        const nama = rawNama.replace(/\s+/g, ' ');
+        const rawNama = (document.getElementById('swal-edit-dinas-nama') as HTMLInputElement)?.value || '';
+        const nama = normalizeName(rawNama);
         const username = (document.getElementById('swal-edit-dinas-username') as HTMLInputElement)?.value?.trim();
         const password = (document.getElementById('swal-edit-dinas-password') as HTMLInputElement)?.value;
         const selectRegion = (document.getElementById('swal-edit-dinas-region') as HTMLSelectElement)?.value?.trim();
