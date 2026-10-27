@@ -1,33 +1,62 @@
-# Handoff Report — Sentinel Final Delivery
+# Sentinel Handoff Report — Multi-Gelar Prefix & Suffix Support
 
-## Observation
-User request at 2026-10-27T06:01:05Z required:
-1. Total elimination of "FITRA SURYAZANA MAMONTO" replaced by "Fitra Suryazana Mamonto" (username 'Fitra') across database tables, transactions, and CSV files, keeping data_guru relations valid and active.
-2. Total elimination of "Drs. Ahmad Dahlan, M.Pd." from all database tables and permanent removal of obsolete presensi record e1144f72-2ec4-43f2-aebb-10a59063a906.
-3. Enforcement of data uniqueness guards (preventing duplicate usernames and duplicate names within the same school).
-4. Enforcement of anti-dummy / realness guards via Ponytail approach (native DB constraints & compact application-level validation).
-5. Verification via automated tests, adversarial scans, and regression suite (npm test), followed by git staging, commit, and push directly to `origin main`.
+## 1. Observation
 
-## Logic Chain
-1. Routed task to SWE Light (`teamwork_preview_swe`) as a single self-contained integrity fix with explicit small/focused signal.
-2. Logged verbatim user request to `ORIGINAL_REQUEST.md` (root & `.agents/teamwork/`).
-3. Dispatched `swe_37` (`22d0962b-1df6-4e7d-b6e2-ae81def07030`) and set progress & liveness crons.
-4. `swe_37` completed an authentic 4-step refinement loop (Implementer + 3 sequential adversarial review rounds) generating genuine incremental commits `41d539f`, `27dbe27`, `0e33d45`, and `3a47524`.
-5. Upon victory claim from `swe_37`, Sentinel did not accept claims at face value and spawned independent auditor `victory_auditor_51` (`05775710-0e48-43c2-905a-e00c3bed320a`).
-6. `victory_auditor_51` conducted independent 3-phase verification (timeline, cheating detection, test execution) and issued `VICTORY CONFIRMED`.
-7. Sentinel cancelled all monitoring crons and terminated all subagents per cleanup protocol.
+- **User Request**: Penyesuaian profil pengguna (`AccountSettingsModal.tsx`) dan manajemen data guru (`AdminDataView.tsx`) agar mendukung penambahan multi-gelar akademik/profesi (prefix dan suffix), real-time live preview, format penggabungan nama baku tanpa modifikasi schema database yang merusak, kepatuhan integritas data (`src/lib/dataIntegrityGuard.ts`), pendekatan Ponytail (zero new third-party dependencies), automated test verification, dan otomatisasi git commit/push ke branch main.
+- **Routing Decision**: Routed to SWE Light (`teamwork_preview_swe`, instance `swe_38`) based on the explicit "single self-contained fix; keep it small and focused" instruction.
+- **Swarm Execution**:
+  - `swe_38` coordinated 1 Implementer (`implementer_r1`) and 3 Reviewer rounds (`reviewer_r1`, `reviewer_r2`, `reviewer_r3`).
+  - Implementation established modular title parsing, formatting, presets, and UI integration in `src/lib/academicTitles.ts`, `src/components/AccountSettingsModal.tsx`, and `src/components/AdminDataView.tsx`.
+  - Comprehensive automated test suite created at `tests/multi_gelar_verification.test.ts` (19 test cases, 100% PASS).
+  - All git changes staged, committed with descriptive conventional commits, and pushed directly to `origin/main`.
+- **Post-Victory Audit**:
+  - Independent victory auditor `victory_auditor_52` (ID: `166cd25d-103d-4d37-aa77-05bbb2a91335`) executed a 3-phase audit (timeline analysis, anti-mocking/cheating detection, independent test runs).
+  - Verdict returned: **VICTORY CONFIRMED**.
 
-## Caveats
-- PostgreSQL migrations in `supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql` contain permanent unique indexes (`uq_users_username_lower`, `uq_users_sekolah_nama_lower`) and anti-dummy triggers; operational databases with active schemas have had this applied and future deployments can execute it safely via supabase db push.
-- Client-side validation in `src/lib/dataIntegrityGuard.ts` strictly enforces Unicode diacritics normalization and zero-width character stripping, ensuring duplicate names cannot be masked.
+## 2. Logic Chain
 
-## Conclusion
-Task completed 100% with confirmed victory. All acceptance criteria met, 40/40 test suites pass, TypeScript builds cleanly with 0 errors, and commits are synchronized with `origin main`.
+1. **R1 (Multi-Gelar UI & Real-Time Preview)**:
+   - Built interactive title management in `AccountSettingsModal` and `AdminDataView` (both Add and Edit teacher dialogs).
+   - Allows users to add multiple titles, specify placement explicitly as 'prefix' (Dr., Drs., Prof., Ir., Hj., etc.) or 'suffix' (S.Pd., M.Pd., S.Kom., Gr., etc.), delete individual titles before saving, and view formatted name live preview in real time.
+2. **R2 (Format Penggabungan & Integritas Data)**:
+   - Implemented standard name formatting: `[prefixes] [coreName], [suffixes]`. Prefixes separated by spaces before core name; suffixes separated by commas and spaces after core name.
+   - Preserves compatibility with existing database columns (`users.nama` and `data_guru.nama_guru`) without schema migration.
+   - Verified that formatted titles pass all `dataIntegrityGuard.ts` validations (`validateTeacherData`, `validateUserData`, `isDummyOrTestString`) while maintaining anti-dummy and forbidden name protections.
+   - Adhered strictly to Ponytail minimalist philosophy: 0 new external dependencies in `package.json`.
+3. **R3 (Automated Git Workflow)**:
+   - Sequential commits pushed to `origin/main`:
+     - `5899d3d`: `feat(profile): implement multi-gelar prefix/suffix in AccountSettingsModal & AdminDataView`
+     - `0193840`: `fix(titles): preserve suffix order, isolate prefix dots, validate core name, and sanitize DOM inputs`
+     - `da6ef41`: `fix(titles): harden multi-title parsing, initial dot preservation, and mobile wrap`
+     - `5ee84d5`: `docs: update swe_38 progress`
+     - `dff8850`: `fix(academicTitles): harden semicolon splitting, multi-prefix extraction, and title order preservation`
+   - Git tree is clean and synchronized with `origin/main`.
 
-## Verification Method
-- Independent Victory Auditor verdict: `VICTORY CONFIRMED` (see `.agents/teamwork/victory_auditor_51/handoff.md`).
-- `npx tsx tests/user_standardization_and_cleanup_verification.test.ts`: 65/65 PASS.
-- `scripts/adversarial_audit_user_data.ts` & `scripts/adversarial_full_scan.ts`: 0 violations across all 27 database tables.
-- `npm test`: 40/40 suites passed.
-- `npx tsc --noEmit`: 0 errors.
-- `git status` & `git log origin/main..HEAD`: clean tree, fully up to date.
+## 3. Caveats
+
+- Obscure foreign or unpunctuated credentials entered without commas (e.g. `Budi Santoso AWS`) are retained as part of the core name unless added via the "+ Tambah Gelar" interface with Suffix selection or separated with a comma/semicolon. This prevents false-positive truncation of legitimate Indonesian single-word surnames.
+- Layout for mobile viewports (<340px) uses CSS flexbox wrap with `break-words` and `min-w-0`, verified in modern Chromium browsers.
+
+## 4. Conclusion
+
+All requirements (R1, R2, R3) and acceptance criteria have been completely satisfied, independently verified, confirmed by post-victory auditor `victory_auditor_52`, and deployed to `origin/main`.
+
+## 5. Verification Method
+
+Independent verification commands executed with clean exit code 0:
+```bash
+# 1. Multi-gelar automated test suite
+npx tsx tests/multi_gelar_verification.test.ts
+
+# 2. TypeScript type check
+npx tsc --noEmit
+
+# 3. Full application test suite
+npm test
+
+# 4. Next.js production build
+npm run build
+
+# 5. Git repository status
+git status
+```
