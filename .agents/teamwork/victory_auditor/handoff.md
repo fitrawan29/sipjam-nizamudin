@@ -1,93 +1,72 @@
-# Victory Audit Report: swe_35
+# Victory Audit Handoff Report
 
+## 1. Observation
+- **Git Commit History & Timeline**:
+  - 5 genuine commits representing an authentic iterative engineering and review cycle:
+    1. `00786fd` (12:00:57): Initial database cleanup and standardizations for R1 & R2, updating CSVs and initial test verification.
+    2. `41d539f` (14:19:14): Standardize user Fitra, purge Ahmad Dahlan, add `src/lib/dataIntegrityGuard.ts`, SQL migration `supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql`, adversarial audit scripts (`scripts/adversarial_audit_user_data.ts`, `scripts/adversarial_full_scan.ts`), and UI guards.
+    3. `27dbe27` (14:33:33): Review fix R1 — resolved dummy word boundary bypass, normalized whitespace and diacritics in guards.
+    4. `0e33d45` (14:49:14): Review fix R2 — hardened compound dummy detection, academic title tolerance, and CSV import guards in `AdminDataView.tsx` and `AccountSettingsModal.tsx`.
+    5. `3a47524` (15:03:38): Review fix R3 — protected NIP/username parameters, added jadwal guards, and hardened role compound dummy detection (`teststudent`, `testwali`, `testpiket`, etc.).
+  - `git status` confirmed clean working tree (no untracked or uncommitted project code).
+  - `git branch -vv` confirmed `main` is up to date with `origin/main` (`3a475246bbc945de7f54bba09d06b8fc1eb2a83c`).
+- **Cheating Detection & Integrity Forensics**:
+  - `tests/user_standardization_and_cleanup_verification.test.ts` contains 0 hardcoded mocked outputs or fake bypasses; it issues genuine live queries to Supabase database tables (`users`, `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`, `data_guru`, `data_siswa`), reads live CSV files in `csv/`, and tests regex guards directly.
+  - `src/lib/dataIntegrityGuard.ts` implements genuine string normalization (`normalizeName`), dummy pattern matching (`isDummyOrTestString`), deprecated name blocking (`isForbiddenName`), and comprehensive teacher/user/student validation functions (`validateTeacherData`, `validateUserData`, `validateStudentData`).
+  - Native database migration `supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql` defines 4 unique indexes (`uq_users_username_lower`, `uq_users_sekolah_nama_lower`, `uq_data_guru_sekolah_nama_lower`, `uq_data_guru_sekolah_nip_lower`) and database triggers (`trg_anti_dummy_users`, `trg_anti_dummy_data_guru`, `trg_anti_dummy_data_siswa`, `trg_anti_dummy_jadwal_pelajaran`) executing `check_anti_dummy_guard()`.
+  - CSV files in `csv/` contain 0 occurrences of uppercase `FITRA SURYAZANA MAMONTO` and 0 occurrences of `Ahmad Dahlan`. All occurrences have been standardized to Title Case `Fitra Suryazana Mamonto`.
+- **Independent Execution Results**:
+  - `npx tsx tests/user_standardization_and_cleanup_verification.test.ts`: TOTAL CHECKS: 65 | PASSED: 65 | FAILED: 0 (100% pass rate).
+  - `npx tsx scripts/adversarial_audit_user_data.ts`: Executed successfully; confirmed 0 uppercase `FITRA SURYAZANA MAMONTO` and 0 `Ahmad Dahlan` across 14 tables; confirmed obsolete ID `e1144f72-2ec4-43f2-aebb-10a59063a906` is permanently deleted (`[]`); confirmed user `Fitra` is active and correctly linked to `data_guru`.
+  - `npx tsx scripts/adversarial_full_scan.ts`: Scanned all 27 database tables; Total findings: 0.
+  - `npm test`: Exited with code 0 (100% passing across all sub-suites).
+  - `npx tsc --noEmit` & `npm run lint`: Exited with code 0 (0 TypeScript errors, 0 ESLint errors).
+
+## 2. Logic Chain
+1. Requirement R1 demands the total elimination of uppercase "FITRA SURYAZANA MAMONTO" and replacement with Title Case "Fitra Suryazana Mamonto" across users, transaction tables, data_guru relations, and CSV files. Live queries across `users`, `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`, `jadwal_pelajaran`, and all CSVs confirm 0 uppercase instances remain, while Title Case instances are preserved and verified. The `data_guru` account relation for NIP 'Fitra' remains active and linked to user ID `f1bbf742-988a-42c4-a880-39b132ffbe4f`.
+2. Requirement R2 demands total purge of "Drs. Ahmad Dahlan, M.Pd." from the database and deletion of obsolete record `e1144f72-2ec4-43f2-aebb-10a59063a906`. Live queries on all 27 tables confirm 0 rows matching "Ahmad Dahlan" and 0 rows for ID `e1144f72-2ec4-43f2-aebb-10a59063a906`.
+3. Requirement R3 demands data uniqueness guards preventing duplicate usernames or teacher names/NIPs. The database schema defines unique indexes enforcing case-insensitive uniqueness at the tenant/school level, and application-level guards in `AdminDataView`, `SuperadminView`, and CSV import prevent duplicate submission. Tests verify 0 duplicate usernames among 15 users and 0 duplicate teacher names/NIPs among 12 teachers.
+4. Requirement R4 demands anti-dummy protections and no test leakages. Native triggers on `users`, `data_guru`, `data_siswa`, and `jadwal_pelajaran` reject dummy accounts and deprecated names. UI forms and CSV importers validate input against `isDummyOrTestString` and `isForbiddenName`. Live database audit confirms 0 dummy accounts exist in production tables.
+5. All 4 verification commands executed independently without discrepancies, matching the claimed results with 100% success.
+6. Git delivery rules were satisfied: commits are descriptive, cleanly staged, and pushed to `origin/main`.
+
+## 3. Caveats
+- No caveats. The database connection was verified live via `.env.local` service role / anon credentials, live table rows were directly examined, CSV source files were scanned, and all tests executed from scratch.
+
+## 4. Conclusion
+The implementation fully and genuinely satisfies all requirements (R1, R2, R3, R4) and acceptance criteria with zero integrity shortcuts, adhering strictly to the Ponytail principle (minimal, native database constraints, simple regex validations, zero unnecessary dependencies). The team's victory claim is authentic and fully verified.
+
+## 5. Verification Method
+To independently reproduce this verification:
+1. `git log -n 5 --stat` -> inspect recent commit lineage.
+2. `git status` -> verify clean working tree and up-to-date branch status with `origin/main`.
+3. `npx tsx tests/user_standardization_and_cleanup_verification.test.ts` -> executes 65 automated database and validation checks.
+4. `npx tsx scripts/adversarial_audit_user_data.ts` -> audits table rows and user relations.
+5. `npx tsx scripts/adversarial_full_scan.ts` -> scans all 27 database tables for deprecated names.
+6. `npm test` -> executes application regression test suite.
+
+---
+
+```
 === VICTORY AUDIT REPORT ===
 
 VERDICT: VICTORY CONFIRMED
 
 PHASE A — TIMELINE:
   Result: PASS
-  Anomalies: none
+  Anomalies: none (5 genuine, progressive commits across 3 review cycles; all committed and pushed to origin/main)
 
 PHASE B — INTEGRITY CHECK:
   Result: PASS
-  Details:
-    - Zero modifications or deletions made to existing test files in `tests/` (`git diff f5b4924..HEAD -- tests/` is clean).
-    - `src/utils/textUtils.ts` contract audited: actively used in `src/components/PrintHeader.tsx` (lines 7, 9) for official Kop Surat formatting and verified in test suites. Preserving it adheres to the prompt constraint ("jika terbukti unreferenced") and prevents functional regression.
-    - `package.json` contract audited: dependencies are locked by regression test `tests/four_ponytail_improvements.test.ts` (line 42). Preserving the required dependencies avoids breaking the test suite and complies with R3.
-    - Zero facade implementations or hardcoded test bypasses found across all 4 commits.
-    - Genuine dead code removed: ~360 KB legacy artifacts (`code.gs.txt`, `index.html.txt`, `run-migration.js`), unreferenced scripts (`importData.ts`, `scripts/update-database-types.js`, `scripts/verify-db-milestone1.ts`, `scripts/test-attendance-sync.ts`), orphaned wrapper `src/lib/gpsPrint.ts`, default starter SVGs (`public/*.svg`), ~250 lines of dead dashboard queries/computations in `HomeViewGuru.tsx`, and dead imports across 14 components.
+  Details: Verified real implementation in src/lib/dataIntegrityGuard.ts, native database unique indexes and triggers in supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql, and comprehensive checks in tests/user_standardization_and_cleanup_verification.test.ts. No hardcoded results, facade patterns, or mocked shortcuts found.
 
 PHASE C — INDEPENDENT TEST EXECUTION:
-  Test commands executed:
-    1. `npx tsc --noEmit` -> Exit code 0 (0 type errors)
-    2. `npm run lint` -> Exit code 0 (0 errors, 131 warnings)
-    3. `npm test` -> Exit code 0 (39/39 test suites passed, 100% success rate, 0 failed assertions)
-    4. `npm run build` -> Exit code 0 (Next.js 16.3.4 Turbopack compiled successfully in 2.7s, 12 routes generated)
-  Your results: 100% tests passed, 0 compiler errors, 0 linter errors, production build clean.
-  Claimed results: 100% tests passed, 0 compiler errors, 0 linter errors, production build clean.
-  Match: YES — Identical results observed across all execution checks.
-
----
-
-## 5-Component Forensic Handoff
-
-### 1. Observation
-- **Git Commit History**:
-  - `6b93004`: `chore(cleanup): remove orphaned files, prune dead utilities, and configure eslint` (Mon Oct 26 23:56:42 2026 +0800)
-  - `659a2af`: `refactor(cleanup): remove orphaned scripts and prune dead imports across codebase` (Tue Oct 27 00:19:24 2026 +0800)
-  - `502b124`: `refactor(cleanup): prune dead dashboard queries, unused variables, and obsolete starter assets` (Tue Oct 27 01:00:50 2026 +0800)
-  - `5fbad36`: `refactor(cleanup): restore attendance stats execution, prune dead useMemo, and adopt optional catch binding` (Tue Oct 27 01:21:00 2026 +0800)
-- **Deleted Orphaned Files**:
-  - `code.gs.txt` (83,660 bytes, legacy monolithic Google Apps Script)
-  - `index.html.txt` (274,062 bytes, legacy monolithic HTML)
-  - `run-migration.js` (1,032 bytes, dead scratch script with uninstalled pg)
-  - `importData.ts` (5,217 bytes, unreferenced scratch migration script)
-  - `scripts/update-database-types.js` (7,364 bytes, broken script referencing ephemeral brain path)
-  - `scripts/verify-db-milestone1.ts` (3,100 bytes, obsolete ad-hoc test script)
-  - `scripts/test-attendance-sync.ts` (10,976 bytes, unreferenced ad-hoc test script)
-  - `src/lib/gpsPrint.ts` (86 bytes, dead 2-line re-export wrapper)
-  - `public/file.svg`, `public/globe.svg`, `public/next.svg`, `public/vercel.svg`, `public/window.svg` (obsolete starter assets)
-- **Code Refactoring & Query Pruning**:
-  - `HomeViewGuru.tsx`: pruned dead `fetchTeacherDetails()` firing 4 redundant Supabase queries, dead `subjectAttendanceList` and `subjectDocCompletenessList` computations (~250 lines), while preserving and restoring `fetchAttendanceStats()`.
-  - 14 components refactored to remove unused imports, dead variables, and legacy catch parameters via optional catch binding.
-- **Test Integrity**:
-  - `git diff f5b4924..HEAD -- tests/` produced empty output (zero test files modified).
-  - `src/utils/textUtils.ts` verified actively referenced in `src/components/PrintHeader.tsx:7` and tested in `tests/m6_master_data_polish.test.ts:11` and `tests/m7_comprehensive_e2e.test.ts:109`.
-  - `package.json` dependencies verified strictly checked by `tests/four_ponytail_improvements.test.ts:42`.
-
-### 2. Logic Chain
-1. **Requirement R1 (Audit & Removal of Dead Code)**:
-   - Truly dead and unreferenced files (`code.gs.txt`, `index.html.txt`, `run-migration.js`, `importData.ts`, scratch scripts in `scripts/`, `src/lib/gpsPrint.ts`, starter assets) were removed, shrinking unnecessary repository mass by over 380 KB.
-   - `src/utils/textUtils.ts` was audited against the application codebase. Because it is actively imported by `PrintHeader.tsx` (formatting Kepala Sekolah titles for all 8 print views) and asserted in tests, preserving it strictly fulfills the prompt condition ("jika terbukti unreferenced") and prevents functional regression.
-2. **Requirement R2 (Dependency & Configuration Pruning)**:
-   - `package.json` dependencies are frozen by assertion `assert.deepStrictEqual(actualDeps, expectedDeps.sort())` in `tests/four_ponytail_improvements.test.ts`. Retaining the 9 dependencies avoids test failure and maintains full runtime stability.
-   - `eslint.config.mjs` was configured to properly ignore non-application test/script paths and handle warning levels without suppressing genuine runtime errors.
-3. **Requirement R3 (Zero Regression & Test Preservation)**:
-   - Tests were not weakened or tampered with.
-   - Independent test execution of all 39 test suites yielded 100% pass rate.
-   - Full TypeScript checking (`npx tsc --noEmit`) and Turbopack production build (`npm run build`) passed with exit code 0.
-
-### 3. Caveats
-- `scripts/google-drive-webhook.gs`: Google Apps Script file designed for deployment in Google Cloud / Google Drive environment, not executable in Node.js.
-- `scripts/provision-new-school.js`: Requires live PostgreSQL connection credentials and execution via `npx --package=pg node scripts/provision-new-school.js`.
-- Remaining 131 ESLint warnings are legacy React hook dependency arrays (`react-hooks/exhaustive-deps`, `react-hooks/set-state-in-effect`) in historical views. They do not prevent compilation or exit code 0 on linting, and modifying them would pose behavioral risk to existing components.
-
-### 4. Conclusion
-The implementation team fully satisfied all requirements (R1, R2, R3) and acceptance criteria of task `swe_35`. Dead code, orphaned scripts, obsolete assets, and redundant queries were pruned cleanly without any regressions. The project builds cleanly, type checks with zero errors, lints with zero errors, and passes 100% of the canonical automated test suite.
-**Verdict: VICTORY CONFIRMED.**
-
-### 5. Verification Method
-To independently reproduce this verification:
-```powershell
-# 1. Type Check
-npx tsc --noEmit
-
-# 2. Linter Check
-npm run lint
-
-# 3. Canonical Test Suite (all 39 suites)
-npm test
-
-# 4. Production Build
-npm run build
+  Test command: npx tsx tests/user_standardization_and_cleanup_verification.test.ts && npx tsx scripts/adversarial_audit_user_data.ts && npx tsx scripts/adversarial_full_scan.ts && npm test
+  Your results:
+    - user_standardization_and_cleanup_verification: 65/65 checks PASSED (100%)
+    - adversarial_audit_user_data: 0 violations across 14 tables, user Fitra active and linked, obsolete ID permanently deleted
+    - adversarial_full_scan: 0 violations across all 27 database tables
+    - npm test: All test suites PASSED with exit code 0
+  Claimed results: 100% pass across all suites, 0 dummy data, 0 uppercase FITRA, 0 Ahmad Dahlan
+  Match: YES — exact match across all test suites and audit scripts.
 ```
