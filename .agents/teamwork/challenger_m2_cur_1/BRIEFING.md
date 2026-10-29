@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-29T12:45:00Z
+# BRIEFING — 2026-10-29T12:53:00Z
 
 ## Mission
 Adversarially challenge Milestone 2 Functional Consolidation with empirical tests focusing on state retention, rapid tab switching stress, and defense-in-depth RBAC.
@@ -27,20 +27,25 @@ Adversarially challenge Milestone 2 Functional Consolidation with empirical test
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - H1: Switching sub-tabs in GradebookView / AdminConfigView destroys React state or resets unsaved inputs.
-  - H2: Rapid switching of tabs triggers race conditions, DOM desync, or runtime errors.
-  - H3: Non-wali guru accessing GradebookView with tab=rapor or currentView=view-rapor can view or mutate rapor data.
-  - H4: AST regex invariants in existing tests or test suites fail due to consolidation changes.
-- **Vulnerabilities found**: [None yet]
-- **Untested angles**: [To be verified empirically]
+  - H1: Switching sub-tabs in GradebookView / AdminConfigView destroys React state or resets unsaved inputs. -> REJECTED (Empirically verified CSS block/hidden keep-alive preserves 100% of state in DOM & memory).
+  - H2: Rapid switching of tabs triggers race conditions, DOM desync, or runtime errors. -> REJECTED (500-cycle rapid toggle harness passed with 0 errors).
+  - H3: Non-wali guru accessing GradebookView with tab=rapor or currentView=view-rapor can view or mutate rapor data. -> REJECTED (Defense-in-depth RBAC card blocks access; RaporView never mounted).
+  - H4: AST regex invariants in existing tests or test suites fail due to consolidation changes. -> REJECTED (All 41 existing test suites pass; production build succeeds).
+- **Vulnerabilities found**: None. Consolidation implementation is robust and impervious to URL/prop tampering.
+- **Untested angles**: All key challenge areas specified in DISPATCH.md were empirically tested and validated.
 
 ## Loaded Skills
 - None specified
 
 ## Key Decisions Made
-- Formulated 4 empirical attack vectors.
-- Will inspect the target files, design adversarial test scripts, and execute them.
+- Executed `tests/navigation_consolidation_verification.test.ts` (150/150 passed).
+- Executed `tests/adversarial_rapor_wali_security.test.ts` (28/28 passed).
+- Created and executed empirical challenger test suite `tests/challenger_m2_empirical_stress.test.ts` (21/21 passed).
+- Ran full regression `npm test` (41 test suites passed).
+- Ran production build `npm run build` (Next.js 16.3.4 build successful).
+- Formulated verdict: APPROVE.
 
 ## Artifact Index
-- handoff.md — Verification report and verdict
-- progress.md — Liveness heartbeat
+- handoff.md — Verification report and explicit verdict APPROVE
+- progress.md — Liveness heartbeat and milestone tracking
+- tests/challenger_m2_empirical_stress.test.ts — Comprehensive empirical challenge suite
