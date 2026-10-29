@@ -63,10 +63,10 @@ Berdasarkan audit mendalam terhadap basis kode (`src/components/`, `src/lib/`, `
 - **Isolasi Fitur yang Semestinya Menjadi Sub-Pengaturan:** Fitur *Sistem Blok* (yang hanya diakses 2–4 kali per semester) dan *Backup Data* berdiri sendiri sebagai menu tingkat atas (*top-level menu*), memadati sidebar Admin.
 
 ### Dampak Positif Konsolidasi Menu yang Diusulkan:
-- **Reduksi Menu Guru Reguler:** Dari **8 menu** menjadi **5–6 menu** (**reduksi ~25%–37.5%**).
-- **Reduksi Menu Guru Wali Kelas:** Dari **11 menu** menjadi **6–7 menu** (**reduksi ~40%**).
-- **Reduksi Menu Administrator:** Dari **15 menu** menjadi **7 menu** (**reduksi 53.3%**).
-- **Reduksi Menu Kepala Sekolah:** Dari **13–15 menu** menjadi **6 menu** (**reduksi 53.8%–60%**).
+- **Reduksi Menu Guru Reguler:** Dari **8 menu** menjadi **6 menu** (**reduksi 25%**).
+- **Reduksi Menu Guru Wali Kelas:** Dari **11 menu** menjadi **7 menu** (**reduksi 36.4%**).
+- **Reduksi Menu Administrator:** Dari **15 menu** menjadi **8 menu** (**reduksi 46.7%**), atau 7 menu jika pengumuman disatukan ke dashboard (**reduksi 53.3%**).
+- **Reduksi Menu Kepala Sekolah:** Dari **13–15 menu** menjadi **6–7 menu** (**reduksi 46.2%–53.8%**).
 - **Pemangkasan Page Switching:** Mengurangi frekuensi perpindahan halaman hingga **65%** dalam rutinitas kerja harian pendidik.
 - **Bebas Scrollbar pada Layar Laptop & Mobile:** Sidebar pas dalam satu pandangan layar tanpa memerlukan pengguliran vertikal (*zero scrolling sidebar*).
 
@@ -398,7 +398,9 @@ Berikut adalah rincian **7 klaster penggabungan fitur dan menu** yang disusun be
   - **Sub-Tab 1: Presensi Gerbang & Kiosk QR (`tab=gerbang`)** (Pemindaian QR siswa dan monitoring arus gerbang real-time).
   - **Sub-Tab 2: Rekapitulasi & Intervensi Wali (`tab=rekap`)** (Tabel absensi akumulatif, deteksi bolos, dan pemicu WhatsApp ke orang tua).
 - **Dampak Penggabungan:**
-  - Mengurangi redundansi komponen antara modul Piket dan modul Presensi Siswa.
+  - `view-piket` tetap difungsikan secara terisolasi sebagai modul operasional petugas piket bertugas (kiosk scan gerbang, buku tamu, catatan ketertiban).
+  - `view-rekap-siswa` bertindak sebagai pusat analitik dan intervensi kesiswaan terpadu, mengonsumsi data log pemindaian gerbang secara real-time tanpa duplikasi logika pemindaian.
+  - Menghilangkan friksi komunikasi antara Guru Piket dan Wali Kelas: deteksi ketidakhadiran gerbang vs kelas tersinkronisasi otomatis dalam satu layar kesiswaan.
 
 ---
 
@@ -411,7 +413,7 @@ Berikut adalah cetak biru (*blueprint*) arsitektur menu baru setelah menerapkan 
 ### 5.1. Struktur Baru untuk Peran Guru
 
 ```
-[ GURU REGULER ] -> Hanya 6 Menu (Sebelumnya 8 Menu Dasar)
+[ GURU REGULER ] -> Hanya 6 Menu (Sebelumnya 8 Menu Dasar, Reduksi 25%)
 ├── 1. 🏠 Dashboard (view-home)
 ├── 2. 🕒 Presensi Guru (view-guru-presensi)
 │      ├── Tab: Presensi Hari Ini (Datang, Pulang, Dinas Luar, Izin)
@@ -426,14 +428,15 @@ Berikut adalah cetak biru (*blueprint*) arsitektur menu baru setelah menerapkan 
 │      └── Tab: Buku Nilai Mapel (Formatif & Sumatif Kurikulum Merdeka)
 └── 6. 📢 Informasi Sekolah (view-informasi)
 
-[ GURU WALI KELAS ] -> Hanya 7 Menu (Sebelumnya 11 Menu)
-├── Menu 1-6 Guru Reguler di atas
+[ GURU WALI KELAS ] -> Hanya 7 Menu (Sebelumnya 11 Menu, Reduksi 36.4%)
+├── Menu 1-6 Guru Reguler di atas dengan hak akses sub-tab binaan:
+│      ├── Pada Menu 3 (Jurnal): + Sub-Tab 3: Supervisi Jurnal Kelas Binaan (tab=supervisi-kelas)
+│      └── Pada Menu 5 (Asesmen): + Sub-Tab 2: Rapor Kelas Binaan & Leger (tab=rapor)
 └── 7. 👥 Presensi Siswa (view-rekap-siswa)
        ├── Tab: Presensi Gerbang & Deteksi Bolos
        └── Tab: Rekap Absensi Siswa & Notifikasi WhatsApp Wali Murid
-       *(Catatan: Rapor siswa binaan disatukan di dalam Menu 5 Tab "Rapor Kelas Binaan")*
 
-[ GURU PIKET ] -> Tambahan 1 Menu Dinamis Saat Bertugas
+[ GURU PIKET ] -> Tambahan 1 Menu Dinamis Saat Bertugas (Total 7–8 Menu)
 └── + 🛡️ Modul Piket (view-piket) [Hanya muncul saat terjadwal piket hari ini]
        ├── Tab: Kiosk QR Scan Gerbang Siswa
        ├── Tab: Laporan Ketertiban & Buku Tamu
@@ -445,7 +448,7 @@ Berikut adalah cetak biru (*blueprint*) arsitektur menu baru setelah menerapkan 
 ### 5.2. Struktur Baru untuk Peran Administrator Sekolah
 
 ```
-[ ADMINISTRATOR SEKOLAH ] -> Hanya 7 Menu (Sebelumnya 15 Menu, Reduksi 53.3%)
+[ ADMINISTRATOR SEKOLAH ] -> 8 Menu Utama Terpadu (Sebelumnya 15 Menu, Reduksi 46.7%)
 ├── 1. 🏠 Dashboard Operasional (view-home)
 ├── 2. 📋 Pusat Verifikasi & Supervisi (view-admin-verif)
 │      ├── Tab: Izin & Presensi Guru
@@ -460,23 +463,28 @@ Berikut adalah cetak biru (*blueprint*) arsitektur menu baru setelah menerapkan 
 │      ├── Tab: Dashboard Analitik & Leaderboard Disiplin
 │      ├── Tab: Tabel Rekapitulasi Presensi Bulanan Dewan Guru
 │      └── Tab: Cetak Dokumen Resmi KOP & Ekspor Excel
-├── 5. 👥 Kesiswaan & Akademik (view-rekap-siswa)
+├── 5. 👥 Presensi Siswa & Kesiswaan (view-rekap-siswa)
 │      ├── Tab: Presensi Siswa Seluruh Kelas
-│      ├── Tab: Supervisi Jurnal Kelas
-│      └── Tab: Supervisi Ledger Nilai & Rapor
-├── 6. 🗄️ Master Data & Kalender (view-admin-data)
+│      ├── Tab: Log Pemindaian Gerbang & Deteksi Bolos
+│      └── Tab: Rekapitulasi Absensi & Peringatan Otomatis
+├── 6. 🎓 Asesmen & Rapor Sekolah (view-gradebook)
+│      ├── Tab: Supervisi Ledger Nilai Seluruh Rombel
+│      └── Tab: Supervisi & Pencetakan Rapor Sekolah
+├── 7. 🗄️ Master Data & Kalender (view-admin-data)
 │      ├── Tab: Siswa & Rombel (Naik Kelas Massal & Cetak QR Card)
 │      ├── Tab: Guru & Akun Pendidik (Multi-Gelar & Akses Akun)
 │      ├── Tab: Mata Pelajaran & Jadwal KBM Mingguan
 │      ├── Tab: Kalender Pendidikan (Libur Nasional & Khusus)
 │      ├── Tab: Periode Sistem Blok Kegiatan (PTS/PAS/Ujian)
 │      └── Tab: Penetapan Wali Kelas
-└── 7. ⚙️ Pengaturan Sistem & Database (view-admin-config)
-       ├── Tab: Profil Sekolah & KOP Surat Resmi
-       ├── Tab: Jam Kerja & Toleransi Keterlambatan
-       ├── Tab: Geofence GPS & Radius Lokasi Presensi
-       ├── Tab: Kebijakan Kamera & Aturan Presensi Khusus Guru
-       └── Tab: Pencadangan Data & Sinkronisasi Spreadsheet
+├── 8. ⚙️ Pengaturan Sistem & Database (view-admin-config)
+│      ├── Tab: Profil Sekolah & KOP Surat Resmi
+│      ├── Tab: Jam Kerja & Toleransi Keterlambatan
+│      ├── Tab: Geofence GPS & Radius Lokasi Presensi
+│      ├── Tab: Kebijakan Kamera & Aturan Presensi Khusus Guru
+│      └── Tab: Pencadangan Data & Sinkronisasi Spreadsheet
+└── 9. 📢 Informasi & Pengumuman Sekolah (view-informasi) [Opsi Terpadu / Menu ke-9]
+       *(Catatan Wewenang: Admin adalah aktor utama yang menerbitkan pengumuman, menyematkan siaran penting, dan memoderasi tanggapan. Menu ini dapat berdiri sebagai menu ke-9 atau disematkan langsung sebagai tombol kelola cepat pada header Dashboard Operasional, menghasilkan 8 menu sidebar zero-scroll).*
 ```
 
 ---
@@ -547,7 +555,7 @@ Berikut adalah cetak biru (*blueprint*) arsitektur menu baru setelah menerapkan 
 |---|---|---|---|
 | **Jumlah Menu Guru Reguler** | 8 Menu Dasar | **6 Menu** | **Turun 25%**, siklus harian terhubung tanpa fragmentasi. |
 | **Jumlah Menu Guru Wali Kelas** | 11 Menu | **7 Menu** | **Turun 36.4%**, penataan modul binaan yang bersih dan modular. |
-| **Jumlah Menu Administrator** | 15 Menu | **7 Menu** | **Turun 53.3%**, seluruh menu tampil pas di layar laptop tanpa scrollbar (*zero scroll*). |
+| **Jumlah Menu Administrator** | 15 Menu | **8 Menu** (atau 7 jika terpadu) | **Turun 46.7% – 53.3%**, seluruh menu tampil pas di layar laptop tanpa scrollbar (*zero scroll*). |
 | **Jumlah Menu Kepala Sekolah** | 13 – 15 Menu | **6 – 7 Menu** | **Turun 46.2% – 53.8%**, orientasi pengawasan eksekutif terpusat dan berwibawa. |
 | **Jumlah Menu Pengawas Dinas** | 4 Menu (1 Platform + 3 Satelit) | **2 Menu Terpadu** | **Turun 50%**, navigasi terpadu berbasis tab saat pemantauan satelit. |
 | **Menu Satelit Superadmin** | 6 Menu Satelit Terpisah | **5 Menu Terkonsolidasi** | Konsolidasi analitik & rekap tanpa menghilangkan audit kesiswaan sekolah satelit. |
@@ -877,6 +885,11 @@ Untuk mencegah kegagalan selektor tersebut pada saat implementasi Fase 4, tim pe
 | `uniqueIds.size` | 28 Unik | **16 Unik** | Seluruh ID modul tetap unik dan berformat terstandar. |
 | `expectedGuruIds` | 11 ID terfragmentasi | 6 ID kanonikal | Mengeliminasi ID warisan (`guru-rekap-jurnal`, `guru-history`, `guru-jurnal-kelas`). |
 | `expectedAdminIds` | 14 ID terfragmentasi | 7 ID kanonikal | Mengeliminasi ID warisan (`admin-sistem-blok`, `admin-backup`, `admin-analitik`). |
+
+> **Catatan Forensik Status Test Suite Eksisting:**
+> - Seluruh **41 test suite produksi** yang terdaftar pada `package.json` (`npm test`) saat ini berstatus **PASS 100%**.
+> - File `tests/challenger_m2_tutorial_system.test.ts` merupakan *standalone challenger test* peninggalan Milestone 2 yang tidak diikutsertakan dalam `npm test`. Saat dieksekusi secara independen (`npx tsx tests/challenger_m2_tutorial_system.test.ts`), pengujian ini mencatatkan 10 kegagalan asersi akibat pergeseran historis (contoh: menu guru membengkak dari 11 menjadi 12 saat penambahan modul kesiswaan wali kelas, dan ekspektasi superadmin 3 vs riil 2).
+> - Refaktorisasi pada Fase 4 tidak hanya menyelaraskan tur dengan menu baru 16 modul, tetapi sekaligus memperbaiki 10 kegagalan asersi historis tersebut sehingga file pengujian ini siap dipromosikan ke dalam script `npm test` utama.
 
 ---
 
