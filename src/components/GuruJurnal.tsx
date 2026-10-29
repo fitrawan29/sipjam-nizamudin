@@ -8,7 +8,7 @@ import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
-import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft } from '@/utils/draftStorage';
+import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft, getJurnalDraftKey } from '@/utils/draftStorage';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RekapJurnalView from '@/components/RekapJurnalView';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
@@ -197,8 +197,11 @@ export default function GuruJurnal({
   // Auto-restore draft from localStorage on initial mount
   useEffect(() => {
     try {
-      const saved = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('sipjam_jurnal_autosave') : null;
-      const draft = saved ? JSON.parse(saved) : loadJurnalDraft();
+      const draftKey = getJurnalDraftKey(user?.id, user?.sekolah_id);
+      const saved = typeof window !== 'undefined' && window.localStorage
+        ? (localStorage.getItem(draftKey) || (draftKey !== 'sipjam_jurnal_autosave' ? localStorage.getItem('sipjam_jurnal_autosave') : null))
+        : null;
+      const draft = saved ? JSON.parse(saved) : loadJurnalDraft(user?.id, user?.sekolah_id);
       if (draft) {
         if (draft.tipeJurnal !== undefined) setTipeJurnal(draft.tipeJurnal);
         if (draft.mapel !== undefined) setMapel(draft.mapel);
@@ -257,24 +260,30 @@ export default function GuruJurnal({
         lokasiKbm,
         absensi
       };
-      saveJurnalDraft(draft);
+      saveJurnalDraft(draft, user?.id, user?.sekolah_id);
       try {
-        localStorage.setItem('sipjam_jurnal_autosave', JSON.stringify(draft));
+        const draftKey = getJurnalDraftKey(user?.id, user?.sekolah_id);
+        localStorage.setItem(draftKey, JSON.stringify(draft));
       } catch (err) {
         console.warn('[GuruJurnal] Auto-save error:', err);
       }
       setHasDraft(true);
     } else {
+      clearJurnalDraft(user?.id, user?.sekolah_id);
       clearJurnalDraft();
       try {
-        localStorage.removeItem('sipjam_jurnal_autosave');
+        const draftKey = getJurnalDraftKey(user?.id, user?.sekolah_id);
+        localStorage.removeItem(draftKey);
+        if (draftKey !== 'sipjam_jurnal_autosave') {
+          localStorage.removeItem('sipjam_jurnal_autosave');
+        }
       } catch {}
       setHasDraft(false);
     }
   }, [
     tipeJurnal, mapel, kelas, tanggal, materi, kegiatan, catatanSiswa,
     refleksi, pertemuanKe, jamKe, tujuanPembelajaran, kehadiranMurid,
-    kktp, konten, lokasiKbm, absensi
+    kktp, konten, lokasiKbm, absensi, user?.id, user?.sekolah_id
   ]);
 
   const formatDisplayDate = (dStr: string) => {
@@ -992,8 +1001,15 @@ export default function GuruJurnal({
           timer: 3000,
           showConfirmButton: false,
         });
+        clearJurnalDraft(user?.id, user?.sekolah_id);
         clearJurnalDraft();
-        try { localStorage.removeItem('sipjam_jurnal_autosave'); } catch {}
+        try {
+          const draftKey = getJurnalDraftKey(user?.id, user?.sekolah_id);
+          localStorage.removeItem(draftKey);
+          if (draftKey !== 'sipjam_jurnal_autosave') {
+            localStorage.removeItem('sipjam_jurnal_autosave');
+          }
+        } catch {}
         setHasDraft(false);
         setMateri('');
         setKegiatan('');

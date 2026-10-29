@@ -46,10 +46,11 @@ export const SIDEBAR_TOUR_ALIASES: Record<string, string> = {
 };
 
 export function resolveCanonicalRoute(rawView: string | null | undefined, rawTab?: string | null): RouteResolution {
-  if (!rawView || rawView.trim() === '' || rawView === 'undefined' || rawView === 'null') {
+  const trimmed = (rawView || '').trim().replace(/\/+$/, '');
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') {
     return { canonicalView: 'view-home', isLegacyAlias: false };
   }
-  const cleanView = rawView.trim();
+  const cleanView = trimmed;
   const alias = VIEW_ALIASES[cleanView];
   if (alias) {
     return {

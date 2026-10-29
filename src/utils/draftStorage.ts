@@ -5,6 +5,20 @@
 
 export const JURNAL_DRAFT_KEY = 'sipjam_jurnal_autosave';
 
+/**
+ * Returns a unique scoped key for KBM journal drafts.
+ * If both userId and sekolahId are present, return 'sipjam_jurnal_autosave_' + userId + '_' + sekolahId.
+ * Otherwise return 'sipjam_jurnal_autosave'.
+ */
+export function getJurnalDraftKey(userId?: string | null, sekolahId?: string | null): string {
+  const u = (userId || '').trim();
+  const s = (sekolahId || '').trim();
+  if (u && s) {
+    return `sipjam_jurnal_autosave_${u}_${s}`;
+  }
+  return JURNAL_DRAFT_KEY;
+}
+
 function getStorage(): Storage | null {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -100,11 +114,12 @@ export function clearGradebookDraft(key: string): void {
 /**
  * Safely saves the Guru Jurnal form draft to localStorage.
  */
-export function saveJurnalDraft(draft: any): void {
+export function saveJurnalDraft(draft: any, userId?: string | null, sekolahId?: string | null): void {
   try {
     const storage = getStorage();
     if (!storage) return;
-    storage.setItem(JURNAL_DRAFT_KEY, JSON.stringify(draft));
+    const key = getJurnalDraftKey(userId, sekolahId);
+    storage.setItem(key, JSON.stringify(draft));
   } catch (err) {
     console.warn('[draftStorage] Failed to save jurnal draft:', err);
   }
@@ -112,12 +127,17 @@ export function saveJurnalDraft(draft: any): void {
 
 /**
  * Safely loads the Guru Jurnal form draft from localStorage.
+ * When loading, if partitioned key has data, return it; if null, check fallback 'sipjam_jurnal_autosave' for backward compatibility.
  */
-export function loadJurnalDraft(): any | null {
+export function loadJurnalDraft(userId?: string | null, sekolahId?: string | null): any | null {
   try {
     const storage = getStorage();
     if (!storage) return null;
-    const raw = storage.getItem(JURNAL_DRAFT_KEY);
+    const key = getJurnalDraftKey(userId, sekolahId);
+    let raw = storage.getItem(key);
+    if (!raw && key !== JURNAL_DRAFT_KEY) {
+      raw = storage.getItem(JURNAL_DRAFT_KEY);
+    }
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (err) {
@@ -129,11 +149,15 @@ export function loadJurnalDraft(): any | null {
 /**
  * Removes the Guru Jurnal form draft from localStorage.
  */
-export function clearJurnalDraft(): void {
+export function clearJurnalDraft(userId?: string | null, sekolahId?: string | null): void {
   try {
     const storage = getStorage();
     if (!storage) return;
-    storage.removeItem(JURNAL_DRAFT_KEY);
+    const key = getJurnalDraftKey(userId, sekolahId);
+    storage.removeItem(key);
+    if (key !== JURNAL_DRAFT_KEY) {
+      storage.removeItem(JURNAL_DRAFT_KEY);
+    }
   } catch (err) {
     console.warn('[draftStorage] Failed to clear jurnal draft:', err);
   }

@@ -680,7 +680,11 @@ export default function AppScreen({
                 >
                   <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform'}</option>
                   {(isDinas
-                    ? satelliteSchools.filter(s => (s.kota_kabupaten || '').trim().toLowerCase() === (user?.kota_kabupaten || '').trim().toLowerCase())
+                    ? satelliteSchools.filter(s => {
+                        const userRegion = (user?.kota_kabupaten || '').trim().toLowerCase();
+                        const schoolRegion = (s.kota_kabupaten || '').trim().toLowerCase();
+                        return Boolean(userRegion && schoolRegion && userRegion === schoolRegion);
+                      })
                     : satelliteSchools
                   ).map(sch => (
                     <option key={sch.id} value={sch.id}>
@@ -814,7 +818,11 @@ export default function AppScreen({
                   >
                     <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform (Semua)'}</option>
                     {(isDinas
-                      ? satelliteSchools.filter(s => (s.kota_kabupaten || '').trim().toLowerCase() === (user?.kota_kabupaten || '').trim().toLowerCase())
+                      ? satelliteSchools.filter(s => {
+                          const userRegion = (user?.kota_kabupaten || '').trim().toLowerCase();
+                          const schoolRegion = (s.kota_kabupaten || '').trim().toLowerCase();
+                          return Boolean(userRegion && schoolRegion && userRegion === schoolRegion);
+                        })
                       : satelliteSchools
                     ).map(sch => (
                       <option key={sch.id} value={sch.id}>

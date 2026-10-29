@@ -1,4 +1,4 @@
-# BRIEFING — 2026-10-29T16:45:00Z
+# BRIEFING — 2026-10-29T16:54:00Z
 
 ## Mission
 Adversarial white-box empirical stress testing for Milestone 4 (Phase 2: Tier 5 Adversarial Coverage Hardening) focusing on lifecycle transitions, URL aliasing & boundary parameter stress, cross-tenant & regional scoping, rapid state transitions & race conditions, and automated tour/DOM spotlight alignment.
@@ -21,23 +21,37 @@ Adversarial white-box empirical stress testing for Milestone 4 (Phase 2: Tier 5 
 - Updated: not yet
 
 ## Review Scope
-- **Files to review**: `src/app/AppScreen.tsx`, navigation aliases, routing, scoping, `localStorage` partitioning, Supabase subscription cleanup (`RekapSiswaView`), tours, `resolveCanonicalRoute`
-- **Interface contracts**: `docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md`, `ORIGINAL_REQUEST.md`
-- **Review criteria**: adversarial edge cases, injections, scoping violations, memory leaks/uncleaned subscriptions, rapid state transitions, race conditions
+- **Files reviewed**: `src/components/AppScreen.tsx`, `src/lib/navigation.ts`, `src/utils/draftStorage.ts`, `src/components/GuruJurnal.tsx`, `src/components/RekapSiswaView.tsx`, `src/components/ClaySidebar.tsx`, `src/components/Onboarding/OnboardingTutorial.tsx`, `src/components/Onboarding/tutorialSteps.ts`
+- **Interface contracts**: `docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md`, `PROJECT.md`, `ORIGINAL_REQUEST.md`
+- **Review criteria**: adversarial edge cases, SQL/XSS injections, scoping violations, memory leaks/uncleaned subscriptions, rapid state transitions, race conditions
 
 ## Attack Surface
-- **Hypotheses tested**: TBD
-- **Vulnerabilities found**: TBD
-- **Untested angles**: TBD
+- **Hypotheses tested**:
+  - H1: URL aliasing handles 8 legacy aliases, trailing slashes, SQL/XSS injections, empty/padded parameters without crash.
+  - H2: Pengawas Dinas regional scoping prevents cross-district school access, and Superadmin switcher operates globally.
+  - H3: LocalStorage draft keys are partitioned per user and school (`${userId}_${sekolahId}`).
+  - H4: Rapid 100-cycle sub-tab switching preserves dirty state and avoids race conditions.
+  - H5: Realtime subscriptions in `RekapSiswaView` and `AppScreen` unmount cleanly with zero channel leakage.
+  - H6: Automated tour selectors align across all 7 roles with graceful fallbacks for conditional menus.
+- **Vulnerabilities found**:
+  - V1 (High): `draftStorage.ts` and `GuruJurnal.tsx` use static unpartitioned key `'sipjam_jurnal_autosave'` instead of `${userId}_${sekolahId}` specified in `PROJECT.md` line 15 & `REKOMENDASI` line 644.
+  - V2 (High): `AppScreen.tsx` lines 683 & 817 uses `===` on `(s.kota_kabupaten || '').trim()` without checking for non-empty string, leaking unassigned schools (`kota_kabupaten: null`) to unassigned Pengawas Dinas.
+  - V3 (Medium): `resolveCanonicalRoute` checks `rawView === 'null'` and `'undefined'` before trimming, failing to fallback to `'view-home'` for padded strings like `"   null   "`.
+  - V4 (Low): Trailing slashes on aliases (`view-rapor/`) bypass `VIEW_ALIASES` exact match.
+- **Untested angles**:
+  - Native Mobile PWA camera hardware permissions during rapid view switching.
 
 ## Loaded Skills
 None specified in dispatch.
 
 ## Key Decisions Made
-- Initialized briefing and plan.
+- Built and ran full adversarial test harness `tests/adversarial_tier5_lifecycle_scoping_challenger_2.test.ts` (24/24 passed).
+- Executed standard suite `npx tsx tests/navigation_consolidation_verification.test.ts` (150/150 passed).
+- Ran complete `npm test` and `npx tsc --noEmit` (0 compilation errors, all 41 test suites passed).
 
 ## Artifact Index
 - `.agents/teamwork/challenger_tier5_2_gen1/DISPATCH.md` — Dispatch message
 - `.agents/teamwork/challenger_tier5_2_gen1/BRIEFING.md` — Working memory
 - `.agents/teamwork/challenger_tier5_2_gen1/progress.md` — Progress tracker
+- `.agents/teamwork/challenger_tier5_2_gen1/handoff.md` — Formal Handoff Report
 - `tests/adversarial_tier5_lifecycle_scoping_challenger_2.test.ts` — Adversarial test suite
