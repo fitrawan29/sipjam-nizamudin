@@ -1,172 +1,187 @@
-# Handoff Report: Milestone M1 Empirical Challenge & Boundary Verification
+# HANDOFF REPORT: CHALLENGER 2 — REGRESSION & AST INVARIANTS (MILESTONE 1)
 
-**Agent**: `teamwork_preview_challenger_m1_2`  
-**Milestone**: Milestone 1 (UI/UX, Camera, and Notification Standardization)  
-**Role**: Empirical Challenger (Adversarial stress-testing, boundary analysis, viewport responsiveness, regression suite execution)  
-**Date**: 2026-10-08  
+**Challenger**: Empirical Challenger 2 (`challenger_m1_2`)  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_2\`  
+**Milestone**: Milestone 1 (Foundation: Reusable Tabs & Component Normalization)  
+**Timestamp**: 2026-10-29T12:06:00Z  
 **Verdict**: **APPROVE**  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_2`  
 
 ---
 
-## 1. Observation
+## 1. OBSERVATION
 
-Direct observations from source inspection, empirical test harness authoring, and execution:
+1. **Full Regression Suite (`npm test`) Execution**:
+   - Tool Command: `npm test`
+   - Result: All 41 automated test suites executed and passed with exit code 0.
+   - Total suites verified:
+     1. `tests/r1_r10_ponytail_verification.test.ts`
+     2. `tests/imageUrl.test.ts`
+     3. `tests/printHeader.test.ts`
+     4. `tests/qolAudit.test.ts`
+     5. `tests/m6_1_database_and_types.test.ts`
+     6. `tests/m6_3_dashboards_and_verif.test.ts`
+     7. `tests/m6_4_piket_perangkat_broadcast.test.ts`
+     8. `tests/m10_r2_r3.test.ts`
+     9. `tests/m1_resubmission_and_verif.test.ts`
+     10. `tests/sistem_blok_verification.test.ts` (85/85 checks pass)
+     11. `tests/three_fixes_verification.test.ts`
+     12. `tests/teacher_reminder_r3.test.ts`
+     13. `tests/qrSiswa.test.ts`
+     14. `tests/m3_piket_scanner_kiosk.test.ts`
+     15. `tests/four_ponytail_improvements.test.ts`
+     16. `tests/presensi_siswa_sync_and_superadmin.test.ts`
+     17. `tests/adversarial_presensi_sync_reviewer.test.ts`
+     18. `tests/adversarial_presensi_sync_reviewer_r2.test.ts`
+     19. `tests/adversarial_presensi_sync_reviewer_r3.test.ts`
+     20. `tests/ai_assistant_faq.test.ts`
+     21. `tests/online_cloud_transactions_and_offline_ai.test.ts`
+     22. `tests/portal_induk_jaringan_multi_sekolah.test.ts`
+     23. `tests/adversarial_superadmin_cleanup_reviewer.test.ts`
+     24. `tests/dinas_luar_kamera_verification.test.ts`
+     25. `tests/m22_automated_verification.test.ts`
+     26. `tests/wajib_hadir_dan_pembersihan_usang.test.ts`
+     27. `tests/wali_kelas_and_piket_intervensi.test.ts`
+     28. `tests/mobile_qr_fallback_piket.test.ts`
+     29. `tests/m4_academic_merdeka_rapor.test.ts`
+     30. `tests/adversarial_rapor_wali_security.test.ts`
+     31. `tests/e_rapor_real_data_pipeline.test.ts`
+     32. `tests/e_rapor_tahun_ajaran_sync.test.ts`
+     33. `tests/adversarial_rapor_archive_retention.test.ts`
+     34. `tests/sekolah_registry_schema_cache_resilience.test.ts`
+     35. `tests/whatsapp_parent_notify_and_autosave.test.ts`
+     36. `tests/kepsek_pengawas_rbac.test.ts` (47/47 checks pass)
+     37. `tests/claymorphism_design_system.test.ts`
+     38. `tests/dinas_pendidikan_monitoring.test.ts` (25/25 checks pass)
+     39. `tests/session_resilience_and_clean_rekap.test.ts` (11/11 checks pass)
+     40. `tests/user_standardization_and_cleanup_verification.test.ts`
+     41. `tests/multi_gelar_verification.test.ts`
 
-### 1.1 Snooze Expiry Boundary Implementation (`src/components/TeacherReminderManager.tsx`)
-- Lines 8–10:
-  ```ts
-  export const REMINDER_INTERVAL_MS = 300_000; // 5 minutes in milliseconds
-  export const SNOOZE_DURATION_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
-  ```
-- Lines 21–32:
-  ```ts
-  export function isReminderSnoozed(userId?: string): boolean {
-    if (typeof window === 'undefined') return false;
-    try {
-      const val = localStorage.getItem(getSnoozeKey(userId));
-      if (!val) return false;
-      const expiry = parseInt(val, 10);
-      if (isNaN(expiry)) return false;
-      return Date.now() < expiry;
-    } catch {
-      return false;
-    }
-  }
-  ```
-- Lines 37–46:
-  ```ts
-  export function setReminderSnooze(minutes = 30, userId?: string): number {
-    if (typeof window === 'undefined') return 0;
-    try {
-      const expiry = Date.now() + minutes * 60 * 1000;
-      localStorage.setItem(getSnoozeKey(userId), String(expiry));
-      return expiry;
-    } catch {
-      return 0;
-    }
-  }
-  ```
-- Lines 63–75:
-  ```ts
-  export function getReminderSnoozeRemainingMs(userId?: string): number {
-    if (typeof window === 'undefined') return 0;
-    try {
-      const val = localStorage.getItem(getSnoozeKey(userId));
-      if (!val) return 0;
-      const expiry = parseInt(val, 10);
-      if (isNaN(expiry)) return 0;
-      const remaining = expiry - Date.now();
-      return remaining > 0 ? remaining : 0;
-    } catch {
-      return 0;
-    }
-  }
-  ```
+2. **AST Regex Invariant Verification**:
+   - `tests/kepsek_pengawas_rbac.test.ts`:
+     - Verbatim AST regexes in `AppScreen.tsx` verified intact:
+       - `/currentView === 'view-admin-config'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin)/`
+       - `/currentView === 'view-admin-data'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin)/`
+       - `/currentView === 'view-admin-backup'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin)/`
+       - `/currentView === 'view-admin-verif'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin \|\| isKepalaSekolah)/`
+       - `/currentView === 'view-admin-rekap'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin \|\| isKepalaSekolah)/`
+     - Exact branch `{currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}` verified intact.
+     - Multi-tenant signatures `<PrintHeader user={user} sekolahId={user?.sekolah_id} />` and `<PrintSignature user={user} sekolahId={user?.sekolah_id} />` in `AdminRekapView.tsx` and `RekapJurnalView.tsx` verified intact.
+   - `tests/dinas_pendidikan_monitoring.test.ts`:
+     - Verification of `<AdminRekapView` with `isReadOnly={isDinas}` in `AppScreen.tsx` (lines 539-550) passes.
+     - Read-only contract in `AdminRekapView.tsx` and `RekapJurnalView.tsx` (`isReadOnly?: boolean`) verified intact.
+     - Target school switching resolution `sekolah_id: activeTargetSchool.id` in `AppScreen.tsx` verified intact.
+   - `tests/sistem_blok_verification.test.ts`:
+     - Route guard `targetId === 'view-sistem-blok'` and error string preserved verbatim in `AppScreen.tsx`.
+     - Schedule masking, Jurnal Kegiatan switching in `GuruJurnal.tsx`, and `RekapJurnalView.tsx` Mapel column verified intact.
+   - `tests/session_resilience_and_clean_rekap.test.ts`:
+     - `isTestGuruName` filter in `AdminRekapView.tsx` (lines 37-71, 210) verified active and cleanly excluding test accounts without leaking into aggregate metrics.
 
-### 1.2 Viewport Classes Across Targets (`320px`, `375px`, `768px`, `1024px`, `1440px`)
-- `src/components/TeacherReminderManager.tsx`:
-  - Snooze badge container (line 400): `className="fixed bottom-20 left-4 sm:left-6 z-40 max-w-[calc(100vw-2rem)] sm:max-w-xs ... px-3 py-2 flex items-center justify-between gap-3 text-xs ..."`
-  - Reminder dialog container (line 451): `className="fixed bottom-20 left-4 sm:left-6 z-40 max-w-sm w-[calc(100vw-2rem)] sm:w-96 ... p-4"`
-  - Reminder action buttons (line 478): `className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap sm:flex-nowrap"`
-- `src/components/CameraSelfieCapture.tsx`:
-  - Viewfinder container (lines 404–406): `className={`relative w-full ${orientation === 'portrait' ? 'aspect-[3/4] max-w-sm mx-auto' : 'aspect-[4/3]'} rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}`
-  - GPS status indicator (line 381): `className="truncate max-w-[150px] sm:max-w-none"`
-  - Controls bar (line 520): `className="flex items-center justify-center gap-2.5 sm:gap-3 flex-wrap"`
-- `src/components/PrintHeader.tsx`:
-  - Header flex layout (line 98): `className="flex items-center justify-center gap-4 sm:gap-6 max-w-4xl mx-auto"`
-  - Dynamic address font scaling (lines 84–93):
-    - `len > 110`: `0.45rem`
-    - `len > 95`: `0.52rem`
-    - `len > 80`: `0.58rem`
-    - `len > 65`: `0.65rem`
-    - `len > 50`: `0.72rem`
-    - `len > 35`: `0.8rem`
-    - `default`: `0.875rem`
-  - Print isolation stylesheet (lines 395–407): `@media print { header, nav, aside, .app-header, .no-print { display: none !important; } }`.
+3. **Consolidation Navigation E2E Suite (`tests/navigation_consolidation_verification.test.ts`)**:
+   - Tool Command: `npx tsx tests/navigation_consolidation_verification.test.ts`
+   - Result: 150/150 assertions PASSED (100.0% pass rate across Tiers 1 to 4).
+   - Verified Cluster 1 (Jurnal Mengajar), Cluster 2 (Presensi & Riwayat), Cluster 3 (Asesmen & Rapor), Cluster 4 (Laporan & Analitik), Cluster 5 (Master Data & Config), Cluster 6 (Verifikasi), and Cluster 7 (Kesiswaan & Piket).
 
-### 1.3 Tool Command Results
-1. `npx tsx tests/challenger_m1_boundary_responsive_regression.test.ts`:
-   - Exited with code 0: `TOTAL EMPIRICAL CHALLENGER CHECKS: 107 | PASSED: 107 | FAILED: 0`.
-2. `npx tsx tests/m1_reminder_print_camera_verification.test.ts`:
-   - Exited with code 0: `TOTAL CHECKS: 20 | PASSED: 20 | FAILED: 0`.
-3. `npm test`:
-   - Exited with code 0 across all 27 unit test suites (100% pass).
-4. `npx tsx tests/e2e/run_all_e2e.ts`:
-   - Exited with code 0 across all 4 E2E tiers (Tier 1: 15/15 features, Tier 2: 75/75 edge cases, Tier 3: 16/16 cross-feature tests, Tier 4: 20/20 real-world scenarios).
-5. `npx tsc --noEmit`:
-   - Exited with code 0 (0 type errors).
-6. `npm run build`:
-   - Exited with code 0 (`Compiled successfully in 2.7s`, `Generating static pages (12/12) in 667ms`).
+4. **Production Build & TypeScript Invariants**:
+   - Tool Command: `npx tsc --noEmit` -> 0 errors (clean exit code 0).
+   - Tool Command: `npm run build` -> Next.js 16.3.4 (Turbopack) successfully compiled all routes in 28.6s with 0 errors.
+
+5. **Adversarial Invariant Challenge Suite (`tests/adversarial_ast_invariants_challenger.test.ts`)**:
+   - Created and executed empirical test covering 37 AST invariant checks across `AppScreen.tsx`, `GuruJurnal.tsx`, `GuruPresensi.tsx`, `AdminRekapView.tsx`, `HistoryView.tsx`, `RekapJurnalView.tsx`, and `ClayTabs.tsx`.
+   - Result: 37/37 assertions PASSED.
 
 ---
 
-## 2. Logic Chain
+## 2. LOGIC CHAIN
 
-1. **Step 1: Snooze Expiry Boundary Evaluation (29m59s vs 30m00s vs 30m01s)**
-   - Observation: In `TeacherReminderManager.tsx` line 28, the snooze evaluation predicate is `Date.now() < expiry`, where `expiry = T0 + 1,800,000 ms`.
-   - In `tests/challenger_m1_boundary_responsive_regression.test.ts` (Suite 1):
-     - At `T0 + 1,799,000 ms` (29m59s elapsed): `1,799,000 < 1,800,000` evaluates to `true`. Remaining ms is `1,800,000 - 1,799,000 = 1,000 ms`. Snooze is active, blocking notifications and displaying the snooze pill badge (`[SNOOZE-03]`, `[SNOOZE-04]`).
-     - At `T0 + 1,799,999 ms` (29m59.999s elapsed, 1ms before expiry): evaluates to `true`, remaining ms is `1 ms` (`[SNOOZE-05]`, `[SNOOZE-06]`).
-     - At `T0 + 1,800,000 ms` (exact 30m00s elapsed): `1,800,000 < 1,800,000` evaluates to `false` (boundary transition). Remaining ms is `0 ms`. Snooze is inactive (`[SNOOZE-07]`, `[SNOOZE-08]`).
-     - At `T0 + 1,800,001 ms` (30m00.001s elapsed): evaluates to `false`, remaining ms clamps to `0 ms` (`[SNOOZE-09]`, `[SNOOZE-10]`).
-     - At `T0 + 1,801,000 ms` (30m01s elapsed): evaluates to `false`, remaining ms clamps to `0 ms`. Normal reminder checks resume immediately (`[SNOOZE-11]`, `[SNOOZE-12]`).
-     - Edge cases: Multi-user isolation (`[SNOOZE-13]`, `[SNOOZE-14]`), early cancellation via `clearReminderSnooze` (`[SNOOZE-15]`, `[SNOOZE-16]`), and non-numeric storage recovery (`[SNOOZE-18]`, `[SNOOZE-20]`) all pass without throwing runtime exceptions.
-   - Conclusion: The 30-minute snooze boundary condition is mathematically strict, millisecond-accurate, and gracefully handles all boundary transitions.
+1. **Step 1: Establishing Independent Empirical Baseline**:
+   - Rather than relying on the worker's reported test summary, Challenger 2 directly executed the full project test command `npm test`.
+   - All 41 existing test suites ran in sequence and passed completely with exit code 0.
+   - This proves empirically that the component normalization in `GuruJurnal`, `GuruPresensi`, `AdminRekapView`, `HistoryView`, `RekapJurnalView`, and `AppScreen.tsx` introduced zero regressions to existing business logic, security guards, or workflow pipelines.
 
-2. **Step 2: Responsive Viewport Simulation (320px, 375px, 768px, 1024px, 1440px)**
-   - Observation: Across the 5 tested viewports:
-     - On 320px (iPhone SE 1st gen): Snooze pill width is clamped by `max-w-[calc(100vw-2rem)]` to 288px, leaving 16px margins on each side (`left-4`). Modal width is `w-[calc(100vw-2rem)]` (288px). Action buttons use `flex-wrap`, preventing horizontal overflow. Camera GPS status is clamped to `max-w-[150px]` with ellipsis. Controls wrap via `flex-wrap`.
-     - On 375px (iPhone 12/13 Mini, SE 2/3): Clamped to 343px with 16px margins. Viewfinder ratio is locked to 3:4 (portrait, 375x500px) or 4:3 (landscape, 375x281px).
-     - On 768px (Tablet portrait): Snooze pill shifts to `sm:max-w-xs` (320px, `sm:left-6`). Modal shifts to `sm:w-96` (384px). Portrait viewfinder is centered and width-constrained by `max-w-sm mx-auto` (384x512px).
-     - On 1024px and 1440px (Desktop): Viewfinders, dialogs, and print headers scale with standard container max-widths (`max-w-4xl`, `max-w-sm`) without stretching or pixelation.
-     - Dynamic address font scaling in `PrintHeader.tsx`: Tested across 7 character length brackets (20, 45, 60, 75, 90, 105, 125 chars). Automatically scales from 0.875rem down to 0.45rem, preventing any line wrap or collision with yayasan/dinas logos.
-   - Conclusion: Layout and styling across all specified viewport dimensions are fully responsive, fluid, and free of horizontal clipping.
+2. **Step 2: AST Regex and Static Invariant Preservation**:
+   - Four existing test suites (`tests/kepsek_pengawas_rbac.test.ts`, `tests/dinas_pendidikan_monitoring.test.ts`, `tests/sistem_blok_verification.test.ts`, `tests/session_resilience_and_clean_rekap.test.ts`) perform direct static regex and string assertions against source code files.
+   - Refactorings that inadvertently alter whitespace, JSX prop ordering, or branch structures in these files would trigger immediate AST assertion failures.
+   - Challenger 2 verified each AST regex individually and through automated harness: all 4 target test suites passed without a single failure (47/47 in kepsek_pengawas, 25/25 in dinas_pendidikan, 85/85 in sistem_blok, 11/11 in session_resilience).
 
-3. **Step 3: Regression Verification Across Entire Test Base**
-   - Observation: Execution of `npm test` verified all 27 unit test suites. Execution of `tests/e2e/run_all_e2e.ts` verified 126 E2E assertions across 4 tiers. Execution of `npx tsc --noEmit` produced 0 compiler errors. Execution of `npm run build` completed static page generation and route compilation with 0 errors.
-   - Conclusion: Milestone 1 changes introduce zero regressions across the codebase.
+3. **Step 3: Verification of Consolidated Navigation Contracts**:
+   - Challenger 2 executed the end-to-end navigation suite `tests/navigation_consolidation_verification.test.ts`.
+   - All 150 test assertions covering aliasing, keep-alive form preservation, sub-tab transitions, role-based access control, and edge-case permutations passed with 100% accuracy.
+
+4. **Step 4: Compilation and Build Integrity**:
+   - Both `npx tsc --noEmit` and `npm run build` were executed in the live workspace.
+   - Next.js 16.3.4 compiled cleanly, validating that no broken imports, missing types, or dynamic module errors exist.
 
 ---
 
-## 3. Caveats
+## 3. CAVEATS
 
-- Physical camera sensor hardware capabilities (e.g. physical camera switching on dual-sensor phones) were validated via simulated constraints, stream mock harness, and canvas pre-cropping in Node.js/jsdom environments rather than physical hardware WebRTC sessions.
-- In `watermarkCanvas.ts`, the legacy coordinate anchor for `(-8.12, 115.12)` was preserved to maintain compatibility with legacy tests while all production captures strictly enforce 4:3 canvas cropping.
-
----
-
-## 4. Conclusion
-
-**Verdict: APPROVE**
-
-Milestone M1 satisfies all requirements and passes rigorous empirical adversarial verification:
-1. Exact boundary transitions for the 30-minute snooze confirmed: `true` at 29m59s & 29m59.999s; `false` at 30m00s, 30m00.001s, and 30m01s.
-2. Responsiveness across 320px, 375px, 768px, 1024px, and 1440px confirmed with zero layout overflows or clipping.
-3. Complete regression suite (27 unit suites, 4 E2E tiers, TypeScript typecheck, Next.js production build) passes with 100% success rate.
+1. **Live Database Latency**: Test `tests/sistem_blok_verification.test.ts` queries live Supabase tables (`sistem_blok`, `jadwal_pelajaran`). A transient network drop during `npm test` can cause a single read timeout; re-running confirms 100% pass rate.
+2. **Upcoming Milestone Milestones**: In Milestone 1, `AdminRekapView` was normalized to support `initialTab`, `targetSchool`, and `isReadOnly`. The migration of KPI charts and Top 10 leaderboard from `AnalitikView` into `AdminRekapView` sub-tabs is designated for Milestone 2.
 
 ---
 
-## 5. Verification Method
+## 4. CHALLENGE REPORT
 
-Independently execute the following commands in powershell:
+### Overall Risk Assessment: LOW
 
-```bash
-# 1. Run Empirical Challenger Test Suite (107/107 checks)
-npx tsx tests/challenger_m1_boundary_responsive_regression.test.ts
+### Challenges Investigated:
+1. **Challenge 1: Did sub-tab wrapping in `GuruJurnal` and `GuruPresensi` break existing AST searches?**
+   - *Tested*: Ran `tests/sistem_blok_verification.test.ts`, `tests/m1_resubmission_and_verif.test.ts`, and `tests/adversarial_ast_invariants_challenger.test.ts`.
+   - *Result*: PASSED. All existing selectors and AST strings (`isBlok`, `Jurnal Kegiatan`, `localStorage`, `isTestGuruName`) were kept intact.
+2. **Challenge 2: Did `AppScreen.tsx` routing modifications break regex checks for admin views?**
+   - *Tested*: Ran `tests/kepsek_pengawas_rbac.test.ts` and `tests/dinas_pendidikan_monitoring.test.ts`.
+   - *Result*: PASSED. Verbatim regex guards were preserved alongside the new `urlTab` handling.
+3. **Challenge 3: Does `npm run build` succeed with Turbopack in Next.js 16?**
+   - *Tested*: Executed `npm run build`.
+   - *Result*: PASSED (Compiled in 28.6s, exit code 0).
 
-# 2. Run Milestone M1 Verification Suite (20/20 checks)
-npx tsx tests/m1_reminder_print_camera_verification.test.ts
+---
 
-# 3. Run All Project Unit Test Suites (27 suites)
-npm test
+## 5. CONCLUSION & VERDICT
 
-# 4. Run Complete 4-Tier Master E2E Runner (126 checks)
-npx tsx tests/e2e/run_all_e2e.ts
+### **VERDICT: APPROVE**
 
-# 5. Typecheck & Production Build
-npx tsc --noEmit
-npm run build
-```
+Milestone 1 satisfies all regression safety, AST invariant preservation, and navigation consolidation criteria:
+- All 41 project test suites pass with zero regressions (`npm test`).
+- AST regex invariants across `tests/kepsek_pengawas_rbac.test.ts`, `tests/dinas_pendidikan_monitoring.test.ts`, `tests/sistem_blok_verification.test.ts`, and `tests/session_resilience_and_clean_rekap.test.ts` are 100% compliant.
+- Navigation Consolidation E2E Suite (`tests/navigation_consolidation_verification.test.ts`) passes 150/150 assertions.
+- Next.js production build (`npm run build`) and TypeScript type-check (`tsc --noEmit`) complete with zero errors.
 
-Expected output: All 5 commands exit with status code 0.
+---
+
+## 6. VERIFICATION METHOD
+
+To replicate and independently verify Challenger 2's empirical findings:
+
+1. **Run full regression test suite**:
+   ```powershell
+   npm test
+   ```
+   *Expected*: All 41 test suites pass with code 0.
+
+2. **Run targeted AST invariant suites**:
+   ```powershell
+   npx tsx tests/kepsek_pengawas_rbac.test.ts
+   npx tsx tests/dinas_pendidikan_monitoring.test.ts
+   npx tsx tests/sistem_blok_verification.test.ts
+   npx tsx tests/session_resilience_and_clean_rekap.test.ts
+   ```
+   *Expected*: 100% pass across all 4 suites.
+
+3. **Run E2E navigation consolidation suite**:
+   ```powershell
+   npx tsx tests/navigation_consolidation_verification.test.ts
+   ```
+   *Expected*: 150/150 assertions pass.
+
+4. **Run adversarial AST invariants test**:
+   ```powershell
+   npx tsx tests/adversarial_ast_invariants_challenger.test.ts
+   ```
+   *Expected*: 37/37 assertions pass.
+
+5. **Run production build**:
+   ```powershell
+   npm run build
+   ```
+   *Expected*: Exit code 0.
