@@ -420,6 +420,9 @@ assert(onboardingSource.includes('capture: true'), 'OnboardingTutorial uses capt
 assert(onboardingSource.includes('Math.max(0, targetRect.top - padding)'), 'OnboardingTutorial clamps spotlight box coordinates against viewport edges');
 assert(onboardingSource.includes("placement === 'center'"), 'OnboardingTutorial supports explicit center placement in calculateTooltipStyle');
 assert(onboardingSource.includes('[isOpen, currentStepIndex, steps.length, userRole]'), 'OnboardingTutorial keydown listener specifies explicit dependency array without churn');
+assert(onboardingSource.includes("activeTag === 'input' || activeTag === 'textarea'"), 'OnboardingTutorial keydown listener guards against active text inputs');
+assert(onboardingSource.includes('currentStep.targetSubTabId'), 'OnboardingTutorial supports sub-tab fallback selector matching');
+assert(onboardingSource.includes('bg-emerald-100'), 'OnboardingTutorial highlights active focused sub-tab with emerald badge');
 
 // ====================================================================
 // SUMMARY & EXIT CODE

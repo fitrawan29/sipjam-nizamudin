@@ -65,6 +65,7 @@ assert(guruTargets.includes('view-guru-presensi'), 'Guru flow includes "view-gur
 assert(guruTargets.includes('view-guru-jurnal'), 'Guru flow includes "view-guru-jurnal" target');
 assert(guruTargets.includes('view-piket'), 'Guru flow includes "view-piket" target');
 assert(guruTargets.includes('ai-assistant-btn'), 'Guru flow includes "ai-assistant-btn" target');
+assert(guruTargets.includes('view-rapor'), 'Guru flow includes "view-rapor" target');
 
 // Verify sidebar coordination flags for Guru
 const guruStep1 = guruSteps.find((s) => s.targetTourId === 'hamburger-btn');
@@ -193,7 +194,7 @@ const guruHtml = renderToString(
   })
 );
 assert(guruHtml.length > 0, 'Renders non-empty HTML for Guru when isOpen is true');
-assert(guruHtml.includes('Langkah 1 dari 5'), 'Guru HTML includes "Langkah 1 dari 5" counter badge');
+assert(guruHtml.includes(`Langkah 1 dari ${guruSteps.length}`), `Guru HTML includes "Langkah 1 dari ${guruSteps.length}" counter badge`);
 assert(guruHtml.includes('Menu Navigasi'), 'Guru HTML includes Step 1 title "Menu Navigasi"');
 assert(guruHtml.includes('Lewati'), 'Guru HTML includes "Lewati" skip action');
 assert(guruHtml.includes('Lanjut'), 'Guru HTML includes "Lanjut" next action');

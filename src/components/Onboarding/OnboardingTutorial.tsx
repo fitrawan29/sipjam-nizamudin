@@ -170,6 +170,9 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = (document.activeElement?.tagName || '').toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
+
       if (e.key === 'Escape') {
         handleSkip();
       } else if (e.key === 'ArrowRight') {
