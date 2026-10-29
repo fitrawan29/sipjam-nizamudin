@@ -411,6 +411,11 @@ const onboardingSource = fs.readFileSync(path.resolve(process.cwd(), 'src/compon
 assert(onboardingSource.includes('[data-tour~='), 'OnboardingTutorial uses word-matching selector [data-tour~=]');
 assert(onboardingSource.includes('subtab-pointer') || onboardingSource.includes('Sub-Tab Terpadu (ClayTabs)'), 'OnboardingTutorial renders ClayTabs sub-tab pointer/indicator');
 assert(onboardingSource.includes('currentStep.subTabs'), 'OnboardingTutorial handles currentStep.subTabs in tooltip card');
+assert(onboardingSource.includes('flex flex-wrap items-center justify-between'), 'OnboardingTutorial subtab pointer header wraps on ultra-narrow viewports (< 360px)');
+assert(onboardingSource.includes('max-h-[calc(100vh-32px)]'), 'OnboardingTutorial tooltip card clamps max-height with scroll to prevent button clipping');
+assert(onboardingSource.includes('measuredHeight'), 'OnboardingTutorial tooltip style dynamically measures rendered card height');
+assert(onboardingSource.includes("width: 'min(92vw, 380px)'"), 'OnboardingTutorial unanchored fallback modal bounds width cleanly on mobile viewports');
+assert(onboardingSource.includes('rect.width > 0 || rect.height > 0'), 'OnboardingTutorial safely guards zero-dimension elements from misplaced spotlights');
 
 // ====================================================================
 // SUMMARY & EXIT CODE

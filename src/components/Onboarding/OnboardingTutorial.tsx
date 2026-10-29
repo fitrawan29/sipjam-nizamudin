@@ -57,7 +57,8 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
     let element = document.querySelector(selector);
 
     if (!element && currentStep.targetSubTabId) {
-      const subSelector = '[data-tour~="' + currentStep.targetSubTabId + '"], [data-tour="' + currentStep.targetSubTabId + '"], #tab-' + currentStep.targetSubTabId;
+      const cleanSub = currentStep.targetSubTabId.replace(/^tab-/, '');
+      const subSelector = '[data-tour~="' + currentStep.targetSubTabId + '"], [data-tour="' + currentStep.targetSubTabId + '"], #tab-' + cleanSub + ', #' + cleanSub + ', [id$="' + cleanSub + '"]';
       element = document.querySelector(subSelector);
     }
 
@@ -71,14 +72,18 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         }
       }
       const rect = element.getBoundingClientRect();
-      setTargetRect({
-        top: rect.top,
-        left: rect.left,
-        width: rect.width,
-        height: rect.height,
-        bottom: rect.bottom,
-        right: rect.right,
-      });
+      if (rect.width > 0 || rect.height > 0) {
+        setTargetRect({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          bottom: rect.bottom,
+          right: rect.right,
+        });
+      } else {
+        setTargetRect(null);
+      }
     } else {
       setTargetRect(null);
     }
@@ -96,13 +101,23 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
       onEnsureSidebarOpen?.(false);
     }
 
-    // Allow time for sidebar drawer slide animation and DOM rendering
-    const timer = setTimeout(() => {
+    // Staggered multi-phase measurement for smooth CSS drawer slide animation
+    updateTargetRect();
+    const t1 = setTimeout(() => updateTargetRect(), 80);
+    const t2 = setTimeout(() => {
       updateTargetRect();
       setIsMeasuring(false);
-    }, 180);
+    }, 200);
+    const t3 = setTimeout(() => {
+      updateTargetRect();
+      setIsMeasuring(false);
+    }, 350);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
   }, [isOpen, currentStepIndex, currentStep, onEnsureSidebarOpen, updateTargetRect]);
 
   // Recalculate rect on scroll and resize
@@ -180,6 +195,8 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
+        width: 'min(92vw, 380px)',
+        maxWidth: '380px',
         zIndex: 75,
       };
     }
@@ -188,7 +205,8 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
     const vh = window.innerHeight;
     const isMobile = vw < 640;
     const tooltipWidth = isMobile ? Math.min(360, vw - 32) : 380;
-    const estimatedHeight = 220; // safe estimation for collision avoidance
+    const measuredHeight = tooltipRef.current?.offsetHeight;
+    const estimatedHeight = measuredHeight && measuredHeight > 50 ? measuredHeight : (currentStep.subTabs?.length ? 320 : 220);
 
     // On narrow screens (Mobile: 320px - 428px)
     if (isMobile) {
@@ -331,7 +349,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         ref={tooltipRef}
         data-testid="tooltip-card"
         style={calculateTooltipStyle()}
-        className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800/60 rounded-2xl shadow-2xl p-5 transition-all duration-300 ease-out animate-fadeIn"
+        className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800/60 rounded-2xl shadow-2xl p-5 transition-all duration-300 ease-out animate-fadeIn max-h-[calc(100vh-32px)] overflow-y-auto custom-scroll"
       >
         {/* Top Header: Badge, Progress Dots, & Close Button */}
         <div className="flex items-center justify-between gap-2 mb-3">
@@ -379,13 +397,13 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         {/* Consolidated Sub-Tabs Indicator (ClayTabs Pointer) */}
         {currentStep.subTabs && currentStep.subTabs.length > 0 && (
           <div data-testid="subtab-pointer" className="mb-4 pt-2.5 border-t border-amber-100 dark:border-amber-900/40">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
+              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 shrink-0">
                 <i className="fa-solid fa-layer-group text-xs text-emerald-600 dark:text-emerald-400"></i>
                 <span>Sub-Tab Terpadu (ClayTabs):</span>
               </span>
               {currentStep.activeSubTab && (
-                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium shrink-0">
                   Fokus: <strong className="font-bold">{currentStep.activeSubTab}</strong>
                 </span>
               )}
