@@ -13,4 +13,4 @@
 | M1 | Foundation & Normalization | ClayTabs, Jurnal, Presensi, Dinas Rekap | DONE |
 | M2 | Functional Consolidation & Sub-Tabs | Gradebook+Rapor, AdminRekap+Analitik, AdminData+Blok, AdminConfig+Backup, AdminVerif+Dokumen, RekapSiswa | DONE |
 | M3 | Navigation Restructuring, URL Aliasing & Onboarding | VIEW_ALIASES router, sidebar definitions for all 7 roles, AST test guard preservation, OnboardingTutorial selector | DONE |
-| M4 | Final Milestone: Full E2E Test Pass & Adversarial Hardening | Pass 100% E2E tests (Tiers 1-4) published by E2E Testing Track, then Tier 5 adversarial hardening | IN_PROGRESS |
+| M4 | Final Milestone: Full E2E Test Pass & Adversarial Hardening | Pass 100% E2E tests (Tiers 1-4) published by E2E Testing Track, then Tier 5 adversarial hardening | DONE |
