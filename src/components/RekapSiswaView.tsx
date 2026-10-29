@@ -9,15 +9,19 @@ import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalInterven
 import { getWitaDateStr } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 
-export default function RekapSiswaView({ 
-  user, 
-  assignedKelas: propAssignedKelas,
-  isReadOnly: propReadOnly
-}: { 
+export interface RekapSiswaViewProps {
   user: any; 
   assignedKelas?: string | null; 
   isReadOnly?: boolean;
-}) {
+  initialTab?: 'gerbang' | 'rekap';
+}
+
+export default function RekapSiswaView({ 
+  user, 
+  assignedKelas: propAssignedKelas,
+  isReadOnly: propReadOnly,
+  initialTab
+}: RekapSiswaViewProps) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
   const isKepalaSekolah = Boolean(
@@ -41,7 +45,16 @@ export default function RekapSiswaView({
   const [rekapData, setRekapData] = useState<any[] | null>(null);
 
   // Dedicated Tab state: 'gerbang' (Presensi Gerbang Piket) vs 'rekap' (Rekap Absen Siswa)
-  const [activeTab, setActiveTab] = useState<'gerbang' | 'rekap'>('gerbang');
+  const [activeTab, setActiveTab] = useState<'gerbang' | 'rekap'>(() => {
+    if (initialTab === 'rekap') return 'rekap';
+    return 'gerbang';
+  });
+
+  useEffect(() => {
+    if (initialTab && (initialTab === 'gerbang' || initialTab === 'rekap')) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Gerbang (Gate Attendance) states
   const [gerbangTanggal, setGerbangTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -368,6 +381,21 @@ export default function RekapSiswaView({
     };
 
     fetchGerbangAttendance();
+
+    const channelGerbang = supabase
+      .channel(`realtime-presensi-siswa-${user?.sekolah_id || 'global'}-${gerbangKelas}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'presensi_siswa' },
+        () => {
+          fetchGerbangAttendance();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channelGerbang);
+    };
   }, [gerbangKelas, gerbangTanggal, user?.sekolah_id]);
 
   const exportGerbangCsv = () => {

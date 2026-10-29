@@ -22,9 +22,29 @@ import {
   parseNameAndTitles,
   setupSwalTitleManager
 } from '@/lib/academicTitles';
+import SistemBlokView from './SistemBlokView';
 
-export default function AdminDataView({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState('Data_Siswa');
+export interface AdminDataViewProps {
+  user: any;
+  initialTab?: string;
+}
+
+export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialTab === 'blok' || initialTab === 'sistem_blok') return 'sistem_blok';
+    return initialTab || 'Data_Siswa';
+  });
+
+  useEffect(() => {
+    if (initialTab) {
+      if (initialTab === 'blok' || initialTab === 'sistem_blok') {
+        setActiveTab('sistem_blok');
+      } else {
+        setActiveTab(initialTab);
+      }
+    }
+  }, [initialTab]);
+
   const [search, setSearch] = useState('');
   const [filter1, setFilter1] = useState('ALL');
   const [filter2, setFilter2] = useState('ALL');
@@ -72,10 +92,12 @@ export default function AdminDataView({ user }: { user: any }) {
     { id: 'Data_Mapel', label: 'Mapel', table: 'data_mapel' },
     { id: 'Kalender_Pendidikan', label: 'Kalender', table: 'kalender_pendidikan' },
     { id: 'Jadwal_Pelajaran', label: 'Jadwal', table: 'jadwal_pelajaran' },
+    { id: 'sistem_blok', label: 'Periode Sistem Blok', table: 'sistem_blok' },
     { id: 'Wali_Kelas', label: 'Wali Kelas', table: 'wali_kelas' },
   ];
 
   const loadData = useCallback(async () => {
+    if (activeTab === 'sistem_blok' || activeTab === 'blok') return;
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
 
@@ -1941,7 +1963,13 @@ export default function AdminDataView({ user }: { user: any }) {
                 ))}
             </div>
 
-            {/* ERROR MESSAGE */}
+            {(activeTab === 'sistem_blok' || activeTab === 'blok') ? (
+              <div className="mt-2">
+                <SistemBlokView user={user} />
+              </div>
+            ) : (
+              <>
+                {/* ERROR MESSAGE */}
             {errorMsg && (
               <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-xs border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
                 <i className="fa-solid fa-circle-exclamation mr-1"></i> {errorMsg}
@@ -2307,6 +2335,8 @@ export default function AdminDataView({ user }: { user: any }) {
                       </button>
                   </div>
               </div>
+            )}
+              </>
             )}
         </div>
 

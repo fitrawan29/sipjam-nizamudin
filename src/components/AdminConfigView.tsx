@@ -6,14 +6,20 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import AccountSettingsModal from './AccountSettingsModal';
+import AdminBackupView from './AdminBackupView';
+import ClayTabs, { TabItem } from '@/components/ClayTabs';
+
+export interface AdminConfigViewProps {
+  user: any;
+  onUserUpdated?: (updatedUser: any) => void;
+  initialTab?: string;
+}
 
 export default function AdminConfigView({
   user,
-  onUserUpdated
-}: {
-  user: any;
-  onUserUpdated?: (updatedUser: any) => void;
-}) {
+  onUserUpdated,
+  initialTab
+}: AdminConfigViewProps) {
   const [config, setConfig] = useState({
     tahun_ajaran: '2024/2025',
     semester: 'Ganjil',
@@ -56,6 +62,27 @@ export default function AdminConfigView({
 
   const [loading, setLoading] = useState(false);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
+
+  const tabs: TabItem[] = [
+    { id: 'umum', label: 'Umum & Kalender', icon: 'fa-regular fa-calendar' },
+    { id: 'jam_kerja', label: 'Jam Kerja & GPS', icon: 'fa-solid fa-clock' },
+    { id: 'kop', label: 'KOP & Pejabat', icon: 'fa-solid fa-stamp' },
+    { id: 'kehadiran', label: 'Kebijakan Guru', icon: 'fa-solid fa-user-check' },
+    { id: 'backup', label: 'Pencadangan Database', icon: 'fa-solid fa-database' }
+  ];
+
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (initialTab === 'backup') return 'backup';
+    if (initialTab === 'jam_kerja' || initialTab === 'kop' || initialTab === 'kehadiran') return initialTab;
+    return 'umum';
+  });
+
+  useEffect(() => {
+    if (initialTab) {
+      if (initialTab === 'backup') setActiveTab('backup');
+      else if (['umum', 'jam_kerja', 'kop', 'kehadiran'].includes(initialTab)) setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -427,7 +454,22 @@ export default function AdminConfigView({
                 <i className="fa-solid fa-user-gear text-xs"></i> Pengaturan Akun & Profil
               </button>
             </div>
-            <form onSubmit={handleSave} className="space-y-4">
+
+            <ClayTabs
+              items={tabs}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              className="mb-5"
+            />
+
+            {/* TAB 5: BACKUP & DATABASE (Standalone Keep-Alive & Embedding) */}
+            <div className={activeTab === 'backup' ? 'block' : 'hidden'}>
+              <AdminBackupView user={user} />
+            </div>
+
+            <form onSubmit={handleSave} className={activeTab === 'backup' ? 'hidden' : 'space-y-4'}>
+              {/* TAB 1: UMUM & KALENDER */}
+              <div className={activeTab === 'umum' ? 'space-y-4' : 'hidden'}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 ml-1">TAHUN AJARAN</label>
@@ -464,6 +506,34 @@ export default function AdminConfigView({
                       </p>
                     </div>
                 </div>
+                <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-900/30 rounded-2xl p-4">
+                    <h3 className="text-xs font-bold text-purple-900 dark:text-purple-300 mb-3 uppercase flex items-center gap-2">
+                      <i className="fa-brands fa-google-drive text-xs"></i> Integrasi Google Drive & Upload File
+                    </h3>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
+                        Email Tujuan Upload Berkas (Target Email)
+                      </label>
+                      <input 
+                        type="email" 
+                        name="email_tujuan_upload" 
+                        value={config.email_tujuan_upload || ''} 
+                        onChange={handleChange} 
+                        placeholder="Contoh: arsip.sekolah@gmail.com" 
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
+                      />
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-start gap-1">
+                        <i className="fa-solid fa-circle-info mt-0.5 shrink-0"></i>
+                        <span>
+                          Alamat email Google Drive tujuan penerima berkas foto selfie presensi, bukti jurnal, dan perangkat pembelajaran melalui integrasi Google Apps Script (GAS).
+                        </span>
+                      </p>
+                    </div>
+                </div>
+              </div>
+
+              {/* TAB 4: KEBIJAKAN GURU */}
+              <div className={activeTab === 'kehadiran' ? 'space-y-4' : 'hidden'}>
                 <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-4">
                     <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-3 uppercase flex items-center gap-2">
                       <i className="fa-solid fa-user-check text-xs"></i> Aturan Kehadiran Guru
@@ -667,6 +737,10 @@ export default function AdminConfigView({
                       </div>
                     </div>
                 </div>
+              </div>
+
+              {/* TAB 2: JAM KERJA & GPS */}
+              <div className={activeTab === 'jam_kerja' ? 'space-y-4' : 'hidden'}>
                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4">
                     <h3 className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-3 uppercase flex items-center gap-2"><i className="fa-regular fa-clock text-xs"></i> Pengaturan Jam Presensi</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
@@ -711,6 +785,39 @@ export default function AdminConfigView({
                     </div>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total 4 jam keterlambatan = 1 Hari Alpa otomatis.</p>
                 </div>
+
+                <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">
+                    <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
+                        <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase flex items-center gap-2">
+                          <i className="fa-solid fa-location-dot text-xs"></i> Kordinat GPS Absensi
+                        </h3>
+                        <button 
+                          type="button" 
+                          onClick={handleDetectGps}
+                          className="btn-click text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/70 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5 shadow-sm transition"
+                        >
+                          <i className="fa-solid fa-crosshairs text-xs"></i> Deteksi Lokasi Saat Ini
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Latitude</label>
+                            <input type="text" name="gps_lat" value={config.gps_lat} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Longitude</label>
+                            <input type="text" name="gps_lng" value={config.gps_lng} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Radius (Meter)</label>
+                            <input type="number" name="gps_radius" value={config.gps_radius} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                        </div>
+                    </div>
+                </div>
+              </div>
+
+              {/* TAB 3: KOP & PEJABAT */}
+              <div className={activeTab === 'kop' ? 'space-y-4' : 'hidden'}>
                 <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl p-4">
                     <h3 className="text-xs font-bold text-blue-900 dark:text-blue-300 mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-print text-xs"></i> Pengaturan Kop Surat</h3>
                     <div className="space-y-2.5">
@@ -879,61 +986,11 @@ export default function AdminConfigView({
                         )}
                     </div>
                 </div>
-                <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">
-                    <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
-                        <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase flex items-center gap-2">
-                          <i className="fa-solid fa-location-dot text-xs"></i> Kordinat GPS Absensi
-                        </h3>
-                        <button 
-                          type="button" 
-                          onClick={handleDetectGps}
-                          className="btn-click text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/70 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5 shadow-sm transition"
-                        >
-                          <i className="fa-solid fa-crosshairs text-xs"></i> Deteksi Lokasi Saat Ini
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Latitude</label>
-                            <input type="text" name="gps_lat" value={config.gps_lat} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Longitude</label>
-                            <input type="text" name="gps_lng" value={config.gps_lng} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Radius (Meter)</label>
-                            <input type="number" name="gps_radius" value={config.gps_radius} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-                        </div>
-                    </div>
-                </div>
-                <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-900/30 rounded-2xl p-4">
-                    <h3 className="text-xs font-bold text-purple-900 dark:text-purple-300 mb-3 uppercase flex items-center gap-2">
-                      <i className="fa-brands fa-google-drive text-xs"></i> Integrasi Google Drive & Upload File
-                    </h3>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
-                        Email Tujuan Upload Berkas (Target Email)
-                      </label>
-                      <input 
-                        type="email" 
-                        name="email_tujuan_upload" 
-                        value={config.email_tujuan_upload || ''} 
-                        onChange={handleChange} 
-                        placeholder="Contoh: arsip.sekolah@gmail.com" 
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
-                      />
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 flex items-start gap-1">
-                        <i className="fa-solid fa-circle-info mt-0.5 shrink-0"></i>
-                        <span>
-                          Alamat email Google Drive tujuan penerima berkas foto selfie presensi, bukti jurnal, dan perangkat pembelajaran melalui integrasi Google Apps Script (GAS).
-                        </span>
-                      </p>
-                    </div>
-                </div>
-                <button type="submit" disabled={loading} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-900/20 text-sm flex justify-center items-center gap-2 mt-4 transition disabled:opacity-50">
-                  {loading ? 'Menyimpan...' : <><i className="fa-solid fa-save"></i> Simpan Konfigurasi</>}
-                </button>
+              </div>
+
+              <button type="submit" disabled={loading} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-900/20 text-sm flex justify-center items-center gap-2 mt-4 transition disabled:opacity-50">
+                {loading ? 'Menyimpan...' : <><i className="fa-solid fa-save"></i> Simpan Konfigurasi</>}
+              </button>
             </form>
         </div>
 

@@ -13,21 +13,45 @@ import {
 } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { isGuruDiPiket } from '@/lib/workflow';
+import DokumenView from './DokumenView';
+
+export interface AdminVerifViewProps {
+  user: any;
+  isReadOnly?: boolean;
+  initialTab?: string;
+}
 
 export default function AdminVerifView({ 
   user, 
-  isReadOnly: propReadOnly 
-}: { 
-  user: any; 
-  isReadOnly?: boolean; 
-}) {
+  isReadOnly: propReadOnly,
+  initialTab 
+}: AdminVerifViewProps) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin';
   const isReadOnly = propReadOnly !== undefined ? propReadOnly : (!isAdmin && !isSuperadmin);
 
   const [date, setDate] = useState('');
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'Presensi' | 'Jurnal' | 'Piket'>('Presensi');
+  const [activeTab, setActiveTab] = useState<'Presensi' | 'Jurnal' | 'Piket' | 'Dokumen'>(() => {
+    if (initialTab) {
+      const lower = initialTab.toLowerCase();
+      if (lower === 'dokumen' || lower === 'perangkat') return 'Dokumen';
+      if (lower === 'jurnal') return 'Jurnal';
+      if (lower === 'piket') return 'Piket';
+      if (lower === 'presensi') return 'Presensi';
+    }
+    return 'Presensi';
+  });
+
+  useEffect(() => {
+    if (initialTab) {
+      const lower = initialTab.toLowerCase();
+      if (lower === 'dokumen' || lower === 'perangkat') setActiveTab('Dokumen');
+      else if (lower === 'jurnal') setActiveTab('Jurnal');
+      else if (lower === 'piket') setActiveTab('Piket');
+      else if (lower === 'presensi') setActiveTab('Presensi');
+    }
+  }, [initialTab]);
   
   // Reactive Dropdown Filters
   const [taskFilter, setTaskFilter] = useState<'Semua' | 'Sudah' | 'Belum'>('Semua');
@@ -149,6 +173,8 @@ export default function AdminVerifView({
         return { table: 'jurnal_pembelajaran', label: 'Jurnal' };
       case 'Piket':
         return { table: 'laporan_piket', label: 'Laporan Piket' };
+      default:
+        return { table: 'presensi_guru', label: 'Presensi' };
     }
   };
 
@@ -621,8 +647,63 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
           </div>
         )}
 
-        {/* Filter Bar Controls */}
-        <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-200 dark:border-gray-800 mb-4 space-y-3">
+        {/* Tab Selection */}
+        <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1">
+          <button 
+            type="button" 
+            onClick={() => setActiveTab('Presensi')} 
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+              activeTab === 'Presensi' 
+                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' 
+                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            Presensi
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setActiveTab('Jurnal')} 
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+              activeTab === 'Jurnal' 
+                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' 
+                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            Jurnal
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setActiveTab('Piket')} 
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+              activeTab === 'Piket' 
+                ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800' 
+                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            <i className="fa-solid fa-shield-halved mr-1.5"></i> Piket
+          </button>
+          <button 
+            type="button" 
+            onClick={() => setActiveTab('Dokumen')} 
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+              activeTab === 'Dokumen' 
+                ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800' 
+                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            <i className="fa-solid fa-folder-open mr-1.5"></i> Perangkat
+          </button>
+        </div>
+
+        {/* Tab 4: Dokumen / Perangkat Pembelajaran (Keep-Alive in memory) */}
+        <div className={activeTab === 'Dokumen' ? 'block' : 'hidden'}>
+          <DokumenView user={user} />
+        </div>
+
+        {/* Tabs 1-3: Presensi, Jurnal, Piket Content */}
+        <div className={activeTab === 'Dokumen' ? 'hidden' : 'block'}>
+          {/* Filter Bar Controls */}
+          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-200 dark:border-gray-800 mb-4 space-y-3">
           {/* Date Picker Row */}
           <div className="flex gap-2">
             <div className="relative flex-grow">
@@ -708,43 +789,6 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
               <span>Menampilkan guru yang belum menyelesaikan tugas {activeTab} untuk tanggal {effectiveDate}.</span>
             </div>
           )}
-        </div>
-
-        {/* Tab Selection */}
-        <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1">
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('Presensi')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
-              activeTab === 'Presensi' 
-                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' 
-                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-            }`}
-          >
-            Presensi
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('Jurnal')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
-              activeTab === 'Jurnal' 
-                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' 
-                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-            }`}
-          >
-            Jurnal
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('Piket')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
-              activeTab === 'Piket' 
-                ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800' 
-                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-            }`}
-          >
-            <i className="fa-solid fa-shield-halved mr-1.5"></i> Piket
-          </button>
         </div>
 
         {/* Text Search Bar */}
@@ -1035,6 +1079,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
           <span className="text-xs text-gray-600 dark:text-white/80 font-medium">
             {displayList.length} Data {taskFilter === 'Belum' ? 'Guru Belum Menyelesaikan' : taskFilter === 'Semua' ? 'Guru (Sudah & Belum)' : 'Diverifikasi'}
           </span>
+        </div>
         </div>
       </div>
     </section>

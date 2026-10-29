@@ -20,10 +20,10 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | F1: Reusable ClayTabs Sub-Navigation Component | Tactile Claymorphism sub-tabs with badge counters, icons, and keyboard/aria accessibility | M1 | Survey | PLANNED |
-| 2 | F2: Cluster 1 Jurnal Mengajar Normalization | Unify personal journal and class supervision rekap into single canonical view with sub-tabs | M1 | Survey | PLANNED |
-| 3 | F3: Cluster 2 Guru Presensi & Riwayat Integration | Integrate live selfie attendance and attendance history into sub-tabs, eliminating standalone History menu | M1 | Survey | PLANNED |
-| 4 | F4: Cluster 4 Dinas Read-Only Standardization | Consolidate view-rekap-guru into AdminRekapView with isReadOnly=true | M1 | Survey | PLANNED |
+| 1 | F1: Reusable ClayTabs Sub-Navigation Component | Tactile Claymorphism sub-tabs with badge counters, icons, and keyboard/aria accessibility | M1 | Survey | DONE |
+| 2 | F2: Cluster 1 Jurnal Mengajar Normalization | Unify personal journal and class supervision rekap into single canonical view with sub-tabs | M1 | Survey | DONE |
+| 3 | F3: Cluster 2 Guru Presensi & Riwayat Integration | Integrate live selfie attendance and attendance history into sub-tabs, eliminating standalone History menu | M1 | Survey | DONE |
+| 4 | F4: Cluster 4 Dinas Read-Only Standardization | Consolidate view-rekap-guru into AdminRekapView with isReadOnly=true | M1 | Survey | DONE |
 | 5 | F5: Cluster 3 Asesmen & Rapor Siswa Consolidation | Merge GradebookView and RaporView into unified Asesmen & Rapor with defense-in-depth RBAC | M2 | Survey | PLANNED |
 | 6 | F6: Cluster 4 Laporan & Analitik Kinerja Convergence | Incorporate AnalitikView dashboard and leaderboard into AdminRekapView sub-tabs | M2 | Survey | PLANNED |
 | 7 | F7: Cluster 5 Master Data & Kalender (Sistem Blok) | Embed SistemBlokView as Tab 6 in AdminDataView | M2 | Survey | PLANNED |
@@ -33,13 +33,13 @@
 | 11 | F11: Dual-Layer Aliasing Router (`VIEW_ALIASES`) | Implement `src/lib/navigation.ts` mapping legacy view IDs to canonical views + sub-tabs | M3 | Survey | PLANNED |
 | 12 | F12: Sidebar Menu Restructuring Across All 7 Roles | Restructure sidebar items in AppScreen.tsx and ClaySidebar.tsx for Guru, Wali Kelas, Piket, Admin, Kepsek, Dinas, Superadmin | M3 | Survey | PLANNED |
 | 13 | F13: Tour Selector Alignment & Tutorial Updating | Update OnboardingTutorial.tsx query selector, tutorialSteps.ts, and tutorialData.ts | M3 | Survey | PLANNED |
-| 14 | F14: E2E Test Suite Creation & Verification (Tiers 1-4) | Comprehensive opaque-box test suite verifying navigation, aliasing, sub-tabs, RBAC, and zero feature loss | M4 | Survey | PLANNED |
+| 14 | F14: E2E Test Suite Creation & Verification (Tiers 1-4) | Comprehensive opaque-box test suite verifying navigation, aliasing, sub-tabs, RBAC, and zero feature loss | M4 | Survey | DONE |
 | 15 | F15: Adversarial Hardening (Tier 5) & Code Integrity Verification | White-box stress tests, TypeScript check (`tsc --noEmit`), production build (`npm run build`), all 41 suites pass | M4 | Survey | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Foundation: Reusable Tabs & Component Normalization | ClayTabs component, Jurnal normalization, GuruPresensi sub-tab riwayat, Dinas read-only standardization | none | PLANNED |
+| M1 | Foundation: Reusable Tabs & Component Normalization | ClayTabs component, Jurnal normalization, GuruPresensi sub-tab riwayat, Dinas read-only standardization | none | DONE |
 | M2 | Functional Consolidation & Sub-Tabs | Asesmen & Rapor (C3), Laporan & Analitik (C4), Master Data & Sistem Blok/Backup (C5), Verifikasi Terpadu (C6), Kesiswaan (C7) | M1 | PLANNED |
 | M3 | Navigation Restructuring, URL Aliasing & Onboarding | VIEW_ALIASES router, sidebar definitions for all 7 roles, AST test guard preservation, OnboardingTutorial selector | M2 | PLANNED |
 | M4 | Final Milestone: Full E2E Test Pass & Adversarial Hardening | Pass 100% E2E tests (Tiers 1-4) published by E2E Testing Track, then Tier 5 adversarial hardening | M3 | PLANNED |

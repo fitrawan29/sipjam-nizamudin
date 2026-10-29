@@ -905,7 +905,14 @@ export default function AppScreen({
                 )
               )}
               {currentView === 'view-dokumen' && <DokumenView user={user} />}
-              {currentView === 'view-gradebook' && <GradebookView user={user} />}
+              {currentView === 'view-gradebook' && (
+                <GradebookView
+                  user={user}
+                  initialTab={urlTab === 'rapor' ? 'rapor' : 'gradebook'}
+                  assignedKelas={assignedKelas}
+                  isKepalaSekolah={isKepalaSekolah}
+                />
+              )}
               {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
               {currentView === 'view-history' && <HistoryView user={user} />}
               {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}
@@ -935,9 +942,9 @@ export default function AppScreen({
               )}
               {currentView === 'view-rekap-siswa' && (
                 isAdmin || isSuperadmin || isWaliKelas || isDinas ? (
-                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={isDinas || (isKepalaSekolah && !isAdmin && !isSuperadmin)} />
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={isDinas || (isKepalaSekolah && !isAdmin && !isSuperadmin)} initialTab={(urlTab as any) || undefined} />
                 ) : isKepalaSekolah ? (
-                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={true} />
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={true} initialTab={(urlTab as any) || undefined} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -981,7 +988,7 @@ export default function AppScreen({
               )}
               {currentView === 'view-admin-verif' && (
                 isAdmin || isSuperadmin || isKepalaSekolah ? (
-                  <AdminVerifView user={user} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} />
+                  <AdminVerifView user={user} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} initialTab={urlTab || undefined} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -1059,7 +1066,7 @@ export default function AppScreen({
               )}
               {currentView === 'view-admin-data' && (
                 isAdmin || isSuperadmin ? (
-                  <AdminDataView user={user} />
+                  <AdminDataView user={user} initialTab={urlTab || undefined} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -1105,6 +1112,7 @@ export default function AppScreen({
                 isAdmin || isSuperadmin ? (
                   <AdminConfigView
                     user={user}
+                    initialTab={urlTab || undefined}
                     onUserUpdated={(updatedUser: any) => {
                       try {
                         localStorage.setItem('sipjam_user', JSON.stringify(updatedUser));

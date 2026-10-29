@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
+import ClayTabs, { TabItem } from '@/components/ClayTabs';
 
 /**
  * Hitung jumlah hari kerja dalam rentang startDateStr..endDateStr (inklusif, WITA-aware).
@@ -314,29 +315,125 @@ export default function AdminRekapView({
   const totalPiketSemua = rekapData?.piket?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
   const totalHariKerjaBadge = rekapData?.presensi?.[0]?.totalWajib ?? 0;
 
+  const totalDinasSemua = useMemo(() => {
+    if (!rekapData?.presensi) return 0;
+    return rekapData.presensi.reduce((acc, curr) => acc + (curr.dinasLuar || 0), 0);
+  }, [rekapData]);
+
+  const totalIzinSemua = useMemo(() => {
+    if (!rekapData?.presensi) return 0;
+    return rekapData.presensi.reduce((acc, curr) => acc + (curr.izin || 0), 0);
+  }, [rekapData]);
+
+  const totalSakitSemua = useMemo(() => {
+    if (!rekapData?.presensi) return 0;
+    return rekapData.presensi.reduce((acc, curr) => acc + (curr.sakit || 0), 0);
+  }, [rekapData]);
+
+  // Top 5 Leaderboard (Hadir*10 + Piket*10 + Jurnal*5 + Dinas*5)
+  const leaderboardTop5 = useMemo(() => {
+    if (!rekapData?.presensi) return [];
+    return rekapData.presensi
+      .filter((r: any) => r?.nama && !isTestGuruName(r.nama))
+      .map((r: any) => {
+        const hadir = r.hadir || 0;
+        const piket = r.piket || 0;
+        const jurnal = r.jurnal || 0;
+        const dinas = r.dinasLuar || 0;
+        const score = (hadir * 10) + (piket * 10) + (jurnal * 5) + (dinas * 5);
+        return {
+          nama: r.nama,
+          hadir,
+          piket,
+          jurnal,
+          dinasLuar: dinas,
+          score
+        };
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  }, [rekapData]);
+
+  const tabItems: TabItem[] = [
+    { id: 'analitik', label: 'Analitik & Leaderboard', icon: 'fa-chart-pie' },
+    { id: 'tabel', label: 'Tabel Rekapitulasi', icon: 'fa-table-list' },
+    { id: 'cetak', label: 'Cetak Dokumen Resmi', icon: 'fa-print' },
+  ];
+
+  const handleExportCsv = () => {
+    if (!rekapData || rekapData.presensi.length === 0) return;
+    const headers = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
+    const csvRows = [headers.join(',')];
+    rekapData.presensi
+      .filter((r: any) => !isTestGuruName(r?.nama))
+      .forEach((r: any, i: number) => {
+      const telatStr = `"${Math.floor((r.telatDetik||0) / 3600)}j ${Math.floor(((r.telatDetik||0) % 3600) / 60)}m"`;
+      csvRows.push([
+        i + 1,
+        `"${r.nama}"`,
+        r.totalWajib ?? 0,
+        r.hadir || 0,
+        r.dinasLuar || 0,
+        r.sakit || 0,
+        r.izin || 0,
+        r.alpa || 0,
+        telatStr,
+        r.piket || 0,
+        r.jurnal || 0
+      ].join(','));
+    });
+    const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Rekap_Guru_${bulan || 'custom'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <section id="view-admin-rekap" className="view-section fade-in">
         <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
-            <PrintHeader user={user} sekolahId={user?.sekolah_id} />
-            {/* Document Print Subheader */}
-            <div className="text-center my-3 print:my-2">
-              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
-                Rekapitulasi Akhir Presensi, Jurnal &amp; Piket Guru
-              </h3>
-              <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
-                <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
-                <span>Dicetak Oleh: <strong>{user?.nama || 'Administrator'}</strong></span>
+            {/* Header & Sub-Navigasi ClayTabs */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 no-print">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-file-invoice text-blue-500 dark:text-blue-400 text-base"></i>
+                  <span>Laporan &amp; Analitik Kinerja</span>
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Rekapitulasi kehadiran, pemenuhan tugas jurnal KBM, dan kedisiplinan guru
+                </p>
+              </div>
+              <ClayTabs
+                items={tabItems}
+                activeTab={activeTab}
+                onTabChange={(tabId) => setActiveTab(tabId)}
+              />
+            </div>
+
+            {/* Print Only Header (Visible exclusively when window.print() is invoked) */}
+            <div className="hidden print:block">
+              <PrintHeader user={user} sekolahId={user?.sekolah_id} />
+              <div className="text-center my-3 print:my-2">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+                  Rekapitulasi Akhir Presensi, Jurnal &amp; Piket Guru
+                </h3>
+                <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+                  <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
+                  <span>Dicetak Oleh: <strong>{user?.nama || 'Administrator'}</strong></span>
+                </div>
               </div>
             </div>
+
             {isReadOnly && (
               <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2 no-print">
                 <i className="fa-solid fa-eye text-blue-600 dark:text-blue-400"></i>
                 <span><strong>Mode Pratinjau Pengawas (Hanya Lihat):</strong> Anda melihat rekap data dalam mode baca khusus Dinas Pendidikan.</span>
               </div>
             )}
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
-              <i className="fa-solid fa-file-invoice text-blue-500 dark:text-blue-400 text-base"></i> Rekapitulasi Akhir
-            </h2>
+
+            {/* Filter Periode */}
             <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 p-4 rounded-2xl mb-5 no-print">
                 <label className="block text-xs font-bold text-gray-900 dark:text-white mb-2">Pilih Bulan</label>
                 <div className="flex gap-2">
@@ -367,162 +464,300 @@ export default function AdminRekapView({
             
             {rekapData ? (
               <div id="hasil-rekap" className="space-y-5 fade-in">
-                  {/* Summary Metric Badges */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
-                      <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
-                          <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Total Guru</div>
-                          <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalGuru}</div>
+                  {/* ================================================================= */}
+                  {/* SUB-TAB 1: ANALITIK & LEADERBOARD                                */}
+                  {/* ================================================================= */}
+                  <div className={`${activeTab === 'analitik' ? 'block' : 'hidden'} no-print space-y-5`}>
+                      {/* KPI Summary Metric Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                          <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-green-800 dark:text-green-300">Total Hadir</div>
+                              <div className="text-xl font-black text-green-600 dark:text-green-400">{totalHadirSemua}</div>
+                          </div>
+                          <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-indigo-800 dark:text-indigo-300">Jurnal KBM</div>
+                              <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalJurnalSemua}</div>
+                          </div>
+                          <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Tugas Piket</div>
+                              <div className="text-xl font-black text-teal-600 dark:text-teal-400">{totalPiketSemua}</div>
+                          </div>
+                          <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Dinas Luar</div>
+                              <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalDinasSemua}</div>
+                          </div>
+                          <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-amber-900 dark:text-amber-300">Izin &amp; Sakit</div>
+                              <div className="text-xl font-black text-amber-700 dark:text-amber-400">{totalIzinSemua + totalSakitSemua}</div>
+                          </div>
                       </div>
-                      <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
-                          <div className="text-xs font-bold text-amber-900 dark:text-amber-300">Hari Kerja</div>
-                          <div className="text-xl font-black text-amber-700 dark:text-amber-400">{totalHariKerjaBadge}</div>
-                      </div>
-                      <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
-                          <div className="text-xs font-bold text-green-800 dark:text-green-300">Total Hadir</div>
-                          <div className="text-xl font-black text-green-600 dark:text-green-400">{totalHadirSemua}</div>
-                      </div>
-                      <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 text-center shadow-sm">
-                          <div className="text-xs font-bold text-indigo-800 dark:text-indigo-300">Jurnal Disetujui</div>
-                          <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalJurnalSemua}</div>
-                      </div>
-                      <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 text-center shadow-sm">
-                          <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Piket Disetujui</div>
-                          <div className="text-xl font-black text-teal-600 dark:text-teal-400">{totalPiketSemua}</div>
+
+                      {/* Top 5 Leaderboard Card */}
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-100 dark:border-gray-700 gap-2">
+                              <div>
+                                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                      <i className="fa-solid fa-trophy text-amber-500"></i>
+                                      <span>Papan Peringkat Kinerja &amp; Kedisiplinan (Top 5 Guru)</span>
+                                  </h3>
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                      Peringkat teratas berdasarkan ketepatan jam hadir, kepatuhan KBM, dan pemenuhan tugas piket
+                                  </p>
+                              </div>
+                              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 italic">
+                                  Formula: (Hadir×10) + (Piket×10) + (Jurnal×5) + (Dinas×5)
+                              </span>
+                          </div>
+
+                          {leaderboardTop5.length > 0 ? (
+                              <div className="space-y-3">
+                                  {leaderboardTop5.map((guru, idx) => {
+                                      const rankBadges = [
+                                          'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300',
+                                          'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-200',
+                                          'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300',
+                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
+                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300'
+                                      ];
+                                      return (
+                                          <div key={idx} className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-xs transition">
+                                              <div className="flex items-center gap-3 min-w-0">
+                                                  <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-black shrink-0 ${rankBadges[idx] || ''}`}>
+                                                      {idx === 0 ? <i className="fa-solid fa-crown text-amber-500"></i> : `#${idx + 1}`}
+                                                  </span>
+                                                  <div className="min-w-0">
+                                                      <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                                          {guru.nama}
+                                                      </div>
+                                                      <div className="text-[10px] text-gray-500 dark:text-gray-400 flex flex-wrap gap-2 mt-0.5">
+                                                          <span>Hadir: <strong>{guru.hadir}</strong></span>
+                                                          <span>•</span>
+                                                          <span>Piket: <strong>{guru.piket}</strong></span>
+                                                          <span>•</span>
+                                                          <span>Jurnal: <strong>{guru.jurnal}</strong></span>
+                                                          <span>•</span>
+                                                          <span>Dinas: <strong>{guru.dinasLuar}</strong></span>
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                              <div className="text-right shrink-0 ml-3">
+                                                  <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                                                      {guru.score} Poin
+                                                  </span>
+                                              </div>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          ) : (
+                              <div className="text-center py-6 text-xs text-gray-500 dark:text-gray-400 italic">
+                                  Belum ada data kinerja guru untuk periode ini.
+                              </div>
+                          )}
                       </div>
                   </div>
 
-                  {/* Teacher Search Filter & Orientation Toolbar */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 no-print">
-                      <div className="relative flex-1 min-w-[200px]">
-                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                          <input
-                            type="text"
-                            placeholder="Cari nama guru..."
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  {/* ================================================================= */}
+                  {/* SUB-TAB 2: TABEL REKAPITULASI                                    */}
+                  {/* ================================================================= */}
+                  <div className={`${activeTab === 'tabel' ? 'block' : 'hidden'} space-y-5`}>
+                      {/* Summary Metric Badges */}
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
+                          <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Total Guru</div>
+                              <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalGuru}</div>
+                          </div>
+                          <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-amber-900 dark:text-amber-300">Hari Kerja</div>
+                              <div className="text-xl font-black text-amber-700 dark:text-amber-400">{totalHariKerjaBadge}</div>
+                          </div>
+                          <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-green-800 dark:text-green-300">Total Hadir</div>
+                              <div className="text-xl font-black text-green-600 dark:text-green-400">{totalHadirSemua}</div>
+                          </div>
+                          <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-indigo-800 dark:text-indigo-300">Jurnal Disetujui</div>
+                              <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalJurnalSemua}</div>
+                          </div>
+                          <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 text-center shadow-sm">
+                              <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Piket Disetujui</div>
+                              <div className="text-xl font-black text-teal-600 dark:text-teal-400">{totalPiketSemua}</div>
+                          </div>
+                      </div>
+
+                      {/* Teacher Search Filter & Orientation Toolbar */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 no-print">
+                          <div className="relative flex-1 min-w-[200px]">
+                              <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                              <input
+                                type="text"
+                                placeholder="Cari nama guru..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                              />
+                          </div>
+                          {search && (
+                            <button
+                              type="button"
+                              onClick={() => setSearch('')}
+                              className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold"
+                            >
+                              Reset
+                            </button>
+                          )}
+                      </div>
+
+                      {/* 11-Column Professional Recap Table */}
+                      <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
+                        <table className="w-full text-left text-xs border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
+                          <thead>
+                            <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Guru</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">Wajib</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">Hadir</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">Dinas Luar</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">Piket</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">Jurnal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredPresensi.map((r: any, idx: number) => {
+                              const jam = Math.floor((r.telatDetik || 0) / 3600);
+                              const menit = Math.floor(((r.telatDetik || 0) % 3600) / 60);
+                              const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
+                              return (
+                                <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
+                                </tr>
+                              );
+                            })}
+                            {filteredPresensi.length === 0 && (
+                              <tr>
+                                <td colSpan={11} className="text-center py-8 text-gray-500 dark:text-gray-400 text-xs italic">
+                                  <div className="flex flex-col items-center justify-center gap-2">
+                                    <i className="fa-solid fa-user-slash text-2xl text-gray-400 dark:text-gray-500"></i>
+                                    <span>
+                                      {search ? `Tidak ada data guru yang sesuai dengan pencarian "${search}".` : 'Tidak ada data kehadiran guru untuk periode ini.'}
+                                    </span>
+                                    {search && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSearch('')}
+                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1 no-print"
+                                      >
+                                        <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">
+                          <button type="button" onClick={handleExportCsv} className="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-green-700 transition">
+                            <i className="fa-solid fa-file-excel"></i> Excel
+                          </button>
+                          <button type="button" onClick={() => triggerPrintWithGps()} className="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-blue-700 transition">
+                            <i className="fa-solid fa-print"></i> Cetak Halaman
+                          </button>
+                      </div>
+                  </div>
+
+                  {/* ================================================================= */}
+                  {/* SUB-TAB 3: CETAK DOKUMEN RESMI                                   */}
+                  {/* ================================================================= */}
+                  <div className={`${activeTab === 'cetak' ? 'block' : 'hidden'} space-y-4`}>
+                      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm print:border-none print:p-0">
+                          <PrintHeader user={user} sekolahId={user?.sekolah_id} />
+                          <div className="text-center my-3 print:my-2">
+                            <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+                              Rekapitulasi Akhir Presensi, Jurnal &amp; Piket Guru
+                            </h3>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+                              <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
+                              <span>Dicetak Oleh: <strong>{user?.nama || 'Administrator'}</strong></span>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
+                            <table className="w-full text-left text-xs border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
+                              <thead>
+                                <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Guru</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">Wajib</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">Hadir</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">Dinas Luar</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">Piket</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">Jurnal</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredPresensi.map((r: any, idx: number) => {
+                                  const jam = Math.floor((r.telatDetik || 0) / 3600);
+                                  const menit = Math.floor(((r.telatDetik || 0) % 3600) / 60);
+                                  const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
+                                  return (
+                                    <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          <PrintSignature
+                            leftTitle="Mengetahui,"
+                            leftSubtitle="Pengelola Data / Admin"
+                            leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}
+                            leftNip={isKepalaSekolah ? '-' : user?.nip}
+                            user={user}
+                            sekolahId={user?.sekolah_id}
                           />
                       </div>
-                      {search && (
-                        <button
-                          type="button"
-                          onClick={() => setSearch('')}
-                          className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold"
-                        >
-                          Reset
-                        </button>
-                      )}
-                                        </div>
 
-                  {/* 11-Column Professional Recap Table */}
-                  <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
-                    <table className="w-full text-left text-xs border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
-                      <thead>
-                        <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Guru</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">Wajib</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">Hadir</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">Dinas Luar</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-red-700 dark:text-red-400 print:text-black">Alpa</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">Piket</th>
-                          <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">Jurnal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredPresensi.map((r: any, idx: number) => {
-                          const jam = Math.floor((r.telatDetik || 0) / 3600);
-                          const menit = Math.floor(((r.telatDetik || 0) % 3600) / 60);
-                          const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
-                          return (
-                            <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
-                              <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
-                            </tr>
-                          );
-                        })}
-                        {filteredPresensi.length === 0 && (
-                          <tr>
-                            <td colSpan={11} className="text-center py-8 text-gray-500 dark:text-gray-400 text-xs italic">
-                              <div className="flex flex-col items-center justify-center gap-2">
-                                <i className="fa-solid fa-user-slash text-2xl text-gray-400 dark:text-gray-500"></i>
-                                <span>
-                                  {search ? `Tidak ada data guru yang sesuai dengan pencarian "${search}".` : 'Tidak ada data kehadiran guru untuk periode ini.'}
-                                </span>
-                                {search && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setSearch('')}
-                                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1 no-print"
-                                  >
-                                    <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  <PrintSignature
-                    leftTitle="Mengetahui,"
-                    leftSubtitle="Pengelola Data / Admin"
-                    leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}
-                    leftNip={isKepalaSekolah ? '-' : user?.nip}
-                    user={user}
-                    sekolahId={user?.sekolah_id}
-                  />
-                  
-                  <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">
-                      <button type="button" onClick={() => {
-                        if (!rekapData || rekapData.presensi.length === 0) return;
-                        const headers = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
-                        const csvRows = [headers.join(',')];
-                        rekapData.presensi
-                          .filter((r: any) => !isTestGuruName(r?.nama))
-                          .forEach((r: any, i: number) => {
-                          const telatStr = `"${Math.floor((r.telatDetik||0) / 3600)}j ${Math.floor(((r.telatDetik||0) % 3600) / 60)}m"`;
-                          csvRows.push([
-                            i + 1,
-                            `"${r.nama}"`,
-                            r.totalWajib ?? 0,
-                            r.hadir || 0,
-                            r.dinasLuar || 0,
-                            r.sakit || 0,
-                            r.izin || 0,
-                            r.alpa || 0,
-                            telatStr,
-                            r.piket || 0,
-                            r.jurnal || 0
-                          ].join(','));
-                        });
-                        const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `Rekap_Guru_${bulan || 'custom'}.csv`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                      }} className="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-green-700 transition">
-                        <i className="fa-solid fa-file-excel"></i> Excel
-                      </button>
-                      <button type="button" onClick={() => triggerPrintWithGps()} className="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-blue-700 transition">
-                        <i className="fa-solid fa-print"></i> Cetak Halaman
-                      </button>
+                      <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">
+                          <button type="button" onClick={handleExportCsv} className="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-green-700 transition">
+                            <i className="fa-solid fa-file-excel"></i> Excel
+                          </button>
+                          <button type="button" onClick={() => triggerPrintWithGps()} className="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-blue-700 transition">
+                            <i className="fa-solid fa-print"></i> Cetak Halaman
+                          </button>
+                      </div>
                   </div>
               </div>
             ) : (

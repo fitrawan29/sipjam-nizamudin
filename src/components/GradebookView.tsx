@@ -8,6 +8,8 @@ import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/database';
 import { getGradebookDraftKey, saveGradebookDraft, loadGradebookDraft, clearGradebookDraft } from '@/utils/draftStorage';
+import ClayTabs, { TabItem } from '@/components/ClayTabs';
+import RaporView from './RaporView';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -104,8 +106,42 @@ export function generateKurikulumMerdekaDeskripsi(
   };
 }
 
-interface GradebookViewProps {
+function AccessDeniedCard({
+  title = 'Akses Terblokir',
+  message,
+  onFallback
+}: {
+  title?: string;
+  message: string;
+  onFallback?: () => void;
+}) {
+  return (
+    <div className="glass-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 shadow-sm">
+      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+        <i className="fa-solid fa-lock"></i>
+      </div>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
+      <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+        {message}
+      </p>
+      {onFallback && (
+        <button
+          type="button"
+          onClick={onFallback}
+          className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+        >
+          <i className="fa-solid fa-graduation-cap text-xs"></i> Kembali ke Buku Nilai
+        </button>
+      )}
+    </div>
+  );
+}
+
+export interface GradebookViewProps {
   user: any;
+  initialTab?: 'gradebook' | 'rapor';
+  assignedKelas?: string | null;
+  isKepalaSekolah?: boolean;
 }
 
 interface StudentItem {
@@ -117,9 +153,47 @@ interface StudentItem {
   status: string | null;
 }
 
-export default function GradebookView({ user }: GradebookViewProps) {
+export default function GradebookView({
+  user,
+  initialTab = 'gradebook',
+  assignedKelas,
+  isKepalaSekolah: _isKepalaSekolah
+}: GradebookViewProps) {
   // Mode & Tenant Resolution
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
+  const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
+  const isWaliKelas = Boolean(
+    assignedKelas ||
+    user?.penugasan?.kelas_binaan ||
+    (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas) ||
+    user?.isWaliKelas === true ||
+    user?.is_wali_kelas === true
+  );
+  const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas;
+
+  // Cluster 3 Active Tab ('gradebook' | 'rapor')
+  const [activeTab, setActiveTab] = useState<'gradebook' | 'rapor'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId as 'gradebook' | 'rapor');
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tabId);
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
+
+  const tabItems: TabItem[] = [
+    { id: 'gradebook', label: 'Buku Nilai Mapel', icon: 'fa-graduation-cap' },
+    ...(canAccessRapor ? [{ id: 'rapor', label: 'Rapor Kelas Binaan', icon: 'fa-file-lines' }] : [])
+  ];
+
   const [sekolahId, setSekolahId] = useState<string | null>(user?.sekolah_id || null);
 
   // Guru Pengampu & Sync State
@@ -135,8 +209,8 @@ export default function GradebookView({ user }: GradebookViewProps) {
   const [selectedTahunAjaran, setSelectedTahunAjaran] = useState<string>('2024/2025');
   const [studentSearch, setStudentSearch] = useState<string>('');
 
-  // Tab View: 'tp-matrix' (Penilaian TP) | 'rekap-semester' (Rekap Rapor Semester) | 'statistik' (Analisis)
-  const [activeTab, setActiveTab] = useState<'tp-matrix' | 'rekap-semester' | 'statistik'>('tp-matrix');
+  // Internal Gradebook Tab View: 'tp-matrix' (Penilaian TP) | 'rekap-semester' (Rekap Rapor Semester) | 'statistik' (Analisis)
+  const [innerTab, setInnerTab] = useState<'tp-matrix' | 'rekap-semester' | 'statistik'>('tp-matrix');
 
   // Master Data State
   const [teachersList, setTeachersList] = useState<{ id?: string; nama_guru: string; nip?: string }[]>([]);
@@ -942,7 +1016,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
   // 5. Fetch Columns for ALL TPs (for Rekap Rapor Semester Tab)
   useEffect(() => {
-    if (activeTab !== 'rekap-semester' || tpList.length === 0) return;
+    if (innerTab !== 'rekap-semester' || tpList.length === 0) return;
 
     const fetchAllColumns = async () => {
       try {
@@ -967,7 +1041,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
     };
 
     fetchAllColumns();
-  }, [activeTab, tpList]);
+  }, [innerTab, tpList]);
 
   // 6. Fetch Student Grades for this Class & Mapel
   const fetchGrades = useCallback(async () => {
@@ -2138,12 +2212,34 @@ export default function GradebookView({ user }: GradebookViewProps) {
   const unsavedCount = Object.keys(dirtyGrades).length;
 
   return (
-    <section className="space-y-5 pb-12 w-full max-w-full overflow-x-auto">
-      {/* Dynamic CSS for print orientation */}
-      
+    <section id="view-gradebook" className="space-y-5 pb-12 w-full max-w-full overflow-x-auto">
+      {/* Sub-Navigasi ClayTabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 no-print">
+        <div>
+          <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <i className="fa-solid fa-graduation-cap text-indigo-600 dark:text-indigo-400"></i>
+            <span>Asesmen &amp; Rapor Siswa</span>
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Pusat penilaian capaian kompetensi Kurikulum Merdeka dan penerbitan rapor semester siswa binaan
+          </p>
+        </div>
+        {canAccessRapor && (
+          <ClayTabs
+            items={tabItems}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+          />
+        )}
+      </div>
 
-      {/* HEADER CARD */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/80 no-print">
+      {/* Sub-Tab 1: Buku Nilai Mapel (In-Memory Keep-Alive) */}
+      <div className={activeTab === 'gradebook' ? 'block' : 'hidden'}>
+        {/* Dynamic CSS for print orientation */}
+        
+
+        {/* HEADER CARD */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/80 no-print">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xl shadow-inner shrink-0">
@@ -2322,9 +2418,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
         <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-x-auto custom-scroll max-w-full">
           <button
             type="button"
-            onClick={() => setActiveTab('tp-matrix')}
+            onClick={() => setInnerTab('tp-matrix')}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
-              activeTab === 'tp-matrix'
+              innerTab === 'tp-matrix'
                 ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
             }`}
@@ -2334,9 +2430,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('rekap-semester')}
+            onClick={() => setInnerTab('rekap-semester')}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
-              activeTab === 'rekap-semester'
+              innerTab === 'rekap-semester'
                 ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
             }`}
@@ -2346,9 +2442,9 @@ export default function GradebookView({ user }: GradebookViewProps) {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('statistik')}
+            onClick={() => setInnerTab('statistik')}
             className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
-              activeTab === 'statistik'
+              innerTab === 'statistik'
                 ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
                 : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
             }`}
@@ -2360,7 +2456,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
 
         {/* Action Buttons: Export & Print */}
         <div className="flex items-center gap-2">
-          {activeTab === 'tp-matrix' && (
+          {innerTab === 'tp-matrix' && (
             <button
               type="button"
               onClick={exportTpToCsv}
@@ -2369,7 +2465,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
               <i className="fa-solid fa-file-excel"></i> Export CSV
             </button>
           )}
-          {activeTab === 'rekap-semester' && (
+          {innerTab === 'rekap-semester' && (
             <button
               type="button"
               onClick={exportSemesterToCsv}
@@ -2401,7 +2497,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
             <span>Semester: <strong>{selectedSemester}</strong></span> |{' '}
             <span>Tahun Ajaran: <strong>{selectedTahunAjaran}</strong></span>
           </div>
-          {currentTP && activeTab === 'tp-matrix' && (
+          {currentTP && innerTab === 'tp-matrix' && (
             <div className="text-xs italic text-gray-700 mt-0.5">
               Tujuan Pembelajaran ({currentTP.kode_tp}): {currentTP.deskripsi}
             </div>
@@ -2412,7 +2508,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       {/* ========================================================================= */}
       {/* TAB 1: PENILAIAN PER TP (SPREADSHEET MATRIX)                              */}
       {/* ========================================================================= */}
-      {activeTab === 'tp-matrix' && (
+      {innerTab === 'tp-matrix' && (
         <div className="space-y-4">
           {/* ========================================================================= */}
           {/* 1. UNIFIED SETUP PANEL (PANEL TERPADU KELOLA STRUKTUR CP • TP • KOLOM)     */}
@@ -3804,7 +3900,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       {/* ========================================================================= */}
       {/* TAB 2: REKAP NILAI RAPOR SEMESTER (OVERVIEW ALL TPS)                      */}
       {/* ========================================================================= */}
-      {activeTab === 'rekap-semester' && (
+      {innerTab === 'rekap-semester' && (
         <div className="space-y-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -3950,7 +4046,7 @@ export default function GradebookView({ user }: GradebookViewProps) {
       {/* ========================================================================= */}
       {/* TAB 3: STATISTIK & ANALISIS KELAS                                         */}
       {/* ========================================================================= */}
-      {activeTab === 'statistik' && (
+      {innerTab === 'statistik' && (
         <div className="space-y-4">
           {/* Summary Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -4500,6 +4596,20 @@ export default function GradebookView({ user }: GradebookViewProps) {
           </div>
         </div>
       )}
+      </div>
+
+      {/* Sub-Tab 2: Rapor Kelas Binaan (In-Memory Keep-Alive + RBAC) */}
+      <div className={activeTab === 'rapor' ? 'block' : 'hidden'}>
+        {canAccessRapor ? (
+          <RaporView user={user} assignedKelas={assignedKelas || null} />
+        ) : (
+          <AccessDeniedCard
+            title="Akses Terblokir"
+            message="Halaman Rapor secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai Wali Kelas. Anda tidak memiliki hak akses untuk membuka halaman ini."
+            onFallback={() => setActiveTab('gradebook')}
+          />
+        )}
+      </div>
     </section>
   );
 }
