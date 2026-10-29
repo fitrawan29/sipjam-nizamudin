@@ -1,23 +1,34 @@
-## 2026-10-08T11:39:13Z
-You are teamwork_preview_reviewer_m1_1.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1
+## 2026-10-29T11:58:32Z
+You are Reviewer 1 for Milestone 1 (Foundation and Sub-Tab Normalization).
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\
+Before starting work, YOU MUST read ORIGINAL_REQUEST.md located at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
 
-MANDATORY REQUIREMENT:
-Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md first (under header '## 2026-10-08T11:11:29Z').
-Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md.
-Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md.
+Also read:
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_READY.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
 
-YOUR ROLE:
-Review the work completed for Milestone 1 (UI/UX and Camera Updates - R1):
-1. Verify 30-minute notification snooze implementation in src/components/TeacherReminderManager.tsx.
-2. Verify print orientation settings removal in src/components/PrintHeader.tsx (relying on browser print dialog).
-3. Verify camera ratio locked to 4:3 (portrait 3:4, landscape 4:3) in src/components/CameraSelfieCapture.tsx and src/lib/watermarkCanvas.ts.
-4. Verify responsive design on desktop and mobile.
-5. Execute verification commands:
-   - npx tsc --noEmit
-   - npm test
-   - npx tsx tests/e2e/run_all_e2e.ts
-   - npm run build
+Your task:
+1. Examine code changes introduced in Milestone 1:
+   - `src/components/ClayTabs.tsx`
+   - `src/components/clay/index.ts`
+   - `src/components/GuruJurnal.tsx`
+   - `src/components/RekapJurnalView.tsx`
+   - `src/components/GuruPresensi.tsx`
+   - `src/components/HistoryView.tsx`
+   - `src/components/AdminRekapView.tsx`
+   - `src/components/AppScreen.tsx`
+2. Verify code correctness, robustness, interface conformance, and accessibility (WAI-ARIA 1.2).
+3. Verify that in-memory draft preservation (CSS `hidden` vs unmounting) is strictly respected.
+4. Execute verification commands:
+   - `npx tsx tests/clay_tabs_verification.test.ts`
+   - `npx tsc --noEmit`
+   - `npm test`
+   - `npx tsx tests/navigation_consolidation_verification.test.ts`
+5. Conclude with a clear verdict in your handoff report: `APPROVE` or `REQUEST_CHANGES`.
 
-Write your review report and handoff to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\handoff.md with a clear verdict: APPROVE or REQUEST_CHANGES.
-Send message to orchestrator (conversation ID 835d6ca7-b3e2-474a-acf0-423026614449) with your verdict and report path.
+Write your full review report to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\handoff.md
+Update progress in c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\progress.md.
+Send a completion message to the orchestrator (conversation ID: 095792d8-1a85-4945-889d-abf25d3c7740).

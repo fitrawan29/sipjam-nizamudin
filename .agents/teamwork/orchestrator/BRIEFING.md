@@ -55,12 +55,17 @@ Implement comprehensive consolidation of features and menus across all roles in 
 | explorer_m1_tabs | teamwork_explorer | M1: Reusable ClayTabs architecture | completed | 03e49f25-bbef-4294-a408-789a19639e1c |
 | explorer_m1_jurnal_presensi | teamwork_explorer | M1: Jurnal & Presensi sub-tab blueprint | completed | 294ab464-6a9c-4e69-86c4-cf47a5644140 |
 | explorer_m1_dinas_rekap | teamwork_explorer | M1: Dinas & Rekap normalization blueprint | completed | b803f452-80fb-481e-a951-10cd5231baa9 |
-| worker_m1 | teamwork_worker | M1: Implement ClayTabs & sub-tab normalization | in-progress | f3f75931-8a83-4164-a658-9f78d281ade6 |
+| worker_m1 | teamwork_worker | M1: Implement ClayTabs & sub-tab normalization | completed | f3f75931-8a83-4164-a658-9f78d281ade6 |
+| reviewer_m1_1 | teamwork_reviewer | M1: Code correctness & WAI-ARIA review | in-progress | bf4adce6-56f5-44c1-a1d1-6cd23cf95a7f |
+| reviewer_m1_2 | teamwork_reviewer | M1: Robustness & AST invariants review | in-progress | 2ec5d1e4-8361-4c21-88df-3f1c091f1ae8 |
+| challenger_m1_1 | teamwork_challenger | M1: Rapid tab-switching & ClayTabs stress test | in-progress | a039d182-ea57-42a1-b991-cd1b32fa5f8e |
+| challenger_m1_2 | teamwork_challenger | M1: Full regression & AST empirical verification | in-progress | 1b1ffb2e-a6c3-422a-8694-25a9d89a7631 |
+| auditor_m1_1 | teamwork_auditor | M1: Forensic integrity & anti-cheat audit | in-progress | ccc60b19-8e8d-41be-bb97-8f0cab361774 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 8 / 16
-- Pending subagents: f3f75931-8a83-4164-a658-9f78d281ade6
+- Spawn count: 13 / 16
+- Pending subagents: bf4adce6-56f5-44c1-a1d1-6cd23cf95a7f, 2ec5d1e4-8361-4c21-88df-3f1c091f1ae8, a039d182-ea57-42a1-b991-cd1b32fa5f8e, 1b1ffb2e-a6c3-422a-8694-25a9d89a7631, ccc60b19-8e8d-41be-bb97-8f0cab361774
 - Predecessor: none
 - Successor: not yet spawned
 
