@@ -1,54 +1,57 @@
-# BRIEFING — 2026-10-21T08:05:00Z
+# BRIEFING — 2026-10-29T22:37:00Z
 
 ## Mission
-Independently verify completion and integrity of the Wali Kelas / Kepala Sekolah / Pengawas Bina RBAC and print signature feature across commits eddee99, 2b2d4f4, 8550016, ae4ffb4.
+Independently audit and verify the genuine completion of milestone M2 (Onboarding Tutorial and ClayTabs alignment) against ORIGINAL_REQUEST.md.
 
 ## 🔒 My Identity
 - Archetype: victory_auditor
 - Roles: critic, specialist, auditor, victory_verifier
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1
-- Original parent: 15093133-9810-45a9-bedd-e852f7b3d537
-- Target: full project (Wali Kelas vs Guru biasa, Kepala Sekolah admin viewer, Pengawas Bina print signature)
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\
+- Original parent: 9292d509-3f7f-4ab1-9e91-70c127dbc749
+- Target: Milestone M2 - Penyesuaian Panduan Onboarding & Penyelarasan Pengujian Tutorial
 
 ## 🔒 Key Constraints
 - Audit-only — do NOT modify implementation code
 - Trust NOTHING — verify everything independently
-- Zero shared context with implementation team
-- Integrity mode: development (check for hardcoding, facades, falsified test results, bypassed checks)
+- Strict check on stubs/facades/mocks
+- Verify full test suite execution, tsc check, and git push to origin/main
 
 ## Current Parent
-- Conversation ID: 15093133-9810-45a9-bedd-e852f7b3d537
-- Updated: 2026-10-21T08:05:00Z
+- Conversation ID: 9292d509-3f7f-4ab1-9e91-70c127dbc749
+- Updated: 2026-10-29T22:37:00Z
 
 ## Audit Scope
-- **Work product**: Implementation and review commits for Wali Kelas, Kepsek, Pengawas Bina RBAC and Print Header (`eddee99`, `2b2d4f4`, `8550016`, `ae4ffb4`)
-- **Profile loaded**: General Project (Victory Audit)
-- **Audit type**: victory audit (Phases A, B, C)
+- **Work product**: Onboarding tutorial (`src/components/Onboarding/OnboardingTutorial.tsx`, `tutorialSteps.ts`), test suites (`tests/challenger_m2_tutorial_system.test.ts`, `tests/onboarding_and_ai_assistant_ui.test.ts`, `tests/challenger_m2_sidebar_profile.test.ts`), and git repository state.
+- **Profile loaded**: General Project
+- **Audit type**: victory audit
 
 ## Audit Progress
-- **Phase**: completed
-- **Checks completed**: Phase A (Timeline & Provenance), Phase B (Integrity Forensics & Cheating Detection), Phase C (Independent Test Execution)
-- **Checks remaining**: None
+- **Phase**: reporting
+- **Checks completed**:
+  - Phase A: Timeline & Provenance Audit (VERIFIED - 4 sequential commits, clear review rounds, up to date with origin/main)
+  - Phase B: Integrity Check (CLEAN - no hardcoded test shortcuts, no facades, no pre-populated log fakes)
+  - Phase C: Independent Test Execution (ALL PASSED - tsc 0 errors, challenger_m2_tutorial_system 128/128, onboarding_and_ai 40/40, challenger_m2_sidebar 72/72)
 - **Findings so far**: CLEAN — VICTORY CONFIRMED
 
 ## Key Decisions Made
-- All 4 commits reviewed: genuine implementation without facade stubs or hardcoding.
-- Tests executed independently with 100% pass rate.
+- Re-executed all test suites and compiler checks independently via PowerShell.
+- Evaluated selector mapping against `getConsolidatedMenuItems` and CSS `[data-tour~="..."]` space-separated token matching.
 
 ## Artifact Index
-- `.agents/teamwork/auditor_1/DISPATCH.md` — Initial dispatch message
-- `.agents/teamwork/auditor_1/BRIEFING.md` — Agent working memory
-- `.agents/teamwork/auditor_1/progress.md` — Liveness & progress tracker
-- `.agents/teamwork/auditor_1/handoff.md` — Final Victory Audit Report
+- `DISPATCH.md` — Inbound instructions from orchestrator
+- `BRIEFING.md` — Living memory & audit tracking state
+- `progress.md` — Heartbeat log
+- `handoff.md` — 5-Component Forensic Audit Report
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - H1: Regular non-wali teachers might see or access perwalian menus -> Rejected (menus omitted from `menuItemsGuru`, route guards block URL navigation).
-  - H2: Kepala Sekolah might accidentally gain write permissions on admin pages -> Rejected (read-only flags block and disable buttons in `AdminVerifView` and `RekapSiswaView`).
-  - H3: Pengawas Bina signature toggle might fail to switch print layout -> Rejected (`PrintHeader` dynamically switches between 2-column and 3-column with `signature-pengawas`).
-  - H4: Multi-tenant leaks or designation mismatch -> Rejected (tenant id scoped, `data_guru_id` and name normalization handled).
-- **Vulnerabilities found**: None.
-- **Untested angles**: None.
+  - Compound `data-tour` token matching (e.g. `view-admin-rekap view-analitik`): VERIFIED via `[data-tour~="..."]`
+  - Subtab fallback selector logic: VERIFIED via `#tab-...`, `[data-tour~=...]`
+  - Zero-dimension spotlight guard: VERIFIED in `OnboardingTutorial.tsx`
+  - Keyboard navigation input guard: VERIFIED activeElement check
+  - Mobile card height clamp: VERIFIED `max-h-[calc(100vh-32px)]` with scroll
+- **Vulnerabilities found**: None. All review round remediations are fully implemented and verified.
+- **Untested angles**: None within milestone scope.
 
 ## Loaded Skills
-- None explicitly requested
+- None
