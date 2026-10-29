@@ -416,6 +416,10 @@ assert(onboardingSource.includes('max-h-[calc(100vh-32px)]'), 'OnboardingTutoria
 assert(onboardingSource.includes('measuredHeight'), 'OnboardingTutorial tooltip style dynamically measures rendered card height');
 assert(onboardingSource.includes("width: 'min(92vw, 380px)'"), 'OnboardingTutorial unanchored fallback modal bounds width cleanly on mobile viewports');
 assert(onboardingSource.includes('rect.width > 0 || rect.height > 0'), 'OnboardingTutorial safely guards zero-dimension elements from misplaced spotlights');
+assert(onboardingSource.includes('capture: true'), 'OnboardingTutorial uses capture phase to intercept nested container scroll events');
+assert(onboardingSource.includes('Math.max(0, targetRect.top - padding)'), 'OnboardingTutorial clamps spotlight box coordinates against viewport edges');
+assert(onboardingSource.includes("placement === 'center'"), 'OnboardingTutorial supports explicit center placement in calculateTooltipStyle');
+assert(onboardingSource.includes('[isOpen, currentStepIndex, steps.length, userRole]'), 'OnboardingTutorial keydown listener specifies explicit dependency array without churn');
 
 // ====================================================================
 // SUMMARY & EXIT CODE

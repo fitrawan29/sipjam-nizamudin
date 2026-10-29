@@ -129,13 +129,41 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
     };
 
     window.addEventListener('resize', handleResizeOrScroll, { passive: true });
-    window.addEventListener('scroll', handleResizeOrScroll, { passive: true });
+    window.addEventListener('scroll', handleResizeOrScroll, { passive: true, capture: true });
 
     return () => {
       window.removeEventListener('resize', handleResizeOrScroll);
-      window.removeEventListener('scroll', handleResizeOrScroll);
+      window.removeEventListener('scroll', handleResizeOrScroll, { capture: true });
     };
   }, [isOpen, updateTargetRect]);
+
+  const handleSkip = () => {
+    setTutorialCompleted(userRole);
+    setCurrentStepIndex(0);
+    onEnsureSidebarOpen?.(false);
+    onClose();
+  };
+
+  const handleComplete = () => {
+    setTutorialCompleted(userRole);
+    setCurrentStepIndex(0);
+    onEnsureSidebarOpen?.(false);
+    onComplete();
+  };
+
+  const handleNext = () => {
+    if (currentStepIndex < steps.length - 1) {
+      setCurrentStepIndex((prev) => prev + 1);
+    } else {
+      handleComplete();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex((prev) => prev - 1);
+    }
+  };
 
   // Keyboard navigation (Escape to skip, Right to next, Left to prev)
   useEffect(() => {
@@ -153,35 +181,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  });
-
-  const handleSkip = () => {
-    setTutorialCompleted(userRole);
-    setCurrentStepIndex(0);
-    onEnsureSidebarOpen?.(false);
-    onClose();
-  };
-
-  const handleNext = () => {
-    if (currentStepIndex < steps.length - 1) {
-      setCurrentStepIndex((prev) => prev + 1);
-    } else {
-      handleComplete();
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex((prev) => prev - 1);
-    }
-  };
-
-  const handleComplete = () => {
-    setTutorialCompleted(userRole);
-    setCurrentStepIndex(0);
-    onEnsureSidebarOpen?.(false);
-    onComplete();
-  };
+  }, [isOpen, currentStepIndex, steps.length, userRole]);
 
   if (!isOpen || steps.length === 0 || !currentStep) {
     return null;
@@ -259,7 +259,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
           left = targetRect.left - tooltipWidth - 16;
         } else {
           left = Math.max(16, Math.min(vw - tooltipWidth - 16, targetRect.left));
-          top = Math.min(vh - estimatedHeight - 16, targetRect.bottom + 16);
+          top = Math.max(16, Math.min(vh - estimatedHeight - 16, targetRect.bottom + 16));
         }
       }
     } else if (placement === 'bottom') {
@@ -274,16 +274,23 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
       left = Math.max(16, Math.min(vw - tooltipWidth - 16, targetRect.left));
       // Collision with top screen edge -> flip to bottom
       if (top < 16) {
-        top = Math.min(vh - estimatedHeight - 16, targetRect.bottom + 14);
+        top = Math.max(16, Math.min(vh - estimatedHeight - 16, targetRect.bottom + 14));
       }
     } else if (placement === 'left') {
       left = targetRect.left - tooltipWidth - 16;
       top = Math.max(16, Math.min(vh - estimatedHeight - 16, targetRect.top));
       // Collision with left screen edge -> flip to right
       if (left < 16) {
-        left = Math.min(vw - tooltipWidth - 16, targetRect.right + 16);
+        left = Math.max(16, Math.min(vw - tooltipWidth - 16, targetRect.right + 16));
       }
+    } else if (placement === 'center') {
+      top = Math.max(16, Math.min(vh - estimatedHeight - 16, targetRect.top + (targetRect.height - estimatedHeight) / 2));
+      left = Math.max(16, Math.min(vw - tooltipWidth - 16, targetRect.left + (targetRect.width - tooltipWidth) / 2));
     }
+
+    // Viewport bounds clamping safety net
+    top = Math.max(16, Math.min(Math.max(16, vh - estimatedHeight - 16), top));
+    left = Math.max(16, Math.min(Math.max(16, vw - tooltipWidth - 16), left));
 
     return {
       position: 'fixed',
@@ -336,8 +343,8 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
           data-testid="spotlight-box"
           className="fixed pointer-events-none z-[70] transition-all duration-300 ease-out rounded-xl border-2 border-amber-400 shadow-[0_0_20px_rgba(212,175,55,0.6)] ring-4 ring-amber-400/20"
           style={{
-            top: `${targetRect.top - padding}px`,
-            left: `${targetRect.left - padding}px`,
+            top: `${Math.max(0, targetRect.top - padding)}px`,
+            left: `${Math.max(0, targetRect.left - padding)}px`,
             width: `${targetRect.width + padding * 2}px`,
             height: `${targetRect.height + padding * 2}px`,
           }}
