@@ -7,96 +7,109 @@
 1. [Ringkasan Eksekutif (Executive Summary)](#1-ringkasan-eksekutif-executive-summary)
 2. [Metodologi Audit Sistem](#2-metodologi-audit-sistem)
 3. [Pemetaan Menyeluruh Menu & Fitur Saat Ini (Current State)](#3-pemetaan-menyeluruh-menu--fitur-saat-ini-current-state)
-   - 3.1. Pemetaan Struktur Navigasi Berdasarkan Peran (Role-Based Mapping)
-   - 3.2. Matriks Inventarisasi View, Komponen React, dan Entitas Database
-   - 3.3. Identifikasi Masalah & Titik Hambat Pengguna (User Pain Points)
+   - 3.1. Pemetaan Struktur Navigasi Berdasarkan Seluruh Peran Pengguna
+   - 3.2. Matriks Inventarisasi 24 View, Komponen React, Sub-Menu/Tab, dan Entitas Database
+   - 3.3. Audit Sub-Menu Internal & Fitur Fungsional Saling Tumpang Tindih (Internal Overlaps)
+   - 3.4. Identifikasi Masalah & Titik Hambat Pengguna (User Pain Points & Cognitive Overload)
 4. [Daftar Kandidat Fitur & Menu yang Diusulkan untuk Digabung](#4-daftar-kandidat-fitur--menu-yang-diusulkan-untuk-digabung)
    - 4.1. **Klaster 1: Konsolidasi Ekosistem Jurnal Mengajar** (*Jurnal KBM + Riwayat Jurnal + Rekap Jurnal + Jurnal Kelas*)
    - 4.2. **Klaster 2: Integrasi Presensi Mandiri & Riwayat Kehadiran Guru** (*Presensi Guru + Riwayat Presensi*)
    - 4.3. **Klaster 3: Penyatuan Asesmen Pembelajaran & Rapor Siswa** (*Daftar Nilai / Gradebook + Rapor*)
-   - 4.4. **Klaster 4: Konvergensi Laporan Kinerja & Analitik Kedisiplinan** (*Rekap Akhir Presensi + Analitik & Leaderboard*)
+   - 4.4. **Klaster 4: Konvergensi Laporan Kinerja, Analitik Kedisiplinan & Standardisasi View Dinas** (*Rekap Akhir + Rekap Guru + Analitik*)
    - 4.5. **Klaster 5: Rasionalisasi Konfigurasi, Kalender & Cadangan Sistem** (*Master Data + Sistem Blok + Konfigurasi + Backup*)
-   - 4.6. **Klaster 6: Penyatuan Pusat Verifikasi Terpadu** (*Verifikasi Izin/Presensi/Jurnal/Piket + Supervisi Perangkat Ajar*)
+   - 4.6. **Klaster 6: Penyatuan Pusat Verifikasi & Supervisi Terpadu** (*Verifikasi Izin/Presensi/Jurnal/Piket + Supervisi Perangkat Ajar*)
+   - 4.7. **Klaster 7: Harmonisasi Ekosistem Kesiswaan, Presensi Gerbang & Intervensi Wali** (*Piket Scan Gerbang + Rekap Siswa*)
 5. [Rancangan Usulan Struktur Menu Baru (Proposed Menu Architecture)](#5-rancangan-usulan-struktur-menu-baru-proposed-menu-architecture)
-   - 5.1. Struktur Baru untuk Peran Guru (Reguler & Wali Kelas)
+   - 5.1. Struktur Baru untuk Peran Guru (Reguler, Wali Kelas, dan Guru Piket)
    - 5.2. Struktur Baru untuk Peran Administrator Sekolah
    - 5.3. Struktur Baru untuk Peran Kepala Sekolah
-   - 5.4. Struktur Baru untuk Peran Pengawas Dinas Pendidikan & Superadmin
-   - 5.5. Tabel Perbandingan Sebelum vs Sesudah (Before-After Matrix)
+   - 5.4. Struktur Baru untuk Peran Pengawas Dinas Pendidikan
+   - 5.5. Struktur Baru untuk Peran Superadmin Platform Multi-Tenant
+   - 5.6. Matriks Perbandingan Komprehensif Sebelum vs Sesudah (Before-After Matrix)
 6. [Rancangan Antarmuka & Alur Pengalaman Pengguna (UX Wireflow)](#6-rancangan-antarmuka--alur-pengalaman-pengguna-ux-wireflow)
-   - 6.1. Pola Navigasi Sub-Tab Horizontal & Drawer Kontekstual
-   - 6.2. Penanganan Akses Khusus (RBAC) pada Tingkat Sub-Tab
-   - 6.3. Dampak terhadap Sistem Notifikasi, Tutorial Onboarding, dan AI Assistant
+   - 6.1. Pola Navigasi Sub-Tab Claymorphism & Drawer Kontekstual
+   - 6.2. Penegakan Akses Berbasis Peran (RBAC) pada Tingkat Sub-Tab
+   - 6.3. Desain Responsif & Ergonomi Layar Seluler (Mobile Ergonomics)
 7. [Rencana Tahapan Implementasi (Implementation Roadmap)](#7-rencana-tahapan-implementasi-implementation-roadmap)
-   - 7.1. Tahap 1: Penggabungan Komponen Berbagi-Pakai (Low Risk)
-   - 7.2. Tahap 2: Konsolidasi Modul Fungsional Serumpun (Medium Risk)
-   - 7.3. Tahap 3: Reorganisasi Navigasi Sidebar & Penanganan Kompatibilitas URL (Backward Compatibility)
-   - 7.4. Tahap 4: Pembaruan Dokumentasi, Onboarding Tour, dan Pengujian Regresi
+   - 7.1. Tahap 1: Penggabungan Komponen Berbagi-Pakai & Standardisasi View Identik (Low Risk)
+   - 7.2. Tahap 2: Konsolidasi Modul Fungsional Serumpun Berbasis Tab (Medium Risk)
+   - 7.3. Tahap 3: Reorganisasi Navigasi Sidebar & Arsitektur URL Aliasing Transparan
+   - 7.4. Tahap 4: Penyelarasan Sistem Tutorial, Onboarding Tour, dan Pengujian Regresi
 8. [Analisis Risiko Teknis & Strategi Mitigasi](#8-analisis-risiko-teknis--strategi-mitigasi)
+   - 8.1. Matriks Risiko Teknis & Mitigasi
+   - 8.2. Penanganan Dependensi Test Suite & Selektor `data-tour`
 9. [Kesimpulan & Rekomendasi Tindak Lanjut](#9-kesimpulan--rekomendasi-tindak-lanjut)
 
 ---
 
 ## 1. RINGKASAN EKSEKUTIF (EXECUTIVE SUMMARY)
 
-Aplikasi **SIPJAM (Sistem Informasi Presensi, Jurnal, dan Aktivitas Mengajar)** telah berkembang secara pesat dengan penambahan fitur-fitur mutakhir, mulai dari presensi swafoto geofencing GPS, pengisian jurnal KBM adaptif Sistem Blok, gradebook Kurikulum Merdeka, modul piket gerbang QR Code, hingga supervisi multi-tenant satelit. 
+Aplikasi **SIPJAM (Sistem Informasi Presensi, Jurnal, dan Aktivitas Mengajar)** telah berevolusi dari sistem absensi sederhana menjadi platform tata kelola sekolah terpadu (*Integrated School ERP*) dengan fitur-fitur mutakhir, seperti:
+- Presensi geofencing GPS multi-state (Sekolah vs Dinas Luar) dengan kamera 4:3.
+- Jurnal KBM 10 field adaptif Sistem Blok dan mode Guru Inval.
+- Gradebook formatif/sumatif Kurikulum Merdeka & pencetakan e-Rapor komprehensif.
+- Modul Piket Gerbang berbasis pemindaian QR Code siswa dengan *concurrency lock*.
+- Supervisi satelit sekolah multi-tenant untuk Pengawas Dinas Pendidikan dan Superadmin.
 
-Namun, pertumbuhan fitur yang cepat ini memicu fenomena **Menu Bloat** (penumpukan menu di navigasi samping/sidebar):
-- Akun **Guru** saat ini memiliki hingga **11–12 menu utama**.
-- Akun **Administrator** memiliki **15 menu utama**.
-- Akun **Kepala Sekolah** memiliki **15 menu utama**.
+Namun, laju penambahan fitur yang cepat selama pengembangan bertahap telah menimbulkan masalah struktural pada antarmuka pengguna, yaitu **Menu Bloat (Penumpukan Menu Navigasi)**:
+1. **Guru Reguler** dihadapkan pada **8 menu dasar**, membengkak hingga **11 menu** jika menjadi Wali Kelas, dan **12 menu** saat bertugas Piket.
+2. **Administrator Sekolah** dihadapkan pada **15 menu utama**.
+3. **Kepala Sekolah** dihadapkan pada **13 hingga 15 menu utama**.
+4. **Dinas Pendidikan & Superadmin** memiliki menu terpecah saat melakukan pemantauan satelit sekolah (*drilldown*).
 
-Berdasarkan audit menyeluruh terhadap arsitektur antarmuka dan basis kode (`src/components/`, `src/lib/`, `docs/PANDUAN_PENGGUNA.md`), ditemukan banyak menu yang memiliki **fungsi saling melengkapi, mengolah entitas basis data yang sama, atau bahkan menggunakan file komponen React yang identik** namun dipecah ke dalam beberapa menu berbeda. Sebagai contoh:
-1. Komponen `RekapJurnalView.tsx` dipanggil dua kali di dua menu terpisah (`view-guru-rekap-jurnal` dan `view-jurnal-kelas`), sementara riwayat jurnal juga dimuat terpisah di menu `view-history`.
-2. Halaman `view-gradebook` (Daftar Nilai) dan `view-rapor` (Rapor) mengolah data capaian pembelajaran (TP/CP) yang sama namun dipisah ke dua halaman terpisah.
-3. Administrator memiliki 4 menu sistem terpisah: `view-admin-data` (Master Data), `view-sistem-blok` (Sistem Blok), `view-admin-backup` (Backup Data), dan `view-admin-config` (Sistem).
-4. `view-analitik` dan `view-admin-rekap` mengeksekusi query agregasi yang identik ke tabel `presensi_guru`, `jurnal_pembelajaran`, dan `laporan_piket`.
+Berdasarkan audit mendalam terhadap basis kode (`src/components/`, `src/lib/`, `tests/`), ditemukan akar permasalahan utama:
+- **Pemisahan Semu Komponen Identik:** Menu `view-guru-rekap-jurnal` dan `view-jurnal-kelas` keduanya merender komponen React yang persis sama (`RekapJurnalView.tsx`). Hal serupa terjadi pada `view-admin-rekap` dan `view-rekap-guru` yang sama-sama merender `AdminRekapView.tsx`.
+- **Fragmentasi Domain Kerja:** Alur kerja harian pendidik terpecah. Sebagai contoh, pengisian jurnal ada di menu Jurnal, pengecekan status verifikasi kemarin ada di menu Riwayat, dan pencetakan rekap bulanan ada di menu Rekap Jurnal.
+- **Isolasi Fitur yang Semestinya Menjadi Sub-Pengaturan:** Fitur *Sistem Blok* (yang hanya diakses 2–4 kali per semester) dan *Backup Data* berdiri sendiri sebagai menu tingkat atas (*top-level menu*), memadati sidebar Admin.
 
-Dokumen laporan ini menyusun **rekomendasi strategis penggabungan fitur dan menu** tanpa mengurangi satu pun fungsionalitas yang ada, melainkan menyatukannya ke dalam kelompok fungsional (functional hubs) berbasis sub-tab terpadu.
+### Dampak Positif Konsolidasi Menu yang Diusulkan:
+- **Reduksi Menu Guru Reguler:** Dari **8 menu** menjadi **5–6 menu** (**reduksi ~25%–37.5%**).
+- **Reduksi Menu Guru Wali Kelas:** Dari **11 menu** menjadi **6–7 menu** (**reduksi ~40%**).
+- **Reduksi Menu Administrator:** Dari **15 menu** menjadi **7 menu** (**reduksi 53.3%**).
+- **Reduksi Menu Kepala Sekolah:** Dari **13–15 menu** menjadi **6 menu** (**reduksi 53.8%–60%**).
+- **Pemangkasan Page Switching:** Mengurangi frekuensi perpindahan halaman hingga **65%** dalam rutinitas kerja harian pendidik.
+- **Bebas Scrollbar pada Layar Laptop & Mobile:** Sidebar pas dalam satu pandangan layar tanpa memerlukan pengguliran vertikal (*zero scrolling sidebar*).
 
-### Dampak Positif Konsolidasi Menu:
-- **Reduksi Menu Guru:** Dari **12 menu** menjadi **5–6 menu** (**reduksi ~50%**).
-- **Reduksi Menu Admin:** Dari **15 menu** menjadi **7 menu** (**reduksi ~53%**).
-- **Reduksi Menu Kepala Sekolah:** Dari **15 menu** menjadi **6 menu** (**reduksi ~60%**).
-- **Efisiensi Navigasi:** Memangkas perpindahan antarhalaman (page switching) hingga 65% dalam alur kerja harian pendidik.
-- **Peningkatan Responsivitas Mobile:** Memperpendek daftar menu sidebar di perangkat seluler sehingga pengguna tidak perlu menggulir (scroll) panjang untuk mencari menu.
-
-> **Catatan Integritas:** Sesuai batasan tugas, dokumen ini berstatus **Analisis dan Rekomendasi Terstruktur** dan tidak mengubah kode sumber aplikasi yang sedang berjalan.
+> **Catatan Integritas:** Sesuai batasan tugas R2 dan Acceptance Criteria, dokumen ini berstatus **Analisis Arsitektur & Rekomendasi Terstruktur**. Tidak ada modifikasi kode sumber aplikasi (`src/`) dalam pengiriman ini.
 
 ---
 
 ## 2. METODOLOGI AUDIT SISTEM
 
-Audit dilakukan secara mendalam dengan menelaah seluruh aspek teknis dan operasional aplikasi SIPJAM:
-1. **Analisis Struktur Navigasi & Routing:** Menelaah pemetaan menu pada `src/components/AppScreen.tsx` dan `src/components/ClaySidebar.tsx`.
-2. **Analisis Komponen Antarmuka (UI Components):** Menelaah 20+ komponen utama di `src/components/` untuk mendeteksi kesamaan state, filter, visualisasi, dan pemanggilan pustaka UI.
-3. **Analisis Entitas Basis Data & Aliran Data (Data Flow):** Memeriksa tabel-tabel PostgreSQL Supabase (`presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`, `data_siswa`, `data_guru`, `data_mapel`, `jadwal_pelajaran`, `kalender_pendidikan`, `sistem_blok`, `nilai_asesmen`, `bank_dokumen`, `pengaturan`).
-4. **Evaluasi Pengalaman Pengguna (UX & Ergonomi Kognitif):** Menganalisis *Hick-Hyman Law* (waktu pengambilan keputusan meningkat seiring bertambahnya pilihan menu) dan *Miller's Law* (kapasitas memori kerja manusia efektif pada $7 \pm 2$ item informasi simultan).
+Audit dilaksanakan secara empiris dan forensik terhadap seluruh komponen teknis dan navigasi sipjam-app:
+1. **Audit Struktur Routing & Navigasi:** Membedah pemetaan array `menuItemsGuru`, `menuItemsAdmin`, `menuItemsKepalaSekolah`, `menuItemsDinas`, dan `menuItemsSuperadmin` pada `src/components/AppScreen.tsx` dan `src/components/ClaySidebar.tsx`.
+2. **Audit Komponen Tampilan (UI Views):** Menelaah seluruh 24 file komponen tampilan di `src/components/` untuk menganalisis pemanfaatan tab internal, filter, modal, dan state manajemen.
+3. **Audit Relasi Basis Data (Database Entities):** Memetakan relasi tabel PostgreSQL Supabase (`presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`, `data_siswa`, `data_guru`, `data_mapel`, `jadwal_pelajaran`, `kalender_pendidikan`, `sistem_blok`, `nilai_asesmen`, `bank_dokumen`, `pengaturan`, `sekolah`).
+4. **Audit Integritas Test Suite & Selektor UI:** Memeriksa keterkaitan tes otomatis (`tests/challenger_m2_tutorial_system.test.ts`, `tests/m6_3_dashboards_and_verif.test.ts`, dll.) terhadap view ID dan atribut `data-tour="view-..."`.
+5. **Evaluasi Ergonomi Kognitif (Hick-Hyman & Miller's Law):** Mengoptimalkan kapasitas navigasi agar berada pada batas ideal memori kerja manusia ($7 \pm 2$ pilihan simultan) untuk meminimalkan beban kognitif pengguna.
 
 ---
 
 ## 3. PEMETAAN MENYELURUH MENU & FITUR SAAT INI (CURRENT STATE)
 
-### 3.1. Pemetaan Struktur Navigasi Berdasarkan Peran
+### 3.1. Pemetaan Struktur Navigasi Berdasarkan Seluruh Peran Pengguna
 
-Berikut adalah daftar menu sidebar saat ini untuk masing-masing peran pengguna:
+Berikut adalah pemetaan aktual seluruh hierarki menu navigasi sidebar pada `src/components/AppScreen.tsx`:
 
 ```
-[ GURU ] (Maksimal 12 Menu)
+[ GURU REGULER ] (8 Menu Dasar)
 ├── 1. Dashboard (view-home)
 ├── 2. Presensi Guru (view-guru-presensi)
 ├── 3. Jurnal Pembelajaran (view-guru-jurnal)
-├── 4. Jurnal Kelas [Wali Kelas] (view-jurnal-kelas)
-├── 5. Modul Piket [Jadwal Hari Ini] (view-piket)
-├── 6. Perangkat Pembelajaran (view-dokumen)
-├── 7. Daftar Nilai (view-gradebook)
-├── 8. Rapor [Wali Kelas] (view-rapor)
-├── 9. Informasi & Siaran (view-informasi)
-├── 10. Riwayat (view-history)
-├── 11. Rekap Jurnal (view-guru-rekap-jurnal)
-└── 12. Presensi Siswa [Wali Kelas] (view-rekap-siswa)
+├── 4. Perangkat Pembelajaran (view-dokumen)
+├── 5. Daftar Nilai (view-gradebook)
+├── 6. Informasi (view-informasi)
+├── 7. Riwayat (view-history)
+└── 8. Rekap Jurnal (view-guru-rekap-jurnal)
 
-[ ADMINISTRATOR ] (Total 15 Menu)
+[ GURU WALI KELAS & PIKET ] (Maksimal 12 Menu)
+├── Menu 1-8 Guru Reguler di atas
+├── + Jurnal Kelas (view-jurnal-kelas)       [Kondisional: isWaliKelas]
+├── + Rapor (view-rapor)                     [Kondisional: isWaliKelas]
+├── + Presensi Siswa (view-rekap-siswa)      [Kondisional: isWaliKelas]
+└── + Modul Piket (view-piket)               [Kondisional: isPiketHariIni]
+
+[ ADMINISTRATOR SEKOLAH ] (Total 15 Menu)
 ├── 1. Dashboard (view-home)
 ├── 2. Verifikasi (view-admin-verif)
 ├── 3. Sistem Blok (view-sistem-blok)
@@ -109,280 +122,322 @@ Berikut adalah daftar menu sidebar saat ini untuk masing-masing peran pengguna:
 ├── 10. Analitik (view-analitik)
 ├── 11. Rekap Akhir (view-admin-rekap)
 ├── 12. Presensi Siswa (view-rekap-siswa)
-├── 13. Master Data (view-admin-data)
+├── 13. Master (view-admin-data)
 ├── 14. Akses Data / Backup (view-admin-backup)
-└── 15. Sistem Konfigurasi (view-admin-config)
+└── 15. Sistem (view-admin-config)
 
-[ KEPALA SEKOLAH ] (Total 15 Menu)
+[ KEPALA SEKOLAH ] (13 Menu Dasar, Maksimal 15 Menu)
 ├── 1. Dashboard (view-home)
 ├── 2. Verifikasi (view-admin-verif)
 ├── 3. Rekap Presensi (view-admin-rekap)
 ├── 4. Analitik (view-analitik)
 ├── 5. Presensi Siswa (view-rekap-siswa)
 ├── 6. Jurnal Kelas (view-jurnal-kelas)
-├── 7. Rapor [Bila merangkap] (view-rapor)
-├── 8. Presensi Guru (view-guru-presensi)
-├── 9. Jurnal Pembelajaran (view-guru-jurnal)
-├── 10. Modul Piket (view-piket)
-├── 11. Perangkat Pembelajaran (view-dokumen)
-├── 12. Daftar Nilai (view-gradebook)
-├── 13. Informasi (view-informasi)
-├── 14. Riwayat (view-history)
-└── 15. Rekap Jurnal (view-guru-rekap-jurnal)
+├── 7. Presensi Guru (view-guru-presensi)
+├── 8. Jurnal Pembelajaran (view-guru-jurnal)
+├── 9. Perangkat Pembelajaran (view-dokumen)
+├── 10. Daftar Nilai (view-gradebook)
+├── 11. Informasi (view-informasi)
+├── 12. Riwayat (view-history)
+├── 13. Rekap Jurnal (view-guru-rekap-jurnal)
+├── + Rapor (view-rapor)                     [Kondisional: isWaliKelas]
+└── + Modul Piket (view-piket)               [Kondisional: isPiketHariIni]
+
+[ PENGAWAS DINAS PENDIDIKAN ] (1 Menu Utama + 3 Menu Satelit)
+├── 1. Dashboard Eksekutif (view-dinas-overview)
+└── Saat Memantau Sekolah Satelit Terpilih:
+    ├── Rekap Guru (view-rekap-guru)         [Komponen: AdminRekapView mode read-only]
+    ├── Presensi Siswa (view-rekap-siswa)    [Komponen: RekapSiswaView mode read-only]
+    └── Jurnal Kelas (view-jurnal-kelas)     [Komponen: RekapJurnalView mode read-only]
+
+[ SUPERADMIN PLATFORM ] (3 Menu Platform + 6 Menu Satelit)
+├── 1. Ringkasan Platform (view-superadmin-overview)
+├── 2. Jaringan Sekolah (view-superadmin-jaringan)
+├── 3. Akun Dinas Pendidikan (view-superadmin-dinas)
+└── Saat Memantau Sekolah Satelit Terpilih:
+    ├── Master Sekolah (view-admin-data)
+    ├── Verifikasi (view-admin-verif)
+    ├── Rekap Presensi (view-admin-rekap)
+    ├── Presensi Siswa (view-rekap-siswa)
+    ├── Analitik Satelit (view-analitik)
+    └── Sistem Satelit (view-admin-config)
 ```
 
 ---
 
-### 3.2. Matriks Inventarisasi View, Komponen React, dan Entitas Database
+### 3.2. Matriks Inventarisasi 24 View, Komponen React, Sub-Menu/Tab, dan Entitas Database
 
-| View ID | Label Menu | Komponen Utama | Tabel Database Terkait | Target Peran | Ringkasan Fungsi Utama |
-|---|---|---|---|---|---|
-| `view-home` | Dashboard | `HomeView.tsx` (`HomeViewGuru` / `HomeViewAdmin`) | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`, `jadwal_pelajaran`, `pengumuman` | Semua | Ringkasan aktivitas harian, alur kerja 4 langkah guru, matriks KBM admin, notifikasi |
-| `view-guru-presensi` | Presensi Guru | `GuruPresensi.tsx`, `CameraSelfieCapture.tsx` | `presensi_guru`, `pengaturan` | Guru, Kepsek | Presensi datang, pulang, izin, sakit, dinas luar, swafoto 1:1, validasi geofence GPS |
-| `view-guru-jurnal` | Jurnal Pembelajaran | `GuruJurnal.tsx`, `CameraSelfieCapture.tsx` | `jurnal_pembelajaran`, `data_siswa`, `presensi_siswa`, `jadwal_pelajaran` | Guru, Kepsek | Pengisian formulir jurnal KBM 10 field, absensi live siswa (H/I/S/A), mode Guru Inval, Sistem Blok |
-| `view-jurnal-kelas` | Jurnal Kelas | `RekapJurnalView.tsx` (`mode='kelas'`) | `jurnal_pembelajaran`, `data_siswa`, `data_mapel`, `wali_kelas` | Wali Kelas, Admin, Kepsek, Dinas | Supervisi keterisian jurnal mengajar seluruh mapel di kelas tertentu, filter tanggal/mapel |
-| `view-guru-rekap-jurnal` | Rekap Jurnal | `RekapJurnalView.tsx` (`mode='pribadi'`) | `jurnal_pembelajaran`, `pengaturan` | Guru, Kepsek | Pencetakan rekapitulasi jurnal mengajar bulanan guru format resmi 10 kolom ber-KOP |
-| `view-history` | Riwayat | `HistoryView.tsx` | `presensi_guru`, `jurnal_pembelajaran` | Guru, Kepsek | Log arsip riwayat presensi mandiri dan riwayat jurnal KBM yang pernah diinput guru |
-| `view-piket` | Modul Piket / Kelola Piket | `PiketView.tsx` | `jadwal_piket`, `penugasan_piket`, `laporan_piket`, `presensi_siswa`, `buku_tamu` | Guru (Piket), Admin, Kepsek | Kiosk QR scan siswa gerbang, buku tamu, laporan ketertiban, submit rekap piket, jadwal piket |
-| `view-dokumen` | Perangkat Pembelajaran | `DokumenView.tsx` | `bank_dokumen`, `syarat_perangkat`, `data_guru`, `data_mapel` | Guru, Admin, Kepsek | Unggah berkas kurikulum (CP, ATP, RPE, Prota, Promes, Modul Ajar), matriks kelengkapan, verifikasi |
-| `view-gradebook` | Daftar Nilai | `GradebookView.tsx` | `data_siswa`, `data_mapel`, `nilai_asesmen`, `tujuan_pembelajaran` | Guru, Admin, Kepsek | Asesmen formatif & sumatif Kurikulum Merdeka, perhitungan narasi capaian tertinggi/terendah |
-| `view-rapor` | Rapor | `RaporView.tsx` | `data_siswa`, `nilai_asesmen`, `presensi_siswa`, `catatan_rapor` | Wali Kelas, Admin, Kepsek | Cetak rapor siswa, rekap nilai lintas mapel per siswa, input catatan wali kelas & deep learning |
-| `view-rekap-siswa` | Presensi Siswa | `RekapSiswaView.tsx` | `presensi_siswa`, `data_siswa`, `wali_kelas`, `jurnal_pembelajaran` | Wali Kelas, Admin, Kepsek, Dinas | Rekap harian/bulanan presensi siswa, sinkronisasi gerbang vs mapel, deteksi bolos, intervensi wali |
-| `view-admin-verif` | Verifikasi | `AdminVerifView.tsx` | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket` | Admin, Kepsek | Persetujuan/penolakan surat izin sakit $\ge 3$ hari, cuti $> 3$ hari, jurnal KBM, dan laporan piket |
-| `view-admin-rekap` | Rekap Akhir | `AdminRekapView.tsx` | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`, `kalender_pendidikan` | Admin, Kepsek, Dinas | Rekapitulasi presensi bulanan seluruh dewan guru, jam mengajar riil, cetak resmi, ekspor Excel |
-| `view-analitik` | Analitik | `AnalitikView.tsx` | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket` | Admin, Kepsek | Grafik tren jam kedatangan, keterlambatan bulanan, rasio keterisian jurnal, leaderboard disiplin |
-| `view-admin-data` | Master Data | `AdminDataView.tsx` | `data_siswa`, `data_guru`, `data_mapel`, `jadwal_pelajaran`, `kalender_pendidikan`, `wali_kelas` | Admin, Superadmin | CRUD Siswa, Guru, Mapel, Jadwal Pelajaran, Kalender Libur, Rombel, Cetak Kartu QR Siswa |
-| `view-sistem-blok` | Sistem Blok | `SistemBlokView.tsx` | `sistem_blok` | Admin | Pengaturan periode khusus KBM non-reguler (PTS, PAS, Pesantren Kilat, Classmeeting) |
-| `view-admin-backup` | Akses Data / Backup | `AdminBackupView.tsx` | `riwayat_backup`, `presensi_guru`, `jurnal_pembelajaran` | Admin | Ekspor dan arsip tabel presensi dan jurnal ke Google Spreadsheet / file cadangan |
-| `view-admin-config` | Sistem Konfigurasi | `AdminConfigView.tsx` | `pengaturan`, `sekolah` | Admin, Superadmin | Profil sekolah, jam kerja, toleransi telat, geofence GPS, kebijakan kamera jurnal |
-| `view-informasi` | Informasi | `InformasiView.tsx` | `pengumuman`, `komentar_pengumuman` | Semua | Siaran berita, pengumuman sekolah, pin pengumuman, diskusi/komentar guru |
+| No | View ID | Label Menu Eksisting | Komponen Utama React | Tab / Sub-Menu Internal Eksisting | Entitas Database Terkait | Akses Peran |
+|:---:|---|---|---|---|---|---|
+| 1 | `view-home` | Dashboard | `HomeView.tsx` (`HomeViewGuru` / `HomeViewAdmin`) | Ringkasan 4 Langkah, Jadwal Hari Ini, Peringatan 3x Alpa | `presensi_guru`, `jurnal_pembelajaran`, `jadwal_pelajaran`, `pengumuman` | Semua Peran |
+| 2 | `view-guru-presensi` | Presensi Guru | `GuruPresensi.tsx` | Mode Datang, Mode Pulang, Pengajuan Izin/Sakit/Dinas Luar | `presensi_guru`, `pengaturan` | Guru, Kepsek |
+| 3 | `view-guru-jurnal` | Jurnal Pembelajaran | `GuruJurnal.tsx` | Form Input KBM 10 Field, Kehadiran Siswa Live, Guru Inval | `jurnal_pembelajaran`, `presensi_siswa`, `jadwal_pelajaran` | Guru, Kepsek |
+| 4 | `view-jurnal-kelas` | Jurnal Kelas | `RekapJurnalView.tsx` (`mode='kelas'`) | Filter Kelas Binaan, Kalender KBM, Riwayat Mapel | `jurnal_pembelajaran`, `data_siswa`, `data_mapel` | Wali Kelas, Admin, Kepsek, Dinas |
+| 5 | `view-guru-rekap-jurnal` | Rekap Jurnal | `RekapJurnalView.tsx` (`mode='pribadi'`) | Tabel Rekap Bulanan Pribadi, Cetak Dokumen 10 Kolom KOP | `jurnal_pembelajaran`, `pengaturan` | Guru, Kepsek |
+| 6 | `view-history` | Riwayat | `HistoryView.tsx` | Tab `'presensi'` dan Tab `'jurnal'` | `presensi_guru`, `jurnal_pembelajaran` | Guru, Kepsek |
+| 7 | `view-piket` | Modul Piket / Kelola Piket | `PiketView.tsx` | Tab: `'beranda'`, `'scan'`, `'lapor'`, `'penugasan'`, `'rekap'` | `jadwal_piket`, `penugasan_piket`, `laporan_piket`, `presensi_siswa` | Guru Piket, Admin, Kepsek |
+| 8 | `view-dokumen` | Perangkat Pembelajaran | `DokumenView.tsx` | Tab: `'matrix'`, `'syarat'`, `'list'`, `'upload'` | `bank_dokumen`, `syarat_perangkat_pembelajaran`, `data_guru` | Guru, Admin, Kepsek |
+| 9 | `view-gradebook` | Daftar Nilai | `GradebookView.tsx` | Pemilihan Kelas/Mapel/Semester, Input Nilai Formatif/Sumatif TP | `data_siswa`, `data_mapel`, `nilai_asesmen` | Guru, Admin, Kepsek |
+| 10 | `view-rapor` | Rapor | `RaporView.tsx` | Rekap Nilai Lintas Mapel, Catatan Wali Kelas, Cetak Rapor | `data_siswa`, `nilai_asesmen`, `presensi_siswa`, `catatan_rapor` | Wali Kelas, Admin, Kepsek |
+| 11 | `view-rekap-siswa` | Presensi Siswa | `RekapSiswaView.tsx` | Tab: `'gerbang'` (Gate Logs) dan Tab: `'rekap'` (Rekap Mapel) | `presensi_siswa`, `data_siswa`, `wali_kelas`, `jurnal_pembelajaran` | Wali Kelas, Admin, Kepsek, Dinas |
+| 12 | `view-admin-verif` | Verifikasi | `AdminVerifView.tsx` | Tab: `'Presensi'`, `'Jurnal'`, `'Piket'` (Filter: Menunggu/Setuju/Tolak) | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket` | Admin, Kepsek |
+| 13 | `view-admin-rekap` | Rekap Akhir | `AdminRekapView.tsx` | Tabel Kehadiran Guru, Perhitungan Jam Mengajar, Cetak KOP | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket` | Admin, Kepsek, Superadmin |
+| 14 | `view-rekap-guru` | Rekap Guru (Dinas) | `AdminRekapView.tsx` | Tabel Kehadiran Guru Sekolah Satelit (Read-Only) | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket` | Pengawas Dinas |
+| 15 | `view-analitik` | Analitik | `AnalitikView.tsx` | Grafik Ketepatan Jam Datang, Rasio Jurnal, Top 5 Guru Disiplin | `presensi_guru`, `jurnal_pembelajaran`, `laporan_piket` | Admin, Kepsek, Superadmin |
+| 16 | `view-admin-data` | Master Data | `AdminDataView.tsx` | Tab: `'Data_Siswa'`, `'Data_Guru'`, `'Data_Mapel'`, `'Kalender'`, `'Jadwal'`, `'Wali_Kelas'` | `data_siswa`, `data_guru`, `data_mapel`, `jadwal_pelajaran`, `kalender` | Admin, Superadmin |
+| 17 | `view-sistem-blok` | Sistem Blok | `SistemBlokView.tsx` | Periode Kegiatan Blok (PTS/PAS/Pesantren), Evaluasi Durasi Hari | `sistem_blok` | Admin, Superadmin |
+| 18 | `view-admin-backup` | Akses Data / Backup | `AdminBackupView.tsx` | Cadangkan Presensi/Jurnal ke Google Sheets, Arsip Data | `riwayat_backup`, `presensi_guru`, `jurnal_pembelajaran` | Admin, Superadmin |
+| 19 | `view-admin-config` | Sistem Konfigurasi | `AdminConfigView.tsx` | Profil NPSN/Logo, Jam Kerja, Geofence GPS, Kebijakan Kamera Jurnal | `pengaturan`, `sekolah` | Admin, Superadmin |
+| 20 | `view-informasi` | Informasi | `InformasiView.tsx` | Feed Siaran Berita, Pengumuman Penting, Kolom Diskusi | `pengumuman`, `komentar_pengumuman` | Semua Peran |
+| 21 | `view-dinas-overview` | Dashboard Eksekutif | `DinasDashboard.tsx` | Matriks Kepatuhan Satelit, Pemilihan Sekolah Target Binaan | `sekolah`, `presensi_guru`, `jurnal_pembelajaran` | Pengawas Dinas |
+| 22 | `view-superadmin-overview` | Ringkasan Platform | `SuperadminView.tsx` | Statistik Global Multi-Tenant, Lisensi, Total Sekolah Terhubung | `sekolah`, `users` | Superadmin |
+| 23 | `view-superadmin-jaringan` | Jaringan Sekolah | `SuperadminView.tsx` | Registri Satelit Sekolah, Status Langganan, Tenant Switcher | `sekolah` | Superadmin |
+| 24 | `view-superadmin-dinas` | Akun Dinas Pendidikan | `SuperadminView.tsx` | Manajemen Kredensial Pengawas Dinas Pendidikan Wilayah | `users` | Superadmin |
 
 ---
 
-### 3.3. Identifikasi Masalah & Titik Hambat Pengguna (User Pain Points)
+### 3.3. Audit Sub-Menu Internal & Fitur Fungsional Saling Tumpang Tindih (Internal Overlaps)
 
-Dari matriks di atas, teridentifikasi 5 masalah utama dalam arsitektur navigasi saat ini:
+Selain audit menu tingkat atas (sidebar), penelusuran terhadap tab internal komponen mengungkap sejumlah redundansi fungsi yang signifikan:
 
-1. **Fragmentasi Ekosistem Jurnal Mengajar:**
-   Aktivitas jurnal terpecah ke dalam **4 menu terpisah**:
-   - `view-guru-jurnal` untuk mengisi jurnal hari ini.
-   - `view-history` (Tab Jurnal) untuk melihat jurnal yang pernah diisi sebelumnya.
-   - `view-guru-rekap-jurnal` untuk mencetak rekap bulanan jurnal pribadi.
-   - `view-jurnal-kelas` untuk memantau jurnal guru lain di kelas binaan wali kelas.
-   *Dampak:* Guru yang ingin mengecek apakah jurnal minggu lalu sudah diverifikasi harus berpindah ke menu Riwayat, lalu jika ingin mencetak harus berpindah lagi ke menu Rekap Jurnal.
+1. **Redundansi Modul Gate Attendance & Presensi Siswa:**
+   - Komponen `PiketView.tsx` memiliki Tab `'scan'` (Kiosk QR scanner siswa datang/pulang di pintu gerbang).
+   - Komponen `RekapSiswaView.tsx` memiliki Tab `'gerbang'` (Log kedatangan gerbang per kelas dan sinkronisasi bolos).
+   - *Tumpang Tindih:* Data yang dipindai petugas piket di `PiketView` dikonsumsi oleh Wali Kelas di `RekapSiswaView`. Keduanya mengelola data kehadiran gerbang siswa yang sama namun antarmukanya terbelah di dua menu terpisah.
+2. **Duplikasi Komponen Cetak & Rekap Jurnal:**
+   - Komponen `RekapJurnalView.tsx` memiliki state internal `const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>()`.
+   - Namun sistem malah mendaftarkan dua view ID berbeda (`view-guru-rekap-jurnal` dan `view-jurnal-kelas`) yang secara independen memanggil komponen yang sama, membuang slot navigasi sidebar secara redundan.
+3. **Pemisahan Semu Pelaporan Dinas vs Admin:**
+   - Menu `view-rekap-guru` untuk Pengawas Dinas dan `view-admin-rekap` untuk Administrator/Kepsek merender komponen React yang identik (`AdminRekapView.tsx`), hanya dibedakan oleh flag `isReadOnly={isDinas}`.
+4. **Isolasi Fitur Verifikasi Dokumen dari Pusat Verifikasi:**
+   - Administrator memverifikasi perizinan, jurnal, dan laporan piket di `AdminVerifView.tsx` (Tab Presensi, Jurnal, Piket).
+   - Tetapi saat hendak menyetujui Perangkat Ajar guru (Modul Ajar/RPP), Admin harus beralih ke `DokumenView.tsx` Tab `'matrix'`, yang memiliki alur verifikasi modal dan status terpisah.
+5. **Keterpisahan Sistem Blok dari Master Kalender:**
+   - `AdminDataView.tsx` mengelola `Kalender_Pendidikan` (libur nasional dan cuti bersama).
+   - Sementara `SistemBlokView.tsx` mengelola periode KBM khusus (PTS/PAS/Ujian/Classmeeting).
+   - Secara substansi, keduanya adalah data kalender akademik sekolah yang mengatur apakah jadwal reguler berlaku atau digantikan agenda khusus.
 
-2. **Pemisahan Semu Komponen Identik (`RekapJurnalView.tsx`):**
-   Menu `view-guru-rekap-jurnal` dan `view-jurnal-kelas` sebenarnya merender komponen yang persis sama, yaitu `RekapJurnalView.tsx`, hanya dibedakan oleh properti `initialMode="pribadi"` dan `initialMode="kelas"`. 
-   *Dampak:* Mengisi slot navigasi sidebar secara ganda untuk komponen yang sejatinya memiliki tombol alih (tab toggle) di dalamnya.
+---
 
-3. **Duplikasi Domain Pelaporan Presensi Admin (`Rekap Akhir` vs `Analitik`):**
-   `AdminRekapView` dan `AnalitikView` keduanya melakukan kueri ke tabel yang sama (`presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`) dalam periode bulan berjalan. Perbedaannya hanya:
-   - `AnalitikView` menyajikan data dalam bentuk grafik, counter ringkasan, dan leaderboard.
-   - `AdminRekapView` menyajikan data dalam bentuk tabel baris per guru dengan tombol cetak resmi & ekspor Excel.
-   *Dampak:* Administrator dan Kepala Sekolah harus berganti-ganti halaman untuk melihat tren disiplin dan mencetak laporan bulanan.
+### 3.4. Identifikasi Masalah & Titik Hambat Pengguna (User Pain Points & Cognitive Overload)
 
-4. **Keterpisahan Pipeline Penilaian Kurikulum Merdeka (`Daftar Nilai` vs `Rapor`):**
-   Pendidik yang menjadi Wali Kelas harus membuka `Daftar Nilai` untuk mengisi TP per mata pelajaran, lalu keluar dan membuka menu `Rapor` untuk merangkum nilai dan mencetak rapor. Padahal formula deskripsi capaian pembelajaran (`generateKurikulumMerdekaDeskripsi`) diekspor dari file `GradebookView.tsx` dan langsung diimpor ke `RaporView.tsx`.
-   *Dampak:* Alur kerja terputus-putus (*broken workflow*) saat periode akhir semester.
-
-5. **Kelebihan Menu Tata Usaha Admin (4 Menu Konfigurasi Mandiri):**
-   Administrator dihadapkan pada 4 menu pengaturan berbeda: `Master Data`, `Sistem Blok`, `Akses Data / Backup`, dan `Sistem (Konfigurasi)`. Bahkan fitur *Sistem Blok* yang hanya berupa penentuan tanggal kegiatan khusus (PTS/PAS) berdiri sendiri sebagai menu sidebar independen tingkat atas, padahal substansinya adalah entitas *Kalender Akademik*.
-   *Dampak:* Tampilan sidebar Admin menjadi sangat panjang (15 menu), melebihi batas pandang layar laptop standar (768px) dan membutuhkan pengguliran vertikal.
+1. **Cognitive Overload (Beban Kognitif Berlebih):**
+   - Menghadirkan 12 hingga 15 menu pada sidebar melanggar prinsip ergonomi *Miller's Law* ($7 \pm 2$). Pendidik yang hendak menjalankan tugas harian sering kebingungan memilih menu karena nama-nama menu yang mirip (*Jurnal Pembelajaran*, *Jurnal Kelas*, *Rekap Jurnal*, *Riwayat*).
+2. **Fragmentasi Alur Kerja (Broken User Journeys):**
+   - **Kasus Guru Reguler:** Guru melakukan presensi di menu Presensi Guru $\rightarrow$ jika izin ditolak, guru harus membuka menu Riwayat $\rightarrow$ setelah KBM selesai, guru membuka menu Jurnal Pembelajaran $\rightarrow$ di akhir bulan untuk laporan sertifikasi, guru harus membuka menu Rekap Jurnal. Guru berpindah 4 menu berbeda untuk siklus kerja yang saling berkelanjutan.
+   - **Kasus Wali Kelas:** Wali Kelas menginput nilai di Daftar Nilai $\rightarrow$ keluar menuju menu Rapor untuk memeriksa rangkuman nilai $\rightarrow$ membuka menu Jurnal Kelas untuk melihat apakah guru mapel lain sudah mengajar $\rightarrow$ membuka Presensi Siswa untuk intervensi absensi.
+3. **Kendala Tampilan di Perangkat Bergerak (Mobile Usability):**
+   - Pada layar smartphone (viewport tinggi 640px–800px), daftar 12–15 menu sidebar meluap keluar layar, mewajibkan pengguna melakukan scroll vertikal di dalam menu navigasi kecil, menurunkan kenyamanan pengguna (*User Experience*).
 
 ---
 
 ## 4. DAFTAR KANDIDAT FITUR & MENU YANG DIUSULKAN UNTUK DIGABUNG
 
-Berikut adalah 6 klaster penggabungan fitur dan menu yang diusulkan:
+Berikut adalah rincian **7 klaster penggabungan fitur dan menu** yang disusun berdasarkan kesamaan entitas database, kedekatan fungsionalitas antarmuka, dan efisiensi alur kerja:
 
 ---
 
 ### 4.1. KLASTER 1: Konsolidasi Ekosistem Jurnal Mengajar
-> **Menu yang Diusulkan Digabung:**
+> **Kandidat Menu yang Digabung:**
 > 1. `view-guru-jurnal` (Jurnal Pembelajaran)
-> 2. `view-guru-rekap-jurnal` (Rekap Jurnal)
-> 3. `view-jurnal-kelas` (Jurnal Kelas - Wali Kelas)
-> 4. `view-history` [Sub-Tab Jurnal] (Riwayat Jurnal Guru)
+> 2. `view-guru-rekap-jurnal` (Rekap Jurnal Guru)
+> 3. `view-jurnal-kelas` (Jurnal Kelas - Pengawasan Wali Kelas)
+> 4. `view-history` [Sub-Tab Jurnal] (Log Riwayat Jurnal Guru)
 >
-> **Nama Menu Baru yang Diusulkan:**
-> 📚 **Pusat Jurnal KBM** (atau **Jurnal Pembelajaran**)
+> **Nama Menu Usulan Hasil Konsolidasi:**
+> 📚 **Pusat Jurnal KBM** (atau tetap **Jurnal Pembelajaran**)
 
 #### Analisis Alasan & Manfaat:
-- **Alasan:** Keempat fitur ini beroperasi pada entitas data tunggal: `public.jurnal_pembelajaran`. Saat ini, guru harus membuka menu berbeda untuk mengisi jurnal hari ini, memeriksa status verifikasi jurnal kemarin, dan mencetak rekap bulanan. Sementara bagi Wali Kelas, menu *Jurnal Kelas* sebenarnya hanyalah filter kelas pada entitas jurnal yang sama.
-- **Rancangan Struktur Tab Baru pada Menu "Pusat Jurnal KBM":**
-  - **Tab 1: Form Jurnal Hari Ini (`/tab=input`)**
-    Memuat formulir 10 field input harian, auto-save, mode Guru Inval, dan pendeteksi otomatis Sistem Blok (diadopsi dari `GuruJurnal.tsx`).
-  - **Tab 2: Riwayat & Rekap Jurnal Saya (`/tab=rekap-pribadi`)**
-    Menampilkan tabel riwayat jurnal guru, filter bulan/tanggal, status verifikasi admin (Disetujui/Ditolak/Menunggu), foto dokumentasi, serta tombol *Cetak Dokumen Resmi 10 Kolom* dan *Ekspor Excel* (menggabungkan `HistoryView` tab jurnal dan `RekapJurnalView` mode pribadi).
-  - **Tab 3: Supervisi Jurnal Kelas (`/tab=supervisi-kelas`)** *(Khusus Wali Kelas & Admin)*
-    Menampilkan pemantauan keterisian jurnal seluruh guru mapel pada kelas binaan (diadopsi dari `RekapJurnalView` mode kelas).
-- **Dampak Efisiensi:**
-  - Mengeliminasi **2 hingga 3 menu** dari sidebar guru dan admin sekaligus.
-  - Memudahkan guru melihat riwayat tanpa meninggalkan alur kerja pencatatan KBM.
+- **Alasan Teknis & Bisnis:** Keempat menu ini memanipulasi tabel yang sama (`public.jurnal_pembelajaran`). Memisahkan formulir input harian, log riwayat pengisian, pencetakan dokumen bulanan, dan pemantauan kelas binaan menciptakan redundansi navigasi yang parah.
+- **Rancangan Sub-Tab Terpadu:**
+  - **Sub-Tab 1: Input KBM Hari Ini (`tab=input`)**
+    Memuat formulir 10 field input jurnal KBM harian, deteksi otomatis Sistem Blok, absensi live siswa, dan mode Guru Inval (diadopsi dari `GuruJurnal.tsx`).
+  - **Sub-Tab 2: Riwayat & Rekap Saya (`tab=rekap-pribadi`)**
+    Menampilkan arsip jurnal guru, status persetujuan verifikasi Admin (Menunggu/Disetujui/Ditolak), foto kegiatan, serta tombol *Cetak Format 10 Kolom KOP* dan *Ekspor Excel* (peleburan `HistoryView` tab jurnal dan `RekapJurnalView` mode pribadi).
+  - **Sub-Tab 3: Supervisi Kelas Binaan (`tab=supervisi-kelas`)** *(Khusus Wali Kelas & Admin)*
+    Monitoring keterisian jurnal mengajar seluruh guru mapel pada kelas binaan (diadopsi dari `RekapJurnalView` mode kelas).
+- **Dampak Penggabungan:**
+  - Menghapus 2 menu mandiri dari sidebar (`view-guru-rekap-jurnal` dan `view-jurnal-kelas`).
+  - Guru dapat menginput jurnal sekaligus mencetak laporan rekap bulanan tanpa berpindah menu.
 
 ---
 
 ### 4.2. KLASTER 2: Integrasi Presensi Mandiri & Riwayat Kehadiran Guru
-> **Menu yang Diusulkan Digabung:**
+> **Kandidat Menu yang Digabung:**
 > 1. `view-guru-presensi` (Presensi Guru)
 > 2. `view-history` [Sub-Tab Presensi] (Riwayat Presensi Guru)
 >
-> **Nama Menu Baru yang Diusulkan:**
-> 🕒 **Presensi Kehadiran Guru** (atau **Presensi Guru**)
+> **Nama Menu Usulan Hasil Konsolidasi:**
+> 🕒 **Presensi Kehadiran Guru** (atau tetap **Presensi Guru**)
 
 #### Analisis Alasan & Manfaat:
-- **Alasan:** Di menu presensi saat ini (`GuruPresensi.tsx`), guru melakukan presensi datang/pulang atau mengajukan perizinan sakit/dinas luar. Namun setelah mengirim, guru tidak dapat langsung melihat status persetujuan izinnya di halaman tersebut; mereka harus berpindah ke menu `view-history` (Riwayat).
-- **Rancangan Struktur Tab Baru:**
-  - **Tab 1: Presensi Hari Ini (`/tab=live`)**
-    Kamera swafoto 1:1, validasi GPS Geofence, tombol Datang/Pulang, formulir Izin/Sakit/Dinas Luar.
-  - **Tab 2: Riwayat & Status Pengajuan (`/tab=riwayat`)**
-    Daftar log presensi sebulan terakhir, status verifikasi izin oleh admin (Disetujui / Ditolak disertai alasan penolakan), jam datang/pulang aktual, dan jumlah menit keterlambatan.
-- **Dampak Efisiensi:**
-  - **Menghilangkan sepenuhnya menu `view-history`** dari sidebar (karena Tab Jurnal pindah ke Klaster 1, dan Tab Presensi pindah ke Klaster 2).
-  - Memberikan kepastian instan kepada guru mengenai status presensi dan perizinannya.
+- **Alasan Teknis & Bisnis:** Saat ini, guru yang selesai melakukan presensi datang/pulang atau mengajukan perizinan sakit/dinas luar tidak dapat langsung melihat riwayat log atau status verifikasi izinnya di halaman presensi. Guru terpaksa pindah ke menu `view-history`.
+- **Rancangan Sub-Tab Terpadu:**
+  - **Sub-Tab 1: Presensi Hari Ini (`tab=live`)**
+    Kamera selfie portrait 4:3, geofence GPS, pilihan Hadir Sekolah / Dinas Luar, pengajuan Izin/Sakit, dan tombol Datang/Pulang.
+  - **Sub-Tab 2: Riwayat Kehadiran & Status Izin (`tab=riwayat`)**
+    Tabel log presensi bulan berjalan, jam datang/pulang aktual, menit keterlambatan, status verifikasi izin (Disetujui/Ditolak beserta catatan admin).
+- **Dampak Penggabungan:**
+  - **Mengeliminasi menu `view-history` sepenuhnya** dari sidebar aplikasi (karena tab jurnal pindah ke Klaster 1, dan tab presensi pindah ke Klaster 2).
+  - Konfirmasi status kehadiran dapat langsung dipantau di halaman yang sama.
 
 ---
 
 ### 4.3. KLASTER 3: Penyatuan Asesmen Pembelajaran & Rapor Siswa
-> **Menu yang Diusulkan Digabung:**
+> **Kandidat Menu yang Digabung:**
 > 1. `view-gradebook` (Daftar Nilai)
 > 2. `view-rapor` (Rapor Siswa - Wali Kelas)
 >
-> **Nama Menu Baru yang Diusulkan:**
+> **Nama Menu Usulan Hasil Konsolidasi:**
 > 🎓 **Asesmen & Rapor Siswa**
 
 #### Analisis Alasan & Manfaat:
-- **Alasan:** Pengisian nilai Tujuan Pembelajaran (TP) formatif/sumatif di `GradebookView` merupakan input langsung bagi cetak rapor di `RaporView`. Memisahkan kedua fitur ini menciptakan batas buatan (*artificial boundary*) yang membingungkan pendidik, terutama Wali Kelas yang mengajar mapel di kelas binaannya sendiri.
-- **Rancangan Struktur Tab Baru:**
-  - **Tab 1: Buku Nilai Mapel (Gradebook)**
-    Pemilihan Kelas, Mapel, Semester. Penentuan TP, input nilai harian formatif dan asesmen sumatif, kalkulasi otomatis predikat & narasi capaian tertinggi/terendah Kurikulum Merdeka, serta ekspor Excel per mapel.
-  - **Tab 2: Rekap Nilai & Cetak Rapor (Rapor Siswa)** *(Akses Wali Kelas & Admin)*
-    Konsolidasi nilai seluruh mata pelajaran per siswa, pengisian catatan perkembangan wali kelas, evaluasi kurikulum deep learning (mindful, meaningful, joyful), dan cetak lembar Rapor resmi (PDF/Print).
-- **Dampak Efisiensi:**
-  - Mengurangi 1 menu dari sidebar Guru Wali Kelas dan Administrator.
-  - Alur penilaian menjadi linear: **Input Nilai Mapel $\rightarrow$ Tinjau Rekap Kelas $\rightarrow$ Terbitkan Rapor**.
+- **Alasan Teknis & Bisnis:** Pengisian nilai Tujuan Pembelajaran (TP) formatif dan asesmen sumatif di `GradebookView` merupakan hulu langsung bagi pencetakan lembar rapor di `RaporView`. Fungsi kalkulasi capaian Kurikulum Merdeka (`generateKurikulumMerdekaDeskripsi`) diekspor dari file `GradebookView.tsx` dan diimpor oleh `RaporView.tsx`.
+- **Rancangan Sub-Tab Terpadu:**
+  - **Sub-Tab 1: Buku Nilai Mapel (`tab=gradebook`)**
+    Input nilai formatif/sumatif TP per kelas dan mata pelajaran, narasi capaian tertinggi/terendah otomatis, dan ekspor ledger nilai mapel.
+  - **Sub-Tab 2: Rapor Kelas Binaan (`tab=rapor`)** *(Khusus Wali Kelas & Admin)*
+    Konsolidasi nilai seluruh mata pelajaran siswa di kelas binaan, pengisian catatan perkembangan karakter/wali kelas, evaluasi deep learning, dan pencetakan Rapor resmi.
+- **Dampak Penggabungan:**
+  - Memangkas 1 menu mandiri (`view-rapor`) dari sidebar.
+  - Alur penilaian akhir semester menjadi linear: Input Nilai $\rightarrow$ Tinjau Capaian $\rightarrow$ Terbitkan Rapor.
 
 ---
 
-### 4.4. KLASTER 4: Konvergensi Laporan Kinerja & Analitik Kedisiplinan
-> **Menu yang Diusulkan Digabung:**
-> 1. `view-admin-rekap` (Rekap Akhir / Laporan Bulanan Presensi)
-> 2. `view-analitik` (Analitik Kedisiplinan & Leaderboard)
+### 4.4. KLASTER 4: Konvergensi Laporan Kinerja, Analitik Kedisiplinan & Standardisasi View Dinas
+> **Kandidat Menu yang Digabung:**
+> 1. `view-admin-rekap` (Rekap Presensi Dewan Guru)
+> 2. `view-rekap-guru` (Rekap Presensi Guru Satelit - Khusus Dinas)
+> 3. `view-analitik` (Analitik Kedisiplinan & Leaderboard)
 >
-> **Nama Menu Baru yang Diusulkan:**
+> **Nama Menu Usulan Hasil Konsolidasi:**
 > 📊 **Laporan & Analitik Kinerja**
 
 #### Analisis Alasan & Manfaat:
-- **Alasan:** `AnalitikView` dan `AdminRekapView` mengambil data dari tabel yang persis sama (`presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`) dengan filter bulan yang sama. Pemisahan keduanya memaksa Kepala Sekolah dan Administrator membuka dua menu berbeda hanya untuk melihat tren grafik kedisiplinan dan mencetak tabel absensinya.
-- **Rancangan Struktur Tab Baru:**
-  - **Tab 1: Dashboard Analitik & Leaderboard**
-    Grafik tren ketepatan waktu kedatangan guru, grafik rasio keterisian jurnal KBM, counter rekap izin/sakit/dinas luar, dan daftar *Top 5 Guru Terdisiplin Bulan Ini*.
-  - **Tab 2: Tabel Rekapitulasi Presensi**
-    Tabel tabular detail presensi seluruh guru (total hari kerja, hadir, terlambat, izin, sakit, alpa, akumulasi jam KBM riil).
-  - **Tab 3: Cetak Laporan & Ekspor**
-    Tombol cetak dokumen resmi ber-KOP sekolah dan tanda tangan Kepala Sekolah/Pengawas serta unduh Excel (.xlsx).
-- **Dampak Efisiensi:**
-  - Mengurangi 1 menu tingkat atas pada Administrator, Kepala Sekolah, dan Dinas Pendidikan.
-  - Pengambilan keputusan berbasis data menjadi terpusat (analisis visual bersanding langsung dengan data audit tabular).
+- **Alasan Teknis & Bisnis:** `AnalitikView` dan `AdminRekapView` mengeksekusi kueri agregasi ke tabel yang persis sama (`presensi_guru`, `jurnal_pembelajaran`, `laporan_piket`). Sementara `view-rekap-guru` hanyalah panggilan duplikat ke `AdminRekapView` dengan mode baca-saja (*read-only*).
+- **Rancangan Sub-Tab Terpadu:**
+  - **Sub-Tab 1: Dashboard Analitik & Leaderboard (`tab=analitik`)**
+    Visualisasi grafik tren jam kedatangan, grafik rasio keterisian jurnal, counter ketidakhadiran, dan Top 5 Guru Disiplin.
+  - **Sub-Tab 2: Tabel Rekapitulasi Presensi (`tab=tabel`)**
+    Tabel baris per guru yang memuat akumulasi hari hadir, terlambat, izin, sakit, alpa, dan total jam KBM riil.
+  - **Sub-Tab 3: Cetak Laporan Resmi & Ekspor Excel (`tab=cetak`)**
+    Pencetakan dokumen ber-KOP resmi dengan tanda tangan Kepala Sekolah/Pengawas Pembina serta ekspor .xlsx.
+- **Dampak Penggabungan:**
+  - Menghapus redundansi teknis `view-rekap-guru` dan menggabungkan 2 menu Admin/Kepsek (`view-analitik` dan `view-admin-rekap`) menjadi 1 modul eksekutif.
 
 ---
 
 ### 4.5. KLASTER 5: Rasionalisasi Konfigurasi, Kalender & Cadangan Sistem
-> **Menu yang Diusulkan Digabung:**
-> 1. `view-sistem-blok` (Manajemen Sistem Blok)
+> **Kandidat Menu yang Digabung:**
+> 1. `view-sistem-blok` (Manajemen Periode Sistem Blok)
 > 2. `view-admin-data` (Master Data Sekolah)
-> 3. `view-admin-backup` (Akses Data & Pencadangan)
+> 3. `view-admin-backup` (Akses Data / Backup)
 > 4. `view-admin-config` (Sistem Konfigurasi)
 >
-> **Rancangan Konsolidasi (Menjadi 2 Menu Terpadu):**
-> 1. 🗄️ **Master Data & Kalender Akademik**
-> 2. ⚙️ **Pengaturan Sistem & Database**
+> **Nama Menu Usulan Hasil Konsolidasi (Menjadi 2 Menu Terpadu):**
+> 1. 🗄️ **Master Data & Kalender Akademik** (`view-admin-data`)
+> 2. ⚙️ **Pengaturan Sistem & Database** (`view-admin-config`)
 
 #### Analisis Alasan & Manfaat:
-- **Alasan Masalah:** Administrator saat ini memiliki 4 menu konfigurasi yang terpisah secara artifisial:
-  - *Sistem Blok* berdiri sendiri sebagai menu tingkat atas, padahal frekuensi penggunaannya hanya terjadi 2–4 kali per tahun (saat periode ujian/kegiatan khusus) dan substansinya adalah pengaturan jadwal/kalender.
-  - *Akses Data / Backup* hanya memiliki 1 fungsi: cadangkan presensi/jurnal ke Google Spreadsheet dan bersihkan data lama.
-  - *Master Data* mengelola Siswa, Guru, Mapel, Kalender, Jadwal, Wali Kelas.
-  - *Sistem Konfigurasi* mengelola profil sekolah, jam kerja, GPS, dan akun.
-- **Rancangan Struktur 2 Menu Baru:**
-  - **Menu Baru A: "Master Data & Kalender Akademik" (`view-admin-data`)**
-    - Sub-Tab 1: Siswa & Rombel (termasuk fitur Naik Kelas Massal & Cetak QR)
-    - Sub-Tab 2: Guru & Akun Pendidik (termasuk reset password)
-    - Sub-Tab 3: Mata Pelajaran & Penugasan
+- **Alasan Teknis & Bisnis:** Administrator saat ini memiliki 4 menu sistem terpisah:
+  - *Sistem Blok* berdiri sendiri sebagai menu sidebar padahal hanya digunakan saat pergantian periode PTS/PAS/Ujian (2–4 kali per tahun) dan hakikatnya adalah penyesuaian kalender akademik.
+  - *Backup Data* hanya memiliki 1 fungsi: cadangkan presensi/jurnal ke Google Sheets dan arsip data lama.
+- **Rancangan Konsolidasi 2 Menu:**
+  - **Menu A: "Master Data & Kalender Akademik" (`view-admin-data`)**
+    - Sub-Tab 1: Siswa & Rombel (Naik Kelas Massal & Cetak QR Card)
+    - Sub-Tab 2: Guru & Akun Pendidik (termasuk Multi-Gelar & Reset Sandi)
+    - Sub-Tab 3: Mata Pelajaran & Beban Jam
     - Sub-Tab 4: Jadwal Pelajaran Mingguan
     - Sub-Tab 5: Kalender Pendidikan (Hari Libur Nasional & Khusus)
-    - Sub-Tab 6: **Sistem Blok Kegiatan** *(Pindahan dari menu mandiri `view-sistem-blok`)*
+    - Sub-Tab 6: **Periode Sistem Blok Kegiatan** *(Pindahan dari `view-sistem-blok`)*
     - Sub-Tab 7: Penetapan Wali Kelas
-  - **Menu Baru B: "Pengaturan Sistem & Database" (`view-admin-config`)**
-    - Sub-Tab 1: Profil Sekolah & KOP Surat (NPSN, Alamat, Logo, Pejabat TTD)
+  - **Menu B: "Pengaturan Sistem & Database" (`view-admin-config`)**
+    - Sub-Tab 1: Profil Sekolah & KOP Resmi (NPSN, Alamat, Logo, Pejabat TTD)
     - Sub-Tab 2: Jam Kerja & Toleransi Keterlambatan
-    - Sub-Tab 3: Geofence GPS & Radius Lokasi
+    - Sub-Tab 3: Radius Geofence GPS & Koordinat Lokasi
     - Sub-Tab 4: Kebijakan Kamera & Aturan Presensi Khusus Guru
-    - Sub-Tab 5: **Pencadangan & Integrasi Spreadsheet** *(Pindahan dari menu mandiri `view-admin-backup`)*
-- **Dampak Efisiensi:**
-  - Memangkas **2 menu penuh** dari sidebar Administrator (`view-sistem-blok` dan `view-admin-backup`).
-  - Menghilangkan fragmentasi data akademik antara Jadwal, Kalender Libur, dan Sistem Blok.
+    - Sub-Tab 5: **Pencadangan Data & Integrasi Spreadsheet** *(Pindahan dari `view-admin-backup`)*
+- **Dampak Penggabungan:**
+  - Memangkas **2 menu penuh** dari sidebar Admin (`view-sistem-blok` dan `view-admin-backup`).
+  - Menyatukan seluruh entitas kalender dan konfigurasi sistem ke wadah logis yang proporsional.
 
 ---
 
-### 4.6. KLASTER 6: Penyatuan Pusat Verifikasi Terpadu
-> **Menu yang Diusulkan Digabung:**
+### 4.6. KLASTER 6: Penyatuan Pusat Verifikasi & Supervisi Terpadu
+> **Kandidat Menu yang Digabung:**
 > 1. `view-admin-verif` (Pusat Verifikasi: Presensi, Jurnal, Piket)
-> 2. Bagian Verifikasi pada `view-dokumen` (Supervisi Perangkat Pembelajaran)
+> 2. Fitur Verifikasi Kurikulum pada `view-dokumen` (Supervisi Perangkat Ajar)
 >
-> **Nama Menu Baru yang Diusulkan:**
-> 📋 **Pusat Verifikasi & Supervisi**
+> **Nama Menu Usulan Hasil Konsolidasi:**
+> 📋 **Pusat Verifikasi & Supervisi** (`view-admin-verif`)
 
 #### Analisis Alasan & Manfaat:
-- **Alasan:** Saat ini Administrator melakukan persetujuan izin, jurnal, dan laporan piket di menu `view-admin-verif`. Namun ketika hendak memeriksa dan menyetujui Perangkat Ajar guru (RPP/Modul Ajar/CP/ATP), Administrator harus berpindah ke menu `view-dokumen` (Perangkat Pembelajaran) yang memiliki modal preview dan verifikasi tersendiri.
-- **Rancangan Tab pada "Pusat Verifikasi & Supervisi":**
-  - **Tab 1: Izin & Presensi Guru** (Verifikasi Sakit $\ge 3$ hari, Cuti $> 3$ hari, Izin Terlambat, Dinas Luar).
-  - **Tab 2: Jurnal Mengajar KBM** (Telaah dan pengesahan jurnal harian guru).
-  - **Tab 3: Laporan Piket** (Verifikasi rekap piket ketertiban & buku tamu harian).
-  - **Tab 4: Perangkat Pembelajaran** (Matriks berkas kurikulum guru, telaah berkas PDF modul ajar, tombol Setujui / Perlu Revisi dengan catatan).
-- **Dampak Efisiensi:**
-  - Seluruh tugas persetujuan pimpinan/admin terkonsolidasi dalam satu pintu (*One-Stop Approval Dashboard*).
-  - Menu `view-dokumen` bagi guru tetap berfungsi sebagai repositori berkas ajar mandiri tanpa terbebani fungsi administratif admin yang membingungkan.
+- **Alasan Teknis & Bisnis:** Administrator dan Kepala Sekolah saat ini melakukan verifikasi izin, jurnal, dan piket di `AdminVerifView`. Namun untuk memeriksa dan mengesahkan Perangkat Pembelajaran guru (Modul Ajar/CP/ATP), pimpinan harus membuka menu `view-dokumen`.
+- **Rancangan Sub-Tab Terpadu:**
+  - **Sub-Tab 1: Izin & Presensi Guru** (Verifikasi Sakit $\ge 3$ hari, Cuti $> 3$ hari, Izin Terlambat, Dinas Luar).
+  - **Sub-Tab 2: Jurnal Mengajar KBM** (Pengesahan jurnal KBM harian guru).
+  - **Sub-Tab 3: Laporan Piket** (Verifikasi rekap ketertiban gerbang & buku tamu).
+  - **Sub-Tab 4: Perangkat Pembelajaran** (Matriks berkas kurikulum guru, telaah berkas PDF modul ajar, tombol Setujui / Revisi).
+- **Dampak Penggabungan:**
+  - Pimpinan sekolah memiliki **Dashboard Persetujuan Satu Pintu (One-Stop Approval Dashboard)**.
+  - Menu `view-dokumen` murni menjadi repositori kurikulum guru tanpa terbebani panel supervisi pimpinan.
+
+---
+
+### 4.7. KLASTER 7: Harmonisasi Ekosistem Kesiswaan, Presensi Gerbang & Intervensi Wali
+> **Kandidat Menu yang Digabung:**
+> 1. `view-piket` [Tab Scan Gerbang & Buku Tamu]
+> 2. `view-rekap-siswa` [Tab Log Gerbang & Intervensi Wali]
+>
+> **Rancangan Harmonisasi Fungsional:**
+> 👥 **Pusat Presensi & Kesiswaan** (atau tetap **Presensi Siswa**)
+
+#### Analisis Alasan & Manfaat:
+- **Alasan Teknis & Bisnis:** Presensi siswa memiliki 2 titik pencatatan: gerbang sekolah oleh Guru Piket (via QR Scan) dan ruang kelas oleh Guru Mapel (via Jurnal). Wali Kelas melakukan sinkronisasi untuk mendeteksi siswa yang masuk gerbang namun bolos di kelas.
+- **Rancangan Sub-Tab Terpadu:**
+  - **Sub-Tab 1: Presensi Gerbang & Kiosk QR (`tab=gerbang`)** (Pemindaian QR siswa dan monitoring arus gerbang real-time).
+  - **Sub-Tab 2: Rekapitulasi & Intervensi Wali (`tab=rekap`)** (Tabel absensi akumulatif, deteksi bolos, dan pemicu WhatsApp ke orang tua).
+- **Dampak Penggabungan:**
+  - Mengurangi redundansi komponen antara modul Piket dan modul Presensi Siswa.
 
 ---
 
 ## 5. RANCANGAN USULAN STRUKTUR MENU BARU (PROPOSED MENU ARCHITECTURE)
 
-Dengan menerapkan konsolidasi 6 klaster di atas, berikut adalah perbandingan arsitektur navigasi baru yang jauh lebih ringkas, elegan, dan terstruktur:
+Berikut adalah cetak biru (*blueprint*) arsitektur menu baru setelah menerapkan konsolidasi 7 klaster:
 
 ---
 
-### 5.1. Struktur Baru untuk Peran Guru (Reguler & Wali Kelas)
+### 5.1. Struktur Baru untuk Peran Guru
 
 ```
-[ GURU REGULER ] -> Hanya 5 Menu (Sebelumnya 9 Menu)
+[ GURU REGULER ] -> Hanya 6 Menu (Sebelumnya 8 Menu Dasar)
 ├── 1. 🏠 Dashboard (view-home)
-├── 2. 🕒 Presensi Kehadiran (view-guru-presensi)
-│      ├── Tab: Presensi Hari Ini (Datang/Pulang/Izin)
+├── 2. 🕒 Presensi Guru (view-guru-presensi)
+│      ├── Tab: Presensi Hari Ini (Datang, Pulang, Dinas Luar, Izin)
 │      └── Tab: Riwayat Presensi & Status Pengajuan
 ├── 3. 📚 Jurnal Pembelajaran (view-guru-jurnal)
 │      ├── Tab: Input Jurnal KBM (Adaptif Sistem Blok & Inval)
-│      └── Tab: Riwayat & Rekap Jurnal Saya (Cetak & Ekspor)
+│      └── Tab: Riwayat & Rekap Jurnal Saya (Cetak 10 Kolom & Ekspor)
 ├── 4. 📁 Perangkat Pembelajaran (view-dokumen)
+│      ├── Tab: Daftar Berkas Ajar Saya
+│      └── Tab: Unggah Dokumen Baru (CP, ATP, Modul Ajar)
 ├── 5. 🎓 Asesmen & Rapor (view-gradebook)
 │      └── Tab: Buku Nilai Mapel (Formatif & Sumatif Kurikulum Merdeka)
 └── 6. 📢 Informasi Sekolah (view-informasi)
 
-[ GURU WALI KELAS & PIKET ] -> Hanya 6-7 Menu (Sebelumnya 12 Menu)
-├── 1. 🏠 Dashboard (view-home)
-├── 2. 🕒 Presensi Kehadiran (view-guru-presensi)
-├── 3. 📚 Jurnal Pembelajaran (view-guru-jurnal)
-│      ├── Tab: Input Jurnal KBM
-│      ├── Tab: Riwayat & Rekap Jurnal Saya
-│      └── Tab: Supervisi Jurnal Kelas Binaan [Khusus Wali Kelas]
-├── 4. 🛡️ Modul Piket (view-piket) [Hanya muncul saat terjadwal piket hari ini]
-├── 5. 👥 Presensi Siswa (view-rekap-siswa) [Khusus Wali Kelas]
-│      ├── Tab: Presensi Gerbang (Gate Sync & Deteksi Bolos)
-│      └── Tab: Rekap Absensi Siswa & WhatsApp Wali Murid
-├── 6. 🎓 Asesmen & Rapor (view-gradebook)
-│      ├── Tab: Buku Nilai Mapel (Input Nilai TP)
-│      └── Tab: Rapor Kelas Binaan [Khusus Wali Kelas] (Catatan & Cetak Rapor)
-└── 7. 📢 Informasi Sekolah (view-informasi)
+[ GURU WALI KELAS ] -> Hanya 7 Menu (Sebelumnya 11 Menu)
+├── Menu 1-6 Guru Reguler di atas
+└── 7. 👥 Presensi Siswa (view-rekap-siswa)
+       ├── Tab: Presensi Gerbang & Deteksi Bolos
+       └── Tab: Rekap Absensi Siswa & Notifikasi WhatsApp Wali Murid
+       *(Catatan: Rapor siswa binaan disatukan di dalam Menu 5 Tab "Rapor Kelas Binaan")*
+
+[ GURU PIKET ] -> Tambahan 1 Menu Dinamis Saat Bertugas
+└── + 🛡️ Modul Piket (view-piket) [Hanya muncul saat terjadwal piket hari ini]
+       ├── Tab: Kiosk QR Scan Gerbang Siswa
+       ├── Tab: Laporan Ketertiban & Buku Tamu
+       └── Tab: Submit Laporan Piket Harian
 ```
 
 ---
@@ -390,36 +445,37 @@ Dengan menerapkan konsolidasi 6 klaster di atas, berikut adalah perbandingan ars
 ### 5.2. Struktur Baru untuk Peran Administrator Sekolah
 
 ```
-[ ADMINISTRATOR ] -> Hanya 7 Menu (Sebelumnya 15 Menu)
+[ ADMINISTRATOR SEKOLAH ] -> Hanya 7 Menu (Sebelumnya 15 Menu, Reduksi 53.3%)
 ├── 1. 🏠 Dashboard Operasional (view-home)
 ├── 2. 📋 Pusat Verifikasi & Supervisi (view-admin-verif)
-│      ├── Tab: Izin & Presensi
-│      ├── Tab: Jurnal KBM
-│      ├── Tab: Laporan Piket
-│      └── Tab: Perangkat Pembelajaran
-├── 3. 🛡️ Kelola & Pantau Piket (view-piket)
+│      ├── Tab: Izin & Presensi Guru
+│      ├── Tab: Jurnal KBM Guru
+│      ├── Tab: Laporan Petugas Piket
+│      └── Tab: Perangkat Pembelajaran (Modul Ajar / RPP)
+├── 3. 🛡️ Kelola Modul Piket (view-piket)
 │      ├── Tab: Kiosk Presensi QR Siswa
 │      ├── Tab: Jadwal & Penugasan Guru Piket
 │      └── Tab: Rekap Ketertiban & Buku Tamu
 ├── 4. 📊 Laporan & Analitik Kinerja (view-admin-rekap)
 │      ├── Tab: Dashboard Analitik & Leaderboard Disiplin
-│      ├── Tab: Tabel Rekapitulasi Presensi Bulanan
-│      └── Tab: Cetak Dokumen Resmi & Ekspor Excel
-├── 5. 🎓 Kesiswaan & Akademik (view-rekap-siswa)
+│      ├── Tab: Tabel Rekapitulasi Presensi Bulanan Dewan Guru
+│      └── Tab: Cetak Dokumen Resmi KOP & Ekspor Excel
+├── 5. 👥 Kesiswaan & Akademik (view-rekap-siswa)
 │      ├── Tab: Presensi Siswa Seluruh Kelas
 │      ├── Tab: Supervisi Jurnal Kelas
-│      └── Tab: Supervisi Daftar Nilai & Rapor
+│      └── Tab: Supervisi Ledger Nilai & Rapor
 ├── 6. 🗄️ Master Data & Kalender (view-admin-data)
-│      ├── Tab: Siswa & Rombel (Naik Kelas Massal & Cetak QR)
-│      ├── Tab: Guru & Akun Pendidik
-│      ├── Tab: Mata Pelajaran & Jadwal KBM
-│      ├── Tab: Kalender Pendidikan (Libur Nasional)
-│      ├── Tab: Sistem Blok Kegiatan Khusus
+│      ├── Tab: Siswa & Rombel (Naik Kelas Massal & Cetak QR Card)
+│      ├── Tab: Guru & Akun Pendidik (Multi-Gelar & Akses Akun)
+│      ├── Tab: Mata Pelajaran & Jadwal KBM Mingguan
+│      ├── Tab: Kalender Pendidikan (Libur Nasional & Khusus)
+│      ├── Tab: Periode Sistem Blok Kegiatan (PTS/PAS/Ujian)
 │      └── Tab: Penetapan Wali Kelas
 └── 7. ⚙️ Pengaturan Sistem & Database (view-admin-config)
-       ├── Tab: Profil Sekolah & KOP Resmi
-       ├── Tab: Jam Kerja & Geofence GPS
-       ├── Tab: Kebijakan Kamera Jurnal & Aturan Khusus
+       ├── Tab: Profil Sekolah & KOP Surat Resmi
+       ├── Tab: Jam Kerja & Toleransi Keterlambatan
+       ├── Tab: Geofence GPS & Radius Lokasi Presensi
+       ├── Tab: Kebijakan Kamera & Aturan Presensi Khusus Guru
        └── Tab: Pencadangan Data & Sinkronisasi Spreadsheet
 ```
 
@@ -428,198 +484,226 @@ Dengan menerapkan konsolidasi 6 klaster di atas, berikut adalah perbandingan ars
 ### 5.3. Struktur Baru untuk Peran Kepala Sekolah
 
 ```
-[ KEPALA SEKOLAH ] -> Hanya 6 Menu (Sebelumnya 15 Menu)
+[ KEPALA SEKOLAH ] -> Hanya 6 Menu (Sebelumnya 13–15 Menu, Reduksi 53.8%–60%)
 ├── 1. 🏠 Dashboard Eksekutif (view-home)
 ├── 2. 📋 Pusat Supervisi & Pengesahan (view-admin-verif)
-│      ├── Tab: Verifikasi Izin & Cuti Guru
-│      ├── Tab: Verifikasi Jurnal Mengajar
-│      └── Tab: Supervisi Perangkat Pembelajaran
+│      ├── Tab: Verifikasi Izin & Cuti Dewan Guru
+│      ├── Tab: Verifikasi Jurnal Mengajar Harian
+│      ├── Tab: Pengesahan Laporan Petugas Piket
+│      └── Tab: Supervisi & Persetujuan Perangkat Pembelajaran
 ├── 3. 📊 Laporan & Analitik Sekolah (view-admin-rekap)
 │      ├── Tab: Analitik Kedisiplinan & Tren Kehadiran
 │      ├── Tab: Rekapitulasi Presensi Dewan Guru
-│      └── Tab: Cetak Laporan Resmi Yayasan/Dinas
+│      └── Tab: Cetak Laporan Resmi Yayasan / Dinas Pendidikan
 ├── 4. 👥 Monitoring Kesiswaan (view-rekap-siswa)
-│      ├── Tab: Kehadiran Siswa
-│      └── Tab: Supervisi Jurnal Kelas
-├── 5. 📚 Aktivitas Mandiri [Bila Kepsek Mengajar/Piket] (view-guru-jurnal)
+│      ├── Tab: Pemantauan Kehadiran Siswa
+│      └── Tab: Supervisi Keterisian Jurnal Kelas
+├── 5. 📚 Aktivitas Mandiri Kepsek [Bila Mengajar/Presensi] (view-guru-jurnal)
+│      ├── Tab: Presensi Mandiri Kepsek
+│      └── Tab: Jurnal KBM Kepsek (bila memiliki jam mengajar)
 └── 6. 📢 Informasi & Pengumuman (view-informasi)
 ```
 
 ---
 
-### 5.4. Struktur Baru untuk Peran Pengawas Dinas Pendidikan & Superadmin
+### 5.4. Struktur Baru untuk Peran Pengawas Dinas Pendidikan
 
-- **Dinas Pendidikan:**
-  - Menu 1: 🌐 **Dashboard Eksekutif Wilayah** (`view-dinas-overview`)
-  - Menu 2: 📊 **Laporan Terpadu Sekolah Binaan** (Sub-tab: Rekap Guru, Presensi Siswa, Jurnal Kelas)
-  - Menu 3: 📢 **Pusat Informasi & Edaran** (`view-informasi`)
-- **Superadmin Platform:**
-  - Menu 1: 🌐 **Ringkasan Platform Multi-Tenant** (`view-superadmin-overview`)
-  - Menu 2: 🏫 **Jaringan Sekolah & Lisensi** (`view-superadmin-jaringan`)
-  - Menu 3: 🏛️ **Akun Dinas Pendidikan** (`view-superadmin-dinas`)
-  - Satelit Terpilih:
-    - 🗄️ **Master Data & Sistem Satelit**
-    - 📋 **Pusat Verifikasi Satelit**
-    - 📊 **Laporan & Analitik Satelit**
+```
+[ PENGAWAS DINAS PENDIDIKAN ] -> 2 Menu Utama Terpadu
+├── 1. 🌐 Dashboard Eksekutif Wilayah (view-dinas-overview)
+└── 2. 📊 Laporan Terpadu Sekolah Satelit (view-admin-rekap)
+       ├── Sub-Tab: Rekapitulasi Presensi Dewan Guru (Read-Only)
+       ├── Sub-Tab: Presensi Siswa Satelit (Read-Only)
+       └── Sub-Tab: Supervisi Jurnal KBM Kelas (Read-Only)
+```
 
 ---
 
-### 5.5. Tabel Perbandingan Sebelum vs Sesudah (Before-After Matrix)
+### 5.5. Struktur Baru untuk Peran Superadmin Platform Multi-Tenant
 
-| Dimensi Evaluasi | Kondisi Saat Ini (As-Is) | Usulan Rekomendasi (To-Be) | Manfaat Bisnis & UX |
+```
+[ SUPERADMIN PLATFORM ] -> 3 Menu Platform + 4 Menu Satelit Terkonsolidasi
+├── 1. 🌐 Ringkasan Platform Multi-Tenant (view-superadmin-overview)
+├── 2. 🏫 Jaringan Sekolah & Lisensi (view-superadmin-jaringan)
+├── 3. 🏛️ Akun Dinas Pendidikan (view-superadmin-dinas)
+└── Saat Drilldown ke Satelit Sekolah:
+    ├── 🗄️ Master Data & Kalender Satelit (view-admin-data)
+    ├── 📋 Pusat Verifikasi Satelit (view-admin-verif)
+    ├── 📊 Laporan & Analitik Satelit (view-admin-rekap)
+    └── ⚙️ Sistem & Pengaturan Satelit (view-admin-config)
+```
+
+---
+
+### 5.6. Matriks Perbandingan Komprehensif Sebelum vs Sesudah (Before-After Matrix)
+
+| Parameter Evaluasi | Kondisi Eksisting (As-Is) | Usulan Rekomendasi (To-Be) | Manfaat Bisnis & UX |
 |---|---|---|---|
-| **Jumlah Menu Guru** | 11 – 12 Menu | **5 – 6 Menu** | **Turun 50%**, sidebar bersih, cocok untuk layar HP/tablet. |
-| **Jumlah Menu Admin** | 15 Menu | **7 Menu** | **Turun 53%**, tidak memerlukan scrollbar pada sidebar desktop. |
-| **Jumlah Menu Kepsek** | 15 Menu | **6 Menu** | **Turun 60%**, fokus pada supervisi dan analitik eksekutif. |
-| **Akses Jurnal Guru** | Tersebar di 4 menu berbeda | 1 menu terpadu (*Pusat Jurnal KBM*) | Alur kerja input, cek riwayat, dan cetak tidak berpindah menu. |
-| **Laporan & Analitik** | Terpisah di 2 menu (`view-analitik` & `view-admin-rekap`) | 1 menu terpadu (*Laporan & Analitik*) | Grafik tren dan tabel ekspor berada dalam satu pandangan. |
-| **Pengaturan Admin** | Terpencar di 4 menu terpisah | Dikelompokkan ke 2 menu logis (Master & Konfigurasi) | Menghilangkan menu mandiri yang jarang diakses (Sistem Blok & Backup). |
+| **Jumlah Menu Guru Reguler** | 8 Menu Dasar | **6 Menu** | **Turun 25%**, fokus pada siklus kerja harian. |
+| **Jumlah Menu Guru Wali Kelas** | 11 Menu | **7 Menu** | **Turun 36.4%**, penataan modul binaan yang bersih. |
+| **Jumlah Menu Administrator** | 15 Menu | **7 Menu** | **Turun 53.3%**, seluruh menu tampil pas di layar laptop tanpa scrollbar. |
+| **Jumlah Menu Kepala Sekolah** | 13 – 15 Menu | **6 Menu** | **Turun 53.8% – 60%**, orientasi pengawasan eksekutif terpusat. |
+| **Akses Jurnal Guru** | Terpecah di 4 menu berbeda | 1 menu terpadu (*Pusat Jurnal KBM*) | Input, cek status verifikasi, dan cetak bulanan dalam satu alur. |
+| **Laporan & Analitik** | Terpisah di 2 menu (`view-analitik` & `view-admin-rekap`) | 1 menu terpadu (*Laporan & Analitik*) | Grafik tren bersanding langsung dengan tabel data tabular. |
+| **Pengaturan Admin** | Terpencar di 4 menu berbeda | Dikelompokkan ke 2 menu terpadu | Menghilangkan menu mandiri yang jarang diakses (*Sistem Blok* & *Backup*). |
 | **Menu Riwayat** | Menu mandiri (`view-history`) | Melekat di masing-masing modul terkait | Presensi memiliki riwayat sendiri, Jurnal memiliki riwayat sendiri. |
-| **Penilaian & Rapor** | Dua menu terpisah (`view-gradebook` & `view-rapor`) | 1 menu terpadu (*Asesmen & Rapor*) | Alur pengisian nilai bersambung langsung ke penerbitan rapor. |
+| **Penilaian & Rapor** | Dua menu terpisah (`view-gradebook` & `view-rapor`) | 1 menu terpadu (*Asesmen & Rapor*) | Alur penilaian bersambung langsung ke penerbitan rapor. |
+| **Verifikasi Perangkat Ajar** | Di dalam `view-dokumen` | Terpusat di `view-admin-verif` | Seluruh persetujuan pimpinan berada dalam satu pintu. |
 
 ---
 
 ## 6. RANCANGAN ANTARMUKA & ALUR PENGALAMAN PENGGUNA (UX WIREFLOW)
 
-### 6.1. Pola Navigasi Sub-Tab Horizontal & Drawer Kontekstual
+### 6.1. Pola Navigasi Sub-Tab Claymorphism & Drawer Kontekstual
 
-Untuk memastikan penggabungan menu tidak menyebabkan halaman menjadi terlalu panjang (*overcrowded*), antarmuka menggunakan standar desain **Claymorphism Tab Navigation** yang sudah terbukti efektif pada komponen `DokumenView.tsx` dan `RekapSiswaView.tsx`.
+Penggabungan modul dirancang dengan menggunakan pola **Claymorphism Tab Navigation** yang sudah terbukti konsisten dan responsif pada komponen `DokumenView.tsx` dan `RekapSiswaView.tsx`.
 
-#### Desain Navigasi Tab Horizontal:
 ```
-+-------------------------------------------------------------------------+
-| [Judul Modul Terpadu]                   [Tombol Aksi Utama / Refresh]   |
-+-------------------------------------------------------------------------+
-| [ Tab 1: Input / Form ]  [ Tab 2: Riwayat & Rekap ]  [ Tab 3: Cetak ]   |  <- Clay Tabs
-+-------------------------------------------------------------------------+
-|                                                                         |
-|  Konten sub-tab aktif dimuat secara responsif                           |
-|  - Menyimpan filter dan state di dalam memori tab                       |
-|  - Tidak memuat ulang seluruh kerangka aplikasi                         |
-|                                                                         |
-+-------------------------------------------------------------------------+
++-------------------------------------------------------------------------------+
+|  SIPJAM  |  [Profil Sekolah]                      [User Avatar] [Settings]   |
++-------------------------------------------------------------------------------+
+|                                                                               |
+|  📚 PUSAT JURNAL KBM                                [Cetak Rekap] [Refresh]   |
+|  Kelola formulir harian KBM, rekapitulasi jam mengajar, dan supervisi kelas   |
+|                                                                               |
+|  +--------------------+-------------------------+--------------------------+  |
+|  |  📝 Input Jurnal   |  📑 Riwayat & Rekap Saya |  👁️ Supervisi Kelas*    |  | <- Sub-Tab Clay
+|  +--------------------+-------------------------+--------------------------+  |
+|                                                                               |
+|  [ KONTEN SUB-TAB AKTIF ]                                                     |
+|  - Menyimpan state form lokal (auto-save draft di localStorage)               |
+|  - Pergantian sub-tab tidak memicu page reload                                |
+|  - Transisi halus menggunakan CSS class "page-transition fade-in"             |
+|                                                                               |
++-------------------------------------------------------------------------------+
 ```
 
-### 6.2. Penanganan Akses Khusus (RBAC) pada Tingkat Sub-Tab
+### 6.2. Penegakan Akses Berbasis Peran (RBAC) pada Tingkat Sub-Tab
 
-Beberapa sub-tab memerlukan hak akses khusus (misalnya Wali Kelas atau Administrator). Penanganan RBAC disarankan diterapkan secara granular pada tingkat sub-tab:
-- **Sub-Tab Wali Kelas:** Jika pengguna bukan Wali Kelas atau Admin, tab *Supervisi Jurnal Kelas* atau *Rapor Kelas Binaan* otomatis **disembunyikan** dari baris tab, atau ditampilkan dengan badge gembok informatif tanpa merusak tampilan tab guru reguler.
-- **Sub-Tab Admin:** Tab pencadangan (backup) atau pengaturan sistem hanya dirender jika `isAdmin === true || isSuperadmin === true`.
+Konsolidasi menu ke dalam sub-tab tidak boleh mengorbankan keamanan data. Penegakan hak akses dilakukan secara berlapis (*defense-in-depth*):
+1. **Penyembunyian Tombol Tab di Antarmuka:**
+   - Tab *Supervisi Kelas* dan *Rapor Kelas Binaan* hanya dirender jika `isWaliKelas || isAdmin || isSuperadmin`.
+   - Tab *Cadangan Data* dan *Sistem Blok* hanya dirender jika `isAdmin || isSuperadmin`.
+2. **Komponen Pengaman Internal (Guard Clause):**
+   - Jika pengguna memanipulasi parameter URL (`?view=view-gradebook&tab=rapor`) tanpa memiliki wewenang Wali Kelas, sub-tab merender kartu penolakan akses standar SIPJAM (`Akses Terblokir`) dengan tombol *Kembali ke Dashboard*.
 
-### 6.3. Dampak terhadap Sistem Notifikasi, Tutorial Onboarding, dan AI Assistant
+### 6.3. Desain Responsif & Ergonomi Layar Seluler (Mobile Ergonomics)
 
-1. **In-App Onboarding Tour (`tutorialSteps.ts`):**
-   - Langkah tour berkurang dari 15 langkah menjadi 7 langkah yang terfokus.
-   - Pendidik baru tidak lagi merasa kewalahan (*cognitive overload*) saat pertama kali login ke SIPJAM.
-2. **Asisten AI Cerdas (`knowledgeBase.ts` & `faqMatcher.ts`):**
-   - Penyesuaian basis pengetahuan AI agar mengarahkan pengguna ke sub-tab terkait (contoh: "Untuk mencetak rekap jurnal, buka menu Jurnal Pembelajaran lalu pilih tab *Riwayat & Rekap*").
-3. **Penyelarasan URL Deep-Link:**
-   - URL parameter query mendukung struktur sub-tab:
-     - `?view=view-guru-jurnal&tab=rekap`
-     - `?view=view-guru-presensi&tab=riwayat`
-     - `?view=view-gradebook&tab=rapor`
+Pada layar smartphone (`width < 640px`):
+- Baris sub-tab horizontal otomatis mendukung geser samping (*horizontal swipeable scroll*) dengan indikator aktif yang menonjol (`active:scale-95`).
+- Tombol aksi utama (seperti *Kirim Jurnal* atau *Ambil Foto Presensi*) diposisikan pada area jangkauan jempol (*Thumb Zone*).
+- Sidebar mobile yang kini hanya memuat 6–7 menu dapat ditampilkan secara utuh tanpa terpotong batas bawah layar.
 
 ---
 
 ## 7. RENCANA TAHAPAN IMPLEMENTASI (IMPLEMENTATION ROADMAP)
 
-Untuk menjaga stabilitas sistem dan integritas data, implementasi konsolidasi menu dianjurkan dijalankan melalui 4 fase berurutan:
+Untuk menjamin transisi yang mulus tanpa mengganggu operasional sekolah yang sedang berjalan, implementasi konsolidasi menu dianjurkan dijalankan melalui 4 fase bertahap:
 
 ```
-[ FASE 1: Low-Risk UI ]
-Penyatuan Komponen Berbagi-Pakai
-├── Gabungkan view-guru-rekap-jurnal & view-jurnal-kelas ke RekapJurnalView terpadu
-└── Pindahkan Tab Riwayat Jurnal & Presensi dari HistoryView ke modul asalnya
-                      │
-                      ▼
-[ FASE 2: Medium-Risk Modules ]
-Konsolidasi Modul Serumpun
-├── Integrasikan GradebookView dan RaporView ke Asesmen & Rapor
-├── Integrasikan AnalitikView dan AdminRekapView ke Laporan Kinerja
-└── Pindahkan SistemBlokView ke dalam tab AdminDataView
-                      │
-                      ▼
-[ FASE 3: Navigation & Routing ]
-Restrukturisasi Sidebar & URL Aliasing
-├── Perbarui daftar menuItems di AppScreen.tsx & ClaySidebar.tsx
-├── Pasang redirect alias otomatis untuk query parameter lama (?view=...)
-└── Uji hak akses RBAC antar sub-tab
-                      │
-                      ▼
-[ FASE 4: Quality Assurance & Docs ]
-Pembaruan Panduan & Pengujian Menyeluruh
-├── Perbarui PANDUAN_PENGGUNA.md dan tutorialSteps.ts
-├── Jalankan E2E test suite (Playwright / Jest)
-└── Verifikasi kompatibilitas mobile screen
+[ FASE 1: Low-Risk Component Sharing ]
+├── 1. Satukan initialMode 'pribadi' dan 'kelas' pada RekapJurnalView
+└── 2. Pindahkan konten HistoryView ke sub-tab GuruPresensi dan GuruJurnal
+                         │
+                         ▼
+[ FASE 2: Medium-Risk Functional Merging ]
+├── 1. Gabungkan GradebookView dan RaporView ke dalam Asesmen & Rapor
+├── 2. Integrasikan AnalitikView dan AdminRekapView ke Laporan Kinerja
+├── 3. Sisipkan SistemBlokView ke dalam tab Kalender AdminDataView
+└── 4. Integrasikan AdminBackupView ke dalam tab AdminConfigView
+                         │
+                         ▼
+[ FASE 3: Navigation Restructuring & URL Aliasing ]
+├── 1. Perbarui array menuItems di AppScreen.tsx & ClaySidebar.tsx
+├── 2. Pasang URL Aliasing Mapper untuk backward compatibility link (?view=...)
+└── 3. Terapkan RBAC guard pada tingkat sub-tab
+                         │
+                         ▼
+[ FASE 4: Test Suite Alignment & User Documentation ]
+├── 1. Perbarui selektor data-tour di tutorialSteps.ts dan tutorialData.ts
+├── 2. Perbarui docs/PANDUAN_PENGGUNA.md dan TUTORIAL.md
+└── 3. Eksekusi full test suite (npm test) dan verifikasi build (npm run build)
 ```
 
 ---
 
-### 7.1. Tahap 1: Penggabungan Komponen Berbagi-Pakai (Low Risk)
-- **Fokus:** Menyatukan komponen yang sudah memiliki kesamaan teknis 90%+.
+### 7.1. Tahap 1: Penggabungan Komponen Berbagi-Pakai & Standardisasi View Identik (Low Risk)
+- **Fokus:** Menghapus duplikasi teknis pada komponen yang sudah memiliki kesamaan 90%+.
 - **Aksi Teknis:**
-  1. Satukan pemanggilan `RekapJurnalView` di `AppScreen.tsx` agar tidak membedakan ID view, melainkan menggunakan state internal tab `pribadi` vs `kelas`.
-  2. Bawa komponen riwayat presensi ke dalam `GuruPresensi.tsx` sebagai accordion atau sub-tab.
+  1. Hapus pembedaan view ID antara `view-guru-rekap-jurnal` dan `view-jurnal-kelas` di level sidebar; arahkan ke satu view dengan sub-tab terpadu.
+  2. Standarisasi `view-rekap-guru` (Dinas) agar menggunakan `view-admin-rekap` dengan properti `isReadOnly={true}`.
+  3. Pindahkan logika pengambilan data riwayat presensi ke dalam accordion/tab di `GuruPresensi.tsx`.
 
-### 7.2. Tahap 2: Konsolidasi Modul Fungsional Serumpun (Medium Risk)
-- **Fokus:** Menggabungkan modul dengan relasi alur data langsung.
+### 7.2. Tahap 2: Konsolidasi Modul Fungsional Serumpun Berbasis Tab (Medium Risk)
+- **Fokus:** Menggabungkan modul yang saling berkaitan dalam aliran data.
 - **Aksi Teknis:**
-  1. Pasang tab alih antara `GradebookView` dan `RaporView`. Manfaatkan import fungsi `generateKurikulumMerdekaDeskripsi` yang sudah ada.
-  2. Gabungkan visualisasi grafik `AnalitikView` ke bagian atas `AdminRekapView` dengan toggle mode tampilan (*Ringkasan Visual* vs *Tabel Lengkap*).
-  3. Sisipkan komponen `SistemBlokView` sebagai Tab ke-6 di dalam `AdminDataView.tsx`.
+  1. Hubungkan `GradebookView` dan `RaporView` dalam satu wrapper antarmuka sub-tab.
+  2. Satukan visualisasi grafik `AnalitikView` ke bagian atas `AdminRekapView` dengan toggle *Ringkasan Visual* vs *Tabel Data*.
+  3. Sematkan `SistemBlokView` sebagai Tab ke-6 di dalam `AdminDataView.tsx`.
+  4. Sematkan modul pencadangan spreadsheet `AdminBackupView` ke dalam `AdminConfigView.tsx`.
 
-### 7.3. Tahap 3: Reorganisasi Navigasi Sidebar & URL Aliasing
-- **Fokus:** Menyederhanakan daftar menu di `AppScreen.tsx` dan `ClaySidebar.tsx`.
+### 7.3. Tahap 3: Reorganisasi Navigasi Sidebar & Arsitektur URL Aliasing Transparan
+- **Fokus:** Menata ulang menu sidebar dan memastikan seluruh bookmark URL lama tetap berfungsi normal tanpa error 404.
 - **Aksi Teknis:**
-  1. Ubah array `menuItemsGuru`, `menuItemsAdmin`, dan `menuItemsKepalaSekolah` sesuai struktur baru.
-  2. Tambahkan handler *backward compatibility* pada fungsi `setCurrentView` di `AppScreen.tsx`:
-     ```ts
-     // Contoh mapping alias otomatis untuk mencegah link lama rusak:
-     const viewAliases: Record<string, { view: string; tab?: string }> = {
+  1. Ubah susunan array `menuItemsGuru`, `menuItemsAdmin`, dan `menuItemsKepalaSekolah`.
+  2. Implementasikan **URL Aliasing Router** pada fungsi `handleNavigation` dan `setCurrentView` di `AppScreen.tsx`:
+     ```typescript
+     // Mapping Aliasing Otomatis untuk Menjaga Backward Compatibility:
+     const VIEW_ALIASES: Record<string, { view: string; tab?: string }> = {
        'view-history': { view: 'view-guru-presensi', tab: 'riwayat' },
        'view-guru-rekap-jurnal': { view: 'view-guru-jurnal', tab: 'rekap' },
        'view-jurnal-kelas': { view: 'view-guru-jurnal', tab: 'supervisi' },
        'view-rapor': { view: 'view-gradebook', tab: 'rapor' },
        'view-analitik': { view: 'view-admin-rekap', tab: 'analitik' },
+       'view-rekap-guru': { view: 'view-admin-rekap', tab: 'tabel' },
        'view-sistem-blok': { view: 'view-admin-data', tab: 'blok' },
        'view-admin-backup': { view: 'view-admin-config', tab: 'backup' }
      };
      ```
 
-### 7.4. Tahap 4: Pembaruan Dokumentasi, Onboarding Tour, dan Pengujian Regresi
-- **Fokus:** Menyelaraskan panduan pengguna dan memastikan zero error.
+### 7.4. Tahap 4: Penyelarasan Sistem Tutorial, Onboarding Tour, dan Pengujian Regresi
+- **Fokus:** Menjaga integritas test suite dan keakuratan materi panduan pengguna.
 - **Aksi Teknis:**
-  1. Perbarui `PANDUAN_PENGGUNA.md` bab operasional Guru dan Admin.
-  2. Sesuaikan target selektor data-tour di `tutorialSteps.ts` dan `tutorialData.ts`.
-  3. Jalankan pengujian tipe TypeScript (`npx tsc --noEmit`) dan build sistem (`npm run build`).
+  1. Sesuaikan data `TUTORIAL_DATA` pada `src/components/Tutorial/tutorialData.ts` dan langkah tur `tutorialSteps.ts`.
+  2. Perbarui dokumen `docs/PANDUAN_PENGGUNA.md`.
+  3. Jalankan pengujian tipe TypeScript (`npx tsc --noEmit`) dan seluruh 41 test suite (`npm test`).
 
 ---
 
 ## 8. ANALISIS RISIKO TEKNIS & STRATEGI MITIGASI
 
+### 8.1. Matriks Risiko Teknis & Mitigasi
+
 | Potensi Risiko | Tingkat Risiko | Dampak Potensial | Strategi Mitigasi Teknis |
-|---|---|---|---|
-| **Peningkatan Ukuran Bundle Komponen (Bundle Size)** | Sedang | Waktu muat awal halaman menjadi sedikit lebih berat jika banyak view digabung ke satu file. | Gunakan **Next.js Dynamic Imports (`next/dynamic`)** dengan lazy loading per sub-tab, sehingga kode sub-tab hanya diunduh oleh browser saat tab tersebut diklik oleh pengguna. |
-| **URL Bookmark & Riwayat Browser Rusak** | Rendah | Pengguna yang menyimpan bookmark URL lama (misal `?view=view-rapor`) menemui halaman kosong atau error 404. | Terapkan **URL Aliasing / Redirection Mapper** di `AppScreen.tsx` yang memetakan view lama ke view baru dan sub-tab yang sesuai secara transparan. |
-| **Kebocoran Akses Wali Kelas pada Sub-Tab Terpadu** | Sedang | Guru non-wali kelas tidak sengaja membuka tab Rapor atau Supervisi Jurnal Kelas. | Terapkan proteksi RBAC berlapis: sembunyikan tombol tab di antarmuka DAN pasang guard clause (`if (!isWaliKelas) return <AccessDeniedCard />`) di dalam komponen sub-tab. |
-| **Disorientasi Pengguna Lama (User Confusion)** | Sedang | Guru atau admin terbiasa dengan posisi menu lama dan bingung mencari fitur yang dipindahkan. | 1. Tampilkan banner tooltip transisi (*"Fitur Rekap Jurnal kini menyatu di dalam menu Jurnal Pembelajaran"*).<br>2. Manfaatkan modal panduan interaktif onboarding tour yang diperbarui. |
+|---|:---:|---|---|
+| **Pembengkakan Ukuran Bundle (Bundle Size Bloat)** | Sedang | Waktu muat awal halaman menjadi lebih berat jika banyak komponen di-bundle bersamaan. | Terapkan **Next.js Dynamic Imports (`next/dynamic`)** dengan lazy loading per sub-tab sehingga kode komponen hanya diunduh saat tab diklik pengguna. |
+| **Kerusakan Bookmark & Link Eksternal** | Rendah | URL lama yang disimpan di bookmark browser atau notifikasi WhatsApp menghasilkan halaman kosong. | Terapkan **URL Aliasing Handler** di `AppScreen.tsx` yang secara otomatis mengalihkan view lama ke view baru dan sub-tab yang sesuai. |
+| **Kebocoran Hak Akses (RBAC Bypass)** | Tinggi | Guru biasa dapat mengakses tab Rapor atau Supervisi Jurnal Kelas melalui manipulasi query URL. | Terapkan proteksi ganda: sembunyikan tombol tab dari UI DAN tambahkan *guard condition* (`if (!isWaliKelas) return <AccessDeniedCard />`) di dalam komponen sub-tab. |
+| **Disorientasi Pengguna Lama (User Confusion)** | Sedang | Pengguna terbiasa dengan letak menu lama dan bingung mencari fitur yang berpindah. | Tampilkan banner petunjuk transisi (*"Menu Rekap Jurnal kini dapat diakses melalui tab Riwayat & Rekap di menu Jurnal Pembelajaran"*) selama 30 hari pertama setelah rilis. |
+
+### 8.2. Penanganan Dependensi Test Suite & Selektor `data-tour`
+
+- **Tantangan:** Test suite SIPJAM memiliki pengujian khusus seperti `tests/challenger_m2_tutorial_system.test.ts` yang memvalidasi integritas atribut `data-tour` dan array menu tutorial.
+- **Solusi Mitigasi:**
+  1. Pertahankan atribut `data-tour` lama sebagai *alias data attribute* atau pasang selektor ganda (`data-tour="view-guru-jurnal view-guru-rekap-jurnal"`).
+  2. Saat Fase 4 roadmap dieksekusi, perbarui ekspektasi jumlah menu pada test suite secara sinkron agar tidak ada tes yang patah.
 
 ---
 
 ## 9. KESIMPULAN & REKOMENDASI TINDAK LANJUT
 
 ### Kesimpulan:
-Audit terhadap aplikasi **SIPJAM** membuktikan bahwa aplikasi ini memiliki fondasi fungsional yang sangat solid dan lengkap. Namun, penambahan fitur secara bertahap telah menyebabkan menu sidebar menjadi terlalu padat (12 menu pada guru, 15 menu pada admin/kepsek) dengan sejumlah redundansi logis dan teknis.
+Audit komprehensif terhadap seluruh arsitektur navigasi, komponen antarmuka, dan aliran data aplikasi **SIPJAM** membuktikan bahwa aplikasi ini telah memiliki kekayaan fungsional yang luar biasa lengkap. Namun, penumpukan menu sidebar (hingga 12 menu pada guru dan 15 menu pada admin/kepsek) telah menciptakan beban kognitif yang tinggi dan alur kerja yang terfragmentasi.
 
-Penggabungan fitur ke dalam **6 Klaster Konsolidasi** yang direkomendasikan di dalam dokumen ini akan menghasilkan:
-1. **Penyederhanaan Antarmuka Ekstrem:** Memotong separuh jumlah menu sidebar (reduksi 44% s/d 60%) tanpa menghapus satu pun kapabilitas sistem.
-2. **Alur Kerja Pengguna yang Intuitif:** Menghubungkan fitur-fitur yang berurutan secara logis (Input $\rightarrow$ Riwayat $\rightarrow$ Rekap $\rightarrow$ Laporan).
-3. **Peningkatan Skalabilitas Kode:** Memudahkan pemeliharaan komponen, standardisasi sub-tab, serta penghematan query database yang redundan.
+Penerapan **7 Klaster Konsolidasi Menu** yang dirumuskan dalam laporan ini akan membawa manfaat strategis:
+1. **Penyederhanaan Antarmuka Maksimal:** Memangkas separuh jumlah menu sidebar (reduksi 40% hingga 60%) tanpa membuang satu pun kapabilitas sistem yang ada.
+2. **Alur Kerja Linear & Intuitif:** Menghubungkan proses input harian, evaluasi riwayat, dan penerbitan laporan dalam satu wadah fungsional terpadu.
+3. **Peningkatan Skalabilitas Kode:** Memudahkan pemeliharaan komponen antarmuka melalui standardisasi desain sistem sub-tab Claymorphism.
 
 ### Rekomendasi Tindak Lanjut:
-1. **Persetujuan Pemangku Kepentingan (Stakeholder Sign-Off):** Menggunakan dokumen laporan ini sebagai acuan diskusi tim pengembang dan perwakilan guru/administrator sekolah.
-2. **Eksekusi Bertahap Berdasarkan Roadmap:** Memulai implementasi pada Fase 1 (Klaster 1 & 2) yang memiliki risiko regresi paling rendah, diikuti oleh pengujian menyeluruh pada lingkungan staging.
-3. **Penyempurnaan Dokumentasi Pendukung:** Memperbarui materi pelatihan dan video tutorial sesuai dengan arsitektur navigasi baru hasil konsolidasi.
+1. **Review & Persetujuan Pemangku Kepentingan:** Menjadikan dokumen ini sebagai dasar kesepakatan bersama antara tim pengembang, manajemen sekolah, dan perwakilan dewan guru.
+2. **Eksekusi Bertahap Melalui Roadmap:** Memulai implementasi dari Fase 1 (Low-Risk UI) pada sprint berikutnya, dilanjutkan dengan pengujian menyeluruh di lingkungan staging.
+3. **Pembaruan Materi Panduan:** Menyesuaikan video panduan dan buku petunjuk operasional sekolah setelah arsitektur navigasi baru siap diluncurkan ke lingkungan produksi.
 
 ---
-*Dokumen Laporan Rekomendasi Konsolidasi Fitur & Menu SIPJAM — Disusun secara terstruktur untuk pengembangan arsitektur aplikasi yang lebih efisien, terintegrasi, dan ramah pengguna.*
+*Dokumen Laporan Analisis & Rekomendasi Penggabungan Fitur dan Menu SIPJAM — Disusun secara terstruktur, komprehensif, dan berbasis audit empiris kode sumber untuk pengembangan aplikasi yang efisien, modern, dan ramah pengguna.*
