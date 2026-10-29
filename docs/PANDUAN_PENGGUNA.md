@@ -42,7 +42,7 @@
 
 ---
 
-## 1. TENTANG SIPJAM
+## 1. Tentang SIPJAM
 **SIPJAM** (Sistem Informasi Presensi, Jurnal, dan Aktivitas Mengajar) adalah platform digital terpadu berbasis web (PWA - Progressive Web App) yang dirancang untuk mendigitalkan administrasi pendidik, presensi berbasis geofencing GPS, pencatatan jurnal KBM harian, pengelolaan piket, dan tata kelola sekolah Kurikulum Merdeka secara real-time, akurat, dan transparan.
 
 ### Fitur Unggulan Sistem:
@@ -54,7 +54,7 @@
 
 ---
 
-## 2. HAK AKSES DAN PERAN PENGGUNA
+## 2. Hak Akses dan Peran Pengguna
 SIPJAM membagi hak akses ke dalam 3 tingkatan peran utama:
 
 | Peran (Role) | Ruang Lingkup | Deskripsi Hak Akses |

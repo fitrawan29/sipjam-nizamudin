@@ -24,6 +24,12 @@ import {
   TutorialModal,
   TUTORIAL_DATA as BARREL_DATA
 } from '../src/components/Tutorial';
+import {
+  GURU_STEPS,
+  ADMIN_STEPS,
+  getStepsForRole
+} from '../src/components/Onboarding/tutorialSteps';
+import { getConsolidatedMenuItems } from '../src/lib/navigation';
 
 let passed = 0;
 let failed = 0;
@@ -54,9 +60,9 @@ const guruMenus = TUTORIAL_DATA.filter(item => item.role === 'guru');
 const adminMenus = TUTORIAL_DATA.filter(item => item.role === 'admin');
 const superadminMenus = TUTORIAL_DATA.filter(item => item.role === 'superadmin');
 
-assert(guruMenus.length === 11, `Guru menus count is exactly 11 (got ${guruMenus.length})`);
+assert(guruMenus.length === 12, `Guru menus count is exactly 12 (got ${guruMenus.length})`);
 assert(adminMenus.length === 14, `Admin menus count is exactly 14 (got ${adminMenus.length})`);
-assert(superadminMenus.length === 3, `Superadmin menus count is exactly 3 (got ${superadminMenus.length})`);
+assert(superadminMenus.length === 2, `Superadmin menus count is exactly 2 (got ${superadminMenus.length})`);
 assert(
   guruMenus.length + adminMenus.length + superadminMenus.length === 28,
   'Sum of guru + admin + superadmin matches total 28 menus exactly'
@@ -92,11 +98,11 @@ assert(allFieldsValid, 'All 28 tutorial items contain valid id, viewId, title, i
 const expectedGuruIds = [
   'guru-dashboard', 'guru-presensi', 'guru-jurnal', 'guru-jurnal-kelas',
   'guru-piket', 'guru-dokumen', 'guru-gradebook', 'guru-informasi',
-  'guru-history', 'guru-rekap-jurnal', 'guru-rekap-siswa'
+  'guru-history', 'guru-rekap-jurnal', 'guru-rekap-siswa', 'guru-rapor'
 ];
 const actualGuruIds = guruMenus.map(m => m.id);
 const hasAllGuruIds = expectedGuruIds.every(id => actualGuruIds.includes(id));
-assert(hasAllGuruIds, 'Contains all 11 required Guru menu IDs');
+assert(hasAllGuruIds, 'Contains all 12 required Guru menu IDs');
 
 const expectedAdminIds = [
   'admin-dashboard', 'admin-verif', 'admin-sistem-blok', 'admin-jurnal-kelas',
@@ -108,10 +114,10 @@ const actualAdminIds = adminMenus.map(m => m.id);
 const hasAllAdminIds = expectedAdminIds.every(id => actualAdminIds.includes(id));
 assert(hasAllAdminIds, 'Contains all 14 required Admin menu IDs');
 
-const expectedSuperadminIds = ['superadmin-overview', 'superadmin-sekolah', 'superadmin-admins'];
+const expectedSuperadminIds = ['superadmin-overview', 'superadmin-jaringan'];
 const actualSuperadminIds = superadminMenus.map(m => m.id);
 const hasAllSuperadminIds = expectedSuperadminIds.every(id => actualSuperadminIds.includes(id));
-assert(hasAllSuperadminIds, 'Contains all 3 required Superadmin menu IDs');
+assert(hasAllSuperadminIds, 'Contains all 2 required Superadmin menu IDs');
 
 // ====================================================================
 // SECTION 2: getTutorialsByRole FUNCTION TESTS
@@ -121,18 +127,18 @@ console.log('\n--- Section 2: getTutorialsByRole Function & Robustness ---');
 assert(getTutorialsByRole().length === 28, 'getTutorialsByRole() with no argument returns 28 items');
 assert(getTutorialsByRole('semua').length === 28, 'getTutorialsByRole("semua") returns 28 items');
 assert(getTutorialsByRole('all').length === 28, 'getTutorialsByRole("all") returns 28 items');
-assert(getTutorialsByRole('guru').length === 11, 'getTutorialsByRole("guru") returns 11 items');
+assert(getTutorialsByRole('guru').length === 12, 'getTutorialsByRole("guru") returns 12 items');
 assert(getTutorialsByRole('admin').length === 14, 'getTutorialsByRole("admin") returns 14 items');
-assert(getTutorialsByRole('superadmin').length === 3, 'getTutorialsByRole("superadmin") returns 3 items');
+assert(getTutorialsByRole('superadmin').length === 2, 'getTutorialsByRole("superadmin") returns 2 items');
 
 // Case insensitivity and whitespace handling
-assert(getTutorialsByRole('GURU').length === 11, 'getTutorialsByRole("GURU") case-insensitive returns 11 items');
+assert(getTutorialsByRole('GURU').length === 12, 'getTutorialsByRole("GURU") case-insensitive returns 12 items');
 assert(getTutorialsByRole(' Admin ').length === 14, 'getTutorialsByRole(" Admin ") trimmed returns 14 items');
-assert(getTutorialsByRole('SuperAdmin').length === 3, 'getTutorialsByRole("SuperAdmin") returns 3 items');
+assert(getTutorialsByRole('SuperAdmin').length === 2, 'getTutorialsByRole("SuperAdmin") returns 2 items');
 
 // Fallback behavior on invalid role
 const fallbackResult = getTutorialsByRole('unknown-role');
-assert(fallbackResult.length === 11, 'getTutorialsByRole("unknown-role") safely falls back to guru (11 items)');
+assert(fallbackResult.length === 12, 'getTutorialsByRole("unknown-role") safely falls back to guru (12 items)');
 
 // ====================================================================
 // SECTION 3: searchTutorials FUNCTION TESTS
@@ -323,6 +329,88 @@ assert(tutorialMdContent.includes('TABEL MENU DAN HAK AKSES PERAN'), 'TUTORIAL.m
 assert(tutorialMdContent.includes('ROLE GURU'), 'TUTORIAL.md contains Guru operational guide');
 assert(tutorialMdContent.includes('ROLE ADMINISTRATOR'), 'TUTORIAL.md contains Administrator operational guide');
 assert(tutorialMdContent.includes('ROLE SUPERADMIN'), 'TUTORIAL.md contains Superadmin operational guide');
+
+// ====================================================================
+// SECTION 7: ONBOARDING TUTORIAL & CLAYTABS SUB-TAB ALIGNMENT (R1 & R2)
+// ====================================================================
+console.log('\n--- Section 7: Onboarding Tutorial, ClayTabs & Sub-Tab Navigation ---');
+
+assert(Array.isArray(GURU_STEPS), 'GURU_STEPS is an array');
+assert(GURU_STEPS.length >= 6, `GURU_STEPS contains at least 6 steps (got ${GURU_STEPS.length})`);
+assert(Array.isArray(ADMIN_STEPS), 'ADMIN_STEPS is an array');
+assert(ADMIN_STEPS.length >= 6, `ADMIN_STEPS contains at least 6 steps (got ${ADMIN_STEPS.length})`);
+
+// Verify TourStep fields and sub-tab pointers for Guru
+let allGuruStepsValid = true;
+for (const step of GURU_STEPS) {
+  const hasId = typeof step.id === 'string' && step.id.startsWith('guru-step-');
+  const hasTarget = typeof step.targetTourId === 'string' && step.targetTourId.length > 0;
+  const hasTitle = typeof step.title === 'string' && step.title.length > 0;
+  const hasDesc = typeof step.description === 'string' && step.description.length > 0;
+  if (!hasId || !hasTarget || !hasTitle || !hasDesc) allGuruStepsValid = false;
+}
+assert(allGuruStepsValid, 'All Guru tour steps have valid id, targetTourId, title, and description');
+
+// Verify TourStep fields and sub-tab pointers for Admin
+let allAdminStepsValid = true;
+for (const step of ADMIN_STEPS) {
+  const hasId = typeof step.id === 'string' && step.id.startsWith('admin-step-');
+  const hasTarget = typeof step.targetTourId === 'string' && step.targetTourId.length > 0;
+  const hasTitle = typeof step.title === 'string' && step.title.length > 0;
+  const hasDesc = typeof step.description === 'string' && step.description.length > 0;
+  if (!hasId || !hasTarget || !hasTitle || !hasDesc) allAdminStepsValid = false;
+}
+assert(allAdminStepsValid, 'All Admin tour steps have valid id, targetTourId, title, and description');
+
+// Verify sub-tab metadata on consolidated modules
+const presensiStep = GURU_STEPS.find(s => s.id === 'guru-step-2-presensi');
+assert(Boolean(presensiStep?.subTabs && presensiStep.subTabs.includes('Presensi Hari Ini')), 'Presensi step includes consolidated subTabs metadata');
+assert(presensiStep?.targetSubTabId === 'live', 'Presensi step has targetSubTabId = live');
+
+const jurnalStep = GURU_STEPS.find(s => s.id === 'guru-step-3-jurnal');
+assert(Boolean(jurnalStep?.subTabs && jurnalStep.subTabs.includes('Input Jurnal KBM')), 'Jurnal step includes consolidated subTabs metadata');
+assert(jurnalStep?.targetSubTabId === 'input', 'Jurnal step has targetSubTabId = input');
+
+const raporStep = GURU_STEPS.find(s => s.id === 'guru-step-6-rapor');
+assert(Boolean(raporStep?.subTabs && raporStep.subTabs.includes('Rapor Kelas Binaan (Wali Kelas)')), 'Rapor step documents consolidated subTabs metadata');
+assert(raporStep?.targetSubTabId === 'rapor', 'Rapor step has targetSubTabId = rapor');
+
+const verifStep = ADMIN_STEPS.find(s => s.id === 'admin-step-1-verif');
+assert(Boolean(verifStep?.subTabs && verifStep.subTabs.includes('Izin & Presensi Guru')), 'Admin Verifikasi step includes subTabs metadata');
+
+const masterDataStep = ADMIN_STEPS.find(s => s.id === 'admin-step-3-master-data');
+assert(Boolean(masterDataStep?.subTabs && masterDataStep.subTabs.includes('Siswa & Rombel')), 'Admin Master Data step includes subTabs metadata');
+
+const analitikStep = ADMIN_STEPS.find(s => s.id === 'admin-step-4-analitik');
+assert(Boolean(analitikStep?.subTabs && analitikStep.subTabs.includes('Analitik & Leaderboard')), 'Admin Analitik step includes subTabs metadata');
+
+// Verify targetTourId resolution with consolidated menus
+const guruConsolidated = getConsolidatedMenuItems({ role: 'guru', isWaliKelas: true, isPiketHariIni: true });
+const adminConsolidated = getConsolidatedMenuItems({ role: 'admin' });
+
+for (const step of GURU_STEPS) {
+  if (step.targetTourId === 'hamburger-btn' || step.targetTourId === 'ai-assistant-btn') continue;
+  const match = guruConsolidated.some(item => {
+    const tokens = ((item.dataTour || item.id) + ' ' + item.id).split(/\s+/);
+    return tokens.includes(step.targetTourId);
+  });
+  assert(match, `Guru step ${step.id} target ${step.targetTourId} maps to consolidated menu`);
+}
+
+for (const step of ADMIN_STEPS) {
+  if (step.targetTourId === 'hamburger-btn' || step.targetTourId === 'ai-assistant-btn') continue;
+  const match = adminConsolidated.some(item => {
+    const tokens = ((item.dataTour || item.id) + ' ' + item.id).split(/\s+/);
+    return tokens.includes(step.targetTourId);
+  });
+  assert(match, `Admin step ${step.id} target ${step.targetTourId} maps to consolidated menu`);
+}
+
+// Verify OnboardingTutorial component source contains sub-tab pointer and compound data-tour support
+const onboardingSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/Onboarding/OnboardingTutorial.tsx'), 'utf8');
+assert(onboardingSource.includes('[data-tour~='), 'OnboardingTutorial uses word-matching selector [data-tour~=]');
+assert(onboardingSource.includes('subtab-pointer') || onboardingSource.includes('Sub-Tab Terpadu (ClayTabs)'), 'OnboardingTutorial renders ClayTabs sub-tab pointer/indicator');
+assert(onboardingSource.includes('currentStep.subTabs'), 'OnboardingTutorial handles currentStep.subTabs in tooltip card');
 
 // ====================================================================
 // SUMMARY & EXIT CODE

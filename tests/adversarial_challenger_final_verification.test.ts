@@ -228,10 +228,10 @@ guruSim.setIsOpen(true);
 assert(guruSim.currentStepIndex === 0, 'Guru tour starts at step index 0');
 
 // Advance through all steps
-for (let i = 0; i < 4; i++) {
+for (let i = 0; i < GURU_STEPS.length - 1; i++) {
   guruSim.next();
 }
-assert(guruSim.currentStepIndex === 4, 'Guru reaches last step (index 4)');
+assert(guruSim.currentStepIndex === GURU_STEPS.length - 1, `Guru reaches last step (index ${GURU_STEPS.length - 1})`);
 // Complete tour
 guruSim.next(); // triggers complete()
 assert(guruSim.isOpen === false, 'Guru tour is closed after completion');
@@ -310,7 +310,7 @@ const guruRender = renderToString(
     onComplete: () => {},
   })
 );
-assert(guruRender.includes('Langkah 1 dari 5'), 'Guru initial render starts at Langkah 1 dari 5');
+assert(guruRender.includes(`Langkah 1 dari ${GURU_STEPS.length}`), `Guru initial render starts at Langkah 1 dari ${GURU_STEPS.length}`);
 assert(guruRender.includes('Menu Navigasi'), 'Guru initial render displays Menu Navigasi');
 assert(guruRender.includes(GURU_STEPS[0].description), 'Guru step 1 text is present');
 

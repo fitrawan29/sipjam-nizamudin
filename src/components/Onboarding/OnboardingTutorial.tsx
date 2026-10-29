@@ -54,7 +54,12 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
     }
 
     const selector = '[data-tour~="' + currentStep.targetTourId + '"], [data-tour="' + currentStep.targetTourId + '"]';
-    const element = document.querySelector(selector);
+    let element = document.querySelector(selector);
+
+    if (!element && currentStep.targetSubTabId) {
+      const subSelector = '[data-tour~="' + currentStep.targetSubTabId + '"], [data-tour="' + currentStep.targetSubTabId + '"], #tab-' + currentStep.targetSubTabId;
+      element = document.querySelector(subSelector);
+    }
 
     if (element) {
       try {
@@ -362,7 +367,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         </div>
 
         {/* Title and Description */}
-        <div className="mb-4">
+        <div className="mb-3">
           <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
             {currentStep.title}
           </h4>
@@ -370,6 +375,41 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
             {currentStep.description}
           </p>
         </div>
+
+        {/* Consolidated Sub-Tabs Indicator (ClayTabs Pointer) */}
+        {currentStep.subTabs && currentStep.subTabs.length > 0 && (
+          <div data-testid="subtab-pointer" className="mb-4 pt-2.5 border-t border-amber-100 dark:border-amber-900/40">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                <i className="fa-solid fa-layer-group text-xs text-emerald-600 dark:text-emerald-400"></i>
+                <span>Sub-Tab Terpadu (ClayTabs):</span>
+              </span>
+              {currentStep.activeSubTab && (
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                  Fokus: <strong className="font-bold">{currentStep.activeSubTab}</strong>
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {currentStep.subTabs.map((tab, idx) => {
+                const isActive = currentStep.activeSubTab === tab;
+                return (
+                  <span
+                    key={idx}
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
+                      isActive
+                        ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600 shadow-xs'
+                        : 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700'
+                    }`}
+                  >
+                    <i className={`fa-solid ${isActive ? 'fa-circle-dot text-emerald-600 dark:text-emerald-400' : 'fa-circle text-gray-400 dark:text-gray-600'} text-[7px]`}></i>
+                    {tab}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Bottom Actions: Skip, Previous, Next / Finish */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">

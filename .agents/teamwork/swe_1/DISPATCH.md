@@ -1,17 +1,23 @@
-## 2026-09-25T15:51:07Z
+## 2026-10-29T21:38:09Z
 
-You are the SWE Light Orchestrator (teamwork_preview_swe).
+This is a single self-contained fix; keep it small and focused. Sesuaikan sistem panduan/tutorial onboarding di sipjam-app agar selaras dengan struktur menu baru dan sub-tab terpadu (ClayTabs) hasil konsolidasi fitur di docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md.
 
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
 
-Read the user request from: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically the section under ## 2026-09-25T15:49:46Z).
+## Requirements
 
-Requirements summary:
-- R1. Non-Intrusive Notifications: Replace generic blocking Swal.fire calls for success, info, and validation errors with non-intrusive Toast notifications (e.g. react-hot-toast or similar) across the application (especially in GuruPresensi.tsx). Critical alerts (like confirmation to delete) may still use modals.
-- R2. Preserving Form State: In GuruPresensi.tsx, prevent automatic deletion of user's uploaded photo/selfie when toggling between attendance types (tipeAbsen or jenisPresensi). If state must be cleared, implement a confirmation warning first.
-- R3. Mobile-Responsive Tables: Refactor data-heavy tables in AdminDataView.tsx, PiketView.tsx, and GradebookView to be mobile-friendly (wrap in horizontally scrollable containers or stacked Card layout on small screens).
+### R1. Penyesuaian Panduan Onboarding
+Sesuaikan sistem panduan/tutorial onboarding (`src/components/Onboarding/OnboardingTutorial.tsx`), langkah-langkah tur panduan, target selektor elemen (data-tour), narasi bantuan, dan alur penunjuk sub-tab agar sepenuhnya selaras dengan struktur menu dan sub-tab baru untuk seluruh peran pengguna yang didukung.
 
-Follow GEMINI.md git workflow rules (git status, git add ., git commit, git push).
-Maintain progress.md and BRIEFING.md in your working directory.
-When complete, write your handoff.md and send a completion message back with the handoff path and summary.
+### R2. Penyelarasan Pengujian Tutorial
+Sesuaikan pengujian terkait tutorial di `tests/challenger_m2_tutorial_system.test.ts` agar mencerminkan selektor dan alur tutorial yang baru, serta pastikan seluruh test suite tutorial lulus 100%.
+
+## Acceptance Criteria
+
+### Penyelarasan Tutorial
+- [ ] Langkah-langkah tur, selektor elemen (data-tour), dan penunjuk sub-tab pada `src/components/Onboarding/OnboardingTutorial.tsx` mengarah ke elemen antarmuka dan sub-tab yang valid sesuai struktur menu baru.
+- [ ] Narasi bantuan dan petunjuk alur tutorial mencerminkan navigasi dan pengelompokan sub-tab yang telah dikonsolidasikan.
+
+### Pengujian & Verifikasi
+- [ ] Pengujian pada `tests/challenger_m2_tutorial_system.test.ts` lulus 100% tanpa kegagalan.
+- [ ] TypeScript check (`npx tsc --noEmit`) berjalan sukses dengan nol error.

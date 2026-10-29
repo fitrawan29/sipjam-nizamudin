@@ -1,30 +1,21 @@
-Implement the comprehensive consolidation of features and menus across all roles in sipjam-app according to the design and recommendations in docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md, while ensuring zero feature loss.
+This is a single self-contained fix; keep it small and focused. Sesuaikan sistem panduan/tutorial onboarding di sipjam-app agar selaras dengan struktur menu baru dan sub-tab terpadu (ClayTabs) hasil konsolidasi fitur di docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md.
 
 Integrity mode: development
 
 ## Requirements
 
-### R1. Comprehensive Feature and Menu Consolidation
-Consolidate all 7 feature clusters across all user roles (Guru Reguler, Wali Kelas, Guru Piket, Administrator, Kepala Sekolah, Pengawas Dinas, and Superadmin) as specified in docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md, streamlining sidebar navigation, eliminating duplicate view rendering, and grouping related workflows into cohesive sub-tabs.
+### R1. Penyesuaian Panduan Onboarding
+Sesuaikan sistem panduan/tutorial onboarding (`src/components/Onboarding/OnboardingTutorial.tsx`), langkah-langkah tur panduan, target selektor elemen (data-tour), narasi bantuan, dan alur penunjuk sub-tab agar sepenuhnya selaras dengan struktur menu dan sub-tab baru untuk seluruh peran pengguna yang didukung.
 
-### R2. Zero Feature Loss Guarantee
-Ensure all existing functionalities, forms, modals, action buttons, filters, exports, validations, and role-specific workflows across every user role remain 100% intact, fully accessible, and operative with zero regression.
-
-### R3. Transparent Backward Compatibility and Aliasing
-Provide transparent aliasing or route/view redirection for legacy view IDs and automated tour selectors (data-tour) so that existing links, bookmarks, and automated test selectors continue to function correctly alongside the consolidated sub-tab structure.
+### R2. Penyelarasan Pengujian Tutorial
+Sesuaikan pengujian terkait tutorial di `tests/challenger_m2_tutorial_system.test.ts` agar mencerminkan selektor dan alur tutorial yang baru, serta pastikan seluruh test suite tutorial lulus 100%.
 
 ## Acceptance Criteria
 
-### Menu Consolidation & Role Navigation
-- [ ] All 7 clusters described in docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md are consolidated into their target menu structure for each role (Guru Reguler, Wali Kelas, Guru Piket, Administrator, Kepala Sekolah, Pengawas Dinas, and Superadmin).
-- [ ] Redundant top-level menu items are grouped into cohesive sub-tab views as specified in the recommendation document.
+### Penyelarasan Tutorial
+- [ ] Langkah-langkah tur, selektor elemen (data-tour), dan penunjuk sub-tab pada `src/components/Onboarding/OnboardingTutorial.tsx` mengarah ke elemen antarmuka dan sub-tab yang valid sesuai struktur menu baru.
+- [ ] Narasi bantuan dan petunjuk alur tutorial mencerminkan navigasi dan pengelompokan sub-tab yang telah dikonsolidasikan.
 
-### Zero Feature Loss & Backward Compatibility
-- [ ] All role-specific forms, modals, tables, actions, and features remain present and functional.
-- [ ] Legacy view IDs and data-tour selectors resolve or alias seamlessly to their corresponding views or sub-tabs without breaking existing references.
-
-### Code Integrity & Verification
-- [ ] TypeScript compilation (npx tsc --noEmit) completes with zero errors.
-- [ ] Next.js production build (npm run build) completes successfully.
-- [ ] Existing automated test suites (npm test) pass without failures.
-- [ ] Regression tests covering the consolidated navigation and view transitions pass.
+### Pengujian & Verifikasi
+- [ ] Pengujian pada `tests/challenger_m2_tutorial_system.test.ts` lulus 100% tanpa kegagalan.
+- [ ] TypeScript check (`npx tsc --noEmit`) berjalan sukses dengan nol error.
