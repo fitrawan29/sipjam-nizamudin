@@ -5,8 +5,29 @@ import { supabase } from '@/lib/supabaseClient';
 import { formatTimestampWita } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 
-export default function HistoryView({ user }: { user: any }) {
-  const [activeTab, setActiveTab] = useState<'presensi'|'jurnal'>('presensi');
+export interface HistoryViewProps {
+  user: any;
+  initialTab?: 'presensi' | 'jurnal';
+  onlyTab?: 'presensi' | 'jurnal';
+  hideTabSwitch?: boolean;
+  hideSectionWrapper?: boolean;
+}
+
+export default function HistoryView({
+  user,
+  initialTab = 'presensi',
+  onlyTab,
+  hideTabSwitch = false,
+  hideSectionWrapper = false
+}: HistoryViewProps) {
+  const effectiveTab = onlyTab || initialTab;
+  const [activeTab, setActiveTab] = useState<'presensi'|'jurnal'>(effectiveTab);
+
+  useEffect(() => {
+    if (onlyTab && onlyTab !== activeTab) {
+      setActiveTab(onlyTab);
+    }
+  }, [onlyTab]);
   const [search, setSearch] = useState('');
   const [dataList, setDataList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,8 +93,13 @@ export default function HistoryView({ user }: { user: any }) {
   const paginatedData = filteredData.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
 
+  const Wrapper = hideSectionWrapper ? 'div' : 'section';
+  const wrapperProps = hideSectionWrapper 
+    ? { className: 'fade-in' } 
+    : { id: 'view-history', className: 'view-section fade-in' };
+
   return (
-    <section id="view-history" className="view-section fade-in">
+    <Wrapper {...wrapperProps}>
         <div className="glass-card p-4">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -83,7 +109,8 @@ export default function HistoryView({ user }: { user: any }) {
                   <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                 </button>
             </div>
-            <div className="flex gap-2 mb-4">
+            {!hideTabSwitch && (
+              <div className="flex gap-2 mb-4">
                 <button 
                   type="button" 
                   onClick={() => { setActiveTab('presensi'); setPage(0); setDataList([]); }} 
@@ -98,7 +125,8 @@ export default function HistoryView({ user }: { user: any }) {
                 >
                   Jurnal
                 </button>
-            </div>
+              </div>
+            )}
             <div className="relative mb-4 flex items-center gap-2">
                 <div className="relative flex-1">
                   <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-white/70 text-xs"></i>
@@ -269,6 +297,6 @@ export default function HistoryView({ user }: { user: any }) {
                 </div>
             </div>
         </div>
-    </section>
+    </Wrapper>
   );
 }

@@ -70,8 +70,30 @@ function isTestGuruName(nama?: string | null): boolean {
   );
 }
 
-export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly: _isReadOnly }: { user: any; isKepalaSekolah?: boolean; isReadOnly?: boolean }) {
-    const [bulan, setBulan] = useState(() => {
+export interface AdminRekapViewProps {
+  user: any;
+  isKepalaSekolah?: boolean;
+  isReadOnly?: boolean;
+  targetSchool?: any;
+  initialTab?: string;
+}
+
+export default function AdminRekapView({
+  user,
+  isKepalaSekolah,
+  isReadOnly = false,
+  targetSchool,
+  initialTab = 'tabel'
+}: AdminRekapViewProps) {
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });
   const [startDate, setStartDate] = useState('');
@@ -306,6 +328,12 @@ export default function AdminRekapView({ user, isKepalaSekolah, isReadOnly: _isR
                 <span>Dicetak Oleh: <strong>{user?.nama || 'Administrator'}</strong></span>
               </div>
             </div>
+            {isReadOnly && (
+              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2 no-print">
+                <i className="fa-solid fa-eye text-blue-600 dark:text-blue-400"></i>
+                <span><strong>Mode Pratinjau Pengawas (Hanya Lihat):</strong> Anda melihat rekap data dalam mode baca khusus Dinas Pendidikan.</span>
+              </div>
+            )}
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
               <i className="fa-solid fa-file-invoice text-blue-500 dark:text-blue-400 text-base"></i> Rekapitulasi Akhir
             </h2>

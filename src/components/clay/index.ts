@@ -6,3 +6,6 @@ export type { ClayButtonProps, ClayButtonVariant, ClayButtonSize } from '../Clay
 
 export { ClaySidebar } from '../ClaySidebar';
 export type { ClaySidebarProps, MenuItem } from '../ClaySidebar';
+
+export { ClayTabs, getNextTabId } from '../ClayTabs';
+export type { ClayTabsProps, TabItem, ClayTabsVariant, ClayTabsSize } from '../ClayTabs';

@@ -10,8 +10,39 @@ import { getWitaTimestamp, getWitaDayName, getWitaDateStr } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 import { AppUser } from '@/types/user';
+import ClayTabs, { TabItem } from '@/components/ClayTabs';
+import HistoryView from '@/components/HistoryView';
 
-export default function GuruPresensi({ user }: { user: AppUser }) {
+export interface GuruPresensiProps {
+  user: AppUser;
+  initialTab?: 'live' | 'riwayat';
+  onTabChange?: (tab: string) => void;
+}
+
+export default function GuruPresensi({
+  user,
+  initialTab = 'live',
+  onTabChange
+}: GuruPresensiProps) {
+  const [activeTab, setActiveTab] = useState<'live' | 'riwayat'>(initialTab);
+
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const handleTabChange = (newTabId: string) => {
+    const targetTab = newTabId as 'live' | 'riwayat';
+    setActiveTab(targetTab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', targetTab);
+      window.history.replaceState(null, '', url.toString());
+    }
+    if (onTabChange) onTabChange(targetTab);
+  };
+
   const isMountedRef = useRef(true);
   const isSwitchingRef = useRef(false);
 
@@ -649,8 +680,48 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
   // supporting all 4 state transitions ("Hadir di Sekolah" <-> "Dinas Luar").
   const isJenisDropdownDisabled = false;
 
+  const tabItems: TabItem[] = [
+    {
+      id: 'live',
+      label: 'Presensi Hari Ini',
+      icon: 'fa-right-to-bracket',
+      badge: dailyState?.presensiDatang ? (dailyState.presensiPulang ? 'Selesai' : 'Pulang') : 'Datang',
+      badgeVariant: dailyState?.presensiDatang ? 'mint' : 'amber',
+    },
+    {
+      id: 'riwayat',
+      label: 'Riwayat Kehadiran & Status Izin',
+      icon: 'fa-clock-rotate-left',
+    },
+  ];
+
   return (
-    <section id="view-guru-presensi" className="view-section fade-in">
+    <section id="view-guru-presensi" className="view-section fade-in max-w-4xl mx-auto space-y-4">
+      {/* Sub-Navigasi ClayTabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 no-print">
+        <div>
+          <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <i className="fa-solid fa-clock-user text-emerald-600 dark:text-emerald-400"></i>
+            <span>Presensi Kehadiran Guru</span>
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Pencatatan jam kerja, deteksi geofence GPS, dan pemantauan riwayat kehadiran
+          </p>
+        </div>
+        <ClayTabs
+          items={tabItems}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
+      </div>
+
+      {/* Sub-Tab 1: Presensi Live Hari Ini (Keep-Alive CSS Hidden) */}
+      <div
+        id="panel-live"
+        role="tabpanel"
+        aria-labelledby="tab-live"
+        className={activeTab === 'live' ? 'block' : 'hidden'}
+      >
         <div className="clay-card p-5 sm:p-6 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
                 <i className="fa-solid fa-right-to-bracket text-green-500 dark:text-green-400"></i> Form Presensi
@@ -1045,6 +1116,23 @@ export default function GuruPresensi({ user }: { user: AppUser }) {
                 </div>
             </form>
         </div>
+      </div>
+
+      {/* Sub-Tab 2: Riwayat Kehadiran & Status Izin */}
+      <div
+        id="panel-riwayat"
+        role="tabpanel"
+        aria-labelledby="tab-riwayat"
+        className={activeTab === 'riwayat' ? 'block' : 'hidden'}
+      >
+        <HistoryView
+          user={user}
+          initialTab="presensi"
+          onlyTab="presensi"
+          hideTabSwitch={true}
+          hideSectionWrapper={true}
+        />
+      </div>
     </section>
   );
 }

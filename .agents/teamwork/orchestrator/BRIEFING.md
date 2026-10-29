@@ -51,15 +51,16 @@ Implement comprehensive consolidation of features and menus across all roles in 
 | spec_miner_survey | teamwork_spec_miner | Survey & mine specification from docs | completed | 1a98ed5d-44ee-49e9-9546-cd4f9dbdd5a7 |
 | explorer_nav_arch | teamwork_explorer | Explore navigation & routing architecture | completed | f2989019-02a4-40b0-9945-c3ac96042717 |
 | explorer_views_tests | teamwork_explorer | Explore views, test infra & baseline | completed | 97256020-dc7f-495e-9979-c7b19d5c4d5b |
-| test_writer_e2e_track | teamwork_test_writer | Build E2E test suite (Tiers 1-4) | in-progress | 038a09d8-fdcb-4742-b886-e02b40266d45 |
+| test_writer_e2e_track | teamwork_test_writer | Build E2E test suite (Tiers 1-4) | completed | 038a09d8-fdcb-4742-b886-e02b40266d45 |
 | explorer_m1_tabs | teamwork_explorer | M1: Reusable ClayTabs architecture | completed | 03e49f25-bbef-4294-a408-789a19639e1c |
 | explorer_m1_jurnal_presensi | teamwork_explorer | M1: Jurnal & Presensi sub-tab blueprint | completed | 294ab464-6a9c-4e69-86c4-cf47a5644140 |
-| explorer_m1_dinas_rekap | teamwork_explorer | M1: Dinas & Rekap normalization blueprint | in-progress | b803f452-80fb-481e-a951-10cd5231baa9 |
+| explorer_m1_dinas_rekap | teamwork_explorer | M1: Dinas & Rekap normalization blueprint | completed | b803f452-80fb-481e-a951-10cd5231baa9 |
+| worker_m1 | teamwork_worker | M1: Implement ClayTabs & sub-tab normalization | in-progress | f3f75931-8a83-4164-a658-9f78d281ade6 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 7 / 16
-- Pending subagents: 038a09d8-fdcb-4742-b886-e02b40266d45, b803f452-80fb-481e-a951-10cd5231baa9
+- Spawn count: 8 / 16
+- Pending subagents: f3f75931-8a83-4164-a658-9f78d281ade6
 - Predecessor: none
 - Successor: not yet spawned
 

@@ -165,10 +165,20 @@ export default function AppScreen({
     return 'view-home';
   });
 
+  const [urlTab, setUrlTab] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('tab');
+    }
+    return null;
+  });
+
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const view = params.get('view');
+      const tab = params.get('tab');
+      setUrlTab(tab);
       if (view) {
         setCurrentView(view);
       } else {
@@ -863,8 +873,15 @@ export default function AppScreen({
                   onOpenAccountSettings={() => setIsAccountModalOpen(true)} 
                 />
               )}
-              {currentView === 'view-guru-presensi' && <GuruPresensi user={user} />}
-              {currentView === 'view-guru-jurnal' && <GuruJurnal user={user} />}
+              {currentView === 'view-guru-presensi' && <GuruPresensi user={user} initialTab={(urlTab as any) || 'live'} />}
+              {currentView === 'view-guru-jurnal' && (
+                <GuruJurnal
+                  user={user}
+                  initialTab={(urlTab as any) || 'input'}
+                  assignedKelas={assignedKelas}
+                  isKepalaSekolah={isKepalaSekolah}
+                />
+              )}
               {currentView === 'view-piket' && (
                 isAdmin || isSuperadmin || isPiketHariIni ? (
                   <PiketView user={user} />
@@ -986,7 +1003,13 @@ export default function AppScreen({
               )}
               {currentView === 'view-admin-rekap' && (
                 isAdmin || isSuperadmin || isKepalaSekolah || isDinas ? (
-                  <AdminRekapView user={user} isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin} isReadOnly={isDinas} />
+                  <AdminRekapView
+                    user={user}
+                    isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin}
+                    isReadOnly={isDinas}
+                    targetSchool={activeTargetSchool}
+                    initialTab={urlTab || 'tabel'}
+                  />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -1008,7 +1031,13 @@ export default function AppScreen({
               )}
               {currentView === 'view-rekap-guru' && (
                 isAdmin || isSuperadmin || isKepalaSekolah || isDinas ? (
-                  <AdminRekapView user={user} isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin} isReadOnly={isDinas} />
+                  <AdminRekapView
+                    user={user}
+                    isKepalaSekolah={isKepalaSekolah && !isAdmin && !isSuperadmin}
+                    isReadOnly={true}
+                    targetSchool={activeTargetSchool}
+                    initialTab="tabel"
+                  />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">

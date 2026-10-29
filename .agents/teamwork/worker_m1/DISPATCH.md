@@ -1,51 +1,36 @@
-# Dispatch for Worker M1 (RBAC, Data Model, & Superadmin Regional Assignment)
+## 2026-10-29T11:43:00Z
+You are the Foundation and Sub-Tab Normalization Worker for Milestone 1.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\
+Before starting work, YOU MUST read ORIGINAL_REQUEST.md located at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
 
-## Working Directory
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1`
+MANDATORY INTEGRITY WARNING:
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-## Authoritative User Request
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md` (read latest request at 2026-10-23T19:45:33Z)
+You must study the blueprints prepared by the Explorers:
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_tabs\handoff.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_jurnal_presensi\handoff.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_dinas_rekap\handoff.md
 
-## Project Scope
-`c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_23\PROJECT.md`
+Your exclusive write ownership covers the following files:
+1. `src/components/ClayTabs.tsx` (NEW): Implement the reusable tactile Claymorphism sub-tabs component with WAI-ARIA 1.2 roving tabindex, keyboard navigation, badge variants, and touch scroll as specified in explorer_m1_tabs handoff.
+2. `src/components/clay/index.ts`: Export ClayTabs, getNextTabId, and related types.
+3. `src/components/GuruJurnal.tsx`: Add `initialTab` support ('input' | 'rekap-pribadi' | 'supervisi-kelas'), render ClayTabs, wrap 10-field input form and roll-call inside `<div className={activeTab === 'input' ? 'block' : 'hidden'}>` to guarantee in-memory draft preservation with zero unmounting. Mount RekapJurnalView for sub-tabs 2 and 3.
+4. `src/components/RekapJurnalView.tsx`: Accept `controlledMode` and `hideTabSwitch` props without modifying existing filters, KOP printing, or Excel exports.
+5. `src/components/GuruPresensi.tsx`: Add `initialTab` support ('live' | 'riwayat'), render ClayTabs, wrap live selfie/GPS form inside `<div className={activeTab === 'live' ? 'block' : 'hidden'}>` to prevent unmounting. Mount HistoryView for sub-tab 2.
+6. `src/components/HistoryView.tsx`: Accept `onlyTab`, `hideTabSwitch`, `hideSectionWrapper` props without deleting or modifying any existing lines checked by AST test assertions.
+7. `src/components/AdminRekapView.tsx`: Add `initialTab`, `targetSchool`, and activate `isReadOnly` logic as specified in explorer_m1_dinas_rekap handoff.
+8. `src/components/AppScreen.tsx`: Update mounting props for GuruJurnal, GuruPresensi, and AdminRekapView, while strictly preserving all existing AST regex guards verbatim (e.g. `{currentView === 'view-guru-rekap-jurnal' && ...}`, `{currentView === 'view-history' && ...}`, `/currentView === 'view-admin-rekap'\s*&&\s*\(/`).
+9. `tests/clay_tabs_verification.test.ts` (NEW): Create the automated test suite verifying ClayTabs rendering, ARIA attributes, and keyboard navigation.
 
-## Input Reports
-- Explorer 1 Report: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_o23_1\report.md`
-- Explorer 3 Report: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_o23_3\report.md`
+Verification Requirements:
+- Run `npx tsx tests/clay_tabs_verification.test.ts` -> must pass 100%.
+- Run `npx tsc --noEmit` -> 0 TypeScript compilation errors.
+- Run `npm test` -> all 41 test suites must pass 100% (zero regression).
 
-## Mandatory Integrity Warning
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
-
-## Objective & Files Owned
-Files exclusively owned for M1:
-- `src/types/user.ts`: Update `AppUser` to include `role: 'superadmin' | 'admin' | 'guru' | 'dinas_pendidikan'` and `kota_kabupaten?: string | null`.
-- `src/types/database.ts`: Update `users` table type definition to include `kota_kabupaten?: string | null`.
-- `supabase/migrations/20261024_dinas_pendidikan_role_and_region.sql`: Create migration to add `kota_kabupaten TEXT` column to `public.users` table if not exists.
-- `src/lib/supabaseClient.ts`:
-  1. Update `getActiveTargetSchool()` (lines ~172-177): Allow role `'dinas_pendidikan'` (or `'dinas'`) in addition to `'superadmin'`. For `dinas_pendidikan`, enforce that `targetSchool.kota_kabupaten` matches the user's `kota_kabupaten` (trimmed, case-insensitive).
-  2. Implement client-side fetch mutation rejection guard in `dynamicTenantFetch` or client interceptor: if `tenant.role === 'dinas_pendidikan'` and HTTP method is `POST`, `PUT`, `PATCH`, or `DELETE`, block the request and return 403 Forbidden.
-- `src/components/SuperadminView.tsx`:
-  1. Add a dedicated Tab / Section / Modal for "Akun Dinas Pendidikan".
-  2. Allow Superadmin to view list of `dinas_pendidikan` accounts, create new accounts, edit their assigned region (`kota_kabupaten`), and delete/deactivate.
-  3. The region selection must be a dropdown populated with distinct `kota_kabupaten` values from existing schools in `sekolah` / `sekolah_registry`.
-  4. Ensure accounts created for dinas have `role = 'dinas_pendidikan'`, `sekolah_id = null`, and `kota_kabupaten = selectedRegion`.
-
-## Verification Commands
-Worker MUST run build & typecheck after completing changes:
-- `npx tsc --noEmit`
-Document commands run and exact outputs in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md`.
-
-
-## 2026-10-23T20:01:35Z
-Implement Milestone 1:
-1. Update `src/types/user.ts` (AppUser with role `dinas_pendidikan` and `kota_kabupaten?: string | null`) and `src/types/database.ts` (users table).
-2. Create SQL migration `supabase/migrations/20261024_dinas_pendidikan_role_and_region.sql`.
-3. Update `src/lib/supabaseClient.ts`:
-   - In `getActiveTargetSchool()`: allow `dinas_pendidikan` in addition to `superadmin`. Verify that `targetSchool.kota_kabupaten` matches the user's `kota_kabupaten` (trimmed, case-insensitive).
-   - In `dynamicTenantFetch`: add client-side guard rejecting mutating methods (POST, PUT, PATCH, DELETE) when role is `dinas_pendidikan`, returning 403 Forbidden.
-4. Update `src/components/SuperadminView.tsx`:
-   - Add management tab/panel for "Akun Dinas Pendidikan".
-   - Allow Superadmin to create/edit/delete `dinas_pendidikan` accounts with assigned `kota_kabupaten` dropdown populated from distinct registered schools.
-   - Dinas accounts are created with `role = 'dinas_pendidikan'`, `sekolah_id = null`, and `kota_kabupaten = selectedRegion`.
-5. Run `npx tsc --noEmit` and verify 0 type errors.
-6. Write full details to `handoff.md` in your working directory and notify me via send_message when done.
+Write your completion report to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
+Update your progress in:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\progress.md
+Send a completion message to the orchestrator (conversation ID: 095792d8-1a85-4945-889d-abf25d3c7740).

@@ -12,12 +12,16 @@ import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 export default function RekapJurnalView({ 
   user,
   initialMode = 'pribadi',
+  controlledMode,
+  hideTabSwitch = false,
   assignedKelas: propAssignedKelas = null,
   isKepalaSekolah: propIsKepalaSekolah,
   isReadOnly = false
 }: { 
   user: any;
   initialMode?: 'pribadi' | 'kelas';
+  controlledMode?: 'pribadi' | 'kelas';
+  hideTabSwitch?: boolean;
   assignedKelas?: string | null;
   isKepalaSekolah?: boolean;
   isReadOnly?: boolean;
@@ -27,7 +31,8 @@ export default function RekapJurnalView({
   const isKepalaSekolah = propIsKepalaSekolah !== undefined 
     ? propIsKepalaSekolah 
     : checkIsKepalaSekolah(user);
-  const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>(initialMode);
+  const effectiveMode = controlledMode || initialMode;
+  const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>(effectiveMode);
   const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin || isKepalaSekolah || Boolean(isReadOnly));
   const [waliClasses, setWaliClasses] = useState<string[]>(() => {
     if (propAssignedKelas) return [propAssignedKelas];
@@ -37,6 +42,13 @@ export default function RekapJurnalView({
     }
     return [];
   });
+
+  useEffect(() => {
+    if (controlledMode && controlledMode !== tabMode) {
+      setTabMode(controlledMode);
+      tarikRekap(controlledMode);
+    }
+  }, [controlledMode]);
 
     const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
@@ -369,7 +381,7 @@ export default function RekapJurnalView({
               </h2>
 
               {/* Mode Toggle: Jurnal Guru Pribadi vs Rekapan Jurnal Per Kelas */}
-              {(isAdmin || isKepalaSekolah || isWaliKelas || waliClasses.length > 0) && (
+              {!hideTabSwitch && (isAdmin || isKepalaSekolah || isWaliKelas || waliClasses.length > 0) && (
                 <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
                   <button
                     type="button"

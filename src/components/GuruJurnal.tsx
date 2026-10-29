@@ -9,8 +9,52 @@ import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft } from '@/utils/draftStorage';
+import ClayTabs, { TabItem } from '@/components/ClayTabs';
+import RekapJurnalView from '@/components/RekapJurnalView';
+import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 
-export default function GuruJurnal({ user }: { user: any }) {
+export interface GuruJurnalProps {
+  user: any;
+  initialTab?: 'input' | 'rekap-pribadi' | 'supervisi-kelas';
+  onTabChange?: (tab: string) => void;
+  assignedKelas?: string | null;
+  isKepalaSekolah?: boolean;
+  isReadOnly?: boolean;
+}
+
+export default function GuruJurnal({
+  user,
+  initialTab = 'input',
+  onTabChange,
+  assignedKelas: propAssignedKelas = null,
+  isKepalaSekolah: propIsKepalaSekolah,
+  isReadOnly = false
+}: GuruJurnalProps) {
+  const [activeTab, setActiveTab] = useState<'input' | 'rekap-pribadi' | 'supervisi-kelas'>(initialTab);
+
+  const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
+  const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
+  const isKepalaSekolah = propIsKepalaSekolah !== undefined ? propIsKepalaSekolah : checkIsKepalaSekolah(user);
+  const assignedKelas = propAssignedKelas || (user?.wali_kelas ? (typeof user.wali_kelas === 'string' ? user.wali_kelas : user.wali_kelas.kelas) : null);
+  const canAccessSupervisi = isAdmin || isKepalaSekolah || Boolean(assignedKelas) || Boolean(isReadOnly);
+
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const handleTabChange = (newTabId: string) => {
+    const targetTab = newTabId as 'input' | 'rekap-pribadi' | 'supervisi-kelas';
+    setActiveTab(targetTab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', targetTab);
+      window.history.replaceState(null, '', url.toString());
+    }
+    if (onTabChange) onTabChange(targetTab);
+  };
+
   const [hasDraft, setHasDraft] = useState(false);
   const [tipeJurnal, setTipeJurnal] = useState('Jurnal KBM');
   const [mapel, setMapel] = useState('');
@@ -1080,8 +1124,59 @@ export default function GuruJurnal({ user }: { user: any }) {
     ? 'Belum ada mata pelajaran atau kelas yang ditugaskan kepada Anda. Hubungi Administrator.' 
     : dailyState?.lockedReason;
 
+  const tabItems: TabItem[] = [
+    {
+      id: 'input',
+      label: 'Input Jurnal KBM',
+      icon: 'fa-pen-to-square',
+      badge: hasDraft ? 'Draf' : undefined,
+      badgeVariant: 'amber',
+    },
+    {
+      id: 'rekap-pribadi',
+      label: 'Riwayat & Rekap Saya',
+      icon: 'fa-clipboard-list',
+    },
+    ...(canAccessSupervisi
+      ? [
+          {
+            id: 'supervisi-kelas',
+            label: 'Supervisi Kelas Binaan',
+            icon: 'fa-users-rectangle',
+            badge: assignedKelas || (isAdmin ? 'Admin' : undefined),
+            badgeVariant: 'mint' as const,
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <section id="view-guru-jurnal" className="view-section fade-in">
+    <section id="view-guru-jurnal" className="view-section fade-in max-w-4xl mx-auto space-y-4">
+      {/* Sub-Navigasi ClayTabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 no-print">
+        <div>
+          <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <i className="fa-solid fa-book-journal-whills text-blue-600 dark:text-blue-400"></i>
+            <span>Jurnal Pembelajaran</span>
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Pusat administrasi kegiatan belajar mengajar dan pelaporan capaian materi harian
+          </p>
+        </div>
+        <ClayTabs
+          items={tabItems}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+        />
+      </div>
+
+      {/* Sub-Tab 1: Input Form Jurnal KBM (In-Memory Keep-Alive) */}
+      <div
+        id="panel-input"
+        role="tabpanel"
+        aria-labelledby="tab-input"
+        className={activeTab === 'input' ? 'block' : 'hidden'}
+      >
         <div className="clay-card p-5 sm:p-6 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -1692,6 +1787,43 @@ export default function GuruJurnal({ user }: { user: any }) {
                 </div>
             </form>
         </div>
+      </div>
+
+      {/* Sub-Tab 2: Riwayat & Rekap Jurnal Saya */}
+      <div
+        id="panel-rekap-pribadi"
+        role="tabpanel"
+        aria-labelledby="tab-rekap-pribadi"
+        className={activeTab === 'rekap-pribadi' ? 'block' : 'hidden'}
+      >
+        <RekapJurnalView
+          user={user}
+          initialMode="pribadi"
+          controlledMode="pribadi"
+          hideTabSwitch={true}
+          isKepalaSekolah={isKepalaSekolah}
+        />
+      </div>
+
+      {/* Sub-Tab 3: Supervisi Kelas Binaan (Wali Kelas / Admin / Kepsek) */}
+      {canAccessSupervisi && (
+        <div
+          id="panel-supervisi-kelas"
+          role="tabpanel"
+          aria-labelledby="tab-supervisi-kelas"
+          className={activeTab === 'supervisi-kelas' ? 'block' : 'hidden'}
+        >
+          <RekapJurnalView
+            user={user}
+            initialMode="kelas"
+            controlledMode="kelas"
+            hideTabSwitch={true}
+            assignedKelas={assignedKelas}
+            isKepalaSekolah={isKepalaSekolah}
+            isReadOnly={isReadOnly}
+          />
+        </div>
+      )}
     </section>
   );
 }
