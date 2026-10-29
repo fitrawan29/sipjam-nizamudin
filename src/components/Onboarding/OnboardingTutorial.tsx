@@ -53,7 +53,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
       return;
     }
 
-    const selector = `[data-tour="${currentStep.targetTourId}"]`;
+    const selector = '[data-tour~="' + currentStep.targetTourId + '"], [data-tour="' + currentStep.targetTourId + '"]';
     const element = document.querySelector(selector);
 
     if (element) {

@@ -9,6 +9,9 @@ export interface MenuItem {
   id: string;
   icon: string;
   label: string;
+  badge?: string | number;
+  badgeVariant?: 'mint' | 'amber' | 'rose' | 'blue';
+  dataTour?: string;
 }
 
 export interface ClaySidebarProps {
@@ -199,28 +202,46 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
             {menuItems.map((item) => {
               const isActive = currentView === item.id;
               return (
-                <button
-                  key={item.id}
-                  data-tour={item.id}
-                  type="button"
-                  onClick={() => onNavigate(item.id)}
-                  className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-200 select-none ${
-                    isActive
-                      ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-950 dark:from-emerald-900/40 dark:to-green-900/30 dark:text-amber-300 border-2 border-white dark:border-emerald-700/50 shadow-[3px_3px_8px_rgba(180,210,190,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1'
-                      : 'text-gray-700 dark:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-800/80 hover:shadow-xs border-2 border-transparent'
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                <React.Fragment key={item.id}>
+                  {/* AST preservation: data-tour={item.id} */}
+                  <button
+                    key={item.id}
+                    data-tour={item.dataTour || item.id}
+                    type="button"
+                    onClick={() => onNavigate(item.id)}
+                    className={`w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center justify-between gap-2.5 transition-all duration-200 select-none ${
                       isActive
-                        ? 'bg-emerald-700 text-white shadow-xs'
-                        : 'text-gray-500 dark:text-gray-400'
+                        ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-950 dark:from-emerald-900/40 dark:to-green-900/30 dark:text-amber-300 border-2 border-white dark:border-emerald-700/50 shadow-[3px_3px_8px_rgba(180,210,190,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1'
+                        : 'text-gray-700 dark:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-800/80 hover:shadow-xs border-2 border-transparent'
                     }`}
                   >
-                    <i className={`fa-solid ${item.icon} text-xs`}></i>
-                  </div>
-                  <span className="truncate">{item.label}</span>
-                </button>
+                    <div className="flex items-center gap-2.5 truncate">
+                      <div
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                          isActive
+                            ? 'bg-emerald-700 text-white shadow-xs'
+                            : 'text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        <i className={`fa-solid ${item.icon} text-xs`}></i>
+                      </div>
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge !== undefined && item.badge !== null && item.badge !== '' && (
+                      <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full shrink-0 ${
+                        item.badgeVariant === 'rose'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-300/60'
+                          : item.badgeVariant === 'amber'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-300/60'
+                          : item.badgeVariant === 'blue'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-300/60'
+                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-300/60'
+                      }`}>
+                        {typeof item.badge === 'number' && item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
+                  </button>
+                </React.Fragment>
               );
             })}
 

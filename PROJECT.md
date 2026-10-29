@@ -24,12 +24,12 @@
 | 2 | F2: Cluster 1 Jurnal Mengajar Normalization | Unify personal journal and class supervision rekap into single canonical view with sub-tabs | M1 | Survey | DONE |
 | 3 | F3: Cluster 2 Guru Presensi & Riwayat Integration | Integrate live selfie attendance and attendance history into sub-tabs, eliminating standalone History menu | M1 | Survey | DONE |
 | 4 | F4: Cluster 4 Dinas Read-Only Standardization | Consolidate view-rekap-guru into AdminRekapView with isReadOnly=true | M1 | Survey | DONE |
-| 5 | F5: Cluster 3 Asesmen & Rapor Siswa Consolidation | Merge GradebookView and RaporView into unified Asesmen & Rapor with defense-in-depth RBAC | M2 | Survey | PLANNED |
-| 6 | F6: Cluster 4 Laporan & Analitik Kinerja Convergence | Incorporate AnalitikView dashboard and leaderboard into AdminRekapView sub-tabs | M2 | Survey | PLANNED |
-| 7 | F7: Cluster 5 Master Data & Kalender (Sistem Blok) | Embed SistemBlokView as Tab 6 in AdminDataView | M2 | Survey | PLANNED |
-| 8 | F8: Cluster 5 Pengaturan Sistem & Database (Backup) | Embed AdminBackupView database sync as Tab 5 in AdminConfigView | M2 | Survey | PLANNED |
-| 9 | F9: Cluster 6 Pusat Verifikasi & Supervisi Terpadu | Integrate curriculum document verification from DokumenView into AdminVerifView | M2 | Survey | PLANNED |
-| 10 | F10: Cluster 7 Kesiswaan & Piket Harmonisasi | Harmonize RekapSiswaView gate logs and attendance with PiketView concurrency scanner | M2 | Survey | PLANNED |
+| 5 | F5: Cluster 3 Asesmen & Rapor Siswa Consolidation | Merge GradebookView and RaporView into unified Asesmen & Rapor with defense-in-depth RBAC | M2 | Survey | DONE |
+| 6 | F6: Cluster 4 Laporan & Analitik Kinerja Convergence | Incorporate AnalitikView dashboard and leaderboard into AdminRekapView sub-tabs | M2 | Survey | DONE |
+| 7 | F7: Cluster 5 Master Data & Kalender (Sistem Blok) | Embed SistemBlokView as Tab 6 in AdminDataView | M2 | Survey | DONE |
+| 8 | F8: Cluster 5 Pengaturan Sistem & Database (Backup) | Embed AdminBackupView database sync as Tab 5 in AdminConfigView | M2 | Survey | DONE |
+| 9 | F9: Cluster 6 Pusat Verifikasi & Supervisi Terpadu | Integrate curriculum document verification from DokumenView into AdminVerifView | M2 | Survey | DONE |
+| 10 | F10: Cluster 7 Kesiswaan & Piket Harmonisasi | Harmonize RekapSiswaView gate logs and attendance with PiketView concurrency scanner | M2 | Survey | DONE |
 | 11 | F11: Dual-Layer Aliasing Router (`VIEW_ALIASES`) | Implement `src/lib/navigation.ts` mapping legacy view IDs to canonical views + sub-tabs | M3 | Survey | PLANNED |
 | 12 | F12: Sidebar Menu Restructuring Across All 7 Roles | Restructure sidebar items in AppScreen.tsx and ClaySidebar.tsx for Guru, Wali Kelas, Piket, Admin, Kepsek, Dinas, Superadmin | M3 | Survey | PLANNED |
 | 13 | F13: Tour Selector Alignment & Tutorial Updating | Update OnboardingTutorial.tsx query selector, tutorialSteps.ts, and tutorialData.ts | M3 | Survey | PLANNED |
@@ -40,7 +40,7 @@
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | M1 | Foundation: Reusable Tabs & Component Normalization | ClayTabs component, Jurnal normalization, GuruPresensi sub-tab riwayat, Dinas read-only standardization | none | DONE |
-| M2 | Functional Consolidation & Sub-Tabs | Asesmen & Rapor (C3), Laporan & Analitik (C4), Master Data & Sistem Blok/Backup (C5), Verifikasi Terpadu (C6), Kesiswaan (C7) | M1 | PLANNED |
+| M2 | Functional Consolidation & Sub-Tabs | Asesmen & Rapor (C3), Laporan & Analitik (C4), Master Data & Sistem Blok/Backup (C5), Verifikasi Terpadu (C6), Kesiswaan (C7) | M1 | DONE |
 | M3 | Navigation Restructuring, URL Aliasing & Onboarding | VIEW_ALIASES router, sidebar definitions for all 7 roles, AST test guard preservation, OnboardingTutorial selector | M2 | PLANNED |
 | M4 | Final Milestone: Full E2E Test Pass & Adversarial Hardening | Pass 100% E2E tests (Tiers 1-4) published by E2E Testing Track, then Tier 5 adversarial hardening | M3 | PLANNED |
 

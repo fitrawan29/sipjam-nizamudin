@@ -1,50 +1,93 @@
-## 2026-10-04T07:25:38Z
-You are Worker 3 (worker_m3).
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3
-
-Read ORIGINAL_REQUEST.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically the latest request at the bottom, 2026-10-04T07:11:46Z).
-
-Read PROJECT.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_13\PROJECT.md
-
-Read the survey handoff from explorer_survey_3 at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md
-
-Your exclusive write ownership files (YOU OWN ONLY THESE FILES):
-- `src/lib/qrSiswa.ts`
-- `src/components/AdminDataView.tsx`
-DO NOT write to any other source files.
-
-Task: Implement Milestone 3 (R4):
-Download Kartu Presensi QR Siswa (Admin):
-1. In `src/lib/qrSiswa.ts`:
-   - Implement zero-dependency helper functions:
-     - `generateStudentCardCanvas({ student, schoolName, qrIdentifier }): HTMLCanvasElement`
-       - Canvas dimensions: 600 x 960 px.
-       - Header: Gradient emerald theme (`#0B4619` to `#166534`), gold accent line (`#EAB308`), Title: "KARTU PRESENSI DIGITAL", School Name (`schoolName`), Subtitle: "Sistem Informasi Presensi Siswa".
-       - QR Container: rounded white box (270x270 px) with drop shadow, containing sharp QR matrix generated from `generateQrMatrix(qrIdentifier)` in `#0B4619` color (220x220 px) and monospace badge `ID: ${qrIdentifier}`.
-       - Student Identity Box: Full Name (`student.nama_siswa`), NISN (`student.nisn`), Kelas (`student.kelas`), Sekolah (`schoolName`), Gender (`student.gender`), Status "SISWA AKTIF".
-       - Footer: instructions "Tunjukkan kartu ini pada scanner saat presensi datang & pulang" and "SIPJAM • Dokumen Resmi Presensi".
-     - `downloadStudentCardPng({ student, schoolName, qrIdentifier }): boolean`
-       - Calls `generateStudentCardCanvas`, converts to DataURL via `canvas.toDataURL('image/png')` or blob, and triggers browser download with filename `Kartu_Presensi_${student.nama_siswa || 'Siswa'}_${student.nisn || student.id}.png`.
-     - `printStudentQrCardWithSchool({ student, schoolName, qrSvg, qrIdentifier }): void`
-       - Enhanced version of print card popup that includes `schoolName` and formatted print layout.
-
-2. In `src/components/AdminDataView.tsx`:
-   - Fetch school name from Supabase `sekolah` table (`user.sekolah_id`) on component mount, with safe fallback to `user.sekolah_nama` or `'SIPJAM'`.
-   - In student cards list (`renderCard` / action bar lines ~2007-2016):
-     Add "Download Kartu" button:
-     `<button onClick={() => handleDownloadStudentCard(item)} ...><i className="fa-solid fa-download"></i> Download Kartu</button>`
-   - In QR modal dialog (`handleShowStudentQr`):
-     Add options to "Download Gambar (PNG)" and "Cetak / Simpan PDF".
-   - In batch QR actions:
-     Ensure school name is included in batch card print.
+## 2026-10-29T13:09:00Z
+You are the Navigation & Onboarding Restructuring Worker for Milestone 3.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3\
+Before starting work, YOU MUST read ORIGINAL_REQUEST.md located at:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
 
 MANDATORY INTEGRITY WARNING:
-DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_preview_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
+DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-Acceptance verification:
-Run `npx tsc --noEmit` and relevant tests. Make sure there are 0 TypeScript errors.
-Document all changes and test outputs in `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3\handoff.md`.
-Send a message to parent when completed.
+Study the architectural blueprints and survey findings:
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_nav\handoff.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_sidebar\handoff.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_onboarding\handoff.md
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_READY.md
+
+Your exclusive write ownership covers the following files:
+1. `src/lib/navigation.ts` (CREATE NEW):
+   - Implement `MenuItem`, `RouteResolution` interfaces.
+   - Implement `VIEW_ALIASES` mapping all 8 legacy views:
+     - `'view-guru-rekap-jurnal': { view: 'view-guru-jurnal', tab: 'rekap-pribadi' }`
+     - `'view-jurnal-kelas': { view: 'view-guru-jurnal', tab: 'supervisi-kelas' }`
+     - `'view-history': { view: 'view-guru-presensi', tab: 'riwayat' }`
+     - `'view-rapor': { view: 'view-gradebook', tab: 'rapor' }`
+     - `'view-analitik': { view: 'view-admin-rekap', tab: 'analitik' }`
+     - `'view-rekap-guru': { view: 'view-admin-rekap', tab: 'tabel' }`
+     - `'view-sistem-blok': { view: 'view-admin-data', tab: 'blok' }` (MUST be `tab: 'blok'`)
+     - `'view-admin-backup': { view: 'view-admin-config', tab: 'backup' }`
+   - Implement `resolveCanonicalRoute(rawView, rawTab)` and alias `resolveRoute`.
+   - Implement `getConsolidatedMenuItems(params)`.
+   - Implement `evaluateTabRBAC(viewId, tabId, user)`.
+
+2. `src/components/ClaySidebar.tsx`:
+   - Extend `MenuItem` with `badge?: string | number`, `badgeVariant?: 'mint' | 'amber' | 'rose' | 'blue'`, `dataTour?: string`.
+   - Render `data-tour={item.dataTour || item.id}` with AST preservation comment:
+     `{/* AST preservation: data-tour={item.id} */}`
+   - Ensure touch targets >= 44px (`py-2.5`).
+
+3. `src/components/AppScreen.tsx`:
+   - Import `resolveCanonicalRoute` from `@/lib/navigation`.
+   - Implement 3-lifecycle routing:
+     (1) Cold-start state initialization with `replaceState` URL normalization.
+     (2) `popstate` event listener for browser history (back/forward).
+     (3) Imperative `handleNavigation(targetId, targetTab?)` with RBAC & workflow checks.
+   - Configure consolidated menu arrays for all 7 roles to meet exact target counts:
+     - Guru Reguler: 6 menus
+     - Wali Kelas: 7 menus
+     - Guru Piket: 7-8 menus
+     - Administrator: 8 menus (zero-scroll)
+     - Kepala Sekolah: 7 menus
+     - Pengawas Dinas: 2 menus
+     - Superadmin: 3 platform + 5 satellite
+   - CRITICAL: Retain all verbatim AST string invariants expected by existing test suites:
+     - `{currentView === 'view-rapor' && (`
+     - `{currentView === 'view-sistem-blok' && (`
+     - `targetId === 'view-sistem-blok'`
+     - `isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin}`
+     - `...(isWaliKelas ? [{ id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor' }] : [])`
+     - `...(isWaliKelas ? [{ id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' }] : [])`
+     - `...(isWaliKelas ? [{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }] : [])`
+     - `...(isPiketHariIni ? [{ id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' }] : [])`
+     - `{ id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Verifikasi' }`
+     - `{ id: 'view-admin-rekap', icon: 'fa-file-invoice', label: 'Rekap Presensi' }`
+     - `{ id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik' }`
+     - `{ id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' }`
+     - `{ id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' }`
+     - `data-tour={item.id}`
+     - `data-tour="hamburger-btn"`
+     - Dynamic imports for all 18 views intact.
+
+4. `src/components/Onboarding/OnboardingTutorial.tsx`:
+   - Upgrade line 56 to word-matching selector:
+     `const selector = '[data-tour~="' + currentStep.targetTourId + '"], [data-tour="' + currentStep.targetTourId + '"]';`
+
+Verification Requirements:
+- Run `npx tsc --noEmit` -> 0 errors.
+- Run `npx tsx tests/navigation_consolidation_verification.test.ts` -> 150/150 assertions must pass 100%.
+- Run `npm test` -> all 41 test suites must pass 100% (zero regression).
+- Run `npm run build` -> production build must succeed.
+- Git commit and push to `origin main` per GEMINI.md.
+
+Write your completion report to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3\handoff.md
+Send message to orchestrator (`095792d8-1a85-4945-889d-abf25d3c7740`) upon completion.
+
+
+## 2026-10-29T13:09:11Z
+Read your assignment in c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3\DISPATCH.md and implement Milestone 3 (navigation.ts, ClaySidebar.tsx, AppScreen.tsx, and OnboardingTutorial.tsx).
+You MUST read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md before starting work.
+DO NOT CHEAT. All implementations must be genuine.
+Run static typing (tsc --noEmit), E2E test suite (npx tsx tests/navigation_consolidation_verification.test.ts), and npm test (all 41 suites).
+Commit and push to origin main per GEMINI.md.
+Write your completion report to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3\handoff.md and notify me via send_message.

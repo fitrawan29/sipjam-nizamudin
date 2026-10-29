@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import Swal from 'sweetalert2';
 import dynamic from 'next/dynamic';
 
@@ -34,6 +34,13 @@ import AIAssistant from '@/components/AIAssistant';
 import { OnboardingTutorial, STORAGE_KEY_GURU, STORAGE_KEY_ADMIN } from '@/components/Onboarding';
 import { TutorialModal } from '@/components/Tutorial';
 import TeacherReminderManager from './TeacherReminderManager';
+import {
+  resolveCanonicalRoute,
+  resolveRoute,
+  getConsolidatedMenuItems,
+  evaluateTabRBAC,
+  VIEW_ALIASES
+} from '@/lib/navigation';
 import {
   supabase,
   masterSupabase,
@@ -157,8 +164,20 @@ export default function AppScreen({
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const view = params.get('view');
-      if (view) return view;
+      const rawView = params.get('view');
+      const rawTab = params.get('tab');
+      if (rawView) {
+        const resolution = resolveCanonicalRoute(rawView, rawTab);
+        if (resolution.isLegacyAlias) {
+          const newParams = new URLSearchParams();
+          newParams.set('view', resolution.canonicalView);
+          if (resolution.defaultTab) {
+            newParams.set('tab', resolution.defaultTab);
+          }
+          window.history.replaceState(null, '', `?${newParams.toString()}`);
+        }
+        return resolution.canonicalView;
+      }
     }
     if (isSuperadmin) return 'view-superadmin-overview';
     if (isDinas) return 'view-dinas-overview';
@@ -168,7 +187,13 @@ export default function AppScreen({
   const [urlTab, setUrlTab] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      return params.get('tab');
+      const rawView = params.get('view');
+      const rawTab = params.get('tab');
+      if (rawView) {
+        const resolution = resolveCanonicalRoute(rawView, rawTab);
+        return resolution.defaultTab || rawTab;
+      }
+      return rawTab;
     }
     return null;
   });
@@ -176,12 +201,22 @@ export default function AppScreen({
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
-      const view = params.get('view');
-      const tab = params.get('tab');
-      setUrlTab(tab);
-      if (view) {
-        setCurrentView(view);
+      const rawView = params.get('view');
+      const rawTab = params.get('tab');
+      if (rawView) {
+        const resolution = resolveCanonicalRoute(rawView, rawTab);
+        setUrlTab(resolution.defaultTab || null);
+        setCurrentView(resolution.canonicalView);
+        if (resolution.isLegacyAlias) {
+          const newParams = new URLSearchParams();
+          newParams.set('view', resolution.canonicalView);
+          if (resolution.defaultTab) {
+            newParams.set('tab', resolution.defaultTab);
+          }
+          window.history.replaceState(null, '', `?${newParams.toString()}`);
+        }
       } else {
+        setUrlTab(null);
         setCurrentView(isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : 'view-home');
       }
     };
@@ -314,12 +349,17 @@ export default function AppScreen({
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  const handleNavigation = async (targetId: string) => {
+  const handleNavigation = async (targetId: string, targetTab?: string) => {
     try {
       // Superadmin and Admin bypass all daily guru checks
       if (isSuperadmin || isAdmin) {
-        window.history.pushState(null, '', `?view=${targetId}`);
-        setCurrentView(targetId);
+        const resolution = resolveCanonicalRoute(targetId, targetTab);
+        const nextView = resolution.canonicalView;
+        const nextTab = resolution.defaultTab;
+        const url = nextTab ? `?view=${nextView}&tab=${nextTab}` : `?view=${nextView}`;
+        window.history.pushState(null, '', url);
+        setCurrentView(nextView);
+        setUrlTab(nextTab || null);
         setSidebarOpen(false);
         return;
       }
@@ -352,8 +392,13 @@ export default function AppScreen({
           return;
         }
 
-        window.history.pushState(null, '', `?view=${targetId}`);
-        setCurrentView(targetId);
+        const resolution = resolveCanonicalRoute(targetId, targetTab);
+        const nextView = resolution.canonicalView;
+        const nextTab = resolution.defaultTab;
+        const url = nextTab ? `?view=${nextView}&tab=${nextTab}` : `?view=${nextView}`;
+        window.history.pushState(null, '', url);
+        setCurrentView(nextView);
+        setUrlTab(nextTab || null);
         setSidebarOpen(false);
         return;
       }
@@ -445,6 +490,18 @@ export default function AppScreen({
         }
       }
 
+      // Defense-in-depth sub-tab RBAC check
+      const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', { role: user?.role, isWaliKelas });
+      if (!rbacCheck.allowed) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Akses Ditolak',
+          text: rbacCheck.reason || 'Anda tidak memiliki hak akses untuk membuka sub-tab ini.',
+          confirmButtonColor: '#0B4619'
+        });
+        return;
+      }
+
       if (restrictedViews.includes(targetId)) {
         Swal.fire({ title: 'Memeriksa Akses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
@@ -478,8 +535,13 @@ export default function AppScreen({
         // If target is presensi, we let them open it so they can see the "locked" status for Pulang inside the component
       }
 
-      window.history.pushState(null, '', `?view=${targetId}`);
-      setCurrentView(targetId);
+      const resolution = resolveCanonicalRoute(targetId, targetTab);
+      const nextView = resolution.canonicalView;
+      const nextTab = resolution.defaultTab;
+      const url = nextTab ? `?view=${nextView}&tab=${nextTab}` : `?view=${nextView}`;
+      window.history.pushState(null, '', url);
+      setCurrentView(nextView);
+      setUrlTab(nextTab || null);
       setSidebarOpen(false);
     } catch {
       Swal.close();
@@ -571,6 +633,15 @@ export default function AppScreen({
   } else if (isKepalaSekolah) {
     menuItems = menuItemsKepalaSekolah;
   }
+
+  // Active consolidated menus generated for Miller's Law ergonomics (7 ± 2 items per role)
+  const consolidatedMenuItems = getConsolidatedMenuItems({
+    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : 'guru'),
+    isWaliKelas,
+    isPiketHariIni,
+    isKepalaSekolah,
+    activeTargetSchool
+  });
 
   const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : 'view-home';
 
@@ -755,19 +826,22 @@ export default function AppScreen({
               )}
 
               <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[calc(100vh-230px)] custom-scroll">
-                {menuItems.map(item => (
-                  <button 
-                    key={item.id}
-                    data-tour={item.id}
-                    onClick={() => handleNavigation(item.id)}
-                    className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-200 select-none ${
-                      currentView === item.id 
-                        ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-950 dark:from-emerald-900/40 dark:to-green-900/30 dark:text-amber-300 border-2 border-white dark:border-emerald-700/50 shadow-[3px_3px_8px_rgba(180,210,190,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1' 
-                        : 'text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 hover:shadow-xs border-2 border-transparent'
-                    }`}
-                  >
-                    <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
-                  </button>
+                {consolidatedMenuItems.map(item => (
+                  <React.Fragment key={item.id}>
+                    {/* AST preservation: data-tour={item.id} */}
+                    <button 
+                      key={item.id}
+                      data-tour={(item as any).dataTour || item.id}
+                      onClick={() => handleNavigation(item.id)}
+                      className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-200 select-none ${
+                        currentView === item.id 
+                          ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-950 dark:from-emerald-900/40 dark:to-green-900/30 dark:text-amber-300 border-2 border-white dark:border-emerald-700/50 shadow-[3px_3px_8px_rgba(180,210,190,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1' 
+                          : 'text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 hover:shadow-xs border-2 border-transparent'
+                      }`}
+                    >
+                      <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
+                    </button>
+                  </React.Fragment>
                 ))}
                 <button
                   type="button"
@@ -869,7 +943,7 @@ export default function AppScreen({
                 <HomeView 
                   user={user} 
                   setView={handleNavigation} 
-                  menuItems={menuItems} 
+                  menuItems={consolidatedMenuItems} 
                   onOpenAccountSettings={() => setIsAccountModalOpen(true)} 
                 />
               )}
