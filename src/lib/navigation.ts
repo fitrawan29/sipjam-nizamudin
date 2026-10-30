@@ -135,6 +135,13 @@ export function getConsolidatedMenuItems(params: {
     ];
   }
 
+  if (normRole === 'siswa') {
+    return [
+      { id: 'view-ujian', icon: 'fa-file-lines', label: 'Ujian Siswa' },
+      { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi & Pengumuman' }
+    ];
+  }
+
   // Guru (Reguler, Wali Kelas, Piket)
   const items: MenuItem[] = [
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
@@ -164,6 +171,12 @@ export function evaluateTabRBAC(
   const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const isAdmin = normRole === 'admin' || normRole === 'superadmin';
   const isWali = !!user?.isWaliKelas;
+  const isSiswa = normRole === 'siswa';
+
+  // Strict isolation for Siswa role: cannot access teacher/admin operational modules
+  if (isSiswa && viewId !== 'view-ujian' && viewId !== 'view-informasi') {
+    return { allowed: false, fallbackTab: 'view-ujian', reason: 'Role Siswa hanya memiliki akses ke modul Ujian dan Informasi.' };
+  }
 
   // Cluster 1: Jurnal Mengajar
   if (viewId === 'view-guru-jurnal' && tabId === 'supervisi-kelas') {

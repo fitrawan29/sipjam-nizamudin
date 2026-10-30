@@ -1,76 +1,72 @@
-# BRIEFING — 2026-10-29T22:33:30Z
+# BRIEFING — 2026-10-30T14:46:45Z
 
 ## Mission
-Sesuaikan sistem panduan/tutorial onboarding di sipjam-app agar selaras dengan struktur menu baru dan sub-tab terpadu (ClayTabs) hasil konsolidasi fitur di docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md.
+Identifikasi dan perbaiki sistem keamanan ujian serta fitur anti-kecurangan pada role siswa agar bekerja dengan benar dan andal pada codebase saat ini.
 
 ## 🔒 My Identity
-- Archetype: swe
+- Archetype: teamwork_swe
 - Roles: orchestrator, user_liaison, human_reporter, successor
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\
 - Original parent: parent
-- Original parent conversation ID: 9292d509-3f7f-4ab1-9e91-70c127dbc749
+- Original parent conversation ID: 679bb0e6-2338-4147-93cd-fcb1866a112b
 
 ## 🔒 My Workflow
 - **Pattern**: SWE Light
 - **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-1. **Decompose**: No decomposition (SWE Light pattern runs sequential refinement of entire task).
-2. **Dispatch & Execute**: Direct sequential refinement loop: teamwork_implementer -> teamwork_reviewer -> teamwork_reviewer -> teamwork_reviewer -> teamwork_victory_auditor.
-3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate.
-4. **Succession**: At >= 16 spawns and all subagents complete, write handoff.md, cancel crons, spawn successor.
+1. **Decompose**: Do not decompose. Sequential refinement by teamwork_implementer followed by teamwork_reviewer rounds.
+2. **Dispatch & Execute**: Direct (iteration loop):
+   - teamwork_implementer -> teamwork_reviewer -> teamwork_reviewer -> ... -> teamwork_victory_auditor -> done
+3. **On failure**:
+   - Retry: nudge stuck agent or re-send task
+   - Replace: spawn fresh agent with partial progress
+   - Skip: proceed without (only if non-critical)
+   - Redistribute: split stuck agent's remaining work
+   - Redesign: re-partition decomposition
+   - Escalate: report to parent (last resort)
+4. **Succession**: At 16 spawns, write handoff.md, spawn successor.
 - **Work items**:
-  1. Initial Implementation (teamwork_implementer) [done]
-  2. Review Round 1 (teamwork_reviewer) [done]
-  3. Review Round 2 (teamwork_reviewer) [done]
-  4. Review Round 3 (teamwork_reviewer) [done]
-  5. Victory Audit (teamwork_victory_auditor) [done - VICTORY CONFIRMED]
-- **Current phase**: 4
-- **Current focus**: Complete & Reporting
+  1. Primary implementation (teamwork_implementer) [in-progress]
+  2. Review Round 1 (teamwork_reviewer) [not started]
+  3. Review Round 2 (teamwork_reviewer) [not started]
+  4. Review Round 3 (teamwork_reviewer) [not started]
+  5. Audit & Victory (teamwork_victory_auditor) [not started]
+- **Current phase**: 1
+- **Current focus**: Monitoring teamwork_implementer (0ea8c016-58ff-48d4-98ec-391b52e42dba)
 
 ## 🔒 Key Constraints
-- Never write, modify, or create source code files yourself.
-- Never explore or debug codebase to solve task yourself.
-- Propagate task verbatim to workers.
-- Maintain open issues ledger across all rounds.
+- NEVER write, modify, or create source code files yourself. Delegate all implementation and all repair to teamwork_implementer and teamwork_reviewer.
+- NEVER explore or debug the codebase in order to solve the task yourself.
+- Propagate the task verbatim.
+- Floor of 3 review rounds required by pattern.
+- Carry open-issues ledger across ALL rounds.
 - Never reuse a subagent after it has delivered its handoff — always spawn fresh.
-- Floor of 3 review rounds + independent test verification + victory auditor before completion.
+- Always follow git workflow rule (status, add, commit, push origin main) on completions.
 
 ## Current Parent
-- Conversation ID: 9292d509-3f7f-4ab1-9e91-70c127dbc749
+- Conversation ID: 679bb0e6-2338-4147-93cd-fcb1866a112b
 - Updated: not yet
 
 ## Key Decisions Made
-- Dispatched teamwork_implementer (4c669d3e-c04e-4c50-a659-f3725ce646ae) [Completed].
-- Dispatched teamwork_reviewer R1 (340b0b2b-8c20-4739-ac1f-3e7bfa30b2f0) [Completed].
-- Dispatched teamwork_reviewer R2 (cc631789-ced3-426f-9f1b-9956f23729f7) [Completed].
-- Dispatched teamwork_reviewer R3 (63ed695f-a4b6-4862-95e1-f3f74162642e) [Completed].
-- Dispatched teamwork_victory_auditor (c83e1331-56ce-4c76-898d-794f2af351e6) [Confirmed Victory].
+- Initial dispatch: teamwork_implementer (0ea8c016-58ff-48d4-98ec-391b52e42dba) for R1 and R2.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| teamwork_implementer | Implementation Specialist | Initial Implementation | completed | 4c669d3e-c04e-4c50-a659-f3725ce646ae |
-| teamwork_reviewer | Adversarial Reviewer | Review Round 1 | completed | 340b0b2b-8c20-4739-ac1f-3e7bfa30b2f0 |
-| teamwork_reviewer | Adversarial Reviewer | Review Round 2 | completed | cc631789-ced3-426f-9f1b-9956f23729f7 |
-| teamwork_reviewer | Adversarial Reviewer | Review Round 3 | completed | 63ed695f-a4b6-4862-95e1-f3f74162642e |
-| teamwork_victory_auditor | Independent Post-Victory Auditor | Victory Audit | completed | c83e1331-56ce-4c76-898d-794f2af351e6 |
+| teamwork_implementer_1 | teamwork_implementer | Primary Implementation & Audit | in-progress | 0ea8c016-58ff-48d4-98ec-391b52e42dba |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 5 / 16
-- Pending subagents: none
+- Spawn count: 1 / 16
+- Pending subagents: 0ea8c016-58ff-48d4-98ec-391b52e42dba
 - Predecessor: none
-- Successor: none
+- Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: terminated
-- Safety timer: none
+- Heartbeat cron: 7fb30bed-7a9f-496c-a20f-f510131a7873/task-18
+- Safety timer: 7fb30bed-7a9f-496c-a20f-f510131a7873/task-20
 
 ## Artifact Index
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\DISPATCH.md — Incoming task dispatch
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\progress.md — Execution progress and open-issues ledger
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\handoff.md — Final orchestrator handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_implementer_swe_1\handoff.md — Implementer completion report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_reviewer_swe_1\handoff.md — Reviewer 1 report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_reviewer_swe_2\handoff.md — Reviewer 2 report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_reviewer_swe_3\handoff.md — Reviewer 3 report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_victory_auditor_swe_1\handoff.md — Victory Auditor report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\BRIEFING.md — Briefing & working memory
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\progress.md — Progress & heartbeat
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\DISPATCH.md — Incoming messages
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original user request

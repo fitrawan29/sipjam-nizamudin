@@ -1,23 +1,24 @@
-## 2026-10-29T21:38:09Z
-
-This is a single self-contained fix; keep it small and focused. Sesuaikan sistem panduan/tutorial onboarding di sipjam-app agar selaras dengan struktur menu baru dan sub-tab terpadu (ClayTabs) hasil konsolidasi fitur di docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md.
+## 2026-10-30T14:44:52Z
+This is a single self-contained fix; keep it small and focused. Identifikasi dan perbaiki sistem keamanan ujian serta fitur anti-kecurangan pada role siswa agar bekerja dengan benar dan andal pada codebase saat ini.
 
 Integrity mode: development
 
 ## Requirements
 
-### R1. Penyesuaian Panduan Onboarding
-Sesuaikan sistem panduan/tutorial onboarding (`src/components/Onboarding/OnboardingTutorial.tsx`), langkah-langkah tur panduan, target selektor elemen (data-tour), narasi bantuan, dan alur penunjuk sub-tab agar sepenuhnya selaras dengan struktur menu dan sub-tab baru untuk seluruh peran pengguna yang didukung.
+### R1. Audit dan Identifikasi Kelemahan Keamanan Ujian Siswa
+Audit seluruh mekanisme anti-kecurangan yang saat ini diterapkan pada role siswa saat pelaksanaan ujian di aplikasi, serta identifikasi bug, celah bypass, atau malfungsi yang menyebabkan proteksi tidak bekerja sebagaimana mestinya.
 
-### R2. Penyelarasan Pengujian Tutorial
-Sesuaikan pengujian terkait tutorial di `tests/challenger_m2_tutorial_system.test.ts` agar mencerminkan selektor dan alur tutorial yang baru, serta pastikan seluruh test suite tutorial lulus 100%.
+### R2. Perbaikan dan Penguatan Fitur Anti-Kecurangan
+Terapkan perbaikan pada kode agar seluruh fitur anti-kecurangan pada role siswa (seperti deteksi perpindahan tab/jendela/blur, penjagaan mode fullscreen, pembatasan copy-paste/shortcut, dan integritas sesi pengerjaan ujian) aktif dan berfungsi dengan benar.
 
 ## Acceptance Criteria
 
-### Penyelarasan Tutorial
-- [ ] Langkah-langkah tur, selektor elemen (data-tour), dan penunjuk sub-tab pada `src/components/Onboarding/OnboardingTutorial.tsx` mengarah ke elemen antarmuka dan sub-tab yang valid sesuai struktur menu baru.
-- [ ] Narasi bantuan dan petunjuk alur tutorial mencerminkan navigasi dan pengelompokan sub-tab yang telah dikonsolidasikan.
+### Fungsionalitas Anti-Kecurangan Siswa
+- [ ] Seluruh celah keamanan atau kegagalan deteksi pada fitur anti-kecurangan role siswa yang ada diidentifikasi dan diperbaiki pada kode.
+- [ ] Fitur anti-kecurangan bereaksi secara konsisten saat terjadi aksi pelanggaran siswa (misal: perpindahan fokus jendela/tab, keluar dari fullscreen, percobaan penyalinan teks) tanpa merusak pengalaman pengerjaan ujian normal bagi siswa yang jujur.
+- [ ] Tim menyusun dan menjalankan skenario verifikasi/uji terprogram untuk membuktikan seluruh deteksi anti-kecurangan bekerja sesuai rancangan.
+- [ ] Proyek lulus proses validasi build dan linting (npm run build) tanpa error atau regresi fungsional.
 
-### Pengujian & Verifikasi
-- [ ] Pengujian pada `tests/challenger_m2_tutorial_system.test.ts` lulus 100% tanpa kegagalan.
-- [ ] TypeScript check (`npx tsc --noEmit`) berjalan sukses dengan nol error.
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents/teamwork/swe_1/
+Original request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents/teamwork/ORIGINAL_REQUEST.md
+Identity: teamwork_swe

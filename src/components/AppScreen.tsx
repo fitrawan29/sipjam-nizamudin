@@ -25,6 +25,7 @@ const DinasDashboard = dynamic(() => import('./DinasDashboard'));
 const GradebookView = dynamic(() => import('./GradebookView'));
 const SistemBlokView = dynamic(() => import('./SistemBlokView'));
 const RaporView = dynamic(() => import('./RaporView'));
+const UjianSiswaView = dynamic(() => import('./UjianSiswaView'));
 import ClayCard from './ClayCard';
 import ClayButton from './ClayButton';
 import AccountSettingsModal from './AccountSettingsModal';
@@ -83,6 +84,7 @@ export default function AppScreen({
   const isSuperadmin = (baseUser?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isDinas = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'dinaspendidikan';
   const isAdmin = isSuperadmin || (baseUser?.role || '').toLowerCase() === 'admin';
+  const isSiswa = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'siswa';
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
     return (isSuperadmin || isDinas) ? getActiveTargetSchool() : null;
@@ -181,6 +183,7 @@ export default function AppScreen({
     }
     if (isSuperadmin) return 'view-superadmin-overview';
     if (isDinas) return 'view-dinas-overview';
+    if (isSiswa) return 'view-ujian';
     return 'view-home';
   });
 
@@ -217,12 +220,12 @@ export default function AppScreen({
         }
       } else {
         setUrlTab(null);
-        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : 'view-home');
+        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : isSiswa ? 'view-ujian' : 'view-home');
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isSuperadmin, isDinas]);
+  }, [isSuperadmin, isDinas, isSiswa]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -636,14 +639,14 @@ export default function AppScreen({
 
   // Active consolidated menus generated for Miller's Law ergonomics (7 ± 2 items per role)
   const consolidatedMenuItems = getConsolidatedMenuItems({
-    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : 'guru'),
+    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : isSiswa ? 'siswa' : 'guru'),
     isWaliKelas,
     isPiketHariIni,
     isKepalaSekolah,
     activeTargetSchool
   });
 
-  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : 'view-home';
+  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : isSiswa ? 'view-ujian' : 'view-home';
 
   return (
     <div className="flex-col h-full w-full flex">
@@ -945,6 +948,12 @@ export default function AppScreen({
                   }}
                   satelliteSchools={satelliteSchools}
                   setView={handleNavigation}
+                />
+              )}
+              {currentView === 'view-ujian' && (
+                <UjianSiswaView
+                  user={user}
+                  onNavigate={handleNavigation}
                 />
               )}
               {currentView === 'view-home' && (

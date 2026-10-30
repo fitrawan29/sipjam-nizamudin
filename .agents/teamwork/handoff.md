@@ -1,33 +1,50 @@
-# Handoff Report — Project Sentinel
+# Sentinel Handoff Report — Penyesuaian Alur Presensi Pulang Cepat & Jurnal Otomatis Tidak Masuk Kelas
 
-## 1. Observation
-- Incoming request required aligning the onboarding tutorial system (`src/components/Onboarding/OnboardingTutorial.tsx`, `tutorialSteps.ts`, `data-tour` selectors, narrations, ClayTabs sub-tab indicators) and test suites (`tests/challenger_m2_tutorial_system.test.ts`) with recent menu and sub-tab consolidation (`docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md`).
-- Request parameters and prompt explicitly specified a single self-contained fix with focus and smallness constraints.
-- Task was routed to SWE Light (`teamwork_swe`).
-- Subagent implementer, 3 adversarial review rounds, independent orchestrator verification, and an independent Sentinel Victory Auditor completed successfully.
-- Independent Victory Auditor returned `VERDICT: VICTORY CONFIRMED`.
+## Observation
+- The request required adjusting the teacher attendance and journal workflows on `sipjam-app`:
+  1. **R1**: When a teacher checks in ("presensi datang") and has scheduled teaching hours on that day, but does not submit learning journals/teaching activities and fails to check out ("presensi pulang"), their attendance is calculated and recorded as **"Pulang Cepat"**.
+  2. **R2**: For the unlogged teaching periods in the scenario above, the application automatically logs learning journal records with status **"Tidak Masuk Kelas"**.
+- Routing: Task routed to **SWE Light** (`teamwork_swe`, directory `.agents/teamwork/swe_40/`).
+- Swarm lifecycle:
+  - Initial implementation by `implementer_1`.
+  - 3 adversarial review rounds (`reviewer_r1`, `reviewer_r2`, `reviewer_r3`) addressing edge cases including empty subject strings, teacher token collisions, class normalization (hyphen/spacing differences), and multi-tenant isolation.
+  - Independent post-victory audit conducted by `teamwork_victory_auditor` (`auditor_3`).
 
-## 2. Logic Chain
-1. **Interview & Routing**: Task interview was conducted with prompt approved under SWE Light criteria (single self-contained change with explicit smallness constraint).
-2. **Implementation & Refinement**:
-   - `tutorialSteps.ts`: Extended `TourStep` to incorporate ClayTabs sub-tab metadata (`subTabs`, `targetSubTabId`, `activeSubTab`) across Guru (including `view-rapor`) and Admin tour flows.
-   - `OnboardingTutorial.tsx`: Added compound attribute query matching (`[data-tour~=...]`), sub-tab fallback resolving, floating ClayTabs indicator badges (`data-testid="subtab-pointer"`), multi-phase polling for drawer animations, scroll capture listeners, coordinate clamping against screen edges, and keyboard input protection.
-   - `docs/PANDUAN_PENGGUNA.md`: Aligned chapter headings with challenger test regex.
-   - `tests/challenger_m2_tutorial_system.test.ts`: Aligned menu counts (12 Guru, 14 Admin, 2 Superadmin) and added Section 7 asserting full tour step and sub-tab coverage.
-3. **Adversarial Reviews**: 3 sequential review rounds addressed boundary geometry, mobile viewport wrapping, scroll capture, and input protection.
-4. **Independent Victory Audit**: Audited timeline, genuine implementation integrity, and independent test execution across 5 test suites and TypeScript checks with 0 failures.
+## Logic Chain
+- `src/lib/attendanceAlpa.ts`:
+  - Implemented `evaluatePulangCepatDanJurnal` and enhanced `evaluateAndApplyAutoCheckout`.
+  - Checks if teacher checked in, has active teaching schedule (`jadwal_pelajaran`) on that day, has no submitted teaching journals (`jurnal_pembelajaran`) or substitute activities (`isGuruDiPiket`), and lacks check-out.
+  - Automatically writes an auto-checkout record with `status_verifikasi: 'Pulang Cepat'` and `jenis_presensi: 'Pulang Cepat'`.
+  - Automatically generates records in `jurnal_pembelajaran` for each empty teaching schedule with `status_verifikasi: 'Tidak Masuk Kelas'`, `materi: 'Tidak Masuk Kelas'`, `kegiatan: 'Tidak Masuk Kelas'`, and `keterangan: 'Tidak Masuk Kelas'`.
+  - Teachers who fill their teaching journals, submit substitute journals, or perform normal check-out remain untouched.
+- `src/lib/workflow.ts`:
+  - Updated `getGuruDailyState` to correctly detect and report `isPulangCepat`.
+- UI & Dashboards:
+  - `GuruPresensi.tsx`: Added warning banner and badge for "Pulang Cepat".
+  - `AdminVerifView.tsx` & `HomeViewAdmin.tsx`: Added support for badges and statuses "Pulang Cepat" and "Tidak Masuk Kelas".
+  - `RekapJurnalView.tsx`: Integrated reporting for "Tidak Masuk Kelas" status.
+- API Endpoints:
+  - `/api/attendance/auto-checkout` (GET & POST) created with `CRON_SECRET` authorization guard.
+  - `/api/attendance/auto-alpa` updated to trigger the evaluation.
+- Testing:
+  - Created 30-case automated test suite in `tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`.
 
-## 3. Caveats
-- Real-device mobile touch gestures (physical pinch-to-zoom > 150% on older iOS WebKit/Android WebViews) should continue standard visual QA during browser device testing.
-- If deep ancestor containers introduce external CSS transforms (e.g. `zoom` or `scale3d`), `getBoundingClientRect` scaling should be accounted for.
+## Caveats
+- If an admin alters school schedule periods late in the day after the auto-checkout cutoff has already executed, existing generated "Tidak Masuk Kelas" records remain in the database unless edited or deleted by the administrator.
+- Real-time mobile push notifications for "Pulang Cepat" are outside the core business logic of R1/R2 and remain handled by standard background notification infrastructure.
 
-## 4. Conclusion
-All acceptance criteria are satisfied 100%. The onboarding tutorial system and test suites are fully aligned with the consolidated menu structure and ClayTabs sub-tabs. All changes are committed and pushed directly to `origin/main`.
+## Conclusion
+- **Verdict**: **VICTORY CONFIRMED**.
+- All requirements R1 and R2 and acceptance criteria in `ORIGINAL_REQUEST.md` have been met, thoroughly verified across 3 adversarial review rounds, confirmed through an independent 3-phase audit, committed, and pushed to `origin/main`.
 
-## 5. Verification Method
-- `npx tsx tests/challenger_m2_tutorial_system.test.ts`: 128 passed, 0 failed (100% PASS)
-- `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`: 40 passed, 0 failed (100% PASS)
-- `npx tsx tests/challenger_m2_sidebar_profile.test.ts`: 72 passed, 0 failed (100% PASS)
-- `tests/adversarial_challenger_final_verification.test.ts`: 92 passed, 0 failed (100% PASS)
-- `npx tsc --noEmit`: 0 errors (Exit code 0)
-- `git status`: Working tree clean, synced with `origin/main`
+## Verification Method
+1. `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`
+   - Result: 30 / 30 tests passed (100% success).
+2. `npx tsc --noEmit`
+   - Result: 0 TypeScript errors (Exit code 0).
+3. `npm test`
+   - Result: 42 / 42 test suites passed (Exit code 0).
+4. `npm run build`
+   - Result: Production build passed with Next.js Turbopack compiler.
+5. Git provenance & sync:
+   - All commits synchronized with `origin/main`.
