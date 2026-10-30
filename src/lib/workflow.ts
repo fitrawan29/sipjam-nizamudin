@@ -525,14 +525,14 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         }
       }
 
-      // Check auto-checkout record for forgotten checkout tracking
+      // Check auto-checkout record for forgotten checkout tracking (including Pulang Cepat)
       const lastAutoCheckout = allPresensi.find((p: any) =>
-        p.tipe_absen === 'Pulang' && (p.is_auto_checkout || p.status_verifikasi === 'Lupa Checkout')
+        p.tipe_absen === 'Pulang' && (p.is_auto_checkout || p.status_verifikasi === 'Lupa Checkout' || p.status_verifikasi === 'Pulang Cepat' || p.jenis_presensi === 'Pulang Cepat')
       );
       if (lastAutoCheckout) {
         state.lastAutoCheckout = lastAutoCheckout;
       }
-      if (state.presensiPulang?.is_auto_checkout || state.presensiPulang?.status_verifikasi === 'Lupa Checkout') {
+      if (state.presensiPulang?.is_auto_checkout || state.presensiPulang?.status_verifikasi === 'Lupa Checkout' || state.presensiPulang?.status_verifikasi === 'Pulang Cepat' || state.presensiPulang?.jenis_presensi === 'Pulang Cepat') {
         state.isAutoCheckout = true;
       }
 

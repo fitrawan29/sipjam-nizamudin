@@ -344,8 +344,13 @@ export default function HomeViewAdmin({
           pulangTime = ts.includes(' ') 
             ? ts.split(' ')[1].substring(0, 5) 
             : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : '');
-          presensiPulangStatus = `Pulang [${pulangTime}]`;
-          presensiPulangColor = 'green';
+          if (pPulang.status_verifikasi === 'Pulang Cepat' || pPulang.jenis_presensi === 'Pulang Cepat') {
+            presensiPulangStatus = `Pulang Cepat [${pulangTime}]`;
+            presensiPulangColor = 'amber';
+          } else {
+            presensiPulangStatus = `Pulang [${pulangTime}]`;
+            presensiPulangColor = 'green';
+          }
         }
 
         // 5. Pengisian Jurnal (Handling regular KBM and Dinas Luar / Jurnal Kegiatan)
@@ -355,9 +360,12 @@ export default function HomeViewAdmin({
 
         const acceptedTeacherJournals = teacherJournals.filter((j: any) => j.status_verifikasi !== 'Ditolak');
         const hasRejectedJournal = teacherJournals.some((j: any) => j.status_verifikasi === 'Ditolak');
+        const hasTidakMasukKelas = acceptedTeacherJournals.some((j: any) => 
+          j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas'
+        );
 
         const filledCount = targetClasses.filter((jk: any) => 
-          acceptedTeacherJournals.some((j: any) => isJurnalMatchJadwal(j, jk))
+          acceptedTeacherJournals.some((j: any) => j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, jk))
         ).length;
 
         const isDinasLuar = presensiDatangStatus === 'Dinas Luar';
@@ -401,6 +409,9 @@ export default function HomeViewAdmin({
             jurnalStatus = 'Bebas KBM';
             jurnalColor = 'gray';
           }
+        } else if (hasTidakMasukKelas) {
+          jurnalStatus = 'Tidak Masuk Kelas';
+          jurnalColor = 'rose';
         } else if (filledCount >= targetCount) {
           jurnalStatus = `${targetCount}/${targetCount} Selesai`;
           jurnalColor = 'green';

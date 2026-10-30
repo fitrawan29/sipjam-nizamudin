@@ -1,55 +1,47 @@
-> [!WARNING] **Skepticism Disclaimer**
-> I am confident that all legacy occurrences of 'FITRA SURYAZANA MAMONTO' and 'Drs. Ahmad Dahlan, M.Pd.' are completely eliminated from the live database and codebase, and that native duplicate/dummy guards are operational, because automated audits across all 15 operational tables and the entire 40-suite test regression passed with zero errors.
+# Handoff Report: Penyesuaian Alur Presensi Pulang Cepat & Jurnal Otomatis Tidak Masuk Kelas
 
-## 1. What I changed
-1. **`src/lib/dataIntegrityGuard.ts` (New File)**
-   - Implemented Ponytail-compliant, native data integrity validation functions: `validateTeacherData`, `validateUserData`, and `validateStudentData`.
-   - Rejects dummy patterns (`test`, `dummy`, `fiktif`, `fake`, `percobaan`, `uji coba`, etc.).
-   - Rejects legacy deprecated names ('FITRA SURYAZANA MAMONTO' with Title Case advice, and 'Ahmad Dahlan').
-   - Guards against duplicate usernames (case-insensitive) and duplicate names within school/tenant scope.
-   - Guards against duplicate teacher NIP (when provided and not the '-' placeholder).
-
-2. **`src/components/AdminDataView.tsx`**
-   - Added validation guards to student creation and editing modals via `validateStudentData`.
-   - Added validation guards to teacher creation and editing modals via `validateTeacherData`.
-
-3. **`src/components/SuperadminView.tsx`**
-   - Added validation guards to Dinas user account creation and editing modals via `validateUserData`.
-
-4. **`supabase/migrations/20261027_user_uniqueness_and_anti_dummy_guard.sql` (New Migration)**
-   - Schema indexes and constraints for `uq_users_username_lower`, `uq_users_sekolah_nama_lower`, `uq_data_guru_sekolah_nama_lower`, and `uq_data_guru_sekolah_nip_lower`.
-   - Added trigger function `check_anti_dummy_guard` to block dummy and legacy identities at the PostgreSQL level.
-   - Idempotent cleanup statements for 'FITRA SURYAZANA MAMONTO' and 'Ahmad Dahlan'.
-
-5. **`scripts/audit_uniqueness_and_realness.ts` & `scripts/adversarial_audit_user_data.ts`**
-   - Audits all 15 tables for duplicate usernames, duplicate teacher names, duplicate student names, and dummy identities.
-   - Fixed schema column references (`timestamp`, `mapel`, `nama_guru`).
-
-6. **`tests/user_standardization_and_cleanup_verification.test.ts`**
-   - Expanded test suite from 23 to 42 comprehensive checks covering R1, R2, R3 (Data Uniqueness Guard), and R4 (Anti-Dummy Realness Guard).
+## 1. What I Changed
+- `src/lib/attendanceAlpa.ts`:
+  - Added and exported `evaluatePulangCepatDanJurnal`: analyzes whether a teacher with active presence Datang, teaching schedules on the day, without teaching journals or Jurnal Kegiatan, and without Pulang qualifies for "Pulang Cepat" and detects all unfulfilled teaching schedules.
+  - Added and exported helper functions `isTeacherScheduleMatch` and `isTeacherJournalMatch` ensuring robust multi-tenant school isolation and Title Case/academic title compatibility.
+  - Enhanced `evaluateAndApplyAutoCheckout`:
+    - Queries active teaching schedules (`jadwal_pelajaran`) and learning journals (`jurnal_pembelajaran`) for target date.
+    - If conditions for Pulang Cepat are met, creates explicit auto-checkout record with `status_verifikasi: 'Pulang Cepat'`, `jenis_presensi: 'Pulang Cepat'`, and descriptive admin note.
+    - Automatically creates journal entries in `jurnal_pembelajaran` for each empty teaching schedule with `status_verifikasi: 'Tidak Masuk Kelas'`, `materi: 'Tidak Masuk Kelas'`, `kegiatan: 'Tidak Masuk Kelas'`, and `keterangan: 'Tidak Masuk Kelas'`.
+    - Preserves standard `status_verifikasi: 'Lupa Checkout'` auto-checkout when teacher has no schedule or filled their journals.
+- `src/lib/workflow.ts`:
+  - Enhanced auto-checkout detection in `getGuruDailyState` to track `status_verifikasi === 'Pulang Cepat'` and `jenis_presensi === 'Pulang Cepat'`.
+- `src/components/GuruPresensi.tsx`:
+  - Updated auto-checkout warning alert to render `Peringatan Presensi: Tercatat Pulang Cepat` when `dailyState.lastAutoCheckout.status_verifikasi === 'Pulang Cepat'`, while retaining literal backward-compatibility strings.
+- `src/components/AdminVerifView.tsx`:
+  - Styled `Pulang Cepat` and `Tidak Masuk Kelas` status badges.
+  - Added `Auto-Checkout (Pulang Cepat)` indicator badge in verification card.
+- `src/components/HomeViewAdmin.tsx`:
+  - Added support to display `Pulang Cepat [HH:MM]` in departure status.
+  - Highlighted journal status as `Tidak Masuk Kelas` (rose badge) when empty schedule journals are generated.
+- `src/app/api/attendance/auto-alpa/route.ts`:
+  - Seamlessly invokes `evaluateAndApplyAutoCheckout` on GET and POST triggers.
+- `src/app/api/attendance/auto-checkout/route.ts`:
+  - Created dedicated endpoint for `/api/attendance/auto-checkout` (GET & POST).
+- `package.json` & `tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`:
+  - Created 15-test automated unit and integration suite covering R1, R2, partial schedule filling, Jurnal Kegiatan exemption, normal checkout exemption, non-teaching day exemption, and multi-tenant isolation.
+  - Integrated into default `npm test` pipeline.
 
 ## 2. Why
-To satisfy the requirements of:
-- **R1**: Completely replacing uppercase "FITRA SURYAZANA MAMONTO" with standard Title Case "Fitra Suryazana Mamonto" across users, data_guru, presensi_guru, jurnal_pembelajaran, laporan_piket, and CSV files, keeping NIP 'Fitra' actively linked.
-- **R2**: Completely purging all records of "Drs. Ahmad Dahlan, M.Pd." from all tables and ensuring obsolete presensi ID `e1144f72-2ec4-43f2-aebb-10a59063a906` is permanently deleted.
-- **R3**: Preventing account and name duplication in `users` and `data_guru` using minimal native validation and database indexes without bloat.
-- **R4**: Preventing test/dummy data pollution in production tables and ensuring tests do not leak dummy records.
+To enforce pedagogical attendance integrity: when a teacher checks in and has teaching duties but leaves school early without teaching their assigned classes or logging journals, the attendance is flagged as "pulang cepat" rather than forgotten checkout ("lupa checkout"), and the unattended classroom periods are officially cataloged as "tidak masuk kelas" to maintain gradebook, administration, and parent transparency.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/user_standardization_and_cleanup_verification.test.ts`: 42 checks passed, 0 failed.
-  - Ran `npx tsx scripts/adversarial_full_scan.ts`: 0 findings across all tables.
-  - Ran `npx tsx scripts/adversarial_audit_user_data.ts`: confirmed 0 occurrences of 'FITRA SURYAZANA MAMONTO' and 'Ahmad Dahlan' across 15 operational tables.
-  - Ran `npx tsx scripts/audit_uniqueness_and_realness.ts`: confirmed 0 duplicate usernames, 0 duplicate names, and 0 dummy identities in users/guru/siswa.
-  - Ran full test suite `npm test` (all 40 test files): 100% passed without errors.
+  - Ran `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`: 15/15 passed (100%).
+  - Ran `npm test`: all 42 automated test suites passed (100% success across the entire application).
 - **Shallow Verification (manual run only):**
-  - Inspected CSV files in `csv/` confirming absence of 'FITRA SURYAZANA MAMONTO' and 'Ahmad Dahlan'.
-  - Inspected Swall modal validation message formatting in `AdminDataView.tsx` and `SuperadminView.tsx`.
+  - Visual color tokens and styling in `AdminVerifView.tsx` and `HomeViewAdmin.tsx` for orange/rose warning tags.
 - **Unverified aspects:**
-  - Remote Supabase instance trigger activation relies on migration SQL being executed directly via Supabase SQL Editor if service role migration tool is not piped in CI/CD. Native application-level validation is active immediately in runtime.
+  - Real-time mobile push notifications for Pulang Cepat (outside scope of R1/R2).
 
 ## 4. Known Issues
-- `None` (All 42 criteria in `user_standardization_and_cleanup_verification.test.ts` and all 40 test suites in `npm test` pass cleanly).
+- `Minor Robustness Risk`: If a school modifies schedule periods midway through the day after cutoff has already run, already inserted "tidak masuk kelas" journal records remain in the database unless edited by admin.
 
 ## 5. Untested Edge Cases & Next Step
-- Reviewer should verify boundary cases of whitespace and diacritics in teacher names (e.g. trailing tabs or multiple spaces) when submitting via UI.
+- Edge Case: Extreme edge cases where multiple teachers share the same nickname across different schools without user_id UUID mapping (mitigated by `isTeacherScheduleMatch` school_id check).
+- Next Step: Reviewer should verify end-to-end cron trigger with live Supabase database instance.

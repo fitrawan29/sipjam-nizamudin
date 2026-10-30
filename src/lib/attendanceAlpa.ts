@@ -5,7 +5,7 @@ import {
   getWitaStartOfDay, 
   getWitaEndOfDay 
 } from '@/lib/wita';
-import { isGuruDiPiket } from '@/lib/workflow';
+import { isGuruDiPiket, isJurnalMatchJadwal } from '@/lib/workflow';
 
 export interface AutoAlpaResult {
   affectedCount: number;
@@ -457,10 +457,211 @@ export interface AutoCheckoutResult {
     sekolah_id?: string;
     previousStatus?: string;
     newStatus: string;
+    pulangCepat?: boolean;
+    jurnalKosongCreated?: number;
   }[];
   cutoffTime?: string;
   evaluatedDate?: string;
   reason?: string;
+}
+
+export interface PulangCepatEvaluation {
+  isEligibleAutoCheckout: boolean;
+  isPulangCepat: boolean;
+  statusPresensi: 'Pulang Cepat' | 'Lupa Checkout';
+  teachingSchedules: any[];
+  emptySchedules: any[];
+  filledJournals: any[];
+  hasJurnalKegiatan: boolean;
+  reason?: string;
+}
+
+/**
+ * Checks whether teacher and schedule match (by user_id or normalized teacher name).
+ */
+export function isTeacherScheduleMatch(
+  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string },
+  schedule: any
+): boolean {
+  if (teacher.sekolah_id && schedule.sekolah_id && teacher.sekolah_id !== schedule.sekolah_id) {
+    return false;
+  }
+  if (teacher.user_id && schedule.user_id && String(teacher.user_id) === String(schedule.user_id)) {
+    return true;
+  }
+  const sNama = (schedule.nama_guru || '').toLowerCase().trim();
+  const tNama = (teacher.nama_guru || '').toLowerCase().trim();
+  if (!sNama || !tNama) return false;
+  if (sNama === tNama) return true;
+  const cleanTeacher = tNama.split(',')[0].trim();
+  const cleanSched = sNama.split(',')[0].trim();
+  if (cleanTeacher === cleanSched) return true;
+  if (cleanTeacher.length >= 3 && cleanSched.includes(cleanTeacher)) return true;
+  if (cleanSched.length >= 3 && cleanTeacher.includes(cleanSched)) return true;
+  return false;
+}
+
+/**
+ * Checks whether teacher and journal match (by user_id or normalized teacher name).
+ */
+export function isTeacherJournalMatch(
+  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string },
+  journal: any
+): boolean {
+  if (teacher.sekolah_id && journal.sekolah_id && teacher.sekolah_id !== journal.sekolah_id) {
+    return false;
+  }
+  if (teacher.user_id && journal.user_id && String(teacher.user_id) === String(journal.user_id)) {
+    return true;
+  }
+  const jNama = (journal.nama_guru || '').toLowerCase().trim();
+  const tNama = (teacher.nama_guru || '').toLowerCase().trim();
+  if (!jNama || !tNama) return false;
+  if (jNama === tNama) return true;
+  const cleanTeacher = tNama.split(',')[0].trim();
+  const cleanJourn = jNama.split(',')[0].trim();
+  if (cleanTeacher === cleanJourn) return true;
+  if (cleanTeacher.length >= 3 && cleanJourn.includes(cleanTeacher)) return true;
+  if (cleanJourn.length >= 3 && cleanTeacher.includes(cleanJourn)) return true;
+  return false;
+}
+
+/**
+ * Evaluates whether a teacher qualifies for "Pulang Cepat" and determines empty schedules.
+ * Conditions for Pulang Cepat:
+ * - Checked in (valid Datang)
+ * - Has teaching schedule on that day
+ * - Did NOT fill teaching journals (or has empty schedules)
+ * - Did NOT perform presensi pulang
+ * - Did NOT fill Jurnal Kegiatan
+ */
+export function evaluatePulangCepatDanJurnal(
+  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string },
+  teacherPresensi: any[],
+  allSchedulesToday: any[],
+  allJournalsToday: any[]
+): PulangCepatEvaluation {
+  // 1. Must have valid Datang
+  const validDatang = teacherPresensi.find(
+    r => r.tipe_absen === 'Datang' && r.status_verifikasi !== 'Ditolak' && r.status_verifikasi !== 'Alpa'
+  );
+  if (!validDatang) {
+    return {
+      isEligibleAutoCheckout: false,
+      isPulangCepat: false,
+      statusPresensi: 'Lupa Checkout',
+      teachingSchedules: [],
+      emptySchedules: [],
+      filledJournals: [],
+      hasJurnalKegiatan: false,
+      reason: 'No valid Datang record'
+    };
+  }
+
+  // 2. Must not be on full day leave
+  const isLeave = ['Izin', 'Sakit'].includes(validDatang.jenis_presensi || '') ||
+    ['Izin', 'Sakit'].includes(validDatang.detail_izin || '');
+  if (isLeave) {
+    return {
+      isEligibleAutoCheckout: false,
+      isPulangCepat: false,
+      statusPresensi: 'Lupa Checkout',
+      teachingSchedules: [],
+      emptySchedules: [],
+      filledJournals: [],
+      hasJurnalKegiatan: false,
+      reason: 'Teacher is on approved leave'
+    };
+  }
+
+  // 3. Must NOT already have any Pulang record (normal checkout protects from pulang cepat)
+  const hasPulang = teacherPresensi.some(r => r.tipe_absen === 'Pulang');
+  if (hasPulang) {
+    return {
+      isEligibleAutoCheckout: false,
+      isPulangCepat: false,
+      statusPresensi: 'Lupa Checkout',
+      teachingSchedules: [],
+      emptySchedules: [],
+      filledJournals: [],
+      hasJurnalKegiatan: false,
+      reason: 'Teacher already performed presensi pulang'
+    };
+  }
+
+  // Find journals for this teacher
+  const teacherJournals = (allJournalsToday || []).filter(j => 
+    isTeacherJournalMatch(teacher, j) && j.status_verifikasi !== 'Ditolak'
+  );
+
+  // Check if teacher filled Jurnal Kegiatan
+  const hasJurnalKegiatan = teacherJournals.some(j =>
+    j.keterangan === 'Jurnal Kegiatan' || 
+    j.mapel === 'Jurnal Kegiatan' ||
+    (j.kegiatan_pembelajaran && (!j.kelas || j.kelas === '-'))
+  );
+
+  // Find teaching schedules for this teacher
+  const teacherSchedules = (allSchedulesToday || []).filter(s =>
+    isTeacherScheduleMatch(teacher, s)
+  );
+
+  // If teacher filled Jurnal Kegiatan -> Rule: "Guru yang mengisi jurnal kegiatan atau melakukan presensi pulang dengan normal tidak terpengaruh oleh aturan ini."
+  if (hasJurnalKegiatan) {
+    return {
+      isEligibleAutoCheckout: true,
+      isPulangCepat: false,
+      statusPresensi: 'Lupa Checkout',
+      teachingSchedules: teacherSchedules,
+      emptySchedules: [],
+      filledJournals: teacherJournals,
+      hasJurnalKegiatan: true,
+      reason: 'Teacher filled Jurnal Kegiatan (exempt from Pulang Cepat)'
+    };
+  }
+
+  // If teacher has NO teaching schedules today -> Rule: Not eligible for Pulang Cepat
+  if (teacherSchedules.length === 0) {
+    return {
+      isEligibleAutoCheckout: true,
+      isPulangCepat: false,
+      statusPresensi: 'Lupa Checkout',
+      teachingSchedules: [],
+      emptySchedules: [],
+      filledJournals: teacherJournals,
+      hasJurnalKegiatan: false,
+      reason: 'Teacher has no teaching schedule today'
+    };
+  }
+
+  // Find empty schedules (schedules without matching accepted teaching journal)
+  const emptySchedules = teacherSchedules.filter(s => {
+    return !teacherJournals.some(j => 
+      j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, s)
+    );
+  });
+
+  const filledTeachingJournals = teacherSchedules.filter(s => {
+    return teacherJournals.some(j => 
+      j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, s)
+    );
+  });
+
+  // If teacher has teaching schedule and has empty schedules (did not fill journals):
+  const isPulangCepat = emptySchedules.length > 0;
+
+  return {
+    isEligibleAutoCheckout: true,
+    isPulangCepat,
+    statusPresensi: isPulangCepat ? 'Pulang Cepat' : 'Lupa Checkout',
+    teachingSchedules: teacherSchedules,
+    emptySchedules,
+    filledJournals: filledTeachingJournals,
+    hasJurnalKegiatan: false,
+    reason: isPulangCepat 
+      ? 'Teacher has teaching schedule, did not fill journal, and did not checkout (Pulang Cepat)'
+      : 'Teacher filled all teaching schedules'
+  };
 }
 
 /**
@@ -469,6 +670,10 @@ export interface AutoCheckoutResult {
  * Automatically inserts an explicit auto-checkout record with:
  * is_auto_checkout = true, status_verifikasi = 'Lupa Checkout',
  * catatan_admin = 'Auto-checkout: Guru tidak melakukan presensi pulang'
+ *
+ * If teacher has teaching schedules on that day, did not fill journals, and did not checkout:
+ * - Marks status as "Pulang Cepat"
+ * - Automatically fills all empty teaching schedules as "Tidak Masuk Kelas" in jurnal_pembelajaran
  */
 export async function evaluateAndApplyAutoCheckout(
   targetDateStr?: string,
@@ -525,6 +730,33 @@ export async function evaluateAndApplyAutoCheckout(
     return ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
   });
 
+  // 3b. Fetch all schedules and journals for the evaluated date
+  const hariEvaluasi = getDayNameFromDate(evaluatedDate);
+
+  let jadwalQuery = supabase
+    .from('jadwal_pelajaran')
+    .select('id, nama_guru, user_id, sekolah_id, kelas, mapel, mata_pelajaran, jam_mulai, jam_selesai')
+    .eq('hari', hariEvaluasi);
+  if (sekolahId) {
+    jadwalQuery = jadwalQuery.eq('sekolah_id', sekolahId);
+  }
+  const { data: allJadwalToday, error: jadwalErr } = await jadwalQuery;
+  if (jadwalErr) {
+    console.error('[attendanceAlpa] Error fetching schedules for auto-checkout:', jadwalErr.message);
+  }
+
+  let jurnalQuery = supabase
+    .from('jurnal_pembelajaran')
+    .select('id, nama_guru, user_id, sekolah_id, kelas, mapel, keterangan, status_verifikasi, tanggal')
+    .eq('tanggal', evaluatedDate);
+  if (sekolahId) {
+    jurnalQuery = jurnalQuery.eq('sekolah_id', sekolahId);
+  }
+  const { data: allJurnalToday, error: jurnalErr } = await jurnalQuery;
+  if (jurnalErr) {
+    console.error('[attendanceAlpa] Error fetching journals for auto-checkout:', jurnalErr.message);
+  }
+
   // Group by teacher
   const teacherRecordsMap = new Map<string, typeof presensiRecords>();
   for (const rec of presensiRecords) {
@@ -554,23 +786,58 @@ export async function evaluateAndApplyAutoCheckout(
     const hasPulang = teacherRecs.some(r => r.tipe_absen === 'Pulang');
     if (hasPulang) continue;
 
+    // Evaluate Pulang Cepat vs Lupa Checkout
+    const evalResult = evaluatePulangCepatDanJurnal(
+      {
+        nama_guru: validDatang.nama_guru,
+        user_id: validDatang.user_id,
+        sekolah_id: validDatang.sekolah_id,
+      },
+      teacherRecs,
+      allJadwalToday || [],
+      allJurnalToday || []
+    );
+
+    const isPulangCepat = evalResult.isPulangCepat;
+    const targetStatus = isPulangCepat ? 'Pulang Cepat' : 'Lupa Checkout';
+    const targetJenis = isPulangCepat ? 'Pulang Cepat' : 'Auto-Checkout';
+    const targetLokasi = isPulangCepat ? 'Sistem Otomatis (Pulang Cepat)' : 'Sistem Otomatis (Lupa Checkout)';
+    const targetCatatan = isPulangCepat
+      ? 'Auto-checkout: Guru pulang cepat (tidak mengisi jurnal & tidak presensi pulang)'
+      : 'Auto-checkout: Guru tidak melakukan presensi pulang';
+
     // Insert explicit auto-checkout record
     const autoCheckoutId = crypto.randomUUID();
     const formattedCutoff = cutoffTime.replace('.', ':');
-    const autoRecord = {
-      id: autoCheckoutId,
-      timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
-      nama_guru: validDatang.nama_guru,
-      user_id: validDatang.user_id || null,
-      tipe_absen: 'Pulang',
-      jenis_presensi: 'Auto-Checkout',
-      status_verifikasi: 'Lupa Checkout',
-      catatan_admin: 'Auto-checkout: Guru tidak melakukan presensi pulang',
-      sekolah_id: validDatang.sekolah_id,
-      lokasi: 'Sistem Otomatis (Lupa Checkout)',
-      jarak: '0 m',
-      is_auto_checkout: true
-    };
+    const autoRecord = isPulangCepat
+      ? {
+          id: autoCheckoutId,
+          timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
+          nama_guru: validDatang.nama_guru,
+          user_id: validDatang.user_id || null,
+          tipe_absen: 'Pulang',
+          jenis_presensi: 'Pulang Cepat',
+          status_verifikasi: 'Pulang Cepat',
+          catatan_admin: 'Auto-checkout: Guru pulang cepat (tidak mengisi jurnal & tidak presensi pulang)',
+          sekolah_id: validDatang.sekolah_id,
+          lokasi: 'Sistem Otomatis (Pulang Cepat)',
+          jarak: '0 m',
+          is_auto_checkout: true
+        }
+      : {
+          id: autoCheckoutId,
+          timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
+          nama_guru: validDatang.nama_guru,
+          user_id: validDatang.user_id || null,
+          tipe_absen: 'Pulang',
+          jenis_presensi: 'Auto-Checkout',
+          status_verifikasi: 'Lupa Checkout',
+          catatan_admin: 'Auto-checkout: Guru tidak melakukan presensi pulang',
+          sekolah_id: validDatang.sekolah_id,
+          lokasi: 'Sistem Otomatis (Lupa Checkout)',
+          jarak: '0 m',
+          is_auto_checkout: true
+        };
 
     let { error: insErr } = await supabase.from('presensi_guru').insert(autoRecord);
     if (insErr && (insErr.message.includes('schema cache') || insErr.message.includes('column'))) {
@@ -584,13 +851,48 @@ export async function evaluateAndApplyAutoCheckout(
     if (insErr) {
       console.error(`[attendanceAlpa] Failed to insert auto-checkout for ${validDatang.nama_guru}:`, insErr.message);
     } else {
+      let jurnalsCreated = 0;
+      // R2: Insert "tidak masuk kelas" records for empty schedules if pulang cepat
+      if (isPulangCepat && evalResult.emptySchedules.length > 0) {
+        for (const emptySched of evalResult.emptySchedules) {
+          const emptyJurnalRecord = {
+            id: crypto.randomUUID(),
+            timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
+            nama_guru: validDatang.nama_guru,
+            user_id: validDatang.user_id || null,
+            sekolah_id: validDatang.sekolah_id || emptySched.sekolah_id || null,
+            tanggal: evaluatedDate,
+            kelas: emptySched.kelas || '-',
+            mapel: emptySched.mata_pelajaran || emptySched.mapel || '-',
+            jam_ke: emptySched.jam_mulai && emptySched.jam_selesai
+              ? `${emptySched.jam_mulai} - ${emptySched.jam_selesai}`
+              : (emptySched.jam_ke || '-'),
+            materi: 'Tidak Masuk Kelas',
+            materi_pembelajaran: 'Tidak Masuk Kelas',
+            kegiatan: 'Tidak Masuk Kelas',
+            keterangan: 'Tidak Masuk Kelas',
+            status_verifikasi: 'Tidak Masuk Kelas',
+            catatan_admin: 'Auto-record: Guru tidak masuk kelas (pulang cepat)',
+            kehadiran_murid: '-'
+          };
+          const { error: jInsErr } = await supabase.from('jurnal_pembelajaran').insert(emptyJurnalRecord);
+          if (jInsErr) {
+            console.error(`[attendanceAlpa] Failed to insert empty journal for ${validDatang.nama_guru}:`, jInsErr.message);
+          } else {
+            jurnalsCreated++;
+          }
+        }
+      }
+
       details.push({
         id: autoCheckoutId,
         nama_guru: validDatang.nama_guru,
         user_id: validDatang.user_id,
         sekolah_id: validDatang.sekolah_id,
         previousStatus: 'Belum Pulang',
-        newStatus: 'Lupa Checkout'
+        newStatus: targetStatus,
+        pulangCepat: isPulangCepat,
+        jurnalKosongCreated: jurnalsCreated
       });
     }
   }

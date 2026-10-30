@@ -1,21 +1,20 @@
-This is a single self-contained fix; keep it small and focused. Sesuaikan sistem panduan/tutorial onboarding di sipjam-app agar selaras dengan struktur menu baru dan sub-tab terpadu (ClayTabs) hasil konsolidasi fitur di docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md.
+This is a single self-contained fix; keep it small and focused. Sesuaikan alur presensi dan jurnal kegiatan guru pada sipjam-app: jika seorang guru melakukan presensi datang dan memiliki jadwal jam pelajaran pada hari tersebut tetapi tidak mengisi jurnal/jam pelajaran kegiatan tersebut serta tidak melakukan presensi pulang, sistem mencatat status presensi guru tersebut sebagai "pulang cepat" dan secara otomatis mengisi/mencatat jurnal kegiatan yang kosong tersebut sebagai "tidak masuk kelas".
 
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
 ## Requirements
 
-### R1. Penyesuaian Panduan Onboarding
-Sesuaikan sistem panduan/tutorial onboarding (`src/components/Onboarding/OnboardingTutorial.tsx`), langkah-langkah tur panduan, target selektor elemen (data-tour), narasi bantuan, dan alur penunjuk sub-tab agar sepenuhnya selaras dengan struktur menu dan sub-tab baru untuk seluruh peran pengguna yang didukung.
+### R1. Penyesuaian Status Presensi Guru Menjadi Pulang Cepat
+Ketika guru melakukan presensi datang dan memiliki jadwal mengajar pada hari tersebut, namun tidak mengisi jurnal kegiatan / jam pelajaran dan tidak melakukan presensi pulang, status presensi guru tersebut dihitung dan dicatat sebagai "pulang cepat".
 
-### R2. Penyelarasan Pengujian Tutorial
-Sesuaikan pengujian terkait tutorial di `tests/challenger_m2_tutorial_system.test.ts` agar mencerminkan selektor dan alur tutorial yang baru, serta pastikan seluruh test suite tutorial lulus 100%.
+### R2. Pengisian Otomatis Jurnal Kosong Menjadi Tidak Masuk Kelas
+Untuk jadwal jam pelajaran yang tidak diisi jurnal kegiatannya oleh guru dalam kondisi di R1, aplikasi secara otomatis mencatat dan menyimpan status jurnal kosong tersebut sebagai "tidak masuk kelas".
 
 ## Acceptance Criteria
 
-### Penyelarasan Tutorial
-- [ ] Langkah-langkah tur, selektor elemen (data-tour), dan penunjuk sub-tab pada `src/components/Onboarding/OnboardingTutorial.tsx` mengarah ke elemen antarmuka dan sub-tab yang valid sesuai struktur menu baru.
-- [ ] Narasi bantuan dan petunjuk alur tutorial mencerminkan navigasi dan pengelompokan sub-tab yang telah dikonsolidasikan.
-
-### Pengujian & Verifikasi
-- [ ] Pengujian pada `tests/challenger_m2_tutorial_system.test.ts` lulus 100% tanpa kegagalan.
-- [ ] TypeScript check (`npx tsc --noEmit`) berjalan sukses dengan nol error.
+### Kriteria Logika Presensi dan Jurnal
+- [ ] Guru yang hanya melakukan presensi datang, memiliki jadwal jam pelajaran, tidak mengisi jurnal mengajar, dan tidak melakukan presensi pulang tercatat memiliki status presensi "pulang cepat".
+- [ ] Seluruh jadwal jam pelajaran guru pada hari tersebut yang kosong / tidak diisi jurnalnya otomatis tercatat dengan status "tidak masuk kelas".
+- [ ] Guru yang mengisi jurnal kegiatan atau melakukan presensi pulang dengan normal tidak terpengaruh oleh aturan ini.
+- [ ] Perubahan alur diverifikasi melalui automated test (unit/integration test) independen yang mencakup skenario di atas dan berhasil lulus.

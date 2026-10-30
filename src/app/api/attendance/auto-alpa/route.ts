@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { evaluateAndApplyAutoAlpa } from '@/lib/attendanceAlpa';
+import { evaluateAndApplyAutoAlpa, evaluateAndApplyAutoCheckout } from '@/lib/attendanceAlpa';
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,6 +14,11 @@ export async function GET(req: NextRequest) {
     const forceParam = searchParams.get('force') === 'true';
 
     const result = await evaluateAndApplyAutoAlpa(dateParam, sekolahParam, { force: forceParam });
+    try {
+      await evaluateAndApplyAutoCheckout(dateParam, sekolahParam, { force: forceParam });
+    } catch (checkoutErr) {
+      console.warn('[API /api/attendance/auto-alpa] Auto-checkout evaluation warning:', checkoutErr);
+    }
 
     return NextResponse.json({
       success: true,
@@ -39,6 +44,11 @@ export async function POST(req: NextRequest) {
     const { date, sekolah_id, force } = body;
 
     const result = await evaluateAndApplyAutoAlpa(date, sekolah_id, { force: Boolean(force) });
+    try {
+      await evaluateAndApplyAutoCheckout(date, sekolah_id, { force: Boolean(force) });
+    } catch (checkoutErr) {
+      console.warn('[API /api/attendance/auto-alpa] Auto-checkout evaluation warning:', checkoutErr);
+    }
 
     return NextResponse.json({
       success: true,

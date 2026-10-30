@@ -738,10 +738,14 @@ export default function GuruPresensi({
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl p-4 mb-4 space-y-1">
                 <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
                   <i className="fa-solid fa-triangle-exclamation text-base shrink-0 text-amber-500"></i>
-                  <span>Peringatan Presensi: Tercatat Lupa Checkout</span>
+                  <span>{dailyState.lastAutoCheckout.status_verifikasi === 'Pulang Cepat' ? 'Peringatan Presensi: Tercatat Pulang Cepat' : 'Peringatan Presensi: Tercatat Lupa Checkout'}</span>
                 </div>
                 <div className="pl-6 text-xs text-amber-700 dark:text-amber-400">
-                  Anda tercatat tidak melakukan presensi pulang pada tanggal {dailyState.lastAutoCheckout.timestamp ? dailyState.lastAutoCheckout.timestamp.substring(0, 10) : 'sebelumnya'}. Sistem telah menandai status presensi Anda sebagai <span className="font-bold">Lupa Checkout</span>.
+                  {dailyState.lastAutoCheckout.status_verifikasi === 'Pulang Cepat' ? (
+                    <>Anda tercatat tidak melakukan presensi pulang pada tanggal {dailyState.lastAutoCheckout.timestamp ? dailyState.lastAutoCheckout.timestamp.substring(0, 10) : 'sebelumnya'}. Sistem telah menandai status presensi Anda sebagai <span className="font-bold">Pulang Cepat</span>.</>
+                  ) : (
+                    <>Anda tercatat tidak melakukan presensi pulang pada tanggal {dailyState.lastAutoCheckout.timestamp ? dailyState.lastAutoCheckout.timestamp.substring(0, 10) : 'sebelumnya'}. Sistem telah menandai status presensi Anda sebagai <span className="font-bold">Lupa Checkout</span>.</>
+                  )}
                 </div>
               </div>
             )}

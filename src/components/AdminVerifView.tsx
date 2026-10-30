@@ -900,6 +900,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                       item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                       item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                      (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>{item.status_verifikasi || 'Menunggu'}</span>
                 </div>
@@ -932,7 +933,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                       <div className="my-1.5">
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 inline-flex items-center gap-1">
                           <i className="fa-solid fa-robot text-[10px]"></i>
-                          Auto-Checkout (Lupa Checkout)
+                          {item.status_verifikasi === 'Pulang Cepat' ? 'Auto-Checkout (Pulang Cepat)' : 'Auto-Checkout (Lupa Checkout)'}
                         </span>
                       </div>
                     )}
