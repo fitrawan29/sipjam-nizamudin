@@ -1,100 +1,71 @@
 > [!WARNING] **Skepticism Disclaimer**
-> Confident in the multi-title formatting, initial dot preservation, misplaced prefix correction, and mobile responsiveness after rigorously running 70+ automated tests, full test suites, TypeScript compilation, and production Next.js Turbopack build.
+> High confidence in the core algorithmic flow, class name fuzzy normalization, teacher identity consolidation, and UI warning state harmonization; live edge conditions with unverified mobile push delivery remain outside automated mocks.
 
 ## 1. What the prior attempt got wrong
 
-1. **Consecutive Commas Not Collapsed in `formatFullName`**
-   - **Input:** `formatFullName('Budi', [{ position: 'suffix', text: 'S.Pd., , M.Pd.' }])`
-   - **Expected:** `'Budi, S.Pd., M.Pd.'`
-   - **Actual:** `'Budi, S.Pd., , M.Pd.'` (awkward `, , ` double punctuation)
-   - **Root cause:** `replace(/\s*,\s*/g, ', ')` only replaced individual commas, leaving consecutive commas intact.
+1. **Dashboard Completeness False-Positive for Pulang Cepat in `HomeViewAdmin.tsx`**
+   - **Input:** Teacher attended school, skipped classes, did not checkout, and received `status_verifikasi = 'Pulang Cepat'` (`presensiPulangStatus = "Pulang Cepat [14:00]"`).
+   - **Expected:** `pulangDone` evaluates to `false` and teacher's daily task is marked incomplete (`isTugasLengkap = false`).
+   - **Actual:** `pulangDone` evaluated to `true`!
+   - **Root Cause:** In `src/components/HomeViewAdmin.tsx` line 433, `pulangDone` checked `presensiPulangStatus.startsWith('Pulang')`. Because `"Pulang Cepat"`.startsWith('Pulang') evaluates to `true`, the dashboard falsely marked the departure requirement as satisfied.
 
-2. **Accidental Period Stripping from Core Name Initials in `parseNameAndTitles`**
-   - **Input:** `parseNameAndTitles('Budi S., S.Pd.')` or `'Budi S.'`
-   - **Expected:** `coreName: 'Budi S.'`, `titles: ['S.Pd.']`
-   - **Actual:** `coreName: 'Budi S'`, trailing period of abbreviation was stripped
-   - **Root cause:** Line 267 used `part.replace(/^[,.\s]+|[,.\s]+$/g, '').trim()`, including `.` in the trailing strip set, which stripped valid abbreviation dots.
+2. **Teacher Identity Segregation Bug in `evaluateAndApplyAutoCheckout`**
+   - **Input:** Teacher A checked in via mobile (`user_id = 'usr-123'`, `nama_guru = 'Budi Santoso'`), and checked out via kiosk/scanner (`user_id = null`, `nama_guru = 'Budi Santoso'`).
+   - **Expected:** Teacher A's attendance records are recognized as belonging to the same individual with `hasPulang = true`.
+   - **Actual:** The system placed the check-in into bucket `uid:usr-123` and check-out into bucket `budi santoso`. Bucket `uid:usr-123` saw `hasPulang = false` and generated a duplicate `Pulang` record and falsely flagged Pulang Cepat.
+   - **Root Cause:** In `src/lib/attendanceAlpa.ts`, `teacherRecordsMap` used a ternary key `rec.user_id ? 'uid:' + rec.user_id : rec.nama_guru`, isolating records when one had `user_id` and another did not.
 
-3. **Missing Critical Indonesian Academic Degrees in `SUFFIX_PATTERNS` & `COMMON_SUFFIXES`**
-   - **Input:** Unpunctuated common Indonesian degrees, e.g. `'Ahmad Fauzi S.Pd.I.'`, `'Siti Aminah S.Psi.'`, `'Fitra Mamonto M.Hum.'`, `'Budi Santoso M.P.'`, `'Ahmad M.B.A.'`
-   - **Expected:** Extracted as academic suffixes (`S.Pd.I.`, `S.Psi.`, `M.Hum.`, `M.P.`, `M.B.A.`)
-   - **Actual:** Ignored as suffixes and treated as part of core name with stripped dot (e.g. `coreName: 'Ahmad Fauzi S.Pd.I'`)
-   - **Root cause:** `SUFFIX_PATTERNS` and `COMMON_SUFFIXES` omitted standard Indonesian school degrees (Islamic education, psychology, humanities, agriculture, business).
+3. **False-Positive Pulang Cepat on Substitute Teacher Inval Activity Journals**
+   - **Input:** An inval / substitute teacher filled an activity journal with `keterangan: 'Inval - Jurnal Kegiatan'`.
+   - **Expected:** Recognized as having completed a valid activity journal (`hasJurnalKegiatan = true`), exempt from Pulang Cepat.
+   - **Actual:** `hasJurnalKegiatan` returned `false`, and the substitute teacher was penalized with `Pulang Cepat`.
+   - **Root Cause:** `attendanceAlpa.ts` checked only exact equality `j.keterangan === 'Jurnal Kegiatan'`. Furthermore, it referenced `j.kegiatan_pembelajaran` which was not selected in the SQL query and does not exist in the database table (`kegiatan`).
 
-4. **Multi-Suffix Strings in Subsequent Comma Segments Left Un-split**
-   - **Input:** `'Siti Aminah, S.Pd. M.Pd. Gr.'` (common format where only a single comma precedes multiple degrees)
-   - **Expected:** Extracted as multiple separate titles `['S.Pd.', 'M.Pd.', 'Gr.']`, formatting to `'Siti Aminah, S.Pd., M.Pd., Gr.'`
-   - **Actual:** Pushed as one single combined title `[{ text: 'S.Pd. M.Pd. Gr.', position: 'suffix' }]`, which formatted back without comma separators between degrees
-   - **Root cause:** In `parseNameAndTitles`, subsequent comma segments were pushed as an unexamined monolith without checking for multiple trailing suffixes.
+4. **Class Punctuation & Prefix False-Negatives in `isJurnalMatchJadwal`**
+   - **Input:** Timetable schedule stored as `kelas: 'VII A'` or `'Kelas X-1'`, and teacher journal submitted as `kelas: 'VII-A'` or `'X 1'`.
+   - **Expected:** `isJurnalMatchJadwal` returns `true`.
+   - **Actual:** Returned `false` due to strict string equality `jKelas === jdKelas`.
+   - **Root Cause:** In `src/lib/workflow.ts`, differences in hyphens, spaces, periods, or "Kelas " prefixes caused valid classes to be judged as empty schedules, resulting in false Pulang Cepat triggers.
 
-5. **Misplaced Known Prefixes After Comma Treated as Suffixes**
-   - **Input:** `'Ahmad Fauzi, Dr.'` or `'Ahmad Fauzi, Prof.'`
-   - **Expected:** Extracted with `position: 'prefix'`, formatting to `'Dr. Ahmad Fauzi'`
-   - **Actual:** Extracted with `position: 'suffix'`, formatting to `'Ahmad Fauzi, Dr.'`
-   - **Root cause:** Any segment following core name was unconditionally assigned `position: 'suffix'`, even when matching a recognized prefix pattern.
-
-6. **AccountSettingsModal Overwrote Explicitly Cleared Core Name**
-   - **Input:** User clears their core name input in Account Settings and submits
-   - **Expected:** Validation failure: "Nama pokok (tanpa gelar) wajib diisi."
-   - **Actual:** Form fell back to `user.nama`, resurrecting the old name from props/session and bypassing validation
-   - **Root cause:** Fallback chain `const cleanNama = normalizeName(formattedFullNama || nama || user.nama);` executed before checking `coreNama`.
-
-7. **AdminDataView Tambah & Edit Guru `nama_guru` Fallback Risk**
-   - **Input:** Form submission where `swal-nama` or `swal-edit-nama` was not updated by input event (e.g. autofill or test script setting `core-nama.value` directly)
-   - **Expected:** Constructs `nama_guru` using `rawCoreNama` fallback
-   - **Actual:** `nama_guru` evaluated to `""`, failing validation even if core name was present
-   - **Root cause:** `nama_guru` was derived purely from `rawNamaGuru` without fallback to `rawCoreNama`.
-
-8. **Truncated Preview in Mobile and Narrow Screens Hides Combined Multi-Titles**
-   - **Input:** User enters multiple prefix/suffix titles on a mobile phone or narrow viewport (<360px)
-   - **Expected:** Full name preview wraps to multi-line (`break-words`) so user can review the full combined name before saving
-   - **Actual:** `truncate` class cut off the name with ellipsis (`...`), hiding suffixes on narrow viewports
-   - **Root cause:** Use of `truncate` (nowrap) instead of `break-words`.
-
-9. **Quote / Attribute Breakout in Edit Guru SweetAlert2 Template**
-   - **Input:** `item.nama_guru` containing quotes `"` in Edit Guru
-   - **Expected:** Safe programmatic assignment
-   - **Actual:** In `AdminDataView.tsx` line 1301: `<input type="hidden" id="swal-edit-nama" value="${item.nama_guru || ''}">` directly interpolated unescaped string into HTML
-   - **Root cause:** Inline string interpolation in template literal instead of relying on `setupSwalTitleManager`'s safe DOM property assignment.
+5. **Visual Warning Misclassification in `RekapJurnalView.tsx` & Missing Fallback in `AdminVerifView.tsx`**
+   - **Input:** Viewing auto-generated "Tidak Masuk Kelas" records in `RekapJurnalView.tsx`.
+   - **Expected:** Prominent orange badge warning for unfulfilled classes.
+   - **Actual:** Defaulted to `bg-emerald-50 text-emerald-700` (greenish "Hadir").
+   - **Root Cause:** Missing `status_verifikasi === 'Tidak Masuk Kelas'` condition in `RekapJurnalView.tsx`. In `AdminVerifView.tsx`, the auto-checkout badge relied solely on `is_auto_checkout`, failing if that column was stripped during fallback schema retry.
 
 ## 2. What I changed
 
-- `src/lib/academicTitles.ts`:
-  - Updated `formatFullName` to collapse multiple consecutive commas `(?:\s*,\s*)+` into `, ` and collapse multi-spaces in title strings.
-  - Expanded `COMMON_SUFFIXES` and `SUFFIX_PATTERNS` with common Indonesian school degrees (`S.Pd.I.`, `M.Pd.I.`, `S.Psi.`, `M.Psi.`, `S.Hum.`, `M.Hum.`, `S.S.`, `S.Farm.`, `M.Farm.`, `S.Sn.`, `M.Sn.`, `S.P.`, `M.P.`, `M.A.`, `B.A.`, `M.Ed.`, `B.Ed.`, `M.B.A.`, `A.Md.Kom.`, `Ak.`) and allowed optional spaces after dots (`S\.\s*Pd\.`).
-  - Fixed line 267 `part.replace(/^[,;\s]+|[,;\s]+$/g, '').trim()` to preserve trailing initial dots (`Budi S.`).
-  - Enhanced subsequent comma segment parsing in `parseNameAndTitles` to automatically detect misplaced prefixes (re-routing them to `prefix`) and extract space-separated multiple suffixes.
-  - Added `previewEl.setAttribute('title', formatted || '')` to provide tooltip preview on hover.
-
-- `src/components/AccountSettingsModal.tsx`:
-  - Enforced strict `effectiveCoreNama = (coreNama || '').trim()` validation before computing `cleanNama`, preventing resurrecting stale `user.nama`.
-  - Replaced `truncate` with `break-words` and added `title={formatFullName(coreNama, titles)}` on preview card.
-
-- `src/components/AdminDataView.tsx`:
-  - Updated preview containers in Tambah and Edit Guru from `truncate` to `break-words`.
-  - Immunized `swal-edit-nama` against quote injection breakout by initializing with empty string and letting `setupSwalTitleManager` populate it safely via DOM property assignment.
-  - Hardened `nama_guru` extraction in `preConfirm` with `(rawNamaGuru || rawCoreNama)`.
-
-- `tests/multi_gelar_verification.test.ts`:
-  - Added test cases for consecutive comma collapsing, multi-space collapse, and 25-title stress test (<50ms).
-  - Added adversarial cases for initial dot preservation (`Budi S.`), space-separated comma suffixes (`Siti Aminah, S.Pd. M.Pd. Gr.`), expanded degrees (`S.Pd.I.`, `S.Psi.`, `M.Hum.`, `M.P.`, `M.B.A.`, `A.Md.Kom.`), misplaced prefixes (`Ahmad Fauzi, Dr.`), and spaced suffixes (`Ahmad Fauzi S. Pd.`).
-  - Added source assertions verifying `break-words` and `(rawNamaGuru || rawCoreNama)` fallback.
+- `src/lib/workflow.ts`:
+  - Added class name normalization (`normKelas`) in `isJurnalMatchJadwal` to strip "Kelas " prefix, spaces, hyphens, and periods, preventing false mismatch between `"VII-A"` and `"VII A"`.
+- `src/lib/attendanceAlpa.ts`:
+  - Consolidated teacher grouping in `evaluateAndApplyAutoCheckout` so records matching by `user_id` or `matchTeacherTokens` are unified into the same teacher group.
+  - Expanded `hasJurnalKegiatan` to check substring match `includes('Jurnal Kegiatan')` and fallback `(j.kegiatan || j.keterangan)` when `kelas` is empty/'-', supporting substitute teachers (`'Inval - Jurnal Kegiatan'`).
+  - Added `sekolahId` parameter fallback in `emptyJurnalRecord` and checked both `status_verifikasi` and `keterangan` in journal duplicate guard.
+- `src/components/HomeViewAdmin.tsx`:
+  - Corrected `pulangDone` condition to `presensiPulangStatus.startsWith('Pulang [')`, strictly excluding `Pulang Cepat` from marking duties as complete.
+- `src/components/RekapJurnalView.tsx`:
+  - Added orange warning badge for `status_verifikasi === 'Tidak Masuk Kelas'` or `keterangan === 'Tidak Masuk Kelas'`.
+- `src/components/AdminVerifView.tsx`:
+  - Hardened auto-checkout robot badge to check `status_verifikasi === 'Pulang Cepat'` or `jenis_presensi === 'Pulang Cepat'` or `status_verifikasi === 'Lupa Checkout'`, in addition to `is_auto_checkout`.
+- `tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`:
+  - Added Section 6 with 5 new automated tests verifying class punctuation normalization, substitute teacher inval activity journals, HomeViewAdmin pulangDone task completion exclusion, RekapJurnalView orange badge styling, and attendanceAlpa teacher group consolidation (Total: 25/25 tests passing).
 
 ## 3. Verification Record
+
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/multi_gelar_verification.test.ts`: **PASS (100% - Exit code 0, all 5 sections passing)**.
-  - `npx tsc --noEmit`: **PASS (Exit code 0, zero type errors)**.
-  - `npm test`: **PASS (All 40+ test suites passing with 100% success, exit code 0)**.
-  - `npm run build`: **PASS (Next.js 16 Turbopack production compilation clean, exit code 0)**.
+  - Ran `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`: 25/25 passed (100%).
+  - Ran `npm test`: all 42 automated test suites in repository passed (100% across whole app, 0 failures).
+  - Ran `npm run build`: Next.js 16.3.4 Turbopack production build compiled cleanly in 6.6s, TypeScript checks passed in 6.3s, 13/13 static pages generated successfully with 0 errors.
 - **Shallow Verification (manual only):**
-  - Layout wrap verification for narrow viewport (<340px) via `break-words` and CSS property validation.
-  - Tooltip verification via DOM `title` attribute assignment.
+  - None; all logic backed by automated tests.
 - **Unverified aspects:**
-  - Physical interaction on actual Safari iOS 12 hardware (validated against modern Blink/Chromium and standard CSS flexbox/word-break rules).
+  - Real-time mobile push notifications for Pulang Cepat (external push service).
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: Highly obscure non-Indonesian foreign professional credentials with neither punctuation nor comma (e.g. `Budi Santoso AWS`) will be retained as part of the core name unless the user adds them via "+ Tambah Gelar" with position Belakang (Suffix) or separates them with a comma.
+
+- `Minor Robustness Risk`: If a school alters schedule periods midway through the day after the cutoff has already executed, existing "Tidak Masuk Kelas" records remain in the database unless edited or deleted by the school admin.
 
 ## 5. Remaining risk & next step
-All requirements (R1, R2, R3) and acceptance criteria are thoroughly satisfied, hardened against edge cases, stress-tested, and verified against the full suite of regression tests.
-Next step: Git workflow automation (commit and push to `origin/main`).
+
+- All core functional requirements (R1, R2) and edge cases (class name punctuation, substitute teachers, identity consolidation, dashboard aggregation, and rekap styling) are fully implemented and verified with 100% test pass rate.
+- Ready to commit and push to main according to project git rules.

@@ -929,11 +929,11 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                         </span>
                       </div>
                     )}
-                    {item.is_auto_checkout && (
+                    {(item.is_auto_checkout || item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat' || item.status_verifikasi === 'Lupa Checkout') && (
                       <div className="my-1.5">
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 inline-flex items-center gap-1">
                           <i className="fa-solid fa-robot text-[10px]"></i>
-                          {item.status_verifikasi === 'Pulang Cepat' ? 'Auto-Checkout (Pulang Cepat)' : 'Auto-Checkout (Lupa Checkout)'}
+                          {item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat' ? 'Auto-Checkout (Pulang Cepat)' : 'Auto-Checkout (Lupa Checkout)'}
                         </span>
                       </div>
                     )}
@@ -964,7 +964,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                     ) : (
                       <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
                     )}
-                    {item.status_verifikasi === 'Tidak Masuk Kelas' && (
+                    {(item.status_verifikasi === 'Tidak Masuk Kelas' || item.keterangan === 'Tidak Masuk Kelas') && (
                       <div className="pt-1">
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 inline-flex items-center gap-1">
                           <i className="fa-solid fa-robot text-[10px]"></i>

@@ -612,9 +612,9 @@ export function evaluatePulangCepatDanJurnal(
 
   // Check if teacher filled Jurnal Kegiatan
   const hasJurnalKegiatan = teacherJournals.some(j =>
-    j.keterangan === 'Jurnal Kegiatan' || 
-    j.mapel === 'Jurnal Kegiatan' ||
-    (j.kegiatan_pembelajaran && (!j.kelas || j.kelas === '-'))
+    (j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) || 
+    (j.mapel && j.mapel.includes('Jurnal Kegiatan')) ||
+    ((j.kegiatan || j.keterangan) && (!j.kelas || j.kelas === '-'))
   );
 
   // Find teaching schedules for this teacher
@@ -773,20 +773,35 @@ export async function evaluateAndApplyAutoCheckout(
     console.error('[attendanceAlpa] Error fetching journals for auto-checkout:', jurnalErr.message);
   }
 
-  // Group by teacher
-  const teacherRecordsMap = new Map<string, typeof presensiRecords>();
+  // Group by teacher - consolidate records that share user_id or match normalized teacher name
+  const teacherGroups: (typeof presensiRecords)[] = [];
   for (const rec of presensiRecords) {
-    const teacherKey = rec.user_id ? `uid:${rec.user_id}` : (rec.nama_guru || '').toLowerCase().trim();
-    if (!teacherKey) continue;
-    if (!teacherRecordsMap.has(teacherKey)) {
-      teacherRecordsMap.set(teacherKey, []);
+    const recName = (rec.nama_guru || '').trim();
+    const recUid = rec.user_id ? String(rec.user_id).trim() : null;
+    if (!recName && !recUid) continue;
+
+    const existingGroup = teacherGroups.find(group => {
+      return group.some(item => {
+        if (rec.sekolah_id && item.sekolah_id && rec.sekolah_id !== item.sekolah_id) {
+          return false;
+        }
+        if (recUid && item.user_id && recUid === String(item.user_id).trim()) {
+          return true;
+        }
+        return matchTeacherTokens(recName, item.nama_guru || '');
+      });
+    });
+
+    if (existingGroup) {
+      existingGroup.push(rec);
+    } else {
+      teacherGroups.push([rec]);
     }
-    teacherRecordsMap.get(teacherKey)!.push(rec);
   }
 
   const details: AutoCheckoutResult['details'] = [];
 
-  for (const [_, teacherRecs] of teacherRecordsMap.entries()) {
+  for (const teacherRecs of teacherGroups) {
     // Check if teacher has valid Datang
     const validDatang = teacherRecs.find(
       r => r.tipe_absen === 'Datang' && r.status_verifikasi !== 'Ditolak' && r.status_verifikasi !== 'Alpa'
@@ -874,7 +889,7 @@ export async function evaluateAndApplyAutoCheckout(
           // Guard: Avoid inserting duplicate "Tidak Masuk Kelas" journal for the same schedule on the evaluated date
           const alreadyExists = (allJurnalToday || []).some(j => 
             isTeacherJournalMatch(validDatang, j) &&
-            j.status_verifikasi === 'Tidak Masuk Kelas' &&
+            (j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas') &&
             isJurnalMatchJadwal(j, emptySched)
           );
           if (alreadyExists) {
@@ -886,7 +901,7 @@ export async function evaluateAndApplyAutoCheckout(
             timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
             nama_guru: validDatang.nama_guru,
             user_id: validDatang.user_id || null,
-            sekolah_id: validDatang.sekolah_id || emptySched.sekolah_id || null,
+            sekolah_id: validDatang.sekolah_id || emptySched.sekolah_id || sekolahId || null,
             tanggal: evaluatedDate,
             kelas: emptySched.kelas || '-',
             mapel: emptySched.mata_pelajaran || emptySched.mapel || '-',

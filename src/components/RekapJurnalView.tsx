@@ -716,6 +716,8 @@ export default function RekapJurnalView({
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                       : j.status_verifikasi === 'Ditolak'
                                       ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                      : (j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas')
+                                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                                       : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                                   }`}>
                                     {ketKehadiran}

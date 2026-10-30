@@ -171,7 +171,10 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   const jdKelas = (jadwal.kelas || '').toLowerCase().trim();
   
   // Kelas harus cocok dan tidak boleh kosong
-  if (!jKelas || !jdKelas || jKelas !== jdKelas) return false;
+  if (!jKelas || !jdKelas) return false;
+
+  const normKelas = (k: string) => k.replace(/^kelas\s+/i, '').replace(/[\s\-_.]/g, '');
+  if (jKelas !== jdKelas && normKelas(jKelas) !== normKelas(jdKelas)) return false;
 
   // Mapel tidak boleh kosong agar tidak terjadi false-positive match terhadap string kosong
   if (!jMapel || !jdMapel) return false;

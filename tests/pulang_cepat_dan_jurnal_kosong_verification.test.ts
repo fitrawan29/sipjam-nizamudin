@@ -570,6 +570,102 @@ async function runAll() {
     assert.ok(content.includes('Otomatis (Tidak Masuk Kelas)'));
   });
 
+  // ==========================================================================
+  // SECTION 6: REVIEWER R2 ADVERSARIAL STRESS & DEEP HARMONIZATION TESTS
+  // ==========================================================================
+  console.log('\n--- Section 6: Reviewer R2 Adversarial Stress & Deep Harmonization ---');
+
+  runTest('6.1: isJurnalMatchJadwal handles class punctuation, hyphens, and "Kelas " prefix', () => {
+    // Schedule has "VII A", journal has "VII-A"
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'VII-A', mapel: 'Matematika' }, { kelas: 'VII A', mata_pelajaran: 'Matematika' }),
+      true,
+      'VII-A harus match dengan VII A'
+    );
+
+    // Schedule has "Kelas X-1", journal has "X 1"
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'X 1', mapel: 'Fisika' }, { kelas: 'Kelas X-1', mata_pelajaran: 'Fisika' }),
+      true,
+      'X 1 harus match dengan Kelas X-1'
+    );
+
+    // Different class numbers must strictly NOT match
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'VII-A', mapel: 'Matematika' }, { kelas: 'VII-B', mata_pelajaran: 'Matematika' }),
+      false,
+      'VII-A tidak boleh match dengan VII-B'
+    );
+  });
+
+  runTest('6.2: evaluatePulangCepatDanJurnal recognizes substitute teacher "Inval - Jurnal Kegiatan"', () => {
+    const teacher = { nama_guru: 'Ahmad Fauzi', user_id: 'usr-inval', sekolah_id: 'sch-1' };
+    const teacherPresensi = [
+      {
+        id: 'p-1',
+        nama_guru: 'Ahmad Fauzi',
+        user_id: 'usr-inval',
+        tipe_absen: 'Datang',
+        status_verifikasi: 'Disetujui',
+        timestamp: '2026-10-30T07:15:00+08:00',
+        sekolah_id: 'sch-1'
+      }
+    ];
+    const allSchedules = [
+      {
+        id: 'sch-1',
+        nama_guru: 'Ahmad Fauzi',
+        user_id: 'usr-inval',
+        kelas: 'IX A',
+        mata_pelajaran: 'Biologi',
+        sekolah_id: 'sch-1'
+      }
+    ];
+    // Inval teacher filled substitute activity journal
+    const allJournals = [
+      {
+        id: 'j-inval',
+        nama_guru: 'Ahmad Fauzi',
+        user_id: 'usr-inval',
+        tanggal: '2026-10-30',
+        keterangan: 'Inval - Jurnal Kegiatan',
+        mapel: '-',
+        kelas: '-',
+        status_verifikasi: 'Disetujui',
+        sekolah_id: 'sch-1'
+      }
+    ];
+
+    const res = evaluatePulangCepatDanJurnal(teacher, teacherPresensi, allSchedules, allJournals);
+    assert.strictEqual(res.isPulangCepat, false, 'Guru inval yang mengisi Inval - Jurnal Kegiatan tidak dihitung Pulang Cepat');
+    assert.strictEqual(res.statusPresensi, 'Lupa Checkout');
+    assert.strictEqual(res.emptySchedules.length, 0);
+  });
+
+  runTest('6.3: HomeViewAdmin correctly excludes Pulang Cepat from pulangDone in task completeness', () => {
+    const hvaPath = path.join(root, 'src', 'components', 'HomeViewAdmin.tsx');
+    const content = fs.readFileSync(hvaPath, 'utf8');
+
+    // Verify pulangDone strictly checks 'Pulang [' (normal checkout) rather than generic 'Pulang' which matches 'Pulang Cepat'
+    assert.ok(content.includes("presensiPulangStatus.startsWith('Pulang [')"), 'pulangDone must require regular Pulang');
+  });
+
+  runTest('6.4: RekapJurnalView renders orange styling for Tidak Masuk Kelas', () => {
+    const rjPath = path.join(root, 'src', 'components', 'RekapJurnalView.tsx');
+    const content = fs.readFileSync(rjPath, 'utf8');
+
+    assert.ok(content.includes("(j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas')"));
+    assert.ok(content.includes('bg-orange-100 text-orange-700'));
+  });
+
+  runTest('6.5: attendanceAlpa consolidates teacher records across user_id and matching tokens', () => {
+    const alpaPath = path.join(root, 'src', 'lib', 'attendanceAlpa.ts');
+    const content = fs.readFileSync(alpaPath, 'utf8');
+
+    assert.ok(content.includes('teacherGroups'));
+    assert.ok(content.includes('matchTeacherTokens(recName, item.nama_guru'));
+  });
+
   console.log(`\n========================================================================`);
   console.log(`TOTAL CHECKS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
   console.log(`========================================================================`);

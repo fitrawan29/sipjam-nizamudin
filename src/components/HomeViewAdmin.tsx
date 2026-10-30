@@ -430,7 +430,7 @@ export default function HomeViewAdmin({
         const isIzinSakit = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit';
         const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
-        const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang'));
+        const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang ['));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
         const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? (isExemptNonTeaching || hasJurnalKegiatan) : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || isExemptNonTeaching ? true : filledCount >= targetCount));
 
