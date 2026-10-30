@@ -55,6 +55,7 @@ export type GuruDailyState = {
 
   // Auto-checkout tracking
   isAutoCheckout?: boolean;
+  isPulangCepat?: boolean;
   lastAutoCheckout?: any | null;
 
   // Multi-day leave coverage
@@ -544,6 +545,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       }
       if (state.presensiPulang?.is_auto_checkout || state.presensiPulang?.status_verifikasi === 'Lupa Checkout' || state.presensiPulang?.status_verifikasi === 'Pulang Cepat' || state.presensiPulang?.jenis_presensi === 'Pulang Cepat') {
         state.isAutoCheckout = true;
+      }
+      if (state.presensiPulang?.status_verifikasi === 'Pulang Cepat' || state.presensiPulang?.jenis_presensi === 'Pulang Cepat') {
+        state.isPulangCepat = true;
       }
 
       state.arrivalState = state.presensiDatang?.jenis_presensi || null;

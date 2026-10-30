@@ -36,11 +36,23 @@ export function isBeforeCutoff(currentTime: string, cutoffTime: string): boolean
 }
 
 /**
+ * Normalizes input date string into YYYY-MM-DD.
+ */
+export function normalizeDateStr(dateStr?: string): string {
+  if (!dateStr) return getWitaDateStr();
+  const raw = dateStr.trim();
+  if (raw.includes('T')) return raw.split('T')[0];
+  if (raw.includes(' ')) return raw.split(' ')[0];
+  return raw;
+}
+
+/**
  * Mendapatkan nama hari Indonesia dari string YYYY-MM-DD (WITA-aware, pakai jam 12:00).
  */
 function getDayNameFromDate(dateStr: string): string {
+  const cleanDate = normalizeDateStr(dateStr);
   const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  return days[new Date(dateStr + 'T12:00:00+08:00').getDay()];
+  return days[new Date(cleanDate + 'T12:00:00+08:00').getDay()];
 }
 
 /**
@@ -53,7 +65,7 @@ export async function evaluateAndApplyAutoAlpa(
   sekolahId?: string,
   options?: EvaluateAutoAlpaOptions
 ): Promise<AutoAlpaResult> {
-  const evaluatedDate = targetDateStr || getWitaDateStr();
+  const evaluatedDate = normalizeDateStr(targetDateStr);
   const todayWita = getWitaDateStr();
   const currentTimeWita = getWitaTimeStr();
 
@@ -520,8 +532,8 @@ export function isTeacherScheduleMatch(
   if (teacher.sekolah_id && schedule.sekolah_id && teacher.sekolah_id !== schedule.sekolah_id) {
     return false;
   }
-  if (teacher.user_id && schedule.user_id && String(teacher.user_id) === String(schedule.user_id)) {
-    return true;
+  if (teacher.user_id && schedule.user_id) {
+    return String(teacher.user_id) === String(schedule.user_id);
   }
   return matchTeacherTokens(teacher.nama_guru, schedule.nama_guru);
 }
@@ -536,8 +548,8 @@ export function isTeacherJournalMatch(
   if (teacher.sekolah_id && journal.sekolah_id && teacher.sekolah_id !== journal.sekolah_id) {
     return false;
   }
-  if (teacher.user_id && journal.user_id && String(teacher.user_id) === String(journal.user_id)) {
-    return true;
+  if (teacher.user_id && journal.user_id) {
+    return String(teacher.user_id) === String(journal.user_id);
   }
   return matchTeacherTokens(teacher.nama_guru, journal.nama_guru);
 }
@@ -696,7 +708,7 @@ export async function evaluateAndApplyAutoCheckout(
   sekolahId?: string,
   options?: EvaluateAutoAlpaOptions
 ): Promise<AutoCheckoutResult> {
-  const evaluatedDate = targetDateStr || getWitaDateStr();
+  const evaluatedDate = normalizeDateStr(targetDateStr);
   const todayWita = getWitaDateStr();
   const currentTimeWita = getWitaTimeStr();
 
@@ -785,8 +797,9 @@ export async function evaluateAndApplyAutoCheckout(
         if (rec.sekolah_id && item.sekolah_id && rec.sekolah_id !== item.sekolah_id) {
           return false;
         }
-        if (recUid && item.user_id && recUid === String(item.user_id).trim()) {
-          return true;
+        const itemUid = item.user_id ? String(item.user_id).trim() : null;
+        if (recUid && itemUid) {
+          return recUid === itemUid;
         }
         return matchTeacherTokens(recName, item.nama_guru || '');
       });
@@ -839,7 +852,8 @@ export async function evaluateAndApplyAutoCheckout(
 
     // Insert explicit auto-checkout record
     const autoCheckoutId = crypto.randomUUID();
-    const formattedCutoff = cutoffTime.replace('.', ':');
+    const rawCutoff = (cutoffTime || '22:00').replace('.', ':').trim();
+    const formattedCutoff = rawCutoff.length >= 5 ? rawCutoff.substring(0, 5) : rawCutoff;
     const autoRecord = isPulangCepat
       ? {
           id: autoCheckoutId,
@@ -911,12 +925,21 @@ export async function evaluateAndApplyAutoCheckout(
             materi: 'Tidak Masuk Kelas',
             materi_pembelajaran: 'Tidak Masuk Kelas',
             kegiatan: 'Tidak Masuk Kelas',
+            kegiatan_pembelajaran: 'Tidak Masuk Kelas',
             keterangan: 'Tidak Masuk Kelas',
             status_verifikasi: 'Tidak Masuk Kelas',
             catatan_admin: 'Auto-record: Guru tidak masuk kelas (pulang cepat)',
+            catatan_refleksi: 'Guru pulang cepat (tidak masuk kelas)',
             kehadiran_murid: '-'
           };
-          const { error: jInsErr } = await supabase.from('jurnal_pembelajaran').insert(emptyJurnalRecord);
+          let { error: jInsErr } = await supabase.from('jurnal_pembelajaran').insert(emptyJurnalRecord);
+          if (jInsErr && (jInsErr.message.includes('schema cache') || jInsErr.message.includes('column'))) {
+            const { catatan_admin: _, catatan_refleksi: _2, ...baseEmptyJurnal } = emptyJurnalRecord;
+            const retry = await supabase.from('jurnal_pembelajaran').insert(baseEmptyJurnal);
+            if (!retry.error) {
+              jInsErr = null;
+            }
+          }
           if (jInsErr) {
             console.error(`[attendanceAlpa] Failed to insert empty journal for ${validDatang.nama_guru}:`, jInsErr.message);
           } else {

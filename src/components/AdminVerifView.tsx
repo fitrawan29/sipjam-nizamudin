@@ -439,7 +439,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
     // Always filter strictly by targetDate = date || effectiveDate
     const targetDate = date || effectiveDate;
-    const submittedList = jurnalList.filter(j => j.tanggal === targetDate);
+    const submittedList = jurnalList.filter(j => j.tanggal === targetDate && j.status_verifikasi !== 'Tidak Masuk Kelas' && j.keterangan !== 'Tidak Masuk Kelas');
 
     const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
 
@@ -900,7 +900,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                       item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                       item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                      (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas' || item.jenis_presensi === 'Pulang Cepat') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>{item.status_verifikasi || 'Menunggu'}</span>
                 </div>

@@ -4,7 +4,8 @@ import assert from 'assert';
 import { 
   evaluatePulangCepatDanJurnal, 
   isTeacherScheduleMatch, 
-  isTeacherJournalMatch 
+  isTeacherJournalMatch,
+  normalizeDateStr
 } from '../src/lib/attendanceAlpa';
 import { isJurnalMatchJadwal } from '../src/lib/workflow';
 
@@ -664,6 +665,55 @@ async function runAll() {
 
     assert.ok(content.includes('teacherGroups'));
     assert.ok(content.includes('matchTeacherTokens(recName, item.nama_guru'));
+  });
+
+  // ==========================================================================
+  // SECTION 7: REVIEWER R3 ADVERSARIAL STRESS & CORNER CASE TESTS
+  // ==========================================================================
+  console.log('\n--- Section 7: Reviewer R3 Adversarial Stress & Edge Cases ---');
+
+  runTest('7.1: normalizeDateStr cleans ISO timestamps and dates with time fragments', () => {
+    assert.strictEqual(normalizeDateStr('2026-10-30T10:00:00.000Z'), '2026-10-30');
+    assert.strictEqual(normalizeDateStr('2026-10-30 14:30:00'), '2026-10-30');
+    assert.strictEqual(normalizeDateStr(' 2026-10-30 '), '2026-10-30');
+  });
+
+  runTest('7.2: isTeacherScheduleMatch and isTeacherJournalMatch strictly reject distinct user_ids', () => {
+    // Both have user_id and they differ, despite identical name tokens
+    const teacherA = { nama_guru: 'Budi Santoso', user_id: 'usr-1', sekolah_id: 'sch-1' };
+    const schedB = { nama_guru: 'Budi Santoso', user_id: 'usr-2', sekolah_id: 'sch-1' };
+    const journalB = { nama_guru: 'Budi Santoso', user_id: 'usr-2', sekolah_id: 'sch-1' };
+
+    assert.strictEqual(isTeacherScheduleMatch(teacherA, schedB), false, 'Distinct user_id must not match schedule');
+    assert.strictEqual(isTeacherJournalMatch(teacherA, journalB), false, 'Distinct user_id must not match journal');
+
+    // Matching user_ids must match
+    const schedA = { nama_guru: 'Budi S.', user_id: 'usr-1', sekolah_id: 'sch-1' };
+    assert.strictEqual(isTeacherScheduleMatch(teacherA, schedA), true, 'Matching user_id must match schedule');
+  });
+
+  runTest('7.3: attendanceAlpa teacherGroups consolidation strictly enforces user_id matching before tokens', () => {
+    const alpaPath = path.join(root, 'src', 'lib', 'attendanceAlpa.ts');
+    const content = fs.readFileSync(alpaPath, 'utf8');
+
+    // Verify recUid && itemUid comparison exists before token match
+    assert.ok(content.includes('if (recUid && itemUid) {\n          return recUid === itemUid;\n        }'));
+  });
+
+  runTest('7.4: HomeViewGuru warns teacher on Pulang Cepat in step detail and getNextAction', () => {
+    const hvgPath = path.join(root, 'src', 'components', 'HomeViewGuru.tsx');
+    const content = fs.readFileSync(hvgPath, 'utf8');
+
+    assert.ok(content.includes("⚠️ Pulang Cepat · ${timeOnly} WITA"));
+    assert.ok(content.includes("⚠️ Anda tercatat Pulang Cepat"));
+    assert.ok(content.includes("⚠️ Tidak Masuk Kelas"));
+  });
+
+  runTest('7.5: AdminVerifView unsubmittedJurnal excludes Tidak Masuk Kelas from submittedList', () => {
+    const avPath = path.join(root, 'src', 'components', 'AdminVerifView.tsx');
+    const content = fs.readFileSync(avPath, 'utf8');
+
+    assert.ok(content.includes("j.status_verifikasi !== 'Tidak Masuk Kelas'"));
   });
 
   console.log(`\n========================================================================`);

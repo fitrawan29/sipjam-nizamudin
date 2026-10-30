@@ -361,7 +361,10 @@ export default function HomeViewGuru({
     } else {
       const filled = (dailyState.jurnalKBM || []).length;
       const total = (dailyState.jadwalKBM || []).length;
-      if (hasJurnalDitolak) {
+      const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang?.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang?.jenis_presensi === 'Pulang Cepat';
+      if (isPulangCepat && total > filled) {
+        steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: 'active', detail: `⚠️ Tidak Masuk Kelas (${total - filled} jam pelajaran)`, icon: 'fa-triangle-exclamation' });
+      } else if (hasJurnalDitolak) {
         steps.push({ label: `Jurnal KBM`, status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri ditolak)`, icon: 'fa-book-journal-whills' });
       } else if (filled >= total) {
         steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: 'done', detail: 'Semua jurnal KBM sudah diisi', icon: 'fa-book-journal-whills' });
@@ -375,9 +378,17 @@ export default function HomeViewGuru({
     if (dailyState.presensiPulangDitolak) {
       steps.push({ label: 'Presensi Pulang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-from-bracket' });
     } else if (dailyState.presensiPulang) {
+      const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat';
+      const isLupaCheckout = dailyState.presensiPulang.status_verifikasi === 'Lupa Checkout' || dailyState.presensiPulang.is_auto_checkout;
       const ts = dailyState.presensiPulang.timestamp || '';
       const timeOnly = ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : '');
-      steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Pulang · ${timeOnly} WITA`, icon: 'fa-right-from-bracket' });
+      if (isPulangCepat) {
+        steps.push({ label: 'Presensi Pulang', status: 'active', detail: `⚠️ Pulang Cepat · ${timeOnly} WITA`, icon: 'fa-person-walking-dashed-line-arrow-right' });
+      } else if (isLupaCheckout) {
+        steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Lupa Checkout · ${timeOnly} WITA`, icon: 'fa-clock-rotate-left' });
+      } else {
+        steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Pulang · ${timeOnly} WITA`, icon: 'fa-right-from-bracket' });
+      }
     } else if (dailyState.canPresensiPulang) {
       steps.push({ label: 'Presensi Pulang', status: 'active', detail: 'Semua tugas selesai, silakan absen pulang', icon: 'fa-right-from-bracket' });
     } else {
@@ -414,7 +425,15 @@ export default function HomeViewGuru({
     if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.canPresensiPulang && !dailyState.presensiPulang) return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-green-600 dark:text-green-400' };
-    if (dailyState.presensiPulang) return { text: 'Semua tugas hari ini sudah selesai. Terima kasih!', color: 'text-green-600 dark:text-green-400' };
+    if (dailyState.presensiPulang) {
+      if (dailyState.isPulangCepat || dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat') {
+        return { text: '⚠️ Anda tercatat Pulang Cepat karena tidak mengisi jurnal kegiatan dan tidak melakukan presensi pulang.', color: 'text-orange-600 dark:text-orange-400' };
+      }
+      if (dailyState.presensiPulang.status_verifikasi === 'Lupa Checkout' || dailyState.presensiPulang.is_auto_checkout) {
+        return { text: 'ℹ️ Presensi pulang Anda dicatat otomatis oleh sistem (Lupa Checkout).', color: 'text-amber-600 dark:text-amber-400' };
+      }
+      return { text: 'Semua tugas hari ini sudah selesai. Terima kasih!', color: 'text-green-600 dark:text-green-400' };
+    }
     return null;
   };
 
