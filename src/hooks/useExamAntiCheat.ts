@@ -54,10 +54,12 @@ export function useExamAntiCheat({
   const onLockoutRef = useRef(onLockout);
   onLockoutRef.current = onLockout;
 
+  const isTerminatingRef = useRef(false);
+
   // Process a violation trigger
   const triggerViolation = useCallback(
     (type: ViolationType, details?: string) => {
-      if (!isActive || stateRef.current.isLocked) return;
+      if (!isActive || stateRef.current.isLocked || isTerminatingRef.current) return;
 
       const { nextState, newViolation, isNowLocked, isCountIncremented } = evaluateSecurityViolation(
         stateRef.current,
@@ -88,7 +90,7 @@ export function useExamAntiCheat({
   // Re-enter fullscreen and dismiss warning modal (if not locked)
   const resumeFullscreen = useCallback(async () => {
     if (stateRef.current.isLocked) return;
-    const targetElement = containerRef?.current || undefined;
+    const targetElement = (typeof document !== 'undefined' ? document.documentElement : undefined) || containerRef?.current || undefined;
     const success = await triggerFullscreen(targetElement);
     if (success || isCurrentlyFullscreen()) {
       setIsFullscreen(true);
@@ -100,11 +102,20 @@ export function useExamAntiCheat({
 
   // Request fullscreen explicitly (e.g. "Mulai Ujian")
   const startExamFullscreen = useCallback(async () => {
-    const targetElement = containerRef?.current || undefined;
+    isTerminatingRef.current = false;
+    const targetElement = (typeof document !== 'undefined' ? document.documentElement : undefined) || containerRef?.current || undefined;
     const success = await triggerFullscreen(targetElement);
     setIsFullscreen(isCurrentlyFullscreen());
     return success;
   }, [containerRef]);
+
+  // Safe exit fullscreen that suppresses spurious FULLSCREEN_EXIT violation on submit
+  const safeExitFullscreen = useCallback(async () => {
+    isTerminatingRef.current = true;
+    const res = await triggerExitFullscreen();
+    setIsFullscreen(false);
+    return res;
+  }, []);
 
   // Dismiss modal for non-fullscreen violations
   const dismissModal = useCallback(() => {
@@ -152,7 +163,7 @@ export function useExamAntiCheat({
     const handleFullscreenChange = () => {
       const active = isCurrentlyFullscreen();
       setIsFullscreen(active);
-      if (!active && isActive && !stateRef.current.isLocked) {
+      if (!active && isActive && !stateRef.current.isLocked && !isTerminatingRef.current) {
         triggerViolation('FULLSCREEN_EXIT', 'Pengguna keluar dari mode layar penuh.');
         setIsBlocked(true);
       }
@@ -180,11 +191,21 @@ export function useExamAntiCheat({
       triggerViolation('CONTEXT_MENU', 'Mencoba membuka menu klik kanan.');
     };
 
-    // 6. Keydown shortcuts (Devtools, Print, Save, Copy/Paste)
+    // 6. Keydown shortcuts (Devtools, Print, Save, Copy/Paste, Reload)
     const handleKeyDown = (e: KeyboardEvent) => {
       const targetIsEditable = isInputOrTextarea(e.target);
+      const key = e.key ? e.key.toLowerCase() : '';
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
 
-      // DevTools shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U)
+      // Prevent page reload shortcuts (F5, Ctrl+R, Cmd+R)
+      if (e.key === 'F5' || e.keyCode === 116 || (isCtrlOrMeta && key === 'r')) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerViolation('WINDOW_BLUR', 'Percobaan memuat ulang (reload) halaman ujian.');
+        return;
+      }
+
+      // DevTools shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Mac Option)
       if (isDevToolsShortcut(e)) {
         e.preventDefault();
         e.stopPropagation();
@@ -192,18 +213,26 @@ export function useExamAntiCheat({
         return;
       }
 
-      // Copy/Paste/Print/Save shortcuts
+      // Copy/Paste/Print/Save/Find shortcuts
       if (isRestrictedCopyPasteShortcut(e, targetIsEditable)) {
         e.preventDefault();
         e.stopPropagation();
-        triggerViolation('CLIPBOARD_ATTEMPT', `Shortcut terlarang: Ctrl/Cmd + ${e.key.toUpperCase()}`);
+        triggerViolation('CLIPBOARD_ATTEMPT', `Shortcut terlarang: ${e.ctrlKey || e.metaKey ? 'Ctrl/Cmd+' : ''}${e.key.toUpperCase()}`);
         return;
       }
 
-      // Escape key when in fullscreen: prevent default or track exit
+      // Escape key when in fullscreen: browser will exit fullscreen; fullscreenchange handles violation
       if (e.key === 'Escape' || e.keyCode === 27) {
-        // Browser may still exit fullscreen; fullscreenchange listener handles the violation
+        // Intentionally passive
       }
+    };
+
+    // 7. Page leave / reload prevention (beforeunload)
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isTerminatingRef.current) return;
+      e.preventDefault();
+      e.returnValue = 'Ujian sedang berlangsung! Keluar dari halaman dapat menyebabkan jawaban terhenti.';
+      return e.returnValue;
     };
 
     // Attach listeners
@@ -219,6 +248,7 @@ export function useExamAntiCheat({
     document.addEventListener('paste', handlePaste, true);
     document.addEventListener('contextmenu', handleContextMenu, true);
     window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Initial fullscreen state check
     setIsFullscreen(isCurrentlyFullscreen());
@@ -236,6 +266,7 @@ export function useExamAntiCheat({
       document.removeEventListener('paste', handlePaste, true);
       document.removeEventListener('contextmenu', handleContextMenu, true);
       window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [isActive, triggerViolation]);
 
@@ -249,6 +280,6 @@ export function useExamAntiCheat({
     resumeFullscreen,
     dismissModal,
     resetExamSecurity,
-    triggerExitFullscreen
+    triggerExitFullscreen: safeExitFullscreen
   };
 }

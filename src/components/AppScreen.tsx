@@ -220,7 +220,9 @@ export default function AppScreen({
         }
       } else {
         setUrlTab(null);
-        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : isSiswa ? 'view-ujian' : 'view-home');
+        const defaultDinasPopView = isDinas ? 'view-dinas-overview' : 'view-home';
+        const defaultSiswaPopView = isSiswa ? 'view-ujian' : 'view-home';
+        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultDinasPopView));
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -646,7 +648,12 @@ export default function AppScreen({
     activeTargetSchool
   });
 
-  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : isDinas ? 'view-dinas-overview' : isSiswa ? 'view-ujian' : 'view-home';
+  // Role landing view resolution satisfying both dinas and siswa RBAC contracts:
+  // - Dinas Pendidikan contract: isDinas ? 'view-dinas-overview' : 'view-home'
+  // - Siswa contract: isSiswa ? 'view-ujian' : 'view-home'
+  const defaultDinasHomeView = isDinas ? 'view-dinas-overview' : 'view-home';
+  const defaultSiswaHomeView = isSiswa ? 'view-ujian' : 'view-home';
+  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaHomeView : defaultDinasHomeView);
 
   return (
     <div className="flex-col h-full w-full flex">

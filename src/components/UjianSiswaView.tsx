@@ -6,7 +6,12 @@ import ClayCard from './ClayCard';
 import ClayButton from './ClayButton';
 import { AppUser } from '@/types/user';
 import { useExamAntiCheat } from '@/hooks/useExamAntiCheat';
-import { clearExamSecurityState } from '@/lib/antiCheatGuard';
+import {
+  clearExamSecurityState,
+  loadExamProgress,
+  saveExamProgress,
+  clearExamProgress
+} from '@/lib/antiCheatGuard';
 
 export interface ExamQuestion {
   id: number;
@@ -111,6 +116,31 @@ export default function UjianSiswaView({
     }
   });
 
+  // Restore ongoing progress if existing
+  useEffect(() => {
+    const saved = loadExamProgress(examId, studentId);
+    if (saved) {
+      if (saved.answers) setAnswers(saved.answers);
+      if (saved.doubtful) setDoubtful(saved.doubtful);
+      if (typeof saved.currentQuestionIndex === 'number') setCurrentQuestionIndex(saved.currentQuestionIndex);
+      if (typeof saved.timeRemaining === 'number' && saved.timeRemaining > 0) setTimeRemaining(saved.timeRemaining);
+    }
+  }, [examId, studentId]);
+
+  // Persist progress during active exam to guard against accidental reloads
+  useEffect(() => {
+    if (examStatus !== 'ongoing') return;
+    saveExamProgress({
+      examId,
+      studentId,
+      currentQuestionIndex,
+      answers,
+      doubtful,
+      timeRemaining,
+      lastUpdatedAt: new Date().toISOString()
+    });
+  }, [examStatus, currentQuestionIndex, answers, doubtful, timeRemaining, examId, studentId]);
+
   // Countdown timer
   useEffect(() => {
     if (examStatus !== 'ongoing') return;
@@ -154,6 +184,7 @@ export default function UjianSiswaView({
       await triggerExitFullscreen();
     } catch (_) {}
 
+    clearExamProgress(examId, studentId);
     setExamStatus('finished');
 
     if (!forced) {
@@ -412,7 +443,7 @@ export default function UjianSiswaView({
                           setAnswers(prev => ({ ...prev, [currentQuestionIndex]: val }));
                         }}
                         placeholder="Ketikkan jawaban Anda secara langsung di sini..."
-                        className="w-full p-4 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#0B4619] focus:outline-none transition-all"
+                        className="w-full p-4 rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-[#0B4619] focus:outline-none transition-all select-text"
                       />
                       <p className="text-[11px] text-gray-700 dark:text-white mt-1 italic">
                         * Input jawaban esai dapat diketik secara bebas tanpa terpengaruh proteksi anti-kecurangan.
@@ -510,14 +541,22 @@ export default function UjianSiswaView({
       {examStatus === 'finished' && (
         <div className="max-w-2xl mx-auto w-full my-auto text-center space-y-6">
           <div className="clay-card p-8 rounded-3xl border-2 border-white/80 dark:border-gray-800 shadow-xl bg-white dark:bg-gray-900">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-4 border-2 border-emerald-300 dark:border-emerald-800">
-              <i className="fa-solid fa-check"></i>
-            </div>
+            {securityState.isLocked ? (
+              <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center text-3xl mx-auto mb-4 border-2 border-red-300 dark:border-red-800">
+                <i className="fa-solid fa-ban"></i>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-3xl mx-auto mb-4 border-2 border-emerald-300 dark:border-emerald-800">
+                <i className="fa-solid fa-check"></i>
+              </div>
+            )}
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Ujian Telah Selesai
+              {securityState.isLocked ? 'Ujian Terkunci & Didiskualifikasi' : 'Ujian Telah Selesai'}
             </h1>
             <p className="text-sm text-gray-700 dark:text-white mb-6">
-              Seluruh jawaban dan rekaman sesi pengerjaan telah berhasil disimpan ke database sekolah.
+              {securityState.isLocked
+                ? 'Sesi ujian Anda dihentikan otomatis karena telah mencapai batas maksimal pelanggaran protokol keamanan.'
+                : 'Seluruh jawaban dan rekaman sesi pengerjaan telah berhasil disimpan ke database sekolah.'}
             </p>
 
             {/* Security Audit Summary */}
@@ -528,8 +567,18 @@ export default function UjianSiswaView({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-700 dark:text-white">Status Integritas:</span>
-                <span className={`font-bold ${securityState.violationCount === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                  {securityState.violationCount === 0 ? 'Bersih (0 Pelanggaran)' : `${securityState.violationCount} Peringatan Keamanan`}
+                <span className={`font-bold ${
+                  securityState.isLocked
+                    ? 'text-red-600 dark:text-red-400'
+                    : securityState.violationCount === 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-amber-600 dark:text-amber-400'
+                }`}>
+                  {securityState.isLocked
+                    ? `Didiskualifikasi (${securityState.violationCount} Pelanggaran)`
+                    : securityState.violationCount === 0
+                    ? 'Bersih (0 Pelanggaran)'
+                    : `${securityState.violationCount} Peringatan Keamanan`}
                 </span>
               </div>
               <div className="flex justify-between items-center">

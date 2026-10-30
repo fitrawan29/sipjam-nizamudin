@@ -29,6 +29,10 @@ import {
   isRestrictedCopyPasteShortcut,
   isInputOrTextarea,
   getExamSecurityStorageKey,
+  getExamProgressStorageKey,
+  saveExamProgress,
+  loadExamProgress,
+  clearExamProgress,
   VIOLATION_DESCRIPTIONS,
   ExamSessionSecurityState
 } from '../src/lib/antiCheatGuard';
@@ -131,7 +135,16 @@ async function runStudentExamAntiCheatTests() {
   assert(isDevToolsShortcut(makeKey({ metaKey: true, shiftKey: true, key: 'i' })), 'Detects Cmd+Shift+I (Mac) as DevTools inspector');
   assert(isDevToolsShortcut(makeKey({ ctrlKey: true, shiftKey: true, key: 'J' })), 'Detects Ctrl+Shift+J as DevTools console');
   assert(isDevToolsShortcut(makeKey({ ctrlKey: true, shiftKey: true, key: 'C' })), 'Detects Ctrl+Shift+C as DevTools element picker');
+  assert(isDevToolsShortcut(makeKey({ ctrlKey: true, shiftKey: true, key: 'K' })), 'Detects Ctrl+Shift+K (Firefox console) as DevTools');
+  assert(isDevToolsShortcut(makeKey({ ctrlKey: true, shiftKey: true, key: 'E' })), 'Detects Ctrl+Shift+E (Firefox style editor) as DevTools');
+  assert(isDevToolsShortcut(makeKey({ ctrlKey: true, shiftKey: true, key: 'M' })), 'Detects Ctrl+Shift+M (Responsive device mode) as DevTools');
+  assert(isDevToolsShortcut(makeKey({ shiftKey: true, key: 'F9', keyCode: 120 })), 'Detects Shift+F9 (Firefox storage inspector) as DevTools');
+  assert(isDevToolsShortcut(makeKey({ metaKey: true, altKey: true, key: 'i' })), 'Detects Cmd+Option+I on Mac Safari/Chrome as DevTools');
+  assert(isDevToolsShortcut(makeKey({ metaKey: true, altKey: true, key: 'j' })), 'Detects Cmd+Option+J on Mac Console as DevTools');
+  assert(isDevToolsShortcut(makeKey({ metaKey: true, altKey: true, key: 'c' })), 'Detects Cmd+Option+C on Mac Element Inspector as DevTools');
+  assert(isDevToolsShortcut(makeKey({ metaKey: true, altKey: true, key: 'u' })), 'Detects Cmd+Option+U on Mac View Source as DevTools');
   assert(isDevToolsShortcut(makeKey({ ctrlKey: true, key: 'U' })), 'Detects Ctrl+U as View Source');
+  assert(isDevToolsShortcut(makeKey({ metaKey: true, key: 'u' })), 'Detects Cmd+U as View Source');
   assert(!isDevToolsShortcut(makeKey({ key: 'A', keyCode: 65 })), 'Honest typing key A is not flagged as DevTools');
   assert(!isDevToolsShortcut(makeKey({ key: 'Enter', keyCode: 13 })), 'Honest key Enter is not flagged as DevTools');
 
@@ -146,6 +159,11 @@ async function runStudentExamAntiCheatTests() {
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'p' }), false), 'Detects Ctrl+P (Print) as restricted');
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 's' }), false), 'Detects Ctrl+S (Save) as restricted');
   assert(isRestrictedCopyPasteShortcut(makeKey({ metaKey: true, key: 'c' }), false), 'Detects Cmd+C on Mac as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'insert', keyCode: 45 }), false), 'Detects Ctrl+Insert (OS Copy) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ shiftKey: true, key: 'insert', keyCode: 45 }), false), 'Detects Shift+Insert (OS Paste) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ shiftKey: true, key: 'delete', keyCode: 46 }), false), 'Detects Shift+Delete (OS Cut) outside input as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'f' }), false), 'Detects Ctrl+F (Find in page) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ key: 'F3', keyCode: 114 }), false), 'Detects F3 (Find in page) as restricted');
 
   // Ctrl+A inside editable input vs outside
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'a' }), false), 'Ctrl+A outside editable element is blocked (prevents full page copy)');
@@ -338,8 +356,25 @@ async function runStudentExamAntiCheatTests() {
   assert(
     hookContent.includes("document.addEventListener('copy'") &&
     hookContent.includes("document.addEventListener('paste'") &&
-    hookContent.includes("window.addEventListener('keydown'"),
-    'useExamAntiCheat binds copy, paste, and keydown capture listeners'
+    hookContent.includes("window.addEventListener('keydown'") &&
+    hookContent.includes("window.addEventListener('beforeunload'"),
+    'useExamAntiCheat binds copy, paste, keydown, and beforeunload capture listeners'
+  );
+
+  assert(
+    hookContent.includes("safeExitFullscreen") &&
+    hookContent.includes("isTerminatingRef"),
+    'useExamAntiCheat implements termination suppression to prevent false FULLSCREEN_EXIT violations on submit'
+  );
+
+  assert(
+    viewContent.includes("select-text"),
+    'UjianSiswaView applies select-text to essay input for student editing ergonomics'
+  );
+
+  assert(
+    viewContent.includes("Ujian Terkunci & Didiskualifikasi"),
+    'UjianSiswaView differentiates visual presentation for locked/disqualified sessions'
   );
 
   // Verify AppScreen integration
@@ -390,6 +425,56 @@ async function runStudentExamAntiCheatTests() {
     honestSession.violationCount === 0 && !honestSession.isLocked,
     'Honest student session completes with 0 violations and unblocked integrity'
   );
+
+  // =========================================================================
+  // SUITE 10: Exam Progress Persistence & Anti-Reload Data Protection
+  // =========================================================================
+  suite('10. Exam Progress Persistence & Anti-Reload Data Protection');
+
+  const mockStorage = new Map<string, string>();
+  const globalAny = global as any;
+  const originalWindow = globalAny.window;
+  const originalLocalStorage = globalAny.localStorage;
+
+  try {
+    globalAny.window = {};
+    globalAny.localStorage = {
+      getItem: (k: string) => mockStorage.get(k) || null,
+      setItem: (k: string, v: string) => mockStorage.set(k, v),
+      removeItem: (k: string) => mockStorage.delete(k)
+    };
+
+    const progressKey = getExamProgressStorageKey('PAS_2026', 'siswa_01');
+    assert(progressKey.includes('sipjam_exam_progress_'), 'Generates valid progress storage key');
+
+    // Save student answers during active exam
+    saveExamProgress({
+      examId: 'PAS_2026',
+      studentId: 'siswa_01',
+      currentQuestionIndex: 2,
+      answers: { 0: 'B', 1: 'B' },
+      doubtful: { 1: true },
+      timeRemaining: 1540,
+      lastUpdatedAt: new Date().toISOString()
+    });
+
+    // Simulate page reload: restore progress
+    const restored = loadExamProgress('PAS_2026', 'siswa_01');
+    assert(
+      Boolean(restored && restored.currentQuestionIndex === 2 && restored.answers[0] === 'B'),
+      'Restores ongoing exam answers and current question index across page reload'
+    );
+    assert(restored?.doubtful[1] === true, 'Restores doubtful flag state across reload');
+    assert(restored?.timeRemaining === 1540, 'Restores countdown timer state across reload');
+
+    // Clean up on legitimate submission
+    clearExamProgress('PAS_2026', 'siswa_01');
+    const afterClear = loadExamProgress('PAS_2026', 'siswa_01');
+    assert(afterClear === null, 'Clears stored answer progress cleanly upon exam submission');
+  } finally {
+    globalAny.window = originalWindow;
+    globalAny.localStorage = originalLocalStorage;
+  }
 
   // =========================================================================
   // RESULTS SUMMARY

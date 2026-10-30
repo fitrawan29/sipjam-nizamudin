@@ -95,6 +95,50 @@ export function clearExamSecurityState(examId: string, studentId: string): void 
   } catch (_) {}
 }
 
+export interface ExamAnswerProgress {
+  examId: string;
+  studentId: string;
+  currentQuestionIndex: number;
+  answers: Record<number, string>;
+  doubtful: Record<number, boolean>;
+  timeRemaining: number;
+  lastUpdatedAt: string;
+}
+
+export function getExamProgressStorageKey(examId: string, studentId: string): string {
+  const cleanExamId = (examId || 'general').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanStudentId = (studentId || 'anonymous').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `sipjam_exam_progress_${cleanExamId}_${cleanStudentId}`;
+}
+
+export function loadExamProgress(examId: string, studentId: string): ExamAnswerProgress | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(getExamProgressStorageKey(examId, studentId));
+    if (!raw) return null;
+    return JSON.parse(raw) as ExamAnswerProgress;
+  } catch (err) {
+    console.warn('[antiCheatGuard] Failed to parse stored progress:', err);
+  }
+  return null;
+}
+
+export function saveExamProgress(progress: ExamAnswerProgress): void {
+  if (typeof window === 'undefined' || !progress) return;
+  try {
+    localStorage.setItem(getExamProgressStorageKey(progress.examId, progress.studentId), JSON.stringify(progress));
+  } catch (err) {
+    console.warn('[antiCheatGuard] Failed to save progress:', err);
+  }
+}
+
+export function clearExamProgress(examId: string, studentId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(getExamProgressStorageKey(examId, studentId));
+  } catch (_) {}
+}
+
 /**
  * Initialize new or restored exam security state
  */
@@ -188,25 +232,36 @@ export function evaluateSecurityViolation(
 
 /**
  * Detect devtools inspection shortcuts
- * Covers F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U (and Mac Cmd equivalents)
+ * Covers F12, Ctrl+Shift+I/J/C/K/E/M/Z, Shift+F9, Ctrl+U, and Mac Cmd+Option+I/J/C/U/K equivalents
  */
 export function isDevToolsShortcut(e: KeyboardEvent): boolean {
   const key = e.key ? e.key.toLowerCase() : '';
   const isCtrlOrMeta = e.ctrlKey || e.metaKey;
   const isShift = e.shiftKey;
+  const isAlt = e.altKey;
 
   // F12 key
   if (e.key === 'F12' || e.keyCode === 123) {
     return true;
   }
 
-  // Ctrl+Shift+I / J / C (DevTools inspector)
-  if (isCtrlOrMeta && isShift && (key === 'i' || key === 'j' || key === 'c')) {
+  // Firefox Storage Inspector (Shift+F9)
+  if (isShift && (e.key === 'F9' || e.keyCode === 120)) {
     return true;
   }
 
-  // Ctrl+U (View source)
-  if (isCtrlOrMeta && !isShift && key === 'u') {
+  // Ctrl+Shift+I / J / C / K / E / M / Z (DevTools inspector, console, style editor, device mode across browsers)
+  if (isCtrlOrMeta && isShift && (key === 'i' || key === 'j' || key === 'c' || key === 'k' || key === 'e' || key === 'm' || key === 'z')) {
+    return true;
+  }
+
+  // Mac Safari / Chrome / Edge Option shortcuts (Cmd+Option+I/J/C/U/K)
+  if (isCtrlOrMeta && isAlt && (key === 'i' || key === 'j' || key === 'c' || key === 'u' || key === 'k')) {
+    return true;
+  }
+
+  // Ctrl+U / Cmd+U (View source)
+  if (isCtrlOrMeta && key === 'u') {
     return true;
   }
 
@@ -215,12 +270,34 @@ export function isDevToolsShortcut(e: KeyboardEvent): boolean {
 
 /**
  * Detect copy/paste/cut/print/save shortcuts that allow question leak or external answer injection
+ * Includes OS clipboard equivalents (Ctrl+Insert, Shift+Insert, Shift+Delete) and Find (Ctrl+F, F3)
  */
 export function isRestrictedCopyPasteShortcut(e: KeyboardEvent, isTargetEditable = false): boolean {
   const key = e.key ? e.key.toLowerCase() : '';
   const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+  const isShift = e.shiftKey;
+
+  // Shift+Insert (OS Paste)
+  if (isShift && (key === 'insert' || e.keyCode === 45)) {
+    return true;
+  }
+
+  // Shift+Delete outside editable (OS Cut)
+  if (isShift && (key === 'delete' || e.keyCode === 46) && !isTargetEditable) {
+    return true;
+  }
+
+  // F3 (Browser find-in-page)
+  if (e.key === 'F3' || e.keyCode === 114) {
+    return true;
+  }
 
   if (!isCtrlOrMeta) return false;
+
+  // Ctrl+Insert (OS Copy)
+  if (key === 'insert' || e.keyCode === 45) {
+    return true;
+  }
 
   // Prevent Print (Ctrl+P) and Save (Ctrl+S) everywhere
   if (key === 'p' || key === 's') {
@@ -229,6 +306,11 @@ export function isRestrictedCopyPasteShortcut(e: KeyboardEvent, isTargetEditable
 
   // Prevent Copy (Ctrl+C), Paste (Ctrl+V), Cut (Ctrl+X)
   if (key === 'c' || key === 'v' || key === 'x') {
+    return true;
+  }
+
+  // Prevent Find in page (Ctrl+F)
+  if (key === 'f') {
     return true;
   }
 
