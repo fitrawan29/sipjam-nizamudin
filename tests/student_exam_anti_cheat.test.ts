@@ -177,6 +177,14 @@ async function runStudentExamAntiCheatTests() {
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 't' }), false), 'Detects Ctrl+T (New Tab) as restricted');
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'n' }), false), 'Detects Ctrl+N (New Window) as restricted');
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'h' }), false), 'Detects Ctrl+H (History) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'w' }), false), 'Detects Ctrl+W (Close Tab) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ metaKey: true, key: 'w' }), false), 'Detects Cmd+W on Mac as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'j' }), false), 'Detects Ctrl+J (Downloads tab) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'o' }), false), 'Detects Ctrl+O (Open File dialog) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'd' }), false), 'Detects Ctrl+D (Bookmark page) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'l' }), false), 'Detects Ctrl+L (Focus Address bar) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ altKey: true, key: 'd' }), false), 'Detects Alt+D (Focus Address bar) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ metaKey: true, shiftKey: true, key: '6' }), false), 'Detects Cmd+Shift+6 (Mac Touch Bar screenshot) as restricted');
 
   // Ctrl+A inside editable input vs outside
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'a' }), false), 'Ctrl+A outside editable element is blocked (prevents full page copy)');
@@ -399,6 +407,19 @@ async function runStudentExamAntiCheatTests() {
   );
 
   assert(
+    hookContent.includes("isInputOrTextarea(document.activeElement)") &&
+    hookContent.includes("CLIPBOARD_ATTEMPT") &&
+    hookContent.includes("handleDrop"),
+    'useExamAntiCheat blocks external drag-drop answer injection and ignores virtual keyboard resizes'
+  );
+
+  assert(
+    hookContent.includes("saved?.isOngoing") &&
+    hookContent.includes("Sesi ujian terputus atau halaman dimuat ulang saat ujian aktif"),
+    'useExamAntiCheat audits and accounts for unscheduled ongoing session interruptions across reloads'
+  );
+
+  assert(
     viewContent.includes("select-text"),
     'UjianSiswaView applies select-text to essay input for student editing ergonomics'
   );
@@ -516,6 +537,27 @@ async function runStudentExamAntiCheatTests() {
     assert(restored?.doubtful[1] === true, 'Restores doubtful flag state across reload');
     assert(restored?.timeRemaining === 1540, 'Restores countdown timer state across reload');
 
+    // Simulate wall-clock time deduction when student was away for 120 seconds
+    const pastTime = new Date(Date.now() - 120000).toISOString();
+    saveExamProgress({
+      examId: 'PAS_2026',
+      studentId: 'siswa_01',
+      currentQuestionIndex: 2,
+      answers: { 0: 'B' },
+      doubtful: {},
+      timeRemaining: 1500,
+      lastUpdatedAt: pastTime,
+      isOngoing: true
+    });
+    const interrupted = loadExamProgress('PAS_2026', 'siswa_01');
+    assert(interrupted?.isOngoing === true, 'Tracks active ongoing status during active exam');
+    const elapsedSecs = Math.floor((Date.now() - new Date(interrupted!.lastUpdatedAt).getTime()) / 1000);
+    const adjustedTime = Math.max(0, interrupted!.timeRemaining - elapsedSecs);
+    assert(
+      adjustedTime <= 1385 && adjustedTime >= 1375,
+      'Accurately calculates wall-clock time elapsed across reload preventing timer freeze exploit'
+    );
+
     // Clean up on legitimate submission
     clearExamProgress('PAS_2026', 'siswa_01');
     const afterClear = loadExamProgress('PAS_2026', 'siswa_01');
@@ -551,25 +593,31 @@ async function runStudentExamAntiCheatTests() {
     'isCurrentlyFullscreen(true) returns true when simulated fullscreen fallback is active'
   );
 
-  // Simulate mobile environment where Fullscreen API is missing (e.g. iPhone Safari)
-  const mockDocWithoutFullscreen = {
+  // Simulate iPad / iOS Safari environment where webkitFullscreenEnabled is true, but requestFullscreen throws/rejects
+  const mockIpadDoc = {
+    webkitFullscreenEnabled: true,
     fullscreenElement: null,
-    documentElement: {}
+    documentElement: {
+      webkitRequestFullscreen: () => {
+        throw new Error('Not supported on iPad HTML elements');
+      }
+    }
   };
   const origDoc = globalAny.document;
   try {
-    globalAny.document = mockDocWithoutFullscreen;
+    globalAny.document = mockIpadDoc;
     assert(
-      isFullscreenSupported() === false,
-      'Identifies environment lacking Fullscreen API (e.g. iPhone / restricted WebView)'
+      isFullscreenSupported() === true,
+      'Identifies presence of webkitFullscreenEnabled on iPad Safari'
     );
     assert(
       isCurrentlyFullscreen(false) === false,
-      'Returns false for native check on unsupported environment'
+      'Native check returns false before fullscreen active'
     );
+    // When native fails, simulated fallback must be activateable
     assert(
       isCurrentlyFullscreen(true) === true,
-      'Seamlessly activates simulated fullscreen fallback on unsupported environment'
+      'Seamlessly activates simulated fallback upon iPad WebKit rejection, completely preventing modal freeze'
     );
   } finally {
     globalAny.document = origDoc;

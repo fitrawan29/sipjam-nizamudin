@@ -103,6 +103,7 @@ export interface ExamAnswerProgress {
   doubtful: Record<number, boolean>;
   timeRemaining: number;
   lastUpdatedAt: string;
+  isOngoing?: boolean;
 }
 
 export function getExamProgressStorageKey(examId: string, studentId: string): string {
@@ -298,8 +299,13 @@ export function isRestrictedCopyPasteShortcut(e: KeyboardEvent, isTargetEditable
     return true;
   }
 
-  // Mac screenshot shortcuts (Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5)
-  if (isCtrlOrMeta && isShift && (key === '3' || key === '4' || key === '5')) {
+  // Mac screenshot shortcuts (Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5, Cmd+Shift+6)
+  if (isCtrlOrMeta && isShift && (key === '3' || key === '4' || key === '5' || key === '6')) {
+    return true;
+  }
+
+  // Address bar shortcut (Alt+D)
+  if (e.altKey && key === 'd') {
     return true;
   }
 
@@ -325,8 +331,18 @@ export function isRestrictedCopyPasteShortcut(e: KeyboardEvent, isTargetEditable
     return true;
   }
 
-  // Prevent opening new tab / new window / history (Ctrl+T, Ctrl+N, Ctrl+H)
-  if (key === 't' || key === 'n' || key === 'h') {
+  // Prevent opening new tab / new window / history / close tab / downloads / open file / bookmarks / address bar
+  // (Ctrl+T, Ctrl+N, Ctrl+H, Ctrl+W, Ctrl+J, Ctrl+O, Ctrl+D, Ctrl+L)
+  if (
+    key === 't' ||
+    key === 'n' ||
+    key === 'h' ||
+    key === 'w' ||
+    key === 'j' ||
+    key === 'o' ||
+    key === 'd' ||
+    key === 'l'
+  ) {
     return true;
   }
 

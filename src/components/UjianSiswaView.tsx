@@ -124,7 +124,14 @@ export default function UjianSiswaView({
       if (saved.answers) setAnswers(saved.answers);
       if (saved.doubtful) setDoubtful(saved.doubtful);
       if (typeof saved.currentQuestionIndex === 'number') setCurrentQuestionIndex(saved.currentQuestionIndex);
-      if (typeof saved.timeRemaining === 'number' && saved.timeRemaining > 0) setTimeRemaining(saved.timeRemaining);
+      if (typeof saved.timeRemaining === 'number' && saved.timeRemaining > 0) {
+        let adjusted = saved.timeRemaining;
+        if (saved.lastUpdatedAt) {
+          const elapsedSecs = Math.max(0, Math.floor((Date.now() - new Date(saved.lastUpdatedAt).getTime()) / 1000));
+          adjusted = Math.max(0, saved.timeRemaining - elapsedSecs);
+        }
+        setTimeRemaining(adjusted);
+      }
     }
   }, [examId, studentId]);
 
@@ -138,7 +145,8 @@ export default function UjianSiswaView({
       answers,
       doubtful,
       timeRemaining,
-      lastUpdatedAt: new Date().toISOString()
+      lastUpdatedAt: new Date().toISOString(),
+      isOngoing: true
     });
   }, [examStatus, currentQuestionIndex, answers, doubtful, timeRemaining, examId, studentId]);
 
@@ -176,7 +184,10 @@ export default function UjianSiswaView({
     } catch (_) {}
 
     setExamStatus('ongoing');
-    setCurrentQuestionIndex(0);
+    const saved = loadExamProgress(examId, studentId);
+    if (!saved || typeof saved.currentQuestionIndex !== 'number') {
+      setCurrentQuestionIndex(0);
+    }
   };
 
   // Handle submitting exam
@@ -273,6 +284,16 @@ export default function UjianSiswaView({
               </div>
             </div>
 
+            {answeredCount > 0 && !securityState.isLocked && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 mb-6 text-xs sm:text-sm text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                <span>
+                  <i className="fa-solid fa-clock-rotate-left mr-2"></i>
+                  Sesi sebelumnya ditemukan: Melanjutkan dari Soal No. {currentQuestionIndex + 1} ({answeredCount} terjawab).
+                </span>
+                <span className="font-bold">{formatTimer(timeRemaining)}</span>
+              </div>
+            )}
+
             {securityState.isLocked ? (
               <div className="space-y-3">
                 <div className="p-4 rounded-2xl bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-center text-red-800 dark:text-red-200 font-bold text-sm">
@@ -295,7 +316,7 @@ export default function UjianSiswaView({
                 className="w-full py-4 text-sm sm:text-base font-bold flex items-center justify-center gap-2"
               >
                 <i className="fa-solid fa-expand"></i>
-                Mulai Ujian & Aktifkan Layar Penuh
+                {answeredCount > 0 ? 'Lanjutkan Ujian & Aktifkan Layar Penuh' : 'Mulai Ujian & Aktifkan Layar Penuh'}
               </ClayButton>
             )}
           </div>

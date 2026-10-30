@@ -16,7 +16,9 @@ import {
   triggerExitFullscreen,
   clearExamSecurityState,
   getExamSecurityStorageKey,
-  saveExamSecurityState
+  saveExamSecurityState,
+  loadExamProgress,
+  saveExamProgress
 } from '@/lib/antiCheatGuard';
 
 export interface UseExamAntiCheatOptions {
@@ -92,6 +94,28 @@ export function useExamAntiCheat({
     [isActive]
   );
 
+  // Check if previous session was abruptly interrupted while ongoing (browser close/reload)
+  useEffect(() => {
+    const saved = loadExamProgress(examId, studentId);
+    if (saved?.isOngoing && !stateRef.current.isLocked) {
+      saveExamProgress({
+        ...saved,
+        isOngoing: false,
+        lastUpdatedAt: new Date().toISOString()
+      });
+      const { nextState, isNowLocked } = evaluateSecurityViolation(
+        stateRef.current,
+        'WINDOW_BLUR',
+        'Sesi ujian terputus atau halaman dimuat ulang saat ujian aktif.'
+      );
+      setSecurityState(nextState);
+      if (isNowLocked) {
+        setIsBlocked(true);
+        onLockoutRef.current?.(nextState);
+      }
+    }
+  }, [examId, studentId]);
+
   // Re-enter fullscreen and dismiss warning modal (if not locked)
   const resumeFullscreen = useCallback(async () => {
     if (stateRef.current.isLocked) return;
@@ -99,7 +123,9 @@ export function useExamAntiCheat({
     let success = false;
     if (isFullscreenSupported()) {
       success = await triggerFullscreen(targetElement);
-    } else {
+    }
+    if (!success) {
+      // Platform fallback (iPad/Safari/WebViews where triggerFullscreen fails or is unsupported)
       isSimulatedFullscreenRef.current = true;
       setIsSimulatedFullscreen(true);
       success = true;
@@ -120,8 +146,8 @@ export function useExamAntiCheat({
     if (isFullscreenSupported()) {
       success = await triggerFullscreen(targetElement);
     }
-    if (!success && !isFullscreenSupported()) {
-      // Graceful simulated fullscreen fallback on mobile / WebViews lacking native Fullscreen API
+    if (!success) {
+      // Graceful simulated fullscreen fallback on mobile / WebViews or when native fullscreen rejects
       isSimulatedFullscreenRef.current = true;
       setIsSimulatedFullscreen(true);
       setIsFullscreen(true);
@@ -290,14 +316,17 @@ export function useExamAntiCheat({
     };
 
     const handleDrop = (e: DragEvent) => {
-      if (!isInputOrTextarea(e.target)) {
-        e.preventDefault();
-      }
+      e.preventDefault();
+      triggerViolation('CLIPBOARD_ATTEMPT', 'Mencoba menarik dan melepas (drag and drop) konten ke dalam ujian.');
     };
 
     // 10. Window resize check for desktop fullscreen exit
     const handleResize = () => {
       if (isTerminatingRef.current) return;
+      // Ignore virtual keyboard resizes while student is editing an input or textarea
+      if (typeof document !== 'undefined' && isInputOrTextarea(document.activeElement)) {
+        return;
+      }
       if (isFullscreenSupported() && !isSimulatedFullscreenRef.current) {
         const active = isCurrentlyFullscreen(false);
         if (!active && isFullscreen && !stateRef.current.isLocked) {
