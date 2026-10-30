@@ -165,22 +165,29 @@ export function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
  */
 export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   if (!jurnal || !jadwal) return false;
-  const jMapel = (jurnal.mapel || '').toLowerCase();
-  const jKelas = (jurnal.kelas || '').toLowerCase();
-  const jdMapel = (jadwal.mata_pelajaran || '').toLowerCase();
-  const jdKelas = (jadwal.kelas || '').toLowerCase();
+  const jMapel = (jurnal.mapel || jurnal.mata_pelajaran || '').toLowerCase().trim();
+  const jKelas = (jurnal.kelas || '').toLowerCase().trim();
+  const jdMapel = (jadwal.mata_pelajaran || jadwal.mapel || '').toLowerCase().trim();
+  const jdKelas = (jadwal.kelas || '').toLowerCase().trim();
   
-  // Kelas harus cocok
-  if (jKelas !== jdKelas) return false;
+  // Kelas harus cocok dan tidak boleh kosong
+  if (!jKelas || !jdKelas || jKelas !== jdKelas) return false;
+
+  // Mapel tidak boleh kosong agar tidak terjadi false-positive match terhadap string kosong
+  if (!jMapel || !jdMapel) return false;
   
-  // Mapel: cek partial match (misal "MTK" di dalam "XI Merdeka_MTK", atau "Matematika" includes "MTK")
+  // Mapel: cek kesamaan langsung
   if (jMapel === jdMapel) return true;
-  if (jMapel.includes(jdMapel)) return true;
-  if (jdMapel.includes(jMapel)) return true;
-  
+
   // Coba cek tanpa prefix kelas (misal "XI Merdeka_Matematika" -> "Matematika")
-  const jMapelClean = jMapel.includes('_') ? jMapel.split('_').pop() || '' : jMapel;
-  if (jMapelClean === jdMapel || jMapelClean.includes(jdMapel) || jdMapel.includes(jMapelClean)) return true;
+  const jMapelClean = jMapel.includes('_') ? (jMapel.split('_').pop() || '').trim() : jMapel;
+  const jdMapelClean = jdMapel.includes('_') ? (jdMapel.split('_').pop() || '').trim() : jdMapel;
+  if (jMapelClean === jdMapelClean) return true;
+
+  // Cek substring dengan panjang minimal 3 karakter agar tidak collision dengan singkatan pendek
+  if (jMapelClean.length >= 3 && jdMapelClean.length >= 3) {
+    if (jMapelClean.includes(jdMapelClean) || jdMapelClean.includes(jMapelClean)) return true;
+  }
   
   return false;
 }

@@ -14,15 +14,17 @@ export async function GET(req: NextRequest) {
     const forceParam = searchParams.get('force') === 'true';
 
     const result = await evaluateAndApplyAutoAlpa(dateParam, sekolahParam, { force: forceParam });
+    let checkoutResult = null;
     try {
-      await evaluateAndApplyAutoCheckout(dateParam, sekolahParam, { force: forceParam });
+      checkoutResult = await evaluateAndApplyAutoCheckout(dateParam, sekolahParam, { force: forceParam });
     } catch (checkoutErr) {
       console.warn('[API /api/attendance/auto-alpa] Auto-checkout evaluation warning:', checkoutErr);
     }
 
     return NextResponse.json({
       success: true,
-      ...result
+      ...result,
+      autoCheckout: checkoutResult
     });
   } catch (error: any) {
     console.error('[API /api/attendance/auto-alpa] GET error:', error);
@@ -44,15 +46,17 @@ export async function POST(req: NextRequest) {
     const { date, sekolah_id, force } = body;
 
     const result = await evaluateAndApplyAutoAlpa(date, sekolah_id, { force: Boolean(force) });
+    let checkoutResult = null;
     try {
-      await evaluateAndApplyAutoCheckout(date, sekolah_id, { force: Boolean(force) });
+      checkoutResult = await evaluateAndApplyAutoCheckout(date, sekolah_id, { force: Boolean(force) });
     } catch (checkoutErr) {
       console.warn('[API /api/attendance/auto-alpa] Auto-checkout evaluation warning:', checkoutErr);
     }
 
     return NextResponse.json({
       success: true,
-      ...result
+      ...result,
+      autoCheckout: checkoutResult
     });
   } catch (error: any) {
     console.error('[API /api/attendance/auto-alpa] POST error:', error);

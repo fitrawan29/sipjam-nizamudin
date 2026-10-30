@@ -964,6 +964,14 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                     ) : (
                       <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
                     )}
+                    {item.status_verifikasi === 'Tidak Masuk Kelas' && (
+                      <div className="pt-1">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 inline-flex items-center gap-1">
+                          <i className="fa-solid fa-robot text-[10px]"></i>
+                          Otomatis (Tidak Masuk Kelas)
+                        </span>
+                      </div>
+                    )}
                     <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
                     {(item.link_bukti_foto || item.foto_kegiatan) && (item.link_bukti_foto !== '-' || item.foto_kegiatan !== '-') && (
                       <div className="mt-2 flex items-center gap-2">

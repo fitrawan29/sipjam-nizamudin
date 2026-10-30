@@ -6,6 +6,7 @@ import {
   isTeacherScheduleMatch, 
   isTeacherJournalMatch 
 } from '../src/lib/attendanceAlpa';
+import { isJurnalMatchJadwal } from '../src/lib/workflow';
 
 let passed = 0;
 let failed = 0;
@@ -492,6 +493,81 @@ async function runAll() {
     assert.ok(content.includes('export async function GET'));
     assert.ok(content.includes('export async function POST'));
     assert.ok(content.includes('evaluateAndApplyAutoCheckout'));
+  });
+
+  // ==========================================================================
+  // SECTION 5: ADVERSARIAL EDGE CASES & INTEGRITY HARMONIZATION
+  // ==========================================================================
+  console.log('\n--- Section 5: Adversarial Edge Cases & Integrity Harmonization ---');
+
+  runTest('5.1: isJurnalMatchJadwal prevents empty-string partial match false-positives', () => {
+    // Schedule with mapel 'Bahasa Indonesia' (mata_pelajaran undefined) and Journal with 'Matematika'
+    const sched = { kelas: 'VII A', mapel: 'Bahasa Indonesia' };
+    const journ = { kelas: 'VII A', mapel: 'Matematika' };
+    assert.strictEqual(
+      isJurnalMatchJadwal(journ, sched),
+      false,
+      'Beda mata pelajaran tidak boleh match meskipun mata_pelajaran kosong dan hanya mapel yang diisi'
+    );
+
+    // Empty mapel in journal must NOT match valid schedule
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'VII A', mapel: '' }, { kelas: 'VII A', mata_pelajaran: 'Matematika' }),
+      false,
+      'Journal dengan mapel kosong tidak boleh match schedule'
+    );
+
+    // Valid match where schedule has 'mapel' column instead of 'mata_pelajaran'
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'VII A', mapel: 'Matematika' }, { kelas: 'VII A', mapel: 'Matematika' }),
+      true,
+      'Schedule yang menggunakan kolom mapel harus match journal dengan benar'
+    );
+  });
+
+  runTest('5.2: isTeacherScheduleMatch prevents sub-word name collisions (e.g. Fitra vs Fitrawan, Budi vs Budiman)', () => {
+    // Sub-word collisions must NOT match
+    assert.strictEqual(
+      isTeacherScheduleMatch({ nama_guru: 'Fitra' }, { nama_guru: 'Fitrawan' }),
+      false,
+      'Fitra tidak boleh collision dengan Fitrawan'
+    );
+    assert.strictEqual(
+      isTeacherScheduleMatch({ nama_guru: 'Budi' }, { nama_guru: 'Budiman' }),
+      false,
+      'Budi tidak boleh collision dengan Budiman'
+    );
+
+    // Multi-title and word-token matching must still succeed
+    assert.strictEqual(
+      isTeacherScheduleMatch({ nama_guru: 'Dr. H. Ahmad Fauzi, M.Pd.' }, { nama_guru: 'Ahmad Fauzi' }),
+      true,
+      'Nama dengan gelar akademik harus match dengan nama bersih'
+    );
+    assert.strictEqual(
+      isTeacherScheduleMatch({ nama_guru: 'Budi Santoso' }, { nama_guru: 'Budi' }),
+      true,
+      'Token nama depan tunggal harus match dengan nama lengkap'
+    );
+  });
+
+  runTest('5.3: auto-alpa route returns autoCheckout details in payload', () => {
+    const autoAlpaPath = path.join(root, 'src', 'app', 'api', 'attendance', 'auto-alpa', 'route.ts');
+    assert.ok(fs.existsSync(autoAlpaPath));
+    const content = fs.readFileSync(autoAlpaPath, 'utf8');
+    assert.ok(content.includes('autoCheckout: checkoutResult'));
+  });
+
+  runTest('5.4: GuruPresensi renders Pulang Cepat banner on jenis_presensi or status_verifikasi', () => {
+    const gpPath = path.join(root, 'src', 'components', 'GuruPresensi.tsx');
+    const content = fs.readFileSync(gpPath, 'utf8');
+    assert.ok(content.includes("dailyState.lastAutoCheckout.status_verifikasi === 'Pulang Cepat' || dailyState.lastAutoCheckout.jenis_presensi === 'Pulang Cepat'"));
+  });
+
+  runTest('5.5: AdminVerifView renders Otomatis (Tidak Masuk Kelas) indicator badge for journal tab', () => {
+    const avPath = path.join(root, 'src', 'components', 'AdminVerifView.tsx');
+    const content = fs.readFileSync(avPath, 'utf8');
+    assert.ok(content.includes('Otomatis (Tidak Masuk Kelas)'));
   });
 
   console.log(`\n========================================================================`);

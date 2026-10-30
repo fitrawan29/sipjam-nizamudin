@@ -477,6 +477,40 @@ export interface PulangCepatEvaluation {
 }
 
 /**
+ * Normalizes teacher name by stripping academic titles and non-alphanumeric noise,
+ * returning trimmed space-separated words.
+ */
+function cleanTeacherNameForMatch(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .replace(/,.*$/, '') // Strip titles after comma (e.g. ", S.Pd.")
+    .replace(/\b(dr\.?|ir\.?|prof\.?|h\.?|hj\.?|drs\.?|dra\.?|s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Strip common academic titles
+    .replace(/[^a-z0-9]/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function matchTeacherTokens(nameA: string, nameB: string): boolean {
+  const cA = cleanTeacherNameForMatch(nameA);
+  const cB = cleanTeacherNameForMatch(nameB);
+  if (!cA || !cB) return false;
+  if (cA === cB) return true;
+
+  const aTokens = cA.split(' ').filter(w => w.length >= 2);
+  const bTokens = cB.split(' ').filter(w => w.length >= 2);
+  if (aTokens.length === 0 || bTokens.length === 0) return false;
+
+  // Exact token match or subset of whole words:
+  // (prevents sub-word collisions like "Fitra" matching "Fitrawan" or "Budi" matching "Budiman")
+  const [shorter, longer] = aTokens.length <= bTokens.length ? [aTokens, bTokens] : [bTokens, aTokens];
+  if (shorter.every(token => longer.includes(token))) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Checks whether teacher and schedule match (by user_id or normalized teacher name).
  */
 export function isTeacherScheduleMatch(
@@ -489,16 +523,7 @@ export function isTeacherScheduleMatch(
   if (teacher.user_id && schedule.user_id && String(teacher.user_id) === String(schedule.user_id)) {
     return true;
   }
-  const sNama = (schedule.nama_guru || '').toLowerCase().trim();
-  const tNama = (teacher.nama_guru || '').toLowerCase().trim();
-  if (!sNama || !tNama) return false;
-  if (sNama === tNama) return true;
-  const cleanTeacher = tNama.split(',')[0].trim();
-  const cleanSched = sNama.split(',')[0].trim();
-  if (cleanTeacher === cleanSched) return true;
-  if (cleanTeacher.length >= 3 && cleanSched.includes(cleanTeacher)) return true;
-  if (cleanSched.length >= 3 && cleanTeacher.includes(cleanSched)) return true;
-  return false;
+  return matchTeacherTokens(teacher.nama_guru, schedule.nama_guru);
 }
 
 /**
@@ -514,16 +539,7 @@ export function isTeacherJournalMatch(
   if (teacher.user_id && journal.user_id && String(teacher.user_id) === String(journal.user_id)) {
     return true;
   }
-  const jNama = (journal.nama_guru || '').toLowerCase().trim();
-  const tNama = (teacher.nama_guru || '').toLowerCase().trim();
-  if (!jNama || !tNama) return false;
-  if (jNama === tNama) return true;
-  const cleanTeacher = tNama.split(',')[0].trim();
-  const cleanJourn = jNama.split(',')[0].trim();
-  if (cleanTeacher === cleanJourn) return true;
-  if (cleanTeacher.length >= 3 && cleanJourn.includes(cleanTeacher)) return true;
-  if (cleanJourn.length >= 3 && cleanTeacher.includes(cleanJourn)) return true;
-  return false;
+  return matchTeacherTokens(teacher.nama_guru, journal.nama_guru);
 }
 
 /**
@@ -855,6 +871,16 @@ export async function evaluateAndApplyAutoCheckout(
       // R2: Insert "tidak masuk kelas" records for empty schedules if pulang cepat
       if (isPulangCepat && evalResult.emptySchedules.length > 0) {
         for (const emptySched of evalResult.emptySchedules) {
+          // Guard: Avoid inserting duplicate "Tidak Masuk Kelas" journal for the same schedule on the evaluated date
+          const alreadyExists = (allJurnalToday || []).some(j => 
+            isTeacherJournalMatch(validDatang, j) &&
+            j.status_verifikasi === 'Tidak Masuk Kelas' &&
+            isJurnalMatchJadwal(j, emptySched)
+          );
+          if (alreadyExists) {
+            continue;
+          }
+
           const emptyJurnalRecord = {
             id: crypto.randomUUID(),
             timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
@@ -880,6 +906,7 @@ export async function evaluateAndApplyAutoCheckout(
             console.error(`[attendanceAlpa] Failed to insert empty journal for ${validDatang.nama_guru}:`, jInsErr.message);
           } else {
             jurnalsCreated++;
+            allJurnalToday?.push(emptyJurnalRecord);
           }
         }
       }
