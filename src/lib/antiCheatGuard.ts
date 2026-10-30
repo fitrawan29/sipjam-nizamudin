@@ -250,8 +250,9 @@ export function isDevToolsShortcut(e: KeyboardEvent): boolean {
     return true;
   }
 
-  // Ctrl+Shift+I / J / C / K / E / M / Z (DevTools inspector, console, style editor, device mode across browsers)
-  if (isCtrlOrMeta && isShift && (key === 'i' || key === 'j' || key === 'c' || key === 'k' || key === 'e' || key === 'm' || key === 'z')) {
+  // Ctrl+Shift+I / J / C / K / E / M (DevTools inspector, console, style editor, device mode across browsers)
+  // Note: key 'z' is intentionally excluded because Ctrl+Shift+Z is standard Redo in text editing
+  if (isCtrlOrMeta && isShift && (key === 'i' || key === 'j' || key === 'c' || key === 'k' || key === 'e' || key === 'm')) {
     return true;
   }
 
@@ -270,12 +271,17 @@ export function isDevToolsShortcut(e: KeyboardEvent): boolean {
 
 /**
  * Detect copy/paste/cut/print/save shortcuts that allow question leak or external answer injection
- * Includes OS clipboard equivalents (Ctrl+Insert, Shift+Insert, Shift+Delete) and Find (Ctrl+F, F3)
+ * Includes OS clipboard equivalents (Ctrl+Insert, Shift+Insert, Shift+Delete), Screenshots, and Find (Ctrl+F/G, F3)
  */
 export function isRestrictedCopyPasteShortcut(e: KeyboardEvent, isTargetEditable = false): boolean {
   const key = e.key ? e.key.toLowerCase() : '';
   const isCtrlOrMeta = e.ctrlKey || e.metaKey;
   const isShift = e.shiftKey;
+
+  // PrintScreen (OS Screenshot)
+  if (e.key === 'PrintScreen' || e.keyCode === 44 || key === 'printscreen') {
+    return true;
+  }
 
   // Shift+Insert (OS Paste)
   if (isShift && (key === 'insert' || e.keyCode === 45)) {
@@ -289,6 +295,11 @@ export function isRestrictedCopyPasteShortcut(e: KeyboardEvent, isTargetEditable
 
   // F3 (Browser find-in-page)
   if (e.key === 'F3' || e.keyCode === 114) {
+    return true;
+  }
+
+  // Mac screenshot shortcuts (Cmd+Shift+3, Cmd+Shift+4, Cmd+Shift+5)
+  if (isCtrlOrMeta && isShift && (key === '3' || key === '4' || key === '5')) {
     return true;
   }
 
@@ -309,8 +320,13 @@ export function isRestrictedCopyPasteShortcut(e: KeyboardEvent, isTargetEditable
     return true;
   }
 
-  // Prevent Find in page (Ctrl+F)
-  if (key === 'f') {
+  // Prevent Find in page (Ctrl+F, Ctrl+G)
+  if (key === 'f' || key === 'g') {
+    return true;
+  }
+
+  // Prevent opening new tab / new window / history (Ctrl+T, Ctrl+N, Ctrl+H)
+  if (key === 't' || key === 'n' || key === 'h') {
     return true;
   }
 
@@ -335,9 +351,31 @@ export function isInputOrTextarea(target: EventTarget | null | any): boolean {
 }
 
 /**
- * Check if current document is genuinely in fullscreen
+ * Check if the browser environment supports the Fullscreen API
  */
-export function isCurrentlyFullscreen(): boolean {
+export function isFullscreenSupported(): boolean {
+  if (typeof document === 'undefined') return false;
+  const doc = document as any;
+  return Boolean(
+    doc.fullscreenEnabled ||
+    doc.webkitFullscreenEnabled ||
+    doc.mozFullScreenEnabled ||
+    doc.msFullscreenEnabled ||
+    Boolean(
+      doc.documentElement &&
+      (doc.documentElement.requestFullscreen ||
+       doc.documentElement.webkitRequestFullscreen ||
+       doc.documentElement.mozRequestFullScreen ||
+       doc.documentElement.msRequestFullscreen)
+    )
+  );
+}
+
+/**
+ * Check if current document is genuinely in fullscreen (or simulated fullscreen on mobile/webview)
+ */
+export function isCurrentlyFullscreen(isSimulated = false): boolean {
+  if (isSimulated) return true;
   if (typeof document === 'undefined') return false;
   const doc = document as any;
   return Boolean(

@@ -807,8 +807,9 @@ body.fade-out {
 }
 
 @media print {
-  header, nav, aside, .app-header, .no-print {
+  header, nav, aside, .app-header, .no-print, #student-exam-container {
     display: none !important;
+    visibility: hidden !important;
   }
   main {
     padding: 0 !important;
@@ -817,3 +818,9 @@ body.fade-out {
     width: 100% !important;
   }
 }
+
+/* Ensure SweetAlert modals sit on top of high z-index exam overlays */
+.swal2-container {
+  z-index: 100000 !important;
+}
+

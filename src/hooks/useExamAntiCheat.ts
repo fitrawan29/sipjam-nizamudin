@@ -11,9 +11,12 @@ import {
   isRestrictedCopyPasteShortcut,
   isInputOrTextarea,
   isCurrentlyFullscreen,
+  isFullscreenSupported,
   triggerFullscreen,
   triggerExitFullscreen,
-  clearExamSecurityState
+  clearExamSecurityState,
+  getExamSecurityStorageKey,
+  saveExamSecurityState
 } from '@/lib/antiCheatGuard';
 
 export interface UseExamAntiCheatOptions {
@@ -40,6 +43,7 @@ export function useExamAntiCheat({
   );
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(() => isCurrentlyFullscreen());
+  const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState<boolean>(false);
   const [isBlocked, setIsBlocked] = useState<boolean>(false);
   const [activeViolation, setActiveViolation] = useState<ViolationRecord | null>(null);
   const [violationModalOpen, setViolationModalOpen] = useState<boolean>(false);
@@ -55,6 +59,7 @@ export function useExamAntiCheat({
   onLockoutRef.current = onLockout;
 
   const isTerminatingRef = useRef(false);
+  const isSimulatedFullscreenRef = useRef(false);
 
   // Process a violation trigger
   const triggerViolation = useCallback(
@@ -91,8 +96,15 @@ export function useExamAntiCheat({
   const resumeFullscreen = useCallback(async () => {
     if (stateRef.current.isLocked) return;
     const targetElement = (typeof document !== 'undefined' ? document.documentElement : undefined) || containerRef?.current || undefined;
-    const success = await triggerFullscreen(targetElement);
-    if (success || isCurrentlyFullscreen()) {
+    let success = false;
+    if (isFullscreenSupported()) {
+      success = await triggerFullscreen(targetElement);
+    } else {
+      isSimulatedFullscreenRef.current = true;
+      setIsSimulatedFullscreen(true);
+      success = true;
+    }
+    if (success || isCurrentlyFullscreen(isSimulatedFullscreenRef.current)) {
       setIsFullscreen(true);
       setIsBlocked(false);
       setViolationModalOpen(false);
@@ -104,14 +116,27 @@ export function useExamAntiCheat({
   const startExamFullscreen = useCallback(async () => {
     isTerminatingRef.current = false;
     const targetElement = (typeof document !== 'undefined' ? document.documentElement : undefined) || containerRef?.current || undefined;
-    const success = await triggerFullscreen(targetElement);
-    setIsFullscreen(isCurrentlyFullscreen());
-    return success;
+    let success = false;
+    if (isFullscreenSupported()) {
+      success = await triggerFullscreen(targetElement);
+    }
+    if (!success && !isFullscreenSupported()) {
+      // Graceful simulated fullscreen fallback on mobile / WebViews lacking native Fullscreen API
+      isSimulatedFullscreenRef.current = true;
+      setIsSimulatedFullscreen(true);
+      setIsFullscreen(true);
+      return true;
+    }
+    const active = isCurrentlyFullscreen(isSimulatedFullscreenRef.current);
+    setIsFullscreen(active);
+    return success || active;
   }, [containerRef]);
 
   // Safe exit fullscreen that suppresses spurious FULLSCREEN_EXIT violation on submit
   const safeExitFullscreen = useCallback(async () => {
     isTerminatingRef.current = true;
+    isSimulatedFullscreenRef.current = false;
+    setIsSimulatedFullscreen(false);
     const res = await triggerExitFullscreen();
     setIsFullscreen(false);
     return res;
@@ -120,7 +145,7 @@ export function useExamAntiCheat({
   // Dismiss modal for non-fullscreen violations
   const dismissModal = useCallback(() => {
     if (stateRef.current.isLocked) return;
-    if (!isCurrentlyFullscreen()) {
+    if (!isCurrentlyFullscreen(isSimulatedFullscreenRef.current)) {
       // Must restore fullscreen first
       resumeFullscreen();
       return;
@@ -161,7 +186,7 @@ export function useExamAntiCheat({
 
     // 3. Fullscreen change
     const handleFullscreenChange = () => {
-      const active = isCurrentlyFullscreen();
+      const active = isCurrentlyFullscreen(isSimulatedFullscreenRef.current);
       setIsFullscreen(active);
       if (!active && isActive && !stateRef.current.isLocked && !isTerminatingRef.current) {
         triggerViolation('FULLSCREEN_EXIT', 'Pengguna keluar dari mode layar penuh.');
@@ -191,7 +216,7 @@ export function useExamAntiCheat({
       triggerViolation('CONTEXT_MENU', 'Mencoba membuka menu klik kanan.');
     };
 
-    // 6. Keydown shortcuts (Devtools, Print, Save, Copy/Paste, Reload)
+    // 6. Keydown shortcuts (Devtools, Print, Save, Copy/Paste, Reload, Navigation)
     const handleKeyDown = (e: KeyboardEvent) => {
       const targetIsEditable = isInputOrTextarea(e.target);
       const key = e.key ? e.key.toLowerCase() : '';
@@ -203,6 +228,19 @@ export function useExamAntiCheat({
         e.stopPropagation();
         triggerViolation('WINDOW_BLUR', 'Percobaan memuat ulang (reload) halaman ujian.');
         return;
+      }
+
+      // Prevent browser history navigation shortcuts (Alt+ArrowLeft / Alt+ArrowRight)
+      if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerViolation('WINDOW_BLUR', 'Percobaan navigasi riwayat browser (Back/Forward).');
+        return;
+      }
+
+      // Prevent backspace navigation outside inputs
+      if (e.key === 'Backspace' && !targetIsEditable) {
+        e.preventDefault();
       }
 
       // DevTools shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Mac Option)
@@ -235,6 +273,58 @@ export function useExamAntiCheat({
       return e.returnValue;
     };
 
+    // 8. Prevent print dialog
+    const handleBeforePrint = () => {
+      triggerViolation('CLIPBOARD_ATTEMPT', 'Mencoba mencetak atau menyimpan dokumen ujian (print/PDF).');
+    };
+
+    // 9. Text Selection & Drag/Drop prevention
+    const handleSelectStart = (e: Event) => {
+      if (!isInputOrTextarea(e.target)) {
+        e.preventDefault();
+      }
+    };
+
+    const handleDragStart = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      if (!isInputOrTextarea(e.target)) {
+        e.preventDefault();
+      }
+    };
+
+    // 10. Window resize check for desktop fullscreen exit
+    const handleResize = () => {
+      if (isTerminatingRef.current) return;
+      if (isFullscreenSupported() && !isSimulatedFullscreenRef.current) {
+        const active = isCurrentlyFullscreen(false);
+        if (!active && isFullscreen && !stateRef.current.isLocked) {
+          setIsFullscreen(false);
+          triggerViolation('FULLSCREEN_EXIT', 'Jendela aplikasi keluar dari mode layar penuh.');
+          setIsBlocked(true);
+        }
+      }
+    };
+
+    // 11. Cross-tab & storage tampering detection
+    const handleStorage = (e: StorageEvent) => {
+      const securityKey = getExamSecurityStorageKey(examId, studentId);
+      if (e.key === securityKey && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue) as ExamSessionSecurityState;
+          if (parsed.violationCount < stateRef.current.violationCount) {
+            saveExamSecurityState(stateRef.current);
+            triggerViolation('WINDOW_BLUR', 'Terdeteksi manipulasi penyimpanan sesi ujian.');
+          } else if (parsed.isLocked && !stateRef.current.isLocked) {
+            setSecurityState(parsed);
+            setIsBlocked(true);
+          }
+        } catch (_) {}
+      }
+    };
+
     // Attach listeners
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleWindowBlur);
@@ -250,8 +340,15 @@ export function useExamAntiCheat({
     window.addEventListener('keydown', handleKeyDown, true);
     window.addEventListener('beforeunload', handleBeforeUnload);
 
+    window.addEventListener('beforeprint', handleBeforePrint);
+    document.addEventListener('selectstart', handleSelectStart);
+    document.addEventListener('dragstart', handleDragStart);
+    document.addEventListener('drop', handleDrop);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('storage', handleStorage);
+
     // Initial fullscreen state check
-    setIsFullscreen(isCurrentlyFullscreen());
+    setIsFullscreen(isCurrentlyFullscreen(isSimulatedFullscreenRef.current));
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -267,12 +364,20 @@ export function useExamAntiCheat({
       document.removeEventListener('contextmenu', handleContextMenu, true);
       window.removeEventListener('keydown', handleKeyDown, true);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      document.removeEventListener('selectstart', handleSelectStart);
+      document.removeEventListener('dragstart', handleDragStart);
+      document.removeEventListener('drop', handleDrop);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('storage', handleStorage);
     };
-  }, [isActive, triggerViolation]);
+  }, [isActive, triggerViolation, isFullscreen, examId, studentId]);
 
   return {
     securityState,
     isFullscreen,
+    isSimulatedFullscreen,
     isBlocked,
     activeViolation,
     violationModalOpen,

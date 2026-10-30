@@ -87,6 +87,7 @@ export default function UjianSiswaView({
   const {
     securityState,
     isFullscreen,
+    isSimulatedFullscreen,
     isBlocked,
     activeViolation,
     violationModalOpen,
@@ -212,7 +213,9 @@ export default function UjianSiswaView({
     <div
       ref={examContainerRef}
       id="student-exam-container"
-      className="w-full flex-grow flex flex-col p-3 sm:p-6 bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-white transition-colors duration-200 select-none relative"
+      className={`w-full flex-grow flex flex-col p-3 sm:p-6 bg-slate-50 dark:bg-gray-950 text-gray-900 dark:text-white transition-colors duration-200 select-none relative ${
+        isSimulatedFullscreen && examStatus === 'ongoing' ? 'fixed inset-0 z-50 overflow-y-auto' : ''
+      }`}
       onContextMenu={(e) => e.preventDefault()}
       onCopy={(e) => e.preventDefault()}
       onCut={(e) => e.preventDefault()}
@@ -271,9 +274,19 @@ export default function UjianSiswaView({
             </div>
 
             {securityState.isLocked ? (
-              <div className="p-4 rounded-2xl bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-center text-red-800 dark:text-red-200 font-bold text-sm">
-                <i className="fa-solid fa-lock text-red-600 dark:text-red-400 text-xl block mb-1"></i>
-                Sesi Ujian Ini Telah Terkunci Karena Pelanggaran Keamanan.
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-center text-red-800 dark:text-red-200 font-bold text-sm">
+                  <i className="fa-solid fa-lock text-red-600 dark:text-red-400 text-xl block mb-1"></i>
+                  Sesi Ujian Ini Telah Terkunci Karena Pelanggaran Keamanan.
+                </div>
+                <ClayButton
+                  variant="secondary"
+                  onClick={() => setExamStatus('finished')}
+                  className="w-full py-3 text-sm font-semibold flex items-center justify-center gap-2"
+                >
+                  <i className="fa-solid fa-clipboard-list"></i>
+                  Lihat Hasil & Riwayat Pelanggaran
+                </ClayButton>
               </div>
             ) : (
               <ClayButton
@@ -311,7 +324,11 @@ export default function UjianSiswaView({
                 }`}
               >
                 <i className={`fa-solid ${isFullscreen ? 'fa-expand' : 'fa-compress'}`}></i>
-                {isFullscreen ? 'Layar Penuh: Aktif' : 'Layar Penuh: Keluar'}
+                {isFullscreen
+                  ? isSimulatedFullscreen
+                    ? 'Layar Penuh: Mode Aman'
+                    : 'Layar Penuh: Aktif'
+                  : 'Layar Penuh: Keluar'}
               </span>
 
               {/* Violation Counter Badge */}

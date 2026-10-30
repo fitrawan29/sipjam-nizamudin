@@ -28,6 +28,8 @@ import {
   isDevToolsShortcut,
   isRestrictedCopyPasteShortcut,
   isInputOrTextarea,
+  isCurrentlyFullscreen,
+  isFullscreenSupported,
   getExamSecurityStorageKey,
   getExamProgressStorageKey,
   saveExamProgress,
@@ -147,6 +149,9 @@ async function runStudentExamAntiCheatTests() {
   assert(isDevToolsShortcut(makeKey({ metaKey: true, key: 'u' })), 'Detects Cmd+U as View Source');
   assert(!isDevToolsShortcut(makeKey({ key: 'A', keyCode: 65 })), 'Honest typing key A is not flagged as DevTools');
   assert(!isDevToolsShortcut(makeKey({ key: 'Enter', keyCode: 13 })), 'Honest key Enter is not flagged as DevTools');
+  assert(!isDevToolsShortcut(makeKey({ ctrlKey: true, shiftKey: true, key: 'z' })), 'Ctrl+Shift+Z (Redo) is NOT flagged as DevTools (honest student editing preserved)');
+  assert(!isDevToolsShortcut(makeKey({ metaKey: true, shiftKey: true, key: 'z' })), 'Cmd+Shift+Z (Mac Redo) is NOT flagged as DevTools');
+  assert(!isDevToolsShortcut(makeKey({ ctrlKey: true, key: 'y' })), 'Ctrl+Y (Redo) is NOT flagged as DevTools');
 
   // =========================================================================
   // SUITE 3: Copy-Paste, Cut, Print & Save Shortcut Restrictions
@@ -164,6 +169,14 @@ async function runStudentExamAntiCheatTests() {
   assert(isRestrictedCopyPasteShortcut(makeKey({ shiftKey: true, key: 'delete', keyCode: 46 }), false), 'Detects Shift+Delete (OS Cut) outside input as restricted');
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'f' }), false), 'Detects Ctrl+F (Find in page) as restricted');
   assert(isRestrictedCopyPasteShortcut(makeKey({ key: 'F3', keyCode: 114 }), false), 'Detects F3 (Find in page) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ key: 'PrintScreen', keyCode: 44 }), false), 'Detects PrintScreen as restricted screenshot');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ metaKey: true, shiftKey: true, key: '3' }), false), 'Detects Cmd+Shift+3 (Mac screenshot) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ metaKey: true, shiftKey: true, key: '4' }), false), 'Detects Cmd+Shift+4 (Mac screenshot) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ metaKey: true, shiftKey: true, key: '5' }), false), 'Detects Cmd+Shift+5 (Mac screenshot) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'g' }), false), 'Detects Ctrl+G (Find Next) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 't' }), false), 'Detects Ctrl+T (New Tab) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'n' }), false), 'Detects Ctrl+N (New Window) as restricted');
+  assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'h' }), false), 'Detects Ctrl+H (History) as restricted');
 
   // Ctrl+A inside editable input vs outside
   assert(isRestrictedCopyPasteShortcut(makeKey({ ctrlKey: true, key: 'a' }), false), 'Ctrl+A outside editable element is blocked (prevents full page copy)');
@@ -315,6 +328,10 @@ async function runStudentExamAntiCheatTests() {
   const appScreenContent = fs.readFileSync(appScreenPath, 'utf8');
   const userTypeContent = fs.readFileSync(userTypePath, 'utf8');
 
+  const globalsPath = path.join(root, 'src', 'app', 'globals.css');
+  assert(fs.existsSync(globalsPath), 'src/app/globals.css exists');
+  const globalsContent = fs.readFileSync(globalsPath, 'utf8');
+
   // Verify UjianSiswaView security elements
   assert(
     viewContent.includes('fixed inset-0 z-[99999]') &&
@@ -368,6 +385,20 @@ async function runStudentExamAntiCheatTests() {
   );
 
   assert(
+    hookContent.includes("window.addEventListener('beforeprint'") &&
+    hookContent.includes("document.addEventListener('selectstart'") &&
+    hookContent.includes("document.addEventListener('dragstart'") &&
+    hookContent.includes("document.addEventListener('drop'"),
+    'useExamAntiCheat captures print, text selection, dragstart, and drop events'
+  );
+
+  assert(
+    hookContent.includes("window.addEventListener('storage'") &&
+    hookContent.includes("window.addEventListener('resize'"),
+    'useExamAntiCheat monitors storage tampering and window resize transitions'
+  );
+
+  assert(
     viewContent.includes("select-text"),
     'UjianSiswaView applies select-text to essay input for student editing ergonomics'
   );
@@ -375,6 +406,24 @@ async function runStudentExamAntiCheatTests() {
   assert(
     viewContent.includes("Ujian Terkunci & Didiskualifikasi"),
     'UjianSiswaView differentiates visual presentation for locked/disqualified sessions'
+  );
+
+  assert(
+    viewContent.includes("isSimulatedFullscreen") &&
+    viewContent.includes("Lihat Hasil & Riwayat Pelanggaran"),
+    'UjianSiswaView integrates simulated fullscreen fallback and locked lobby result review'
+  );
+
+  assert(
+    globalsContent.includes(".swal2-container") &&
+    globalsContent.includes("z-index: 100000 !important;"),
+    'globals.css elevates SweetAlert z-index above z-[99999] exam modal backdrop'
+  );
+
+  assert(
+    globalsContent.includes("#student-exam-container") &&
+    globalsContent.includes("display: none !important;"),
+    'globals.css suppresses student-exam-container during print media output'
   );
 
   // Verify AppScreen integration
@@ -474,6 +523,56 @@ async function runStudentExamAntiCheatTests() {
   } finally {
     globalAny.window = originalWindow;
     globalAny.localStorage = originalLocalStorage;
+  }
+
+  // =========================================================================
+  // SUITE 11: Mobile & In-App WebView Simulated Fullscreen Resilience
+  // =========================================================================
+  suite('11. Mobile & In-App WebView Simulated Fullscreen Resilience');
+
+  assert(
+    typeof isFullscreenSupported === 'function',
+    'isFullscreenSupported is exported as a guard function'
+  );
+
+  // In Node.js / SSR environment, document is undefined
+  assert(
+    isFullscreenSupported() === false,
+    'isFullscreenSupported cleanly returns false when document/API is missing'
+  );
+
+  assert(
+    isCurrentlyFullscreen(false) === false,
+    'isCurrentlyFullscreen(false) returns false when no native fullscreen is active'
+  );
+
+  assert(
+    isCurrentlyFullscreen(true) === true,
+    'isCurrentlyFullscreen(true) returns true when simulated fullscreen fallback is active'
+  );
+
+  // Simulate mobile environment where Fullscreen API is missing (e.g. iPhone Safari)
+  const mockDocWithoutFullscreen = {
+    fullscreenElement: null,
+    documentElement: {}
+  };
+  const origDoc = globalAny.document;
+  try {
+    globalAny.document = mockDocWithoutFullscreen;
+    assert(
+      isFullscreenSupported() === false,
+      'Identifies environment lacking Fullscreen API (e.g. iPhone / restricted WebView)'
+    );
+    assert(
+      isCurrentlyFullscreen(false) === false,
+      'Returns false for native check on unsupported environment'
+    );
+    assert(
+      isCurrentlyFullscreen(true) === true,
+      'Seamlessly activates simulated fullscreen fallback on unsupported environment'
+    );
+  } finally {
+    globalAny.document = origDoc;
   }
 
   // =========================================================================
