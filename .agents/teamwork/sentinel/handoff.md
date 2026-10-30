@@ -1,47 +1,46 @@
-# Sentinel Handoff Report — Presensi Siswa: Sinkronisasi Dua Arah & Penghapusan Konfigurasi Superadmin
+# Sentinel Final Handoff Report
 
-## Observation
-User meminta 3 requirements utama untuk presensi siswa:
-1. **R1. Sinkronisasi Dua Arah:** Ketika kode QR discan, data harus otomatis mengisi form input manual. Sebaliknya, ketika pengguna mengetik data secara manual, sistem harus menyesuaikan state pencarian seolah-olah dipindai dari QR.
-2. **R2. Hapus Pengaturan Mode Presensi oleh Superadmin:** Superadmin tidak perlu lagi mengatur mode presensi siswa secara eksplisit, karena kedua mode (QR dan Manual) sekarang tersedia dan sinkron bersamaan. Opsi konfigurasi dihapus dari UI superadmin dan logika terkait.
-3. **R3. Pertahankan Logika Presensi Saat Ini:** Mekanisme submit data presensi ke database tetap menggunakan flow yang sama (`recordPresensiSiswa`), hanya pengisian field UI yang saling tersinkronisasi.
+## 1. Observation
+- Permintaan pengguna diselaraskan melalui proses wawancara tugas terstruktur yang menghasilkan task prompt terkonfirmasi pada role siswa terkait sistem keamanan ujian dan fitur anti-kecurangan.
+- Rute eksekusi dipilih secara akurat menggunakan jalur **SWE Light** (`teamwork_swe`) karena tugas merupakan perbaikan terkonsentrasi tunggal dengan permintaan ekspisit "single self-contained fix; keep it small and focused".
+- Implementasi awal dijalankan oleh `teamwork_implementer_1`, dilanjutkan 3 putaran peninjauan adversarial berturut-turut (`teamwork_reviewer_r1`, `r2`, `r3`).
+- Seluruh 116 skenario pengujian terprogram anti-kecurangan (`tests/student_exam_anti_cheat.test.ts`) dan seluruh 43 test suites aplikasi lulus 100%. Kompilasi TypeScript dan Next.js production build berhasil (exit code 0).
+- Audit kemenangan independen (`teamwork_victory_auditor`) telah diselesaikan secara blocking dengan putusan akhir **VICTORY CONFIRMED**.
 
-Sesuai Routing Decision Table:
-- Tugas ini adalah satu perbaikan terisolasi dengan permintaan eksplisit tim kecil ("Requested team: Small focused team", "This is a single self-contained fix; keep it small and focused.").
-- Dipilih rute **SWE Light** (`teamwork_preview_swe`).
+## 2. Logic Chain
+1. **Identifikasi & Audit Kelemahan (R1)**:
+   - Ditemukan celah potensial pada event listener tab/window blur yang dapat memicu double count tanpa debouncing, ketidakselarasan penanganan Fullscreen API pada perangkat mobile/Safari iOS, serta kemungkinan bypass shortcut clipboard dan DevTools lintas browser.
+2. **Perbaikan & Penguatan Fitur (R2)**:
+   - Diterapkan modul terpadu `src/lib/antiCheatGuard.ts`, hook reaktif `src/hooks/useExamAntiCheat.ts`, dan antarmuka terlindungi `src/components/UjianSiswaView.tsx`.
+   - Proteksi mencakup:
+     - Deteksi perpindahan tab/jendela/blur dengan mekanisme cooldown debounce yang presisi.
+     - Penjagaan mode layar penuh (fullscreen lock) dilengkapi fallback simulated fullscreen dan CSS lock untuk mobile WebView.
+     - Pemblokiran shortcut DevTools (F12, Ctrl+Shift+I/J/C, dsb.) dan shortcut copy/paste/print/save/context-menu.
+     - Preservasi kenyamanan siswa jujur (pengetikan esai, redo/undo, tombol virtual keyboard tidak memicu pelanggaran).
+     - Integritas sesi ujian tahan reload (sinkronisasi autosave jawaban dan timer wall-clock anti-freeze).
+3. **Verifikasi Mandiri & Peer Review**:
+   - Tiga putaran review menguji skenario edge cases (iOS/iPad Safari, in-app browser, resize window ekstrim).
+   - Seluruh isu teknis pada ledger isu terbuka telah ditutup tuntas dengan verifikasi terprogram.
+4. **Audit Independen**:
+   - `teamwork_victory_auditor` mengeksekusi 3 fase verifikasi tanpa shared context dan mengonfirmasi validitas 100%.
 
-Pelaksanaan:
-- Dijalankan oleh orchestrator `swe_16` melalui siklus SWE Light:
-  - Implementasi awal: `PiketView.tsx` menyatukan kiosk QR scanner dan daftar manual siswa dalam satu tampilan sinkron; `SuperadminView.tsx` menghapus kontrol konfigurasi `mode_presensi_siswa`.
-  - Reviewer Round 1: Isolasi buffer scanner barcode hardware, penanganan pencarian lintas kelas.
-  - Reviewer Round 2: Isolasi burst newline/carriage return hardware scanner, parameter query eksplisit, pencegahan balapan closure asinkron, dan penjaga double-submit.
-  - Reviewer Round 3: Sinkronisasi kartu feedback saat input dibersihkan/diedit, in-memory mutex lock (`isSubmittingPresensiRef`) untuk mencegah double-submission mikro-task, dan integrasi atribut `qr_code` siswa pada filter memori.
-- Audit kemenangan independen (`victory_auditor_25`) melakukan audit 3 fase yang bersifat BLOCKING dan mengeluarkan putusan resmi: **VICTORY CONFIRMED**.
-- Seluruh subagent dan cron telah dibersihkan (`manage_subagents(action="kill_all")` dan `manage_task(action="kill")`).
+## 3. Caveats
+- Pada perangkat Apple iPhone (iOS Safari), Apple secara native tidak menyediakan Fullscreen API untuk elemen dokumen HTML biasa. Sistem telah menerapkan mitigasi fallback simulated fullscreen dengan penguncian viewport CSS, penjagaan blur, deteksi tab change, dan pencegahan clipboard.
+- Integrasi sinkronisasi jawaban ujian langsung ke tabel remote database Supabase produksi terisolasi secara mandiri sesuai batasan scope arsitektur komponen ujian lokal saat ini.
 
-## Logic Chain
-1. Permintaan user dicatat secara verbatim di `.agents/teamwork/ORIGINAL_REQUEST.md`.
-2. Jalur eksekusi dipilih secara deterministik: SWE Light (`teamwork_preview_swe`).
-3. Sentinel memonitor jalannya pengerjaan melalui cron progress reporting dan liveness check.
-4. Ketika orchestrator mengklaim kemenangan, Sentinel meluncurkan auditor independen `victory_auditor_25` (`464b5cec-2404-4dd3-a72a-bcb2e6bd87e0`).
-5. Auditor independen memverifikasi Phase A (Timeline & Provenance), Phase B (Forensic Integrity & Anti-Cheating), dan Phase C (Independent Test Execution).
-6. Hasil verifikasi auditor: **VICTORY CONFIRMED**.
-7. Pembersihan tuntas dilakukan pada seluruh subagent dan cron.
+## 4. Conclusion
+Semua persyaratan R1 dan R2 serta seluruh kriteria penerimaan fungsional anti-kecurangan role siswa telah terpenuhi secara sempurna dan terverifikasi secara formal. Seluruh perubahan kode telah di-commit dan di-push ke branch utama `main` sesuai aturan git workflow proyek.
 
-## Caveats
-- Hardware scanner USB yang beroperasi sebagai keyboard wedge standar (mengirimkan string karakter diakhiri `Enter`/`\n`/`\r`) didukung penuh secara native di browser. Hardware scanner berbasis port serial COM khusus (RS-232 tanpa emulasi keyboard HID) membutuhkan driver OS lokal dan berada di luar lingkup Web API browser.
-
-## Conclusion
-Pekerjaan telah selesai 100%, seluruh kriteria penerimaan terpenuhi, tidak ada regresi, dan telah lolos audit kemenangan independen secara obyektif.
-
-## Verification Method
-Auditor independen `victory_auditor_25` menjalankan dan memverifikasi:
-- `npx tsc --noEmit`: 0 errors
-- `npm run build`: Turbopack production build succeeded
-- `npx tsx tests/presensi_siswa_sync_and_superadmin.test.ts`: 11/11 passed
-- `npx tsx tests/adversarial_presensi_sync_reviewer.test.ts`: 12/12 passed
-- `npx tsx tests/adversarial_presensi_sync_reviewer_r2.test.ts`: 10/10 passed
-- `npx tsx tests/adversarial_presensi_sync_reviewer_r3.test.ts`: 12/12 passed
-- `npm test`: 27/27 test suites passed (118 individual automated checks passed)
-- `npm run test:e2e`: 111/111 assertions across 4 tiers passed
-Semua pengujian 100% PASS.
+## 5. Verification Method
+- Suite Pengujian Terprogram Anti-Kecurangan:
+  `npx tsx tests/student_exam_anti_cheat.test.ts` (116/116 PASS)
+- Pemeriksaan Tipe TypeScript:
+  `npx tsc --noEmit` (0 errors, Exit code 0)
+- Pemeriksaan Linting:
+  `npm run lint` (0 errors, Exit code 0)
+- Uji Regresi Menyeluruh:
+  `npm test` (43/43 suites PASS, Exit code 0)
+- Validasi Build Produksi:
+  `npm run build` (Next.js 16 compile succeeded, 13/13 static routes generated, Exit code 0)
+- Git Status & Remote Sync:
+  `git status` (Working tree clean, synced with origin/main)
