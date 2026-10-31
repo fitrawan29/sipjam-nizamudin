@@ -227,6 +227,57 @@ runTest('8.4: Komponen AdminVerifView menyediakan tombol modal panduan SOP Disip
   assert(adminVerifContent.includes('docs/KONSEKUENSI_PELANGGARAN.md'), 'Modal SOP harus merujuk docs/KONSEKUENSI_PELANGGARAN.md');
 });
 
+// 9. Integrasi Pemulihan Dispensasi, Banner Peringatan Dashboard, & Panduan Pengguna (Reviewer Round 3)
+runTest('9.1: AdminVerifView menyediakan fitur Reset & Pulihkan via Dispensasi (F-SIPJAM-02) untuk item Ditolak', () => {
+  const adminVerifPath = path.join(root, 'src', 'components', 'AdminVerifView.tsx');
+  const adminVerifContent = fs.readFileSync(adminVerifPath, 'utf8');
+  assert(
+    adminVerifContent.includes('Pulihkan via Dispensasi (F-SIPJAM-02)'),
+    'AdminVerifView harus memiliki tombol aksi Pulihkan via Dispensasi (F-SIPJAM-02) saat status Ditolak'
+  );
+  assert(
+    adminVerifContent.includes("'Dispensasi'"),
+    'AdminVerifView harus mendukung status aksi Dispensasi'
+  );
+  assert(
+    adminVerifContent.includes('Disetujui via Dispensasi Khusus'),
+    'AdminVerifView harus mencatat audit log Disetujui via Dispensasi Khusus'
+  );
+});
+
+runTest('9.2: HomeViewGuru menampilkan banner Peringatan Disiplin Administrasi jika guru memiliki kelalaian/warning', () => {
+  const homeGuruPath = path.join(root, 'src', 'components', 'HomeViewGuru.tsx');
+  assert(fs.existsSync(homeGuruPath), 'HomeViewGuru.tsx harus ada');
+  const homeGuruContent = fs.readFileSync(homeGuruPath, 'utf8');
+  assert(
+    homeGuruContent.includes('Peringatan Disiplin Administrasi'),
+    'HomeViewGuru harus memiliki komponen visual Peringatan Disiplin Administrasi'
+  );
+  assert(
+    homeGuruContent.includes('teacherWarnings?.hasWarning'),
+    'HomeViewGuru harus memeriksa kondisi teacherWarnings?.hasWarning'
+  );
+  assert(
+    homeGuruContent.includes('docs/KONSEKUENSI_PELANGGARAN.md'),
+    'Banner peringatan harus merujuk ke docs/KONSEKUENSI_PELANGGARAN.md'
+  );
+});
+
+runTest('9.3: Dokumen Panduan Pengguna (docs/PANDUAN_PENGGUNA.md) menautkan ke dokumen regulasi konsekuensi pelanggaran', () => {
+  const panduanPath = path.join(root, 'docs', 'PANDUAN_PENGGUNA.md');
+  assert(fs.existsSync(panduanPath), 'docs/PANDUAN_PENGGUNA.md harus ada');
+  const panduanContent = fs.readFileSync(panduanPath, 'utf8');
+  assert(
+    panduanContent.includes('KEBIJAKAN DISIPLIN & KONSEKUENSI ADMINISTRATIF') ||
+    panduanContent.includes('Kebijakan Disiplin & Konsekuensi Administratif'),
+    'Panduan pengguna harus memuat bab kebijakan disiplin'
+  );
+  assert(
+    panduanContent.includes('KONSEKUENSI_PELANGGARAN.md'),
+    'Panduan pengguna harus menautkan ke KONSEKUENSI_PELANGGARAN.md'
+  );
+});
+
 console.log(`\n====================================================================`);
 console.log(`🏁 FINISHED: Passed: ${passed}, Failed: ${failed}`);
 console.log(`====================================================================\n`);

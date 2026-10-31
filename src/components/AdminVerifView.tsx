@@ -178,7 +178,7 @@ export default function AdminVerifView({
     }
   };
 
-  const verifyItem = async (id: number | string, status: 'Disetujui' | 'Ditolak') => {
+  const verifyItem = async (id: number | string, status: 'Disetujui' | 'Ditolak' | 'Dispensasi') => {
     if (isReadOnly) {
       return showToast('Mode Peninjau', 'Aksi dinonaktifkan: Anda dalam mode peninjauan (read-only).', 'warning');
     }
@@ -193,6 +193,8 @@ export default function AdminVerifView({
     const { table, label } = getActiveConfig();
 
     let rejectionReason: string | null = null;
+    let baDispensasi: string | null = null;
+
     if (status === 'Ditolak') {
       const { value: reason, isConfirmed } = await Swal.fire({
         title: `Tolak ${label}?`,
@@ -216,6 +218,29 @@ export default function AdminVerifView({
         return; // Admin cancelled or validation stopped
       }
       rejectionReason = reason.trim();
+    } else if (status === 'Dispensasi') {
+      const { value: baNum, isConfirmed } = await Swal.fire({
+        title: 'Reset / Pulihkan Status via Dispensasi?',
+        html: `
+          <div class="text-left text-xs text-gray-600 dark:text-gray-300 space-y-1.5 mb-2">
+            <p>Tindakan ini memulihkan data ${label} yang sebelumnya ditolak menjadi <strong>Disetujui</strong> berdasarkan rekomendasi resmi (Formulir F-SIPJAM-02).</p>
+            <p class="text-[11px] text-gray-500">Seluruh hak jam mengajar atau presensi guru akan dipulihkan utuh.</p>
+          </div>
+        `,
+        input: 'text',
+        inputLabel: 'Nomor Berita Acara / Keterangan Dispensasi',
+        inputPlaceholder: 'Contoh: BA-SIPJAM/012/X/2026 atau Alasan Sah',
+        showCancelButton: true,
+        confirmButtonText: 'Pulihkan Status',
+        confirmButtonColor: '#059669',
+        cancelButtonText: 'Batal',
+        cancelButtonColor: '#6b7280'
+      });
+
+      if (!isConfirmed) {
+        return;
+      }
+      baDispensasi = (baNum || '').trim();
     }
 
     const currentList = activeTab === 'Presensi' ? presensiList : activeTab === 'Jurnal' ? jurnalList : piketList;
@@ -224,10 +249,16 @@ export default function AdminVerifView({
     setProcessingId(id);
 
     try {
-      const updatePayload: any = { status_verifikasi: status };
+      const targetDbStatus = status === 'Dispensasi' ? 'Disetujui' : status;
+      const updatePayload: any = { status_verifikasi: targetDbStatus };
       if (status === 'Ditolak' && rejectionReason) {
         updatePayload.catatan_admin = rejectionReason;
         updatePayload.alasan_penolakan = rejectionReason;
+      } else if (status === 'Dispensasi') {
+        updatePayload.catatan_admin = baDispensasi
+          ? `Disetujui via Dispensasi Khusus (No BA: ${baDispensasi})`
+          : 'Disetujui via Dispensasi Khusus';
+        updatePayload.alasan_penolakan = null;
       }
 
       const { error } = await supabase
@@ -294,9 +325,13 @@ export default function AdminVerifView({
         }
 
         showToast(
-          `${label} ${status}`,
-          status === 'Ditolak' ? `Alasan: ${rejectionReason}` : undefined,
-          status === 'Disetujui' ? 'success' : 'info'
+          status === 'Dispensasi' ? `${label} Dipulihkan (Dispensasi)` : `${label} ${status}`,
+          status === 'Ditolak' 
+            ? `Alasan: ${rejectionReason}` 
+            : status === 'Dispensasi'
+            ? updatePayload.catatan_admin
+            : undefined,
+          status === 'Ditolak' ? 'info' : 'success'
         );
       }
     } catch (err: any) {
@@ -1063,8 +1098,28 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                 )}
 
                 <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  {item.status_verifikasi === 'Ditolak' && (
+                    <button
+                      type="button"
+                      disabled={isReadOnly || processingId === item.id}
+                      onClick={() => !isReadOnly && verifyItem(item.id, 'Dispensasi')}
+                      title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan dinonaktifkan' : 'Reset / Pulihkan Status via Dispensasi Khusus (F-SIPJAM-02)'}
+                      aria-label="Pulihkan via Dispensasi"
+                      className="flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50"
+                    >
+                      {processingId === item.id ? (
+                        <i className="fa-solid fa-spinner animate-spin"></i>
+                      ) : (
+                        <>
+                          <i className="fa-solid fa-rotate-left"></i>
+                          <span>Pulihkan via Dispensasi (F-SIPJAM-02)</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   {item.status_verifikasi !== 'Ditolak' && (
                     <button 
+                      type="button"
                       disabled={isReadOnly || processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
                       onClick={() => !isReadOnly && verifyItem(item.id, 'Disetujui')} 
                       title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan verifikasi dinonaktifkan' : 'Terima / Setujui Pengajuan'}
@@ -1084,25 +1139,26 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                       )}
                     </button>
                   )}
-                  <button 
-                    disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
-                    onClick={() => !isReadOnly && verifyItem(item.id, 'Ditolak')} 
-                    title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan penolakan dinonaktifkan' : 'Tolak Pengajuan'}
-                    aria-label="Tolak"
-                    className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
-                      item.status_verifikasi === 'Ditolak'
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 cursor-default opacity-80'
-                        : isReadOnly
-                        ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none border border-gray-200 dark:border-gray-700'
-                        : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
-                    }`}
-                  >
-                    {processingId === item.id ? (
-                      <i className="fa-solid fa-spinner animate-spin"></i>
-                    ) : (
-                      <><i className="fa-solid fa-xmark"></i> Tolak</>
-                    )}
-                  </button>
+                  {item.status_verifikasi !== 'Ditolak' && (
+                    <button 
+                      type="button"
+                      disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
+                      onClick={() => !isReadOnly && verifyItem(item.id, 'Ditolak')} 
+                      title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan penolakan dinonaktifkan' : 'Tolak Pengajuan'}
+                      aria-label="Tolak"
+                      className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                        isReadOnly
+                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none border border-gray-200 dark:border-gray-700'
+                          : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
+                      }`}
+                    >
+                      {processingId === item.id ? (
+                        <i className="fa-solid fa-spinner animate-spin"></i>
+                      ) : (
+                        <><i className="fa-solid fa-xmark"></i> Tolak</>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             );

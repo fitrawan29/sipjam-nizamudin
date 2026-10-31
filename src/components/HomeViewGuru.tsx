@@ -511,6 +511,40 @@ export default function HomeViewGuru({
             </div>
           )}
 
+          {/* Peringatan Disiplin Administrasi (SOP SIPJAM) */}
+          {teacherWarnings?.hasWarning && (teacherWarnings.warnings || []).length > 0 && (
+            <div className="clay-card p-3 sm:p-4 mb-3 rounded-2xl border-2 border-amber-300/80 dark:border-amber-700/60 bg-amber-50/90 dark:bg-amber-950/40 shadow-sm text-xs">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
+                  <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i>
+                  <span>Peringatan Disiplin Administrasi ({teacherWarnings.warnings.length} Catatan)</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                  Perlu Tindak Lanjut
+                </span>
+              </div>
+              <div className="space-y-1.5 text-amber-950/90 dark:text-amber-100 text-[11px]">
+                {teacherWarnings.warnings.map((w, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5 bg-white/60 dark:bg-gray-900/50 p-2 rounded-xl border border-amber-200/60 dark:border-amber-800/40">
+                    <span className="font-bold text-amber-800 dark:text-amber-300 shrink-0">[{w.category}]</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-white">{w.message}</p>
+                      {w.dates && w.dates.length > 0 && (
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          Tanggal: {w.dates.slice(0, 5).join(', ')}{w.dates.length > 5 ? ` (+${w.dates.length - 5} lainnya)` : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-amber-800/90 dark:text-amber-300/80 mt-2 pt-1.5 border-t border-amber-200 dark:border-amber-800/60 flex items-center justify-between">
+                <span>Segera lengkapi kewajiban atau ajukan dispensasi (maks. 2x24 jam).</span>
+                <span className="font-medium text-gray-500 dark:text-gray-400">Ref: docs/KONSEKUENSI_PELANGGARAN.md</span>
+              </p>
+            </div>
+          )}
+
           {/* Section 1: Personal Attendance Stat Cards (H, TL, Izin, Sakit) */}
           <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
