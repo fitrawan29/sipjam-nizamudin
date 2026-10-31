@@ -1,33 +1,32 @@
-## 2026-10-30T15:52:50Z
-You are teamwork_victory_auditor.
-Your working directory is c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_victory_auditor\
-Your parent orchestrator conversation ID is 7fb30bed-7a9f-496c-a20f-f510131a7873.
-
+## 2026-10-31T13:13:27Z
+Sender: 16d8cf9c-fa23-46b5-8670-1b991c56d8df
+Content:
 <original_task>
-This is a single self-contained fix; keep it small and focused. Identifikasi dan perbaiki sistem keamanan ujian serta fitur anti-kecurangan pada role siswa agar bekerja dengan benar dan andal pada codebase saat ini.
+This is a single self-contained fix; keep it small and focused. Menyusun dokumen kebijakan dan standar operasional prosedur (SOP) mengenai konsekuensi bagi pihak yang tidak mengisi tiket, tidak mengisi jurnal KBM, ataupun tidak mengisi jurnal kegiatan dalam repositori SIPJAM.
 
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
 ## Requirements
 
-### R1. Audit dan Identifikasi Kelemahan Keamanan Ujian Siswa
-Audit seluruh mekanisme anti-kecurangan yang saat ini diterapkan pada role siswa saat pelaksanaan ujian di aplikasi, serta identifikasi bug, celah bypass, atau malfungsi yang menyebabkan proteksi tidak bekerja sebagaimana mestinya.
+### R1. Dokumen Kebijakan Konsekuensi Administratif Bertingkat
+Menyusun dokumen regulasi dan SOP tertulis di `docs/KONSEKUENSI_PELANGGARAN.md` yang menetapkan konsekuensi administratif bertingkat (teguran lisan, teguran tertulis SP1-SP3, evaluasi insentif/honor, hingga pemanggilan pimpinan/yayasan) atas kelalaian dalam:
+1. Tidak mengisi tiket (tiket piket / izin / penugasan).
+2. Tidak mengisi jurnal KBM (Kegiatan Belajar Mengajar).
+3. Tidak mengisi jurnal kegiatan.
 
-### R2. Perbaikan dan Penguatan Fitur Anti-Kecurangan
-Terapkan perbaikan pada kode agar seluruh fitur anti-kecurangan pada role siswa (seperti deteksi perpindahan tab/jendela/blur, penjagaan mode fullscreen, pembatasan copy-paste/shortcut, dan integritas sesi pengerjaan ujian) aktif dan berfungsi dengan benar.
+### R2. Batas Waktu Pelaporan, Alur Verifikasi, dan Mekanisme Klarifikasi
+Mendefinisikan batasan waktu cut-off pengisian, peran dan wewenang pihak pemeriksa (guru piket, tim kurikulum, pimpinan sekolah), serta alur klarifikasi/keberatan yang wajar bagi guru atau staf dengan kendala yang sah.
 
 ## Acceptance Criteria
 
-### Fungsionalitas Anti-Kecurangan Siswa
-- [ ] Seluruh celah keamanan atau kegagalan deteksi pada fitur anti-kecurangan role siswa yang ada diidentifikasi dan diperbaiki pada kode.
-- [ ] Fitur anti-kecurangan bereaksi secara konsisten saat terjadi aksi pelanggaran siswa (misal: perpindahan fokus jendela/tab, keluar dari fullscreen, percobaan penyalinan teks) tanpa merusak pengalaman pengerjaan ujian normal bagi siswa yang jujur.
-- [ ] Tim menyusun dan menjalankan skenario verifikasi/uji terprogram untuk membuktikan seluruh deteksi anti-kecurangan bekerja sesuai rancangan.
-- [ ] Proyek lulus proses validasi build dan linting (npm run build) tanpa error atau regresi fungsional.
+### Kelengkapan & Struktur Dokumen
+- [ ] Dokumen kebijakan dan SOP resmi tersimpan di `docs/KONSEKUENSI_PELANGGARAN.md`.
+- [ ] Dokumen memuat definisi pelanggaran dan matriks konsekuensi bertingkat untuk ketiga kategori: tiket, jurnal KBM, dan jurnal kegiatan.
+- [ ] Skema sanksi administratif mencakup tahapan bertingkat: teguran lisan, teguran tertulis (SP1-SP3), evaluasi/penangguhan insentif, dan pemanggilan pimpinan.
+- [ ] Dokumen mencantumkan batas waktu toleransi pengisian (cut-off) dan pihak yang berwenang melakukan verifikasi serta rekapitulasi.
+- [ ] Dokumen memuat prosedur resmi klarifikasi atau pengajuan dispensasi jika terjadi kendala teknis/keadaan darurat.
 </original_task>
 
-Conduct your independent 3-phase victory audit:
-1. Phase 1: Timeline & commit history audit.
-2. Phase 2: Cheating detection & test authenticity audit.
-3. Phase 3: Independent test execution & build verification.
-
-Write your final audit report with structured verdict (CONFIRMED or REJECTED) to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_victory_auditor\handoff.md and send a message back to the parent orchestrator.
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\teamwork_victory_auditor\
+Please conduct the post-victory audit (timeline verification, cheating/stub detection, independent test execution) against the implementation in the repository, produce your structured audit verdict, and notify me with send_message.

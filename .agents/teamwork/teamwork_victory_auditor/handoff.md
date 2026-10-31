@@ -1,77 +1,38 @@
-# Victory Audit Handoff Report — Student Exam Security & Anti-Cheating System
-
-=== VICTORY AUDIT REPORT ===
-
-VERDICT: VICTORY CONFIRMED
-
-PHASE A — TIMELINE:
-  Result: PASS
-  Anomalies: none
-
-PHASE B — INTEGRITY CHECK:
-  Result: PASS
-  Details: Clean forensic audit under Development Integrity Mode. No hardcoded test stubs, no facade implementations, and no pre-populated artifacts. Core logic in src/lib/antiCheatGuard.ts, src/hooks/useExamAntiCheat.ts, and src/components/UjianSiswaView.tsx implements authentic modifier key evaluation, window blur/visibility change debouncing, tamper-resistant storage persistence, mobile/WebKit fullscreen fallback handling, and real-time 3-strike exam lockout.
-
-PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npx tsx tests/student_exam_anti_cheat.test.ts && npm test && npm run build
-  Your results: 
-    - tests/student_exam_anti_cheat.test.ts: 116 / 116 assertions PASSED (Exit code 0)
-    - npm test: ALL 43 test suites PASSED (Exit code 0)
-    - npm run build: Next.js 16.3.4 Turbopack build PASSED, 13/13 static pages generated (Exit code 0)
-    - npm run lint: 0 errors (Exit code 0)
-  Claimed results: 
-    - tests/student_exam_anti_cheat.test.ts: 116 / 116 PASS
-    - npm test: ALL 43 suites PASS
-    - npm run build: Exit code 0
-  Match: YES — Exact match on all suites, assertions, and build outputs.
-
-============================
+# Handoff Report: Victory Audit on Kebijakan Konsekuensi Administratif SIPJAM
 
 ## 1. Observation
-- **Timeline & Git History**:
-  - Four iterative commits with logical progression:
-    - `95c4645`: Initial feature implementation of student exam security, fullscreen guard, and anti-cheating system (23:06:31 +0800).
-    - `9c77dd8`: Review Round 1 fixes addressing test regressions, shortcut hardenings, answer persistence (23:23:57 +0800).
-    - `375ef23`: Review Round 2 fixes implementing mobile simulated fullscreen fallback, print suppression, drag/drop protection, redo key preservation (23:36:45 +0800).
-    - `6127b61`: Review Round 3 fixes hardening reload loopholes, timer freezes, drop injection, iPad fullscreen rejection (23:50:35 +0800).
-  - No pre-populated logs, no artificial timestamp clustering, clean working tree in sync with origin/main.
-- **Forensic Verification**:
-  - `src/lib/antiCheatGuard.ts`: Genuine state evaluation functions (`evaluateSecurityViolation`, `isDevToolsShortcut`, `isRestrictedCopyPasteShortcut`, `isInputOrTextarea`, `triggerFullscreen`, `getExamSecurityStorageKey`, `saveExamProgress`, `loadExamProgress`). Real debounce cooldown (`VIOLATION_COOLDOWN_MS = 600`), wall-clock timer deduction, and cross-platform shortcut parsing.
-  - `src/hooks/useExamAntiCheat.ts`: Complete lifecycle hook handling `visibilitychange`, `blur`, `fullscreenchange`, `copy`, `cut`, `paste`, `contextmenu`, `keydown`, `beforeunload`, `beforeprint`, `selectstart`, `dragstart`, `drop`, `resize`, and `storage`.
-  - `src/components/UjianSiswaView.tsx`: Functional student exam view with 4 question items (multiple choice and essay), answer selection, doubt flag toggle, full-viewport blocking overlay (`fixed inset-0 z-[99999] backdrop-blur-md pointer-events-auto`), real-time violation counter badge, and automatic lockout submission upon reaching 3 violations.
-  - `src/components/AppScreen.tsx`: Wired for role `siswa` routing directly to `view-ujian` as the default landing view and sidebar menu navigation.
-- **Independent Execution**:
-  - Command: `npx tsx tests/student_exam_anti_cheat.test.ts` -> 116 tests executed, 116 passed, 0 failed (exit code 0).
-  - Command: `npm test` -> 43 suites executed, 43 passed, 0 failed (exit code 0).
-  - Command: `npm run build` -> Next.js 16.3.4 Turbopack build succeeded, 13/13 pages statically compiled (exit code 0).
-  - Command: `npm run lint` -> 0 errors, 166 non-blocking legacy warnings (exit code 0).
+- **File Existence & Depth**: `docs/KONSEKUENSI_PELANGGARAN.md` exists and contains 522 lines (46,628 bytes). It covers 12 major sections, including legal background (UU 14/2005, PP 74/2008 jo PP 19/2017, PP 94/2021, Permendikbudristek 45/2023), 3 violation categories (Tiket, Jurnal KBM, Jurnal Kegiatan), cut-off schedules, 6 verification roles, 5-tier sanctions (Teguran Lisan, SP 1, SP 2, SP 3, Pemanggilan Pimpinan), 3 comparative tables, financial rules ("Zero Journal = Zero Teaching Credit", piket honor withholding), clarification/dispensation workflows (2x24 hour window, extended force majeure, 3T blank spot manual book reconciliations), formal SOP codes (SOP-SIPJAM-01 s.d. SOP-SIPJAM-04), and physical blank templates (Formulir F-SIPJAM-01 & F-SIPJAM-02).
+- **Git History & Provenance**: Git history reflects 5 commits (`d898236c`, `fbbdfee8`, `85072c6b`, `c042aa93`, `bc645a81`) created iteratively between 20:32 and 21:11 (+0800), corresponding to 4 iterative review cycles addressing reviewer suggestions.
+- **UI & Code Integration**:
+  - `src/components/AdminVerifView.tsx`: Lines 178-334 and lines 1098-1115 implement `Dispensasi` action with SweetAlert modal input for Berita Acara number, updating database status to `Disetujui` with audit note, and rendering the "Pulihkan via Dispensasi (F-SIPJAM-02)" button on rejected items.
+  - `src/components/HomeViewGuru.tsx`: Lines 511-546 render the "Peringatan Disiplin Administrasi" banner whenever `teacherWarnings?.hasWarning` is true, displaying categorized warnings and citing `docs/KONSEKUENSI_PELANGGARAN.md`.
+  - `src/components/AIAssistant/knowledgeBase.ts`: Introduces FAQs `faq-general-3`, `faq-general-4`, `faq-general-5` linking to `docs/KONSEKUENSI_PELANGGARAN.md`.
+  - `docs/PANDUAN_PENGGUNA.md`: Integrates a dedicated section linking to `docs/KONSEKUENSI_PELANGGARAN.md`.
+- **Independent Test Execution**:
+  - `npx tsx tests/konsekuensi_pelanggaran_verification.test.ts`: Exited with code 0; 26 passed, 0 failed.
+  - `npm test`: Exited with code 0; all 45 test suites chained with `&&` executed and passed completely.
+  - `npm run build`: Exited with code 0; Turbopack and Next.js 16.3.4 completed TypeScript checks and static generation of 13 routes without errors.
+- **Working Tree**: `git status` reports working tree clean on branch `main` and up-to-date with `origin/main` (excluding agent metadata files).
 
 ## 2. Logic Chain
-1. Under Development integrity mode, work products must be free of facades, hardcoded test stubs, or fabricated test outputs. Source code analysis of `antiCheatGuard.ts`, `useExamAntiCheat.ts`, and `UjianSiswaView.tsx` demonstrates comprehensive and genuine algorithmic enforcement of student exam security.
-2. The team's commit history demonstrates authentic iterative problem solving across 3 reviewer rounds, resolving edge cases like iPad Safari WebKit rejection, virtual keyboard viewport resizes, external drop injection, reload timer exploits, and redo shortcut conflicts.
-3. Independent execution of `npx tsx tests/student_exam_anti_cheat.test.ts` verified all 11 test suites and 116 assertions without relying on pre-existing artifacts.
-4. Independent execution of the full regression suite `npm test` (43 test files) and production build `npm run build` verified that no regressions were introduced to existing teacher, admin, piket, or dinas workflows.
-5. All requirements R1 and R2 and all four acceptance criteria from `ORIGINAL_REQUEST.md` have been met.
+1. *Observation*: `docs/KONSEKUENSI_PELANGGARAN.md` contains comprehensive sections for Tiket, Jurnal KBM, and Jurnal Kegiatan, detailing cut-off deadlines, roles, 5 sanction tiers, 3 comparative tables, and 2 template blanks.
+   *Inference*: Requirements R1, R2, and all 5 acceptance criteria are thoroughly fulfilled.
+2. *Observation*: Git commits show progressive enhancements from r0 through r3 with code modifications in UI views (`AdminVerifView.tsx`, `HomeViewGuru.tsx`), offline knowledge base (`knowledgeBase.ts`), and user guide (`PANDUAN_PENGGUNA.md`).
+   *Inference*: The project was developed genuinely and incrementally without pre-populated result fabrications or instantaneous file dumps.
+3. *Observation*: Neither facade implementations nor test-skipping hardcoded mocks exist; `tests/konsekuensi_pelanggaran_verification.test.ts` asserts actual filesystem content and component structures.
+   *Inference*: The project satisfies development integrity mode constraints.
+4. *Observation*: Independent execution of `npm test` passed 45/45 test suites with 0 failures, and `npm run build` compiled cleanly.
+   *Inference*: The implementation introduced no regressions and is production-ready.
 
 ## 3. Caveats
-- Native HTML Fullscreen API on iOS mobile Safari (iPhone) is not exposed on general HTML document elements by Apple; the system handles this via an automatic full-viewport CSS simulation fallback (`isSimulatedFullscreen`) while retaining active tab switch, blur, reload, and clipboard guards.
-- Remote Supabase database sync for student answers is kept local to client storage per the defined scope of this single self-contained task.
+- Real-world wet-ink signatures on printed copies of Formulir F-SIPJAM-01/02 and the Lembar Pengesahan are executed outside the digital application and belong to physical school administration governance.
 
 ## 4. Conclusion
-The implementation of the student exam security and anti-cheating system is verified genuine, fully functional, and resilient against bypass vectors. Victory is CONFIRMED.
+The implementation of the administrative consequence policy, SOP, and supporting software integrations is authentic, complete, robust, and cleanly integrated. Victory claim is CONFIRMED.
 
 ## 5. Verification Method
-To independently replicate this verification:
-```powershell
-# 1. Run student exam security test suite
-npx tsx tests/student_exam_anti_cheat.test.ts
-
-# 2. Run full project test suites
-npm test
-
-# 3. Verify production compilation
-npm run build
-
-# 4. Verify code formatting and linting
-npm run lint
-```
+- Run verification test: `npx tsx tests/konsekuensi_pelanggaran_verification.test.ts`
+- Run full test suite: `npm test`
+- Run production build: `npm run build`
+- Inspect policy document: `docs/KONSEKUENSI_PELANGGARAN.md`
+- Invalidation conditions: Any assertion failure in `tests/konsekuensi_pelanggaran_verification.test.ts` or missing sections in `docs/KONSEKUENSI_PELANGGARAN.md`.
