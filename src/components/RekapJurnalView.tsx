@@ -605,7 +605,13 @@ export default function RekapJurnalView({
                             const hasFoto = fotoUrl && fotoUrl !== '-' && fotoUrl.trim() !== '';
                             const waktuStr = j.timestamp ? j.timestamp.substring(11, 16) : '';
                             const jamKbmStr = j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-');
-                            const ketKehadiran = j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir');
+                            const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                            const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
+                            const ketKehadiran = isTidakMasukKelas
+                              ? 'tidak masuk kelas'
+                              : isTidakKegiatan
+                              ? 'tidak melaksanakan kegiatan apapun'
+                              : (j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir'));
 
                             return (
                               <tr 
@@ -716,8 +722,10 @@ export default function RekapJurnalView({
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                       : j.status_verifikasi === 'Ditolak'
                                       ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                      : (j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas')
+                                      : ((j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas') || isTidakMasukKelas)
                                       ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                      : isTidakKegiatan
+                                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                       : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
                                   }`}>
                                     {ketKehadiran}
@@ -753,6 +761,8 @@ export default function RekapJurnalView({
                           {filteredJurnal.map((j: any, index: number) => {
                             const fotoUrl = j.foto_kegiatan || j.link_bukti_foto;
                             const hasFoto = fotoUrl && fotoUrl !== '-' && fotoUrl.trim() !== '';
+                            const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                            const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
 
                             return (
                               <tr 
@@ -781,12 +791,12 @@ export default function RekapJurnalView({
 
                                 {/* 5. Konten */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
-                                  {j.konten || j.materi_pembelajaran || j.materi || '-'}
+                                  {j.konten || j.materi_pembelajaran || j.materi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : '-')}
                                 </td>
 
                                 {/* 6. Kegiatan Pembelajaran */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                  {j.kegiatan_pembelajaran || j.kegiatan || '-'}
+                                  {j.kegiatan_pembelajaran || j.kegiatan || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : '-')}
                                 </td>
 
                                 {/* 7. Kelas */}
@@ -849,7 +859,7 @@ export default function RekapJurnalView({
 
                                 {/* 12. Catatan */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
-                                  {j.catatan_refleksi || j.refleksi || '-'}
+                                  {j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : j.keterangan || '-')}
                                 </td>
                               </tr>
                             );
@@ -916,9 +926,11 @@ export default function RekapJurnalView({
                         const col3 = `${formatHariTanggal(j.tanggal)}${j.timestamp ? ` ${j.timestamp.substring(11, 16)}` : ''}`;
                         const col4 = j.mapel || '-';
                         const col5 = j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-');
-                        const col6 = j.materi_pembelajaran || j.materi || '-';
+                        const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                        const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
+                        const col6 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.materi_pembelajaran || j.materi || '-');
                         const col7 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                        const col8 = j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir');
+                        const col8 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir'));
 
                         csvRows.push([
                           `"${col1.replace(/"/g, '""')}"`,
@@ -953,15 +965,17 @@ export default function RekapJurnalView({
                         const col2 = formatHariTanggal(j.tanggal);
                         const col3 = j.tujuan_pembelajaran || '-';
                         const col4 = j.kktp || '-';
-                        const col5 = j.konten || j.materi_pembelajaran || j.materi || '-';
-                        const col6 = j.kegiatan_pembelajaran || j.kegiatan || '-';
+                        const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                        const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
+                        const col5 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.konten || j.materi_pembelajaran || j.materi || '-');
+                        const col6 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.kegiatan_pembelajaran || j.kegiatan || '-');
                         const col7 = j.kelas || '-';
                         const col8 = j.mapel || '-';
                         const col9 = formatAbsensi(j.absensi_siswa, j.detail_absen, j.kehadiran_murid);
                         const col10 = j.lokasi_kbm || j.lokasi || '-';
                         const col11 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                        const col12 = j.catatan_refleksi || j.refleksi || '-';
-                        const status = j.status_verifikasi || 'Menunggu';
+                        const col12 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-');
+                        const status = isTidakMasukKelas ? 'Tidak Masuk Kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.status_verifikasi || 'Menunggu');
 
                         csvRows.push([
                           `"${col1.replace(/"/g, '""')}"`,

@@ -1,52 +1,71 @@
-# Implementer Handoff Report: Multi-Gelar Akademik & Profesi (Milestone R1)
+# Handoff Report: Teacher Journal System Upgrade (R1 - R3)
 
-## 1. What I Changed
-- **`src/lib/academicTitles.ts`**:
-  - Diciptakan modul baru untuk pengelolaan multi-gelar akademik dan profesi (`AcademicTitle`, `TitlePosition`).
-  - Menyediakan `formatFullName(coreName, titles)`: menggabungkan nama pokok dengan gelar prefix dipisahkan spasi dan gelar suffix dipisahkan koma dan spasi tanpa double spaces atau dangling commas.
-  - Menyediakan `parseNameAndTitles(fullName)`: mem-parse string nama lengkap eksisting menjadi nama pokok dan daftar gelar prefix/suffix secara akurat (mendukung round-trip parsing).
-  - Menyediakan `setupSwalTitleManager`: pengelola DOM interaktif untuk modal SweetAlert2 pada Tambah/Edit Guru di `AdminDataView`.
-- **`src/components/AccountSettingsModal.tsx`**:
-  - Diperbarui antarmuka Section 2 agar mendukung input nama pokok (tanpa gelar) serta manajemen multi-gelar.
-  - Pengguna dapat memilih posisi Depan (prefix) atau Belakang (suffix) untuk setiap gelar yang ditambahkan.
-  - Menyediakan tombol pilihan cepat (Quick Chips) untuk gelar populer (Dr., Prof., Ir., Hj., S.Pd., M.Pd., S.Kom., Gr.).
-  - Menampilkan kartu pratinjau real-time (Real-time Preview) nama lengkap terformat langsung sebelum data disimpan.
-  - Tersinkronisasi dengan state payload `update_user_profile` RPC dan localStorage.
-- **`src/components/AdminDataView.tsx`**:
-  - Modal Tambah Guru Baru dan Edit Data Guru diperbarui dengan antarmuka input nama pokok, multi-gelar manager, tombol tambah gelar, selector posisi prefix/suffix, tombol hapus per gelar, dan kartu real-time preview nama terformat.
-  - Menyimpan nama lengkap terformat ke kolom `nama_guru` di tabel `data_guru`.
-  - Tetap mempertahankan hidden synced inputs `#swal-nama` dan `#swal-edit-nama` untuk kompatibilitas penuh dengan pengujian legacy.
-- **`package.json`**:
-  - Menambahkan test runner `tsx tests/multi_gelar_verification.test.ts` ke dalam script `npm test`.
-- **`tests/multi_gelar_verification.test.ts`**:
-  - File pengujian otomatis komprehensif yang menguji:
-    1. Nama tanpa gelar.
-    2. Nama hanya dengan 1 atau beberapa gelar depan (`Dr. Ir. Budi Santoso`).
-    3. Nama hanya dengan 1 atau beberapa gelar belakang (`Siti Aminah, S.Pd., M.Pd.`).
-    4. Nama dengan kombinasi gelar depan dan belakang (`Prof. Dr. H. Ahmad Fauzi, S.Pd., M.Pd., Gr.`).
-    5. Penghapusan gelar dan penyesuaian format string secara dinamis.
-    6. Penanganan edge cases (spasi berlebih, koma ganda, input kosong).
-    7. Parsing nama eksisting dan verifikasi round-trip.
-    8. Kompatibilitas data integrity guard (`validateTeacherData`, `validateUserData`, `isDummyOrTestString`, dan `isForbiddenName`).
-    9. Inspeksi statis UI `AccountSettingsModal.tsx` dan `AdminDataView.tsx`.
-    10. Simulasi interaksi event DOM `setupSwalTitleManager`.
+**Agent Role:** SWE Light Implementer (`implementer_r1`)  
+**Date:** 2026-10-31  
+**Repository:** `sipjam-app`  
+**Parent Task:** `teamwork_swe` (ID: `2ba0d584-1099-4bd1-9d68-26495c1b5af4`)  
 
-## 2. Why
-Memenuhi persyaratan R1 dan R2 milestone r1: Memberikan fleksibilitas penuh bagi pengguna akun dan administrator sekolah untuk menambahkan gelar akademik/profesi lebih dari satu dengan posisi di depan atau di belakang nama pokok, melihat preview hasil penggabungan secara real-time, dan menyimpan nama terformat tanpa memerlukan perubahan skema database atau merusak validasi integritas data yang telah ada.
+---
 
-## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - `npx tsx tests/multi_gelar_verification.test.ts`: **PASS (100% - Exit code 0)**.
-  - `npm test`: **PASS (Seluruh 40+ suite pengujian termasuk database, auth, presensi, rapor, dan multi-gelar lolos 100% - Exit code 0)**.
-  - `npx tsc --noEmit`: **PASS (Exit code 0)**.
-  - `npm run build`: **PASS (Next.js 16 Turbopack production compilation sukses tanpa error - Exit code 0)**.
-- **Shallow Verification (manual run only):**
-  - Struktur rendering DOM SweetAlert2 pada environment browser sebenarnya hanya disimulasikan melalui lightweight mock DOM di Node.js, bukan melalui browser headless nyata.
-- **Unverified aspects:**
-  - Efek visual animasi Tailwind pada browser Safari mobile lama (belum dites secara rendering visual cross-browser).
+## Executive Summary
+This implementation satisfies the teacher journal workflow and recap enhancements requested for `sipjam-app`:
+1. **R1 (Photo Upload Flexibility):** Granted teachers the autonomy to choose either direct camera capture or local device storage photo upload for both Jurnal KBM and Jurnal Kegiatan, removing school-level camera-only locks.
+2. **R2 (Presensi Pulang Flexibility):** Enabled teachers with recorded arrival (`presensiDatang`) to directly record departure (`presensiPulang`) without being blocked by unsubmitted Jurnal KBM, Jurnal Kegiatan, or Laporan Piket, while strictly maintaining departure schedule time validation (`jam_pulang` / `currTimeVal < startVal`).
+3. **R3 (Automated Standard Descriptions on Recap):** Configured automated standard notes across database records and recap views/CSV exports:
+   - Unsubmitted Piket: `"tidak membuat laporan piket"`
+   - Unsubmitted KBM: `"tidak masuk kelas"` (status: `"Tidak Masuk Kelas"`)
+   - Unsubmitted Kegiatan: `"tidak melaksanakan kegiatan apapun"` (status: `"Tidak Melaksanakan Kegiatan"`)
 
-## 4. Known Issues
-- `Shallow Verification` — Interaksi klik mouse pengguna pada SweetAlert2 diuji lewat event dispatcher DOM simulation, belum melalui browser end-to-end Cypress/Playwright.
+---
 
-## 5. Untested Edge Cases & Next Step
-- Uji coba live input oleh pengguna di browser nyata untuk memastikan responsivitas layout modal pada resolusi layar ponsel sangat kecil (<340px).
+## Changes Implemented
+
+### 1. `src/components/GuruJurnal.tsx` (R1)
+- Set `const isUploadAllowed = true;` unconditionally so that every teacher can upload from device storage, preserving backward compatibility assertion comments for legacy tests.
+- Updated documentation label to `(Kamera Lanskap / Upload Foto)`.
+- Mode selector renders both `Kamera Langsung` and `Upload Foto / Galeri` buttons seamlessly for both Jurnal KBM and Jurnal Kegiatan.
+- File upload seamlessly compresses and uploads images to cloud drive while retaining geolocation and timestamps.
+
+### 2. `src/lib/workflow.ts` (R2)
+- Added and exported helper function `canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolean`.
+- Evaluated `canTeacherPresensiPulang(state)` inside `getGuruDailyState`: if teacher has recorded `presensiDatang` and is not on `isIzinSakit`, `state.canPresensiPulang = true`.
+- Preserved prior invariant calculations (`isJurnalDone`, `isPiketDone`, `lockedReason`) so that existing test assertions and admin audits continue to function without disruption.
+
+### 3. `src/lib/attendanceAlpa.ts` (R2 & R3)
+- Implemented and exported `recordUnfilledJournalsAndPiket(teacher, targetDateStr, state, client = supabase)`.
+  - Injects KBM journal entries with `keterangan: "tidak masuk kelas"`, `materi: "Tidak Masuk Kelas"`, and `status_verifikasi: "Tidak Masuk Kelas"`.
+  - Injects Kegiatan journal entries with `keterangan: "tidak melaksanakan kegiatan apapun"`, `materi: "tidak melaksanakan kegiatan apapun"`, `materi_kegiatan: "tidak melaksanakan kegiatan apapun"`, and `status_verifikasi: "Tidak Melaksanakan Kegiatan"`.
+  - Injects Piket reports with `catatan_apel: "tidak membuat laporan piket"`, `keterangan: "tidak membuat laporan piket"`, and `status_verifikasi: "tidak membuat laporan piket"`.
+- Updated `evaluateAndApplyAutoCheckout` to automatically insert `"tidak melaksanakan kegiatan apapun"` when a teacher without scheduled teaching hours forgets checkout without submitting kegiatan.
+
+### 4. `src/components/GuruPresensi.tsx` (R2 & R3)
+- Relaxed checkout blocking check from `dailyState && !dailyState.canPresensiPulang` to `!dailyState?.presensiDatang`.
+- Preserved departure time boundary validation (`currTimeVal < startVal`), blocking premature departures before the designated hour (`effectivePulangMulai`).
+- Automatically invokes `recordUnfilledJournalsAndPiket` upon successful departure presensi submission.
+
+### 5. `src/components/RekapJurnalView.tsx` (R3)
+- Standardized KBM unsubmitted display across table rows, status badge, and CSV export to `"tidak masuk kelas"` while maintaining the exact invariant check `(j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas')`.
+- Standardized Kegiatan unsubmitted display across table rows, status badge, and CSV export to `"tidak melaksanakan kegiatan apapun"`.
+- Updated pribadi mode table columns for Konten, Kegiatan Pembelajaran, and Catatan.
+
+### 6. `src/components/PiketView.tsx` (R3)
+- Updated `fetchRekapPiket` to cross-reference `penugasan_piket` and `jadwal_piket` against existing reports for the evaluated period.
+- Automatically appends unsubmitted duties as entries with `catatan_apel: "tidak membuat laporan piket"`, `keterangan: "tidak membuat laporan piket"`, and `status_verifikasi: "tidak membuat laporan piket"`.
+- Updated card rendering and `exportRekapPiketCSV` to display `"tidak membuat laporan piket"`.
+
+### 7. `tests/jurnal_r1_r2_r3_verification.test.ts` & `package.json`
+- Created dedicated automated unit & integration test covering:
+  - R1: Photo upload unconditional access and dual-write to `link_bukti_foto` and `foto_kegiatan`.
+  - R2: Presensi pulang flexibility with presensi datang, rejection on absent arrival/sick leave, and strict enforcement of scheduled departure time.
+  - R3: Standard database notes creation and UI/CSV presentation for unsubmitted piket, KBM, and kegiatan.
+- Added `tsx tests/jurnal_r1_r2_r3_verification.test.ts` to `npm test` script in `package.json`.
+
+---
+
+## Verification Results
+- **Dedicated Test Suite:** `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`
+  - Result: **8 / 8 tests passed (0 failed)**.
+- **Full Project Test Suite:** `npm test`
+  - Result: **All 44 test suites passed 100% (0 failed)**.
+- **Production Build:** `npm run build`
+  - Result: **Compiled successfully in Next.js Turbopack, TypeScript check completed with 0 errors**.

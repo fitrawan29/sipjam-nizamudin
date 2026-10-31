@@ -719,11 +719,29 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       state.lockedReason = `Anda belum menyelesaikan: ${missing.join(', ')}`;
     }
 
+    // R2: Fleksibilitas Presensi Tanpa Kewajiban Mengisi Jurnal
+    // Guru yang telah tercatat presensi datang dapat langsung melakukan presensi pulang
+    // tanpa kewajiban mengisi jurnal KBM, jurnal kegiatan, maupun laporan piket terlebih dahulu.
+    if (canTeacherPresensiPulang(state)) {
+      state.canPresensiPulang = true;
+    }
+
   } catch (error) {
     console.error("Workflow check error", error);
   }
 
   return state;
+}
+
+/**
+ * R2: Cek apakah guru diizinkan melakukan presensi pulang.
+ * Guru yang telah tercatat presensi datang dapat langsung melakukan presensi pulang
+ * tanpa kewajiban mengisi jurnal KBM, jurnal kegiatan, maupun laporan piket terlebih dahulu.
+ */
+export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolean {
+  if (!state.presensiDatang) return false;
+  if (state.isIzinSakit) return false;
+  return true;
 }
 
 

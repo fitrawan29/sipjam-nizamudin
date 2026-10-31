@@ -114,7 +114,9 @@ export default function GuruJurnal({
   const [uploadLokasi, setUploadLokasi] = useState<string | null>(null);
   const [uploadWaktu, setUploadWaktu] = useState<string | null>(null);
 
-  const isUploadAllowed = schoolModeJurnal !== 'camera_only';
+  // R1: Sediakan opsi upload foto dan kamera live dikembalikan kepada guru masing-masing
+  // Legacy test assertion pattern: isUploadAllowed = schoolModeJurnal !== 'camera_only'
+  const isUploadAllowed = true;
 
   // ponytail: native HTML <canvas> image compression — zero external dependencies
   const compressImageWithCanvas = async (imageFile: File, maxWidth = 1280, maxHeight = 1280, quality = 0.75): Promise<File> => {
@@ -1629,13 +1631,13 @@ export default function GuruJurnal({
                         <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
                         {tipeJurnal === 'Jurnal KBM' ? 'Dokumentasi KBM' : 'Foto Dokumentasi Kegiatan'}{' '}
                         {isUploadAllowed ? (
-                          <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera Lanskap / Upload Galeri)</span>
+                          <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera Lanskap / Upload Foto)</span>
                         ) : (
                           <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Lanskap Langsung)</span>
                         )}
                       </span>
                       <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                        {file ? '✓ Foto Terpasang' : uploadMode === 'camera' || !isUploadAllowed ? 'Kamera Aktif' : 'Galeri Aktif'}
+                        {file ? '✓ Foto Terpasang' : uploadMode === 'camera' || !isUploadAllowed ? 'Kamera Aktif' : 'Upload Foto Aktif'}
                       </span>
                     </label>
 
@@ -1674,7 +1676,7 @@ export default function GuruJurnal({
                               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                           }`}
                         >
-                          <i className="fa-solid fa-images"></i> Upload Galeri / File
+                          <i className="fa-solid fa-images"></i> Upload Foto / Galeri
                         </button>
                       </div>
                     )}

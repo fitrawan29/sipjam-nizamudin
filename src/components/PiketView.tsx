@@ -1325,10 +1325,74 @@ export default function PiketView({ user }: { user: any }) {
       }
 
       const { data, error } = await query;
+      let combined = (data || []) as any[];
+
+      // R3: Include unfilled piket for assigned teachers who have not submitted a report
+      try {
+        let penugasanQ = supabase.from('penugasan_piket').select('*').eq('tipe_petugas', 'Guru');
+        if (user?.sekolah_id) penugasanQ = penugasanQ.eq('sekolah_id', user.sekolah_id);
+        const { data: penugasan } = await penugasanQ;
+
+        let jpiketQ = supabase.from('jadwal_piket').select('*');
+        if (user?.sekolah_id) jpiketQ = jpiketQ.eq('sekolah_id', user.sekolah_id);
+        const { data: jPiketData } = await jpiketQ;
+
+        const todayStr = getWitaDateStr();
+        const [yr, mo] = (rekapBulan || todayStr.substring(0, 7)).split('-').map(Number);
+        const maxDay = (rekapBulan && rekapBulan === todayStr.substring(0, 7))
+          ? parseInt(todayStr.split('-')[2], 10)
+          : new Date(yr, mo, 0).getDate();
+
+        const missingEntries: any[] = [];
+        for (let d = 1; d <= maxDay; d++) {
+          const dateStr = `${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          if (dateStr > todayStr) break;
+          const dayName = getWitaDayName(new Date(`${dateStr}T00:00:00+08:00`));
+
+          const assignedNames = new Set<string>();
+          (penugasan || []).filter((p: any) => p.hari === dayName).forEach((p: any) => {
+            if (p.guru_nama) assignedNames.add(p.guru_nama.trim());
+          });
+          (jPiketData || []).filter((jp: any) => jp.hari === dayName).forEach((jp: any) => {
+            if (jp.daftar_guru) {
+              jp.daftar_guru.split(',').map((n: string) => n.trim()).filter(Boolean).forEach((n: string) => assignedNames.add(n));
+            }
+          });
+
+          for (const guruName of assignedNames) {
+            if (rekapGuru && rekapGuru !== 'Semua' && rekapGuru !== guruName) continue;
+
+            const hasReport = combined.some((r: any) => 
+              r.tanggal === dateStr && 
+              (r.guru_pelapor?.toLowerCase().includes(guruName.toLowerCase()) || guruName.toLowerCase().includes(r.guru_pelapor?.toLowerCase()))
+            );
+
+            if (!hasReport) {
+              missingEntries.push({
+                id: `unfilled-piket-${dateStr}-${guruName}`,
+                tanggal: dateStr,
+                guru_pelapor: guruName,
+                catatan_apel: 'tidak membuat laporan piket',
+                keterangan: 'tidak membuat laporan piket',
+                status_verifikasi: 'tidak membuat laporan piket',
+                rekap_absen_kelas: null,
+                link_foto: '-'
+              });
+            }
+          }
+        }
+
+        if (!rekapStatus || rekapStatus === 'Semua' || rekapStatus === 'tidak membuat laporan piket') {
+          combined = [...combined, ...missingEntries];
+        }
+      } catch (pErr) {
+        console.warn('Error identifying unfilled piket:', pErr);
+      }
+
       if (error) {
         console.error('Error fetching rekap piket:', error);
-      } else if (data) {
-        setRekapList(data);
+      } else {
+        setRekapList(combined);
       }
     } catch (err) {
       console.error('Rekap piket fetch exception:', err);
@@ -1709,13 +1773,16 @@ export default function PiketView({ user }: { user: any }) {
     filteredRekap.forEach((r, idx) => {
       const absenStr = formatRekapAbsen(r.rekap_absen_kelas) || '-';
       const hari = r.tanggal ? getWitaDayName(new Date(r.tanggal + 'T00:00:00+08:00')) : '-';
+      const isUnsubmitted = r.status_verifikasi?.toLowerCase() === 'tidak membuat laporan piket' || r.catatan_apel?.toLowerCase() === 'tidak membuat laporan piket' || r.keterangan?.toLowerCase() === 'tidak membuat laporan piket';
+      const catatanVal = isUnsubmitted ? 'tidak membuat laporan piket' : (r.catatan_apel || r.keterangan || '-');
+      const statusVerif = isUnsubmitted ? 'tidak membuat laporan piket' : (r.status_verifikasi || 'Menunggu');
       csvRows.push([
         idx + 1,
         `"${r.tanggal || ''}"`,
         `"${hari}"`,
         `"${(r.guru_pelapor || '').replace(/"/g, '""')}"`,
-        `"${(r.catatan_apel || '-').replace(/"/g, '""')}"`,
-        `"${r.status_verifikasi || 'Menunggu'}"`,
+        `"${catatanVal.replace(/"/g, '""')}"`,
+        `"${statusVerif.replace(/"/g, '""')}"`,
         `"${absenStr.replace(/"/g, '""')}"`,
         `"${r.link_foto || '-'}"`
       ].join(','));
@@ -4026,16 +4093,17 @@ export default function PiketView({ user }: { user: any }) {
                                       </div>
                                   </div>
                                   <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                                      item.status_verifikasi?.toLowerCase() === 'tidak membuat laporan piket' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                                       item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                                       item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                   }`}>
-                                      {item.status_verifikasi || 'Menunggu'}
+                                      {item.status_verifikasi || 'tidak membuat laporan piket'}
                                   </span>
                               </div>
 
                               <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
-                                  <p><span className="font-semibold">Catatan Apel / Kejadian:</span> {item.catatan_apel || '-'}</p>
+                                  <p><span className="font-semibold">Catatan Apel / Kejadian:</span> {item.status_verifikasi?.toLowerCase() === 'tidak membuat laporan piket' || item.catatan_apel?.toLowerCase() === 'tidak membuat laporan piket' ? 'tidak membuat laporan piket' : (item.catatan_apel || item.keterangan || '-')}</p>
                                   {formatRekapAbsen(item.rekap_absen_kelas) && (
                                       <p><span className="font-semibold">Kehadiran Siswa:</span> <span className="font-medium text-teal-700 dark:text-teal-400">{formatRekapAbsen(item.rekap_absen_kelas)}</span></p>
                                   )}

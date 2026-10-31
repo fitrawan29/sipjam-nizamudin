@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
+import { recordUnfilledJournalsAndPiket } from '@/lib/attendanceAlpa';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, getWitaDayName, getWitaDateStr } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -367,12 +368,14 @@ export default function GuruPresensi({
       if (dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak) {
         return showToast('Info', 'Anda sudah melakukan Presensi Pulang hari ini.', 'info');
       }
-      if (dailyState && !dailyState.canPresensiPulang) {
-        return showToast('Terkunci', dailyState.lockedReason || 'Anda belum menyelesaikan Jurnal/Piket.', 'error');
+      if (!dailyState?.presensiDatang) {
+        return showToast('Belum Presensi Datang', 'Anda harus melakukan Presensi Datang terlebih dahulu sebelum Presensi Pulang.', 'warning');
       }
       if (dailyState?.isIzinSakit) {
         return showToast('Info', 'Anda sedang Izin/Sakit hari ini, tidak perlu melakukan presensi pulang.', 'info');
       }
+      // R2: Guru yang telah tercatat presensi datang dapat langsung melakukan presensi pulang
+      // tanpa harus mengisi jurnal KBM, jurnal kegiatan, maupun jurnal piket terlebih dahulu.
     }
 
     // Validasi Workflow Datang - kecualikan jika presensi sebelumnya DITOLAK (perlu isi ulang)
@@ -618,6 +621,15 @@ export default function GuruPresensi({
       'success',
       { toast: true, position: 'top-end', timer: 3000, showConfirmButton: false }
     );
+
+    // R3: Record unfilled journals and piket automatically upon presensi pulang
+    if (tipeAbsen === 'Pulang') {
+      recordUnfilledJournalsAndPiket(
+        { nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id },
+        getWitaDateStr(),
+        dailyState || {}
+      ).catch(e => console.warn('[GuruPresensi] Auto-record unfilled journals/piket warning:', e));
+    }
 
     // Reset Form & Update local states immediately
     const nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah';
