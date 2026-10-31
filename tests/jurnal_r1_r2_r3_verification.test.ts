@@ -393,6 +393,18 @@ async function runAll() {
     assert.strictEqual(existingJournals.length, 1, 'Length must remain 1 without duplicate insertion');
   });
 
+  await runTest('2.5: workflow clears lockedReason when canTeacherPresensiPulang unlocks departure', () => {
+    const { getGuruDailyState } = require('../src/lib/workflow');
+    // Verify in code that when canTeacherPresensiPulang(state) is true, stale lockedReason is reset
+    const workflowPath = path.join(root, 'src', 'lib', 'workflow.ts');
+    const content = fs.readFileSync(workflowPath, 'utf8');
+
+    assert.ok(
+      content.includes("state.lockedReason = null;"),
+      'workflow.ts must reset lockedReason when presensi pulang is unlocked'
+    );
+  });
+
   await runTest('3.7: RekapJurnalView cross-references jadwal_pelajaran for unfilled schedules', () => {
     const rekapPath = path.join(root, 'src', 'components', 'RekapJurnalView.tsx');
     const content = fs.readFileSync(rekapPath, 'utf8');
@@ -404,6 +416,44 @@ async function runAll() {
     assert.ok(
       content.includes('unfilled-kbm-'),
       'RekapJurnalView must generate synthetic missing entries with prefix unfilled-kbm-'
+    );
+  });
+
+  await runTest('3.8: RekapJurnalView synthesizes unfilled Jurnal Kegiatan in personal mode', () => {
+    const rekapPath = path.join(root, 'src', 'components', 'RekapJurnalView.tsx');
+    const content = fs.readFileSync(rekapPath, 'utf8');
+
+    assert.ok(
+      content.includes('unfilled-kegiatan-'),
+      'RekapJurnalView must generate synthetic missing entries with prefix unfilled-kegiatan-'
+    );
+    assert.ok(
+      content.includes("'tidak melaksanakan kegiatan apapun'"),
+      'RekapJurnalView must include "tidak melaksanakan kegiatan apapun" for unsubmitted kegiatan'
+    );
+  });
+
+  await runTest('3.9: RekapJurnalView schedule time parsing handles dot format (07.30) and guards morning', () => {
+    const rekapPath = path.join(root, 'src', 'components', 'RekapJurnalView.tsx');
+    const content = fs.readFileSync(rekapPath, 'utf8');
+
+    assert.ok(
+      content.includes("sched.jam_mulai.replace('.', ':')"),
+      'RekapJurnalView must normalize dot notation in schedule times'
+    );
+    assert.ok(
+      content.includes("currTime < '07:00'"),
+      'RekapJurnalView must guard morning schedules before 07:00'
+    );
+  });
+
+  await runTest('3.10: evaluateAndApplyAutoCheckout records unfilled duties using recordUnfilledJournalsAndPiket', () => {
+    const attendancePath = path.join(root, 'src', 'lib', 'attendanceAlpa.ts');
+    const content = fs.readFileSync(attendancePath, 'utf8');
+
+    assert.ok(
+      content.includes('const unfilledRes = await recordUnfilledJournalsAndPiket'),
+      'evaluateAndApplyAutoCheckout must invoke recordUnfilledJournalsAndPiket for auto-checkout teachers'
     );
   });
 

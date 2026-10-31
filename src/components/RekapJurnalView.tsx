@@ -230,97 +230,139 @@ export default function RekapJurnalView({
         }
         const { data: allSchedules } = await jadwalQ;
 
-        if (allSchedules && allSchedules.length > 0) {
-          const todayStr = getWitaDateStr();
-          const currTime = getWitaTimeStr();
+        const todayStr = getWitaDateStr();
+        const currTime = getWitaTimeStr();
 
-          let startDStr = startDate;
-          let endDStr = endDate;
-          if (!startDStr || !endDStr) {
-            if (bulan) {
-              const [yr, mo] = bulan.split('-').map(Number);
-              startDStr = `${yr}-${String(mo).padStart(2, '0')}-01`;
-              const maxD = (bulan === todayStr.substring(0, 7))
-                ? parseInt(todayStr.split('-')[2], 10)
-                : new Date(yr, mo, 0).getDate();
-              endDStr = `${yr}-${String(mo).padStart(2, '0')}-${String(maxD).padStart(2, '0')}`;
-            } else {
-              startDStr = todayStr;
-              endDStr = todayStr;
-            }
+        let startDStr = startDate;
+        let endDStr = endDate;
+        if (!startDStr || !endDStr) {
+          if (bulan) {
+            const [yr, mo] = bulan.split('-').map(Number);
+            startDStr = `${yr}-${String(mo).padStart(2, '0')}-01`;
+            const maxD = (bulan === todayStr.substring(0, 7))
+              ? parseInt(todayStr.split('-')[2], 10)
+              : new Date(yr, mo, 0).getDate();
+            endDStr = `${yr}-${String(mo).padStart(2, '0')}-${String(maxD).padStart(2, '0')}`;
+          } else {
+            startDStr = todayStr;
+            endDStr = todayStr;
           }
+        }
 
-          const missingEntries: any[] = [];
-          const cur = new Date(`${startDStr}T00:00:00+08:00`);
-          const end = new Date(`${endDStr}T00:00:00+08:00`);
+        const missingEntries: any[] = [];
+        const cur = new Date(`${startDStr}T00:00:00+08:00`);
+        const end = new Date(`${endDStr}T00:00:00+08:00`);
 
-          while (cur <= end) {
-            const dateStr = getWitaDateStr(cur);
-            if (dateStr > todayStr) break;
+        while (cur <= end) {
+          const dateStr = getWitaDateStr(cur);
+          if (dateStr > todayStr) break;
 
-            const dayName = getWitaDayName(cur);
-            if (dayName !== 'Minggu') {
-              const daySchedules = allSchedules.filter(s => s.hari === dayName);
+          const dayName = getWitaDayName(cur);
+          if (dayName !== 'Minggu') {
+            const daySchedules = (allSchedules || []).filter(s => s.hari === dayName);
+            let teacherSchedulesToday: any[] = [];
 
-              for (const sched of daySchedules) {
-                // If in personal mode, filter to the logged-in teacher
-                if (activeMode === 'pribadi' && user?.nama) {
-                  if (!isTeacherScheduleMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, sched)) {
-                    continue;
-                  }
-                }
+            if (activeMode === 'pribadi' && user?.nama) {
+              teacherSchedulesToday = daySchedules.filter(s =>
+                isTeacherScheduleMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, s)
+              );
+            } else {
+              teacherSchedulesToday = daySchedules;
+            }
 
-                // If today, only consider unfilled if class time has already started/passed
-                if (dateStr === todayStr && sched.jam_mulai) {
-                  const [sh, sm] = sched.jam_mulai.split(':').map(Number);
+            for (const sched of teacherSchedulesToday) {
+              // If today, only consider unfilled if class time has already started/passed
+              if (dateStr === todayStr) {
+                if (sched.jam_mulai) {
+                  const normTime = sched.jam_mulai.replace('.', ':');
+                  const [sh, sm] = normTime.split(':').map(Number);
                   const [ch, cm] = currTime.split(':').map(Number);
-                  if (ch * 60 + cm < sh * 60 + sm) {
+                  if (!isNaN(sh) && !isNaN(sm) && (ch * 60 + cm < sh * 60 + sm)) {
                     continue;
                   }
+                } else if (currTime < '07:00') {
+                  continue;
                 }
+              }
 
-                // Check if combined already has a matching journal (either real or auto-recorded)
-                const hasJournal = combined.some(j => 
-                  j.tanggal === dateStr &&
-                  isJurnalMatchJadwal(j, sched) &&
-                  (activeMode !== 'pribadi' || isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j))
-                );
+              // Check if combined already has a matching journal (either real or auto-recorded)
+              const hasJournal = combined.some(j => 
+                j.tanggal === dateStr &&
+                isJurnalMatchJadwal(j, sched) &&
+                (activeMode === 'pribadi'
+                  ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
+                  : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
+              );
 
-                if (!hasJournal) {
-                  missingEntries.push({
-                    id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
-                    tanggal: dateStr,
-                    nama_guru: sched.nama_guru || '-',
-                    user_id: sched.user_id || null,
-                    sekolah_id: sched.sekolah_id || user?.sekolah_id || null,
-                    kelas: sched.kelas || '-',
-                    mapel: sched.mata_pelajaran || sched.mapel || '-',
-                    jam_ke: sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-'),
-                    materi: 'tidak masuk kelas',
-                    materi_pembelajaran: 'tidak masuk kelas',
-                    kegiatan: 'tidak masuk kelas',
-                    kegiatan_pembelajaran: 'tidak masuk kelas',
-                    keterangan: 'tidak masuk kelas',
-                    status_verifikasi: 'Tidak Masuk Kelas',
-                    catatan_refleksi: 'tidak masuk kelas',
-                    tujuan_pembelajaran: '-',
-                    kktp: '-',
-                    konten: 'tidak masuk kelas',
-                    lokasi_kbm: '-',
-                    kehadiran_murid: '-',
-                    foto_kegiatan: '-',
-                    link_bukti_foto: '-'
-                  });
-                }
+              if (!hasJournal) {
+                missingEntries.push({
+                  id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
+                  tanggal: dateStr,
+                  nama_guru: sched.nama_guru || '-',
+                  user_id: sched.user_id || null,
+                  sekolah_id: sched.sekolah_id || user?.sekolah_id || null,
+                  kelas: sched.kelas || '-',
+                  mapel: sched.mata_pelajaran || sched.mapel || '-',
+                  jam_ke: sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-'),
+                  materi: 'tidak masuk kelas',
+                  materi_pembelajaran: 'tidak masuk kelas',
+                  kegiatan: 'tidak masuk kelas',
+                  kegiatan_pembelajaran: 'tidak masuk kelas',
+                  keterangan: 'tidak masuk kelas',
+                  status_verifikasi: 'Tidak Masuk Kelas',
+                  catatan_refleksi: 'tidak masuk kelas',
+                  tujuan_pembelajaran: '-',
+                  kktp: '-',
+                  konten: 'tidak masuk kelas',
+                  lokasi_kbm: '-',
+                  kehadiran_murid: '-',
+                  foto_kegiatan: '-',
+                  link_bukti_foto: '-'
+                });
               }
             }
 
-            cur.setDate(cur.getDate() + 1);
+            // R3: For personal mode, if teacher has NO KBM schedules today, synthesize unsubmitted Jurnal Kegiatan
+            if (activeMode === 'pribadi' && user?.nama && teacherSchedulesToday.length === 0) {
+              const hasAnyJournal = combined.some(j =>
+                j.tanggal === dateStr &&
+                isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
+              );
+              const isEligibleTime = dateStr < todayStr || currTime >= '07:00';
+              if (!hasAnyJournal && isEligibleTime) {
+                missingEntries.push({
+                  id: `unfilled-kegiatan-${dateStr}-${user.id || 'guru'}`,
+                  tanggal: dateStr,
+                  nama_guru: user.nama,
+                  user_id: user.id || null,
+                  sekolah_id: user.sekolah_id || null,
+                  kelas: '-',
+                  mapel: 'Jurnal Kegiatan',
+                  jam_ke: '-',
+                  materi: 'tidak melaksanakan kegiatan apapun',
+                  materi_pembelajaran: 'tidak melaksanakan kegiatan apapun',
+                  kegiatan: 'tidak melaksanakan kegiatan apapun',
+                  kegiatan_pembelajaran: 'tidak melaksanakan kegiatan apapun',
+                  keterangan: 'tidak melaksanakan kegiatan apapun',
+                  status_verifikasi: 'Tidak Melaksanakan Kegiatan',
+                  catatan_refleksi: 'tidak melaksanakan kegiatan apapun',
+                  tujuan_pembelajaran: '-',
+                  kktp: '-',
+                  konten: 'tidak melaksanakan kegiatan apapun',
+                  lokasi_kbm: '-',
+                  kehadiran_murid: '-',
+                  foto_kegiatan: '-',
+                  link_bukti_foto: '-'
+                });
+              }
+            }
           }
 
-          if (missingEntries.length > 0) {
-            combined = [...combined, ...missingEntries];
-          }
+          cur.setDate(cur.getDate() + 1);
+        }
+
+        if (missingEntries.length > 0) {
+          combined = [...combined, ...missingEntries];
         }
       } catch (errSched) {
         console.warn('Error synthesizing unfilled schedules in RekapJurnalView:', errSched);

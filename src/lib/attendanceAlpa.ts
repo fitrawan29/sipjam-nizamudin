@@ -899,95 +899,21 @@ export async function evaluateAndApplyAutoCheckout(
       console.error(`[attendanceAlpa] Failed to insert auto-checkout for ${validDatang.nama_guru}:`, insErr.message);
     } else {
       let jurnalsCreated = 0;
-      // R2: Insert "tidak masuk kelas" records for empty schedules if pulang cepat
-      if (isPulangCepat && evalResult.emptySchedules.length > 0) {
-        for (const emptySched of evalResult.emptySchedules) {
-          // Guard: Avoid inserting duplicate "Tidak Masuk Kelas" journal for the same schedule on the evaluated date
-          const alreadyExists = (allJurnalToday || []).some(j => 
-            isTeacherJournalMatch(validDatang, j) &&
-            (j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas') &&
-            isJurnalMatchJadwal(j, emptySched)
-          );
-          if (alreadyExists) {
-            continue;
-          }
-
-          const emptyJurnalRecord = {
-            id: crypto.randomUUID(),
-            timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
-            nama_guru: validDatang.nama_guru,
-            user_id: validDatang.user_id || null,
-            sekolah_id: validDatang.sekolah_id || emptySched.sekolah_id || sekolahId || null,
-            tanggal: evaluatedDate,
-            kelas: emptySched.kelas || '-',
-            mapel: emptySched.mata_pelajaran || emptySched.mapel || '-',
-            jam_ke: emptySched.jam_mulai && emptySched.jam_selesai
-              ? `${emptySched.jam_mulai} - ${emptySched.jam_selesai}`
-              : (emptySched.jam_ke || '-'),
-            materi: 'Tidak Masuk Kelas',
-            materi_pembelajaran: 'Tidak Masuk Kelas',
-            kegiatan: 'Tidak Masuk Kelas',
-            kegiatan_pembelajaran: 'Tidak Masuk Kelas',
-            keterangan: 'Tidak Masuk Kelas',
-            status_verifikasi: 'Tidak Masuk Kelas',
-            catatan_admin: 'Auto-record: Guru tidak masuk kelas (pulang cepat)',
-            catatan_refleksi: 'Guru pulang cepat (tidak masuk kelas)',
-            kehadiran_murid: '-'
-          };
-          let { error: jInsErr } = await supabase.from('jurnal_pembelajaran').insert(emptyJurnalRecord);
-          if (jInsErr && (jInsErr.message.includes('schema cache') || jInsErr.message.includes('column'))) {
-            const { catatan_admin: _, catatan_refleksi: _2, ...baseEmptyJurnal } = emptyJurnalRecord;
-            const retry = await supabase.from('jurnal_pembelajaran').insert(baseEmptyJurnal);
-            if (!retry.error) {
-              jInsErr = null;
-            }
-          }
-          if (jInsErr) {
-            console.error(`[attendanceAlpa] Failed to insert empty journal for ${validDatang.nama_guru}:`, jInsErr.message);
-          } else {
-            jurnalsCreated++;
-            allJurnalToday?.push(emptyJurnalRecord);
-          }
+      // R3: Auto-record unfilled KBM, Kegiatan, and Piket duties
+      const unfilledRes = await recordUnfilledJournalsAndPiket(
+        {
+          nama_guru: validDatang.nama_guru,
+          user_id: validDatang.user_id,
+          sekolah_id: validDatang.sekolah_id,
+        },
+        evaluatedDate,
+        {
+          jadwalKBM: evalResult.teachingSchedules,
+          jurnalKBM: (allJurnalToday || []).filter(j => isTeacherJournalMatch(validDatang, j)),
+          jurnalKegiatan: (allJurnalToday || []).find(j => isTeacherJournalMatch(validDatang, j) && (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan')) || null
         }
-      }
-
-      // R3: Auto-record for unfilled Jurnal Kegiatan when teacher has no teaching schedules
-      if (!isPulangCepat && evalResult.teachingSchedules.length === 0 && !evalResult.hasJurnalKegiatan) {
-        const alreadyExists = (allJurnalToday || []).some(j =>
-          isTeacherJournalMatch(validDatang, j) &&
-          (j.keterangan === 'tidak melaksanakan kegiatan apapun' || j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan')
-        );
-        if (!alreadyExists) {
-          const emptyKegiatanRecord = {
-            id: crypto.randomUUID(),
-            timestamp: `${evaluatedDate}T${formattedCutoff}:00+08:00`,
-            nama_guru: validDatang.nama_guru,
-            user_id: validDatang.user_id || null,
-            sekolah_id: validDatang.sekolah_id || sekolahId || null,
-            tanggal: evaluatedDate,
-            kelas: '-',
-            mapel: 'Jurnal Kegiatan',
-            jam_ke: '-',
-            materi: 'tidak melaksanakan kegiatan apapun',
-            materi_pembelajaran: 'tidak melaksanakan kegiatan apapun',
-            materi_kegiatan: 'tidak melaksanakan kegiatan apapun',
-            kegiatan: 'tidak melaksanakan kegiatan apapun',
-            kegiatan_pembelajaran: 'tidak melaksanakan kegiatan apapun',
-            keterangan: 'tidak melaksanakan kegiatan apapun',
-            status_verifikasi: 'Tidak Melaksanakan Kegiatan',
-            catatan_admin: 'Auto-record: Guru tidak melaksanakan kegiatan apapun',
-            catatan_refleksi: 'tidak melaksanakan kegiatan apapun',
-            kehadiran_murid: '-'
-          };
-          let { error: kInsErr } = await supabase.from('jurnal_pembelajaran').insert(emptyKegiatanRecord);
-          if (kInsErr && (kInsErr.message.includes('schema cache') || kInsErr.message.includes('column'))) {
-            const { catatan_admin: _, catatan_refleksi: _2, ...baseRec } = emptyKegiatanRecord;
-            await supabase.from('jurnal_pembelajaran').insert(baseRec);
-          }
-          allJurnalToday?.push(emptyKegiatanRecord);
-          jurnalsCreated++;
-        }
-      }
+      );
+      jurnalsCreated = unfilledRes.unfilledKbmCount + (unfilledRes.unfilledKegiatanCreated ? 1 : 0);
 
       details.push({
         id: autoCheckoutId,
@@ -1124,7 +1050,7 @@ export async function recordUnfilledJournalsAndPiket(
               kegiatan_pembelajaran: 'tidak masuk kelas',
               keterangan: 'tidak masuk kelas',
               status_verifikasi: 'Tidak Masuk Kelas',
-              catatan_admin: 'Auto-record: Guru tidak masuk kelas',
+              catatan_admin: 'Auto-record: Guru tidak masuk kelas (pulang cepat)',
               catatan_refleksi: 'tidak masuk kelas',
               kehadiran_murid: '-'
             };

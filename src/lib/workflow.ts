@@ -724,6 +724,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // tanpa kewajiban mengisi jurnal KBM, jurnal kegiatan, maupun laporan piket terlebih dahulu.
     if (canTeacherPresensiPulang(state)) {
       state.canPresensiPulang = true;
+      if (state.lockedReason && state.lockedReason.startsWith('Anda belum menyelesaikan')) {
+        state.lockedReason = null;
+      }
     }
 
   } catch (error) {
