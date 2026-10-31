@@ -221,12 +221,12 @@ export default function RekapJurnalView({
       try {
         let jadwalQ = supabase.from('jadwal_pelajaran').select('*');
         if (user?.sekolah_id) jadwalQ = jadwalQ.eq('sekolah_id', user.sekolah_id);
-        const targetKelas = activeMode === 'kelas' ? (activeKelas || (!isAdmin && !isKepalaSekolah && waliClasses.length > 0 ? waliClasses[0] : null)) : null;
+        const targetKelas = activeKelas || (activeMode === 'kelas' && !isAdmin && !isKepalaSekolah && waliClasses.length > 0 ? waliClasses[0] : null);
         if (targetKelas) {
           jadwalQ = jadwalQ.eq('kelas', targetKelas);
         }
         if (mapel) {
-          jadwalQ = jadwalQ.eq('mata_pelajaran', mapel);
+          jadwalQ = jadwalQ.or(`mata_pelajaran.eq."${mapel}",mapel.eq."${mapel}"`);
         }
         const { data: allSchedules } = await jadwalQ;
 
@@ -323,7 +323,7 @@ export default function RekapJurnalView({
             }
 
             // R3: For personal mode, if teacher has NO KBM schedules today, synthesize unsubmitted Jurnal Kegiatan
-            if (activeMode === 'pribadi' && user?.nama && teacherSchedulesToday.length === 0) {
+            if (activeMode === 'pribadi' && !activeKelas && !mapel && user?.nama && teacherSchedulesToday.length === 0) {
               const hasAnyJournal = combined.some(j =>
                 j.tanggal === dateStr &&
                 isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)

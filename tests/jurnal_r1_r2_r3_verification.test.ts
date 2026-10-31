@@ -457,6 +457,68 @@ async function runAll() {
     );
   });
 
+  await runTest('3.11: RekapJurnalView isolates personal mode class/mapel filters and suppresses foreign synthesis', () => {
+    const rekapPath = path.join(root, 'src', 'components', 'RekapJurnalView.tsx');
+    const content = fs.readFileSync(rekapPath, 'utf8');
+
+    assert.ok(
+      content.includes("const targetKelas = activeKelas ||"),
+      'RekapJurnalView must respect activeKelas in personal mode when filtering schedules'
+    );
+    assert.ok(
+      content.includes("!activeKelas && !mapel"),
+      'RekapJurnalView must suppress synthetic kegiatan when class or mapel is filtered'
+    );
+  });
+
+  await runTest('3.12: PiketView handles title/gelar variations and hides verification buttons for unsubmitted reports', () => {
+    const piketPath = path.join(root, 'src', 'components', 'PiketView.tsx');
+    const content = fs.readFileSync(piketPath, 'utf8');
+
+    assert.ok(
+      content.includes("rekapGuru.toLowerCase().split(',')[0].trim()"),
+      'PiketView must normalize academic titles when matching rekapGuru filter'
+    );
+    assert.ok(
+      content.includes("value=\"tidak membuat laporan piket\""),
+      'PiketView must provide status dropdown option for Tidak Membuat Laporan Piket'
+    );
+    assert.ok(
+      content.includes("item.status_verifikasi?.toLowerCase() !== 'tidak membuat laporan piket'"),
+      'PiketView must hide verification buttons for unsubmitted piket reports'
+    );
+  });
+
+  await runTest('3.13: attendanceAlpa populates konten field for both KBM and Kegiatan unfilled records', async () => {
+    const insertedJournals: any[] = [];
+    const mockSupabase = createMockSupabase(insertedJournals, []);
+
+    const teacher = {
+      nama_guru: 'Siti Aminah, S.Pd.',
+      user_id: 'usr-siti-1',
+      sekolah_id: 'sch-1'
+    };
+
+    const mockState: any = {
+      jadwalKBM: [
+        {
+          id: 'sch-kbm-siti',
+          nama_guru: 'Siti Aminah, S.Pd.',
+          kelas: 'VII B',
+          mata_pelajaran: 'IPA'
+        }
+      ],
+      jurnalKBM: [],
+      jurnalKegiatan: null
+    };
+
+    const res = await recordUnfilledJournalsAndPiket(teacher, '2026-10-31', mockState, mockSupabase as any);
+    assert.strictEqual(res.unfilledKbmCount, 1);
+    assert.strictEqual(insertedJournals[0].konten, 'tidak masuk kelas');
+    assert.strictEqual(insertedJournals[0].materi, 'tidak masuk kelas');
+    assert.strictEqual(insertedJournals[0].keterangan, 'tidak masuk kelas');
+  });
+
   console.log('\n====================================================================');
   console.log(`🏁 FINISHED: Passed: ${passed}, Failed: ${failed}`);
   console.log('====================================================================');

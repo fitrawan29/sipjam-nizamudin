@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
-import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName } from '@/lib/wita';
+import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
@@ -1338,6 +1338,7 @@ export default function PiketView({ user }: { user: any }) {
         const { data: jPiketData } = await jpiketQ;
 
         const todayStr = getWitaDateStr();
+        const currTime = getWitaTimeStr();
         const [yr, mo] = (rekapBulan || todayStr.substring(0, 7)).split('-').map(Number);
         const maxDay = (rekapBulan && rekapBulan === todayStr.substring(0, 7))
           ? parseInt(todayStr.split('-')[2], 10)
@@ -1348,6 +1349,10 @@ export default function PiketView({ user }: { user: any }) {
           const dateStr = `${yr}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
           if (dateStr > todayStr) break;
           const dayName = getWitaDayName(new Date(`${dateStr}T00:00:00+08:00`));
+          if (dayName === 'Minggu') continue;
+
+          // If today, guard morning hours before departure time (11:00 WITA)
+          if (dateStr === todayStr && currTime < '11:00') continue;
 
           const assignedNames = new Set<string>();
           (penugasan || []).filter((p: any) => p.hari === dayName).forEach((p: any) => {
@@ -1360,7 +1365,12 @@ export default function PiketView({ user }: { user: any }) {
           });
 
           for (const guruName of assignedNames) {
-            if (rekapGuru && rekapGuru !== 'Semua' && rekapGuru !== guruName) continue;
+            if (rekapGuru && rekapGuru !== 'Semua') {
+              const cleanA = rekapGuru.toLowerCase().split(',')[0].trim();
+              const cleanB = guruName.toLowerCase().split(',')[0].trim();
+              const isMatch = rekapGuru === guruName || cleanA === cleanB || cleanA.includes(cleanB) || cleanB.includes(cleanA);
+              if (!isMatch) continue;
+            }
 
             const hasReport = combined.some((r: any) => 
               r.tanggal === dateStr && 
@@ -4003,6 +4013,7 @@ export default function PiketView({ user }: { user: any }) {
                                   <option value="Disetujui">Disetujui</option>
                                   <option value="Menunggu">Menunggu</option>
                                   <option value="Ditolak">Ditolak</option>
+                                  <option value="tidak membuat laporan piket">Tidak Membuat Laporan Piket</option>
                               </select>
                           </div>
                       </div>
@@ -4122,7 +4133,7 @@ export default function PiketView({ user }: { user: any }) {
                                   )}
                               </div>
 
-                              {isAdmin && (
+                              {isAdmin && item.status_verifikasi?.toLowerCase() !== 'tidak membuat laporan piket' && !item.id?.toString().startsWith('unfilled-') && (
                                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 no-print">
                                       <button
                                           disabled={processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}

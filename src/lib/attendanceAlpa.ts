@@ -1044,8 +1044,9 @@ export async function recordUnfilledJournalsAndPiket(
               kelas: sched.kelas || '-',
               mapel: sched.mata_pelajaran || sched.mapel || '-',
               jam_ke: sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-'),
-              materi: 'Tidak Masuk Kelas',
-              materi_pembelajaran: 'Tidak Masuk Kelas',
+              materi: 'tidak masuk kelas',
+              materi_pembelajaran: 'tidak masuk kelas',
+              konten: 'tidak masuk kelas',
               kegiatan: 'tidak masuk kelas',
               kegiatan_pembelajaran: 'tidak masuk kelas',
               keterangan: 'tidak masuk kelas',
@@ -1056,7 +1057,7 @@ export async function recordUnfilledJournalsAndPiket(
             };
             const { error: insErr } = await client.from('jurnal_pembelajaran').insert(emptyKbmRecord);
             if (insErr && (insErr.message?.includes('schema cache') || insErr.message?.includes('column'))) {
-              const { catatan_admin: _, catatan_refleksi: _2, ...baseRec } = emptyKbmRecord;
+              const { catatan_admin: _, catatan_refleksi: _2, konten: _3, ...baseRec } = emptyKbmRecord;
               await client.from('jurnal_pembelajaran').insert(baseRec);
             }
             unfilledKbmCount++;
@@ -1094,6 +1095,7 @@ export async function recordUnfilledJournalsAndPiket(
           materi: 'tidak melaksanakan kegiatan apapun',
           materi_pembelajaran: 'tidak melaksanakan kegiatan apapun',
           materi_kegiatan: 'tidak melaksanakan kegiatan apapun',
+          konten: 'tidak melaksanakan kegiatan apapun',
           kegiatan: 'tidak melaksanakan kegiatan apapun',
           kegiatan_pembelajaran: 'tidak melaksanakan kegiatan apapun',
           keterangan: 'tidak melaksanakan kegiatan apapun',
@@ -1104,7 +1106,7 @@ export async function recordUnfilledJournalsAndPiket(
         };
         const { error: insErr } = await client.from('jurnal_pembelajaran').insert(emptyKegiatanRecord);
         if (insErr && (insErr.message?.includes('schema cache') || insErr.message?.includes('column'))) {
-          const { catatan_admin: _, catatan_refleksi: _2, ...baseRec } = emptyKegiatanRecord;
+          const { catatan_admin: _, catatan_refleksi: _2, konten: _3, ...baseRec } = emptyKegiatanRecord;
           await client.from('jurnal_pembelajaran').insert(baseRec);
         }
         unfilledKegiatanCreated = true;
