@@ -624,14 +624,40 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <i className="fa-solid fa-clipboard-check text-green-600 dark:text-green-400"></i> Verifikasi Data
           </h2>
-          <button 
-            type="button" 
-            onClick={loadData} 
-            className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
-            title="Muat ulang data"
-          >
-            <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                Swal.fire({
+                  title: 'Pedoman Kebijakan & SOP SIPJAM',
+                  html: `
+                    <div class="text-left text-xs space-y-2 text-gray-700 dark:text-gray-200">
+                      <p><strong>1. Kategori Pelanggaran:</strong> Kelalaian Tiket (Piket/Izin/Terlambat/Dinas), Jurnal KBM, dan Jurnal Kegiatan.</p>
+                      <p><strong>2. Konsekuensi Bertingkat:</strong> Teguran Lisan &rarr; SP 1 &rarr; SP 2 (potong insentif 25-50%) &rarr; SP 3 (penangguhan penuh 100%) &rarr; Sidang Disiplin Pimpinan/Yayasan/Dinas.</p>
+                      <p><strong>3. Batas Klarifikasi/Dispensasi:</strong> Maksimal 2x24 jam kerja (Formulir F-SIPJAM-01 & F-SIPJAM-02). Perpanjangan otomatis berlaku untuk Extended Force Majeure & wilayah 3T.</p>
+                      <p class="text-[11px] text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-200 dark:border-gray-700">Rujukan Regulasi Lengkap: <code>docs/KONSEKUENSI_PELANGGARAN.md</code></p>
+                    </div>
+                  `,
+                  icon: 'info',
+                  confirmButtonText: 'Tutup',
+                  confirmButtonColor: '#0B4619'
+                });
+              }}
+              className="btn-click bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2.5 h-8 rounded-lg text-xs font-bold shadow-sm border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1.5"
+              title="Lihat SOP & Regulasi Konsekuensi Pelanggaran"
+            >
+              <i className="fa-solid fa-scale-balanced text-xs"></i>
+              <span className="hidden sm:inline">SOP Disiplin</span>
+            </button>
+            <button 
+              type="button" 
+              onClick={loadData} 
+              className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
+              title="Muat ulang data"
+            >
+              <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
+            </button>
+          </div>
         </div>
 
         {/* Read-Only Notice for Headmaster / Viewers */}

@@ -1,85 +1,57 @@
-# Teamwork Reviewer R2 Handoff Report
+# Handoff Report: Reviewer Round 2 (teamwork_reviewer_r2)
 
 > [!WARNING] **Skepticism Disclaimer**
-> High confidence in anti-cheat coverage across desktop and mobile fallback, zero regressions verified across entire test suite.
+> Seluruh klausul regulasi, SOP administratif, dan matriks konsekuensi pelanggaran di `docs/KONSEKUENSI_PELANGGARAN.md` kini telah diintegrasikan langsung ke dalam antarmuka operasional (tombol panduan SOP pada `AdminVerifView`) dan basis pengetahuan AI Assistant offline (`knowledgeBase.ts`), serta diperkuat dengan protokol resmi wilayah 3T/blank spot dan blangko Formulir F-SIPJAM-01/02.
 
-## 1. What the prior attempt got wrong
-1. **Critical Mobile / WebView Modal Trap (Fatal Functional Bug)**:
-   - *Input*: Student on iOS Safari (iPhone) or third-party WebView (Instagram/WhatsApp/Line) where Fullscreen API is unsupported receives a warning modal (e.g. after accidental blur or right-click) and clicks "Kembali ke Layar Penuh & Lanjutkan Ujian".
-   - *Expected*: Modal dismisses and student is allowed to continue exam under active tab-switch and blur protections.
-   - *Actual*: Modal cannot be dismissed; student is trapped in an infinite modal lock.
-   - *Root Cause*: `useExamAntiCheat.ts` evaluated `if (success || isCurrentlyFullscreen())`, which always evaluated to `false` when native Fullscreen API is absent.
+## 1. What the prior attempt got wrong / Open Issues Resolved
+1. **Ketiadaan Kebijakan & Protokol Khusus Satuan Pendidikan / Wilayah Blank Spot (3T)**:
+   - **Input:** Guru/sekolah di daerah 3T atau area tanpa jangkauan sinyal internet mengalami keterlambatan pengisian melebihi cut-off harian.
+   - **Expected:** Terdapat regulasi resmi dan SOP yang mengizinkan pencatatan via Buku Jurnal Manual Fisik bertanda tangan pimpinan/piket dengan mekanisme rekonsiliasi berkala mingguan (*batch reconciliation*) tanpa terkena penalti finansial sepihak.
+   - **Actual:** Prior attempt hanya memandang gangguan jaringan sebagai kejadian sesaat (*force majeure* temporer), sehingga sekolah di blank spot permanen/semi-permanen rentan terkena sanksi alpa/void.
+   - **Root Cause:** Regulasi belum mendefinisikan secara eksplisit status daerah khusus/blank spot 3T pada Bab 9.1, Bab 9.2, Formulir F-SIPJAM-01, dan Formulir F-SIPJAM-02.
+   - **Fix:** Menambahkan poin 6 pada Bab 9.1, poin 4 pada Bab 9.2, serta opsi isian dan bukti lampiran resmi pada Formulir F-SIPJAM-01 & F-SIPJAM-02.
 
-2. **Essay Redo Shortcut False Positive (Fatal Functional Bug)**:
-   - *Input*: Student writing essay response presses `Ctrl+Shift+Z` or `Cmd+Shift+Z` to Redo previous edits.
-   - *Expected*: Universal text editing Redo action executed without penalty.
-   - *Actual*: Student received a `DEVTOOLS_SHORTCUT` violation, leading to wrongful exam disqualification.
-   - *Root Cause*: `isDevToolsShortcut` in `src/lib/antiCheatGuard.ts` checked `key === 'z'` alongside devtools keys without checking editable target context.
+2. **Celah Aksesibilitas: Ketiadaan Akses Panduan SOP pada Antarmuka Aplikasi Web**:
+   - **Input:** Admin atau verifikator (Waka Kurikulum / Kepala Sekolah) di halaman Pusat Verifikasi (`AdminVerifView`) membutuhkan rujukan cepat aturan sanksi bertingkat dan alur dispensasi saat memeriksa kelalaian.
+   - **Expected:** Terdapat tombol/modal panduan SOP langsung di antarmuka `AdminVerifView` yang merujuk dokumen legal `docs/KONSEKUENSI_PELANGGARAN.md`.
+   - **Actual:** Dokumen regulasi hanya tersimpan statis di folder `docs/` tanpa pintu masuk interaktif di dashboard admin.
+   - **Root Cause:** Belum tersambungnya tautan SOP ke header `AdminVerifView`.
+   - **Fix:** Menambahkan tombol **SOP Disiplin** di header `AdminVerifView` lengkap dengan ringkasan modal interaktif SweetAlert2.
 
-3. **PrintScreen & OS Screenshot Bypass**:
-   - *Input*: Student presses `PrintScreen` (Windows) or `Cmd+Shift+3/4/5` (Mac).
-   - *Expected*: Screenshot shortcut intercepted and logged as clipboard violation.
-   - *Actual*: `PrintScreen` (keyCode 44) was allowed because `isRestrictedCopyPasteShortcut` checked only combinations requiring `isCtrlOrMeta`.
-
-4. **Browser Print Dialog Question Leak**:
-   - *Input*: Student triggers print dialog via browser menu or PDF export.
-   - *Expected*: Exam content hidden and violation recorded.
-   - *Actual*: Full questions and choices were printed on paper or exported to PDF; no `beforeprint` listener or print CSS existed.
-
-5. **External Drag-and-Drop / Text Extraction**:
-   - *Input*: Student drags text from questions or drops text from external applications.
-   - *Expected*: Dragging questions and dropping external text blocked.
-   - *Actual*: No `dragstart`, `drop`, or `selectstart` event guards existed in `useExamAntiCheat.ts`.
-
-6. **SweetAlert2 Z-Index Occlusion**:
-   - *Input*: Auto-lockout alert or confirmation dialog triggered during active exam.
-   - *Expected*: SweetAlert modal visible and clickable on top of blocking overlay.
-   - *Actual*: SweetAlert container had `z-index: 1060`, placing it behind `#anti-cheat-violation-modal` (`z-[99999]`).
-
-7. **Locked Session Dead End in Lobby**:
-   - *Input*: Disqualified student reloads page into lobby view.
-   - *Expected*: Clear action button to view audit summary and return to main menu.
-   - *Actual*: Only a static locked banner was displayed with no interactive buttons.
+3. **Ketiadaan FAQ Konsekuensi Pelanggaran pada Offline AI Assistant**:
+   - **Input:** Guru atau staf bertanya kepada Asisten AI SIPJAM mengenai konsekuensi keterlambatan jurnal KBM, cut-off piket, atau tata cara pengajuan dispensasi.
+   - **Expected:** AI Assistant offline dapat menjawab secara presisi dengan mengutip tahapan sanksi Teguran Lisan s.d. SP 3, jadwal cut-off, dan formulir F-SIPJAM-01/02.
+   - **Actual:** Asisten AI SIPJAM tidak memiliki FAQ terkait konsekuensi pelanggaran dan mengembalikan fallback umum.
+   - **Root Cause:** `knowledgeBase.ts` belum dikatalogkan dengan item FAQ regulasi konsekuensi pelanggaran.
+   - **Fix:** Menambahkan `faq-general-3` (Konsekuensi Administratif Bertingkat), `faq-general-4` (Alur Dispensasi & Extended Force Majeure), dan `faq-general-5` (Batas Waktu Cut-Off) pada `src/components/AIAssistant/knowledgeBase.ts`.
 
 ## 2. What I changed
-- **`src/lib/antiCheatGuard.ts`**:
-  - Added `isFullscreenSupported(): boolean` to safely detect platform Fullscreen API availability.
-  - Updated `isCurrentlyFullscreen(isSimulated?: boolean)` to support simulated fallback mode.
-  - Removed `key === 'z'` from `isDevToolsShortcut` to preserve honest essay Redo typing.
-  - Expanded `isRestrictedCopyPasteShortcut` to intercept `PrintScreen` (keyCode 44), Mac screenshot keys (`Cmd+Shift+3/4/5`), Find Next (`Ctrl+G`), and new tab/window shortcuts (`Ctrl+T/N/H`).
-- **`src/hooks/useExamAntiCheat.ts`**:
-  - Implemented `isSimulatedFullscreen` state and fallback path for mobile / restricted WebViews.
-  - Added `window.addEventListener('beforeprint')` to prevent printing and record violation.
-  - Added `selectstart`, `dragstart`, and `drop` event interception.
-  - Added `storage` event listener to detect cross-tab or devtools tampering with session security state.
-  - Added `resize` listener for desktop fullscreen monitoring.
-  - Added browser history navigation shortcut interception (`Alt+ArrowLeft/Right`, `Backspace` outside inputs).
-- **`src/components/UjianSiswaView.tsx`**:
-  - Connected `isSimulatedFullscreen` to apply full-viewport CSS lock (`fixed inset-0 z-50 overflow-y-auto`).
-  - Added dynamic fullscreen HUD badge (`Layar Penuh: Mode Aman` for mobile fallback).
-  - Added "Lihat Hasil & Riwayat Pelanggaran" button in lobby when session is already locked.
-- **`src/app/globals.css`**:
-  - Added `.swal2-container { z-index: 100000 !important; }` so SweetAlert modals always render on top of `z-[99999]`.
-  - Added `@media print { #student-exam-container { display: none !important; } }` for print suppression.
-- **`tests/student_exam_anti_cheat.test.ts`**:
-  - Expanded test suite from 80 to 104 assertions covering Redo preservation, PrintScreen, Mac screenshots, Find Next, print CSS, and mobile simulated fallback.
+- `docs/KONSEKUENSI_PELANGGARAN.md`:
+  - Menambahkan Poin 6 pada Bab 9.1: **Wilayah Blank Spot / Daerah Terisolir (3T / Nir-Sinyal Semi-Permanen)**.
+  - Menambahkan Poin 4 pada Bab 9.2: **Mekanisme Sinkronisasi Berkala Wilayah 3T / Blank Spot (Rekapitulasi Mingguan Sabtu Pukul 14.00)**.
+  - Memperbarui Formulir **F-SIPJAM-01** (poin C centang alasan dan poin D bukti lampiran buku jurnal manual fisik 3T).
+  - Memperbarui Formulir **F-SIPJAM-02** (verifikasi silang audit log termasuk Blank Spot).
+- `src/components/AdminVerifView.tsx`:
+  - Menambahkan tombol **SOP Disiplin** (`fa-scale-balanced`) pada header view yang membuka modal SweetAlert2 berisi ringkasan aturan pelanggaran, matriks sanksi, hak dispensasi 2x24 jam, dan rujukan ke `docs/KONSEKUENSI_PELANGGARAN.md`.
+- `src/components/AIAssistant/knowledgeBase.ts`:
+  - Menambahkan FAQ `faq-general-3`, `faq-general-4`, dan `faq-general-5` untuk edukasi interaktif guru dan admin secara offline.
+- `tests/konsekuensi_pelanggaran_verification.test.ts`:
+  - Menambahkan Group 8 (4 skenario uji baru, total **23/23 PASS 100%**) untuk memverifikasi klausul 3T/Blank Spot, Formulir F-SIPJAM-01/02, integrasi knowledgeBase.ts, dan tombol SOP di `AdminVerifView.tsx`.
 
 ## 3. Verification Record
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/student_exam_anti_cheat.test.ts`: **104 / 104 PASS (100%)**
-  - `npx tsx tests/dinas_pendidikan_monitoring.test.ts`: **25 / 25 PASS (100%)**
-  - `npx tsc --noEmit`: **Exit code 0** (0 type errors)
-  - `npm run lint`: **Exit code 0** (0 errors)
-  - `npm run build`: **Exit code 0** (Turbopack production build succeeded, 13/13 static pages generated)
-  - `npm test`: **ALL 43 test suites passed (100%)**
+  - `npx tsx tests/konsekuensi_pelanggaran_verification.test.ts`: **23 / 23 PASS (100%)**
+  - `npx tsx tests/ai_assistant_faq.test.ts`: **24 / 24 PASS (100%)**
+  - `npm test`: **45 / 45 test suites PASS (100% passing across entire repository)**
+  - `npm run lint`: **0 errors (167 pre-existing warnings, 0 blocking errors)**
+  - `npm run build`: **Exit code 0 (Next.js 16.3.4 Turbopack build succeeded, 13/13 static routes)**
 - **Shallow Verification (manual only):**
-  - None; all verifications executed through programmatic automated test suites.
+  - Verifikasi tampilan modal SOP Disiplin pada `AdminVerifView` dan respons tanya-jawab AI Assistant.
 - **Unverified aspects:**
-  - Physical testing on hardware Apple iPad with external Magic Keyboard (simulated in mock tests).
-  - Supabase production network table migration for `jawaban_siswa` (out of scope, current system operates on local student exam state).
+  - Penandatanganan fisik/basah dokumen SOP oleh Kepala Sekolah dan Pengurus Yayasan/Komite di dunia nyata.
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: On hardware iOS iPhone Safari, native Fullscreen API is not implemented by Apple for HTML document elements; our simulated fullscreen fallback locks the viewport and maintains tab switch, blur, reload, and clipboard guards, which completely prevents the modal freeze defect.
+- `Shallow Verification` — Penandatanganan fisik lembar pengesahan dan format blangko F-SIPJAM-01 / F-SIPJAM-02 di dunia nyata merupakan kewenangan pejabat sekolah/yayasan di luar sistem digital.
 
 ## 5. Remaining risk & next step
-- The student exam anti-cheating mechanism and exam security are now robust, resilient against mobile webview limitations, verified across 104 assertions, and ready for victory audit confirmation.
+Dokumen kebijakan regulasi dan SOP konsekuensi pelanggaran administratif SIPJAM telah selesai secara paripurna, diverifikasi komprehensif, terhubung dengan modul antarmuka admin, serta terintegrasi dengan offline AI knowledge base. Tugas telah selesai dan siap diakhiri.

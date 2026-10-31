@@ -186,6 +186,47 @@ runTest('7.6: Dokumen menyediakan rangkaian kode SOP baku (SOP-SIPJAM) dan forma
   assert(content.includes('Formulir F-SIPJAM-02'), 'Harus memuat template Formulir F-SIPJAM-02 (Berita Acara)');
 });
 
+// 8. Pengujian Wilayah 3T/Blank Spot, AI Assistant FAQ, & Antarmuka UI (Reviewer Round 2)
+runTest('8.1: Dokumen memuat protokol dispensasi wilayah blank spot / 3T dan rekonsiliasi berkala', () => {
+  assert(
+    content.toLowerCase().includes('blank spot') && content.includes('Buku Jurnal Manual Fisik'),
+    'Harus memuat klausul wilayah blank spot dan buku jurnal manual fisik'
+  );
+  assert(
+    content.toLowerCase().includes('batch reconciliation') || content.toLowerCase().includes('rekapitulasi mingguan'),
+    'Harus memuat prosedur rekonsiliasi mingguan/susulan'
+  );
+});
+
+runTest('8.2: Formulir F-SIPJAM-01 & F-SIPJAM-02 memuat opsi dan verifikasi kondisi 3T / Blank Spot', () => {
+  assert(
+    content.includes('Wilayah blank spot / daerah terisolir 3T') &&
+    content.includes('Buku jurnal manual fisik wilayah 3T / blank spot terparaf pimpinan'),
+    'Formulir F-SIPJAM-01 harus memuat opsi alasan dan bukti lampiran 3T'
+  );
+  assert(
+    content.includes('VALID - Terjadi Error / Network Drop / Blank Spot'),
+    'Formulir F-SIPJAM-02 harus memuat verifikasi silang blank spot'
+  );
+});
+
+runTest('8.3: Offline AI Knowledge Base memuat FAQ resmi konsekuensi pelanggaran, dispensasi, dan cut-off', () => {
+  const kbPath = path.join(root, 'src', 'components', 'AIAssistant', 'knowledgeBase.ts');
+  assert(fs.existsSync(kbPath), 'File knowledgeBase.ts harus ada');
+  const kbContent = fs.readFileSync(kbPath, 'utf8');
+  assert(kbContent.includes('faq-general-3'), 'Harus memuat faq-general-3 (konsekuensi pelanggaran)');
+  assert(kbContent.includes('faq-general-4'), 'Harus memuat faq-general-4 (alur dispensasi)');
+  assert(kbContent.includes('faq-general-5'), 'Harus memuat faq-general-5 (cut-off waktu pengisian)');
+  assert(kbContent.includes('docs/KONSEKUENSI_PELANGGARAN.md'), 'FAQ harus menautkan ke docs/KONSEKUENSI_PELANGGARAN.md');
+});
+
+runTest('8.4: Komponen AdminVerifView menyediakan tombol modal panduan SOP Disiplin', () => {
+  const adminVerifPath = path.join(root, 'src', 'components', 'AdminVerifView.tsx');
+  const adminVerifContent = fs.readFileSync(adminVerifPath, 'utf8');
+  assert(adminVerifContent.includes('SOP Disiplin'), 'AdminVerifView harus memiliki tombol SOP Disiplin');
+  assert(adminVerifContent.includes('docs/KONSEKUENSI_PELANGGARAN.md'), 'Modal SOP harus merujuk docs/KONSEKUENSI_PELANGGARAN.md');
+});
+
 console.log(`\n====================================================================`);
 console.log(`🏁 FINISHED: Passed: ${passed}, Failed: ${failed}`);
 console.log(`====================================================================\n`);

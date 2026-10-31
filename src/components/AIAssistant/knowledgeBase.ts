@@ -482,5 +482,32 @@ export const FAQ_ITEMS: FAQItem[] = [
     keywords: ['ganti profil', 'ubah sandi', 'logout', 'keluar', 'pengaturan akun', 'edit profil'],
     relatedViews: ['view-home'],
     userRoles: ['all']
+  },
+  {
+    id: 'faq-general-3',
+    category: 'Umum & Bantuan',
+    question: 'Apa konsekuensi administratif jika guru tidak mengisi tiket, jurnal KBM, atau jurnal kegiatan?',
+    answer: 'Sesuai regulasi resmi SIPJAM (docs/KONSEKUENSI_PELANGGARAN.md), berlaku konsekuensi administratif bertingkat: 1) Teguran Lisan untuk kelalaian ke-1 s.d. ke-2, 2) SP 1 Tertulis untuk kelalaian ke-3, 3) SP 2 & pemotongan insentif 25-50% untuk kelalaian ke-4 s.d. ke-5, 4) SP 3 & penangguhan insentif penuh 100% untuk kelalaian ke-6, hingga 5) Pemanggilan Pimpinan Sekolah, Yayasan, atau Dinas Pendidikan (BKD bagi ASN). Jam KBM tanpa jurnal tidak diakui hak kredit mengajarnya (zero journal = zero teaching credit).',
+    keywords: ['konsekuensi', 'sanksi', 'tidak isi jurnal', 'tidak isi tiket', 'sp 1', 'sp 2', 'sp 3', 'teguran', 'potong honor', 'insentif', 'kelalaian', 'hukuman', 'indisipliner'],
+    relatedViews: ['view-home', 'view-guru-jurnal', 'view-piket', 'view-guru-presensi', 'view-admin-verif'],
+    userRoles: ['all']
+  },
+  {
+    id: 'faq-general-4',
+    category: 'Umum & Bantuan',
+    question: 'Bagaimana alur pengajuan klarifikasi atau dispensasi jika terjadi kendala teknis atau force majeure?',
+    answer: 'Guru berhak mengajukan klarifikasi maksimal 2 x 24 jam hari kerja sejak status kelalaian terbit dengan mengisi Formulir F-SIPJAM-01 disertai bukti sah (bukti mati listrik/server error, surat dokter, dll). Jika disetujui Kepala Sekolah (Formulir F-SIPJAM-02), admin mengeksekusi Reset Status pada menu Verifikasi tanpa sanksi denda. Untuk gangguan berskala luas > 2x24 jam (Extended Force Majeure) atau wilayah 3T/blank spot, batas waktu diperpanjang otomatis dan diizinkan rekonsiliasi berkala melalui buku jurnal manual fisik.',
+    keywords: ['dispensasi', 'klarifikasi', 'banding', 'force majeure', 'kendala teknis', 'server down', 'mati lampu', 'f-sipjam-01', 'f-sipjam-02', 'reset status', 'blank spot', '3t'],
+    relatedViews: ['view-home', 'view-guru-jurnal', 'view-piket', 'view-admin-verif'],
+    userRoles: ['all']
+  },
+  {
+    id: 'faq-general-5',
+    category: 'Umum & Bantuan',
+    question: 'Kapan batas waktu (cut-off) pengisian tiket, jurnal KBM, dan laporan piket di SIPJAM?',
+    answer: 'Batas waktu resmi (cut-off) operasional sekolah: 1) Tiket Izin/Sakit/Dinas: H-1 Pukul 20.00 (toleransi Hari-H 07.30), 2) Tiket Izin Terlambat: Hari-H Pukul 09.00, 3) Tiket Laporan Piket: Hari-H Pukul 14.30 (toleransi 16.00), 4) Jurnal KBM: Selesai jam sesi kelas (toleransi 17.00), 5) Jurnal Kegiatan: Pukul 15.30 (toleransi 17.00), 6) Rekapitulasi Mingguan: Setiap Sabtu Pukul 12.00, dan 7) Tutup Buku Bulanan: Tanggal 28 setiap akhir bulan.',
+    keywords: ['cut-off', 'batas waktu', 'jam pengisian', 'toleransi waktu', 'kapan batas isi jurnal', 'batas waktu piket', 'jadwal pengisian', 'tutup buku'],
+    relatedViews: ['view-home', 'view-guru-jurnal', 'view-piket', 'view-guru-presensi'],
+    userRoles: ['all']
   }
 ];

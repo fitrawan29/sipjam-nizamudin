@@ -333,11 +333,13 @@ Pengajuan dispensasi hanya dipertimbangkan jika memenuhi salah satu kondisi beri
 3. **Keadaan Darurat Medis Akut**: Guru mendadak mengalami musibah sakit berat atau kecelakaan di perjalanan menuju/saat di sekolah yang memerlukan penanganan darurat (IGD/Rawat Inap), dibuktikan dengan surat keterangan medis dari fasilitas kesehatan resmi.
 4. **Keadaan Kahar Alam (*Natural Force Majeure*)**: Terjadinya banjir, gempa, tanah longsor, atau cuaca ekstrem luar biasa yang melumpuhkan akses transportasi dan telekomunikasi.
 5. **Penugasan Darurat Kedinasan Tanpa Pemberitahuan Awal**: Instruksi langsung dan mendesak dari Kepala Sekolah/Dinas untuk tugas khusus yang tidak memungkinkan pengisian tepat waktu, disertai surat tugas susulan dari pejabat berwenang.
+6. **Wilayah Blank Spot / Daerah Terisolir (3T / Nir-Sinyal Semi-Permanen)**: Pada sekolah, kelas filial, atau lokasi penugasan luar jaringan yang berada pada zona tanpa sinyal internet seluler (*blank spot*), guru berhak mendokumentasikan kehadiran dan proses pembelajaran pada **Buku Jurnal Manual Fisik** yang diparaf Guru Piket atau Kepala Madrasah/Sekolah. Pengisian ke aplikasi SIPJAM diizinkan secara susulan (*batch reconciliation*) saat akses internet tersedia.
 
 ### 9.2. Batas Waktu Pengajuan Banding / Klarifikasi
 1. Guru yang menerima notifikasi kelalaian atau peringatan sistem berhak mengajukan surat/formulir permohonan klarifikasi **maksimal dalam kurun waktu 2 x 24 jam hari kerja** sejak status pelanggaran diterbitkan.
 2. Pengajuan yang melampaui batas waktu 2 x 24 jam dinyatakan **kedaluwarsa (gugur)**, dan sanksi administratif pada tingkatan bersangkutan berkekuatan tetap (*inkracht*).
 3. **Klausul Perpanjangan Otomatis Waktu Dispensasi (*Extended Force Majeure*)**: Apabila terjadi gangguan berskala luas dan berkepanjangan (seperti pemadaman listrik total lebih dari 2 x 24 jam berturut-turut pada hari kerja, terputusnya kabel optik internet wilayah, bencana alam banjir/gempa, atau instruksi libur darurat oleh pemerintah), batas waktu pengajuan klarifikasi/dispensasi secara otomatis diperpanjang hingga **2 x 24 jam hari kerja terhitung sejak seluruh sarana prasarana sekolah dan jaringan internet dinyatakan kembali normal secara resmi oleh Kepala Sekolah**. Selama masa kedaruratan tersebut, sanksi finansial ditangguhkan dan dilarang dieksekusi secara sepihak.
+4. **Mekanisme Sinkronisasi Berkala Wilayah 3T / Blank Spot**: Bagi satuan pendidikan atau guru di wilayah blank spot terverifikasi, batas waktu cut-off harian ditransformasikan menjadi **rekapitulasi mingguan (Setiap Sabtu Pukul 14.00)**. Selama pencatatan pada Buku Jurnal Manual Fisik terbukti lengkap dan disahkan Kepala Sekolah, guru dibebaskan dari sanksi penandaan Alpa/Void dan hak honor/insentif dicairkan utuh 100%.
 
 ### 9.3. Format Formulir Klarifikasi & Pemeriksaan Silang (*Cross-Check*)
 Pengajuan klarifikasi wajib memuat data standar berikut:
@@ -439,6 +441,7 @@ C. KRONOLOGI ALASAN DAN FAKTA PENDUKUNG (Centang yang sesuai):
    [  ] Keadaan darurat medis akut (terlampir surat dokter / IGD).
    [  ] Penugasan dinas mendadak dari pimpinan (terlampir surat tugas susulan).
    [  ] Keadaan kahar / bencana alam (banjir / cuaca ekstrem luar biasa).
+   [  ] Wilayah blank spot / daerah terisolir 3T (terlampir buku jurnal manual fisik).
    
    Uraian Singkat Kejadian:
    .....................................................................................
@@ -449,6 +452,7 @@ D. BUKTI LAMPIRAN:
    1. Foto aktivitas mengajar / presensi manual bertanda tangan guru piket [  ] Ada  [  ] Tidak
    2. Screenshot galat aplikasi / surat pemadaman PLN / ISP              [  ] Ada  [  ] Tidak
    3. Surat keterangan dokter / surat tugas resmi                        [  ] Ada  [  ] Tidak
+   4. Buku jurnal manual fisik wilayah 3T / blank spot terparaf pimpinan [  ] Ada  [  ] Tidak
 
    Pemohon,                                      Mengetahui,
    Guru yang Bersangkutan                        Wakil Kepala Sekolah Bidang Kurikulum
@@ -480,7 +484,7 @@ Mata Pelajaran      : ..........................................................
 
 HASIL VERIFIKASI SILANG (CROSS-CHECK TIM KURIKULUM & IT):
 1. Verifikasi Jurnal Manual / Catatan Guru Piket : [  ] VALID - Guru Terbukti Mengajar
-2. Verifikasi Audit Log Akses Server SIPJAM      : [  ] VALID - Terjadi Error / Network Drop
+2. Verifikasi Audit Log Akses Server SIPJAM      : [  ] VALID - Terjadi Error / Network Drop / Blank Spot
 3. Verifikasi Absensi Kehadiran Siswa Kelas      : [  ] VALID - Siswa Mengonfirmasi Hadir
 
 KEPUTUSAN KEPALA SEKOLAH:
