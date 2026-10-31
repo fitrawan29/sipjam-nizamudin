@@ -1,42 +1,35 @@
-# BRIEFING — 2026-10-31T06:56:00Z
+# BRIEFING — 2026-10-31T12:25:00Z
 
 ## Mission
-Oversee execution of teacher journal photo upload options, attendance bypass rules, and automatic recap remarks via SWE Light path, monitor progress, and verify victory before completion.
+Manage and monitor execution of the approved task: SOP & policy on consequences for not filling tickets/KBM journals/activity journals.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel
-- Orchestrator: 2ba0d584-1099-4bd1-9d68-26495c1b5af4
-- Victory Auditor: ab45b2bc-84bb-4729-944c-8adc83ad5bb9
+- Orchestrator: 16d8cf9c-fa23-46b5-8670-1b991c56d8df
+- Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Route: SWE Light (teamwork_swe) - single self-contained fix, explicit lightness signal
+- Single self-contained fix, keep small and focused
+- Deliverable: docs/KONSEKUENSI_PELANGGARAN.md
 - Integrity mode: development
-- Requirements: R1 (Opsi Upload Foto pada Jurnal KBM dan Jurnal Kegiatan), R2 (Fleksibilitas Presensi Tanpa Kewajiban Mengisi Jurnal), R3 (Catatan Keterangan Otomatis pada Rekap Jurnal)
 
 ## User Context
 - **Last user request**: Approved task prompt received
 - **Pending clarifications**: [none]
-- **Delivered results**: 
-  - Dual options (Live Camera & File Upload) for Jurnal KBM and Jurnal Kegiatan implemented unconditionally.
-  - Departure attendance (Presensi Pulang) unlocked without requiring journal submissions, with scheduled departure time checks strictly maintained.
-  - Standard notes ("tidak membuat laporan piket", "tidak masuk kelas", "tidak melaksanakan kegiatan apapun") automatically recorded and displayed on recaps.
-  - 3 adversarial review rounds completed.
-  - Independent Victory Audit completed: VICTORY CONFIRMED.
+- **Delivered results**: [none]
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
+- **Route**: SWE Light (`teamwork_swe`)
+- **Routing Rationale**: Self-contained change with explicit smallness/focus prompt ("This is a single self-contained fix; keep it small and focused.")
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
-- .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative user intent record
-- .agents/teamwork/swe_41/handoff.md — SWE Light Orchestrator handoff
-- .agents/teamwork/victory_auditor_55/audit_report.md — Independent Victory Audit report
-- .agents/teamwork/victory_auditor_55/handoff.md — Independent Victory Audit handoff
-- .agents/teamwork/sentinel/handoff.md — Project Sentinel final handoff
+- `.agents/teamwork/ORIGINAL_REQUEST.md` — Authoritative record of approved task prompt

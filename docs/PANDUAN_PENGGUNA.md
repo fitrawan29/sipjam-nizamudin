@@ -39,6 +39,7 @@
    - 5.3. [Manajemen Akun Admin Sekolah](#53-manajemen-akun-admin-sekolah)
 6. [Fitur Bantuan, Profil, dan Navigasi](#6-fitur-bantuan-profil-dan-navigasi)
 7. [Tanya Jawab & Pemecahan Masalah (FAQ / Troubleshooting)](#7-tanya-jawab--pemecahan-masalah)
+8. [Kebijakan Disiplin & Konsekuensi Administratif](#8-kebijakan-disiplin--konsekuensi-administratif)
 
 ---
 
@@ -283,6 +284,14 @@ SIPJAM membagi hak akses ke dalam 3 tingkatan peran utama:
 
 #### Q5: Bagaimana cara guru pengganti (Inval) mengisi jurnal KBM?
 - **Solusi**: Buka menu *Jurnal Pembelajaran*, centang toggle *"Saya sebagai Guru Inval"*, lalu pilih nama guru yang Anda gantikan. Sistem otomatis memuat jadwal dan kelas guru tersebut.
+
+---
+
+## 8. KEBIJAKAN DISIPLIN & KONSEKUENSI ADMINISTRATIF
+Bagi seluruh dewan guru dan tenaga kependidikan yang menggunakan platform SIPJAM, penegakan kedisiplinan pengisian tiket piket/izin/dinas, jurnal KBM, dan jurnal kegiatan diatur secara resmi dengan konsekuensi bertingkat (Teguran Lisan, Surat Peringatan SP1–SP3, penangguhan honor/insentif, hingga pemanggilan pimpinan/yayasan).
+
+Detail regulasi, batas waktu toleransi (*cut-off*), hak banding/klarifikasi 2x24 jam, dan matriks sanksi tertuang lengkap dalam dokumen:
+👉 **[Kebijakan & SOP Konsekuensi Administratif Pelanggaran SIPJAM](./KONSEKUENSI_PELANGGARAN.md)**
 
 ---
 *Dokumen Panduan Pengguna SIPJAM Versi 2.4 — Disusun untuk seluruh dewan guru dan tenaga kependidikan.*
