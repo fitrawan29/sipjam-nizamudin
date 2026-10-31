@@ -4,7 +4,8 @@ import {
   getWitaTimeStr, 
   getWitaStartOfDay, 
   getWitaEndOfDay,
-  getWitaTimestamp 
+  getWitaTimestamp,
+  getWitaDayName
 } from '@/lib/wita';
 import { isGuruDiPiket, isJurnalMatchJadwal } from '@/lib/workflow';
 
@@ -527,7 +528,7 @@ function matchTeacherTokens(nameA: string, nameB: string): boolean {
  * Checks whether teacher and schedule match (by user_id or normalized teacher name).
  */
 export function isTeacherScheduleMatch(
-  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string },
+  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string | null },
   schedule: any
 ): boolean {
   if (teacher.sekolah_id && schedule.sekolah_id && teacher.sekolah_id !== schedule.sekolah_id) {
@@ -543,7 +544,7 @@ export function isTeacherScheduleMatch(
  * Checks whether teacher and journal match (by user_id or normalized teacher name).
  */
 export function isTeacherJournalMatch(
-  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string },
+  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string | null },
   journal: any
 ): boolean {
   if (teacher.sekolah_id && journal.sekolah_id && teacher.sekolah_id !== journal.sekolah_id) {
@@ -1029,7 +1030,7 @@ export async function recordUnfilledJournalsAndPiket(
     isDinasLuar?: boolean;
     isNonTeachingDay?: boolean;
     bebasAlpa?: boolean;
-  },
+  } = {},
   client: any = supabase
 ): Promise<{ unfilledKbmCount: number; unfilledKegiatanCreated: boolean; unfilledPiketCreated: boolean }> {
   const evaluatedDate = normalizeDateStr(targetDateStr);
@@ -1039,25 +1040,74 @@ export async function recordUnfilledJournalsAndPiket(
   let unfilledPiketCreated = false;
 
   try {
+    // 0. Autonomous state resolution if caller provided partial or empty state
+    let jadwalKBM = state.jadwalKBM;
+    if (jadwalKBM === undefined) {
+      const dayName = getWitaDayName(new Date(`${evaluatedDate}T00:00:00+08:00`));
+      let jQ = client.from('jadwal_pelajaran').select('*').eq('hari', dayName);
+      if (teacher.sekolah_id) jQ = jQ.eq('sekolah_id', teacher.sekolah_id);
+      const { data: jData } = await jQ;
+      jadwalKBM = (jData || []).filter((s: any) => isTeacherScheduleMatch(teacher, s));
+    }
+
+    let jurnalKBM = state.jurnalKBM;
+    let jurnalKegiatan = state.jurnalKegiatan;
+    if (jurnalKBM === undefined || jurnalKegiatan === undefined) {
+      let jbQ = client.from('jurnal_pembelajaran').select('*').eq('tanggal', evaluatedDate);
+      if (teacher.sekolah_id) jbQ = jbQ.eq('sekolah_id', teacher.sekolah_id);
+      const { data: jbData } = await jbQ;
+      const tJournals = (jbData || []).filter((j: any) => isTeacherJournalMatch(teacher, j));
+      if (jurnalKBM === undefined) {
+        jurnalKBM = tJournals.filter((j: any) => j.keterangan !== 'Jurnal Kegiatan' && j.mapel !== 'Jurnal Kegiatan');
+      }
+      if (jurnalKegiatan === undefined) {
+        jurnalKegiatan = tJournals.find((j: any) => j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan') || null;
+      }
+    }
+
+    let isPiket = state.isPiket;
+    let laporanPiket = state.laporanPiket;
+    if (isPiket === undefined) {
+      const dayName = getWitaDayName(new Date(`${evaluatedDate}T00:00:00+08:00`));
+      let pQ = client.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
+      if (teacher.sekolah_id) pQ = pQ.eq('sekolah_id', teacher.sekolah_id);
+      const { data: pData } = await pQ;
+      isPiket = (pData || []).some((p: any) => matchTeacherTokens(teacher.nama_guru, p.guru_nama));
+      if (!isPiket) {
+        let jpQ = client.from('jadwal_piket').select('*').eq('hari', dayName);
+        if (teacher.sekolah_id) jpQ = jpQ.eq('sekolah_id', teacher.sekolah_id);
+        const { data: jpData } = await jpQ;
+        isPiket = (jpData || []).some((jp: any) => jp.daftar_guru && matchTeacherTokens(teacher.nama_guru, jp.daftar_guru));
+      }
+    }
+
+    if (isPiket && laporanPiket === undefined) {
+      let lpQ = client.from('laporan_piket').select('*').eq('tanggal', evaluatedDate);
+      if (teacher.sekolah_id) lpQ = lpQ.eq('sekolah_id', teacher.sekolah_id);
+      const { data: lpData } = await lpQ;
+      laporanPiket = (lpData || []).find((lp: any) => matchTeacherTokens(teacher.nama_guru, lp.guru_pelapor)) || null;
+    }
+
     // 1. KBM Schedules not filled -> "tidak masuk kelas"
-    if (state.jadwalKBM && state.jadwalKBM.length > 0) {
-      for (const sched of state.jadwalKBM) {
-        const isFilled = (state.jurnalKBM || []).some(j => 
+    if (jadwalKBM && jadwalKBM.length > 0) {
+      for (const sched of jadwalKBM) {
+        const isFilled = (jurnalKBM || []).some(j => 
           j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, sched)
         );
         if (!isFilled) {
-          // Check if already recorded in DB to avoid duplicate
+          // Check if already recorded in DB using normalized token and fuzzy matching
           let q = client
             .from('jurnal_pembelajaran')
-            .select('id')
-            .eq('tanggal', evaluatedDate)
-            .eq('nama_guru', teacher.nama_guru)
-            .eq('kelas', sched.kelas || '-')
-            .eq('mapel', sched.mata_pelajaran || sched.mapel || '-');
+            .select('*')
+            .eq('tanggal', evaluatedDate);
           if (teacher.sekolah_id) q = q.eq('sekolah_id', teacher.sekolah_id);
           const { data: existing } = await q;
 
-          if (!existing || existing.length === 0) {
+          const alreadyRecorded = (existing || []).some((j: any) =>
+            isTeacherJournalMatch(teacher, j) && isJurnalMatchJadwal(j, sched)
+          );
+
+          if (!alreadyRecorded) {
             const emptyKbmRecord = {
               id: crypto.randomUUID(),
               timestamp: nowTs,
@@ -1090,18 +1140,21 @@ export async function recordUnfilledJournalsAndPiket(
     }
 
     // 2. Jurnal Kegiatan not filled -> "tidak melaksanakan kegiatan apapun"
-    const needsKegiatan = (state.jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay;
-    if (needsKegiatan && !state.jurnalKegiatan) {
+    const needsKegiatan = (jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay;
+    if (needsKegiatan && !jurnalKegiatan) {
       let q = client
         .from('jurnal_pembelajaran')
-        .select('id')
-        .eq('tanggal', evaluatedDate)
-        .eq('nama_guru', teacher.nama_guru)
-        .or('keterangan.eq.tidak melaksanakan kegiatan apapun,keterangan.eq.Jurnal Kegiatan,mapel.eq.Jurnal Kegiatan');
+        .select('*')
+        .eq('tanggal', evaluatedDate);
       if (teacher.sekolah_id) q = q.eq('sekolah_id', teacher.sekolah_id);
       const { data: existingKegiatan } = await q;
 
-      if (!existingKegiatan || existingKegiatan.length === 0) {
+      const alreadyRecordedKegiatan = (existingKegiatan || []).some((j: any) =>
+        isTeacherJournalMatch(teacher, j) &&
+        (j.keterangan === 'tidak melaksanakan kegiatan apapun' || j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan')
+      );
+
+      if (!alreadyRecordedKegiatan) {
         const emptyKegiatanRecord = {
           id: crypto.randomUUID(),
           timestamp: nowTs,
@@ -1133,16 +1186,19 @@ export async function recordUnfilledJournalsAndPiket(
     }
 
     // 3. Laporan Piket not filled -> "tidak membuat laporan piket"
-    if (state.isPiket && !state.laporanPiket) {
+    if (isPiket && !laporanPiket) {
       let q = client
         .from('laporan_piket')
-        .select('id')
-        .eq('tanggal', evaluatedDate)
-        .eq('guru_pelapor', teacher.nama_guru);
+        .select('*')
+        .eq('tanggal', evaluatedDate);
       if (teacher.sekolah_id) q = q.eq('sekolah_id', teacher.sekolah_id);
       const { data: existingPiket } = await q;
 
-      if (!existingPiket || existingPiket.length === 0) {
+      const alreadyRecordedPiket = (existingPiket || []).some((p: any) =>
+        matchTeacherTokens(teacher.nama_guru, p.guru_pelapor)
+      );
+
+      if (!alreadyRecordedPiket) {
         const emptyPiketRecord = {
           id: crypto.randomUUID(),
           timestamp: nowTs,

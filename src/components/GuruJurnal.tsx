@@ -1717,6 +1717,7 @@ export default function GuruJurnal({
                             id="jurnal-gallery-file-input"
                             type="file"
                             accept="image/*"
+                            onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                             onChange={handleGalleryUpload}
                             className="hidden"
                           />

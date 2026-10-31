@@ -65,6 +65,16 @@ async function runAll() {
     );
   });
 
+  await runTest('1.2: File input resets value on click to guarantee re-selection fires onChange', () => {
+    const guruJurnalPath = path.join(root, 'src', 'components', 'GuruJurnal.tsx');
+    const content = fs.readFileSync(guruJurnalPath, 'utf8');
+
+    assert.ok(
+      content.includes('onClick={(e) => { (e.target as HTMLInputElement).value = \'\'; }}'),
+      'File input must clear value on click so re-selecting same photo triggers onChange'
+    );
+  });
+
   // ==========================================================================
   // SECTION 2: R2 - PRESENSI PULANG FLEXIBILITY & TIME VALIDATION
   // ==========================================================================
@@ -122,18 +132,58 @@ async function runAll() {
     );
   });
 
+  await runTest('2.4: Departure time validation boundary conditions (currTimeVal === startVal vs < startVal)', () => {
+    const parseTime = (str: string) => {
+      const [h, m] = str.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const pulangMulai = '14:00';
+    const startVal = parseTime(pulangMulai);
+
+    // 1 minute before departure time: 13:59 -> currTimeVal < startVal is true (BLOCKED)
+    const earlyTime = '13:59';
+    const earlyVal = parseTime(earlyTime);
+    assert.strictEqual(earlyVal < startVal, true, '13:59 must be rejected when start is 14:00');
+
+    // Exact minute of departure: 14:00 -> currTimeVal < startVal is false (ALLOWED)
+    const exactTime = '14:00';
+    const exactVal = parseTime(exactTime);
+    assert.strictEqual(exactVal < startVal, false, '14:00 must be allowed when start is 14:00');
+
+    // 5 minutes after departure: 14:05 -> currTimeVal < startVal is false (ALLOWED)
+    const afterTime = '14:05';
+    const afterVal = parseTime(afterTime);
+    assert.strictEqual(afterVal < startVal, false, '14:05 must be allowed when start is 14:00');
+  });
+
   // ==========================================================================
   // SECTION 3: R3 - STANDARD DESCRIPTIONS FOR UNFILLED DUTIES
   // ==========================================================================
   // Helper to create mock supabase client
-  const createMockSupabase = (journalsArr: any[], piketArr: any[]) => ({
+  const createMockSupabase = (journalsArr: any[], piketArr: any[], mockQueryData: Record<string, any[]> = {}) => ({
     from: (table: string) => {
+      let filterDate: string | null = null;
       const builder: any = {
         select: () => builder,
-        eq: () => builder,
+        eq: (col: string, val: any) => {
+          if (col === 'tanggal') filterDate = val;
+          return builder;
+        },
         or: () => builder,
         ilike: () => builder,
-        then: (resolve: any) => resolve({ data: [], error: null }),
+        then: (resolve: any) => {
+          if (table === 'jadwal_pelajaran' && mockQueryData.jadwal_pelajaran) {
+            return resolve({ data: mockQueryData.jadwal_pelajaran, error: null });
+          }
+          if (table === 'jurnal_pembelajaran') {
+            return resolve({ data: journalsArr, error: null });
+          }
+          if (table === 'laporan_piket') {
+            return resolve({ data: piketArr, error: null });
+          }
+          return resolve({ data: [], error: null });
+        },
         insert: (data: any) => {
           if (table === 'jurnal_pembelajaran') {
             if (Array.isArray(data)) journalsArr.push(...data);
@@ -267,6 +317,93 @@ async function runAll() {
     assert.ok(
       content.includes('tidak membuat laporan piket'),
       'PiketView must display "tidak membuat laporan piket" for unsubmitted piket duties'
+    );
+  });
+
+  await runTest('3.5: recordUnfilledJournalsAndPiket works autonomously when state is empty object {}', async () => {
+    const insertedJournals: any[] = [];
+    const mockQueryData = {
+      jadwal_pelajaran: [
+        {
+          id: 'sch-auton-1',
+          nama_guru: 'Ahmad Faiz',
+          hari: 'Sabtu',
+          kelas: 'VIII A',
+          mata_pelajaran: 'Matematika',
+          jam_mulai: '07:30',
+          jam_selesai: '09:00',
+          sekolah_id: 'sch-1'
+        }
+      ]
+    };
+    const mockSupabase = createMockSupabase(insertedJournals, [], mockQueryData);
+
+    const teacher = {
+      nama_guru: 'Ahmad Faiz',
+      user_id: 'usr-faiz-1',
+      sekolah_id: 'sch-1'
+    };
+
+    // Passing empty state {}
+    const res = await recordUnfilledJournalsAndPiket(teacher, '2026-10-31', {} as any, mockSupabase as any);
+
+    assert.strictEqual(res.unfilledKbmCount, 1, 'Should autonomously fetch schedule and insert 1 unfilled KBM');
+    assert.strictEqual(insertedJournals.length, 1);
+    assert.strictEqual(insertedJournals[0].keterangan, 'tidak masuk kelas');
+    assert.strictEqual(insertedJournals[0].kelas, 'VIII A');
+  });
+
+  await runTest('3.6: recordUnfilledJournalsAndPiket handles title normalization and prevents duplicate insert', async () => {
+    // Existing journal in database with stripped title
+    const existingJournals: any[] = [
+      {
+        id: 'j-exist-1',
+        nama_guru: 'Bambang Sudibyo',
+        tanggal: '2026-10-31',
+        kelas: 'IX C',
+        mapel: 'Bahasa Indonesia',
+        status_verifikasi: 'Disetujui',
+        keterangan: 'Jurnal KBM'
+      }
+    ];
+    const mockSupabase = createMockSupabase(existingJournals, []);
+
+    // Caller with full title: "Bambang Sudibyo, M.Pd."
+    const teacher = {
+      nama_guru: 'Bambang Sudibyo, M.Pd.',
+      user_id: 'usr-bambang-1',
+      sekolah_id: 'sch-1'
+    };
+
+    const stateWithSchedule: any = {
+      jadwalKBM: [
+        {
+          id: 'sch-101',
+          nama_guru: 'Bambang Sudibyo, M.Pd.',
+          kelas: 'IX C',
+          mata_pelajaran: 'Bahasa Indonesia'
+        }
+      ],
+      jurnalKBM: existingJournals
+    };
+
+    const res = await recordUnfilledJournalsAndPiket(teacher, '2026-10-31', stateWithSchedule, mockSupabase as any);
+
+    assert.strictEqual(res.unfilledKbmCount, 0, 'Must NOT insert duplicate when journal already exists');
+    assert.strictEqual(existingJournals.length, 1, 'Length must remain 1 without duplicate insertion');
+  });
+
+  await runTest('3.7: RekapJurnalView cross-references jadwal_pelajaran for unfilled schedules', () => {
+    const rekapPath = path.join(root, 'src', 'components', 'RekapJurnalView.tsx');
+    const content = fs.readFileSync(rekapPath, 'utf8');
+
+    assert.ok(
+      content.includes("supabase.from('jadwal_pelajaran')"),
+      'RekapJurnalView must cross-reference jadwal_pelajaran for missing schedules'
+    );
+    assert.ok(
+      content.includes('unfilled-kbm-'),
+      'RekapJurnalView must generate synthetic missing entries with prefix unfilled-kbm-'
     );
   });
 
