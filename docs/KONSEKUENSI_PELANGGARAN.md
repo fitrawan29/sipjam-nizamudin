@@ -56,6 +56,7 @@ Tiket merupakan instrumen perizinan, konfirmasi penugasan, dan pelaporan piket d
 2. **Kelalaian Tiket Izin / Sakit**: Guru yang tidak hadir di sekolah namun tidak mengajukan tiket permohonan izin/sakit pada sistem SIPJAM, atau terlambat melampirkan bukti sah (surat dokter / surat permohonan resmi) melampaui batas toleransi.
 3. **Kelalaian Tiket Dinas Luar**: Guru yang bertugas ke luar sekolah atas instruksi dinas/kepala sekolah namun tidak membuat tiket permohonan Dinas Luar beserta unggahan surat tugas resmi.
 4. **Kelalaian Tiket Penugasan / Inval**: Guru pengganti yang ditugaskan namun tidak mengaktifkan konfirmasi mode Guru Inval saat menggantikan jam mengajar rekan sejawat.
+5. **Kelalaian Tiket Izin Terlambat**: Guru yang hadir terlambat melampaui jam masuk sekolah tanpa mengajukan tiket Izin Terlambat beserta alasan kedaruratan yang sah, sehingga menit keterlambatan terakumulasi penuh tanpa kompensasi permohonan dispensasi.
 
 ### 3.2. Kategori 2: Kelalaian Pengisian Jurnal KBM (Kegiatan Belajar Mengajar)
 Jurnal KBM adalah bukti pertanggungjawaban profesional guru di ruang kelas yang memuat 10 field standar Kurikulum Merdeka (Tujuan Pembelajaran, KKTP, Konten Materi, Kegiatan Pembelajaran, Rombel/Kelas, Absensi Siswa H/I/S/A, Lokasi Pembelajaran, Foto Dokumentasi KBM, dan Refleksi). Kelalaian mencakup:
@@ -74,16 +75,17 @@ Jurnal Kegiatan diperuntukkan bagi guru saat tidak ada jadwal KBM reguler, melip
 
 ## 4. BATAS WAKTU PELAPORAN (CUT-OFF) DAN VERIFIKASI
 
-Untuk menjamin alur data yang tertib, ditetapkan batasan waktu resmi (*cut-off*) sebagai berikut:
+Untuk menjamin alur data yang tertib, ditetapkan batasan waktu resmi (*cut-off*) sebagai berikut. Seluruh jam batas waktu mengacu pada waktu operasional sekolah setempat (WITA untuk zona waktu tengah, atau WIB/WIT sesuai konfigurasi profil sekolah di Master Data SIPJAM):
 
 | No | Objek Pelaporan | Batas Waktu Pengisian (Cut-Off) | Batas Waktu Toleransi Maksimal | Konsekuensi Keterlambatan Otomatis Sistem |
 |---|---|---|---|---|
 | **1** | **Tiket Izin / Sakit / Dinas Luar** | H-1 sebelum ketidakhadiran (Pukul 20.00) | Hari-H maksimal Pukul 07.30 (sebelum bel masuk) | Pengajuan ditolak oleh sistem; status kehadiran otomatis berubah menjadi **Alpa (Tanpa Berita)** |
-| **2** | **Tiket Laporan Piket Harian** | Jam kepulangan sekolah hari bersangkutan (Pukul 14.30 / 11.30 Jumat) | Hari-H Pukul 16.00 | Modul piket terkunci; guru piket ditandai **Laporan Piket Belum Diserahkan**; honor piket tertahan |
-| **3** | **Jurnal KBM Harian** | Selesai jam tatap muka sesi kelas bersangkutan | Hari-H Pukul 17.00 | Sesi KBM ditandai merah: **Tidak Melaksanakan KBM / Kelas Kosong**; klaim jam mengajar gugur |
-| **4** | **Jurnal Kegiatan (Sistem Blok / Dinas)** | Hari-H Pukul 15.30 | Hari-H Pukul 17.00 | Status tercatat **Tidak Melaksanakan Kegiatan Apapun**; presensi harian dievaluasi |
-| **5** | **Rekapitulasi Mingguan & Verifikasi** | Setiap Hari Sabtu Pukul 12.00 | Hari Sabtu Pukul 14.00 | Kunci data mingguan (*freeze*); daftar kelalaian diteruskan ke Kepala Sekolah |
-| **6** | **Tutup Buku Bulanan (Payroll & Laporan Yayasan/Dinas)** | Tanggal 28 setiap akhir bulan | Tanggal 29 Pukul 12.00 | Laporan rekapitulasi terkunci untuk dasar pencairan honor dan evaluasi bulanan |
+| **2** | **Tiket Izin Terlambat** | Maksimal 15 menit setelah waktu keterlambatan tiba | Hari-H Pukul 09.00 | Keterlambatan dihitung penuh; penandaan indisipliner pada analitik kehadiran |
+| **3** | **Tiket Laporan Piket Harian** | Jam kepulangan sekolah hari bersangkutan (Pukul 14.30 / 11.30 Jumat) | Hari-H Pukul 16.00 | Modul piket terkunci; guru piket ditandai **Laporan Piket Belum Diserahkan**; honor piket tertahan |
+| **4** | **Jurnal KBM Harian** | Selesai jam tatap muka sesi kelas bersangkutan | Hari-H Pukul 17.00 | Sesi KBM ditandai merah: **Tidak Melaksanakan KBM / Kelas Kosong**; klaim jam mengajar gugur |
+| **5** | **Jurnal Kegiatan (Sistem Blok / Dinas)** | Hari-H Pukul 15.30 | Hari-H Pukul 17.00 | Status tercatat **Tidak Melaksanakan Kegiatan Apapun**; presensi harian dievaluasi |
+| **6** | **Rekapitulasi Mingguan & Verifikasi** | Setiap Hari Sabtu Pukul 12.00 | Hari Sabtu Pukul 14.00 | Kunci data mingguan (*freeze*); daftar kelalaian diteruskan ke Kepala Sekolah |
+| **7** | **Tutup Buku Bulanan (Payroll & Laporan Yayasan/Dinas)** | Tanggal 28 setiap akhir bulan | Tanggal 29 Pukul 12.00 | Laporan rekapitulasi terkunci untuk dasar pencairan honor dan evaluasi bulanan |
 
 ### Aturan Auto-Lock dan Deteksi Sistem:
 1. **Auto-Checkout & Pulang Cepat**: Berdasarkan algoritma evaluasi SIPJAM, guru yang telah presensi datang dan memiliki jadwal mengajar tetapi tidak mengisi jurnal KBM serta tidak presensi pulang normal akan otomatis dikategorikan ke dalam status **Pulang Cepat** dengan alasan *Schedules empty without journal*.
@@ -236,6 +238,7 @@ Berikut adalah rincian sanksi administratif dan konsekuensi langsung per kategor
 |---|---|---|---|---|---|
 | **Tidak Mengisi Tiket Laporan Piket** | Peringatan lisan oleh Koordinator Piket; wajib input data buku tamu & ketertiban susulan dalam 1x24 jam. | SP 1 tertulis; honor piket hari bersangkutan ditahan 50% hingga rekap disahkan. | SP 2 tertulis; pembekuan hak jadwal piket bulan berikutnya; honor piket hangus 100%. | SP 3 tertulis; pencopotan dari tim piket semester berjalan; evaluasi tugas tambahan. | Pemanggilan Ketua Yayasan/Dinas; peninjauan ulang status kepegawaian. |
 | **Tidak Mengisi Tiket Izin / Sakit (Alpa)** | Status presensi tercatat "Alpa"; teguran lisan wajib membawa surat keterangan medis/resmi besok hari. | SP 1 tertulis; potongan tunjangan kehadiran hari terkait; wajib lapor langsung ke Kepala Sekolah. | SP 2 tertulis; akumulasi alpa dihitung sebagai pelanggaran disiplin jam kerja (potong honor 3 hari). | SP 3 tertulis; pemotongan tunjangan kinerja bulanan penuh; pembinaan intensif. | Pemanggilan Sidang Disiplin Yayasan/Dinas; sanksi indisipliner berat. |
+| **Tidak Mengisi Tiket Izin Terlambat** | Teguran lisan oleh Koordinator Presensi; menit keterlambatan tercatat penuh di leaderboard kedisiplinan. | SP 1 tertulis; akumulasi telat >60 menit dihitung setara alpa 1 hari; pembinaan jam kerja. | SP 2 tertulis; pemotongan tunjangan kehadiran mingguan sebesar 25%; kewajiban piket pagi pembinaan. | SP 3 tertulis; penangguhan insentif kedisiplinan bulanan; peringatan tertulis terakhir. | Pemanggilan Kepala Sekolah & Yayasan/Dinas; peninjauan ulang jam penugasan mengajar. |
 | **Tidak Mengisi Tiket Dinas Luar** | Konfirmasi lisan oleh Waka Kurikulum; wajib unggah surat tugas & laporan kegiatan. | SP 1 tertulis; biaya perjalanan dinas/transport tidak dapat direimburse/dicairkan. | SP 2 tertulis; pencabutan hak penugasan dinas luar selama 1 semester. | SP 3 tertulis; pengembalian dana dinas bila telah diterima di muka; evaluasi integritas. | Pemanggilan pimpinan; sanksi etik kedinasan. |
 
 ### Tabel 7.2: Matriks Sanksi Kelalaian Pengisian Jurnal KBM
@@ -243,7 +246,7 @@ Berikut adalah rincian sanksi administratif dan konsekuensi langsung per kategor
 | Aspek Kelalaian | Tingkat 1 (1-2x Kelalaian) | Tingkat 2 (3x Kelalaian - SP 1) | Tingkat 3 (4-5x - SP 2) | Tingkat 4 (6x - SP 3) | Tingkat 5 (Pasca SP 3) |
 |---|---|---|---|---|---|
 | **Sesi KBM Kosong (Tidak Isi Jurnal KBM)** | Peringatan lisan oleh Waka Kurikulum; penandaan sistem "Jurnal Terlambat"; wajib input catatan susulan. | SP 1 tertulis; jam tatap muka sesi tersebut tidak dihitung dalam rekapitulasi honor jam mengajar. | SP 2 tertulis; akumulasi 2 jam pelajaran dipotong dari honor mengajar; supervisi mendadak di kelas. | SP 3 tertulis; seluruh jam mengajar pada minggu kelalaian dianggap gugur; penangguhan insentif ajar. | Pemanggilan Yayasan/Dinas; pengurangan alokasi beban jam mengajar semester depan. |
-| **Isi Jurnal KBM Fiktif / Manipulatif** | Klarifikasi wajib di ruang Kurikulum; pembatalan jurnal; wajib revisi dengan bukti faktual siswa. | SP 1 tertulis; teguran integritas akademik; audit seluruh jurnal bulan berjalan oleh pengawas. | SP 2 tertulis; evaluasi kelayakan mengajar; penurunan nilai Penilaian Kinerja Guru (PKG). | SP 3 tertulis; rekomendasi pencabutan tunjangan sertifikasi/tunjangan profesi guru (TPG/TPP). | Pemanggilan Pimpinan; rekomendasi pemecatan / pemberhentian tetap karena pelanggaran integritas. |
+| **Isi Jurnal KBM Fiktif / Manipulatif** | Klarifikasi wajib di ruang Kurikulum; pembatalan jurnal; wajib revisi dengan bukti faktual siswa. | SP 1 tertulis; teguran integritas akademik; audit seluruh jurnal bulan berjalan oleh pengawas. | SP 2 tertulis; evaluasi kelayakan mengajar; penurunan nilai Penilaian Kinerja Guru (PKG). | SP 3 tertulis; rekomendasi penangguhan/peninjauan tunjangan profesi guru (TPG/TPP) ke Dinas/Kemendikbudristek; audit berkas investigasi. | Pemanggilan Pimpinan; rekomendasi pemecatan / pemberhentian tetap karena pelanggaran integritas. |
 | **Pulang Cepat Tanpa Jurnal KBM** | Ditegur oleh Koordinator Presensi; status presensi diubah menjadi "Pulang Cepat (Auto-Checkout)". | SP 1 tertulis; presensi hari terkait diubah menjadi "Setengah Hari" atau "Alpa". | SP 2 tertulis; pemotongan tunjangan transport dan kehadiran untuk 3 hari kerja. | SP 3 tertulis; larangan mengajar di jam sore / penugasan jam mengajar awal; pemotongan insentif. | Sidang Kode Etik Pimpinan Sekolah & Yayasan. |
 
 ### Tabel 7.3: Matriks Sanksi Kelalaian Pengisian Jurnal Kegiatan
@@ -271,6 +274,17 @@ SIPJAM berfungsi sebagai basis data tunggal (*single source of truth*) dalam pen
 ### 8.3. Penilaian Prestasi Kerja dan Leaderboard Kedisiplinan
 1. Setiap kelalaian pengisian tiket dan jurnal secara otomatis memotong poin kedisiplinan pada menu *Analitik Kedisiplinan & Leaderboard (`view-analitik`)*.
 2. Guru yang memiliki status SP aktif tidak berhak dicalonkan dalam program *Guru Berprestasi Bulanan / Semesteran*, reward tahunan, atau prioritas pengajuan beasiswa pelatihan dari pihak yayasan/sekolah.
+
+### 8.4. Harmonisasi Hukum Kepegawaian (Status Yayasan vs Status ASN/PPPK)
+Eksekusi sanksi finansial dan kepegawaian diselaraskan dengan payung hukum status kepegawaian guru bersangkutan:
+1. **Bagi Guru Yayasan / Guru Honorer (GTY / GTT / PKWT)**:
+   - Pemotongan honor jam mengajar, penahanan honor piket, dan penangguhan insentif yayasan diputuskan dan dieksekusi langsung oleh Bendahara Sekolah/Yayasan berdasarkan rekapitulasi data bulanan resmi SIPJAM.
+   - Sanksi pemutusan hubungan kerja/pemberhentian kontrak mengikuti ketentuan Perjanjian Kerja Waktu Tertentu (PKWT) dan Anggaran Dasar/Anggaran Rumah Tangga (AD/ART) Yayasan.
+2. **Bagi Guru ASN (PNS dan PPPK) di Sekolah Negeri atau yang Diperbantukan (DPK)**:
+   - Penegakan sanksi berpedoman pada **Undang-Undang Nomor 20 Tahun 2023 tentang Aparatur Sipil Negara** dan **Peraturan Pemerintah Nomor 94 Tahun 2021 tentang Disiplin Pegawai Negeri Sipil**.
+   - Kepala Sekolah menjatuhkan hukuman disiplin tingkat ringan (Teguran Lisan, Teguran Tertulis, dan Pernyataan Tidak Puas secara Tertulis).
+   - Terkait Tunjangan Profesi Guru (TPG/Sertifikasi): Kepala Sekolah melaporkan beban mengajar riil yang tidak terpenuhi akibat kekosongan jurnal KBM ke dalam Dapodik/SIMPATIKA sesuai **Permendikbudristek Nomor 45 Tahun 2023**, sehingga penundaan/penghentian bayar TPG/TPP diproses oleh Dinas Pendidikan/Kementerian sesuai regulasi negara.
+   - Untuk sanksi berat (pelanggaran lanjutan pasca SP 3), Kepala Sekolah menyusun Berita Acara Pemeriksaan (BAP) dan merekomendasikan penjatuhan hukuman disiplin sedang/berat kepada Pejabat Pembina Kepegawaian (PPK) melalui Badan Kepegawaian Daerah (BKD).
 
 ---
 
@@ -323,6 +337,7 @@ Pengajuan dispensasi hanya dipertimbangkan jika memenuhi salah satu kondisi beri
 ### 9.2. Batas Waktu Pengajuan Banding / Klarifikasi
 1. Guru yang menerima notifikasi kelalaian atau peringatan sistem berhak mengajukan surat/formulir permohonan klarifikasi **maksimal dalam kurun waktu 2 x 24 jam hari kerja** sejak status pelanggaran diterbitkan.
 2. Pengajuan yang melampaui batas waktu 2 x 24 jam dinyatakan **kedaluwarsa (gugur)**, dan sanksi administratif pada tingkatan bersangkutan berkekuatan tetap (*inkracht*).
+3. **Klausul Perpanjangan Otomatis Waktu Dispensasi (*Extended Force Majeure*)**: Apabila terjadi gangguan berskala luas dan berkepanjangan (seperti pemadaman listrik total lebih dari 2 x 24 jam berturut-turut pada hari kerja, terputusnya kabel optik internet wilayah, bencana alam banjir/gempa, atau instruksi libur darurat oleh pemerintah), batas waktu pengajuan klarifikasi/dispensasi secara otomatis diperpanjang hingga **2 x 24 jam hari kerja terhitung sejak seluruh sarana prasarana sekolah dan jaringan internet dinyatakan kembali normal secara resmi oleh Kepala Sekolah**. Selama masa kedaruratan tersebut, sanksi finansial ditangguhkan dan dilarang dieksekusi secara sepihak.
 
 ### 9.3. Format Formulir Klarifikasi & Pemeriksaan Silang (*Cross-Check*)
 Pengajuan klarifikasi wajib memuat data standar berikut:
@@ -354,7 +369,7 @@ Kebijakan SOP ini didukung secara langsung oleh arsitektur teknis dan fitur-fitu
    - Mengubah status presensi menjadi *Pulang Cepat* jika guru tidak melengkapi jurnal dan tidak presensi pulang normal.
    - Menghubungkan data periode kalender blok dengan kewajiban Jurnal Kegiatan.
 
-2. **Pusat Verifikasi Administrator (`src/components/AdminVerifikasiView.tsx`)**:
+2. **Pusat Verifikasi Administrator (`src/components/AdminVerifView.tsx`)**:
    - Menyediakan antarmuka terpusat bagi Waka Kurikulum untuk meninjau, menyetujui, menolak, atau mereset status Jurnal Mengajar dan Tiket Perizinan.
    - Dilengkapi kolom alasan penolakan yang langsung tampil pada dashboard guru terkait.
 
@@ -378,6 +393,114 @@ Kebijakan SOP ini didukung secara langsung oleh arsitektur teknis dan fitur-fitu
 
 3. **Penyempurnaan Berkala**:
    Ketentuan dalam dokumen ini dievaluasi sekurang-kurangnya 1 (satu) kali pada setiap akhir semester oleh Rapat Dewan Guru bersama Pimpinan Sekolah dan Tim Pengembang SIPJAM.
+
+---
+
+## 12. STANDAR OPERASIONAL PROSEDUR (SOP) BAKU DAN LAMPIRAN FORMULIR
+
+Untuk menjamin kepastian eksekusi tata kelola di lapangan, ditetapkan rangkaian dokumen Prosedur Operasional Baku (SOP) dan format formulir fisik resmi sebagai berikut:
+
+### 12.1. Ringkasan Kode SOP Pelanggaran & Dispensasi
+
+| Kode Dokumen | Nama Prosedur Baku | Pelaksana Utama | Output Dokumen |
+|---|---|---|---|
+| **SOP-SIPJAM-01** | Prosedur Pelaporan dan Audit Harian/Mingguan | Guru Piket, Tim Kurikulum, Admin | Rekap Keterisian & Notifikasi Kelalaian |
+| **SOP-SIPJAM-02** | Prosedur Pengajuan Klarifikasi & Dispensasi | Guru Bersangkutan, Tim IT, Waka Kurikulum | Formulir F-SIPJAM-01 & Berita Acara Uji Silang |
+| **SOP-SIPJAM-03** | Prosedur Penerbitan Sanksi Administratif Bertingkat | Kepala Sekolah, Tim Disiplin, Yayasan | Surat Peringatan (SP 1, SP 2, SP 3) |
+| **SOP-SIPJAM-04** | Prosedur Eksekusi Reset Status Audit Trail SIPJAM | Administrator Sistem SIPJAM | Formulir F-SIPJAM-02 & Catatan Log Audit Tanpa Sanksi |
+
+---
+
+### 12.2. Lampiran Formulir F-SIPJAM-01: Formulir Pengajuan Klarifikasi / Dispensasi
+
+```
+========================================================================================
+                      FORMULIR PENGAJUAN KLARIFIKASI / DISPENSASI
+                       KENDALA PENGISIAN TIKET DAN JURNAL SIPJAM
+                                (Formulir F-SIPJAM-01)
+========================================================================================
+
+A. IDENTITAS PEMOHON
+   1. Nama Lengkap         : ...........................................................
+   2. NIP / NUPTK / ID Guru: ...........................................................
+   3. Mata Pelajaran / Tugas: ...........................................................
+   4. Status Kepegawaian   : [  ] ASN (PNS/PPPK)    [  ] GTY / Honorer    [  ] Lainnya
+
+B. OBJEK KELALAIAN YANG DIKLARIFIKASI
+   1. Tanggal Kejadian     : ......................... Hari: ............................
+   2. Sesi Pembelajaran / Jam: Pukul ................. s.d. ............................
+   3. Kelas / Rombongan     : ...........................................................
+   4. Kategori Kelalaian    : [  ] Tiket Piket / Izin / Terlambat / Dinas Luar
+                             [  ] Jurnal KBM (Mengajar di Kelas)
+                             [  ] Jurnal Kegiatan (Sistem Blok / Dinas)
+
+C. KRONOLOGI ALASAN DAN FAKTA PENDUKUNG (Centang yang sesuai):
+   [  ] Pemadaman listrik / server down / gangguan jaringan internet dibuktikan laporan IT.
+   [  ] Keadaan darurat medis akut (terlampir surat dokter / IGD).
+   [  ] Penugasan dinas mendadak dari pimpinan (terlampir surat tugas susulan).
+   [  ] Keadaan kahar / bencana alam (banjir / cuaca ekstrem luar biasa).
+   
+   Uraian Singkat Kejadian:
+   .....................................................................................
+   .....................................................................................
+   .....................................................................................
+
+D. BUKTI LAMPIRAN:
+   1. Foto aktivitas mengajar / presensi manual bertanda tangan guru piket [  ] Ada  [  ] Tidak
+   2. Screenshot galat aplikasi / surat pemadaman PLN / ISP              [  ] Ada  [  ] Tidak
+   3. Surat keterangan dokter / surat tugas resmi                        [  ] Ada  [  ] Tidak
+
+   Pemohon,                                      Mengetahui,
+   Guru yang Bersangkutan                        Wakil Kepala Sekolah Bidang Kurikulum
+
+
+
+   ( .................................... )      ( .................................... )
+   NIP/ID:                                       NIP:
+========================================================================================
+```
+
+---
+
+### 12.3. Lampiran Formulir F-SIPJAM-02: Berita Acara Rekomendasi Dispensasi & Reset Status
+
+```
+========================================================================================
+                               BERITA ACARA AUDIT TRAIL
+                         REKOMENDASI DISPENSASI & RESET STATUS
+                                (Formulir F-SIPJAM-02)
+========================================================================================
+Nomor Berita Acara : BA-SIPJAM/....../....../2026
+
+Pada hari ini, ................. Tanggal ................ Bulan ................. Tahun 2026,
+berdasarkan hasil pemeriksaan berkas Formulir F-SIPJAM-01 atas nama:
+Nama Guru           : ..................................................................
+NIP / NUPTK         : ..................................................................
+Mata Pelajaran      : ..................................................................
+
+HASIL VERIFIKASI SILANG (CROSS-CHECK TIM KURIKULUM & IT):
+1. Verifikasi Jurnal Manual / Catatan Guru Piket : [  ] VALID - Guru Terbukti Mengajar
+2. Verifikasi Audit Log Akses Server SIPJAM      : [  ] VALID - Terjadi Error / Network Drop
+3. Verifikasi Absensi Kehadiran Siswa Kelas      : [  ] VALID - Siswa Mengonfirmasi Hadir
+
+KEPUTUSAN KEPALA SEKOLAH:
+[  ] PERMOHONAN DITERIMA (DISPENSASI PENUH):
+     - Administrator diinstruksikan mengeksekusi "Reset Status" pada Pusat Verifikasi SIPJAM.
+     - Seluruh hak jam mengajar / honor piket dipulihkan 100% tanpa potongan denda.
+     - Audit log ditandai: "Disetujui via Dispensasi Khusus (No BA: BA-SIPJAM/....../2026)".
+
+[  ] PERMOHONAN DITOLAK:
+     - Alasan Penolakan: ................................................................
+     - Sanksi administratif bertingkat (Teguran/SP) dan pemotongan tetap diberlakukan.
+
+   Petugas Verifikator IT,        Waka Kurikulum,              Kepala Sekolah,
+
+
+
+   ( ...................... )     ( ...................... )   ( ...................... )
+   NIP:                           NIP:                         NIP:
+========================================================================================
+```
 
 ---
 

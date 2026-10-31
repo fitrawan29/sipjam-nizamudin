@@ -133,6 +133,59 @@ runTest('6.1: Dokumen menyediakan tabel matriks untuk ketiga kategori kelalaian'
   assert(content.includes('Matriks Sanksi Kelalaian Pengisian Jurnal Kegiatan'), 'Harus ada tabel matriks jurnal kegiatan');
 });
 
+// 7. Pengujian Robustness & Edge Cases Tambahan (Reviewer Round 1)
+runTest('7.1: Dokumen memuat Klausul Perpanjangan Otomatis Dispensasi (Extended Force Majeure > 2x24 jam)', () => {
+  assert(
+    content.toLowerCase().includes('extended force majeure') || content.toLowerCase().includes('perpanjangan otomatis waktu dispensasi'),
+    'Harus memuat klausul Extended Force Majeure'
+  );
+  assert(
+    content.includes('2 x 24 jam') && content.includes('dinyatakan kembali normal secara resmi oleh Kepala Sekolah'),
+    'Batas waktu dispensasi harus otomatis diperpanjang hingga layanan pulih'
+  );
+});
+
+runTest('7.2: Dokumen memuat harmonisasi regulasi kepegawaian ASN/PPPK (PP 94/2021 & Dapodik) dan Yayasan (PKWT)', () => {
+  assert(
+    content.includes('PP Nomor 94 Tahun 2021') || content.includes('PP 94/2021'),
+    'Harus mengacu pada PP Disiplin PNS bagi guru ASN'
+  );
+  assert(content.includes('Dapodik') || content.includes('SIMPATIKA'), 'Harus menyelaraskan jam KBM ke Dapodik/SIMPATIKA');
+  assert(content.includes('Permendikbudristek Nomor 45 Tahun 2023') || content.includes('Permendikbudristek'), 'Harus merujuk regulasi tunjangan sertifikasi Kemendikbudristek');
+  assert(content.includes('Badan Kepegawaian Daerah') || content.includes('BKD'), 'Harus menyebutkan BKD untuk sanksi ASN');
+});
+
+runTest('7.3: Dokumen memuat kelalaian Tiket Izin Terlambat di definisi dan matriks sanksi', () => {
+  assert(content.includes('Kelalaian Tiket Izin Terlambat'), 'Harus memuat definisi tiket izin terlambat');
+  assert(content.includes('Tidak Mengisi Tiket Izin Terlambat'), 'Harus memuat sanksi tiket izin terlambat di tabel matriks');
+});
+
+runTest('7.4: Dokumen memuat spesifikasi zona waktu operasional sekolah (WITA/WIB/WIT)', () => {
+  assert(content.includes('WITA') && content.includes('WIB/WIT'), 'Harus memuat rujukan zona waktu operasional sekolah');
+});
+
+runTest('7.5: Dokumen merujuk ke path komponen yang valid dan terbukti ada di repositori', () => {
+  assert(
+    content.includes('src/components/AdminVerifView.tsx'),
+    'Harus merujuk ke file AdminVerifView.tsx yang benar'
+  );
+  assert(
+    !content.includes('src/components/AdminVerifikasiView.tsx'),
+    'Tidak boleh merujuk ke file fiktif AdminVerifikasiView.tsx'
+  );
+  const targetComponent = path.join(root, 'src', 'components', 'AdminVerifView.tsx');
+  assert(fs.existsSync(targetComponent), 'Komponen AdminVerifView.tsx harus ada di filesystem');
+});
+
+runTest('7.6: Dokumen menyediakan rangkaian kode SOP baku (SOP-SIPJAM) dan format formulir fisik (F-SIPJAM)', () => {
+  assert(content.includes('SOP-SIPJAM-01'), 'Harus memuat kode SOP-SIPJAM-01');
+  assert(content.includes('SOP-SIPJAM-02'), 'Harus memuat kode SOP-SIPJAM-02');
+  assert(content.includes('SOP-SIPJAM-03'), 'Harus memuat kode SOP-SIPJAM-03');
+  assert(content.includes('SOP-SIPJAM-04'), 'Harus memuat kode SOP-SIPJAM-04');
+  assert(content.includes('Formulir F-SIPJAM-01'), 'Harus memuat template Formulir F-SIPJAM-01');
+  assert(content.includes('Formulir F-SIPJAM-02'), 'Harus memuat template Formulir F-SIPJAM-02 (Berita Acara)');
+});
+
 console.log(`\n====================================================================`);
 console.log(`🏁 FINISHED: Passed: ${passed}, Failed: ${failed}`);
 console.log(`====================================================================\n`);
