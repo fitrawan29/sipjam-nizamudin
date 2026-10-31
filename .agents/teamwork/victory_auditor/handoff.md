@@ -1,98 +1,125 @@
-# Handoff Report — Victory Audit: Student Exam Security & Anti-Cheating System
+# Handoff Report: Independent Victory Audit (Teacher Journal System Upgrade R1-R3)
 
-## 1. Observation
-- Target Task: Student exam security and anti-cheat mechanism repair & hardening (`ORIGINAL_REQUEST.md`).
-- Project Root: `c:\Users\Fitra\OneDrive\Documents\sipjam-app`.
-- Implementation Commits Audited:
-  - `95c4645`: Initial implementation of student exam view, antiCheatGuard, useExamAntiCheat hook, and student RBAC.
-  - `9c77dd8`: Review R1 fixes (false exit violation suppression on submit, expanded DevTools key combinations, OS clipboard shortcuts, exam progress persistence).
-  - `375ef23`: Review R2 fixes (simulated fullscreen fallback for mobile/iPad Safari, print suppression via CSS `@media print` and `beforeprint`, Redo key preservation `Ctrl+Shift+Z`, drag-drop protection, SweetAlert layering `z-[100000]`).
-  - `6127b61`: Review R3 fixes (wall-clock elapsed time deduction across reloads, ongoing session interruption detection, iPad Safari fullscreen rejection handler, window navigation shortcut blockage, touch keyboard resize suppression).
-- Verified Source Files:
-  - `src/lib/antiCheatGuard.ts` (457 lines, genuine state machine, debounced cooldowns, shortcut detection, storage management).
-  - `src/hooks/useExamAntiCheat.ts` (420 lines, 11 event listeners: `visibilitychange`, `blur`, `fullscreenchange`, `copy`, `cut`, `paste`, `contextmenu`, `keydown`, `beforeunload`, `beforeprint`, `selectstart`, `dragstart`, `drop`, `resize`, `storage`).
-  - `src/components/UjianSiswaView.tsx` (703 lines, lobby, ongoing HUD, modal blocker with `fixed inset-0 z-[99999]`, automatic lockout at 3 violations, finished view).
-  - `src/components/AppScreen.tsx` & `src/lib/navigation.ts` (RBAC routing for role `siswa`, isolation preventing access to admin/teacher modules).
-  - `src/app/globals.css` (Print suppression `#student-exam-container { display: none !important; }` and SweetAlert layering `z-index: 100000 !important;`).
-- Independent Test Execution:
-  - `npx tsx tests/student_exam_anti_cheat.test.ts`: **116/116 assertions passed (100%)**.
-  - `npx tsc --noEmit`: **0 type errors (exit code 0)**.
-  - `npm run lint`: **0 errors, 166 warnings (exit code 0)**.
-  - `npm test`: **All 43 test suites passed (100% pass, exit code 0)**.
-  - `npm run build`: **Next.js 16 production build succeeded, 13/13 static routes generated (exit code 0)**.
-
-## 2. Logic Chain
-1. **Requirement R1 (Audit & Vulnerability Identification)**:
-   - The team thoroughly audited the prior absence of student anti-cheat protection.
-   - Identified 4 layers of vulnerabilities: tab/window blur detection loopholes, DevTools/shortcut inspection, print/screenshot leakage, mobile Fullscreen API rejection, and page reload exploits.
-   - Addressed all identified loopholes across 3 rounds of adversarial review.
-
-2. **Requirement R2 (Hardening & Repair of Anti-Cheat Protections)**:
-   - Built a comprehensive security engine (`antiCheatGuard.ts`) and React hook (`useExamAntiCheat.ts`).
-   - Integrated full-viewport blocking overlay `fixed inset-0 z-[99999]` that halts exam interactions whenever fullscreen is broken.
-   - Debounced compound window blur and visibility change events (`VIOLATION_COOLDOWN_MS = 600`) to avoid duplicate counting while maintaining complete audit trails.
-   - Provided simulated fullscreen fallback for platforms where native Fullscreen API is rejected (iPad/iOS Safari/WebViews), preventing modal freeze while preserving all other security guards.
-   - Protected student answer progress with local persistence, while deducting wall-clock elapsed time to prevent timer freeze exploits.
-   - Differentiated between student answer typing (permitting `Ctrl+A` and `Ctrl+Shift+Z` within input/textarea) and exam questions (`select-none` and strict shortcut suppression).
-
-3. **Integrity & Zero Cheating Check**:
-   - Zero hardcoded test outcomes: tests dynamically evaluate key events, state machines, RBAC functions, and file AST contents.
-   - Zero facades: implementations contain comprehensive production-grade business logic.
-   - Zero pre-existing tests were modified or removed. All 43 test suites in `npm test` execute and pass genuinely.
-
-## 3. Caveats
-- No caveats. The implementation is robust, complete, and thoroughly tested across edge cases and platforms.
-
-## 4. Conclusion
-The team's claim of completion is authentic and substantiated by independent execution and code review. All acceptance criteria from `ORIGINAL_REQUEST.md` have been met with zero regressions.
-
-Verdict: **VICTORY CONFIRMED**.
-
-## 5. Verification Method
-To independently reproduce and verify:
-```bash
-# 1. Run targeted student exam anti-cheat test suite (116 assertions)
-npx tsx tests/student_exam_anti_cheat.test.ts
-
-# 2. Check TypeScript types
-npx tsc --noEmit
-
-# 3. Check linter
-npm run lint
-
-# 4. Run full regression test suite (all 43 suites)
-npm test
-
-# 5. Run Next.js production build
-npm run build
 ```
-
----
-
 === VICTORY AUDIT REPORT ===
 
 VERDICT: VICTORY CONFIRMED
 
 PHASE A — TIMELINE:
   Result: PASS
-  Anomalies: none. Commits 95c4645, 9c77dd8, 375ef23, and 6127b61 demonstrate genuine, iterative adversarial review and hardening cycles with realistic timestamps. Zero pre-existing tests were modified or deleted.
+  Anomalies: none
 
 PHASE B — INTEGRITY CHECK:
   Result: PASS
-  Details: Verified src/lib/antiCheatGuard.ts, src/hooks/useExamAntiCheat.ts, src/components/UjianSiswaView.tsx, and tests/student_exam_anti_cheat.test.ts. No facades, no hardcoded test outputs, no mock bypasses. Student ergonomics (essay typing, undo/redo, touch keyboard) and security constraints (fullscreen guard, tab-switch detection, clipboard suppression, reload wall-clock tracking) are genuinely implemented.
+  Details: Development mode integrity criteria satisfied. Zero hardcoded test results, zero facade implementations, zero pre-populated verification artifacts, and authentic end-to-end business logic across all modified components.
 
 PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npx tsx tests/student_exam_anti_cheat.test.ts && npx tsc --noEmit && npm run lint && npm test && npm run build
-  Your results: 
-    - tests/student_exam_anti_cheat.test.ts: 116/116 assertions PASS (100%)
-    - npx tsc --noEmit: 0 type errors (exit code 0)
-    - npm run lint: 0 errors, 166 warnings (exit code 0)
-    - npm test: All 43 test suites PASS (100%)
-    - npm run build: Next.js 16 production build succeeded, 13/13 static routes generated (exit code 0)
-  Claimed results:
-    - tests/student_exam_anti_cheat.test.ts: 116/116 PASS
-    - npx tsc --noEmit: 0 errors
-    - npm run lint: 0 errors
-    - npm test: 43/43 suites PASS
-    - npm run build: 13/13 static routes generated
-  Match: YES — Exact match across all test suites, type checking, linting, and build targets.
+  Test command: npx tsx tests/jurnal_r1_r2_r3_verification.test.ts && npx tsc --noEmit && npm run lint && npm test && npm run build
+  Your results: 20/20 passed on dedicated test suite; 0 type errors on tsc; 0 errors on eslint; all 44 test suites passed on npm test; 13/13 static pages compiled on Next.js Turbopack build
+  Claimed results: 20/20 passed on dedicated test suite; 0 type errors; all 44 test suites passed; clean production build
+  Match: YES — exact 100% match across all test suites and build artifacts
+
+EVIDENCE (if REJECTED):
+  N/A
+```
+
+---
+
+## 1. Observation
+
+1. **Git Commit History & Timeline (`git log -n 6 --oneline`)**:
+   - `a993479` — `fix(rekap): isolate personal class filters, harmonize piket title matching, and auto-fill konten notes` (Oct 31 14:38:58)
+   - `4ce946a` — `fix(jurnal): synthesize unsubmitted kegiatan in rekap, unify auto-checkout duty recording, and clear stale lock reasons` (Oct 31 14:22:35)
+   - `b02247a` — `chore(teamwork): sync progress log` (Oct 31 14:08:27)
+   - `8510401` — `fix(jurnal): dynamic rekap schedule cross-referencing, title-normalized idempotency, and autonomous unfilled duty resolution` (Oct 31 14:08:04)
+   - `a894a1a` — `feat(jurnal): support photo upload option, presensi pulang flexibility, and automated rekap notes` (Oct 31 13:52:50)
+   - `893f597` — `chore(teamwork): update teamwork agent run logs and briefings` (Oct 31 00:08:45)
+   - Realistic 14-16 minute intervals between 4 iterative development and review rounds, each uncovering and resolving real edge cases.
+
+2. **R1: Photo Upload Option in `src/components/GuruJurnal.tsx`**:
+   - Line 117-119: `const isUploadAllowed = true;` unconditionally grants teachers autonomy to select photo upload.
+   - Lines 1634, 1679: Mode selector renders both `Kamera Langsung` and `Upload Foto / Galeri` buttons.
+   - Line 1716-1723: File input (`#jurnal-gallery-file-input`, `accept="image/*"`) includes `onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}` to guarantee re-selection always fires `onChange`.
+   - Lines 769-797: `handleGalleryUpload` captures GPS geolocation, compresses the image via canvas, sets file preview, and saves `fileUrl` to both `link_bukti_foto` and `foto_kegiatan`.
+
+3. **R2: Presensi Pulang Flexibility & Time Enforcement**:
+   - `src/lib/workflow.ts` (lines 724-746):
+     - `canTeacherPresensiPulang(state)` returns `true` as long as `presensiDatang` is present and teacher is not on `isIzinSakit`.
+     - In `getGuruDailyState`: if `canTeacherPresensiPulang(state)`, `state.canPresensiPulang = true` and stale `lockedReason` (`"Anda belum menyelesaikan: ..."`) is reset to `null`.
+   - `src/components/GuruPresensi.tsx`:
+     - Lines 371-373: Presensi pulang checks `if (!dailyState?.presensiDatang)` instead of requiring journal completion.
+     - Lines 446-458: Departure schedule validation strictly blocks departure when `currTimeVal < startVal`:
+       `if (currTimeVal < startVal) return showToast('Belum Waktunya', ...)`
+     - Lines 625-631: Upon departure presensi submission, `recordUnfilledJournalsAndPiket` is automatically invoked.
+
+4. **R3: Automated Standard Notes on Journal Recaps**:
+   - `src/lib/attendanceAlpa.ts` (lines 980-1120):
+     - `recordUnfilledJournalsAndPiket` creates database records for unfilled KBM with `keterangan: 'tidak masuk kelas'`, `materi: 'tidak masuk kelas'`, `konten: 'tidak masuk kelas'`, and `status_verifikasi: 'Tidak Masuk Kelas'`.
+     - Creates unfilled Kegiatan records with `keterangan: 'tidak melaksanakan kegiatan apapun'`, `konten: 'tidak melaksanakan kegiatan apapun'`, and `status_verifikasi: 'Tidak Melaksanakan Kegiatan'`.
+     - Creates unfilled Piket records with `catatan_apel: 'tidak membuat laporan piket'`, `keterangan: 'tidak membuat laporan piket'`, and `status_verifikasi: 'tidak membuat laporan piket'`.
+     - Auto-checkout unified in `evaluateAndApplyAutoCheckout` (lines 902-925) automatically invokes `recordUnfilledJournalsAndPiket`.
+   - `src/components/RekapJurnalView.tsx` (lines 218-360, 1010-1135):
+     - Dynamically queries `jadwal_pelajaran` and cross-references submitted journals; synthesizes missing classes with `keterangan: 'tidak masuk kelas'` and missing non-teaching days with `'tidak melaksanakan kegiatan apapun'`.
+     - Isolates personal mode filtering by `activeKelas` and `mapel` to prevent foreign class leakage.
+     - Table rows and CSV exports render `"tidak masuk kelas"` and `"tidak melaksanakan kegiatan apapun"` across content, notes, and status columns.
+   - `src/components/PiketView.tsx` (lines 1328-1405, 1785-1800, 4016, 4104-4136):
+     - Cross-references `penugasan_piket` and `jadwal_piket` against existing reports; missing duties display `catatan_apel: 'tidak membuat laporan piket'` and `status_verifikasi: 'tidak membuat laporan piket'` on UI cards and CSV export.
+     - Adds `tidak membuat laporan piket` to status filter dropdown, implements title tolerance for teacher filtering, and suppresses verification action buttons on unsubmitted reports.
+
+5. **Independent Execution Verification**:
+   - `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts` -> 20/20 PASSED (0 failed).
+   - `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts` -> 30/30 PASSED (0 failed).
+   - `npx tsc --noEmit` -> Exit code 0, 0 errors.
+   - `npm run lint` -> Exit code 0, 0 errors, 167 warnings.
+   - `npm test` -> Exit code 0, all 44 test suites passed 100%.
+   - `npm run build` -> Exit code 0, Turbopack compiled successfully in 2.2s, 13/13 static routes generated.
+
+---
+
+## 2. Logic Chain
+
+1. **R1 Compliance**:
+   - The user requested that teachers be provided the choice between live camera and file upload for KBM and kegiatan journals.
+   - Observation 2 confirms that `isUploadAllowed = true` is set unconditionally, both mode buttons are displayed, HTML file input with proper image accept attributes and re-click resets is present, and uploaded images are processed via canvas compression and stored with GPS metadata.
+   - Therefore, Requirement R1 is fully satisfied.
+
+2. **R2 Compliance**:
+   - The user requested that teachers with recorded arrival be permitted to depart without journal completion, while departure schedule hours remain enforced.
+   - Observation 3 confirms `canTeacherPresensiPulang` returns true once `presensiDatang` is present, `lockedReason` is cleared, `GuruPresensi` permits departure submission without journal gating, and `currTimeVal < startVal` strictly blocks departures before schedule.
+   - Therefore, Requirement R2 is fully satisfied.
+
+3. **R3 Compliance**:
+   - The user requested automatic standard notes for unsubmitted entries: "tidak membuat laporan piket" for piket, "tidak masuk kelas" for KBM, and "tidak melaksanakan kegiatan apapun" for kegiatan.
+   - Observation 4 confirms that `recordUnfilledJournalsAndPiket` persists these exact strings in the database, `evaluateAndApplyAutoCheckout` calls it on auto-checkout, and `RekapJurnalView` and `PiketView` synthesize and display these notes on screen and in CSV exports with full filter isolation.
+   - Therefore, Requirement R3 is fully satisfied.
+
+4. **Integrity & Zero-Regression Compliance**:
+   - Observations 1 and 5 confirm authentic iterative development history across 4 commits.
+   - Independent test execution across the entire test harness (`npm test`, 44 suites) and production build (`npm run build`) succeeded with 0 errors and zero regressions.
+   - Therefore, the victory claim is authentic and complete.
+
+---
+
+## 3. Caveats
+
+- Native device file pickers and hardware camera permission prompts are governed by the user's mobile OS / WebView browser sandbox; this cannot be mocked beyond standard DOM API behavior in unit tests.
+- High-concurrency database transactions in production are bounded by Supabase multi-tenant RLS policies; standard error fallback handlers are in place.
+
+---
+
+## 4. Conclusion
+
+All acceptance criteria specified in `ORIGINAL_REQUEST.md` (R1: Photo upload option, R2: Flexible departure with schedule enforcement, R3: Automated standard recap notes) are completely satisfied, authentically implemented without shortcuts or facades, verified with 20/20 dedicated unit tests and 44/44 full regression test suites, and validated with a successful production build.
+
+Verdict: **VICTORY CONFIRMED**.
+
+---
+
+## 5. Verification Method
+
+To independently re-verify this assessment:
+1. `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts` (verifies all 20 R1-R3 assertions).
+2. `npx tsc --noEmit` (verifies zero TypeScript compilation errors).
+3. `npm run lint` (verifies ESLint exit code 0).
+4. `npm test` (verifies all 44 test suites in `package.json`).
+5. `npm run build` (verifies Next.js 16 production build).
