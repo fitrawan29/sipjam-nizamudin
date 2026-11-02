@@ -10,6 +10,7 @@ import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/d
 import { getGradebookDraftKey, saveGradebookDraft, loadGradebookDraft, clearGradebookDraft } from '@/utils/draftStorage';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RaporView from './RaporView';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -581,6 +582,7 @@ export default function GradebookView({
                 const uniqueMap = new Map();
                 jData.forEach((j: any) => {
                   const m = j.mata_pelajaran || '-';
+                  if (isInvalidMapel(m)) return;
                   const k = j.kelas || '-';
                   const key = `${m}-${k}`;
                   if (!uniqueMap.has(key)) {

@@ -241,3 +241,60 @@ export function validateStudentData(
 
   return { valid: true };
 }
+
+/**
+ * Checks if a subject (mata_pelajaran) is an invalid, fictitious, or non-existent subject
+ * such as "teknik informasi" or "teknologi informasi".
+ * In Kurikulum Merdeka / SMA Nizamudin, only official valid subjects like "Informatika" are allowed.
+ */
+export function isInvalidMapel(mapel?: string | null): boolean {
+  if (!mapel) return false;
+  const clean = mapel.toLowerCase().trim().replace(/[-_.]+/g, ' ');
+  return (
+    /\bteknik\s+informasi\b/i.test(clean) ||
+    /\bteknologi\s+informasi\b/i.test(clean) ||
+    clean === 'teknik informasi' ||
+    clean === 'teknologi informasi'
+  );
+}
+
+/**
+ * Normalizes or standardizes schedule subjects:
+ * If an invalid variant like "teknik informasi" or "teknologi informasi" is passed,
+ * normalizes it to the official valid subject "Informatika".
+ */
+export function normalizeScheduleMapel(mapel?: string | null): string {
+  if (!mapel) return '';
+  const trimmed = mapel.trim();
+  if (isInvalidMapel(trimmed)) {
+    return 'Informatika';
+  }
+  return trimmed;
+}
+
+/**
+ * Validates schedule data to ensure invalid subjects like "teknik informasi" cannot be entered.
+ */
+export function validateScheduleData(
+  mataPelajaran?: string | null,
+  namaGuru?: string | null,
+  kelas?: string | null
+): ValidationResult {
+  const cleanMapel = (mataPelajaran || '').trim();
+  if (!cleanMapel) {
+    return { valid: false, message: 'Mata pelajaran wajib diisi!' };
+  }
+  if (isInvalidMapel(cleanMapel)) {
+    return {
+      valid: false,
+      message: `Mata pelajaran "${cleanMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`
+    };
+  }
+  if (isDummyOrTestString(cleanMapel)) {
+    return {
+      valid: false,
+      message: `Mata pelajaran "${cleanMapel}" terdeteksi sebagai data percobaan/dummy.`
+    };
+  }
+  return { valid: true };
+}

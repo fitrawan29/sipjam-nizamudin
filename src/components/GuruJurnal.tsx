@@ -12,6 +12,7 @@ import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft, getJurnalDraftKey }
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RekapJurnalView from '@/components/RekapJurnalView';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface GuruJurnalProps {
   user: any;
@@ -391,6 +392,7 @@ export default function GuruJurnal({
               const uniqueMapels = new Map();
               jadwalData.forEach((j: any) => {
                 const mapel = j.mata_pelajaran || '-';
+                if (isInvalidMapel(mapel)) return;
                 const kls = j.kelas || '-';
                 const key = `${mapel}-${kls}`;
                 if (!uniqueMapels.has(key)) {

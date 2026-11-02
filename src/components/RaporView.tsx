@@ -8,6 +8,7 @@ import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { generateKurikulumMerdekaDeskripsi } from './GradebookView';
 import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/database';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 interface RaporViewProps {
   user: any;
@@ -552,6 +553,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           const { data: jpData } = await jpQuery;
           if (jpData && jpData.length > 0) {
             mapels = Array.from(new Set(jpData.map((j: any) => j.mata_pelajaran).filter(Boolean))) as string[];
+            mapels = mapels.filter((m: string) => !isInvalidMapel(m));
           }
         } catch {
           // ignore

@@ -10,6 +10,7 @@ import {
   isJurnalMatchJadwal, 
   isGuruDiPiket 
 } from '@/lib/workflow';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { supabase } from '@/lib/supabaseClient';
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
@@ -127,7 +128,7 @@ export default function HomeViewAdmin({
       const teachers = teachersRes.data || [];
       const rawPresensi = presensiRes.data || [];
       const jurnalList = jurnalRes.data || [];
-      const jadwalList = jadwalRes.data || [];
+      const jadwalList = (jadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
       const assignedPiketTeachers = penugasanPiketRes.data || [];

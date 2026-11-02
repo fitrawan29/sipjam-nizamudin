@@ -16,7 +16,10 @@ import {
   validateStudentData,
   normalizeName,
   isForbiddenName,
-  isDummyOrTestString
+  isDummyOrTestString,
+  isInvalidMapel,
+  normalizeScheduleMapel,
+  validateScheduleData
 } from '@/lib/dataIntegrityGuard';
 import {
   parseNameAndTitles,
@@ -126,8 +129,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         setErrorMsg(errText);
         setDebugInfo(errText);
       } else if (data && data.length > 0) {
-        setDataList(data);
-        setDebugInfo(`Berhasil memuat ${data.length} baris dari "${tabObj.table}"`);
+        const cleanData = tabObj.table === 'jadwal_pelajaran'
+          ? data.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
+          : data;
+        setDataList(cleanData);
+        setDebugInfo(`Berhasil memuat ${cleanData.length} baris dari "${tabObj.table}"`);
       } else if (data && data.length === 0) {
         setDebugInfo(`Tabel "${tabObj.table}" mengembalikan 0 baris (kosong).`);
       } else {
@@ -167,9 +173,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               const fallbackData = await res.json();
               console.log(`[AdminDataView] Fallback success: ${fallbackData.length} rows`);
               if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-                setDataList(fallbackData);
+                const cleanFallback = tabObj.table === 'jadwal_pelajaran'
+                  ? fallbackData.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
+                  : fallbackData;
+                setDataList(cleanFallback);
                 setErrorMsg('');
-                setDebugInfo(`Fallback berhasil: ${fallbackData.length} baris dari "${tabObj.table}"`);
+                setDebugInfo(`Fallback berhasil: ${cleanFallback.length} baris dari "${tabObj.table}"`);
               }
             } else {
               console.error('[AdminDataView] Fallback failed:', res.status, res.statusText);
@@ -371,6 +380,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                 throw new Error(`Baris ${i}: Duplikat NIP guru "${row.nip}" dalam file CSV.`);
               }
               seenTeacherNips.add(lowerNip);
+            }
+          }
+          if (tabObj.table === 'jadwal_pelajaran') {
+            const rawMapel = row.mata_pelajaran || row.mapel;
+            if (rawMapel) {
+              if (isInvalidMapel(rawMapel)) {
+                row.mata_pelajaran = normalizeScheduleMapel(rawMapel);
+                if (row.mapel) row.mapel = row.mata_pelajaran;
+              }
             }
           }
         } else if (tabObj.table === 'data_siswa') {
@@ -796,6 +814,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
           if (!nama_guru || !mata_pelajaran || !kelas) {
             Swal.showValidationMessage('Nama Guru, Mapel, dan Kelas wajib diisi!');
+            return null;
+          }
+
+          const mapelCheck = validateScheduleData(mata_pelajaran, nama_guru, kelas);
+          if (!mapelCheck.valid) {
+            Swal.showValidationMessage(mapelCheck.message || 'Mata pelajaran tidak valid!');
             return null;
           }
 
@@ -1603,6 +1627,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
           if (!hari || !kelas || !mapel || !nama_guru) {
             Swal.showValidationMessage('Hari, Kelas, Mapel, dan Nama Guru wajib diisi!');
+            return null;
+          }
+
+          const mapelCheck = validateScheduleData(mapel, nama_guru, kelas);
+          if (!mapelCheck.valid) {
+            Swal.showValidationMessage(mapelCheck.message || 'Mata pelajaran tidak valid!');
             return null;
           }
 

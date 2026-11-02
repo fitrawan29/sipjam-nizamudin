@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { getWitaDateStr, getWitaDayName } from './wita';
+import { isInvalidMapel } from './dataIntegrityGuard';
 
 export type GuruDailyState = {
   tanggal: string;
@@ -103,9 +104,13 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
     .eq('hari', hari)
     .order('kelas', { ascending: true });
   if (sekolahId) query = query.eq('sekolah_id', sekolahId);
-  const { data: allJadwal } = await query;
+  const { data: allJadwalRaw } = await query;
   
-  if (!allJadwal || allJadwal.length === 0) return [];
+  if (!allJadwalRaw || allJadwalRaw.length === 0) return [];
+
+  // Filter out any invalid / non-existent subjects (such as "teknik informasi" or "teknologi informasi")
+  const allJadwal = allJadwalRaw.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+  if (allJadwal.length === 0) return [];
 
   const uuidMatches = userId ? allJadwal.filter((j: any) => j.user_id === userId) : [];
 
@@ -170,6 +175,9 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   const jKelas = (jurnal.kelas || '').toLowerCase().trim();
   const jdMapel = (jadwal.mata_pelajaran || jadwal.mapel || '').toLowerCase().trim();
   const jdKelas = (jadwal.kelas || '').toLowerCase().trim();
+
+  // Meniadakan perbandingan jika memuat mata pelajaran yang tidak ada / keliru (seperti teknik informasi)
+  if (isInvalidMapel(jMapel) || isInvalidMapel(jdMapel)) return false;
   
   // Kelas harus cocok dan tidak boleh kosong
   if (!jKelas || !jdKelas) return false;
