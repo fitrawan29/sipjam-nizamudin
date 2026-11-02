@@ -125,20 +125,62 @@ export function formatDateWita(dateStr: string): string {
 /**
  * Normalizes and formats attendance time string into HH:mm (WITA).
  * Returns null if raw time is missing, '-', or an auto/system placeholder.
- * Handles diverse inputs like "06:30:15", "6:30", "2026-11-03 07:15:00", etc.
+ * Handles diverse inputs like "06:30:15", "6:30", "06.45", "02:30 PM", "2026-11-03 07:15:00", etc.
  */
 export function formatPresensiTime(rawTime: string | null | undefined): string | null {
   if (!rawTime) return null;
   const str = String(rawTime).trim();
-  if (!str || str === '-' || str.toLowerCase().includes('auto') || str.toLowerCase().includes('sistem')) {
+  if (
+    !str ||
+    str === '-' ||
+    str.toLowerCase().includes('auto') ||
+    str.toLowerCase().includes('sistem') ||
+    str.toLowerCase().includes('null') ||
+    str.toLowerCase().includes('undefined')
+  ) {
     return null;
   }
-  const match = str.match(/(?:^|\s|T)?(\d{1,2}):(\d{2})/);
-  if (match) {
-    const hh = match[1].padStart(2, '0');
-    const mm = match[2];
-    return `${hh}:${mm}`;
+
+  // Handle ISO datetime strings with timezone offset or UTC 'Z' (e.g. "2026-11-03T06:15:00.000Z")
+  if (str.includes('T') && (str.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(str))) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return getWitaTimeStr(d);
+    }
   }
+
+  // Check for 12-hour AM / PM indicators
+  const ampmMatch = str.match(/\b(am|pm)\b/i);
+  const isPM = ampmMatch ? ampmMatch[1].toLowerCase() === 'pm' : false;
+  const isAM = ampmMatch ? ampmMatch[1].toLowerCase() === 'am' : false;
+
+  // Match time with colon or dot separator, e.g. "06:45", "6:45", "06.45", "14:05:30", "2026-11-03 07:15:00"
+  const match = str.match(/(?:^|\s|T)?(\d{1,2})[:.](\d{2})/);
+  if (match) {
+    let hh = parseInt(match[1], 10);
+    const mm = parseInt(match[2], 10);
+
+    if (isNaN(hh) || isNaN(mm) || mm < 0 || mm > 59) {
+      return null;
+    }
+
+    if (isPM) {
+      if (hh < 12) hh += 12;
+      else if (hh > 12) return null;
+    } else if (isAM) {
+      if (hh === 12) hh = 0;
+      else if (hh > 12) return null;
+    }
+
+    if (hh < 0 || hh > 23) {
+      return null;
+    }
+
+    const hhStr = String(hh).padStart(2, '0');
+    const mmStr = String(mm).padStart(2, '0');
+    return `${hhStr}:${mmStr}`;
+  }
+
   return null;
 }
 

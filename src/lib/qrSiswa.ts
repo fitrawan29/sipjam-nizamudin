@@ -4,6 +4,7 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
+import { formatPresensiTime } from './wita';
 
 export interface QrOptions {
   size?: number;
@@ -482,7 +483,7 @@ export async function recordPresensiSiswa(
       .maybeSingle();
 
     if (existing) {
-      const jamDisplay = existing.jam ? existing.jam.slice(0, 5) : jam.slice(0, 5);
+      const jamDisplay = formatPresensiTime(existing.jam) || formatPresensiTime(jam) || (existing.jam ? existing.jam.slice(0, 5) : jam.slice(0, 5));
       return {
         success: false,
         alreadyExists: true,
@@ -528,11 +529,12 @@ export async function recordPresensiSiswa(
       };
     }
 
+    const jamSuccessDisplay = formatPresensiTime(jam) || jam.slice(0, 5);
     return {
       success: true,
       alreadyExists: false,
       data: inserted,
-      message: `Presensi ${status} berhasil: ${siswa.nama_siswa} (${siswa.kelas}) - pk. ${jam.slice(0, 5)}`
+      message: `Presensi ${status} berhasil: ${siswa.nama_siswa} (${siswa.kelas}) - pk. ${jamSuccessDisplay}`
     };
   } catch (err: any) {
     return {

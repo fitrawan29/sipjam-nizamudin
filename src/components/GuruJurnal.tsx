@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
-import { getWitaDateStr, getWitaTimestamp } from '@/lib/wita';
+import { getWitaDateStr, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft, getJurnalDraftKey } from '@/utils/draftStorage';
@@ -658,8 +658,7 @@ export default function GuruJurnal({
         const pMap: Record<string, { jam: string }> = {};
         if (pData) {
           pData.forEach((p: any) => {
-            const rawJam = p.jam ? String(p.jam).trim() : '';
-            const jamStr = rawJam.length > 5 ? rawJam.slice(0, 5) : rawJam;
+            const jamStr = formatPresensiTime(p.jam) || (p.jam ? String(p.jam).slice(0, 5) : '');
             if (p.nisn) pMap[p.nisn] = { jam: jamStr };
             if (p.siswa_id) pMap[p.siswa_id] = { jam: jamStr };
           });

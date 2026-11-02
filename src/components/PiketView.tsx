@@ -2775,7 +2775,7 @@ export default function PiketView({ user }: { user: any }) {
                                       <div className="inline-flex items-center gap-1.5">
                                         <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
                                           <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                                          <span>Datang {formatPresensiTime(datangRecord.jam) || (datangRecord.jam && datangRecord.jam !== '-' ? datangRecord.jam.slice(0, 5) : '-')}</span>
+                                          <span>Datang {formatPresensiTime(datangRecord.jam) || '-'}</span>
                                         </span>
                                         <button
                                           type="button"
@@ -2810,7 +2810,7 @@ export default function PiketView({ user }: { user: any }) {
                                       <div className="inline-flex items-center gap-1.5">
                                         <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
                                           <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
-                                          <span>Pulang {formatPresensiTime(pulangRecord.jam) || (pulangRecord.jam && pulangRecord.jam !== '-' ? pulangRecord.jam.slice(0, 5) : '-')}</span>
+                                          <span>Pulang {formatPresensiTime(pulangRecord.jam) || '-'}</span>
                                         </span>
                                         <button
                                           type="button"
@@ -3268,7 +3268,7 @@ export default function PiketView({ user }: { user: any }) {
                           </div>
                         </div>
                         <div className="text-[11px] font-mono shrink-0 font-bold">
-                          {lastScanResult.jam ? `pk. ${lastScanResult.jam.slice(0, 5)}` : ''}
+                          {formatPresensiTime(lastScanResult.jam) ? `pk. ${formatPresensiTime(lastScanResult.jam)}` : (lastScanResult.jam ? `pk. ${lastScanResult.jam}` : '')}
                         </div>
                       </div>
                     )}
@@ -3389,7 +3389,7 @@ export default function PiketView({ user }: { user: any }) {
                                     <div className="inline-flex items-center gap-1.5">
                                       <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
                                         <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                                        <span>Datang {formatPresensiTime(datangRecord.jam) || (datangRecord.jam && datangRecord.jam !== '-' ? datangRecord.jam.slice(0, 5) : '-')}</span>
+                                        <span>Datang {formatPresensiTime(datangRecord.jam) || '-'}</span>
                                       </span>
                                       <button
                                         type="button"
@@ -3423,7 +3423,7 @@ export default function PiketView({ user }: { user: any }) {
                                     <div className="inline-flex items-center gap-1.5">
                                       <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
                                         <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
-                                        <span>Pulang {formatPresensiTime(pulangRecord.jam) || (pulangRecord.jam && pulangRecord.jam !== '-' ? pulangRecord.jam.slice(0, 5) : '-')}</span>
+                                        <span>Pulang {formatPresensiTime(pulangRecord.jam) || '-'}</span>
                                       </span>
                                       <button
                                         type="button"

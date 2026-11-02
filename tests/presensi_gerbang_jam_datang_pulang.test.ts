@@ -126,6 +126,19 @@ check('R2.7 - PiketView WhatsApp notification safely passes valid timeStr or und
   );
 });
 
+check('R2.8 - PiketView manual roster eliminates naive slice fallback that causes "Datang Auto " or "Pulang Auto "', () => {
+  assert(!piketSrc.includes('datangRecord.jam.slice(0, 5)'), 'PiketView must not use naive slice on datangRecord');
+  assert(!piketSrc.includes('pulangRecord.jam.slice(0, 5)'), 'PiketView must not use naive slice on pulangRecord');
+});
+
+check('R2.9 - Cross-component gate presence formatting in GuruJurnal and qrSiswa', () => {
+  const guruJurnalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/GuruJurnal.tsx'), 'utf8');
+  const qrSiswaSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/qrSiswa.ts'), 'utf8');
+
+  assert(guruJurnalSrc.includes('formatPresensiTime(p.jam)'), 'GuruJurnal must use formatPresensiTime for gate presence');
+  assert(qrSiswaSrc.includes("import { formatPresensiTime } from './wita'"), 'qrSiswa must import formatPresensiTime');
+});
+
 // ---------------------------------------------------------------------------
 // 3. Central formatPresensiTime Unit Testing
 // ---------------------------------------------------------------------------
@@ -143,12 +156,37 @@ check('R1 & R2 Helper - formatPresensiTime handles diverse timestamp and datetim
   assert.strictEqual(formatPresensiTime('7:05:00'), '07:05');
   assert.strictEqual(formatPresensiTime('6:30'), '06:30');
 
+  // Indonesian dot format (e.g. 06.45, 14.05.30, 07.15 WITA)
+  assert.strictEqual(formatPresensiTime('06.45'), '06:45');
+  assert.strictEqual(formatPresensiTime('06.45.30'), '06:45');
+  assert.strictEqual(formatPresensiTime('7.15'), '07:15');
+  assert.strictEqual(formatPresensiTime('06.45 WITA'), '06:45');
+  assert.strictEqual(formatPresensiTime('13.30 WITA'), '13:30');
+
+  // 12-hour AM / PM formats (hardware kiosk / peripheral inputs)
+  assert.strictEqual(formatPresensiTime('02:30 PM'), '14:30');
+  assert.strictEqual(formatPresensiTime('2:30 pm'), '14:30');
+  assert.strictEqual(formatPresensiTime('12:15 PM'), '12:15');
+  assert.strictEqual(formatPresensiTime('12:30 AM'), '00:30');
+  assert.strictEqual(formatPresensiTime('07:15 AM'), '07:15');
+  assert.strictEqual(formatPresensiTime('7:00 am'), '07:00');
+
   // Datetime strings (ISO and SQL formats)
   assert.strictEqual(formatPresensiTime('2026-11-03 07:15:00'), '07:15');
   assert.strictEqual(formatPresensiTime('2026-11-03T14:30:00+08:00'), '14:30');
 
+  // UTC ISO timestamp with 'Z' correctly converts to WITA (UTC+8)
+  assert.strictEqual(formatPresensiTime('2026-11-03T06:15:00Z'), '14:15');
+
   // Whitespace resilience
   assert.strictEqual(formatPresensiTime('  08:12:00  '), '08:12');
+
+  // Boundaries and invalid hours / minutes return null
+  assert.strictEqual(formatPresensiTime('99:99'), null);
+  assert.strictEqual(formatPresensiTime('25:00'), null);
+  assert.strictEqual(formatPresensiTime('12:75'), null);
+  assert.strictEqual(formatPresensiTime('14:00 PM'), null);
+  assert.strictEqual(formatPresensiTime('random text'), null);
 
   // Invalid, empty, or placeholder inputs return null
   assert.strictEqual(formatPresensiTime(''), null);
