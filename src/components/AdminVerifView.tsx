@@ -13,7 +13,7 @@ import {
 } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { isGuruDiPiket } from '@/lib/workflow';
-import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
+import { isInvalidMapel, normalizeScheduleMapel } from '@/lib/dataIntegrityGuard';
 import DokumenView from './DokumenView';
 
 export interface AdminVerifViewProps {
@@ -508,7 +508,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
           id: `unsub-jurnal-${t.id}`,
           nama_guru: t.nama_guru,
           nip: t.nip || '-',
-          mata_pelajaran: isInvalidMapel(t.mata_pelajaran) ? 'Informatika' : (t.mata_pelajaran || 'Guru'),
+          mata_pelajaran: isInvalidMapel(t.mata_pelajaran) ? normalizeScheduleMapel(t.mata_pelajaran) : (t.mata_pelajaran || 'Guru'),
           scheduledInfo: scheduledClasses.length > 0 
             ? `${scheduledClasses.length} Kelas Terjadwal (${effectiveDayName})` 
             : `Bebas KBM (${effectiveDayName})`,

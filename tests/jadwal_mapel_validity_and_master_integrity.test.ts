@@ -12,6 +12,7 @@ import {
   normalizeScheduleMapel,
   validateScheduleData,
   validateMapelData,
+  validateTeacherData,
 } from '../src/lib/dataIntegrityGuard';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -94,8 +95,16 @@ async function runAllTests() {
     assert.strictEqual(isInvalidMapel('teknik dan informasi'), true, 'teknik dan informasi must be flagged invalid');
     assert.strictEqual(isInvalidMapel('tik'), true, 'tik must be flagged invalid');
     assert.strictEqual(isInvalidMapel('TIK'), true, 'TIK must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('t.i.k.'), true, 't.i.k. must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('T.I.K.'), true, 'T.I.K. must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('TIK.'), true, 'TIK. must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('X Merdeka_TIK'), true, 'X Merdeka_TIK must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('XI Merdeka_t.i.k.'), true, 'XI Merdeka_t.i.k. must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('X Merdeka_TIK.'), true, 'X Merdeka_TIK. must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('X-1_Teknik Informasi'), true, 'X-1_Teknik Informasi must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('X.1_Teknik Informasi'), true, 'X.1_Teknik Informasi must be flagged invalid');
     assert.strictEqual(isInvalidMapel('teknologi informasi dan komunikasi'), true, 'legacy TIK fullname must be flagged invalid');
-    pass('isInvalidMapel correctly flags all variations and slang of "teknik informasi", "teknologi informasi", "teknik informatika", "tekinfo", and legacy "tik"');
+    pass('isInvalidMapel correctly flags all variations, slang, punctuation, class-prefixes, and legacy TIK');
   } catch (e) {
     fail('isInvalidMapel variations check failed', e);
   }
@@ -122,10 +131,15 @@ async function runAllTests() {
     assert.strictEqual(normalizeScheduleMapel('teknologi informasi'), 'Informatika');
     assert.strictEqual(normalizeScheduleMapel('X Merdeka_Teknik Informasi'), 'X Merdeka_Informatika');
     assert.strictEqual(normalizeScheduleMapel('XI Merdeka_Teknologi Informasi'), 'XI Merdeka_Informatika');
+    assert.strictEqual(normalizeScheduleMapel('X-1_Teknik Informasi'), 'X-1_Informatika');
     assert.strictEqual(normalizeScheduleMapel('TIK'), 'Informatika');
+    assert.strictEqual(normalizeScheduleMapel('t.i.k.'), 'Informatika');
+    assert.strictEqual(normalizeScheduleMapel('X Merdeka_TIK'), 'X Merdeka_Informatika');
+    assert.strictEqual(normalizeScheduleMapel('XI Merdeka_t.i.k.'), 'XI Merdeka_Informatika');
+    assert.strictEqual(normalizeScheduleMapel('X Merdeka_MTK, X Merdeka_Teknik Informasi'), 'X Merdeka_MTK, X Merdeka_Informatika');
     assert.strictEqual(normalizeScheduleMapel('Informatika'), 'Informatika');
     assert.strictEqual(normalizeScheduleMapel('MTK'), 'MTK');
-    pass('normalizeScheduleMapel standardizes invalid subjects and legacy TIK to "Informatika" while preserving class prefixes and valid subjects');
+    pass('normalizeScheduleMapel standardizes invalid subjects, legacy TIK, class-prefixes, and comma-separated lists to "Informatika"');
   } catch (e) {
     fail('normalizeScheduleMapel check failed', e);
   }
@@ -138,6 +152,9 @@ async function runAllTests() {
 
     const invalidCheck2 = validateScheduleData('Teknologi Informasi', 'Ade', 'X Merdeka');
     assert.strictEqual(invalidCheck2.valid, false, 'Rejects Teknologi Informasi');
+
+    const invalidCheck3 = validateScheduleData('X Merdeka_TIK', 'Ade', 'X Merdeka');
+    assert.strictEqual(invalidCheck3.valid, false, 'Rejects X Merdeka_TIK');
 
     const emptyCheck = validateScheduleData('', 'Ade', 'X Merdeka');
     assert.strictEqual(emptyCheck.valid, false, 'Rejects empty subject');
@@ -160,6 +177,9 @@ async function runAllTests() {
     const invalidMapel2 = validateMapelData('TIK');
     assert.strictEqual(invalidMapel2.valid, false, 'Rejects legacy TIK in data_mapel');
 
+    const invalidMapel3 = validateMapelData('X Merdeka_TIK');
+    assert.strictEqual(invalidMapel3.valid, false, 'Rejects X Merdeka_TIK in data_mapel');
+
     const dummyMapel = validateMapelData('Test Mapel Dummy');
     assert.strictEqual(dummyMapel.valid, false, 'Rejects dummy subject in data_mapel');
 
@@ -181,6 +201,24 @@ async function runAllTests() {
     pass('validateMapelData protects data_mapel master data from invalid, dummy, and duplicate records');
   } catch (e) {
     fail('validateMapelData check failed', e);
+  }
+
+  // 1.6 validateTeacherData tests (data_guru subject protection)
+  try {
+    const invalidGuruMapel1 = validateTeacherData('Ade', 'Ade Fitrawan Ibrahim', [], undefined, 'Teknik Informasi');
+    assert.strictEqual(invalidGuruMapel1.valid, false, 'Rejects Teknik Informasi in data_guru');
+
+    const invalidGuruMapel2 = validateTeacherData('Ade', 'Ade Fitrawan Ibrahim', [], undefined, 'X Merdeka_TIK');
+    assert.strictEqual(invalidGuruMapel2.valid, false, 'Rejects X Merdeka_TIK in data_guru');
+
+    const dummyGuruMapel = validateTeacherData('Ade', 'Ade Fitrawan Ibrahim', [], undefined, 'dummy mapel');
+    assert.strictEqual(dummyGuruMapel.valid, false, 'Rejects dummy subject in data_guru');
+
+    const validGuruMapel = validateTeacherData('Ade', 'Ade Fitrawan Ibrahim', [], undefined, 'Informatika');
+    assert.strictEqual(validGuruMapel.valid, true, 'Accepts valid Informatika in data_guru');
+    pass('validateTeacherData protects data_guru master data from invalid and dummy subjects');
+  } catch (e) {
+    fail('validateTeacherData check failed', e);
   }
 
   // --------------------------------------------------------------------------

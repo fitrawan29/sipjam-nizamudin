@@ -77,7 +77,8 @@ export function validateTeacherData(
   nip: string,
   namaGuru: string,
   existingTeachers: Array<{ id?: string; nip?: string; nama_guru?: string }>,
-  currentId?: string
+  currentId?: string,
+  mataPelajaran?: string
 ): ValidationResult {
   const cleanNama = normalizeName(namaGuru);
   const cleanNip = (nip || '').trim();
@@ -104,7 +105,24 @@ export function validateTeacherData(
     };
   }
 
-  // 3. Uniqueness Check: Name
+  // 3. Subject validation (if provided)
+  if (mataPelajaran) {
+    const rawMapel = mataPelajaran.trim();
+    if (isDummyOrTestString(rawMapel)) {
+      return {
+        valid: false,
+        message: `Mata pelajaran guru terdeteksi sebagai data percobaan/dummy ("${rawMapel}").`
+      };
+    }
+    if (isInvalidMapel(rawMapel)) {
+      return {
+        valid: false,
+        message: `Mata pelajaran "${rawMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`
+      };
+    }
+  }
+
+  // 4. Uniqueness Check: Name
   const normCleanNama = cleanNama.toLowerCase();
   const duplicateName = existingTeachers.find(
     t => t.id !== currentId && normalizeName(t.nama_guru).toLowerCase() === normCleanNama
@@ -116,7 +134,7 @@ export function validateTeacherData(
     };
   }
 
-  // 4. Uniqueness Check: NIP (if provided and not '-')
+  // 5. Uniqueness Check: NIP (if provided and not '-')
   if (cleanNip && cleanNip !== '-') {
     const normCleanNip = cleanNip.toLowerCase();
     const duplicateNip = existingTeachers.find(
@@ -249,7 +267,14 @@ export function validateStudentData(
  */
 export function isInvalidMapel(mapel?: string | null): boolean {
   if (!mapel) return false;
-  const clean = mapel.toLowerCase().trim().replace(/[-_./]+/g, ' ');
+  const clean = mapel
+    .toLowerCase()
+    .replace(/[-_./]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!clean) return false;
+
   return (
     /\bteknik\s+informasi\b/i.test(clean) ||
     /\bteknologi\s+informasi\b/i.test(clean) ||
@@ -257,12 +282,7 @@ export function isInvalidMapel(mapel?: string | null): boolean {
     /\btek\s*info\b/i.test(clean) ||
     /\bteknik\s+dan\s+informasi\b/i.test(clean) ||
     /\bteknologi\s+informasi\s+dan\s+komunikasi\b/i.test(clean) ||
-    clean === 'teknik informasi' ||
-    clean === 'teknologi informasi' ||
-    clean === 'teknik informatika' ||
-    clean === 'tekinfo' ||
-    clean === 'tik' ||
-    clean === 't i k'
+    /\b(tik|t\s+i\s+k)\b/i.test(clean)
   );
 }
 
@@ -271,13 +291,20 @@ export function isInvalidMapel(mapel?: string | null): boolean {
  * If an invalid variant like "teknik informasi" or "teknologi informasi" is passed,
  * normalizes it to the official valid subject "Informatika".
  * Preserves class prefixes if present (e.g. "X Merdeka_Teknik Informasi" -> "X Merdeka_Informatika").
+ * Handles comma-separated lists of subjects gracefully.
  */
 export function normalizeScheduleMapel(mapel?: string | null): string {
   if (!mapel) return '';
   const trimmed = mapel.trim();
+  if (trimmed.includes(',')) {
+    return trimmed
+      .split(',')
+      .map(part => normalizeScheduleMapel(part.trim()))
+      .join(', ');
+  }
   if (isInvalidMapel(trimmed)) {
-    if (/^[A-Za-z0-9\s]+_/.test(trimmed)) {
-      const prefix = trimmed.split('_')[0];
+    if (trimmed.includes('_')) {
+      const prefix = trimmed.slice(0, trimmed.lastIndexOf('_'));
       return `${prefix}_Informatika`;
     }
     return 'Informatika';

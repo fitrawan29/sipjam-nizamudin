@@ -134,6 +134,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           ? data.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
           : tabObj.table === 'data_mapel'
           ? data.filter((row: any) => !isInvalidMapel(row.nama_mata_pelajaran || row.nama_mapel))
+          : tabObj.table === 'data_guru'
+          ? data.map((row: any) => row.mata_pelajaran && isInvalidMapel(row.mata_pelajaran)
+              ? { ...row, mata_pelajaran: normalizeScheduleMapel(row.mata_pelajaran) }
+              : row)
           : data;
         setDataList(cleanData);
         setDebugInfo(`Berhasil memuat ${cleanData.length} baris dari "${tabObj.table}"`);
@@ -180,6 +184,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   ? fallbackData.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
                   : tabObj.table === 'data_mapel'
                   ? fallbackData.filter((row: any) => !isInvalidMapel(row.nama_mata_pelajaran || row.nama_mapel))
+                  : tabObj.table === 'data_guru'
+                  ? fallbackData.map((row: any) => row.mata_pelajaran && isInvalidMapel(row.mata_pelajaran)
+                      ? { ...row, mata_pelajaran: normalizeScheduleMapel(row.mata_pelajaran) }
+                      : row)
                   : fallbackData;
                 setDataList(cleanFallback);
                 setErrorMsg('');
@@ -385,6 +393,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                 throw new Error(`Baris ${i}: Duplikat NIP guru "${row.nip}" dalam file CSV.`);
               }
               seenTeacherNips.add(lowerNip);
+
+              if (row.mata_pelajaran) {
+                if (isDummyOrTestString(row.mata_pelajaran)) {
+                  throw new Error(`Baris ${i}: Terdeteksi mata pelajaran guru dummy/percobaan ("${row.mata_pelajaran}").`);
+                }
+                if (isInvalidMapel(row.mata_pelajaran)) {
+                  row.mata_pelajaran = normalizeScheduleMapel(row.mata_pelajaran);
+                }
+              }
             }
           }
           if (tabObj.table === 'jadwal_pelajaran') {
@@ -649,7 +666,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             return null;
           }
 
-          const teacherValidation = validateTeacherData(nip, nama_guru, dataList);
+          const teacherValidation = validateTeacherData(nip, nama_guru, dataList, undefined, mata_pelajaran);
           if (!teacherValidation.valid) {
             Swal.showValidationMessage(teacherValidation.message || 'Data guru tidak valid!');
             return null;
@@ -1426,7 +1443,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             return null;
           }
 
-          const teacherValidation = validateTeacherData(nip, nama_guru, dataList, item.id);
+          const teacherValidation = validateTeacherData(nip, nama_guru, dataList, item.id, mata_pelajaran);
           if (!teacherValidation.valid) {
             Swal.showValidationMessage(teacherValidation.message || 'Data guru tidak valid!');
             return null;

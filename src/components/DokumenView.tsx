@@ -8,7 +8,7 @@ import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
 import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from '@/types/database';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
+import { isInvalidMapel, normalizeScheduleMapel } from '@/lib/dataIntegrityGuard';
 
 export const KURIKULUM_DOCS = [
   { id: 'CP', code: 'CP', name: 'Analisis Capaian Pembelajaran', short: 'CP' },
@@ -434,7 +434,7 @@ export default function DokumenView({ user }: { user: any }) {
     if (list.length === 0) {
       const g = teachersList.find(t => (t.nama_guru || '').trim().toLowerCase() === (user?.nama || '').trim().toLowerCase());
       const rawFallback = g?.mata_pelajaran || user?.mata_pelajaran || 'Mata Pelajaran Umum';
-      const fallbackMapel = isInvalidMapel(rawFallback) ? 'Informatika' : rawFallback;
+      const fallbackMapel = isInvalidMapel(rawFallback) ? normalizeScheduleMapel(rawFallback) : rawFallback;
       list.push({ nama_mapel: fallbackMapel, kelas: '' });
     }
 
