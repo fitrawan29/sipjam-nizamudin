@@ -1,48 +1,58 @@
-# BRIEFING — 2026-10-11T00:49:00Z
+# BRIEFING — 2026-11-02T12:35:00Z
 
 ## Mission
-Investigate database schema, migrations, TypeScript types, and Admin settings for CP-TP hierarchy, asesmen keterangan, and bobot nilai mapel.
+Investigate how sistem blok rules are evaluated to mask schedules or alter journal workflows (JadwalView, GuruJurnal, helper libs, target types, time ranges, and block activity journals).
 
 ## 🔒 My Identity
-- Archetype: explorer
-- Roles: investigator, synthesizer
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2
-- Original parent: 1f15a155-9441-412f-8adc-6ac5519d6f4d
-- Milestone: survey
+- Archetype: teamwork_explorer
+- Roles: explorer, analyst, synthesizer
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\
+- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Milestone: explorer_survey_2
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement
-- Ponytail principle: minimal schema diff, minimal bloat, backward compatibility
-- Focus on Database Schema, Migrations, TypeScript Types, and Admin Settings
+- Strictly read-only on project source/test code
+- Deliver thorough analysis.md and handoff.md in working directory
+- Notify orchestrator with send_message upon completion
 
 ## Current Parent
-- Conversation ID: 1f15a155-9441-412f-8adc-6ac5519d6f4d
-- Updated: 2026-10-11T00:49:00Z
+- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Updated: 2026-11-02T12:28:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `supabase/migrations/` (examined existing migrations: `20260911_guru_mapel_relational.sql`, `20260912_multi_tenant_sekolah_rls.sql`, `20260917_comprehensive_features.sql`, `20261008_m3_piket_form_lock.sql`, etc.)
-  - `migrations/add_cp_and_gradebook_v2.sql` (inspected untracked draft migration)
-  - `src/types/database.ts` (inspected table definitions: `capaian_pembelajaran`, `tujuan_pembelajaran`, `asesmen_kolom`, `pengaturan`, and exported type aliases)
-  - `src/components/GradebookView.tsx` (inspected bobot state, modal, save handler, and identified syntax error at lines 3056-3058)
-  - `src/components/AdminConfigView.tsx` (inspected admin settings structure)
-  - `tests/` and `npm test` (verified existing test suite passes)
+  - `ORIGINAL_REQUEST.md`
+  - `supabase/migrations/20260927_sistem_blok_schema.sql`
+  - `src/types/database.ts`
+  - `src/lib/workflow.ts`
+  - `src/components/GuruJurnal.tsx`
+  - `src/components/HomeViewGuru.tsx`
+  - `src/components/HomeViewAdmin.tsx`
+  - `src/components/SistemBlokView.tsx`
+  - `src/lib/attendanceAlpa.ts`
+  - `src/app/api/push/send-reminders/route.ts`
+  - `src/components/TeacherReminderManager.tsx`
+  - `src/lib/warningSystem.ts`
+  - `tests/sistem_blok_verification.test.ts`
 - **Key findings**:
-  1. `capaian_pembelajaran` table design with RLS, indexes, and full multi-tenant isolation.
-  2. `tujuan_pembelajaran.cp_id` foreign key must be NULLABLE (`UUID REFERENCES public.capaian_pembelajaran(id) ON DELETE SET NULL`) for full backward-compatibility with existing records.
-  3. `asesmen_kolom.keterangan` is nullable TEXT. Added partial unique index `uq_asesmen_tp_diagnostik` on `public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik')` to strictly enforce at the DB layer that each TP has at most 1 Diagnostik assessment.
-  4. `pengaturan.bobot_nilai_mapel` stores JSON string `{ kehadiran, formatif, sumatif }`. Provided idempotent seed migration and upsert recommendation.
-  5. Admin weight modal in GradebookView enforces strict 100% total sum validation.
-  6. Discovered duplicate closing tag bug at lines 3056-3058 of `GradebookView.tsx` that breaks `tsc --noEmit`.
-- **Unexplored areas**: None regarding Database, Migrations, Types, or Admin Settings.
+  - `JadwalView.tsx` does not exist; schedules are displayed in `HomeViewGuru.tsx` (lines 803-980), monitored in `HomeViewAdmin.tsx` (lines 89, 380-458), and entered in `GuruJurnal.tsx`.
+  - Current `getActiveSistemBlok()` evaluates only date range (`tanggal_mulai <= today <= tanggal_selesai`) at whole-school level.
+  - Current schedule masking in `HomeViewGuru.tsx` is all-or-nothing: if `dailyState?.isBlok`, the entire schedule list is hidden.
+  - Adding `tipe_target` ('keseluruhan', 'angkatan', 'kelas', 'guru'), `target_id`, `jam_mulai`, and `jam_selesai` allows granular per-schedule evaluation without breaking existing school-wide functionality.
+  - Interval overlap `sStart < bEnd && sEnd > bStart` handles partial-day blocking with full-day default.
+  - When mixed schedules exist, teachers need mode selection in `GuruJurnal.tsx` between regular KBM and block activity, with 1 Jurnal Kegiatan fulfilling blocked sessions for `canPresensiPulang`.
+  - Baseline test suite `tests/sistem_blok_verification.test.ts` has 85 passing tests ready for expansion.
+- **Unexplored areas**: None for survey scope.
 
 ## Key Decisions Made
-- Chose `cp_id` over `capaian_pembelajaran_id` to match existing `tp_id` convention across `asesmen_kolom` and `nilai_siswa`.
-- Standardized migration path to `supabase/migrations/20261011_capaian_pembelajaran_and_gradebook_v2.sql`.
-- Specified `ON DELETE SET NULL` on `cp_id` so deleting a CP does not cascade-delete teachers' TPs.
+- Confirmed absence of standalone `JadwalView.tsx` and mapped schedule rendering to `HomeViewGuru.tsx` and `workflow.ts`.
+- Mapped angkatan matching logic to established Roman/Arabic numeral normalization patterns (as in `NaikKelasModal.tsx`).
+- Prepared complete findings in `analysis.md` and 5-component handoff in `handoff.md`.
 
 ## Artifact Index
-- DISPATCH.md — dispatch message record
-- BRIEFING.md — persistent working memory
-- progress.md — liveness heartbeat
-- handoff.md — self-contained 5-component handoff report
+- DISPATCH.md — Log of received dispatch instructions
+- BRIEFING.md — Persistent context and situational awareness
+- progress.md — Heartbeat and activity log
+- analysis.md — Detailed findings on sistem blok evaluation and schedule masking
+- handoff.md — 5-component handoff report

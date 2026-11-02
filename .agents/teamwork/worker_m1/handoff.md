@@ -1,131 +1,119 @@
-# HANDOFF REPORT: MILESTONE 1 — FOUNDATION & SUB-TAB NORMALIZATION
+# Handoff Report — Milestone 1: Database Schema, Types & Admin Configuration UI
 
-**Worker**: Foundation and Sub-Tab Normalization Worker (`worker_m1`)  
+**Agent**: `worker_m1`  
+**Role**: `teamwork_worker` (implementer, qa, specialist)  
+**Milestone**: Milestone 1 (M1) — Flexible Sistem Blok  
 **Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\`  
-**Milestone**: Milestone 1 (Foundation & Sub-Tab Normalization)  
-**Timestamp**: 2026-10-29T11:58:00Z  
+**Date**: 2026-11-02  
 
 ---
 
-## 1. OBSERVATION
+## 1. Observation
 
-1. **`src/components/ClayTabs.tsx` (NEW, 237 lines):**
-   - Implemented as a reusable tactile claymorphism sub-tabs navigation component.
-   - Conforms strictly to WAI-ARIA 1.2 Tabs design pattern (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-controls`, `aria-disabled`, `disabled`).
-   - Implements roving tabindex (`tabIndex={isActive ? 0 : -1}`).
-   - Implements keyboard navigation helper `getNextTabId(items, currentId, key)` supporting `ArrowRight`, `ArrowDown`, `ArrowLeft`, `ArrowUp`, `Home`, and `End` with circular wrapping and automatic skipping of disabled tabs.
-   - Implements badge rendering across 4 variants (`mint`, `amber`, `rose`, `blue`) with active/inactive high-contrast styling.
-   - Includes FontAwesome icon auto-normalization (`fa-` prefix normalized to `fa-solid fa-...`).
-   - Includes `scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })` for mobile and touch responsiveness.
-   - Includes `no-print` and `custom-scroll` layout hygiene classes.
+1. **Database Migration Requirement**:
+   - Dispatch required creating canonical migration `supabase/migrations/20261102_flexible_sistem_blok.sql` expanding `public.sistem_blok` with:
+     * `tipe_target TEXT NOT NULL DEFAULT 'sekolah' CHECK (tipe_target IN ('sekolah', 'angkatan', 'kelas', 'guru'))`
+     * `target_angkatan TEXT DEFAULT NULL`
+     * `target_kelas TEXT DEFAULT NULL`
+     * `target_guru_id UUID REFERENCES public.data_guru(id) ON DELETE SET NULL DEFAULT NULL`
+     * `target_guru_nama TEXT DEFAULT NULL`
+     * `is_full_day BOOLEAN NOT NULL DEFAULT true`
+     * `jam_mulai TEXT DEFAULT NULL`
+     * `jam_selesai TEXT DEFAULT NULL`
+   - Created `supabase/migrations/20261102_flexible_sistem_blok.sql` containing all required columns, check constraints, backfill queries (`UPDATE public.sistem_blok SET tipe_target = 'sekolah' WHERE tipe_target IS NULL`, `UPDATE public.sistem_blok SET is_full_day = true WHERE is_full_day IS NULL`), performance indexes, and schema cache reload command (`NOTIFY pgrst, 'reload schema'`).
 
-2. **`src/components/clay/index.ts` (10 lines):**
-   - Exported `ClayTabs`, `getNextTabId`, `ClayTabsProps`, `TabItem`, `ClayTabsVariant`, and `ClayTabsSize`.
+2. **TypeScript Database Types**:
+   - In `src/types/database.ts`:
+     * Defined and exported `export type TargetBlokType = 'sekolah' | 'angkatan' | 'kelas' | 'guru';`
+     * Updated `Database["public"]["Tables"]["sistem_blok"]["Row"]` with `tipe_target`, `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`, `is_full_day`, `jam_mulai`, `jam_selesai`.
+     * Updated `Insert` and `Update` shapes with optional variants.
+     * Added `sistem_blok_target_guru_id_fkey` relationship pointing to `data_guru`.
+     * `SistemBlok = Tables<"sistem_blok">` automatically inherits all new properties.
 
-3. **`src/components/RekapJurnalView.tsx`:**
-   - Added optional props `controlledMode?: 'pribadi' | 'kelas'` and `hideTabSwitch?: boolean`.
-   - Synchronized internal `tabMode` with `controlledMode` via `useEffect` without altering existing queries, KOP printing, or Excel export logic.
-   - Added `!hideTabSwitch` guard to prevent rendering duplicate mode toggle buttons when embedded as a sub-tab.
-   - Preserved `isReadOnly?: boolean` and all multi-tenant invariants.
+3. **Admin Configuration UI (`src/components/SistemBlokView.tsx`)**:
+   - Added Target Scope selector with 4 options: Keseluruhan Sekolah (`sekolah`), Per Angkatan (`angkatan`), Per Kelas (`kelas`), Per Guru (`guru`).
+   - Implemented dynamic inputs according to target:
+     * `sekolah`: Informative banner stating that block applies to all students, teachers, and KBM schedules.
+     * `angkatan`: Dropdown with angkatan options (10, 11, 12) derived from classes.
+     * `kelas`: Dropdown populated from classes in school (`data_siswa` and `jadwal_pelajaran`).
+     * `guru`: Dropdown populated from active teachers in school (`data_guru`), storing both `target_guru_id` and `target_guru_nama`.
+   - Added Time Range controls:
+     * Toggle/checkbox: "Berlaku Sepanjang Hari (Full Day)" (`is_full_day`, default `true`).
+     * When unchecked, displays `jam_mulai` and `jam_selesai` time inputs.
+   - Validation:
+     * Enforces required non-empty name, start/end dates, and `tanggalSelesai >= tanggalMulai`.
+     * If `tipeTarget === 'angkatan'`, validates required angkatan selection.
+     * If `tipeTarget === 'kelas'`, validates required class selection.
+     * If `tipeTarget === 'guru'`, validates required teacher selection.
+     * If not full day, validates required start and end times, and enforces `jamMulai < jamSelesai`.
+   - CRUD Persistence & Resilience:
+     * `handleAddSubmit` writes all target and time range attributes to Supabase. Includes fallback resilience against PostgREST `PGRST204` (schema cache pending) to prevent breaking errors.
+     * `openEditModal` pre-populates all target scope and time range attributes in form state.
+     * `handleEditSave` correctly updates all attributes in Supabase with schema cache fallback resilience.
+     * `resetAddForm` resets all fields back to default.
+   - Visual Badges in Table / Cards:
+     * Target Scope badge: "Semua Sekolah", "Angkatan {X}", "Kelas {X}", "Guru: {Nama}".
+     * Time Range badge: "Sepanjang Hari" or "{jam_mulai} - {jam_selesai}".
 
-4. **`src/components/GuruJurnal.tsx`:**
-   - Extended props interface `GuruJurnalProps` with `initialTab`, `onTabChange`, `assignedKelas`, `isKepalaSekolah`, and `isReadOnly`.
-   - Rendered top-level `ClayTabs` for `['input', 'rekap-pribadi', 'supervisi-kelas']`.
-   - Wrapped the entire 10-field Kurikulum Merdeka input form, roll-call table, camera, and Guru Inval controls inside `<div id="panel-input" role="tabpanel" aria-labelledby="tab-input" className={activeTab === 'input' ? 'block' : 'hidden'}>` to guarantee 100% in-memory keep-alive and zero draft loss.
-   - Mounted `RekapJurnalView` for sub-tab 2 (`rekap-pribadi`) and sub-tab 3 (`supervisi-kelas`).
-
-5. **`src/components/HistoryView.tsx`:**
-   - Extended props interface `HistoryViewProps` with `onlyTab`, `hideTabSwitch`, and `hideSectionWrapper`.
-   - Supported dynamic wrapper element (`Wrapper = hideSectionWrapper ? 'div' : 'section'`).
-   - Guarded the internal Presensi/Jurnal toggle with `!hideTabSwitch`.
-   - Preserved verbatim all AST strings checked by existing test suites (`(item.keterangan || '').toLowerCase().includes(search.toLowerCase())`, `Reset pencarian`, `Tidak ada riwayat`, `[activeTab]`).
-
-6. **`src/components/GuruPresensi.tsx`:**
-   - Extended props interface `GuruPresensiProps` with `initialTab` and `onTabChange`.
-   - Rendered top-level `ClayTabs` for `['live', 'riwayat']` with dynamic badge (`Datang` / `Pulang` / `Selesai`).
-   - Wrapped the live selfie camera, GPS geofencing, and multi-day leave form inside `<div id="panel-live" role="tabpanel" aria-labelledby="tab-live" className={activeTab === 'live' ? 'block' : 'hidden'}>` to preserve camera stream, captured photos, and form state without unmounting.
-   - Mounted `HistoryView` inside `<div id="panel-riwayat" role="tabpanel" aria-labelledby="tab-riwayat" className={activeTab === 'riwayat' ? 'block' : 'hidden'}>` with `onlyTab="presensi"`, `hideTabSwitch={true}`, and `hideSectionWrapper={true}`.
-
-7. **`src/components/AdminRekapView.tsx`:**
-   - Extended props interface `AdminRekapViewProps` with `targetSchool` and `initialTab`.
-   - Activated `isReadOnly` logic by rendering a distinct read-only preview banner for Dinas Pendidikan while keeping `isReadOnly?: boolean` intact.
-   - Preserved `<PrintHeader user={user} sekolahId={user?.sekolah_id} />` and `<PrintSignature ... sekolahId={user?.sekolah_id} />` verbatim.
-
-8. **`src/components/AppScreen.tsx`:**
-   - Added `urlTab` state extracted from URL query parameter `?tab=...` and synchronized with the `popstate` event.
-   - Updated mounting for `GuruPresensi` passing `initialTab={(urlTab as any) || 'live'}`.
-   - Updated mounting for `GuruJurnal` passing `initialTab`, `assignedKelas`, and `isKepalaSekolah`.
-   - Updated mounting for `AdminRekapView` under both `view-admin-rekap` and `view-rekap-guru`.
-   - Strictly preserved all existing AST regex guards verbatim:
-     - `/currentView === 'view-admin-rekap'\s*&&\s*\(\s*(?:isAdmin \|\| isSuperadmin \|\| isKepalaSekolah)/`
-     - `{currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}`
-     - `{currentView === 'view-history' && <HistoryView user={user} />}`
-     - `<AdminRekapView` with `isReadOnly={isDinas}`
-
-9. **`tests/clay_tabs_verification.test.ts` (NEW, 118 lines):**
-   - Created automated test suite verifying static file existence, barrel exports, SSR rendering of ARIA attributes (`role="tablist"`, `role="tab"`, roving tabindex `0`/`-1`, `aria-selected`, `aria-controls`, `aria-disabled`), styling tokens (`clay-btn-mint`, `clay-btn-secondary`, badges, `no-print`, `custom-scroll`), and all `getNextTabId` keyboard navigation paths (ArrowRight, ArrowLeft, Home, End, disabled tab skipping, circular wrapping).
-   - 100% of 18 test assertions pass.
+4. **Automated Verification**:
+   - `npx tsc --noEmit` exited with code 0 (zero errors).
+   - `npx tsx tests/sistem_blok_verification.test.ts`: 85/85 tests passed (0 failed).
+   - `npx tsx tests/m1_flexible_sistem_blok.test.ts`: 41/41 tests passed (0 failed).
 
 ---
 
-## 2. LOGIC CHAIN
+## 2. Logic Chain
 
-1. **Step 1: Modular Sub-Navigation Standard (`ClayTabs`)**
-   - *Observation*: Existing components used disparate tab styles across `PiketView`, `DokumenView`, and `RekapSiswaView`.
-   - *Inference*: Creating a unified `<ClayTabs />` component with WAI-ARIA 1.2 compliance and tokenized Claymorphism styles standardizes UX across all 7 clusters while keeping bundle overhead minimal.
-   - *Deduction*: Exporting `getNextTabId` enables pure unit testing of accessibility keyboard roving logic without requiring headless browser overhead.
+1. **Backward Compatibility**:
+   - The default value `tipe_target = 'sekolah'` and `is_full_day = true` ensures that all existing records in `public.sistem_blok` continue to function as whole-school full-day blocks without any migration side-effects.
+   - All 85 existing verification tests in `tests/sistem_blok_verification.test.ts` rely on this backward compatibility and passed without failure.
 
-2. **Step 2: In-Memory Draft Preservation (Zero Feature Loss Mandate)**
-   - *Observation*: Teachers filling out the 10-field journal or checking in with camera selfies frequently switch tabs to verify past records. Conditional rendering (`{activeTab === 'input' && <Form />}`) unmounts the form, wiping out in-progress inputs, student roll-call checkboxes, and captured photos.
-   - *Inference*: Wrapping the form DOM inside `<div className={activeTab === 'input' ? 'block' : 'hidden'}>` preserves the React Fiber instance, internal state, and DOM elements in memory.
-   - *Deduction*: Switching between "Input Jurnal KBM" and "Riwayat & Rekap Saya" (or "Presensi Hari Ini" and "Riwayat Kehadiran") retains 100% of user draft data without unintended unmounting or re-fetching.
+2. **Schema Cache Resilience**:
+   - PostgREST instances in production may experience delays before reloading schema cache after a SQL migration. By incorporating `PGRST204` fallback handling in `handleAddSubmit` and `handleEditSave`, the application maintains high availability and zero crashes in both freshly migrated and pre-migrated environments.
 
-3. **Step 3: AST Regex Invariant Preservation**
-   - *Observation*: Test suites `tests/kepsek_pengawas_rbac.test.ts` and `tests/dinas_pendidikan_monitoring.test.ts` execute static string and regex tests against `AppScreen.tsx`, `HistoryView.tsx`, and `AdminRekapView.tsx`.
-   - *Inference*: Refactoring lines tested by regex (such as collapsing `currentView === 'view-admin-rekap'` and `view-rekap-guru'` into a single expression) causes AST test failures.
-   - *Deduction*: Preserving identical AST branches for legacy views while passing the enriched props satisfies both runtime functionality and automated compliance checks.
+3. **User Experience & Data Integrity**:
+   - Context-sensitive selectors ensure that administrators cannot submit incomplete rules (e.g. choosing 'Per Guru' without selecting a teacher, or 'Non-Full Day' with invalid time ranges where `jam_mulai >= jam_selesai`).
+   - Cards display informative badges for both target scope and time boundaries so users instantly recognize which entity and hours are affected.
 
 ---
 
-## 3. CAVEATS
+## 3. Caveats
 
-1. **Camera Stream Hardware Handling**: When `GuruPresensi` or `GuruJurnal` is hidden via CSS `hidden`, the video preview is hidden, and any captured photo preview URL remains in state. On mobile devices with strict power limits, long periods in background sub-tabs are handled natively by the browser without crashing.
-2. **Sub-Tab URL Deep Linking**: Tab switches call `window.history.replaceState` with `?tab=...`. Navigating via browser back/forward buttons triggers `popstate`, correctly synchronizing `urlTab` and active component tabs.
-3. **AnalitikView Consolidation (Milestone 2 Dependency)**: In Milestone 1, `AdminRekapView` accepts `initialTab` and `targetSchool`. Full integration of the Top 10 Leaderboard and KPI charts from `AnalitikView` into `AdminRekapView` sub-tabs is designated for Milestone 2.
-
----
-
-## 4. CONCLUSION
-
-Milestone 1 (Foundation: Reusable Tabs & Component Normalization) is 100% complete:
-- Reusable ClayTabs component created and verified.
-- Cluster 1 (Jurnal Mengajar) normalized with 3 sub-tabs and in-memory draft preservation.
-- Cluster 2 (Guru Presensi & Riwayat) normalized with 2 sub-tabs and in-memory selfie/GPS preservation.
-- Cluster 4 (Dinas & Rekap) normalized with `isReadOnly` notice, `targetSchool`, and `initialTab`.
-- AppScreen wired to propagate props while strictly preserving all AST test guards.
-- Zero TypeScript errors (`npx tsc --noEmit`).
-- 100% pass across all 41 project test suites (`npm test`) + new verification test (`npx tsx tests/clay_tabs_verification.test.ts`).
+1. **Downstream Masking (Milestone 2)**:
+   - Milestone 1 provides the data model, types, and admin configuration UI for target scopes and time ranges. The actual schedule filtering and selective masking on the teacher home dashboard (`HomeViewGuru.tsx`) and journal workflows (`GuruJurnal.tsx`, `workflow.ts`) will be implemented by Worker M2 according to the project plan.
+2. **File Boundary Compliance**:
+   - Exclusively modified the files designated in dispatch: `supabase/migrations/20261102_flexible_sistem_blok.sql`, `src/types/database.ts`, and `src/components/SistemBlokView.tsx`. `package.json` was not modified.
 
 ---
 
-## 5. VERIFICATION METHOD
+## 4. Conclusion
 
-To independently verify the implementation:
+Milestone 1 is complete:
+- Canonical SQL migration `supabase/migrations/20261102_flexible_sistem_blok.sql` created and verified.
+- TypeScript types in `src/types/database.ts` updated with `TargetBlokType`, `sistem_blok` table types, and `SistemBlok`.
+- Admin UI in `src/components/SistemBlokView.tsx` updated with flexible target scopes, dynamic selectors, time range controls, robust validation, CRUD persistence, and informative badges.
+- All 85 existing tests and 41 new M1 verification tests pass with zero failures.
 
-1. **ClayTabs Verification Test Suite**:
-   ```powershell
-   npx tsx tests/clay_tabs_verification.test.ts
-   ```
-   *Expected output*: 18/18 accessibility, styling, and keyboard navigation assertions PASSED!
+---
 
-2. **TypeScript Static Compilation**:
-   ```powershell
+## 5. Verification Method
+
+To independently verify Milestone 1:
+
+1. **TypeScript Compilation Check**:
+   ```bash
    npx tsc --noEmit
    ```
-   *Expected output*: 0 errors (clean exit code 0).
+   *Expected output*: Clean exit with code 0 (no type errors).
 
-3. **Full Automated Test Suite (Zero Regression)**:
-   ```powershell
-   npm test
+2. **Existing Sistem Blok Verification Test**:
+   ```bash
+   npx tsx tests/sistem_blok_verification.test.ts
    ```
-   *Expected output*: All 41 test suites pass with 100% success.
+   *Expected output*: 85 passed, 0 failed.
+
+3. **Milestone 1 Dedicated Verification Test**:
+   ```bash
+   npx tsx tests/m1_flexible_sistem_blok.test.ts
+   ```
+   *Expected output*: 41 passed, 0 failed.

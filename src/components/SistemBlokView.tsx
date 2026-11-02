@@ -5,8 +5,14 @@ import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
 import Swal from 'sweetalert2';
 import { getWitaDateStr } from '@/lib/wita';
-import { SistemBlok } from '@/types/database';
+import { SistemBlok, TargetBlokType } from '@/types/database';
 import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
+
+interface TeacherOption {
+  id: string;
+  nama_guru: string;
+  nip?: string | null;
+}
 
 /**
  * Sanitasi string tanggal untuk memastikan format murni YYYY-MM-DD
@@ -49,11 +55,23 @@ export default function SistemBlokView({ user }: { user: any }) {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Target options state
+  const [availableClasses, setAvailableClasses] = useState<string[]>([]);
+  const [availableTeachers, setAvailableTeachers] = useState<TeacherOption[]>([]);
+
   // Form states for adding
   const [namaKegiatan, setNamaKegiatan] = useState('');
   const [tanggalMulai, setTanggalMulai] = useState('');
   const [tanggalSelesai, setTanggalSelesai] = useState('');
   const [deskripsi, setDeskripsi] = useState('');
+  const [tipeTarget, setTipeTarget] = useState<TargetBlokType>('sekolah');
+  const [targetAngkatan, setTargetAngkatan] = useState('');
+  const [targetKelas, setTargetKelas] = useState('');
+  const [targetGuruId, setTargetGuruId] = useState('');
+  const [targetGuruNama, setTargetGuruNama] = useState('');
+  const [isFullDay, setIsFullDay] = useState(true);
+  const [jamMulai, setJamMulai] = useState('');
+  const [jamSelesai, setJamSelesai] = useState('');
 
   // Edit modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -62,6 +80,14 @@ export default function SistemBlokView({ user }: { user: any }) {
   const [editMulai, setEditMulai] = useState('');
   const [editSelesai, setEditSelesai] = useState('');
   const [editDeskripsi, setEditDeskripsi] = useState('');
+  const [editTipeTarget, setEditTipeTarget] = useState<TargetBlokType>('sekolah');
+  const [editTargetAngkatan, setEditTargetAngkatan] = useState('');
+  const [editTargetKelas, setEditTargetKelas] = useState('');
+  const [editTargetGuruId, setEditTargetGuruId] = useState('');
+  const [editTargetGuruNama, setEditTargetGuruNama] = useState('');
+  const [editIsFullDay, setEditIsFullDay] = useState(true);
+  const [editJamMulai, setEditJamMulai] = useState('');
+  const [editJamSelesai, setEditJamSelesai] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
 
   // Search & Filter
@@ -102,6 +128,103 @@ export default function SistemBlokView({ user }: { user: any }) {
     loadBlokData();
   }, [loadBlokData]);
 
+  // Load available classes and teachers for target selection
+  useEffect(() => {
+    async function loadTargetOptions() {
+      try {
+        const sekolahId = user?.sekolah_id;
+
+        // 1. Fetch active teachers
+        let teacherQ = supabase
+          .from('data_guru')
+          .select('id, nama_guru, nip')
+          .order('nama_guru', { ascending: true });
+        if (sekolahId) teacherQ = teacherQ.eq('sekolah_id', sekolahId);
+        const { data: teachersData } = await teacherQ;
+        if (teachersData) {
+          setAvailableTeachers(teachersData as TeacherOption[]);
+        }
+
+        // 2. Fetch classes from data_siswa and jadwal_pelajaran
+        let siswaQ = supabase
+          .from('data_siswa')
+          .select('kelas')
+          .not('kelas', 'is', null);
+        if (sekolahId) siswaQ = siswaQ.eq('sekolah_id', sekolahId);
+        const { data: siswaData } = await siswaQ;
+
+        let jadwalQ = supabase
+          .from('jadwal_pelajaran')
+          .select('kelas')
+          .not('kelas', 'is', null);
+        if (sekolahId) jadwalQ = jadwalQ.eq('sekolah_id', sekolahId);
+        const { data: jadwalData } = await jadwalQ;
+
+        const classSet = new Set<string>();
+        (siswaData || []).forEach((s: any) => {
+          if (s.kelas && typeof s.kelas === 'string' && s.kelas.trim()) {
+            classSet.add(s.kelas.trim());
+          }
+        });
+        (jadwalData || []).forEach((j: any) => {
+          if (j.kelas && typeof j.kelas === 'string' && j.kelas.trim()) {
+            classSet.add(j.kelas.trim());
+          }
+        });
+
+        // Add standard fallback classes if empty
+        if (classSet.size === 0) {
+          ['X Merdeka', 'XI Merdeka', 'XII Merdeka'].forEach(c => classSet.add(c));
+        }
+
+        const sortedClasses = Array.from(classSet).sort((a, b) =>
+          a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+        );
+        setAvailableClasses(sortedClasses);
+      } catch (err) {
+        console.error('Error loading target options for sistem blok:', err);
+      }
+    }
+
+    loadTargetOptions();
+  }, [user?.sekolah_id]);
+
+  // Derive angkatan options from school classes with standard fallback
+  const angkatanOptions = useMemo(() => {
+    const detected = new Set<string>();
+    availableClasses.forEach(cls => {
+      const lower = cls.toLowerCase();
+      if (/\b10\b/.test(lower) || /\bx\b/.test(lower)) detected.add('10');
+      if (/\b11\b/.test(lower) || /\bxi\b/.test(lower)) detected.add('11');
+      if (/\b12\b/.test(lower) || /\bxii\b/.test(lower)) detected.add('12');
+      if (/\b7\b/.test(lower) || /\bvii\b/.test(lower)) detected.add('7');
+      if (/\b8\b/.test(lower) || /\bviii\b/.test(lower)) detected.add('8');
+      if (/\b9\b/.test(lower) || /\bix\b/.test(lower)) detected.add('9');
+    });
+    if (detected.size === 0) {
+      detected.add('10');
+      detected.add('11');
+      detected.add('12');
+    }
+    return Array.from(detected).sort((a, b) => Number(a) - Number(b));
+  }, [availableClasses]);
+
+  // Reset add form to default state
+  const resetAddForm = () => {
+    setNamaKegiatan('');
+    setTanggalMulai('');
+    setTanggalSelesai('');
+    setDeskripsi('');
+    setTipeTarget('sekolah');
+    setTargetAngkatan('');
+    setTargetKelas('');
+    setTargetGuruId('');
+    setTargetGuruNama('');
+    setIsFullDay(true);
+    setJamMulai('');
+    setJamSelesai('');
+  };
+
   // Determine period status
   const getStatus = useCallback((mulai: string, selesai: string): 'Aktif' | 'Akan Datang' | 'Selesai' => {
     // Determine period status: todayStr >= mulai && todayStr <= selesai
@@ -131,26 +254,67 @@ export default function SistemBlokView({ user }: { user: any }) {
       return showToast('Validasi Gagal', 'Tanggal selesai tidak boleh sebelum tanggal mulai.', 'warning');
     }
 
+    // Target scope specific validations
+    if (tipeTarget === 'angkatan' && !targetAngkatan) {
+      return showToast('Validasi Gagal', 'Silakan pilih angkatan target pemblokiran.', 'warning');
+    }
+    if (tipeTarget === 'kelas' && !targetKelas) {
+      return showToast('Validasi Gagal', 'Silakan pilih kelas target pemblokiran.', 'warning');
+    }
+    if (tipeTarget === 'guru' && !targetGuruId) {
+      return showToast('Validasi Gagal', 'Silakan pilih guru target pemblokiran.', 'warning');
+    }
+
+    // Time range validation
+    if (!isFullDay) {
+      if (!jamMulai || !jamSelesai) {
+        return showToast('Validasi Gagal', 'Jam mulai dan jam selesai wajib diisi untuk pemblokiran non-full day.', 'warning');
+      }
+      if (jamMulai >= jamSelesai) {
+        return showToast('Validasi Gagal', 'Jam selesai harus lebih akhir dari jam mulai.', 'warning');
+      }
+    }
+
     setSubmitting(true);
     try {
-      const payload = {
+      const payload: any = {
         id: crypto.randomUUID(),
         nama_kegiatan: namaKegiatan.trim(),
         tanggal_mulai: sanitizeDateStr(tanggalMulai),
         tanggal_selesai: sanitizeDateStr(tanggalSelesai),
         deskripsi: deskripsi.trim() || null,
         sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+        tipe_target: tipeTarget,
+        target_angkatan: tipeTarget === 'angkatan' ? targetAngkatan || null : null,
+        target_kelas: tipeTarget === 'kelas' ? targetKelas || null : null,
+        target_guru_id: tipeTarget === 'guru' ? targetGuruId || null : null,
+        target_guru_nama: tipeTarget === 'guru' ? targetGuruNama || null : null,
+        is_full_day: isFullDay,
+        jam_mulai: !isFullDay ? jamMulai || null : null,
+        jam_selesai: !isFullDay ? jamSelesai || null : null,
       };
 
-      const { error } = await supabase.from('sistem_blok').insert([payload]);
+      let { error } = await supabase.from('sistem_blok').insert([payload]);
+
+      // Schema cache fallback resilience (PGRST204)
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column'))) {
+        const basePayload = {
+          id: payload.id,
+          nama_kegiatan: payload.nama_kegiatan,
+          tanggal_mulai: payload.tanggal_mulai,
+          tanggal_selesai: payload.tanggal_selesai,
+          deskripsi: payload.deskripsi,
+          sekolah_id: payload.sekolah_id,
+        };
+        const res = await supabase.from('sistem_blok').insert([basePayload]);
+        error = res.error;
+      }
+
       if (error) {
         showToast('Gagal Menyimpan', error.message, 'error');
       } else {
         showToast('Berhasil', 'Periode sistem blok berhasil ditambahkan.', 'success');
-        setNamaKegiatan('');
-        setTanggalMulai('');
-        setTanggalSelesai('');
-        setDeskripsi('');
+        resetAddForm();
         loadBlokData();
       }
     } catch (err: any) {
@@ -170,6 +334,14 @@ export default function SistemBlokView({ user }: { user: any }) {
     setEditMulai(sanitizeDateStr(item.tanggal_mulai));
     setEditSelesai(sanitizeDateStr(item.tanggal_selesai));
     setEditDeskripsi(item.deskripsi || '');
+    setEditTipeTarget((item.tipe_target as TargetBlokType) || 'sekolah');
+    setEditTargetAngkatan(item.target_angkatan || '');
+    setEditTargetKelas(item.target_kelas || '');
+    setEditTargetGuruId(item.target_guru_id || '');
+    setEditTargetGuruNama(item.target_guru_nama || '');
+    setEditIsFullDay(item.is_full_day ?? true);
+    setEditJamMulai(item.jam_mulai || '');
+    setEditJamSelesai(item.jam_selesai || '');
     setIsEditModalOpen(true);
   };
 
@@ -192,24 +364,72 @@ export default function SistemBlokView({ user }: { user: any }) {
       return showToast('Validasi Gagal', 'Tanggal selesai tidak boleh sebelum tanggal mulai.', 'warning');
     }
 
+    // Target scope specific validations
+    if (editTipeTarget === 'angkatan' && !editTargetAngkatan) {
+      return showToast('Validasi Gagal', 'Silakan pilih angkatan target pemblokiran.', 'warning');
+    }
+    if (editTipeTarget === 'kelas' && !editTargetKelas) {
+      return showToast('Validasi Gagal', 'Silakan pilih kelas target pemblokiran.', 'warning');
+    }
+    if (editTipeTarget === 'guru' && !editTargetGuruId) {
+      return showToast('Validasi Gagal', 'Silakan pilih guru target pemblokiran.', 'warning');
+    }
+
+    // Time range validation
+    if (!editIsFullDay) {
+      if (!editJamMulai || !editJamSelesai) {
+        return showToast('Validasi Gagal', 'Jam mulai dan jam selesai wajib diisi untuk pemblokiran non-full day.', 'warning');
+      }
+      if (editJamMulai >= editJamSelesai) {
+        return showToast('Validasi Gagal', 'Jam selesai harus lebih akhir dari jam mulai.', 'warning');
+      }
+    }
+
     setEditSubmitting(true);
     try {
+      const updatePayload: any = {
+        nama_kegiatan: editNama.trim(),
+        tanggal_mulai: sanitizeDateStr(editMulai),
+        tanggal_selesai: sanitizeDateStr(editSelesai),
+        deskripsi: editDeskripsi.trim() || null,
+        tipe_target: editTipeTarget,
+        target_angkatan: editTipeTarget === 'angkatan' ? editTargetAngkatan || null : null,
+        target_kelas: editTipeTarget === 'kelas' ? editTargetKelas || null : null,
+        target_guru_id: editTipeTarget === 'guru' ? editTargetGuruId || null : null,
+        target_guru_nama: editTipeTarget === 'guru' ? editTargetGuruNama || null : null,
+        is_full_day: editIsFullDay,
+        jam_mulai: !editIsFullDay ? editJamMulai || null : null,
+        jam_selesai: !editIsFullDay ? editJamSelesai || null : null,
+        updated_at: new Date().toISOString(),
+      };
+
       let updateQ = supabase
         .from('sistem_blok')
-        .update({
-          nama_kegiatan: editNama.trim(),
-          tanggal_mulai: sanitizeDateStr(editMulai),
-          tanggal_selesai: sanitizeDateStr(editSelesai),
-          deskripsi: editDeskripsi.trim() || null,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq('id', editingItem.id);
 
       if (user?.sekolah_id) {
         updateQ = updateQ.eq('sekolah_id', user.sekolah_id);
       }
 
-      const { error } = await updateQ;
+      let { error } = await updateQ;
+
+      // Schema cache fallback resilience (PGRST204)
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column'))) {
+        const baseUpdate = {
+          nama_kegiatan: updatePayload.nama_kegiatan,
+          tanggal_mulai: updatePayload.tanggal_mulai,
+          tanggal_selesai: updatePayload.tanggal_selesai,
+          deskripsi: updatePayload.deskripsi,
+          updated_at: updatePayload.updated_at,
+        };
+        let fallbackQ = supabase.from('sistem_blok').update(baseUpdate).eq('id', editingItem.id);
+        if (user?.sekolah_id) {
+          fallbackQ = fallbackQ.eq('sekolah_id', user.sekolah_id);
+        }
+        const res = await fallbackQ;
+        error = res.error;
+      }
 
       if (error) {
         showToast('Gagal Memperbarui', error.message, 'error');
@@ -274,7 +494,20 @@ export default function SistemBlokView({ user }: { user: any }) {
         const desc = (item.deskripsi || '').toLowerCase();
         const m = sanitizeDateStr(item.tanggal_mulai);
         const s = sanitizeDateStr(item.tanggal_selesai);
-        return nama.includes(q) || desc.includes(q) || m.includes(q) || s.includes(q);
+        const targetCls = (item.target_kelas || '').toLowerCase();
+        const targetGuru = (item.target_guru_nama || '').toLowerCase();
+        const targetAngk = (item.target_angkatan || '').toLowerCase();
+        const tipe = (item.tipe_target || '').toLowerCase();
+        return (
+          nama.includes(q) ||
+          desc.includes(q) ||
+          m.includes(q) ||
+          s.includes(q) ||
+          targetCls.includes(q) ||
+          targetGuru.includes(q) ||
+          targetAngk.includes(q) ||
+          tipe.includes(q)
+        );
       }
       return true;
     });
@@ -385,6 +618,158 @@ export default function SistemBlokView({ user }: { user: any }) {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Cakupan Target Pemblokiran */}
+            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                Cakupan Target Pemblokiran <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'sekolah', label: 'Keseluruhan Sekolah', icon: 'fa-school' },
+                  { id: 'angkatan', label: 'Per Angkatan', icon: 'fa-graduation-cap' },
+                  { id: 'kelas', label: 'Per Kelas', icon: 'fa-chalkboard-user' },
+                  { id: 'guru', label: 'Per Guru', icon: 'fa-user-tie' },
+                ].map(tgt => (
+                  <button
+                    key={tgt.id}
+                    type="button"
+                    onClick={() => {
+                      setTipeTarget(tgt.id as TargetBlokType);
+                    }}
+                    className={`btn-click p-2.5 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1.5 transition ${
+                      tipeTarget === tgt.id
+                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <i className={`fa-solid ${tgt.icon} text-sm`}></i>
+                    <span>{tgt.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Dynamic Target Selection */}
+              {tipeTarget === 'sekolah' && (
+                <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-xl text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                  <i className="fa-solid fa-circle-info text-blue-500 text-sm shrink-0"></i>
+                  <span>Aturan blok berlaku untuk seluruh siswa, guru, dan jadwal KBM di sekolah.</span>
+                </div>
+              )}
+
+              {tipeTarget === 'angkatan' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                    Pilih Angkatan Target <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={targetAngkatan}
+                    onChange={e => setTargetAngkatan(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                  >
+                    <option value="">-- Pilih Angkatan --</option>
+                    {angkatanOptions.map(ang => (
+                      <option key={ang} value={ang}>
+                        Angkatan {ang} {ang === '10' ? '(Kelas X / Fase E)' : ang === '11' ? '(Kelas XI / Fase F)' : ang === '12' ? '(Kelas XII / Fase F)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {tipeTarget === 'kelas' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                    Pilih Kelas Target <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={targetKelas}
+                    onChange={e => setTargetKelas(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                  >
+                    <option value="">-- Pilih Kelas --</option>
+                    {availableClasses.map(cls => (
+                      <option key={cls} value={cls}>Kelas {cls}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {tipeTarget === 'guru' && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                    Pilih Guru Target <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={targetGuruId}
+                    onChange={e => {
+                      const gId = e.target.value;
+                      setTargetGuruId(gId);
+                      const match = availableTeachers.find(t => t.id === gId);
+                      setTargetGuruNama(match ? match.nama_guru : '');
+                    }}
+                    required
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                  >
+                    <option value="">-- Pilih Guru --</option>
+                    {availableTeachers.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.nama_guru} {t.nip ? `(NIP: ${t.nip})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Pengaturan Rentang Waktu (Jam) */}
+            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-900 dark:text-white select-none">
+                  <input
+                    type="checkbox"
+                    checked={isFullDay}
+                    onChange={e => setIsFullDay(e.target.checked)}
+                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                  />
+                  <span>Berlaku Sepanjang Hari (Full Day)</span>
+                </label>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                  {isFullDay ? 'Semua jam pelajaran pada tanggal ini diblok' : 'Hanya jam tertentu yang diblok'}
+                </span>
+              </div>
+
+              {!isFullDay && (
+                <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/80 dark:border-amber-800/60">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                      Jam Mulai <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={jamMulai}
+                      onChange={e => setJamMulai(e.target.value)}
+                      required={!isFullDay}
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                      Jam Selesai <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      value={jamSelesai}
+                      onChange={e => setJamSelesai(e.target.value)}
+                      required={!isFullDay}
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -537,10 +922,51 @@ export default function SistemBlokView({ user }: { user: any }) {
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <span className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${statusBadge} leading-none mb-1.5`}>
-                          {status === 'Aktif' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
-                          {status}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                          <span className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${statusBadge} leading-none`}>
+                            {status === 'Aktif' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
+                            {status}
+                          </span>
+
+                          {/* Target Scope Badge */}
+                          {(!item.tipe_target || item.tipe_target === 'sekolah') && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                              <i className="fa-solid fa-school text-[9px]"></i>
+                              <span>Semua Sekolah</span>
+                            </span>
+                          )}
+                          {item.tipe_target === 'angkatan' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              <i className="fa-solid fa-graduation-cap text-[9px]"></i>
+                              <span>Angkatan {item.target_angkatan}</span>
+                            </span>
+                          )}
+                          {item.tipe_target === 'kelas' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                              <i className="fa-solid fa-chalkboard-user text-[9px]"></i>
+                              <span>Kelas {item.target_kelas}</span>
+                            </span>
+                          )}
+                          {item.tipe_target === 'guru' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                              <i className="fa-solid fa-user-tie text-[9px]"></i>
+                              <span>Guru: {item.target_guru_nama || 'Guru Terpilih'}</span>
+                            </span>
+                          )}
+
+                          {/* Time Range Badge */}
+                          {item.is_full_day !== false ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                              <i className="fa-regular fa-clock text-[9px]"></i>
+                              <span>Sepanjang Hari</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                              <i className="fa-solid fa-clock text-[9px]"></i>
+                              <span>{item.jam_mulai || '00:00'} - {item.jam_selesai || '23:59'}</span>
+                            </span>
+                          )}
+                        </div>
                         <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight">
                           {item.nama_kegiatan}
                         </h4>
@@ -653,6 +1079,156 @@ export default function SistemBlokView({ user }: { user: any }) {
                     className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
                   />
                 </div>
+              </div>
+
+              {/* Target Scope Selection for Edit */}
+              <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                  Cakupan Target Pemblokiran <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'sekolah', label: 'Keseluruhan Sekolah', icon: 'fa-school' },
+                    { id: 'angkatan', label: 'Per Angkatan', icon: 'fa-graduation-cap' },
+                    { id: 'kelas', label: 'Per Kelas', icon: 'fa-chalkboard-user' },
+                    { id: 'guru', label: 'Per Guru', icon: 'fa-user-tie' },
+                  ].map(tgt => (
+                    <button
+                      key={tgt.id}
+                      type="button"
+                      onClick={() => setEditTipeTarget(tgt.id as TargetBlokType)}
+                      className={`btn-click p-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1 transition ${
+                        editTipeTarget === tgt.id
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <i className={`fa-solid ${tgt.icon} text-xs`}></i>
+                      <span className="text-[11px]">{tgt.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dynamic Target Selection for Edit */}
+                {editTipeTarget === 'sekolah' && (
+                  <div className="p-2.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-xl text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                    <i className="fa-solid fa-circle-info text-blue-500 text-xs shrink-0"></i>
+                    <span>Aturan blok berlaku untuk seluruh siswa, guru, dan jadwal KBM di sekolah.</span>
+                  </div>
+                )}
+
+                {editTipeTarget === 'angkatan' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                      Pilih Angkatan Target <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={editTargetAngkatan}
+                      onChange={e => setEditTargetAngkatan(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    >
+                      <option value="">-- Pilih Angkatan --</option>
+                      {angkatanOptions.map(ang => (
+                        <option key={ang} value={ang}>
+                          Angkatan {ang} {ang === '10' ? '(Kelas X / Fase E)' : ang === '11' ? '(Kelas XI / Fase F)' : ang === '12' ? '(Kelas XII / Fase F)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {editTipeTarget === 'kelas' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                      Pilih Kelas Target <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={editTargetKelas}
+                      onChange={e => setEditTargetKelas(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    >
+                      <option value="">-- Pilih Kelas --</option>
+                      {availableClasses.map(cls => (
+                        <option key={cls} value={cls}>Kelas {cls}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {editTipeTarget === 'guru' && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                      Pilih Guru Target <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={editTargetGuruId}
+                      onChange={e => {
+                        const gId = e.target.value;
+                        setEditTargetGuruId(gId);
+                        const match = availableTeachers.find(t => t.id === gId);
+                        setEditTargetGuruNama(match ? match.nama_guru : '');
+                      }}
+                      required
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    >
+                      <option value="">-- Pilih Guru --</option>
+                      {availableTeachers.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.nama_guru} {t.nip ? `(NIP: ${t.nip})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Time Range Controls for Edit */}
+              <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-900 dark:text-white select-none">
+                    <input
+                      type="checkbox"
+                      checked={editIsFullDay}
+                      onChange={e => setEditIsFullDay(e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Berlaku Sepanjang Hari (Full Day)</span>
+                  </label>
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {editIsFullDay ? 'Semua jam pelajaran diblok' : 'Hanya jam tertentu'}
+                  </span>
+                </div>
+
+                {!editIsFullDay && (
+                  <div className="grid grid-cols-2 gap-3 p-2.5 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-200/80 dark:border-blue-800/60">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                        Jam Mulai <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={editJamMulai}
+                        onChange={e => setEditJamMulai(e.target.value)}
+                        required={!editIsFullDay}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                        Jam Selesai <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={editJamSelesai}
+                        onChange={e => setEditJamSelesai(e.target.value)}
+                        required={!editIsFullDay}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

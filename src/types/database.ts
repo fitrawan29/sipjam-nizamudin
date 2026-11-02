@@ -6,6 +6,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export type TargetBlokType = 'sekolah' | 'angkatan' | 'kelas' | 'guru';
+
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -1413,30 +1415,54 @@ export type Database = {
           created_at: string
           deskripsi: string | null
           id: string
+          is_full_day: boolean
+          jam_mulai: string | null
+          jam_selesai: string | null
           nama_kegiatan: string
           sekolah_id: string
           tanggal_mulai: string
           tanggal_selesai: string
+          target_angkatan: string | null
+          target_guru_id: string | null
+          target_guru_nama: string | null
+          target_kelas: string | null
+          tipe_target: TargetBlokType
           updated_at: string
         }
         Insert: {
           created_at?: string
           deskripsi?: string | null
           id?: string
+          is_full_day?: boolean
+          jam_mulai?: string | null
+          jam_selesai?: string | null
           nama_kegiatan: string
           sekolah_id?: string
           tanggal_mulai: string
           tanggal_selesai: string
+          target_angkatan?: string | null
+          target_guru_id?: string | null
+          target_guru_nama?: string | null
+          target_kelas?: string | null
+          tipe_target?: TargetBlokType
           updated_at?: string
         }
         Update: {
           created_at?: string
           deskripsi?: string | null
           id?: string
+          is_full_day?: boolean
+          jam_mulai?: string | null
+          jam_selesai?: string | null
           nama_kegiatan?: string
           sekolah_id?: string
           tanggal_mulai?: string
           tanggal_selesai?: string
+          target_angkatan?: string | null
+          target_guru_id?: string | null
+          target_guru_nama?: string | null
+          target_kelas?: string | null
+          tipe_target?: TargetBlokType
           updated_at?: string
         }
         Relationships: [
@@ -1445,6 +1471,13 @@ export type Database = {
             columns: ["sekolah_id"]
             isOneToOne: false
             referencedRelation: "sekolah"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sistem_blok_target_guru_id_fkey"
+            columns: ["target_guru_id"]
+            isOneToOne: false
+            referencedRelation: "data_guru"
             referencedColumns: ["id"]
           },
         ]

@@ -1,36 +1,65 @@
-## 2026-10-29T11:43:00Z
-You are the Foundation and Sub-Tab Normalization Worker for Milestone 1.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\
-Before starting work, YOU MUST read ORIGINAL_REQUEST.md located at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+## 2026-11-02T12:39:28Z
+
+You are worker_m1.
+Your role: teamwork_worker.
+Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\
+Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
 
 MANDATORY INTEGRITY WARNING:
 DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-You must study the blueprints prepared by the Explorers:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_tabs\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_jurnal_presensi\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_dinas_rekap\handoff.md
+TASK ASSIGNMENT — Milestone 1: Database Schema, Types & Admin Configuration UI
 
-Your exclusive write ownership covers the following files:
-1. `src/components/ClayTabs.tsx` (NEW): Implement the reusable tactile Claymorphism sub-tabs component with WAI-ARIA 1.2 roving tabindex, keyboard navigation, badge variants, and touch scroll as specified in explorer_m1_tabs handoff.
-2. `src/components/clay/index.ts`: Export ClayTabs, getNextTabId, and related types.
-3. `src/components/GuruJurnal.tsx`: Add `initialTab` support ('input' | 'rekap-pribadi' | 'supervisi-kelas'), render ClayTabs, wrap 10-field input form and roll-call inside `<div className={activeTab === 'input' ? 'block' : 'hidden'}>` to guarantee in-memory draft preservation with zero unmounting. Mount RekapJurnalView for sub-tabs 2 and 3.
-4. `src/components/RekapJurnalView.tsx`: Accept `controlledMode` and `hideTabSwitch` props without modifying existing filters, KOP printing, or Excel exports.
-5. `src/components/GuruPresensi.tsx`: Add `initialTab` support ('live' | 'riwayat'), render ClayTabs, wrap live selfie/GPS form inside `<div className={activeTab === 'live' ? 'block' : 'hidden'}>` to prevent unmounting. Mount HistoryView for sub-tab 2.
-6. `src/components/HistoryView.tsx`: Accept `onlyTab`, `hideTabSwitch`, `hideSectionWrapper` props without deleting or modifying any existing lines checked by AST test assertions.
-7. `src/components/AdminRekapView.tsx`: Add `initialTab`, `targetSchool`, and activate `isReadOnly` logic as specified in explorer_m1_dinas_rekap handoff.
-8. `src/components/AppScreen.tsx`: Update mounting props for GuruJurnal, GuruPresensi, and AdminRekapView, while strictly preserving all existing AST regex guards verbatim (e.g. `{currentView === 'view-guru-rekap-jurnal' && ...}`, `{currentView === 'view-history' && ...}`, `/currentView === 'view-admin-rekap'\s*&&\s*\(/`).
-9. `tests/clay_tabs_verification.test.ts` (NEW): Create the automated test suite verifying ClayTabs rendering, ARIA attributes, and keyboard navigation.
+1. Background & References:
+   - Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+   - Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+   - Read explorer survey findings in c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\analysis.md and handoff.md
 
-Verification Requirements:
-- Run `npx tsx tests/clay_tabs_verification.test.ts` -> must pass 100%.
-- Run `npx tsc --noEmit` -> 0 TypeScript compilation errors.
-- Run `npm test` -> all 41 test suites must pass 100% (zero regression).
+2. Scope & File Ownership:
+   You own the following files exclusively:
+   - `supabase/migrations/20261102_flexible_sistem_blok.sql` (create this migration)
+   - `src/types/database.ts` (update `sistem_blok` Row, Insert, Update, and `SistemBlok`)
+   - `src/components/SistemBlokView.tsx` (update UI for target scope & time range configuration)
 
-Write your completion report to:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
-Update your progress in:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\progress.md
-Send a completion message to the orchestrator (conversation ID: 095792d8-1a85-4945-889d-abf25d3c7740).
+3. Detailed Requirements:
+   A. Migration & Database Schema:
+      - Create migration `supabase/migrations/20261102_flexible_sistem_blok.sql` adding:
+        * `tipe_target TEXT NOT NULL DEFAULT 'sekolah' CHECK (tipe_target IN ('sekolah', 'angkatan', 'kelas', 'guru'))`
+        * `target_angkatan TEXT DEFAULT NULL`
+        * `target_kelas TEXT DEFAULT NULL`
+        * `target_guru_id UUID REFERENCES public.data_guru(id) ON DELETE SET NULL DEFAULT NULL`
+        * `target_guru_nama TEXT DEFAULT NULL`
+        * `is_full_day BOOLEAN NOT NULL DEFAULT true`
+        * `jam_mulai TEXT DEFAULT NULL`
+        * `jam_selesai TEXT DEFAULT NULL`
+      - Execute this migration or add these columns to the live Supabase database using Supabase client in a script if needed, ensuring backward compatibility (`tipe_target = 'sekolah'`, `is_full_day = true`).
+   B. TypeScript Database Types:
+      - In `src/types/database.ts`, update `sistem_blok` table definition (`Row`, `Insert`, `Update`) with these fields.
+   C. Admin Configuration UI (`src/components/SistemBlokView.tsx`):
+      - Target scope configuration:
+        * Option selector: Keseluruhan Sekolah (`sekolah`), Per Angkatan (`angkatan`), Per Kelas (`kelas`), Per Guru (`guru`).
+        * Dynamic input according to chosen target:
+          - If `angkatan`: Dropdown for angkatan (e.g. 10/X, 11/XI, 12/XII or derived from existing classes).
+          - If `kelas`: Dropdown populated from classes in school (fetch from `data_siswa` or existing class list).
+          - If `guru`: Dropdown populated from active teachers in school (fetch from `data_guru`).
+          - If `sekolah`: Displays informative message that rule applies to entire school.
+      - Time range configuration:
+        * Toggle / checkbox: "Berlaku Sepanjang Hari" (`is_full_day`, default true).
+        * If not full day: show `jam_mulai` and `jam_selesai` inputs.
+        * Validation: if not full day, both `jam_mulai` and `jam_selesai` are required, and `jam_mulai < jam_selesai`.
+      - CRUD persistence:
+        * Save handler (`handleSave`): correctly writes all target attributes and time range attributes to Supabase.
+        * Edit handler (`handleEdit`): pre-populates all target attributes and time range attributes in form state.
+        * Reset handler: resets all target and time fields to defaults.
+      - Rule Display (Table / Cards):
+        * Add informative badges showing target scope (e.g. "Semua Sekolah", "Angkatan 10", "Kelas X-A", "Guru: Bpk. Budi").
+        * Add informative badges showing time range (e.g. "Sepanjang Hari" or "07:30 - 10:00").
+   D. Verification:
+      - Run TypeScript check: `npx tsc --noEmit`
+      - Run test suite: `npx tsx tests/sistem_blok_verification.test.ts` (all 85 existing tests MUST pass without failure).
+
+4. Deliverables:
+   - Write comprehensive report to: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
+   - Include command outputs and verification evidence in handoff.
+   - Send completion message to orchestrator when finished.

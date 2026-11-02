@@ -1,17 +1,17 @@
 ## Current Status
-Last visited: 2026-10-29T13:09:30Z
+Last visited: 2026-11-02T12:55:00Z
 
 ## Iteration Status
-Current iteration: 3 / 32
+Current iteration: 1 / 32
 
-- [x] Survey Phase: Probe requirements and codebase architecture (completed)
-- [x] Feature Inventory & Milestones in PROJECT.md and TEST_INFRA.md
-- [x] E2E Testing Track: Built comprehensive test suite (150/150 passed), published TEST_READY.md
-- [x] Milestone 1 (Foundation): ClayTabs, Jurnal & Presensi sub-tabs, Dinas Rekap normalization (PASS 100%)
-- [x] Milestone 2 (Functional Consolidation & Sub-Tabs): All 5 clusters consolidated, draft keep-alive preserved, gate passed unanimously (PASS 100%)
-- [~] Milestone 3 Navigation & Tour Restructuring:
-  - [x] Explorers completed: Router Explorer (`ad69b56c`), Sidebar Explorer (`c8b2a107`), Onboarding Explorer (`f69515f8`)
-  - [~] Worker m3 (`dcc8e6b0`) actively implementing `navigation.ts`, `ClaySidebar.tsx`, `AppScreen.tsx`, and `OnboardingTutorial.tsx`
-  - [ ] Milestone 3 Verification Gate
-- [ ] Milestone 4 Final E2E Test Pass (100%) & Adversarial Coverage Hardening
-
+- [x] Survey Phase: Probe requirements and codebase architecture for flexible sistem blok (Completed: explorer 1, 2, 3)
+- [x] Feature Inventory & Milestones in PROJECT.md
+- [~] Milestone 1: Database Schema, Types & Admin Configuration UI
+  - [~] Implementation: Worker m1 (`a9d78022`) editing SistemBlokView.tsx (active at 12:54:48Z)
+  - [ ] Review: 2 Reviewers
+  - [ ] Empirical Verification: 2 Challengers
+  - [ ] Forensic Audit: 1 Auditor
+  - [ ] Gate check
+- [ ] Milestone 2: Workflow Engine, Granular Schedule Masking & Journal Workflows
+- [ ] Milestone 3: Automated Verification Test Suite Expansion
+- [ ] Milestone 4: Final Regression & Code Integrity Verification

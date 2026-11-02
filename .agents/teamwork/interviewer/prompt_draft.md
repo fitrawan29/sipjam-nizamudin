@@ -1,22 +1,41 @@
-This is a single self-contained fix; keep it small and focused. Sesuaikan sistem aplikasi agar seluruh data master (termasuk data siswa, data guru, data jadwal pembelajaran, data kelas, dan data mapel) hanya dapat diubah melalui aplikasi oleh admin menggunakan sistem manajemen yang sudah ada pada panel admin.
+Sesuaikan fitur sistem blok pada aplikasi Sipjam untuk kebutuhan produksi agar lebih fleksibel, dengan menyediakan opsi target pemblokiran per aturan (keseluruhan sekolah, per angkatan, per kelas, atau per guru) serta opsi rentang hari dan rentang jam.
 
-Integrity mode: demo
-The team must NOT: read test source code to understand expected behaviour before implementing
+Integrity mode: development
 
 ## Requirements
 
-### R1. Pembatasan Pengubahan Data Master Hanya untuk Role Admin
-Seluruh data master pada aplikasi (termasuk data siswa, data guru, data jadwal pembelajaran, data kelas, dan data mapel) hanya boleh dapat dimodifikasi atau diperbarui melalui aplikasi oleh pengguna dengan role admin. Sistem harus menolak segala upaya modifikasi data master yang dilakukan oleh pengguna selain admin atau di luar otorisasi admin.
+### R1. Fleksibilitas Pilihan Target Pemblokiran
+Menyediakan pilihan cakupan target pemblokiran pada setiap aturan sistem blok, di mana pengguna dapat memilih salah satu tipe target:
+- Keseluruhan sekolah
+- Angkatan tertentu
+- Kelas tertentu
+- Guru tertentu
 
-### R2. Penggunaan Fitur Manajemen Admin yang Sudah Ada
-Perubahan data master oleh admin harus dilakukan menggunakan sistem/fitur manajemen yang sudah ada pada panel admin, tanpa mengubah atau mengganggu integritas data master yang diunggah/diinput jika tidak melalui tindakan admin yang sah.
+### R2. Fleksibilitas Pengaturan Rentang Hari dan Jam
+Mendukung pengaturan rentang tanggal (tanggal mulai s/d selesai) serta opsi pembatasan rentang jam tertentu pada pemblokiran. Apabila rentang jam tidak dibatasi, pemblokiran berlaku penuh sepanjang hari secara default.
+
+### R3. Dampak Pemblokiran pada Jadwal dan Jurnal
+Jadwal pelajaran yang berada dalam rentang target dan waktu yang diblok harus di-masking / ditandai sebagai kegiatan blok, dan guru yang terdampak mengisi jurnal kegiatan blok sesuai alur kerja sistem blok yang ada.
+
+## Verification Resources
+- Test suite yang sudah ada: `tests/sistem_blok_verification.test.ts`. Perluas dan jalankan test suite ini untuk memverifikasi fungsionalitas target (kelas, angkatan, guru, keseluruhan) dan rentang jam baru.
 
 ## Acceptance Criteria
 
-### Authorization and Access Control
-- [ ] Pengguna non-admin tidak dapat melakukan perubahan, penambahan, atau penghapusan pada seluruh data master yang dilindungi.
-- [ ] Pengguna dengan role admin dapat melakukan pembaruan/modifikasi data master melalui fitur manajemen panel admin yang ada.
-- [ ] Data master yang diunggah/disimpan tidak terubah secara otomatis tanpa tindakan eksplisit admin.
+### Konfigurasi Target Blok
+- [ ] Pengguna dapat membuat dan memperbarui aturan blok dengan memilih salah satu tipe target: Keseluruhan Sekolah, per Angkatan, per Kelas, atau per Guru.
+- [ ] Penyimpanan data sistem blok berhasil menyimpan atribut target pemblokiran yang dipilih.
 
-### Automated Verification
-- [ ] Terdapat pengujian atau skrip verifikasi otomatis yang memvalidasi bahwa akses pengubahan data master berhasil untuk role admin dan ditolak untuk non-admin.
+### Pengaturan Waktu Pemblokiran
+- [ ] Pengguna dapat menentukan tanggal mulai dan tanggal selesai pemblokiran.
+- [ ] Pengguna dapat menentukan rentang jam pemblokiran tertentu.
+- [ ] Pemblokiran tanpa batasan jam berlaku penuh sepanjang hari pada rentang tanggal tersebut.
+
+### Integrasi Jadwal & Jurnal
+- [ ] Jadwal pelajaran yang terdampak oleh pemblokiran (sesuai kelas, angkatan, guru, atau keseluruhan sekolah pada rentang hari dan jam yang aktif) tertutupi/di-masking sebagai kegiatan blok.
+- [ ] Jadwal di luar target atau di luar rentang jam yang diblok tetap berjalan normal dan tidak terpengaruh.
+- [ ] Guru yang terdampak oleh aturan blok dapat mengisi jurnal kegiatan blok.
+
+### Verifikasi Otomatis
+- [ ] Script pengujian `tests/sistem_blok_verification.test.ts` diperbarui untuk mencakup skenario pengujian baru (pemblokiran per kelas, per angkatan, per guru, keseluruhan, serta rentang jam).
+- [ ] Seluruh skenario pengujian dalam `tests/sistem_blok_verification.test.ts` berjalan dan lulus tanpa kegagalan (0 failed).

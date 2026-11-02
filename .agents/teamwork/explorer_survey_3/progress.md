@@ -1,14 +1,23 @@
-# Progress Tracking — explorer_survey_3
+# Progress Tracking - explorer_survey_3
 
-Last visited: 2026-10-11T00:54:30Z
-Status: Completed
+Last visited: 2026-11-02T12:37:00Z
 
-## Tasks
-- [x] Received dispatch and initialized BRIEFING.md
-- [x] Investigate current score calculations in `src/components/GradebookView.tsx`
-- [x] Design the new Nilai Akhir formula: `(bobot_kehadiran * rata_kehadiran) + (bobot_formatif * rata_formatif) + (bobot_sumatif * rata_sumatif)`
-- [x] Verify Diagnostik rules (max 1 per TP, excluded from Nilai Akhir calculation)
-- [x] Investigate how attendance per mapel is queried from `absensi` table for each student
-- [x] Trace Rekap Semester and Rapor data calculation to ensure formula applies without regressions
-- [x] Examine existing test suites in `tests/`, test command execution, and test cases needed
-- [x] Compile 5-component `handoff.md` and notify parent coordinator
+## Status
+Completed — Exploration and test suite expansion specification complete. All artifacts generated.
+
+## Steps
+- [x] Read ORIGINAL_REQUEST.md
+- [x] Initialize DISPATCH.md, BRIEFING.md, and progress.md
+- [x] Inspect package.json and test configurations (tsx standalone runner)
+- [x] Inspect tests/sistem_blok_verification.test.ts and related test files/mocks (all 85 assertions verified passing)
+- [x] Trace how tests run and test execution commands (npx tsx tests/sistem_blok_verification.test.ts)
+- [x] Identify gaps and define specific test scenarios to be expanded:
+  * Target scope options: Keseluruhan Sekolah, per Angkatan, per Kelas, per Guru
+  * Date range and Time range options (full day vs bounded hour range)
+  * Target masking matching and non-matching isolation (class A vs class B, teacher A vs teacher B, morning vs afternoon)
+  * Journal submission for blocked activities (Jurnal Kegiatan vs regular Jurnal KBM)
+  * Backward compatibility with existing tests
+- [x] Write analysis.md
+- [x] Write handoff.md
+- [x] Update BRIEFING.md
+- [x] Notify orchestrator

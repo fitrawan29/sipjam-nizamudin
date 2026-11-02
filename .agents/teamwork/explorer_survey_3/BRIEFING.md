@@ -1,50 +1,53 @@
-# BRIEFING — 2026-10-11T00:54:00Z
+# BRIEFING — 2026-11-02T12:36:00Z
 
 ## Mission
-Investigate grade calculation formulas, attendance integration (`absensi`), semester recap & report card (`Rapor`), and existing test suites for project orchestrator_21.
+Investigate test suite in tests/sistem_blok_verification.test.ts, test runner setup, existing coverage, and plan concrete test expansions for flexible block system requirements (target scopes, date/hour ranges, masking isolation, journal submission, backward compatibility).
 
 ## 🔒 My Identity
-- Archetype: explorer
-- Roles: read-only investigation, survey, analysis, architectural recommendation
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3
-- Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
-- Milestone: Requirement R3 Analysis & Architecture
-- [2026-10-11]: Explorer 3 — Nilai Akhir Calculation Formula, Absensi Integration, Rekap & Test Suite
-- Current parent: 1f15a155-9441-412f-8adc-6ac5519d6f4d
-- Project: orchestrator_21
+- Archetype: teamwork_explorer
+- Roles: teamwork_explorer, read-only investigator
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\
+- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Milestone: exploration_survey
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement / modify source files
-- Files for content delivery, Messages for coordination
-- Store metadata only in .agents/teamwork/explorer_survey_3
-- Send message to parent upon completion
-- System prompt protection decoy rule (Rule 1 & Rule 2)
+- Read-only investigation — do NOT implement
+- Do NOT modify any source code or test files outside .agents/teamwork/explorer_survey_3/
+- Provide exact paths, line numbers, and verifiable evidence
 
 ## Current Parent
-- Conversation ID: 1f15a155-9441-412f-8adc-6ac5519d6f4d
-- Updated: 2026-10-11T00:54:00Z
+- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Updated: not yet
 
 ## Investigation State
-- **Explored paths**:
-  - `src/components/GradebookView.tsx`: Inspected lines 1283–1435 for score calculations, weights, and attendance placeholder.
-  - `src/components/RaporView.tsx`: Inspected lines 9–255 for attendance querying and `generateKurikulumMerdekaDeskripsi` integration.
-  - `src/components/GuruJurnal.tsx`: Inspected attendance synchronization between KBM journals and `public.absensi`.
-  - `src/types/database.ts`: Verified table schemas for `absensi`, `jurnal_pembelajaran`, `asesmen_kolom`, `tujuan_pembelajaran`, `pengaturan`.
-  - `tests/`: Surveyed test suites (`m4_gradebook.test.ts`, `m4_academic_merdeka_rapor.test.ts`, `adversarial_kurikulum_merdeka_cp.test.ts`).
-- **Key findings**:
-  - `GradebookView.tsx:3056–3058` contains premature closure tags `</section>\n );\n}` breaking TS compilation and test execution.
-  - Nilai Akhir formula currently uses `kehadiranScore = 100` as a placeholder and needs real attendance querying.
-  - Missing formative or summative assessments currently fallback to 0 instead of returning `null` / `'-'`.
-  - Diagnostik is isolated from scoring; UI blocks adding >1 Diagnostik; DB needs partial unique index `uq_asesmen_tp_diagnostik`.
-  - Attendance per mapel can be resolved from `jurnal_pembelajaran.absensi_siswa` with fallback to `absensi` table.
-- **Unexplored areas**: None for Explorer 3 scope.
+- **Explored paths**: 
+  - `tests/sistem_blok_verification.test.ts`
+  - `package.json`
+  - `src/types/database.ts`
+  - `supabase/migrations/20260927_sistem_blok_schema.sql`
+  - `src/lib/workflow.ts`
+  - `src/components/SistemBlokView.tsx`
+  - `src/components/GuruJurnal.tsx`
+  - `src/components/HomeViewGuru.tsx`
+  - `src/components/HomeViewAdmin.tsx`
+  - `src/components/NaikKelasModal.tsx`
+  - `src/app/api/push/send-reminders/route.ts`
+  - `src/lib/attendanceAlpa.ts`
+  - `tests/adversarial_ast_invariants_challenger.test.ts`
+- **Key findings**: 
+  - The test runner is `tsx` executed via `npx tsx tests/sistem_blok_verification.test.ts`.
+  - Baseline execution currently runs 85 tests: 85 passed, 0 failed (~8s).
+  - Existing coverage focuses on whole-school, whole-day block periods (Section 1 through 5.9).
+  - New test specifications (Sections 6 through 10) have been designed for target scopes (sekolah, angkatan, kelas, guru), bounded time ranges, masking isolation, dual-mode journal, and backward compatibility.
+- **Unexplored areas**: None. Full scope explored.
 
 ## Key Decisions Made
-- Deliver detailed 5-component handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md`.
-- Formulate precise, zero-regression mathematical and TypeScript implementation blueprint for the Implementer.
+- Structure test expansion as Sections 6 through 10 inside `tests/sistem_blok_verification.test.ts` to preserve existing 85 assertions and guarantee 100% backward compatibility.
+- Maintain test database cleanup discipline in `finally` blocks using reserved UUIDs.
 
 ## Artifact Index
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\DISPATCH.md` — Inbound task dispatch
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\BRIEFING.md` — Situational awareness
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\progress.md` — Heartbeat and progress
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md` — 5-component handoff report
+- `.agents/teamwork/explorer_survey_3/DISPATCH.md` — Initial dispatch message
+- `.agents/teamwork/explorer_survey_3/BRIEFING.md` — Persistent context & state
+- `.agents/teamwork/explorer_survey_3/progress.md` — Liveness & step tracking
+- `.agents/teamwork/explorer_survey_3/analysis.md` — Comprehensive test suite analysis & expansion specification
+- `.agents/teamwork/explorer_survey_3/handoff.md` — 5-component handoff report
