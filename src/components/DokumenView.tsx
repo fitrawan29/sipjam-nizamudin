@@ -8,6 +8,7 @@ import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
 import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from '@/types/database';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export const KURIKULUM_DOCS = [
   { id: 'CP', code: 'CP', name: 'Analisis Capaian Pembelajaran', short: 'CP' },
@@ -100,6 +101,7 @@ export default function DokumenView({ user }: { user: any }) {
           jadwalData.forEach((j: any) => {
             const namaGuru = j.nama_guru || '-';
             const mapel = j.mata_pelajaran || '-';
+            if (isInvalidMapel(mapel)) return;
             const kls = j.kelas || '-';
             const key = `${namaGuru}-${mapel}-${kls}`;
             if (!uniqueMapels.has(key)) {

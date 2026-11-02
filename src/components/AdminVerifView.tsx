@@ -13,6 +13,7 @@ import {
 } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { isGuruDiPiket } from '@/lib/workflow';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import DokumenView from './DokumenView';
 
 export interface AdminVerifViewProps {
@@ -81,7 +82,10 @@ export default function AdminVerifView({
 
         if (teachersRes.data) setAllTeachers(teachersRes.data);
         if (piketRes.data) setAllPiketSchedule(piketRes.data);
-        if (jadwalRes.data) setAllJadwalPelajaran(jadwalRes.data);
+        if (jadwalRes.data) {
+          const cleanJadwal = jadwalRes.data.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+          setAllJadwalPelajaran(cleanJadwal);
+        }
       } catch (err) {
         console.error('Error loading master data for verification:', err);
       }
@@ -493,6 +497,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
         const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
           if (j.hari !== effectiveDayName) return false;
+          if (isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
           const jNorm = normalizeName(j.nama_guru);
           return (nipNorm && nipNorm === jNorm) || 
             (namaNorm === jNorm) || 

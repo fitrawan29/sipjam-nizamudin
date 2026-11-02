@@ -249,12 +249,17 @@ export function validateStudentData(
  */
 export function isInvalidMapel(mapel?: string | null): boolean {
   if (!mapel) return false;
-  const clean = mapel.toLowerCase().trim().replace(/[-_.]+/g, ' ');
+  const clean = mapel.toLowerCase().trim().replace(/[-_./]+/g, ' ');
   return (
     /\bteknik\s+informasi\b/i.test(clean) ||
     /\bteknologi\s+informasi\b/i.test(clean) ||
+    /\bteknik\s+informatika\b/i.test(clean) ||
+    /\btek\s*info\b/i.test(clean) ||
+    /\bteknik\s+dan\s+informasi\b/i.test(clean) ||
     clean === 'teknik informasi' ||
-    clean === 'teknologi informasi'
+    clean === 'teknologi informasi' ||
+    clean === 'teknik informatika' ||
+    clean === 'tekinfo'
   );
 }
 

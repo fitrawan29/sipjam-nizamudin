@@ -86,7 +86,12 @@ async function runAllTests() {
     assert.strictEqual(isInvalidMapel('teknik_informasi'), true, 'teknik_informasi must be flagged invalid');
     assert.strictEqual(isInvalidMapel('teknologi informasi'), true, 'teknologi informasi must be flagged invalid');
     assert.strictEqual(isInvalidMapel('Teknologi Informasi'), true, 'Teknologi Informasi must be flagged invalid');
-    pass('isInvalidMapel correctly flags all variations of "teknik informasi" and "teknologi informasi"');
+    assert.strictEqual(isInvalidMapel('teknik informatika'), true, 'teknik informatika must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('Teknik Informatika'), true, 'Teknik Informatika must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('tekinfo'), true, 'tekinfo must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('tek info'), true, 'tek info must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('teknik dan informasi'), true, 'teknik dan informasi must be flagged invalid');
+    pass('isInvalidMapel correctly flags all variations and slang of "teknik informasi", "teknologi informasi", "teknik informatika", and "tekinfo"');
   } catch (e) {
     fail('isInvalidMapel variations check failed', e);
   }
@@ -197,7 +202,25 @@ async function runAllTests() {
     const raporSrc = fs.readFileSync(path.join(root, 'src', 'components', 'RaporView.tsx'), 'utf8');
     assert(raporSrc.includes('isInvalidMapel'), 'RaporView imports and filters with isInvalidMapel');
 
-    pass('All frontend views (AdminDataView, HomeViewAdmin, GuruJurnal, GradebookView, RaporView) implement isInvalidMapel protection');
+    const adminVerifSrc = fs.readFileSync(path.join(root, 'src', 'components', 'AdminVerifView.tsx'), 'utf8');
+    assert(adminVerifSrc.includes('isInvalidMapel'), 'AdminVerifView imports and filters with isInvalidMapel');
+
+    const dokumenSrc = fs.readFileSync(path.join(root, 'src', 'components', 'DokumenView.tsx'), 'utf8');
+    assert(dokumenSrc.includes('isInvalidMapel'), 'DokumenView imports and filters with isInvalidMapel');
+
+    const rekapJurnalSrc = fs.readFileSync(path.join(root, 'src', 'components', 'RekapJurnalView.tsx'), 'utf8');
+    assert(rekapJurnalSrc.includes('isInvalidMapel'), 'RekapJurnalView imports and filters with isInvalidMapel');
+
+    const reminderSrc = fs.readFileSync(path.join(root, 'src', 'app', 'api', 'push', 'send-reminders', 'route.ts'), 'utf8');
+    assert(reminderSrc.includes('isInvalidMapel'), 'send-reminders route imports and filters with isInvalidMapel');
+
+    const attendanceAlpaSrc = fs.readFileSync(path.join(root, 'src', 'lib', 'attendanceAlpa.ts'), 'utf8');
+    assert(attendanceAlpaSrc.includes('isInvalidMapel'), 'attendanceAlpa.ts imports and filters with isInvalidMapel');
+
+    const warningSystemSrc = fs.readFileSync(path.join(root, 'src', 'lib', 'warningSystem.ts'), 'utf8');
+    assert(warningSystemSrc.includes('isInvalidMapel'), 'warningSystem.ts imports and filters with isInvalidMapel');
+
+    pass('All frontend views & backend services (AdminDataView, HomeViewAdmin, GuruJurnal, GradebookView, RaporView, AdminVerifView, DokumenView, RekapJurnalView, send-reminders, attendanceAlpa, warningSystem) implement isInvalidMapel protection');
   } catch (e) {
     fail('Static source code verification failed', e);
   }

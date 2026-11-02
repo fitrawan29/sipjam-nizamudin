@@ -385,6 +385,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           if (tabObj.table === 'jadwal_pelajaran') {
             const rawMapel = row.mata_pelajaran || row.mapel;
             if (rawMapel) {
+              if (isDummyOrTestString(rawMapel)) {
+                throw new Error(`Baris ${i}: Terdeteksi mata pelajaran dummy/percobaan ("${rawMapel}").`);
+              }
               if (isInvalidMapel(rawMapel)) {
                 row.mata_pelajaran = normalizeScheduleMapel(rawMapel);
                 if (row.mapel) row.mapel = row.mata_pelajaran;

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
 import { isJurnalMatchJadwal } from '@/lib/workflow';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceAlpa';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
@@ -87,7 +88,8 @@ export default function RekapJurnalView({
         }
         const { data: mData } = await mapelQuery;
         if (mData) {
-          const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[];
+          const uniqueMapel = (Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[])
+            .filter(m => !isInvalidMapel(m));
           setMapelList(uniqueMapel);
         }
 
@@ -228,7 +230,8 @@ export default function RekapJurnalView({
         if (mapel) {
           jadwalQ = jadwalQ.or(`mata_pelajaran.eq."${mapel}",mapel.eq."${mapel}"`);
         }
-        const { data: allSchedules } = await jadwalQ;
+        const { data: allSchedulesRaw } = await jadwalQ;
+        const allSchedules = (allSchedulesRaw || []).filter((s: any) => !isInvalidMapel(s.mata_pelajaran || s.mapel));
 
         const todayStr = getWitaDateStr();
         const currTime = getWitaTimeStr();

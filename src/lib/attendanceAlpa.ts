@@ -8,6 +8,7 @@ import {
   getWitaDayName
 } from '@/lib/wita';
 import { isGuruDiPiket, isJurnalMatchJadwal } from '@/lib/workflow';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface AutoAlpaResult {
   affectedCount: number;
@@ -298,10 +299,11 @@ export async function evaluateAndApplyAutoAlpa(
   // Fetch all schedules today
   let allJadwalQuery = supabase
     .from('jadwal_pelajaran')
-    .select('id, nama_guru, user_id, sekolah_id')
+    .select('id, nama_guru, user_id, sekolah_id, mata_pelajaran, mapel')
     .eq('hari', hariEvaluasi);
   if (sekolahId) allJadwalQuery = allJadwalQuery.eq('sekolah_id', sekolahId);
-  const { data: allJadwalToday } = await allJadwalQuery;
+  const { data: allJadwalRaw } = await allJadwalQuery;
+  const allJadwalToday = (allJadwalRaw || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
 
   // Fetch semua guru aktif
   let guruQuery = supabase
@@ -770,7 +772,8 @@ export async function evaluateAndApplyAutoCheckout(
   if (sekolahId) {
     jadwalQuery = jadwalQuery.eq('sekolah_id', sekolahId);
   }
-  const { data: allJadwalToday, error: jadwalErr } = await jadwalQuery;
+  const { data: allJadwalTodayRaw, error: jadwalErr } = await jadwalQuery;
+  const allJadwalToday = (allJadwalTodayRaw || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
   if (jadwalErr) {
     console.error('[attendanceAlpa] Error fetching schedules for auto-checkout:', jadwalErr.message);
   }
@@ -973,7 +976,7 @@ export async function recordUnfilledJournalsAndPiket(
       let jQ = client.from('jadwal_pelajaran').select('*').eq('hari', dayName);
       if (teacher.sekolah_id) jQ = jQ.eq('sekolah_id', teacher.sekolah_id);
       const { data: jData } = await jQ;
-      jadwalKBM = (jData || []).filter((s: any) => isTeacherScheduleMatch(teacher, s));
+      jadwalKBM = (jData || []).filter((s: any) => !isInvalidMapel(s.mata_pelajaran || s.mapel) && isTeacherScheduleMatch(teacher, s));
     }
 
     let jurnalKBM = state.jurnalKBM;

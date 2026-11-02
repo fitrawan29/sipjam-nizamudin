@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { sendWebPush, PushNotificationPayload } from '@/lib/vapid';
 import { getWitaDateStr, getWitaDayName } from '@/lib/wita';
 import { isGuruDiPiket } from '@/lib/workflow';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface ReminderItem {
   guru_id: string;
@@ -102,7 +103,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       scheduleQuery = scheduleQuery.eq('sekolah_id', sekolahId);
     }
     const { data: schedules } = await scheduleQuery;
-    const scheduleList = schedules || [];
+    const scheduleList = (schedules || []).filter((s: any) => !isInvalidMapel(s.mata_pelajaran || s.mapel));
 
     // C. Fetch presensi for today (Datang & Pulang)
     let presensiQuery = supabase

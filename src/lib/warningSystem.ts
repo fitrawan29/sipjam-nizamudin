@@ -3,6 +3,7 @@ import {
   getWitaDateStr, 
   getWitaDayName 
 } from '@/lib/wita';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface DisciplineWarning {
   category: 'Presensi' | 'Jurnal' | 'Piket';
@@ -480,7 +481,7 @@ export async function getTeacherDisciplineWarnings(
     resolvedSekolahId,
     configs || [],
     holidaysData || [],
-    jadwalData || [],
+    (jadwalData || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel)),
     penugasanData || [],
     legacyPiketData || [],
     presensiRes || [],
@@ -602,7 +603,7 @@ export async function getAllTeachersDisciplineWarnings(
         ? isExplicitExempt
         : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
       const tHolidays = (holidaysData || []).filter(h => h.sekolah_id === resolvedSekolahId || !h.sekolah_id);
-      const tJadwal = (jadwalData || []).filter(j => j.sekolah_id === resolvedSekolahId || !j.sekolah_id);
+      const tJadwal = (jadwalData || []).filter(j => (j.sekolah_id === resolvedSekolahId || !j.sekolah_id) && !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const tPenugasan = (penugasanData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
       const tLegacyPiket = (legacyPiketData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
 
