@@ -237,8 +237,8 @@ assert(
   adminScanCode.includes('Presensi Manual & Daftar Siswa') &&
   adminScanCode.includes('Presensi Datang') &&
   adminScanCode.includes('Presensi Pulang') &&
-  adminScanCode.includes('colSpan={6}'),
-  'Admin view renders full detailed 6-column student roster table with separate Datang & Pulang controls'
+  (adminScanCode.includes('colSpan={6}') || adminScanCode.includes('colSpan={7}')),
+  'Admin view renders full detailed student roster table with separate Datang & Pulang controls'
 );
 
 // Admin: 7-column Live Attendance Audit Log

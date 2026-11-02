@@ -121,3 +121,24 @@ export function formatDateWita(dateStr: string): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Normalizes and formats attendance time string into HH:mm (WITA).
+ * Returns null if raw time is missing, '-', or an auto/system placeholder.
+ * Handles diverse inputs like "06:30:15", "6:30", "2026-11-03 07:15:00", etc.
+ */
+export function formatPresensiTime(rawTime: string | null | undefined): string | null {
+  if (!rawTime) return null;
+  const str = String(rawTime).trim();
+  if (!str || str === '-' || str.toLowerCase().includes('auto') || str.toLowerCase().includes('sistem')) {
+    return null;
+  }
+  const match = str.match(/(?:^|\s|T)?(\d{1,2}):(\d{2})/);
+  if (match) {
+    const hh = match[1].padStart(2, '0');
+    const mm = match[2];
+    return `${hh}:${mm}`;
+  }
+  return null;
+}
+

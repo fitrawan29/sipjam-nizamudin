@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
-import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
+import { getWitaDateStr, getWitaTimestamp, formatDateWita, getWitaDayName, getWitaTimeStr, formatPresensiTime } from '@/lib/wita';
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
@@ -2775,7 +2775,7 @@ export default function PiketView({ user }: { user: any }) {
                                       <div className="inline-flex items-center gap-1.5">
                                         <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
                                           <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                                          <span>Datang {datangRecord.jam ? datangRecord.jam.slice(0, 5) : ''}</span>
+                                          <span>Datang {formatPresensiTime(datangRecord.jam) || (datangRecord.jam && datangRecord.jam !== '-' ? datangRecord.jam.slice(0, 5) : '-')}</span>
                                         </span>
                                         <button
                                           type="button"
@@ -2787,19 +2787,22 @@ export default function PiketView({ user }: { user: any }) {
                                         </button>
                                       </div>
                                     ) : (
-                                      <button
-                                        type="button"
-                                        disabled={manualMarkLoading === `${s.id}-datang`}
-                                        onClick={() => handleManualMark(s, 'datang')}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
-                                      >
-                                        {manualMarkLoading === `${s.id}-datang` ? (
-                                          <i className="fa-solid fa-spinner animate-spin"></i>
-                                        ) : (
-                                          <i className="fa-solid fa-right-to-bracket text-[10px]"></i>
-                                        )}
-                                        <span>Tandai Datang</span>
-                                      </button>
+                                      <div className="inline-flex items-center justify-center gap-2">
+                                        <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">-</span>
+                                        <button
+                                          type="button"
+                                          disabled={manualMarkLoading === `${s.id}-datang`}
+                                          onClick={() => handleManualMark(s, 'datang')}
+                                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                        >
+                                          {manualMarkLoading === `${s.id}-datang` ? (
+                                            <i className="fa-solid fa-spinner animate-spin"></i>
+                                          ) : (
+                                            <i className="fa-solid fa-right-to-bracket text-[10px]"></i>
+                                          )}
+                                          <span>Tandai Datang</span>
+                                        </button>
+                                      </div>
                                     )}
                                   </td>
                                   <td className="py-3 px-3 text-center">
@@ -2807,7 +2810,7 @@ export default function PiketView({ user }: { user: any }) {
                                       <div className="inline-flex items-center gap-1.5">
                                         <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
                                           <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
-                                          <span>Pulang {pulangRecord.jam ? pulangRecord.jam.slice(0, 5) : ''}</span>
+                                          <span>Pulang {formatPresensiTime(pulangRecord.jam) || (pulangRecord.jam && pulangRecord.jam !== '-' ? pulangRecord.jam.slice(0, 5) : '-')}</span>
                                         </span>
                                         <button
                                           type="button"
@@ -2819,19 +2822,22 @@ export default function PiketView({ user }: { user: any }) {
                                         </button>
                                       </div>
                                     ) : (
-                                      <button
-                                        type="button"
-                                        disabled={manualMarkLoading === `${s.id}-pulang`}
-                                        onClick={() => handleManualMark(s, 'pulang')}
-                                        className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
-                                      >
-                                        {manualMarkLoading === `${s.id}-pulang` ? (
-                                          <i className="fa-solid fa-spinner animate-spin"></i>
-                                        ) : (
-                                          <i className="fa-solid fa-right-from-bracket text-[10px]"></i>
-                                        )}
-                                        <span>Tandai Pulang</span>
-                                      </button>
+                                      <div className="inline-flex items-center justify-center gap-2">
+                                        <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">-</span>
+                                        <button
+                                          type="button"
+                                          disabled={manualMarkLoading === `${s.id}-pulang`}
+                                          onClick={() => handleManualMark(s, 'pulang')}
+                                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                        >
+                                          {manualMarkLoading === `${s.id}-pulang` ? (
+                                            <i className="fa-solid fa-spinner animate-spin"></i>
+                                          ) : (
+                                            <i className="fa-solid fa-right-from-bracket text-[10px]"></i>
+                                          )}
+                                          <span>Tandai Pulang</span>
+                                        </button>
+                                      </div>
                                     )}
                                   </td>
                                   <td className="py-3 px-3 text-center">
@@ -2846,7 +2852,7 @@ export default function PiketView({ user }: { user: any }) {
                                             ? 'Hadir Datang'
                                             : 'Belum Presensi',
                                           tanggal: getWitaDateStr(),
-                                          timeStr: pulangRecord?.jam ? pulangRecord.jam.slice(0, 5) : datangRecord?.jam ? datangRecord.jam.slice(0, 5) : undefined,
+                                          timeStr: formatPresensiTime(pulangRecord?.jam) || formatPresensiTime(datangRecord?.jam) || undefined,
                                           note: datangRecord ? 'Tercatat pada sistem presensi piket' : undefined
                                         },
                                         user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
@@ -3383,7 +3389,7 @@ export default function PiketView({ user }: { user: any }) {
                                     <div className="inline-flex items-center gap-1.5">
                                       <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
                                         <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
-                                        <span>Datang {datangRecord.jam ? datangRecord.jam.slice(0, 5) : ''}</span>
+                                        <span>Datang {formatPresensiTime(datangRecord.jam) || (datangRecord.jam && datangRecord.jam !== '-' ? datangRecord.jam.slice(0, 5) : '-')}</span>
                                       </span>
                                       <button
                                         type="button"
@@ -3395,26 +3401,29 @@ export default function PiketView({ user }: { user: any }) {
                                       </button>
                                     </div>
                                   ) : (
-                                    <button
-                                      type="button"
-                                      disabled={manualMarkLoading === `${s.id}-datang`}
-                                      onClick={() => handleManualMark(s, 'datang')}
-                                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
-                                    >
-                                      {manualMarkLoading === `${s.id}-datang` ? (
-                                        <i className="fa-solid fa-spinner animate-spin"></i>
-                                      ) : (
-                                        <i className="fa-solid fa-right-to-bracket text-xs"></i>
-                                      )}
-                                      <span>Datang</span>
-                                    </button>
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold mr-1">-</span>
+                                      <button
+                                        type="button"
+                                        disabled={manualMarkLoading === `${s.id}-datang`}
+                                        onClick={() => handleManualMark(s, 'datang')}
+                                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
+                                      >
+                                        {manualMarkLoading === `${s.id}-datang` ? (
+                                          <i className="fa-solid fa-spinner animate-spin"></i>
+                                        ) : (
+                                          <i className="fa-solid fa-right-to-bracket text-xs"></i>
+                                        )}
+                                        <span>Datang</span>
+                                      </button>
+                                    </div>
                                   )}
 
                                   {pulangRecord ? (
                                     <div className="inline-flex items-center gap-1.5">
                                       <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
                                         <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
-                                        <span>Pulang {pulangRecord.jam ? pulangRecord.jam.slice(0, 5) : ''}</span>
+                                        <span>Pulang {formatPresensiTime(pulangRecord.jam) || (pulangRecord.jam && pulangRecord.jam !== '-' ? pulangRecord.jam.slice(0, 5) : '-')}</span>
                                       </span>
                                       <button
                                         type="button"
@@ -3426,19 +3435,22 @@ export default function PiketView({ user }: { user: any }) {
                                       </button>
                                     </div>
                                   ) : (
-                                    <button
-                                      type="button"
-                                      disabled={manualMarkLoading === `${s.id}-pulang`}
-                                      onClick={() => handleManualMark(s, 'pulang')}
-                                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
-                                    >
-                                      {manualMarkLoading === `${s.id}-pulang` ? (
-                                        <i className="fa-solid fa-spinner animate-spin"></i>
-                                      ) : (
-                                        <i className="fa-solid fa-right-from-bracket text-xs"></i>
-                                      )}
-                                      <span>Pulang</span>
-                                    </button>
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold mr-1">-</span>
+                                      <button
+                                        type="button"
+                                        disabled={manualMarkLoading === `${s.id}-pulang`}
+                                        onClick={() => handleManualMark(s, 'pulang')}
+                                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
+                                      >
+                                        {manualMarkLoading === `${s.id}-pulang` ? (
+                                          <i className="fa-solid fa-spinner animate-spin"></i>
+                                        ) : (
+                                          <i className="fa-solid fa-right-from-bracket text-xs"></i>
+                                        )}
+                                        <span>Pulang</span>
+                                      </button>
+                                    </div>
                                   )}
 
                                   <button
@@ -3452,7 +3464,7 @@ export default function PiketView({ user }: { user: any }) {
                                           ? 'Hadir Datang'
                                           : 'Belum Presensi',
                                         tanggal: getWitaDateStr(),
-                                        timeStr: pulangRecord?.jam ? pulangRecord.jam.slice(0, 5) : datangRecord?.jam ? datangRecord.jam.slice(0, 5) : undefined,
+                                        timeStr: formatPresensiTime(pulangRecord?.jam) || formatPresensiTime(datangRecord?.jam) || undefined,
                                         note: datangRecord ? 'Tercatat pada sistem presensi piket' : undefined
                                       },
                                       user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'

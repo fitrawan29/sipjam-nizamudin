@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance } from '@/lib/presensiIntervensi';
-import { getWitaDateStr } from '@/lib/wita';
+import { getWitaDateStr, formatPresensiTime } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
@@ -345,15 +345,8 @@ export default function RekapSiswaView({
               isBolosPulang = true;
             }
 
-            const rawJamDatang = datang?.jam ? String(datang.jam).trim() : null;
-            const jamDatang = rawJamDatang && rawJamDatang !== '-' && !rawJamDatang.toLowerCase().includes('auto')
-              ? (rawJamDatang.length > 5 ? rawJamDatang.slice(0, 5) : rawJamDatang)
-              : null;
-
-            const rawJamPulang = realPulang?.jam ? String(realPulang.jam).trim() : null;
-            const jamPulang = rawJamPulang && rawJamPulang !== '-' && !rawJamPulang.toLowerCase().includes('auto') && !rawJamPulang.toLowerCase().includes('sistem')
-              ? (rawJamPulang.length > 5 ? rawJamPulang.slice(0, 5) : rawJamPulang)
-              : null;
+            const jamDatang = formatPresensiTime(datang?.jam);
+            const jamPulang = formatPresensiTime(realPulang?.jam);
 
             return {
               ...siswa,
@@ -1135,7 +1128,7 @@ export default function RekapSiswaView({
                                   {waliGateLogs[siswa.nisn || siswa.id]?.datang ? (
                                     <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
                                       <i className="fa-solid fa-circle-check text-[8px]"></i>
-                                      Piket: Hadir ({waliGateLogs[siswa.nisn || siswa.id].datang.jam ? (waliGateLogs[siswa.nisn || siswa.id].datang.jam.slice(0, 5)) : 'Masuk'})
+                                      Piket: Hadir ({formatPresensiTime(waliGateLogs[siswa.nisn || siswa.id].datang.jam) || 'Masuk'})
                                     </div>
                                   ) : (
                                     <div className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
