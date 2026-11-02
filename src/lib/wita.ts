@@ -127,8 +127,11 @@ export function formatDateWita(dateStr: string): string {
  * Returns null if raw time is missing, '-', or an auto/system placeholder.
  * Handles diverse inputs like "06:30:15", "6:30", "06.45", "02:30 PM", "2026-11-03 07:15:00", etc.
  */
-export function formatPresensiTime(rawTime: string | null | undefined): string | null {
+export function formatPresensiTime(rawTime: string | null | undefined | Date): string | null {
   if (!rawTime) return null;
+  if (rawTime instanceof Date) {
+    return isNaN(rawTime.getTime()) ? null : getWitaTimeStr(rawTime);
+  }
   const str = String(rawTime).trim();
   if (
     !str ||
@@ -141,8 +144,8 @@ export function formatPresensiTime(rawTime: string | null | undefined): string |
     return null;
   }
 
-  // Handle ISO datetime strings with timezone offset or UTC 'Z' (e.g. "2026-11-03T06:15:00.000Z")
-  if (str.includes('T') && (str.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(str))) {
+  // Handle ISO datetime strings with timezone offset or UTC 'Z' (e.g. "2026-11-03T06:15:00.000Z", "2026-11-03 06:15:00Z")
+  if (str.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(str)) {
     const d = new Date(str);
     if (!isNaN(d.getTime())) {
       return getWitaTimeStr(d);

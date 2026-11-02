@@ -139,6 +139,28 @@ check('R2.9 - Cross-component gate presence formatting in GuruJurnal and qrSiswa
   assert(qrSiswaSrc.includes("import { formatPresensiTime } from './wita'"), 'qrSiswa must import formatPresensiTime');
 });
 
+check('R2.10 - PiketView kiosk feedback banner formats timestamp cleanly via formatPresensiTime', () => {
+  assert(
+    piketSrc.includes('pk. {formatPresensiTime(lastScanResult.jam)'),
+    'Kiosk scanner card must format timestamp with formatPresensiTime'
+  );
+});
+
+check('R2.11 - PiketView audit log table and WhatsApp notify use formatPresensiTime instead of naive slice(0, 8)', () => {
+  assert(!piketSrc.includes('item.jam.slice(0, 8)'), 'PiketView audit log must not use naive slice(0, 8)');
+  assert(piketSrc.includes('{formatPresensiTime(item.jam)'), 'PiketView audit log table must use formatPresensiTime(item.jam)');
+  assert(piketSrc.includes('timeStr: formatPresensiTime(item.jam)'), 'WhatsApp notify must use formatPresensiTime(item.jam)');
+});
+
+check('R2.12 - GuruJurnal and qrSiswa eliminate naive slice fallbacks that corrupt non-time strings', () => {
+  const guruJurnalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/GuruJurnal.tsx'), 'utf8');
+  const qrSiswaSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/qrSiswa.ts'), 'utf8');
+
+  assert(!guruJurnalSrc.includes('p.jam.slice'), 'GuruJurnal must not have naive slice fallback');
+  assert(!qrSiswaSrc.includes('existing.jam.slice'), 'qrSiswa must not have naive slice fallback on existing.jam');
+  assert(!qrSiswaSrc.includes('jam.slice'), 'qrSiswa must not have naive slice fallback on jam');
+});
+
 // ---------------------------------------------------------------------------
 // 3. Central formatPresensiTime Unit Testing
 // ---------------------------------------------------------------------------
@@ -177,6 +199,11 @@ check('R1 & R2 Helper - formatPresensiTime handles diverse timestamp and datetim
 
   // UTC ISO timestamp with 'Z' correctly converts to WITA (UTC+8)
   assert.strictEqual(formatPresensiTime('2026-11-03T06:15:00Z'), '14:15');
+  assert.strictEqual(formatPresensiTime('2026-11-03 06:15:00Z'), '14:15');
+  assert.strictEqual(formatPresensiTime('2026-11-03 06:15:00+00:00'), '14:15');
+
+  // Date instance support
+  assert.strictEqual(formatPresensiTime(new Date('2026-11-03T06:15:00Z')), '14:15');
 
   // Whitespace resilience
   assert.strictEqual(formatPresensiTime('  08:12:00  '), '08:12');

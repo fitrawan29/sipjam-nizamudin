@@ -712,7 +712,7 @@ export default function PiketView({ user }: { user: any }) {
 
       if (res.success) {
         playAudioFeedback('success');
-        const jamStr = res.data?.jam ? res.data.jam.slice(0, 8) : getLocalCurrentTime();
+        const jamStr = formatPresensiTime(res.data?.jam) || (res.data?.jam ? res.data.jam.slice(0, 8) : getLocalCurrentTime());
         setLastScanResult({
           student,
           status: scanMode,
@@ -731,7 +731,7 @@ export default function PiketView({ user }: { user: any }) {
         await fetchTodayScanData();
       } else if (res.alreadyExists) {
         playAudioFeedback('warning');
-        const jamStr = res.data?.jam ? res.data.jam.slice(0, 8) : undefined;
+        const jamStr = formatPresensiTime(res.data?.jam) || undefined;
         setLastScanResult({
           student,
           status: scanMode,
@@ -913,7 +913,7 @@ export default function PiketView({ user }: { user: any }) {
         deviceId: 'manual'
       });
 
-      const jamStr = res.data?.jam ? res.data.jam.slice(0, 8) : getLocalCurrentTime();
+      const jamStr = formatPresensiTime(res.data?.jam) || (res.data?.jam ? res.data.jam.slice(0, 8) : getLocalCurrentTime());
 
       if (res.success) {
         showToast('Berhasil', res.message, 'success');
@@ -2565,7 +2565,7 @@ export default function PiketView({ user }: { user: any }) {
                               {lastScanResult.message}
                             </span>
                             <span className="text-[11px] text-gray-500 dark:text-gray-400 font-mono shrink-0">
-                              pk. {lastScanResult.jam || '-'} WITA
+                              pk. {formatPresensiTime(lastScanResult.jam) || (lastScanResult.jam && lastScanResult.jam !== '-' ? lastScanResult.jam : '-')} WITA
                             </span>
                           </div>
                         </div>
@@ -2993,7 +2993,7 @@ export default function PiketView({ user }: { user: any }) {
                               <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                                 <td className="py-2.5 px-3 text-gray-400 text-[11px]">{idx + 1}</td>
                                 <td className="py-2.5 px-3 font-mono font-semibold text-gray-900 dark:text-white">
-                                  {item.jam ? item.jam.slice(0, 8) : '-'}
+                                  {formatPresensiTime(item.jam) || (item.jam && item.jam !== '-' ? item.jam : '-')}
                                 </td>
                                 <td className="py-2.5 px-3 font-bold text-gray-900 dark:text-white">
                                   {item.nama_siswa}
@@ -3030,7 +3030,7 @@ export default function PiketView({ user }: { user: any }) {
                                       {
                                         status: item.status === 'datang' ? 'Hadir Datang' : 'Hadir Pulang',
                                         tanggal: item.tanggal || getWitaDateStr(),
-                                        timeStr: item.jam ? item.jam.slice(0, 8) : undefined,
+                                        timeStr: formatPresensiTime(item.jam) || undefined,
                                         note: `Presensi scan QR via ${item.device_id || 'kiosk'}`
                                       },
                                       user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'

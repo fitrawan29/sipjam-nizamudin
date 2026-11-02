@@ -483,7 +483,7 @@ export async function recordPresensiSiswa(
       .maybeSingle();
 
     if (existing) {
-      const jamDisplay = formatPresensiTime(existing.jam) || formatPresensiTime(jam) || (existing.jam ? existing.jam.slice(0, 5) : jam.slice(0, 5));
+      const jamDisplay = formatPresensiTime(existing.jam) || formatPresensiTime(jam) || '-';
       return {
         success: false,
         alreadyExists: true,
@@ -529,7 +529,7 @@ export async function recordPresensiSiswa(
       };
     }
 
-    const jamSuccessDisplay = formatPresensiTime(jam) || jam.slice(0, 5);
+    const jamSuccessDisplay = formatPresensiTime(jam) || '-';
     return {
       success: true,
       alreadyExists: false,

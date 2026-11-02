@@ -658,7 +658,7 @@ export default function GuruJurnal({
         const pMap: Record<string, { jam: string }> = {};
         if (pData) {
           pData.forEach((p: any) => {
-            const jamStr = formatPresensiTime(p.jam) || (p.jam ? String(p.jam).slice(0, 5) : '');
+            const jamStr = formatPresensiTime(p.jam) || '';
             if (p.nisn) pMap[p.nisn] = { jam: jamStr };
             if (p.siswa_id) pMap[p.siswa_id] = { jam: jamStr };
           });
