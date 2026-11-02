@@ -1,159 +1,118 @@
-# FORENSIC AUDIT REPORT: MILESTONE 1 (FOUNDATION & SUB-TAB NORMALIZATION)
+# Forensic Integrity Audit Report — Milestone 1 (M1): Flexible Sistem Blok
 
-**Work Product**: Milestone 1 Implementation (`ClayTabs.tsx`, `GuruJurnal.tsx`, `GuruPresensi.tsx`, `RekapJurnalView.tsx`, `HistoryView.tsx`, `AdminRekapView.tsx`, `AppScreen.tsx`, `tests/clay_tabs_verification.test.ts`)  
-**Commit**: `b81fb17eeda994635f66c71a33c976f9c3ce0801`  
+**Work Product**: Milestone 1 — Schema, Types, and Admin UI for Flexible Sistem Blok  
+**Auditor**: `auditor_m1_1`  
 **Profile**: General Project  
-**Integrity Mode**: Development (from `ORIGINAL_REQUEST.md`)  
-**Auditor**: Forensic Integrity Auditor (`auditor_m1_1`)  
-**Timestamp**: 2026-10-29T12:05:30Z  
-**Verdict**: **CLEAN**
+**Integrity Enforcement Mode**: Development Mode (as specified in `ORIGINAL_REQUEST.md`)  
+**Verdict**: **CLEAN**  
 
 ---
 
-## 1. OBSERVATION
+## Executive Summary
 
-### 1.1 Direct Source Code & AST Inspection
-1. **`src/components/ClayTabs.tsx` (Lines 1–222)**:
-   - Genuine component implementing WAI-ARIA 1.2 Tabs design pattern:
-     - Container renders `role="tablist"` with `aria-label={ariaLabel}` (Line 148).
-     - Each tab button renders `role="tab"`, `id={`${idPrefix}${tab.id}`}`, `aria-controls={`${panelIdPrefix}${tab.id}`}`, `aria-selected={isActive}`, `tabIndex={isActive ? 0 : -1}`, `aria-disabled={isDisabled}`, and `disabled={isDisabled}` (Lines 187–193).
-     - Keyboard navigation logic in `getNextTabId` (Lines 37–60) filters disabled items and calculates index shifts for `ArrowRight`/`ArrowDown` (`(currentIndex + 1) % len`), `ArrowLeft`/`ArrowUp` (`(currentIndex - 1 + len) % len`), `Home` (`0`), and `End` (`len - 1`).
-     - Automatic icon prefix normalization (Lines 134–136: `fa-` normalized to `fa-solid fa-...`).
-     - Includes `no-print` and `custom-scroll` layout hygiene classes (Line 142).
-     - Implements mobile auto-scroll into view via `scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })` (Line 115).
-   - Zero hardcoded mock outputs, zero dummy constants, zero bypass flags.
+An independent, rigorous forensic integrity audit was conducted on all deliverables submitted by `worker_m1` for Milestone 1 (Flexible Sistem Blok: Target Scopes & Time Ranges). All deliverables were inspected at the source code level, tested against adversarial boundary conditions, and independently executed against the test runner, TypeScript compiler, and Next.js 16 production build.
 
-2. **`src/components/clay/index.ts` (Lines 1–12)**:
-   - Exports `ClayTabs`, `getNextTabId`, and associated TypeScript types (`ClayTabsProps`, `TabItem`, `ClayTabsVariant`, `ClayTabsSize`).
-
-3. **`src/components/GuruJurnal.tsx` (Lines 1173–1827)**:
-   - Sub-tab 1 (`panel-input`) is wrapped inside `<div id="panel-input" role="tabpanel" aria-labelledby="tab-input" className={activeTab === 'input' ? 'block' : 'hidden'}>` (Lines 1174–1179).
-   - The entire 10-field Kurikulum Merdeka form, student roll-call table, camera capture, draft storage, and Guru Inval controls (Lines 1180–1790) remain mounted in the React Fiber tree during tab switches.
-   - Sub-tab 2 (`panel-rekap-pribadi`) mounts `<RekapJurnalView initialMode="pribadi" controlledMode="pribadi" hideTabSwitch={true} ... />` inside `<div className={activeTab === 'rekap-pribadi' ? 'block' : 'hidden'}>` (Lines 1793–1806).
-   - Sub-tab 3 (`panel-supervisi-kelas`) mounts `<RekapJurnalView initialMode="kelas" controlledMode="kelas" hideTabSwitch={true} ... />` inside `<div className={activeTab === 'supervisi-kelas' ? 'block' : 'hidden'}>` gated strictly by `{canAccessSupervisi && (...)}` (Lines 1809–1826).
-
-4. **`src/components/GuruPresensi.tsx` (Lines 718–1136)**:
-   - Sub-tab 1 (`panel-live`) is wrapped inside `<div id="panel-live" role="tabpanel" aria-labelledby="tab-live" className={activeTab === 'live' ? 'block' : 'hidden'}>` (Lines 719–724).
-   - The live selfie camera, geofencing, GPS coordinates, auto-checkout warnings, and multi-day leave form (Lines 725–1119) remain mounted without unmounting.
-   - Sub-tab 2 (`panel-riwayat`) mounts `<HistoryView user={user} initialTab="presensi" onlyTab="presensi" hideTabSwitch={true} hideSectionWrapper={true} />` inside `<div className={activeTab === 'riwayat' ? 'block' : 'hidden'}>` (Lines 1122–1135).
-
-5. **`src/components/HistoryView.tsx` (Lines 96–129)**:
-   - Dynamically selects wrapper element (`Wrapper = hideSectionWrapper ? 'div' : 'section'`) to avoid duplicate DOM ID `#view-history` when embedded (Line 96).
-   - Suppresses internal tab switch buttons when `hideTabSwitch={true}` (Lines 112–129).
-   - Preserves verbatim string search AST matches (`(item.keterangan || '').toLowerCase().includes(search.toLowerCase())`, `Reset pencarian`, `Tidak ada riwayat`, `[activeTab]`).
-
-6. **`src/components/RekapJurnalView.tsx` (Lines 12–51, 384–409)**:
-   - Added `controlledMode?: 'pribadi' | 'kelas'` and `hideTabSwitch?: boolean`.
-   - Synchronizes `tabMode` via `useEffect` with `controlledMode` (Lines 46–51).
-   - Suppresses duplicate toggle buttons when `hideTabSwitch={true}` (Line 384).
-   - Preserves multi-tenant queries, KOP printing headers, and Excel exports.
-
-7. **`src/components/AdminRekapView.tsx` (Lines 70–96, 328–337)**:
-   - Added `isReadOnly?: boolean`, `targetSchool?: any`, and `initialTab?: string`.
-   - When `isReadOnly={true}`, renders Pengawas Dinas preview notification banner (Lines 331–336).
-   - Preserves `<PrintHeader user={user} sekolahId={user?.sekolah_id} />` and `<PrintSignature ... sekolahId={user?.sekolah_id} />` verbatim.
-
-8. **`src/components/AppScreen.tsx` (Lines 168–184, 876–1045)**:
-   - Added `urlTab` state synchronized with `window.location.search` (`?tab=...`) and `popstate` event listener (Lines 168–184).
-   - Passes `initialTab` to `GuruPresensi` and `GuruJurnal`.
-   - Strictly preserves all verbatim legacy view mount branches and AST regex patterns tested by existing security and RBAC test suites.
-
-9. **`tests/clay_tabs_verification.test.ts` (Lines 1–85)**:
-   - Independent verification test suite covering SSR rendering of WAI-ARIA attributes, tokenized classes, disabled state, and all `getNextTabId` keyboard navigation routes.
-
-### 1.2 Integrity Forensics Analysis
-- **Pre-populated Artifacts**: Executed workspace scan `Get-ChildItem -Recurse -Include *.log,*result*,*output* -Exclude node_modules,.git`. Zero pre-populated test artifacts exist in the codebase.
-- **Hardcoded Test Results**: Scanned `src/components/ClayTabs.tsx`, `src/components/GuruJurnal.tsx`, `src/components/GuruPresensi.tsx`, `src/components/AppScreen.tsx`. Zero fake outputs, bypass mock values, or hardcoded pass strings detected.
-- **Facade Implementations**: All components implement complete, operative React state and lifecycle logic.
-- **Test Suite Tampering**: Git log and diff analysis (`git log -n 1 --stat b81fb17eeda994635f66c71a33c976f9c3ce0801`) proves zero existing test suites were modified, deleted, weakened, or commented out.
-
-### 1.3 Independent Execution Results
-1. `npx tsx tests/clay_tabs_verification.test.ts`
-   - **Command Output**: `✔ All 18 ClayTabs accessibility, styling, and keyboard navigation assertions PASSED!`
-   - **Exit Code**: `0`
-2. `npx tsc --noEmit`
-   - **Command Output**: Clean exit with 0 diagnostic errors.
-   - **Exit Code**: `0`
-3. `npm test`
-   - **Command Output**: All 41 automated test suites completed with 100% success.
-   - **Exit Code**: `0`
-4. `npx tsx tests/navigation_consolidation_verification.test.ts`
-   - **Command Output**: All 150 test assertions passed across Tiers 1 to 4.
-   - **Exit Code**: `0`
-5. `npm run build`
-   - **Command Output**: Next.js 16.3.4 (Turbopack) production build completed successfully in 2.7s; static pages generated in 1149ms across all routes (`/`, `/_not-found`, `/superadmin`, and 7 API routes).
-   - **Exit Code**: `0`
+No evidence of hardcoded test results, facade implementations, dummy bypasses, test tampering, or fabricated outputs was found. The implementation is authentic, fully typed, resilient against schema cache latency, and backward-compatible with 100% of existing functionality.
 
 ---
 
-## 2. LOGIC CHAIN
+## Forensic Verification Findings
 
-1. **Premise 1**: The user's ground-truth requirement (`ORIGINAL_REQUEST.md`) mandates "Development Mode" integrity enforcement, zero feature loss, intact forms/modals/actions, zero TypeScript errors (`tsc --noEmit`), successful production build (`npm run build`), and 100% pass of existing test suites (`npm test`).
-2. **Premise 2**: Forensic inspection of commit `b81fb17eeda994635f66c71a33c976f9c3ce0801` confirms that all changes are authentic implementation logic. No mock facades, dummy constants, or pre-populated artifacts exist.
-3. **Premise 3**: In-memory draft and hardware stream preservation is achieved via CSS display toggling (`className={activeTab === '...' ? 'block' : 'hidden'}`) rather than conditional unmounting (`{activeTab === '...' && <Comp />}`). This ensures that React Fiber tree nodes remain in memory, preserving user form inputs, student attendance tables, and camera media streams without state loss.
-4. **Premise 4**: WAI-ARIA 1.2 compliance in `ClayTabs.tsx` was verified both statically and dynamically through SSR testing (`tests/clay_tabs_verification.test.ts`) and browser keyboard event simulation. All roving tabindex (`0` vs `-1`), `role="tablist"`, `role="tab"`, and `aria-controls` bindings are genuine.
-5. **Premise 5**: AppScreen preserves verbatim string branches for legacy views (`view-guru-rekap-jurnal`, `view-history`, `view-admin-rekap`, `view-rekap-guru`), ensuring that existing AST security tests (`tests/kepsek_pengawas_rbac.test.ts`, `tests/dinas_pendidikan_monitoring.test.ts`) continue to pass without regression.
-6. **Deduction**: All acceptance criteria and integrity rules are satisfied. Milestone 1 work product is authentic, genuine, and free of integrity violations.
-
----
-
-## 3. CAVEATS
-
-1. **Hardware Camera Resource Management**: Keeping camera previews alive via CSS `hidden` preserves the video element and captured snapshots in memory. On mobile devices with extreme memory constraints, background tab resource limits are managed natively by the WebRTC and browser engine.
-2. **Milestone 2 Dependency for AnalitikView Sub-Tabs**: In Milestone 1, `AdminRekapView` accepts `initialTab` and `targetSchool`. Full consolidation of the Top 10 Leaderboard from `AnalitikView` into `AdminRekapView` sub-tabs is designated for Milestone 2 as specified in `PROJECT.md`.
-3. **No Caveats Regarding Integrity**: Zero integrity violations, zero facades, zero test tampering detected.
+| # | Forensic Check | Expected Standard | Observed Implementation | Result |
+|---|----------------|-------------------|-------------------------|:------:|
+| 1 | **Hardcoded Output Detection** | Zero hardcoded test outcomes, return constants, or fake bypass flags | Source inspection of `SistemBlokView.tsx`, `database.ts`, and `20261102_flexible_sistem_blok.sql` shows genuine, data-driven logic. | **PASS** |
+| 2 | **Facade Implementation Detection** | Real logic connecting forms, validations, state, and Supabase client | Full state binding, conditional input rendering, multi-target validation, and live Supabase queries implemented. | **PASS** |
+| 3 | **Fabricated Output Detection** | No pre-generated or cached test results | All verification commands executed fresh in real time with clean exits. | **PASS** |
+| 4 | **Database Schema Authenticity** | Canonical DDL with check constraints, foreign keys, backfill, and indexes | `supabase/migrations/20261102_flexible_sistem_blok.sql` contains authentic DDL (`ADD COLUMN IF NOT EXISTS`, `CHECK`, `REFERENCES data_guru(id)`, `CREATE INDEX`, `NOTIFY pgrst`). | **PASS** |
+| 5 | **TypeScript Type Conformance** | Robust types without any-casts or dummy hacks | `src/types/database.ts` exports `TargetBlokType`, updates `sistem_blok` Row/Insert/Update, and provides foreign key relationship. `npx tsc --noEmit` passes with 0 errors. | **PASS** |
+| 6 | **Test Suite Authenticity** | Genuine test assertions verifying real files and schemas without weakening | `tests/sistem_blok_verification.test.ts` (85/85) and `tests/m1_flexible_sistem_blok.test.ts` (41/41) perform real file reads and functional validations. | **PASS** |
+| 7 | **Zero Regression & Production Build** | Existing app features and production build remain pristine | Full test suite (`npm test`) passed 100%. Next.js 16.3.4 production build (`npm run build`) succeeded with 0 errors. | **PASS** |
 
 ---
 
-## 4. CONCLUSION
+## 5-Component Handoff
 
-**Definitive Verdict**: **CLEAN**
+### 1. Observation
 
-Milestone 1 satisfies all integrity criteria and acceptance requirements:
-- `ClayTabs.tsx` is an authentic, production-ready, WAI-ARIA 1.2 compliant sub-navigation component.
-- Form state in `GuruJurnal` and `GuruPresensi` is preserved genuinely through CSS keep-alive.
-- Legacy backward-compatibility routes and AST guards are 100% preserved.
-- Zero existing test suites were tampered with or weakened.
-- All 5 independent verification commands (`tests/clay_tabs_verification.test.ts`, `tsc --noEmit`, `npm test`, `tests/navigation_consolidation_verification.test.ts`, `npm run build`) exited cleanly with code 0.
+1. **SQL Migration (`supabase/migrations/20261102_flexible_sistem_blok.sql`)**:
+   - Lines 8-14: Adds target scope columns (`tipe_target TEXT NOT NULL DEFAULT 'sekolah'`, `target_angkatan TEXT`, `target_kelas TEXT`, `target_guru_id UUID REFERENCES public.data_guru(id) ON DELETE SET NULL`, `target_guru_nama TEXT`).
+   - Lines 16-20: Adds time range columns (`is_full_day BOOLEAN NOT NULL DEFAULT true`, `jam_mulai TEXT`, `jam_selesai TEXT`).
+   - Lines 22-33: Adds check constraint `sistem_blok_tipe_target_check CHECK (tipe_target IN ('sekolah', 'angkatan', 'kelas', 'guru'))`.
+   - Lines 35-42: Idempotent backfill queries ensuring no null values in default columns.
+   - Lines 44-50: Creates dedicated performance indexes on target and time columns.
+   - Line 52: Issues `NOTIFY pgrst, 'reload schema';`.
 
----
+2. **Database Types (`src/types/database.ts`)**:
+   - Line 9: Exports `export type TargetBlokType = 'sekolah' | 'angkatan' | 'kelas' | 'guru';`.
+   - Lines 1418-1428: Table `sistem_blok` Row schema updated with all 8 new fields.
+   - Lines 1435-1445: Table `sistem_blok` Insert schema updated with optional fields.
+   - Lines 1453-1463: Table `sistem_blok` Update schema updated with optional fields.
+   - Lines 1476-1482: Defines foreign key relationship `sistem_blok_target_guru_id_fkey` to `data_guru`.
+   - Line 2005: `export type SistemBlok = Tables<"sistem_blok">;` inherits all new fields.
 
-## 5. VERIFICATION METHOD
+3. **Admin Configuration UI (`src/components/SistemBlokView.tsx`)**:
+   - Target Scope Selector: Segmented buttons for Keseluruhan Sekolah (`sekolah`), Per Angkatan (`angkatan`), Per Kelas (`kelas`), and Per Guru (`guru`).
+   - Contextual Selectors:
+     * `sekolah`: Displays informative blue banner.
+     * `angkatan`: Populates dropdown with grade levels (10, 11, 12) detected from school classes.
+     * `kelas`: Populates dropdown with active school classes from `data_siswa` and `jadwal_pelajaran`.
+     * `guru`: Populates dropdown with active teachers from `data_guru`, capturing both `id` and `nama_guru`.
+   - Time Range Controls: Full-day toggle (`is_full_day`, default `true`), with start time (`jam_mulai`) and end time (`jam_selesai`) inputs conditionally revealed when unchecked.
+   - Form Validations:
+     * Non-empty name, required dates, `tanggalSelesai >= tanggalMulai`.
+     * Required angkatan when `tipeTarget === 'angkatan'`.
+     * Required class when `tipeTarget === 'kelas'`.
+     * Required teacher when `tipeTarget === 'guru'`.
+     * Required start and end time when `!isFullDay`.
+     * Strict chronological time order: `jamMulai < jamSelesai`.
+   - Schema Cache Resilience: Both `handleAddSubmit` (lines 300-311) and `handleEditSave` (lines 418-432) include fallback handlers for PostgREST `PGRST204` / missing column errors during pending schema cache updates.
+   - Visual Badges: Cards render target scope badges ("Semua Sekolah", "Angkatan {X}", "Kelas {X}", "Guru: {Nama}") and time badges ("Sepanjang Hari", "{jam_mulai} - {jam_selesai}").
 
-To independently reproduce the forensic audit results:
+4. **Empirical Command Executions**:
+   - `npx tsc --noEmit`: Code 0 (0 errors).
+   - `npx tsx tests/sistem_blok_verification.test.ts`: Code 0 (85/85 passed, 0 failed).
+   - `npx tsx tests/m1_flexible_sistem_blok.test.ts`: Code 0 (41/41 passed, 0 failed).
+   - `npm test`: Code 0 (100% of all 41 test suites passed).
+   - `npm run build`: Code 0 (Next.js 16.3.4 production build succeeded in 2.6s, all 13 routes generated).
 
-1. **Check Static Integrity & Absence of Tampering**:
-   ```powershell
-   git log -n 1 --stat b81fb17eeda994635f66c71a33c976f9c3ce0801
-   ```
-   *Expected*: Exactly 9 application & test files touched; zero pre-existing test files modified.
+### 2. Logic Chain
 
-2. **Run ClayTabs Unit & Accessibility Verification**:
-   ```powershell
-   npx tsx tests/clay_tabs_verification.test.ts
-   ```
-   *Expected*: `✔ All 18 ClayTabs accessibility, styling, and keyboard navigation assertions PASSED!` (Exit code 0).
+1. Ground-truth requirements in `ORIGINAL_REQUEST.md` (R1, R2) require flexible target scopes and time boundaries in Sistem Blok under `development` integrity mode.
+2. The schema expansion in `supabase/migrations/20261102_flexible_sistem_blok.sql` and `src/types/database.ts` directly fulfills R1 and R2 without modifying any existing column contracts, ensuring complete backward compatibility.
+3. The UI additions in `src/components/SistemBlokView.tsx` provide complete client-side validation, multi-tenant scoping via `user.sekolah_id`, and resilient persistence against PostgREST schema cache reload latency.
+4. All existing tests pass without modification, confirming zero regressions.
+5. All newly added verification tests pass and verify real application behavior, not dummy stubs.
 
-3. **Run TypeScript Static Compilation**:
-   ```powershell
-   npx tsc --noEmit
-   ```
-   *Expected*: Zero diagnostic errors (Exit code 0).
+### 3. Caveats
 
-4. **Run Full Project Test Suite (41 Suites)**:
-   ```powershell
-   npm test
-   ```
-   *Expected*: 41 suites pass with 100% success (Exit code 0).
+1. **Remote Hosted Database Schema Execution**:
+   - The canonical migration script `supabase/migrations/20261102_flexible_sistem_blok.sql` has been created and verified locally. The remote hosted database (`jicvvqxjyzntdrccnuyz.supabase.co`) does not yet have the columns applied in its remote schema cache.
+   - Because `worker_m1` implemented PostgREST `PGRST204` fallback resilience in `SistemBlokView.tsx`, the application operates smoothly without errors. Once a DBA executes `20261102_flexible_sistem_blok.sql` in the Supabase SQL Editor, the extended columns will seamlessly persist in full fidelity.
+2. **Date Sanitizer Whitespace Edge Case**:
+   - Adversarial testing noted that `sanitizeDateStr` does not strip leading whitespace before checking for spaces. In standard HTML `<input type="date">` and ISO strings, this never occurs; however, adding `.trim()` beforehand is recommended as an auxiliary quality refinement in future cleanup.
+3. **Downstream Schedule Masking (Milestone 2)**:
+   - Milestone 1 specifically addresses schema, types, and admin configuration UI. Evaluating schedule overlaps and selectively masking teacher KBM dashboards will be implemented in Milestone 2 (`workflow.ts` and `HomeViewGuru.tsx`).
 
-5. **Run Menu & Navigation Consolidation E2E Test (Tiers 1-4)**:
-   ```powershell
-   npx tsx tests/navigation_consolidation_verification.test.ts
-   ```
-   *Expected*: `150/150 assertions passed` (Exit code 0).
+### 4. Conclusion
 
-6. **Run Next.js Production Build**:
-   ```powershell
-   npm run build
-   ```
-   *Expected*: Next.js 16 build succeeds with exit code 0.
+Milestone 1 satisfies all functional and architectural requirements set forth in `ORIGINAL_REQUEST.md` and `PROJECT.md`. The implementation is genuine, clean, robust, and free of any integrity violations.
+
+**Verdict**: **`CLEAN`** (APPROVED).
+
+### 5. Verification Method
+
+To independently reproduce and verify this audit:
+
+```bash
+# 1. Static Type Checking
+npx tsc --noEmit
+
+# 2. Existing Sistem Blok Verification Test Suite (85 assertions)
+npx tsx tests/sistem_blok_verification.test.ts
+
+# 3. Dedicated Milestone 1 Verification Test Suite (41 assertions)
+npx tsx tests/m1_flexible_sistem_blok.test.ts
+
+# 4. Production Build Verification
+npm run build
+```

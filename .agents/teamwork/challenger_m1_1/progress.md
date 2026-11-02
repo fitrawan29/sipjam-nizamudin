@@ -1,21 +1,20 @@
-# Challenger 1 Progress — Milestone 1
+# Progress — challenger_m1_1
 
-Last visited: 2026-10-29T12:04:00Z
-Current Status: Evaluation complete — Verdict: APPROVE
+Last visited: 2026-11-02T13:06:00Z
 
-## Steps
-- [x] Step 1: Initialize briefing, dispatch, progress
-- [x] Step 2: Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m1/handoff.md
-- [x] Step 3: Inspect src/components/ClayTabs.tsx and src/components/GuruJurnal.tsx
-- [x] Step 4: Run existing test suite (`tests/clay_tabs_verification.test.ts`) and TypeScript compilation (`npx tsc --noEmit`) — PASSED
-- [x] Step 5: Design and implement empirical stress-test harnesses (`tests/adversarial_claytabs_and_jurnal_challenger.test.ts`):
-  - 1.1–1.7: Extreme edge cases (empty list, single item, all disabled, long text, null/undefined/numeric badges, custom icons, non-existent activeTab)
-  - 2.1–2.2: WAI-ARIA roving tabindex invariants and circular wrapping with complex disabled layouts
-  - 3.1–3.2: 100 rapid tab-switch clicks & 500 interleaved keyboard navigation events
-  - 4.1–4.5: GuruJurnal keep-alive invariance (CSS display toggling vs unmounting, zero draft loss)
-  - 5.1: GuruPresensi camera stream & GPS keep-alive invariance
-  - 6.1–6.2: URL query param synchronization (?tab=...)
-- [x] Step 6: Execute challenger stress harness — 54/54 assertions PASSED cleanly
-- [x] Step 7: Verify complete project test suite (`npm test`) — 41/41 suites passed cleanly
-- [x] Step 8: Update BRIEFING.md, formulate conclusion, write handoff.md with verdict: APPROVE
-- [x] Step 9: Send completion notification to orchestrator
+## Status: IN_PROGRESS
+- [x] Initialized DISPATCH.md, BRIEFING.md, and progress.md
+- [x] Inspected ORIGINAL_REQUEST.md, PROJECT.md, and worker_m1/handoff.md
+- [x] Inspected source code changes in `src/components/SistemBlokView.tsx`, `src/types/database.ts`, and `supabase/migrations/20261102_flexible_sistem_blok.sql`
+- [x] Executed existing test suites:
+  - `npx tsc --noEmit`: 0 errors
+  - `npx tsx tests/sistem_blok_verification.test.ts`: 85 passed, 0 failed
+  - `npx tsx tests/m1_flexible_sistem_blok.test.ts`: 41 passed, 0 failed
+- [x] Formulated and executed empirical adversarial stress tests in `tests/m1_challenger_stress.test.ts`:
+  - Live DB probe: detected fallback mode under unmigrated remote schema cache
+  - Validation oracle: verified rejection of inverted times, equal times, missing target properties, empty names, and inverted dates
+  - Empirical CRUD: verified insert, read, update, and delete for all 4 target scopes (sekolah, angkatan, kelas, guru)
+  - Time boundary stress: full-day vs bounded hours (07:30-11:00, 12:30-15:00, 00:00-23:59, 1-min interval)
+  - All 26 challenger stress tests passed with 0 failures
+- [ ] Next.js build verification (`npm run build`) in progress
+- [ ] Prepare handoff report and send verdict to orchestrator

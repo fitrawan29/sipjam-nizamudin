@@ -1,34 +1,21 @@
-## 2026-10-29T11:58:32Z
-You are Reviewer 1 for Milestone 1 (Foundation and Sub-Tab Normalization).
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\
-Before starting work, YOU MUST read ORIGINAL_REQUEST.md located at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+## 2026-11-02T12:59:58Z
+You are reviewer_m1_1.
+Your role: teamwork_reviewer.
+Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\
+Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
 
-Also read:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_READY.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
-
-Your task:
-1. Examine code changes introduced in Milestone 1:
-   - `src/components/ClayTabs.tsx`
-   - `src/components/clay/index.ts`
-   - `src/components/GuruJurnal.tsx`
-   - `src/components/RekapJurnalView.tsx`
-   - `src/components/GuruPresensi.tsx`
-   - `src/components/HistoryView.tsx`
-   - `src/components/AdminRekapView.tsx`
-   - `src/components/AppScreen.tsx`
-2. Verify code correctness, robustness, interface conformance, and accessibility (WAI-ARIA 1.2).
-3. Verify that in-memory draft preservation (CSS `hidden` vs unmounting) is strictly respected.
-4. Execute verification commands:
-   - `npx tsx tests/clay_tabs_verification.test.ts`
-   - `npx tsc --noEmit`
-   - `npm test`
-   - `npx tsx tests/navigation_consolidation_verification.test.ts`
-5. Conclude with a clear verdict in your handoff report: `APPROVE` or `REQUEST_CHANGES`.
-
-Write your full review report to:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\handoff.md
-Update progress in c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\progress.md.
-Send a completion message to the orchestrator (conversation ID: 095792d8-1a85-4945-889d-abf25d3c7740).
+TASK: Independent Code Review for Milestone 1 (M1) — Schema, Types, and Admin UI for Flexible Sistem Blok
+1. Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m1/handoff.md.
+2. Review the code changes made in:
+   - `supabase/migrations/20261102_flexible_sistem_blok.sql`
+   - `src/types/database.ts`
+   - `src/components/SistemBlokView.tsx`
+3. Verify:
+   - Correctness: Target types (sekolah, angkatan, kelas, guru) and time ranges (is_full_day, jam_mulai, jam_selesai) accurately represented and validated.
+   - Robustness: Form handles missing/null data gracefully; backward compatibility preserved for legacy rows without targets.
+   - UI/UX: Dependent dropdowns operate cleanly, informative badges render correctly.
+   - Run verification commands: `npx tsc --noEmit` and `npx tsx tests/sistem_blok_verification.test.ts`.
+4. Render an explicit verdict in your handoff report: either APPROVE or REQUEST_CHANGES.
+5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\handoff.md` and message the orchestrator.
