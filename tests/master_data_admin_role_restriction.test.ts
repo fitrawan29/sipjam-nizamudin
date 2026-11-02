@@ -3,10 +3,11 @@
  * 
  * Verifies that:
  * 1. Master data modification is strictly restricted to users with role 'Admin' / 'Superadmin'.
- * 2. Non-admin roles (Guru, Siswa, Piket, Kepala Sekolah, Dinas Pendidikan, Anon) are rejected (403 Forbidden).
+ * 2. Non-admin roles (Guru, Siswa, Piket, Kepala Sekolah, Dinas Pendidikan, Anon) are rejected (403 Forbidden / code 42501).
  * 3. Non-admin roles can still read master data (for teaching, attendance, schedule).
- * 4. Master data UI navigation (view-admin-data) is blocked for non-admin.
- * 5. Master data integrity is preserved without silent auto-alteration.
+ * 4. Master data UI navigation (view-admin-data and view-sistem-blok) is blocked for non-admin.
+ * 5. All master tables (data_siswa, data_guru, jadwal_pelajaran, data_kelas, kelas, guru_kelas, data_mapel, guru_mapel, wali_kelas, kalender_pendidikan, sistem_blok) are protected.
+ * 6. Master data integrity is preserved without silent auto-alteration.
  */
 
 import assert from 'node:assert';
@@ -60,25 +61,54 @@ async function runTests() {
 
   assert.strictEqual(isMasterDataModificationAllowed('Admin'), true);
   assert.strictEqual(isMasterDataModificationAllowed('Guru'), false);
+  assert.strictEqual(isMasterDataModificationAllowed('Siswa'), false);
+  assert.strictEqual(isMasterDataModificationAllowed('dinaspendidikan'), false);
   console.log('✓ Test 1 passed: Role validator functions behave correctly.');
 
-  // Test 2: Master data endpoint detection
-  console.log('[Test 2] Validating master data endpoint recognition...');
+  // Test 2: Master data endpoint detection across path variants
+  console.log('[Test 2] Validating master data endpoint recognition across URL and path variants...');
   for (const table of MASTER_DATA_TABLES) {
+    // 2a. Full URL
     assert.strictEqual(
       isMasterDataEndpoint(`https://placeholder.supabase.co/rest/v1/${table}`),
       true,
-      `Table ${table} must be recognized as master data endpoint`
+      `Full URL for table ${table} must be recognized`
     );
+    // 2b. Full URL with query parameters
     assert.strictEqual(
       isMasterDataEndpoint(`https://placeholder.supabase.co/rest/v1/${table}?select=*`),
       true,
-      `Query URL for ${table} must be recognized as master data endpoint`
+      `Query URL for ${table} must be recognized`
     );
+    // 2c. Relative path with leading slash
     assert.strictEqual(
       isMasterDataEndpoint(`/rest/v1/${table}`),
       true,
-      `Relative path for ${table} must be recognized`
+      `Relative path /rest/v1/${table} must be recognized`
+    );
+    // 2d. Relative path without leading slash
+    assert.strictEqual(
+      isMasterDataEndpoint(`rest/v1/${table}`),
+      true,
+      `Relative path rest/v1/${table} must be recognized`
+    );
+    // 2e. Resource ID path
+    assert.strictEqual(
+      isMasterDataEndpoint(`/rest/v1/${table}/123`),
+      true,
+      `Resource ID path /rest/v1/${table}/123 must be recognized`
+    );
+    // 2f. Raw table name
+    assert.strictEqual(
+      isMasterDataEndpoint(table),
+      true,
+      `Raw table name ${table} must be recognized`
+    );
+    // 2g. Raw table name with query param
+    assert.strictEqual(
+      isMasterDataEndpoint(`${table}?select=*`),
+      true,
+      `Raw table name with query param ${table}?select=* must be recognized`
     );
   }
 
@@ -87,10 +117,12 @@ async function runTests() {
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/presensi_guru'), false);
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/jurnal_pembelajaran'), false);
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/bank_dokumen'), false);
-  console.log('✓ Test 2 passed: Endpoint matcher correctly distinguishes master data from operational tables.');
+  assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/pengumuman'), false);
+  console.log('✓ Test 2 passed: Endpoint matcher correctly distinguishes all master data path variants.');
 
   // Test 3: Navigation Tab RBAC
-  console.log('[Test 3] Validating Navigation Tab RBAC...');
+  console.log('[Test 3] Validating Navigation Tab RBAC for canonical and alias routes...');
+  // 3a. Canonical view-admin-data
   const adminRbac = evaluateTabRBAC('view-admin-data', 'Data_Siswa', { role: 'Admin' });
   assert.strictEqual(adminRbac.allowed, true, 'Admin must be allowed to access view-admin-data');
 
@@ -106,7 +138,18 @@ async function runTests() {
 
   const dinasRbac = evaluateTabRBAC('view-admin-data', 'Jadwal_Pelajaran', { role: 'dinas_pendidikan' });
   assert.strictEqual(dinasRbac.allowed, false, 'Dinas must be blocked from view-admin-data');
-  console.log('✓ Test 3 passed: evaluateTabRBAC strictly protects view-admin-data for non-admin users.');
+
+  // 3b. Legacy alias view-sistem-blok
+  const adminBlokRbac = evaluateTabRBAC('view-sistem-blok', 'blok', { role: 'Admin' });
+  assert.strictEqual(adminBlokRbac.allowed, true, 'Admin must be allowed to access view-sistem-blok');
+
+  const guruBlokRbac = evaluateTabRBAC('view-sistem-blok', 'blok', { role: 'Guru' });
+  assert.strictEqual(guruBlokRbac.allowed, false, 'Guru must be blocked from view-sistem-blok alias');
+  assert.strictEqual(guruBlokRbac.fallbackTab, 'view-home');
+
+  const siswaBlokRbac = evaluateTabRBAC('view-sistem-blok', 'blok', { role: 'Siswa' });
+  assert.strictEqual(siswaBlokRbac.allowed, false, 'Siswa must be blocked from view-sistem-blok alias');
+  console.log('✓ Test 3 passed: evaluateTabRBAC strictly protects view-admin-data & view-sistem-blok for non-admin users.');
 
   // Test 4: Direct Mutation Guard Response Check
   console.log('[Test 4] Validating direct checkMasterDataMutationGuard...');
@@ -138,39 +181,28 @@ async function runTests() {
   }
   console.log('✓ Test 4 passed: Mutation guard rejects non-admin mutations and allows admin & read operations.');
 
-  // Test 5: Client-level PostgREST interception via getTenantSupabaseClient
-  console.log('[Test 5] Validating getTenantSupabaseClient role enforcement on master tables...');
+  // Test 5: Client-level PostgREST interception via getTenantSupabaseClient across all master tables
+  console.log('[Test 5] Validating getTenantSupabaseClient role enforcement across all protected master tables...');
   const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
 
   // 5a: Non-admin client (Role: Guru)
   const guruClient = getTenantSupabaseClient(testSekolahId, 'Guru');
 
-  // Insert on data_siswa
-  const siswaInsert = await guruClient.from('data_siswa').insert([{ nama_siswa: 'Siswa Test', kelas: 'X' }]);
-  assert.ok(siswaInsert.error, 'Guru insert to data_siswa must return error');
-  assert.strictEqual(siswaInsert.status, 403, 'Guru insert status must be 403');
-  assert.strictEqual(siswaInsert.error.code, '42501');
+  // Comprehensive check across every single protected table
+  for (const table of MASTER_DATA_TABLES) {
+    const insertRes = await (guruClient.from(table) as any).insert([{ dummy_test: 'fail' }]);
+    assert.ok(insertRes.error, `Guru insert to ${table} must return error`);
+    assert.strictEqual(insertRes.status, 403, `Guru insert status on ${table} must be 403`);
+    assert.strictEqual(insertRes.error.code, '42501', `Guru insert code on ${table} must be 42501`);
 
-  // Update on data_guru
-  const guruUpdate = await guruClient.from('data_guru').update({ nama_guru: 'Guru Baru' }).eq('id', '123');
-  assert.ok(guruUpdate.error, 'Guru update to data_guru must return error');
-  assert.strictEqual(guruUpdate.status, 403);
-  assert.strictEqual(guruUpdate.error.code, '42501');
+    const updateRes = await (guruClient.from(table) as any).update({ dummy_test: 'fail' }).eq('id', '123');
+    assert.ok(updateRes.error, `Guru update to ${table} must return error`);
+    assert.strictEqual(updateRes.status, 403, `Guru update status on ${table} must be 403`);
 
-  // Delete on jadwal_pelajaran
-  const jadwalDel = await guruClient.from('jadwal_pelajaran').delete().eq('id', '123');
-  assert.ok(jadwalDel.error, 'Guru delete on jadwal_pelajaran must return error');
-  assert.strictEqual(jadwalDel.status, 403);
-
-  // Insert on data_mapel
-  const mapelInsert = await guruClient.from('data_mapel').insert([{ nama_mata_pelajaran: 'Biologi' }]);
-  assert.ok(mapelInsert.error, 'Guru insert to data_mapel must return error');
-  assert.strictEqual(mapelInsert.status, 403);
-
-  // Upsert on wali_kelas
-  const waliUpsert = await guruClient.from('wali_kelas').upsert([{ kelas: 'X-1', nama_guru: 'Guru A' }]);
-  assert.ok(waliUpsert.error, 'Guru upsert to wali_kelas must return error');
-  assert.strictEqual(waliUpsert.status, 403);
+    const delRes = await (guruClient.from(table) as any).delete().eq('id', '123');
+    assert.ok(delRes.error, `Guru delete to ${table} must return error`);
+    assert.strictEqual(delRes.status, 403, `Guru delete status on ${table} must be 403`);
+  }
 
   // 5b: Non-admin client (Role: Siswa)
   const siswaClient = getTenantSupabaseClient(testSekolahId, 'Siswa');
@@ -184,7 +216,7 @@ async function runTests() {
   assert.ok(anonMutate.error, 'Anon delete on data_guru must return error');
   assert.strictEqual(anonMutate.status, 403);
 
-  console.log('✓ Test 5 passed: Client correctly enforces 403 Forbidden on all master tables for non-admin.');
+  console.log('✓ Test 5 passed: Client correctly enforces 403 Forbidden on all 11 master tables for non-admin.');
 
   // Test 6: In-memory Server Tenant Context enforcement
   console.log('[Test 6] Validating serverTenantContext with global supabase client...');

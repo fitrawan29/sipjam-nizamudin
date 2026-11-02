@@ -193,7 +193,9 @@ export function evaluateTabRBAC(
   }
 
   // Cluster 5: Master Data & Sistem
-  if (viewId === 'view-admin-data') {
+  const resolved = resolveCanonicalRoute(viewId, tabId);
+  const effectiveView = resolved.canonicalView;
+  if (effectiveView === 'view-admin-data' || viewId === 'view-admin-data' || viewId === 'view-sistem-blok') {
     if (!isAdmin) {
       return { allowed: false, fallbackTab: 'view-home', reason: 'Seluruh data master hanya dapat diakses dan diubah oleh Administrator.' };
     }

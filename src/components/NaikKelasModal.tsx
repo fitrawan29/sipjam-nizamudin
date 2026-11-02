@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getActiveTenantContext } from '@/lib/supabaseClient';
+import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
 import Swal from 'sweetalert2';
 
 export interface NaikKelasModalProps {
@@ -11,6 +12,7 @@ export interface NaikKelasModalProps {
   selectedStudentIds?: string[];
   students: any[];
   sekolahId?: string;
+  role?: string;
 }
 
 /**
@@ -60,8 +62,11 @@ export default function NaikKelasModal({
   onSuccess,
   selectedStudentIds = [],
   students = [],
-  sekolahId
+  sekolahId,
+  role
 }: NaikKelasModalProps) {
+  const effectiveRole = role || getActiveTenantContext()?.role;
+  const isAdmin = isMasterDataModificationAllowed(effectiveRole);
   const [mode, setMode] = useState<'perorangan' | 'per_kelas' | 'satu_angkatan'>('perorangan');
   const [loading, setLoading] = useState(false);
 
@@ -138,6 +143,9 @@ export default function NaikKelasModal({
 
   // Handler: Execute Perorangan Advancement
   const handleExecutePerorangan = async () => {
+    if (!isAdmin) {
+      return Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat memodifikasi kenaikan kelas data siswa.', 'error');
+    }
     if (localSelectedIds.length === 0) {
       return Swal.fire('Peringatan', 'Pilih minimal 1 siswa untuk dinaikkan kelas.', 'warning');
     }
@@ -199,6 +207,9 @@ export default function NaikKelasModal({
 
   // Handler: Execute Per Kelas Advancement
   const handleExecutePerKelas = async () => {
+    if (!isAdmin) {
+      return Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat memodifikasi kenaikan kelas data siswa.', 'error');
+    }
     if (!sourceKelas) {
       return Swal.fire('Peringatan', 'Pilih kelas asal terlebih dahulu.', 'warning');
     }
@@ -299,6 +310,10 @@ export default function NaikKelasModal({
     });
 
     if (!confirm.isConfirmed) return;
+
+    if (!isAdmin) {
+      return Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat memodifikasi kenaikan kelas data siswa.', 'error');
+    }
 
     setLoading(true);
     try {

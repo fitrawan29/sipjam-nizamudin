@@ -10,38 +10,48 @@
 CREATE OR REPLACE PROCEDURE public.setup_master_data_admin_policies(p_table TEXT)
 LANGUAGE plpgsql AS $$
 BEGIN
-    -- 1. SELECT policy: Allow tenant users to read master data (for teaching, attendance, reporting)
-    EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_select_policy" ON public.%I', p_table, p_table);
-    EXECUTE format(
-        'CREATE POLICY "%s_tenant_select_policy" ON public.%I FOR SELECT ' ||
-        'USING (is_superadmin() OR (public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()) OR public.get_auth_user_sekolah_id() IS NULL)',
-        p_table, p_table
-    );
+    -- Check if table exists in public schema before applying policies
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = p_table AND table_type = 'BASE TABLE'
+    ) THEN
+        -- Ensure Row Level Security is active and enforced
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', p_table);
+        EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY', p_table);
 
-    -- 2. INSERT policy: Strictly Admin & Superadmin only
-    EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_insert_policy" ON public.%I', p_table, p_table);
-    EXECUTE format(
-        'CREATE POLICY "%s_tenant_insert_policy" ON public.%I FOR INSERT ' ||
-        'WITH CHECK (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()))',
-        p_table, p_table
-    );
+        -- 1. SELECT policy: Allow tenant users to read master data (for teaching, attendance, reporting)
+        EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_select_policy" ON public.%I', p_table, p_table);
+        EXECUTE format(
+            'CREATE POLICY "%s_tenant_select_policy" ON public.%I FOR SELECT ' ||
+            'USING (is_superadmin() OR (public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()) OR public.get_auth_user_sekolah_id() IS NULL)',
+            p_table, p_table
+        );
 
-    -- 3. UPDATE policy: Strictly Admin & Superadmin only
-    EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_update_policy" ON public.%I', p_table, p_table);
-    EXECUTE format(
-        'CREATE POLICY "%s_tenant_update_policy" ON public.%I FOR UPDATE ' ||
-        'USING (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id())) ' ||
-        'WITH CHECK (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()))',
-        p_table, p_table
-    );
+        -- 2. INSERT policy: Strictly Admin & Superadmin only
+        EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_insert_policy" ON public.%I', p_table, p_table);
+        EXECUTE format(
+            'CREATE POLICY "%s_tenant_insert_policy" ON public.%I FOR INSERT ' ||
+            'WITH CHECK (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()))',
+            p_table, p_table
+        );
 
-    -- 4. DELETE policy: Strictly Admin & Superadmin only
-    EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_delete_policy" ON public.%I', p_table, p_table);
-    EXECUTE format(
-        'CREATE POLICY "%s_tenant_delete_policy" ON public.%I FOR DELETE ' ||
-        'USING (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()))',
-        p_table, p_table
-    );
+        -- 3. UPDATE policy: Strictly Admin & Superadmin only
+        EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_update_policy" ON public.%I', p_table, p_table);
+        EXECUTE format(
+            'CREATE POLICY "%s_tenant_update_policy" ON public.%I FOR UPDATE ' ||
+            'USING (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id())) ' ||
+            'WITH CHECK (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()))',
+            p_table, p_table
+        );
+
+        -- 4. DELETE policy: Strictly Admin & Superadmin only
+        EXECUTE format('DROP POLICY IF EXISTS "%s_tenant_delete_policy" ON public.%I', p_table, p_table);
+        EXECUTE format(
+            'CREATE POLICY "%s_tenant_delete_policy" ON public.%I FOR DELETE ' ||
+            'USING (is_superadmin() OR (public.get_auth_user_role() = ''Admin'' AND public.get_auth_user_sekolah_id() IS NOT NULL AND sekolah_id = public.get_auth_user_sekolah_id()))',
+            p_table, p_table
+        );
+    END IF;
 END;
 $$;
 
@@ -52,6 +62,9 @@ CALL public.setup_master_data_admin_policies('jadwal_pelajaran');
 CALL public.setup_master_data_admin_policies('data_mapel');
 CALL public.setup_master_data_admin_policies('guru_mapel');
 CALL public.setup_master_data_admin_policies('wali_kelas');
+CALL public.setup_master_data_admin_policies('data_kelas');
+CALL public.setup_master_data_admin_policies('kelas');
+CALL public.setup_master_data_admin_policies('guru_kelas');
 CALL public.setup_master_data_admin_policies('kalender_pendidikan');
 CALL public.setup_master_data_admin_policies('sistem_blok');
 

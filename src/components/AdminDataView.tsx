@@ -2444,6 +2444,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           selectedStudentIds={selectedStudentIds}
           students={activeTab === 'Data_Siswa' ? dataList : []}
           sekolahId={user?.sekolah_id}
+          role={user?.role}
         />
     </section>
   );

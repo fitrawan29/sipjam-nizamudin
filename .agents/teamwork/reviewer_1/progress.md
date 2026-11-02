@@ -1,13 +1,21 @@
-# Progress — reviewer_1
-Last visited: 2026-10-21T07:31:00Z
-- [x] Initialized reviewer_1 workspace
-- [x] Analyzed requirements R1, R2, R3 and prior implementation (commit eddee99)
-- [x] Discovered Issue 1: Dual-role lockout (Wali Kelas + Kepala Sekolah) in RekapSiswaView
-- [x] Discovered Issue 2: Kepala Sekolah locked out from Jurnal Kelas in RekapJurnalView
-- [x] Discovered Issue 3: Incoherent Rapor menu item in menuItemsKepalaSekolah vs handleNavigation guard
-- [x] Discovered Issue 4: AdminConfigView unassigning/clearing Kepala Sekolah skipped resetting database fields
-- [x] Discovered Issue 5: Missing multi-tenant user and sekolahId props on PrintSignature across AdminRekapView, RekapSiswaView, PiketView
-- [x] Applied fixes across AppScreen, RekapJurnalView, RekapSiswaView, AdminConfigView, AdminRekapView, PiketView
-- [x] Authored adversarial test suite additions in tests/kepsek_pengawas_rbac.test.ts (35/35 passing)
-- [x] Ran full regression test suite (36+ test files, 100% passing)
-- [x] Completed git commit and push
+# Adversarial Reviewer Round 1 Progress
+
+## Completed Steps
+- [x] Step 1: Independently analyzed requirements R1, R2 and acceptance criteria.
+- [x] Step 2: Adversarial review of prior attempt (commit 255d3f9):
+  - Identified missing tables in SQL migration: `data_kelas`, `kelas`, `guru_kelas` omitted from policy execution.
+  - Identified missing `ENABLE ROW LEVEL SECURITY` & `FORCE ROW LEVEL SECURITY` in migration.
+  - Identified route alias bypass in `evaluateTabRBAC` for `view-sistem-blok` allowing non-admin access.
+  - Identified unhandled path variants in `isMasterDataEndpoint` (paths without leading slashes or with resource IDs).
+  - Identified missing component-level role guards in `SistemBlokView.tsx` and `NaikKelasModal.tsx`.
+- [x] Step 3: Fixed all identified issues:
+  - Updated `isMasterDataEndpoint` in `src/lib/supabaseClient.ts` to normalize all path variants.
+  - Updated `evaluateTabRBAC` in `src/lib/navigation.ts` to resolve canonical routes and reject non-admin access for both `view-admin-data` and `view-sistem-blok`.
+  - Added role check and conditional UI rendering to `SistemBlokView.tsx` so non-admin users only receive read-only mode.
+  - Added role prop and guard to `NaikKelasModal.tsx` and passed `user?.role` from `AdminDataView.tsx`.
+  - Updated `supabase/migrations/20261102_restrict_master_data_to_admin.sql` to explicitly enable/force RLS and apply policies to all master tables including `data_kelas`, `kelas`, and `guru_kelas`.
+  - Expanded `tests/master_data_admin_role_restriction.test.ts` to cover all 11 master tables, endpoint path variations, and route alias RBAC.
+- [x] Step 4: Verification:
+  - `npx tsx tests/master_data_admin_role_restriction.test.ts` passed (6/6).
+  - `npm test` ran all 46 test suites and passed with 0 failures.
+  - `npm run build` completed successfully with 0 TypeScript/Turbopack errors.

@@ -137,10 +137,11 @@ export const MASTER_DATA_TABLES = [
 
 export function isMasterDataEndpoint(urlOrPath: string): boolean {
   if (!urlOrPath) return false;
-  const path = urlOrPath.split('?')[0].replace(/^[a-z]+:\/\/[^/]+/i, '');
+  const rawPath = urlOrPath.split('?')[0].replace(/^[a-z]+:\/\/[^/]+/i, '');
+  const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
   return MASTER_DATA_TABLES.some(table => {
     const pattern = new RegExp(`/(?:rest/v1/)?${table}(?:/|$|\\?)`, 'i');
-    return pattern.test(path) || path.endsWith(`/${table}`) || path === table;
+    return pattern.test(path) || path.endsWith(`/${table}`) || path === `/${table}`;
   });
 }
 

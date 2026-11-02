@@ -6,6 +6,7 @@ import { showToast } from '@/lib/toast';
 import Swal from 'sweetalert2';
 import { getWitaDateStr } from '@/lib/wita';
 import { SistemBlok } from '@/types/database';
+import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
 
 /**
  * Sanitasi string tanggal untuk memastikan format murni YYYY-MM-DD
@@ -43,6 +44,7 @@ export function getBlokDurationDays(mulai: string, selesai: string): number {
 }
 
 export default function SistemBlokView({ user }: { user: any }) {
+  const isAdmin = isMasterDataModificationAllowed(user?.role);
   const [blokList, setBlokList] = useState<SistemBlok[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -115,6 +117,10 @@ export default function SistemBlokView({ user }: { user: any }) {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!isAdmin) {
+      return showToast('Akses Ditolak', 'Hanya Admin yang dapat menambah data master sistem blok.', 'error');
+    }
+
     if (!namaKegiatan.trim()) {
       return showToast('Validasi Gagal', 'Nama/deskripsi kegiatan wajib diisi.', 'warning');
     }
@@ -156,6 +162,9 @@ export default function SistemBlokView({ user }: { user: any }) {
 
   // Open edit modal
   const openEditModal = (item: SistemBlok) => {
+    if (!isAdmin) {
+      return showToast('Akses Ditolak', 'Hanya Admin yang dapat mengubah data master sistem blok.', 'error');
+    }
     setEditingItem(item);
     setEditNama(item.nama_kegiatan);
     setEditMulai(sanitizeDateStr(item.tanggal_mulai));
@@ -168,6 +177,10 @@ export default function SistemBlokView({ user }: { user: any }) {
   const handleEditSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
+
+    if (!isAdmin) {
+      return showToast('Akses Ditolak', 'Hanya Admin yang dapat mengubah data master sistem blok.', 'error');
+    }
 
     if (!editNama.trim()) {
       return showToast('Validasi Gagal', 'Nama kegiatan tidak boleh kosong.', 'warning');
@@ -215,6 +228,10 @@ export default function SistemBlokView({ user }: { user: any }) {
 
   // Delete block period
   const handleDelete = async (item: SistemBlok) => {
+    if (!isAdmin) {
+      return showToast('Akses Ditolak', 'Hanya Admin yang dapat menghapus data master sistem blok.', 'error');
+    }
+
     const result = await Swal.fire({
       title: 'Hapus Periode Blok?',
       text: `Apakah Anda yakin ingin menghapus "${item.nama_kegiatan}" (${item.tanggal_mulai} s/d ${item.tanggal_selesai})?`,
@@ -317,92 +334,99 @@ export default function SistemBlokView({ user }: { user: any }) {
       </div>
 
       {/* Form Tambah Periode Blok (R1) */}
-      <div className="glass-card p-5">
-        <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <i className="fa-solid fa-calendar-plus text-amber-500"></i>
-          <span>Tambah Periode Sistem Blok Baru</span>
-        </h3>
+      {isAdmin ? (
+        <div className="glass-card p-5">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <i className="fa-solid fa-calendar-plus text-amber-500"></i>
+            <span>Tambah Periode Sistem Blok Baru</span>
+          </h3>
 
-        <form onSubmit={handleAddSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleAddSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  Nama / Tema Kegiatan <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={namaKegiatan}
+                  onChange={e => setNamaKegiatan(e.target.value)}
+                  required
+                  placeholder="Contoh: Pesantren Kilat / Ujian Tengah Semester / Projek P5"
+                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                    Tanggal Mulai <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={tanggalMulai}
+                    onChange={e => setTanggalMulai(e.target.value)}
+                    required
+                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                    Tanggal Selesai <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={tanggalSelesai}
+                    onChange={e => setTanggalSelesai(e.target.value)}
+                    required
+                    min={tanggalMulai || undefined}
+                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                Nama / Tema Kegiatan <span className="text-red-500">*</span>
+                Deskripsi / Keterangan Khusus (Opsional)
               </label>
-              <input
-                type="text"
-                value={namaKegiatan}
-                onChange={e => setNamaKegiatan(e.target.value)}
-                required
-                placeholder="Contoh: Pesantren Kilat / Ujian Tengah Semester / Projek P5"
-                className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+              <textarea
+                value={deskripsi}
+                onChange={e => setDeskripsi(e.target.value)}
+                rows={2}
+                placeholder="Jelaskan rincian kegiatan khusus atau instruksi pengisian jurnal bagi para guru..."
+                className="w-full px-3 py-2 text-xs rounded-xl input-premium resize-none text-gray-900 dark:text-white"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                  Tanggal Mulai <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={tanggalMulai}
-                  onChange={e => setTanggalMulai(e.target.value)}
-                  required
-                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                  Tanggal Selesai <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={tanggalSelesai}
-                  onChange={e => setTanggalSelesai(e.target.value)}
-                  required
-                  min={tanggalMulai || undefined}
-                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
-                />
-              </div>
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md text-xs flex items-center gap-2 disabled:opacity-50 transition"
+              >
+                {submitting ? (
+                  <>
+                    <i className="fa-solid fa-circle-notch fa-spin"></i>
+                    <span>Menyimpan...</span>
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-plus"></i>
+                    <span>Simpan Periode Blok</span>
+                  </>
+                )}
+              </button>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-              Deskripsi / Keterangan Khusus (Opsional)
-            </label>
-            <textarea
-              value={deskripsi}
-              onChange={e => setDeskripsi(e.target.value)}
-              rows={2}
-              placeholder="Jelaskan rincian kegiatan khusus atau instruksi pengisian jurnal bagi para guru..."
-              className="w-full px-3 py-2 text-xs rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-            />
-          </div>
-
-          <div className="flex justify-end pt-1">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md text-xs flex items-center gap-2 disabled:opacity-50 transition"
-            >
-              {submitting ? (
-                <>
-                  <i className="fa-solid fa-circle-notch fa-spin"></i>
-                  <span>Menyimpan...</span>
-                </>
-              ) : (
-                <>
-                  <i className="fa-solid fa-plus"></i>
-                  <span>Simpan Periode Blok</span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      ) : (
+        <div className="glass-card p-4 border border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-950/20 text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2 rounded-2xl">
+          <i className="fa-solid fa-lock text-sm"></i>
+          <span>Mode Baca: Penambahan, pengubahan, atau penghapusan jadwal sistem blok hanya dapat dilakukan oleh Administrator.</span>
+        </div>
+      )}
 
       {/* Filter & Daftar Periode Blok */}
       <div className="glass-card p-5 space-y-4">
@@ -522,24 +546,26 @@ export default function SistemBlokView({ user }: { user: any }) {
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          className="btn-click w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 flex items-center justify-center text-xs transition"
-                          title="Edit Periode Blok"
-                        >
-                          <i className="fa-solid fa-pen-to-square"></i>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item)}
-                          className="btn-click w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 flex items-center justify-center text-xs transition"
-                          title="Hapus Periode Blok"
-                        >
-                          <i className="fa-solid fa-trash-can"></i>
-                        </button>
-                      </div>
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(item)}
+                            className="btn-click w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 flex items-center justify-center text-xs transition"
+                            title="Edit Periode Blok"
+                          >
+                            <i className="fa-solid fa-pen-to-square"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item)}
+                            className="btn-click w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 flex items-center justify-center text-xs transition"
+                            title="Hapus Periode Blok"
+                          >
+                            <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {item.deskripsi && (
@@ -566,7 +592,7 @@ export default function SistemBlokView({ user }: { user: any }) {
       </div>
 
       {/* Modal Edit Periode Blok */}
-      {isEditModalOpen && (
+      {isAdmin && isEditModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-gray-200 dark:border-gray-800 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
