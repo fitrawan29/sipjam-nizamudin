@@ -1,45 +1,43 @@
-# Handoff Report: Normalisasi Mata Pelajaran Jadwal & Perlindungan Data Master
+# Sentinel Handoff Report
 
-## 1. Observation
-- **Target Pekerjaan**:
-  - Memastikan jadwal pembelajaran hanya memuat mata pelajaran yang valid (misalnya "informatika") dan meniadakan mata pelajaran yang keliru atau tidak ada seperti "teknik informasi".
-  - Memastikan seluruh data master yang telah di-upload (data siswa, data guru, data jadwal pembelajaran, data kelas, dan data mapel) tidak disentuh atau dimodifikasi sama sekali.
-- **Implementasi yang Dilakukan**:
-  - Diterapkan modul pertahanan integritas `src/lib/dataIntegrityGuard.ts` yang menyediakan fungsi pemeriksaan dan normalisasi (`isInvalidMapel`, `normalizeScheduleMapel`, `validateScheduleData`, `validateMapelData`, `validateTeacherData`).
-  - Dilakukan pengamanan berlapis pada 13 komponen frontend dan background worker (`AdminDataView.tsx`, `HomeViewAdmin.tsx`, `GuruJurnal.tsx`, `GradebookView.tsx`, `RaporView.tsx`, `AdminVerifView.tsx`, `DokumenView.tsx`, `RekapJurnalView.tsx`, `RekapSiswaView.tsx`, `send-reminders/route.ts`, `attendanceAlpa.ts`, `warningSystem.ts`).
-  - Dihapus satu baris uji coba yang keliru (`c0000000-0000-0000-0000-000000000001`, "Teknologi Informasi") dari `jadwal_pelajaran`.
-- **Verifikasi Integritas Data Master**:
-  - File master CSV asli dibandingkan dengan data tabel live database:
-    * `data_siswa`: 14 record (100% utuh dan identik)
-    * `data_guru`: 12 record (100% utuh dan identik)
-    * `data_mapel`: 39 record resmi (100% utuh dan identik)
-    * `jadwal_pelajaran`: 51 record jadwal master hasil upload CSV (100% utuh dan identik)
-    * `data_kelas`: 3 tingkatan kelas master (`X Merdeka`, `XI Merdeka`, `XII Merdeka`) (100% utuh)
-- **Hasil Pengujian & Audit**:
-  - `npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts`: 16/16 lulus (100%).
-  - `npx tsc --noEmit`: 0 error.
-  - Audit independen `teamwork_victory_auditor`: Lulus 3 fase dengan putusan **VICTORY CONFIRMED**.
-  - Seluruh kode telah di-commit dan di-push ke branch `main`.
+## Observation
+- **User Request**: Sesuaikan agar seluruh data master (termasuk data siswa, data guru, data jadwal pembelajaran, data kelas, dan data mapel) hanya dapat diubah melalui aplikasi oleh admin menggunakan sistem manajemen yang sudah ada pada panel admin (role admin).
+- **Execution Path**: Routed to SWE Light (`teamwork_swe`) with 1 implementer, 3 adversarial review rounds, and an independent victory audit by `teamwork_victory_auditor`.
+- **Delivered Changes**:
+  - `src/lib/supabaseClient.ts`: Perlindungan PostgREST / network layer terhadap 16 entitas data master (`data_siswa`, `siswa`, `data_guru`, `guru`, `jadwal_pelajaran`, `jadwal_pembelajaran`, `data_mapel`, `mapel`, `mata_pelajaran`, `guru_mapel`, `wali_kelas`, `data_kelas`, `kelas`, `guru_kelas`, `kalender_pendidikan`, `sistem_blok`). Operasi mutasi (`POST`, `PUT`, `PATCH`, `DELETE`) secara mutlak ditolak dengan HTTP 403 Forbidden / PostgreSQL code `42501` jika pemanggil bukan role Admin/Superadmin.
+  - `src/lib/dataIntegrityGuard.ts` & `src/lib/navigation.ts`: Validasi terpusat `isMasterDataModificationAllowed` dan proteksi tab RBAC untuk rute `view-admin-data`, `view-sistem-blok`, dan `view-admin-backup`.
+  - `src/components/AdminDataView.tsx`, `AdminConfigView.tsx`, `NaikKelasModal.tsx`, `SistemBlokView.tsx`: Penonaktifan/penyembunyian kontrol mutasi bagi non-admin dan penghapusan auto-mutasi diam-diam agar data yang diunggah tetap terjaga keutuhannya.
+  - `supabase/migrations/20261102_restrict_master_data_to_admin.sql`: Migrasi RLS PostgreSQL database-level untuk memastikan pertahanan berlapis (defense-in-depth).
+  - `tests/master_data_admin_role_restriction.test.ts`: 8 test suites verifikasi otomatis menguji penolakan mutasi non-admin dan keberhasilan mutasi admin.
+- **Victory Audit Verdict**: **VICTORY CONFIRMED** by independent auditor (`caf8b3f4-c9e8-4b6b-9549-cf279eeeb342`) across Phase A (Timeline), Phase B (Anti-cheating/Integrity), and Phase C (Independent Test Execution).
 
-## 2. Logic Chain
-1. *Observasi*: Input atau entri tidak valid seperti "teknik informasi" / "teknologi informasi" dapat merusak validitas jadwal dan pelaporan KBM jika tidak difilter di tingkat form, upload, query, dan display.
-   *Inferensi*: Dibutuhkan multi-layer defensive guard pada modul guard, UI input/modal, filter query data, serta background cron scheduler.
-2. *Observasi*: Kebutuhan pengguna menegaskan bahwa data master yang sudah diunggah tidak boleh disentuh atau diubah.
-   *Inferensi*: Hanya anomali data uji lepas (rogue record uji dengan ID khusus) yang dibersihkan dari jadwal_pelajaran; sementara 51 baris jadwal kurikulum resmi dan seluruh data master siswa, guru, kelas, dan mapel dipertahankan 100% utuh sesuai file CSV master aslinya.
-3. *Observasi*: Pengujian mandiri dan audit forensik membuktikan tidak ada pemalsuan, hardcoding, maupun modifikasi pada record data master.
-   *Inferensi*: Kriteria penerimaan R1 dan R2 terpenuhi secara sempurna.
+## Logic Chain
+1. Permintaan pengguna mewajibkan pembatasan mutasi data master hanya melalui panel manajemen admin oleh role admin.
+2. Implementasi menerapkan pola pertahanan berlapis (defense-in-depth): di tingkat UI (sembunyikan tombol dan dialog), di tingkat routing/RBAC (tolak navigasi ke menu modifikasi data master untuk non-admin), di tingkat network interceptor Supabase client (cegat seluruh pemanggilan REST PostgREST mutasi tabel data master dan berikan HTTP 403 Forbidden), serta di tingkat database migration RLS.
+3. Seluruh auto-manipulasi pada proses pembacaan atau pengunggahan data master telah dihentikan untuk menjaga keutuhan data master yang telah diinput/diunggah.
+4. Tiga putaran review adversarial independen menguji dan memvalidasi edge-case seperti URL percent-encoding bypass, whitespace, query parameter evasion, dan schema prefixing (`public.`).
+5. Auditor independen memverifikasi bahwa pengujian lulus 100% (8/8 unit test khusus, 46/46 seluruh test suite aplikasi, dan build produksi Next.js Turbopack bersih tanpa error) serta seluruh commit telah di-push ke branch `main`.
 
-## 3. Caveats
-- Modul data master tetap berfokus untuk upload, dan kini dilengkapi validasi otomatis pada level CSV parser maupun input manual agar mencegah penulisan mata pelajaran fiktif di masa mendatang.
-- Lingkungan kerja adalah Development.
+## Caveats
+- Skrip SQL migrasi (`supabase/migrations/20261102_restrict_master_data_to_admin.sql`) telah disediakan di repositori. Untuk lingkungan cloud live Supabase yang terpisah, jalankan file migrasi ini melalui Supabase CLI atau SQL Editor Dashboard jika RLS di engine PostgreSQL cloud ingin segera aktif secara native selain perlindungan network/client yang sudah aktif saat ini.
 
-## 4. Conclusion
-Seluruh persyaratan pada ORIGINAL_REQUEST.md telah dipenuhi secara menyeluruh. Audit kemenangan independen mengonfirmasi status **VICTORY CONFIRMED**.
+## Conclusion
+Pekerjaan telah selesai secara tuntas, teruji, dan diverifikasi secara independen dengan status **VICTORY CONFIRMED**.
 
-## 5. Verification Method
-1. Eksekusi pengujian validitas jadwal & integritas data master:
-   `npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts`
-2. Eksekusi pengujian typecheck TypeScript:
-   `npx tsc --noEmit`
-3. Eksekusi pengujian audit independen:
-   `npx tsx .agents/teamwork/sentinel_victory_auditor/independent_victory_check.ts`
+## Verification Method
+```powershell
+# 1. Jalankan test suite verifikasi hak akses data master
+npx tsx tests/master_data_admin_role_restriction.test.ts
+
+# 2. Jalankan TypeScript compiler check
+npx tsc --noEmit
+
+# 3. Jalankan seluruh test suite aplikasi
+npm test
+
+# 4. Jalankan production build
+npm run build
+
+# 5. Cek status git
+git status
+```
