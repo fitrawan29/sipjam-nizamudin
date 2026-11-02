@@ -280,6 +280,10 @@ export default function NaikKelasModal({
 
   // Handler: Execute Satu Angkatan Advancement
   const handleExecuteSatuAngkatan = async () => {
+    if (!isAdmin) {
+      return Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat memodifikasi kenaikan kelas data siswa.', 'error');
+    }
+
     const totalAffected = cohortPreview.reduce((sum, item) => sum + item.studentCount, 0);
     if (totalAffected === 0) {
       return Swal.fire('Informasi', 'Tidak ada siswa aktif yang siap dinaikkan kelas.', 'info');
@@ -310,10 +314,6 @@ export default function NaikKelasModal({
     });
 
     if (!confirm.isConfirmed) return;
-
-    if (!isAdmin) {
-      return Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat memodifikasi kenaikan kelas data siswa.', 'error');
-    }
 
     setLoading(true);
     try {

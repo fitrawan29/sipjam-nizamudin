@@ -124,6 +124,38 @@ async function runTests() {
     'public schema prefixed relative path must be recognized'
   );
 
+  // 2i. Adversarial evasion patterns: percent-encoded, fragments/hashes, and trailing whitespace
+  assert.strictEqual(
+    isMasterDataEndpoint('/rest/v1/data%5Fsiswa'),
+    true,
+    'Percent-encoded path /rest/v1/data%5Fsiswa must be recognized'
+  );
+  assert.strictEqual(
+    isMasterDataEndpoint('/rest/v1/data%5Fguru'),
+    true,
+    'Percent-encoded path /rest/v1/data%5Fguru must be recognized'
+  );
+  assert.strictEqual(
+    isMasterDataEndpoint('/rest/v1/public.jadwal%5Fpelajaran'),
+    true,
+    'Percent-encoded public schema path /rest/v1/public.jadwal%5Fpelajaran must be recognized'
+  );
+  assert.strictEqual(
+    isMasterDataEndpoint('/rest/v1/data_siswa#fragment'),
+    true,
+    'Fragment appended path /rest/v1/data_siswa#fragment must be recognized'
+  );
+  assert.strictEqual(
+    isMasterDataEndpoint('/rest/v1/data_siswa '),
+    true,
+    'Trailing space path /rest/v1/data_siswa must be recognized'
+  );
+  assert.strictEqual(
+    isMasterDataEndpoint('https://placeholder.supabase.co//rest/v1///data_siswa?select=*#anchor'),
+    true,
+    'Redundant slashes with query and hash must be recognized'
+  );
+
   // Operational tables must NOT be matched
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/absensi'), false);
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/presensi_guru'), false);
@@ -166,7 +198,15 @@ async function runTests() {
 
   const siswaBlokRbac = evaluateTabRBAC('view-sistem-blok', 'blok', { role: 'Siswa' });
   assert.strictEqual(siswaBlokRbac.allowed, false, 'Siswa must be blocked from view-sistem-blok alias');
-  console.log('✓ Test 3 passed: evaluateTabRBAC strictly protects view-admin-data & view-sistem-blok for non-admin users.');
+
+  // 3c. Backup view and tab RBAC (canonical and legacy alias)
+  const adminBackupRbac = evaluateTabRBAC('view-admin-backup', '', { role: 'Admin' });
+  assert.strictEqual(adminBackupRbac.allowed, true, 'Admin must be allowed to access view-admin-backup');
+
+  const guruBackupRbac = evaluateTabRBAC('view-admin-backup', '', { role: 'Guru' });
+  assert.strictEqual(guruBackupRbac.allowed, false, 'Guru must be blocked from view-admin-backup alias');
+  assert.strictEqual(guruBackupRbac.fallbackTab, 'profil');
+  console.log('✓ Test 3 passed: evaluateTabRBAC strictly protects view-admin-data, view-sistem-blok & view-admin-backup for non-admin users.');
 
   // Test 4: Direct Mutation Guard Response Check
   console.log('[Test 4] Validating direct checkMasterDataMutationGuard...');
@@ -233,7 +273,39 @@ async function runTests() {
   assert.ok(anonMutate.error, 'Anon delete on data_guru must return error');
   assert.strictEqual(anonMutate.status, 403);
 
-  console.log(`✓ Test 5 passed: Client correctly enforces 403 Forbidden on all ${MASTER_DATA_TABLES.length} master tables for non-admin.`);
+  // 5d: Authorized Admin client mutation passthrough (must NOT be blocked)
+  let adminReachedBackend = false;
+  const mockAdminClient = getTenantSupabaseClient(testSekolahId, 'Admin', {
+    global: {
+      fetch: async () => {
+        adminReachedBackend = true;
+        return new Response(JSON.stringify([{ id: 'success-id', nama_siswa: 'Budi' }]), {
+          status: 201,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+  });
+  const adminInsertRes = await mockAdminClient.from('data_siswa').insert([{ nama_siswa: 'Budi' }]);
+  assert.strictEqual(adminInsertRes.error, null, 'Admin mutation must have null error');
+  assert.strictEqual(adminInsertRes.status, 201, 'Admin mutation must succeed with 201');
+  assert.strictEqual(adminReachedBackend, true, 'Admin mutation must pass through guard to backend');
+
+  let guruReachedBackend = false;
+  const mockGuruClient = getTenantSupabaseClient(testSekolahId, 'Guru', {
+    global: {
+      fetch: async () => {
+        guruReachedBackend = true;
+        return new Response(JSON.stringify([{ id: 'should-not-reach' }]), { status: 201 });
+      }
+    }
+  });
+  const guruInsertRes = await mockGuruClient.from('data_siswa').insert([{ nama_siswa: 'Budi' }]);
+  assert.ok(guruInsertRes.error, 'Guru mutation must be blocked with error');
+  assert.strictEqual(guruInsertRes.status, 403, 'Guru mutation status must be 403');
+  assert.strictEqual(guruReachedBackend, false, 'Guru mutation must be blocked BEFORE reaching backend');
+
+  console.log(`✓ Test 5 passed: Client correctly enforces 403 Forbidden on all ${MASTER_DATA_TABLES.length} master tables for non-admin and cleanly permits Admin.`);
 
   // Test 6: In-memory Server Tenant Context enforcement
   console.log('[Test 6] Validating serverTenantContext with global supabase client...');
@@ -271,6 +343,10 @@ async function runTests() {
   assert.ok(
     naikKelasSrc.includes('!isAdmin') && naikKelasSrc.includes('Mode Pratinjau'),
     'NaikKelasModal must disable actions and display warning banner for non-admin'
+  );
+  assert.ok(
+    /handleExecuteSatuAngkatan\s*=\s*async\s*\(\)\s*=>\s*\{\s*if\s*\(!isAdmin\)/.test(naikKelasSrc),
+    'NaikKelasModal must check isAdmin upfront in handleExecuteSatuAngkatan'
   );
   console.log('✓ Test 8 passed: Component files contain hardened authorization checks.');
 

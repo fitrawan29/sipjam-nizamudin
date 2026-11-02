@@ -142,11 +142,28 @@ export const MASTER_DATA_TABLES = [
 
 export function isMasterDataEndpoint(urlOrPath: string): boolean {
   if (!urlOrPath) return false;
-  const rawPath = urlOrPath.split('?')[0].replace(/^[a-z]+:\/\/[^/]+/i, '');
-  const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+  let clean = String(urlOrPath).trim();
+  // Strip query string and fragment/hash
+  clean = clean.split(/[?#]/)[0].trim();
+  // Strip protocol and domain/host if present
+  clean = clean.replace(/^[a-z]+:\/\/[^/]+/i, '');
+  // URL decode percent-encoded sequences (e.g. %5F -> _, %64 -> d)
+  try {
+    clean = decodeURIComponent(clean);
+  } catch (_) {}
+  // Collapse multiple forward slashes
+  clean = clean.replace(/\/+/g, '/').trim();
+  const path = clean.startsWith('/') ? clean : `/${clean}`;
+
   return MASTER_DATA_TABLES.some(table => {
     const pattern = new RegExp(`/(?:rest/v1/)?(?:public\\.)?${table}(?:/|$|\\?)`, 'i');
-    return pattern.test(path) || path.endsWith(`/${table}`) || path === `/${table}` || path.endsWith(`/public.${table}`);
+    return (
+      pattern.test(path) ||
+      path.endsWith(`/${table}`) ||
+      path === `/${table}` ||
+      path.endsWith(`/public.${table}`) ||
+      path === `/public.${table}`
+    );
   });
 }
 

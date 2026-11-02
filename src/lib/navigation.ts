@@ -195,13 +195,14 @@ export function evaluateTabRBAC(
   // Cluster 5: Master Data & Sistem
   const resolved = resolveCanonicalRoute(viewId, tabId);
   const effectiveView = resolved.canonicalView;
+  const effectiveTab = resolved.defaultTab || tabId;
   if (effectiveView === 'view-admin-data' || viewId === 'view-admin-data' || viewId === 'view-sistem-blok') {
     if (!isAdmin) {
       return { allowed: false, fallbackTab: 'view-home', reason: 'Seluruh data master hanya dapat diakses dan diubah oleh Administrator.' };
     }
   }
 
-  if (viewId === 'view-admin-config' && tabId === 'backup') {
+  if ((effectiveView === 'view-admin-config' && (effectiveTab === 'backup' || tabId === 'backup')) || viewId === 'view-admin-backup') {
     if (!isAdmin) {
       return { allowed: false, fallbackTab: 'profil', reason: 'Hanya Admin yang dapat mengakses Cadangan Data.' };
     }
