@@ -1,92 +1,61 @@
 # Handoff Report — teamwork_implementer_1
 
 ## Executive Summary
-Audit komprehensif dan penguatan sistem keamanan ujian serta fitur anti-kecurangan untuk role siswa telah diselesaikan. Codebase SIPJAM sebelumnya tidak memiliki isolasi antarmuka khusus untuk role siswa serta tidak memiliki proteksi penjagaan mode fullscreen, deteksi blur/tab-switch, pembatasan copy-paste/shortcut, maupun pelacakan integritas sesi ujian. 
+Perbaikan tampilan Jam Datang dan Jam Pulang pada modul Presensi Gerbang Piket (`RekapSiswaView.tsx`) telah selesai diimplementasikan dan diverifikasi secara menyeluruh.
 
-Kami telah membangun arsitektur keamanan anti-kecurangan modular (`antiCheatGuard.ts`), reaktif hook (`useExamAntiCheat.ts`), antarmuka pengerjaan ujian siswa dengan HUD keamanan dan blocking overlay (`UjianSiswaView.tsx`), menambahkan role `'siswa'` pada tipe pengguna (`src/types/user.ts`), serta mengonfigurasi navigasi dan RBAC ketat (`navigation.ts` dan `AppScreen.tsx`).
+Sebelum perbaikan, siswa yang hadir di pagi hari (`isMorningHadir`) secara keliru menerima fallback otomatis `pulang = { jam: 'Sistem Mapel Auto', status: 'pulang' }`. Nilai string ini ketika dipotong 5 karakter menghasilkan `'Siste'`, sehingga kolom Jam Pulang menampilkan teks cacat `"Siste WITA"`, serta secara keliru menandai siswa seolah-olah sudah pulang (`hasPulang: true`). Selain itu, jika catatan presensi pulang bernilai `'-'`, kolom merender `"- WITA"` alih-alih `"-"`.
 
-Semua skenario pengujian baru (58 checks) lulus 100%, kompilasi TypeScript (`npx tsc --noEmit`) 0 error, linting (`npm run lint`) 0 error, dan production build (`npm run build`) sukses tanpa regresi.
+Kami telah memperbarui mekanisme pemetaan presensi gerbang piket agar waktu Jam Datang bersumber murni dari scan kedatangan yang tercatat, dan Jam Pulang bersumber murni dari scan kepulangan aktual (`realPulang`). Jika belum ada catatan presensi pulang, kolom menampilkan tanda `"-"`.
 
----
-
-## 1. Audit & Identifikasi Celah Keamanan (R1)
-1. **Ketidakhadiran RBAC Role Siswa**:
-   - `src/types/user.ts`: Role `'siswa'` tidak didefinisikan secara eksplisit.
-   - `src/lib/navigation.ts` & `AppScreen.tsx`: Pengguna dengan role selain superadmin/admin/dinas/kepalasekolah sebelumnya otomatis diarahkan ke antarmuka Guru (`HomeViewGuru`), memberikan celah akses ke form jurnal dan presensi guru.
-2. **Ketiadaan Penguncian Mode Fullscreen**:
-   - Tidak ada mekanisme yang mewajibkan atau memantau status layar penuh selama pelaksanaan ujian, sehingga siswa dapat membuka jendela contekan secara berdampingan.
-3. **Ketiadaan Deteksi Perpindahan Tab / Jendela (Visibility / Focus Loss)**:
-   - Tidak ada penanganan event `visibilitychange` atau `blur`, sehingga siswa dapat berganti tab browser tanpa tercatat.
-4. **Celah Penyalinan Konten & Akses DevTools**:
-   - Tidak ada pencegahan terhadap shortcut developer tools (F12, Ctrl+Shift+I/J/C, Ctrl+U), copy-paste (Ctrl+C, Ctrl+V, Ctrl+X), serta klik kanan (`contextmenu`), memungkinkan ekstraksi soal ke AI/mesin pencari.
-5. **Ketiadaan Integritas Sesi & Audit Trail**:
-   - Tidak ada toleransi pelanggaran maksimal (max violations threshold) maupun penyimpanan status pelanggaran yang tahan reload (reload-tamper resistance).
+Seluruh pengujian unit, regresi, dan build produksi Next.js telah dijalankan dan lulus 100%.
 
 ---
 
-## 2. Implementasi & Penguatan Fitur Anti-Kecurangan (R2)
-1. **`src/types/user.ts`**:
-   - Menambahkan `'siswa'` ke dalam union `UserRole` dan interface `AppUser`.
-2. **`src/lib/antiCheatGuard.ts`**:
-   - Core anti-cheating engine:
-     - `ViolationType`: `'TAB_SWITCH' | 'WINDOW_BLUR' | 'FULLSCREEN_EXIT' | 'CLIPBOARD_ATTEMPT' | 'DEVTOOLS_SHORTCUT' | 'CONTEXT_MENU'`.
-     - `evaluateSecurityViolation`: Mengakumulasi pelanggaran, menerapkan cooldown anti-spam pada compound OS event (blur + visibilitychange), serta mengunci sesi otomatis saat `violationCount >= maxViolations` (default: 3).
-     - `isDevToolsShortcut`: Mendeteksi F12, Ctrl+Shift+I/J/C, Ctrl+U (dan varian Cmd Mac).
-     - `isRestrictedCopyPasteShortcut`: Memblokir Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+P, Ctrl+S, serta Ctrl+A di luar area input.
-     - `isInputOrTextarea`: Membedakan input esai/jawaban siswa asli agar pengetikan normal tidak terblokir.
-     - `saveExamSecurityState` & `loadExamSecurityState`: Menyimpan riwayat pelanggaran ke `localStorage` dengan key terisolasi (`sipjam_exam_security_{examId}_{studentId}`) untuk mencegah bypass via refresh halaman.
-     - `triggerFullscreen` & `triggerExitFullscreen`: Manajemen fullscreen lintas-browser (`webkit`, `moz`, `ms`).
-3. **`src/hooks/useExamAntiCheat.ts`**:
-   - React hook yang menyambungkan seluruh event DOM (`visibilitychange`, `window.blur`, `fullscreenchange`, `copy`, `cut`, `paste`, `contextmenu`, `keydown`) dengan siklus hidup komponen ujian.
-   - Mengelola state modal peringatan (`violationModalOpen`), blocking overlay (`isBlocked`), dan status fullscreen secara reaktif.
-4. **`src/components/UjianSiswaView.tsx`**:
-   - Antarmuka ujian siswa modern:
-     - **Mode Lobby**: Peringatan protokol keamanan (layar penuh, larangan tab-switch, blokir copy-paste, batas 3x pelanggaran).
-     - **Mode Pengerjaan**: HUD keamanan real-time (Badge Layar Penuh, Badge Penghitung Pelanggaran `X / 3`, Countdown Timer).
-     - **Pelindung Soal**: Menerapkan kelas `select-none`, event listener pencegahan klik kanan & clipboard.
-     - **Full-Viewport Blocking Overlay**: `fixed inset-0 z-[99999] backdrop-blur-md pointer-events-auto` saat keluar dari fullscreen atau terjadi pelanggaran, memaksa siswa menekan "Kembali ke Layar Penuh" untuk melanjutkan.
-     - **Auto-Lockout**: Mengunci ujian secara otomatis saat pelanggaran mencapai 3x dan menyerahkan jawaban dengan rekaman audit trail.
-     - **Mode Selesai**: Ringkasan pengerjaan dan status integritas keamanan ("Bersih / X Pelanggaran").
-5. **`src/lib/navigation.ts`**:
-   - Menambahkan menu khusus role siswa (`view-ujian` dan `view-informasi`).
-   - Menambahkan aturan ketat pada `evaluateTabRBAC` agar role siswa diblokir dari seluruh modul guru/admin dan dialihkan ke `view-ujian`.
-6. **`src/components/AppScreen.tsx`**:
-   - Menambahkan evaluasi `isSiswa`.
-   - Menetapkan default home view role siswa langsung ke `view-ujian`.
-   - Merender `<UjianSiswaView />` secara dinamis saat `currentView === 'view-ujian'`.
+## 1. What I Changed
+- **`src/components/RekapSiswaView.tsx`**:
+  - Memisahkan ekstraksi kepulangan aktual (`realPulang`) dari log gerbang (`gateLogs` dengan `status === 'pulang'`).
+  - Menghapus pembuatan rekor kepulangan fiktif (`pulang = { jam: 'Sistem Mapel Auto', ... }`) pada siswa yang hadir pagi.
+  - Mempertahankan deteksi bolos (`isBolosPulang`, `Auto Fallback: Bolos`, `Pulang: Bolos`, dan metrik `totalGerbangBolos`) untuk kompatibilitas aturan audit dan tes eksisting.
+  - Memformat `jamDatang` dan `jamPulang` secara presisi: nilai jam yang valid (HH:MM / HH:MM:SS) dipotong rapi menjadi HH:MM, sedangkan jika catatan tidak ada atau bertanda `'-'`, nilai dijadikan `null`.
+  - Memperbaiki rendering sel tabel HTML dan ekspor CSV:
+    - Jam Datang: menampilkan `{siswa.jamDatang} WITA` jika ada catatan scan masuk, atau `"-"` jika belum ada.
+    - Jam Pulang: menampilkan `{siswa.jamPulang} WITA` jika ada catatan scan pulang, atau `"-"` jika belum ada.
+  - Memastikan state `hasPulang` hanya bernilai `true` jika siswa benar-benar memiliki catatan presensi pulang di gerbang dan tidak bolos.
+  - Menyelaraskan pembacaan `timeStr` pada pengiriman notifikasi WhatsApp orang tua agar aman dari nilai `'-'`.
+- **`tests/presensi_gerbang_jam_datang_pulang.test.ts`**:
+  - Test suite baru untuk memvalidasi:
+    1. Keberadaan kolom dan penanganan rendering Jam Datang dan Jam Pulang di tabel `RekapSiswaView.tsx`.
+    2. Pencegahan injeksi fake record `'Sistem Mapel Auto'`.
+    3. Ekspor CSV dengan format waktu yang sesuai atau tanda `'-'`.
+    4. Simulasi data multi-siswa (datang + pulang, datang saja, belum presensi, dan bolos).
+    5. Pengujian format timestamp beragam (dengan detik, tanpa detik, whitespace, null/undefined).
+
+---
+
+## 2. Why
+Tugas meminta perbaikan tampilan jam datang dan jam pulang pada presensi gerbang piket:
+- **R1**: Tampilkan waktu presensi/scan masuk pada kolom jam datang sesuai catatan kedatangan.
+- **R2**: Tampilkan waktu presensi/scan pulang pada kolom jam pulang jika sudah presensi pulang, dan tampilkan tanda `"-"` jika belum ada catatan presensi pulang.
 
 ---
 
 ## 3. Verification Record
-
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/student_exam_anti_cheat.test.ts`: **58 / 58 PASS (100%)**
-    - Suite 1: RBAC isolation & view restrictions for role siswa (7/7 PASS)
-    - Suite 2: DevTools shortcut detection & suppression (8/8 PASS)
-    - Suite 3: Copy-paste, cut, print & save restrictions (9/9 PASS)
-    - Suite 4: Input & textarea element discrimination (5/5 PASS)
-    - Suite 5: Anti-cheat state machine & threshold lockout (6/6 PASS)
-    - Suite 6: Cooldown debouncing for compound window events (3/3 PASS)
-    - Suite 7: Tamper-resistant storage key & descriptions (2/2 PASS)
-    - Suite 8: Source code structural invariants & AST audits (14/14 PASS)
-    - Suite 9: Honest student answering experience simulation (3/3 PASS)
-  - `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`: **30 / 30 PASS (100%)** (zero regression)
-  - `npx tsc --noEmit`: **Exit code 0** (0 errors)
-  - `npm run lint`: **Exit code 0** (0 errors, 166 pre-existing warnings)
-  - `npm run build`: **Exit code 0** (compiled successfully, static page generation 13/13 complete)
-
+  - `npx tsx tests/presensi_gerbang_jam_datang_pulang.test.ts`: **7 / 7 checks PASS (100%)**
+  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: **56 / 56 checks PASS (100%)**
+  - `npm test`: **46 test suites PASS (100%)** (Exit code 0)
+  - `npm run build`: **Exit code 0** (Next.js 16.3.4 Turbopack build sukses, pemeriksaan tipe TypeScript selesai tanpa error, 13/13 static routes dioptimasi)
 - **Shallow Verification (manual run only):**
-  - Visual layout rendering of `UjianSiswaView` lobby, HUD badges, and modal overlays eyeballed against Tailwind CSS classes.
-
+  - Pemeriksaan layout HTML table `border-collapse`, font mono styling, badge CSS classes di `RekapSiswaView.tsx`.
 - **Unverified aspects:**
-  - Perangkat mobile fisik bersistem operasi lawas yang tidak mendukung Fullscreen API native (penanganan fallback browser telah disediakan melalui blocking prompt).
+  - Koneksi live ke hardware barcode scanner USB HID fisik (sudah dicakup oleh simulasi payload database dan unit test `tests/m3_piket_scanner_kiosk.test.ts`).
 
 ---
 
 ## 4. Known Issues
-- `Minor Robustness Risk` — Pada browser mobile tertentu (misal iOS Safari versi lama), Fullscreen API memerlukan interaksi tap pengguna secara eksplisit (`startExamFullscreen` dipicu oleh event `onClick` tombol "Mulai Ujian", yang sudah mematuhi kebijakan browser).
+- `None` — Semua pengujian otomatis dan build sistem berjalan tanpa error serta diff difokuskan secara bedah pada area terkait.
 
 ---
 
 ## 5. Untested Edge Cases & Next Step
-- Reviewer dapat menguji skenario browser multitasking pada iPadOS Split View atau Samsung DeX mode untuk memverifikasi respons `window.blur`.
+- Uji skenario di mana scanner mencatat format waktu 12 jam (AM/PM) dari perangkat kiosk pihak ketiga (format standar SIPJAM saat ini menggunakan 24 jam HH:MM:SS WITA).

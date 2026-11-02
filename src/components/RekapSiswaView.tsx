@@ -303,9 +303,10 @@ export default function RekapSiswaView({
             const datang = (gateLogs || []).find(p => 
               (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'datang'
             );
-            let pulang = (gateLogs || []).find(p => 
+            const realPulang = (gateLogs || []).find(p => 
               (p.siswa_id === siswa.id || (siswa.nisn && p.nisn === siswa.nisn)) && p.status === 'pulang'
             );
+            let pulang = realPulang || null;
 
             const classLog = absensiLogs?.find(a => (a.siswa_id && siswa.id && a.siswa_id === siswa.id) || (a.nisn && a.nisn === siswa.nisn) || (a.nama_siswa && siswa.nama_siswa && a.nama_siswa.trim().toLowerCase() === siswa.nama_siswa.trim().toLowerCase()));
             const isDailyBolos = classLog?.status === 'Bolos' || classLog?.status === 'B';
@@ -332,7 +333,6 @@ export default function RekapSiswaView({
 
             const normMapel = lastMapelStatus ? String(lastMapelStatus).trim().toUpperCase() : null;
             const isMapelAlfa = normMapel === 'A' || normMapel === 'ALFA' || normMapel === 'ALPA' || normMapel === 'BOLOS' || normMapel === 'B';
-            const isMapelHadir = normMapel === 'H' || normMapel === 'HADIR';
 
             // Auto-fallback to mapel presensi & validasi bolos (Rule 3)
             let isBolosPulang = isDailyBolos || isResolvedBolos;
@@ -340,23 +340,20 @@ export default function RekapSiswaView({
               if (isBolosPulang || (isMapelAlfa && isMorningHadir)) {
                 isBolosPulang = true;
                 pulang = { jam: '-', status: 'bolos', device_id: 'Auto Fallback: Bolos' };
-              } else if (isMapelHadir || isMorningHadir) {
-                pulang = { jam: 'Sistem Mapel Auto', status: 'pulang', device_id: 'Auto Fallback: Mapel' };
-              } else if (classLog && classLog.logs && classLog.logs.length > 0) {
-                const latestLog = classLog.logs[classLog.logs.length - 1];
-                const timeMatch = latestLog.match(/\[(\d{2}:\d{2})/);
-                if (timeMatch && timeMatch[1]) {
-                  pulang = { jam: timeMatch[1] + ':00', device_id: 'Sistem Mapel Auto' };
-                }
               }
             } else if (isDailyBolos || isResolvedBolos) {
               isBolosPulang = true;
             }
 
             const rawJamDatang = datang?.jam ? String(datang.jam).trim() : null;
-            const jamDatang = rawJamDatang ? (rawJamDatang.length > 5 ? rawJamDatang.slice(0, 5) : rawJamDatang) : null;
-            const rawJamPulang = pulang?.jam ? String(pulang.jam).trim() : null;
-            const jamPulang = rawJamPulang ? (rawJamPulang.length > 5 ? rawJamPulang.slice(0, 5) : rawJamPulang) : null;
+            const jamDatang = rawJamDatang && rawJamDatang !== '-' && !rawJamDatang.toLowerCase().includes('auto')
+              ? (rawJamDatang.length > 5 ? rawJamDatang.slice(0, 5) : rawJamDatang)
+              : null;
+
+            const rawJamPulang = realPulang?.jam ? String(realPulang.jam).trim() : null;
+            const jamPulang = rawJamPulang && rawJamPulang !== '-' && !rawJamPulang.toLowerCase().includes('auto') && !rawJamPulang.toLowerCase().includes('sistem')
+              ? (rawJamPulang.length > 5 ? rawJamPulang.slice(0, 5) : rawJamPulang)
+              : null;
 
             return {
               ...siswa,
@@ -364,11 +361,11 @@ export default function RekapSiswaView({
               pulang,
               jamDatang,
               jamPulang,
-              hasDatang: !!datang,
-              hasPulang: Boolean(pulang && pulang.status !== 'bolos'),
+              hasDatang: Boolean(datang),
+              hasPulang: Boolean(realPulang && realPulang.status === 'pulang' && !isBolosPulang),
               isBolos: isBolosPulang,
               deviceDatang: datang?.device_id || null,
-              devicePulang: pulang?.device_id || null
+              devicePulang: realPulang?.device_id || (isBolosPulang ? 'Auto Fallback: Bolos' : null)
             };
           });
           setGerbangStudents(combined);
@@ -412,8 +409,8 @@ export default function RekapSiswaView({
         `"${s.nama_siswa}"`,
         s.kelas || gerbangKelas,
         gerbangTanggal,
-        s.jamDatang ? `${s.jamDatang} WITA` : '-',
-        s.jamPulang ? `${s.jamPulang} WITA` : '-',
+        s.jamDatang && s.jamDatang !== '-' ? `${s.jamDatang} WITA` : '-',
+        s.jamPulang && s.jamPulang !== '-' ? `${s.jamPulang} WITA` : '-',
         `"${statusStr}"`
       ].join(','));
     });
@@ -1452,7 +1449,7 @@ export default function RekapSiswaView({
                             <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-mono text-[11px] print:text-[8pt]">{siswa.nisn || '-'}</td>
                             <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold">{siswa.nama_siswa}</td>
                             <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center">
-                              {siswa.jamDatang ? (
+                              {siswa.jamDatang && siswa.jamDatang !== '-' ? (
                                 <span className="font-mono text-emerald-700 dark:text-emerald-300 font-bold text-xs">
                                   {siswa.jamDatang} WITA
                                 </span>
@@ -1461,7 +1458,7 @@ export default function RekapSiswaView({
                               )}
                             </td>
                             <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center">
-                              {siswa.jamPulang ? (
+                              {siswa.jamPulang && siswa.jamPulang !== '-' ? (
                                 <span className="font-mono text-sky-700 dark:text-sky-300 font-bold text-xs">
                                   {siswa.jamPulang} WITA
                                 </span>
@@ -1499,7 +1496,7 @@ export default function RekapSiswaView({
                                     : siswa.hasDatang
                                     ? 'Hadir Datang'
                                     : 'Belum Presensi';
-                                  const timeStr = siswa.jamPulang || siswa.jamDatang || undefined;
+                                  const timeStr = (siswa.jamPulang && siswa.jamPulang !== '-') ? siswa.jamPulang : (siswa.jamDatang && siswa.jamDatang !== '-') ? siswa.jamDatang : undefined;
                                   triggerParentWhatsApp(
                                     {
                                       nama_siswa: siswa.nama_siswa,
