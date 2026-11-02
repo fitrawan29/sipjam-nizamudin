@@ -40,7 +40,7 @@
 | 4 | F4: Teacher Dashboard & Mixed Schedule Masking | Update `src/components/HomeViewGuru.tsx` to selectively mask affected schedules while rendering unaffected schedules as active KBM | M2 | Survey | DONE |
 | 5 | F5: Jurnal Kegiatan & Jurnal KBM Integration | Ensure `src/components/GuruJurnal.tsx` supports filling `Jurnal Kegiatan` for affected teachers/classes while keeping regular `Jurnal KBM` for unblocked classes | M2 | Survey | DONE |
 | 6 | F6: Automated Verification Suite Expansion | Expand `tests/sistem_blok_verification.test.ts` to test all 4 target types, hour-range filtering, schedule isolation matrix, and journal submission | M3 | Survey | DONE |
-| 7 | F7: Full Regression & Code Integrity Verification | Run full test suite (`npm test`), static type check (`npx tsc --noEmit`), and production build verification (`npm run build`) | M4 | Survey | IN_PROGRESS |
+| 7 | F7: Full Regression & Code Integrity Verification | Run full test suite (`npm test`), static type check (`npx tsc --noEmit`), and production build verification (`npm run build`) | M4 | Survey | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -48,7 +48,7 @@
 | M1 | Database Schema, Types & Admin Configuration UI | Schema migration script, `src/types/database.ts`, `src/components/SistemBlokView.tsx` | none | DONE |
 | M2 | Workflow Engine, Granular Schedule Masking & Journal Workflows | `src/lib/workflow.ts`, `src/components/HomeViewGuru.tsx`, `src/components/GuruJurnal.tsx` | M1 | DONE |
 | M3 | Automated Verification Test Suite Expansion | Expand `tests/sistem_blok_verification.test.ts` to cover all target scopes, time boundaries, and isolation scenarios | M2 | DONE |
-| M4 | Final Milestone: Full Regression & Integrity Audit | 100% test pass on all test suites, TypeScript compilation, build verification, and forensic audit | M3 | IN_PROGRESS |
+| M4 | Final Milestone: Full Regression & Integrity Audit | 100% test pass on all test suites, TypeScript compilation, build verification, and forensic audit | M3 | DONE |
 
 ## Interface Contracts
 

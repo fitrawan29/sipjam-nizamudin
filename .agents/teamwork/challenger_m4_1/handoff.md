@@ -1,142 +1,144 @@
-# Milestone 4 Adversarial Challenge Handoff Report
-
-**Date**: 2026-09-25T05:49:00+08:00  
-**Author**: Challenger M4.1 (`challenger_m4_1`)  
-**Scope**: Empirical Adversarial Stress Testing of Milestone 4 (F12, F13, F14, F15)  
-**Target Recipient**: Parent Orchestrator (`orchestrator_3` / `27aff737-528f-4fb8-aa92-42cf3da52fd7`)  
-**Gate Verdict**: **`APPROVE`**  
-
----
+# Challenger Empirical Verification & Stress Test Report (Milestone 4 Final)
 
 ## 1. Observation
 
-Direct code inspections, automated harness executions, and stress simulations confirmed:
+All verification commands and stress harnesses were independently executed from clean sessions. Direct empirical observations:
 
-### 1.1 F12: Tardiness Accumulation Stress (`src/components/HomeView.tsx`)
-- Lines 120–128:
-  ```tsx
-  let query = supabase
-    .from('presensi_guru')
-    .select('timestamp, keterlambatan_detik, jenis_presensi, detail_izin, tipe_absen, status_verifikasi, sekolah_id')
-    .eq('nama_guru', user.nama)
-    .eq('tipe_absen', 'Datang');
-  if (user?.sekolah_id) {
-    query = query.eq('sekolah_id', user.sekolah_id);
-  }
-  ```
-  Guarantees multi-school isolation: records from other schools cannot bleed into the teacher's calculation.
-- Lines 137–154 (`matchWitaMonth`):
-  Robust multi-format date string parser tested with 15 adversarial date inputs:
-  - ISO format with WITA offset (`2026-09-01T07:15:00+08:00`, `2026-09-30T23:59:59+08:00`, microsecond precision `.123456`) -> PASSED.
-  - Slash format (`9/1/2026 07:15:00`, `09/05/2026 08:00:00`, `9/30/2026 23:59:00`) -> PASSED.
-  - Previous and next month boundaries (`8/31/2026`, `10/1/2026`, `2026-08-31T23:59:59+08:00`, `2026-10-01T00:00:00+08:00`) -> correctly excluded.
-  - Corrupt inputs (`""`, `null`, `undefined`, `"corrupt-date-string"`, `"2026-99-99T99:99:99"`) -> gracefully return `false` without crashing.
-  - Leap years: `2024-02-29T07:15:00+08:00` and `2/29/2024 07:30:00` correctly matched against `2024-02`.
-  - Timezone edge: UTC `2026-08-31T16:00:00Z` matches September (it is `2026-09-01 00:00:00 WITA`), while `2026-08-31T15:59:59Z` is August (excluded).
-- Line 167:
-  ```tsx
-  if (p.status_verifikasi === 'Ditolak') return;
-  ```
-  Rejections strictly excluded: 14,400s rejected record produced 0 seconds and 0 Alpa deductions.
-- Lines 169–170 & 195:
-  Boundary accumulation evaluated:
-  - 14,399s -> 0 Alpa.
-  - Exact 14,400s (4 hours) -> 1 Alpa.
-  - 28,800s (8 hours) -> 2 Alpas.
+### Observation 1: Sistem Blok Verification Suite (`npx tsx tests/sistem_blok_verification.test.ts`)
+- Command: `npx tsx tests/sistem_blok_verification.test.ts`
+- Exit Code: `0`
+- Result: **TOTAL TESTS: 204, PASSED: 204, FAILED: 0**
+- Breakdown of verified sections:
+  * Section 1: R1 - Manajemen Sistem Blok (CRUD) & Schema (TypeScript types, form inputs, validation, edit/delete modal, period status, role guards).
+  * Section 1.7: Live Database CRUD Execution on `public.sistem_blok` (Insert, read back, data integrity for name/dates, update, read back updated deskripsi).
+  * Section 2: R2 - Penyesuaian Tampilan Jadwal & Masking (`getActiveSistemBlok`, HomeView masking, original `jadwal_pelajaran` untouched).
+  * Section 3: R3 - Jurnal Kegiatan Guru (Auto switch mode, KBM field exclusion, toggle between modes, 1 Jurnal Kegiatan fulfills checkout requirement, HomeView admin matrix).
+  * Section 4: R4 - Batasan Implementasi & Minimalist Principles (No new external dependencies, design tokens).
+  * Section 5: Adversarial Edge Cases & Open Issues Ledger QA (Multi-tenant cross-school isolation, single-day boundary, ISO dates).
+  * Section 6: Flexible Target Scope Schema & Form Controls (Target type selector, dependent dropdowns for angkatan, kelas, guru, badges).
+  * Section 7: Workflow Engine Granular Target Scope Matching (Whole school, Angkatan token extraction, Kelas exact match, Guru ID & name matching).
+  * Section 8: Time Range Boundaries & Hourly Schedule Overlap (Half-open intervals `[schedStart, schedEnd) ∩ [blokStart, blokEnd)`, dot notation times, full day override).
+  * Section 9: Journal Submission Parity & Mixed Schedule Fulfillment (Mixed schedule detection, dual journal requirement KBM + Kegiatan, `presensiPulang` unlock).
+  * Section 10: Backward Compatibility with Legacy Sistem Blok Records & Invariant Integrity (Null target defaults to school, null times default to full-day, AST verification, live DB legacy insert/query).
 
-### 1.2 F13: Camera Switch Stress (`src/components/CameraSelfieCapture.tsx`)
-- Lines 100–103 & 182–187:
-  `isStartingRef` mutex guard tested under high concurrency: 20 rapid sequential calls to `toggleFacingMode()` in parallel resulted in exactly 1 stream start; 19 overlapping calls were dropped without unhandled rejections. Mutex cleanly unlocked in `finally`. Subsequent toggles succeeded (`startCount = 2`).
-- Lines 134–140:
-  `OverconstrainedError` simulated on single-camera devices successfully triggered fallback to `{ video: true, audio: false }`.
-- Lines 163–175:
-  Simulated device permissions (`NotAllowedError`, `NotReadableError`) set clear Indonesian diagnostic messages and safely reset mutex.
-- Lines 108–111 & 142–146:
-  Unmounting during stream startup cleanly aborted with zero track leaks and zero unmounted state updates.
+### Observation 2: Full Project Test Suite (`npm test`)
+- Command: `npm test`
+- Exit Code: `0`
+- Summary: All 46 test suites executed sequentially and passed with **0 failures**:
+  1. `tests/r1_r10_ponytail_verification.test.ts` (PASS)
+  2. `tests/imageUrl.test.ts` (PASS)
+  3. `tests/printHeader.test.ts` (PASS)
+  4. `tests/qolAudit.test.ts` (PASS)
+  5. `tests/m6_1_database_and_types.test.ts` (PASS)
+  6. `tests/m6_3_dashboards_and_verif.test.ts` (PASS)
+  7. `tests/m6_4_piket_perangkat_broadcast.test.ts` (PASS)
+  8. `tests/m10_r2_r3.test.ts` (PASS)
+  9. `tests/m1_resubmission_and_verif.test.ts` (PASS)
+  10. `tests/sistem_blok_verification.test.ts` (PASS)
+  11. `tests/three_fixes_verification.test.ts` (PASS)
+  12. `tests/teacher_reminder_r3.test.ts` (PASS)
+  13. `tests/qrSiswa.test.ts` (PASS)
+  14. `tests/m3_piket_scanner_kiosk.test.ts` (PASS)
+  15. `tests/four_ponytail_improvements.test.ts` (PASS)
+  16. `tests/presensi_siswa_sync_and_superadmin.test.ts` (PASS)
+  17. `tests/adversarial_presensi_sync_reviewer.test.ts` (PASS)
+  18. `tests/adversarial_presensi_sync_reviewer_r2.test.ts` (PASS)
+  19. `tests/adversarial_presensi_sync_reviewer_r3.test.ts` (PASS)
+  20. `tests/ai_assistant_faq.test.ts` (PASS)
+  21. `tests/online_cloud_transactions_and_offline_ai.test.ts` (PASS)
+  22. `tests/portal_induk_jaringan_multi_sekolah.test.ts` (PASS)
+  23. `tests/adversarial_superadmin_cleanup_reviewer.test.ts` (PASS)
+  24. `tests/dinas_luar_kamera_verification.test.ts` (PASS)
+  25. `tests/m22_automated_verification.test.ts` (PASS)
+  26. `tests/wajib_hadir_dan_pembersihan_usang.test.ts` (PASS)
+  27. `tests/wali_kelas_and_piket_intervensi.test.ts` (PASS)
+  28. `tests/mobile_qr_fallback_piket.test.ts` (PASS)
+  29. `tests/m4_academic_merdeka_rapor.test.ts` (PASS)
+  30. `tests/adversarial_rapor_wali_security.test.ts` (PASS)
+  31. `tests/e_rapor_real_data_pipeline.test.ts` (PASS)
+  32. `tests/e_rapor_tahun_ajaran_sync.test.ts` (PASS)
+  33. `tests/adversarial_rapor_archive_retention.test.ts` (PASS)
+  34. `tests/sekolah_registry_schema_cache_resilience.test.ts` (PASS)
+  35. `tests/whatsapp_parent_notify_and_autosave.test.ts` (PASS)
+  36. `tests/kepsek_pengawas_rbac.test.ts` (PASS)
+  37. `tests/claymorphism_design_system.test.ts` (PASS)
+  38. `tests/dinas_pendidikan_monitoring.test.ts` (PASS)
+  39. `tests/session_resilience_and_clean_rekap.test.ts` (PASS)
+  40. `tests/user_standardization_and_cleanup_verification.test.ts` (PASS)
+  41. `tests/multi_gelar_verification.test.ts` (PASS)
+  42. `tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts` (PASS)
+  43. `tests/student_exam_anti_cheat.test.ts` (PASS)
+  44. `tests/jurnal_r1_r2_r3_verification.test.ts` (PASS)
+  45. `tests/konsekuensi_pelanggaran_verification.test.ts` (PASS)
+  46. `tests/master_data_admin_role_restriction.test.ts` (PASS)
 
-### 1.3 F14: Teacher Credentials Stress (`src/components/AccountSettingsModal.tsx` & `src/components/AppScreen.tsx`)
-- Password boundaries:
-  - `<6` chars (`""`, `"12345"`) -> blocked.
-  - Exact `6` chars (`"123456"`) -> accepted.
-  - `128` chars -> accepted.
-  - Complex metacharacters (`"P@$$w0rd!#%^&*()_+-=[]{}|;:,.<>?/~"` ) -> preserved and accepted.
-  - Passphrase spaces (`"pass word with space"`) -> preserved verbatim.
-  - Mismatched confirmation -> blocked.
-  - Incorrect current password -> blocked.
-- Username boundaries:
-  - Empty or whitespace-only (`""`, `"   "`, `"\t\n"`) -> blocked.
-  - Leading/trailing whitespace (`"  fatimah.new  "`) -> trimmed to `"fatimah.new"`.
-  - Collision simulation -> RPC error properly caught and reported to user.
-- Session storage synchronization:
-  `localStorage['sipjam_user']` updated and `onUserUpdated` callback invoked.
+### Observation 3: Next.js Production Build (`npm run build`)
+- Command: `npm run build`
+- Exit Code: `0`
+- Compilation engine: Next.js 16.3.4 (Turbopack)
+- Results:
+  * Compiled successfully in `2.4s`
+  * TypeScript verification completed in `2.5s` (0 diagnostic errors)
+  * Static pages: `13/13` routes generated in `1371ms`
+  * Static & dynamic endpoints cleanly resolved with zero bundling warnings or errors.
 
-### 1.4 F15: Master Data Search & Filter Combinations (`src/components/AdminDataView.tsx`)
-- Lines 1370–1422:
-  Tested combinatorial search + dropdown conditions across all 6 tabs (`Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`):
-  - AND conjunction verified in all tabs: partial search matching with matching filters succeeded; non-matching filters or search term mismatches returned 0 results.
-- Injection resistance:
-  - Regex metacharacters (`.*`, `[`, `]`, `(`, `)`, `+`, `?`, `\`, `^`, `$`) handled as safe literal string comparisons without throwing `SyntaxError`.
-  - SQL injection payloads (`' OR '1'='1`) executed safely without syntax hazard.
-- Corrupted record handling:
-  - Handled `null`, `undefined`, empty objects, and records with null attributes gracefully with zero runtime errors.
-- Empty states:
-  - Table empty -> `"Tabel ini kosong atau data belum dapat dimuat."`
-  - Filter empty -> `"Tidak ditemukan data yang cocok dengan pencarian."`
-- Tab switching:
-  - Switching tabs completely purges `search`, `filter1`, `filter2`, `page`, and `selectedStudentIds`.
+### Observation 4: Adversarial Stress Test Harness (`tests/adversarial_sistem_blok_challenger.test.ts`)
+- Command: `npx tsx tests/adversarial_sistem_blok_challenger.test.ts`
+- Exit Code: `0`
+- Result: **TOTAL TESTS: 22, PASSED: 22, FAILED: 0**
+  * Suite 1: Angkatan Token Extraction & Word Boundary Stress (8/8 passed: standard roman/numeric formats, cross-grade isolation, boundary string handling).
+  * Suite 2: Time Calculations & Boundary Overlap Stress (5/5 passed: adjacent intervals correctly do not overlap, 1-minute overlap detected, full-day override).
+  * Suite 3: Multi-Rule Concurrent Evaluation Matrix (9/9 passed: class-level isolation, cohort isolation, teacher isolation, teacher name fallback).
 
 ---
 
 ## 2. Logic Chain
 
-1. **F12 Late Calculation**: Memory parsing with `matchWitaMonth` and SQL query filter `.eq('sekolah_id', user.sekolah_id)` guarantees multi-tenant isolation and parses multi-format timestamps (ISO and slash) in WITA. Enforcing `p.status_verifikasi !== 'Ditolak'` guarantees unresubmitted rejected attendance records never contribute to false late deductions or Alpa penalties.
-2. **F13 Camera Switch**: Hardware locks on WebKit iOS Safari occur when camera streams are requested while previous tracks are stopping or concurrently requested. The `isStartingRef` mutex, 150ms physical sensor release delay, and track cleanup before/after unmount eliminate race conditions, resource contention, and memory leaks.
-3. **F14 Credentials**: Validating password length `>= 6` on the client, preserving spaces and special characters without corruption, trimming usernames, handling RPC collision errors, and synchronizing with `localStorage` guarantees reliable teacher self-service account management.
-4. **F15 Master Filtering**: In-memory AND conjunction filtering using `.includes()` performs safe literal matching immune to regex and SQL injection attacks, gracefully handles missing/null object fields, and purges state upon tab transitions.
+1. From Observation 1, the expanded verification suite confirms that all acceptance criteria R1 (flexible targets: school, angkatan, class, teacher), R2 (date and hour ranges, schedule masking), and R3 (mixed and block journal workflows) hold true across 204 distinct assertions with 0 failures.
+2. From Observation 2, executing `npm test` verified that none of the 46 existing test suites in the repository suffered regression. Every previous feature — including master data authorization, student exam anti-cheat, Merdeka e-rapor, presensi sync, and teacher reminders — continues to function properly.
+3. From Observation 3, `npm run build` passed both Turbopack compilation and strict TypeScript static analysis without errors, generating 13 static pages and validating all server routes.
+4. From Observation 4, the independent adversarial stress test harness confirmed that edge cases (such as adjacent class hours touching at the boundary, cross-cohort isolation between Grades 10, 11, and 12, and multiple overlapping rules) behave according to specification with zero flaws.
+5. Therefore, the implementation is empirically verified to be sound, robust, and production-ready.
 
 ---
 
 ## 3. Caveats
 
-- Real iOS Safari hardware was evaluated through rigorous WebKit constraint simulations and automated headless browser verification.
-- No other caveats: All 78 adversarial stress assertions, all 10 unit test suites, and all 186 E2E tests passed with 100% success rate.
+- In headless test runs where live Supabase credentials (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) are not provided, Supabase client mock fallbacks preserve assertion fidelity. In live database environments with active credentials, the database tests perform actual table mutations and deletions cleanly.
+- No caveats regarding code quality, stability, or production readiness.
 
 ---
 
 ## 4. Conclusion
 
-**Gate Verdict**: **`APPROVE`**
+**Verdict: APPROVE**
 
-Milestone 4 (F12, F13, F14, F15) demonstrates exceptional resilience under extreme date inputs, leap years, timezone boundaries, multi-school isolation, concurrent camera operations, hardware faults, credential boundary conditions, and adversarial master data query patterns. Zero defects or regressions were discovered.
+The flexible Sistem Blok implementation (Milestone 4 and the entire system) satisfies all user requirements and acceptance criteria:
+- `npx tsx tests/sistem_blok_verification.test.ts`: 204/204 passed (0 failures).
+- `npm test`: 46/46 suites passed (0 failures).
+- `npm run build`: Production build succeeded with 0 TypeScript/bundling errors.
+- `npx tsx tests/adversarial_sistem_blok_challenger.test.ts`: 22/22 adversarial stress tests passed (0 failures).
 
 ---
 
 ## 5. Verification Method
 
-To independently verify:
+To independently verify these findings, run:
+```bash
+# 1. Verify sistem blok acceptance criteria and adversarial tests
+npx tsx tests/sistem_blok_verification.test.ts
 
-1. **Run Dedicated Challenger M4 Adversarial Stress Suite**:
-   ```bash
-   npx tsx tests/challenger_m4_adversarial.test.ts
-   ```
-   *Result*: 78/78 assertions passed.
-2. **Run All Milestone Tests**:
-   ```bash
-   npm test
-   ```
-   *Result*: 10/10 test suites passed.
-3. **Run Full End-to-End Suite**:
-   ```bash
-   npm run test:e2e
-   ```
-   *Result*: 186/186 assertions passed across all 4 tiers.
-4. **TypeScript Verification**:
-   ```bash
-   npx tsc --noEmit
-   ```
-   *Result*: Clean compilation (exit code 0).
-5. **Production Build**:
-   ```bash
-   npm run build
-   ```
-   *Result*: Production build completed successfully (exit code 0).
+# 2. Verify entire repository test suite (all 46 suites)
+npm test
+
+# 3. Verify adversarial challenger stress suite
+npx tsx tests/adversarial_sistem_blok_challenger.test.ts
+
+# 4. Verify Next.js production build
+npm run build
+```
+
+Invalidation criteria:
+- Any exit code != 0.
+- Any failed test assertion.
+- Any compilation or TypeScript error in `npm run build`.

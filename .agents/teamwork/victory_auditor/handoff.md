@@ -1,4 +1,4 @@
-# Handoff Report: Independent Victory Audit (Teacher Journal System Upgrade R1-R3)
+# Victory Auditor Handoff Report: Flexible Sistem Blok
 
 ```
 === VICTORY AUDIT REPORT ===
@@ -11,115 +11,122 @@ PHASE A — TIMELINE:
 
 PHASE B — INTEGRITY CHECK:
   Result: PASS
-  Details: Development mode integrity criteria satisfied. Zero hardcoded test results, zero facade implementations, zero pre-populated verification artifacts, and authentic end-to-end business logic across all modified components.
+  Details: Zero facades, zero hardcoded test outputs, zero test weakening. Genuine schema migration, AST-verified pure evaluation algorithms in src/lib/workflow.ts, live CRUD with RLS in PostgreSQL, and full schedule masking and journal integration across teacher components.
 
 PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npx tsx tests/jurnal_r1_r2_r3_verification.test.ts && npx tsc --noEmit && npm run lint && npm test && npm run build
-  Your results: 20/20 passed on dedicated test suite; 0 type errors on tsc; 0 errors on eslint; all 44 test suites passed on npm test; 13/13 static pages compiled on Next.js Turbopack build
-  Claimed results: 20/20 passed on dedicated test suite; 0 type errors; all 44 test suites passed; clean production build
-  Match: YES — exact 100% match across all test suites and build artifacts
-
-EVIDENCE (if REJECTED):
-  N/A
+  Test command: npx tsx tests/sistem_blok_verification.test.ts && npm test && npx tsc --noEmit && npm run build
+  Your results:
+    - tests/sistem_blok_verification.test.ts: 204/204 PASSED, 0 FAILED (Exit Code 0)
+    - tests/challenger_m2_matching_masking_stress.test.ts: 144/144 PASSED, 0 FAILED (Exit Code 0)
+    - tests/challenger_m2_2_mixed_schedule_journal.test.ts: 52/52 PASSED, 0 FAILED (Exit Code 0)
+    - tests/challenger_m2_fix_2_mixed_fulfillment.test.ts: 25/25 PASSED, 0 FAILED (Exit Code 0)
+    - tests/adversarial_sistem_blok_challenger.test.ts: 22/22 PASSED, 0 FAILED (Exit Code 0)
+    - npx tsc --noEmit: 0 errors (Exit Code 0)
+    - npm test: 46/46 suites PASSED, 0 FAILED (Exit Code 0)
+    - npm run build: Next.js 16.3.4 (Turbopack) compiled cleanly in 2.2s, 13/13 static routes prerendered (Exit Code 0)
+  Claimed results: 204/204 primary assertions, 46/46 npm test suites, 0 tsc errors, clean build, clean git status on main.
+  Match: YES
 ```
 
 ---
 
 ## 1. Observation
 
-1. **Git Commit History & Timeline (`git log -n 6 --oneline`)**:
-   - `a993479` — `fix(rekap): isolate personal class filters, harmonize piket title matching, and auto-fill konten notes` (Oct 31 14:38:58)
-   - `4ce946a` — `fix(jurnal): synthesize unsubmitted kegiatan in rekap, unify auto-checkout duty recording, and clear stale lock reasons` (Oct 31 14:22:35)
-   - `b02247a` — `chore(teamwork): sync progress log` (Oct 31 14:08:27)
-   - `8510401` — `fix(jurnal): dynamic rekap schedule cross-referencing, title-normalized idempotency, and autonomous unfilled duty resolution` (Oct 31 14:08:04)
-   - `a894a1a` — `feat(jurnal): support photo upload option, presensi pulang flexibility, and automated rekap notes` (Oct 31 13:52:50)
-   - `893f597` — `chore(teamwork): update teamwork agent run logs and briefings` (Oct 31 00:08:45)
-   - Realistic 14-16 minute intervals between 4 iterative development and review rounds, each uncovering and resolving real edge cases.
+1. **Timeline & Git Provenance (Phase A)**:
+   - Git commit history exhibits a realistic, iterative ~2-hour development cycle across Milestones M1 through M4:
+     - `6ec8d24`: `feat(sistem-blok): implement flexible target scopes, time ranges, and admin configuration UI (M1)`
+     - `caba008`, `46fbb29`, `cd79a63`: M1 adversarial challenger tests & reviewer reports
+     - `7a8ab33`: `feat(sistem-blok): implement workflow engine, granular schedule masking, and mixed journal workflow (M2)`
+     - `c7ebe8f`: M2 mixed schedule verification harness
+     - `d3712a6`: `fix(workflow): patch teacher matching empty string bug, 0-schedule blockInfo binding, and mixed schedule journal fulfillment` (M2 remediation)
+     - `4e64f76`: M2 remediation approval
+     - `ec63216`: `test(sistem-blok): expand automated verification test suite to cover all target levels, time ranges, and isolation matrix` (M3)
+     - `7c4d880`: M3 adversarial verification harness
+     - `e32888c`: `feat(sistem-blok): finalize flexible block system with full regression and production build verification` (M4)
+     - `77f59f2`: `test(challenger): complete M4 empirical stress verification and render APPROVE verdict`
+   - Git branch tracking: `HEAD` is `77f59f2`, strictly up to date with `origin/main`. Zero uncommitted source code changes.
 
-2. **R1: Photo Upload Option in `src/components/GuruJurnal.tsx`**:
-   - Line 117-119: `const isUploadAllowed = true;` unconditionally grants teachers autonomy to select photo upload.
-   - Lines 1634, 1679: Mode selector renders both `Kamera Langsung` and `Upload Foto / Galeri` buttons.
-   - Line 1716-1723: File input (`#jurnal-gallery-file-input`, `accept="image/*"`) includes `onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}` to guarantee re-selection always fires `onChange`.
-   - Lines 769-797: `handleGalleryUpload` captures GPS geolocation, compresses the image via canvas, sets file preview, and saves `fileUrl` to both `link_bukti_foto` and `foto_kegiatan`.
+2. **Integrity Forensics & Code Analysis (Phase B)**:
+   - **Requirement R1 (Target Scopes)**:
+     - SQL migration `supabase/migrations/20261102_flexible_sistem_blok.sql` adds `tipe_target` (checked for `'sekolah' | 'angkatan' | 'kelas' | 'guru'`), `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`.
+     - Types defined in `src/types/database.ts` (`TargetBlokType`, `SistemBlok`, `SistemBlokInsert`, `SistemBlokUpdate`).
+     - `src/components/SistemBlokView.tsx` implements segmented target buttons, dynamic contextual inputs, required target validations, and clean persistence via Supabase.
+   - **Requirement R2 (Date & Time Ranges)**:
+     - Supports `tanggal_mulai`, `tanggal_selesai`, `is_full_day`, `jam_mulai`, and `jam_selesai`.
+     - Defaults to full-day (`is_full_day: true`) when bounded hours are not specified.
+     - `isTimeRangeOverlap` in `src/lib/workflow.ts` accurately parses `HH:mm` / `HH.mm`, supports single-digit hours, enforces half-open intervals (`07:30-09:00` does not overlap `09:00-11:00`), and handles single-minute overlaps.
+   - **Requirement R3 (Granular Schedule Masking & Journal Workflows)**:
+     - Pure evaluation engine `evaluateScheduleBlock` in `src/lib/workflow.ts` tests target matching and time overlap.
+     - Cohort evaluation `isKelasInAngkatan` performs bidirectional Arabic-Roman numeral matching (`10` / `X`, `11` / `XI`, `12` / `XII`, `7-9` / `VII-IX`) while isolating numbered substrings (e.g. `100 RPL` is not masked by `10`).
+     - `HomeViewGuru.tsx` evaluates schedule items dynamically, rendering amber cards (`Kegiatan Blok`) for blocked classes and active regular cards for unblocked classes.
+     - `GuruJurnal.tsx` renders an interactive mode toggle between `Jurnal KBM` and `Jurnal Kegiatan` for teachers with mixed schedules.
+     - Invariant enforcement in `src/lib/workflow.ts`: checkout requires both regular KBM journals and block activity journals (`unblockedFulfilled && blockedFulfilled`).
+   - **Anti-Cheating Forensics**:
+     - 0 dummy / hardcoded test results.
+     - 0 facade methods (`return false` / `return true`).
+     - Live database CRUD tests in `tests/sistem_blok_verification.test.ts` test real Supabase roundtrips with RLS session token and clean up in `finally` blocks.
+     - All 85 pre-existing assertions preserved intact.
 
-3. **R2: Presensi Pulang Flexibility & Time Enforcement**:
-   - `src/lib/workflow.ts` (lines 724-746):
-     - `canTeacherPresensiPulang(state)` returns `true` as long as `presensiDatang` is present and teacher is not on `isIzinSakit`.
-     - In `getGuruDailyState`: if `canTeacherPresensiPulang(state)`, `state.canPresensiPulang = true` and stale `lockedReason` (`"Anda belum menyelesaikan: ..."`) is reset to `null`.
-   - `src/components/GuruPresensi.tsx`:
-     - Lines 371-373: Presensi pulang checks `if (!dailyState?.presensiDatang)` instead of requiring journal completion.
-     - Lines 446-458: Departure schedule validation strictly blocks departure when `currTimeVal < startVal`:
-       `if (currTimeVal < startVal) return showToast('Belum Waktunya', ...)`
-     - Lines 625-631: Upon departure presensi submission, `recordUnfilledJournalsAndPiket` is automatically invoked.
-
-4. **R3: Automated Standard Notes on Journal Recaps**:
-   - `src/lib/attendanceAlpa.ts` (lines 980-1120):
-     - `recordUnfilledJournalsAndPiket` creates database records for unfilled KBM with `keterangan: 'tidak masuk kelas'`, `materi: 'tidak masuk kelas'`, `konten: 'tidak masuk kelas'`, and `status_verifikasi: 'Tidak Masuk Kelas'`.
-     - Creates unfilled Kegiatan records with `keterangan: 'tidak melaksanakan kegiatan apapun'`, `konten: 'tidak melaksanakan kegiatan apapun'`, and `status_verifikasi: 'Tidak Melaksanakan Kegiatan'`.
-     - Creates unfilled Piket records with `catatan_apel: 'tidak membuat laporan piket'`, `keterangan: 'tidak membuat laporan piket'`, and `status_verifikasi: 'tidak membuat laporan piket'`.
-     - Auto-checkout unified in `evaluateAndApplyAutoCheckout` (lines 902-925) automatically invokes `recordUnfilledJournalsAndPiket`.
-   - `src/components/RekapJurnalView.tsx` (lines 218-360, 1010-1135):
-     - Dynamically queries `jadwal_pelajaran` and cross-references submitted journals; synthesizes missing classes with `keterangan: 'tidak masuk kelas'` and missing non-teaching days with `'tidak melaksanakan kegiatan apapun'`.
-     - Isolates personal mode filtering by `activeKelas` and `mapel` to prevent foreign class leakage.
-     - Table rows and CSV exports render `"tidak masuk kelas"` and `"tidak melaksanakan kegiatan apapun"` across content, notes, and status columns.
-   - `src/components/PiketView.tsx` (lines 1328-1405, 1785-1800, 4016, 4104-4136):
-     - Cross-references `penugasan_piket` and `jadwal_piket` against existing reports; missing duties display `catatan_apel: 'tidak membuat laporan piket'` and `status_verifikasi: 'tidak membuat laporan piket'` on UI cards and CSV export.
-     - Adds `tidak membuat laporan piket` to status filter dropdown, implements title tolerance for teacher filtering, and suppresses verification action buttons on unsubmitted reports.
-
-5. **Independent Execution Verification**:
-   - `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts` -> 20/20 PASSED (0 failed).
-   - `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts` -> 30/30 PASSED (0 failed).
-   - `npx tsc --noEmit` -> Exit code 0, 0 errors.
-   - `npm run lint` -> Exit code 0, 0 errors, 167 warnings.
-   - `npm test` -> Exit code 0, all 44 test suites passed 100%.
-   - `npm run build` -> Exit code 0, Turbopack compiled successfully in 2.2s, 13/13 static routes generated.
+3. **Independent Empirical Test Execution (Phase C)**:
+   - Primary test suite: `npx tsx tests/sistem_blok_verification.test.ts` -> 204/204 assertions passed, 0 failures.
+   - Stress test suite: `npx tsx tests/challenger_m2_matching_masking_stress.test.ts` -> 144/144 passed.
+   - Mixed schedule suite: `npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts` -> 52/52 passed.
+   - Mixed fulfillment suite: `npx tsx tests/challenger_m2_fix_2_mixed_fulfillment.test.ts` -> 25/25 passed.
+   - Challenger suite: `npx tsx tests/adversarial_sistem_blok_challenger.test.ts` -> 22/22 passed.
+   - Static typecheck: `npx tsc --noEmit` -> 0 errors.
+   - Full regression suite: `npm test` -> 46/46 suites passed, exit code 0.
+   - Production build: `npm run build` -> Next.js Turbopack build succeeded, 13/13 static pages prerendered, 0 errors.
 
 ---
 
 ## 2. Logic Chain
 
-1. **R1 Compliance**:
-   - The user requested that teachers be provided the choice between live camera and file upload for KBM and kegiatan journals.
-   - Observation 2 confirms that `isUploadAllowed = true` is set unconditionally, both mode buttons are displayed, HTML file input with proper image accept attributes and re-click resets is present, and uploaded images are processed via canvas compression and stored with GPS metadata.
-   - Therefore, Requirement R1 is fully satisfied.
-
-2. **R2 Compliance**:
-   - The user requested that teachers with recorded arrival be permitted to depart without journal completion, while departure schedule hours remain enforced.
-   - Observation 3 confirms `canTeacherPresensiPulang` returns true once `presensiDatang` is present, `lockedReason` is cleared, `GuruPresensi` permits departure submission without journal gating, and `currTimeVal < startVal` strictly blocks departures before schedule.
-   - Therefore, Requirement R2 is fully satisfied.
-
-3. **R3 Compliance**:
-   - The user requested automatic standard notes for unsubmitted entries: "tidak membuat laporan piket" for piket, "tidak masuk kelas" for KBM, and "tidak melaksanakan kegiatan apapun" for kegiatan.
-   - Observation 4 confirms that `recordUnfilledJournalsAndPiket` persists these exact strings in the database, `evaluateAndApplyAutoCheckout` calls it on auto-checkout, and `RekapJurnalView` and `PiketView` synthesize and display these notes on screen and in CSV exports with full filter isolation.
-   - Therefore, Requirement R3 is fully satisfied.
-
-4. **Integrity & Zero-Regression Compliance**:
-   - Observations 1 and 5 confirm authentic iterative development history across 4 commits.
-   - Independent test execution across the entire test harness (`npm test`, 44 suites) and production build (`npm run build`) succeeded with 0 errors and zero regressions.
-   - Therefore, the victory claim is authentic and complete.
+1. The user requested flexible target options (`sekolah`, `angkatan`, `kelas`, `guru`), optional time boundaries with full-day default, and granular schedule masking with block journal integration.
+2. The team's changes were inspected file-by-file and found to contain authentic, non-facade domain logic across database schemas, types, workflow algorithms, and UI components.
+3. Remediation was observed where an earlier string matching vulnerability and mixed schedule bypass was discovered by challengers and surgically patched.
+4. Independent execution of the canonical test suite and all adversarial suites produced 100% passing results without a single error, matching the team's claimed score of 204 assertions.
+5. Full repository regression (`npm test`), static type checking (`npx tsc --noEmit`), and production build (`npm run build`) all executed cleanly with exit code 0.
+6. The repository on `main` is completely synchronized with `origin/main`.
+7. Therefore, the team's completion claim is verified and genuine.
 
 ---
 
 ## 3. Caveats
 
-- Native device file pickers and hardware camera permission prompts are governed by the user's mobile OS / WebView browser sandbox; this cannot be mocked beyond standard DOM API behavior in unit tests.
-- High-concurrency database transactions in production are bounded by Supabase multi-tenant RLS policies; standard error fallback handlers are in place.
+- Hardware webcam video capture in `GuruPresensi` is mocked during headless CLI testing; however, this is standard practice and does not affect the business logic of schedule masking or journal workflows.
+- Cross-midnight block intervals (e.g. 23:00 to 02:00) are not applicable to daytime school KBM schedules and remain out of scope as designed.
 
 ---
 
 ## 4. Conclusion
 
-All acceptance criteria specified in `ORIGINAL_REQUEST.md` (R1: Photo upload option, R2: Flexible departure with schedule enforcement, R3: Automated standard recap notes) are completely satisfied, authentically implemented without shortcuts or facades, verified with 20/20 dedicated unit tests and 44/44 full regression test suites, and validated with a successful production build.
-
-Verdict: **VICTORY CONFIRMED**.
+The Project Orchestrator's claim of project completion is **VALID and GENUINE**. All requirements R1, R2, and R3 from `ORIGINAL_REQUEST.md` have been fully implemented, verified with comprehensive automated tests, and confirmed without facades or shortcuts. The final verdict is **VICTORY CONFIRMED**.
 
 ---
 
 ## 5. Verification Method
 
-To independently re-verify this assessment:
-1. `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts` (verifies all 20 R1-R3 assertions).
-2. `npx tsc --noEmit` (verifies zero TypeScript compilation errors).
-3. `npm run lint` (verifies ESLint exit code 0).
-4. `npm test` (verifies all 44 test suites in `package.json`).
-5. `npm run build` (verifies Next.js 16 production build).
+To independently reproduce this verification:
+```bash
+# 1. Primary verification suite (204 assertions)
+npx tsx tests/sistem_blok_verification.test.ts
+
+# 2. Adversarial challenger stress suites (243 assertions)
+npx tsx tests/challenger_m2_matching_masking_stress.test.ts
+npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
+npx tsx tests/challenger_m2_fix_2_mixed_fulfillment.test.ts
+npx tsx tests/adversarial_sistem_blok_challenger.test.ts
+
+# 3. Static type safety
+npx tsc --noEmit
+
+# 4. Full repository regression (46 suites)
+npm test
+
+# 5. Production build
+npm run build
+
+# 6. Git synchronization check
+git status
+git log origin/main..main
+```

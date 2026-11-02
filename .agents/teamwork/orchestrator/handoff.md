@@ -1,120 +1,95 @@
-# Soft Handoff Report — Successor Orchestrator (Generation 1)
+# Project Orchestrator Handoff Report: Flexible Sistem Blok Enhancement
 
-- **Predecessor Orchestrator Conv ID**: `095792d8-1a85-4945-889d-abf25d3c7740`
-- **Parent Sentinel Conv ID**: `0759d8ae-8b5b-40f8-a4c3-fd7e7fee7312`
-- **Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator\`
-- **Project Scope Document**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md`
-- **Test Infra Document**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_INFRA.md`
-- **Date**: 2026-10-29T12:55:00Z
-
----
-
-## 1. Observation & Completed Work
-
-### 1.1 Completed Milestones
-1. **Survey Phase (Step 0)**:
-   - Thoroughly mined `docs/REKOMENDASI_PENGGABUNGAN_FITUR_DAN_MENU.md` and existing codebase navigation.
-   - Identified all 7 feature clusters and exact target menu counts for all 7 roles.
-   - Survey handoffs: `.agents/teamwork/{spec_miner_survey,explorer_nav_arch,explorer_views_tests}/handoff.md`.
-
-2. **E2E Testing Track**:
-   - Authored `tests/navigation_consolidation_verification.test.ts` (150/150 assertions passing, 100%).
-   - Published `TEST_READY.md` covering Tiers 1-4.
-
-3. **Milestone 1 (Foundation & Component Normalization)** — **GATE PASSED 100%**:
-   - Reusable `src/components/ClayTabs.tsx` implemented with WAI-ARIA 1.2 roving tabindex and keyboard navigation.
-   - Cluster 1 Jurnal Mengajar normalized (`GuruJurnal.tsx` with sub-tabs `input`, `rekap-pribadi`, `supervisi-kelas`).
-   - Cluster 2 Presensi Guru normalized (`GuruPresensi.tsx` with sub-tabs `live`, `riwayat`).
-   - Cluster 4 Dinas Rekap normalized (`AdminRekapView.tsx` with `isReadOnly` and `targetSchool`).
-   - Gate verdicts: Reviewers (APPROVE), Challengers (APPROVE), Forensic Auditor (CLEAN).
-
-4. **Milestone 2 (Functional Consolidation & Sub-Tabs)** — **GATE PASSED 100%**:
-   - `src/components/GradebookView.tsx`: Embedded `<RaporView />` under `tab=rapor` with CSS toggling (`className={activeTab === 'rapor' ? 'block' : 'hidden'}`). Formative/summative matrix kept alive under `activeTab === 'gradebook' ? 'block' : 'hidden'`. Added `<AccessDeniedCard />` RBAC defense.
-   - `src/components/AdminRekapView.tsx`: Integrated `ClayTabs` for `['analitik', 'tabel', 'cetak']` with dynamic Top 5 Leaderboard and KPI metric cards.
-   - `src/components/AdminDataView.tsx`: Tab 6 `sistem_blok` embedding `<SistemBlokView />`.
-   - `src/components/AdminConfigView.tsx`: Tab 5 `backup` embedding `<AdminBackupView />`. Form inputs preserved across tabs via CSS display toggles.
-   - `src/components/AdminVerifView.tsx`: Tab 4 `perangkat` embedding `<DokumenView />`.
-   - `src/components/RekapSiswaView.tsx`: Realtime subscription to `presensi_siswa` with proper cleanup.
-   - `src/components/AppScreen.tsx`: Propagated `initialTab`, `assignedKelas`, `isKepalaSekolah` while strictly preserving all AST invariant regex strings verbatim.
-   - Standalone files (`AnalitikView.tsx`, `SistemBlokView.tsx`, `AdminBackupView.tsx`, `DokumenView.tsx`, `RaporView.tsx`) remain 100% intact and functional.
-   - Git committed and pushed: commit `0b32ead`.
-   - Gate verdicts: Reviewer 1 (APPROVE), Reviewer 2 (APPROVE), Challenger 1 (APPROVE), Challenger 2 (APPROVE), Forensic Auditor (CLEAN).
+**Orchestrator**: Project Orchestrator  
+**Parent Sentinel**: `34e9fcc0-0e2b-426b-b899-621289fdc022`  
+**Date**: 2026-11-02  
+**Status**: 100% Complete (All Milestones M1–M4 Passed Gate with Unanimous Approval & Clean Forensic Audits)  
+**Git Status**: Clean, all code committed and pushed to `main` (Latest commit: `e32888c`)  
 
 ---
 
-## 2. Milestone State
+## 1. Observation
 
-| # | Milestone | Scope | Status | Notes |
-|---|-----------|-------|:------:|-------|
-| M1 | Foundation & Normalization | ClayTabs, Jurnal, Presensi, Dinas Rekap | **DONE** | Gate passed |
-| M2 | Functional Consolidation & Sub-Tabs | Gradebook+Rapor, AdminRekap+Analitik, AdminData+Blok, AdminConfig+Backup, AdminVerif+Dokumen, RekapSiswa | **DONE** | Gate passed |
-| M3 | Navigation Restructuring, URL Aliasing & Onboarding | VIEW_ALIASES router, sidebar definitions for all 7 roles, AST test guard preservation, OnboardingTutorial selector | **NOT STARTED** | Immediate next step for successor |
-| M4 | Final Milestone: Full E2E Test Pass (100%) & Adversarial Hardening | Pass 100% E2E tests (Tiers 1-4) published by E2E Testing Track, then Tier 5 adversarial hardening | **NOT STARTED** | Final step |
+1. **User Requirements Implemented & Verified**:
+   - **R1 (Target Scopes)**:
+     - Implemented dynamic target selection per rule: Keseluruhan Sekolah (`sekolah`), per Angkatan (`angkatan`), per Kelas (`kelas`), and per Guru (`guru`).
+     - PostgreSQL database schema updated via migration (`supabase/migrations/20261102_flexible_sistem_blok.sql`): added `tipe_target`, `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`, `is_full_day`, `jam_mulai`, and `jam_selesai`.
+     - Admin UI updated in `src/components/SistemBlokView.tsx`: segmented target selector buttons, contextual dynamic selectors, form validation, edit modal pre-population, and visual table/card badges.
+   - **R2 (Date & Time Ranges)**:
+     - Supports date range (`tanggal_mulai` to `tanggal_selesai`) and optional bounded time range (`jam_mulai` to `jam_selesai`).
+     - Default full-day (`is_full_day: true`) when time range is omitted.
+     - Precise time overlap algorithm in `src/lib/workflow.ts` (`isTimeRangeOverlap`) with half-open boundary non-overlap (e.g. 07:30–09:00 vs 09:00–11:00 does not overlap).
+   - **R3 (Granular Schedule Masking & Journal Workflows)**:
+     - Matching engine in `src/lib/workflow.ts` (`evaluateScheduleBlock`, `isKelasInAngkatan`, `getGuruDailyState`) dynamically determines whether a specific schedule item is blocked.
+     - Teacher dashboard (`src/components/HomeViewGuru.tsx`) selectively masks blocked schedules with activity badges while rendering unblocked schedules as active regular teaching cards.
+     - Teacher journal interface (`src/components/GuruJurnal.tsx`) supports mixed-schedule detection and interactive mode toggling between `Jurnal KBM` and `Jurnal Kegiatan`.
+     - Checkout invariant strictly requires both regular KBM journals and block activity journals in mixed schedules (`unblockedFulfilled && blockedFulfilled`).
+   - **Automated Verification Suite Expansion**:
+     - `tests/sistem_blok_verification.test.ts` was expanded from 85 to 204 passing assertions (0 failures), covering all 4 target levels, live DB CRUD with RLS, schedule isolation matrices, journal submission parity, and backward compatibility.
 
----
-
-## 3. Active Subagents & Timers
-
-- **Active Subagents**: None. All 19 subagents spawned in generation 0 have completed and delivered reports.
-- **Background Tasks**: All predecessor timers (task-20 cron and task-404) are killed before spawning the successor. Successor must initiate its own heartbeat cron `schedule(CronExpression="*/10 * * * *")` once subagents are dispatched.
-
----
-
-## 4. Key Constraints & Critical Architectural Invariants
-
-1. **AST String Invariants in Tests**:
-   Several test files (`tests/adversarial_rapor_wali_security.test.ts`, `tests/kepsek_pengawas_rbac.test.ts`, `tests/sistem_blok_verification.test.ts`, `tests/four_ponytail_improvements.test.ts`) check `AppScreen.tsx` using `fs.readFileSync`.
-   The following exact lines must NEVER be removed from `AppScreen.tsx`:
-   - `{currentView === 'view-rapor' && (`
-   - `{currentView === 'view-sistem-blok' && (`
-   - `targetId === 'view-sistem-blok'`
-   - `isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin}`
-2. **In-Memory Draft Keep-Alive**:
-   All consolidated form views (`GuruJurnal`, `GradebookView`, `GuruPresensi`, `AdminConfigView`) must use CSS display classes (`className={activeTab === '...' ? 'block' : 'hidden'}`) rather than conditional JSX mounting (`{activeTab === '...' && <Comp />}`) to prevent wiping form state on tab switches.
-3. **Onboarding Tour Selector**:
-   `OnboardingTutorial.tsx` uses exact string query `[data-tour="${currentStep.targetTourId}"]`. To support aliased consolidated buttons, the selector must be enhanced to word-matching:
-   `[data-tour~="${currentStep.targetTourId}"], [data-tour="${currentStep.targetTourId}"]`.
-4. **Mandatory Integrity Warning**:
-   Worker prompts must include the verbatim anti-cheat integrity warning.
-5. **Git Workflow Rule (GEMINI.md)**:
-   Every code change must be committed and pushed to `main` via `git add . && git commit -m "..." && git push origin main`.
-6. **Parent Reporting**:
-   Your parent conversation ID is `0759d8ae-8b5b-40f8-a4c3-fd7e7fee7312` (Sentinel). Do NOT communicate with the predecessor.
+2. **Empirical Gate & Verification Metrics**:
+   - **Full Repository Test Suite (`npm test`)**: 46 / 46 test suites passed (100% pass rate, 0 failed).
+   - **Static Type Safety (`npx tsc --noEmit`)**: 0 errors.
+   - **Production Build (`npm run build`)**: Next.js 16.3.4 (Turbopack) production build compiled in 2.5s, passed TypeScript in 2.2s, prerendered 13/13 static routes with 0 errors.
+   - **Sistem Blok Primary Suite (`tests/sistem_blok_verification.test.ts`)**: 204 / 204 assertions passed (0 failed).
+   - **Adversarial Stress Suites**:
+     - `tests/challenger_m2_matching_masking_stress.test.ts`: 144 / 144 passed (0 failed).
+     - `tests/challenger_m2_2_mixed_schedule_journal.test.ts`: 52 / 52 passed (0 failed).
+     - `tests/challenger_m2_fix_2_mixed_fulfillment.test.ts`: 25 / 25 passed (0 failed).
+     - `tests/adversarial_sistem_blok_challenger.test.ts`: 22 / 22 passed (0 failed).
+   - **Database Hygiene**: All test records (`00000000-0000-0000-0000-00000000b110` through `b115`) cleanly purged in `finally` blocks; master schedule count in `public.jadwal_pelajaran` verified 100% intact (51 rows before and after, 0 rows modified or deleted).
+   - **Forensic Integrity Audits**: All 4 milestones independently audited and confirmed **CLEAN** (zero facades, zero hardcoding, zero test tampering).
 
 ---
 
-## 5. Concrete Next Steps for Successor (Milestone 3 Execution)
+## 2. Logic Chain
 
-1. **Step 1: Dispatch Milestone 3 Explorers / Spec Miner**:
-   - Explorer(s) examine:
-     - `src/lib/navigation.ts`: Design `VIEW_ALIASES` dictionary mapping all 8 legacy view IDs (`view-guru-rekap-jurnal`, `view-jurnal-kelas`, `view-history`, `view-rapor`, `view-analitik`, `view-rekap-guru`, `view-sistem-blok`, `view-admin-backup`) to canonical views + sub-tabs, and `resolveRoute()`.
-     - `src/components/ClaySidebar.tsx` and `src/components/AppScreen.tsx`: Menu arrays for all 7 roles to meet exact target counts:
-       - Guru Reguler: 6 menus
-       - Wali Kelas: 7 menus
-       - Guru Piket: 7-8 menus
-       - Administrator: 8 menus (zero-scroll)
-       - Kepala Sekolah: 6-7 menus
-       - Pengawas Dinas: 2 menus
-       - Superadmin: 3 platform + 5 satellite
-     - `src/components/Onboarding/OnboardingTutorial.tsx`, `tutorialSteps.ts`, `tutorialData.ts`: Word-matching selector and 16 tutorial modules.
-2. **Step 2: Dispatch Milestone 3 Worker**:
-   - Implement `src/lib/navigation.ts`.
-   - Update `ClaySidebar.tsx`, `AppScreen.tsx`, and onboarding files.
-   - Run verification (`npx tsc --noEmit`, `npx tsx tests/navigation_consolidation_verification.test.ts`, `npm test`).
-   - Git commit and push to `origin main`.
-3. **Step 3: Milestone 3 Verification Gate**:
-   - 2 Reviewers, 2 Challengers, 1 Forensic Auditor.
-4. **Step 4: Milestone 4 (Final Milestone: 100% E2E & Tier 5 Adversarial Hardening)**:
-   - Phase 1: Full E2E suite verification (150/150 assertions).
-   - Phase 2: Tier 5 Adversarial Coverage Hardening with Challenger.
-   - Final Forensic Audit -> Victory report to Parent Sentinel (`0759d8ae-8b5b-40f8-a4c3-fd7e7fee7312`).
+1. **Architecture & Separation of Concerns**:
+   - Admin configurations in `SistemBlokView.tsx` store granular target and time criteria into PostgreSQL `public.sistem_blok`.
+   - Core evaluation logic is encapsulated in pure functions in `src/lib/workflow.ts` (`isKelasInAngkatan`, `isTimeRangeOverlap`, `evaluateScheduleBlock`), ensuring unit testability and deterministic performance without database round-trips.
+   - Teacher views consume evaluated state from `getGuruDailyState`, allowing modular rendering of mixed schedules without altering underlying database records.
+
+2. **Remediation & Adversarial Hardening**:
+   - In Milestone 2, adversarial reviewers identified an ECMAScript empty string substring vulnerability (`"".includes("") === true`) and a mixed schedule journal bypass.
+   - Explorers formulated surgical fixes: wrapping candidate strings in truthy guards (`teacherNama && (...)`), binding matched block metadata to `state.blokInfo` while resetting unblocked teachers to `null`, and enforcing strict conjunction (`unblockedFulfilled && blockedFulfilled`).
+   - Re-verification with 355 assertions proved that the vulnerabilities were permanently eradicated without regressions.
+
+3. **Complete Backward Compatibility**:
+   - Legacy records lacking target or time properties seamlessly default to whole-school (`tipe_target: 'sekolah'`) and full-day (`is_full_day: true`).
+   - All 85 pre-existing assertions in `tests/sistem_blok_verification.test.ts` remain 100% functional and pass verbatim.
 
 ---
 
-## 6. Key Artifacts
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md`
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_READY.md`
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_INFRA.md`
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator\GATE_STATUS.md`
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator\progress.md`
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator\BRIEFING.md`
+## 3. Caveats
+
+- **Time Range Scope**: Bounded hours (`jam_mulai` to `jam_selesai`) operate on the daytime working interval within a single day. Cross-midnight blocks are out of scope for standard KBM operations.
+- **Client Camera Mocking**: Hardware webcam QR scanning for piket/kiosk remains mocked during headless CLI test runs while maintaining 100% workflow coverage.
+
+---
+
+## 4. Conclusion
+
+The flexible Sistem Blok enhancement is 100% complete, verified by 46 repository test suites, 204 primary assertions, and 243 adversarial stress assertions. All gates passed with unanimous reviewer and challenger approval, and the final forensic audit confirmed clean integrity. The codebase has been committed and pushed to `main`.
+
+---
+
+## 5. Verification Method
+
+To independently verify the deliverable:
+```bash
+# 1. Run the primary Sistem Blok automated verification test suite
+npx tsx tests/sistem_blok_verification.test.ts
+# Expected: 204 PASSED, 0 FAILED
+
+# 2. Run the full repository regression suite
+npm test
+# Expected: 46/46 suites passed, exit code 0
+
+# 3. Check static TypeScript compilation
+npx tsc --noEmit
+# Expected: 0 errors
+
+# 4. Verify Next.js production build
+npm run build
+# Expected: Next.js Turbopack compiles cleanly with 0 errors
+```
