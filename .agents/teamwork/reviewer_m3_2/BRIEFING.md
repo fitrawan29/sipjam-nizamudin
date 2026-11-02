@@ -1,14 +1,14 @@
-# BRIEFING — 2026-09-26T10:21:30Z
+# BRIEFING — 2026-11-02T14:40:00Z
 
 ## Mission
-Perform adversarial and quality review of Role Access Security, multi-role data access, and verify absence of regressions against user requirements R1, R2, and R3.
+Review the architecture, edge cases, integrity, and backward compatibility of the expanded `tests/sistem_blok_verification.test.ts` (Commit `ec63216`), verifying all 4 target scopes, live DB cleanup, schedule masking isolation, running the 204 assertions, and issuing an explicit verdict.
 
 ## 🔒 My Identity
 - Archetype: Reviewer & Critic
 - Roles: reviewer, critic
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_2
-- Original parent: f963fff1-816c-4a40-9daa-b44715a5d909
-- Milestone: M3
+- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Milestone: M3 (Sistem Blok Verification Review)
 - Instance: 2 of 2
 
 ## 🔒 Key Constraints
@@ -17,53 +17,48 @@ Perform adversarial and quality review of Role Access Security, multi-role data 
 - Evidence-based review with clear verdict: APPROVE or REQUEST_CHANGES
 
 ## Current Parent
-- Conversation ID: f963fff1-816c-4a40-9daa-b44715a5d909
-- Updated: 2026-09-26T10:21:30Z
+- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Updated: 2026-11-02T14:40:00Z
 
 ## Review Scope
 - **Files to review**:
   - `ORIGINAL_REQUEST.md` & `PROJECT.md`
-  - `worker_m1/handoff.md` & `test_writer_m2/handoff.md`
-  - Role access security across Admin, Guru, Siswa, and unauthenticated visitors
-  - `tests/data_access_roles_verification.test.ts`
-  - `tests/ui_ux_improvements_audit.test.ts`
-  - Core services/actions: `lib/actions/*`, `lib/dal/*`, `app/(dashboard)/*`, middleware, etc.
+  - `test_writer_m3/handoff.md`
+  - `tests/sistem_blok_verification.test.ts` (Commit `ec63216`)
 - **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
-- **Review criteria**: Multi-role data access, security boundary enforcement, regression verification (R1, R2, R3), test validity & integrity
+- **Review criteria**:
+  1. Scope coverage: 4 target scopes (sekolah, angkatan, kelas, guru) and full-day vs bounded time ranges.
+  2. Live database testing & cleanup: try/finally, no foreign key violations or tenant leaks.
+  3. Schedule masking isolation (Section 8): Roman and Arabic numerals, boundary touches, multi-rule concurrency.
+  4. Test execution: independently verify all 204 assertions pass.
+  5. Integrity checks: ensure no hardcoded bypasses or fake assertions.
 
 ## Review Checklist
 - **Items reviewed**:
-  - `src/app/page.tsx`: Stale session purge and automatic re-auth recovery
-  - `src/lib/workflow.ts`: Column name alignment (`nama_guru`, `nip`), resilient schedule matching, historical query filters
-  - `src/components/AppScreen.tsx` & `src/components/RekapJurnalView.tsx`: Homeroom detection schema alignment
-  - `src/components/GuruJurnal.tsx` & `src/components/HomeView.tsx`: PostgREST filter sanitization for academic titles
-  - `src/components/AdminDataView.tsx`: Direct REST fallback header injection (`x-session-token`, `x-sekolah-id`)
-  - `src/lib/supabaseClient.ts`: Tenant context and session token propagation
-  - `supabase/migrations/20260926_secure_rls_helpers.sql`: RLS helper functions and session token verification
-  - `tests/data_access_roles_verification.test.ts`: E2E verification test suite (22/22 passed)
-  - `tests/ui_ux_improvements_audit.test.ts`: Regression audit suite (94/94 passed)
-  - Independent adversarial test `tests/adversarial_role_security.ts`: 15 tables lockdown, multi-tenant anti-spoofing, forged token defense (100% passed)
+  - `tests/sistem_blok_verification.test.ts` (expanded by +1201 lines, commit `ec63216`): Sections 6, 7, 8, 9, 10
+  - `src/lib/workflow.ts`: `evaluateScheduleBlock`, `isKelasInAngkatan`, `isTimeRangeOverlap`, `parseTimeToMinutes`
+  - Live DB state: Confirmed 0 residual test artifacts in `public.sistem_blok`
+  - Static type analysis: `npx tsc --noEmit` exited 0
+  - Test runner: `npx tsx tests/sistem_blok_verification.test.ts` exited 0 (204/204 passed)
 - **Verdict**: APPROVE
-- **Unverified claims**: None. All claims directly verified via live test execution and database introspection.
+- **Unverified claims**: None. All assertions and edge cases verified directly.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Cross-school multi-tenant isolation under header spoofing: Neutralized (0 records leaked).
-  - Unauthenticated anonymous access across all 15 tenant tables: Completely locked (0 records returned).
-  - Forged session token injection: Rejected (0 records returned).
-  - Multi-comma academic titles (`Ade Fitrawan Ibrahim, M.Pd., Gr.`): PostgREST `.or()` parsed cleanly, 2 schedules matched.
-  - Teacher daily gatekeeper state (`getGuruDailyState`): Column error 42703 eliminated, evaluated cleanly.
-  - Student (`data_siswa`) roster integrity: 14 students intact, unauthorized mutations rejected by RLS.
-- **Vulnerabilities found**: None critical. Identified backward compatibility fallback on `x-user-id` in RLS helper as a caveat to note for post-deployment hardening.
-- **Untested angles**: Extreme concurrent multi-tab session thrashing.
+  - Boundary touch overlap (`07:30-09:00` vs `09:00-11:00`): Correctly non-overlapping (`sStartMin < bEndMin && sEndMin > bStartMin`).
+  - Roman vs Arabic numeral bidirectional matching and isolation (`10` vs `X`, `11` vs `XI`, `12` vs `XII`): Regex boundary matches grade tokens while rejecting false positives (`100 RPL`, `110 TKJ`, `120 RPL`).
+  - Multi-rule concurrency: 3 overlapping rules correctly mask appropriate schedules based on target and time window.
+  - Live DB teardown: `try/finally` blocks in Section 7 and Section 10 guarantee complete cleanup. Querying `sistem_blok` directly confirmed 0 lingering test records.
+  - Dual journal requirement in mixed schedules: Prevents checkout unless both unblocked KBM journals and blocked activity journals are submitted.
+- **Vulnerabilities found**: None.
+- **Untested angles**: None within M3 verification scope.
 
 ## Key Decisions Made
-- Executed `tests/data_access_roles_verification.test.ts` (22/22 passed).
-- Executed `tests/ui_ux_improvements_audit.test.ts` (94/94 passed).
-- Executed production build `npm run build` (Turbopack exit 0, zero errors).
-- Built and ran independent adversarial suite `tests/adversarial_role_security.ts` (passed 100%).
-- Verified complete absence of integrity violations.
-- Verdict formulated: APPROVE.
+- Executed `npx tsx tests/sistem_blok_verification.test.ts` independently: 204/204 passed.
+- Executed `npx tsc --noEmit`: 0 errors.
+- Verified absence of integrity violations or facade logic.
+- Verified live database cleanliness with direct query.
+- Issued verdict: APPROVE.
 
 ## Artifact Index
 - `handoff.md` — Final review and challenge report

@@ -1,63 +1,64 @@
-# BRIEFING — 2026-09-26T18:18:40+08:00
+# BRIEFING — 2026-11-02T14:38:00Z
 
 ## Mission
-Conduct comprehensive code quality, interface conformance, build verification, and adversarial integrity review for Milestone 3.
+Review the newly expanded `tests/sistem_blok_verification.test.ts` (Commit `ec63216`) from test_writer_m3. Validate Sections 6-10, verify preservation of Sections 1-5, verify build/tests/lint, check for integrity violations, and issue a verdict.
 
 ## 🔒 My Identity
-- Archetype: reviewer_critic
+- Archetype: reviewer_and_critic
 - Roles: reviewer, critic
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_1
-- Original parent: f963fff1-816c-4a40-9daa-b44715a5d909
-- Milestone: milestone_3_review
-- Instance: 1 of 2
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_1\
+- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Milestone: M3 (Verification of Test Suite Expansion)
+- Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Evidence-based verdicts: APPROVE or REQUEST_CHANGES
-- Actively check for integrity violations (hardcoded test results, facade logic, shortcuts, self-certifying work)
+- Check for integrity violations: hardcoded results, dummy logic, bypassing tests, fake outputs
+- Independent verification: execute tests and type checks directly
+- Report format: 5-component handoff report
 
 ## Current Parent
-- Conversation ID: f963fff1-816c-4a40-9daa-b44715a5d909
-- Updated: 2026-09-26T18:18:40+08:00
+- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Updated: 2026-11-02T14:38:00Z
 
 ## Review Scope
-- **Files to review**: `src/app/page.tsx`, `src/lib/workflow.ts`, `src/components/AppScreen.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/GuruJurnal.tsx`, `src/components/HomeView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/supabaseClient.ts`
-- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
-- **Review criteria**: correctness, style, interface conformance, clean error handling, absence of syntax errors, proper TypeScript types, adversarial integrity check
+- **Files to review**: `tests/sistem_blok_verification.test.ts`
+- **Context files**:
+  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md`
+  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md`
+  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\test_writer_m3\handoff.md`
+- **Review criteria**: correctness, assertion validity, preservation of original 85 assertions, zero test failures, zero lint/ts errors, adversarial resilience, integrity verification
 
 ## Review Checklist
 - **Items reviewed**:
-  - `src/app/page.tsx`: Session checking & stale session purge
-  - `src/lib/workflow.ts`: Column realignment (`nama_guru`, `nip`), combined schedule matching, safe PostgREST `.or()` queries
-  - `src/components/AppScreen.tsx`: Schema alignment for `data_guru` query (`nama_guru`), defensive nil UUID fallback
-  - `src/components/RekapJurnalView.tsx`: Schema alignment for `data_guru` query (`nama_guru`), defensive nil UUID fallback
-  - `src/components/GuruJurnal.tsx`: Academic title sanitization and double quoting in PostgREST `.or()` filters
-  - `src/components/HomeView.tsx`: Academic title sanitization and double quoting in PostgREST `.or()` filters
-  - `src/components/AdminDataView.tsx`: Direct REST fallback header injection (`x-session-token`, `x-sekolah-id`, `x-user-role`, `x-user-id`)
-  - `src/lib/supabaseClient.ts`: Tenant context extraction, `dynamicTenantFetch` header injection, `getTenantSupabaseClient` factory
-  - `tests/data_access_roles_verification.test.ts`: E2E verification test suite (22/22 checks passing)
-  - `tests/ui_ux_improvements_audit.test.ts`: UI/UX regression audit test suite (94/94 checks passing)
+  - Commit `ec63216` (`tests/sistem_blok_verification.test.ts`)
+  - Sections 1 to 5: 85 original assertions preserved verbatim
+  - Section 6: Target scope & time range AST & TypeScript type conformance (20 assertions)
+  - Section 7: Live database multi-target CRUD lifecycle across 4 target scopes with post-cleanup (14 assertions)
+  - Section 8: Granular schedule masking, class/cohort/teacher isolation, and time boundary overlap matrix (60 assertions)
+  - Section 9: Journal submission parity, mixed schedule dual fulfillment, and checkout gate (13 assertions)
+  - Section 10: Backward compatibility with legacy pre-migration records, live DB defaulting, and suite invariants (12 assertions)
 - **Verdict**: APPROVE
-- **Unverified claims**: 0 unverified claims. All claims independently reproduced and verified.
+- **Unverified claims**: None. All 204 assertions independently tested and verified.
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Academic titles with commas causing PostgREST logic tree breakdown (PGRST100): Confirmed fixed via `.split(',')[0].trim()` and double quotes.
-  - Undefined `user.id` breaking PostgREST `.or()` filter: Confirmed handled via defensive fallback to nil UUID.
-  - Legacy sessions bypassing RLS without `session_token`: Confirmed rejected by RLS (0 rows) and purged by client in `page.tsx`.
-  - Schedule truncation when foreign keys are partially populated: Confirmed fixed via union of `uuidMatches` and `nameMatches` deduplicated by ID.
-  - Direct REST fallback in `AdminDataView` lacking headers: Confirmed headers injected.
-  - Integrity violation / hardcoded mock data: Checked all source files; no mock or fake bypass data exists in production code.
-- **Vulnerabilities found**: None.
-- **Untested angles**: None within milestone scope.
+  - Boundary touch: 07:30-09:00 vs 09:00-11:00 -> verified non-overlapping
+  - Boundary touch: 11:00-12:30 vs 09:00-11:00 -> verified non-overlapping
+  - Idempotency & test artifact cleanup -> verified with repeat executions (0 leftover rows)
+  - Cohort false positive prevention (e.g. "100 RPL" vs "10") -> verified isolated
+  - Legacy null field fallback -> verified defaulting to whole-school full-day
+- **Vulnerabilities found**: 0 integrity violations, 0 regressions, 0 assertion failures
+- **Untested angles**: None within M3 scope
 
 ## Key Decisions Made
-- All builds, typechecks, and automated tests passed with exit code 0.
-- Work product satisfies all requirements (R1, R2, R3) and acceptance criteria.
-- Issuing APPROVE verdict.
+- Confirmed zero tampering in Sections 1-5
+- Confirmed all 119 new assertions test real business logic and AST invariants without dummy mocks
+- Confirmed TypeScript typecheck passes with 0 errors
+- Issued APPROVE verdict
 
 ## Artifact Index
-- DISPATCH.md — incoming dispatch instructions
-- BRIEFING.md — persistent working memory
-- progress.md — liveness heartbeat
-- handoff.md — final review report and verdict
+- `.agents/teamwork/reviewer_m3_1/DISPATCH.md` — Inbound task dispatch
+- `.agents/teamwork/reviewer_m3_1/BRIEFING.md` — Working memory
+- `.agents/teamwork/reviewer_m3_1/progress.md` — Liveness heartbeat
+- `.agents/teamwork/reviewer_m3_1/handoff.md` — Final review report

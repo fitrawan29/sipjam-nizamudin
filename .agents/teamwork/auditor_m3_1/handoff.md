@@ -1,168 +1,153 @@
-# Forensic Audit Report & Handoff: Milestone 3 (UI/UX, Branding & Apple Compatibility)
+# Forensic Audit Report: Milestone 3 Test Suite Expansion
 
-**Work Product**: Milestone 3 Deliverables (Features F8, F9, F10, F11)
-**Profile**: General Project
-**Integrity Mode**: Benchmark (Maximum strictness per `ORIGINAL_REQUEST.md`)
-**Verdict**: **CLEAN**
+**Auditor**: `auditor_m3_1`  
+**Milestone**: Milestone 3 — Automated Verification Test Suite Expansion  
+**Work Product**: `tests/sistem_blok_verification.test.ts` (Commit `ec63216`)  
+**Profile**: General Project (Forensic Integrity)  
+**Integrity Mode**: Development (from `ORIGINAL_REQUEST.md`)  
+**Audit Verdict**: **CLEAN**
+
+---
+
+### Executive Verdict Summary
+
+| Check | Requirement | Result | Status |
+|---|---|---|:---:|
+| **1. Non-Tampering** | Original 85 assertions in Sections 1–5 preserved intact, unmodified, and functional | 85/85 intact (1 line deleted = workflow import replacement only) | **PASS** |
+| **2. Anti-Cheat & Anti-Facade** | 0 dummy passes (`assert(true)`), genuine Supabase DB CRUD with RLS, genuine workflow engine calls | 119 new authentic assertions, 0 facades, 0 dummy passes | **PASS** |
+| **3. Type Checking** | Static TypeScript analysis (`npx tsc --noEmit`) passes with 0 errors | 0 errors, Exit code 0 | **PASS** |
+| **4. Independent Execution** | Verification test execution (`npx tsx tests/sistem_blok_verification.test.ts`) | 204 passed, 0 failed, Exit code 0 | **PASS** |
+| **5. Database Hygiene** | Zero lingering test artifacts in `public.sistem_blok` | Confirmed 0 lingering records (`[]`) | **PASS** |
 
 ---
 
 ## 1. Observation
 
-### Phase 1: Source Code & Integrity Analysis
-1. **F8: Notification Permission Full Blocking Modal Overlay (`src/components/NotificationPermissionModal.tsx`, `PushNotificationPrompt.tsx`, `src/app/page.tsx`)**:
-   - `NotificationPermissionModal.tsx` defines a full-viewport modal overlay using `fixed inset-0 z-[99999] w-screen h-screen bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto select-none overflow-y-auto`.
-   - Backdrop click interception: Both the container and inner glass-card register `onClick={(e) => e.stopPropagation()}`, preventing mouse events from triggering background elements.
-   - Escape key suppression: `window.addEventListener('keydown', handleKeyDown, true)` with `e.preventDefault()` and `e.stopPropagation()` when `e.key === 'Escape'`.
-   - Zero bypass mechanisms: The modal contains no dismiss, cancel, "Nanti", or "Tutup" buttons.
-   - Denied state guidance: When `Notification.permission === 'denied'`, the modal displays clear instructions (`"Buka pengaturan situs browser untuk mengaktifkan izin notifikasi"`) with 3 step-by-step instructions and two actionable triggers (`handleRecheckPermission` and `handleReloadPage`).
-   - Browser compatibility: When `Notification` API is unsupported in the current browser/WebView, it sets state to `'unsupported'` and safely renders `null` rather than crashing.
-   - Root application mounting: `src/app/page.tsx` mounts `<NotificationPermissionModal user={user} />` directly inside `MainApp()`, ensuring it protects the entire application lifecycle.
-
-2. **F9: Pre-Login Animation & Splash (`src/components/PreLoginSplash.tsx`, `src/app/page.tsx`)**:
-   - `PreLoginSplash.tsx` renders a branded splash sequence with official typography (`SIPJAM`), gold graduation cap emblem (`fa-graduation-cap`), animated progress bar (`progress`), pulsing glow elements, and fade transitions (`fade-in`, `opacity-0` transition).
-   - Lifecycle cleanup: All 5 timeout handles (`progressTimer1`, `progressTimer2`, `progressTimer3`, `fadeTimer`, `finishTimer`) are cleanly cleared in the `useEffect` cleanup return callback (`clearTimeout(...)`), preventing unmount memory leaks.
-   - Authentication bypass: `src/app/page.tsx` checks `localStorage.getItem('sipjam_user')`; if a valid session exists, `setShowSplash(false)` bypasses the splash intro, maintaining fast load times for logged-in users.
-
-3. **F10: Login SaaS Text Removal & Tab Title "SIPJAM" (`src/components/LoginScreen.tsx`, `src/app/layout.tsx`, `public/manifest.json`)**:
-   - `src/components/LoginScreen.tsx` was statically audited: "Multi-Tenant SaaS • Superadmin, Admin Sekolah & Guru" has been completely removed. Regex grep for `\bsaas\b` yielded 0 matches across the file. The header has been standardized to `SIPJAM Portal` and `Presensi & Jurnal Multi-Sekolah`.
-   - `src/app/layout.tsx` exports metadata with `title: 'SIPJAM'`.
-   - `public/manifest.json` sets both `"name": "SIPJAM"` and `"short_name": "SIPJAM"`.
-
-4. **F11: Apple iOS/Safari Compatibility Fixes (`src/app/layout.tsx`, `src/app/globals.css`, `src/components/CameraSelfieCapture.tsx`)**:
-   - `src/app/layout.tsx` exports `export const viewport: Viewport = { width: 'device-width', initialScale: 1, maximumScale: 1, userScalable: false, viewportFit: 'cover', themeColor: '#0B4619' }`.
-   - `src/app/globals.css`:
-     - Safe area insets: `--sat: env(safe-area-inset-top, 0px);`, `--sab`, `--sal`, `--sar`.
-     - Utility classes: `.pt-safe`, `.pb-safe`, `.pl-safe`, `.pr-safe`.
-     - `@supports (padding-top: env(safe-area-inset-top))` adds clearance to fixed headers (`calc(0.75rem + env(safe-area-inset-top, 0px))`) and main scrollable areas (`calc(5rem + env(safe-area-inset-top, 0px))`).
-     - Momentum scrolling & overscroll containment: `.custom-scroll, .overflow-y-auto, .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }`.
-     - iOS auto-zoom prevention: `@media screen and (max-width: 768px) { input, select, textarea { font-size: 16px !important; } }`.
-     - HTML text adjust: `scroll-behavior: smooth; -webkit-text-size-adjust: 100%;`.
-   - `src/components/CameraSelfieCapture.tsx` uses `<video playsInline autoPlay muted />` and `facingMode: { ideal: mode }` constraints, preventing iOS native fullscreen video takeover and ensuring camera stream initialization.
-
-### Phase 2: Behavioral & Independent Test Execution
-1. **Milestone 3 Automated Test Suite Execution**:
-   - Command: `npx tsx tests/m3_ui_ux_apple_compatibility.test.ts`
-   - Exit Code: `0`
-   - Result: 29 passed, 0 failed.
-   - Raw output snippet:
+1. **Git Commit Diff Analysis (`git diff ec63216~1 ec63216`)**:
+   - `git diff --numstat ec63216~1 ec63216` reports exactly `1201 insertions, 1 deletion`.
+   - Inspection of the deleted line via `git diff ec63216~1 ec63216 -- tests/sistem_blok_verification.test.ts | Select-String -Pattern "^-[^-]"` reveals only:
+     ```diff
+     -  const { getActiveSistemBlok, getGuruDailyState } = await import('../src/lib/workflow');
      ```
-     ==============================================================================
-     MILESTONE M3 TEST: UI/UX, PRE-LOGIN SPLASH, TITLE, & APPLE COMPATIBILITY
-     ==============================================================================
+     which was replaced by the multi-line import importing newly added workflow engine helpers (`getActiveSistemBloks`, `evaluateScheduleBlock`, `isKelasInAngkatan`, `isTimeRangeOverlap`, `parseTimeToMinutes`, `isJurnalMatchJadwal`, `canTeacherPresensiPulang`).
+   - Every single line and assertion across Sections 1 through 5 from `ec63216~1` remains completely untouched, unmodified, and intact.
+   - All 85 baseline assertions execute and pass during test execution.
 
-     ✅ PASS: src/app/layout.tsx exists
-     ✅ PASS: public/manifest.json exists
-     ✅ PASS: src/components/LoginScreen.tsx exists
-     ✅ PASS: src/components/PreLoginSplash.tsx exists
-     ✅ PASS: src/components/NotificationPermissionModal.tsx exists
-     ✅ PASS: src/components/PushNotificationPrompt.tsx exists
-     ✅ PASS: src/app/globals.css exists
-     ✅ PASS: src/app/page.tsx exists
+2. **Source Code & AST Inspection of Sections 6–10**:
+   - Total assertions added: 119 assertions (bringing total from 85 to 204).
+   - Regex scan for dummy assertions `assert\(\s*(true|1 === 1|!\s*false)\b`: **0 matches found**.
+   - **Section 6 (Target Scope & Time Range AST/Type Validation)**: 20 assertions verifying TypeScript definitions in `src/types/database.ts` (`TargetBlokType`, target and time fields in `SistemBlok`, `SistemBlokInsert`, `SistemBlokUpdate`), in-memory object conformance, state hooks, form inputs, validation guardrails (chronological hour ordering), edit modal pre-population, and visual table badges in `SistemBlokView.tsx`.
+   - **Section 7 (Live Database Multi-Target CRUD Verification)**: 14 assertions executing real database operations on `public.sistem_blok` using the authenticated Supabase client under active RLS server tenant context (`setServerTenantContext`). Queries valid teacher fixture from `data_guru` for foreign key constraint, performs live insert of all 4 target levels (`sekolah` full-day, `angkatan` 07:30-10:00, `kelas` 08:00-11:30, `guru` 12:30-15:00), verifies batch read-back of all 4 records, performs update on the angkatan record, and cleans up all records in a `finally` block with post-cleanup verification.
+   - **Section 8 (Granular Schedule Masking & Isolation Matrix)**: 60 assertions executing genuine matching functions directly from `src/lib/workflow.ts`:
+     * Class isolation (exact, case-insensitive, whitespace-trimmed, sibling isolation, grade isolation, substring isolation, superset isolation).
+     * Cohort / Angkatan bidirectional Roman $\leftrightarrow$ Arabic matching (Grades 10/X, 11/XI, 12/XII, junior high 7–9, primary 1–6) and false-positive prevention against prefix collision ("100 RPL" vs "10").
+     * Teacher scope isolation (teacher.id, teacher.user_id, schedule.guru_id, schedule.user_id, name containment, and strict isolation for unrelated teachers).
+     * Time boundary overlap & exact boundary touch tests (Period 1 ending at 09:00 vs block starting at 09:00 $\rightarrow$ false / no overlap; Period 3 starting at 11:00 vs block ending at 11:00 $\rightarrow$ false / no overlap; interior, straddling, enclosing intervals $\rightarrow$ true / overlap).
+     * Multi-rule concurrent evaluation with 3 active simultaneous rules.
+     * Fault tolerance against empty/null objects and unknown scopes.
+   - **Section 9 (Journal Submission Parity & Mixed Schedule Fulfillment)**: 13 assertions verifying AST integration in `GuruJurnal.tsx` and `workflow.ts`, plus functional simulation of mixed schedules verifying dual journal requirements (both KBM and block journals required for checkout unless exempted by arrival presensi).
+   - **Section 10 (Backward Compatibility with Legacy Sistem Blok Records)**: 12 assertions proving legacy records with null target or time columns default seamlessly to whole-school full-day blocks without runtime exceptions, including live DB legacy insertion, default inheritance verification, and live schedule masking.
 
-     --- Section 1: F8 - Full Blocking Notification Modal ---
-     ✅ PASS: NotificationPermissionModal uses fixed inset-0 z-[99999] pointer-events-auto
-     ✅ PASS: No dismiss or "Nanti" bypass button in NotificationPermissionModal and PushNotificationPrompt
-     ✅ PASS: NotificationPermissionModal provides explicit browser unblock instructions when denied
-     ✅ PASS: NotificationPermissionModal suppresses Escape key dismissal in strict blocking mode
-     ✅ PASS: NotificationPermissionModal captures backdrop clicks preventing underlying element activation
-     ✅ PASS: page.tsx mounts NotificationPermissionModal at the root application level
+3. **Static Analysis & Type Checking**:
+   - Command: `npx tsc --noEmit`
+   - Exit code: `0`
+   - Diagnostic output: `0` errors.
 
-     --- Section 2: F9 - Pre-Login Animation & Splash ---
-     ✅ PASS: PreLoginSplash displays official SIPJAM title, graduation cap emblem, and educational subtitle
-     ✅ PASS: PreLoginSplash utilizes smooth pulsing, fade-in, and tracking-widest typography
-     ✅ PASS: PreLoginSplash manages timeout lifecycle cleanly preventing memory leaks
-     ✅ PASS: page.tsx renders PreLoginSplash before LoginScreen and cleanly bypasses for authenticated sessions
-
-     --- Section 3: F10 - SaaS Text Removal & Tab Title "SIPJAM" ---
-     ✅ PASS: LoginScreen removes legacy "Multi-Tenant SaaS • Superadmin, Admin Sekolah & Guru" text
-     ✅ PASS: LoginScreen contains zero occurrences of "SaaS" or "saas"
-     ✅ PASS: LoginScreen header is standardized to "SIPJAM Portal"
-     ✅ PASS: src/app/layout.tsx sets metadata title to exactly "SIPJAM"
-     ✅ PASS: public/manifest.json sets both name and short_name to "SIPJAM"
-
-     --- Section 4: F11 - Apple iOS/Safari Compatibility ---
-     ✅ PASS: src/app/layout.tsx exports Next.js Viewport with viewportFit: "cover"
-     ✅ PASS: globals.css enables -webkit-overflow-scrolling: touch for iOS inertia scrolling
-     ✅ PASS: globals.css defines overscroll-behavior-y: contain to prevent Safari rubber-band chaining
-     ✅ PASS: globals.css defines CSS safe area variables for notch and home indicator clearance
-     ✅ PASS: globals.css enforces 16px minimum font size on mobile inputs to eliminate Safari auto-zoom
-     ✅ PASS: globals.css specifies smooth scrolling and text size adjust on html root
-
-     ==============================================================================
-     TOTAL TESTS: 29
-     PASSED: 29
+4. **Independent Test Execution**:
+   - Command: `npx tsx tests/sistem_blok_verification.test.ts`
+   - Result:
+     ```
+     ====================================================
+     TOTAL TESTS: 204
+     PASSED: 204
      FAILED: 0
-     ==============================================================================
+     ====================================================
+     🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
      ```
+   - Exit code: `0`.
 
-2. **Full Regression Test Suite Execution**:
-   - Command: `npm test`
-   - Exit Code: `0`
-   - Result: 20 M6.4 tests PASSED, 20 M10 tests PASSED, 23 M1 tests PASSED. All existing functionality remains 100% operational with zero regressions.
-
-3. **Production Build Verification**:
-   - Command: `npm run build`
-   - Exit Code: `0`
-   - Turbopack compilation succeeded in 1872ms, TypeScript checking finished in 2.6s, all 10 application routes compiled with 0 errors or warnings.
-
-### Phase 3: Prohibited Pattern & Integrity Audit (Benchmark Mode)
-- **Hardcoded test results**: None detected. Tests read source files directly and inspect AST/content.
-- **Façade implementations**: None detected. Components contain genuine state management (`useState`, `useEffect`, `useRef`), event handlers, and callbacks.
-- **Fabricated verification outputs**: None detected. Zero `.log` or fake result files present in repository.
-- **Self-certifying tests**: None detected. Tests assert specific functional invariants without tautologies.
-- **Execution delegation**: None detected. Implementation uses standard React, Next.js, and Tailwind CSS without unauthorized external delegation.
+5. **Post-Audit Database Artifact Check**:
+   - Command:
+     ```typescript
+     supabase.from('sistem_blok').select('id, nama_kegiatan').in('id', [
+       '00000000-0000-0000-0000-00000000b110',
+       '00000000-0000-0000-0000-00000000b111',
+       '00000000-0000-0000-0000-00000000b112',
+       '00000000-0000-0000-0000-00000000b113',
+       '00000000-0000-0000-0000-00000000b115'
+     ])
+     ```
+   - Result: `Lingering artifacts: []` (0 records remaining).
 
 ---
 
 ## 2. Logic Chain
 
-1. From Phase 1 Observation 1, `NotificationPermissionModal.tsx` implements strict modal containment via `fixed inset-0 z-[99999]`, backdrop click stop-propagation, keydown escape capture, removal of bypass buttons, and clear unblock instructions. This directly and genuinely fulfills Requirement R2.1 (Feature F8).
-2. From Phase 1 Observation 2, `PreLoginSplash.tsx` delivers the required entrance animation, branding, progress bar, timer memory leak protection, and authenticated bypass. This satisfies Requirement R2.2 (Feature F9).
-3. From Phase 1 Observation 3, `LoginScreen.tsx`, `layout.tsx`, and `manifest.json` have completely eradicated all SaaS labels and established "SIPJAM" as the uniform application title and manifest name. This satisfies Requirements R2.3 and R2.4 (Feature F10).
-4. From Phase 1 Observation 4, `globals.css` and `layout.tsx` implement viewport cover, safe area clearance, touch inertia scrolling, overscroll boundary containment, and 16px input font minimums to guarantee Apple Safari/iOS rendering without auto-zoom or notch clipping. This satisfies Requirement R2.5 (Feature F11).
-5. From Phase 2 Observations 1-3, independent execution of the test suite and production build confirmed 100% passing rate (29/29 M3 tests, 63/63 regression tests, Exit code 0 build).
-6. Under Benchmark Mode rules, zero prohibited patterns (façades, hardcoded returns, pre-populated logs, or cheating tests) were found. Therefore, the work product is clean and authentic.
+1. **Non-Tampering Proof**:
+   - To ensure no existing regression coverage was lost, `git diff ec63216~1 ec63216` was examined at the line level.
+   - Exactly one line was removed: the single-line import of `getActiveSistemBlok, getGuruDailyState`.
+   - It was replaced by an expanded import block importing the new workflow methods.
+   - Zero assertions from Sections 1 to 5 were deleted, commented out, or weakened.
+   - Assertion 10.7 explicitly asserts `passed >= 85`, and runtime logs confirm all 85 baseline assertions executed and passed.
+   - **Inference**: Non-tampering is empirically verified.
+
+2. **Authenticity & Anti-Facade Proof**:
+   - Every assertion condition was checked for tautologies, mocked bypasses, or hardcoded true returns. None exist.
+   - In Section 7, live network requests communicate with Supabase PostgreSQL under tenant RLS context. Test records are created, queried, modified, and deleted.
+   - In Section 8, the production code functions in `src/lib/workflow.ts` are invoked directly with varied, edge-case, and adversarial inputs.
+   - In Section 9 and 10, real workflow logic and legacy record defaults are rigorously exercised.
+   - **Inference**: The implementation and tests are authentic with zero facades or simulated passes.
+
+3. **Tool Execution Proof**:
+   - Both the TypeScript compiler (`npx tsc --noEmit`) and the TypeScript test runner (`npx tsx tests/sistem_blok_verification.test.ts`) were executed independently by the auditor.
+   - Both executed to completion with zero errors and exit code 0.
+   - **Inference**: System builds cleanly and passes all 204 automated tests.
 
 ---
 
 ## 3. Caveats
 
-No caveats. All four Milestone 3 features (F8, F9, F10, F11) are fully implemented, verified in production code, integrated into the live Next.js application tree, and backed by robust tests.
+- **PostgREST Schema Cache Handling**: `insertBlockWithFallback` in Section 7 and Section 10 handles potential `PGRST204` schema cache latency if remote Supabase instances take time to refresh newly added migration columns. This ensures resilience across different deployment environments without compromising test validity.
+- No production files were edited during this audit; all checks were strictly observational and empirical.
 
 ---
 
 ## 4. Conclusion
 
-**Final Verdict: CLEAN**
-
-Milestone 3 (UI/UX, Branding & Apple Compatibility) complies fully with all specifications in `ORIGINAL_REQUEST.md` (R2.1, R2.2, R2.3, R2.4, R2.5) and adheres strictly to Benchmark Integrity standards. The implementation is approved without reservations.
+- **Verdict**: **CLEAN**
+- All 4 required audit checks passed without exception.
+- Non-tampering confirmed (85 original assertions preserved intact).
+- Anti-facade confirmed (119 new authentic assertions, genuine Supabase RLS and workflow engine execution).
+- Independent tool execution confirmed (204 tests passing, 0 failing, 0 TypeScript compilation errors).
+- Milestone 3 is verified authentic and ready for Milestone 4 (Final Regression & Project Completion).
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce this forensic audit:
-1. Run the Milestone 3 test suite:
-   ```powershell
-   npx tsx tests/m3_ui_ux_apple_compatibility.test.ts
-   ```
-   *Expected*: 29 passed, 0 failed, exit code 0.
+To independently re-verify this audit verdict:
 
-2. Run the regression test suite:
+1. **Verify Git Diff Non-Tampering**:
    ```powershell
-   npm test
+   git diff ec63216~1 ec63216 --stat
+   git diff ec63216~1 ec63216 -- tests/sistem_blok_verification.test.ts | Select-String -Pattern "^-[^-]"
    ```
-   *Expected*: 63 passed, 0 failed, exit code 0.
+   *Expected output*: Only 1 deletion (the single-line workflow import).
 
-3. Verify production compilation:
+2. **Run Type Checking**:
    ```powershell
-   npm run build
+   npx tsc --noEmit
    ```
-   *Expected*: Exit code 0, all routes compiled cleanly.
+   *Expected output*: Exits with code 0, 0 errors.
 
-4. Check SaaS absence in LoginScreen:
+3. **Run Verification Test Suite**:
    ```powershell
-   rg -i "saas" src/components/LoginScreen.tsx
+   npx tsx tests/sistem_blok_verification.test.ts
    ```
-   *Expected*: No matches found.
+   *Expected output*: Exits with code 0, `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`.
+
+4. **Verify Database Cleanliness**:
+   ```powershell
+   npx tsx -e "import dotenv from 'dotenv'; dotenv.config({ path: './.env.local' }); import('./src/lib/supabaseClient').then(async ({ supabase }) => { const { data } = await supabase.from('sistem_blok').select('id').in('id', ['00000000-0000-0000-0000-00000000b110','00000000-0000-0000-0000-00000000b111','00000000-0000-0000-0000-00000000b112','00000000-0000-0000-0000-00000000b113','00000000-0000-0000-0000-00000000b115']); console.log('Lingering artifacts:', data); });"
+   ```
+   *Expected output*: `Lingering artifacts: []`.

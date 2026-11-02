@@ -1,135 +1,123 @@
-# Handoff Report — Challenger 1 (Adversarial Stress Testing & Edge Cases)
+# Empirical Challenge Report & Handoff: Milestone 3 Verification Suite
+
+**Author**: `challenger_m3_1`  
+**Role**: Empirical Challenger (critic, specialist)  
+**Target Subject**: Verification Suite Expansion (`tests/sistem_blok_verification.test.ts`, commit `ec63216`)  
+**Verdict**: **APPROVE**  
+**Date**: 2026-11-02  
+
+---
 
 ## 1. Observation
 
-Direct investigation and empirical execution of adversarial stress testing against the data access recovery implementation produced the following verbatim observations:
-
-1. **Hostile / Corrupt Session Parsing (`src/app/page.tsx:55-76`)**:
-   - `page.tsx` implements defensive parsing wrapped in `try/catch`:
-     ```typescript
-     const storedUser = localStorage.getItem('sipjam_user');
-     if (storedUser) {
-       const parsed = JSON.parse(storedUser);
-       if (!parsed || !parsed.session_token || typeof parsed.session_token !== 'string' || !parsed.session_token.trim()) {
-         console.warn('[MainApp] Stored user session lacks session_token. Clearing legacy session.');
-         localStorage.removeItem('sipjam_user');
-         setUser(null);
-       } else {
-         setUser(parsed);
-         setShowSplash(false);
-       }
-     }
+1. **Primary Test Suite Execution (`tests/sistem_blok_verification.test.ts`)**:
+   - Command executed: `npx tsx tests/sistem_blok_verification.test.ts`
+   - Exit code: `0`
+   - Output summary verbatim:
      ```
-   - Tested across 14 hostile payloads in `tests/adversarial_m3_challenger_1.test.ts`:
-     - Invalid JSON syntax (`{corrupt json`), non-object primitives (`undefined`, `null`, `12345`, `true`, `"foo"`), empty structures (`{}`), missing `session_token`, null `session_token`, empty string `""`, whitespace `'   '`, number `99999`, and object `{ token: 'xyz' }`.
-     - Output: `✔ [SESSION-STALE-01] PASS: Hostile / corrupt localStorage payloads reliably purged (14/14 malformed & stale structures; all triggered clean purge)`.
+     ====================================================
+     TOTAL TESTS: 204
+     PASSED: 204
+     FAILED: 0
+     ====================================================
+     🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
+     ```
+   - Execution time measured via `Measure-Command`: `8.296 seconds` (`8296.29 ms`).
+   - Rejection guard verification: Running with `npx tsx --unhandled-rejections=strict tests/sistem_blok_verification.test.ts` completed with exit code `0` and 0 unhandled promise rejections.
 
-2. **Malformed UUID & Injection Payloads Against PostgREST RLS**:
-   - Tested 6 adversarial session tokens against PostgREST endpoint:
-     - SQL injection payloads: `"' OR '1'='1"`, `"00000000-0000-0000-0000-000000000000'; DROP TABLE users;--"`.
-     - Non-UUID strings: `"totally-not-a-valid-uuid"`, truncated UUID `"d05bc735-8664-4114-87cf"`.
-     - Nil UUID: `"00000000-0000-0000-0000-000000000000"`.
-     - Unregistered random UUID: `randomUUID()`.
-   - In PostgreSQL (`supabase/migrations/20260926_secure_rls_helpers.sql:48-56`), `v_raw::uuid` conversion is guarded by `BEGIN ... EXCEPTION WHEN OTHERS THEN NULL; END;`.
-   - Results: All 6 attack queries returned 0 rows cleanly without unhandled server crashes, database errors, or information disclosure.
+2. **Regression Suites Execution**:
+   - `npx tsx tests/challenger_m2_matching_masking_stress.test.ts`:
+     * Exit code: `0`
+     * Result: `TOTAL ADVERSARIAL STRESS TESTS: 144`, `PASSED: 144`, `FAILED: 0`.
+   - `npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts`:
+     * Exit code: `0`
+     * Result: `TOTAL CHALLENGER TESTS: 52`, `PASSED: 52`, `FAILED: 0`.
+   - `npx tsx tests/m2_schedule_masking_workflow.test.ts`:
+     * Exit code: `0`
+     * Result: `TOTAL M2 TESTS: 74`, `PASSED: 74`, `FAILED: 0`.
+   - `tests/challenger_m2_fix_2_mixed_fulfillment.test.ts`:
+     * Exit code: `0`
+     * Result: `TOTAL EMPIRICAL RE-CHALLENGE TESTS: 25`, `PASSED: 25`, `FAILED: 0`.
+   - Total regression assertions verified: `295 passed`, `0 failed`.
+   - Grand total across all 5 verification suites: `499 passed`, `0 failed`.
 
-3. **Teachers with Unusual Names, Commas, Degrees & Special Characters**:
-   - Tested across 9 hostile teacher name combinations:
-     - `"Dr. Ir. Fitra, S.Pd., M.Pd., Gr."` (multiple commas, multiple degrees)
-     - `"Prof. Dr. H. Muhammad Nizamudin, M.Sc., Ph.D."` (dots, commas, prefix/suffix titles)
-     - `"Ade Fitrawan Ibrahim, M.Pd., Gr."` (double degrees)
-     - `"Siti Nurhaliza-O'Connor, S.Kom., M.TI."` (hyphen, apostrophe, commas)
-     - `"Tika Mamonto, S.Pd."` (single degree standard)
-     - `"Ade \"The Pioneer\" Fitrawan, M.Pd."` (quotes in name)
-     - `", S.Pd."` (leading comma, degree only)
-     - `"Guru%_[]Test, S.Pd."` (SQL wildcard characters `%`, `_`, `[]`)
-   - Components sanitize via `.split(',')[0].trim()` and wrap query terms in double quotes (`.or('nip.eq."...",nama_guru.ilike."%...%"')`).
-   - Results: 0 `PGRST100` parser errors encountered; 9/9 queries executed cleanly.
+3. **TypeScript Static Analysis**:
+   - Command executed: `npx tsc --noEmit`
+   - Exit code: `0`
+   - Output: 0 compilation errors across the entire repository.
 
-4. **Boundary Cases in `findJadwalForGuru` and `getGuruDailyState`**:
-   - `findJadwalForGuru`:
-     - Empty day `''`, empty name `''`, and `undefined` arguments safely return `[]` without throwing exceptions.
-     - TitleCase `'Senin'` returned 2 classes; lowercase `'senin'` returned 0 classes without crashing.
-     - Multi-token name `"FITRA SURYAZANA MAMONTO"` resolved without colliding into unlinked schedules.
-   - `getGuruDailyState`:
-     - Empty `namaGuru` string immediately returns initialized clean blank state (`jadwalKBM: []`, `isAlpa: false`).
-     - Complex names `"Tika Mamonto, S.Pd."` and `"Ade Fitrawan Ibrahim, M.Pd., Gr."` resolved cleanly with teacher exemption rules intact (`aturanKehadiran: 'Hari_Mengajar_Saja'`).
-     - Non-UUID `userId` (`'not-a-valid-uuid'`) was gracefully handled via fallback without unhandled promise rejections.
-     - SQL wildcards (`%_[]'`) in teacher names processed safely without crashing PostgREST queries.
+4. **Database State & Invariant Hygiene**:
+   - `jadwal_pelajaran` table count before and after test execution: exactly `51` rows preserved (`0` rows deleted, 100% preservation).
+   - `public.sistem_blok` cleanup: Section 7 (`blockSekolahId`, `blockAngkatanId`, `blockKelasId`, `blockGuruId`) and Section 10 (`legacyDbId`) use explicit `try / finally` blocks with `supabase.from('sistem_blok').delete().in('id', ...)`.
+   - Post-cleanup verification query confirmed `0` orphaned test artifacts remaining in `public.sistem_blok`.
 
-5. **Multi-Tenant RLS Privilege Escalation & Header Spoofing**:
-   - Direct REST request to `/rest/v1/data_siswa` without `x-session-token` returned 0 rows.
-   - Client claiming `x-user-role: Superadmin` without service role JWT returned 0 rows from `users`.
-   - Role tampering test: Teacher client attempting to insert into `public.users` while sending `x-user-role: Admin` was strictly rejected (0 rows inserted) because PostgreSQL helper `get_auth_user_role()` derives actual role from `users.session_token` in the database, ignoring client claims.
-   - Cross-school mutation attempt with spoofed `x-sekolah-id: b0000000-0000-0000-0000-000000000002` returned 0 rows inserted.
-
-6. **Automated Suite Execution**:
-   - `npx tsx tests/adversarial_m3_challenger_1.test.ts`: **28/28 checks PASSED** (0 failures).
-   - `npx tsx tests/data_access_roles_verification.test.ts`: **22/22 checks PASSED** (0 failures).
-   - `npx tsc --noEmit`: 0 type errors.
-   - `npm run build`: Production build succeeded in 1440ms (0 errors).
+5. **Peer Challenger Harness Anomaly Investigation**:
+   - Peer script `tests/adversarial_sistem_blok_challenger.ts` encountered a session token expiration in its outer process due to `verify_login` being called by the inner child process. Direct empirical query of `jadwal_pelajaran` confirmed that all 51 schedules remain present and intact.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Session Resilience**:
-   Because `src/app/page.tsx:55-76` validates that `parsed.session_token` exists, is a string, and is non-empty after trimming, any legacy session lacking `session_token` or containing corrupted JSON/primitives is immediately evicted via `localStorage.removeItem('sipjam_user')` and sets `user = null`. The user is presented with `LoginScreen` to establish a fresh, verified session. (Supported by Observation 1).
+1. **Verification of Assertion Target (Observation 1)**:
+   - The dispatch specified verifying that `tests/sistem_blok_verification.test.ts` executes all 204 assertions with 0 failures (`failed === 0`).
+   - Direct execution produced `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`, and exited with code `0`.
+   - This directly validates the primary acceptance criterion.
 
-2. **Backend Defense-in-Depth**:
-   Even if a malicious or broken client manually sends forged or non-UUID tokens in `x-session-token`, `get_auth_user_sekolah_id()`, `get_auth_user_id()`, and `get_auth_user_role()` in `20260926_secure_rls_helpers.sql` catch any casting or syntax error in a `BEGIN ... EXCEPTION WHEN OTHERS THEN NULL; END;` block. The functions return `NULL` / `'Guest'`, preventing SQL injection, schema exposure, or data leakage. (Supported by Observation 2).
+2. **Regression Proof (Observation 2)**:
+   - To ensure the expansion in `tests/sistem_blok_verification.test.ts` did not conflict with or regress prior Milestone 2 behavior, all three specified regression suites (`challenger_m2_matching_masking_stress.test.ts`, `challenger_m2_2_mixed_schedule_journal.test.ts`, `m2_schedule_masking_workflow.test.ts`) were executed.
+   - All 270 regression assertions passed cleanly with 0 failures, proving zero regression.
 
-3. **Query Sanitization against PostgREST Breakdown**:
-   PostgREST parses `.or()` filter strings into a logical tree. Unquoted commas within teacher names like `"Tika Mamonto, S.Pd."` previously caused PostgREST to interpret the title suffix `, S.Pd.` as a new comma-separated filter node, causing `PGRST100`. By sanitizing with `.split(',')[0].trim()` and encapsulating the string inside double quotes (`"${cleanNama}"`), commas in academic degrees cannot fracture the filter syntax. (Supported by Observation 3).
+3. **Static Type Safety (Observation 3)**:
+   - `npx tsc --noEmit` verifies that all imports (`TargetBlokType`, `SistemBlok`, `SistemBlokInsert`, `SistemBlokUpdate`, workflow helpers) strictly type-check and introduce no structural or type mismatch errors.
+   - The exit code of `0` guarantees complete type conformance.
 
-4. **Workflow Stability under Boundary Inputs**:
-   `findJadwalForGuru` and `getGuruDailyState` guard against empty or undefined inputs by early returning safe defaults (`[]` and blank initialized `GuruDailyState`). The combination of exact UUID matching with normalized name matching prevents dropped schedules while isolating unlinked teachers. (Supported by Observation 4).
-
-5. **Anti-Tampering Integrity**:
-   Client-side header tampering (e.g. sending `x-user-role: Admin` from a Teacher account) fails to grant administrative powers because `get_auth_user_role()` verifies the session token against `public.users` in the database and resolves `role = 'Guru'`, ensuring strict authorization enforcement at the database engine level. (Supported by Observation 5).
+4. **Execution Performance & Reliability (Observation 1 & 4)**:
+   - The entire 204-assertion suite completes in ~8.3 seconds, including live remote Supabase CRUD and round-trip queries.
+   - Running with `--unhandled-rejections=strict` confirms no hidden async leaks or dangling unhandled promises.
+   - Guaranteed `try / finally` teardown ensures zero test residue in remote database tables.
 
 ---
 
 ## 3. Caveats
 
-- **Client-Side Day Case Sensitivity**: PostgREST string comparisons with `.eq('hari', hari)` are case-sensitive by default. When calling `findJadwalForGuru`, callers must provide TitleCase day names (e.g. `'Senin'`), which is standard across the app as produced by `getWitaDayName()`.
-- **Database Connection**: Tests require valid network access to Supabase (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+- **PostgREST Schema Cache Latency**: As noted in previous milestones, remote Supabase instances can experience slight cache delay when novel migration columns are added. The test suite correctly implements `insertBlockWithFallback` and optional property checking, making it resilient to remote cache delays while verifying in-memory types strictly.
+- **Multi-Process Session Tokens**: Running multiple test runners concurrently that invoke `verify_login` with the same `superadmin` account can rotate `session_token` in PostgreSQL. Tests should run sequentially or use independent credentials if executed in parallel.
 
 ---
 
 ## 4. Conclusion
 
-**Verdict: CONFIRMED_CORRECT**
+The newly expanded verification suite `tests/sistem_blok_verification.test.ts` (commit `ec63216`):
+- Empirically executes all **204 assertions with 0 failures** (`failed === 0`).
+- Maintains **100% pass rate** across all related regression test suites (295 additional assertions passing).
+- Compiles cleanly under TypeScript (`npx tsc --noEmit` code 0).
+- Exits cleanly within ~8.3 seconds with 0 unhandled promise rejections and 0 database residue.
+- Preserves master data integrity (`jadwal_pelajaran` count is 100% retained at 51 rows).
 
-The data access recovery implementation demonstrates robust resilience against all adversarial attack vectors, corrupt session payloads, hostile teacher name formats, boundary conditions, and privilege escalation attempts.
-
-- Stale/corrupt sessions in `localStorage` are cleanly detected and purged.
-- Malformed UUIDs and SQL injection payloads in session tokens are safely blocked by RLS.
-- Academic degrees and multiple commas in teacher names execute without `PGRST100` parser errors.
-- Boundary conditions in `findJadwalForGuru` and `getGuruDailyState` fail closed with safe defaults.
-- Multi-tenant boundaries and role privileges are cryptographically derived and enforced by PostgreSQL RLS.
+**Verdict: APPROVE**. Milestone 3 meets all verification and acceptance criteria.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify the adversarial findings:
+To independently reproduce and verify this assessment:
 
-1. **Execute the Dedicated Adversarial Stress Test Suite**:
+1. **Run Verification Suite**:
    ```powershell
-   npx tsx tests/adversarial_m3_challenger_1.test.ts
+   npx tsx tests/sistem_blok_verification.test.ts
    ```
-   *Expected Output*: `28/28 checks passed with 0 failures`.
+   *Expected outcome*: Exits with code 0, reporting `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`.
 
-2. **Execute Full Data Access Verification Suite**:
+2. **Run Regression Suites**:
    ```powershell
-   npx tsx tests/data_access_roles_verification.test.ts
+   npx tsx tests/challenger_m2_matching_masking_stress.test.ts
+   npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
+   npx tsx tests/m2_schedule_masking_workflow.test.ts
    ```
-   *Expected Output*: `22/22 checks passed with 0 failures`.
+   *Expected outcome*: All three suites exit with code 0, 0 failures.
 
-3. **Verify TypeScript & Production Build**:
+3. **Check TypeScript Compilation**:
    ```powershell
    npx tsc --noEmit
-   npm run build
    ```
-   *Expected Output*: Exit code 0, 0 type errors, production build succeeds.
+   *Expected outcome*: Exits with code 0, 0 type errors.

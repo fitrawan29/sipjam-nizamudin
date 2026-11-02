@@ -1,4 +1,4 @@
-# BRIEFING — 2026-11-02T13:53:40Z
+# BRIEFING — 2026-11-02T14:04:00Z
 
 ## Mission
 Sesuaikan fitur sistem blok pada aplikasi Sipjam untuk kebutuhan produksi agar lebih fleksibel, dengan opsi target pemblokiran per aturan (keseluruhan sekolah, per angkatan, per kelas, per guru) serta opsi rentang hari dan rentang jam.
@@ -27,11 +27,11 @@ Sesuaikan fitur sistem blok pada aplikasi Sipjam untuk kebutuhan produksi agar l
 - **Work items**:
   1. Survey Phase [done]
   2. Milestone 1: Database Schema, Types & Admin Configuration UI [done]
-  3. Milestone 2: Workflow Engine, Granular Schedule Masking & Journal Workflows [in-progress - Remediation Round]
-  4. Milestone 3: Automated Verification Test Suite Expansion [pending]
-  5. Milestone 4: Final Regression & Integrity Audit [pending]
-- **Current phase**: 2 (Milestone 2 Remediation)
-- **Current focus**: Milestone 2 Remediation Implementation: Worker m2_remediation applying surgical patches to workflow.ts
+  3. Milestone 2: Workflow Engine, Granular Schedule Masking & Journal Workflows [done - Passed Gate Iteration 3]
+  4. Milestone 3: Automated Verification Test Suite Expansion [done - Passed Gate Iteration 4]
+  5. Milestone 4: Final Regression & Integrity Audit [in-progress]
+- **Current phase**: 4 (Milestone 4: Final Regression & Integrity Audit)
+- **Current focus**: Full regression tests (`npm test`), type check (`tsc`), production build (`next build`), and final audit.
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files directly.
@@ -48,9 +48,9 @@ Sesuaikan fitur sistem blok pada aplikasi Sipjam untuk kebutuhan produksi agar l
 
 ## Key Decisions Made
 - Milestone 1 passed gate.
-- Milestone 2 gate failed due to 2 edge cases in workflow.ts.
-- 3 Remediation Explorers formulated exact surgical fixes and verified 144/144 test pass.
-- Dispatched worker_m2_remediation to apply the surgical patches.
+- Milestone 2 initial gate failed due to 2 edge cases in workflow.ts.
+- Worker m2_remediation applied surgical patches, passing 355/355 tests across all suites.
+- Dispatched fresh 2 Reviewers, 2 Challengers, and 1 Auditor for M2 Remediation Gate.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
@@ -73,18 +73,33 @@ Sesuaikan fitur sistem blok pada aplikasi Sipjam untuk kebutuhan produksi agar l
 | explorer_m2_fix_1 | teamwork_explorer | Teacher Matching Fix Explorer | completed | f5020228-1613-46bb-a1bf-02321d138e6f |
 | explorer_m2_fix_2 | teamwork_explorer | Journal Fulfillment Fix Explorer | completed | ad5dc765-e4d1-43d0-875f-34a2823786f6 |
 | explorer_m2_fix_3 | teamwork_explorer | Stress Suite Analysis Explorer | completed | 6fbb75e5-808d-4d11-b94b-1d86834d03ed |
-| worker_m2_remediation | teamwork_worker | M2 Remediation Implementation | in-progress | 7f6e6153-7e0f-4957-8308-dbe5aef58db4 |
+| worker_m2_remediation | teamwork_worker | M2 Remediation Implementation | completed | 7f6e6153-7e0f-4957-8308-dbe5aef58db4 |
+| reviewer_m2_fix_1 | teamwork_reviewer | M2 Remediation Code Review | completed (APPROVE) | a30f102e-c263-480e-9532-e48ffb410868 |
+| reviewer_m2_fix_2 | teamwork_reviewer | M2 Remediation Architecture Review | completed (APPROVE) | da8fd088-e479-4e3a-aec5-cd27386ccc2d |
+| challenger_m2_fix_1 | teamwork_challenger | M2 Stress Re-Challenge | completed (APPROVE) | 219a0271-3c9a-459e-ae96-035f938ec0ca |
+| challenger_m2_fix_2 | teamwork_challenger | M2 Invariants Re-Challenge | completed (APPROVE) | 5660e87d-edf6-454a-b036-e706463cb75b |
+| auditor_m2_fix | teamwork_auditor | M2 Remediation Forensic Audit | completed (CLEAN) | b93a2fbc-4023-488a-b6fe-85d67bfa790b |
+| explorer_m3_1 | teamwork_explorer | Target Scope & CRUD Test Explorer | completed | 09d34f4e-aa27-4916-9e5b-9e259346fff9 |
+| explorer_m3_2 | teamwork_explorer | Schedule Masking & Isolation Explorer | completed | c2683029-632f-42c5-b6af-60e52a9dc9b9 |
+| explorer_m3_3 | teamwork_explorer | Journal & Compatibility Test Explorer | completed | ceacb98f-c885-4da3-832e-ac661e88baab |
+| test_writer_m3 | teamwork_test_writer | M3 Test Suite Expansion Implementation | completed | e4d1c200-c89e-4ccd-882e-0a2dbd690872 |
+| reviewer_m3_1 | teamwork_reviewer | Test Suite Correctness Reviewer | completed (APPROVE) | ff51065e-165e-4b8c-8031-307a884e8885 |
+| reviewer_m3_2 | teamwork_reviewer | Test Architecture & Edge-Case Reviewer | completed (APPROVE) | 0b25310e-8c52-46af-ac3e-ae0a0145c5ff |
+| challenger_m3_1 | teamwork_challenger | Empirical Execution & Stress Challenger | completed (APPROVE) | c96c0d98-e16a-4271-9941-8decb76023dd |
+| challenger_m3_2 | teamwork_challenger | Database Lifecycle & Isolation Challenger | completed (APPROVE) | 4231773f-a063-434b-9f33-95d66893cc0e |
+| auditor_m3_1 | teamwork_auditor | Forensic Integrity Auditor | completed (CLEAN) | f598b8db-2b15-476b-acb6-32a1f932cd91 |
+| worker_m4_final | teamwork_worker | Final Regression & Build Worker | in-progress | 29e46931-7946-44b3-a875-61983819766e |
 
 ## Succession Status
 - Succession required: no (orchestrator type self-spawn restricted in environment; continuing direct orchestration within 128 limit)
-- Spawn count: 19 / 128
-- Pending subagents: 7f6e6153-7e0f-4957-8308-dbe5aef58db4
+- Spawn count: 34 / 128
+- Pending subagents: 29e46931-7946-44b3-a875-61983819766e
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
 - Heartbeat cron: 4b795f59-8b14-4efc-839a-20e1afe8c2a0/task-38
-- Safety timer: 4b795f59-8b14-4efc-839a-20e1afe8c2a0/task-374
+- Safety timer: 4b795f59-8b14-4efc-839a-20e1afe8c2a0/task-411
 
 ## Artifact Index
 - ORIGINAL_REQUEST.md — c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md

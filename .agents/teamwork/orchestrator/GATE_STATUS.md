@@ -25,3 +25,31 @@ Gate Result: **PASS**
 | auditor_m2_1 (`a78dc491`) | teamwork_auditor | CLEAN | handoff.md |
 
 Gate Result: **FAIL** (reviewer_m2_1 & reviewer_m2_2 REQUEST_CHANGES: empty string matching bug in teacher-targeted block rules in `src/lib/workflow.ts:258-272` and mixed schedule fulfillment condition in `workflow.ts:985`)
+
+---
+
+## Gate — Iteration 3 (Milestone 2 Remediation: Workflow Engine, Schedule Masking & Journal Workflows)
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| worker_m2_remediation (`7f6e6153`) | teamwork_worker | DONE (build & tests passed) | handoff.md |
+| reviewer_m2_fix_1 (`a30f102e`) | teamwork_reviewer | APPROVE | handoff.md |
+| reviewer_m2_fix_2 (`da8fd088`) | teamwork_reviewer | APPROVE | handoff.md |
+| challenger_m2_fix_1 (`219a0271`) | teamwork_challenger | APPROVE | handoff.md |
+| challenger_m2_fix_2 (`5660e87d`) | teamwork_challenger | APPROVE | handoff.md |
+| auditor_m2_fix (`b93a2fbc`) | teamwork_auditor | CLEAN | handoff.md |
+
+Gate Result: **PASS** (All criteria met: builds and tests pass [355/355 assertions, 46 test suites], unanimous reviewer approval, unanimous challenger approval, clean forensic audit)
+
+---
+
+## Gate — Iteration 4 (Milestone 3: Automated Verification Test Suite Expansion)
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| test_writer_m3 (`e4d1c200`) | teamwork_test_writer | DONE (build & tests passed: 204/204, commit `ec63216` pushed) | handoff.md |
+| reviewer_m3_1 (`ff51065e`) | teamwork_reviewer | APPROVE | handoff.md |
+| reviewer_m3_2 (`0b25310e`) | teamwork_reviewer | APPROVE | handoff.md |
+| challenger_m3_1 (`c96c0d98`) | teamwork_challenger | APPROVE | handoff.md |
+| challenger_m3_2 (`4231773f`) | teamwork_challenger | APPROVE | handoff.md |
+| auditor_m3_1 (`f598b8db`) | teamwork_auditor | CLEAN | handoff.md |
+
+Gate Result: **PASS** (All criteria met: builds and tests pass [204/204 assertions in tests/sistem_blok_verification.test.ts, 0 errors in tsc], unanimous reviewer approval, unanimous challenger approval, clean forensic audit)
