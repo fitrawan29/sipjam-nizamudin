@@ -1,49 +1,69 @@
-## 2026-10-29T12:08:56Z
-You are the Functional Consolidation Worker for Milestone 2.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\
-Before starting work, YOU MUST read ORIGINAL_REQUEST.md located at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+## 2026-11-02T13:12:11Z
+
+You are worker_m2.
+Your role: teamwork_worker.
+Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\
+Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
 
 MANDATORY INTEGRITY WARNING:
 DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-Study the architectural blueprints and survey findings:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\spec_miner_survey\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_nav_arch\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m1_dinas_rekap\handoff.md
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\TEST_READY.md
+TASK ASSIGNMENT — Milestone 2: Workflow Engine, Granular Schedule Masking & Journal Workflows
 
-Your exclusive write ownership covers the following files:
-1. `src/components/GradebookView.tsx` (Cluster 3: Asesmen & Rapor Siswa):
-   - Add `initialTab?: 'gradebook' | 'rapor'`, render `ClayTabs`.
-   - Wrap existing Gradebook scoring UI inside `<div className={activeTab === 'gradebook' ? 'block' : 'hidden'}>` to guarantee in-memory keep-alive and zero draft loss.
-   - Embed `<RaporView user={user} assignedKelas={assignedKelas} />` inside `<div className={activeTab === 'rapor' ? 'block' : 'hidden'}>`.
-   - Implement defense-in-depth RBAC: if a non-WaliKelas / non-Admin user attempts to access `tab=rapor`, render a clean `<AccessDeniedCard />` warning.
-2. `src/components/AdminRekapView.tsx` (Cluster 4: Laporan & Analitik Kinerja):
-   - Add `ClayTabs` for `['analitik', 'tabel', 'cetak']`.
-   - Sub-tab 1 (`analitik`): Render Top 5 Leaderboard (Hadir*10 + Piket*10 + Jurnal*5 + Dinas*5) and KPI summary metrics derived directly from `tarikDataRekap` state.
-   - Sub-tab 2 (`tabel`): Render full 11-column table, teacher search filter, and summary badges.
-   - Sub-tab 3 (`cetak`): Render official print preview (`PrintHeader`, table, `PrintSignature`), paper print via `triggerPrintWithGps()`, and Excel export.
-   - Preserve all AST invariants (e.g. `isReadOnly?: boolean`, `PrintHeader`, `PrintSignature`, `isTestGuruName`). DO NOT delete `src/components/AnalitikView.tsx`.
-3. `src/components/AdminDataView.tsx` (Cluster 5A: Master Data & Sistem Blok):
-   - Add Tab 6: `sistem_blok` / `Periode Sistem Blok` to the tab bar, embedding `<SistemBlokView user={user} />`. DO NOT delete `src/components/SistemBlokView.tsx`.
-4. `src/components/AdminConfigView.tsx` (Cluster 5B: Pengaturan Sistem & Backup):
-   - Add Tab 5: `backup` / `Pencadangan Database` to the tab bar, embedding `<AdminBackupView user={user} />`. DO NOT delete `src/components/AdminBackupView.tsx`.
-5. `src/components/AdminVerifView.tsx` (Cluster 6: Pusat Verifikasi & Supervisi Terpadu):
-   - Add Tab 4: `dokumen` / `Perangkat Pembelajaran` embedding curriculum verification matrix from `DokumenView.tsx`. DO NOT delete `src/components/DokumenView.tsx`.
-6. `src/components/RekapSiswaView.tsx` (Cluster 7: Kesiswaan & Piket Harmonisasi):
-   - Ensure seamless transition between gate attendance (`gerbang`) and monthly summary (`rekap`) with real-time pickup of gate scans.
-7. `src/components/AppScreen.tsx`:
-   - Propagate `initialTab`, `assignedKelas`, `isKepalaSekolah` to `GradebookView`.
-   - Strictly preserve all existing AST regex guards verbatim (`{currentView === 'view-rapor' && ...}`, `{currentView === 'view-sistem-blok' && ...}`, etc.).
+1. Background & References:
+   - Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+   - Read c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+   - Read explorer survey findings in c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\analysis.md and handoff.md
 
-Verification Requirements:
-- Run `npx tsx tests/navigation_consolidation_verification.test.ts` -> all 150 assertions must pass 100%.
-- Run `npx tsc --noEmit` -> 0 errors.
-- Run `npm test` -> all 41 test suites must pass 100% (zero regression).
+2. Scope & File Ownership:
+   You own the following files exclusively:
+   - `src/lib/workflow.ts`
+   - `src/components/HomeViewGuru.tsx`
+   - `src/components/GuruJurnal.tsx`
+   - `tests/m2_schedule_masking_workflow.test.ts` (test for this milestone)
 
-Write your completion report to:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
-Update progress in c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\progress.md.
-Send a completion message to the orchestrator (conversation ID: 095792d8-1a85-4945-889d-abf25d3c7740).
+3. Detailed Requirements:
+   A. Workflow Matching Engine (`src/lib/workflow.ts`):
+      - Implement `getActiveSistemBloks(dateStr?: string, sekolahId?: string): Promise<SistemBlok[]>` returning all block rules active on `dateStr` for `sekolahId`.
+      - Maintain `getActiveSistemBlok(dateStr?: string, sekolahId?: string)` as backward-compatible wrapper.
+      - Implement `isKelasInAngkatan(kelas: string | null | undefined, angkatan: string): boolean`:
+        * Matches grade tokens (e.g. 10 <-> X, 11 <-> XI, 12 <-> XII, 7 <-> VII, 8 <-> VIII, 9 <-> IX).
+        * Uses word boundaries or equivalent matching (e.g. "X Merdeka" matches "10" and "X").
+      - Implement `isTimeRangeOverlap(schedStart?: string | null, schedEnd?: string | null, blokStart?: string | null, blokEnd?: string | null): boolean`:
+        * If block has no start and end time (`!blokStart && !blokEnd`), or `is_full_day: true`: returns true (full day overlap).
+        * If schedule has explicit times and block has explicit times: evaluates `sStart < bEnd && sEnd > bStart`.
+        * Robust time parser supporting `HH:mm` or `HH.mm`.
+      - Implement `evaluateScheduleBlock(schedule, teacher, activeBloks)`:
+        * Matches target:
+          - `sekolah`: all schedules match
+          - `angkatan`: matches if `isKelasInAngkatan(schedule.kelas, rule.target_angkatan)`
+          - `kelas`: matches if `schedule.kelas.toLowerCase().trim() === rule.target_kelas.toLowerCase().trim()`
+          - `guru`: matches if teacher ID or teacher name matches `target_guru_id` or `target_guru_nama`
+        * Matches time overlap using `isTimeRangeOverlap`.
+        * Returns `{ isBlocked: boolean, blockRule?: SistemBlok, reason?: string }`.
+      - In `getGuruDailyState()`:
+        * Evaluate all schedules in `state.jadwalKBM` using `evaluateScheduleBlock`.
+        * Each schedule item receives `isBlocked: boolean` and `blockRule?: SistemBlok`.
+        * If all schedules are blocked or a whole-school full-day block is active, `state.isBlok = true`.
+        * Add `state.hasBlockedSchedule = state.jadwalKBM.some(s => s.isBlocked)`.
+   B. Teacher Home Dashboard (`src/components/HomeViewGuru.tsx`):
+      - Update schedule rendering:
+        * If all schedules are blocked or full-day whole-school block is active: render the full-day block alert banner as before.
+        * If mixed schedules exist (some blocked, some unblocked):
+          - Render unblocked schedules as regular KBM cards with standard action buttons.
+          - Render blocked schedules with distinct "Kegiatan Blok" badge / masking and button to "Isi Jurnal Kegiatan".
+   C. Teacher Journal Interface (`src/components/GuruJurnal.tsx`):
+      - Support filling `Jurnal Kegiatan (Sistem Blok)` when any schedule is blocked or when active block applies.
+      - In mixed schedule scenarios, allow the teacher to choose between `Jurnal KBM` (for unblocked schedules) and `Jurnal Kegiatan` (for blocked schedules).
+      - Ensure submitting `Jurnal Kegiatan` marks teaching obligations as fulfilled for the blocked periods.
+   D. Verification:
+      - Write unit/integration test in `tests/m2_schedule_masking_workflow.test.ts`.
+      - Run TypeScript check: `npx tsc --noEmit`.
+      - Run existing test suites: `npx tsx tests/sistem_blok_verification.test.ts` (all 85 tests MUST pass without regressions).
+      - Run new test: `npx tsx tests/m2_schedule_masking_workflow.test.ts`.
+
+4. Deliverables:
+   - Write comprehensive report to: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
+   - Include command outputs and verification evidence in handoff.
+   - Send completion message to orchestrator when finished.

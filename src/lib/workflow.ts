@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { getWitaDateStr, getWitaDayName } from './wita';
 import { isInvalidMapel } from './dataIntegrityGuard';
+import type { SistemBlok } from '@/types/database';
 
 export type GuruDailyState = {
   tanggal: string;
@@ -29,6 +30,8 @@ export type GuruDailyState = {
     tanggal_mulai: string;
     tanggal_selesai: string;
   } | null;
+  hasBlockedSchedule?: boolean;
+  activeBloks?: SistemBlok[];
 
   // Status flags
   canOpenPiket: boolean;
@@ -64,9 +67,9 @@ export type GuruDailyState = {
 };
 
 /**
- * Helper: Ambil data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
+ * Helper: Ambil semua data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
  */
-export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string): Promise<any | null> {
+export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string): Promise<SistemBlok[]> {
   try {
     const rawDate = dateStr || getWitaDateStr();
     const targetDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.trim();
@@ -83,12 +86,212 @@ export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string):
     query = query.order('created_at', { ascending: false });
 
     const { data, error } = await query;
-    if (error || !data || data.length === 0) return null;
-    return data[0];
+    if (error || !data || data.length === 0) return [];
+    return data as SistemBlok[];
   } catch (err) {
-    console.warn('Error fetching active sistem_blok:', err);
-    return null;
+    console.warn('Error fetching active sistem_bloks:', err);
+    return [];
   }
+}
+
+/**
+ * Helper: Ambil data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
+ * Backward-compatible wrapper mengembalikan aturan pertama yang aktif.
+ */
+export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string): Promise<any | null> {
+  const bloks = await getActiveSistemBloks(dateStr, sekolahId);
+  return bloks.length > 0 ? bloks[0] : null;
+}
+
+/**
+ * Helper: Cek apakah kelas berada di dalam angkatan tertentu (misal: 10 <-> X, 11 <-> XI, 12 <-> XII).
+ * Mendukung pencocokan token kelas dengan word boundaries atau pemisah umum (spasi, titik, strip).
+ */
+export function isKelasInAngkatan(kelas: string | null | undefined, angkatan: string): boolean {
+  if (!kelas || !angkatan) return false;
+  const k = kelas.trim().toLowerCase();
+  const a = angkatan.trim().toLowerCase();
+  if (k === a) return true;
+
+  const gradeEquivalents: Record<string, string[]> = {
+    '10': ['10', 'x'],
+    'x': ['10', 'x'],
+    '11': ['11', 'xi'],
+    'xi': ['11', 'xi'],
+    '12': ['12', 'xii'],
+    'xii': ['12', 'xii'],
+    '7': ['7', 'vii'],
+    'vii': ['7', 'vii'],
+    '8': ['8', 'viii'],
+    'viii': ['8', 'viii'],
+    '9': ['9', 'ix'],
+    'ix': ['9', 'ix'],
+    '1': ['1', 'i'],
+    'i': ['1', 'i'],
+    '2': ['2', 'ii'],
+    'ii': ['2', 'ii'],
+    '3': ['3', 'iii'],
+    'iii': ['3', 'iii'],
+    '4': ['4', 'iv'],
+    'iv': ['4', 'iv'],
+    '5': ['5', 'v'],
+    'v': ['5', 'v'],
+    '6': ['6', 'vi'],
+    'vi': ['6', 'vi'],
+  };
+
+  const tokens = gradeEquivalents[a] || [a];
+
+  return tokens.some(token => {
+    if (/^\d+$/.test(token)) {
+      const numRegex = new RegExp(`(^|[^0-9])${token}([^0-9]|$)`, 'i');
+      return numRegex.test(k);
+    }
+    const romanRegex = new RegExp(`(^|[^a-z0-9])${token}([^a-z0-9]|(?![ivx])[a-z]|$)`, 'i');
+    return romanRegex.test(k);
+  });
+}
+
+/**
+ * Helper: Parse string waktu format "HH:mm" atau "HH.mm" menjadi menit dari 00:00.
+ */
+export function parseTimeToMinutes(t?: string | null, fallbackMinutes = 0): number {
+  if (!t) return fallbackMinutes;
+  const clean = t.replace('.', ':').trim();
+  const parts = clean.split(':').map(Number);
+  if (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+    return parts[0] * 60 + parts[1];
+  }
+  return fallbackMinutes;
+}
+
+/**
+ * Helper: Evaluasi apakah rentang waktu jadwal beririsan dengan rentang waktu sistem blok.
+ * Jika sistem blok berlaku penuh sepanjang hari (is_full_day atau tanpa jam), selalu beririsan (true).
+ */
+export function isTimeRangeOverlap(
+  schedStart?: string | null,
+  schedEnd?: string | null,
+  blokStart?: string | null,
+  blokEnd?: string | null,
+  isFullDay?: boolean
+): boolean {
+  if (isFullDay === true) return true;
+  if (!blokStart && !blokEnd) return true;
+
+  const bStartMin = parseTimeToMinutes(blokStart, 0);
+  const bEndMin = parseTimeToMinutes(blokEnd, 24 * 60);
+
+  if (!schedStart && !schedEnd) return true;
+
+  const sStartMin = parseTimeToMinutes(schedStart, bStartMin);
+  const sEndMin = parseTimeToMinutes(schedEnd, sStartMin + 90);
+
+  return sStartMin < bEndMin && sEndMin > bStartMin;
+}
+
+export interface ScheduleBlockEvaluation {
+  isBlocked: boolean;
+  blockRule?: SistemBlok;
+  reason?: string;
+}
+
+/**
+ * Helper: Evaluasi apakah satu item jadwal pelajaran diblokir oleh salah satu sistem blok aktif.
+ */
+export function evaluateScheduleBlock(
+  schedule: {
+    kelas?: string;
+    nama_guru?: string;
+    user_id?: string;
+    guru_id?: string;
+    jam_mulai?: string;
+    jam_selesai?: string;
+    [key: string]: any;
+  },
+  teacher: {
+    id?: string;
+    user_id?: string;
+    nama?: string;
+    nama_guru?: string;
+    [key: string]: any;
+  },
+  activeBloks: SistemBlok[]
+): ScheduleBlockEvaluation {
+  if (!activeBloks || activeBloks.length === 0) {
+    return { isBlocked: false };
+  }
+
+  for (const rule of activeBloks) {
+    let targetMatches = false;
+    const targetType = (rule.tipe_target || 'sekolah').toLowerCase().trim();
+
+    if (targetType === 'sekolah' || targetType === 'keseluruhan') {
+      targetMatches = true;
+    } else if (targetType === 'angkatan') {
+      const targetAngkatan = rule.target_angkatan || (rule as any).target_id || '';
+      targetMatches = isKelasInAngkatan(schedule.kelas, targetAngkatan);
+    } else if (targetType === 'kelas') {
+      const targetKelas = (rule.target_kelas || (rule as any).target_id || '').trim().toLowerCase();
+      const schedKelas = (schedule.kelas || '').trim().toLowerCase();
+      targetMatches = Boolean(targetKelas && schedKelas === targetKelas);
+    } else if (targetType === 'guru') {
+      const targetGuruId = (rule.target_guru_id || (rule as any).target_id || '').trim().toLowerCase();
+      const targetGuruNama = (rule.target_guru_nama || '').trim().toLowerCase();
+
+      const teacherId = String(teacher.id || '').trim().toLowerCase();
+      const teacherUserId = String(teacher.user_id || '').trim().toLowerCase();
+      const schedUserId = String(schedule.user_id || '').trim().toLowerCase();
+      const schedGuruId = String(schedule.guru_id || '').trim().toLowerCase();
+
+      const teacherNama = String(teacher.nama || teacher.nama_guru || '').trim().toLowerCase();
+      const schedNamaGuru = String(schedule.nama_guru || '').trim().toLowerCase();
+
+      const idMatches = Boolean(
+        targetGuruId &&
+        (targetGuruId === teacherId ||
+          targetGuruId === teacherUserId ||
+          targetGuruId === schedUserId ||
+          targetGuruId === schedGuruId)
+      );
+
+      const namaMatches = Boolean(
+        targetGuruNama &&
+        (teacherNama.includes(targetGuruNama) ||
+          targetGuruNama.includes(teacherNama) ||
+          schedNamaGuru.includes(targetGuruNama) ||
+          targetGuruNama.includes(schedNamaGuru))
+      );
+
+      const fallbackMatches = Boolean(
+        targetGuruId &&
+        (teacherNama.includes(targetGuruId) ||
+          schedNamaGuru.includes(targetGuruId))
+      );
+
+      targetMatches = idMatches || namaMatches || fallbackMatches;
+    }
+
+    if (!targetMatches) continue;
+
+    const timeOverlaps = isTimeRangeOverlap(
+      schedule.jam_mulai,
+      schedule.jam_selesai,
+      rule.jam_mulai,
+      rule.jam_selesai,
+      rule.is_full_day
+    );
+
+    if (timeOverlaps) {
+      return {
+        isBlocked: true,
+        blockRule: rule,
+        reason: `Diblokir oleh sistem blok: ${rule.nama_kegiatan}`
+      };
+    }
+  }
+
+  return { isBlocked: false };
 }
 
 /**
@@ -242,16 +445,33 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
   try {
     // 0. Cek Sistem Blok aktif hari ini
+    let activeBloks: SistemBlok[] = [];
     try {
-      const activeBlok = await getActiveSistemBlok(todayStr, sekolahId);
-      if (activeBlok) {
+      activeBloks = await getActiveSistemBloks(todayStr, sekolahId);
+      state.activeBloks = activeBloks;
+
+      const wholeSchoolFullDay = activeBloks.find(b => 
+        (b.tipe_target === 'sekolah' || (b.tipe_target as any) === 'keseluruhan' || !b.tipe_target) &&
+        (b.is_full_day !== false || (!b.jam_mulai && !b.jam_selesai))
+      );
+
+      if (wholeSchoolFullDay) {
         state.isBlok = true;
         state.blokInfo = {
-          id: activeBlok.id,
-          nama_kegiatan: activeBlok.nama_kegiatan,
-          deskripsi: activeBlok.deskripsi,
-          tanggal_mulai: activeBlok.tanggal_mulai,
-          tanggal_selesai: activeBlok.tanggal_selesai,
+          id: wholeSchoolFullDay.id,
+          nama_kegiatan: wholeSchoolFullDay.nama_kegiatan,
+          deskripsi: wholeSchoolFullDay.deskripsi,
+          tanggal_mulai: wholeSchoolFullDay.tanggal_mulai,
+          tanggal_selesai: wholeSchoolFullDay.tanggal_selesai,
+        };
+      } else if (activeBloks.length > 0) {
+        const firstBlok = activeBloks[0];
+        state.blokInfo = {
+          id: firstBlok.id,
+          nama_kegiatan: firstBlok.nama_kegiatan,
+          deskripsi: firstBlok.deskripsi,
+          tanggal_mulai: firstBlok.tanggal_mulai,
+          tanggal_selesai: firstBlok.tanggal_selesai,
         };
       }
     } catch (bErr) {
@@ -409,6 +629,53 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     // Selalu muat jadwal KBM hari ini untuk guru (tidak ditekan oleh isDinasLuar ataupun presensi datang)
     state.jadwalKBM = await findJadwalForGuru(selectedHari, namaGuru, username, userId, sekolahId);
+
+    // Evaluasi setiap item jadwal pelajaran terhadap sistem blok aktif
+    const teacherRef = {
+      id: teacherDataGuruId || userId,
+      user_id: userId,
+      nama: namaGuru,
+      nama_guru: namaGuru,
+    };
+
+    state.jadwalKBM = (state.jadwalKBM || []).map((jk: any) => {
+      const evalResult = evaluateScheduleBlock(jk, teacherRef, activeBloks);
+      return {
+        ...jk,
+        isBlocked: evalResult.isBlocked,
+        blockRule: evalResult.blockRule || null,
+        blockedReason: evalResult.reason || null,
+      };
+    });
+
+    const hasBlocked = state.jadwalKBM.some((jk: any) => jk.isBlocked);
+    const allBlocked = state.jadwalKBM.length > 0 && state.jadwalKBM.every((jk: any) => jk.isBlocked);
+    state.hasBlockedSchedule = hasBlocked;
+
+    if (allBlocked) {
+      state.isBlok = true;
+      const matchedRule = state.jadwalKBM.find((jk: any) => jk.blockRule)?.blockRule;
+      if (matchedRule) {
+        state.blokInfo = {
+          id: matchedRule.id,
+          nama_kegiatan: matchedRule.nama_kegiatan,
+          deskripsi: matchedRule.deskripsi,
+          tanggal_mulai: matchedRule.tanggal_mulai,
+          tanggal_selesai: matchedRule.tanggal_selesai,
+        };
+      }
+    } else if (state.jadwalKBM.length === 0 && activeBloks.length > 0) {
+      const teacherMatches = activeBloks.some(b => {
+        if (b.tipe_target === 'sekolah' || (b.tipe_target as any) === 'keseluruhan' || !b.tipe_target) return true;
+        if (b.tipe_target === 'guru') {
+          return evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
+        }
+        return false;
+      });
+      if (teacherMatches) {
+        state.isBlok = true;
+      }
+    }
 
     // 3. Cek Piket Hari Ini (case-insensitive matching)
     // Guru pengecualian (wajib hadir hanya di hari mengajar) dibebaskan dari piket saat sistem blok aktif jika tidak ada jadwal hari ini
@@ -706,11 +973,16 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       if (isTeacherExempt && state.jadwalKBM.length === 0) isJurnalDone = true;
       if (state.jadwalKBM.length === 0 && state.isPiket) isJurnalDone = true;
     } else {
-      // Harus isi KBM sejumlah jadwal - gunakan fuzzy matching
-      const fulfilled = state.jadwalKBM.every(jk => 
+      // Evaluasi jadwal reguler dan jadwal yang terblokir
+      const unblockedSchedules = state.jadwalKBM.filter((jk: any) => !jk.isBlocked);
+      const blockedSchedules = state.jadwalKBM.filter((jk: any) => jk.isBlocked);
+
+      const unblockedFulfilled = unblockedSchedules.every(jk => 
         state.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk))
       );
-      if (fulfilled || state.jurnalKegiatan) isJurnalDone = true;
+      const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
+
+      if ((unblockedFulfilled && blockedFulfilled) || state.jurnalKegiatan) isJurnalDone = true;
     }
 
     let isPiketDone = true;

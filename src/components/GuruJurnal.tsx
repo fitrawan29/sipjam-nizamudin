@@ -513,6 +513,17 @@ export default function GuruJurnal({
         if (state.blokInfo?.nama_kegiatan) {
           setMateri(state.blokInfo.nama_kegiatan);
         }
+      } else if (state.hasBlockedSchedule) {
+        setDateBlok(state.blokInfo || (state.activeBloks && state.activeBloks[0]) || null);
+        const hasPendingUnblocked = state.jadwalKBM.some((jk: any) => !jk.isBlocked && !(state.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk)));
+        if (hasPendingUnblocked) {
+          setTipeJurnal('Jurnal KBM');
+        } else {
+          setTipeJurnal('Jurnal Kegiatan');
+          if (state.blokInfo?.nama_kegiatan) {
+            setMateri(state.blokInfo.nama_kegiatan);
+          }
+        }
       } else if (state.isDinasLuar) {
         setTipeJurnal('Jurnal Kegiatan');
       } else if (state.jadwalKBM && state.jadwalKBM.length > 0) {
@@ -1251,7 +1262,7 @@ export default function GuruJurnal({
                 <div>
                   <div className="font-bold">Periode Sistem Blok Aktif: {dateBlok.nama_kegiatan}</div>
                   <div className="text-[11px] mt-0.5 text-amber-700 dark:text-amber-300 leading-relaxed">
-                    Jadwal KBM reguler ditiadakan sementara dan digantikan oleh kegiatan khusus ini. Anda hanya perlu mengisi form <strong>Jurnal Kegiatan</strong> di bawah ini (tidak perlu mengisi jurnal absensi kelas reguler).
+                    Jadwal KBM reguler ditiadakan sementara dan digantikan oleh kegiatan khusus ini{dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? ' untuk jam pelajaran yang terblokir' : ''}. Anda hanya perlu mengisi form <strong>Jurnal Kegiatan</strong> di bawah ini (tidak perlu mengisi jurnal absensi kelas reguler){dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? ', atau pilih opsi Jurnal KBM di bawah jika mengisi kelas reguler Anda yang tidak diblok' : ''}.
                   </div>
                   {dateBlok.deskripsi && (
                     <div className="text-[11px] mt-1.5 italic bg-amber-100/60 dark:bg-amber-900/40 p-2 rounded-lg text-amber-900 dark:text-amber-200">
@@ -1313,10 +1324,37 @@ export default function GuruJurnal({
             <form onSubmit={handleJurnalSubmit} className={`space-y-4 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div>
                     <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Jenis Jurnal</label>
-                    <select value={tipeJurnal} disabled className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
-                        <option value={tipeJurnal}>{tipeJurnal} {dateBlok ? `(Sistem Blok: ${dateBlok.nama_kegiatan})` : dailyState?.isDinasLuar ? '(Dinas Luar)' : ''}</option>
-                    </select>
-                    <p className="text-[9px] text-gray-500 dark:text-white/80 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
+                    {dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? (
+                      <div className="space-y-1.5">
+                        <select
+                          value={tipeJurnal}
+                          onChange={(e) => {
+                            const val = e.target.value as 'Jurnal KBM' | 'Jurnal Kegiatan';
+                            setTipeJurnal(val);
+                            if (val === 'Jurnal Kegiatan') {
+                              const blockName = dateBlok?.nama_kegiatan || dailyState?.blokInfo?.nama_kegiatan || '';
+                              if (blockName) setMateri(blockName);
+                            } else if (val === 'Jurnal KBM') {
+                              setMateri('');
+                            }
+                          }}
+                          className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 border-2 border-emerald-500/60 cursor-pointer shadow-sm"
+                        >
+                          <option value="Jurnal KBM">Jurnal KBM (Jadwal Mengajar Reguler)</option>
+                          <option value="Jurnal Kegiatan">Jurnal Kegiatan (Sistem Blok: {dateBlok?.nama_kegiatan || dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'})</option>
+                        </select>
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium ml-1">
+                          <i className="fa-solid fa-circle-info mr-1"></i> Jadwal campuran aktif: Silakan pilih Jurnal KBM untuk kelas reguler atau Jurnal Kegiatan untuk jam yang diblokir.
+                        </p>
+                      </div>
+                    ) : (
+                      <select value={tipeJurnal} disabled className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
+                          <option value={tipeJurnal}>{tipeJurnal} {dateBlok ? `(Sistem Blok: ${dateBlok.nama_kegiatan})` : dailyState?.isDinasLuar ? '(Dinas Luar)' : ''}</option>
+                      </select>
+                    )}
+                    {(!dailyState?.hasBlockedSchedule || dailyState?.isBlok) && (
+                      <p className="text-[9px] text-gray-500 dark:text-white/80 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
+                    )}
                 </div>
 
                 {/* {tipeJurnal === 'Jurnal KBM' && ( Pertemuan Ke- Kehadiran Murid ) */}

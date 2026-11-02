@@ -810,9 +810,16 @@ export default function HomeViewGuru({
                   </span>
                 ) : null}
                 {!dailyState?.isBlok && dailyState && dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0 && (
-                  <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                    {dailyState.jadwalKBM.length} Kelas
-                  </span>
+                  <>
+                    {dailyState.hasBlockedSchedule && (
+                      <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                        <i className="fa-solid fa-layer-group text-[9px]"></i> Campuran
+                      </span>
+                    )}
+                    <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                      {dailyState.jadwalKBM.length} Kelas
+                    </span>
+                  </>
                 )}
               </div>
             </div>
@@ -928,13 +935,67 @@ export default function HomeViewGuru({
               <div className="space-y-2.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {dailyState.jadwalKBM.map((jk: any, idx: number) => {
-                    const isFilled = (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk));
+                    const isBlocked = Boolean(jk.isBlocked);
+                    const isFilled = isBlocked
+                      ? Boolean(dailyState.jurnalKegiatan)
+                      : (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk));
                     const kelasStr = (jk.kelas || '').trim();
                     const gradeBadge = kelasStr.startsWith('X ') || kelasStr === 'X'
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
                       : kelasStr.startsWith('XI ') || kelasStr === 'XI'
                       ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-300 dark:border-blue-700'
                       : 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border-purple-300 dark:border-purple-700';
+
+                    if (isBlocked) {
+                      return (
+                        <div 
+                          key={jk.id || `${jk.kelas}-${jk.mata_pelajaran}-${idx}`}
+                          className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-300/80 dark:border-amber-800/60 shadow-sm flex flex-col justify-between gap-2 transition"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${gradeBadge} leading-none`}>
+                                  {jk.kelas}
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 dark:bg-amber-900 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700 leading-none">
+                                  <i className="fa-solid fa-layer-group text-[8px]"></i> Kegiatan Blok
+                                </span>
+                              </div>
+                              <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-tight truncate" title={jk.mata_pelajaran}>
+                                {jk.mata_pelajaran}
+                              </h4>
+                              <p className="text-[10px] text-amber-800 dark:text-amber-300 font-medium mt-0.5 truncate">
+                                {jk.blockRule?.nama_kegiatan || dailyState.blokInfo?.nama_kegiatan || 'Sistem Blok Aktif'}
+                              </p>
+                            </div>
+                            
+                            {isFilled ? (
+                              <span className="shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border border-emerald-300 dark:border-emerald-700">
+                                <i className="fa-solid fa-circle-check text-[8px]"></i> Jurnal Selesai
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setView('view-guru-jurnal')}
+                                className="btn-click shrink-0 bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 shadow-sm transition"
+                              >
+                                <i className="fa-solid fa-pen-to-square text-[8px]"></i> Isi Jurnal Kegiatan
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1.5 border-t border-amber-200/50 dark:border-amber-800/40">
+                            <span className="flex items-center gap-1 truncate text-amber-900/80 dark:text-amber-300/80">
+                              <i className="fa-solid fa-clock text-[9px]"></i> {jk.jam_mulai && jk.jam_selesai ? `${jk.jam_mulai} - ${jk.jam_selesai}` : 'Jam KBM'} (Terblokir)
+                            </span>
+                            <span className="text-[9px] font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">
+                              {hariIni}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div 
@@ -979,12 +1040,19 @@ export default function HomeViewGuru({
                   })}
                 </div>
 
-                <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-gray-500 dark:text-gray-400">
-                  <span>
-                    Progres Jurnal: <strong className="text-gray-900 dark:text-white">
-                      {(dailyState.jadwalKBM || []).filter(jk => (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk))).length}
-                    </strong> dari <strong className="text-gray-900 dark:text-white">{(dailyState.jadwalKBM || []).length}</strong> kelas selesai
-                  </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-2 px-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span>
+                      Progres Jurnal: <strong className="text-gray-900 dark:text-white">
+                        {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk))).length}
+                      </strong> dari <strong className="text-gray-900 dark:text-white">{(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked).length}</strong> kelas reguler
+                    </span>
+                    {dailyState.hasBlockedSchedule && (
+                      <span className="text-amber-800 dark:text-amber-300 font-semibold">
+                        · Kegiatan Blok: {dailyState.jurnalKegiatan ? <span className="text-emerald-600 dark:text-emerald-400 font-bold">Selesai ✓</span> : <span className="text-amber-600 dark:text-amber-400 font-bold">Belum Diisi</span>}
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => setView('view-guru-jurnal')}

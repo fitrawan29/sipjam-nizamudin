@@ -34,19 +34,19 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | F1: Database Schema & Type Expansion | Add target columns (`tipe_target`, `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`) and time range columns (`is_full_day`, `jam_mulai`, `jam_selesai`) to `public.sistem_blok` and update `src/types/database.ts` | M1 | Survey | PLANNED |
-| 2 | F2: Admin UI Target & Time Range Configuration | Update `src/components/SistemBlokView.tsx` with target type selector, dependent dropdowns (angkatan, kelas, guru), full-day toggle, time pickers, and visual badges | M1 | Survey | PLANNED |
-| 3 | F3: Granular Schedule Masking & Workflow Engine | Implement `getActiveSistemBloks`, `isKelasInAngkatan`, `isTimeRangeOverlap`, and `evaluateScheduleBlock` in `src/lib/workflow.ts` | M2 | Survey | PLANNED |
-| 4 | F4: Teacher Dashboard & Mixed Schedule Masking | Update `src/components/HomeViewGuru.tsx` to selectively mask affected schedules while rendering unaffected schedules as active KBM | M2 | Survey | PLANNED |
-| 5 | F5: Jurnal Kegiatan & Jurnal KBM Integration | Ensure `src/components/GuruJurnal.tsx` supports filling `Jurnal Kegiatan` for affected teachers/classes while keeping regular `Jurnal KBM` for unblocked classes | M2 | Survey | PLANNED |
+| 1 | F1: Database Schema & Type Expansion | Add target columns (`tipe_target`, `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`) and time range columns (`is_full_day`, `jam_mulai`, `jam_selesai`) to `public.sistem_blok` and update `src/types/database.ts` | M1 | Survey | DONE |
+| 2 | F2: Admin UI Target & Time Range Configuration | Update `src/components/SistemBlokView.tsx` with target type selector, dependent dropdowns (angkatan, kelas, guru), full-day toggle, time pickers, and visual badges | M1 | Survey | DONE |
+| 3 | F3: Granular Schedule Masking & Workflow Engine | Implement `getActiveSistemBloks`, `isKelasInAngkatan`, `isTimeRangeOverlap`, and `evaluateScheduleBlock` in `src/lib/workflow.ts` | M2 | Survey | IN_PROGRESS |
+| 4 | F4: Teacher Dashboard & Mixed Schedule Masking | Update `src/components/HomeViewGuru.tsx` to selectively mask affected schedules while rendering unaffected schedules as active KBM | M2 | Survey | IN_PROGRESS |
+| 5 | F5: Jurnal Kegiatan & Jurnal KBM Integration | Ensure `src/components/GuruJurnal.tsx` supports filling `Jurnal Kegiatan` for affected teachers/classes while keeping regular `Jurnal KBM` for unblocked classes | M2 | Survey | IN_PROGRESS |
 | 6 | F6: Automated Verification Suite Expansion | Expand `tests/sistem_blok_verification.test.ts` to test all 4 target types, hour-range filtering, schedule isolation matrix, and journal submission | M3 | Survey | PLANNED |
 | 7 | F7: Full Regression & Code Integrity Verification | Run full test suite (`npm test`), static type check (`npx tsc --noEmit`), and production build verification (`npm run build`) | M4 | Survey | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Database Schema, Types & Admin Configuration UI | Schema migration script, `src/types/database.ts`, `src/components/SistemBlokView.tsx` | none | PLANNED |
-| M2 | Workflow Engine, Granular Schedule Masking & Journal Workflows | `src/lib/workflow.ts`, `src/components/HomeViewGuru.tsx`, `src/components/GuruJurnal.tsx` | M1 | PLANNED |
+| M1 | Database Schema, Types & Admin Configuration UI | Schema migration script, `src/types/database.ts`, `src/components/SistemBlokView.tsx` | none | DONE |
+| M2 | Workflow Engine, Granular Schedule Masking & Journal Workflows | `src/lib/workflow.ts`, `src/components/HomeViewGuru.tsx`, `src/components/GuruJurnal.tsx` | M1 | IN_PROGRESS |
 | M3 | Automated Verification Test Suite Expansion | Expand `tests/sistem_blok_verification.test.ts` to cover all target scopes, time boundaries, and isolation scenarios | M2 | PLANNED |
 | M4 | Final Milestone: Full Regression & Integrity Audit | 100% test pass on all test suites, TypeScript compilation, build verification, and forensic audit | M3 | PLANNED |
 
@@ -91,13 +91,14 @@ export function evaluateScheduleBlock(
   teacher: { id?: string; user_id?: string; nama?: string; nama_guru?: string },
   activeBloks: SistemBlok[]
 ): ScheduleBlockEvaluation;
+export function getActiveSistemBloks(dateStr?: string, sekolahId?: string): Promise<SistemBlok[]>;
 ```
 
 ## Code Layout
 - `supabase/migrations/20261102_flexible_sistem_blok.sql`: SQL migration adding target and time range columns to `public.sistem_blok`.
 - `src/types/database.ts`: TypeScript definitions for `sistem_blok` Row, Insert, Update, and `SistemBlok`.
 - `src/components/SistemBlokView.tsx`: Admin management UI for Sistem Blok with target and time range configuration.
-- `src/lib/workflow.ts`: Core workflow logic and schedule block evaluation functions.
+- `src/lib/workflow.ts`: Core workflow logic, `getActiveSistemBloks`, and schedule block evaluation functions.
 - `src/components/HomeViewGuru.tsx`: Teacher home dashboard with granular schedule masking.
 - `src/components/GuruJurnal.tsx`: Teacher journal entry interface with flexible block journal support.
 - `tests/sistem_blok_verification.test.ts`: Expanded verification test suite.
