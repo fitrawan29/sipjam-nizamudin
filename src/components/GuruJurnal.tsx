@@ -372,7 +372,7 @@ export default function GuruJurnal({
         }
 
         const queryRes = await query.order('nama_mapel', { ascending: true });
-        let data = queryRes.data;
+        let data = (queryRes.data || []).filter((d: any) => !isInvalidMapel(d.nama_mapel || d.mata_pelajaran));
         const error = queryRes.error;
 
         if (error) {
@@ -824,6 +824,9 @@ export default function GuruJurnal({
       }
       if (!mapel || !mapel.trim()) {
         return showToast('Mata Pelajaran Wajib', 'Silakan pilih mata pelajaran.', 'warning');
+      }
+      if (isInvalidMapel(mapel)) {
+        return showToast('Mata Pelajaran Tidak Valid', `Mata pelajaran "${mapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`, 'warning');
       }
       if (!kelas || !kelas.trim()) {
         return showToast('Kelas Wajib', 'Silakan pilih kelas.', 'warning');

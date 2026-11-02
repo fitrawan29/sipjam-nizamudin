@@ -19,7 +19,8 @@ import {
   isDummyOrTestString,
   isInvalidMapel,
   normalizeScheduleMapel,
-  validateScheduleData
+  validateScheduleData,
+  validateMapelData
 } from '@/lib/dataIntegrityGuard';
 import {
   parseNameAndTitles,
@@ -131,6 +132,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       } else if (data && data.length > 0) {
         const cleanData = tabObj.table === 'jadwal_pelajaran'
           ? data.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
+          : tabObj.table === 'data_mapel'
+          ? data.filter((row: any) => !isInvalidMapel(row.nama_mata_pelajaran || row.nama_mapel))
           : data;
         setDataList(cleanData);
         setDebugInfo(`Berhasil memuat ${cleanData.length} baris dari "${tabObj.table}"`);
@@ -175,6 +178,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               if (Array.isArray(fallbackData) && fallbackData.length > 0) {
                 const cleanFallback = tabObj.table === 'jadwal_pelajaran'
                   ? fallbackData.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
+                  : tabObj.table === 'data_mapel'
+                  ? fallbackData.filter((row: any) => !isInvalidMapel(row.nama_mata_pelajaran || row.nama_mapel))
                   : fallbackData;
                 setDataList(cleanFallback);
                 setErrorMsg('');
@@ -392,6 +397,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                 row.mata_pelajaran = normalizeScheduleMapel(rawMapel);
                 if (row.mapel) row.mapel = row.mata_pelajaran;
               }
+            }
+          }
+        } else if (tabObj.table === 'data_mapel') {
+          const rawMapel = row.nama_mata_pelajaran || row.nama_mapel;
+          if (rawMapel) {
+            if (isDummyOrTestString(rawMapel)) {
+              throw new Error(`Baris ${i}: Terdeteksi nama mata pelajaran dummy/percobaan ("${rawMapel}").`);
+            }
+            if (isInvalidMapel(rawMapel)) {
+              throw new Error(`Baris ${i}: Mata pelajaran "${rawMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`);
             }
           }
         } else if (tabObj.table === 'data_siswa') {
@@ -694,6 +709,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
           if (!nama_mata_pelajaran) {
             Swal.showValidationMessage('Nama Mata Pelajaran wajib diisi!');
+            return null;
+          }
+          const mapelCheck = validateMapelData(nama_mata_pelajaran, dataList);
+          if (!mapelCheck.valid) {
+            Swal.showValidationMessage(mapelCheck.message || 'Mata pelajaran tidak valid!');
             return null;
           }
           return {
@@ -1481,6 +1501,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
           if (!nama_mapel) {
             Swal.showValidationMessage('Nama Mata Pelajaran wajib diisi!');
+            return null;
+          }
+          const mapelCheck = validateMapelData(nama_mapel, dataList, item.id);
+          if (!mapelCheck.valid) {
+            Swal.showValidationMessage(mapelCheck.message || 'Mata pelajaran tidak valid!');
             return null;
           }
           return {

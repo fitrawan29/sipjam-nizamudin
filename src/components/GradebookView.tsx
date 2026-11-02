@@ -535,11 +535,13 @@ export default function GradebookView({
             .select('*')
             .order('nama_mata_pelajaran', { ascending: true });
           if (mData && mData.length > 0) {
-            const formatted = mData.map(m => ({
-              id: m.id,
-              nama_mapel: m.nama_mata_pelajaran || '',
-              kelas: m.kategori || undefined,
-            }));
+            const formatted = mData
+              .filter(m => !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel))
+              .map(m => ({
+                id: m.id,
+                nama_mapel: m.nama_mata_pelajaran || '',
+                kelas: m.kategori || undefined,
+              }));
             setMapelList(formatted);
             if (!selectedMapel && formatted.length > 0) {
               setSelectedMapel(formatted[0].nama_mapel);
@@ -570,6 +572,9 @@ export default function GradebookView({
           }
 
           let { data: gmData } = await query.order('nama_mapel', { ascending: true });
+          if (gmData) {
+            gmData = gmData.filter((g: any) => !isInvalidMapel(g.nama_mapel || g.mata_pelajaran));
+          }
 
           // Fallback to jadwal_pelajaran
           if (!gmData || gmData.length === 0) {
@@ -673,6 +678,11 @@ export default function GradebookView({
         const { data: gmData } = await gmQuery;
         if (gmData && gmData.length > 0) {
           setIsGuruPengampu(true);
+          return;
+        }
+
+        if (isInvalidMapel(selectedMapel)) {
+          setIsGuruPengampu(false);
           return;
         }
 

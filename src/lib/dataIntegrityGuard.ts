@@ -256,10 +256,13 @@ export function isInvalidMapel(mapel?: string | null): boolean {
     /\bteknik\s+informatika\b/i.test(clean) ||
     /\btek\s*info\b/i.test(clean) ||
     /\bteknik\s+dan\s+informasi\b/i.test(clean) ||
+    /\bteknologi\s+informasi\s+dan\s+komunikasi\b/i.test(clean) ||
     clean === 'teknik informasi' ||
     clean === 'teknologi informasi' ||
     clean === 'teknik informatika' ||
-    clean === 'tekinfo'
+    clean === 'tekinfo' ||
+    clean === 'tik' ||
+    clean === 't i k'
   );
 }
 
@@ -267,11 +270,16 @@ export function isInvalidMapel(mapel?: string | null): boolean {
  * Normalizes or standardizes schedule subjects:
  * If an invalid variant like "teknik informasi" or "teknologi informasi" is passed,
  * normalizes it to the official valid subject "Informatika".
+ * Preserves class prefixes if present (e.g. "X Merdeka_Teknik Informasi" -> "X Merdeka_Informatika").
  */
 export function normalizeScheduleMapel(mapel?: string | null): string {
   if (!mapel) return '';
   const trimmed = mapel.trim();
   if (isInvalidMapel(trimmed)) {
+    if (/^[A-Za-z0-9\s]+_/.test(trimmed)) {
+      const prefix = trimmed.split('_')[0];
+      return `${prefix}_Informatika`;
+    }
     return 'Informatika';
   }
   return trimmed;
@@ -300,6 +308,43 @@ export function validateScheduleData(
       valid: false,
       message: `Mata pelajaran "${cleanMapel}" terdeteksi sebagai data percobaan/dummy.`
     };
+  }
+  return { valid: true };
+}
+
+/**
+ * Validates subject (data_mapel) creation or update
+ */
+export function validateMapelData(
+  namaMapel?: string | null,
+  existingMapels?: Array<{ id?: string; nama_mata_pelajaran?: string; nama_mapel?: string }>,
+  currentId?: string
+): ValidationResult {
+  const cleanMapel = (namaMapel || '').trim();
+  if (!cleanMapel) {
+    return { valid: false, message: 'Nama mata pelajaran wajib diisi!' };
+  }
+  if (isInvalidMapel(cleanMapel)) {
+    return {
+      valid: false,
+      message: `Mata pelajaran "${cleanMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`
+    };
+  }
+  if (isDummyOrTestString(cleanMapel)) {
+    return {
+      valid: false,
+      message: `Mata pelajaran "${cleanMapel}" terdeteksi sebagai data percobaan/dummy.`
+    };
+  }
+  if (existingMapels && existingMapels.length > 0) {
+    const norm = cleanMapel.toLowerCase();
+    const dup = existingMapels.find(m =>
+      m.id !== currentId &&
+      (m.nama_mata_pelajaran?.toLowerCase().trim() === norm || m.nama_mapel?.toLowerCase().trim() === norm)
+    );
+    if (dup) {
+      return { valid: false, message: `Mata pelajaran "${cleanMapel}" sudah terdaftar!` };
+    }
   }
   return { valid: true };
 }

@@ -11,6 +11,7 @@ import {
   isInvalidMapel,
   normalizeScheduleMapel,
   validateScheduleData,
+  validateMapelData,
 } from '../src/lib/dataIntegrityGuard';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -91,7 +92,10 @@ async function runAllTests() {
     assert.strictEqual(isInvalidMapel('tekinfo'), true, 'tekinfo must be flagged invalid');
     assert.strictEqual(isInvalidMapel('tek info'), true, 'tek info must be flagged invalid');
     assert.strictEqual(isInvalidMapel('teknik dan informasi'), true, 'teknik dan informasi must be flagged invalid');
-    pass('isInvalidMapel correctly flags all variations and slang of "teknik informasi", "teknologi informasi", "teknik informatika", and "tekinfo"');
+    assert.strictEqual(isInvalidMapel('tik'), true, 'tik must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('TIK'), true, 'TIK must be flagged invalid');
+    assert.strictEqual(isInvalidMapel('teknologi informasi dan komunikasi'), true, 'legacy TIK fullname must be flagged invalid');
+    pass('isInvalidMapel correctly flags all variations and slang of "teknik informasi", "teknologi informasi", "teknik informatika", "tekinfo", and legacy "tik"');
   } catch (e) {
     fail('isInvalidMapel variations check failed', e);
   }
@@ -116,9 +120,12 @@ async function runAllTests() {
     assert.strictEqual(normalizeScheduleMapel('teknik informasi'), 'Informatika');
     assert.strictEqual(normalizeScheduleMapel('Teknik Informasi'), 'Informatika');
     assert.strictEqual(normalizeScheduleMapel('teknologi informasi'), 'Informatika');
+    assert.strictEqual(normalizeScheduleMapel('X Merdeka_Teknik Informasi'), 'X Merdeka_Informatika');
+    assert.strictEqual(normalizeScheduleMapel('XI Merdeka_Teknologi Informasi'), 'XI Merdeka_Informatika');
+    assert.strictEqual(normalizeScheduleMapel('TIK'), 'Informatika');
     assert.strictEqual(normalizeScheduleMapel('Informatika'), 'Informatika');
     assert.strictEqual(normalizeScheduleMapel('MTK'), 'MTK');
-    pass('normalizeScheduleMapel standardizes invalid subjects to "Informatika" while preserving valid subjects');
+    pass('normalizeScheduleMapel standardizes invalid subjects and legacy TIK to "Informatika" while preserving class prefixes and valid subjects');
   } catch (e) {
     fail('normalizeScheduleMapel check failed', e);
   }
@@ -143,6 +150,37 @@ async function runAllTests() {
     pass('validateScheduleData enforces valid subject policy and rejects invalid subjects');
   } catch (e) {
     fail('validateScheduleData check failed', e);
+  }
+
+  // 1.5 validateMapelData tests (data_mapel master protection)
+  try {
+    const invalidMapel1 = validateMapelData('Teknik Informasi');
+    assert.strictEqual(invalidMapel1.valid, false, 'Rejects invalid subject in data_mapel');
+
+    const invalidMapel2 = validateMapelData('TIK');
+    assert.strictEqual(invalidMapel2.valid, false, 'Rejects legacy TIK in data_mapel');
+
+    const dummyMapel = validateMapelData('Test Mapel Dummy');
+    assert.strictEqual(dummyMapel.valid, false, 'Rejects dummy subject in data_mapel');
+
+    const emptyMapel = validateMapelData('');
+    assert.strictEqual(emptyMapel.valid, false, 'Rejects empty subject in data_mapel');
+
+    const existingMapels = [
+      { id: 'm1', nama_mata_pelajaran: 'X Merdeka_Informatika' },
+      { id: 'm2', nama_mata_pelajaran: 'X Merdeka_MTK' }
+    ];
+    const dupCheck = validateMapelData('X Merdeka_Informatika', existingMapels);
+    assert.strictEqual(dupCheck.valid, false, 'Rejects duplicate subject name');
+
+    const selfEditCheck = validateMapelData('X Merdeka_Informatika', existingMapels, 'm1');
+    assert.strictEqual(selfEditCheck.valid, true, 'Allows editing subject without self-collision');
+
+    const validNewMapel = validateMapelData('X Merdeka_PJOK', existingMapels);
+    assert.strictEqual(validNewMapel.valid, true, 'Accepts valid official subject');
+    pass('validateMapelData protects data_mapel master data from invalid, dummy, and duplicate records');
+  } catch (e) {
+    fail('validateMapelData check failed', e);
   }
 
   // --------------------------------------------------------------------------
@@ -220,7 +258,13 @@ async function runAllTests() {
     const warningSystemSrc = fs.readFileSync(path.join(root, 'src', 'lib', 'warningSystem.ts'), 'utf8');
     assert(warningSystemSrc.includes('isInvalidMapel'), 'warningSystem.ts imports and filters with isInvalidMapel');
 
-    pass('All frontend views & backend services (AdminDataView, HomeViewAdmin, GuruJurnal, GradebookView, RaporView, AdminVerifView, DokumenView, RekapJurnalView, send-reminders, attendanceAlpa, warningSystem) implement isInvalidMapel protection');
+    const rekapSiswaSrc = fs.readFileSync(path.join(root, 'src', 'components', 'RekapSiswaView.tsx'), 'utf8');
+    assert(rekapSiswaSrc.includes('isInvalidMapel'), 'RekapSiswaView imports and filters with isInvalidMapel');
+
+    assert(adminDataSrc.includes('validateMapelData'), 'AdminDataView imports and invokes validateMapelData for data_mapel protection');
+    assert(guruJurnalSrc.includes('isInvalidMapel(mapel)'), 'GuruJurnal enforces mapel validity on submit');
+
+    pass('All frontend views & backend services (AdminDataView, HomeViewAdmin, GuruJurnal, GradebookView, RaporView, AdminVerifView, DokumenView, RekapJurnalView, RekapSiswaView, send-reminders, attendanceAlpa, warningSystem) implement isInvalidMapel protection');
   } catch (e) {
     fail('Static source code verification failed', e);
   }
@@ -342,6 +386,22 @@ async function runAllTests() {
     pass(`jadwal_pelajaran: all 51 uploaded master schedule records are 100% intact and untouched`);
   } catch (e) {
     fail('jadwal_pelajaran master data integrity check failed', e);
+  }
+
+  // 4.5 Master Data Kelas
+  try {
+    const { data: siswaKelasData, error: kErr } = await supabase.from('data_siswa').select('kelas');
+    assert(!kErr, `Query data_siswa classes error: ${kErr?.message}`);
+    const classes = Array.from(new Set((siswaKelasData || []).map(s => s.kelas).filter(Boolean))).sort();
+    assert.deepStrictEqual(classes, ['X Merdeka', 'XI Merdeka', 'XII Merdeka'], 'Master classes match official Kurikulum Merdeka classes');
+
+    const csvSiswaContent = fs.readFileSync(path.join(__dirname, '..', 'csv', 'SIPJAM NIZAMUDIN - Data_Siswa (1).csv'), 'utf8');
+    assert(csvSiswaContent.includes('X Merdeka'), 'CSV contains class X Merdeka');
+    assert(csvSiswaContent.includes('XI Merdeka'), 'CSV contains class XI Merdeka');
+    assert(csvSiswaContent.includes('XII Merdeka'), 'CSV contains class XII Merdeka');
+    pass('data_kelas: master class levels (X Merdeka, XI Merdeka, XII Merdeka) 100% intact and untouched');
+  } catch (e) {
+    fail('data_kelas integrity check failed', e);
   }
 
   // --------------------------------------------------------------------------

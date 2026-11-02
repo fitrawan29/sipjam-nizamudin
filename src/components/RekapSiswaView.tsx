@@ -8,6 +8,7 @@ import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance } from '@/lib/presensiIntervensi';
 import { getWitaDateStr } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
+import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface RekapSiswaViewProps {
   user: any; 
@@ -115,7 +116,8 @@ export default function RekapSiswaView({
         if (user?.sekolah_id) mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
         const { data: mData } = await mapelQuery;
         if (mData) {
-          const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[];
+          const uniqueMapel = Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean)))
+            .filter((m: any) => !isInvalidMapel(m)) as string[];
           setMapelList(uniqueMapel);
         }
 

@@ -93,7 +93,7 @@ export default function DokumenView({ user }: { user: any }) {
         .select('*');
       if (gmError) console.error('Error fetching guru_mapel:', gmError);
       
-      let guruMapels = (gm as GuruMapel[]) || [];
+      let guruMapels = ((gm as GuruMapel[]) || []).filter((g: any) => !isInvalidMapel(g.nama_mapel || g.mata_pelajaran));
       if (guruMapels.length === 0) {
         const { data: jadwalData } = await supabase.from('jadwal_pelajaran').select('*');
         if (jadwalData && jadwalData.length > 0) {
@@ -433,7 +433,8 @@ export default function DokumenView({ user }: { user: any }) {
     // Fallback if no specific guru_mapel relations
     if (list.length === 0) {
       const g = teachersList.find(t => (t.nama_guru || '').trim().toLowerCase() === (user?.nama || '').trim().toLowerCase());
-      const fallbackMapel = g?.mata_pelajaran || user?.mata_pelajaran || 'Mata Pelajaran Umum';
+      const rawFallback = g?.mata_pelajaran || user?.mata_pelajaran || 'Mata Pelajaran Umum';
+      const fallbackMapel = isInvalidMapel(rawFallback) ? 'Informatika' : rawFallback;
       list.push({ nama_mapel: fallbackMapel, kelas: '' });
     }
 
@@ -443,7 +444,7 @@ export default function DokumenView({ user }: { user: any }) {
   const availableMapels = useMemo(() => {
     const set = new Set<string>();
     myTeacherSubjects.forEach(s => {
-      if (s.nama_mapel) set.add(s.nama_mapel);
+      if (s.nama_mapel && !isInvalidMapel(s.nama_mapel)) set.add(s.nama_mapel);
     });
     return Array.from(set);
   }, [myTeacherSubjects]);

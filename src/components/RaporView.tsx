@@ -553,12 +553,14 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           const { data: jpData } = await jpQuery;
           if (jpData && jpData.length > 0) {
             mapels = Array.from(new Set(jpData.map((j: any) => j.mata_pelajaran).filter(Boolean))) as string[];
-            mapels = mapels.filter((m: string) => !isInvalidMapel(m));
           }
         } catch {
           // ignore
         }
       }
+
+      // Ensure all candidate subjects from any source exclude invalid / non-existent subjects
+      mapels = mapels.filter((m: string) => !isInvalidMapel(m));
 
       // 4. Fetch Capaian Pembelajaran (capaian_pembelajaran)
       let cpQuery = supabase
