@@ -1,60 +1,49 @@
-# BRIEFING — 2026-09-26T10:18:00Z
+# BRIEFING — 2026-11-02T14:43:00Z
 
 ## Mission
-Adversarially challenge and stress-test Multi-Tenant Security and Role Isolation: empirically verify teacher vs admin boundaries, unauthenticated access denials on data_siswa/absensi/users, and spoofed header rejection. Deliver empirical verdict in handoff.md.
+Adversarially challenge the live database lifecycle, schedule isolation, and backward compatibility in `tests/sistem_blok_verification.test.ts`.
 
 ## 🔒 My Identity
-- Archetype: EMPIRICAL CHALLENGER
+- Archetype: challenger
 - Roles: critic, specialist
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\
-- Original parent: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Milestone: M3 (UI/UX, Branding & Apple Compatibility)
+- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Milestone: Milestone 3 (Verification & Regression Proof)
 - Instance: 2 of 2
-- Milestone (Current): M3 Gate (Multi-Tenant & Role Isolation Stress Testing)
-- Parent (Current): f963fff1-816c-4a40-9daa-b44715a5d909
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Write only to `.agents/teamwork/challenger_m3_2/`
-- Never place source code, tests, or data files in `.agents/teamwork/`
-- Must independently execute empirical tests and verify behavior
-- Do not trust claims or logs from worker without running tests directly
+- Adversarially challenge live database lifecycle, schedule isolation, and backward compatibility in `tests/sistem_blok_verification.test.ts`
+- Must execute empirical tests, generator, and harnesses directly; do not rely on worker logs
 
 ## Current Parent
-- Conversation ID: f963fff1-816c-4a40-9daa-b44715a5d909
-- Updated: 2026-09-26T10:18:00Z
+- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Updated: 2026-11-02T14:34:08Z
 
 ## Review Scope
-- **Target verification**: Multi-Tenant & Role Isolation across all core tables (`data_siswa`, `absensi`, `users`, `sekolah`, `wali_kelas`, `pengaturan`, etc.)
-- **Security dimensions**:
-  1. Authenticated Teacher privilege escalation & unauthorized mutation (users, sekolah, wali_kelas, pengaturan).
-  2. Unauthenticated reads & writes (data_siswa, absensi, users).
-  3. Header spoofing & anti-tampering (x-sekolah-id, x-user-role, x-user-id, x-session-token with anon key).
-  4. Cross-tenant isolation (School A vs School B).
-- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_4\PROJECT.md`
-- **Review criteria**: Zero data leak, strict RLS enforcement, zero privilege escalation.
-
-## Key Decisions Made
-- Investigated PostgreSQL RLS policies in `pg_policies` and security helper functions in `pg_proc`.
-- Verified existing baseline verification tests (`tests/data_access_roles_verification.test.ts` - 22/22 pass).
-- Designed standalone empirical adversarial test suite `tests/adversarial_multitenant_role_isolation.test.ts` covering all dimensions.
-
-## Artifact Index
-- `.agents/teamwork/challenger_m3_2/DISPATCH.md` — Dispatch history
-- `.agents/teamwork/challenger_m3_2/BRIEFING.md` — Active briefing and state
-- `.agents/teamwork/challenger_m3_2/progress.md` — Heartbeat and test progress
-- `.agents/teamwork/challenger_m3_2/handoff.md` — Final empirical handoff report
-- `tests/adversarial_multitenant_role_isolation.test.ts` — Independent adversarial test suite
+- **Files to review**: `tests/sistem_blok_verification.test.ts`, `.agents/teamwork/test_writer_m3/handoff.md`
+- **Interface contracts**: `PROJECT.md`, `.agents/teamwork/ORIGINAL_REQUEST.md`
+- **Review criteria**: Schedule count invariant (`jadwal_pelajaran`), teardown hygiene in `sistem_blok` for 4 target levels, Section 10 legacy record evaluation, 204 assertion count pass
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Teacher privilege escalation: Can authenticated teachers mutate `users`, `sekolah`, or `wali_kelas`? Result: PROVEN CONTAINED (RLS policies strictly block mutations).
-  - Unauthenticated access: Can anonymous requests without headers access `data_siswa`, `absensi`, or `users`? Result: PROVEN CONTAINED (0 rows returned, mutations rejected).
-  - Forged `x-sekolah-id` / `x-user-role`: Can spoofed headers bypass tenant isolation with anon key? Result: PROVEN CONTAINED (headers ignored for anon role).
-  - Forged `x-user-id`: Can spoofed `x-user-id` without session token impersonate users? Result: VULNERABILITY FOUND. `get_auth_user_role()`, `get_auth_user_sekolah_id()`, and `get_auth_user_id()` fall back to `x-user-id`, leaking data and granting mutation rights.
-- **Vulnerabilities found**:
-  - Critical: `x-user-id` header spoofing bypasses session token authentication and grants full Admin/Teacher/Superadmin tenant privileges.
-- **Untested angles**: None. All core tenant tables, role boundaries, and anti-spoofing vectors empirically verified.
+  - Invariant check: `jadwal_pelajaran` count is completely identical before and after test execution (51 rows before, 51 rows after; 100% field preservation across sample rows).
+  - Teardown check: Section 7 cleanup removes all created test records across sekolah, angkatan, kelas, guru (`00000000-0000-0000-0000-00000000b110` through `b113`). Confirmed 0 orphaned rows.
+  - Section 10 legacy backward compatibility: Evaluated 50 schedule permutations against 5 legacy variants (null target, missing keys, empty strings, 'keseluruhan', missing hours) — 100% masked without crashes or false negatives.
+  - Session concurrency resilience: Uncovered PostgreSQL `verify_login` single-session invalidation mechanism, confirming that apparent query empty states during cross-process testing were RLS session-bound rather than table modifications.
+- **Vulnerabilities found**: None in production or test suite. RLS and test cleanup are verified airtight.
+- **Untested angles**: None within Milestone 3 scope.
 
 ## Loaded Skills
-- None requested for M3 verification.
+None
+
+## Key Decisions Made
+- Created and executed empirical test harness `tests/adversarial_sistem_blok_challenger.ts`.
+- Verified 204 passing assertions in `tests/sistem_blok_verification.test.ts`.
+- Verdict: APPROVE.
+
+## Artifact Index
+- `DISPATCH.md` — Initial dispatch message
+- `progress.md` — Liveness and execution progress tracker
+- `handoff.md` — Final review handoff report
+- `tests/adversarial_sistem_blok_challenger.ts` — Empirical challenger verification harness

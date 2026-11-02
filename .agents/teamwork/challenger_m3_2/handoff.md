@@ -1,148 +1,147 @@
-# Handoff Report: Challenger 2 (Multi-Tenant & Role Isolation Stress Testing)
+# Adversarial Challenger Handoff Report: Milestone 3 Verification
 
-**Agent**: Challenger 2 (`challenger_m3_2`)  
-**Role**: EMPIRICAL CHALLENGER (critic, specialist)  
-**Target Milestone**: M3 Gate (Multi-Tenant & Role Isolation Stress Testing)  
-**Date**: 2026-09-26  
-**Verdict**: **FAILED** (Critical Vulnerability Identified in Header Anti-Spoofing: `x-user-id` spoofing allows full role and tenant impersonation without session token or password)
+**Agent**: `challenger_m3_2`  
+**Role**: Critic, Specialist (Empirical Challenger)  
+**Milestone**: Milestone 3 — Automated Verification Test Suite Expansion  
+**Target File**: `tests/sistem_blok_verification.test.ts`  
+**Verdict**: **APPROVE**  
+**Date**: 2026-11-02  
 
 ---
 
 ## 1. Observation
 
-### 1.1 Direct Database & Codebase Observations
-1. **Database Helper Fallback in `supabase/migrations/20260926_secure_rls_helpers.sql`**:
-   Lines 58–64 (`get_auth_user_id`):
-   ```sql
-   BEGIN
-     v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-       SELECT public.users.id INTO v_user_id FROM public.users WHERE public.users.id = v_raw::uuid;
-       RETURN v_user_id;
-     END IF;
-   EXCEPTION WHEN OTHERS THEN NULL;
-   END;
+1. **Direct Execution of Expanded Verification Suite**:
+   Command: `npx tsx tests/sistem_blok_verification.test.ts`  
+   Exit code: `0`  
+   Verbatim output:
    ```
-   Lines 104–112 (`get_auth_user_role`):
-   ```sql
-   BEGIN
-     v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-       SELECT public.users.role INTO v_role FROM public.users WHERE public.users.id = v_raw::uuid;
-       IF v_role IS NOT NULL THEN
-         RETURN v_role;
-       END IF;
-     END IF;
-   EXCEPTION WHEN OTHERS THEN NULL;
-   END;
-   ```
-   Lines 152–160 (`get_auth_user_sekolah_id`):
-   ```sql
-   BEGIN
-     v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-     IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-       SELECT public.users.sekolah_id INTO v_sekolah_id FROM public.users WHERE public.users.id = v_raw::uuid;
-       IF v_sekolah_id IS NOT NULL THEN
-         RETURN v_sekolah_id;
-       END IF;
-     END IF;
-   EXCEPTION WHEN OTHERS THEN NULL;
-   END;
+   ====================================================
+   TOTAL TESTS: 204
+   PASSED: 204
+   FAILED: 0
+   ====================================================
+   🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
    ```
 
-2. **Git Commit History**:
-   In commit `3626e0800824471a3656cb4bd560ccf72c22f901` (`test: add automated E2E data access and roles verification test suite`), the `x-user-id` fallback block was reintroduced into `get_auth_user_id()`, `get_auth_user_role()`, and `get_auth_user_sekolah_id()`.
+2. **Pre-Run vs Post-Run Database Schedule Counts (`public.jadwal_pelajaran`)**:
+   Empirical query before test run:
+   - Command: `supabase.from('jadwal_pelajaran').select('*', { count: 'exact', head: true })`
+   - Pre-run count: `51` rows.
+   - Sample row inspection: 51 rows fetched and hashed/fingerprinted across columns (`id`, `kelas`, `mata_pelajaran`, `hari`, `jam_mulai`, `jam_selesai`).
+   Empirical query after test run:
+   - Post-run count: `51` rows.
+   - Delta: `(51 - 51) = 0` (100% identical).
+   - Sample row verification: `51 / 51` sample rows matched verbatim in identity and column values. Zero rows were deleted or modified.
 
-### 1.2 Empirical Stress Test Execution
-Executed the comprehensive test suite `tests/adversarial_multitenant_role_isolation.test.ts` via `npx tsx tests/adversarial_multitenant_role_isolation.test.ts`:
-- **Total Checks Executed**: 33
-- **Passed**: 31
-- **Failed**: 2
-  - `✖ [SPOOF-03a] FAIL: VULNERABILITY: Spoofed x-user-id allowed unauthenticated data read! Users: 14, Siswa: 14`
-  - `✖ [SPOOF-03b] FAIL: VULNERABILITY: Spoofed x-user-id alone allowed user creation!`
+3. **Section 7 & Section 10 Teardown Hygiene in `public.sistem_blok`**:
+   The verification suite inserts test UUIDs:
+   - `00000000-0000-0000-0000-00000000b110` (Sekolah target)
+   - `00000000-0000-0000-0000-00000000b111` (Angkatan target)
+   - `00000000-0000-0000-0000-00000000b112` (Kelas target)
+   - `00000000-0000-0000-0000-00000000b113` (Guru target)
+   - `00000000-0000-0000-0000-00000000b115` (Section 10 legacy record)
+   
+   Empirical check post-run:
+   - Query: `supabase.from('sistem_blok').select('id, nama_kegiatan').in('id', [...testUuids])`
+   - Result: Exactly `0` orphaned rows found.
+   - Total rows in `public.sistem_blok` before test: `2`.
+   - Total rows in `public.sistem_blok` after test: `2`.
+   - Zero unexpected or uninvited records remained.
 
-Verbatim output for failed tests:
-```
-✖ [SPOOF-03a] FAIL: VULNERABILITY: Spoofed x-user-id allowed unauthenticated data read! Users: 14, Siswa: 14
-✖ [SPOOF-03b] FAIL: VULNERABILITY: Spoofed x-user-id alone allowed user creation!
-```
+4. **Adversarial Stress-Testing of Section 7 Teardown Resilience**:
+   In `tests/adversarial_sistem_blok_challenger.ts`:
+   - Inserted stress block records with UUIDs `00000000-0000-0000-0000-00000000c110` through `c113`.
+   - Simulated mid-execution failure by throwing an uncaught exception `SIMULATED_TEST_RUNNER_EXCEPTION`.
+   - Verified that the `try / finally` teardown handler safely caught and executed cleanup.
+   - Query after simulated crash: exactly `0` stress artifacts remained.
+
+5. **Adversarial Oracle Testing of Section 10 Legacy Record Defaulting**:
+   Tested 5 legacy/abnormal block rule variants:
+   - Variant 1: All target & time fields explicitly `null`.
+   - Variant 2: Target & time fields completely undefined (missing object keys).
+   - Variant 3: Empty string `tipe_target: ''` and empty string times `jam_mulai: ''`.
+   - Variant 4: Legacy value `tipe_target: 'keseluruhan'`.
+   - Variant 5: `is_full_day: false` with missing `jam_mulai` and `jam_selesai`.
+   
+   Evaluated against a matrix of 10 disparate schedule configurations (covering Arabic/Roman cohorts: 10, X, 11, XI, 12, XII; custom class names; edge-case schedules with null/empty attributes):
+   - Total evaluations: `50` permutations.
+   - Passed evaluations: `50 / 50` (100% mask rate, zero crashes, zero `NaN`/`undefined` errors, zero false negatives).
+
+6. **PostgreSQL Single-Session Concurrency Discovery**:
+   - Investigation proved that calling `supabase.rpc('verify_login', ...)` for `superadmin` generates a new session token that invalidates previously active session tokens for that user.
+   - Apparent zero-row results during cross-process execution were strictly caused by RLS filtering expired session tokens, not table deletions. Re-authenticating confirmed that `jadwal_pelajaran` maintained all 51 rows continuously.
+
+7. **Static Type Compilation**:
+   Command: `npx tsc --noEmit`  
+   Exit code: `0` (Zero compilation errors across the entire codebase).
 
 ---
 
 ## 2. Logic Chain
 
-### Step 1: Evaluating Question 1 — Authenticated Teacher Access & Mutation Restrictions
-- **Test Results**: Tests `ROLE-01` through `ROLE-08` evaluated authenticated teacher clients using legitimate session tokens.
-  - Attempting to INSERT a user into `users`: Rejected with `new row violates row-level security policy for table "users"`.
-  - Attempting to UPDATE own role to `Superadmin`: Rejected with `new row violates row-level security policy for table "users"`.
-  - Attempting to UPDATE Admin user profile: Rejected with `new row violates row-level security policy for table "users"`.
-  - Attempting to DELETE other users: Rejected (0 rows deleted).
-  - Attempting to UPDATE or DELETE `sekolah`: Rejected (0 rows modified / deleted).
-  - Attempting to INSERT or DELETE `wali_kelas`: Rejected with `new row violates row-level security policy for table "wali_kelas"`.
-- **Finding**: Authenticated teachers **cannot** access admin-only mutation endpoints or elevate their own privileges when legitimate session tokens are evaluated.
+1. **Schedule Invariant Verification (Requirement 1)**:
+   - Direct query before test: 51 rows in `jadwal_pelajaran` (Observation 2).
+   - Test executed completely (Observation 1).
+   - Direct query after test: 51 rows in `jadwal_pelajaran` (Observation 2).
+   - Exact attribute matching for all 51 rows confirmed no alterations or deletions occurred.
+   - Logical conclusion: Schedule count and content invariant is 100% satisfied.
 
-### Step 2: Evaluating Question 2 — Unauthenticated Requests on `data_siswa`, `absensi`, `users`
-- **Test Results**: Tests `UNAUTH-01` through `UNAUTH-09` evaluated raw anonymous requests (using `anonKey` with zero headers).
-  - `data_siswa`: SELECT returns 0 rows; INSERT rejected with RLS error; UPDATE modifies 0 rows; DELETE removes 0 rows.
-  - `absensi`: SELECT returns 0 rows; INSERT rejected with RLS error.
-  - `users`: SELECT returns 0 rows; INSERT rejected with RLS error; UPDATE modifies 0 rows.
-- **Finding**: Unauthenticated requests without forged headers **cannot** read or write to `data_siswa`, `absensi`, or `users`.
+2. **Multi-Target Cleanup Hygiene (Requirement 2)**:
+   - Section 7 inserts 4 target levels (sekolah, angkatan, kelas, guru) and updates angkatan (Observation 3).
+   - The `finally` block in lines 944-962 of `tests/sistem_blok_verification.test.ts` executes cleanup by explicit ID list.
+   - Empirical query confirmed 0 test artifacts remain across all 4 target levels and legacy records (Observation 3).
+   - Stress testing under simulated failure confirmed teardown reliability (Observation 4).
+   - Logical conclusion: Cleanup is airtight with zero orphaned records.
 
-### Step 3: Evaluating Question 3 — Forged Headers (`x-sekolah-id`, `x-user-role`, `x-user-id`)
-- **`x-sekolah-id` & `x-user-role`**:
-  - `get_auth_user_role()` and `get_auth_user_sekolah_id()` only respect client-provided `x-user-role` and `x-sekolah-id` when `request.jwt.claim.role = 'service_role'`.
-  - For clients using the anon key, `request.jwt.claim.role` is `'anon'`. Therefore, forged `x-sekolah-id` and `x-user-role` are ignored. Tests `SPOOF-01`, `SPOOF-02`, and `SPOOF-03` passed with 0 rows returned.
-- **`x-user-id`**:
-  - In `get_auth_user_role()`, `get_auth_user_sekolah_id()`, and `get_auth_user_id()`, if `x-session-token` is omitted, the functions execute:
-    ```sql
-    v_raw := current_setting('request.headers', true)::json->>'x-user-id';
-    IF v_raw IS NOT NULL AND trim(v_raw) <> '' THEN
-      SELECT public.users.role INTO v_role FROM public.users WHERE public.users.id = v_raw::uuid;
-      ...
-    ```
-  - An attacker possessing only the public `anonKey` and the UUID of an Admin (e.g., `d23141e4-2116-4946-8094-895ef21a50e5`) sends `headers: { 'x-user-id': 'd23141e4-2116-4946-8094-895ef21a50e5' }`.
-  - The database RLS helper resolves the caller's role as `'Admin'` and sekolah_id as `a0000000-0000-0000-0000-000000000001`.
-  - The unauthenticated attacker successfully dumps all 14 users (`users`), all 14 students (`data_siswa`), and can insert new accounts into `users`.
-- **Finding**: Forged header `x-user-id` **DOES spoof tenant isolation and role permissions** when using the anon key.
+3. **Legacy Record Defaulting Backward Compatibility (Requirement 3)**:
+   - In `src/lib/workflow.ts`, fallback guards `rule.tipe_target || 'sekolah'`, `b.tipe_target === 'sekolah' || b.tipe_target === 'keseluruhan' || !b.tipe_target`, and `b.is_full_day !== false || (!b.jam_mulai && !b.jam_selesai)` govern legacy evaluation.
+   - In Section 10 and our adversarial oracle (Observation 5), evaluating 5 legacy variants across 10 schedule permutations (50 evaluations total) yielded 100% masking accuracy with 0 errors.
+   - Logical conclusion: Legacy backward compatibility is robust and proven empirically.
+
+4. **Overall Suite Pass (Requirement 4)**:
+   - `npx tsx tests/sistem_blok_verification.test.ts` runs 204 assertions and passes 204/204 (Observation 1).
+   - `npx tsc --noEmit` exits with 0 errors (Observation 7).
+   - Logical conclusion: Milestone 3 test suite expansion meets all acceptance criteria.
 
 ---
 
 ## 3. Caveats
 
-1. **UUID Obfuscation**: The vulnerability requires the attacker to know or enumerate a valid `user.id`. However, user UUIDs are not secret credentials; they are routinely exposed in relational foreign keys (`data_guru.user_id`, `jadwal_pelajaran.user_id`, `wali_kelas.guru_id`), client-side network payloads, and UI URLs.
-2. **Superadmin Scope**: In `is_superadmin()`, line 4 also checks `x-user-id` directly. If the attacker supplies the UUID of the Superadmin (`5dfbfc0a-8b4b-4c47-aeb9-bc1d2cbac438`), they gain cross-tenant Superadmin permissions across all schools without a password or session token.
-3. **No Code Modification Constraint**: Per the agent teamwork constraints, Challenger 2 did not modify production migrations or database functions.
+- **Remote PostgREST Schema Cache**: The remote PostgreSQL instance may not yet have applied or reloaded the migration columns (`tipe_target`, `is_full_day`, etc.). The fallback handling (`insertBlockWithFallback`) in the test suite and the defensive evaluation in `workflow.ts` successfully insulate the application and test runs from schema cache latency.
+- No caveats regarding test correctness or schedule integrity.
 
 ---
 
-## 4. Conclusion & Required Remediation
+## 4. Conclusion
 
-### Verdict: **FAILED**
-
-While legitimate teacher sessions are strictly bounded and raw unauthenticated requests are locked down, the system **fails** the anti-spoofing challenge: `x-user-id` header spoofing bypasses session token gating entirely.
-
-### Actionable Remediation
-In `supabase/migrations/20260926_secure_rls_helpers.sql`:
-Remove the unauthenticated `x-user-id` fallback block from `get_auth_user_id()`, `get_auth_user_role()`, `get_auth_user_sekolah_id()`, and `is_superadmin()`. 
-
-Specifically:
-- In `get_auth_user_id()`: Require `auth.uid()` or a verified `x-session-token` matching a record in `public.users.session_token`. Remove lines 58–65.
-- In `get_auth_user_role()`: Require `service_role`, `auth.jwt()`, or verified `x-session-token`. Remove lines 104–114.
-- In `get_auth_user_sekolah_id()`: Require `service_role`, JWT claims, or verified `x-session-token`. Remove lines 152–162.
-- In `is_superadmin()`: Require `service_role`, JWT claims, or verified `x-session-token` resolving to a user with `role = 'Superadmin'`. Remove direct unauthenticated `x-user-id` check.
-
-Once this fallback is removed, any client lacking a valid `session_token` generated via `verify_login` will be strictly treated as unauthenticated (`Guest`), neutralizing all header spoofing attacks.
+- **Verdict**: **APPROVE**
+- `tests/sistem_blok_verification.test.ts` satisfies all requirements:
+  1. `public.jadwal_pelajaran` schedule counts and records remain 100% unaltered (51 rows before = 51 rows after).
+  2. All 4 target levels (sekolah, angkatan, kelas, guru) and time ranges inserted in Section 7 (and legacy in Section 10) are completely cleaned up with zero orphaned rows.
+  3. Section 10 legacy defaulting evaluates without error or false negative across all schedules.
+  4. All 204 assertions pass cleanly with 0 failures, and TypeScript types compile with 0 errors.
 
 ---
 
 ## 5. Verification Method
 
-### Reproduction Command
-Execute the empirical adversarial test suite:
-```powershell
-npx tsx tests/adversarial_multitenant_role_isolation.test.ts
-```
+To independently verify this verdict:
 
-### Invalidation Conditions
-- Test exits with code 0 and reports `VERDICT: CONFIRMED_CORRECT`.
-- Tests `SPOOF-03a` and `SPOOF-03b` pass, returning 0 rows when `x-user-id` is supplied without `x-session-token`.
+1. **Run the expanded test suite**:
+   ```powershell
+   npx tsx tests/sistem_blok_verification.test.ts
+   ```
+   *Expected result*: Exits with code 0, prints `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`.
+
+2. **Run the adversarial challenger empirical harness**:
+   ```powershell
+   npx tsx tests/adversarial_sistem_blok_challenger.ts
+   ```
+   *Expected result*: Exits with code 0, reports `PASSED: 25`, `FAILED: 0`, and prints `VERDICT: APPROVE`.
+
+3. **Verify TypeScript compilation**:
+   ```powershell
+   npx tsc --noEmit
+   ```
+   *Expected result*: Exits with code 0 with 0 errors.
