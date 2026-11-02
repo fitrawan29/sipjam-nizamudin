@@ -123,9 +123,14 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
  */
 export const MASTER_DATA_TABLES = [
   'data_siswa',
+  'siswa',
   'data_guru',
+  'guru',
   'jadwal_pelajaran',
+  'jadwal_pembelajaran',
   'data_mapel',
+  'mapel',
+  'mata_pelajaran',
   'guru_mapel',
   'wali_kelas',
   'data_kelas',
@@ -140,8 +145,8 @@ export function isMasterDataEndpoint(urlOrPath: string): boolean {
   const rawPath = urlOrPath.split('?')[0].replace(/^[a-z]+:\/\/[^/]+/i, '');
   const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
   return MASTER_DATA_TABLES.some(table => {
-    const pattern = new RegExp(`/(?:rest/v1/)?${table}(?:/|$|\\?)`, 'i');
-    return pattern.test(path) || path.endsWith(`/${table}`) || path === `/${table}`;
+    const pattern = new RegExp(`/(?:rest/v1/)?(?:public\\.)?${table}(?:/|$|\\?)`, 'i');
+    return pattern.test(path) || path.endsWith(`/${table}`) || path === `/${table}` || path.endsWith(`/public.${table}`);
   });
 }
 
@@ -172,7 +177,7 @@ export function createMasterDataForbiddenResponse(): Response {
 }
 
 export function checkMasterDataMutationGuard(requestUrlStr: string, method: string, role?: string | null): Response | null {
-  const upperMethod = (method || 'GET').toUpperCase();
+  const upperMethod = (method || 'GET').trim().toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
     if (isMasterDataEndpoint(requestUrlStr) && !isAdminRole(role)) {
       return createMasterDataForbiddenResponse();

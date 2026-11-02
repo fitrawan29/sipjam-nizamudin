@@ -285,7 +285,7 @@ export default function SistemBlokView({ user }: { user: any }) {
   }, [blokList, getStatus]);
 
   const userRole = (user?.role || '').toLowerCase();
-  const isAdminOrSuperadmin = userRole === 'admin' || userRole === 'superadmin';
+  const isAdminOrSuperadmin = isAdmin || userRole === 'admin' || userRole === 'superadmin';
 
   if (!isAdminOrSuperadmin) {
     return (

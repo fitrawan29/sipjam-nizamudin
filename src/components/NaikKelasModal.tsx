@@ -432,6 +432,12 @@ export default function NaikKelasModal({
 
         {/* Modal Body Content */}
         <div className="p-6 max-h-[70vh] overflow-y-auto custom-scroll">
+          {!isAdmin && (
+            <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 p-3 rounded-2xl mb-4 flex items-center gap-2.5 text-xs text-red-700 dark:text-red-400">
+              <i className="fa-solid fa-lock text-sm shrink-0"></i>
+              <span>Mode Pratinjau: Kenaikan kelas siswa hanya dapat dieksekusi oleh Administrator melalui panel manajemen admin.</span>
+            </div>
+          )}
           
           {/* ============================================================ */}
           {/* MODE A: PERORANGAN (SELECTED STUDENTS)                        */}
@@ -568,7 +574,7 @@ export default function NaikKelasModal({
                 <button
                   type="button"
                   onClick={handleExecutePerorangan}
-                  disabled={loading || localSelectedIds.length === 0}
+                  disabled={loading || localSelectedIds.length === 0 || !isAdmin}
                   className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
                 >
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-check"></i>}
@@ -678,7 +684,7 @@ export default function NaikKelasModal({
                 <button
                   type="button"
                   onClick={handleExecutePerKelas}
-                  disabled={loading || !sourceKelas}
+                  disabled={loading || !sourceKelas || !isAdmin}
                   className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
                 >
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-arrow-right-arrow-left"></i>}
@@ -767,7 +773,7 @@ export default function NaikKelasModal({
                 <button
                   type="button"
                   onClick={handleExecuteSatuAngkatan}
-                  disabled={loading || cohortPreview.length === 0}
+                  disabled={loading || cohortPreview.length === 0 || !isAdmin}
                   className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
                 >
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}

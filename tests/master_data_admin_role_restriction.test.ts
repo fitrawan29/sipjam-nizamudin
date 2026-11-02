@@ -112,12 +112,29 @@ async function runTests() {
     );
   }
 
+  // 2h. Public schema prefix paths
+  assert.strictEqual(
+    isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/public.data_siswa'),
+    true,
+    'public schema prefixed URL must be recognized'
+  );
+  assert.strictEqual(
+    isMasterDataEndpoint('/rest/v1/public.data_guru'),
+    true,
+    'public schema prefixed relative path must be recognized'
+  );
+
   // Operational tables must NOT be matched
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/absensi'), false);
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/presensi_guru'), false);
+  assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/presensi_siswa'), false);
+  assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/rekap_siswa'), false);
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/jurnal_pembelajaran'), false);
+  assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/laporan_piket'), false);
+  assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/penugasan_piket'), false);
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/bank_dokumen'), false);
   assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/pengumuman'), false);
+  assert.strictEqual(isMasterDataEndpoint('https://placeholder.supabase.co/rest/v1/riwayat_backup'), false);
   console.log('✓ Test 2 passed: Endpoint matcher correctly distinguishes all master data path variants.');
 
   // Test 3: Navigation Tab RBAC
@@ -216,7 +233,7 @@ async function runTests() {
   assert.ok(anonMutate.error, 'Anon delete on data_guru must return error');
   assert.strictEqual(anonMutate.status, 403);
 
-  console.log('✓ Test 5 passed: Client correctly enforces 403 Forbidden on all 11 master tables for non-admin.');
+  console.log(`✓ Test 5 passed: Client correctly enforces 403 Forbidden on all ${MASTER_DATA_TABLES.length} master tables for non-admin.`);
 
   // Test 6: In-memory Server Tenant Context enforcement
   console.log('[Test 6] Validating serverTenantContext with global supabase client...');
@@ -228,8 +245,37 @@ async function runTests() {
   clearServerTenantContext();
   console.log('✓ Test 6 passed: serverTenantContext properly propagates role restrictions.');
 
+  // Test 7: Method whitespace trimming in checkMasterDataMutationGuard
+  console.log('[Test 7] Validating HTTP method whitespace trimming...');
+  const paddedRes = checkMasterDataMutationGuard('https://placeholder.supabase.co/rest/v1/data_siswa', '  post  ', 'Guru');
+  assert.ok(paddedRes !== null, 'Padded method "  post  " must be properly recognized and rejected');
+  assert.strictEqual(paddedRes.status, 403);
+  console.log('✓ Test 7 passed: checkMasterDataMutationGuard safely trims method whitespace.');
+
+  // Test 8: Component-level guard static assertions
+  console.log('[Test 8] Validating component-level guards for master data...');
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+
+  const rootDir = process.cwd();
+  const sistemBlokSrc = fs.readFileSync(path.join(rootDir, 'src/components/SistemBlokView.tsx'), 'utf8');
+  assert.ok(sistemBlokSrc.includes('if (!isAdmin)'), 'SistemBlokView must use normalized isAdmin check');
+
+  const adminConfigSrc = fs.readFileSync(path.join(rootDir, 'src/components/AdminConfigView.tsx'), 'utf8');
+  assert.ok(
+    adminConfigSrc.includes('isMasterDataModificationAllowed(user?.role)'),
+    'AdminConfigView handleSave must guard against non-admin saving master data'
+  );
+
+  const naikKelasSrc = fs.readFileSync(path.join(rootDir, 'src/components/NaikKelasModal.tsx'), 'utf8');
+  assert.ok(
+    naikKelasSrc.includes('!isAdmin') && naikKelasSrc.includes('Mode Pratinjau'),
+    'NaikKelasModal must disable actions and display warning banner for non-admin'
+  );
+  console.log('✓ Test 8 passed: Component files contain hardened authorization checks.');
+
   console.log('\n======================================================');
-  console.log('ALL MASTER DATA ROLE RESTRICTION TESTS PASSED (6/6)');
+  console.log('ALL MASTER DATA ROLE RESTRICTION TESTS PASSED (8/8)');
   console.log('======================================================');
 }
 

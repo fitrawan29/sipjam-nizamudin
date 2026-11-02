@@ -57,9 +57,14 @@ $$;
 
 -- Apply to all master data tables
 CALL public.setup_master_data_admin_policies('data_siswa');
+CALL public.setup_master_data_admin_policies('siswa');
 CALL public.setup_master_data_admin_policies('data_guru');
+CALL public.setup_master_data_admin_policies('guru');
 CALL public.setup_master_data_admin_policies('jadwal_pelajaran');
+CALL public.setup_master_data_admin_policies('jadwal_pembelajaran');
 CALL public.setup_master_data_admin_policies('data_mapel');
+CALL public.setup_master_data_admin_policies('mapel');
+CALL public.setup_master_data_admin_policies('mata_pelajaran');
 CALL public.setup_master_data_admin_policies('guru_mapel');
 CALL public.setup_master_data_admin_policies('wali_kelas');
 CALL public.setup_master_data_admin_policies('data_kelas');

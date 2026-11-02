@@ -8,6 +8,7 @@ import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import AccountSettingsModal from './AccountSettingsModal';
 import AdminBackupView from './AdminBackupView';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
+import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
 
 export interface AdminConfigViewProps {
   user: any;
@@ -280,6 +281,12 @@ export default function AdminConfigView({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isMasterDataModificationAllowed(user?.role)) {
+      showToast('Akses Ditolak', 'Hanya Admin yang dapat mengubah konfigurasi sistem dan data master guru.', 'error');
+      return;
+    }
+
     setLoading(true);
 
     const cityVal = config.kota_kabupaten || config.kota_ttd || '';

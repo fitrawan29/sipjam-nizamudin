@@ -1,16 +1,15 @@
-# Progress — reviewer_2 (Round 2)
-Last visited: 2026-10-21T07:47:00Z
-- [x] Initialized reviewer_2 Round 2 adversarial workspace
-- [x] Independent task & requirement analysis (R1: Menu visibility Wali vs Non-wali, R2: Kepala Sekolah appointment & read-only admin monitoring, R3: Pengawas Bina signature & identity configuration)
-- [x] Deep audit of prior attempt (commit 2b2d4f4) and adversarial boundary testing
-- [x] Uncovered 6 critical edge case defects:
-  1. Missing JSX Route Guards in `AppScreen.tsx` allowing non-admin users to directly load `view-admin-config`, `view-admin-data`, `view-admin-backup`, `view-admin-verif`, and `view-admin-rekap` via URL query parameters
-  2. Multi-tenant data leakage in `AnalitikView.tsx` due to missing `sekolah_id` filter on `presensi_guru`, `jurnal_pembelajaran`, and `laporan_piket` queries
-  3. Missing `isKepalaSekolah` propagation in `AppScreen.tsx` for `view-guru-rekap-jurnal`
-  4. Missing `user` and `sekolahId` props on `<PrintHeader />` in `AdminRekapView.tsx`, `PiketView.tsx`, `RekapJurnalView.tsx`, and `RekapSiswaView.tsx`
-  5. Missing `user` and `sekolahId` props on `<PrintSignature />` in `GradebookView.tsx`
-  6. Signer identity collision in `RekapJurnalView.tsx` and `RekapSiswaView.tsx` where Kepala Sekolah/Admin monitoring a class duplicated their own name as both the class Wali Kelas and the Kepala Sekolah
-- [x] Implemented surgical fixes across `AppScreen.tsx`, `AnalitikView.tsx`, `AdminRekapView.tsx`, `PiketView.tsx`, `RekapJurnalView.tsx`, `RekapSiswaView.tsx`, and `GradebookView.tsx`
-- [x] Expanded test suite `tests/kepsek_pengawas_rbac.test.ts` to 43/43 assertions (100% pass)
-- [x] Ran full repository test suite (`npm test`) — 36+ test files and 100% pass
-- [x] Formatted and wrote structured handoff in `handoff.md`
+# Reviewer Round 2 Progress
+
+## Current Status
+- Adversarial review and verification completed.
+- Identified and fixed subtle loopholes:
+  1. `SistemBlokView.tsx`: Resolved false-negative blocking of valid Super Admin format variants (e.g. `'Super Admin'`) by unifying with normalized `isMasterDataModificationAllowed(user?.role)`.
+  2. `AdminConfigView.tsx`: Hardened `handleSave` with `isMasterDataModificationAllowed(user?.role)` to block non-admin submission before any mutations to `data_guru` occur.
+  3. `NaikKelasModal.tsx`: Added `!isAdmin` disable state on all three cohort execution buttons and added a read-only preview warning banner for non-admin viewers.
+  4. `src/lib/supabaseClient.ts`: Expanded `MASTER_DATA_TABLES` to cover `jadwal_pembelajaran`, `mapel`, `mata_pelajaran`, `siswa`, and `guru`. Added support for `(?:public\.)?` table prefix in `isMasterDataEndpoint`. Handled method whitespace trimming in `checkMasterDataMutationGuard`.
+  5. `supabase/migrations/20261102_restrict_master_data_to_admin.sql`: Added `setup_master_data_admin_policies` calls for `jadwal_pembelajaran`, `mapel`, `mata_pelajaran`, `siswa`, and `guru`.
+  6. `tests/master_data_admin_role_restriction.test.ts`: Added tests for method trimming, public schema prefix, non-master operational table safety, and component static guards.
+- Full verification passed:
+  - `npx tsx tests/master_data_admin_role_restriction.test.ts`: Passed (8/8).
+  - `npm test`: Passed all 46 test suites (100%).
+  - `npm run build`: Production build succeeded with zero errors.
