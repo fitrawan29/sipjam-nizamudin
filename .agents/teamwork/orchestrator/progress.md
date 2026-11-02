@@ -20,7 +20,7 @@ Current iteration: 3 / 32
   - [x] Review & Challenger verification (Reviewer 1 & 2, Challenger 1 & 2, Auditor completed: APPROVE / CLEAN)
   - [x] Gate check: PASS
 - [~] Milestone 4: Final Regression & Code Integrity Verification
-  - [~] Full regression test suites (npm test), typecheck, and build verification (In-progress: worker_m4_final)
-  - [ ] Final Reviewers & Challengers verification
-  - [ ] Final Forensic Integrity Audit
+  - [x] Full regression test suites (npm test), typecheck, and build verification (worker_m4_final: 46/46 suites passed, build succeeded, commit e32888c pushed)
+  - [~] Final Reviewers & Challengers verification (Reviewer 1 & 2, Challenger 1 & 2 in-progress)
+  - [~] Final Forensic Integrity Audit (Auditor in-progress)
   - [ ] Final Gate check & delivery
