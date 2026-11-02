@@ -1,12 +1,11 @@
-# Implementer 1 Progress: Sembunyikan Blok Tanda Tangan Admin Pada Dokumen Cetak
+# Progress - Master Data Role Restriction
 
-- [x] Analisis kebutuhan task dan inspeksi komponen `PrintSignature` di `src/components/PrintHeader.tsx`
-- [x] Implementasi pengecekan role admin case-insensitive: `const isAdmin = (user?.role || '').trim().toLowerCase() === 'admin'`
-- [x] Mengatur flag layout `isSingleColumnLayout = Boolean(singleColumn || isAdmin)` sehingga saat admin mencetak, kolom tanda tangan kiri tidak dirender sama sekali di DOM
-- [x] Memastikan kolom tanda tangan Kepala Sekolah tetap terposisi rapi di sisi kanan menggunakan layout single-column (`justify-end ml-auto`) tanpa pergeseran layout yang rusak
-- [x] Memastikan tanda tangan Pengawas tetap ditampilkan normal di sisi kiri ketika opsi pengawas aktif (`isPengawasActive === true`) bersamaan dengan tanda tangan Kepala Sekolah di sisi kanan
-- [x] Memastikan perilaku default tetap terjaga jika `user` null/undefined atau role lain (`guru`, dsb.)
-- [x] Menambahkan unit test komprehensif di `tests/printHeader.test.ts` (test case 10a - 10g)
-- [x] Verifikasi TypeScript dengan `npx tsc --noEmit` (0 error)
-- [x] Eksekusi unit test `npx tsx tests/printHeader.test.ts` (100% PASS)
-- [x] Handoff documentation dan git commit & push ke `origin dev`
+## Status: Implemented & Verifying
+- Implemented client-side PostgREST mutation interception for Master Data (`data_siswa`, `data_guru`, `jadwal_pelajaran`, `data_mapel`, `guru_mapel`, `wali_kelas`, `data_kelas`, `kelas`, `kalender_pendidikan`, `sistem_blok`).
+- Verified role validation: strictly permits Admin & Superadmin, rejects non-admin roles (Guru, Siswa, Piket, Kepala Sekolah, Dinas Pendidikan, anon) with 403 Forbidden and code `42501`.
+- Non-admin roles retain read (SELECT / GET) access for daily operations.
+- Updated `evaluateTabRBAC` to strictly block non-admin access to `view-admin-data`.
+- Updated `AdminDataView.tsx` to preserve loaded & uploaded master data without automatic silent modification/filtering, and conditionally render mutations only for Admin.
+- Added database migration `supabase/migrations/20261102_restrict_master_data_to_admin.sql` with RLS policies.
+- Created `tests/master_data_admin_role_restriction.test.ts` (6/6 tests passed).
+- Running full test suite.

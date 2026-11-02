@@ -375,3 +375,23 @@ export function validateMapelData(
   }
   return { valid: true };
 }
+
+/**
+ * Master Data Authorization Guard
+ * Validates that only users with the 'Admin' or 'Superadmin' role can modify master data
+ * (data siswa, data guru, data jadwal pembelajaran, data kelas, data mapel).
+ */
+export function validateMasterDataModificationRole(role?: string | null): ValidationResult {
+  const norm = (role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  if (norm === 'admin' || norm === 'superadmin' || norm === 'servicerole') {
+    return { valid: true };
+  }
+  return {
+    valid: false,
+    message: 'Akses ditolak: Seluruh data master hanya dapat diubah melalui aplikasi oleh Admin menggunakan panel manajemen admin.'
+  };
+}
+
+export function isMasterDataModificationAllowed(role?: string | null): boolean {
+  return validateMasterDataModificationRole(role).valid;
+}

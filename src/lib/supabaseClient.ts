@@ -111,6 +111,75 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
   );
 }
 
+/**
+ * Master Data tables protected from non-admin modification:
+ * - data siswa (data_siswa)
+ * - data guru (data_guru)
+ * - data jadwal pembelajaran (jadwal_pelajaran)
+ * - data kelas (wali_kelas, data_kelas, kelas, guru_kelas)
+ * - data mapel (data_mapel, guru_mapel)
+ * - kalender pendidikan (kalender_pendidikan)
+ * - sistem blok (sistem_blok)
+ */
+export const MASTER_DATA_TABLES = [
+  'data_siswa',
+  'data_guru',
+  'jadwal_pelajaran',
+  'data_mapel',
+  'guru_mapel',
+  'wali_kelas',
+  'data_kelas',
+  'kelas',
+  'guru_kelas',
+  'kalender_pendidikan',
+  'sistem_blok',
+] as const;
+
+export function isMasterDataEndpoint(urlOrPath: string): boolean {
+  if (!urlOrPath) return false;
+  const path = urlOrPath.split('?')[0].replace(/^[a-z]+:\/\/[^/]+/i, '');
+  return MASTER_DATA_TABLES.some(table => {
+    const pattern = new RegExp(`/(?:rest/v1/)?${table}(?:/|$|\\?)`, 'i');
+    return pattern.test(path) || path.endsWith(`/${table}`) || path === table;
+  });
+}
+
+export function isAdminRole(role?: string | null): boolean {
+  if (!role) return false;
+  const norm = String(role).trim().toLowerCase().replace(/[\s_-]+/g, '');
+  return norm === 'admin' || norm === 'superadmin' || norm === 'servicerole';
+}
+
+export function createMasterDataForbiddenResponse(): Response {
+  return new Response(
+    JSON.stringify({
+      code: '42501',
+      status: 403,
+      error: 'Forbidden: Pengubahan data master hanya dapat dilakukan oleh role Admin melalui panel manajemen admin.',
+      message: 'Akses ditolak: Hanya pengguna dengan role Admin yang diizinkan untuk mengubah data master.',
+      details: 'Perubahan data master (siswa, guru, jadwal, kelas, mapel) dilarang untuk pengguna non-admin.',
+      hint: 'Gunakan akun dengan role Admin untuk mengelola data master.'
+    }),
+    {
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+}
+
+export function checkMasterDataMutationGuard(requestUrlStr: string, method: string, role?: string | null): Response | null {
+  const upperMethod = (method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
+    if (isMasterDataEndpoint(requestUrlStr) && !isAdminRole(role)) {
+      return createMasterDataForbiddenResponse();
+    }
+  }
+  return null;
+}
+
 // In-memory fallback context for Server-Side / Node / Test environments
 let serverTenantContext: TenantContext = {};
 let serverActiveTargetSchool: SatelliteSchool | null = null;
@@ -374,12 +443,13 @@ export const masterFetch: typeof fetch = async (input, init) => {
         ? input.href
         : '';
 
-  // Client-side guard rejecting mutating methods (POST, PUT, PATCH, DELETE) when role is dinas_pendidikan
-  const roleNorm = (role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const method = (
     init?.method ||
     (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')
   ).toUpperCase();
+
+  // Client-side guard rejecting mutating methods (POST, PUT, PATCH, DELETE) when role is dinas_pendidikan
+  const roleNorm = (role || '').toLowerCase().replace(/[\s_-]+/g, '');
 
   if (roleNorm === 'dinaspendidikan' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     if (!requestUrlStr.split('?')[0].endsWith('/rpc/verify_login')) {
@@ -395,6 +465,11 @@ export const masterFetch: typeof fetch = async (input, init) => {
       );
     }
   }
+
+  // Client-side guard rejecting mutating methods on protected Master Data for non-admin roles
+  const effectiveRole = headers.get('x-user-role') || role;
+  const masterDataGuard = checkMasterDataMutationGuard(requestUrlStr, method, effectiveRole);
+  if (masterDataGuard) return masterDataGuard;
 
   return fetch(input, {
     ...init,
@@ -460,12 +535,13 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
         ? input.href
         : '';
 
-  // Client-side guard rejecting mutating methods (POST, PUT, PATCH, DELETE) when role is dinas_pendidikan
-  const roleNorm = (role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const method = (
     init?.method ||
     (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')
   ).toUpperCase();
+
+  // Client-side guard rejecting mutating methods (POST, PUT, PATCH, DELETE) when role is dinas_pendidikan
+  const roleNorm = (role || '').toLowerCase().replace(/[\s_-]+/g, '');
 
   if (roleNorm === 'dinaspendidikan' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     // Only allow login RPC if invoked
@@ -482,6 +558,11 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
       );
     }
   }
+
+  // Client-side guard rejecting mutating methods on protected Master Data for non-admin roles
+  const effectiveRole = headers.get('x-user-role') || role;
+  const masterDataGuard = checkMasterDataMutationGuard(requestUrlStr, method, effectiveRole);
+  if (masterDataGuard) return masterDataGuard;
 
   // Central tables and RPCs that must NEVER be rewritten to satellite instances
   const isMasterOnlyRequest =
@@ -651,6 +732,12 @@ export function getSatelliteSupabaseClient(
           headers.set('x-session-token', safeSessionToken);
         }
 
+        const effectiveUserRole = headers.get('x-user-role') || 'Superadmin';
+        const reqUrl = typeof input === 'string' ? input : (typeof Request !== 'undefined' && input instanceof Request) ? input.url : (typeof URL !== 'undefined' && input instanceof URL) ? input.href : '';
+        const reqMethod = (init?.method || (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
+        const masterDataGuard = checkMasterDataMutationGuard(reqUrl, reqMethod, effectiveUserRole);
+        if (masterDataGuard) return masterDataGuard;
+
         const customFetch = options?.global?.fetch || fetch;
         return customFetch(input, {
           ...init,
@@ -727,6 +814,12 @@ export function getTenantSupabaseClient(
         if (sessionToken && !headers.has('x-session-token')) {
           headers.set('x-session-token', sessionToken);
         }
+
+        const userRole = headers.get('x-user-role') || effectiveRole;
+        const reqUrl = typeof input === 'string' ? input : (typeof Request !== 'undefined' && input instanceof Request) ? input.url : (typeof URL !== 'undefined' && input instanceof URL) ? input.href : '';
+        const reqMethod = (init?.method || (typeof Request !== 'undefined' && input instanceof Request ? input.method : 'GET')).toUpperCase();
+        const masterDataGuard = checkMasterDataMutationGuard(reqUrl, reqMethod, userRole);
+        if (masterDataGuard) return masterDataGuard;
 
         const customFetch = options?.global?.fetch || fetch;
         return customFetch(input, {

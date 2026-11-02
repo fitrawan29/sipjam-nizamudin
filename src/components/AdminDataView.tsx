@@ -20,7 +20,9 @@ import {
   isInvalidMapel,
   normalizeScheduleMapel,
   validateScheduleData,
-  validateMapelData
+  validateMapelData,
+  validateMasterDataModificationRole,
+  isMasterDataModificationAllowed
 } from '@/lib/dataIntegrityGuard';
 import {
   parseNameAndTitles,
@@ -69,6 +71,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   const [schoolName, setSchoolName] = useState<string>(user?.sekolah_nama || 'SIPJAM');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ITEMS_PER_PAGE = 20;
+  const isAdmin = isMasterDataModificationAllowed(user?.role);
 
   // Fetch school name from Supabase sekolah table on mount
   useEffect(() => {
@@ -130,17 +133,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         setErrorMsg(errText);
         setDebugInfo(errText);
       } else if (data && data.length > 0) {
-        const cleanData = tabObj.table === 'jadwal_pelajaran'
-          ? data.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
-          : tabObj.table === 'data_mapel'
-          ? data.filter((row: any) => !isInvalidMapel(row.nama_mata_pelajaran || row.nama_mapel))
-          : tabObj.table === 'data_guru'
-          ? data.map((row: any) => row.mata_pelajaran && isInvalidMapel(row.mata_pelajaran)
-              ? { ...row, mata_pelajaran: normalizeScheduleMapel(row.mata_pelajaran) }
-              : row)
-          : data;
-        setDataList(cleanData);
-        setDebugInfo(`Berhasil memuat ${cleanData.length} baris dari "${tabObj.table}"`);
+        setDataList(data);
+        setDebugInfo(`Berhasil memuat ${data.length} baris dari "${tabObj.table}"`);
       } else if (data && data.length === 0) {
         setDebugInfo(`Tabel "${tabObj.table}" mengembalikan 0 baris (kosong).`);
       } else {
@@ -180,18 +174,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               const fallbackData = await res.json();
               console.log(`[AdminDataView] Fallback success: ${fallbackData.length} rows`);
               if (Array.isArray(fallbackData) && fallbackData.length > 0) {
-                const cleanFallback = tabObj.table === 'jadwal_pelajaran'
-                  ? fallbackData.filter((row: any) => !isInvalidMapel(row.mata_pelajaran || row.mapel))
-                  : tabObj.table === 'data_mapel'
-                  ? fallbackData.filter((row: any) => !isInvalidMapel(row.nama_mata_pelajaran || row.nama_mapel))
-                  : tabObj.table === 'data_guru'
-                  ? fallbackData.map((row: any) => row.mata_pelajaran && isInvalidMapel(row.mata_pelajaran)
-                      ? { ...row, mata_pelajaran: normalizeScheduleMapel(row.mata_pelajaran) }
-                      : row)
-                  : fallbackData;
-                setDataList(cleanFallback);
+                setDataList(fallbackData);
                 setErrorMsg('');
-                setDebugInfo(`Fallback berhasil: ${cleanFallback.length} baris dari "${tabObj.table}"`);
+                setDebugInfo(`Fallback berhasil: ${fallbackData.length} baris dari "${tabObj.table}"`);
               }
             } else {
               console.error('[AdminDataView] Fallback failed:', res.status, res.statusText);
@@ -285,6 +270,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
+
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hanya Admin yang dapat mengunggah atau memodifikasi data master.', 'error');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -399,7 +389,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   throw new Error(`Baris ${i}: Terdeteksi mata pelajaran guru dummy/percobaan ("${row.mata_pelajaran}").`);
                 }
                 if (isInvalidMapel(row.mata_pelajaran)) {
-                  row.mata_pelajaran = normalizeScheduleMapel(row.mata_pelajaran);
+                  throw new Error(`Baris ${i}: Mata pelajaran guru "${row.mata_pelajaran}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`);
                 }
               }
             }
@@ -411,8 +401,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                 throw new Error(`Baris ${i}: Terdeteksi mata pelajaran dummy/percobaan ("${rawMapel}").`);
               }
               if (isInvalidMapel(rawMapel)) {
-                row.mata_pelajaran = normalizeScheduleMapel(rawMapel);
-                if (row.mapel) row.mapel = row.mata_pelajaran;
+                throw new Error(`Baris ${i}: Mata pelajaran jadwal "${rawMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`);
               }
             }
           }
@@ -487,6 +476,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   const handleOpenCreateModal = async () => {
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
+
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hanya Admin yang dapat menambah data master.', 'error');
+      return;
+    }
 
     if (activeTab === 'Data_Siswa') {
       const { value: formValues } = await Swal.fire({
@@ -990,6 +984,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
   // Edit Wali Kelas Assignment
   const handleEditWaliKelas = async (item: any) => {
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hanya Admin yang dapat mengubah wali kelas.', 'error');
+      return;
+    }
     try {
       setLoading(true);
       let guruList: any[] = [];
@@ -1242,6 +1240,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   const handleOpenEditModal = async (item: any) => {
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
+
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hanya Admin yang dapat mengubah data master.', 'error');
+      return;
+    }
 
     if (activeTab === 'Data_Siswa') {
       const { value: formValues } = await Swal.fire({
@@ -1728,6 +1731,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
 
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hanya Admin yang dapat menghapus data master.', 'error');
+      return;
+    }
+
     const itemName = item.nama_siswa || item.nama_guru || item.nama_mata_pelajaran || item.keterangan || item.id || 'data ini';
 
     const result = await Swal.fire({
@@ -2069,14 +2077,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                         >
                           <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i> Template
                         </button>
-                        <button 
-                          type="button" 
-                          onClick={() => fileInputRef.current?.click()} 
-                          disabled={loading}
-                          className="btn-click bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
-                        >
-                          <i className="fa-solid fa-upload"></i> Unggah
-                        </button>
+                        {isAdmin && (
+                          <button 
+                            type="button" 
+                            onClick={() => fileInputRef.current?.click()} 
+                            disabled={loading}
+                            className="btn-click bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
+                          >
+                            <i className="fa-solid fa-upload"></i> Unggah
+                          </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -2099,13 +2109,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                           <i className={`fa-solid ${selectedStudentIds.length === filteredList.length && filteredList.length > 0 ? 'fa-square-check text-emerald-600 dark:text-emerald-400' : 'fa-square text-gray-400'}`}></i>
                           <span className="hidden sm:inline">Pilih Semua</span>
                         </button>
-                        <button 
-                          type="button" 
-                          onClick={() => setIsNaikKelasOpen(true)}
-                          className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
-                        >
-                          <i className="fa-solid fa-arrow-up-right-dots"></i> Naik Kelas {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
-                        </button>
+                        {isAdmin && (
+                          <button 
+                            type="button" 
+                            onClick={() => setIsNaikKelasOpen(true)}
+                            className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+                          >
+                            <i className="fa-solid fa-arrow-up-right-dots"></i> Naik Kelas {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={handlePrintBatchQrCards}
@@ -2119,14 +2131,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                     <button type="button" onClick={loadData} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
                       <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                     </button>
-                    <button 
-                      type="button" 
-                      onClick={handleOpenCreateModal} 
-                      disabled={loading}
-                      className="btn-click bg-nizamudin-green text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 border border-nizamudin-light hover:brightness-110 transition disabled:opacity-50"
-                    >
-                      <i className="fa-solid fa-plus"></i> Baru
-                    </button>
+                    {isAdmin && (
+                      <button 
+                        type="button" 
+                        onClick={handleOpenCreateModal} 
+                        disabled={loading}
+                        className="btn-click bg-nizamudin-green text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 border border-nizamudin-light hover:brightness-110 transition disabled:opacity-50"
+                      >
+                        <i className="fa-solid fa-plus"></i> Baru
+                      </button>
+                    )}
                 </div>
             </div>
 
@@ -2374,20 +2388,24 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                               </button>
                             </>
                           )}
-                          <button 
-                            type="button" 
-                            onClick={() => handleOpenEditModal(item)} 
-                            className="btn-click text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 transition mr-auto"
-                          >
-                            <i className="fa-solid fa-pen-to-square text-[10px]"></i> Edit
-                          </button>
-                          <button 
-                            type="button" 
-                            onClick={() => handleDeleteItem(item)} 
-                            className="btn-click text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition"
-                          >
-                            <i className="fa-solid fa-trash-can text-[10px]"></i> Hapus
-                          </button>
+                          {isAdmin && (
+                            <>
+                              <button 
+                                type="button" 
+                                onClick={() => handleOpenEditModal(item)} 
+                                className="btn-click text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 transition mr-auto"
+                              >
+                                <i className="fa-solid fa-pen-to-square text-[10px]"></i> Edit
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => handleDeleteItem(item)} 
+                                className="btn-click text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 flex items-center gap-1 transition"
+                              >
+                                <i className="fa-solid fa-trash-can text-[10px]"></i> Hapus
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     );

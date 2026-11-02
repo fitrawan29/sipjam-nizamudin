@@ -1,47 +1,31 @@
-# Handoff Report: Penyesuaian Alur Presensi Pulang Cepat & Jurnal Otomatis Tidak Masuk Kelas
+# Handoff: Master Data Role Restriction & Management Enforcement
 
-## 1. What I Changed
-- `src/lib/attendanceAlpa.ts`:
-  - Added and exported `evaluatePulangCepatDanJurnal`: analyzes whether a teacher with active presence Datang, teaching schedules on the day, without teaching journals or Jurnal Kegiatan, and without Pulang qualifies for "Pulang Cepat" and detects all unfulfilled teaching schedules.
-  - Added and exported helper functions `isTeacherScheduleMatch` and `isTeacherJournalMatch` ensuring robust multi-tenant school isolation and Title Case/academic title compatibility.
-  - Enhanced `evaluateAndApplyAutoCheckout`:
-    - Queries active teaching schedules (`jadwal_pelajaran`) and learning journals (`jurnal_pembelajaran`) for target date.
-    - If conditions for Pulang Cepat are met, creates explicit auto-checkout record with `status_verifikasi: 'Pulang Cepat'`, `jenis_presensi: 'Pulang Cepat'`, and descriptive admin note.
-    - Automatically creates journal entries in `jurnal_pembelajaran` for each empty teaching schedule with `status_verifikasi: 'Tidak Masuk Kelas'`, `materi: 'Tidak Masuk Kelas'`, `kegiatan: 'Tidak Masuk Kelas'`, and `keterangan: 'Tidak Masuk Kelas'`.
-    - Preserves standard `status_verifikasi: 'Lupa Checkout'` auto-checkout when teacher has no schedule or filled their journals.
-- `src/lib/workflow.ts`:
-  - Enhanced auto-checkout detection in `getGuruDailyState` to track `status_verifikasi === 'Pulang Cepat'` and `jenis_presensi === 'Pulang Cepat'`.
-- `src/components/GuruPresensi.tsx`:
-  - Updated auto-checkout warning alert to render `Peringatan Presensi: Tercatat Pulang Cepat` when `dailyState.lastAutoCheckout.status_verifikasi === 'Pulang Cepat'`, while retaining literal backward-compatibility strings.
-- `src/components/AdminVerifView.tsx`:
-  - Styled `Pulang Cepat` and `Tidak Masuk Kelas` status badges.
-  - Added `Auto-Checkout (Pulang Cepat)` indicator badge in verification card.
-- `src/components/HomeViewAdmin.tsx`:
-  - Added support to display `Pulang Cepat [HH:MM]` in departure status.
-  - Highlighted journal status as `Tidak Masuk Kelas` (rose badge) when empty schedule journals are generated.
-- `src/app/api/attendance/auto-alpa/route.ts`:
-  - Seamlessly invokes `evaluateAndApplyAutoCheckout` on GET and POST triggers.
-- `src/app/api/attendance/auto-checkout/route.ts`:
-  - Created dedicated endpoint for `/api/attendance/auto-checkout` (GET & POST).
-- `package.json` & `tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`:
-  - Created 15-test automated unit and integration suite covering R1, R2, partial schedule filling, Jurnal Kegiatan exemption, normal checkout exemption, non-teaching day exemption, and multi-tenant isolation.
-  - Integrated into default `npm test` pipeline.
+## 1. Executive Summary
+Implemented strict role authorization across application layers to guarantee that all Master Data (`data_siswa`, `data_guru`, `jadwal_pelajaran`, `data_mapel`, `guru_mapel`, `wali_kelas`, `data_kelas`, `kelas`, `kalender_pendidikan`, `sistem_blok`) can only be modified through the application by users with the `Admin` or `Superadmin` role via the admin management panel. Non-admin users attempting to mutate master data are immediately blocked with HTTP 403 Forbidden (`code: 42501`). In addition, master data loaded or uploaded by administrators is preserved intact without silent automatic alteration.
 
-## 2. Why
-To enforce pedagogical attendance integrity: when a teacher checks in and has teaching duties but leaves school early without teaching their assigned classes or logging journals, the attendance is flagged as "pulang cepat" rather than forgotten checkout ("lupa checkout"), and the unattended classroom periods are officially cataloged as "tidak masuk kelas" to maintain gradebook, administration, and parent transparency.
+## 2. Files Modified & Substance of Changes
+1. `src/lib/supabaseClient.ts`:
+   - Defined `MASTER_DATA_TABLES` covering all master data entities: `data_siswa`, `data_guru`, `jadwal_pelajaran`, `data_mapel`, `guru_mapel`, `wali_kelas`, `data_kelas`, `kelas`, `guru_kelas`, `kalender_pendidikan`, `sistem_blok`.
+   - Implemented `isMasterDataEndpoint`, `isAdminRole`, and `checkMasterDataMutationGuard`.
+   - Wired mutation guards into `dynamicTenantFetch`, `masterFetch`, `getTenantSupabaseClient`, and `getSatelliteSupabaseClient` to reject non-admin mutating HTTP methods (`POST`, `PUT`, `PATCH`, `DELETE`) with HTTP 403 Forbidden.
+   - Read operations (`GET` / `SELECT`) remain accessible for teachers and staff.
+2. `src/lib/dataIntegrityGuard.ts`:
+   - Added and exported `validateMasterDataModificationRole(role)` and `isMasterDataModificationAllowed(role)`.
+3. `src/lib/navigation.ts`:
+   - Hardened `evaluateTabRBAC` for `view-admin-data`: strictly rejects non-admin users and routes to `view-home`.
+4. `src/components/AdminDataView.tsx`:
+   - Preserved master data as stored in database during `loadData` and fallback direct fetch without silent mapping or filtering.
+   - Added role authorization checks in `handleFileUpload`, `handleOpenCreateModal`, `handleOpenEditModal`, `handleDeleteItem`, and `handleEditWaliKelas`.
+   - Restricted UI mutation actions (Unggah, Baru, Naik Kelas, Edit, Hapus) to render only for administrators.
+   - Preserved uploaded CSV subject data without silent automated transformation.
+5. `supabase/migrations/20261102_restrict_master_data_to_admin.sql`:
+   - Created database-level RLS policies enforcing `public.get_auth_user_role() = 'Admin'` or Superadmin on INSERT, UPDATE, DELETE for all master tables.
+6. `tests/master_data_admin_role_restriction.test.ts`:
+   - Automated test suite validating role authorization, endpoint detection, navigation RBAC, client-level PostgREST interception, and tenant context propagation.
+7. `package.json`:
+   - Added `master_data_admin_role_restriction.test.ts` to `npm test`.
 
-## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`: 15/15 passed (100%).
-  - Ran `npm test`: all 42 automated test suites passed (100% success across the entire application).
-- **Shallow Verification (manual run only):**
-  - Visual color tokens and styling in `AdminVerifView.tsx` and `HomeViewAdmin.tsx` for orange/rose warning tags.
-- **Unverified aspects:**
-  - Real-time mobile push notifications for Pulang Cepat (outside scope of R1/R2).
-
-## 4. Known Issues
-- `Minor Robustness Risk`: If a school modifies schedule periods midway through the day after cutoff has already run, already inserted "tidak masuk kelas" journal records remain in the database unless edited by admin.
-
-## 5. Untested Edge Cases & Next Step
-- Edge Case: Extreme edge cases where multiple teachers share the same nickname across different schools without user_id UUID mapping (mitigated by `isTeacherScheduleMatch` school_id check).
-- Next Step: Reviewer should verify end-to-end cron trigger with live Supabase database instance.
+## 3. Verification Summary
+- `npx tsx tests/master_data_admin_role_restriction.test.ts`: 6/6 tests passed.
+- `npm test`: All 46 test suites passed with exit code 0.
+- `npm run build`: Next.js production build succeeded with Turbopack and TypeScript checks passed.

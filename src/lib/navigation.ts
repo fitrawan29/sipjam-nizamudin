@@ -193,9 +193,9 @@ export function evaluateTabRBAC(
   }
 
   // Cluster 5: Master Data & Sistem
-  if (viewId === 'view-admin-data' && (tabId === 'blok' || tabId === 'sistem_blok')) {
+  if (viewId === 'view-admin-data') {
     if (!isAdmin) {
-      return { allowed: false, fallbackTab: 'Data_Siswa', reason: 'Hanya Admin yang dapat mengonfigurasi Sistem Blok.' };
+      return { allowed: false, fallbackTab: 'view-home', reason: 'Seluruh data master hanya dapat diakses dan diubah oleh Administrator.' };
     }
   }
 
