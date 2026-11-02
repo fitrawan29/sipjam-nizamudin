@@ -1,13 +1,14 @@
-# Progress — challenger_m2_1
+# Progress: Milestone 2 Empirical Validation & Stress Testing
 
-Last visited: 2026-10-05T10:54:20Z
+Last visited: 2026-11-02T13:41:30Z
+Status: TESTING_COMPLETE_REQUEST_CHANGES
 
-## Status
-- [x] Initialized DISPATCH.md and BRIEFING.md
-- [ ] Read ORIGINAL_REQUEST.md and Worker M2 handoff.md
-- [ ] Inspect AppScreen.tsx and relevant files
-- [ ] Author empirical test script `tests/challenger_m2_sidebar_profile.test.ts`
-- [ ] Run test suite `tests/challenger_m2_sidebar_profile.test.ts` and `tests/app_screen_integration.test.ts`
-- [ ] Adversarial stress-testing (edge cases, role badges, styling, tutorial triggers)
-- [ ] Write handoff report with APPROVE / REQUEST_CHANGES
-- [ ] Send message to parent
+## Steps
+- [x] Step 1: Initialize DISPATCH.md and BRIEFING.md
+- [x] Step 2: Review ORIGINAL_REQUEST.md, PROJECT.md, and worker_m2/handoff.md
+- [x] Step 3: Investigate `src/lib/workflow.ts` and related files
+- [x] Step 4: Run existing test suites (`tests/sistem_blok_verification.test.ts` [85 pass] and `tests/m2_schedule_masking_workflow.test.ts` [74 pass])
+- [x] Step 5: Design and implement adversarial stress test suite (`tests/challenger_m2_matching_masking_stress.test.ts` [144 assertions])
+- [x] Step 6: Execute adversarial tests and analyze results (142 pass, 2 fail: false positive teacher blocking vulnerability reproduced)
+- [ ] Step 7: Document findings and write handoff report (`handoff.md`)
+- [ ] Step 8: Send completion message with explicit verdict to parent orchestrator

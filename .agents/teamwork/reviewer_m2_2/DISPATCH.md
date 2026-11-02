@@ -1,23 +1,21 @@
-## 2026-10-05T10:53:55Z
+## 2026-11-02T13:31:01Z
 You are reviewer_m2_2.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_2
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Your role: teamwork_reviewer.
+Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_2\
+Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
 
-MANDATORY FIRST STEP: Read the user request at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
-
-Read Worker M2's handoff report:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
-
-Your role is to independently review Requirement R3.2 (Complete Tutorial System & Documentation):
-1. Review `src/components/Tutorial/tutorialData.ts`:
-   - Verify coverage of all 28 menus across all 3 roles: Guru (11), Admin (14), Superadmin (3).
-   - Check that each entry provides title, icon, summary, prerequisites, steps, and key tips.
-2. Review `src/components/Tutorial/TutorialModal.tsx`:
-   - Check role filtering tabs, search input, accordion cards, and "Buka Menu" navigation.
-3. Review documentation files:
-   - Check `docs/PANDUAN_PENGGUNA.md` and `TUTORIAL.md` for comprehensive written guides.
-4. Run verification commands: `npx tsc --noEmit`, `npx tsx tests/onboarding_and_ai_assistant_ui.test.ts`, and `npm run build`.
-5. Provide a clear APPROVE or REQUEST_CHANGES verdict in your handoff report.
-
-Write your report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_2\handoff.md` and send a message to parent.
+TASK: Architecture & Robustness Review for Milestone 2 (M2) — Workflow Engine, Schedule Masking & Journal Workflows
+1. Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m2/handoff.md.
+2. Review implementation in:
+   - `src/lib/workflow.ts`
+   - `src/components/HomeViewGuru.tsx`
+   - `src/components/GuruJurnal.tsx`
+3. Adversarial / robustness verification:
+   - What happens with edge case formats: time without leading zero, time with dots ('07.30'), midnight crossing, multiple conflicting block rules?
+   - In `HomeViewGuru.tsx`, does mixed schedule rendering prevent any crash or layout breakage?
+   - In `GuruJurnal.tsx`, does switching between Jurnal KBM and Jurnal Kegiatan preserve inputs or switch clean states?
+   - Run verification commands: `npx tsc --noEmit` and `npx tsx tests/sistem_blok_verification.test.ts`.
+4. Render an explicit verdict in your handoff report: either APPROVE or REQUEST_CHANGES.
+5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_2\handoff.md` and message the orchestrator.

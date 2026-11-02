@@ -1,21 +1,21 @@
-## 2026-10-05T10:53:55Z
+## 2026-11-02T13:30:53Z
 You are reviewer_m2_1.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Your role: teamwork_reviewer.
+Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\
+Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
 
-MANDATORY FIRST STEP: Read the user request at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (under ## 2026-10-05T09:55:29Z)
-
-Read Worker M2's handoff report:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
-
-Your role is to independently review Requirement R3.1 (Sidebar Menu User Profile Display):
-1. Review `src/components/AppScreen.tsx` inside the sidebar drawer.
-   - Confirm that the user identity card is rendered below the brand header and above the scrollable menu list.
-   - Confirm avatar display (`renderUserAvatar`), full name display (`user?.nama`), color-coded role badge (Superadmin, Administrator, Guru Wali Kelas, Guru), and username/NIP.
-   - Confirm that the menu drawer layout remains responsive and scrollable on small mobile screens (`max-h-[calc(100vh-230px)]` or similar).
-   - Confirm that existing regression test constraints are preserved (e.g. `"Lihat Tutorial Lagi"` button, `setTourOpen(true)`, `setSidebarOpen(false)`).
-2. Run verification commands: `npx tsc --noEmit` and `npx tsx tests/app_screen_integration.test.ts`.
-3. Provide a clear APPROVE or REQUEST_CHANGES verdict in your handoff report.
-
-Write your report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\handoff.md` and send a message to parent.
+TASK: Code Correctness Review for Milestone 2 (M2) — Workflow Engine, Schedule Masking & Journal Workflows
+1. Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m2/handoff.md.
+2. Review implementation in:
+   - `src/lib/workflow.ts` (matching functions: getActiveSistemBloks, isKelasInAngkatan, isTimeRangeOverlap, evaluateScheduleBlock, getGuruDailyState)
+   - `src/components/HomeViewGuru.tsx` (schedule masking rendering and mixed schedule card displays)
+   - `src/components/GuruJurnal.tsx` (journal workflow toggle between Jurnal KBM and Jurnal Kegiatan)
+3. Verify:
+   - Target matching correctness: sekolah, angkatan, kelas, guru.
+   - Time overlap correctness: full-day default vs interval overlap (`sStart < bEnd && sEnd > bStart`).
+   - Journal fulfillment correctness: teachers affected by block can fill Jurnal Kegiatan, unaffected schedules fill Jurnal KBM.
+   - Run verification commands: `npx tsc --noEmit`, `npx tsx tests/sistem_blok_verification.test.ts`, and `npx tsx tests/m2_schedule_masking_workflow.test.ts`.
+4. Render an explicit verdict in your handoff report: either APPROVE or REQUEST_CHANGES.
+5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\handoff.md` and message the orchestrator.

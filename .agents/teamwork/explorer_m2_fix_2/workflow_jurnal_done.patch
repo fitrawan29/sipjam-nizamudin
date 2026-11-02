@@ -1,0 +1,17 @@
+--- a/src/lib/workflow.ts
++++ b/src/lib/workflow.ts
+@@ -982,7 +982,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
+       );
+       const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
+ 
+-      if ((unblockedFulfilled && blockedFulfilled) || state.jurnalKegiatan) isJurnalDone = true;
++      if (blockedSchedules.length > 0) {
++        // Mixed schedule: BOTH regular KBM journals and Jurnal Kegiatan must be fulfilled
++        if (unblockedFulfilled && blockedFulfilled) isJurnalDone = true;
++      } else {
++        // Standard unblocked schedule: regular KBM fulfillment (or legacy Jurnal Kegiatan tolerance)
++        if (unblockedFulfilled || state.jurnalKegiatan) isJurnalDone = true;
++      }
+     }
+ 
+     let isPiketDone = true;

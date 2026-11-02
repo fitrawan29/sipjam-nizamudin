@@ -257,16 +257,14 @@ export function evaluateScheduleBlock(
 
       const namaMatches = Boolean(
         targetGuruNama &&
-        (teacherNama.includes(targetGuruNama) ||
-          targetGuruNama.includes(teacherNama) ||
-          schedNamaGuru.includes(targetGuruNama) ||
-          targetGuruNama.includes(schedNamaGuru))
+        ((teacherNama && (teacherNama.includes(targetGuruNama) || targetGuruNama.includes(teacherNama))) ||
+          (schedNamaGuru && (schedNamaGuru.includes(targetGuruNama) || targetGuruNama.includes(schedNamaGuru))))
       );
 
       const fallbackMatches = Boolean(
         targetGuruId &&
-        (teacherNama.includes(targetGuruId) ||
-          schedNamaGuru.includes(targetGuruId))
+        ((teacherNama && teacherNama.includes(targetGuruId)) ||
+          (schedNamaGuru && schedNamaGuru.includes(targetGuruId)))
       );
 
       targetMatches = idMatches || namaMatches || fallbackMatches;
@@ -665,15 +663,45 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         };
       }
     } else if (state.jadwalKBM.length === 0 && activeBloks.length > 0) {
+      let matchedBlock: SistemBlok | undefined;
       const teacherMatches = activeBloks.some(b => {
-        if (b.tipe_target === 'sekolah' || (b.tipe_target as any) === 'keseluruhan' || !b.tipe_target) return true;
+        if (b.tipe_target === 'sekolah' || (b.tipe_target as any) === 'keseluruhan' || !b.tipe_target) {
+          matchedBlock = b;
+          return true;
+        }
         if (b.tipe_target === 'guru') {
-          return evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
+          const evalResult = evaluateScheduleBlock({}, teacherRef, [b]);
+          if (evalResult.isBlocked) {
+            matchedBlock = b;
+            return true;
+          }
         }
         return false;
       });
-      if (teacherMatches) {
+      if (teacherMatches && matchedBlock) {
         state.isBlok = true;
+        state.blokInfo = {
+          id: matchedBlock.id,
+          nama_kegiatan: matchedBlock.nama_kegiatan,
+          deskripsi: matchedBlock.deskripsi,
+          tanggal_mulai: matchedBlock.tanggal_mulai,
+          tanggal_selesai: matchedBlock.tanggal_selesai,
+        };
+      } else {
+        state.blokInfo = null;
+      }
+    } else if (!hasBlocked) {
+      state.blokInfo = null;
+    } else {
+      const firstBlockedRule = state.jadwalKBM.find((jk: any) => jk.isBlocked)?.blockRule;
+      if (firstBlockedRule) {
+        state.blokInfo = {
+          id: firstBlockedRule.id,
+          nama_kegiatan: firstBlockedRule.nama_kegiatan,
+          deskripsi: firstBlockedRule.deskripsi,
+          tanggal_mulai: firstBlockedRule.tanggal_mulai,
+          tanggal_selesai: firstBlockedRule.tanggal_selesai,
+        };
       }
     }
 
@@ -982,7 +1010,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       );
       const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
 
-      if ((unblockedFulfilled && blockedFulfilled) || state.jurnalKegiatan) isJurnalDone = true;
+      if (unblockedFulfilled && blockedFulfilled) {
+        isJurnalDone = true;
+      }
     }
 
     let isPiketDone = true;

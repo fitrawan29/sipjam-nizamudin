@@ -1,202 +1,203 @@
-# Handoff Report — Milestone 2 Independent Adversarial Review (Reviewer M2.2)
+# Handoff Report: Reviewer M2-2 — Architecture & Adversarial Review of Milestone 2
 
 ## 1. Observation
 
-### Observation 1: Time Comparison String Bug in Auto-Alpa Cutoff
-- **File**: `src/lib/attendanceAlpa.ts`, lines 38, 46, 52:
-  ```ts
-  38: const currentTimeWita = getWitaTimeStr();
-  ...
-  46: const cutoffTime = configData?.value || '22:00';
-  ...
-  52: if (currentTimeWita < cutoffTime) {
-  ```
-- **Helper definition** in `src/lib/wita.ts`, lines 42-47:
-  ```ts
-  export function getWitaTimeStr(date: Date = new Date()): string {
-    return date.toLocaleTimeString('id-ID', {
-      timeZone: WITA_TIMEZONE,
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }
-  ```
-- **Direct execution result** (`node -e "..."`):
-  - In Indonesian locale (`id-ID`), `toLocaleTimeString` produces `"00.47"` with a **DOT (`.`)**, NOT a colon (`:`).
-  - In ASCII, `'.'` (ASCII 46) is strictly less than `':'` (ASCII 58).
-  - When compared: `'22.30' < '22:00'` evaluates to `true`! `'16.30' < '16:00'` evaluates to `true`!
-  - Consequently, `currentTimeWita < cutoffTime` evaluates to `true` even after the cutoff time has passed (e.g., at 22:30 when cutoff is 22:00), causing `attendanceAlpa.ts` to exit early with `affectedCount: 0`.
+### Verification Commands & Test Results
+1. **Static Typing Check**:
+   - Command: `npx tsc --noEmit`
+   - Result: Exited with code 0 (zero static typing errors).
+2. **Regression Verification Suite**:
+   - Command: `npx tsx tests/sistem_blok_verification.test.ts`
+   - Result:
+     ```
+     TOTAL TESTS: 85
+     PASSED: 85
+     FAILED: 0
+     🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
+     ```
+3. **M2 Worker Test Suite**:
+   - Command: `npx tsx tests/m2_schedule_masking_workflow.test.ts`
+   - Result:
+     ```
+     TOTAL M2 TESTS: 74
+     PASSED: 74
+     FAILED: 0
+     ```
+4. **Dual Journal & Mixed Schedule Challenger Suite**:
+   - Command: `npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts`
+   - Result:
+     ```
+     TOTAL CHALLENGER TESTS: 52
+     PASSED: 52
+     FAILED: 0
+     ```
+5. **Adversarial Stress Test Suite**:
+   - Command: `npx tsx tests/challenger_m2_matching_masking_stress.test.ts`
+   - Result:
+     ```
+     TOTAL ADVERSARIAL STRESS TESTS: 144
+     PASSED: 142
+     FAILED: 2
+     ```
+   - Failing tests:
+     * `❌ FAIL: Multi-Rule: Bu Siti afternoon Class X is UNBLOCKED (after block hours)`
+     * `❌ FAIL: Empty teacher object with teacher-targeted rule evaluates safely to unblocked`
 
-### Observation 2: Timezone Discrepancy & Day-Schedule Inversion in 3x Warning System
-- **File**: `src/lib/warningSystem.ts`, lines 123-143:
-  ```ts
-  123: const todayStr = getWitaDateStr();
-  124: const evaluationDates: { dateStr: string; dayName: string }[] = [];
-  125: const dateObj = new Date(todayStr + 'T00:00:00+08:00');
-  126: 
-  127: // Look back up to 30 calendar days
-  128: for (let i = 29; i >= 0; i--) {
-  129:   const d = new Date(dateObj);
-  130:   d.setDate(d.getDate() - i);
-  131:   const dateStr = d.toISOString().split('T')[0];
-  132:   const dayOfWeek = d.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  133:   const dayName = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Makassar', weekday: 'long' });
-  134: 
-  135:   // Exclude Sundays
-  136:   if (dayOfWeek === 0) continue;
-  137:   // Exclude Saturdays if 5-day school week
-  138:   if (hariSekolah === '5' && dayOfWeek === 6) continue;
-  139:   // Exclude calendar holidays (F7-B3)
-  140:   if (holidaySet.has(dateStr)) continue;
-  141: 
-  142:   evaluationDates.push({ dateStr, dayName });
-  143: }
-  ```
-- **Direct execution result**:
-  For `todayStr = '2026-09-25'` (Friday in WITA):
-  - `d.toISOString()` converts to UTC. Because `T00:00:00+08:00` is 16:00 UTC of the previous day, `dateStr` becomes `'2026-09-24'` (Thursday).
-  - Meanwhile, `dayName` formats in `Asia/Makassar`, which is `'Jumat'` (Friday).
-  - `dayOfWeek = d.getUTCDay()` returns 4 (Thursday).
-  - When `i = 4` (`2026-09-20` Sunday in calendar), `dateStr` is `'2026-09-20'`, `dayName` is `'Senin'` (Monday), and `d.getUTCDay()` is `0` (Sunday). The condition `if (dayOfWeek === 0) continue;` **excludes Monday instead of Sunday**!
-  - When `i = 5` (`2026-09-19` Saturday in calendar), `dayName` is `'Minggu'` (Sunday) and `d.getUTCDay()` is `6` (Saturday). Sunday is **NOT excluded** and is treated as a valid school day with zero attendance!
-  - When checking schedules, `dayPresensi` searches `presensi_guru` matching `dateStr` (`2026-09-24` Thursday), but checks obligations against `dayName` (`Jumat` Friday). This pairs Thursday's attendance with Friday's teaching schedule.
+---
 
-### Observation 3: Database Query in AdminRekapView Excludes All Alpa Records
-- **File**: `src/components/AdminRekapView.tsx`, lines 60-70:
-  ```ts
-  60: let presensiQuery = supabase
-  61:   .from('presensi_guru')
-  62:   .select('*')
-  63:   .gte('timestamp', start)
-  64:   .lte('timestamp', end)
-  65:   .eq('status_verifikasi', 'Disetujui')
-  66:   .order('timestamp', { ascending: true });
-  ```
-- In `attendanceAlpa.ts` lines 123-130, auto-alpa updates records to:
-  ```ts
-  status_verifikasi: 'Alpa',
-  jenis_presensi: 'Alpa'
-  ```
-- Because `AdminRekapView.tsx` line 65 queries `.eq('status_verifikasi', 'Disetujui')`, Supabase will **never** return any record with `status_verifikasi = 'Alpa'`.
-- As a consequence, lines 142-146 (`if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') { pMap[nama].alpaDirect++; }`) is unreachable dead code in production. Direct Alpa will always remain `0`.
+### Code Inspections & Root Cause Identification
 
-### Observation 4: Historical Date Bleed in attendanceAlpa.ts
-- **File**: `src/lib/attendanceAlpa.ts`, lines 64-70:
-  ```ts
-  64: const startOfDay = getWitaStartOfDay(evaluatedDate);
-  65: const endOfDay = getWitaEndOfDay(evaluatedDate);
-  66: 
-  67: let query = supabase
-  68:   .from('presensi_guru')
-  69:   .select('*')
-  70:   .or(`timestamp.gte.${startOfDay},timestamp.ilike.${evaluatedDate}%`);
-  ```
-- `endOfDay` is declared on line 65, but never used in the query.
-- The query has no `.lte` upper bound. When evaluating a past date (e.g. `targetDateStr = '2026-09-10'`), it queries all records from September 10th to the current day.
-- In line 87, records are pushed to `teacherRecordsMap` without checking `rec.timestamp`. Therefore, any attendance or approved leave submitted on a *subsequent* day (e.g., September 11th) marks `hasValidResubmission` or `hasApprovedLeave` as true for September 10th.
+#### A. Integrity Violation Audit
+- Codebase examined: `src/lib/workflow.ts`, `src/components/HomeViewGuru.tsx`, `src/components/GuruJurnal.tsx`.
+- Findings:
+  * No hardcoded test answers or dummy return values found.
+  * Real Supabase database queries and actual entity mutations are executed.
+  * No facades or shortcuts detected.
+  * Integrity status: **CLEAN (No integrity violations detected)**.
 
-### Observation 5: Test Suite Integrity & Self-Certification Issue
-- **File**: `tests/m2_notifications_alpa_warning.test.ts`
-- 25 out of 27 test cases (F5.1-F5.8, F6.1-F6.7, F7.1, F7.4-F7.8) perform static file content string matching (e.g. `assert(alpaServiceContent.includes('currentTimeWita < cutoffTime'))`).
-- These tests verify the presence of code patterns, not behavioral execution.
-- Function `calculateStreak` is unit-tested in isolation (F7.2, F7.3), but `calculateStreak` is never called inside `warningSystem.ts` (which instead uses inline streak loops).
-- This allowed all four aforementioned runtime defects to pass silently.
+#### B. Flaw in `src/lib/workflow.ts` (lines 258-272)
+In `evaluateScheduleBlock`:
+```typescript
+247: const teacherNama = String(teacher.nama || teacher.nama_guru || '').trim().toLowerCase();
+248: const schedNamaGuru = String(schedule.nama_guru || '').trim().toLowerCase();
+...
+258: const namaMatches = Boolean(
+259:   targetGuruNama &&
+260:   (teacherNama.includes(targetGuruNama) ||
+261:     targetGuruNama.includes(teacherNama) ||
+262:     schedNamaGuru.includes(targetGuruNama) ||
+263:     targetGuruNama.includes(schedNamaGuru))
+264: );
+265:
+266: const fallbackMatches = Boolean(
+267:   targetGuruId &&
+268:   (teacherNama.includes(targetGuruId) ||
+269:     schedNamaGuru.includes(targetGuruId))
+270: );
+```
+- In JavaScript, `anyString.includes('')` evaluates to `true`.
+- When a block rule targets a teacher (`tipe_target === 'guru'`) with `target_guru_nama = 'Pak Budi'`:
+  1. If a schedule item has no `nama_guru` (e.g. `schedule = { kelas: 'X Merdeka', jam_mulai: '12:30', jam_selesai: '14:00' }`), `schedNamaGuru` becomes `""`.
+  2. Line 263 evaluates: `targetGuruNama.includes("")`, which returns `true`.
+  3. Consequently, `namaMatches` evaluates to `true`, and the schedule is falsely marked `isBlocked = true` by Pak Budi's rule, even if taught by Bu Siti or anyone else!
+  4. If an empty teacher object (`teacher = {}`) is passed, `teacherNama` is `""`, and line 261 `targetGuruNama.includes("")` evaluates to `true`.
+
+#### C. Edge Case: SD Grade 1 vs Class Section Suffix in `isKelasInAngkatan`
+In `src/lib/workflow.ts` (lines 146-152):
+```typescript
+if (/^\d+$/.test(token)) {
+  const numRegex = new RegExp(`(^|[^0-9])${token}([^0-9]|$)`, 'i');
+  return numRegex.test(k);
+}
+```
+- If an admin configures an angkatan rule for grade `1` (typical in elementary school / SD), `numRegex` is `(^|[^0-9])1([^0-9]|$)`.
+- A high school class like `"X TKJ 1"` matches token `1` at the end (`TKJ 1`).
+- While SMK schools typically configure angkatan `10, 11, 12`, grade-token matching should ideally avoid matching trailing section numbers.
+
+#### D. Time Parsing & Overlap Robustness
+- In `parseTimeToMinutes`:
+  * Format `"7:30"` (no leading zero) -> `450` (Pass)
+  * Format `"07.30"` (dot notation) -> `450` (Pass)
+  * Format `"7.30"` (no leading zero + dot) -> `450` (Pass)
+  * Format `"07:30:00"` (with seconds) -> `450` (Pass)
+  * Edge cases `null`, `""`, `"abc"` -> fallback handled cleanly without throwing.
+- In `isTimeRangeOverlap`:
+  * Full day (`is_full_day: true`) -> always true (Pass).
+  * Boundary touch (`07:00-07:30` vs `07:30-11:00`) -> does not overlap (Pass).
+  * Interval crossing midnight (e.g. `23:00 - 02:00`): Evaluates within a single calendar day (00:00 - 24:00). In Indonesian KBM school operations, schedules operate exclusively between 06:30 and 17:00, so midnight crossing does not occur in practice.
+
+#### E. Mixed Schedule UI Rendering (`HomeViewGuru.tsx`)
+- Correctly renders `"Campuran"` badge in header when some schedules are blocked and others unblocked (`dailyState.hasBlockedSchedule && !dailyState.isBlok`).
+- Blocked schedules are rendered in distinct amber styling with `"Kegiatan Blok"` badge, block name, and button `"Isi Jurnal Kegiatan"`.
+- Unblocked schedules are rendered as active KBM cards with standard `"Isi Jurnal"` / `"Sudah Diisi"` state.
+- Grid layout (`grid grid-cols-1 sm:grid-cols-2`) and flex containers remain balanced with zero layout breakage.
+
+#### F. Dual Journal Input Switching (`GuruJurnal.tsx`)
+- In mixed mode (`hasBlockedSchedule && !isBlok`), the journal mode selector dropdown is enabled, allowing teachers to toggle between `Jurnal KBM` and `Jurnal Kegiatan`.
+- Switching to `Jurnal Kegiatan`:
+  * Pre-fills `materi` with block activity name.
+  * Conditionally hides KBM-specific inputs (mapel, kelas, kehadiran siswa, kktp, tujuan pembelajaran).
+  * On submit, sets `mapel = '-'` and `kelas = '-'`.
+- Switching back to `Jurnal KBM`:
+  * Draft inputs (`tujuanPembelajaran`, `kktp`, `konten`, `kegiatan`) are safely retained in component state and localStorage draft.
+  * Validates all required KBM fields.
+- Post-submit reset:
+  * Cleans all fields, removes draft from storage, and refreshes daily state.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Auto-Alpa Cutoff (F6)**:
-   - Observation 1 proves that `getWitaTimeStr()` produces dot-delimited time (`HH.MM`) while HTML input / DB configs produce colon-delimited time (`HH:MM`).
-   - ASCII character 46 (`.`) is less than ASCII character 58 (`:`).
-   - Therefore, any comparison between dot format and colon format with identical hours (e.g., `'16.30' < '16:00'`) evaluates to `true`.
-   - Line 52 interprets this as "cutoff has not been reached" and returns with 0 records mutated.
-   - Conclusion: The auto-alpa cutoff fails to execute automatically after cutoff time on the same day.
+1. **Integrity Verification**:
+   The implementation is genuine: no hardcoded test answers, fake stubs, or bypasses exist.
+2. **Adversarial Failure Trace**:
+   Running the comprehensive adversarial test `challenger_m2_matching_masking_stress.test.ts` revealed that 2 out of 144 tests fail.
+3. **Root Cause Analysis**:
+   Tracing the failure in Scenario 6.2 directly led to line 263 in `src/lib/workflow.ts`:
+   `targetGuruNama.includes(schedNamaGuru)`
+   In JavaScript, `String.prototype.includes("")` always returns `true`. If a schedule object omits `nama_guru` or has an empty string, or if a teacher object has an empty `nama`, `namaMatches` inadvertently evaluates to `true`.
+4. **Impact Assessment (Blast Radius)**:
+   In a multi-rule environment where an admin defines a teacher-specific block (e.g. Pak Budi assigned to MGMP from 11:00 to 14:00), any schedule belonging to another teacher that is queried or stored without an explicit `nama_guru` attribute will be falsely masked as blocked by Pak Budi's rule.
+5. **Required Fix**:
+   `teacherNama` and `schedNamaGuru` must be verified as non-empty before invoking `.includes()`, e.g.:
+   ```typescript
+   const namaMatches = Boolean(
+     targetGuruNama &&
+     ((teacherNama && (teacherNama.includes(targetGuruNama) || targetGuruNama.includes(teacherNama))) ||
+      (schedNamaGuru && (schedNamaGuru.includes(targetGuruNama) || targetGuruNama.includes(schedNamaGuru))))
+   );
 
-2. **3x Absence Warnings (F7)**:
-   - Observation 2 demonstrates that formatting a WITA midnight timestamp (`T00:00:00+08:00`) with `d.toISOString()` rolls the calendar date back by 8 hours to UTC 16:00 of the previous day.
-   - Conversely, `d.toLocaleDateString(..., { timeZone: 'Asia/Makassar' })` evaluates in WITA, keeping the current calendar day.
-   - This creates a 1-day discrepancy between `dateStr` and `dayName`.
-   - Presensi check looks for attendance on day $N-1$ while checking teaching schedule for day $N$.
-   - Sunday exclusion (`d.getUTCDay() === 0`) excludes Monday in WITA while keeping Sunday.
-   - Conclusion: The warning engine computes invalid absence streaks and falsely flags teachers based on mismatched schedules.
-
-3. **Admin Rekap Alpa Aggregation (F6.7)**:
-   - Observation 3 shows that `presensiQuery` filters exclusively for `status_verifikasi = 'Disetujui'`.
-   - Records marked as Alpa by `attendanceAlpa.ts` have `status_verifikasi = 'Alpa'`.
-   - Because of the query filter, no Alpa records are ever retrieved from Supabase into `AdminRekapView`.
-   - Conclusion: The recap report will never reflect explicit Alpa records in production.
-
-4. **Historical Query Isolation (F6)**:
-   - Observation 4 shows that queries for historical dates are unbounded by `endOfDay`.
-   - Attendance records from future dates leak into the evaluation for past dates.
-   - Conclusion: Historical batch evaluations or retroactive triggers will incorrectly treat future attendance as valid resubmissions for past dates.
+   const fallbackMatches = Boolean(
+     targetGuruId &&
+     ((teacherNama && teacherNama.includes(targetGuruId)) ||
+      (schedNamaGuru && schedNamaGuru.includes(targetGuruId)))
+   );
+   ```
 
 ---
 
 ## 3. Caveats
-- Rejection notification flow (`src/app/api/notifications/rejection/route.ts`), input sanitization, category deep links, and client dispatch wiring in `AdminVerifView.tsx` and `PiketView.tsx` are well implemented and functioning.
-- The UI presentation layers in `HomeView.tsx` (warning banner) and `AdminMonitorView.tsx` (summary cards) are properly structured and ready to display warnings once the underlying calculation in `warningSystem.ts` is fixed.
+
+1. **Midnight-Crossing Blocks**:
+   `isTimeRangeOverlap` assumes daytime single-day intervals (`00:00` - `24:00`). If an admin enters `jam_mulai: "22:00"` and `jam_selesai: "02:00"`, the start minute (`1320`) exceeds the end minute (`120`), so standard daytime schedules will not overlap. This is standard for Indonesian school KBM schedules, but an explicit validation in Admin UI to enforce `jam_selesai > jam_mulai` is recommended.
+2. **Elementary Grade 1 Token Suffix**:
+   `isKelasInAngkatan("X TKJ 1", "1")` returns `true` because the regex detects boundary-wrapped `'1'`. For high schools where angkatan is 10, 11, 12, this does not manifest unless an admin configures angkatan `1`.
 
 ---
 
 ## 4. Conclusion
-**VERDICT: REQUEST_CHANGES**
 
-Milestone 2 cannot be approved in its current state due to three critical runtime defects and one test integrity issue:
-1. **Critical Defect 1 (Cutoff Invalidation)**: `attendanceAlpa.ts` time comparison compares dot-delimited time (`16.30`) with colon-delimited time (`16:00`), preventing auto-alpa from ever triggering on the cutoff hour.
-2. **Critical Defect 2 (Timezone Inversion)**: `warningSystem.ts` creates a 1-day discrepancy between `dateStr` and `dayName` via `toISOString()`, pairing Thursday attendance with Friday schedule, and excluding Monday instead of Sunday.
-3. **Critical Defect 3 (Dead Alpa Query in Rekap)**: `AdminRekapView.tsx` queries `.eq('status_verifikasi', 'Disetujui')`, discarding all `status_verifikasi = 'Alpa'` records before aggregation.
-4. **Major Defect 4 (Historical Date Leak)**: `attendanceAlpa.ts` leaves `endOfDay` unused and does not bound the query with `.lte()`, allowing future attendance records to contaminate past date evaluations.
-5. **Quality & Integrity Defect 5**: `tests/m2_notifications_alpa_warning.test.ts` relies on superficial string presence checks that masked all runtime bugs above. Functional unit/integration tests must be added.
+### Verdict: **REQUEST_CHANGES**
 
-### Required Changes:
-1. In `src/lib/attendanceAlpa.ts`:
-   - Normalize both `currentTimeWita` and `cutoffTime` before comparison (e.g. normalize separators: `currentTimeWita.replace('.', ':') < cutoffTime.replace('.', ':')` or parse to minutes).
-   - Use `endOfDay` with `.lte('timestamp', endOfDay)` and ensure `rec.timestamp` strictly matches `evaluatedDate`.
-2. In `src/lib/warningSystem.ts`:
-   - Use WITA-consistent date iteration: anchor date at noon (`T12:00:00+08:00`) or use `getWitaDateStr(d)` and `getWitaDayName(d)`.
-   - Check Sunday via `dayName === 'Minggu'` or WITA day of week.
-   - Utilize `calculateStreak` inside the warning evaluation loops.
-3. In `src/components/AdminRekapView.tsx`:
-   - Update `presensiQuery` to fetch both approved attendance and Alpa records (e.g. `.in('status_verifikasi', ['Disetujui', 'Alpa'])`).
-4. In `tests/m2_notifications_alpa_warning.test.ts`:
-   - Replace or supplement string-matching assertions with real behavioral execution tests (e.g., test time comparison with dot vs colon, test evaluation dates timezone alignment, and test Alpa aggregation).
+While the core functionality of Milestone 2 (schedule masking, mixed layout rendering in `HomeViewGuru.tsx`, dual journaling in `GuruJurnal.tsx`, and time parsing) is implemented and passes standard test suites, the matching engine in `src/lib/workflow.ts` contains a critical string inclusion bug where `targetGuruNama.includes("")` evaluates to `true`.
+
+This bug causes teacher-targeted block rules to falsely match schedules and teacher objects lacking `nama_guru`, breaking strict teacher isolation and causing test failures in `tests/challenger_m2_matching_masking_stress.test.ts`.
+
+Worker must patch `src/lib/workflow.ts` lines 258-272 to ensure empty strings are not matched via `.includes()`.
 
 ---
 
 ## 5. Verification Method
 
-1. **Verify Time Comparison Fix**:
-   Execute Node test:
-   ```bash
-   node -e "const cur = '16.30'; const cutoff = '16:00'; const normCur = cur.replace('.', ':'); console.log('Fixed comparison:', normCur < cutoff ? 'FAIL' : 'PASS');"
-   ```
-   Expect: `Fixed comparison: PASS`.
+To verify the resolution of this issue:
 
-2. **Verify Timezone & Day Alignment in warningSystem.ts**:
-   Execute Node test:
-   ```bash
-   node -e "
-   const todayStr = '2026-09-25';
-   const d = new Date(todayStr + 'T12:00:00+08:00');
-   const dateStr = d.toISOString().split('T')[0];
-   const dayName = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Makassar', weekday: 'long' });
-   console.log('Date:', dateStr, 'Day:', dayName);
-   if (dateStr === '2026-09-25' && dayName === 'Jumat') console.log('PASS: Date and day are aligned.');
-   else console.log('FAIL: Date and day are mismatched.');
-   "
-   ```
-   Expect: `PASS: Date and day are aligned.`
+```bash
+# 1. Typecheck the codebase
+npx tsc --noEmit
 
-3. **Verify AdminRekapView Query**:
-   Inspect `src/components/AdminRekapView.tsx` line 65 to confirm that `status_verifikasi = 'Alpa'` is included in `presensiQuery`.
+# 2. Run existing verification suite
+npx tsx tests/sistem_blok_verification.test.ts
 
-4. **Run Full Test Suite & Build**:
-   ```bash
-   npx tsx tests/m2_notifications_alpa_warning.test.ts
-   npm test
-   npx tsc --noEmit
-   npm run build
-   ```
-   Expect: 100% pass and successful build.
+# 3. Run Milestone 2 workflow test suite
+npx tsx tests/m2_schedule_masking_workflow.test.ts
+
+# 4. Run adversarial stress test suite (MUST PASS 144/144)
+npx tsx tests/challenger_m2_matching_masking_stress.test.ts
+
+# 5. Run challenger dual journal test suite (MUST PASS 52/52)
+npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
+```
+
+### Invalidation Conditions:
+- Any test failure in `tests/challenger_m2_matching_masking_stress.test.ts` (currently 2 failing).
+- Any false positive block evaluation when a schedule lacks `nama_guru` while a teacher block rule is active.
