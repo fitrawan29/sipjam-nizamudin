@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { getWitaTimeStr, getWitaDayName } from '@/lib/wita';
+import { getWitaTimeStr, getWitaDayName, formatPresensiTime } from '@/lib/wita';
 
 export type IntervensiPhase = 'pagi' | 'kbm' | 'pulang' | 'malam_tutup';
 
@@ -18,11 +18,24 @@ export interface JadwalIntervensiWali {
 }
 
 /**
+ * Normalizes time string to HH:mm, leveraging formatPresensiTime for rich format support.
+ */
+function normalizeTime(t: string): string {
+  const formatted = formatPresensiTime(t);
+  if (formatted) return formatted;
+  const parts = (t || '').replace(/\./g, ':').split(':');
+  const hh = (parts[0] || '0').padStart(2, '0');
+  const mm = (parts[1] || '0').padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+/**
  * Adds minutes to a 'HH:mm' time string and returns formatted 'HH:mm'.
  */
 export function addMinutesToTime(timeStr: string, minutesToAdd: number): string {
   try {
-    const parts = (timeStr || '00:00').replace('.', ':').split(':');
+    const formatted = formatPresensiTime(timeStr);
+    const parts = (formatted || timeStr || '00:00').replace(/\./g, ':').split(':');
     const hh = parseInt(parts[0] || '0', 10);
     const mm = parseInt(parts[1] || '0', 10);
     const totalMinutes = hh * 60 + mm + minutesToAdd;
@@ -46,15 +59,8 @@ export function isIntervensiAllowed(
     const rawCurrent = (currentTimeStr || getWitaTimeStr() || '00:00').trim();
     const rawCutoff = (cutoffTime || '08:00').trim();
 
-    const normalize = (t: string): string => {
-      const parts = t.replace('.', ':').split(':');
-      const hh = (parts[0] || '0').padStart(2, '0');
-      const mm = (parts[1] || '0').padStart(2, '0');
-      return `${hh}:${mm}`;
-    };
-
-    const currentNorm = normalize(rawCurrent);
-    const cutoffNorm = normalize(rawCutoff);
+    const currentNorm = normalizeTime(rawCurrent);
+    const cutoffNorm = normalizeTime(rawCutoff);
 
     return currentNorm <= cutoffNorm;
   } catch {
@@ -72,16 +78,9 @@ export function isPiketPulangAllowed(
 ): { allowed: boolean; pesan: string; batasAkhir: string } {
   try {
     const rawCurrent = (currentTimeStr || getWitaTimeStr() || '00:00').trim();
-    const normalize = (t: string): string => {
-      const parts = t.replace('.', ':').split(':');
-      const hh = (parts[0] || '0').padStart(2, '0');
-      const mm = (parts[1] || '0').padStart(2, '0');
-      return `${hh}:${mm}`;
-    };
-
-    const current = normalize(rawCurrent);
-    const pulangStart = normalize(jamPulangMulai || '11:00');
-    const pulangEnd = normalize(addMinutesToTime(pulangStart, 60));
+    const current = normalizeTime(rawCurrent);
+    const pulangStart = normalizeTime(jamPulangMulai || '11:00');
+    const pulangEnd = normalizeTime(addMinutesToTime(pulangStart, 60));
 
     if (current < pulangStart) {
       return {
@@ -127,17 +126,10 @@ export function isWaliKelasIntervensiAllowed(
 ): WaliIntervensiCheck {
   try {
     const rawCurrent = (currentTimeStr || getWitaTimeStr() || '00:00').trim();
-    const normalize = (t: string): string => {
-      const parts = t.replace('.', ':').split(':');
-      const hh = (parts[0] || '0').padStart(2, '0');
-      const mm = (parts[1] || '0').padStart(2, '0');
-      return `${hh}:${mm}`;
-    };
-
-    const current = normalize(rawCurrent);
-    const pagi = normalize(batasPagi || '12:00');
-    const pulangStart = normalize(jamPulangMulai || '11:00');
-    const pulangEnd = normalize(addMinutesToTime(pulangStart, 60));
+    const current = normalizeTime(rawCurrent);
+    const pagi = normalizeTime(batasPagi || '12:00');
+    const pulangStart = normalizeTime(jamPulangMulai || '11:00');
+    const pulangEnd = normalizeTime(addMinutesToTime(pulangStart, 60));
 
     // 1. Jendela Pulang (jamPulangMulai s.d. jamPulangMulai + 60m)
     // Selaras dengan Guru Piket: aktif tepat 1 jam (60 menit)

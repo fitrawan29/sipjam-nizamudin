@@ -133,6 +133,33 @@ async function run() {
     assert.strictEqual(eveningLocked.phase, 'malam_tutup');
   });
 
+  check('R1.5', 'Resilience format waktu pada isIntervensiAllowed, isPiketPulangAllowed, & isWaliKelasIntervensiAllowed', () => {
+    // Suffix WITA & exact boundaries
+    assert.strictEqual(isIntervensiAllowed('08:00 WITA', '08:00 WITA'), true);
+    assert.strictEqual(isIntervensiAllowed('08:00', '08:00 WITA'), true);
+    assert.strictEqual(isIntervensiAllowed('08:00', '08:01 WITA'), false);
+
+    // Dot notation and seconds
+    assert.strictEqual(isIntervensiAllowed('08.00', '07.30.00'), true);
+    assert.strictEqual(isIntervensiAllowed('08.00.00', '08.00.00'), true);
+
+    // Departure with WITA suffix and 12-hour AM/PM notation
+    const piketWita = isPiketPulangAllowed('11:00 WITA', '12:00 WITA');
+    assert.strictEqual(piketWita.allowed, true);
+    assert.strictEqual(piketWita.batasAkhir, '12:00');
+
+    const piketPm = isPiketPulangAllowed('11:00', '11:45 AM');
+    assert.strictEqual(piketPm.allowed, true);
+
+    const waliWita = isWaliKelasIntervensiAllowed('12:00 WITA', '11:00 WITA', undefined, '12:00 WITA');
+    assert.strictEqual(waliWita.allowed, true);
+    assert.strictEqual(waliWita.phase, 'pulang');
+
+    // addMinutesToTime handles rich time formats
+    assert.strictEqual(addMinutesToTime('11:00 WITA', 60), '12:00');
+    assert.strictEqual(addMinutesToTime('11.30', 45), '12:15');
+  });
+
   // ==========================================================================
   // SECTION 2: R2 - ATURAN STATUS BOLOS & FALLBACK JURNAL KBM
   // ==========================================================================
@@ -215,6 +242,52 @@ async function run() {
     assert.strictEqual(resIzin.isFallback, false);
   });
 
+  check('R2.5', 'Adversarial student identifier matching & absentee-only lists in resolveDailyStudentAttendance', () => {
+    // 1. Student matched by id when nisn is missing
+    const studentNoNisn = { id: 's-999', nama_siswa: 'Zahra Amelia' };
+    const journalIdMatch = {
+      jam_ke: 'Jam ke-4',
+      mapel: 'Seni Budaya',
+      absensi_siswa: { 's-999': 'I' }
+    };
+    const resId = resolveDailyStudentAttendance(studentNoNisn, null, false, journalIdMatch);
+    assert.strictEqual(resId.status, 'Izin');
+
+    // 2. Student matched by trimmed whitespace NISN
+    const studentWithSpaceNisn = { id: 's-888', nisn: ' 0012345678 ', nama_siswa: 'Aditya Pratama' };
+    const journalCleanNisn = {
+      jam_ke: 'Jam ke-4',
+      mapel: 'Geografi',
+      absensi_siswa: { '0012345678': 'A' }
+    };
+    const resSpaceNisn = resolveDailyStudentAttendance(studentWithSpaceNisn, null, true, journalCleanNisn);
+    assert.strictEqual(resSpaceNisn.status, 'Bolos');
+
+    // 3. Absentee-only journal: student not listed defaults to Hadir
+    const studentNotListed = { id: 's-777', nisn: '0099999999', nama_siswa: 'Gilang Ramadhan' };
+    const absenteeOnlyJournal = {
+      jam_ke: 'Jam ke-3',
+      mapel: 'Bahasa Indonesia',
+      absensi_siswa: { '0012345678': 'A', '0023456789': 'S' }
+    };
+    const resUnlisted = resolveDailyStudentAttendance(studentNotListed, null, false, absenteeOnlyJournal);
+    assert.strictEqual(resUnlisted.status, 'Hadir');
+  });
+
+  check('R2.6', 'findLastKbmJournal handles complex jam_ke format strings ("Jam 7-8", "Jam ke-9", numeric 10)', () => {
+    const mixedJournals = [
+      { jam_ke: 'Jam 1-2', mapel: 'PABP', absensi_siswa: { '001': 'H' } },
+      { jam_ke: 'Jam 7-8', mapel: 'Fisika', absensi_siswa: { '001': 'H' } },
+      { jam_ke: 'Jam ke-9', mapel: 'Kimia', absensi_siswa: { '001': 'A' } },
+      { jam_ke: 6, mapel: 'Biologi', absensi_siswa: { '001': 'H' } }
+    ];
+
+    const last = findLastKbmJournal(mixedJournals);
+    assert.ok(last);
+    assert.strictEqual(last.jam_ke, 'Jam ke-9');
+    assert.strictEqual(last.mapel, 'Kimia');
+  });
+
   // ==========================================================================
   // SECTION 3: R3 - NOTIFIKASI WHATSAPP & CETAK/EXPORT REKAP
   // ==========================================================================
@@ -260,6 +333,16 @@ async function run() {
     assert.ok(piketSrc.includes('exportRekapPiketCSV'), 'PiketView harus memiliki fungsi exportRekapPiketCSV');
     assert.ok(piketSrc.includes('triggerPrintWithGps'), 'PiketView harus menggunakan triggerPrintWithGps');
     assert.ok(piketSrc.includes('triggerParentWhatsApp'), 'PiketView harus mengintegrasikan triggerParentWhatsApp');
+  });
+
+  check('R3.3', 'exportGerbangCsv aman dari injeksi tanda petik (quotes) sesuai spesifikasi RFC 4180', () => {
+    const rekapSrc = fs.readFileSync(path.resolve('src/components/RekapSiswaView.tsx'), 'utf8');
+    assert.ok(
+      rekapSrc.includes('(s.nama_siswa || \'\').replace(/"/g, \'""\')') ||
+      rekapSrc.includes('(s.nama_siswa || "").replace(/"/g, \'""\')') ||
+      rekapSrc.includes('.replace(/"/g, \'""\')'),
+      'RekapSiswaView exportGerbangCsv must safely escape double quotes in student names'
+    );
   });
 
   // ==========================================================================

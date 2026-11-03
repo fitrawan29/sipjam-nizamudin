@@ -399,7 +399,7 @@ export default function RekapSiswaView({
       rows.push([
         idx + 1,
         s.nisn || '',
-        `"${s.nama_siswa}"`,
+        `"${(s.nama_siswa || '').replace(/"/g, '""')}"`,
         s.kelas || gerbangKelas,
         gerbangTanggal,
         s.jamDatang && s.jamDatang !== '-' ? `${s.jamDatang} WITA` : '-',
