@@ -300,14 +300,23 @@ async function run() {
     assert.ok(picked);
     assert.strictEqual(picked.jam_ke, 'Jam ke-4', 'Must pick journal with actual attendance data over whitespace-padded empty JSON');
 
-    // 2. extractMaxJamKe parses Roman numerals
+    // 2. extractMaxJamKe parses single and range Roman numerals
     assert.strictEqual(extractMaxJamKe('Jam ke-IV'), 4);
     assert.strictEqual(extractMaxJamKe('Jam ke-VII'), 7);
     assert.strictEqual(extractMaxJamKe('Jam IX'), 9);
     assert.strictEqual(extractMaxJamKe('Jam ke-XII'), 12);
+    assert.strictEqual(extractMaxJamKe('Jam ke-III-IV'), 4, 'Must extract max Roman numeral in range (IV -> 4)');
+    assert.strictEqual(extractMaxJamKe('Jam I - II'), 2, 'Must extract max Roman numeral in range (II -> 2)');
+    assert.strictEqual(extractMaxJamKe('Jam VII-VIII'), 8, 'Must extract max Roman numeral in range (VIII -> 8)');
+    assert.strictEqual(extractMaxJamKe({ jam_ke: 6 }), 6, 'Must handle object with jam_ke property');
+    assert.strictEqual(extractMaxJamKe({ jam: 'Jam 5' }), 5, 'Must handle object with jam property');
+
+    // 3. findLastKbmJournal safely handles null or undefined entries without crashing
+    assert.strictEqual(findLastKbmJournal([null, undefined]), null, 'Must safely return null without throwing on null array elements');
+    assert.strictEqual(findLastKbmJournal([null, { jam_ke: 'Jam ke-4', mapel: 'IPA', absensi_siswa: { '1': 'H' } }])?.jam_ke, 'Jam ke-4');
   });
 
-  check('R2.8', 'resolveDailyStudentAttendance handles "Alpha" spelling and object-wrapped status payloads', () => {
+  check('R2.8', 'resolveDailyStudentAttendance handles "Alpha" spelling, numeric NISN/ID, and object-wrapped status payloads', () => {
     const student = { id: 's-alpha', nisn: '998877', nama_siswa: 'Alpha Tester' };
 
     // 1. "Alpha" spelling in class record
@@ -321,6 +330,26 @@ async function run() {
     };
     const resObj = resolveDailyStudentAttendance(student, null, true, journalObj);
     assert.strictEqual(resObj.status, 'Bolos', 'Morning hadir + Alfa object payload in last KBM resolves to Bolos');
+
+    // 3. Numeric NISN and ID resilience (does not throw TypeError on trim)
+    const numericStudent = { id: 101, nisn: 9988776655, nama_siswa: 'Numeric NISN Student' } as any;
+    const resNumeric = resolveDailyStudentAttendance(
+      numericStudent,
+      null,
+      true,
+      { jam_ke: 'Jam ke-6', absensi_siswa: { '9988776655': 'A' } }
+    );
+    assert.strictEqual(resNumeric.status, 'Bolos', 'Numeric NISN properly matches and resolves to Bolos without TypeError');
+
+    // 4. Object status payloads in absentee-only lists correctly defaults unlisted student to Hadir
+    const otherStudent = { id: 102, nisn: 1122334455, nama_siswa: 'Other Student' } as any;
+    const resOther = resolveDailyStudentAttendance(
+      otherStudent,
+      null,
+      false,
+      { jam_ke: 'Jam ke-6', absensi_siswa: { '9988776655': { status: 'A' } } }
+    );
+    assert.strictEqual(resOther.status, 'Hadir', 'Unlisted student in absentee-only list with object status correctly defaults to Hadir');
   });
 
   check('R2.9', 'RekapSiswaView fetchGerbangAttendance query includes detail_absen and kehadiran_murid', () => {
@@ -328,6 +357,14 @@ async function run() {
     assert.ok(
       rekapSrc.includes(".select('jam_ke, mapel, absensi_siswa, detail_absen, kehadiran_murid, tanggal')"),
       'fetchGerbangAttendance query must select detail_absen and kehadiran_murid to ensure full Bolos detection'
+    );
+  });
+
+  check('R2.10', 'RekapSiswaView normMapel unwraps object payloads and recognizes ALPHA spelling', () => {
+    const rekapSrc = fs.readFileSync(path.resolve('src/components/RekapSiswaView.tsx'), 'utf8');
+    assert.ok(
+      rekapSrc.includes('extractedMapel') && rekapSrc.includes('normMapel === \'ALPHA\''),
+      'RekapSiswaView must unwrap object payloads and support ALPHA spelling in normMapel'
     );
   });
 

@@ -331,8 +331,11 @@ export default function RekapSiswaView({
             const isExcused = classLog?.status === 'Sakit' || classLog?.status === 'Izin' || classLog?.status === 'S' || classLog?.status === 'I';
             const isMorningHadir = !isExcused && (Boolean(datang) || classLog?.status === 'Hadir' || classLog?.status === 'H');
 
-            const normMapel = lastMapelStatus ? String(lastMapelStatus).trim().toUpperCase() : null;
-            const isMapelAlfa = normMapel === 'A' || normMapel === 'ALFA' || normMapel === 'ALPA' || normMapel === 'BOLOS' || normMapel === 'B';
+            const extractedMapel = (typeof lastMapelStatus === 'object' && lastMapelStatus !== null)
+              ? (lastMapelStatus as any).status || (lastMapelStatus as any).s || (lastMapelStatus as any).code || ''
+              : lastMapelStatus;
+            const normMapel = extractedMapel ? String(extractedMapel).trim().toUpperCase() : null;
+            const isMapelAlfa = normMapel === 'A' || normMapel === 'ALFA' || normMapel === 'ALPA' || normMapel === 'ALPHA' || normMapel === 'BOLOS' || normMapel === 'B';
 
             // Auto-fallback to mapel presensi & validasi bolos (Rule 3)
             let isBolosPulang = isDailyBolos || isResolvedBolos;

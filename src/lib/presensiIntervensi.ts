@@ -261,6 +261,11 @@ export async function fetchJadwalIntervensiWali(
 export function extractMaxJamKe(jamKeValue: any): number {
   if (typeof jamKeValue === 'number') return isNaN(jamKeValue) ? 0 : jamKeValue;
   if (!jamKeValue) return 0;
+  if (typeof jamKeValue === 'object' && jamKeValue !== null) {
+    if ('jam_ke' in jamKeValue) return extractMaxJamKe(jamKeValue.jam_ke);
+    if ('jam' in jamKeValue) return extractMaxJamKe(jamKeValue.jam);
+    if ('value' in jamKeValue) return extractMaxJamKe(jamKeValue.value);
+  }
   const str = String(jamKeValue);
   const matches = str.match(/\d+/g);
   if (matches && matches.length > 0) {
@@ -268,17 +273,18 @@ export function extractMaxJamKe(jamKeValue: any): number {
     if (numbers.length > 0) return Math.max(...numbers);
   }
 
-  // Roman numeral support (e.g. "Jam ke-IV", "Jam ke-VII", "Jam IX", "X")
+  // Roman numeral support (e.g. "Jam ke-IV", "Jam ke-VII", "Jam IX", "X", "Jam III - IV")
   const romanMap: Record<string, number> = {
     'xii': 12, 'xi': 11, 'x': 10, 'ix': 9,
     'viii': 8, 'vii': 7, 'vi': 6, 'v': 5, 'iv': 4,
     'iii': 3, 'ii': 2, 'i': 1
   };
   const words = str.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
-  for (const w of words) {
-    if (romanMap[w] !== undefined) {
-      return romanMap[w];
-    }
+  const romanNumbers = words
+    .map(w => romanMap[w])
+    .filter((n): n is number => n !== undefined);
+  if (romanNumbers.length > 0) {
+    return Math.max(...romanNumbers);
   }
   return 0;
 }
@@ -316,14 +322,16 @@ function hasAttendanceData(journal: any): boolean {
  */
 export function findLastKbmJournal(journals: any[]): any {
   if (!journals || journals.length === 0) return null;
-  const withAttendance = journals.filter(hasAttendanceData);
-  const candidates = withAttendance.length > 0 ? withAttendance : journals;
+  const validJournals = (journals || []).filter(j => j && typeof j === 'object');
+  if (validJournals.length === 0) return null;
+  const withAttendance = validJournals.filter(hasAttendanceData);
+  const candidates = withAttendance.length > 0 ? withAttendance : validJournals;
   const sorted = candidates.slice().sort((a, b) => {
-    const jamA = extractMaxJamKe(a.jam_ke);
-    const jamB = extractMaxJamKe(b.jam_ke);
+    const jamA = extractMaxJamKe(a?.jam_ke);
+    const jamB = extractMaxJamKe(b?.jam_ke);
     if (jamB !== jamA) return jamB - jamA;
-    const timeA = String(a.timestamp || a.created_at || '');
-    const timeB = String(b.timestamp || b.created_at || '');
+    const timeA = String(a?.timestamp || a?.created_at || '');
+    const timeB = String(b?.timestamp || b?.created_at || '');
     return timeB.localeCompare(timeA);
   });
   return sorted[0] || null;
@@ -392,7 +400,7 @@ export function resolveDailyStudentAttendance(
     const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
 
     if (absensiJson && Object.keys(absensiJson).length > 0) {
-      let val = (student.nisn && absensiJson[student.nisn] !== undefined)
+      let val = (student.nisn !== undefined && student.nisn !== null && absensiJson[student.nisn] !== undefined)
         ? absensiJson[student.nisn]
         : (student.nama_siswa && absensiJson[student.nama_siswa] !== undefined)
           ? absensiJson[student.nama_siswa]
@@ -401,15 +409,15 @@ export function resolveDailyStudentAttendance(
             : undefined;
 
       // Whitespace-insensitive lookup for NISN
-      if (val === undefined && student.nisn) {
-        const cleanNisn = student.nisn.trim();
+      if (val === undefined && student.nisn !== undefined && student.nisn !== null) {
+        const cleanNisn = String(student.nisn).trim();
         const foundNisnKey = Object.keys(absensiJson).find(k => k.trim() === cleanNisn);
         if (foundNisnKey) val = absensiJson[foundNisnKey];
       }
 
       // Case-insensitive lookup for nama_siswa if not directly found
       if (val === undefined && student.nama_siswa) {
-        const lowerName = student.nama_siswa.trim().toLowerCase();
+        const lowerName = String(student.nama_siswa).trim().toLowerCase();
         const foundKey = Object.keys(absensiJson).find(k => k.trim().toLowerCase() === lowerName);
         if (foundKey) val = absensiJson[foundKey];
       }
@@ -423,8 +431,8 @@ export function resolveDailyStudentAttendance(
     if (!lastKbmStatus && (lastKbmJournal.detail_absen || lastKbmJournal.kehadiran_murid)) {
       const detail = `${lastKbmJournal.detail_absen || ''} ${lastKbmJournal.kehadiran_murid || ''}`;
       const identifiers = [
-        student.nama_siswa?.trim(),
-        student.nisn?.trim()
+        student.nama_siswa ? String(student.nama_siswa).trim() : '',
+        (student.nisn !== undefined && student.nisn !== null) ? String(student.nisn).trim() : ''
       ].filter(Boolean) as string[];
 
       for (const idStr of identifiers) {
@@ -504,7 +512,12 @@ export function resolveDailyStudentAttendance(
       if (isSemuaHadir) {
         lastKbmStatus = 'Hadir';
       } else if (absensiJson && Object.keys(absensiJson).length > 0) {
-        const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
+        const jsonValues = Object.values(absensiJson).map(v => {
+          if (typeof v === 'object' && v !== null) {
+            return String((v as any).status || (v as any).s || (v as any).code || '').trim().toUpperCase();
+          }
+          return String(v).trim().toUpperCase();
+        });
         const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
         if (!hasExplicitHadir) {
           lastKbmStatus = 'Hadir';
