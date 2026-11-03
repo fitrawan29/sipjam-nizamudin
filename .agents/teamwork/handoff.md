@@ -1,31 +1,29 @@
-# Handoff Report — Sentinel
+# Sentinel Handoff Report
 
 ## Observation
-- The task requested fixing the arrival time ("Jam Datang") and departure time ("Jam Pulang") displays on the picket gate presence module (`presensi gerbang piket`).
-- Requirements:
-  - R1: Display arrival scan time accurately based on scan records.
-  - R2: Display departure scan time if present, or '-' if absent.
-- Execution was routed to SWE Light (`teamwork_swe`).
-- The team executed:
-  - Phase 1: Initial implementation by `teamwork_implementer_1` (commit `bc9b5de9fa25de120de47edd11c576b758c218bf`).
-  - Phase 2: 3 rounds of adversarial review by `teamwork_reviewer_1` (commit `2ff6b8b6677a30cfb9734e868ee9caaabc62db86`), `teamwork_reviewer_2` (commit `59ae0705d0dac137a83f934900dc3749e1ade2f0`), and `teamwork_reviewer_3` (commit `407a85e498bd6ba62b9b83f53b1305c178869092`).
-  - Independent Victory Audit by `teamwork_victory_auditor` (`6c4cb80b-1da2-4d3a-accd-243350f4377e`), rendering **VICTORY CONFIRMED**.
+- Original requirements demanded strict preservation of agreed attendance rules across gate scanning, homeroom teacher windows, departure allocations, mapel/kbm unexcused absence (Bolos) propagation, dynamic KBM fallback, parent WhatsApp messaging, CSV/print utilities, and actual scan time display in WITA.
+- Orchestration followed the SWE Light workflow: 1 Primary Implementer (`teamwork_implementer_p1`) and 3 sequential adversarial review rounds (`teamwork_reviewer_r1`, `teamwork_reviewer_r2`, `teamwork_reviewer_r3`).
+- Independent Post-Victory Auditor (`b51c41ec-201b-44d4-84d4-9d27f34f3192`) performed a 3-phase audit (Timeline forensics, Cheating/integrity detection, and Fresh test execution).
 
 ## Logic Chain
-- The orchestrator removed synthetic automatic departure time injection (`Sistem Mapel Auto`) so that only genuine scan departure records are displayed.
-- Centralized `formatPresensiTime` in `src/lib/wita.ts` normalizes arrival and departure timestamps across diverse formats (24h, 12h AM/PM, ISO UTC) into 24-hr `HH:mm` WITA.
-- When no departure record exists, the UI reliably renders `-` across desktop tables, mobile cards, print views, and picket rosters.
-- Independent verification confirmed authentic implementation with no stubs or facade code.
+1. **R1 (Time Boundaries)**: The morning gate input cut-off at 08:00 WITA, morning walas window up to 12:00 WITA, and 60-minute departure window (`isPiketPulangAllowed`) remain fully active and enforced.
+2. **R2 (Attendance State Logic)**: Students recorded as present in the morning who are marked Alfa or Bolos in the final KBM period resolve to `Bolos`. The dynamic fallback (`findLastKbmJournal`, `resolveDailyStudentAttendance`) reliably extracts status from the final KBM session when homeroom attendance is absent. Roman numeral parsing, null checks, and string normalizations were comprehensively hardened.
+3. **R3 (Notifications & Exports)**: WhatsApp 1-click parent notifications (`wa.me` URL generation) and CSV export with RFC 4180 double-quote escaping operate as expected.
+4. **R4 (Actual Scan Time Display)**: Check-in and check-out times in `RekapSiswaView.tsx` and `PiketView.tsx` render actual scan timestamps formatted in WITA via `formatPresensiTime`, displaying '-' when departure scan has not occurred.
+5. **Independent Audit Verdict**: The independent victory auditor confirmed VICTORY CONFIRMED across all three phases with zero anomalies, 0 mock facades, and 100% test pass rates.
 
 ## Caveats
-- If external physical barcode kiosk hardware transmits timestamps without timezone indicators in non-standard formats, `formatPresensiTime` defaults to WITA timezone alignment.
+- External GSM carrier delivery latency and physical barcode scanner hardware keystroke bounce filters operate at hardware/network layers beyond application-level control.
 
 ## Conclusion
-- All acceptance criteria are fully met.
-- Independent Victory Auditor rendered **VICTORY CONFIRMED**.
-- Task completed successfully.
+- All four requirements (R1–R4) and acceptance criteria are completely satisfied and verified.
+- Verdict: **VICTORY CONFIRMED**.
 
 ## Verification Method
-- `npx tsx tests/presensi_gerbang_jam_datang_pulang.test.ts`: 17/17 tests passing.
-- `npm test`: 46/46 test suites passing (100%).
-- `npm run build`: Exit code 0, Turbopack production build succeeded.
+- Independent test execution:
+  - `npx tsx tests/presensi_gerbang_dan_absensi_retensi.test.ts`: 22 / 22 PASS
+  - `npx tsx tests/presensi_gerbang_jam_datang_pulang.test.ts`: 17 / 17 PASS
+  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: 56 / 56 PASS
+  - `npx tsc --noEmit`: 0 errors
+  - `npm test`: 48 / 48 test suites PASS
+  - `npm run build`: Turbopack production build compiled with 0 errors (13/13 static pages)
