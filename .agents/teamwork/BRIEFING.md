@@ -1,38 +1,40 @@
-# BRIEFING — 2026-11-02T22:31:30Z
+# BRIEFING — 2026-11-03T03:03:58Z
 
 ## Mission
-Coordinate and oversee the SWE Light execution path and Victory Audit for fixing arrival and departure time display on picket gate presence.
+Ensure gate attendance logic preserves agreed rules while maintaining recent changes.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\
-- Orchestrator: 8af63edb-f40d-481a-a218-a244ddc01e6b
-- Victory Auditor: 6c4cb80b-1da2-4d3a-accd-243350f4377e
+- Orchestrator: deb62a4b-7249-487d-b175-09bf52efe57c
+- Victory Auditor: [to be spawned on victory claim]
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Single self-contained fix; keep it small and focused
-- Integrity mode: development
-- R1: Tampilkan waktu presensi/scan masuk pada jam datang presensi gerbang piket
-- R2: Tampilkan waktu presensi/scan pulang pada jam pulang jika ada, tampilkan '-' jika belum ada
+- R1: Retensi Logika Waktu Presensi Gerbang & Wali Kelas (batas pagi 08:00 WITA, jendela walas 12:00 WITA, alokasi pulang 60 menit / isPiketPulangAllowed)
+- R2: Retensi Aturan Status Kehadiran (Bolos gerbang & mapel, Fallback jurnal KBM findLastKbmJournal / resolveDailyStudentAttendance)
+- R3: Retensi Notifikasi WhatsApp dan Cetak/Export Rekap
+- R4: Konsistensi Tampilan Waktu Scan Gerbang (jam datang scan aktual, jam pulang scan aktual atau '-', format formatPresensiTime WITA)
+- Single self-contained fix, keep small and focused (SWE Light path)
 
 ## User Context
-- **Last user request**: Approved task prompt received
-- **Pending clarifications**: none
-- **Delivered results**: Gate presence arrival and departure display logic fully implemented, tested, adversarial reviewed across 3 rounds, independently audited and verified with VICTORY CONFIRMED.
+- **Last user request**: Approved task prompt received and routed
+- **Pending clarifications**: [none]
+- **Delivered results**: [none]
 
 ## Project Status
-- **Phase**: complete
-- **Route**: SWE Light (teamwork_swe)
+- **Phase**: in progress
+- **Route**: SWE Light (`teamwork_swe`)
+- **Active Agent**: deb62a4b-7249-487d-b175-09bf52efe57c (`teamwork_swe` in `.agents/teamwork/swe_1/`)
+- **Crons**:
+  - Cron 1 (Progress Reporting `*/8 * * * *`): task-24
+  - Cron 2 (Liveness Check `*/10 * * * *`): task-26
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
-- .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative user intent and approved prompt
-- .agents/teamwork/teamwork_swe_1/handoff.md — Orchestrator handoff report
-- .agents/teamwork/teamwork_sentinel_victory_auditor_1/handoff.md — Sentinel Victory Auditor handoff report
-- .agents/teamwork/handoff.md — Sentinel final handoff report
+- .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative task prompt and requirements record
