@@ -34,13 +34,15 @@ function normalizeTime(t: string): string {
  */
 export function addMinutesToTime(timeStr: string, minutesToAdd: number): string {
   try {
+    if (typeof minutesToAdd !== 'number' || isNaN(minutesToAdd)) return timeStr;
     const formatted = formatPresensiTime(timeStr);
     const parts = (formatted || timeStr || '00:00').replace(/\./g, ':').split(':');
     const hh = parseInt(parts[0] || '0', 10);
     const mm = parseInt(parts[1] || '0', 10);
     const totalMinutes = hh * 60 + mm + minutesToAdd;
-    const newHh = Math.floor(totalMinutes / 60) % 24;
-    const newMm = totalMinutes % 60;
+    const positiveMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+    const newHh = Math.floor(positiveMinutes / 60);
+    const newMm = positiveMinutes % 60;
     return `${String(newHh).padStart(2, '0')}:${String(newMm).padStart(2, '0')}`;
   } catch {
     return timeStr;
@@ -257,20 +259,51 @@ export async function fetchJadwalIntervensiWali(
  * e.g. "Jam 5" -> 5, "3-4" -> 4, 3 -> 3.
  */
 export function extractMaxJamKe(jamKeValue: any): number {
-  if (typeof jamKeValue === 'number') return jamKeValue;
+  if (typeof jamKeValue === 'number') return isNaN(jamKeValue) ? 0 : jamKeValue;
   if (!jamKeValue) return 0;
   const str = String(jamKeValue);
   const matches = str.match(/\d+/g);
-  if (!matches || matches.length === 0) return 0;
-  const numbers = matches.map(n => parseInt(n, 10)).filter(n => !isNaN(n));
-  return numbers.length > 0 ? Math.max(...numbers) : 0;
+  if (matches && matches.length > 0) {
+    const numbers = matches.map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+    if (numbers.length > 0) return Math.max(...numbers);
+  }
+
+  // Roman numeral support (e.g. "Jam ke-IV", "Jam ke-VII", "Jam IX", "X")
+  const romanMap: Record<string, number> = {
+    'xii': 12, 'xi': 11, 'x': 10, 'ix': 9,
+    'viii': 8, 'vii': 7, 'vi': 6, 'v': 5, 'iv': 4,
+    'iii': 3, 'ii': 2, 'i': 1
+  };
+  const words = str.toLowerCase().replace(/[^a-z0-9]/g, ' ').split(/\s+/).filter(Boolean);
+  for (const w of words) {
+    if (romanMap[w] !== undefined) {
+      return romanMap[w];
+    }
+  }
+  return 0;
 }
 
 function hasAttendanceData(journal: any): boolean {
   if (!journal) return false;
   if (journal.absensi_siswa) {
-    if (typeof journal.absensi_siswa === 'object' && Object.keys(journal.absensi_siswa).length > 0) return true;
-    if (typeof journal.absensi_siswa === 'string' && journal.absensi_siswa.trim() !== '' && journal.absensi_siswa.trim() !== '{}') return true;
+    if (typeof journal.absensi_siswa === 'object' && journal.absensi_siswa !== null) {
+      if (Object.keys(journal.absensi_siswa).length > 0) return true;
+    } else if (typeof journal.absensi_siswa === 'string') {
+      const trimmed = journal.absensi_siswa.trim();
+      const stripped = trimmed.replace(/\s+/g, '');
+      if (stripped !== '' && stripped !== '{}' && stripped !== 'null' && stripped !== 'undefined') {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (typeof parsed === 'object' && parsed !== null) {
+            if (Object.keys(parsed).length > 0) return true;
+          } else {
+            return true;
+          }
+        } catch {
+          return true;
+        }
+      }
+    }
   }
   if (journal.kehadiran_murid && String(journal.kehadiran_murid).trim() !== '') return true;
   if (journal.detail_absen && String(journal.detail_absen).trim() !== '') return true;
@@ -322,14 +355,18 @@ export function resolveDailyStudentAttendance(
     if (s === 'hadir' || s === 'h') return 'Hadir';
     if (s === 'sakit' || s === 's') return 'Sakit';
     if (s === 'izin' || s === 'i') return 'Izin';
-    if (s === 'alpa' || s === 'alfa' || s === 'a') return 'Alpa';
+    if (s === 'alpa' || s === 'alfa' || s === 'alpha' || s === 'a') return 'Alpa';
     if (s === 'bolos' || s === 'b') return 'Bolos';
     return '';
   };
 
-  const mapCode = (rawCode: string): 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' => {
-    const code = rawCode.trim().toUpperCase();
-    if (code === 'A' || code === 'ALFA' || code === 'ALPA') return 'Alpa';
+  const mapCode = (rawCode: any): 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' => {
+    if (!rawCode) return '';
+    const extracted = (typeof rawCode === 'object' && rawCode !== null)
+      ? (rawCode.status || rawCode.s || rawCode.code || '')
+      : rawCode;
+    const code = String(extracted).trim().toUpperCase();
+    if (code === 'A' || code === 'ALFA' || code === 'ALPA' || code === 'ALPHA') return 'Alpa';
     if (code === 'B' || code === 'BOLOS') return 'Bolos';
     if (code === 'S' || code === 'SAKIT') return 'Sakit';
     if (code === 'I' || code === 'IZIN') return 'Izin';
@@ -378,7 +415,7 @@ export function resolveDailyStudentAttendance(
       }
 
       if (val !== undefined) {
-        lastKbmStatus = mapCode(String(val));
+        lastKbmStatus = mapCode(val);
       }
     }
 
@@ -414,7 +451,11 @@ export function resolveDailyStudentAttendance(
             const idxId = segLower.indexOf(lowerId);
             const idxSakit = segLower.lastIndexOf('sakit', idxId);
             const idxIzin = segLower.lastIndexOf('izin', idxId);
-            const idxAlpa = Math.max(segLower.lastIndexOf('alpa', idxId), segLower.lastIndexOf('alfa', idxId));
+            const idxAlpa = Math.max(
+              segLower.lastIndexOf('alpa', idxId),
+              segLower.lastIndexOf('alfa', idxId),
+              segLower.lastIndexOf('alpha', idxId)
+            );
             const idxBolos = segLower.lastIndexOf('bolos', idxId);
             const idxHadir = segLower.lastIndexOf('hadir', idxId);
 
@@ -437,7 +478,11 @@ export function resolveDailyStudentAttendance(
             const idxId = detailLower.indexOf(lowerId);
             const idxSakit = detailLower.lastIndexOf('sakit', idxId);
             const idxIzin = detailLower.lastIndexOf('izin', idxId);
-            const idxAlpa = Math.max(detailLower.lastIndexOf('alpa', idxId), detailLower.lastIndexOf('alfa', idxId));
+            const idxAlpa = Math.max(
+              detailLower.lastIndexOf('alpa', idxId),
+              detailLower.lastIndexOf('alfa', idxId),
+              detailLower.lastIndexOf('alpha', idxId)
+            );
             const idxBolos = detailLower.lastIndexOf('bolos', idxId);
             const idxHadir = detailLower.lastIndexOf('hadir', idxId);
 

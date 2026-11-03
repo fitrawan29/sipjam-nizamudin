@@ -1,57 +1,94 @@
-# Handoff Report: Reviewer Round 2 (teamwork_reviewer_r2)
+# Adversarial Review Round 2 Report: Retensi Logika Presensi Gerbang & Absensi (R1 - R4)
 
 > [!WARNING] **Skepticism Disclaimer**
-> Seluruh klausul regulasi, SOP administratif, dan matriks konsekuensi pelanggaran di `docs/KONSEKUENSI_PELANGGARAN.md` kini telah diintegrasikan langsung ke dalam antarmuka operasional (tombol panduan SOP pada `AdminVerifView`) dan basis pengetahuan AI Assistant offline (`knowledgeBase.ts`), serta diperkuat dengan protokol resmi wilayah 3T/blank spot dan blangko Formulir F-SIPJAM-01/02.
+> Logika presensi gerbang, batas intervensi wali kelas, alokasi kepulangan 60 menit, deteksi bolos mapel & fallback jurnal KBM, notifikasi 1-click WhatsApp, serta integritas export CSV telah diuji secara adversarial terhadap edge-case mutakhir (negative time modulo wrap, empty JSON whitespace bypass, Roman numeral hours, spelling variations, & incomplete query selection). Seluruh 21 skenario uji spesifik dan 48 test suite repositori lulus 100%.
 
-## 1. What the prior attempt got wrong / Open Issues Resolved
-1. **Ketiadaan Kebijakan & Protokol Khusus Satuan Pendidikan / Wilayah Blank Spot (3T)**:
-   - **Input:** Guru/sekolah di daerah 3T atau area tanpa jangkauan sinyal internet mengalami keterlambatan pengisian melebihi cut-off harian.
-   - **Expected:** Terdapat regulasi resmi dan SOP yang mengizinkan pencatatan via Buku Jurnal Manual Fisik bertanda tangan pimpinan/piket dengan mekanisme rekonsiliasi berkala mingguan (*batch reconciliation*) tanpa terkena penalti finansial sepihak.
-   - **Actual:** Prior attempt hanya memandang gangguan jaringan sebagai kejadian sesaat (*force majeure* temporer), sehingga sekolah di blank spot permanen/semi-permanen rentan terkena sanksi alpa/void.
-   - **Root Cause:** Regulasi belum mendefinisikan secara eksplisit status daerah khusus/blank spot 3T pada Bab 9.1, Bab 9.2, Formulir F-SIPJAM-01, dan Formulir F-SIPJAM-02.
-   - **Fix:** Menambahkan poin 6 pada Bab 9.1, poin 4 pada Bab 9.2, serta opsi isian dan bukti lampiran resmi pada Formulir F-SIPJAM-01 & F-SIPJAM-02.
+---
 
-2. **Celah Aksesibilitas: Ketiadaan Akses Panduan SOP pada Antarmuka Aplikasi Web**:
-   - **Input:** Admin atau verifikator (Waka Kurikulum / Kepala Sekolah) di halaman Pusat Verifikasi (`AdminVerifView`) membutuhkan rujukan cepat aturan sanksi bertingkat dan alur dispensasi saat memeriksa kelalaian.
-   - **Expected:** Terdapat tombol/modal panduan SOP langsung di antarmuka `AdminVerifView` yang merujuk dokumen legal `docs/KONSEKUENSI_PELANGGARAN.md`.
-   - **Actual:** Dokumen regulasi hanya tersimpan statis di folder `docs/` tanpa pintu masuk interaktif di dashboard admin.
-   - **Root Cause:** Belum tersambungnya tautan SOP ke header `AdminVerifView`.
-   - **Fix:** Menambahkan tombol **SOP Disiplin** di header `AdminVerifView` lengkap dengan ringkasan modal interaktif SweetAlert2.
+## 1. What the Prior Attempt Got Wrong
 
-3. **Ketiadaan FAQ Konsekuensi Pelanggaran pada Offline AI Assistant**:
-   - **Input:** Guru atau staf bertanya kepada Asisten AI SIPJAM mengenai konsekuensi keterlambatan jurnal KBM, cut-off piket, atau tata cara pengajuan dispensasi.
-   - **Expected:** AI Assistant offline dapat menjawab secara presisi dengan mengutip tahapan sanksi Teguran Lisan s.d. SP 3, jadwal cut-off, dan formulir F-SIPJAM-01/02.
-   - **Actual:** Asisten AI SIPJAM tidak memiliki FAQ terkait konsekuensi pelanggaran dan mengembalikan fallback umum.
-   - **Root Cause:** `knowledgeBase.ts` belum dikatalogkan dengan item FAQ regulasi konsekuensi pelanggaran.
-   - **Fix:** Menambahkan `faq-general-3` (Konsekuensi Administratif Bertingkat), `faq-general-4` (Alur Dispensasi & Extended Force Majeure), dan `faq-general-5` (Batas Waktu Cut-Off) pada `src/components/AIAssistant/knowledgeBase.ts`.
+### Issue 1: Negative Minutes Overflow in `addMinutesToTime`
+- **Input:** `addMinutesToTime('00:30', -60)` or boundary times crossing backward past midnight.
+- **Expected:** Returns `'23:30'`.
+- **Actual:** Produced malformed negative strings: `"-1:-30"`!
+- **Root Cause:** Standard `Math.floor(totalMinutes / 60) % 24` preserves negative signs in JavaScript arithmetic instead of wrapping around midnight (1440 minutes/day).
 
-## 2. What I changed
-- `docs/KONSEKUENSI_PELANGGARAN.md`:
-  - Menambahkan Poin 6 pada Bab 9.1: **Wilayah Blank Spot / Daerah Terisolir (3T / Nir-Sinyal Semi-Permanen)**.
-  - Menambahkan Poin 4 pada Bab 9.2: **Mekanisme Sinkronisasi Berkala Wilayah 3T / Blank Spot (Rekapitulasi Mingguan Sabtu Pukul 14.00)**.
-  - Memperbarui Formulir **F-SIPJAM-01** (poin C centang alasan dan poin D bukti lampiran buku jurnal manual fisik 3T).
-  - Memperbarui Formulir **F-SIPJAM-02** (verifikasi silang audit log termasuk Blank Spot).
-- `src/components/AdminVerifView.tsx`:
-  - Menambahkan tombol **SOP Disiplin** (`fa-scale-balanced`) pada header view yang membuka modal SweetAlert2 berisi ringkasan aturan pelanggaran, matriks sanksi, hak dispensasi 2x24 jam, dan rujukan ke `docs/KONSEKUENSI_PELANGGARAN.md`.
-- `src/components/AIAssistant/knowledgeBase.ts`:
-  - Menambahkan FAQ `faq-general-3`, `faq-general-4`, dan `faq-general-5` untuk edukasi interaktif guru dan admin secara offline.
-- `tests/konsekuensi_pelanggaran_verification.test.ts`:
-  - Menambahkan Group 8 (4 skenario uji baru, total **23/23 PASS 100%**) untuk memverifikasi klausul 3T/Blank Spot, Formulir F-SIPJAM-01/02, integrasi knowledgeBase.ts, dan tombol SOP di `AdminVerifView.tsx`.
+### Issue 2: Whitespace-Padded Empty JSON Bypass in `hasAttendanceData`
+- **Input:** Teaching journal with empty JSON formatted with spaces or newlines: `{ jam_ke: 8, absensi_siswa: '{\\n  \\n}' }`.
+- **Expected:** Ignored as having no attendance data; journal with real attendance at jam_ke 4 is chosen.
+- **Actual:** Journal 8 was chosen (`picked: 8`)!
+- **Root Cause:** In `src/lib/presensiIntervensi.ts`, `journal.absensi_siswa.trim() !== '{}'` checked only stripped outer whitespace, leaving `'{\n  \n}' !== '{}'` as `true`, falsely classifying an empty record as active attendance.
+
+### Issue 3: Roman Numeral Teaching Hours Unrecognized in `extractMaxJamKe`
+- **Input:** Indonesian school teaching hour string using Roman numerals: `"Jam ke-IV"`, `"Jam ke-VII"`, `"Jam IX"`.
+- **Expected:** Extracted numeric teaching hours: `4`, `7`, `9`.
+- **Actual:** Returned `0`.
+- **Root Cause:** Regex `/\d+/g` only matched Arabic digits and lacked Roman numeral dictionary resolution.
+
+### Issue 4: Silent Failure on "Alpha" Spelling Variation & Object Payloads in `resolveDailyStudentAttendance`
+- **Input:** `classAbsensiRecord = { status: 'Alpha' }` or journal `absensi_siswa = { '001': { status: 'A' } }`.
+- **Expected:** Normalized to `'Alpa'` or resolved to `'Bolos'` (if morning presence exists).
+- **Actual:** Returned empty string `""` (`source: 'Belum Ada Data'`)!
+- **Root Cause:** `normStatus` and `mapCode` only checked `'alfa'` and `'alpa'`, and did not unwrap object status payloads.
+
+### Issue 5: Missing `detail_absen` & `kehadiran_murid` Columns in `fetchGerbangAttendance` Query
+- **Input:** Teacher logged attendance in `detail_absen` (e.g. `"Alpa: Aditya Pratama"`), student tapped in at gate in morning, and user views Gerbang tab in `RekapSiswaView`.
+- **Expected:** Gerbang tab identifies student as Bolos (`Pulang: Bolos`).
+- **Actual:** Student remained marked as regular `Hadir Datang` without Bolos resolution.
+- **Root Cause:** Line 292 of `src/components/RekapSiswaView.tsx` only selected `'jam_ke, mapel, absensi_siswa, tanggal'`, omitting `detail_absen` and `kehadiran_murid`.
+
+### Issue 6: Unquoted Text Columns in `exportGerbangCsv`
+- **Input:** Student with class containing commas or special characters (`s.kelas = 'VII, A'`).
+- **Expected:** Properly escaped and quoted CSV field: `"VII, A"`.
+- **Actual:** Direct unquoted interpolation split columns and broke RFC 4180 CSV alignment.
+- **Root Cause:** Only `s.nama_siswa` and `statusStr` were wrapped in quotes.
+
+---
+
+## 2. What I Changed
+
+1. **`src/lib/presensiIntervensi.ts`:**
+   - **`addMinutesToTime`:** Added positive modulo wrapping `((totalMinutes % 1440) + 1440) % 1440` and guarded against `NaN` inputs.
+   - **`extractMaxJamKe`:** Added dictionary parsing for Roman numerals (`i` through `xii`).
+   - **`hasAttendanceData`:** Hardened empty JSON detection by checking `journal.absensi_siswa.replace(/\s+/g, '')` and parsing JSON to verify `Object.keys(parsed).length > 0`.
+   - **`resolveDailyStudentAttendance`:** Added `'alpha'` spelling recognition to `normStatus`, `mapCode`, and regex pattern matching in `detail_absen`; supported object-wrapped status payloads in `mapCode`.
+
+2. **`src/components/RekapSiswaView.tsx`:**
+   - Updated `fetchGerbangAttendance` query to select `detail_absen` and `kehadiran_murid` from `jurnal_pembelajaran`.
+   - Updated `exportGerbangCsv` to quote and escape `nisn`, `nama_siswa`, `kelas`, and `gerbangTanggal` to ensure strict RFC 4180 compliance.
+
+3. **`tests/presensi_gerbang_dan_absensi_retensi.test.ts`:**
+   - Enhanced `R1.5`: Added test coverage for negative minute math (`'00:30', -60` -> `'23:30'`), midnight wrap, and `NaN`.
+   - Added `R2.7`: Verifies that whitespace-padded empty JSON is ignored and Roman numerals are parsed in `extractMaxJamKe`.
+   - Added `R2.8`: Verifies `'Alpha'` spelling and object-wrapped status payload handling in `resolveDailyStudentAttendance`.
+   - Added `R2.9`: Verifies `fetchGerbangAttendance` query in `RekapSiswaView.tsx` selects `detail_absen` and `kehadiran_murid`.
+   - Added `R3.4`: Verifies that all text columns in `exportGerbangCsv` are safely quoted and escaped.
+
+---
 
 ## 3. Verification Record
+
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/konsekuensi_pelanggaran_verification.test.ts`: **23 / 23 PASS (100%)**
-  - `npx tsx tests/ai_assistant_faq.test.ts`: **24 / 24 PASS (100%)**
-  - `npm test`: **45 / 45 test suites PASS (100% passing across entire repository)**
-  - `npm run lint`: **0 errors (167 pre-existing warnings, 0 blocking errors)**
-  - `npm run build`: **Exit code 0 (Next.js 16.3.4 Turbopack build succeeded, 13/13 static routes)**
+  - `npx tsx tests/presensi_gerbang_dan_absensi_retensi.test.ts`: 21 / 21 passed (100%).
+  - `npx tsx tests/presensi_gerbang_jam_datang_pulang.test.ts`: 17 / 17 passed (100%).
+  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: 56 / 56 passed (100%).
+  - `npx tsc --noEmit`: 0 errors.
+  - `npm test`: All 48 test suites passed cleanly (100%).
+  - `npm run build`: Next.js 16.3.4 Turbopack production build succeeded cleanly.
+
 - **Shallow Verification (manual only):**
-  - Verifikasi tampilan modal SOP Disiplin pada `AdminVerifView` dan respons tanya-jawab AI Assistant.
+  - Verified visual rendering of dash indicator `-` and actual formatted scan time in `RekapSiswaView.tsx` and `PiketView.tsx`.
+
 - **Unverified aspects:**
-  - Penandatanganan fisik/basah dokumen SOP oleh Kepala Sekolah dan Pengurus Yayasan/Komite di dunia nyata.
+  - Physical kiosk hardware barcode scanner baud rate and hardware key bounce filters (external hardware).
+  - Third-party WhatsApp Web application state or cellular delivery network latency.
+
+---
 
 ## 4. Known Issues
-- `Shallow Verification` — Penandatanganan fisik lembar pengesahan dan format blangko F-SIPJAM-01 / F-SIPJAM-02 di dunia nyata merupakan kewenangan pejabat sekolah/yayasan di luar sistem digital.
+- `Minor Robustness Risk`: None remaining in core business logic. All time manipulation, gate/wali intervention windows, Bolos rules, dynamic KBM fallback, and CSV/export utilities are fully hardened against adversarial edge cases.
 
-## 5. Remaining risk & next step
-Dokumen kebijakan regulasi dan SOP konsekuensi pelanggaran administratif SIPJAM telah selesai secara paripurna, diverifikasi komprehensif, terhubung dengan modul antarmuka admin, serta terintegrasi dengan offline AI knowledge base. Tugas telah selesai dan siap diakhiri.
+---
+
+## 5. Remaining Risk & Next Step
+All requirements (R1 - R4) and acceptance criteria are thoroughly verified, hardened against subtle bugs, and verified by 48 automated test suites. The implementation is production-ready.

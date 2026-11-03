@@ -24,6 +24,7 @@ import {
   isPiketPulangAllowed,
   isWaliKelasIntervensiAllowed,
   addMinutesToTime,
+  extractMaxJamKe,
   findLastKbmJournal,
   resolveDailyStudentAttendance
 } from '../src/lib/presensiIntervensi';
@@ -155,9 +156,12 @@ async function run() {
     assert.strictEqual(waliWita.allowed, true);
     assert.strictEqual(waliWita.phase, 'pulang');
 
-    // addMinutesToTime handles rich time formats
+    // addMinutesToTime handles rich time formats, negative minutes, and midnight wrapping
     assert.strictEqual(addMinutesToTime('11:00 WITA', 60), '12:00');
     assert.strictEqual(addMinutesToTime('11.30', 45), '12:15');
+    assert.strictEqual(addMinutesToTime('00:30', -60), '23:30');
+    assert.strictEqual(addMinutesToTime('23:45', 30), '00:15');
+    assert.strictEqual(addMinutesToTime('08:00', NaN), '08:00');
   });
 
   // ==========================================================================
@@ -288,6 +292,45 @@ async function run() {
     assert.strictEqual(last.mapel, 'Kimia');
   });
 
+  check('R2.7', 'findLastKbmJournal ignores whitespace-padded empty JSON and extractMaxJamKe parses Roman numerals', () => {
+    // 1. Whitespace-padded empty JSON should not be counted as attendance data
+    const emptyWithSpace = { jam_ke: 'Jam ke-8', mapel: 'Seni', absensi_siswa: '{\n  \n}' };
+    const validEarlier = { jam_ke: 'Jam ke-4', mapel: 'Matematika', absensi_siswa: { '0012345678': 'A' } };
+    const picked = findLastKbmJournal([emptyWithSpace, validEarlier]);
+    assert.ok(picked);
+    assert.strictEqual(picked.jam_ke, 'Jam ke-4', 'Must pick journal with actual attendance data over whitespace-padded empty JSON');
+
+    // 2. extractMaxJamKe parses Roman numerals
+    assert.strictEqual(extractMaxJamKe('Jam ke-IV'), 4);
+    assert.strictEqual(extractMaxJamKe('Jam ke-VII'), 7);
+    assert.strictEqual(extractMaxJamKe('Jam IX'), 9);
+    assert.strictEqual(extractMaxJamKe('Jam ke-XII'), 12);
+  });
+
+  check('R2.8', 'resolveDailyStudentAttendance handles "Alpha" spelling and object-wrapped status payloads', () => {
+    const student = { id: 's-alpha', nisn: '998877', nama_siswa: 'Alpha Tester' };
+
+    // 1. "Alpha" spelling in class record
+    const resClassAlpha = resolveDailyStudentAttendance(student, { status: 'Alpha' }, false);
+    assert.strictEqual(resClassAlpha.status, 'Alpa');
+
+    // 2. Object status in absensi_siswa JSON
+    const journalObj = {
+      jam_ke: 'Jam ke-5',
+      absensi_siswa: { '998877': { status: 'A' } }
+    };
+    const resObj = resolveDailyStudentAttendance(student, null, true, journalObj);
+    assert.strictEqual(resObj.status, 'Bolos', 'Morning hadir + Alfa object payload in last KBM resolves to Bolos');
+  });
+
+  check('R2.9', 'RekapSiswaView fetchGerbangAttendance query includes detail_absen and kehadiran_murid', () => {
+    const rekapSrc = fs.readFileSync(path.resolve('src/components/RekapSiswaView.tsx'), 'utf8');
+    assert.ok(
+      rekapSrc.includes(".select('jam_ke, mapel, absensi_siswa, detail_absen, kehadiran_murid, tanggal')"),
+      'fetchGerbangAttendance query must select detail_absen and kehadiran_murid to ensure full Bolos detection'
+    );
+  });
+
   // ==========================================================================
   // SECTION 3: R3 - NOTIFIKASI WHATSAPP & CETAK/EXPORT REKAP
   // ==========================================================================
@@ -342,6 +385,18 @@ async function run() {
       rekapSrc.includes('(s.nama_siswa || "").replace(/"/g, \'""\')') ||
       rekapSrc.includes('.replace(/"/g, \'""\')'),
       'RekapSiswaView exportGerbangCsv must safely escape double quotes in student names'
+    );
+  });
+
+  check('R3.4', 'exportGerbangCsv meng-escape dan mengutip seluruh kolom teks (NISN, Kelas, Tanggal)', () => {
+    const rekapSrc = fs.readFileSync(path.resolve('src/components/RekapSiswaView.tsx'), 'utf8');
+    assert.ok(
+      rekapSrc.includes('`"${(s.nisn || \'\').replace(/"/g, \'""\')}"`'),
+      'NISN must be escaped and quoted in CSV'
+    );
+    assert.ok(
+      rekapSrc.includes('`"${(s.kelas || gerbangKelas || \'\').replace(/"/g, \'""\')}"`'),
+      'Kelas must be escaped and quoted in CSV'
     );
   });
 

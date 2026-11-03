@@ -289,7 +289,7 @@ export default function RekapSiswaView({
 
         let jQ = supabase
           .from('jurnal_pembelajaran')
-          .select('jam_ke, mapel, absensi_siswa, tanggal')
+          .select('jam_ke, mapel, absensi_siswa, detail_absen, kehadiran_murid, tanggal')
           .eq('kelas', gerbangKelas)
           .eq('tanggal', gerbangTanggal)
           .order('jam_ke', { ascending: false });
@@ -398,10 +398,10 @@ export default function RekapSiswaView({
       const statusStr = s.isBolos ? 'Pulang: Bolos' : s.hasPulang ? 'Sudah Pulang' : s.hasDatang ? 'Hadir Datang' : 'Belum Presensi';
       rows.push([
         idx + 1,
-        s.nisn || '',
+        `"${(s.nisn || '').replace(/"/g, '""')}"`,
         `"${(s.nama_siswa || '').replace(/"/g, '""')}"`,
-        s.kelas || gerbangKelas,
-        gerbangTanggal,
+        `"${(s.kelas || gerbangKelas || '').replace(/"/g, '""')}"`,
+        `"${(gerbangTanggal || '').replace(/"/g, '""')}"`,
         s.jamDatang && s.jamDatang !== '-' ? `${s.jamDatang} WITA` : '-',
         s.jamPulang && s.jamPulang !== '-' ? `${s.jamPulang} WITA` : '-',
         `"${statusStr}"`
