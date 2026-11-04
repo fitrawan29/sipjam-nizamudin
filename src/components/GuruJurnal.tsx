@@ -97,6 +97,7 @@ export default function GuruJurnal({
   }>>({});
   const [loading, setLoading] = useState(false);
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
+  const [rejectedJournals, setRejectedJournals] = useState<any[]>([]);
   const [dateBlok, setDateBlok] = useState<any | null>(null);
   // R4: GPS coords for journal photo watermark
   const [jurnalCoords, setJurnalCoords] = useState<WatermarkCoordinates | null>(null);
@@ -534,7 +535,48 @@ export default function GuruJurnal({
     };
     
     checkState();
-  }, [user?.nama]);
+
+    const fetchRejected = async () => {
+      if (!user?.nama) return;
+      try {
+        const cleanNama = (user.nama || '').split(',')[0].trim();
+        let q = supabase
+          .from('jurnal_pembelajaran')
+          .select('*')
+          .eq('status_verifikasi', 'Ditolak')
+          .order('tanggal', { ascending: false })
+          .limit(20);
+        if (user.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        if (user.id) {
+          q = q.or(`user_id.eq.${user.id},nama_guru.ilike."%${cleanNama}%"`);
+        } else {
+          q = q.ilike('nama_guru', `%${cleanNama}%`);
+        }
+        const { data } = await q;
+        if (data && data.length > 0) {
+          setRejectedJournals(data);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch rejected journals:', err);
+      }
+    };
+    fetchRejected();
+  }, [user?.nama, user?.id, user?.sekolah_id]);
+
+  const allRejectedJournals = (() => {
+    const map = new Map<string, any>();
+    if (dailyState?.jurnalDitolak && Array.isArray(dailyState.jurnalDitolak)) {
+      dailyState.jurnalDitolak.forEach(j => {
+        if (j.id) map.set(j.id, j);
+        else map.set(`${j.tanggal}-${j.mapel}-${j.kelas}`, j);
+      });
+    }
+    rejectedJournals.forEach(j => {
+      if (j.id) map.set(j.id, j);
+      else map.set(`${j.tanggal}-${j.mapel}-${j.kelas}`, j);
+    });
+    return Array.from(map.values());
+  })();
 
   // Auto-fill mapel & kelas & jam ke- saat mapelList + dailyState sudah ready
   useEffect(() => {
@@ -1184,7 +1226,7 @@ export default function GuruJurnal({
   ];
 
   return (
-    <section id="view-guru-jurnal" className="view-section fade-in max-w-4xl mx-auto space-y-4">
+    <section id="view-guru-jurnal" className="view-section fade-in max-w-4xl mx-auto space-y-4 print:max-w-none print:w-full print:mx-0 print:p-0">
       {/* Sub-Navigasi ClayTabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 no-print">
         <div>
@@ -1857,6 +1899,69 @@ export default function GuruJurnal({
         aria-labelledby="tab-rekap-pribadi"
         className={activeTab === 'rekap-pribadi' ? 'block' : 'hidden'}
       >
+        {allRejectedJournals.length > 0 && (
+          <div 
+            id="banner-jurnal-ditolak" 
+            className="bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-2xl p-4 mb-4 shadow-sm no-print"
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h4 className="font-bold text-red-800 dark:text-red-300 text-xs sm:text-sm flex items-center gap-2">
+                <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400"></i>
+                Perhatian: Terdapat {allRejectedJournals.length} Jurnal yang Ditolak Admin
+              </h4>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300">
+                Perlu Revisi
+              </span>
+            </div>
+            <p className="text-[11px] text-red-700 dark:text-red-300 mb-3">
+              Admin memberikan catatan penolakan pada entri jurnal KBM berikut. Silakan periksa alasan penolakan dan lakukan perbaikan/input ulang:
+            </p>
+            <div className="space-y-2">
+              {allRejectedJournals.map((j: any) => {
+                const alasan = j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan || 'Harap perbaiki dokumentasi atau materi KBM';
+                return (
+                  <div 
+                    key={j.id || `${j.tanggal}-${j.mapel}-${j.kelas}`}
+                    className="p-3 bg-white/90 dark:bg-gray-800/90 rounded-xl border border-red-200 dark:border-red-900/60 text-xs shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                  >
+                    <div>
+                      <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                        <span className="text-red-600 dark:text-red-400">[{j.tanggal}]</span>
+                        <span>{j.mapel || 'Jurnal KBM'}</span>
+                        {j.kelas && j.kelas !== '-' && <span className="text-gray-500 dark:text-gray-400 font-normal">(Kelas {j.kelas})</span>}
+                        {j.jam_ke && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Jam {j.jam_ke}</span>}
+                      </div>
+                      {j.materi && (
+                        <div className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">
+                          <span className="font-medium">Materi:</span> {j.materi}
+                        </div>
+                      )}
+                      <div className="mt-1.5 text-xs text-red-700 dark:text-red-300 bg-red-50/80 dark:bg-red-950/30 p-2 rounded-lg border border-red-100 dark:border-red-900/40">
+                        <span className="font-bold mr-1">Alasan Penolakan:</span>
+                        <span className="italic">"{alasan}"</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleTabChange('input');
+                        if (j.mapel) setMapel(j.mapel);
+                        if (j.kelas) setKelas(j.kelas);
+                        if (j.tanggal) setTanggal(j.tanggal);
+                        if (j.jam_ke) setJamKe(j.jam_ke);
+                        if (j.materi) setMateri(j.materi);
+                      }}
+                      className="btn-click shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <i className="fa-solid fa-pen-to-square"></i> Input Ulang
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <RekapJurnalView
           user={user}
           initialMode="pribadi"

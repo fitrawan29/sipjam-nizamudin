@@ -61,6 +61,8 @@ export default function RekapJurnalView({
   const [kelas, setKelas] = useState(propAssignedKelas || '');
   const [mapel, setMapel] = useState('');
   const [search, setSearch] = useState('');
+  const [searchMateri, setSearchMateri] = useState('');
+  const [selectedJurnal, setSelectedJurnal] = useState<any | null>(null);
   
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [mapelList, setMapelList] = useState<string[]>([]);
@@ -500,6 +502,18 @@ export default function RekapJurnalView({
 
   const filteredJurnal = (jurnalData || [])
     .filter(j => {
+      if (searchMateri) {
+        const sm = searchMateri.toLowerCase();
+        const matchesMateri = Boolean(
+          (j.materi && j.materi.toLowerCase().includes(sm)) ||
+          (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(sm)) ||
+          (j.konten && j.konten.toLowerCase().includes(sm)) ||
+          (j.tujuan_pembelajaran && j.tujuan_pembelajaran.toLowerCase().includes(sm)) ||
+          (j.kegiatan && j.kegiatan.toLowerCase().includes(sm)) ||
+          (j.kegiatan_pembelajaran && j.kegiatan_pembelajaran.toLowerCase().includes(sm))
+        );
+        if (!matchesMateri) return false;
+      }
       if (!search) return true;
       const s = search.toLowerCase();
       return (
@@ -511,11 +525,17 @@ export default function RekapJurnalView({
         (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(s)) ||
         (j.tujuan_pembelajaran && j.tujuan_pembelajaran.toLowerCase().includes(s)) ||
         (j.kegiatan && j.kegiatan.toLowerCase().includes(s)) ||
+        (j.kegiatan_pembelajaran && j.kegiatan_pembelajaran.toLowerCase().includes(s)) ||
         (j.kelas && j.kelas.toLowerCase().includes(s)) ||
         (j.mapel && j.mapel.toLowerCase().includes(s)) ||
         (j.tanggal && j.tanggal.toLowerCase().includes(s)) ||
         (j.kehadiran_murid && j.kehadiran_murid.toLowerCase().includes(s)) ||
         (j.catatan_refleksi && j.catatan_refleksi.toLowerCase().includes(s)) ||
+        (j.catatan_admin && j.catatan_admin.toLowerCase().includes(s)) ||
+        (j.alasan_penolakan && j.alasan_penolakan.toLowerCase().includes(s)) ||
+        (j.catatan_penolakan && j.catatan_penolakan.toLowerCase().includes(s)) ||
+        (j.keterangan_penolakan && j.keterangan_penolakan.toLowerCase().includes(s)) ||
+        (j.status_verifikasi && j.status_verifikasi.toLowerCase().includes(s)) ||
         (j.keterangan && j.keterangan.toLowerCase().includes(s))
       );
     })
@@ -623,7 +643,7 @@ export default function RekapJurnalView({
                       />
                     </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
                         KELAS / ANGKATAN {tabMode === 'kelas' && !isAdmin && !isKepalaSekolah && waliClasses.length > 0 ? '(Wali Kelas)' : ''}
@@ -656,6 +676,29 @@ export default function RekapJurnalView({
                         <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel</option>
                         {mapelList.map((m, i) => <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">{m}</option>)}
                       </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">CARI MATERI / TOPIK KBM</label>
+                      <div className="relative">
+                        <input 
+                          type="text" 
+                          value={searchMateri} 
+                          onChange={e => setSearchMateri(e.target.value)} 
+                          placeholder="Cari materi pembelajaran..." 
+                          className="w-full pl-7 pr-7 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                        />
+                        <i className="fa-solid fa-book-open absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        {searchMateri && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchMateri('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs"
+                            title="Hapus filter materi"
+                          >
+                            <i className="fa-solid fa-xmark"></i>
+                          </button>
+                        )}
+                      </div>
                     </div>
                 </div>
                 <button type="button" onClick={() => tarikRekap()} disabled={loading} className="btn-click w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold mt-2 shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50">
@@ -888,6 +931,26 @@ export default function RekapJurnalView({
                                   }`}>
                                     {ketKehadiran}
                                   </span>
+                                  {j.status_verifikasi === 'Ditolak' && (j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan) && (
+                                    <div className="mt-1 text-[9px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-1.5 rounded border border-red-200 dark:border-red-900/50 text-left">
+                                      <div className="font-bold flex items-center gap-1">
+                                        <i className="fa-solid fa-circle-exclamation text-[8px]"></i> Alasan Penolakan:
+                                      </div>
+                                      <div className="italic break-words">
+                                        {j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan}
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className="mt-1 no-print">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedJurnal(j)}
+                                      className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+                                      title="Lihat Detail Lengkap Jurnal"
+                                    >
+                                      <i className="fa-solid fa-eye text-[9px]"></i> Detail
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1017,7 +1080,29 @@ export default function RekapJurnalView({
 
                                 {/* 12. Catatan */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
-                                  {j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : j.keterangan || '-')}
+                                  <div>
+                                    {j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : j.keterangan || '-')}
+                                  </div>
+                                  {j.status_verifikasi === 'Ditolak' && (
+                                    <div className="mt-1.5 p-1.5 bg-red-50 dark:bg-red-950/40 rounded border border-red-200 dark:border-red-800 text-[9px] text-red-700 dark:text-red-300 not-italic">
+                                      <span className="font-bold text-red-800 dark:text-red-200 flex items-center gap-1">
+                                        <i className="fa-solid fa-circle-exclamation text-[8px]"></i> Ditolak Admin:
+                                      </span>
+                                      <span className="italic break-words">
+                                        {j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan || 'Harap perbaiki dokumentasi/materi KBM'}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="mt-1.5 no-print not-italic">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedJurnal(j)}
+                                      className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+                                      title="Lihat Detail Lengkap Jurnal"
+                                    >
+                                      <i className="fa-solid fa-eye text-[9px]"></i> Detail
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1172,6 +1257,160 @@ export default function RekapJurnalView({
               </div>
             )}
         </div>
+
+        {/* Modal Detail Jurnal */}
+        {selectedJurnal && (
+          <div 
+            id="modal-detail-jurnal" 
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm no-print"
+            onClick={() => setSelectedJurnal(null)}
+          >
+            <div 
+              className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700 space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg shadow-inner">
+                    <i className="fa-solid fa-book-open"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                      Detail Jurnal Pembelajaran
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatHariTanggal(selectedJurnal.tanggal)} &bull; {selectedJurnal.nama_guru || user?.nama || '-'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedJurnal(null)}
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition"
+                >
+                  <i className="fa-solid fa-xmark text-sm"></i>
+                </button>
+              </div>
+
+              {/* Prominent Rejection Feedback Banner in Detail Modal */}
+              {selectedJurnal.status_verifikasi === 'Ditolak' && (
+                <div id="modal-rejection-banner" className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs">
+                  <div className="flex items-center gap-2 font-bold text-red-800 dark:text-red-300 mb-1.5">
+                    <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400 text-sm"></i>
+                    <span>Jurnal Ditolak oleh Administrator / Verifikator</span>
+                  </div>
+                  <div className="text-red-700 dark:text-red-300 bg-white/70 dark:bg-gray-900/70 p-2.5 rounded-xl border border-red-200 dark:border-red-900/40">
+                    <span className="font-bold text-red-900 dark:text-red-200 block mb-0.5">Catatan / Alasan Penolakan:</span>
+                    <span className="italic font-medium">
+                      "{selectedJurnal.catatan_admin || selectedJurnal.alasan_penolakan || selectedJurnal.catatan_penolakan || selectedJurnal.keterangan_penolakan || 'Harap perbaiki dokumentasi atau materi KBM'}"
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Grid Metadata Info */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Mata Pelajaran</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{selectedJurnal.mapel || '-'}</span>
+                </div>
+                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Kelas</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{selectedJurnal.kelas || '-'}</span>
+                </div>
+                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Jam Ke / Sesi</span>
+                  <span className="font-bold text-gray-900 dark:text-white">{selectedJurnal.jam_ke ? `Jam ke-${selectedJurnal.jam_ke}` : (selectedJurnal.pertemuan_ke ? `Pertemuan ${selectedJurnal.pertemuan_ke}` : '-')}</span>
+                </div>
+                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Status Verifikasi</span>
+                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mt-0.5 ${
+                    selectedJurnal.status_verifikasi === 'Disetujui' || selectedJurnal.status_verifikasi === 'Diverifikasi'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : selectedJurnal.status_verifikasi === 'Ditolak'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  }`}>
+                    {selectedJurnal.status_verifikasi || 'Menunggu'}
+                  </span>
+                </div>
+                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl col-span-2">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Lokasi KBM</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedJurnal.lokasi_kbm || selectedJurnal.lokasi || '-'}</span>
+                </div>
+              </div>
+
+              {/* Learning details */}
+              <div className="space-y-2.5 text-xs">
+                {selectedJurnal.tujuan_pembelajaran && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Tujuan Pembelajaran (TP)</span>
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedJurnal.tujuan_pembelajaran}</p>
+                  </div>
+                )}
+                {selectedJurnal.kktp && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">KKTP</span>
+                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedJurnal.kktp}</p>
+                  </div>
+                )}
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Materi / Konten</span>
+                  <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
+                    {selectedJurnal.konten || selectedJurnal.materi_pembelajaran || selectedJurnal.materi || '-'}
+                  </p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Kegiatan Pembelajaran</span>
+                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
+                    {selectedJurnal.kegiatan_pembelajaran || selectedJurnal.kegiatan || '-'}
+                  </p>
+                </div>
+                {(selectedJurnal.catatan_refleksi || selectedJurnal.refleksi) && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Catatan Refleksi</span>
+                    <p className="text-gray-900 dark:text-white italic whitespace-pre-wrap">
+                      {selectedJurnal.catatan_refleksi || selectedJurnal.refleksi}
+                    </p>
+                  </div>
+                )}
+                {/* Photo view */}
+                {(selectedJurnal.foto_kegiatan || selectedJurnal.link_bukti_foto) && (selectedJurnal.foto_kegiatan !== '-' || selectedJurnal.link_bukti_foto !== '-') && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-2">Dokumentasi Foto</span>
+                    <div className="flex flex-col items-center gap-2">
+                      <img 
+                        src={transformGoogleDriveUrl(selectedJurnal.foto_kegiatan || selectedJurnal.link_bukti_foto)} 
+                        alt="Dokumentasi KBM"
+                        className="max-h-60 w-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm"
+                      />
+                      <a 
+                        href={selectedJurnal.foto_kegiatan || selectedJurnal.link_bukti_foto}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold inline-flex items-center gap-1"
+                      >
+                        <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Buka Gambar Ukuran Penuh
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedJurnal(null)}
+                  className="btn-click px-5 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-xl text-xs font-bold transition"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
     </section>
   );
 }

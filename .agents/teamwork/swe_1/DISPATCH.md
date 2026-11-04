@@ -54,3 +54,31 @@ Jam datang presensi gerbang menampilkan waktu scan masuk aktual, dan jam pulang 
 - [ ] Tampilan jam datang presensi gerbang menampilkan waktu scan masuk aktual, dan jam pulang menampilkan waktu scan pulang aktual jika sudah ada atau '-' jika belum ada presensi pulang dalam format WITA (`formatPresensiTime`).
 - [ ] Integrasi notifikasi 1-click WhatsApp orang tua dan fungsi cetak/export rekap presensi terverifikasi utuh dan berfungsi normal.
 - [ ] Seluruh skrip pengujian / type-check / build berjalan sukses tanpa kegagalan atau regresi.
+
+## 2026-11-04T02:51:54Z
+This is a single self-contained fix; keep it small and focused. Fix the error when importing master data guru from CSV in sipjam-app where "sekolah_id" is null and violates the not-null constraint on the "data_guru" table.
+
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: development
+
+## Requirements
+
+### R1. CSV Import Validation for Data Guru
+Update the master data guru CSV import in sipjam-app to require and explicitly validate that `sekolah_id` is present and non-null before attempting database insertion into `data_guru`. Rows missing `sekolah_id` must be caught with a clear validation error rather than triggering an unhandled database constraint violation (PostgreSQL ERROR 23502).
+
+### R2. Minimal Implementation
+Apply the simplest, most minimal fix (ponytail approach) to resolve the root cause directly in the CSV import flow without unnecessary complexity or dependencies.
+
+## Acceptance Criteria
+
+### Functional Validation
+- [ ] CSV import explicitly checks for the presence of `sekolah_id` prior to database insertion.
+- [ ] Importing CSV data with missing `sekolah_id` returns a clear validation error and does not produce PostgreSQL error 23502.
+- [ ] Importing valid CSV data containing `sekolah_id` successfully inserts records into `data_guru`.
+- [ ] An automated test or verification script verifies both the validation failure on missing `sekolah_id` and successful import when `sekolah_id` is provided.
+
+---
+Identity: You are teamwork_swe, the SWE Light dispatch-only orchestrator.
+Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\
+Original request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Parent: Sentinel

@@ -1,7 +1,7 @@
-# BRIEFING — 2026-11-03T04:03:00Z
+# BRIEFING — 2026-11-04T02:53:15Z
 
 ## Mission
-Pastikan seluruh logika presensi gerbang piket, absensi wali kelas, alokasi kepulangan, aturan bolos mapel, fallback jurnal KBM, notifikasi WhatsApp orang tua, serta fungsi cetak/export rekap tetap dipertahankan dan bekerja sesuai kesepakatan setelah pembaruan tampilan scan aktual.
+Fix the error when importing master data guru from CSV in sipjam-app where "sekolah_id" is null and violates the not-null constraint on the "data_guru" table.
 
 ## 🔒 My Identity
 - Archetype: teamwork_swe
@@ -32,6 +32,12 @@ Pastikan seluruh logika presensi gerbang piket, absensi wali kelas, alokasi kepu
   5. Audit & Victory (teamwork_victory_auditor) [completed - VICTORY CONFIRMED]
 - **Current phase**: 4 (Complete)
 - **Current focus**: Completed & Reported to Parent
+- **Task 2026-11-04 (sekolah_id not null fix in data_guru CSV import)**:
+  1. Primary implementation (teamwork_implementer) [in-progress]
+  2. Review Round 1 (teamwork_reviewer) [pending]
+  3. Review Round 2 (teamwork_reviewer) [pending]
+  4. Review Round 3 (teamwork_reviewer) [pending]
+  5. Audit & Victory (teamwork_victory_auditor) [pending]
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files yourself. Delegate all implementation and all repair to teamwork_implementer and teamwork_reviewer.
@@ -43,36 +49,28 @@ Pastikan seluruh logika presensi gerbang piket, absensi wali kelas, alokasi kepu
 - Always follow git workflow rule (status, add, commit, push origin main) on completions.
 
 ## Current Parent
-- Conversation ID: 252bc2fb-55c3-485f-95e5-a2455cf9b756
-- Updated: 2026-11-03T03:05:00Z
+- Conversation ID: d452ec11-3001-4064-a39c-00ec068825b1
+- Updated: 2026-11-04T02:51:54Z
 
 ## Key Decisions Made
-- Initial dispatch: teamwork_implementer_p1 completed with 13/13 passing assertions, clean build.
-- Review Round 1: teamwork_reviewer_r1 identified & fixed time string comparison suffix bugs in presensiIntervensi.ts, quote escaping in exportGerbangCsv, and expanded assertions to 17/17. Full test suite passing.
-- Review Round 2: teamwork_reviewer_r2 fixed negative minute modulo in addMinutesToTime, whitespace-padded JSON bypass, Roman numeral parsing, "Alpha" spelling in resolveDailyStudentAttendance, detail_absen/kehadiran_murid in RekapSiswaView query, and quoted all CSV columns (21/21 assertions).
-- Review Round 3: teamwork_reviewer_r3 hardened Roman numeral ranges, null array handling in findLastKbmJournal, numeric NISN/ID types, object payloads in absentee lists, and RekapSiswaView normMapel (22/22 assertions, 48/48 test suites passing).
-- Orchestrator personal verification: 22/22 retention tests pass, 48/48 test suites pass, Turbopack production build succeeds with 0 errors, git tree clean.
-- Victory Audit: teamwork_victory_auditor confirmed VICTORY across Phase A, B, and C with zero anomalies.
+- Dispatched teamwork_implementer_p2 (conv ID e43a2bbc-7002-4183-8e81-16a67833a4ba) for primary fix.
+- Scheduled heartbeat cron and safety timer.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| teamwork_implementer_p1 | teamwork_implementer | Primary Implementation | completed | f8423675-093d-45cd-adda-7c03c5bf6194 |
-| teamwork_reviewer_r1 | teamwork_reviewer | Review Round 1 | completed | 9c67db80-0b31-49b0-9aa9-607bf44fd389 |
-| teamwork_reviewer_r2 | teamwork_reviewer | Review Round 2 | completed | 14cca47b-3c62-42c3-b3c5-97206b048d0a |
-| teamwork_reviewer_r3 | teamwork_reviewer | Review Round 3 | completed | 3143926f-11b0-41ba-a26f-3be93ec0ade8 |
-| teamwork_victory_auditor | teamwork_victory_auditor | Independent Victory Audit | completed | bb68c26e-9c5e-43a3-ab04-5aebc81cafc8 |
+| teamwork_implementer_p2 | teamwork_implementer | Primary Implementation (CSV import sekolah_id) | in-progress | e43a2bbc-7002-4183-8e81-16a67833a4ba |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 5 / 16
-- Pending subagents: none
+- Spawn count: 6 / 16
+- Pending subagents: e43a2bbc-7002-4183-8e81-16a67833a4ba
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: cancelled
-- Safety timer: none
+- Heartbeat cron: b2e10258-1bdc-4daa-854b-47238bed5854/task-18
+- Safety timer: b2e10258-1bdc-4daa-854b-47238bed5854/task-22
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\BRIEFING.md — Briefing & working memory

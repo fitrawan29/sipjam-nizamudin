@@ -395,3 +395,229 @@ export function validateMasterDataModificationRole(role?: string | null): Valida
 export function isMasterDataModificationAllowed(role?: string | null): boolean {
   return validateMasterDataModificationRole(role).valid;
 }
+
+/**
+ * Robust CSV line parser with quotes handling
+ */
+export function parseCsvLine(line: string): string[] {
+  const parts: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (c === ',' && !inQuotes) {
+      parts.push(cur.trim());
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  parts.push(cur.trim());
+  return parts;
+}
+
+/**
+ * Normalizes CSV header names
+ */
+export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): string[] {
+  return rawHeaders.map(h => {
+    const clean = h.toLowerCase().replace(/[\s-]+/g, '_').replace(/^"|"$/g, '');
+    if (clean === 'no_hp_orang_tua' || clean === 'hp_ortu') return 'no_hp_ortu';
+    if (clean === 'nama') return tableName === 'data_siswa' ? 'nama_siswa' : 'nama_guru';
+    if (clean === 'mata_pelajaran' && tableName === 'data_mapel') return 'nama_mata_pelajaran';
+    if (clean === 'guru') return 'nama_guru';
+    if (clean === 'id_sekolah' || clean === 'school_id') return 'sekolah_id';
+    return clean;
+  });
+}
+
+/**
+ * Parses and validates CSV content for master data import.
+ * Explicitly validates that `sekolah_id` is present and non-null for `data_guru`.
+ */
+export function parseAndValidateMasterCsv(
+  text: string,
+  tableName: string,
+  user?: any
+): Record<string, any>[] {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  if (lines.length < 2) {
+    throw new Error('File CSV kosong atau tidak memiliki baris data.');
+  }
+
+  const rawHeaders = parseCsvLine(lines[0]);
+  const headers = normalizeCsvHeaders(rawHeaders, tableName);
+
+  const rows: Record<string, any>[] = [];
+  const seenTeacherNames = new Set<string>();
+  const seenTeacherNips = new Set<string>();
+  const seenStudentKeys = new Set<string>();
+
+  for (let i = 1; i < lines.length; i++) {
+    const vals = parseCsvLine(lines[i]);
+    if (vals.length === 0 || (vals.length === 1 && vals[0] === '')) continue;
+
+    const row: Record<string, any> = {};
+    headers.forEach((h, idx) => {
+      if (vals[idx] !== undefined && h) {
+        row[h] = vals[idx];
+      }
+    });
+
+    // Ensure primary key exists
+    if (!row.id) {
+      row.id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+    }
+
+    // Explicit validation & scoping for sekolah_id
+    if (tableName === 'data_guru') {
+      const rawSekolahId = (row.sekolah_id !== undefined && row.sekolah_id !== null) ? String(row.sekolah_id).trim() : '';
+      if (!rawSekolahId || rawSekolahId.toLowerCase() === 'null' || rawSekolahId.toLowerCase() === 'undefined') {
+        throw new Error(`Baris ${i}: Kolom "sekolah_id" wajib diisi dan tidak boleh kosong untuk data guru.`);
+      }
+      row.sekolah_id = rawSekolahId;
+    } else {
+      const rawSekolahId = (row.sekolah_id !== undefined && row.sekolah_id !== null) ? String(row.sekolah_id).trim() : '';
+      row.sekolah_id = rawSekolahId || user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+    }
+
+    // Apply default values if needed
+    if (tableName === 'data_siswa' && !row.status) row.status = 'Aktif';
+    if (tableName === 'data_guru' && !row.status) row.status = 'Aktif';
+    if (tableName === 'wali_kelas' && !row.tahun_ajaran) row.tahun_ajaran = '2024/2025';
+
+    // Integrity & Anti-Dummy Guards for CSV
+    if (tableName === 'data_guru' || tableName === 'jadwal_pelajaran' || tableName === 'wali_kelas') {
+      if (row.nama_guru) {
+        if (/\bFITRA[\s._-]+SURYAZANA[\s._-]+MAMONTO\b/.test(row.nama_guru)) {
+          row.nama_guru = 'Fitra Suryazana Mamonto';
+        } else if (isForbiddenName(row.nama_guru)) {
+          throw new Error(`Baris ${i}: Nama guru "${row.nama_guru}" dilarang atau dinonaktifkan.`);
+        }
+        if (isDummyOrTestString(row.nama_guru)) {
+          throw new Error(`Baris ${i}: Terdeteksi data guru dummy/percobaan ("${row.nama_guru}").`);
+        }
+        row.nama_guru = normalizeName(row.nama_guru);
+        if (tableName === 'data_guru') {
+          const lowerName = row.nama_guru.toLowerCase();
+          if (seenTeacherNames.has(lowerName)) {
+            throw new Error(`Baris ${i}: Duplikat nama guru "${row.nama_guru}" dalam file CSV.`);
+          }
+          seenTeacherNames.add(lowerName);
+        }
+      }
+      if (row.nip && row.nip !== '-') {
+        if (isForbiddenName(row.nip)) {
+          throw new Error(`Baris ${i}: NIP guru "${row.nip}" dilarang atau dinonaktifkan.`);
+        }
+        if (isDummyOrTestString(row.nip)) {
+          throw new Error(`Baris ${i}: Terdeteksi NIP guru dummy/percobaan ("${row.nip}").`);
+        }
+        if (tableName === 'data_guru') {
+          const lowerNip = String(row.nip).trim().toLowerCase();
+          if (seenTeacherNips.has(lowerNip)) {
+            throw new Error(`Baris ${i}: Duplikat NIP guru "${row.nip}" dalam file CSV.`);
+          }
+          seenTeacherNips.add(lowerNip);
+
+          if (row.mata_pelajaran) {
+            if (isDummyOrTestString(row.mata_pelajaran)) {
+              throw new Error(`Baris ${i}: Terdeteksi mata pelajaran guru dummy/percobaan ("${row.mata_pelajaran}").`);
+            }
+            if (isInvalidMapel(row.mata_pelajaran)) {
+              throw new Error(`Baris ${i}: Mata pelajaran guru "${row.mata_pelajaran}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`);
+            }
+          }
+        }
+      }
+      if (tableName === 'jadwal_pelajaran') {
+        const rawMapel = row.mata_pelajaran || row.mapel;
+        if (rawMapel) {
+          if (isDummyOrTestString(rawMapel)) {
+            throw new Error(`Baris ${i}: Terdeteksi mata pelajaran dummy/percobaan ("${rawMapel}").`);
+          }
+          if (isInvalidMapel(rawMapel)) {
+            throw new Error(`Baris ${i}: Mata pelajaran jadwal "${rawMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`);
+          }
+        }
+      }
+    } else if (tableName === 'data_mapel') {
+      const rawMapel = row.nama_mata_pelajaran || row.nama_mapel;
+      if (rawMapel) {
+        if (isDummyOrTestString(rawMapel)) {
+          throw new Error(`Baris ${i}: Terdeteksi nama mata pelajaran dummy/percobaan ("${rawMapel}").`);
+        }
+        if (isInvalidMapel(rawMapel)) {
+          throw new Error(`Baris ${i}: Mata pelajaran "${rawMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`);
+        }
+      }
+    } else if (tableName === 'data_siswa') {
+      if (row.nama_siswa) {
+        if (isForbiddenName(row.nama_siswa)) {
+          throw new Error(`Baris ${i}: Nama siswa "${row.nama_siswa}" dilarang.`);
+        }
+        if (isDummyOrTestString(row.nama_siswa)) {
+          throw new Error(`Baris ${i}: Terdeteksi data siswa dummy/percobaan ("${row.nama_siswa}").`);
+        }
+        row.nama_siswa = normalizeName(row.nama_siswa);
+        const studentKey = `${(row.kelas || '').trim().toLowerCase()}_${row.nama_siswa.toLowerCase()}`;
+        if (seenStudentKeys.has(studentKey)) {
+          throw new Error(`Baris ${i}: Duplikat siswa "${row.nama_siswa}" di kelas ${row.kelas} dalam file CSV.`);
+        }
+        seenStudentKeys.add(studentKey);
+      }
+    }
+
+    rows.push(row);
+  }
+
+  if (rows.length === 0) {
+    throw new Error('Tidak ada baris data valid yang ditemukan dalam CSV.');
+  }
+
+  return rows;
+}
+
+/**
+ * Imports master data from CSV text with pre-insertion validation.
+ * Guaranteed to catch missing sekolah_id for data_guru prior to database interaction.
+ */
+export async function importMasterDataFromCsv(
+  supabase: any,
+  csvText: string,
+  tableName: string,
+  user?: any
+): Promise<{ count: number; rows: Record<string, any>[] }> {
+  const rows = parseAndValidateMasterCsv(csvText, tableName, user);
+
+  const batchSize = 50;
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const upsertOptions: any = { ignoreDuplicates: false };
+    if (tableName === 'wali_kelas') {
+      upsertOptions.onConflict = 'sekolah_id, kelas';
+    } else {
+      upsertOptions.onConflict = 'id';
+    }
+    const { error } = await supabase
+      .from(tableName)
+      .upsert(batch, upsertOptions);
+    if (error) throw error;
+  }
+
+  return { count: rows.length, rows };
+}
+

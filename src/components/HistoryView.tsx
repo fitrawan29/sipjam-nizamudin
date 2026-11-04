@@ -29,6 +29,7 @@ export default function HistoryView({
     }
   }, [onlyTab]);
   const [search, setSearch] = useState('');
+  const [filterBulan, setFilterBulan] = useState('');
   const [dataList, setDataList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -77,16 +78,35 @@ export default function HistoryView({
   };
 
   const filteredData = dataList.filter(item => {
+    if (activeTab === 'presensi' && filterBulan) {
+      const ts = String(item.timestamp || item.tanggal || '');
+      let matchMonth = false;
+      if (ts.startsWith(filterBulan) || ts.includes(filterBulan)) {
+        matchMonth = true;
+      } else {
+        const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (slashMatch) {
+          const m = slashMatch[1].padStart(2, '0');
+          const y = slashMatch[3];
+          if (`${y}-${m}` === filterBulan) matchMonth = true;
+        }
+      }
+      if (!matchMonth) return false;
+    }
+
     if (activeTab === 'presensi') {
       return (item.tipe_absen || '').toLowerCase().includes(search.toLowerCase()) || 
              (item.jenis_presensi || '').toLowerCase().includes(search.toLowerCase()) ||
-             (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase());
+             (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.detail_izin || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.catatan_admin || '').toLowerCase().includes(search.toLowerCase());
     } else {
       return (item.mapel || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.kelas || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.materi || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.keterangan || '').toLowerCase().includes(search.toLowerCase()) ||
-             (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase());
+             (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase()) ||
+             (item.catatan_admin || '').toLowerCase().includes(search.toLowerCase());
     }
   });
 
@@ -113,22 +133,22 @@ export default function HistoryView({
               <div className="flex gap-2 mb-4">
                 <button 
                   type="button" 
-                  onClick={() => { setActiveTab('presensi'); setPage(0); setDataList([]); }} 
+                  onClick={() => { setActiveTab('presensi'); setPage(0); setFilterBulan(''); setDataList([]); }} 
                   className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'presensi' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'}`}
                 >
                   Presensi
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => { setActiveTab('jurnal'); setPage(0); setDataList([]); }} 
+                  onClick={() => { setActiveTab('jurnal'); setPage(0); setFilterBulan(''); setDataList([]); }} 
                   className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-lg transition-all ${activeTab === 'jurnal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600' : 'bg-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-transparent'}`}
                 >
                   Jurnal
                 </button>
               </div>
             )}
-            <div className="relative mb-4 flex items-center gap-2">
-                <div className="relative flex-1">
+            <div className="relative mb-4 flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[200px]">
                   <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-white/70 text-xs"></i>
                   <input 
                     type="text" 
@@ -147,6 +167,27 @@ export default function HistoryView({
                     Reset
                   </button>
                 )}
+                {activeTab === 'presensi' && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <input 
+                      type="month" 
+                      value={filterBulan} 
+                      onChange={e => { setFilterBulan(e.target.value); setPage(0); }} 
+                      className="px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 font-semibold cursor-pointer"
+                      title="Filter Berdasarkan Bulan Presensi"
+                    />
+                    {filterBulan && (
+                      <button
+                        type="button"
+                        onClick={() => { setFilterBulan(''); setPage(0); }}
+                        className="px-2.5 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+                        title="Reset Filter Bulan"
+                      >
+                        <i className="fa-solid fa-xmark"></i>
+                      </button>
+                    )}
+                  </div>
+                )}
             </div>
             {errorMsg && (
                 <div className="bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-200 dark:border-red-800 p-3 rounded-xl mb-4 text-xs">
@@ -160,12 +201,14 @@ export default function HistoryView({
                 <div className="col-span-full text-center py-10 px-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 my-2">
                   <i className="fa-solid fa-clock-rotate-left text-2xl text-gray-400 dark:text-gray-500 mb-2"></i>
                   <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    {search ? `Tidak ada riwayat ${activeTab} yang sesuai dengan pencarian "${search}".` : `Belum ada riwayat ${activeTab}.`}
+                    {search || filterBulan 
+                      ? `Tidak ada riwayat ${activeTab} yang sesuai dengan filter ${filterBulan ? `bulan "${filterBulan}"` : ''}${search ? ` dan pencarian "${search}"` : ''}.` 
+                      : `Belum ada riwayat ${activeTab}.`}
                   </p>
-                  {search && (
+                  {(search || filterBulan) && (
                     <button
                       type="button"
-                      onClick={() => { setSearch(''); setPage(0); }}
+                      onClick={() => { setSearch(''); setFilterBulan(''); setPage(0); }}
                       className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1"
                     >
                       <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian

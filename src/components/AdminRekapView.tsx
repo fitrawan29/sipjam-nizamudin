@@ -672,6 +672,18 @@ export default function AdminRekapView({
                         </table>
                       </div>
                       
+                      {/* Print Signature & GPS Security Footer for Tab Tabel */}
+                      <div className="hidden print:block mt-8">
+                        <PrintSignature
+                          leftTitle="Mengetahui,"
+                          leftSubtitle="Pengelola Data / Admin"
+                          leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}
+                          leftNip={isKepalaSekolah ? '-' : user?.nip}
+                          user={user}
+                          sekolahId={user?.sekolah_id}
+                        />
+                      </div>
+
                       <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">
                           <button type="button" onClick={handleExportCsv} className="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-green-700 transition">
                             <i className="fa-solid fa-file-excel"></i> Excel
@@ -687,8 +699,7 @@ export default function AdminRekapView({
                   {/* ================================================================= */}
                   <div className={`${activeTab === 'cetak' ? 'block' : 'hidden'} space-y-4`}>
                       <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm print:border-none print:p-0">
-                          <PrintHeader user={user} sekolahId={user?.sekolah_id} />
-                          <div className="text-center my-3 print:my-2">
+                          <div className="text-center my-3 print:hidden">
                             <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
                               Rekapitulasi Akhir Presensi, Jurnal &amp; Piket Guru
                             </h3>

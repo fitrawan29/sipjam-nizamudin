@@ -4190,6 +4190,16 @@ export default function GradebookView({
               </div>
             </div>
           </div>
+
+          {/* Print Signature Component */}
+          <PrintSignature
+            leftTitle="Mengetahui,"
+            leftSubtitle="Guru Mata Pelajaran"
+            leftName={selectedGuru || user?.nama}
+            leftNip={user?.nip}
+            user={user}
+            sekolahId={sekolahId || undefined}
+          />
         </div>
       )}
 
