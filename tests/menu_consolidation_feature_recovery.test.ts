@@ -64,7 +64,13 @@ check(
 );
 
 check(
-  '1.1.3: AdminRekapView invokes triggerPrintWithGps for GPS watermark',
+  '1.1.3: AdminRekapView Tab 2 adapts leftName & leftNip based on isKepalaSekolah',
+  adminRekapContent.includes("leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}") &&
+  adminRekapContent.includes("leftNip={isKepalaSekolah ? '-' : user?.nip}")
+);
+
+check(
+  '1.1.4: AdminRekapView invokes triggerPrintWithGps for GPS watermark',
   adminRekapContent.includes('triggerPrintWithGps()')
 );
 
@@ -75,7 +81,6 @@ check(
   adminRekapContent.includes('<PrintHeader user={user} sekolahId={user?.sekolah_id} />')
 );
 
-// Sub-Tab 3 (activeTab === 'cetak') must NOT contain an inner <PrintHeader>
 const subTab3Start = adminRekapContent.indexOf("activeTab === 'cetak'");
 check('1.2.2: Sub-Tab 3 exists in AdminRekapView', subTab3Start !== -1);
 const subTab3Block = adminRekapContent.slice(subTab3Start, subTab3Start + 3000);
@@ -106,6 +111,26 @@ check(
 check(
   '1.3.2: PiketView preserves comment assertion for backward-compatibility',
   piketViewContent.includes('{/* <PrintSignature user={user} sekolahId={user?.sekolah_id} /> */}')
+);
+
+// Behavioral test for PiketView signature rendering
+const htmlPiketSig = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftTitle: 'Mengetahui,',
+    leftSubtitle: 'Guru Piket',
+    leftName: 'Ahmad Dahlan, S.Pd',
+    leftNip: '197501012000031002',
+    user: { role: 'guru', nama: 'Ahmad Dahlan, S.Pd' },
+    sekolahId: 'sekolah-1'
+  })
+);
+check(
+  '1.3.3: Behavioral: PrintSignature for Guru Piket displays Guru Piket subtitle, name and NIP',
+  htmlPiketSig.includes('Guru Piket') &&
+  htmlPiketSig.includes('Ahmad Dahlan, S.Pd') &&
+  htmlPiketSig.includes('197501012000031002') &&
+  htmlPiketSig.includes('data-testid="signature-left"') &&
+  htmlPiketSig.includes('data-testid="signature-right"')
 );
 
 // 1.4 GradebookView Tab 3 Statistik PrintSignature
@@ -175,7 +200,7 @@ check(
   htmlGuru.includes('data-testid="signature-right"')
 );
 
-// Behavioral test 3: Explicit singleColumn=true renders single column even for non-admin
+// Behavioral test 3: Explicit singleColumn=true forces single column layout for non-admin
 const htmlGuruSingle = renderToStaticMarkup(
   React.createElement(PrintSignature, {
     user: { role: 'guru' },
@@ -198,6 +223,42 @@ const htmlAdminVariations = [
 check(
   '1.6.5: Case-insensitive and whitespace-trimmed admin role behaves consistently',
   htmlAdminVariations.every(h => !h.includes('data-testid="signature-left"'))
+);
+
+// Behavioral test 5: Non-string and undefined role resilience
+const htmlNonStringRoles = [
+  renderToStaticMarkup(React.createElement(PrintSignature, { user: { role: 123 as any }, leftName: 'NumberRole' })),
+  renderToStaticMarkup(React.createElement(PrintSignature, { user: { role: true as any }, leftName: 'BoolRole' })),
+  renderToStaticMarkup(React.createElement(PrintSignature, { user: null, leftName: 'NullUser' })),
+  renderToStaticMarkup(React.createElement(PrintSignature, { user: undefined, leftName: 'UndefUser' }))
+];
+check(
+  '1.6.6: Adversarial: non-string, boolean, and null user objects do not crash PrintSignature and render left column',
+  htmlNonStringRoles.every(h => h.includes('data-testid="signature-left"'))
+);
+
+// Behavioral test 6: Page break inside avoid in both layouts
+check(
+  '1.6.7: PrintSignature maintains page-break-inside-avoid in both admin and multi-column containers',
+  htmlAdmin.includes('page-break-inside-avoid') && htmlGuru.includes('page-break-inside-avoid')
+);
+
+// Behavioral test 7: Three column signature support with Pengawas Pembina
+const htmlThreeCols = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    user: { role: 'guru' },
+    showPengawas: true,
+    pengawasJabatan: 'Pengawas Pembina Utama',
+    pengawasNama: 'Drs. H. Sulaiman, M.Pd',
+    pengawasNip: '196803051994031005'
+  })
+);
+check(
+  '1.6.8: Three-column signature renders middle Pengawas signature block when showPengawas=true',
+  htmlThreeCols.includes('data-testid="signature-pengawas"') &&
+  htmlThreeCols.includes('Pengawas Pembina Utama') &&
+  htmlThreeCols.includes('Drs. H. Sulaiman, M.Pd') &&
+  htmlThreeCols.includes('196803051994031005')
 );
 
 
@@ -238,7 +299,9 @@ check(
   '2.1.5: Banner provides Input Ulang action button pre-filling form state',
   guruJurnalContent.includes('Input Ulang') &&
   guruJurnalContent.includes("handleTabChange('input')") &&
-  guruJurnalContent.includes('setMateri(j.materi')
+  guruJurnalContent.includes('setMateri(j.materi') &&
+  guruJurnalContent.includes('setKelas(j.kelas') &&
+  guruJurnalContent.includes('setMapel(j.mapel')
 );
 
 // 2.2 RekapJurnalView Rejection Notes in Table & Modal
@@ -323,6 +386,10 @@ check('2.3.5: Behavioral: empty searchMateri returns all items', matchEmpty.leng
 const matchRegexChar = filterJournalsByMateri(mockJournalRecords, '.*[a-z]+(');
 check('2.3.6: Adversarial: regex meta-characters in search query handled safely', matchRegexChar.length === 0);
 
+// Whitespace resilience test
+const matchWhitespaceQuery = filterJournalsByMateri(mockJournalRecords, '   aljabar   ');
+check('2.3.7: Behavioral: searchMateri with leading/trailing spaces matches "Aljabar"', matchWhitespaceQuery.length === 1 && matchWhitespaceQuery[0].id === '1');
+
 
 // ============================================================================
 // SUITE 3: History View Filters
@@ -359,9 +426,10 @@ const mockPresensiHistory = [
   { id: 'p1', timestamp: '2026-11-04T07:15:00+08:00', tipe_absen: 'Datang' },
   { id: 'p2', timestamp: '2026-11-03 07:10:00', tipe_absen: 'Datang' },
   { id: 'p3', timestamp: '11/2/2026 07:12:00', tipe_absen: 'Datang' },
-  { id: 'p4', timestamp: '2026-10-31 07:14:00', tipe_absen: 'Datang' },
-  { id: 'p5', timestamp: '2026-12-01T07:05:00', tipe_absen: 'Datang' },
-  { id: 'p6', timestamp: null, tipe_absen: 'Datang' }
+  { id: 'p4', timestamp: '2026-10-31 23:59:59', tipe_absen: 'Pulang' },
+  { id: 'p5', timestamp: '2026-12-01T00:00:01', tipe_absen: 'Datang' },
+  { id: 'p6', timestamp: '1/15/2026 07:30:00', tipe_absen: 'Datang' },
+  { id: 'p7', timestamp: null, tipe_absen: 'Datang' }
 ];
 
 function filterPresensiByMonth(list: any[], monthFilter: string) {
@@ -387,10 +455,13 @@ check('3.2.1: Behavioral: 2026-11 filter correctly captures ISO, SQL, and slash 
 check('3.2.2: Behavioral: captured items have IDs p1, p2, p3', nov2026.every(item => ['p1', 'p2', 'p3'].includes(item.id)));
 
 const oct2026 = filterPresensiByMonth(mockPresensiHistory, '2026-10');
-check('3.2.3: Behavioral: 2026-10 filter captures p4 only', oct2026.length === 1 && oct2026[0].id === 'p4');
+check('3.2.3: Behavioral: 2026-10 filter captures p4 (month boundary 23:59:59)', oct2026.length === 1 && oct2026[0].id === 'p4');
+
+const jan2026 = filterPresensiByMonth(mockPresensiHistory, '2026-01');
+check('3.2.4: Behavioral: 2026-01 filter captures single-digit month slash date 1/15/2026', jan2026.length === 1 && jan2026[0].id === 'p6');
 
 const clearFilter = filterPresensiByMonth(mockPresensiHistory, '');
-check('3.2.4: Behavioral: empty month filter returns full list including null timestamps', clearFilter.length === 6);
+check('3.2.5: Behavioral: empty month filter returns full list including null timestamps', clearFilter.length === 7);
 
 
 // ============================================================================
@@ -431,23 +502,36 @@ check(
   resRegularGuru.allowed === false && resRegularGuru.fallbackTab === 'input'
 );
 
-// 4.2 Siswa Role Isolation
+// 4.2 evaluateTabRBAC for Cluster 3: Gradebook / Rapor
+const resRaporWali = evaluateTabRBAC('view-gradebook', 'rapor', { role: 'guru', isWaliKelas: true });
+check('4.2.1: evaluateTabRBAC allows Wali Kelas for view-gradebook rapor tab', resRaporWali.allowed === true);
+
+const resRaporAdmin = evaluateTabRBAC('view-gradebook', 'rapor', { role: 'admin' });
+check('4.2.2: evaluateTabRBAC allows Admin for view-gradebook rapor tab', resRaporAdmin.allowed === true);
+
+const resRaporGuru = evaluateTabRBAC('view-gradebook', 'rapor', { role: 'guru', isWaliKelas: false });
+check(
+  '4.2.3: evaluateTabRBAC denies regular teacher for view-gradebook rapor tab and falls back to gradebook',
+  resRaporGuru.allowed === false && resRaporGuru.fallbackTab === 'gradebook'
+);
+
+// 4.3 Siswa Role Isolation
 const resSiswaSupervisi = evaluateTabRBAC('view-guru-jurnal', 'supervisi-kelas', { role: 'siswa' });
 check(
-  '4.2.1: evaluateTabRBAC strictly denies Siswa from accessing teacher operational modules',
+  '4.3.1: evaluateTabRBAC strictly denies Siswa from accessing teacher operational modules',
   resSiswaSupervisi.allowed === false && resSiswaSupervisi.fallbackTab === 'view-ujian'
 );
 
 const resSiswaUjian = evaluateTabRBAC('view-ujian', 'ujian', { role: 'siswa' });
-check('4.2.2: evaluateTabRBAC allows Siswa for view-ujian', resSiswaUjian.allowed === true);
+check('4.3.2: evaluateTabRBAC allows Siswa for view-ujian', resSiswaUjian.allowed === true);
 
 const resSiswaInformasi = evaluateTabRBAC('view-informasi', 'info', { role: 'siswa' });
-check('4.2.3: evaluateTabRBAC allows Siswa for view-informasi', resSiswaInformasi.allowed === true);
+check('4.3.3: evaluateTabRBAC allows Siswa for view-informasi', resSiswaInformasi.allowed === true);
 
-// 4.3 getConsolidatedMenuItems for Admin & Dinas
+// 4.4 getConsolidatedMenuItems across roles
 const adminMenuItems = getConsolidatedMenuItems({ role: 'admin' });
 const hasAdminInfo = adminMenuItems.some(m => m.id === 'view-informasi' && m.icon === 'fa-bullhorn');
-check('4.3.1: getConsolidatedMenuItems for Admin includes view-informasi', hasAdminInfo);
+check('4.4.1: getConsolidatedMenuItems for Admin includes view-informasi', hasAdminInfo);
 
 const dinasSatelliteItems = getConsolidatedMenuItems({
   role: 'dinaspendidikan',
@@ -455,13 +539,32 @@ const dinasSatelliteItems = getConsolidatedMenuItems({
 });
 const hasDinasRekapSiswa = dinasSatelliteItems.some(m => m.id === 'view-rekap-siswa');
 const hasDinasJurnalKelas = dinasSatelliteItems.some(m => m.id === 'view-jurnal-kelas');
-check('4.3.2: getConsolidatedMenuItems for Dinas with activeTargetSchool includes view-rekap-siswa', hasDinasRekapSiswa);
-check('4.3.3: getConsolidatedMenuItems for Dinas with activeTargetSchool includes view-jurnal-kelas', hasDinasJurnalKelas);
+check('4.4.2: getConsolidatedMenuItems for Dinas with activeTargetSchool includes view-rekap-siswa', hasDinasRekapSiswa);
+check('4.4.3: getConsolidatedMenuItems for Dinas with activeTargetSchool includes view-jurnal-kelas', hasDinasJurnalKelas);
 
 const dinasOverviewItems = getConsolidatedMenuItems({ role: 'dinaspendidikan' });
 check(
-  '4.3.4: getConsolidatedMenuItems for Dinas without activeTargetSchool returns region overview only',
+  '4.4.4: getConsolidatedMenuItems for Dinas without activeTargetSchool returns region overview only',
   dinasOverviewItems.length === 1 && dinasOverviewItems[0].id === 'view-dinas-overview'
+);
+
+const guruRegulerItems = getConsolidatedMenuItems({ role: 'guru', isWaliKelas: false, isPiketHariIni: false });
+check(
+  '4.4.5: getConsolidatedMenuItems for regular teacher excludes view-rekap-siswa and view-piket',
+  !guruRegulerItems.some(m => m.id === 'view-rekap-siswa') &&
+  !guruRegulerItems.some(m => m.id === 'view-piket')
+);
+
+const guruWaliItems = getConsolidatedMenuItems({ role: 'guru', isWaliKelas: true });
+check(
+  '4.4.6: getConsolidatedMenuItems for Wali Kelas includes view-rekap-siswa',
+  guruWaliItems.some(m => m.id === 'view-rekap-siswa')
+);
+
+const guruPiketItems = getConsolidatedMenuItems({ role: 'guru', isPiketHariIni: true });
+check(
+  '4.4.7: getConsolidatedMenuItems for Guru Piket includes view-piket',
+  guruPiketItems.some(m => m.id === 'view-piket')
 );
 
 
@@ -502,6 +605,19 @@ check(
   '5.2.3: DokumenView normalizes role case-insensitively and recognizes admin & superadmin',
   dokumenViewContent.includes("normRole === 'admin' || normRole === 'superadmin'")
 );
+
+// Behavioral test for role normalization logic in DokumenView
+function isDokumenAdmin(user: any): boolean {
+  const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  return normRole === 'admin' || normRole === 'superadmin';
+}
+
+check('5.2.4: Behavioral: role "admin" is recognized as Admin', isDokumenAdmin({ role: 'admin' }) === true);
+check('5.2.5: Behavioral: role "Admin" is recognized as Admin', isDokumenAdmin({ role: 'Admin' }) === true);
+check('5.2.6: Behavioral: role "SUPERADMIN" is recognized as Admin', isDokumenAdmin({ role: 'SUPERADMIN' }) === true);
+check('5.2.7: Behavioral: role "super_admin" is recognized as Admin', isDokumenAdmin({ role: 'super_admin' }) === true);
+check('5.2.8: Behavioral: role "guru" is NOT recognized as Admin', isDokumenAdmin({ role: 'guru' }) === false);
+check('5.2.9: Behavioral: null/undefined role does not crash and returns false', isDokumenAdmin(null) === false && isDokumenAdmin({}) === false);
 
 // 5.3 DokumenView Read-Only Action Guards
 check(
@@ -553,7 +669,10 @@ check('6.1.3: Behavioral: composition ratio calculates 70% hadir, 20% izin/sakit
 const compZero = calculateComposition(0, 0, 0, 0);
 check('6.1.4: Behavioral: zero presensi records return 0% without NaN or division by zero errors', compZero.hadir === 0 && compZero.izinSakit === 0 && compZero.dinasLuar === 0 && !isNaN(compZero.hadir));
 
-// 6.2 AdminRekapView Leaderboard Top 5 / Top 10 Toggle
+const comp100Hadir = calculateComposition(50, 0, 0, 0);
+check('6.1.5: Behavioral: 100% hadir scenario correctly computes 100% and 0% for other categories', comp100Hadir.hadir === 100 && comp100Hadir.izinSakit === 0 && comp100Hadir.dinasLuar === 0);
+
+// 6.2 AdminRekapView Leaderboard Top 5 / Top 10 Toggle & Scoring Formula
 check(
   '6.2.1: AdminRekapView maintains leaderboardLimit state defaulting to 5',
   adminRekapContent.includes('leaderboardLimit') &&
@@ -566,6 +685,22 @@ check(
   adminRekapContent.includes('setLeaderboardLimit(10)') &&
   adminRekapContent.includes('(Top {leaderboardLimit} Guru)')
 );
+
+check(
+  '6.2.3: AdminRekapView documents official formula: (Hadir×10) + (Piket×10) + (Jurnal×5) + (Dinas×5)',
+  adminRekapContent.includes('(Hadir×10) + (Piket×10) + (Jurnal×5) + (Dinas×5)')
+);
+
+// Behavioral test for leaderboard ranking formula
+function calculateLeaderboardScore(hadir: number, piket: number, jurnal: number, dinas: number): number {
+  return (hadir * 10) + (piket * 10) + (jurnal * 5) + (dinas * 5);
+}
+
+const teacherA = { nama: 'Guru A', score: calculateLeaderboardScore(20, 2, 18, 1) }; // 200 + 20 + 90 + 5 = 315
+const teacherB = { nama: 'Guru B', score: calculateLeaderboardScore(15, 4, 10, 3) }; // 150 + 40 + 50 + 15 = 255
+const teacherC = { nama: 'Guru C', score: calculateLeaderboardScore(22, 1, 15, 0) }; // 220 + 10 + 75 + 0 = 305
+const ranked = [teacherA, teacherB, teacherC].sort((a, b) => b.score - a.score);
+check('6.2.4: Behavioral: Leaderboard formula correctly orders Guru A (315) > Guru C (305) > Guru B (255)', ranked[0].nama === 'Guru A' && ranked[1].nama === 'Guru C' && ranked[2].nama === 'Guru B');
 
 // 6.3 HomeViewAdmin Quick Action Card for Informasi
 const homeAdminPath = path.join(srcDir, 'components', 'HomeViewAdmin.tsx');

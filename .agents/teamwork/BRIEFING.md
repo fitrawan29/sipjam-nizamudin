@@ -1,29 +1,25 @@
-# BRIEFING — 2026-11-04T02:52:00Z
+# BRIEFING — 2026-11-04T04:58:30Z
 
 ## Mission
-Coordinate SWE Light execution for fixing CSV import validation on data_guru table in sipjam-app.
+Sentinel monitoring and routing for user request: database teacher credentials
 
 ## 🔒 My Identity
 - Archetype: sentinel
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\
-- Orchestrator: b2e10258-1bdc-4daa-854b-47238bed5854
-- Victory Auditor: to be spawned on victory claim
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork
+- Orchestrator: [TBD]
+- Victory Auditor: [to be spawned on victory claim]
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Route: SWE Light (teamwork_swe)
-- Minimal implementation (ponytail)
-- Validate sekolah_id presence prior to insert, avoid PostgreSQL error 23502
 
 ## User Context
-- **Last user request**: Approved task prompt received
-- **Pending clarifications**: none
-- **Delivered results**: Run started notification sent
+- **Last user request**: /ponytail pastikan guru yang ada di database memiliki username dan password. Untuk password diatur default "12345"
+- **Pending clarifications**: Task interview in progress
+- **Delivered results**: [none]
 
 ## Project Status
-- **Phase**: in progress
-- **Route**: SWE Light (teamwork_swe: b2e10258-1bdc-4daa-854b-47238bed5854)
+- **Phase**: not started
 
 ## Victory Audit Status
 - **Triggered**: no
@@ -31,5 +27,4 @@ Coordinate SWE Light execution for fixing CSV import validation on data_guru tab
 - **Retry count**: 0
 
 ## Artifact Index
-- .agents/teamwork/ORIGINAL_REQUEST.md — Approved task prompt
-- .agents/teamwork/swe_1/ — SWE Light Orchestrator workspace
+- [TBD]

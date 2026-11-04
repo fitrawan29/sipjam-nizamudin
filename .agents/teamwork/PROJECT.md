@@ -47,8 +47,8 @@
 | M1 | Pemulihan Sistem Cetak, Tanda Tangan Resmi, dan Header/Footer | `src/components/PrintHeader.tsx`, `src/components/AdminRekapView.tsx`, `src/components/PiketView.tsx`, `src/components/GradebookView.tsx`, `src/components/GuruJurnal.tsx` | none | DONE |
 | M2 | Pemulihan Alur Umpan Balik Penolakan Jurnal & Filter Riwayat | `src/components/GuruJurnal.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/HistoryView.tsx` | none | DONE |
 | M3 | Harmonisasi Hak Akses RBAC, Menu Informasi, & Pengawasan Dinas | `src/lib/navigation.ts`, `src/components/AdminVerifView.tsx`, `src/components/DokumenView.tsx`, `src/components/AdminRekapView.tsx`, `src/components/HomeViewAdmin.tsx`, `src/components/AdminBackupView.tsx`, `src/components/SistemBlokView.tsx` | M1, M2 | DONE |
-| M4 | Automated Regression Test Suite & E2E Verification | `tests/menu_consolidation_feature_recovery.test.ts`, `npm test`, `npx tsc --noEmit`, `npm run build` | M1, M2, M3 | PLANNED |
-| M5 | Final Forensic Audit, Quality Gate, & Git Push to `main` | Final Forensic Integrity Audit, `git status`, `git add .`, `git commit`, `git push origin main` | M4 | PLANNED |
+| M4 | Automated Regression Test Suite & E2E Verification | `tests/menu_consolidation_feature_recovery.test.ts`, `npm test`, `npx tsc --noEmit`, `npm run build` | M1, M2, M3 | DONE |
+| M5 | Final Forensic Audit, Quality Gate, & Git Push to `main` | Final Forensic Integrity Audit, `git status`, `git add .`, `git commit`, `git push origin main` | M4 | IN_PROGRESS |
 
 ## Interface Contracts
 ### `PrintHeader` ↔ View Consumers

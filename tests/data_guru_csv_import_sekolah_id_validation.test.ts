@@ -67,7 +67,7 @@ async function runTests() {
 
     let threw = false;
     try {
-      parseAndValidateMasterCsv(csvNoSekolahIdHeader, 'data_guru', { sekolah_id: 'a0000000-0000-0000-0000-000000000001' });
+      parseAndValidateMasterCsv(csvNoSekolahIdHeader, 'data_guru', {});
     } catch (err: any) {
       threw = true;
       assert.ok(
@@ -80,7 +80,11 @@ async function runTests() {
       );
     }
     assert.strictEqual(threw, true, 'Should have thrown validation error when sekolah_id header is missing');
-    pass('CSV missing "sekolah_id" column throws clear validation error on Baris 1');
+    
+    // Auto-inject verification: if session has sekolah_id, it auto-injects cleanly
+    const autoInjected = parseAndValidateMasterCsv(csvNoSekolahIdHeader, 'data_guru', { sekolah_id: 'a0000000-0000-0000-0000-000000000001' });
+    assert.strictEqual(autoInjected[0].sekolah_id, 'a0000000-0000-0000-0000-000000000001');
+    pass('CSV missing "sekolah_id" column throws without session, and auto-injects with session');
   } catch (e) {
     fail('CSV missing "sekolah_id" column failed to throw proper validation error', e);
   }
