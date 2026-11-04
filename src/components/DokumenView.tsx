@@ -19,8 +19,14 @@ export const KURIKULUM_DOCS = [
   { id: 'RPM', code: 'RPM', name: 'Rencana Pembelajaran Mendalam', short: 'RPM' }
 ] as const;
 
-export default function DokumenView({ user }: { user: any }) {
-  const isAdmin = user?.role === 'Admin';
+export interface DokumenViewProps {
+  user: any;
+  isReadOnly?: boolean;
+}
+
+export default function DokumenView({ user, isReadOnly = false }: DokumenViewProps) {
+  const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const isAdmin = normRole === 'admin' || normRole === 'superadmin';
   const [activeTab, setActiveTab] = useState<'matrix' | 'syarat' | 'list' | 'upload'>(isAdmin ? 'matrix' : 'list');
     
   // Data states
@@ -156,6 +162,7 @@ export default function DokumenView({ user }: { user: any }) {
 
   // --- Admin Syarat CRUD Operations ---
   const handleOpenAddSyarat = () => {
+    if (isReadOnly) return;
     setEditingSyarat(null);
     setSyaratMapel('Semua Mapel');
     setSyaratKode('');
@@ -168,6 +175,7 @@ export default function DokumenView({ user }: { user: any }) {
   };
 
   const handleOpenEditSyarat = (syarat: SyaratPerangkatPembelajaranRow) => {
+    if (isReadOnly) return;
     setEditingSyarat(syarat);
     setSyaratMapel(syarat.nama_mapel || 'Semua Mapel');
     setSyaratKode(syarat.kode_dokumen || '');
@@ -181,6 +189,7 @@ export default function DokumenView({ user }: { user: any }) {
 
   const handleSaveSyarat = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     if (!syaratKode.trim() || !syaratNama.trim()) {
       Swal.fire('Peringatan', 'Kode dokumen dan nama dokumen wajib diisi.', 'warning');
       return;
@@ -225,6 +234,7 @@ export default function DokumenView({ user }: { user: any }) {
   };
 
   const handleDeleteSyarat = async (syarat: SyaratPerangkatPembelajaranRow) => {
+    if (isReadOnly) return;
     const confirm = await Swal.fire({
       title: 'Hapus Syarat Dokumen?',
       text: `Apakah Anda yakin ingin menghapus "${syarat.nama_dokumen}" (${syarat.nama_mapel})?`,
@@ -256,6 +266,10 @@ export default function DokumenView({ user }: { user: any }) {
   };
 
   const handleVerifyDokumen = async (id: string, status: 'Disetujui' | 'Ditolak') => {
+    if (isReadOnly) {
+      Swal.fire('Mode Peninjau', 'Anda sedang berada dalam mode peninjau (read-only). Aksi verifikasi dinonaktifkan.', 'info');
+      return;
+    }
     let catatan = '';
     if (status === 'Ditolak') {
       const { value: text } = await Swal.fire({
@@ -1095,13 +1109,15 @@ export default function DokumenView({ user }: { user: any }) {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleOpenAddSyarat}
-                className="btn-click bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition shrink-0"
-              >
-                <i className="fa-solid fa-plus text-xs"></i> Tambah Syarat Dokumen
-              </button>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={handleOpenAddSyarat}
+                  className="btn-click bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition shrink-0"
+                >
+                  <i className="fa-solid fa-plus text-xs"></i> Tambah Syarat Dokumen
+                </button>
+              )}
             </div>
 
             {/* Syarat Filters */}
@@ -1181,24 +1197,28 @@ export default function DokumenView({ user }: { user: any }) {
                           )}
                         </td>
                         <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditSyarat(s)}
-                              title="Edit Syarat"
-                              className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 flex items-center justify-center text-xs transition"
-                            >
-                              <i className="fa-solid fa-pen-to-square"></i>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSyarat(s)}
-                              title="Hapus Syarat"
-                              className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 flex items-center justify-center text-xs transition"
-                            >
-                              <i className="fa-solid fa-trash"></i>
-                            </button>
-                          </div>
+                          {!isReadOnly ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditSyarat(s)}
+                                title="Edit Syarat"
+                                className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 flex items-center justify-center text-xs transition"
+                              >
+                                <i className="fa-solid fa-pen-to-square"></i>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSyarat(s)}
+                                title="Hapus Syarat"
+                                className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 flex items-center justify-center text-xs transition"
+                              >
+                                <i className="fa-solid fa-trash"></i>
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-gray-400 dark:text-gray-500 italic">Read-only</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -1701,7 +1721,7 @@ export default function DokumenView({ user }: { user: any }) {
             )}
 
             {/* Admin Verification Actions */}
-            {isAdmin && (
+            {isAdmin && !isReadOnly && (
               <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
                 <button
                   type="button"
@@ -1717,6 +1737,13 @@ export default function DokumenView({ user }: { user: any }) {
                 >
                   <i className="fa-solid fa-xmark"></i> Tolak Dokumen
                 </button>
+              </div>
+            )}
+            {isAdmin && isReadOnly && (
+              <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-center text-xs text-amber-800 dark:text-amber-300 font-medium">
+                  <i className="fa-solid fa-lock mr-1.5"></i> Mode Peninjau (Read-Only) &mdash; Aksi verifikasi dinonaktifkan
+                </div>
               </div>
             )}
           </div>

@@ -688,6 +688,39 @@ export default function HomeViewAdmin({
             </div>
           )}
 
+          {/* Quick Action: Informasi & Pengumuman Sekolah */}
+          <div className="clay-card clay-card-purple p-4 rounded-2xl border-2 border-white/90 dark:border-purple-800/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                <i className="fa-solid fa-bullhorn"></i>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-purple-200 text-purple-900 dark:bg-purple-900 dark:text-purple-200">
+                    Pusat Informasi
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Pengumuman &amp; Siaran Sekolah
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">
+                  Publikasikan Informasi Sekolah
+                </h4>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                  Buat, edit, dan siarkan pengumuman resmi ke Guru, Wali Murid, dan Siswa.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setView('view-informasi')}
+              className="clay-btn clay-btn-purple btn-click self-start sm:self-auto px-3.5 py-2 rounded-xl text-xs font-bold text-purple-950 dark:text-purple-100 shadow-sm flex items-center gap-1.5 transition"
+            >
+              <i className="fa-solid fa-bullhorn text-[11px]"></i> Kelola Pengumuman
+            </button>
+          </div>
+
           {/* Matrix Controls: Search & Filter Pills */}
           <div className="clay-card p-4 sm:p-5 space-y-3 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

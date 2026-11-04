@@ -102,7 +102,9 @@ export function getConsolidatedMenuItems(params: {
     if (params.activeTargetSchool) {
       return [
         { id: 'view-dinas-overview', icon: 'fa-globe', label: 'Dashboard Wilayah' },
-        { id: 'view-admin-rekap', icon: 'fa-chart-pie', label: 'Laporan Terpadu Satelit', dataTour: 'view-admin-rekap view-rekap-guru' }
+        { id: 'view-admin-rekap', icon: 'fa-chart-pie', label: 'Laporan Terpadu Satelit', dataTour: 'view-admin-rekap view-rekap-guru' },
+        { id: 'view-rekap-siswa', icon: 'fa-user-graduate', label: 'Presensi Siswa' },
+        { id: 'view-jurnal-kelas', icon: 'fa-book-open', label: 'Jurnal Kelas' }
       ];
     }
     return [
@@ -130,6 +132,7 @@ export function getConsolidatedMenuItems(params: {
       { id: 'view-admin-rekap', icon: 'fa-chart-pie', label: 'Laporan & Analitik Kinerja', dataTour: 'view-admin-rekap view-analitik' },
       { id: 'view-rekap-siswa', icon: 'fa-users', label: 'Presensi Siswa' },
       { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen & Rapor Sekolah', dataTour: 'view-gradebook view-rapor' },
+      { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
       { id: 'view-admin-data', icon: 'fa-database', label: 'Master Data & Kalender', dataTour: 'view-admin-data view-sistem-blok' },
       { id: 'view-admin-config', icon: 'fa-gear', label: 'Pengaturan Sistem & Database', dataTour: 'view-admin-config view-admin-backup' }
     ];
@@ -168,8 +171,11 @@ export function evaluateTabRBAC(
   tabId: string,
   user: { role?: string; isWaliKelas?: boolean }
 ): { allowed: boolean; fallbackTab?: string; reason?: string } {
-  const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const rawRole = (user?.role || '').toLowerCase();
+  const normRole = rawRole.replace(/[\s_-]+/g, '');
   const isAdmin = normRole === 'admin' || normRole === 'superadmin';
+  const isKepalaSekolah = normRole === 'kepalasekolah' || rawRole === 'kepala sekolah';
+  const isDinas = normRole === 'dinaspendidikan' || rawRole === 'dinas pendidikan';
   const isWali = !!user?.isWaliKelas;
   const isSiswa = normRole === 'siswa';
 
@@ -180,8 +186,8 @@ export function evaluateTabRBAC(
 
   // Cluster 1: Jurnal Mengajar
   if (viewId === 'view-guru-jurnal' && tabId === 'supervisi-kelas') {
-    if (!isWali && !isAdmin) {
-      return { allowed: false, fallbackTab: 'input', reason: 'Hanya Wali Kelas & Admin yang dapat mengakses supervisi kelas.' };
+    if (!isWali && !isAdmin && !isKepalaSekolah && !isDinas) {
+      return { allowed: false, fallbackTab: 'input', reason: 'Hanya Wali Kelas, Admin & Kepala Sekolah yang dapat mengakses supervisi kelas.' };
     }
   }
 

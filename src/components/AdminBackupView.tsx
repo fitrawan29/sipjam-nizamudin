@@ -191,16 +191,15 @@ export default function AdminBackupView({ user }: { user: any }) {
   };
 
   return (
-    <section id="view-admin-backup" className="view-section fade-in">
-        <div className="glass-card p-4">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-hard-drive text-indigo-500 dark:text-indigo-400"></i> Akses Data & Backup
-                </h2>
-                <button type="button" onClick={fetchRiwayat} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
-                  <i className="fa-solid fa-rotate-right"></i>
-                </button>
-            </div>
+    <div id="view-admin-backup" className="space-y-4 fade-in">
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <i className="fa-solid fa-hard-drive text-indigo-500 dark:text-indigo-400"></i> Akses Data &amp; Backup
+        </h2>
+        <button type="button" onClick={fetchRiwayat} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
+          <i className="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
             
             <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 text-center">
                 <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">Lakukan Backup & Restore</h3>
@@ -267,8 +266,7 @@ export default function AdminBackupView({ user }: { user: any }) {
                     )}
                 </div>
             </div>
-        </div>
-    </section>
+    </div>
   );
 }
 

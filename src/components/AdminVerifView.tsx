@@ -763,7 +763,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
         {/* Tab 4: Dokumen / Perangkat Pembelajaran (Keep-Alive in memory) */}
         <div className={activeTab === 'Dokumen' ? 'block' : 'hidden'}>
-          <DokumenView user={user} />
+          <DokumenView user={user} isReadOnly={isReadOnly} />
         </div>
 
         {/* Tabs 1-3: Presensi, Jurnal, Piket Content */}

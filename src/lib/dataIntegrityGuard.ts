@@ -433,9 +433,12 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
   return rawHeaders.map(h => {
     const clean = h
       .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .trim()
+      .replace(/^"|"$/g, '')
+      .trim()
       .toLowerCase()
       .replace(/[\s-]+/g, '_')
-      .replace(/^"|"$/g, '');
+      .replace(/^_+|_+$/g, '');
     if (clean === 'no_hp_orang_tua' || clean === 'hp_ortu') return 'no_hp_ortu';
     if (clean === 'nama') return tableName === 'data_siswa' ? 'nama_siswa' : 'nama_guru';
     if (clean === 'mata_pelajaran' && tableName === 'data_mapel') return 'nama_mata_pelajaran';
@@ -446,6 +449,8 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
       clean === 'sekolahid' ||
       clean === 'schoolid' ||
       clean === 'idsekolah' ||
+      clean === 'id_school' ||
+      clean === 'idschool' ||
       clean === 'sekolah_uuid' ||
       clean === 'uuid_sekolah'
     ) {
@@ -466,16 +471,22 @@ export function parseAndValidateMasterCsv(
   tableName: string,
   user?: any
 ): Record<string, any>[] {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
   if (lines.length < 2) {
     throw new Error('File CSV kosong atau tidak memiliki baris data.');
   }
 
-  // Auto-detect delimiter from header line (comma or semicolon for Indonesian/European Excel CSV)
+  // Auto-detect delimiter from header line (comma, semicolon, or tab)
   const headerClean = lines[0].replace(/[\u200B-\u200D\uFEFF]/g, '');
   const commaCount = (headerClean.match(/,/g) || []).length;
   const semicolonCount = (headerClean.match(/;/g) || []).length;
-  const delimiter = semicolonCount > commaCount ? ';' : ',';
+  const tabCount = (headerClean.match(/\t/g) || []).length;
+  let delimiter = ',';
+  if (semicolonCount > commaCount && semicolonCount >= tabCount) {
+    delimiter = ';';
+  } else if (tabCount > commaCount && tabCount > semicolonCount) {
+    delimiter = '\t';
+  }
 
   const rawHeaders = parseCsvLine(lines[0], delimiter);
   const headers = normalizeCsvHeaders(rawHeaders, tableName);
@@ -505,6 +516,12 @@ export function parseAndValidateMasterCsv(
             const v = c === 'x' ? r : (r & 0x3) | 0x8;
             return v.toString(16);
           });
+    } else if (tableName === 'data_guru') {
+      const cleanId = String(row.id).replace(/^[{(]+|[})]+$/g, '').trim().toLowerCase();
+      if (!UUID_REGEX.test(cleanId)) {
+        throw new Error(`Baris ${i}: Format "id" ("${row.id}") tidak valid. Harus berupa format UUID.`);
+      }
+      row.id = cleanId;
     }
 
     // Explicit validation & scoping for sekolah_id
@@ -513,17 +530,29 @@ export function parseAndValidateMasterCsv(
       if (!rawSekolahId || rawSekolahId.toLowerCase() === 'null' || rawSekolahId.toLowerCase() === 'undefined') {
         throw new Error(`Baris ${i}: Kolom "sekolah_id" wajib diisi dan tidak boleh kosong untuk data guru.`);
       }
-      if (!UUID_REGEX.test(rawSekolahId)) {
+      const cleanSekolahId = rawSekolahId.replace(/^[{(]+|[})]+$/g, '').trim().toLowerCase();
+      if (!UUID_REGEX.test(cleanSekolahId)) {
         throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID (contoh: "a0000000-0000-0000-0000-000000000001").`);
       }
-      row.sekolah_id = rawSekolahId;
+      if (user?.sekolah_id && user?.role?.toLowerCase() !== 'superadmin' && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
+        throw new Error(`Baris ${i}: Kolom "sekolah_id" ("${rawSekolahId}") tidak sesuai dengan ID sekolah akun Anda ("${user.sekolah_id}"). Harap gunakan ID sekolah yang terdaftar.`);
+      }
+      row.sekolah_id = cleanSekolahId;
+
+      if (!row.nama_guru || !String(row.nama_guru).trim()) {
+        throw new Error(`Baris ${i}: Kolom "nama_guru" wajib diisi dan tidak boleh kosong untuk data guru.`);
+      }
     } else {
       const rawSekolahId = (row.sekolah_id !== undefined && row.sekolah_id !== null) ? String(row.sekolah_id).trim() : '';
       if (rawSekolahId && rawSekolahId.toLowerCase() !== 'null' && rawSekolahId.toLowerCase() !== 'undefined') {
-        if (!UUID_REGEX.test(rawSekolahId)) {
+        const cleanSekolahId = rawSekolahId.replace(/^[{(]+|[})]+$/g, '').trim().toLowerCase();
+        if (!UUID_REGEX.test(cleanSekolahId)) {
           throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID.`);
         }
-        row.sekolah_id = rawSekolahId;
+        if (user?.sekolah_id && user?.role?.toLowerCase() !== 'superadmin' && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
+          throw new Error(`Baris ${i}: Kolom "sekolah_id" ("${rawSekolahId}") tidak sesuai dengan ID sekolah akun Anda ("${user.sekolah_id}"). Harap gunakan ID sekolah yang terdaftar.`);
+        }
+        row.sekolah_id = cleanSekolahId;
       } else {
         row.sekolah_id = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
       }
@@ -650,7 +679,18 @@ export async function importMasterDataFromCsv(
     const { error } = await supabase
       .from(tableName)
       .upsert(batch, upsertOptions);
-    if (error) throw error;
+    if (error) {
+      if (error.code === '23503' || String(error.message).includes('sekolah_id_fkey') || String(error.message).includes('foreign key constraint')) {
+        throw new Error('ID sekolah ("sekolah_id") dalam CSV tidak terdaftar di sistem sekolah. Pastikan menggunakan ID sekolah yang valid.');
+      }
+      if (error.code === '23502') {
+        throw new Error(`Gagal menyimpan data: terdapat kolom wajib yang bernilai kosong (${error.message}).`);
+      }
+      if (error.code === '42501' || String(error.message).includes('row-level security')) {
+        throw new Error('Akses ditolak oleh kebijakan keamanan data sekolah (RLS). Pastikan Anda hanya mengimpor data untuk sekolah Anda sendiri.');
+      }
+      throw error;
+    }
   }
 
   return { count: rows.length, rows };

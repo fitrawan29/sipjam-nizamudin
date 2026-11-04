@@ -206,6 +206,60 @@ async function runTests() {
     fail('Trailing empty delimiter rows check failed', e);
   }
 
+  // Test 1.8: CSV row with missing nama_guru throws clear validation error, avoiding PostgreSQL 23502 on nama_guru
+  try {
+    const csvMissingNamaGuru = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      'a0000000-0000-0000-0000-000000000001,19850108,,Matematika'
+    ].join('\n');
+
+    let threw = false;
+    let thrownError: any = null;
+    try {
+      parseAndValidateMasterCsv(csvMissingNamaGuru, 'data_guru');
+    } catch (err: any) {
+      threw = true;
+      thrownError = err;
+    }
+    assert.strictEqual(threw, true, 'Should reject empty nama_guru');
+    assert.ok(
+      thrownError.message.includes('nama_guru'),
+      `Expected error to mention "nama_guru", got: "${thrownError.message}"`
+    );
+    pass('CSV row with missing nama_guru throws clear validation error prior to DB insert');
+  } catch (e) {
+    fail('Missing nama_guru check failed', e);
+  }
+
+  // Test 1.9: Cross-tenant sekolah_id spoofing rejected for school-scoped Admin
+  try {
+    const foreignSchoolId = 'b0000000-0000-0000-0000-000000000002';
+    const csvForeignSchool = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `${foreignSchoolId},19850109,Guru Pembajak,Informatika`
+    ].join('\n');
+
+    let threw = false;
+    let thrownError: any = null;
+    try {
+      parseAndValidateMasterCsv(csvForeignSchool, 'data_guru', {
+        role: 'Admin',
+        sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+      });
+    } catch (err: any) {
+      threw = true;
+      thrownError = err;
+    }
+    assert.strictEqual(threw, true, 'Should reject cross-tenant sekolah_id');
+    assert.ok(
+      thrownError.message.includes('tidak sesuai dengan ID sekolah akun Anda'),
+      `Expected cross-tenant message, got: "${thrownError.message}"`
+    );
+    pass('Cross-tenant sekolah_id import attempt by school Admin is rejected with clear error');
+  } catch (e) {
+    fail('Cross-tenant check failed', e);
+  }
+
   // --------------------------------------------------------------------------
   // SECTION 2: ZERO-DATABASE INVOCATION ON VALIDATION FAILURE (NO ERROR 23502)
   // --------------------------------------------------------------------------
@@ -304,6 +358,45 @@ async function runTests() {
     fail('Prevention of PostgreSQL error 22P02 failed', e);
   }
 
+  // Test 2.3: Verify foreign key violation (PostgreSQL 23503) is translated into clear localized error
+  try {
+    const mockSupabaseFkError = {
+      from: (_tableName: string) => ({
+        upsert: async (_batch: any[], _opts: any) => {
+          return {
+            error: {
+              code: '23503',
+              message: 'insert or update on table "data_guru" violates foreign key constraint "data_guru_sekolah_id_fkey"'
+            }
+          };
+        }
+      })
+    };
+
+    const validSyntaxUnregisteredSchoolCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      '00000000-0000-0000-0000-000000000000,19850110,Guru Sekolah Hantu,Informatika'
+    ].join('\n');
+
+    let threwFk = false;
+    let fkThrownError: any = null;
+    try {
+      await importMasterDataFromCsv(mockSupabaseFkError, validSyntaxUnregisteredSchoolCsv, 'data_guru');
+    } catch (err: any) {
+      threwFk = true;
+      fkThrownError = err;
+    }
+
+    assert.strictEqual(threwFk, true, 'Must catch and translate foreign key violation');
+    assert.ok(
+      fkThrownError.message.includes('tidak terdaftar di sistem sekolah'),
+      `Expected friendly message for unregistered school, got: "${fkThrownError.message}"`
+    );
+    pass('importMasterDataFromCsv transforms PostgreSQL 23503 into localized friendly error message');
+  } catch (e) {
+    fail('Foreign key 23503 error translation failed', e);
+  }
+
   // --------------------------------------------------------------------------
   // SECTION 3: VALID CSV DATA IMPORT WITH SEKOLAH_ID
   // --------------------------------------------------------------------------
@@ -384,6 +477,70 @@ async function runTests() {
     fail('Semicolon-delimited CSV parsing failed', e);
   }
 
+  // Test 3.2d: Windows GUID with braces ('{...}') format support and canonicalization
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const bracedCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `{${testSekolahId}},19990106,Guru Windows Braces,Matematika`
+    ].join('\n');
+
+    const rowsBraced = parseAndValidateMasterCsv(bracedCsv, 'data_guru');
+    assert.strictEqual(rowsBraced.length, 1);
+    assert.strictEqual(rowsBraced[0].sekolah_id, testSekolahId, 'Braces must be stripped and canonicalized');
+    pass('Windows GUID with braces ("{...}") format is parsed and canonicalized cleanly');
+  } catch (e) {
+    fail('Windows GUID with braces test failed', e);
+  }
+
+  // Test 3.2e: Tab-delimited (TSV) CSV parsing support
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const tsvData = [
+      'sekolah_id\tnip\tnama_guru\tmata_pelajaran',
+      `${testSekolahId}\t19990107\tGuru TSV Excel\tInformatika`
+    ].join('\n');
+
+    const rowsTsv = parseAndValidateMasterCsv(tsvData, 'data_guru');
+    assert.strictEqual(rowsTsv.length, 1);
+    assert.strictEqual(rowsTsv[0].sekolah_id, testSekolahId);
+    assert.strictEqual(rowsTsv[0].nama_guru, 'Guru TSV Excel');
+    pass('Tab-delimited (TSV) CSV format parses and validates seamlessly');
+  } catch (e) {
+    fail('Tab-delimited TSV test failed', e);
+  }
+
+  // Test 3.2f: Bare CR line break support (legacy Mac / spreadsheet export)
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const crData = `sekolah_id,nip,nama_guru,mata_pelajaran\r${testSekolahId},19990108,Guru Bare CR,Fisika`;
+
+    const rowsCr = parseAndValidateMasterCsv(crData, 'data_guru');
+    assert.strictEqual(rowsCr.length, 1);
+    assert.strictEqual(rowsCr[0].sekolah_id, testSekolahId);
+    assert.strictEqual(rowsCr[0].nama_guru, 'Guru Bare CR');
+    pass('Bare CR line breaks (\\r) split and parse without error');
+  } catch (e) {
+    fail('Bare CR line break test failed', e);
+  }
+
+  // Test 3.2g: Quoted headers with leading/trailing spaces and "id_school" English alias
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const spaceHeaderCsv = [
+      '" id_school ",nip,nama_guru,mata_pelajaran',
+      `${testSekolahId},19990109,Guru English Spaced,Biologi`
+    ].join('\n');
+
+    const rowsSpaced = parseAndValidateMasterCsv(spaceHeaderCsv, 'data_guru');
+    assert.strictEqual(rowsSpaced.length, 1);
+    assert.strictEqual(rowsSpaced[0].sekolah_id, testSekolahId);
+    assert.strictEqual(rowsSpaced[0].nama_guru, 'Guru English Spaced');
+    pass('Quoted header with spacing and alias "id_school" normalizes to "sekolah_id" cleanly');
+  } catch (e) {
+    fail('Quoted spaced header test failed', e);
+  }
+
   // Test 3.3: Live Supabase DB Insertion and Cleanup
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -391,31 +548,44 @@ async function runTests() {
   if (supabaseUrl && supabaseKey && !supabaseUrl.includes('placeholder')) {
     try {
       const baseClient = createClient(supabaseUrl, supabaseKey);
-      let sessionToken: string | null = null;
+      let authUser: any = null;
       try {
-        const { data: loginData } = await baseClient.rpc('verify_login', {
-          p_username: 'superadmin',
-          p_password: 'SipjamSuperAdmin2026!'
+        let authRes = await baseClient.rpc('verify_login', {
+          p_username: 'admin',
+          p_password: 'SipjamAdmin2026!'
         });
-        if (loginData && loginData[0]?.session_token) {
-          sessionToken = loginData[0].session_token;
+        if (!authRes.data || authRes.data.length === 0) {
+          authRes = await baseClient.rpc('verify_login', {
+            p_username: 'admin',
+            p_password: 'QWerty1334#'
+          });
+        }
+        if (!authRes.data || authRes.data.length === 0) {
+          authRes = await baseClient.rpc('verify_login', {
+            p_username: 'superadmin',
+            p_password: 'SipjamSuperAdmin2026!'
+          });
+        }
+        if (authRes.data && authRes.data.length > 0) {
+          authUser = authRes.data[0];
         }
       } catch (authErr) {
         // Fallback if rpc is unavailable
       }
 
+      const headers: Record<string, string> = {
+        'x-user-role': authUser?.role || 'Admin',
+      };
+      if (authUser?.session_token) headers['x-session-token'] = authUser.session_token;
+      if (authUser?.sekolah_id) headers['x-sekolah-id'] = authUser.sekolah_id;
+      if (authUser?.id) headers['x-user-id'] = authUser.id;
+
       const supabase = createClient(supabaseUrl, supabaseKey, {
-        global: {
-          headers: {
-            'x-user-role': 'Superadmin',
-            ...(sessionToken ? { 'x-session-token': sessionToken } : {})
-          }
-        }
+        global: { headers }
       });
 
       // 1. Fetch valid school ID from live database
-      const { data: sekolahList } = await supabase.from('sekolah').select('id, nama').limit(1);
-      const validSekolahId = sekolahList?.[0]?.id || 'a0000000-0000-0000-0000-000000000001';
+      const validSekolahId = authUser?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
 
       const uniqueNip = `19920315${Date.now().toString().slice(-6)}`;
       const uniqueName = `Muhammad Ridwan Pratama`;
@@ -426,7 +596,7 @@ async function runTests() {
       ].join('\n');
 
       // 2. Perform import
-      const result = await importMasterDataFromCsv(supabase, csvData, 'data_guru');
+      const result = await importMasterDataFromCsv(supabase, csvData, 'data_guru', authUser);
       assert.strictEqual(result.count, 1, 'Should have inserted 1 record');
 
       // 3. Query back from database to verify record is present with sekolah_id

@@ -87,6 +87,7 @@ export default function AdminRekapView({
   initialTab = 'tabel'
 }: AdminRekapViewProps) {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [leaderboardLimit, setLeaderboardLimit] = useState<5 | 10>(5);
 
   useEffect(() => {
     if (initialTab && initialTab !== activeTab) {
@@ -330,7 +331,20 @@ export default function AdminRekapView({
     return rekapData.presensi.reduce((acc, curr) => acc + (curr.sakit || 0), 0);
   }, [rekapData]);
 
-  // Top 5 Leaderboard (Hadir*10 + Piket*10 + Jurnal*5 + Dinas*5)
+  const totalPresensi = useMemo(() => {
+    return totalHadirSemua + totalIzinSemua + totalSakitSemua + totalDinasSemua;
+  }, [totalHadirSemua, totalIzinSemua, totalSakitSemua, totalDinasSemua]);
+
+  const persentaseKomposisi = useMemo(() => {
+    if (!totalPresensi) return { hadir: 0, izinSakit: 0, dinasLuar: 0 };
+    return {
+      hadir: Math.round((totalHadirSemua / totalPresensi) * 100),
+      izinSakit: Math.round(((totalIzinSemua + totalSakitSemua) / totalPresensi) * 100),
+      dinasLuar: Math.round((totalDinasSemua / totalPresensi) * 100)
+    };
+  }, [totalPresensi, totalHadirSemua, totalIzinSemua, totalSakitSemua, totalDinasSemua]);
+
+  // Leaderboard (Hadir*10 + Piket*10 + Jurnal*5 + Dinas*5) with Top 5 / Top 10 toggle
   const leaderboardTop5 = useMemo(() => {
     if (!rekapData?.presensi) return [];
     return rekapData.presensi
@@ -351,8 +365,8 @@ export default function AdminRekapView({
         };
       })
       .sort((a, b) => b.score - a.score)
-      .slice(0, 5);
-  }, [rekapData]);
+      .slice(0, leaderboardLimit);
+  }, [rekapData, leaderboardLimit]);
 
   const tabItems: TabItem[] = [
     { id: 'analitik', label: 'Analitik & Leaderboard', icon: 'fa-chart-pie' },
@@ -492,15 +506,92 @@ export default function AdminRekapView({
                           </div>
                       </div>
 
-                      {/* Top 5 Leaderboard Card */}
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-100 dark:border-gray-700 gap-2">
+                      {/* Attendance Composition Progress Bars */}
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700 gap-2">
                               <div>
                                   <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                      <i className="fa-solid fa-trophy text-amber-500"></i>
-                                      <span>Papan Peringkat Kinerja &amp; Kedisiplinan (Top 5 Guru)</span>
+                                      <i className="fa-solid fa-chart-pie text-emerald-500"></i>
+                                      <span>Komposisi Rasio Kehadiran Dewan Guru</span>
                                   </h3>
                                   <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                      Distribusi proporsional kehadiran fisik di sekolah, tugas dinas luar, dan dispensasi izin/sakit
+                                  </p>
+                              </div>
+                              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60 px-2.5 py-1 rounded-full self-start sm:self-auto">
+                                  Total Log Presensi: <strong>{totalPresensi}</strong>
+                              </span>
+                          </div>
+
+                          <div className="space-y-3.5 pt-1">
+                              <div>
+                                  <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
+                                      <span className="flex items-center gap-2">
+                                          <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block shrink-0"></span>
+                                          Hadir di Sekolah ({totalHadirSemua})
+                                      </span>
+                                      <span className="text-green-600 dark:text-green-400 font-black">{persentaseKomposisi.hadir}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                      <div className="bg-green-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${persentaseKomposisi.hadir}%` }}></div>
+                                  </div>
+                              </div>
+
+                              <div>
+                                  <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
+                                      <span className="flex items-center gap-2">
+                                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shrink-0"></span>
+                                          Izin / Sakit ({totalIzinSemua + totalSakitSemua})
+                                      </span>
+                                      <span className="text-amber-600 dark:text-amber-400 font-black">{persentaseKomposisi.izinSakit}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                      <div className="bg-amber-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${persentaseKomposisi.izinSakit}%` }}></div>
+                                  </div>
+                              </div>
+
+                              <div>
+                                  <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
+                                      <span className="flex items-center gap-2">
+                                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shrink-0"></span>
+                                          Dinas Luar ({totalDinasSemua})
+                                      </span>
+                                      <span className="text-blue-600 dark:text-blue-400 font-black">{persentaseKomposisi.dinasLuar}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                      <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${persentaseKomposisi.dinasLuar}%` }}></div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Leaderboard Card with Top 5 / Top 10 Toggle */}
+                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-100 dark:border-gray-700 gap-3">
+                              <div>
+                                  <div className="flex items-center gap-2">
+                                      <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                          <i className="fa-solid fa-trophy text-amber-500"></i>
+                                          <span>Papan Peringkat Kinerja &amp; Kedisiplinan (Top {leaderboardLimit} Guru)</span>
+                                      </h3>
+                                      <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800 text-xs">
+                                          <button
+                                              type="button"
+                                              onClick={() => setLeaderboardLimit(5)}
+                                              className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] transition ${leaderboardLimit === 5 ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'}`}
+                                          >
+                                              Top 5
+                                          </button>
+                                          <button
+                                              type="button"
+                                              onClick={() => setLeaderboardLimit(10)}
+                                              className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] transition ${leaderboardLimit === 10 ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'}`}
+                                          >
+                                              Top 10
+                                          </button>
+                                      </div>
+                                  </div>
+                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
                                       Peringkat teratas berdasarkan ketepatan jam hadir, kepatuhan KBM, dan pemenuhan tugas piket
                                   </p>
                               </div>
@@ -516,13 +607,18 @@ export default function AdminRekapView({
                                           'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300',
                                           'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-200',
                                           'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300',
+                                          'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300',
+                                          'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300',
+                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
+                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
+                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
                                           'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
                                           'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300'
                                       ];
                                       return (
                                           <div key={idx} className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-xs transition">
                                               <div className="flex items-center gap-3 min-w-0">
-                                                  <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-black shrink-0 ${rankBadges[idx] || ''}`}>
+                                                  <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-black shrink-0 ${rankBadges[idx] || rankBadges[rankBadges.length - 1]}`}>
                                                       {idx === 0 ? <i className="fa-solid fa-crown text-amber-500"></i> : `#${idx + 1}`}
                                                   </span>
                                                   <div className="min-w-0">
