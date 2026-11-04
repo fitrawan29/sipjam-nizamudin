@@ -597,16 +597,22 @@ export function parseAndValidateMasterCsv(
     if (tableName === 'data_guru') {
       const rawSekolahId = (row.sekolah_id !== undefined && row.sekolah_id !== null) ? String(row.sekolah_id).trim() : '';
       if (!rawSekolahId || rawSekolahId.toLowerCase() === 'null' || rawSekolahId.toLowerCase() === 'undefined') {
-        throw new Error(`Baris ${i}: Kolom "sekolah_id" wajib diisi dan tidak boleh kosong untuk data guru.`);
+        // Auto-inject sekolah_id from user session if not present in CSV (common for exported CSVs without this column)
+        if (user?.sekolah_id) {
+          row.sekolah_id = user.sekolah_id.toLowerCase();
+        } else {
+          throw new Error(`Baris ${i}: Kolom "sekolah_id" tidak ditemukan dalam CSV dan tidak dapat ditentukan dari sesi Anda. Tambahkan kolom "sekolah_id" pada file CSV.`);
+        }
+      } else {
+        const cleanSekolahId = sanitizeUuid(rawSekolahId);
+        if (!UUID_REGEX.test(cleanSekolahId)) {
+          throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID (contoh: "a0000000-0000-0000-0000-000000000001").`);
+        }
+        if (user?.sekolah_id && !isSuperuser && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
+          throw new Error(`Baris ${i}: Kolom "sekolah_id" ("${rawSekolahId}") tidak sesuai dengan ID sekolah akun Anda ("${user.sekolah_id}"). Harap gunakan ID sekolah yang terdaftar.`);
+        }
+        row.sekolah_id = cleanSekolahId;
       }
-      const cleanSekolahId = sanitizeUuid(rawSekolahId);
-      if (!UUID_REGEX.test(cleanSekolahId)) {
-        throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID (contoh: "a0000000-0000-0000-0000-000000000001").`);
-      }
-      if (user?.sekolah_id && !isSuperuser && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
-        throw new Error(`Baris ${i}: Kolom "sekolah_id" ("${rawSekolahId}") tidak sesuai dengan ID sekolah akun Anda ("${user.sekolah_id}"). Harap gunakan ID sekolah yang terdaftar.`);
-      }
-      row.sekolah_id = cleanSekolahId;
 
       const cleanNamaGuru = normalizeName(row.nama_guru);
       if (!cleanNamaGuru || cleanNamaGuru.toLowerCase() === 'null' || cleanNamaGuru.toLowerCase() === 'undefined') {
