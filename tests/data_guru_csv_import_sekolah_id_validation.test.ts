@@ -260,6 +260,56 @@ async function runTests() {
     fail('Cross-tenant check failed', e);
   }
 
+  // Test 1.10: String literal "null" or "undefined" in nama_guru rejected prior to DB insertion
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const csvNullName = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `${testSekolahId},19850110,null,Informatika`
+    ].join('\n');
+
+    let threw = false;
+    let thrownError: any = null;
+    try {
+      parseAndValidateMasterCsv(csvNullName, 'data_guru');
+    } catch (err: any) {
+      threw = true;
+      thrownError = err;
+    }
+    assert.strictEqual(threw, true, 'Should reject literal "null" string in nama_guru');
+    assert.ok(
+      thrownError.message.includes('nama_guru'),
+      `Expected error to mention "nama_guru", got: "${thrownError.message}"`
+    );
+    pass('CSV row with literal "null" as nama_guru is rejected prior to DB insertion');
+  } catch (e) {
+    fail('Literal null nama_guru check failed', e);
+  }
+
+  // Test 1.11: Super Admin with role variations ('Super Admin', 'super_admin') allowed cross-school import
+  try {
+    const foreignSchoolId = 'b0000000-0000-0000-0000-000000000002';
+    const csvForeignSchool = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `${foreignSchoolId},19850111,Guru Super Admin,Informatika`
+    ].join('\n');
+
+    const rowsSa1 = parseAndValidateMasterCsv(csvForeignSchool, 'data_guru', {
+      role: 'Super Admin',
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+    assert.strictEqual(rowsSa1[0].sekolah_id, foreignSchoolId);
+
+    const rowsSa2 = parseAndValidateMasterCsv(csvForeignSchool, 'data_guru', {
+      role: 'super_admin',
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+    assert.strictEqual(rowsSa2[0].sekolah_id, foreignSchoolId);
+    pass('Super Admin with role variations ("Super Admin", "super_admin") permitted cross-school import');
+  } catch (e) {
+    fail('Super Admin role variation test failed', e);
+  }
+
   // --------------------------------------------------------------------------
   // SECTION 2: ZERO-DATABASE INVOCATION ON VALIDATION FAILURE (NO ERROR 23502)
   // --------------------------------------------------------------------------
@@ -539,6 +589,142 @@ async function runTests() {
     pass('Quoted header with spacing and alias "id_school" normalizes to "sekolah_id" cleanly');
   } catch (e) {
     fail('Quoted spaced header test failed', e);
+  }
+
+  // Test 3.2h: Zero-width space and BOM in sekolah_id sanitized seamlessly
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const zeroWidthUuid = `\u200B${testSekolahId}\u200B`;
+    const zwCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `${zeroWidthUuid},19990110,Guru Zero Width,Kimia`
+    ].join('\n');
+
+    const rowsZw = parseAndValidateMasterCsv(zwCsv, 'data_guru');
+    assert.strictEqual(rowsZw.length, 1);
+    assert.strictEqual(rowsZw[0].sekolah_id, testSekolahId);
+    pass('Zero-width space (\\u200B) in sekolah_id is sanitized and canonicalized');
+  } catch (e) {
+    fail('Zero-width space in UUID check failed', e);
+  }
+
+  // Test 3.2i: Single-quoted ('...') and escaped double-quoted (""..."") sekolah_id canonicalized
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const singleQuotedCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `'${testSekolahId}',19990111,Guru Single Quoted,Ekonomi`
+    ].join('\n');
+
+    const rowsSingle = parseAndValidateMasterCsv(singleQuotedCsv, 'data_guru');
+    assert.strictEqual(rowsSingle[0].sekolah_id, testSekolahId);
+
+    const escapedQuotedCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `"""${testSekolahId}""",19990112,Guru Escaped Double,Sosiologi`
+    ].join('\n');
+
+    const rowsEscaped = parseAndValidateMasterCsv(escapedQuotedCsv, 'data_guru');
+    assert.strictEqual(rowsEscaped[0].sekolah_id, testSekolahId);
+    pass('Single-quoted and escaped double-quoted sekolah_id strings are canonicalized');
+  } catch (e) {
+    fail('Quoted UUID check failed', e);
+  }
+
+  // Test 3.2j: Multi-line RFC 4180 CSV record (newlines inside quotes) does NOT break sekolah_id
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const multilineCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `${testSekolahId},19990113,"Dra. Siti Rahmawati\nS.Pd.",Informatika`,
+      `${testSekolahId},19990114,Kartini Sasongko,Matematika`
+    ].join('\n');
+
+    const rowsMulti = parseAndValidateMasterCsv(multilineCsv, 'data_guru');
+    assert.strictEqual(rowsMulti.length, 2, 'Must parse exactly 2 records, not 3 lines');
+    assert.strictEqual(rowsMulti[0].sekolah_id, testSekolahId);
+    assert.strictEqual(rowsMulti[0].nama_guru, 'Dra. Siti Rahmawati S.Pd.');
+    assert.strictEqual(rowsMulti[1].sekolah_id, testSekolahId);
+    pass('Multi-line RFC 4180 CSV record preserves sekolah_id and record boundary');
+  } catch (e) {
+    fail('Multi-line CSV record check failed', e);
+  }
+
+  // Test 3.2k: Pipe-delimited (|) CSV autodetection and parsing
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const pipeCsv = [
+      'sekolah_id|nip|nama_guru|mata_pelajaran',
+      `${testSekolahId}|19990115|Guru Pipa|Geografi`
+    ].join('\n');
+
+    const rowsPipe = parseAndValidateMasterCsv(pipeCsv, 'data_guru');
+    assert.strictEqual(rowsPipe.length, 1);
+    assert.strictEqual(rowsPipe[0].sekolah_id, testSekolahId);
+    assert.strictEqual(rowsPipe[0].nama_guru, 'Guru Pipa');
+    pass('Pipe-delimited ("|") CSV format is autodetected and parsed seamlessly');
+  } catch (e) {
+    fail('Pipe-delimited CSV test failed', e);
+  }
+
+  // Test 3.2l: Indonesian standard header aliases "nama_lengkap" and "mapel"
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const indonesianHeaderCsv = [
+      'sekolah_id,nip,nama_lengkap,mapel',
+      `${testSekolahId},19990116,Ahmad Yani,Sejarah Indonesia`
+    ].join('\n');
+
+    const rowsIndo = parseAndValidateMasterCsv(indonesianHeaderCsv, 'data_guru');
+    assert.strictEqual(rowsIndo.length, 1);
+    assert.strictEqual(rowsIndo[0].sekolah_id, testSekolahId);
+    assert.strictEqual(rowsIndo[0].nama_guru, 'Ahmad Yani');
+    assert.strictEqual(rowsIndo[0].mata_pelajaran, 'Sejarah Indonesia');
+    pass('Indonesian aliases "nama_lengkap" and "mapel" map to "nama_guru" and "mata_pelajaran"');
+  } catch (e) {
+    fail('Indonesian aliases test failed', e);
+  }
+
+  // Test 3.2m: Excel apostrophe prefix on NIP ('198501012010011001) cleanly sanitized
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const excelNipCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      `${testSekolahId},'198501012010011001,Guru Excel NIP,Fisika`
+    ].join('\n');
+
+    const rowsNip = parseAndValidateMasterCsv(excelNipCsv, 'data_guru');
+    assert.strictEqual(rowsNip[0].nip, '198501012010011001', 'Apostrophe must be stripped from NIP');
+    pass('Excel apostrophe prefix on NIP is cleanly sanitized');
+  } catch (e) {
+    fail('Excel apostrophe NIP test failed', e);
+  }
+
+  // Test 3.2n: Multi-batch import (120 rows) chunking in batches of 50
+  try {
+    let batchCalls = 0;
+    let totalInserted = 0;
+    const mockSupabase = {
+      from: (_tbl: string) => ({
+        upsert: async (batch: any[]) => {
+          batchCalls++;
+          totalInserted += batch.length;
+          return { error: null };
+        }
+      })
+    };
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const lines = ['sekolah_id,nip,nama_guru,mata_pelajaran'];
+    for (let i = 1; i <= 120; i++) {
+      lines.push(`${testSekolahId},198501${i.toString().padStart(3, '0')},Guru Batch Nomor ${i},Informatika`);
+    }
+    const result = await importMasterDataFromCsv(mockSupabase, lines.join('\n'), 'data_guru');
+    assert.strictEqual(result.count, 120, 'Total count must be 120');
+    assert.strictEqual(batchCalls, 3, '120 rows chunked into 3 batches of <= 50');
+    assert.strictEqual(totalInserted, 120, 'All 120 rows inserted');
+    pass('Multi-batch CSV import (120 rows) correctly chunks into batches of 50');
+  } catch (e) {
+    fail('Batch chunking test failed', e);
   }
 
   // Test 3.3: Live Supabase DB Insertion and Cleanup

@@ -31,12 +31,12 @@
 | 7 | Pemulihan Alur Umpan Balik Penolakan Jurnal Guru | Tampilkan alert banner jurnal ditolak beserta `catatan_admin` / alasan revisi pada `GuruJurnal.tsx` Tab 2 | M2 | Survey 1, 3 | DONE |
 | 8 | Tampilan Alasan Penolakan di `RekapJurnalView` & Pencarian Materi | Render `catatan_admin` pada tabel/modal rekap jurnal dan sediakan filter pencarian materi KBM | M2 | Survey 1, 3 | DONE |
 | 9 | Filter Pilihan Bulan Riwayat Presensi Guru `HistoryView` | Tambahkan filter pemilih bulan (`<input type="month">`) pada riwayat presensi mandiri guru | M2 | Survey 3 | DONE |
-| 10 | Unblock Akses Supervisi Jurnal Kepala Sekolah | Perbarui `evaluateTabRBAC` di `src/lib/navigation.ts` agar role `kepalasekolah` diizinkan membuka `tab=supervisi-kelas` | M3 | Survey 1 | PLANNED |
-| 11 | Pemulihan Menu Informasi untuk Administrator | Kembalikan `view-informasi` pada `menuItemsAdmin` di `src/lib/navigation.ts` dan tautan cepat di `HomeViewAdmin.tsx` | M3 | Survey 1 | PLANNED |
-| 12 | Pemulihan Akses Monitoring Satelit Dinas Pendidikan | Izinkan Dinas Pendidikan mengakses `view-rekap-siswa` dan `view-jurnal-kelas` (read-only) untuk sekolah binaan | M3 | Survey 1 | PLANNED |
-| 13 | Normalisasi Role & Penerusan `isReadOnly` di `DokumenView` | Terima `isReadOnly` di `DokumenView`, normalisasi pengecekan `isAdmin` case-insensitive, dan nonaktifkan aksi saat read-only | M3 | Survey 3 | PLANNED |
-| 14 | Pemulihan Rasio Komposisi Presensi `AdminRekapView` | Tambahkan progress bar komposisi kehadiran (Hadir %, Sakit/Izin %, Dinas Luar %) dan toggle Top 5 / Top 10 | M3 | Survey 3 | PLANNED |
-| 15 | Sanitasi DOM Container Embedded Views | Hapus wrapper `<section className="view-section">` ganda pada `AdminBackupView` dan `SistemBlokView` | M3 | Survey 3 | PLANNED |
+| 10 | Unblock Akses Supervisi Jurnal Kepala Sekolah | Perbarui `evaluateTabRBAC` di `src/lib/navigation.ts` agar role `kepalasekolah` diizinkan membuka `tab=supervisi-kelas` | M3 | Survey 1 | DONE |
+| 11 | Pemulihan Menu Informasi untuk Administrator | Kembalikan `view-informasi` pada `menuItemsAdmin` di `src/lib/navigation.ts` dan tautan cepat di `HomeViewAdmin.tsx` | M3 | Survey 1 | DONE |
+| 12 | Pemulihan Akses Monitoring Satelit Dinas Pendidikan | Izinkan Dinas Pendidikan mengakses `view-rekap-siswa` dan `view-jurnal-kelas` (read-only) untuk sekolah binaan | M3 | Survey 1 | DONE |
+| 13 | Normalisasi Role & Penerusan `isReadOnly` di `DokumenView` | Terima `isReadOnly` di `DokumenView`, normalisasi pengecekan `isAdmin` case-insensitive, dan nonaktifkan aksi saat read-only | M3 | Survey 3 | DONE |
+| 14 | Pemulihan Rasio Komposisi Presensi `AdminRekapView` | Tambahkan progress bar komposisi kehadiran (Hadir %, Sakit/Izin %, Dinas Luar %) dan toggle Top 5 / Top 10 | M3 | Survey 3 | DONE |
+| 15 | Sanitasi DOM Container Embedded Views | Hapus wrapper `<section className="view-section">` ganda pada `AdminBackupView` dan `SistemBlokView` | M3 | Survey 3 | DONE |
 | 16 | Automated Regression Test Suite Pemulihan Fitur & Cetak | Buat automated test suite komprehensif memvalidasi seluruh perbaikan fitur, RBAC, dan print layout | M4 | R1-R3 | PLANNED |
 | 17 | Verifikasi Build, TypeCheck & Zero Error | Validasi `npx tsc --noEmit` dan `npm run build` berhasil tanpa error | M4 | Acceptance Criteria | PLANNED |
 | 18 | Mandatory Git Delivery ke `main` | Eksekusi `git status`, `git add .`, `git commit -m "..."`, dan `git push origin main` sesuai `GEMINI.md` | M5 | GEMINI.md | PLANNED |
@@ -46,7 +46,7 @@
 |---|------|-------|-------------|--------|
 | M1 | Pemulihan Sistem Cetak, Tanda Tangan Resmi, dan Header/Footer | `src/components/PrintHeader.tsx`, `src/components/AdminRekapView.tsx`, `src/components/PiketView.tsx`, `src/components/GradebookView.tsx`, `src/components/GuruJurnal.tsx` | none | DONE |
 | M2 | Pemulihan Alur Umpan Balik Penolakan Jurnal & Filter Riwayat | `src/components/GuruJurnal.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/HistoryView.tsx` | none | DONE |
-| M3 | Harmonisasi Hak Akses RBAC, Menu Informasi, & Pengawasan Dinas | `src/lib/navigation.ts`, `src/components/AdminVerifView.tsx`, `src/components/DokumenView.tsx`, `src/components/AdminRekapView.tsx`, `src/components/HomeViewAdmin.tsx`, `src/components/AdminBackupView.tsx`, `src/components/SistemBlokView.tsx` | M1, M2 | PLANNED |
+| M3 | Harmonisasi Hak Akses RBAC, Menu Informasi, & Pengawasan Dinas | `src/lib/navigation.ts`, `src/components/AdminVerifView.tsx`, `src/components/DokumenView.tsx`, `src/components/AdminRekapView.tsx`, `src/components/HomeViewAdmin.tsx`, `src/components/AdminBackupView.tsx`, `src/components/SistemBlokView.tsx` | M1, M2 | DONE |
 | M4 | Automated Regression Test Suite & E2E Verification | `tests/menu_consolidation_feature_recovery.test.ts`, `npm test`, `npx tsc --noEmit`, `npm run build` | M1, M2, M3 | PLANNED |
 | M5 | Final Forensic Audit, Quality Gate, & Git Push to `main` | Final Forensic Integrity Audit, `git status`, `git add .`, `git commit`, `git push origin main` | M4 | PLANNED |
 

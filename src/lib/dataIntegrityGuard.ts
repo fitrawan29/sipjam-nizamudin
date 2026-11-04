@@ -427,6 +427,61 @@ export function parseCsvLine(line: string, delimiter: string = ','): string[] {
 }
 
 /**
+ * Sanitizes and canonicalizes a UUID string:
+ * - Strips zero-width characters (\u200B-\u200D\uFEFF)
+ * - Strips outer quotes (single, double, or escaped quotes)
+ * - Strips Windows GUID braces ({...}) and parentheses ((...))
+ * - Trims whitespace and normalizes to lowercase
+ */
+export function sanitizeUuid(raw?: string | null): string {
+  if (!raw) return '';
+  return String(raw)
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/^["']+|["']+$/g, '')
+    .trim()
+    .replace(/^[{(]+|[})]+$/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Splits CSV text into individual logical records, respecting quotes and multi-line fields (RFC 4180).
+ * Preserves newlines inside quoted fields while properly splitting on CRLF, LF, or CR outside quotes.
+ */
+export function splitCsvRecords(text: string): string[] {
+  const records: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        cur += '""';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+        cur += c;
+      }
+    } else if (!inQuotes && (c === '\n' || c === '\r')) {
+      if (c === '\r' && text[i + 1] === '\n') {
+        i++;
+      }
+      if (cur.trim().length > 0) {
+        records.push(cur);
+      }
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  if (cur.trim().length > 0) {
+    records.push(cur);
+  }
+  return records;
+}
+
+/**
  * Normalizes CSV header names
  */
 export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): string[] {
@@ -434,14 +489,18 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
     const clean = h
       .replace(/[\u200B-\u200D\uFEFF]/g, '')
       .trim()
-      .replace(/^"|"$/g, '')
+      .replace(/^["']+|["']+$/g, '')
       .trim()
       .toLowerCase()
       .replace(/[\s-]+/g, '_')
       .replace(/^_+|_+$/g, '');
     if (clean === 'no_hp_orang_tua' || clean === 'hp_ortu') return 'no_hp_ortu';
-    if (clean === 'nama') return tableName === 'data_siswa' ? 'nama_siswa' : 'nama_guru';
-    if (clean === 'mata_pelajaran' && tableName === 'data_mapel') return 'nama_mata_pelajaran';
+    if (clean === 'nama' || clean === 'nama_lengkap' || clean === 'namalengkap') {
+      return tableName === 'data_siswa' ? 'nama_siswa' : 'nama_guru';
+    }
+    if ((clean === 'mata_pelajaran' && tableName === 'data_mapel') || clean === 'mapel') {
+      return tableName === 'data_mapel' ? 'nama_mata_pelajaran' : 'mata_pelajaran';
+    }
     if (clean === 'guru') return 'nama_guru';
     if (
       clean === 'id_sekolah' ||
@@ -452,7 +511,11 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
       clean === 'id_school' ||
       clean === 'idschool' ||
       clean === 'sekolah_uuid' ||
-      clean === 'uuid_sekolah'
+      clean === 'uuid_sekolah' ||
+      clean === 'sekolahuuid' ||
+      clean === 'uuidsekolah' ||
+      clean === 'kode_sekolah' ||
+      clean === 'kodesekolah'
     ) {
       return 'sekolah_id';
     }
@@ -471,25 +534,31 @@ export function parseAndValidateMasterCsv(
   tableName: string,
   user?: any
 ): Record<string, any>[] {
-  const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
+  const lines = splitCsvRecords(text);
   if (lines.length < 2) {
     throw new Error('File CSV kosong atau tidak memiliki baris data.');
   }
 
-  // Auto-detect delimiter from header line (comma, semicolon, or tab)
+  // Auto-detect delimiter from header line (comma, semicolon, tab, or pipe)
   const headerClean = lines[0].replace(/[\u200B-\u200D\uFEFF]/g, '');
   const commaCount = (headerClean.match(/,/g) || []).length;
   const semicolonCount = (headerClean.match(/;/g) || []).length;
   const tabCount = (headerClean.match(/\t/g) || []).length;
+  const pipeCount = (headerClean.match(/\|/g) || []).length;
   let delimiter = ',';
-  if (semicolonCount > commaCount && semicolonCount >= tabCount) {
+  if (semicolonCount > commaCount && semicolonCount >= tabCount && semicolonCount >= pipeCount) {
     delimiter = ';';
-  } else if (tabCount > commaCount && tabCount > semicolonCount) {
+  } else if (tabCount > commaCount && tabCount > semicolonCount && tabCount >= pipeCount) {
     delimiter = '\t';
+  } else if (pipeCount > commaCount && pipeCount > semicolonCount && pipeCount > tabCount) {
+    delimiter = '|';
   }
 
   const rawHeaders = parseCsvLine(lines[0], delimiter);
   const headers = normalizeCsvHeaders(rawHeaders, tableName);
+
+  const userRoleNorm = (user?.role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+  const isSuperuser = userRoleNorm === 'superadmin' || userRoleNorm === 'servicerole';
 
   const rows: Record<string, any>[] = [];
   const seenTeacherNames = new Set<string>();
@@ -517,7 +586,7 @@ export function parseAndValidateMasterCsv(
             return v.toString(16);
           });
     } else if (tableName === 'data_guru') {
-      const cleanId = String(row.id).replace(/^[{(]+|[})]+$/g, '').trim().toLowerCase();
+      const cleanId = sanitizeUuid(String(row.id));
       if (!UUID_REGEX.test(cleanId)) {
         throw new Error(`Baris ${i}: Format "id" ("${row.id}") tidak valid. Harus berupa format UUID.`);
       }
@@ -530,26 +599,37 @@ export function parseAndValidateMasterCsv(
       if (!rawSekolahId || rawSekolahId.toLowerCase() === 'null' || rawSekolahId.toLowerCase() === 'undefined') {
         throw new Error(`Baris ${i}: Kolom "sekolah_id" wajib diisi dan tidak boleh kosong untuk data guru.`);
       }
-      const cleanSekolahId = rawSekolahId.replace(/^[{(]+|[})]+$/g, '').trim().toLowerCase();
+      const cleanSekolahId = sanitizeUuid(rawSekolahId);
       if (!UUID_REGEX.test(cleanSekolahId)) {
         throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID (contoh: "a0000000-0000-0000-0000-000000000001").`);
       }
-      if (user?.sekolah_id && user?.role?.toLowerCase() !== 'superadmin' && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
+      if (user?.sekolah_id && !isSuperuser && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
         throw new Error(`Baris ${i}: Kolom "sekolah_id" ("${rawSekolahId}") tidak sesuai dengan ID sekolah akun Anda ("${user.sekolah_id}"). Harap gunakan ID sekolah yang terdaftar.`);
       }
       row.sekolah_id = cleanSekolahId;
 
-      if (!row.nama_guru || !String(row.nama_guru).trim()) {
+      const cleanNamaGuru = normalizeName(row.nama_guru);
+      if (!cleanNamaGuru || cleanNamaGuru.toLowerCase() === 'null' || cleanNamaGuru.toLowerCase() === 'undefined') {
         throw new Error(`Baris ${i}: Kolom "nama_guru" wajib diisi dan tidak boleh kosong untuk data guru.`);
+      }
+      row.nama_guru = cleanNamaGuru;
+
+      // Sanitize NIP from Excel apostrophe formatting
+      if (row.nip !== undefined && row.nip !== null) {
+        row.nip = String(row.nip)
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .trim()
+          .replace(/^['"]+|['"]+$/g, '')
+          .trim();
       }
     } else {
       const rawSekolahId = (row.sekolah_id !== undefined && row.sekolah_id !== null) ? String(row.sekolah_id).trim() : '';
       if (rawSekolahId && rawSekolahId.toLowerCase() !== 'null' && rawSekolahId.toLowerCase() !== 'undefined') {
-        const cleanSekolahId = rawSekolahId.replace(/^[{(]+|[})]+$/g, '').trim().toLowerCase();
+        const cleanSekolahId = sanitizeUuid(rawSekolahId);
         if (!UUID_REGEX.test(cleanSekolahId)) {
           throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID.`);
         }
-        if (user?.sekolah_id && user?.role?.toLowerCase() !== 'superadmin' && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
+        if (user?.sekolah_id && !isSuperuser && cleanSekolahId !== user.sekolah_id.toLowerCase()) {
           throw new Error(`Baris ${i}: Kolom "sekolah_id" ("${rawSekolahId}") tidak sesuai dengan ID sekolah akun Anda ("${user.sekolah_id}"). Harap gunakan ID sekolah yang terdaftar.`);
         }
         row.sekolah_id = cleanSekolahId;
