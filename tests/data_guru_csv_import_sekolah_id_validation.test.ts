@@ -167,6 +167,45 @@ async function runTests() {
     fail('Multi-row error localization failed', e);
   }
 
+  // Test 1.6: CSV with non-UUID format sekolah_id (e.g., 'school123')
+  try {
+    const csvNonUuid = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      'school123,19850106,Budi Santoso,Informatika'
+    ].join('\n');
+
+    let threw = false;
+    try {
+      parseAndValidateMasterCsv(csvNonUuid, 'data_guru');
+    } catch (err: any) {
+      threw = true;
+      assert.ok(
+        err.message.includes('UUID') && err.message.includes('sekolah_id'),
+        `Expected error to mention UUID format, got: "${err.message}"`
+      );
+    }
+    assert.strictEqual(threw, true, 'Should reject non-UUID format sekolah_id');
+    pass('CSV row with non-UUID sekolah_id ("school123") throws clear UUID validation error');
+  } catch (e) {
+    fail('Non-UUID sekolah_id check failed', e);
+  }
+
+  // Test 1.7: CSV with trailing empty delimiter rows (e.g., ',,,,,,') is safely skipped
+  try {
+    const csvTrailingEmptyRows = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      'a0000000-0000-0000-0000-000000000001,19850107,Guru Aman,Matematika',
+      ',,,',
+      '   ,   ,   ,   '
+    ].join('\n');
+
+    const rows = parseAndValidateMasterCsv(csvTrailingEmptyRows, 'data_guru');
+    assert.strictEqual(rows.length, 1, 'Trailing empty comma rows must be ignored');
+    pass('CSV trailing empty delimiter rows are safely skipped without throwing errors');
+  } catch (e) {
+    fail('Trailing empty delimiter rows check failed', e);
+  }
+
   // --------------------------------------------------------------------------
   // SECTION 2: ZERO-DATABASE INVOCATION ON VALIDATION FAILURE (NO ERROR 23502)
   // --------------------------------------------------------------------------
@@ -219,6 +258,52 @@ async function runTests() {
     fail('Prevention of PostgreSQL error 23502 failed', e);
   }
 
+  // Test 2.2: Verify importMasterDataFromCsv aborts on non-UUID sekolah_id, avoiding PostgreSQL 22P02
+  try {
+    let dbUpsertCalled = false;
+    const mockSupabase = {
+      from: (_tableName: string) => ({
+        upsert: async (_batch: any[], _opts: any) => {
+          dbUpsertCalled = true;
+          return {
+            error: {
+              code: '22P02',
+              message: 'invalid input syntax for type uuid: "school123"'
+            }
+          };
+        }
+      })
+    };
+
+    const invalidUuidCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran',
+      'school123,19850108,Guru Uji,Informatika'
+    ].join('\n');
+
+    let threwValidation = false;
+    let thrownError: any = null;
+    try {
+      await importMasterDataFromCsv(mockSupabase, invalidUuidCsv, 'data_guru');
+    } catch (err: any) {
+      threwValidation = true;
+      thrownError = err;
+    }
+
+    assert.strictEqual(threwValidation, true, 'Must throw validation error for invalid UUID');
+    assert.strictEqual(dbUpsertCalled, false, 'Database upsert must NOT be called for invalid UUID');
+    assert.ok(
+      !thrownError.message.includes('22P02'),
+      'Must NOT reach DB to produce PostgreSQL 22P02; must catch in pre-validation'
+    );
+    assert.ok(
+      thrownError.message.includes('UUID'),
+      'Clear validation message must mention UUID requirement'
+    );
+    pass('importMasterDataFromCsv prevents DB call on invalid UUID and avoids PostgreSQL 22P02');
+  } catch (e) {
+    fail('Prevention of PostgreSQL error 22P02 failed', e);
+  }
+
   // --------------------------------------------------------------------------
   // SECTION 3: VALID CSV DATA IMPORT WITH SEKOLAH_ID
   // --------------------------------------------------------------------------
@@ -265,6 +350,38 @@ async function runTests() {
     pass('Headers "id_sekolah" and "school_id" normalize to "sekolah_id" seamlessly');
   } catch (e) {
     fail('Header alias normalization failed', e);
+  }
+
+  // Test 3.2b: Extended alias and BOM normalization ('sekolahid', 'sekolah_uuid', '\uFEFFsekolah_id')
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const csvWithBomAndExtended = [
+      '\uFEFFsekolahid,nip,nama_guru,mata_pelajaran',
+      `${testSekolahId},19990104,Guru Ali,Informatika`
+    ].join('\n');
+
+    const rowsBom = parseAndValidateMasterCsv(csvWithBomAndExtended, 'data_guru');
+    assert.strictEqual(rowsBom[0].sekolah_id, testSekolahId);
+    pass('BOM prefix and extended alias "sekolahid" normalize to "sekolah_id" cleanly');
+  } catch (e) {
+    fail('Extended alias and BOM check failed', e);
+  }
+
+  // Test 3.2c: Semicolon-delimited CSV support (Indonesian Excel format)
+  try {
+    const testSekolahId = 'a0000000-0000-0000-0000-000000000001';
+    const semicolonCsv = [
+      'sekolah_id;nip;nama_guru;mata_pelajaran;no_hp;status;email',
+      `${testSekolahId};19990105;Guru Semicolon;Bahasa Inggris;08123456789;Aktif;semi@sekolah.sch.id`
+    ].join('\n');
+
+    const rowsSemi = parseAndValidateMasterCsv(semicolonCsv, 'data_guru');
+    assert.strictEqual(rowsSemi.length, 1);
+    assert.strictEqual(rowsSemi[0].sekolah_id, testSekolahId);
+    assert.strictEqual(rowsSemi[0].nama_guru, 'Guru Semicolon');
+    pass('Semicolon-delimited CSV (Indonesian Excel format) parses and validates seamlessly');
+  } catch (e) {
+    fail('Semicolon-delimited CSV parsing failed', e);
   }
 
   // Test 3.3: Live Supabase DB Insertion and Cleanup

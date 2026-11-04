@@ -1,4 +1,4 @@
-# BRIEFING — 2026-11-04T03:04:00Z
+# BRIEFING — 2026-11-04T03:10:00Z
 
 ## Mission
 Adversarial challenge & verification for Milestone 2 (Journal Feedback & History Filters Restoration)
@@ -22,23 +22,30 @@ Adversarial challenge & verification for Milestone 2 (Journal Feedback & History
 - Updated: not yet
 
 ## Review Scope
-- **Files to review**: src/app/dosen/jurnal/page.tsx, tests/m2_journal_feedback_and_filters.test.ts
+- **Files to review**: src/components/GuruJurnal.tsx, src/components/RekapJurnalView.tsx, src/components/HistoryView.tsx, src/app/globals.css
 - **Interface contracts**: .agents/teamwork/PROJECT.md, .agents/teamwork/ORIGINAL_REQUEST.md
-- **Review criteria**: correctness, adversarial resilience, regression resistance, layout/print suppression, type safety
+- **Review criteria**: adversarial resilience, empty/null safety, zero records state, regex injection safety, print layout suppression, type safety
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD]
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+- **Hypotheses tested**:
+  1. Empty, null, or undefined `catatan_admin` could trigger uncaught exceptions in rendering or fallback chains. (Result: Resilient. Safe chaining to standard text).
+  2. Setting `filterBulan` to month with zero records could break pagination or leave messy UI. (Result: Resilient. Renders clean contextual empty state with reset trigger).
+  3. Hostile regex metacharacters in `searchMateri` could trigger `SyntaxError: Invalid regular expression`. (Result: Resilient. Uses native `String.prototype.includes`, safe from regex injections).
+  4. `#modal-detail-jurnal` or rejection banner could pollute browser print preview. (Result: Resilient. Explicit `.no-print` class backed by `display: none !important;` in `globals.css`).
+- **Vulnerabilities found**: None. Implementation is robust and type-safe.
+- **Untested angles**: Native mobile gesture interactions (out of scope for web view client).
 
 ## Loaded Skills
 - None
 
 ## Key Decisions Made
-- Initialized challenger session
+- Executed full test verification (`npx tsc --noEmit`, `cmd /c "npm test"`, `npx tsx tests/m2_journal_feedback_and_filters.test.ts`)
+- Created and executed empirical adversarial test harness `tests/challenger2_m2_adversarial_stress.test.ts` (15/15 passed)
+- Issued verdict: APPROVE
 
 ## Artifact Index
 - DISPATCH.md — Parent dispatch log
 - BRIEFING.md — Persistent working memory
 - progress.md — Heartbeat and task tracking
 - handoff.md — Final challenge report
+- tests/challenger2_m2_adversarial_stress.test.ts — Adversarial stress test script

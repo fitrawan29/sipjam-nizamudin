@@ -109,7 +109,7 @@ function filterRekapJurnal(jurnalList: any[], searchMateri: string, searchGenera
         (j.kktp && j.kktp.toLowerCase().includes(s)) ||
         (j.lokasi_kbm && j.lokasi_kbm.toLowerCase().includes(s)) ||
         (j.materi && j.materi.toLowerCase().includes(s)) ||
-        (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(smField(j))) ||
+        (j.materi_pembelajaran && j.materi_pembelajaran.toLowerCase().includes(s)) ||
         (j.tujuan_pembelajaran && j.tujuan_pembelajaran.toLowerCase().includes(s)) ||
         (j.kegiatan && j.kegiatan.toLowerCase().includes(s)) ||
         (j.kegiatan_pembelajaran && j.kegiatan_pembelajaran.toLowerCase().includes(s)) ||

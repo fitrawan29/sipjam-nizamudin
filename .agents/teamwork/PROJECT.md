@@ -28,9 +28,9 @@
 | 4 | Pemulihan Props Signature Tab 3 `PiketView` | Berikan props `leftSubtitle="Guru Piket"`, `leftName`, `leftNip` pada `<PrintSignature>` rekap piket | M1 | Survey 2 | DONE |
 | 5 | Penambahan Signature Tab 3 `GradebookView` | Pasang `<PrintSignature>` pada tampilan cetak Analisis & Statistik Nilai | M1 | Survey 2 | DONE |
 | 6 | Normalisasi Kontainer Cetak Landscape `GuruJurnal.tsx` | Tambahkan kelas `print:max-w-none print:w-full print:mx-0` agar cetak landscape rekap jurnal tidak terkompresi | M1 | Survey 1 | DONE |
-| 7 | Pemulihan Alur Umpan Balik Penolakan Jurnal Guru | Tampilkan alert banner jurnal ditolak beserta `catatan_admin` / alasan revisi pada `GuruJurnal.tsx` Tab 2 | M2 | Survey 1, 3 | PLANNED |
-| 8 | Tampilan Alasan Penolakan di `RekapJurnalView` & Pencarian Materi | Render `catatan_admin` pada tabel/modal rekap jurnal dan sediakan filter pencarian materi KBM | M2 | Survey 1, 3 | PLANNED |
-| 9 | Filter Pilihan Bulan Riwayat Presensi Guru `HistoryView` | Tambahkan filter pemilih bulan (`<input type="month">`) pada riwayat presensi mandiri guru | M2 | Survey 3 | PLANNED |
+| 7 | Pemulihan Alur Umpan Balik Penolakan Jurnal Guru | Tampilkan alert banner jurnal ditolak beserta `catatan_admin` / alasan revisi pada `GuruJurnal.tsx` Tab 2 | M2 | Survey 1, 3 | DONE |
+| 8 | Tampilan Alasan Penolakan di `RekapJurnalView` & Pencarian Materi | Render `catatan_admin` pada tabel/modal rekap jurnal dan sediakan filter pencarian materi KBM | M2 | Survey 1, 3 | DONE |
+| 9 | Filter Pilihan Bulan Riwayat Presensi Guru `HistoryView` | Tambahkan filter pemilih bulan (`<input type="month">`) pada riwayat presensi mandiri guru | M2 | Survey 3 | DONE |
 | 10 | Unblock Akses Supervisi Jurnal Kepala Sekolah | Perbarui `evaluateTabRBAC` di `src/lib/navigation.ts` agar role `kepalasekolah` diizinkan membuka `tab=supervisi-kelas` | M3 | Survey 1 | PLANNED |
 | 11 | Pemulihan Menu Informasi untuk Administrator | Kembalikan `view-informasi` pada `menuItemsAdmin` di `src/lib/navigation.ts` dan tautan cepat di `HomeViewAdmin.tsx` | M3 | Survey 1 | PLANNED |
 | 12 | Pemulihan Akses Monitoring Satelit Dinas Pendidikan | Izinkan Dinas Pendidikan mengakses `view-rekap-siswa` dan `view-jurnal-kelas` (read-only) untuk sekolah binaan | M3 | Survey 1 | PLANNED |
@@ -45,7 +45,7 @@
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | M1 | Pemulihan Sistem Cetak, Tanda Tangan Resmi, dan Header/Footer | `src/components/PrintHeader.tsx`, `src/components/AdminRekapView.tsx`, `src/components/PiketView.tsx`, `src/components/GradebookView.tsx`, `src/components/GuruJurnal.tsx` | none | DONE |
-| M2 | Pemulihan Alur Umpan Balik Penolakan Jurnal & Filter Riwayat | `src/components/GuruJurnal.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/HistoryView.tsx` | none | PLANNED |
+| M2 | Pemulihan Alur Umpan Balik Penolakan Jurnal & Filter Riwayat | `src/components/GuruJurnal.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/HistoryView.tsx` | none | DONE |
 | M3 | Harmonisasi Hak Akses RBAC, Menu Informasi, & Pengawasan Dinas | `src/lib/navigation.ts`, `src/components/AdminVerifView.tsx`, `src/components/DokumenView.tsx`, `src/components/AdminRekapView.tsx`, `src/components/HomeViewAdmin.tsx`, `src/components/AdminBackupView.tsx`, `src/components/SistemBlokView.tsx` | M1, M2 | PLANNED |
 | M4 | Automated Regression Test Suite & E2E Verification | `tests/menu_consolidation_feature_recovery.test.ts`, `npm test`, `npx tsc --noEmit`, `npm run build` | M1, M2, M3 | PLANNED |
 | M5 | Final Forensic Audit, Quality Gate, & Git Push to `main` | Final Forensic Integrity Audit, `git status`, `git add .`, `git commit`, `git push origin main` | M4 | PLANNED |

@@ -399,7 +399,10 @@ export function isMasterDataModificationAllowed(role?: string | null): boolean {
 /**
  * Robust CSV line parser with quotes handling
  */
-export function parseCsvLine(line: string): string[] {
+/**
+ * Robust CSV line parser with quotes and customizable delimiter handling
+ */
+export function parseCsvLine(line: string, delimiter: string = ','): string[] {
   const parts: string[] = [];
   let cur = '';
   let inQuotes = false;
@@ -412,7 +415,7 @@ export function parseCsvLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (c === ',' && !inQuotes) {
+    } else if (c === delimiter && !inQuotes) {
       parts.push(cur.trim());
       cur = '';
     } else {
@@ -428,19 +431,35 @@ export function parseCsvLine(line: string): string[] {
  */
 export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): string[] {
   return rawHeaders.map(h => {
-    const clean = h.toLowerCase().replace(/[\s-]+/g, '_').replace(/^"|"$/g, '');
+    const clean = h
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_')
+      .replace(/^"|"$/g, '');
     if (clean === 'no_hp_orang_tua' || clean === 'hp_ortu') return 'no_hp_ortu';
     if (clean === 'nama') return tableName === 'data_siswa' ? 'nama_siswa' : 'nama_guru';
     if (clean === 'mata_pelajaran' && tableName === 'data_mapel') return 'nama_mata_pelajaran';
     if (clean === 'guru') return 'nama_guru';
-    if (clean === 'id_sekolah' || clean === 'school_id') return 'sekolah_id';
+    if (
+      clean === 'id_sekolah' ||
+      clean === 'school_id' ||
+      clean === 'sekolahid' ||
+      clean === 'schoolid' ||
+      clean === 'idsekolah' ||
+      clean === 'sekolah_uuid' ||
+      clean === 'uuid_sekolah'
+    ) {
+      return 'sekolah_id';
+    }
     return clean;
   });
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Parses and validates CSV content for master data import.
- * Explicitly validates that `sekolah_id` is present and non-null for `data_guru`.
+ * Explicitly validates that `sekolah_id` is present, non-null, and a valid UUID for `data_guru`.
  */
 export function parseAndValidateMasterCsv(
   text: string,
@@ -452,7 +471,13 @@ export function parseAndValidateMasterCsv(
     throw new Error('File CSV kosong atau tidak memiliki baris data.');
   }
 
-  const rawHeaders = parseCsvLine(lines[0]);
+  // Auto-detect delimiter from header line (comma or semicolon for Indonesian/European Excel CSV)
+  const headerClean = lines[0].replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const commaCount = (headerClean.match(/,/g) || []).length;
+  const semicolonCount = (headerClean.match(/;/g) || []).length;
+  const delimiter = semicolonCount > commaCount ? ';' : ',';
+
+  const rawHeaders = parseCsvLine(lines[0], delimiter);
   const headers = normalizeCsvHeaders(rawHeaders, tableName);
 
   const rows: Record<string, any>[] = [];
@@ -461,8 +486,8 @@ export function parseAndValidateMasterCsv(
   const seenStudentKeys = new Set<string>();
 
   for (let i = 1; i < lines.length; i++) {
-    const vals = parseCsvLine(lines[i]);
-    if (vals.length === 0 || (vals.length === 1 && vals[0] === '')) continue;
+    const vals = parseCsvLine(lines[i], delimiter);
+    if (vals.length === 0 || vals.every(v => !v || v.trim() === '')) continue;
 
     const row: Record<string, any> = {};
     headers.forEach((h, idx) => {
@@ -472,7 +497,7 @@ export function parseAndValidateMasterCsv(
     });
 
     // Ensure primary key exists
-    if (!row.id) {
+    if (!row.id || String(row.id).trim().toLowerCase() === 'null' || String(row.id).trim().toLowerCase() === 'undefined') {
       row.id = (typeof crypto !== 'undefined' && crypto.randomUUID)
         ? crypto.randomUUID()
         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -488,10 +513,20 @@ export function parseAndValidateMasterCsv(
       if (!rawSekolahId || rawSekolahId.toLowerCase() === 'null' || rawSekolahId.toLowerCase() === 'undefined') {
         throw new Error(`Baris ${i}: Kolom "sekolah_id" wajib diisi dan tidak boleh kosong untuk data guru.`);
       }
+      if (!UUID_REGEX.test(rawSekolahId)) {
+        throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID (contoh: "a0000000-0000-0000-0000-000000000001").`);
+      }
       row.sekolah_id = rawSekolahId;
     } else {
       const rawSekolahId = (row.sekolah_id !== undefined && row.sekolah_id !== null) ? String(row.sekolah_id).trim() : '';
-      row.sekolah_id = rawSekolahId || user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      if (rawSekolahId && rawSekolahId.toLowerCase() !== 'null' && rawSekolahId.toLowerCase() !== 'undefined') {
+        if (!UUID_REGEX.test(rawSekolahId)) {
+          throw new Error(`Baris ${i}: Format "sekolah_id" ("${rawSekolahId}") tidak valid. Harus berupa format UUID.`);
+        }
+        row.sekolah_id = rawSekolahId;
+      } else {
+        row.sekolah_id = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      }
     }
 
     // Apply default values if needed
