@@ -113,9 +113,9 @@ const gradebookPath = path.join(srcDir, 'components', 'GradebookView.tsx');
 check('1.4.0: GradebookView.tsx exists', fs.existsSync(gradebookPath));
 const gradebookContent = fs.readFileSync(gradebookPath, 'utf-8');
 
-const statistikStart = gradebookContent.indexOf("innerTab === 'statistik'");
-check('1.4.1: GradebookView has statistik tab (innerTab === "statistik")', statistikStart !== -1);
-const statistikBlock = gradebookContent.slice(statistikStart, statistikStart + 10000);
+const statistikStart = gradebookContent.indexOf("TAB 3: STATISTIK");
+check('1.4.1: GradebookView has statistik tab (TAB 3: STATISTIK)', statistikStart !== -1);
+const statistikBlock = gradebookContent.slice(statistikStart, statistikStart + 15000);
 check(
   '1.4.2: GradebookView Tab 3 renders PrintSignature with Guru Mata Pelajaran attribution',
   statistikBlock.includes('<PrintSignature') &&
