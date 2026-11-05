@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
 import { AVATAR_LIST, renderUserAvatar } from '@/lib/avatars';
 import {
@@ -356,7 +356,49 @@ export default function AccountSettingsModal({
         p_nama: cleanNama || user.nama
       };
 
-      const { data, error } = await supabase.rpc('update_user_profile', payload);
+      let { data, error } = await supabase.rpc('update_user_profile', payload);
+
+      // Gracefully handle PostgREST schema cache error (e.g. PGRST202 or function not found)
+      if (error && (
+        error.code === 'PGRST202' ||
+        error.message?.includes('schema cache') ||
+        error.message?.includes('Could not find the function')
+      )) {
+        console.warn('[AccountSettingsModal] RPC update_user_profile schema cache issue, attempting fallback:', error.message);
+
+        // Fallback 1: Direct call to masterSupabase (bypassing any dynamic tenant / satellite rewriting)
+        const masterRes = await masterSupabase.rpc('update_user_profile', payload);
+        if (!masterRes.error) {
+          data = masterRes.data;
+          error = null;
+        } else if (
+          masterRes.error.code === 'PGRST202' ||
+          masterRes.error.message?.includes('schema cache') ||
+          masterRes.error.message?.includes('Could not find the function')
+        ) {
+          // Fallback 2: Direct update on users table via masterSupabase
+          const directPayload: Record<string, any> = {
+            avatar: selectedAvatar,
+            nama: cleanNama || user.nama,
+          };
+          if (changePassword && newPassword) {
+            directPayload.password = newPassword;
+          }
+          if (isAdmin && cleanUsername && cleanUsername !== user.username) {
+            directPayload.username = cleanUsername;
+          }
+
+          const { error: directErr } = await masterSupabase
+            .from('users')
+            .update(directPayload)
+            .eq('id', user.id);
+
+          if (!directErr) {
+            data = { success: true, message: 'Profil berhasil diperbarui.' };
+            error = null;
+          }
+        }
+      }
 
       if (error) {
         throw error;

@@ -591,6 +591,7 @@ export const dynamicTenantFetch: typeof fetch = async (input, init) => {
   const isMasterOnlyRequest =
     requestUrlStr.includes('/rest/v1/sekolah_registry') ||
     requestUrlStr.includes('/rest/v1/rpc/verify_login') ||
+    requestUrlStr.includes('/rest/v1/rpc/update_user_profile') ||
     headers.get('x-target-scope') === 'master';
 
   if (headers.has('x-target-scope')) {
