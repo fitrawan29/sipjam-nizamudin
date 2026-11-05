@@ -76,6 +76,8 @@ export function isForbiddenName(name?: string | null): boolean {
 export function getDefaultTeacherPassword(usernameOrNip: string): string {
   const clean = (usernameOrNip || '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
     .trim();
 
   const isPlaceholder = !clean ||
@@ -101,6 +103,8 @@ export function getDefaultTeacherPassword(usernameOrNip: string): string {
 export function resolveTeacherUsername(guru: { nip?: string | null; nama_guru?: string | null }): string {
   const rawNip = (guru?.nip || '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
     .trim();
 
   // Check if NIP is a placeholder or invalid

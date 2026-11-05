@@ -208,14 +208,20 @@ export async function updateTeacherCredentials(
   let { userId } = params;
   const { guruId, oldUsername, newUsername, newPassword, newNama, newNip, syncNipToDataGuru } = params;
 
-  const cleanUsername = (newUsername || '')
+  let rawCleanUsername = (newUsername || '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '')
     .trim()
     .replace(/\s+/g, '');
 
-  if (!cleanUsername) {
+  if (!rawCleanUsername) {
     return { success: false, message: 'Username tidak boleh kosong!' };
   }
+
+  // Canonical NIP normalization: if digits with dashes/dots/spaces (8-25 digits), normalize to digits
+  const digitsOnly = rawCleanUsername.replace(/[-.\s]/g, '');
+  const cleanUsername = /^\d{8,25}$/.test(digitsOnly) ? digitsOnly : rawCleanUsername;
 
   // Reject invalid characters / emojis / scripts
   if (!/^[a-zA-Z0-9_.-]+$/.test(cleanUsername)) {
@@ -234,7 +240,39 @@ export async function updateTeacherCredentials(
   }
 
   try {
-    // 1. Verify username uniqueness across users table (case-insensitive)
+    // 1. Resolve userId if not provided (before collision check to avoid self-collision false positive)
+    if (!userId) {
+      if (oldUsername && oldUsername !== '-') {
+        const { data: uByOld } = await supabaseClient
+          .from('users')
+          .select('id, username')
+          .ilike('username', oldUsername)
+          .maybeSingle();
+        if (uByOld) {
+          userId = uByOld.id;
+        }
+      }
+      if (!userId && guruId) {
+        const { data: gData } = await supabaseClient
+          .from('data_guru')
+          .select('id, nip, nama_guru')
+          .eq('id', guruId)
+          .maybeSingle();
+        if (gData?.nip && gData.nip !== '-') {
+          const canonicalGDataNip = resolveTeacherUsername(gData);
+          const { data: uByGData } = await supabaseClient
+            .from('users')
+            .select('id, username')
+            .ilike('username', canonicalGDataNip)
+            .maybeSingle();
+          if (uByGData) {
+            userId = uByGData.id;
+          }
+        }
+      }
+    }
+
+    // 2. Verify username uniqueness across users table (case-insensitive)
     let userQuery = supabaseClient
       .from('users')
       .select('id, username');
@@ -255,72 +293,58 @@ export async function updateTeacherCredentials(
       return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
     }
 
-    // 2. Self-heal if userId is missing
+    // 3. Self-heal if user account does not exist in users table
     if (!userId) {
-      let targetUser = existing;
-      if (!targetUser && oldUsername && oldUsername !== '-') {
-        const { data: uByOld } = await supabaseClient
-          .from('users')
-          .select('id, username')
-          .ilike('username', oldUsername)
-          .maybeSingle();
-        targetUser = uByOld;
+      const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const targetPassword = (newPassword && newPassword.trim())
+        ? newPassword.trim()
+        : getDefaultTeacherPassword(cleanUsername);
+
+      const { data: inserted, error: insertErr } = await supabaseClient
+        .from('users')
+        .insert([{
+          id: newId,
+          username: cleanUsername,
+          password: targetPassword,
+          nama: newNama?.trim() || 'Guru',
+          role: 'Guru',
+          sekolah_id: params.sekolahId || 'a0000000-0000-0000-0000-000000000001'
+        }])
+        .select();
+
+      if (insertErr) {
+        if (
+          insertErr.code === '23505' ||
+          insertErr.message?.includes('duplicate key') ||
+          insertErr.message?.includes('uq_users_username_lower')
+        ) {
+          return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
+        }
+        throw new Error(`Gagal membuat akun users: ${insertErr.message}`);
       }
 
-      if (targetUser) {
-        userId = targetUser.id;
-      } else {
-        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
-          ? crypto.randomUUID()
-          : `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-        const targetPassword = (newPassword && newPassword.trim())
-          ? newPassword.trim()
-          : getDefaultTeacherPassword(cleanUsername);
-
-        const { data: inserted, error: insertErr } = await supabaseClient
-          .from('users')
-          .insert([{
-            id: newId,
-            username: cleanUsername,
-            password: targetPassword,
-            nama: newNama?.trim() || 'Guru',
-            role: 'Guru',
-            sekolah_id: params.sekolahId || 'a0000000-0000-0000-0000-000000000001'
-          }])
-          .select();
-
-        if (insertErr) {
-          if (
-            insertErr.code === '23505' ||
-            insertErr.message?.includes('duplicate key') ||
-            insertErr.message?.includes('uq_users_username_lower')
-          ) {
-            return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
-          }
-          throw new Error(`Gagal membuat akun users: ${insertErr.message}`);
+      if (guruId) {
+        const guruPayload: Record<string, any> = {};
+        if (newNip && newNip.trim()) {
+          guruPayload.nip = newNip.trim();
+        } else if (syncNipToDataGuru && cleanUsername && cleanUsername !== '-') {
+          guruPayload.nip = cleanUsername;
         }
-
-        if (guruId) {
-          const guruPayload: Record<string, any> = {};
-          if (newNip && newNip.trim()) {
-            guruPayload.nip = newNip.trim();
-          } else if (syncNipToDataGuru && cleanUsername && cleanUsername !== '-') {
-            guruPayload.nip = cleanUsername;
-          }
-          if (newNama && newNama.trim()) {
-            guruPayload.nama_guru = newNama.trim();
-          }
-          if (Object.keys(guruPayload).length > 0) {
-            await supabaseClient.from('data_guru').update(guruPayload).eq('id', guruId);
-          }
+        if (newNama && newNama.trim()) {
+          guruPayload.nama_guru = newNama.trim();
         }
-
-        return {
-          success: true,
-          message: 'Akun guru baru berhasil dibuat dengan kredensial yang ditentukan!',
-          userId: (Array.isArray(inserted) ? inserted[0]?.id : (inserted as any)?.id) || newId
-        };
+        if (Object.keys(guruPayload).length > 0) {
+          await supabaseClient.from('data_guru').update(guruPayload).eq('id', guruId);
+        }
       }
+
+      return {
+        success: true,
+        message: 'Akun guru baru berhasil dibuat dengan kredensial yang ditentukan!',
+        userId: (Array.isArray(inserted) ? inserted[0]?.id : (inserted as any)?.id) || newId
+      };
     }
 
     // 3. Build user update payload
@@ -402,16 +426,29 @@ export async function resetTeacherPasswordToDefault(
   try {
     let targetUserId = params.userId;
     if (!targetUserId) {
-      // Find user by username or NIP
+      // Find user by explicit username first, then fallback to resolved NIP/clean target
       const cleanTarget = resolveTeacherUsername({ nip: params.nip, nama_guru: params.nama });
-      const { data: found } = await supabaseClient
-        .from('users')
-        .select('id')
-        .ilike('username', cleanTarget)
-        .maybeSingle();
+      let foundUser: any = null;
+      if (params.username && params.username.trim() && params.username.trim() !== '-') {
+        const { data: uByName } = await supabaseClient
+          .from('users')
+          .select('id')
+          .ilike('username', params.username.trim())
+          .maybeSingle();
+        foundUser = uByName;
+      }
 
-      if (found) {
-        targetUserId = found.id;
+      if (!foundUser) {
+        const { data: uByTarget } = await supabaseClient
+          .from('users')
+          .select('id')
+          .ilike('username', cleanTarget)
+          .maybeSingle();
+        foundUser = uByTarget;
+      }
+
+      if (foundUser) {
+        targetUserId = foundUser.id;
       } else {
         // Create user
         const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;

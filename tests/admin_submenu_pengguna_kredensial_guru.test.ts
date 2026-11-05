@@ -451,6 +451,59 @@ async function runTestSuite() {
   assert.ok(viewCode.includes('isMountedRef'), 'AdminPenggunaView must guard state updates with isMountedRef');
   pass('3.13: AdminPenggunaView memuat kontrol interaktif toggle password, sinkronisasi NIP, dan proteksi unmount');
 
+  // Test 3.14: Excel apostrophe and double quotes stripping
+  const excelNip = resolveTeacherUsername({ nip: "'198501012010011001'" });
+  assert.strictEqual(excelNip, '198501012010011001', 'Excel leading apostrophe must be stripped');
+  const quotedNip = resolveTeacherUsername({ nip: '"198501012010011001"' });
+  assert.strictEqual(quotedNip, '198501012010011001', 'Surrounding double quotes must be stripped');
+  const excelPwd = getDefaultTeacherPassword("'198501012010011001'");
+  assert.strictEqual(excelPwd, '19850101201001100127', 'Default password must not retain Excel apostrophe');
+  pass('3.14: Excel apostrophe (\') dan tanda kutip ("") pada NIP tereliminasi bersih pada username dan password default');
+
+  // Test 3.15: Self-collision prevention on password update without userId
+  const selfCollisionTest = await updateTeacherCredentials(mockSupabase, {
+    oldUsername: '199912312025011099',
+    newUsername: '199912312025011099',
+    newPassword: 'UpdatedSelfPassword2026!'
+  });
+  assert.strictEqual(selfCollisionTest.success, true, 'Updating password with same username must not trigger false positive self-collision');
+  assert.strictEqual(createdUser.password, 'UpdatedSelfPassword2026!');
+  pass('3.15: Pembaruan password tanpa userId dengan username lama yang sama tidak memicu false-positive tabrakan akun');
+
+  // Test 3.16: Formatted NIP entered in modal normalizes to pure digits
+  const formatRes = await updateTeacherCredentials(mockSupabase, {
+    userId: user1.id,
+    newUsername: '19850101-201001-1-001',
+    newPassword: 'FormattedPasswordTest!'
+  });
+  assert.strictEqual(formatRes.success, true);
+  assert.strictEqual(user1.username, '198501012010011001', 'Formatted NIP must normalize to pure digits in users.username');
+  pass('3.16: Input username berupa NIP berformat (strip/titik) dinormalisasi otomatis ke digit murni');
+
+  // Test 3.17: Reset password without userId when username was customized
+  mockUsers.push({
+    id: 'usr-custom-01',
+    username: 'guru_fisika_favorit',
+    password: 'OldCustomPass123!',
+    nama: 'Guru Fisika Favorit',
+    role: 'Guru',
+    sekolah_id: 'sch-001'
+  });
+  const customUserReset = await resetTeacherPasswordToDefault(mockSupabase, {
+    username: 'guru_fisika_favorit',
+    nip: '-',
+    nama: 'Guru Fisika Favorit'
+  });
+  assert.strictEqual(customUserReset.success, true);
+  assert.strictEqual(customUserReset.defaultPassword, 'guru_fisika_favorit27');
+  const targetCustom = mockUsers.find(u => u.username === 'guru_fisika_favorit');
+  assert.strictEqual(targetCustom?.password, 'guru_fisika_favorit27');
+  pass('3.17: Reset password tanpa userId pada guru ber-username custom berhasil menemukan akun yang tepat');
+
+  // Test 3.18: Checkbox syncNip in AdminPenggunaView auto-checks formatted NIP
+  assert.ok(viewCode.includes(".replace(/[-.\\s]/g, '')"), 'AdminPenggunaView must strip formatting before regex testing NIP for checkbox');
+  pass('3.18: Checkbox sinkronisasi NIP otomatis mencentang NIP berformat (strip/titik) secara andal');
+
   // ==========================================================================
   // SUITE 4: Non-Regression & Master Data Integrity (R4)
   // ==========================================================================

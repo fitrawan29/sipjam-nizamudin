@@ -1348,10 +1348,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           // Sync users.username so teacher's login username is updated by the Admin
           if (formValues.nip && formValues.nip !== '-') {
             try {
+              const syncUsername = resolveTeacherUsername({ nip: formValues.nip, nama_guru: formValues.nama_guru });
               if (item.user_id) {
-                await supabase.from('users').update({ username: formValues.nip, nama: formValues.nama_guru }).eq('id', item.user_id);
+                await supabase.from('users').update({ username: syncUsername, nama: formValues.nama_guru }).eq('id', item.user_id);
               } else if (item.nip && item.nip !== '-') {
-                await supabase.from('users').update({ username: formValues.nip, nama: formValues.nama_guru }).eq('username', item.nip);
+                const oldSync = resolveTeacherUsername({ nip: item.nip, nama_guru: item.nama_guru });
+                await supabase.from('users').update({ username: syncUsername, nama: formValues.nama_guru }).or(`username.eq.${syncUsername},username.eq.${oldSync},username.eq.${item.nip}`);
               }
             } catch (syncErr) {
               console.warn('[AdminDataView] Failed to sync users.username & nama:', syncErr);
@@ -1910,6 +1912,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                       setFilter1('ALL');
                       setFilter2('ALL');
                       setPage(0);
+                      if (typeof window !== 'undefined' && window.history?.replaceState) {
+                        window.history.replaceState(null, '', `?view=view-admin-data&tab=${tab.id}`);
+                      }
                     }} 
                     className={`btn-click master-tab-btn px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 border transition ${activeTab === tab.id ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' : 'border-gray-200 text-gray-700 dark:text-gray-300 dark:border-gray-700'}`}
                   >

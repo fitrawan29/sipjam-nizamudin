@@ -1,74 +1,87 @@
-> [!WARNING] **Skepticism Disclaimer**
-> High confidence in the core journal photo upload pipeline, departure time validations, title normalization, dynamic schedule and kegiatan synthesis in RekapJurnalView, and unified auto-checkout duty recording; production mobile OS storage permission dialogs remain outside unit test mock scope.
+# Handoff Report: Reviewer Round 3 — Sub Menu Pengguna & Kredensial Guru (Admin)
 
-## 1. What the prior attempt got wrong
+**Reviewer:** Teamwork Reviewer (Round 3)  
+**Date & Timestamp:** 2026-11-06T06:47:00Z  
+**Branch:** main  
+**Target Parent ID:** 0aa00ea1-9c92-421d-8e45-73f63b5e510d  
 
-1. **Auto-Checkout Omission of Empty Teaching Schedules and Piket for `Lupa Checkout`**
-   - **Input:** Teacher attended school (`tipe_absen: 'Datang'`), filled 1 out of 3 scheduled classes, forgot to check out at the end of the day, and had daily auto-checkout executed at cutoff time.
-   - **Expected:** Because teacher left 2 teaching classes unfilled, `evaluateAndApplyAutoCheckout` in `attendanceAlpa.ts` records empty journal entries with `keterangan: 'tidak masuk kelas'` and `status_verifikasi: 'Tidak Masuk Kelas'`, plus any unfilled piket duty with `catatan_apel: 'tidak membuat laporan piket'`.
-   - **Actual:** Zero unfilled journals and zero unfilled piket duties were created for this teacher.
-   - **Root Cause:** In `attendanceAlpa.ts:903`, empty schedule insertion was guarded by `if (isPulangCepat && evalResult.emptySchedules.length > 0)`. When a teacher submitted at least one journal, `isPulangCepat` evaluated to `false` (categorized as standard `Lupa Checkout`), completely bypassing `evalResult.emptySchedules` and never calling `recordUnfilledJournalsAndPiket`.
+---
 
-2. **Omission of Unfilled Jurnal Kegiatan in `RekapJurnalView` for Teachers with Zero KBM Schedules**
-   - **Input:** Teacher with 0 teaching schedules (e.g. counseling teacher / non-teaching day duty) did not submit Jurnal Kegiatan on a given date and opened their personal rekap in `RekapJurnalView.tsx`.
-   - **Expected:** Rekap Jurnal displays a synthetic missing entry for that date with `mapel: 'Jurnal Kegiatan'`, `materi: 'tidak melaksanakan kegiatan apapun'`, `kegiatan: 'tidak melaksanakan kegiatan apapun'`, `keterangan: 'tidak melaksanakan kegiatan apapun'`, and `status_verifikasi: 'Tidak Melaksanakan Kegiatan'`.
-   - **Actual:** Rekap Jurnal showed zero rows for that day because `tarikRekap` only checked `allSchedules` from `jadwal_pelajaran`. With 0 schedules, the loop skipped and synthesized nothing, failing Requirement R3.
-   - **Root Cause:** `RekapJurnalView.tsx` only iterated over `daySchedules`. It lacked dynamic fallback synthesis for days where teacher had 0 KBM schedules and no submitted journals.
+## 1. Executive Summary & Verdict
+Pada peninjauan adversarial Round 3, ditemukan 6 celah kritis dan perbaikan fungsional mendalam pada implementasi sub menu Pengguna, sinkronisasi kredensial otomatis guru, dan integrasi antar komponen:
 
-3. **Schedule Time Formatting Bug on Dot Notation (`07.30`) & Morning False-Alarms**
-   - **Input:** `jadwal_pelajaran.jam_mulai` stored with dot notation (e.g. `"07.30"`) or missing `jam_mulai` on today's date before classes start.
-   - **Expected:** Rekap Jurnal normalizes dot notation to colon and suppresses "tidak masuk kelas" until class time has arrived.
-   - **Actual:** `sched.jam_mulai.split(':')` produced `['07.30']`, evaluating `sh * 60 + sm` to `NaN`, rendering the schedule prematurely as "tidak masuk kelas" even before school started.
-   - **Root Cause:** Missing `.replace('.', ':')` normalization and missing guard for `todayStr` when time is before 07:00 WITA.
+1. **Self-Collision False Positive pada Pembaruan Password Guru tanpa `userId` (`teacherUserSync.ts`)**:
+   - Jika admin memperbarui kata sandi akun guru yang belum memiliki `userId` di state memori tanpa mengubah username (`oldUsername === newUsername`), fungsi `updateTeacherCredentials` sebelumnya menjalankan query keunikan username sebelum meresolusi identitas pengguna. Query tersebut menemukan akun guru itu sendiri dan secara keliru membatalkan operasi dengan pesan error *"Username sudah digunakan oleh akun lain!"*.
+   - Telah diperbaiki dengan menyelesaikan resolusi `userId` terlebih dahulu dari `oldUsername` atau lookup `data_guru`, kemudian menyertakan filter `.neq('id', userId)` pada query keunikan.
+2. **Desinkronisasi dan Duplikasi Akun Akibat Format NIP Input Modal (`teacherUserSync.ts`)**:
+   - Jika admin menginputkan NIP berformat (misal `19850101-201001-1-001` atau `1985.01.01.2010.01.1.001`) pada modal ubah username, `updateTeacherCredentials` sebelumnya menyimpan string bertanda hubung/titik mentah tersebut ke tabel `users`.
+   - Hal ini menyebabkan `syncTeacherAccounts` gagal mencocokkan akun target (karena `resolveTeacherUsername` menormalisasi NIP ke digit murni `198501012010011001`), serta menghasilkan password default yang tidak cocok. Kini dinormalisasi secara kanonikal ke digit angka murni jika memenuhi pola 8-25 digit NIP.
+3. **Penyusupan Apostrof Excel & Karakter Kutip pada NIP (`dataIntegrityGuard.ts`)**:
+   - NIP yang diekspor/diimpor dari Microsoft Excel seringkali memiliki apostrof awal (`'198501012010011001`) atau tanda kutip ganda (`"198501012010011001"`) agar tidak terkonversi ke notasi ilmiah (`1.98501E+17`).
+   - Karakter kutip ini sebelumnya lolos ke `resolveTeacherUsername` dan `getDefaultTeacherPassword`, menggagalkan regex digit dan menghasilkan password cacat seperti `'19850101201001100127`. Telah ditambahkan sanitasi kutip `.replace(/^['"]+|['"]+$/g, '')`.
+4. **Kegagalan Resolusi Akun pada Reset Password Mandiri Ber-Username Custom (`teacherUserSync.ts`)**:
+   - Pada `resetTeacherPasswordToDefault`, jika `userId` tidak disertakan dan guru memiliki username kustom (misal `guru_fisika`), sistem sebelumnya hanya mencari berdasarkan `resolveTeacherUsername(nip, nama)` sehingga gagal menemukan akun dan membuat akun duplikat baru. Kini diprioritaskan pencarian berdasarkan `params.username` eksisting terlebih dahulu.
+5. **Normalisasi NIP pada Edit Guru di Master Data (`AdminDataView.tsx`)**:
+   - Ketika admin mengubah NIP guru di tab Guru (`data_guru`), pembaruan ke tabel `users` sebelumnya langsung meneruskan `formValues.nip` mentah tanpa `resolveTeacherUsername`. Kini diselaraskan menggunakan `resolveTeacherUsername` agar username `users` selalu kanonikal.
+6. **Checkbox Sinkronisasi NIP Modal Pengguna Otomatis Aktif untuk NIP Berformat (`AdminPenggunaView.tsx`)**:
+   - Checkbox "Sinkronkan username ke NIP di Data Guru" sebelumnya menggunakan regex kaku `/^\d{8,25}$/` pada raw `item.nip`, sehingga NIP berformat tanda hubung atau titik muncul dalam kondisi unchecked. Telah diperbaiki dengan menormalkan karakter pemisah sebelum pengecekan regex.
+7. **Sinkronisasi Tab Parameter URL pada Pergantian Tab Master Data (`AdminDataView.tsx`)**:
+   - Menambahkan `window.history.replaceState` pada event pergantian tab di `AdminDataView` agar parameter query `?view=view-admin-data&tab=Pengguna` tersinkronisasi secara reaktif dengan sidebar dan histori navigasi browser.
 
-4. **Stale `lockedReason` Residual on Presensi Pulang Unlock**
-   - **Input:** Teacher with unsubmitted journals or piket duties performs presensi datang, and `workflow.ts` evaluates daily state.
-   - **Expected:** `state.canPresensiPulang = true` and `state.lockedReason = null` so that no stale "Anda belum menyelesaikan..." warnings persist on dashboards or presensi forms.
-   - **Actual:** `state.lockedReason` remained populated with `"Anda belum menyelesaikan: ..."` even though `canPresensiPulang` was flipped to `true`.
-   - **Root Cause:** In `src/lib/workflow.ts:725`, `state.canPresensiPulang` was set to `true`, but `state.lockedReason` was not cleared if it started with `"Anda belum menyelesaikan"`.
+---
 
-## 2. What I changed
+## 2. Issues Discovered and Root Cause Analysis
 
-- `src/lib/attendanceAlpa.ts`:
-  - Replaced ad-hoc branching in `evaluateAndApplyAutoCheckout` with a unified invocation of `recordUnfilledJournalsAndPiket`.
-  - Now, both `Pulang Cepat` and `Lupa Checkout` teachers automatically have all unsubmitted teaching schedules recorded as "tidak masuk kelas", unsubmitted kegiatan recorded as "tidak melaksanakan kegiatan apapun", and unsubmitted piket duties recorded as "tidak membuat laporan piket".
-  - Aligned `catatan_admin` in `emptyKbmRecord` to `'Auto-record: Guru tidak masuk kelas (pulang cepat)'` to preserve full backwards compatibility across the legacy test suite.
-- `src/components/RekapJurnalView.tsx`:
-  - Added schedule time dot normalization (`sched.jam_mulai.replace('.', ':')`) and morning pre-school guard (`currTime < '07:00'`).
-  - Added multi-teacher schedule protection in `hasJournal`: checks `isTeacherJournalMatch({ nama_guru: sched.nama_guru }, j)` so submissions by another teacher in the same class never mask another teacher's missing class.
-  - Added dynamic synthesis of unfilled Jurnal Kegiatan in personal mode (`activeMode === 'pribadi'`) for days where teacher had 0 KBM schedules and submitted no journals, displaying `keterangan: 'tidak melaksanakan kegiatan apapun'` and badge `Tidak Melaksanakan Kegiatan`.
-- `src/lib/workflow.ts`:
-  - Reset `state.lockedReason = null` when `canTeacherPresensiPulang(state)` is true and `lockedReason` begins with `"Anda belum menyelesaikan"`.
-- `tests/jurnal_r1_r2_r3_verification.test.ts`:
-  - Added Test 2.5: Verifies `workflow.ts` clears `lockedReason` when `canTeacherPresensiPulang` unlocks presensi pulang.
-  - Added Test 3.8: Verifies `RekapJurnalView` synthesizes unfilled Jurnal Kegiatan with prefix `unfilled-kegiatan-` and description `"tidak melaksanakan kegiatan apapun"`.
-  - Added Test 3.9: Verifies `RekapJurnalView` schedule time parsing normalizes dot notation (`07.30`) and guards morning schedules before 07:00.
-  - Added Test 3.10: Verifies `evaluateAndApplyAutoCheckout` records unfilled duties via `recordUnfilledJournalsAndPiket`.
-  - Total test count expanded from 13 to 17 tests (all passing).
+### Issue 1: False Positive Self-Collision on Password-Only Update
+- **Input:** Admin memperbarui password guru yang belum memiliki `userId` tanpa mengubah username (`oldUsername: '198501012010011001'`, `newUsername: '198501012010011001'`, `newPassword: 'MyNewPassword123!'`).
+- **Expected:** Password berhasil diperbarui tanpa error tabrakan.
+- **Actual:** Mengembalikan `{ success: false, message: 'Username "198501012010011001" sudah digunakan oleh akun lain!' }`.
+- **Root Cause:** Pemeriksaan keunikan username dieksekusi sebelum `userId` dicari dari `oldUsername`, sehingga akun pengguna sendiri terdeteksi sebagai "akun lain".
+- **Fix:** Resolusi `userId` dilakukan di awal alur fungsi sebelum query keunikan dieksekusi dengan `.neq('id', userId)`.
 
-## 3. Verification Record
+### Issue 2: Modal Username Formatted NIP Desync
+- **Input:** Admin memasukkan NIP berformat strip/titik `19850101-201001-1-001` pada modal kredensial.
+- **Expected:** Username dinormalisasi ke digit kanonikal murni `198501012010011001`.
+- **Actual:** Disimpan sebagai string bertanda strip mentah, memicu ketidakcocokan dengan `resolveTeacherUsername` dan duplikasi saat sinkronisasi background.
+- **Root Cause:** `updateTeacherCredentials` tidak memiliki normalisasi format NIP berdigit 8-25.
+- **Fix:** Normalisasi `digitsOnly` diaktifkan untuk pola NIP 8-25 digit di `updateTeacherCredentials`.
 
-- **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`:
-    - Result: **17 / 17 tests passed (0 failed)**.
-  - Ran `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`:
-    - Result: **30 / 30 tests passed (0 failed)**.
-  - Ran `npm test`:
-    - Result: **All 44 test suites across the repository passed 100% (0 failed)**.
-  - Ran `npm run build`:
-    - Result: **Compiled successfully in Next.js Turbopack, TypeScript check finished with 0 errors across 13/13 static and dynamic routes**.
-- **Shallow Verification (manual only):**
-  - None; all state transitions, synthesis logic, and edge cases are programmatically verified.
-- **Unverified aspects:**
-  - Hardware camera driver quirks on specific Android/iOS webview browsers when switching directly from camera to native device file picker.
-  - High concurrency race condition when two admin clients trigger auto-checkout on the exact same second while a teacher simultaneously checks out.
+### Issue 3: Excel Apostrophe Punctuation Leak
+- **Input:** Guru dengan NIP ber-apostrof Excel `'198501012010011001`.
+- **Expected:** Dikenali sebagai NIP murni, password default `19850101201001100127`.
+- **Actual:** Apostrof terbawa ke username dan password default (`'19850101201001100127`).
+- **Root Cause:** Hilangnya sanitasi kutip `replace(/^['"]+|['"]+$/g, '')` pada `resolveTeacherUsername` dan `getDefaultTeacherPassword`.
+- **Fix:** Ditambahkan pembersihan kutip di `dataIntegrityGuard.ts`.
 
-## 4. Known Issues
+---
 
-- `Minor Robustness Risk`: If a teacher's device has an aggressive content security policy or disabled local file picker, file upload may fall back to default HTML file input behavior without graceful preview.
-- `Minor Robustness Risk`: Teachers with schedules spanning midnight (e.g. 23:00 - 01:00) require multi-day timetable handling, which standard K-12 school timetables do not use.
+## 3. Files Modified
+1. `src/lib/dataIntegrityGuard.ts`:
+   - Menambahkan sanitasi apostrof Excel dan tanda kutip ganda (`replace(/^['"]+|['"]+$/g, '')`) pada `getDefaultTeacherPassword` dan `resolveTeacherUsername`.
+2. `src/lib/teacherUserSync.ts`:
+   - Normalisasi format NIP (strip/titik/kutip) pada `updateTeacherCredentials`.
+   - Resolusi awal `userId` sebelum pemeriksaan keunikan untuk mencegah false positive tabrakan diri sendiri.
+   - Pengecekan `params.username` pada alur self-healing `resetTeacherPasswordToDefault`.
+   - Konsistensi `defaultPassword` pada `accounts.push` di `syncTeacherAccounts`.
+3. `src/components/AdminPenggunaView.tsx`:
+   - Normalisasi format NIP pada status inisial checked checkbox `swal-sync-nip`.
+4. `src/components/AdminDataView.tsx`:
+   - Menyelaraskan sinkronisasi username guru saat update data guru menggunakan `resolveTeacherUsername`.
+   - Menambahkan `window.history.replaceState` untuk sinkronisasi URL query parameter saat pergantian tab master data.
+5. `tests/admin_submenu_pengguna_kredensial_guru.test.ts`:
+   - Menambahkan 5 pengujian adversarial baru (3.14 s.d. 3.18) yang memvalidasi eliminasi apostrof Excel, pencegahan self-collision tanpa `userId`, normalisasi NIP berformat pada input modal, reset password username custom, dan checkbox state.
 
-## 5. Remaining risk & next step
+---
 
-- **Remaining risk:** Live Supabase multi-tenant database policies in production should confirm `anon` or authenticated role has write permission to `laporan_piket` and `jurnal_pembelajaran` for auto-generated records.
-- **Next step:** The task implementation and adversarial verification are complete; all requirements R1, R2, and R3 are satisfied, verified, tested, and regression-free.
+## 4. Verification Record
+- **Automated Tests:**
+  - `npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts`: **28/28 checks PASSED** (100%).
+  - `npm test`: **53 Suites Executed | 53 PASSED | 0 FAILED** (100%).
+- **Production Build:**
+  - `npm run build`: Compiled successfully in 1.9s, Finished TypeScript in 1.7s, Generating static pages (13/13) in 1471ms. 0 errors, 0 warnings.
+
+---
+
+## 5. Known Issues & Remaining Risk
+- **Shallow Verification**: Interaksi visual pop-up SweetAlert2 diuji melalui simulasi DOM komprehensif pada testing environment.
+- **Deep Verification**: Seluruh 53 test suites dan 28 checks spesifik fitur ini telah terverifikasi lulus 100% tanpa regresi.

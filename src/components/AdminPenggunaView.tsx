@@ -210,7 +210,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                 id="swal-sync-nip" 
                 type="checkbox" 
                 class="rounded text-purple-600 focus:ring-purple-500"
-                ${/^\d{8,25}$/.test(item.nip !== '-' ? item.nip : item.username) ? 'checked' : ''}
+                ${/^\d{8,25}$/.test((item.nip !== '-' ? item.nip : item.username).replace(/[-.\s]/g, '')) ? 'checked' : ''}
               >
               <span>Sinkronkan username ke NIP di Data Guru</span>
             </label>
