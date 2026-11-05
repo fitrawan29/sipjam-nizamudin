@@ -374,6 +374,8 @@ CREATE TABLE IF NOT EXISTS public.pengaturan (
     value TEXT NOT NULL,
     email_tujuan_upload TEXT,
     aturan_kehadiran_guru TEXT,
+    jam_pulang_jumat TEXT DEFAULT '11:00',
+    guru_hanya_mengajar TEXT DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT uq_pengaturan_sekolah_key UNIQUE (sekolah_id, key)

@@ -361,15 +361,38 @@ export default function AdminConfigView({
     });
 
     try {
-      const { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'sekolah_id,key' });
+      let hasColumnError = false;
+      let { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'sekolah_id,key' });
 
-      // Also ensure column values are set on pengaturan rows for this school
-      await supabase.from('pengaturan').update({
-        aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
-        email_tujuan_upload: saveConfig.email_tujuan_upload,
-        jam_pulang_jumat: saveConfig.jam_pulang_jumat,
-        guru_hanya_mengajar: jsonExempt
-      }).eq('sekolah_id', targetSekolahId);
+      // Schema cache fallback resilience (PGRST204 or missing column such as guru_hanya_mengajar)
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        hasColumnError = true;
+        console.warn('[AdminConfigView] Missing column in pengaturan table schema cache, falling back to canonical key-value upsert:', error.message);
+        const cleanUpsertData = Object.entries(saveConfig).map(([key, value]) => ({
+          sekolah_id: targetSekolahId,
+          key,
+          value: value !== undefined && value !== null ? value.toString() : ''
+        }));
+        cleanUpsertData.push({
+          sekolah_id: targetSekolahId,
+          key: 'guru_hanya_mengajar',
+          value: jsonExempt
+        });
+        const retryRes = await supabase.from('pengaturan').upsert(cleanUpsertData, { onConflict: 'sekolah_id,key' });
+        error = retryRes.error;
+      }
+
+      // Also ensure column values are set on pengaturan rows for this school if columns exist in schema
+      if (!error && !hasColumnError) {
+        try {
+          await supabase.from('pengaturan').update({
+            aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
+            email_tujuan_upload: saveConfig.email_tujuan_upload,
+            jam_pulang_jumat: saveConfig.jam_pulang_jumat,
+            guru_hanya_mengajar: jsonExempt
+          }).eq('sekolah_id', targetSekolahId);
+        } catch (_) {}
+      }
 
       // Persistently update all school profile fields (nama, alamat, npsn, kota_kabupaten, logo)
       // into the sekolah table in addition to pengaturan
