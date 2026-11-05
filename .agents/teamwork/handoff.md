@@ -1,39 +1,29 @@
-# Handoff Report — Sentinel Project Completion
+# Sentinel Handoff Report
 
-## 1. Observation
-- Original User Request: 14 admin role adjustments across 5 main functional domains (Dashboard Operasional, Pusat Verifikasi & Revisi, Laporan Analitik Kerja, Asesmen & Raport, Master Data/Pengaturan Sistem/Akun).
-- Task Interview: Conducted by `teamwork_interviewer` and approved as authoritative prompt in `ORIGINAL_REQUEST.md`.
-- Routing Decision: General path via `teamwork_orchestrator`.
-- Execution: Orchestrator `orchestrator_27` decomposed work into 5 milestones (M1–M5), executed across specialized worker, reviewer, challenger, and milestone auditor subagents.
-- Independent Post-Victory Audit: Conducted by `teamwork_victory_auditor` (`053d393e-942a-4b49-879b-200b6b84384d`). Verdict: **VICTORY CONFIRMED**.
+## Observation
+The user requested adding a "Pengguna" submenu under Master Data & Kalender for the admin role to manage usernames and passwords for teacher accounts. The accounts must be automatically pulled from existing teacher data (`data_guru`), with default username matching NIP and default password matching `NIP27`.
 
-## 2. Logic Chain
-- All 14 requirements across R1 to R5 were implemented in source code without shortcuts or facades:
-  1. `HomeViewAdmin.tsx`: Deduplicated school name header and eliminated "Pusat Informasi" section card.
-  2. `AdminVerifView.tsx`: Excised SOP button, ordered presensi descending, added standalone "Bebas Hadir" badge, clear status badges, and direct automatic tagging for unsubmitted piket.
-  3. `DokumenView.tsx`: Restricted lesson plan uploads to 1 per subject per grade level across parallel classes.
-  4. `GuruPresensi.tsx`, `attendanceAlpa.ts`, `RekapJurnalView.tsx`: Automatically synchronized KBM journals for teachers on approved leave (Sakit, Izin, Dinas Luar).
-  5. `AdminRekapView.tsx`: Consolidated teacher "Ade Fitrawan Ibrahim" into a single title-free row with aggregated metrics.
-  6. `GradebookView.tsx`, `RaporView.tsx`: Synchronized active school year and semester on load for Admin, added dynamic meeting attendance point weights sub-form (Hadir 100, Sakit 75, Izin 75, Terlambat 75, Alpa 0) and updated grading formulas.
-  7. `AdminDataView.tsx`, `dataIntegrityGuard.ts`, `AdminConfigView.tsx`, `AccountSettingsModal.tsx`: Corrected CSV templates, sanitized UUIDs to prevent error 22P02, added `noValidate` and dual-table persistence, and eliminated academic title inputs from account settings.
-- Tests & Validation:
-  - `npx tsx tests/production_admin_adjustments.test.ts`: 24/24 PASS
-  - `npx tsc --noEmit`: 0 errors
-  - `npm test`: 49/49 suites PASS
-  - `npm run build`: Compiled successfully in 2.2s
-- Git Delivery: Pushed to `origin/main` per `GEMINI.md`.
+The task was routed via SWE Light to `teamwork_swe`, which conducted a complete implementation cycle:
+1. `teamwork_implementer`: Built `src/lib/teacherUserSync.ts`, `src/components/AdminPenggunaView.tsx`, integrated with `src/lib/navigation.ts`, `src/components/ClaySidebar.tsx`, `src/components/AdminDataView.tsx`, and added 28 automated test assertions in `tests/admin_submenu_pengguna_kredensial_guru.test.ts`.
+2. `teamwork_reviewer` (Round 1): Fixed TypeScript TS2322 build errors, resolved test database pollution, and added case-insensitive uniqueness checks (`ilike`).
+3. `teamwork_reviewer` (Round 2): Fixed unmounted component memory leaks via `isMountedRef`, normalized NIP punctuation and placeholder fallbacks, enforced username regex, and added password toggle visibility.
+4. `teamwork_reviewer` (Round 3): Fixed self-collision false positives on password-only updates, handled Excel quote/apostrophe normalization, and validated end-to-end sync behavior.
+5. Independent Victory Audit (`teamwork_victory_auditor`): Performed 3-phase audit (Timeline, Integrity Forensics, Independent Test Execution) with verdict **VICTORY CONFIRMED**.
 
-## 3. Caveats
-- None. All acceptance criteria independently audited and confirmed.
+## Logic Chain
+- Strict routing to SWE Light because the request was a single self-contained feature explicitly requested to be kept small and focused.
+- All review floors (minimum 3 rounds) were respected and executed without skipping.
+- Independent victory audit was executed directly by the Sentinel to verify the implementation against `ORIGINAL_REQUEST.md` with zero trust assumption.
 
-## 4. Conclusion
-- Project completed successfully with VICTORY CONFIRMED verdict from the independent victory auditor.
+## Caveats
+- Password hashes use SHA-256 fallback in client mock environments and bcrypt in full backend environments.
+- When teachers have non-numeric or missing NIPs, normalization logic cleanly falls back to normalized names to avoid unauthenticated orphaned accounts while maintaining consistency.
 
-## 5. Verification Method
-```powershell
-npx tsx tests/production_admin_adjustments.test.ts
-npx tsc --noEmit
-npm test
-npm run build
-git status
-```
+## Conclusion
+All requirements (R1, R2, R3, R4) and acceptance criteria have been fully implemented, rigorously reviewed across 3 rounds of adversarial audits, and confirmed via an independent 3-phase Victory Audit.
+
+## Verification Method
+- Independent automated test execution: `npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts` (28/28 checks passed).
+- TypeScript compile validation: `npx tsc --noEmit` (0 errors).
+- Full regression suite execution: `npm test` (53/53 test suites passed).
+- Production build verification: `npm run build` (Turbopack, exit code 0).
