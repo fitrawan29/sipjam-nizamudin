@@ -76,7 +76,7 @@ function isTestGuruName(nama?: string | null): boolean {
  * Menghilangkan gelar akademik dari variasi nama "Ade Fitrawan Ibrahim" (misal "Ade Fitrawan Ibrahim, M.Pd., Gr.")
  * sehingga terkonsolidasi menjadi satu entri nama tanpa gelar dan statistik kehadirannya tergabung.
  */
-function canonicalizeTeacherRekapName(nama?: string | null): string {
+export function canonicalizeTeacherRekapName(nama?: string | null): string {
   if (!nama) return '';
   const trimmed = nama.trim();
   if (trimmed.toLowerCase().includes('ade fitrawan ibrahim')) {

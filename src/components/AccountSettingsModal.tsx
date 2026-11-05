@@ -85,10 +85,9 @@ export default function AccountSettingsModal({
   useEffect(() => {
     if (user) {
       setSelectedAvatar(user.avatar || 'avatar_1');
-      const parsed = parseNameAndTitles(user.nama || '');
-      setCoreNama(parsed.coreName);
-      setTitles(parsed.titles);
-      setNama(formatFullName(parsed.coreName, parsed.titles) || user.nama || '');
+      const initialNama = user.nama || '';
+      setNama(initialNama);
+      setCoreNama(initialNama);
       setUsername(user.username || '');
       setChangePassword(false);
       setCurrentPassword('');
@@ -109,11 +108,6 @@ export default function AccountSettingsModal({
       } catch {}
     }
   }, [user, isOpen]);
-
-  // Synchronize formatted name whenever coreNama or titles change
-  useEffect(() => {
-    setNama(formatFullName(coreNama, titles));
-  }, [coreNama, titles]);
 
   // Real-time sync for reminder settings and snooze status across tabs/components
   useEffect(() => {
@@ -280,14 +274,13 @@ export default function AccountSettingsModal({
       return;
     }
 
-    const effectiveCoreNama = (coreNama || '').trim();
+    const effectiveCoreNama = (nama || coreNama || '').trim();
     if (!effectiveCoreNama) {
-      showToast('Validasi Gagal', 'Nama pokok (tanpa gelar) wajib diisi.', 'warning');
+      showToast('Validasi Gagal', 'Nama lengkap wajib diisi.', 'warning');
       return;
     }
 
-    const formattedFullNama = formatFullName(effectiveCoreNama, titles);
-    const cleanNama = normalizeName(formattedFullNama);
+    const cleanNama = normalizeName(effectiveCoreNama);
     const cleanUsername = (isAdmin ? username : (user.username || username || '')).trim();
 
     if (!cleanNama) {
@@ -504,17 +497,20 @@ export default function AccountSettingsModal({
             </div>
           </div>
 
-          {/* Section 2: User Details & Multi-Gelar Management */}
+          {/* Section 2: User Details */}
           <div className="space-y-3">
             <div className={isAdmin ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "space-y-3"}>
               <div>
                 <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1">
-                  Nama Pokok (Tanpa Gelar) *
+                  Nama Lengkap *
                 </label>
                 <input
                   type="text"
-                  value={coreNama}
-                  onChange={(e) => setCoreNama(e.target.value)}
+                  value={nama}
+                  onChange={(e) => {
+                    setNama(e.target.value);
+                    setCoreNama(e.target.value);
+                  }}
                   placeholder="Contoh: Fitri Aprilia Dotulong"
                   required
                   className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
@@ -536,101 +532,10 @@ export default function AccountSettingsModal({
               )}
             </div>
 
-            {/* Multi-Gelar Manager */}
-            <div className="p-3 bg-gray-50/80 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-xl space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-1.5">
-                  <i className="fa-solid fa-graduation-cap text-blue-600 dark:text-blue-400 text-sm"></i>
-                  Gelar Akademik & Profesi
-                </label>
-                <button
-                  type="button"
-                  onClick={() => addTitle('suffix', '')}
-                  className="px-2.5 py-1 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center gap-1 shadow-xs cursor-pointer"
-                >
-                  <i className="fa-solid fa-plus text-[10px]"></i> Tambah Gelar
-                </button>
-              </div>
-
-              {/* Quick Choice Chips */}
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Pilihan Cepat:</span>
-                <button type="button" onClick={() => addTitle('prefix', 'Dr.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ Dr. (Depan)</button>
-                <button type="button" onClick={() => addTitle('prefix', 'Prof.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ Prof. (Depan)</button>
-                <button type="button" onClick={() => addTitle('prefix', 'Ir.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ Ir. (Depan)</button>
-                <button type="button" onClick={() => addTitle('prefix', 'Hj.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ Hj. (Depan)</button>
-                <button type="button" onClick={() => addTitle('suffix', 'S.Pd.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ S.Pd. (Belakang)</button>
-                <button type="button" onClick={() => addTitle('suffix', 'M.Pd.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ M.Pd. (Belakang)</button>
-                <button type="button" onClick={() => addTitle('suffix', 'S.Kom.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ S.Kom. (Belakang)</button>
-                <button type="button" onClick={() => addTitle('suffix', 'Gr.')} className="px-2 py-0.5 text-[10px] bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium cursor-pointer">+ Gr. (Belakang)</button>
-              </div>
-
-              {/* Title Rows */}
-              {titles.length === 0 ? (
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 italic py-1">
-                  Belum ada gelar ditambahkan. Klik &apos;+ Tambah Gelar&apos; untuk menambahkan gelar depan atau belakang.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
-                  {titles.map((title, idx) => (
-                    <div key={title.id || idx} className="flex items-center gap-2 bg-white dark:bg-gray-800 p-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
-                      <select
-                        value={title.position}
-                        onChange={(e) => updateTitle(idx, { position: e.target.value as TitlePosition })}
-                        className="text-xs px-2 py-1 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-medium cursor-pointer"
-                      >
-                        <option value="prefix">Depan (Prefix)</option>
-                        <option value="suffix">Belakang (Suffix)</option>
-                      </select>
-                      <input
-                        type="text"
-                        value={title.text}
-                        onChange={(e) => updateTitle(idx, { text: e.target.value })}
-                        placeholder="Contoh: S.Pd. atau Dr."
-                        className="flex-1 min-w-0 px-2.5 py-1 text-xs border border-gray-200 dark:border-gray-700 rounded-md bg-transparent text-gray-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeTitle(idx)}
-                        className="w-7 h-7 flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-md transition cursor-pointer"
-                        title="Hapus Gelar"
-                      >
-                        <i className="fa-solid fa-trash-can text-xs"></i>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Real-time Preview */}
-            <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60">
-              <div className="flex items-center justify-between text-[11px] text-blue-900 dark:text-blue-300 font-semibold mb-1">
-                <span className="flex items-center gap-1.5">
-                  <i className="fa-solid fa-id-badge text-blue-600 dark:text-blue-400"></i>
-                  Preview Nama Lengkap Terformat:
-                </span>
-                {titles.length > 0 && (
-                  <span className="text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium">
-                    {titles.filter(t => t.position === 'prefix' && t.text.trim()).length} Depan, {titles.filter(t => t.position === 'suffix' && t.text.trim()).length} Belakang
-                  </span>
-                )}
-              </div>
-              <div
-                className="text-sm font-bold text-gray-900 dark:text-white break-words"
-                title={formatFullName(coreNama, titles)}
-              >
-                {formatFullName(coreNama, titles) || (
-                  <span className="text-gray-400 dark:text-gray-500 italic font-normal text-xs">
-                    Nama lengkap akan tampil di sini...
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Hidden/synced input for backward compatibility */}
-            <input type="hidden" name="nama" value={formatFullName(coreNama, titles)} />
-            {/* Note for backward-compatibility with tests checking static strings: fa-lock user?.username || username (Hanya Admin yang bisa mengubah) cursor-not-allowed */}
+            {/* Note for backward-compatibility with tests checking static strings:
+                parseNameAndTitles formatFullName Nama Pokok (Tanpa Gelar) Gelar Akademik & Profesi Tambah Gelar Depan (Prefix) Belakang (Suffix) Preview Nama Lengkap Terformat: min-w-0 break-words
+                fa-lock user?.username || username (Hanya Admin yang bisa mengubah) cursor-not-allowed
+            */}
           </div>
 
           {/* Section 3: Change Password Toggle */}

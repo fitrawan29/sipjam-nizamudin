@@ -30,12 +30,12 @@
 | 8 | R2: Penandaan Langsung "Tidak Membuat Laporan Piket" | Guru yang terjadwal piket namun belum melapor langsung ditandai "tidak membuat laporan piket" tanpa konfirmasi admin atau sistem | M2 | R2 | DONE |
 | 9 | R2: Pembatasan Unggah Perangkat Ajar Kelas Paralel | Batasi pengunggahan perangkat pembelajaran per mata pelajaran hanya 1 kali untuk kelas paralel pada tingkat kelas yang sama di `DokumenView.tsx` | M2 | R2 | DONE |
 | 10 | R2: Otomasi Jurnal KBM Ketidakhadiran (Sakit, Izin, Dinas Luar) | Otomatis isikan jurnal KBM guru berstatus Sakit, Izin, atau Dinas Luar yang memiliki jadwal KBM pada hari tersebut sesuai keterangan presensinya | M2 | R2 | DONE |
-| 11 | R4: Default Semester & Tahun Ajaran Aktif Admin | Tampilkan semester dan tahun ajaran aktif secara default sesuai pengaturan admin di `GradebookView.tsx` dan `RaporView.tsx` | M3 | R4 | PLANNED |
-| 12 | R4: Form Dinamis Bobot Poin Kehadiran per Pertemuan | Sediakan konfigurasi form dinamis bobot poin kehadiran per pertemuan (Hadir: 100, Sakit/Izin/Terlambat: 75, Alpa: 0) dan terapkan rumusnya | M3 | R4 | PLANNED |
-| 13 | R5: Penyesuaian Template CSV Master Data & Kalender | Sesuaikan template CSV Kalender Pendidikan dan Jadwal Pelajaran dengan skema UUID Supabase agar bebas error 22P02 | M4 | R5 | PLANNED |
-| 14 | R5: Persistensi Konfigurasi Sistem & Database Seluruh Sub Menu | Perbaiki form multi-tab di `AdminConfigView.tsx` (`noValidate`) dan sinkronisasi seluruh identitas sekolah ke tabel `sekolah` | M4 | R5 | PLANNED |
-| 15 | R5: Eliminasi Bidang/Fitur Penambahan Gelar Pengaturan Akun | Hapus kontainer Multi-Gelar Manager dan tombol "+ Tambah Gelar" pada `AccountSettingsModal.tsx` | M4 | R5 | PLANNED |
-| 16 | Validasi Sistem & Regression Test Suite | Buat automated regression test suite komprehensif untuk memvalidasi R1–R5 dan pastikan `npm run build` berhasil | M5 | Acceptance Criteria | PLANNED |
+| 11 | R4: Default Semester & Tahun Ajaran Aktif Admin | Tampilkan semester dan tahun ajaran aktif secara default sesuai pengaturan admin di `GradebookView.tsx` dan `RaporView.tsx` | M3 | R4 | DONE |
+| 12 | R4: Form Dinamis Bobot Poin Kehadiran per Pertemuan | Sediakan konfigurasi form dinamis bobot poin kehadiran per pertemuan (Hadir: 100, Sakit/Izin/Terlambat: 75, Alpa: 0) dan terapkan rumusnya | M3 | R4 | DONE |
+| 13 | R5: Penyesuaian Template CSV Master Data & Kalender | Sesuaikan template CSV Kalender Pendidikan dan Jadwal Pelajaran dengan skema UUID Supabase agar bebas error 22P02 | M4 | R5 | DONE |
+| 14 | R5: Persistensi Konfigurasi Sistem & Database Seluruh Sub Menu | Perbaiki form multi-tab di `AdminConfigView.tsx` (`noValidate`) dan sinkronisasi seluruh identitas sekolah ke tabel `sekolah` | M4 | R5 | DONE |
+| 15 | R5: Eliminasi Bidang/Fitur Penambahan Gelar Pengaturan Akun | Hapus kontainer Multi-Gelar Manager dan tombol "+ Tambah Gelar" pada `AccountSettingsModal.tsx` | M4 | R5 | DONE |
+| 16 | Validasi Sistem & Regression Test Suite | Buat automated regression test suite komprehensif untuk memvalidasi R1–R5 dan pastikan `npm run build` berhasil | M5 | Acceptance Criteria | IN_PROGRESS |
 | 17 | Mandatory Git Delivery ke `main` | Eksekusi `git status`, `git add .`, `git commit -m "..."`, dan `git push origin main` sesuai `GEMINI.md` | M5 | GEMINI.md | PLANNED |
 
 ## Milestones
@@ -43,6 +43,7 @@
 |---|------|-------|-------------|--------|
 | M1 | Dashboard Operasional & Laporan Analitik (R1, R3) | `src/components/HomeViewAdmin.tsx`, `src/components/AdminRekapView.tsx` | none | DONE |
 | M2 | Pusat Verifikasi & Workflow Penyelarasan Presensi, Piket, Perangkat, & Jurnal (R2) | `src/components/AdminVerifView.tsx`, `src/components/DokumenView.tsx`, `src/components/GuruPresensi.tsx`, `src/lib/attendanceAlpa.ts`, `src/components/RekapJurnalView.tsx` | M1 | DONE |
-| M3 | Asesmen, Raport, & Bobot Kehadiran Dinamis (R4) | `src/components/GradebookView.tsx`, `src/components/RaporView.tsx`, `src/components/AdminConfigView.tsx` | M1, M2 | PLANNED |
-| M4 | Master Data Templates, System & DB Persistence, & Akun (R5) | `src/components/AdminDataView.tsx`, `src/lib/dataIntegrityGuard.ts`, `src/components/AdminConfigView.tsx`, `src/components/AccountSettingsModal.tsx` | M1, M2 | PLANNED |
-| M5 | Automated Regression Test Suite & Git Delivery | `tests/production_admin_adjustments.test.ts`, `npm test`, `npm run build`, `git push origin main` | M1, M2, M3, M4 | PLANNED |
+| M3 | Asesmen, Raport, & Bobot Kehadiran Dinamis (R4) | `src/components/GradebookView.tsx`, `src/components/RaporView.tsx`, `src/components/AdminConfigView.tsx` | M1, M2 | DONE |
+| M4 | Master Data Templates, System & DB Persistence, & Akun (R5) | `src/components/AdminDataView.tsx`, `src/lib/dataIntegrityGuard.ts`, `src/components/AdminConfigView.tsx`, `src/components/AccountSettingsModal.tsx` | M1, M2, M3 | DONE |
+| M5 | Automated Regression Test Suite & Git Delivery | `tests/production_admin_adjustments.test.ts`, `npm test`, `npm run build`, `git push origin main` | M1, M2, M3, M4 | IN_PROGRESS |
+

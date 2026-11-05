@@ -197,6 +197,39 @@ export default function AdminConfigView({
             setExemptTeacherIds(Array.from(new Set(ghmList)));
           }
 
+          // Pre-populate school profile fields from sekolah table if missing in pengaturan
+          if (user?.sekolah_id) {
+            try {
+              const { data: schoolProfile } = await supabase
+                .from('sekolah')
+                .select('nama, alamat, npsn, kota_kabupaten, logo_url, logo_kiri_url, logo_kanan_url, nama_kepala_sekolah, nip_kepala_sekolah')
+                .eq('id', user.sekolah_id)
+                .maybeSingle();
+
+              if (schoolProfile) {
+                if (!newConfig.kop_sekolah && schoolProfile.nama) newConfig.kop_sekolah = schoolProfile.nama;
+                if (!newConfig.kop_alamat && schoolProfile.alamat) newConfig.kop_alamat = schoolProfile.alamat;
+                if (!newConfig.kop_npsn && schoolProfile.npsn) newConfig.kop_npsn = schoolProfile.npsn;
+                if (!newConfig.kota_kabupaten && schoolProfile.kota_kabupaten) {
+                  newConfig.kota_kabupaten = schoolProfile.kota_kabupaten;
+                  newConfig.kota_ttd = schoolProfile.kota_kabupaten;
+                }
+                if (!newConfig.logo_kiri && (schoolProfile.logo_kiri_url || schoolProfile.logo_url)) {
+                  newConfig.logo_kiri = schoolProfile.logo_kiri_url || schoolProfile.logo_url;
+                }
+                if (!newConfig.logo_kanan && schoolProfile.logo_kanan_url) {
+                  newConfig.logo_kanan = schoolProfile.logo_kanan_url;
+                }
+                if (!newConfig.ttd_kepsek_nama && schoolProfile.nama_kepala_sekolah) {
+                  newConfig.ttd_kepsek_nama = schoolProfile.nama_kepala_sekolah;
+                }
+                if (!newConfig.ttd_kepsek_nip && schoolProfile.nip_kepala_sekolah) {
+                  newConfig.ttd_kepsek_nip = schoolProfile.nip_kepala_sekolah;
+                }
+              }
+            } catch (_) {}
+          }
+
           setConfig(newConfig);
         }
       } catch (err) {
@@ -338,16 +371,47 @@ export default function AdminConfigView({
         guru_hanya_mengajar: jsonExempt
       }).eq('sekolah_id', targetSekolahId);
 
-      // Synchronize headmaster name, NIP, and ID to sekolah table
-      if (saveConfig.ttd_kepsek_nama || saveConfig.ttd_kepsek_nip || saveConfig.kepala_sekolah_id !== undefined) {
-        try {
-          const updatePayload: Record<string, any> = {
-            nama_kepala_sekolah: saveConfig.ttd_kepsek_nama,
-            nip_kepala_sekolah: saveConfig.ttd_kepsek_nip
-          };
-          updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id || null;
-          await supabase.from('sekolah').update(updatePayload).eq('id', targetSekolahId);
-        } catch (_) {}
+      // Persistently update all school profile fields (nama, alamat, npsn, kota_kabupaten, logo)
+      // into the sekolah table in addition to pengaturan
+      try {
+        const updatePayload: Record<string, any> = {
+          nama_kepala_sekolah: saveConfig.ttd_kepsek_nama,
+          nip_kepala_sekolah: saveConfig.ttd_kepsek_nip
+        };
+        updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id || null;
+        if (saveConfig.kop_sekolah) {
+          updatePayload.nama = saveConfig.kop_sekolah;
+        }
+        if (saveConfig.kop_alamat) {
+          updatePayload.alamat = saveConfig.kop_alamat;
+        }
+        if (saveConfig.kop_npsn !== undefined && saveConfig.kop_npsn !== null) {
+          updatePayload.npsn = saveConfig.kop_npsn;
+        }
+        const cityValue = saveConfig.kota_kabupaten || saveConfig.kota_ttd;
+        if (cityValue) {
+          updatePayload.kota_kabupaten = cityValue;
+        }
+        if (saveConfig.logo_kiri) {
+          updatePayload.logo_kiri_url = saveConfig.logo_kiri;
+        }
+        if (saveConfig.logo_kanan) {
+          updatePayload.logo_kanan_url = saveConfig.logo_kanan;
+        }
+        if (saveConfig.logo_kiri || saveConfig.logo_kanan) {
+          updatePayload.logo_url = saveConfig.logo_kiri || saveConfig.logo_kanan;
+        }
+
+        const { error: sekolahError } = await supabase
+          .from('sekolah')
+          .update(updatePayload)
+          .eq('id', targetSekolahId);
+
+        if (sekolahError) {
+          console.error('[AdminConfigView] Error updating sekolah table:', sekolahError);
+        }
+      } catch (schoolErr) {
+        console.error('[AdminConfigView] Exception updating sekolah table:', schoolErr);
       }
 
       // Sync Kepala Sekolah designation in data_guru
@@ -474,7 +538,7 @@ export default function AdminConfigView({
               <AdminBackupView user={user} />
             </div>
 
-            <form onSubmit={handleSave} className={activeTab === 'backup' ? 'hidden' : 'space-y-4'}>
+            <form onSubmit={handleSave} noValidate className={activeTab === 'backup' ? 'hidden' : 'space-y-4'}>
               {/* TAB 1: UMUM & KALENDER */}
               <div className={activeTab === 'umum' ? 'space-y-4' : 'hidden'}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

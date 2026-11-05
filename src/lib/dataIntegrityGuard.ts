@@ -576,8 +576,21 @@ export function parseAndValidateMasterCsv(
       }
     });
 
-    // Ensure primary key exists
-    if (!row.id || String(row.id).trim().toLowerCase() === 'null' || String(row.id).trim().toLowerCase() === 'undefined') {
+    // Ensure primary key exists & validate/sanitize UUID for UUID-keyed tables
+    const isUuidKeyedTable =
+      tableName === 'kalender_pendidikan' ||
+      tableName === 'jadwal_pelajaran' ||
+      tableName === 'data_siswa' ||
+      tableName === 'wali_kelas' ||
+      tableName === 'sistem_blok';
+
+    const isMissingOrEmptyId =
+      !row.id ||
+      String(row.id).trim() === '' ||
+      String(row.id).trim().toLowerCase() === 'null' ||
+      String(row.id).trim().toLowerCase() === 'undefined';
+
+    if (isMissingOrEmptyId) {
       row.id = (typeof crypto !== 'undefined' && crypto.randomUUID)
         ? crypto.randomUUID()
         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -591,6 +604,21 @@ export function parseAndValidateMasterCsv(
         throw new Error(`Baris ${i}: Format "id" ("${row.id}") tidak valid. Harus berupa format UUID.`);
       }
       row.id = cleanId;
+    } else if (isUuidKeyedTable) {
+      const cleanId = sanitizeUuid(String(row.id));
+      if (!UUID_REGEX.test(cleanId)) {
+        // If an id field is not a valid UUID format (e.g. legacy sample 'KP-01', 'JP-01'),
+        // replace with valid UUID to completely prevent PostgreSQL Error 22P02
+        row.id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+              const r = (Math.random() * 16) | 0;
+              const v = c === 'x' ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            });
+      } else {
+        row.id = cleanId;
+      }
     }
 
     // Explicit validation & scoping for sekolah_id

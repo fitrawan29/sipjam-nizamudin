@@ -222,13 +222,13 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       },
       Kalender_Pendidikan: {
         filename: 'Template_Kalender_Pendidikan.csv',
-        headers: ['id', 'tanggal', 'keterangan', 'tipe'],
-        sample: ['KP-01', '2026-10-01', 'Hari Kesaktian Pancasila', 'Libur']
+        headers: ['tanggal', 'keterangan', 'tipe'],
+        sample: ['2026-10-01', 'Hari Kesaktian Pancasila', 'Libur']
       },
       Jadwal_Pelajaran: {
         filename: 'Template_Jadwal_Pelajaran.csv',
-        headers: ['id', 'hari', 'nama_guru', 'mata_pelajaran', 'kelas'],
-        sample: ['JP-01', 'Senin', 'Fitri Aprilia Dotulong', 'Bahasa Inggris', 'X Merdeka']
+        headers: ['hari', 'nama_guru', 'mata_pelajaran', 'kelas'],
+        sample: ['Senin', 'Fitri Aprilia Dotulong', 'Bahasa Inggris', 'X Merdeka']
       },
       Wali_Kelas: {
         filename: 'Template_Wali_Kelas.csv',
