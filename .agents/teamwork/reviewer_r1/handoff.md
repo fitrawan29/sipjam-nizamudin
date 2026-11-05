@@ -1,66 +1,89 @@
-# Reviewer Handoff Report: Penyesuaian Alur Presensi Pulang Cepat & Jurnal Otomatis Tidak Masuk Kelas
+# Handoff Report: Reviewer Round 1 — Sub Menu Pengguna & Kredensial Guru (Admin)
 
-## 1. What the prior attempt got wrong
-1. **Fatal Functional Bug: Partial Match false-positive on Empty Mapel in `isJurnalMatchJadwal`**
-   - **Input:** Teaching schedule with subject stored in `mapel: 'Bahasa Indonesia'` (`mata_pelajaran: undefined`), and teacher journal filled for `mapel: 'Matematika'`.
-   - **Expected:** `isJurnalMatchJadwal` returns `false` (Matematika does not match Bahasa Indonesia).
-   - **Actual:** `isJurnalMatchJadwal` returned `true`!
-   - **Root Cause:** In `src/lib/workflow.ts`, `isJurnalMatchJadwal` only inspected `jadwal.mata_pelajaran`. When `jadwal.mata_pelajaran` was undefined, `jdMapel` defaulted to `""`. Because `'matematika'.includes("")` evaluates to `true` in JavaScript, ANY journal in that class was falsely treated as matching ANY schedule! Similarly, if a journal had an empty `mapel`, `"".includes(jdMapel)` or `jdMapel.includes("")` evaluated to `true`.
-   - **Fix:** Updated `isJurnalMatchJadwal` to look up `(jadwal.mata_pelajaran || jadwal.mapel || '').trim().toLowerCase()` and `(jurnal.mapel || jurnal.mata_pelajaran || '').trim().toLowerCase()`, guarded with `if (!jMapel || !jdMapel) return false`, and enforced minimum 3-character threshold for substring matching.
+**Reviewer:** Teamwork Reviewer (Round 1)  
+**Date & Timestamp:** 2026-11-06T06:22:00Z  
+**Branch:** main  
+**Target Parent ID:** 0aa00ea1-9c92-421d-8e45-73f63b5e510d  
 
-2. **Fatal Boundary Collision: Sub-word Substring Matches in Teacher Identification**
-   - **Input:** Teacher A: `"Fitra"` vs Schedule Teacher B: `"Fitrawan"`, or `"Budi"` vs `"Budiman"`.
-   - **Expected:** `isTeacherScheduleMatch` returns `false` (different persons).
-   - **Actual:** `isTeacherScheduleMatch` returned `true` (`'fitrawan'.includes('fitra') === true`).
-   - **Root Cause:** In `src/lib/attendanceAlpa.ts`, `isTeacherScheduleMatch` and `isTeacherJournalMatch` used naive `.includes(...)` across raw name strings, violating the token boundary rule.
-   - **Fix:** Implemented token-based word matching `matchTeacherTokens` that normalizes titles/prefixes and enforces whole-token array comparison so sub-word collisions like "Fitra" vs "Fitrawan" return `false`, while legitimate academic title variations like `"Dr. H. Ahmad Fauzi, M.Pd."` vs `"Ahmad Fauzi"` match accurately.
+---
 
-3. **Robustness / Idempotency Flaw: Duplicate "Tidak Masuk Kelas" Journal Insertion**
-   - **Input:** Calling `evaluateAndApplyAutoCheckout` when an empty schedule already had an auto-generated `"Tidak Masuk Kelas"` record.
-   - **Expected:** Idempotent execution without inserting duplicate journal rows.
-   - **Actual:** Every run created a brand new UUID and inserted duplicate `"Tidak Masuk Kelas"` rows in `jurnal_pembelajaran`.
-   - **Root Cause:** In `src/lib/attendanceAlpa.ts`, `evalResult.emptySchedules` filters out `"Tidak Masuk Kelas"` journals from valid teaching journals, but the insertion loop did not check if a `"Tidak Masuk Kelas"` record for that specific schedule and date had already been inserted.
-   - **Fix:** Added existence guard `(allJurnalToday || []).some(...)` before calling `insert` in `evaluateAndApplyAutoCheckout` and appended new records to the local cache.
+## 1. Executive Summary & Verdict
+Pada Reviewer Round 1, peninjauan adversarial menemukan 3 masalah nyata pada codebase:
+1. **Kegagalan Test Suite `user_standardization_and_cleanup_verification.test.ts` (Fatal Bug / Test Interference)**:
+   Implementer menambahkan auto-sync ke tabel `users` saat `importMasterDataFromCsv` dijalankan untuk data guru. Namun, pada test suite `tests/data_guru_csv_import_sekolah_id_validation.test.ts`, pembersihan test record hanya menghapus dari tabel `data_guru` dan membiarkan user `Muhammad Ridwan Pratama` tertinggal di tabel `users`. Hal ini mengakibatkan duplikasi nama guru di database `users`, sehingga test `user_standardization_and_cleanup_verification.test.ts` gagal (64 passed, 1 failed).
+2. **Kegagalan TypeScript Build `npm run build` (Fatal Compilation Bug)**:
+   `HomeViewAdminProps` tidak mendeklarasikan properti opsional `schoolName?: string;`, padahal `HomeView.tsx` meneruskan `schoolName={schoolName}` ke `<HomeViewAdmin .../>`. Hal ini menyebabkan `npm run build` gagal pada tahap Type Check (`error TS2322: Property 'schoolName' does not exist on type 'IntrinsicAttributes & HomeViewAdminProps'`). Klaim build sukses pada handoff implementer sebelumnya terbukti tidak akurat.
+3. **Penyempurnaan Ketahanan Kredensial & Sinkronisasi**:
+   - `teacherUserSync.ts`: Penambahan sanitasi internal whitespace pada NIP (`replace(/\s+/g, '')`), validasi penolakan username dummy (`isDummyOrTestString`) dan terlarang (`isForbiddenName`), pencarian keunikan case-insensitive menggunakan `.ilike('username', cleanUsername)` (mencegah benturan unik PostgreSQL `uq_users_username_lower`), penerjemahan error kode 23505 ke pesan user-friendly, dan perlindungan agar NIP pada `data_guru` tidak tertimpa nama login sembarangan kecuali jika `syncNipToDataGuru` atau `newNip` dispesifikasikan.
+   - `AdminPenggunaView.tsx`: Penambahan proteksi self-healing saat modal edit atau quick reset diakses pada record guru yang belum memiliki `userId` (langsung membuatkan akun dengan password default NIP27 alih-alih gagal tanpa aksi), serta menampilkan `result.errors` di UI.
+   - `ClaySidebar.tsx`: Sinkronisasi status aktif sub menu pengguna ketika `currentView === 'view-admin-data'` dan `currentTab === 'Pengguna'`.
+   - `AdminDataView.tsx` & `dataIntegrityGuard.ts`: Memusatkan helper `resolveTeacherUsername` dan `getDefaultTeacherPassword` dari `teacherUserSync.ts` dan menggunakan `.ilike()`.
 
-4. **API Observability Omission in `/api/attendance/auto-alpa`**
-   - **Input:** GET/POST request to `/api/attendance/auto-alpa`.
-   - **Expected:** Returns status of both auto-alpa and auto-checkout/pulang cepat execution.
-   - **Actual:** Auto-checkout was invoked inside a `try/catch` but its return value was discarded.
-   - **Root Cause:** Response object spread only `...result` (AutoAlpaResult).
-   - **Fix:** Captured `checkoutResult` and returned it in `autoCheckout` field in both GET and POST handlers.
+---
 
-5. **UI Resilience in `GuruPresensi.tsx` & `AdminVerifView.tsx`**
-   - In `GuruPresensi.tsx`, added check for `jenis_presensi === 'Pulang Cepat'` in addition to `status_verifikasi === 'Pulang Cepat'`.
-   - In `AdminVerifView.tsx`, added `"Otomatis (Tidak Masuk Kelas)"` robot badge for auto-generated empty journals in the verification tab.
+## 2. Issues Discovered and Root Cause Analysis
 
-## 2. What I Changed
-- `src/lib/workflow.ts`:
-  - Hardened `isJurnalMatchJadwal` with fallback `mata_pelajaran || mapel`, empty string guards, clean class prefix stripping, and length checks.
-- `src/lib/attendanceAlpa.ts`:
-  - Replaced naive substring collision with `cleanTeacherNameForMatch` and `matchTeacherTokens`.
-  - Added idempotency guard in `evaluateAndApplyAutoCheckout` preventing duplicate `"Tidak Masuk Kelas"` journals.
-- `src/app/api/attendance/auto-alpa/route.ts`:
-  - Returned `autoCheckout` result in GET and POST API responses.
-- `src/components/GuruPresensi.tsx`:
-  - Supported `jenis_presensi === 'Pulang Cepat'` in auto-checkout alert banner.
-- `src/components/AdminVerifView.tsx`:
-  - Rendered `Otomatis (Tidak Masuk Kelas)` badge on Jurnal cards.
-- `tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`:
-  - Added Section 5 with 5 automated adversarial tests (total 20 tests).
+### Issue 1: Database Test Pollution & Duplicate User Name Collision
+- **Input:** Menjalankan `npm test` yang mengeksekusi `tests/data_guru_csv_import_sekolah_id_validation.test.ts` lalu `tests/user_standardization_and_cleanup_verification.test.ts`.
+- **Expected:** Seluruh 52 test suites lulus 100% dan tidak meninggalkan orphan rows pada tabel `users`.
+- **Actual:** `user_standardization_and_cleanup_verification.test.ts` gagal dengan: `✖ FAIL: Table users: found 1 duplicate user names: [["a0000000-0000-0000-0000-000000000001::muhammad ridwan pratama",2]]`.
+- **Root Cause:** Penambahan auto-sync pembuatan user pada `importMasterDataFromCsv` menyisipkan akun user setiap kali test import dijalankan, namun cleanup test di line 804 hanya menghapus dari `data_guru` dan tidak menghapus dari `users`.
+- **Fix:** Menambahkan pembersihan pre-clean dan post-clean `users` di `tests/data_guru_csv_import_sekolah_id_validation.test.ts` dalam blok `finally`, serta membersihkan 2 record orphan dari database.
 
-## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`: 20/20 passed (100%).
-  - Ran `npm test`: all 42 automated test suites passed (100% across whole app).
-  - Ran `npm run build`: compiled successfully, TypeScript passed in 55s, 0 errors, static pages generated cleanly.
-- **Shallow Verification (manual only):**
-  - None; all logic backed by automated end-to-end tests.
-- **Unverified aspects:**
-  - Real-time mobile push notifications for Pulang Cepat (external push service).
+### Issue 2: Next.js Production Build TypeScript Error TS2322
+- **Input:** Menjalankan `npm run build`.
+- **Expected:** TypeScript typecheck selesai 100% tanpa error dan seluruh static pages terkompilasi.
+- **Actual:** `src/components/HomeView.tsx(44,7): error TS2322: Property 'schoolName' does not exist on type 'IntrinsicAttributes & HomeViewAdminProps'`. Build terhenti dengan exit code 1.
+- **Root Cause:** Deklarasi interface `HomeViewAdminProps` di `HomeViewAdmin.tsx` belum menyertakan `schoolName?: string;`.
+- **Fix:** Menambahkan `schoolName?: string;` ke `HomeViewAdminProps` dan parameter `HomeViewAdmin`.
 
-## 4. Known Issues
-- `Minor Robustness Risk`: If a school alters schedule periods midway through the day after the cutoff has already executed, existing "Tidak Masuk Kelas" records remain in the database unless edited or deleted by the school admin.
+### Issue 3: Username Collision Vulnerability & Case Sensitivity Bypass
+- **Input:** Admin memperbarui username guru menjadi username yang sudah ada dengan huruf besar/kecil berbeda (misal "Superadmin" vs "superadmin") atau username dummy ("testuser").
+- **Expected:** Validasi ramah menolak input sebelum menabrak exception trigger database atau constraint index PostgreSQL `uq_users_username_lower`.
+- **Actual:** Sebelumnya `updateTeacherCredentials` hanya menggunakan `.eq()` dan melewati cek jika `oldUsername` tidak dioper, serta tidak memeriksa `isDummyOrTestString`.
+- **Root Cause:** Ketiadaan validasi defensif terintegrasi dan ketiadaan `.ilike()`.
+- **Fix:** Mengintegrasikan `isDummyOrTestString` dan `isForbiddenName`, menggunakan query `.ilike()` dengan fallback aman, dan menangkap exception 23505 untuk diterjemahkan ke pesan ramah.
 
-## 5. Remaining risk & next step
-- Task is 100% complete and fully verified.
-- The Git commit and push to main should be performed according to project rules.
+---
+
+## 3. Files Modified
+1. `src/lib/teacherUserSync.ts`
+   - Sanitasi internal whitespace untuk NIP dan username.
+   - Integrasi `isDummyOrTestString` dan `isForbiddenName`.
+   - Pemeriksaan keunikan username case-insensitive via `ilike` & `neq`.
+   - Penangkapan error Postgres 23505 untuk pesan ramah.
+   - Proteksi field NIP pada `data_guru`.
+2. `src/components/AdminPenggunaView.tsx`
+   - Self-healing akun pengguna otomatis saat `userId` belum ada pada modal edit maupun quick reset.
+   - Menampilkan notifikasi banner jika sinkronisasi guru menghasilkan errors.
+3. `src/components/ClaySidebar.tsx`
+   - Menambahkan properti `currentTab?: string;` pada `ClaySidebarProps`.
+   - Mengaktifkan highlight sub menu Pengguna saat tab Pengguna aktif di Master Data.
+4. `src/components/AdminDataView.tsx`
+   - Memakai `resolveTeacherUsername` dan `getDefaultTeacherPassword` terpusat.
+   - Menggunakan query `.ilike()` saat validasi user sebelum insert.
+5. `src/components/HomeViewAdmin.tsx`
+   - Menambahkan properti opsional `schoolName?: string;` pada `HomeViewAdminProps` untuk memperbaiki build TypeScript.
+6. `src/lib/dataIntegrityGuard.ts`
+   - Menyelaraskan sanitasi NIP dan username, menggunakan `.ilike()` pada auto-sync import CSV.
+7. `tests/data_guru_csv_import_sekolah_id_validation.test.ts`
+   - Menambahkan pembersihan record `users` pada pre-clean dan blok `finally` pasca-import.
+8. `tests/admin_submenu_pengguna_kredensial_guru.test.ts`
+   - Menambahkan mock `.ilike()` dan `.neq()` pada mockSupabase.
+   - Menambahkan 4 adversarial test checks baru (3.5 s.d. 3.8): penolakan dummy username, penolakan nama terlarang, pencegahan tabrakan username akun lain, dan toleransi sanitasi spasi internal/null/dash.
+
+---
+
+## 4. Verification Record
+- **Automated Tests:**
+  - `npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts`: **18/18 checks PASSED** (100%).
+  - `npx tsx tests/user_standardization_and_cleanup_verification.test.ts`: **65/65 checks PASSED** (100%).
+  - `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts`: **31/31 checks PASSED** (100%).
+  - `npm test`: **52 Suites Executed | 52 PASSED | 0 FAILED** (100%).
+- **Production Build:**
+  - `npm run build`: Compiled successfully in 2.2s, Finished TypeScript in 3.4s, Generating static pages (13/13) in 1378ms. 0 errors.
+
+---
+
+## 5. Next Steps
+Seluruh bug fatal pada build, interferensi test suite antar-modul, dan celah validasi kredensial telah diperbaiki secara tuntas. Kode siap untuk di-commit dan di-push ke main sesuai Git Workflow Rule.

@@ -20,6 +20,7 @@ export interface ClaySidebarProps {
   onClose: () => void;
   user: AppUser;
   currentView: string;
+  currentTab?: string;
   onNavigate: (viewId: string) => void;
   menuItems: MenuItem[];
   isSuperadmin?: boolean;
@@ -41,6 +42,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
   onClose,
   user,
   currentView,
+  currentTab,
   onNavigate,
   menuItems,
   isSuperadmin = false,
@@ -247,7 +249,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
                   {item.subItems && (isAdmin || isSuperadmin) && (
                     <div className="ml-7 pl-2.5 py-1 space-y-1 border-l-2 border-purple-300/60 dark:border-purple-800/60 my-1">
                       {item.subItems.map((sub) => {
-                        const isSubActive = currentView === sub.id;
+                        const isSubActive = currentView === sub.id || (currentView === 'view-admin-data' && (currentTab === 'Pengguna' || currentTab === 'pengguna'));
                         return (
                           <button
                             key={sub.id}

@@ -811,22 +811,23 @@ export async function importMasterDataFromCsv(
   if (tableName === 'data_guru' && rows.length > 0) {
     try {
       for (const row of rows) {
-        const nip = (row.nip && row.nip.trim() !== '-')
-          ? row.nip.trim()
-          : (row.nama_guru || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-        if (nip) {
-          const defaultPassword = `${nip}27`;
+        const cleanNip = (row.nip || '').trim().replace(/\s+/g, '');
+        const targetUsername = (cleanNip && cleanNip !== '-' && cleanNip.toLowerCase() !== 'null')
+          ? cleanNip
+          : (row.nama_guru || '').trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'guru';
+        if (targetUsername) {
+          const defaultPassword = `${targetUsername}27`;
           const userTable = supabase?.from?.('users');
           if (typeof userTable?.select === 'function') {
             const { data: existingUser } = await userTable
               .select('id')
-              .eq('username', nip)
+              .ilike('username', targetUsername)
               .maybeSingle();
 
             if (!existingUser && typeof userTable?.insert === 'function') {
               await userTable.insert([{
                 id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined,
-                username: nip,
+                username: targetUsername,
                 password: defaultPassword,
                 nama: row.nama_guru,
                 role: 'Guru',

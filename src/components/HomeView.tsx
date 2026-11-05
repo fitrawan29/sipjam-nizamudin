@@ -9,6 +9,7 @@ export interface HomeViewProps {
   setView: (view: string) => void;
   menuItems?: any[];
   onOpenAccountSettings?: () => void;
+  schoolName?: string;
 }
 
 export default function HomeView({
@@ -16,6 +17,7 @@ export default function HomeView({
   setView,
   menuItems = [],
   onOpenAccountSettings,
+  schoolName,
 }: HomeViewProps) {
   const role = (user?.role || '').toLowerCase().replace(/\s+/g, '');
   const isSuperadmin = role === 'superadmin';
@@ -39,6 +41,7 @@ export default function HomeView({
       setView={setView}
       menuItems={menuItems}
       onOpenAccountSettings={onOpenAccountSettings}
+      schoolName={schoolName}
     />
   );
 }

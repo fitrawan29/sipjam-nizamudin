@@ -31,6 +31,7 @@ import {
 } from '@/lib/academicTitles';
 import SistemBlokView from './SistemBlokView';
 import AdminPenggunaView from './AdminPenggunaView';
+import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
 
 export interface AdminDataViewProps {
   user: any;
@@ -534,14 +535,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         } else {
           // Auto-create teacher account in users with username NIP and default password NIP27
           try {
-            const syncUsername = (formValues.nip && formValues.nip.trim() !== '-')
-              ? formValues.nip.trim()
-              : formValues.nama_guru.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-            const defaultPassword = `${syncUsername}27`;
+            const syncUsername = resolveTeacherUsername({ nip: formValues.nip, nama_guru: formValues.nama_guru });
+            const defaultPassword = getDefaultTeacherPassword(syncUsername);
             const { data: existingUser } = await supabase
               .from('users')
               .select('id')
-              .eq('username', syncUsername)
+              .ilike('username', syncUsername)
               .maybeSingle();
 
             if (!existingUser) {

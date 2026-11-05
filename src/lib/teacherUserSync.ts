@@ -8,7 +8,7 @@
  * - Role: Guru
  */
 
-import { normalizeName } from './dataIntegrityGuard';
+import { normalizeName, isDummyOrTestString, isForbiddenName } from './dataIntegrityGuard';
 
 export interface TeacherAccountItem {
   guruId: string;
@@ -28,8 +28,8 @@ export interface TeacherAccountItem {
  * Derives default password for a teacher: username/NIP + '27'
  */
 export function getDefaultTeacherPassword(usernameOrNip: string): string {
-  const clean = (usernameOrNip || '').trim();
-  if (!clean || clean === '-') {
+  const clean = (usernameOrNip || '').trim().replace(/\s+/g, '');
+  if (!clean || clean === '-' || clean.toLowerCase() === 'null' || clean.toLowerCase() === 'undefined') {
     return 'guru27';
   }
   return `${clean}27`;
@@ -39,8 +39,8 @@ export function getDefaultTeacherPassword(usernameOrNip: string): string {
  * Resolves the canonical username from a teacher record (prefers NIP, fallback to clean name)
  */
 export function resolveTeacherUsername(guru: { nip?: string | null; nama_guru?: string | null }): string {
-  const cleanNip = (guru?.nip || '').trim();
-  if (cleanNip && cleanNip !== '-' && cleanNip !== 'null') {
+  const cleanNip = (guru?.nip || '').trim().replace(/\s+/g, '');
+  if (cleanNip && cleanNip !== '-' && cleanNip.toLowerCase() !== 'null' && cleanNip.toLowerCase() !== 'undefined') {
     return cleanNip;
   }
   const cleanNama = (guru?.nama_guru || '').trim();
@@ -205,7 +205,7 @@ export async function syncTeacherAccounts(
 
 /**
  * Updates credentials (username and/or password) for a teacher user account.
- * Also synchronizes NIP in data_guru if username was updated to match NIP.
+ * Also synchronizes NIP in data_guru if syncNipToDataGuru or newNip is explicitly specified.
  */
 export async function updateTeacherCredentials(
   supabaseClient: any,
@@ -216,29 +216,44 @@ export async function updateTeacherCredentials(
     newUsername: string;
     newPassword?: string;
     newNama?: string;
+    newNip?: string;
+    syncNipToDataGuru?: boolean;
     sekolahId?: string;
   }
 ): Promise<{ success: boolean; message: string }> {
-  const { userId, guruId, oldUsername, newUsername, newPassword, newNama } = params;
+  const { userId, guruId, oldUsername, newUsername, newPassword, newNama, newNip, syncNipToDataGuru } = params;
 
-  const cleanUsername = (newUsername || '').trim();
+  const cleanUsername = (newUsername || '').trim().replace(/\s+/g, '');
   if (!cleanUsername) {
     return { success: false, message: 'Username tidak boleh kosong!' };
   }
 
-  try {
-    // 1. Verify username uniqueness if changed
-    if (oldUsername && cleanUsername.toLowerCase() !== oldUsername.toLowerCase()) {
-      const { data: existing } = await supabaseClient
-        .from('users')
-        .select('id, username')
-        .eq('username', cleanUsername)
-        .neq('id', userId)
-        .maybeSingle();
+  // Anti-dummy check & forbidden name validation
+  if (isDummyOrTestString(cleanUsername)) {
+    return { success: false, message: 'Username terdeteksi sebagai akun percobaan/dummy. Harap gunakan username riil.' };
+  }
+  if (isForbiddenName(cleanUsername)) {
+    return { success: false, message: 'Username tersebut dinonaktifkan dari sistem.' };
+  }
 
-      if (existing) {
-        return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
-      }
+  try {
+    // 1. Verify username uniqueness across users table (case-insensitive)
+    let userQuery = supabaseClient
+      .from('users')
+      .select('id, username');
+
+    if (typeof userQuery.ilike === 'function') {
+      userQuery = userQuery.ilike('username', cleanUsername);
+    } else {
+      userQuery = userQuery.eq('username', cleanUsername);
+    }
+
+    const { data: existing } = await userQuery
+      .neq('id', userId)
+      .maybeSingle();
+
+    if (existing) {
+      return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
     }
 
     // 2. Build user update payload
@@ -261,13 +276,22 @@ export async function updateTeacherCredentials(
       .eq('id', userId);
 
     if (userUpdateErr) {
+      if (
+        userUpdateErr.code === '23505' ||
+        userUpdateErr.message?.includes('duplicate key') ||
+        userUpdateErr.message?.includes('uq_users_username_lower')
+      ) {
+        return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
+      }
       throw new Error(`Gagal memperbarui tabel users: ${userUpdateErr.message}`);
     }
 
     // 3. Keep data_guru synchronized (NIP and nama)
     try {
       const guruPayload: Record<string, any> = {};
-      if (cleanUsername && cleanUsername !== '-') {
+      if (newNip && newNip.trim()) {
+        guruPayload.nip = newNip.trim();
+      } else if (syncNipToDataGuru && cleanUsername && cleanUsername !== '-') {
         guruPayload.nip = cleanUsername;
       }
       if (newNama && newNama.trim()) {
@@ -303,7 +327,7 @@ export async function resetTeacherPasswordToDefault(
     nip?: string;
   }
 ): Promise<{ success: boolean; message: string; defaultPassword: string }> {
-  const targetIdentifier = (params.nip && params.nip !== '-') ? params.nip.trim() : params.username.trim();
+  const targetIdentifier = (params.nip && params.nip !== '-' && params.nip.toLowerCase() !== 'null') ? params.nip.trim() : params.username.trim();
   const defaultPassword = getDefaultTeacherPassword(targetIdentifier);
 
   try {

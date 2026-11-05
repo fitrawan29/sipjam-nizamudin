@@ -1090,6 +1090,7 @@ export default function AppScreen({
                   setView={handleNavigation} 
                   menuItems={consolidatedMenuItems} 
                   onOpenAccountSettings={() => setIsAccountModalOpen(true)} 
+                  schoolName={schoolData?.nama}
                 />
               )}
               {currentView === 'view-guru-presensi' && <GuruPresensi user={user} initialTab={(urlTab as any) || 'live'} />}

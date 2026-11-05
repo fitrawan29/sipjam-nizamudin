@@ -195,16 +195,33 @@ async function runTestSuite() {
       let currentTable = table;
       let filterRole: string | null = null;
       let filterSekolah: string | null = null;
+      let filterIlikeUsername: string | null = null;
+      let excludeId: string | null = null;
       return {
         select: (cols: string) => {
           return {
             eq: function(field: string, val: string) {
               if (field === 'role') filterRole = val;
               if (field === 'sekolah_id') filterSekolah = val;
+              if (field === 'username') filterIlikeUsername = val;
               return this;
             },
-            neq: function() { return this; },
+            ilike: function(field: string, val: string) {
+              if (field === 'username') filterIlikeUsername = val;
+              return this;
+            },
+            neq: function(field: string, val: string) {
+              if (field === 'id') excludeId = val;
+              return this;
+            },
             maybeSingle: async function() {
+              if (currentTable === 'users' && filterIlikeUsername) {
+                const found = mockUsers.find(
+                  u => (!excludeId || u.id !== excludeId) &&
+                       u.username?.toLowerCase() === filterIlikeUsername?.toLowerCase()
+                );
+                return { data: found || null, error: null };
+              }
               return { data: null, error: null };
             },
             then: function(resolve: any) {
@@ -319,6 +336,44 @@ async function runTestSuite() {
   }
   assert.strictEqual(verifyLoginMock(user1, user1.username, '19850101201001100127'), true);
   pass('3.4: Kredensial yang diperbarui berhasil disimpan dan valid untuk autentikasi login');
+
+  // Test 3.5: Reject dummy username
+  const dummyRes = await updateTeacherCredentials(mockSupabase, {
+    userId: user1.id,
+    newUsername: 'testuser'
+  });
+  assert.strictEqual(dummyRes.success, false);
+  assert.ok(dummyRes.message.includes('dummy') || dummyRes.message.includes('percobaan'));
+  pass('3.5: Validasi menolak username dummy / percobaan (testuser)');
+
+  // Test 3.6: Reject forbidden username
+  const forbiddenRes = await updateTeacherCredentials(mockSupabase, {
+    userId: user1.id,
+    newUsername: 'ahmad_dahlan'
+  });
+  assert.strictEqual(forbiddenRes.success, false);
+  assert.ok(forbiddenRes.message.includes('dinonaktifkan'));
+  pass('3.6: Validasi menolak username terlarang / usang (ahmad_dahlan)');
+
+  // Test 3.7: Prevent collision when updating to an existing username
+  const collisionRes = await updateTeacherCredentials(mockSupabase, {
+    userId: user1.id,
+    newUsername: '199505052020051003' // belonging to Fitra
+  });
+  assert.strictEqual(collisionRes.success, false);
+  assert.ok(collisionRes.message.includes('sudah digunakan'));
+  pass('3.7: Validasi menolak pembaruan username yang bertabrakan dengan akun lain');
+
+  // Test 3.8: Whitespace, Null & Fallback Tolerances
+  const spacedNip = resolveTeacherUsername({ nip: ' 19850101 201001 1 001 ' });
+  assert.strictEqual(spacedNip, '198501012010011001');
+  const spacedPwd = getDefaultTeacherPassword(' 19850101 201001 1 001 ');
+  assert.strictEqual(spacedPwd, '19850101201001100127');
+  const nullPwd = getDefaultTeacherPassword('null');
+  assert.strictEqual(nullPwd, 'guru27');
+  const emptyPwd = getDefaultTeacherPassword('-');
+  assert.strictEqual(emptyPwd, 'guru27');
+  pass('3.8: Sanitasi toleran terhadap spasi internal, null, dash, dan menghasilkan default password NIP27 konsisten');
 
   // ==========================================================================
   // SUITE 4: Non-Regression & Master Data Integrity (R4)

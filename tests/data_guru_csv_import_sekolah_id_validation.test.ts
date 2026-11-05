@@ -785,24 +785,33 @@ async function runTests() {
         `${validSekolahId},${uniqueNip},${uniqueName},Informatika,08123456789,Aktif,test.import@school.id`
       ].join('\n');
 
-      // 2. Perform import
-      const result = await importMasterDataFromCsv(supabase, csvData, 'data_guru', authUser);
-      assert.strictEqual(result.count, 1, 'Should have inserted 1 record');
-
-      // 3. Query back from database to verify record is present with sekolah_id
-      const { data: insertedRecords, error: fetchErr } = await supabase
-        .from('data_guru')
-        .select('*')
-        .eq('nip', uniqueNip);
-
-      assert(!fetchErr, `Fetch error: ${fetchErr?.message}`);
-      assert.strictEqual(insertedRecords?.length, 1, 'Record should exist in data_guru');
-      assert.strictEqual(insertedRecords[0].sekolah_id, validSekolahId, 'sekolah_id in DB must match');
-      assert.strictEqual(insertedRecords[0].nama_guru, uniqueName);
-
-      // 4. Clean up test record
+      // 0. Pre-clean any stale records with uniqueName from prior failed runs
+      await supabase.from('users').delete().eq('nama', uniqueName);
       await supabase.from('data_guru').delete().eq('nip', uniqueNip);
-      pass(`Live database import succeeded and verified: record inserted with sekolah_id=${validSekolahId} and cleaned up`);
+
+      try {
+        // 2. Perform import
+        const result = await importMasterDataFromCsv(supabase, csvData, 'data_guru', authUser);
+        assert.strictEqual(result.count, 1, 'Should have inserted 1 record');
+
+        // 3. Query back from database to verify record is present with sekolah_id
+        const { data: insertedRecords, error: fetchErr } = await supabase
+          .from('data_guru')
+          .select('*')
+          .eq('nip', uniqueNip);
+
+        assert(!fetchErr, `Fetch error: ${fetchErr?.message}`);
+        assert.strictEqual(insertedRecords?.length, 1, 'Record should exist in data_guru');
+        assert.strictEqual(insertedRecords[0].sekolah_id, validSekolahId, 'sekolah_id in DB must match');
+        assert.strictEqual(insertedRecords[0].nama_guru, uniqueName);
+
+        pass(`Live database import succeeded and verified: record inserted with sekolah_id=${validSekolahId} and cleaned up`);
+      } finally {
+        // 4. Clean up test records from both data_guru and users
+        await supabase.from('data_guru').delete().eq('nip', uniqueNip);
+        await supabase.from('users').delete().eq('username', uniqueNip);
+        await supabase.from('users').delete().eq('nama', uniqueName);
+      }
     } catch (e) {
       fail('Live database import failed', e);
     }

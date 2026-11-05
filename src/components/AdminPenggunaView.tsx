@@ -50,6 +50,10 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
         setAccounts([]);
       }
 
+      if (result.errors && result.errors.length > 0) {
+        setErrorMsg(result.errors.join('; '));
+      }
+
       if (isManualTrigger) {
         if (result.createdCount > 0) {
           showToast(
@@ -211,10 +215,37 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       }
     });
 
-    if (formValues && item.userId) {
+    if (formValues) {
       setLoading(true);
+      let targetUserId = item.userId;
+      if (!targetUserId) {
+        // Self-heal: ensure account exists before updating
+        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
+        const { data: created, error: createErr } = await supabase
+          .from('users')
+          .insert([{
+            id: newId,
+            username: formValues.newUsername,
+            password: formValues.newPassword || defaultPwd,
+            nama: item.nama,
+            role: 'Guru',
+            sekolah_id: item.sekolahId || user?.sekolah_id
+          }])
+          .select()
+          .maybeSingle();
+
+        setLoading(false);
+        if (createErr) {
+          showToast('Gagal Membuat Akun', createErr.message, 'error');
+        } else {
+          showToast('Berhasil', 'Akun guru berhasil dibuat!', 'success');
+          handleLoadAndSync(false);
+        }
+        return;
+      }
+
       const res = await updateTeacherCredentials(supabase, {
-        userId: item.userId,
+        userId: targetUserId,
         guruId: item.guruId,
         oldUsername: item.username,
         newUsername: formValues.newUsername,
@@ -236,11 +267,6 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
   const handleQuickReset = async (item: TeacherAccountItem) => {
     if (!isAdmin) {
       showToast('Akses Ditolak', 'Hanya Admin yang dapat mereset kata sandi.', 'error');
-      return;
-    }
-
-    if (!item.userId) {
-      showToast('Peringatan', 'Akun pengguna belum terdaftar.', 'warning');
       return;
     }
 
@@ -266,8 +292,35 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
     if (result.isConfirmed) {
       setLoading(true);
+
+      let targetUserId = item.userId;
+      if (!targetUserId) {
+        // Self-heal: create account with default password NIP27
+        const targetUsername = item.nip !== '-' ? item.nip : item.username;
+        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
+        const { error: createErr } = await supabase
+          .from('users')
+          .insert([{
+            id: newId,
+            username: targetUsername,
+            password: defaultPwd,
+            nama: item.nama,
+            role: 'Guru',
+            sekolah_id: item.sekolahId || user?.sekolah_id
+          }]);
+
+        setLoading(false);
+        if (createErr) {
+          showToast('Gagal Membuat Akun', createErr.message, 'error');
+        } else {
+          showToast('Reset Berhasil', `Akun dibuat dan password direset ke default: ${defaultPwd}`, 'success');
+          handleLoadAndSync(false);
+        }
+        return;
+      }
+
       const res = await resetTeacherPasswordToDefault(supabase, {
-        userId: item.userId,
+        userId: targetUserId,
         username: item.username,
         nip: item.nip
       });

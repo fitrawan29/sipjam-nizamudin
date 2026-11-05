@@ -44,11 +44,19 @@ interface TeacherStatusRow {
   isTugasLengkap: boolean;
 }
 
+const formatSchoolDisplayName = (name: string): string => {
+  if (!name) return 'Sekolah';
+  const trimmed = name.trim();
+  const stripped = trimmed.replace(/^sipjam\s*[-–—:]*\s*/i, '').trim();
+  return stripped || trimmed;
+};
+
 export interface HomeViewAdminProps {
   user: AppUser;
   setView: (view: string) => void;
   menuItems?: any[];
   onOpenAccountSettings?: () => void;
+  schoolName?: string;
 }
 
 export default function HomeViewAdmin({
@@ -56,6 +64,7 @@ export default function HomeViewAdmin({
   setView,
   menuItems: _menuItems = [],
   onOpenAccountSettings,
+  schoolName: propSchoolName,
 }: HomeViewAdminProps) {
   const timeStr = getWitaTimeStr();
   const hariIni = getWitaDayName();
@@ -63,7 +72,87 @@ export default function HomeViewAdmin({
   const dateParts = getWitaDateStr().split('-'); // [YYYY, MM, DD]
   const dashboardDateStr = `${hariIni}, ${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
 
-    const [adminLoading, setAdminLoading] = useState(false);
+  const [internalSchoolName, setInternalSchoolName] = useState<string>(() => {
+    if (propSchoolName) return propSchoolName;
+    if (typeof window !== 'undefined') {
+      try {
+        const syncRaw = localStorage.getItem('sipjam_config_sync');
+        if (syncRaw) {
+          const parsed = JSON.parse(syncRaw);
+          if (parsed?.config?.kop_sekolah) return parsed.config.kop_sekolah;
+        }
+        const rawUser = localStorage.getItem('sipjam_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u?.sekolah_nama) return u.sekolah_nama;
+        }
+      } catch (_) {}
+    }
+    return (user as any)?.sekolah_nama || 'SMA NIZAMUDIN';
+  });
+
+  const effectiveSchoolName = propSchoolName || internalSchoolName;
+
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      const sId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      try {
+        const { data } = await supabase
+          .from('pengaturan')
+          .select('key, value')
+          .eq('sekolah_id', sId)
+          .in('key', ['kop_sekolah', 'NAMA_SEKOLAH']);
+        if (data && data.length > 0) {
+          const kop = data.find((r: any) => r.key === 'kop_sekolah')?.value || data.find((r: any) => r.key === 'NAMA_SEKOLAH')?.value;
+          if (kop?.trim()) {
+            setInternalSchoolName(kop.trim());
+            return;
+          }
+        }
+        const { data: sData } = await supabase
+          .from('sekolah')
+          .select('nama')
+          .eq('id', sId)
+          .maybeSingle();
+        if (sData?.nama?.trim()) {
+          setInternalSchoolName(sData.nama.trim());
+        }
+      } catch (_) {}
+    };
+    fetchSchoolName();
+  }, [user?.sekolah_id]);
+
+  useEffect(() => {
+    const handleWindowConfigSync = (e: any) => {
+      const updatedKop = e?.detail?.config?.kop_sekolah || e?.detail?.config?.NAMA_SEKOLAH;
+      if (updatedKop) {
+        setInternalSchoolName(updatedKop);
+      }
+    };
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          const updatedKop = parsed?.config?.kop_sekolah || parsed?.config?.NAMA_SEKOLAH;
+          if (updatedKop) {
+            setInternalSchoolName(updatedKop);
+          }
+        } catch (_) {}
+      }
+    };
+    window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  const cleanSchool = formatSchoolDisplayName(effectiveSchoolName || (user as any)?.sekolah_nama || 'SMA NIZAMUDIN');
+  const baseSchool = cleanSchool.replace(/^admin\s+/i, '').trim() || 'Sekolah';
+  const adminDisplayName = `Admin ${baseSchool}`;
+
+  const [adminLoading, setAdminLoading] = useState(false);
   const [matrixList, setMatrixList] = useState<TeacherStatusRow[]>([]);
   const [matrixSearch, setMatrixSearch] = useState('');
   const [matrixFilter, setMatrixFilter] = useState<'Semua' | 'Tugas Lengkap' | 'Belum Lengkap'>('Semua');
@@ -538,18 +627,26 @@ export default function HomeViewAdmin({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm sm:text-base leading-tight truncate">{user.nama}</h2>
-                <span className="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">
-                  {user.role}
-                </span>
-              </div>
-              <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
-                <span>{user.username}</span>
-                {(!user?.nama?.toLowerCase().includes(((user as any)?.sekolah_nama || 'SMA NIZAMUDIN').toLowerCase()) &&
-                  !user?.nama?.toLowerCase().includes('sma nizamudin')) && (
-                  <span className="truncate font-sans font-medium">{(user as any)?.sekolah_nama || 'SMA NIZAMUDIN'}</span>
+                <h2 className="font-bold text-sm sm:text-base leading-tight truncate">{adminDisplayName}</h2>
+                {user?.role && user.role.toLowerCase() !== 'admin' && !adminDisplayName.toLowerCase().includes('admin') && (
+                  <span className="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">
+                    {user.role}
+                  </span>
                 )}
-              </p>
+              </div>
+              {((user?.username && user.username.toLowerCase() !== 'admin') ||
+                (!user?.nama?.toLowerCase().includes(((user as any)?.sekolah_nama || 'SMA NIZAMUDIN').toLowerCase()) &&
+                  !user?.nama?.toLowerCase().includes('sma nizamudin'))) && (
+                <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
+                  {user?.username && user.username.toLowerCase() !== 'admin' && (
+                    <span>{user.username}</span>
+                  )}
+                  {(!user?.nama?.toLowerCase().includes(((user as any)?.sekolah_nama || 'SMA NIZAMUDIN').toLowerCase()) &&
+                    !user?.nama?.toLowerCase().includes('sma nizamudin')) && (
+                    <span className="truncate font-sans font-medium">{(user as any)?.sekolah_nama || 'SMA NIZAMUDIN'}</span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
