@@ -10,6 +10,7 @@ export interface MenuItem {
   badge?: string | number;
   badgeVariant?: 'mint' | 'amber' | 'rose' | 'blue';
   dataTour?: string;
+  subItems?: MenuItem[];
 }
 
 export interface RouteResolution {
@@ -31,6 +32,9 @@ export const VIEW_ALIASES: Record<string, { view: string; tab?: string }> = {
   'view-rekap-guru':        { view: 'view-admin-rekap', tab: 'tabel' },
   // Klaster 5: Master Data & Sistem
   'view-sistem-blok':       { view: 'view-admin-data', tab: 'blok' },
+  'view-admin-pengguna':    { view: 'view-admin-data', tab: 'Pengguna' },
+  'view-pengguna':          { view: 'view-admin-data', tab: 'Pengguna' },
+  'view-admin-users':       { view: 'view-admin-data', tab: 'Pengguna' },
   'view-admin-backup':      { view: 'view-admin-config', tab: 'backup' }
 };
 
@@ -41,7 +45,7 @@ export const SIDEBAR_TOUR_ALIASES: Record<string, string> = {
   'view-guru-presensi': 'view-history',
   'view-gradebook': 'view-rapor',
   'view-admin-rekap': 'view-analitik view-rekap-guru',
-  'view-admin-data': 'view-sistem-blok',
+  'view-admin-data': 'view-sistem-blok view-admin-pengguna view-pengguna',
   'view-admin-config': 'view-admin-backup'
 };
 
@@ -84,7 +88,15 @@ export function getConsolidatedMenuItems(params: {
   if (isSuperadmin) {
     if (params.activeTargetSchool) {
       return [
-        { id: 'view-admin-data', icon: 'fa-database', label: 'Master Data & Kalender', dataTour: 'view-admin-data view-sistem-blok' },
+        {
+          id: 'view-admin-data',
+          icon: 'fa-database',
+          label: 'Master Data & Kalender',
+          dataTour: 'view-admin-data view-sistem-blok',
+          subItems: [
+            { id: 'view-admin-pengguna', icon: 'fa-users-gear', label: 'Pengguna', dataTour: 'view-admin-pengguna view-pengguna' }
+          ]
+        },
         { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Pusat Verifikasi' },
         { id: 'view-admin-rekap', icon: 'fa-chart-pie', label: 'Laporan & Analitik', dataTour: 'view-admin-rekap view-analitik' },
         { id: 'view-rekap-siswa', icon: 'fa-users', label: 'Kesiswaan & Presensi' },
@@ -133,7 +145,15 @@ export function getConsolidatedMenuItems(params: {
       { id: 'view-rekap-siswa', icon: 'fa-users', label: 'Presensi Siswa' },
       { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen & Rapor Sekolah', dataTour: 'view-gradebook view-rapor' },
       { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
-      { id: 'view-admin-data', icon: 'fa-database', label: 'Master Data & Kalender', dataTour: 'view-admin-data view-sistem-blok' },
+      {
+        id: 'view-admin-data',
+        icon: 'fa-database',
+        label: 'Master Data & Kalender',
+        dataTour: 'view-admin-data view-sistem-blok',
+        subItems: [
+          { id: 'view-admin-pengguna', icon: 'fa-users-gear', label: 'Pengguna', dataTour: 'view-admin-pengguna view-pengguna' }
+        ]
+      },
       { id: 'view-admin-config', icon: 'fa-gear', label: 'Pengaturan Sistem & Database', dataTour: 'view-admin-config view-admin-backup' }
     ];
   }
@@ -202,7 +222,15 @@ export function evaluateTabRBAC(
   const resolved = resolveCanonicalRoute(viewId, tabId);
   const effectiveView = resolved.canonicalView;
   const effectiveTab = resolved.defaultTab || tabId;
-  if (effectiveView === 'view-admin-data' || viewId === 'view-admin-data' || viewId === 'view-sistem-blok') {
+  if (
+    effectiveView === 'view-admin-data' ||
+    viewId === 'view-admin-data' ||
+    viewId === 'view-sistem-blok' ||
+    viewId === 'view-admin-pengguna' ||
+    viewId === 'view-pengguna' ||
+    viewId === 'view-admin-users' ||
+    (effectiveView === 'view-admin-data' && (effectiveTab === 'Pengguna' || effectiveTab === 'users' || effectiveTab === 'pengguna'))
+  ) {
     if (!isAdmin) {
       return { allowed: false, fallbackTab: 'view-home', reason: 'Seluruh data master hanya dapat diakses dan diubah oleh Administrator.' };
     }

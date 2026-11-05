@@ -807,6 +807,40 @@ export async function importMasterDataFromCsv(
     }
   }
 
+  // Auto-sync teacher accounts in users when importing data_guru
+  if (tableName === 'data_guru' && rows.length > 0) {
+    try {
+      for (const row of rows) {
+        const nip = (row.nip && row.nip.trim() !== '-')
+          ? row.nip.trim()
+          : (row.nama_guru || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        if (nip) {
+          const defaultPassword = `${nip}27`;
+          const userTable = supabase?.from?.('users');
+          if (typeof userTable?.select === 'function') {
+            const { data: existingUser } = await userTable
+              .select('id')
+              .eq('username', nip)
+              .maybeSingle();
+
+            if (!existingUser && typeof userTable?.insert === 'function') {
+              await userTable.insert([{
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined,
+                username: nip,
+                password: defaultPassword,
+                nama: row.nama_guru,
+                role: 'Guru',
+                sekolah_id: row.sekolah_id || user?.sekolah_id
+              }]);
+            }
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[dataIntegrityGuard] Auto-sync users for imported data_guru warning:', syncErr);
+    }
+  }
+
   return { count: rows.length, rows };
 }
 

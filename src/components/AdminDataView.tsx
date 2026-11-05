@@ -30,6 +30,7 @@ import {
   setupSwalTitleManager
 } from '@/lib/academicTitles';
 import SistemBlokView from './SistemBlokView';
+import AdminPenggunaView from './AdminPenggunaView';
 
 export interface AdminDataViewProps {
   user: any;
@@ -39,6 +40,7 @@ export interface AdminDataViewProps {
 export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
   const [activeTab, setActiveTab] = useState(() => {
     if (initialTab === 'blok' || initialTab === 'sistem_blok') return 'sistem_blok';
+    if (initialTab === 'Pengguna' || initialTab === 'pengguna' || initialTab === 'users') return 'Pengguna';
     return initialTab || 'Data_Siswa';
   });
 
@@ -46,6 +48,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     if (initialTab) {
       if (initialTab === 'blok' || initialTab === 'sistem_blok') {
         setActiveTab('sistem_blok');
+      } else if (initialTab === 'Pengguna' || initialTab === 'pengguna' || initialTab === 'users') {
+        setActiveTab('Pengguna');
       } else {
         setActiveTab(initialTab);
       }
@@ -117,10 +121,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     { id: 'Jadwal_Pelajaran', label: 'Jadwal', table: 'jadwal_pelajaran' },
     { id: 'sistem_blok', label: 'Periode Sistem Blok', table: 'sistem_blok' },
     { id: 'Wali_Kelas', label: 'Wali Kelas', table: 'wali_kelas' },
+    { id: 'Pengguna', label: 'Pengguna', table: 'users' },
   ];
 
   const loadData = useCallback(async () => {
-    if (activeTab === 'sistem_blok' || activeTab === 'blok') return;
+    if (activeTab === 'sistem_blok' || activeTab === 'blok' || activeTab === 'Pengguna') return;
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
 
@@ -527,6 +532,32 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         if (error) {
           showToast('Gagal Menambah Data', error.message, 'error');
         } else {
+          // Auto-create teacher account in users with username NIP and default password NIP27
+          try {
+            const syncUsername = (formValues.nip && formValues.nip.trim() !== '-')
+              ? formValues.nip.trim()
+              : formValues.nama_guru.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+            const defaultPassword = `${syncUsername}27`;
+            const { data: existingUser } = await supabase
+              .from('users')
+              .select('id')
+              .eq('username', syncUsername)
+              .maybeSingle();
+
+            if (!existingUser) {
+              await supabase.from('users').insert([{
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined,
+                username: syncUsername,
+                password: defaultPassword,
+                nama: formValues.nama_guru,
+                role: 'Guru',
+                sekolah_id: formValues.sekolah_id || user?.sekolah_id
+              }]);
+            }
+          } catch (accErr) {
+            console.warn('[AdminDataView] Auto-create teacher account warning:', accErr);
+          }
+
           showToast('Berhasil', 'Data guru berhasil disimpan!', 'success');
           loadData();
         }
@@ -1891,6 +1922,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             {(activeTab === 'sistem_blok' || activeTab === 'blok') ? (
               <div className="mt-2">
                 <SistemBlokView user={user} />
+              </div>
+            ) : activeTab === 'Pengguna' ? (
+              <div className="mt-2">
+                <AdminPenggunaView user={user} />
               </div>
             ) : (
               <>

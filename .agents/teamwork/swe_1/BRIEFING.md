@@ -1,93 +1,63 @@
-# BRIEFING — 2026-11-04T04:00:00Z
+# BRIEFING — 2026-11-05T21:46:00Z
 
 ## Mission
-Fix the error when importing master data guru from CSV in sipjam-app where "sekolah_id" is null and violates the not-null constraint on the "data_guru" table.
+Orchestrate the implementation and refinement of the 'Pengguna' submenu under Master Data and Calendar for admin role to manage teacher credentials, with automatic account syncing and NIP/NIP27 defaults.
 
 ## 🔒 My Identity
 - Archetype: teamwork_swe
 - Roles: orchestrator, user_liaison, human_reporter, successor
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\
 - Original parent: parent
-- Original parent conversation ID: 252bc2fb-55c3-485f-95e5-a2455cf9b756
+- Original parent conversation ID: 02de0e18-c84a-4b3b-add3-729ac5912a50
 
 ## 🔒 My Workflow
 - **Pattern**: SWE Light
-- **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-1. **Decompose**: Do not decompose. Sequential refinement by teamwork_implementer followed by teamwork_reviewer rounds.
-2. **Dispatch & Execute**: Direct (iteration loop):
-   - teamwork_implementer -> teamwork_reviewer -> teamwork_reviewer -> ... -> teamwork_victory_auditor -> done
-3. **On failure**:
-   - Retry: nudge stuck agent or re-send task
-   - Replace: spawn fresh agent with partial progress
-   - Skip: proceed without (only if non-critical)
-   - Redistribute: split stuck agent's remaining work
-   - Redesign: re-partition decomposition
-   - Escalate: report to parent (last resort)
-4. **Succession**: At 16 spawns, write handoff.md, spawn successor.
+- **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\DISPATCH.md
+1. **Decompose**: No decomposition (SWE Light: single line of work, whole task given to worker)
+2. **Dispatch & Execute**:
+   - teamwork_implementer -> teamwork_reviewer -> teamwork_reviewer -> teamwork_reviewer -> teamwork_victory_auditor
+3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate
+4. **Succession**: At 16 spawns, write handoff.md, spawn successor
 - **Work items**:
-  1. Primary implementation (teamwork_implementer) [completed]
-  2. Review Round 1 (teamwork_reviewer) [completed]
-  3. Review Round 2 (teamwork_reviewer) [completed]
-  4. Review Round 3 (teamwork_reviewer) [completed]
-  5. Audit & Victory (teamwork_victory_auditor) [completed - VICTORY CONFIRMED]
-- **Current phase**: 4 (Complete)
-- **Current focus**: Completed & Reported to Parent
-- **Task 2026-11-04 (sekolah_id not null fix in data_guru CSV import)**:
-  1. Primary implementation (teamwork_implementer) [completed]
-  2. Review Round 1 (teamwork_reviewer) [completed]
-  3. Review Round 2 (teamwork_reviewer) [completed]
-  4. Review Round 3 (teamwork_reviewer) [completed]
-  5. Audit & Victory (teamwork_victory_auditor) [blocked by API 429 quota]
+  1. Primary implementation (teamwork_implementer) [in-progress]
+  2. Adversarial review round 1 (teamwork_reviewer) [pending]
+  3. Adversarial review round 2 (teamwork_reviewer) [pending]
+  4. Adversarial review round 3 (teamwork_reviewer) [pending]
+  5. Independent Victory Audit (teamwork_victory_auditor) [pending]
+- **Current phase**: 2 (Dispatch & Execute)
+- **Current focus**: Waiting for teamwork_implementer (886aec1c-9912-4479-bf7f-02942ec00d96)
 
 ## 🔒 Key Constraints
-- NEVER write, modify, or create source code files yourself. Delegate all implementation and all repair to teamwork_implementer and teamwork_reviewer.
-- NEVER explore or debug the codebase in order to solve the task yourself.
-- Propagate the task verbatim.
-- Floor of 3 review rounds required by pattern.
-- Carry open-issues ledger across ALL rounds.
+- Never write, modify, or create source code files yourself.
+- Never explore or debug the codebase in order to solve the task yourself.
+- Propagate user task verbatim.
+- Floor of 3 review rounds + independent re-run of tests.
+- Maintain open issues ledger across all rounds.
 - Never reuse a subagent after it has delivered its handoff — always spawn fresh.
-- Always follow git workflow rule (status, add, commit, push origin main) on completions.
 
 ## Current Parent
-- Conversation ID: d452ec11-3001-4064-a39c-00ec068825b1
-- Updated: 2026-11-04T02:51:54Z
+- Conversation ID: 02de0e18-c84a-4b3b-add3-729ac5912a50
+- Updated: 2026-11-05T21:45:00Z
 
 ## Key Decisions Made
-- Primary implementation completed by implementer_p2.
-- Review Round 1 completed by reviewer_r1_p2 (15/15 tests passing).
-- Review Round 2 completed by reviewer_r2_p2 (22/22 tests passing).
-- Review Round 3 completed by reviewer_r3_p2 (31/31 tests passing).
-- Orchestrator independently ran tests (31/31 passed, clean tsc, clean Turbopack build).
-- Independent Victory Auditor hit HTTP 429 quota across inherit, flash, and flash_lite.
-- All code changes committed and pushed to origin/main.
+- SWE Light pattern selected.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| teamwork_implementer_p2 | teamwork_implementer | Primary Implementation (CSV import sekolah_id) | completed | e43a2bbc-7002-4183-8e81-16a67833a4ba |
-| teamwork_reviewer_r1 | teamwork_reviewer | Review Round 1 (Adversarial Testing & Fixes) | completed | ca158bf0-2b9e-42a3-b8be-52f18c24bfbd |
-| teamwork_reviewer_r2 | teamwork_reviewer | Review Round 2 (Adversarial Testing & Fixes) | completed | 5a1f18bd-bc59-48a5-b9d2-b0215b63b6c4 |
-| teamwork_reviewer_r3 | teamwork_reviewer | Review Round 3 (Final Hardening & Stress) | completed | 6c311637-752f-40a9-a513-3a97a15541bf |
-| teamwork_victory_auditor_p2 | teamwork_victory_auditor | Independent Victory Audit | quota_exhausted | e18d78be-c4db-4c34-a42b-7362fa4d1420 |
+| implementer_1 | teamwork_implementer | Primary implementation & tests | in-progress | 886aec1c-9912-4479-bf7f-02942ec00d96 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 11 / 16
-- Pending subagents: none
+- Spawn count: 1 / 16
+- Pending subagents: 886aec1c-9912-4479-bf7f-02942ec00d96
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: cancelled
-- Safety timer: none
+- Heartbeat cron: 0aa00ea1-9c92-421d-8e45-73f63b5e510d/task-14
+- Safety timer: 0aa00ea1-9c92-421d-8e45-73f63b5e510d/task-16
 
 ## Artifact Index
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\BRIEFING.md — Briefing & working memory
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\progress.md — Progress & heartbeat
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\DISPATCH.md — Incoming messages
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\handoff.md — Orchestrator handoff report
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original user request
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\implementer_p2\handoff.md — Implementer handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r1_p2\handoff.md — Reviewer Round 1 handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r2_p2\handoff.md — Reviewer Round 2 handoff
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_r3_p2\handoff.md — Reviewer Round 3 handoff
+- .agents/teamwork/swe_1/DISPATCH.md — verbatim dispatch requirements
+- .agents/teamwork/swe_1/progress.md — iteration status and open issues ledger

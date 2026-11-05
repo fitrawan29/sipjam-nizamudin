@@ -1,84 +1,38 @@
-## 2026-10-30T14:44:52Z
-This is a single self-contained fix; keep it small and focused. Identifikasi dan perbaiki sistem keamanan ujian serta fitur anti-kecurangan pada role siswa agar bekerja dengan benar dan andal pada codebase saat ini.
-
-Integrity mode: development
-
-## Requirements
-
-### R1. Audit dan Identifikasi Kelemahan Keamanan Ujian Siswa
-Audit seluruh mekanisme anti-kecurangan yang saat ini diterapkan pada role siswa saat pelaksanaan ujian di aplikasi, serta identifikasi bug, celah bypass, atau malfungsi yang menyebabkan proteksi tidak bekerja sebagaimana mestinya.
-
-### R2. Perbaikan dan Penguatan Fitur Anti-Kecurangan
-Terapkan perbaikan pada kode agar seluruh fitur anti-kecurangan pada role siswa (seperti deteksi perpindahan tab/jendela/blur, penjagaan mode fullscreen, pembatasan copy-paste/shortcut, dan integritas sesi pengerjaan ujian) aktif dan berfungsi dengan benar.
-
-## Acceptance Criteria
-
-### Fungsionalitas Anti-Kecurangan Siswa
-- [ ] Seluruh celah keamanan atau kegagalan deteksi pada fitur anti-kecurangan role siswa yang ada diidentifikasi dan diperbaiki pada kode.
-- [ ] Fitur anti-kecurangan bereaksi secara konsisten saat terjadi aksi pelanggaran siswa (misal: perpindahan fokus jendela/tab, keluar dari fullscreen, percobaan penyalinan teks) tanpa merusak pengalaman pengerjaan ujian normal bagi siswa yang jujur.
-- [ ] Tim menyusun dan menjalankan skenario verifikasi/uji terprogram untuk membuktikan seluruh deteksi anti-kecurangan bekerja sesuai rancangan.
-- [ ] Proyek lulus proses validasi build dan linting (npm run build) tanpa error atau regresi fungsional.
-
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents/teamwork/swe_1/
-Original request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents/teamwork/ORIGINAL_REQUEST.md
-Identity: teamwork_swe
-
-
-## 2026-11-03T03:03:41Z
-This is a single self-contained fix; keep it small and focused. Pastikan seluruh logika presensi gerbang piket, absensi wali kelas, alokasi kepulangan, aturan bolos mapel, fallback jurnal KBM, notifikasi WhatsApp orang tua, serta fungsi cetak/export rekap tetap dipertahankan dan bekerja sesuai kesepakatan setelah pembaruan tampilan scan aktual.
-
-Integrity mode: development
-
-## Requirements
-
-### R1. Retensi Logika Waktu Presensi Gerbang & Wali Kelas
-Batas waktu input presensi piket pagi tetap s.d. 08:00 WITA, jendela absensi pagi wali kelas tetap s.d. 12:00 WITA, dan alokasi presensi pulang guru piket serta wali kelas berlaku selama 1 jam (60 menit) setelah waktu kepulangan dimulai (`isPiketPulangAllowed`).
-
-### R2. Retensi Aturan Status Kehadiran (Bolos & Fallback Jurnal KBM)
-Jika siswa tercatat hadir pagi di gerbang/kelas tetapi Alfa atau Bolos pada jurnal KBM terakhir, status kehadiran harian tetap menjadi Bolos. Jika absensi harian belum diisi oleh wali kelas, fallback dinamis dari sesi jurnal KBM jam pelajaran terakhir (`findLastKbmJournal`, `resolveDailyStudentAttendance`) tetap aktif dan valid.
-
-### R3. Retensi Notifikasi WhatsApp dan Cetak/Export Rekap
-Integrasi notifikasi 1-click WhatsApp orang tua dan seluruh fungsi cetak/export rekap presensi tetap berfungsi normal tanpa regresi.
-
-### R4. Konsistensi Tampilan Waktu Scan Gerbang
-Jam datang presensi gerbang menampilkan waktu scan masuk aktual, dan jam pulang presensi gerbang menampilkan waktu scan pulang aktual jika sudah ada atau '-' jika belum presensi pulang, dengan penormalan format waktu menggunakan `formatPresensiTime` (WITA).
-
-## Acceptance Criteria
-
-### Presensi Gerbang & Absensi Logic Verification
-- [ ] Batas waktu input presensi piket pagi s.d. 08:00 WITA tetap berlaku dan terverifikasi.
-- [ ] Jendela absensi pagi wali kelas s.d. 12:00 WITA tetap berlaku dan terverifikasi.
-- [ ] Alokasi presensi pulang guru piket dan wali kelas berlaku selama 1 jam (60 menit) setelah waktu kepulangan dimulai (`isPiketPulangAllowed`) tetap berlaku dan terverifikasi.
-- [ ] Aturan status Bolos gerbang & mapel terverifikasi: siswa hadir pagi di gerbang/kelas tetapi Alfa atau Bolos pada jurnal KBM terakhir menghasilkan status akhir Bolos.
-- [ ] Fallback dinamis absensi harian dari sesi jurnal KBM jam pelajaran terakhir (`findLastKbmJournal`, `resolveDailyStudentAttendance`) terverifikasi aktif saat wali kelas belum mengisi absensi harian.
-- [ ] Tampilan jam datang presensi gerbang menampilkan waktu scan masuk aktual, dan jam pulang menampilkan waktu scan pulang aktual jika sudah ada atau '-' jika belum ada presensi pulang dalam format WITA (`formatPresensiTime`).
-- [ ] Integrasi notifikasi 1-click WhatsApp orang tua dan fungsi cetak/export rekap presensi terverifikasi utuh dan berfungsi normal.
-- [ ] Seluruh skrip pengujian / type-check / build berjalan sukses tanpa kegagalan atau regresi.
-
-## 2026-11-04T02:51:54Z
-This is a single self-contained fix; keep it small and focused. Fix the error when importing master data guru from CSV in sipjam-app where "sekolah_id" is null and violates the not-null constraint on the "data_guru" table.
+## 2026-11-05T21:44:53Z
+This is a single self-contained fix; keep it small and focused. Pada role admin, pada menu master data dan kalender, tambahkan sub menu pengguna untuk mengatur username dan password setiap akun guru yang ditarik otomatis dari data guru yang ada, dengan username NIP dan password default NIP27.
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
 ## Requirements
 
-### R1. CSV Import Validation for Data Guru
-Update the master data guru CSV import in sipjam-app to require and explicitly validate that `sekolah_id` is present and non-null before attempting database insertion into `data_guru`. Rows missing `sekolah_id` must be caught with a clear validation error rather than triggering an unhandled database constraint violation (PostgreSQL ERROR 23502).
+### R1. Sub Menu Pengguna pada Menu Master Data dan Kalender
+Pada navigasi role admin di bawah menu master data dan kalender, tambahkan sub menu "Pengguna" yang hanya dapat diakses oleh admin.
 
-### R2. Minimal Implementation
-Apply the simplest, most minimal fix (ponytail approach) to resolve the root cause directly in the CSV import flow without unnecessary complexity or dependencies.
+### R2. Penarikan Otomatis Akun dari Data Guru
+Data akun pada sub menu pengguna ditarik secara otomatis dari data guru yang ada di sistem dengan role pengguna sebagai guru. Setiap akun guru memiliki username awal berupa NIP dan password default berupa NIP27.
+
+### R3. Manajemen Kredensial Pengguna oleh Admin
+Admin dapat mengelola, melihat daftar, serta memperbarui username dan password setiap akun guru melalui antarmuka sub menu pengguna.
+
+### R4. Integritas dan Non-Regresi Fitur Eksisting
+Penyesuaian ini tidak mempengaruhi fitur dan logika lain yang tidak terdampak; seluruh modul dan alur kerja aplikasi yang sudah ada tetap berfungsi normal.
 
 ## Acceptance Criteria
 
-### Functional Validation
-- [ ] CSV import explicitly checks for the presence of `sekolah_id` prior to database insertion.
-- [ ] Importing CSV data with missing `sekolah_id` returns a clear validation error and does not produce PostgreSQL error 23502.
-- [ ] Importing valid CSV data containing `sekolah_id` successfully inserts records into `data_guru`.
-- [ ] An automated test or verification script verifies both the validation failure on missing `sekolah_id` and successful import when `sekolah_id` is provided.
+### Navigasi dan Hak Akses
+- [ ] Sub menu Pengguna muncul di bawah menu Master Data dan Kalender saat login sebagai admin.
+- [ ] Sub menu Pengguna tidak dapat diakses atau dilihat oleh role non-admin.
 
----
-Identity: You are teamwork_swe, the SWE Light dispatch-only orchestrator.
-Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\
-Original request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-Parent: Sentinel
+### Sinkronisasi Akun Otomatis dan Kredensial Default
+- [ ] Seluruh data guru yang ada di sistem otomatis terdaftar sebagai akun pengguna dengan role guru.
+- [ ] Akun guru baru yang ditambahkan memiliki username sesuai NIP dan password default NIP27.
+
+### Manajemen Kredensial oleh Admin
+- [ ] Admin dapat memperbarui username dan password akun guru melalui antarmuka sub menu Pengguna.
+- [ ] Kredensial baru yang diperbarui berhasil disimpan ke database dan dapat digunakan untuk autentikasi login.
+- [ ] Automated tests (unit/integration) dan verifikasi fungsional untuk fitur sub menu pengguna berhasil dijalankan tanpa error.
+
+### Integritas Sistem dan Non-Regresi
+- [ ] Penyesuaian ini tidak mempengaruhi fitur dan logika lain yang tidak terdampak; seluruh fitur yang sudah ada sebelumnya tetap berfungsi normal tanpa regresi.
+- [ ] Seluruh automated test suite yang sudah ada sebelumnya tetap lolos (pass) tanpa error.
