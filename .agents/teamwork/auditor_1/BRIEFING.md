@@ -1,7 +1,7 @@
-# BRIEFING — 2026-11-02T10:37:00Z
+# BRIEFING — 2026-11-06T06:55:00Z
 
 ## Mission
-Independently audit and verify the genuine completion of SWE task: "Sesuaikan sistem aplikasi agar seluruh data master (termasuk data siswa, data guru, data jadwal pembelajaran, data kelas, dan data mapel) hanya dapat diubah melalui aplikasi oleh admin menggunakan sistem manajemen yang sudah ada pada panel admin."
+Independently audit and verify the genuine completion of SWE task: "Pada role admin, pada menu master data dan kalender, tambahkan sub menu pengguna untuk mengatur username dan password setiap akun guru yang ditarik otomatis dari data guru yang ada, dengan username NIP dan password default NIP27." (R1-R4)
 
 ## 🔒 My Identity
 - Archetype: victory_auditor
@@ -11,6 +11,8 @@ Independently audit and verify the genuine completion of SWE task: "Sesuaikan si
 - Target: Milestone M2 - Penyesuaian Panduan Onboarding & Penyelarasan Pengujian Tutorial
 - Current parent: 8dc03207-6d39-433b-a201-2cdff0c50a0e
 - Target: Master Data Modification Restriction to Admin Role Only (R1, R2)
+- Current parent: 0aa00ea1-9c92-421d-8e45-73f63b5e510d
+- Target: Sub Menu Pengguna & Manajemen Kredensial Guru Otomatis NIP/NIP27 (R1-R4)
 
 ## 🔒 Key Constraints
 - Audit-only — do NOT modify implementation code
@@ -19,28 +21,30 @@ Independently audit and verify the genuine completion of SWE task: "Sesuaikan si
 - Verify full test suite execution, tsc check, and git push to origin/main
 - Integrity mode: demo
 - Prohibited: Reading test source code to understand expected behavior before implementing
+- Integrity mode: development (current task: R1-R4)
 
 ## Current Parent
-- Conversation ID: 8dc03207-6d39-433b-a201-2cdff0c50a0e
-- Updated: 2026-11-02T10:37:00Z
+- Conversation ID: 0aa00ea1-9c92-421d-8e45-73f63b5e510d
+- Updated: 2026-11-06T06:55:00Z
 
 ## Audit Scope
-- **Work product**: Master data modification restrictions (API routes, store, server actions, services, and UI components for siswa, guru, jadwal, kelas, mapel), automated verification tests, and git repository state.
+- **Work product**: Sub menu Pengguna under Master Data & Kalender on admin navigation (`ClaySidebar.tsx`, `AppScreen.tsx`, `navigation.ts`), tab Pengguna in `AdminDataView.tsx`, full account management and auto-pull in `AdminPenggunaView.tsx` & `teacherUserSync.ts`, default password NIP27, automated test suite in `tests/admin_submenu_pengguna_kredensial_guru.test.ts`, and full test/build verification.
 - **Profile loaded**: General Project (Victory Audit)
 - **Audit type**: victory audit
 
 ## Audit Progress
 - **Phase**: reporting
 - **Checks completed**:
-  - Phase A: Timeline & Git history audit (PASS: 4 progressive commits over 50 mins, 3 adversarial review rounds, up to date with origin/main)
-  - Phase B: Cheating & Integrity detection (PASS: 0 stubs, 0 facades, no weakened tests, genuine endpoint sanitization and multi-layered RBAC guards)
-  - Phase C: Independent test execution & build verification (PASS: tests/master_data_admin_role_restriction.test.ts 8/8 passed, npx tsc --noEmit 0 errors, npm test 46/46 suites passed, npm run build succeeded in Turbopack)
+  - Phase A: Timeline & Git history audit (PASS: 4 progressive commits over 45 mins, 3 adversarial review rounds, git status up-to-date with origin/main)
+  - Phase B: Cheating & Integrity detection (PASS: 0 stubs, 0 facades, 0 hardcoded test results, genuine Claymorphism UI, real database sync and credentials management)
+  - Phase C: Independent test execution & build verification (PASS: tests/admin_submenu_pengguna_kredensial_guru.test.ts 28/28 passed, npx tsc --noEmit 0 errors, npm test 53/53 suites passed, npm run build Turbopack succeeded with 13/13 static pages)
 - **Findings so far**: CLEAN — VICTORY CONFIRMED
 
 ## Key Decisions Made
-- Re-executed all test suites and compiler checks independently via PowerShell.
-- Verified percent-encoding, hash fragment, whitespace, and path evasion resilience in endpoint matching across all 16 master tables.
-- Evaluated navigation RBAC canonical route mapping and component-level action disabling for non-admin users.
+- Re-executed all test suites and compiler checks independently via PowerShell in the active workspace.
+- Verified that all 28 assertions in `admin_submenu_pengguna_kredensial_guru.test.ts` pass without errors.
+- Verified that `npm test` runs 53 suites and all 53 pass.
+- Verified Next.js Turbopack build succeeds with 0 errors.
 
 ## Artifact Index
 - `DISPATCH.md` — Inbound instructions from orchestrator
@@ -50,16 +54,14 @@ Independently audit and verify the genuine completion of SWE task: "Sesuaikan si
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - URL percent-encoding bypass (e.g. `data%5Fsiswa`): VERIFIED blocked with 403 Forbidden.
-  - Fragment / query parameter evasion: VERIFIED stripped and blocked.
-  - Redundant slashes and trailing whitespace: VERIFIED normalized and blocked.
-  - Legacy alias navigation evasion (`view-sistem-blok`, `view-admin-backup`): VERIFIED blocked with canonical route resolution in `evaluateTabRBAC`.
-  - Non-admin client-level mutation passthrough: VERIFIED rejected with HTTP 403 / code 42501 across all 16 tables.
-  - Admin mutation passthrough: VERIFIED permitted without block (201 Created).
-  - Silent auto-alteration of master data on load/upload: VERIFIED removed; data integrity preserved intact.
-  - Upfront check in `handleExecuteSatuAngkatan`: VERIFIED placed before confirmation modal dispatch.
+  - Formatted NIP input (dashes/dots/spaces) in modal or data import: VERIFIED automatically canonicalized to pure digits.
+  - Excel apostrophe or quotation marks on NIP import: VERIFIED stripped cleanly.
+  - Self-collision false positive when updating password without changing username when userId is omitted: VERIFIED userId resolved upfront, self-collision prevented.
+  - Non-admin access to sub menu Pengguna via sidebar, route, or tab: VERIFIED blocked at all 3 layers (sidebar menu filter, evaluateTabRBAC, and AdminPenggunaView role guard).
+  - Existing teacher password preservation on sync: VERIFIED existing customized passwords are not overwritten.
+  - Quick reset to default NIP27: VERIFIED resets accurately to `${nip}27` or fallback `${cleanNama}27`.
 - **Vulnerabilities found**: None remaining; all adversarial edge cases addressed across 3 review rounds.
-- **Untested angles**: Physical remote execution of database migration against live production Supabase instance (documented in ledger).
+- **Untested angles**: None within application scope.
 
 ## Loaded Skills
 - None
