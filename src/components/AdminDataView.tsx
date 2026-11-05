@@ -77,15 +77,30 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   // Fetch school name from Supabase sekolah table on mount
   useEffect(() => {
     const fetchSchoolName = async () => {
-      if (!user?.sekolah_id) return;
+      const sId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
       try {
-        const { data, error } = await supabase
-          .from('sekolah')
-          .select('nama')
-          .eq('id', user.sekolah_id)
-          .maybeSingle();
-        if (data?.nama && !error) {
-          setSchoolName(data.nama);
+        const [schRes, confRes] = await Promise.all([
+          supabase
+            .from('sekolah')
+            .select('nama')
+            .eq('id', sId)
+            .maybeSingle(),
+          supabase
+            .from('pengaturan')
+            .select('key, value')
+            .eq('sekolah_id', sId)
+            .in('key', ['kop_sekolah', 'NAMA_SEKOLAH'])
+        ]);
+        let resolved = '';
+        if (confRes.data && confRes.data.length > 0) {
+          const row = confRes.data.find((r: any) => r.key === 'kop_sekolah') || confRes.data.find((r: any) => r.key === 'NAMA_SEKOLAH');
+          if (row?.value?.trim()) resolved = row.value.trim();
+        }
+        if (!resolved && schRes.data?.nama?.trim()) {
+          resolved = schRes.data.nama.trim();
+        }
+        if (resolved) {
+          setSchoolName(resolved);
         }
       } catch (err) {
         console.error('[AdminDataView] Error fetching school name:', err);

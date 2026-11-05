@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
@@ -425,13 +425,30 @@ export default function AdminConfigView({
           updatePayload.logo_url = saveConfig.logo_kiri || saveConfig.logo_kanan;
         }
 
-        const { error: sekolahError } = await supabase
+        let { error: sekolahError } = await supabase
           .from('sekolah')
           .update(updatePayload)
           .eq('id', targetSekolahId);
 
         if (sekolahError) {
-          console.error('[AdminConfigView] Error updating sekolah table:', sekolahError);
+          console.warn('[AdminConfigView] Error updating sekolah table with client, retrying with masterSupabase:', sekolahError.message);
+          try {
+            await masterSupabase
+              .from('sekolah')
+              .update(updatePayload)
+              .eq('id', targetSekolahId);
+          } catch (_) {}
+        }
+
+        if (saveConfig.kop_sekolah && typeof window !== 'undefined') {
+          try {
+            const rawUser = localStorage.getItem('sipjam_user');
+            if (rawUser) {
+              const u = JSON.parse(rawUser);
+              u.sekolah_nama = saveConfig.kop_sekolah;
+              localStorage.setItem('sipjam_user', JSON.stringify(u));
+            }
+          } catch (_) {}
         }
       } catch (schoolErr) {
         console.error('[AdminConfigView] Exception updating sekolah table:', schoolErr);

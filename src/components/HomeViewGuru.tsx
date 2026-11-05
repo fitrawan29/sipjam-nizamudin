@@ -49,6 +49,52 @@ export default function HomeViewGuru({
   const [selectedMonth, setSelectedMonth] = useState(() => getWitaDateStr().substring(0, 7));
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
   const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
+  const [schoolName, setSchoolName] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const syncRaw = localStorage.getItem('sipjam_config_sync');
+        if (syncRaw) {
+          const parsed = JSON.parse(syncRaw);
+          if (parsed?.config?.kop_sekolah) return parsed.config.kop_sekolah;
+        }
+        const rawUser = localStorage.getItem('sipjam_user');
+        if (rawUser) {
+          const u = JSON.parse(rawUser);
+          if (u?.sekolah_nama) return u.sekolah_nama;
+        }
+      } catch (_) {}
+    }
+    return (user as any)?.sekolah_nama || 'SMA NIZAMUDIN';
+  });
+
+  useEffect(() => {
+    const fetchSchoolName = async () => {
+      const sId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      try {
+        const { data } = await supabase
+          .from('pengaturan')
+          .select('key, value')
+          .eq('sekolah_id', sId)
+          .in('key', ['kop_sekolah', 'NAMA_SEKOLAH']);
+        if (data && data.length > 0) {
+          const kop = data.find((r: any) => r.key === 'kop_sekolah')?.value || data.find((r: any) => r.key === 'NAMA_SEKOLAH')?.value;
+          if (kop?.trim()) {
+            setSchoolName(kop.trim());
+            return;
+          }
+        }
+        const { data: sData } = await supabase
+          .from('sekolah')
+          .select('nama')
+          .eq('id', sId)
+          .maybeSingle();
+        if (sData?.nama?.trim()) {
+          setSchoolName(sData.nama.trim());
+        }
+      } catch (_) {}
+    };
+    fetchSchoolName();
+  }, [user?.sekolah_id]);
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, false);
   const [jadwalWali, setJadwalWali] = useState<JadwalIntervensiWali>({
@@ -236,7 +282,10 @@ export default function HomeViewGuru({
         }
       });
 
-    const handleWindowConfigSync = () => {
+    const handleWindowConfigSync = (e?: any) => {
+      if (e?.detail?.config?.kop_sekolah) {
+        setSchoolName(e.detail.config.kop_sekolah);
+      }
       refreshDailyWorkflow();
     };
 
@@ -459,7 +508,7 @@ export default function HomeViewGuru({
               </div>
               <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
                 <span>{user?.username || ''}</span>
-                <span className="truncate font-sans font-medium">SMA NIZAMUDIN</span>
+                <span className="truncate font-sans font-medium">{schoolName}</span>
               </p>
             </div>
           </div>

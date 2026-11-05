@@ -68,6 +68,13 @@ declare module '@/components/AIAssistant' {
   }
 }
 
+const formatSchoolDisplayName = (name: string): string => {
+  if (!name) return 'Sekolah';
+  const trimmed = name.trim();
+  const stripped = trimmed.replace(/^sipjam\s*[-–—:]*\s*/i, '').trim();
+  return stripped || trimmed;
+};
+
 export default function AppScreen({
   user: initialUser,
   onLogout,
@@ -245,7 +252,23 @@ export default function AppScreen({
       }
     }
   }, [isAdmin, isSuperadmin]);
-  const [schoolData, setSchoolData] = useState<any>(null);
+  const [schoolData, setSchoolData] = useState<any>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const syncRaw = localStorage.getItem('sipjam_config_sync');
+      if (syncRaw) {
+        const parsed = JSON.parse(syncRaw);
+        const name = parsed?.config?.kop_sekolah || parsed?.config?.NAMA_SEKOLAH;
+        if (name) return { nama: formatSchoolDisplayName(name), id: parsed?.sekolah_id };
+      }
+      const userRaw = localStorage.getItem('sipjam_user');
+      if (userRaw) {
+        const parsedUser = JSON.parse(userRaw);
+        if (parsedUser?.sekolah_nama) return { nama: formatSchoolDisplayName(parsedUser.sekolah_nama), id: parsedUser.sekolah_id };
+      }
+    } catch (_) {}
+    return null;
+  });
   const { theme, toggleTheme } = useTheme();
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, isAdmin, syncKey);
@@ -264,25 +287,94 @@ export default function AppScreen({
   const [tutorialModalOpen, setTutorialModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    if (user?.sekolah_id) {
-      const fetchSchool = async () => {
-        try {
-          const { data, error } = await supabase
+    const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+    const fetchSchool = async () => {
+      try {
+        const [schoolRes, configRes] = await Promise.all([
+          supabase
             .from('sekolah')
             .select('*')
-            .eq('id', user.sekolah_id)
-            .single();
+            .eq('id', schoolId)
+            .maybeSingle(),
+          supabase
+            .from('pengaturan')
+            .select('key, value')
+            .eq('sekolah_id', schoolId)
+            .in('key', ['kop_sekolah', 'NAMA_SEKOLAH'])
+        ]);
 
-          if (data && !error) {
-            setSchoolData(data);
+        let kopSekolah = '';
+        if (configRes.data && configRes.data.length > 0) {
+          const kopRow = configRes.data.find((r: any) => r.key === 'kop_sekolah') || configRes.data.find((r: any) => r.key === 'NAMA_SEKOLAH');
+          if (kopRow?.value?.trim()) {
+            kopSekolah = kopRow.value.trim();
           }
-        } catch (err) {
-          console.error('[AppScreen] Failed to fetch school profile:', err);
         }
-      };
-      fetchSchool();
-    }
+
+        if (!kopSekolah && typeof window !== 'undefined') {
+          try {
+            const syncRaw = localStorage.getItem('sipjam_config_sync');
+            if (syncRaw) {
+              const parsed = JSON.parse(syncRaw);
+              if (parsed?.config?.kop_sekolah) {
+                kopSekolah = parsed.config.kop_sekolah.trim();
+              }
+            }
+          } catch (_) {}
+        }
+
+        const baseSchool = schoolRes.data || {};
+        const rawSchoolName = kopSekolah || baseSchool.nama || (user as any)?.sekolah_nama || 'SMA NIZAMUDIN';
+        const formattedNama = formatSchoolDisplayName(rawSchoolName);
+
+        setSchoolData((prev: any) => ({
+          ...(prev || {}),
+          ...baseSchool,
+          id: schoolId,
+          nama: formattedNama,
+        }));
+      } catch (err) {
+        console.error('[AppScreen] Failed to fetch school profile:', err);
+      }
+    };
+    fetchSchool();
   }, [user?.sekolah_id, syncKey]);
+
+  // Realtime configuration sync listener so kop surat edits update header instantly
+  useEffect(() => {
+    const handleConfigSync = (e: any) => {
+      const updatedConfig = e?.detail?.config;
+      const newKopSekolah = updatedConfig?.kop_sekolah || updatedConfig?.NAMA_SEKOLAH;
+      if (newKopSekolah) {
+        setSchoolData((prev: any) => ({
+          ...(prev || {}),
+          nama: formatSchoolDisplayName(newKopSekolah),
+        }));
+      }
+    };
+
+    const handleStorageUpdate = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          const name = parsed?.config?.kop_sekolah || parsed?.config?.NAMA_SEKOLAH;
+          if (name) {
+            setSchoolData((prev: any) => ({
+              ...(prev || {}),
+              nama: formatSchoolDisplayName(name),
+            }));
+          }
+        } catch (_) {}
+      }
+    };
+
+    window.addEventListener('sipjam:config_updated', handleConfigSync);
+    window.addEventListener('storage', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('sipjam:config_updated', handleConfigSync);
+      window.removeEventListener('storage', handleStorageUpdate);
+    };
+  }, []);
 
   // Realtime subscription for school configuration and teacher data updates (R3)
   useEffect(() => {
