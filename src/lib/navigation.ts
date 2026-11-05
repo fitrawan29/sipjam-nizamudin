@@ -92,10 +92,7 @@ export function getConsolidatedMenuItems(params: {
           id: 'view-admin-data',
           icon: 'fa-database',
           label: 'Master Data & Kalender',
-          dataTour: 'view-admin-data view-sistem-blok',
-          subItems: [
-            { id: 'view-admin-pengguna', icon: 'fa-users-gear', label: 'Pengguna', dataTour: 'view-admin-pengguna view-pengguna' }
-          ]
+          dataTour: 'view-admin-data view-sistem-blok'
         },
         { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Pusat Verifikasi' },
         { id: 'view-admin-rekap', icon: 'fa-chart-pie', label: 'Laporan & Analitik', dataTour: 'view-admin-rekap view-analitik' },
@@ -149,10 +146,7 @@ export function getConsolidatedMenuItems(params: {
         id: 'view-admin-data',
         icon: 'fa-database',
         label: 'Master Data & Kalender',
-        dataTour: 'view-admin-data view-sistem-blok',
-        subItems: [
-          { id: 'view-admin-pengguna', icon: 'fa-users-gear', label: 'Pengguna', dataTour: 'view-admin-pengguna view-pengguna' }
-        ]
+        dataTour: 'view-admin-data view-sistem-blok'
       },
       { id: 'view-admin-config', icon: 'fa-gear', label: 'Pengaturan Sistem & Database', dataTour: 'view-admin-config view-admin-backup' }
     ];

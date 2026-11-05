@@ -953,33 +953,6 @@ export default function AppScreen({
                     >
                       <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
                     </button>
-                    {/* Sub menu under Master Data & Kalender for Admin */}
-                    {item.subItems && (isAdmin || isSuperadmin) && (
-                      <div className="ml-7 pl-2.5 py-1 space-y-1 border-l-2 border-purple-300/60 dark:border-purple-800/60 my-1">
-                        {item.subItems.map((sub: any) => {
-                          const isSubActive = currentView === sub.id || (currentView === 'view-admin-data' && (urlTab === 'Pengguna' || urlTab === 'pengguna' || urlTab === 'users'));
-                          return (
-                            <button
-                              key={sub.id}
-                              data-tour={sub.dataTour || sub.id}
-                              type="button"
-                              onClick={() => {
-                                setSidebarOpen(false);
-                                handleNavigation(sub.id);
-                              }}
-                              className={`w-full text-left px-3 py-1.5 min-h-[36px] text-xs font-bold rounded-xl flex items-center gap-2 transition-all ${
-                                isSubActive
-                                  ? 'bg-purple-100 text-purple-900 dark:bg-purple-900/50 dark:text-purple-200 border border-purple-300 dark:border-purple-700 shadow-xs'
-                                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 hover:bg-white/70 dark:hover:bg-gray-800/70 border border-transparent'
-                              }`}
-                            >
-                              <i className={`fa-solid ${sub.icon} text-purple-600 dark:text-purple-400 text-xs w-4 text-center`}></i>
-                              <span className="truncate">{sub.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
                   </React.Fragment>
                 ))}
                 <button

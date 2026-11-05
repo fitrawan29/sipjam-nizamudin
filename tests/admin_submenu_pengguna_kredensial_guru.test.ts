@@ -58,25 +58,22 @@ async function runTestSuite() {
   // ==========================================================================
   console.log(`\n${BOLD}--- SUITE 1: Navigasi dan Hak Akses Sub Menu Pengguna (R1) ---${RESET}`);
 
-  // Test 1.1: Admin menu items contain sub menu Pengguna under Master Data & Kalender
+  // Test 1.1: Admin side menu bar does NOT display sub menu Pengguna (clean sidebar)
   const adminMenus = getConsolidatedMenuItems({ role: 'admin' });
   const masterDataItem = adminMenus.find(m => m.id === 'view-admin-data');
   assert.ok(masterDataItem, 'Master Data & Kalender item must exist for admin');
-  assert.ok(masterDataItem.subItems && masterDataItem.subItems.length > 0, 'view-admin-data must have subItems for admin');
+  assert.strictEqual(!masterDataItem.subItems || masterDataItem.subItems.length === 0, true, 'Side menu bar does not display sub menu Pengguna directly');
+  pass('1.1: Pada side menu bar admin, tampilan sub menu Pengguna ditiadakan');
 
-  const subMenuPengguna = masterDataItem.subItems?.find(s => s.id === 'view-admin-pengguna' || s.label.toLowerCase().includes('pengguna'));
-  assert.ok(subMenuPengguna, 'Sub menu Pengguna must be present under Master Data for admin');
-  pass('1.1: Sub menu Pengguna muncul di bawah menu Master Data dan Kalender untuk role admin',
-    `Found item: ${subMenuPengguna?.label} (${subMenuPengguna?.id})`);
-
-  // Test 1.2: Superadmin menu items with satellite school contain sub menu Pengguna
+  // Test 1.2: Superadmin with target school does NOT display sub menu Pengguna on side menu bar
   const saSatelliteMenus = getConsolidatedMenuItems({
     role: 'superadmin',
     activeTargetSchool: { id: 's1', nama: 'SMP Model' }
   });
   const saMasterItem = saSatelliteMenus.find(m => m.id === 'view-admin-data');
-  assert.ok(saMasterItem?.subItems?.some(s => s.id === 'view-admin-pengguna'), 'Superadmin with activeTargetSchool must have sub menu Pengguna');
-  pass('1.2: Superadmin dengan target sekolah memiliki sub menu Pengguna di bawah Master Data');
+  assert.ok(saMasterItem, 'Master Data & Kalender item must exist for superadmin with satellite school');
+  assert.strictEqual(!saMasterItem?.subItems || saMasterItem.subItems.length === 0, true, 'Superadmin with activeTargetSchool side menu bar does not display sub menu Pengguna');
+  pass('1.2: Side menu bar superadmin bersih tanpa tampilan sub menu Pengguna');
 
   // Test 1.3: Non-admin roles (Guru, Siswa, Dinas, Kepsek) do NOT have sub menu Pengguna
   const guruMenus = getConsolidatedMenuItems({ role: 'guru' });
