@@ -45,10 +45,60 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   const [activeTab, setActiveTab] = useState<'ringkasan' | 'cetak-individu'>('ringkasan');
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [selectedKelas, setSelectedKelas] = useState<string>(assignedKelas || '');
-  const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
-  const [selectedTahunAjaran, setSelectedTahunAjaran] = useState<string>('2024/2025');
-  const [activeSchoolTahunAjaran, setActiveSchoolTahunAjaran] = useState<string>('2024/2025');
-  const [activeSchoolSemester, setActiveSchoolSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
+  const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('sipjam_config_sync');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const s = parsed.semester || parsed.config?.semester;
+          if (s && String(s).trim().toLowerCase() === 'genap') return 'Genap';
+          if (s && String(s).trim().toLowerCase() === 'ganjil') return 'Ganjil';
+        }
+      } catch (_) {}
+    }
+    return 'Ganjil';
+  });
+  const [selectedTahunAjaran, setSelectedTahunAjaran] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('sipjam_config_sync');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const ta = parsed.tahun_ajaran || parsed.config?.tahun_ajaran;
+          if (ta && typeof ta === 'string' && ta.trim()) return ta.trim();
+        }
+      } catch (_) {}
+    }
+    return '2024/2025';
+  });
+  const [activeSchoolTahunAjaran, setActiveSchoolTahunAjaran] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('sipjam_config_sync');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const ta = parsed.tahun_ajaran || parsed.config?.tahun_ajaran;
+          if (ta && typeof ta === 'string' && ta.trim()) return ta.trim();
+        }
+      } catch (_) {}
+    }
+    return '2024/2025';
+  });
+  const [activeSchoolSemester, setActiveSchoolSemester] = useState<'Ganjil' | 'Genap'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('sipjam_config_sync');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const s = parsed.semester || parsed.config?.semester;
+          if (s && String(s).trim().toLowerCase() === 'genap') return 'Genap';
+          if (s && String(s).trim().toLowerCase() === 'ganjil') return 'Ganjil';
+        }
+      } catch (_) {}
+    }
+    return 'Ganjil';
+  });
   const [tahunAjaranList, setTahunAjaranList] = useState<string[]>([
     '2023/2024',
     '2024/2025',
@@ -176,9 +226,9 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
         });
 
         const normSem: 'Ganjil' | 'Genap' | null =
-          activeSem.toLowerCase() === 'genap'
+          String(activeSem).trim().toLowerCase() === 'genap'
             ? 'Genap'
-            : activeSem.toLowerCase() === 'ganjil'
+            : String(activeSem).trim().toLowerCase() === 'ganjil'
             ? 'Ganjil'
             : null;
 
@@ -187,8 +237,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           activeSchoolTahunAjaranRef.current = activeTa;
           setActiveSchoolTahunAjaran(activeTa);
           setTahunAjaranList(prev => (prev.includes(activeTa) ? prev : [...prev, activeTa].sort()));
-          // If initial mount, OR if user was following the previous active year, sync selectedTahunAjaran
-          if (isInitial || !hasInitializedConfig.current || selectedTahunAjaranRef.current === prevActiveTa) {
+          // If initial mount, OR if user was following the previous active year, or if user is admin, sync selectedTahunAjaran
+          if (isInitial || !hasInitializedConfig.current || isAdmin || selectedTahunAjaranRef.current === prevActiveTa) {
             selectedTahunAjaranRef.current = activeTa;
             setSelectedTahunAjaran(activeTa);
           }
@@ -197,8 +247,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           const prevActiveSem = activeSchoolSemesterRef.current;
           activeSchoolSemesterRef.current = normSem;
           setActiveSchoolSemester(normSem);
-          // If initial mount, OR if user was following the previous active semester, sync selectedSemester
-          if (isInitial || !hasInitializedConfig.current || selectedSemesterRef.current === prevActiveSem) {
+          // If initial mount, OR if user was following the previous active semester, or if user is admin, sync selectedSemester
+          if (isInitial || !hasInitializedConfig.current || isAdmin || selectedSemesterRef.current === prevActiveSem) {
             selectedSemesterRef.current = normSem;
             setSelectedSemester(normSem);
           }
@@ -306,25 +356,25 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           activeSchoolTahunAjaranRef.current = trimmedTa;
           setActiveSchoolTahunAjaran(trimmedTa);
           setTahunAjaranList(prev => (prev.includes(trimmedTa) ? prev : [...prev, trimmedTa].sort()));
-          // Only update selectedTahunAjaran if user was following the previous active year
-          if (selectedTahunAjaranRef.current === prevActiveTa) {
+          // Update selectedTahunAjaran if user was following the previous active year or if user is admin
+          if (isAdmin || selectedTahunAjaranRef.current === prevActiveTa) {
             selectedTahunAjaranRef.current = trimmedTa;
             setSelectedTahunAjaran(trimmedTa);
           }
         }
 
         const normSem: 'Ganjil' | 'Genap' | null =
-          newSem?.toLowerCase() === 'genap'
+          String(newSem).trim().toLowerCase() === 'genap'
             ? 'Genap'
-            : newSem?.toLowerCase() === 'ganjil'
+            : String(newSem).trim().toLowerCase() === 'ganjil'
             ? 'Ganjil'
             : null;
 
         if (normSem) {
           activeSchoolSemesterRef.current = normSem;
           setActiveSchoolSemester(normSem);
-          // Only update selectedSemester if user was following the previous active semester
-          if (selectedSemesterRef.current === prevActiveSem) {
+          // Update selectedSemester if user was following the previous active semester or if user is admin
+          if (isAdmin || selectedSemesterRef.current === prevActiveSem) {
             selectedSemesterRef.current = normSem;
             setSelectedSemester(normSem);
           }

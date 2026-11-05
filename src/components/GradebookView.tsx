@@ -21,6 +21,22 @@ export interface CapaianDeskripsiResult {
   deskripsiCapaian: string;
 }
 
+export interface AttendanceStatusPoints {
+  hadir: number;
+  sakit: number;
+  izin: number;
+  terlambat: number;
+  alpa: number;
+}
+
+export const DEFAULT_STATUS_POINTS: AttendanceStatusPoints = {
+  hadir: 100,
+  sakit: 75,
+  izin: 75,
+  terlambat: 75,
+  alpa: 0,
+};
+
 export function generateKurikulumMerdekaDeskripsi(
   studentName: string,
   tpScores: { kode: string; deskripsi: string; score: number | null }[]
@@ -199,15 +215,40 @@ export default function GradebookView({
 
   // Guru Pengampu & Sync State
   const [isGuruPengampu, setIsGuruPengampu] = useState<boolean>(false);
-  const [_syncedTahunAjaran, setSyncedTahunAjaran] = useState<string>('');
-  const [_syncedSemester, setSyncedSemester] = useState<string>('');
+  const [syncedTahunAjaran, setSyncedTahunAjaran] = useState<string>('');
+  const [syncedSemester, setSyncedSemester] = useState<string>('');
 
   // Active Filters
   const [selectedGuru, setSelectedGuru] = useState<string>(user?.nama || '');
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [selectedKelas, setSelectedKelas] = useState<string>('');
-  const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
-  const [selectedTahunAjaran, setSelectedTahunAjaran] = useState<string>('2024/2025');
+  const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('sipjam_config_sync');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const s = parsed.semester || parsed.config?.semester;
+          if (s && String(s).trim().toLowerCase() === 'genap') return 'Genap';
+          if (s && String(s).trim().toLowerCase() === 'ganjil') return 'Ganjil';
+        }
+      } catch (_) {}
+    }
+    return 'Ganjil';
+  });
+  const [selectedTahunAjaran, setSelectedTahunAjaran] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('sipjam_config_sync');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const ta = parsed.tahun_ajaran || parsed.config?.tahun_ajaran;
+          if (ta && typeof ta === 'string' && ta.trim()) return ta.trim();
+        }
+      } catch (_) {}
+    }
+    return '2024/2025';
+  });
   const [studentSearch, setStudentSearch] = useState<string>('');
 
   // Internal Gradebook Tab View: 'tp-matrix' (Penilaian TP) | 'rekap-semester' (Rekap Rapor Semester) | 'statistik' (Analisis)
@@ -293,8 +334,20 @@ export default function GradebookView({
   const [bobotKehadiran, setBobotKehadiran] = useState<number>(40);
   const [bobotFormatif, setBobotFormatif] = useState<number>(30);
   const [bobotSumatif, setBobotSumatif] = useState<number>(30);
+  const [statusPoints, setStatusPoints] = useState<AttendanceStatusPoints>(DEFAULT_STATUS_POINTS);
+  const [statusPointsForm, setStatusPointsForm] = useState<AttendanceStatusPoints>(DEFAULT_STATUS_POINTS);
   const [isBobotModalOpen, setIsBobotModalOpen] = useState(false);
-  const [bobotForm, setBobotForm] = useState({ kehadiran: 40, formatif: 30, sumatif: 30 });
+  const [bobotForm, setBobotForm] = useState<{
+    kehadiran: number;
+    formatif: number;
+    sumatif: number;
+    status_points?: AttendanceStatusPoints;
+  }>({
+    kehadiran: 40,
+    formatif: 30,
+    sumatif: 30,
+    status_points: DEFAULT_STATUS_POINTS,
+  });
 
   // Attendance rates per student: { [nisn]: number } (percentage 0-100)
   const [attendanceRates, setAttendanceRates] = useState<Record<string, number>>({});
@@ -319,7 +372,21 @@ export default function GradebookView({
             setBobotKehadiran(parsed.kehadiran);
             setBobotFormatif(parsed.formatif);
             setBobotSumatif(parsed.sumatif);
-            setBobotForm(parsed);
+            const loadedPoints: AttendanceStatusPoints = {
+              hadir: typeof parsed.status_points?.hadir === 'number' ? parsed.status_points.hadir : 100,
+              sakit: typeof parsed.status_points?.sakit === 'number' ? parsed.status_points.sakit : 75,
+              izin: typeof parsed.status_points?.izin === 'number' ? parsed.status_points.izin : 75,
+              terlambat: typeof parsed.status_points?.terlambat === 'number' ? parsed.status_points.terlambat : 75,
+              alpa: typeof parsed.status_points?.alpa === 'number' ? parsed.status_points.alpa : 0,
+            };
+            setStatusPoints(loadedPoints);
+            setStatusPointsForm(loadedPoints);
+            setBobotForm({
+              kehadiran: parsed.kehadiran,
+              formatif: parsed.formatif,
+              sumatif: parsed.sumatif,
+              status_points: loadedPoints,
+            });
           }
         } catch { /* keep defaults */ }
       }
@@ -336,6 +403,21 @@ export default function GradebookView({
 
     const fetchMapelAttendance = async () => {
       try {
+        const getStatusPointValue = (rawStatus: string): number => {
+          const st = (rawStatus || '').trim().toUpperCase();
+          if (st === 'H' || st === 'HADIR') return statusPoints.hadir ?? 100;
+          if (st === 'S' || st === 'SAKIT') return statusPoints.sakit ?? 75;
+          if (st === 'I' || st === 'IZIN') return statusPoints.izin ?? 75;
+          if (st === 'T' || st === 'TERLAMBAT') return statusPoints.terlambat ?? 75;
+          if (st === 'A' || st === 'ALPA') return statusPoints.alpa ?? 0;
+          if (st.includes('HADIR') || st.includes('BEBAS')) return statusPoints.hadir ?? 100;
+          if (st.includes('SAKIT')) return statusPoints.sakit ?? 75;
+          if (st.includes('IZIN') || st.includes('DINAS')) return statusPoints.izin ?? 75;
+          if (st.includes('TERLAMBAT')) return statusPoints.terlambat ?? 75;
+          if (st.includes('ALPA') || st.includes('BOLOS')) return statusPoints.alpa ?? 0;
+          return 0;
+        };
+
         // 1. Query jurnal_pembelajaran for this specific mapel and kelas
         let jQ = supabase
           .from('jurnal_pembelajaran')
@@ -348,7 +430,7 @@ export default function GradebookView({
         const rates: Record<string, number> = {};
 
         if (jData && jData.length > 0 && jData.some(j => j.absensi_siswa)) {
-          const studentHadirCount: Record<string, number> = {};
+          const studentEarnedPoints: Record<string, number> = {};
           let validSessions = 0;
 
           jData.forEach(j => {
@@ -358,10 +440,8 @@ export default function GradebookView({
               if (parsed && typeof parsed === 'object') {
                 validSessions++;
                 Object.entries(parsed).forEach(([nisn, status]) => {
-                  const st = String(status).toUpperCase();
-                  if (st === 'H' || st === 'HADIR') {
-                    studentHadirCount[nisn] = (studentHadirCount[nisn] || 0) + 1;
-                  }
+                  const pts = getStatusPointValue(String(status));
+                  studentEarnedPoints[nisn] = (studentEarnedPoints[nisn] || 0) + pts;
                 });
               }
             } catch {
@@ -371,8 +451,9 @@ export default function GradebookView({
 
           if (validSessions > 0) {
             students.forEach(s => {
-              const hadir = studentHadirCount[s.nisn] || 0;
-              rates[s.nisn] = parseFloat(((hadir / validSessions) * 100).toFixed(1));
+              const earned = studentEarnedPoints[s.nisn] || 0;
+              const rate = (earned / (validSessions * 100)) * 100;
+              rates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
             });
             setAttendanceRates(rates);
             return;
@@ -385,17 +466,22 @@ export default function GradebookView({
         const { data: aData } = await aQ;
 
         if (aData && aData.length > 0) {
-          const studentStats: Record<string, { hadir: number; total: number }> = {};
+          const studentStats: Record<string, { earned: number; totalSessions: number }> = {};
           aData.forEach(row => {
-            if (!studentStats[row.nisn]) studentStats[row.nisn] = { hadir: 0, total: 0 };
-            studentStats[row.nisn].total++;
-            const st = (row.status || '').toUpperCase();
-            if (st === 'H' || st === 'HADIR') studentStats[row.nisn].hadir++;
+            if (!studentStats[row.nisn]) studentStats[row.nisn] = { earned: 0, totalSessions: 0 };
+            studentStats[row.nisn].totalSessions++;
+            const pts = getStatusPointValue(row.status || '');
+            studentStats[row.nisn].earned += pts;
           });
 
           students.forEach(s => {
             const stat = studentStats[s.nisn];
-            rates[s.nisn] = stat && stat.total > 0 ? parseFloat(((stat.hadir / stat.total) * 100).toFixed(1)) : 100;
+            if (stat && stat.totalSessions > 0) {
+              const rate = (stat.earned / (stat.totalSessions * 100)) * 100;
+              rates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+            } else {
+              rates[s.nisn] = 100;
+            }
           });
           setAttendanceRates(rates);
           return;
@@ -411,7 +497,7 @@ export default function GradebookView({
     };
 
     fetchMapelAttendance();
-  }, [selectedMapel, selectedKelas, sekolahId, students]);
+  }, [selectedMapel, selectedKelas, sekolahId, students, statusPoints]);
 
   // CP (Capaian Pembelajaran) state
   const [cpList, setCpList] = useState<CapaianPembelajaran[]>([]);
@@ -463,7 +549,7 @@ export default function GradebookView({
     resolveSekolah();
   }, [user]);
 
-  // Academic Year & Semester Sync from pengaturan table for Guru accounts
+  // Academic Year & Semester Sync from pengaturan table (Default for Admin & Guru)
   useEffect(() => {
     const fetchAcademicYearSettings = async () => {
       try {
@@ -485,16 +571,20 @@ export default function GradebookView({
 
           if (tahunVal) {
             setSyncedTahunAjaran(tahunVal);
-            if (!isAdmin) {
-              setSelectedTahunAjaran(tahunVal);
-              setTpForm(prev => ({ ...prev, tahun_ajaran: tahunVal }));
-            }
+            setSelectedTahunAjaran(tahunVal);
+            setTpForm(prev => ({ ...prev, tahun_ajaran: tahunVal }));
           }
-          if (semVal && (semVal === 'Ganjil' || semVal === 'Genap')) {
-            setSyncedSemester(semVal);
-            if (!isAdmin) {
-              setSelectedSemester(semVal as 'Ganjil' | 'Genap');
-              setTpForm(prev => ({ ...prev, semester: semVal }));
+          if (semVal) {
+            const normSem: 'Ganjil' | 'Genap' | null =
+              String(semVal).trim().toLowerCase() === 'genap'
+                ? 'Genap'
+                : String(semVal).trim().toLowerCase() === 'ganjil'
+                ? 'Ganjil'
+                : null;
+            if (normSem) {
+              setSyncedSemester(normSem);
+              setSelectedSemester(normSem);
+              setTpForm(prev => ({ ...prev, semester: normSem }));
             }
           }
         }
@@ -504,7 +594,65 @@ export default function GradebookView({
     };
 
     fetchAcademicYearSettings();
-  }, [sekolahId, isAdmin]);
+  }, [sekolahId]);
+
+  // Realtime configuration listener for sipjam:config_updated & storage multi-tab sync
+  useEffect(() => {
+    const handleConfigSync = (event: any) => {
+      const detail = event?.detail;
+      if (detail?.sekolah_id && sekolahId && detail.sekolah_id !== sekolahId) return;
+
+      const newTa = detail?.tahun_ajaran || detail?.config?.tahun_ajaran;
+      const newSem = detail?.semester || detail?.config?.semester;
+
+      if (newTa && typeof newTa === 'string') {
+        const trimmedTa = newTa.trim();
+        setSyncedTahunAjaran(trimmedTa);
+        setSelectedTahunAjaran(trimmedTa);
+        setTpForm(prev => ({ ...prev, tahun_ajaran: trimmedTa }));
+      }
+
+      if (newSem) {
+        const normSem: 'Ganjil' | 'Genap' | null =
+          String(newSem).trim().toLowerCase() === 'genap'
+            ? 'Genap'
+            : String(newSem).trim().toLowerCase() === 'ganjil'
+            ? 'Ganjil'
+            : null;
+        if (normSem) {
+          setSyncedSemester(normSem);
+          setSelectedSemester(normSem);
+          setTpForm(prev => ({ ...prev, semester: normSem }));
+        }
+      }
+    };
+
+    const handleStorageSync = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync' || e.key === 'sipjam:config_sync') {
+        try {
+          const detail = e.newValue ? JSON.parse(e.newValue) : null;
+          if (detail && typeof detail === 'object') {
+            handleConfigSync({ detail });
+          }
+        } catch (_) {}
+      }
+    };
+
+    window.addEventListener('sipjam:config_updated', handleConfigSync);
+    window.addEventListener('storage', handleStorageSync);
+    return () => {
+      window.removeEventListener('sipjam:config_updated', handleConfigSync);
+      window.removeEventListener('storage', handleStorageSync);
+    };
+  }, [sekolahId]);
+
+  // Dynamic academic year list for GradebookView
+  const gradebookTahunAjaranOptions = useMemo(() => {
+    const setYears = new Set<string>(['2023/2024', '2024/2025', '2025/2026', '2026/2027', '2027/2028']);
+    if (selectedTahunAjaran) setYears.add(selectedTahunAjaran.trim());
+    if (syncedTahunAjaran) setYears.add(syncedTahunAjaran.trim());
+    return Array.from(setYears).filter(Boolean).sort();
+  }, [selectedTahunAjaran, syncedTahunAjaran]);
 
   // 1. Fetch Teachers, Mapel, and Classes
   useEffect(() => {
@@ -909,8 +1057,21 @@ export default function GradebookView({
     if (total !== 100) {
       showToast('Validasi', `Total bobot harus 100%. Saat ini: ${total}%.`, 'warning'); return;
     }
+    const pointsToSave: AttendanceStatusPoints = {
+      hadir: Math.min(100, Math.max(0, Number(statusPointsForm.hadir) || 0)),
+      sakit: Math.min(100, Math.max(0, Number(statusPointsForm.sakit) || 0)),
+      izin: Math.min(100, Math.max(0, Number(statusPointsForm.izin) || 0)),
+      terlambat: Math.min(100, Math.max(0, Number(statusPointsForm.terlambat) || 0)),
+      alpa: Math.min(100, Math.max(0, Number(statusPointsForm.alpa) || 0)),
+    };
     try {
-      const valueStr = JSON.stringify(bobotForm);
+      const payload = {
+        kehadiran: bobotForm.kehadiran,
+        formatif: bobotForm.formatif,
+        sumatif: bobotForm.sumatif,
+        status_points: pointsToSave,
+      };
+      const valueStr = JSON.stringify(payload);
       const { data: existing } = await supabase.from('pengaturan')
         .select('id').eq('sekolah_id', sekolahId).eq('key', 'bobot_nilai_mapel').maybeSingle();
       if (existing?.id) {
@@ -923,8 +1084,14 @@ export default function GradebookView({
       setBobotKehadiran(bobotForm.kehadiran);
       setBobotFormatif(bobotForm.formatif);
       setBobotSumatif(bobotForm.sumatif);
+      setStatusPoints(pointsToSave);
+      setBobotForm(payload);
       setIsBobotModalOpen(false);
-      showToast('Bobot Disimpan', `Kehadiran ${bobotForm.kehadiran}% / Formatif ${bobotForm.formatif}% / Sumatif ${bobotForm.sumatif}%`, 'success');
+      showToast(
+        'Bobot Disimpan',
+        `Kehadiran ${bobotForm.kehadiran}% / Formatif ${bobotForm.formatif}% / Sumatif ${bobotForm.sumatif}% (Poin: H=${pointsToSave.hadir}, S=${pointsToSave.sakit}, I=${pointsToSave.izin}, T=${pointsToSave.terlambat}, A=${pointsToSave.alpa})`,
+        'success'
+      );
     } catch (err: any) {
       showToast('Gagal', err.message, 'error');
     }
@@ -2309,7 +2476,16 @@ export default function GradebookView({
           {isAdmin && (
             <button
               type="button"
-              onClick={() => { setBobotForm({ kehadiran: bobotKehadiran, formatif: bobotFormatif, sumatif: bobotSumatif }); setIsBobotModalOpen(true); }}
+              onClick={() => {
+                setBobotForm({
+                  kehadiran: bobotKehadiran,
+                  formatif: bobotFormatif,
+                  sumatif: bobotSumatif,
+                  status_points: statusPoints,
+                });
+                setStatusPointsForm(statusPoints);
+                setIsBobotModalOpen(true);
+              }}
               className="btn-click px-3 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 transition border border-indigo-200 dark:border-indigo-800"
             >
               <i className="fa-solid fa-scale-balanced"></i>
@@ -2395,8 +2571,8 @@ export default function GradebookView({
               onChange={e => setSelectedSemester(e.target.value as 'Ganjil' | 'Genap')}
               className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
             >
-              <option value="Ganjil">Semester Ganjil</option>
-              <option value="Genap">Semester Genap</option>
+              <option value="Ganjil">Semester Ganjil{syncedSemester === 'Ganjil' ? ' (Aktif)' : ''}</option>
+              <option value="Genap">Semester Genap{syncedSemester === 'Genap' ? ' (Aktif)' : ''}</option>
             </select>
           </div>
 
@@ -2411,9 +2587,11 @@ export default function GradebookView({
                 onChange={e => setSelectedTahunAjaran(e.target.value)}
                 className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
-                <option value="2024/2025">2024/2025</option>
-                <option value="2025/2026">2025/2026</option>
-                <option value="2026/2027">2026/2027</option>
+                {gradebookTahunAjaranOptions.map(ta => (
+                  <option key={ta} value={ta}>
+                    {ta}{syncedTahunAjaran === ta ? ' (Aktif)' : ''}
+                  </option>
+                ))}
               </select>
             ) : (
               <div className="w-full bg-gray-100 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-white flex items-center justify-between">
@@ -4490,37 +4668,146 @@ export default function GradebookView({
       {/* Modal Bobot Nilai (Admin Only) */}
       {isBobotModalOpen && isAdmin && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto custom-scroll">
             <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-sm font-black text-gray-900 dark:text-white">Pengaturan Bobot Nilai Akhir</h3>
+              <h3 className="text-sm font-black text-gray-900 dark:text-white">Pengaturan Bobot Nilai Akhir & Kehadiran</h3>
               <button type="button" onClick={() => setIsBobotModalOpen(false)}
                 className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-white flex items-center justify-center text-xs">
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
-            <form onSubmit={handleSaveBobot} className="space-y-3.5 mt-4 text-xs">
-              <p className="text-gray-500 dark:text-gray-400 text-[11px]">
-                Total bobot kehadiran + formatif + sumatif <strong>harus = 100%</strong>. Berlaku untuk semua guru di sekolah ini.
-              </p>
-              {(['kehadiran', 'formatif', 'sumatif'] as const).map(key => (
-                <div key={key}>
-                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 capitalize">
-                    Bobot {key} (%)
-                  </label>
-                  <input type="number" min="0" max="100" required value={bobotForm[key]}
-                    onChange={e => setBobotForm({ ...bobotForm, [key]: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            <form onSubmit={handleSaveBobot} className="space-y-4 mt-4 text-xs">
+              <div>
+                <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-1.5">
+                  <i className="fa-solid fa-chart-pie text-indigo-500"></i>
+                  Komposisi Bobot Nilai Akhir
+                </h4>
+                <p className="text-gray-500 dark:text-gray-400 text-[11px] mb-2.5">
+                  Total bobot kehadiran + formatif + sumatif <strong>harus = 100%</strong>. Berlaku untuk semua guru di sekolah ini.
+                </p>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {(['kehadiran', 'formatif', 'sumatif'] as const).map(key => (
+                    <div key={key}>
+                      <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 capitalize text-[11px]">
+                        Bobot {key} (%)
+                      </label>
+                      <input type="number" min="0" max="100" required value={bobotForm[key]}
+                        onChange={e => setBobotForm({ ...bobotForm, [key]: parseInt(e.target.value) || 0 })}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none text-center font-bold" />
+                    </div>
+                  ))}
                 </div>
-              ))}
-              <div className={`p-2.5 rounded-xl text-[11px] font-bold text-center border ${
-                bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100
-                  ? 'bg-green-50 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800'
-                  : 'bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
-              }`}>
-                Total: {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif}%
-                {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100 ? ' ✓' : ' (harus 100%)'}
+                <div className={`mt-2.5 p-2 rounded-xl text-[11px] font-bold text-center border ${
+                  bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100
+                    ? 'bg-green-50 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800'
+                    : 'bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
+                }`}>
+                  Total: {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif}%
+                  {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100 ? ' ✓' : ' (harus 100%)'}
+                </div>
               </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
+
+              {/* Sub-form: Konfigurasi Poin Status Kehadiran per Pertemuan */}
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <i className="fa-solid fa-user-check text-teal-600 dark:text-teal-400"></i>
+                    Poin Status Kehadiran per Pertemuan
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setStatusPointsForm(DEFAULT_STATUS_POINTS)}
+                    className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold"
+                  >
+                    Reset Default
+                  </button>
+                </div>
+                <p className="text-gray-500 dark:text-gray-400 text-[11px] mb-2.5">
+                  Nilai poin (0–100) per pertemuan untuk menghitung persentase kehadiran siswa.
+                </p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                      Hadir (Poin)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                      value={statusPointsForm.hadir}
+                      onChange={e => setStatusPointsForm({ ...statusPointsForm, hadir: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                      Sakit (Poin)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                      value={statusPointsForm.sakit}
+                      onChange={e => setStatusPointsForm({ ...statusPointsForm, sakit: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                      Izin (Poin)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                      value={statusPointsForm.izin}
+                      onChange={e => setStatusPointsForm({ ...statusPointsForm, izin: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-purple-500 inline-block"></span>
+                      Terlambat (Poin)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                      value={statusPointsForm.terlambat}
+                      onChange={e => setStatusPointsForm({ ...statusPointsForm, terlambat: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
+                      Alpa (Poin)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                      value={statusPointsForm.alpa}
+                      onChange={e => setStatusPointsForm({ ...statusPointsForm, alpa: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                    />
+                  </div>
+                </div>
+                <div className="mt-2 text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                  Formula: Nilai Kehadiran = (Total Poin / (Jumlah Sesi × 100)) × 100%
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                 <button type="button" onClick={() => setIsBobotModalOpen(false)}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                   Batal
