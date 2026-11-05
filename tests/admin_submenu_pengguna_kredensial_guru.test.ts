@@ -375,6 +375,82 @@ async function runTestSuite() {
   assert.strictEqual(emptyPwd, 'guru27');
   pass('3.8: Sanitasi toleran terhadap spasi internal, null, dash, dan menghasilkan default password NIP27 konsisten');
 
+  // Test 3.9: Reject emojis, illegal symbols, and script tags in username
+  const emojiRes = await updateTeacherCredentials(mockSupabase, {
+    userId: user1.id,
+    newUsername: 'guru😊'
+  });
+  assert.strictEqual(emojiRes.success, false);
+  assert.ok(emojiRes.message.includes('huruf, angka') || emojiRes.message.includes('titik'));
+
+  const scriptRes = await updateTeacherCredentials(mockSupabase, {
+    userId: user1.id,
+    newUsername: '<script>alert(1)</script>'
+  });
+  assert.strictEqual(scriptRes.success, false);
+  pass('3.9: Validasi menolak karakter ilegal, emoji, dan tag injeksi dalam username');
+
+  // Test 3.10: Formatted NIPs with dashes and dots normalize to clean digits
+  const dashedNip = resolveTeacherUsername({ nip: '19850101-201001-1-001' });
+  assert.strictEqual(dashedNip, '198501012010011001', 'Dashed NIP must normalize to pure digits');
+  const dottedNip = resolveTeacherUsername({ nip: '1985.01.01.2010.01.1.001' });
+  assert.strictEqual(dottedNip, '198501012010011001', 'Dotted NIP must normalize to pure digits');
+  const dashedPwd = getDefaultTeacherPassword('19850101-201001-1-001');
+  assert.strictEqual(dashedPwd, '19850101201001100127');
+  pass('3.10: NIP berformat tanda hubung (-) dan titik (.) dinormalisasi menjadi digit angka murni');
+
+  // Test 3.11: Common placeholder NIPs fallback to teacher name & guru27
+  const doubleDashNip = resolveTeacherUsername({ nip: '--', nama_guru: 'Budi Santoso' });
+  assert.strictEqual(doubleDashNip, 'budisantoso');
+  const naNip = resolveTeacherUsername({ nip: 'N/A', nama_guru: 'Budi Santoso' });
+  assert.strictEqual(naNip, 'budisantoso');
+  const noneNip = resolveTeacherUsername({ nip: 'none', nama_guru: 'Budi Santoso' });
+  assert.strictEqual(noneNip, 'budisantoso');
+  const tidakAdaNip = resolveTeacherUsername({ nip: 'tidak ada', nama_guru: 'Budi Santoso' });
+  assert.strictEqual(tidakAdaNip, 'budisantoso');
+  const zeroNip = resolveTeacherUsername({ nip: '00000000', nama_guru: 'Budi Santoso' });
+  assert.strictEqual(zeroNip, 'budisantoso');
+
+  assert.strictEqual(getDefaultTeacherPassword('--'), 'guru27');
+  assert.strictEqual(getDefaultTeacherPassword('N/A'), 'guru27');
+  assert.strictEqual(getDefaultTeacherPassword('none'), 'guru27');
+  assert.strictEqual(getDefaultTeacherPassword('tidak ada'), 'guru27');
+  assert.strictEqual(getDefaultTeacherPassword('0'), 'guru27');
+  pass('3.11: NIP placeholder (--, N/A, none, tidak ada, 0) terdeteksi aman dan fallback ke nama guru / guru27');
+
+  // Test 3.12: Self-healing credential update and password reset when userId is omitted
+  const selfHealUpdate = await updateTeacherCredentials(mockSupabase, {
+    newUsername: '199912312025011099',
+    newPassword: 'MyNewPassword2026!',
+    newNama: 'Guru Baru Mandiri',
+    sekolahId: 'sch-001'
+  });
+  assert.strictEqual(selfHealUpdate.success, true);
+  assert.ok(selfHealUpdate.userId, 'Must return or create userId during self-healing');
+  const createdUser = mockUsers.find(u => u.username === '199912312025011099');
+  assert.ok(createdUser, 'Created user must be found in users table');
+  assert.strictEqual(createdUser.password, 'MyNewPassword2026!');
+
+  const selfHealReset = await resetTeacherPasswordToDefault(mockSupabase, {
+    username: '199912312025011099',
+    nip: '199912312025011099',
+    nama: 'Guru Baru Mandiri'
+  });
+  assert.strictEqual(selfHealReset.success, true);
+  assert.strictEqual(selfHealReset.defaultPassword, '19991231202501109927');
+  assert.strictEqual(createdUser.password, '19991231202501109927');
+  pass('3.12: Self-healing credential update dan reset password berhasil bekerja ketika userId tidak diteruskan');
+
+  // Test 3.13: Static Component Verification for DOM elements
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const viewCode = fs.readFileSync(path.join(process.cwd(), 'src/components/AdminPenggunaView.tsx'), 'utf-8');
+  assert.ok(viewCode.includes('swal-btn-toggle-pwd'), 'AdminPenggunaView must include password visibility toggle button');
+  assert.ok(viewCode.includes('swal-icon-toggle-pwd'), 'AdminPenggunaView must include password visibility eye icon');
+  assert.ok(viewCode.includes('swal-sync-nip'), 'AdminPenggunaView must include syncNip option');
+  assert.ok(viewCode.includes('isMountedRef'), 'AdminPenggunaView must guard state updates with isMountedRef');
+  pass('3.13: AdminPenggunaView memuat kontrol interaktif toggle password, sinkronisasi NIP, dan proteksi unmount');
+
   // ==========================================================================
   // SUITE 4: Non-Regression & Master Data Integrity (R4)
   // ==========================================================================

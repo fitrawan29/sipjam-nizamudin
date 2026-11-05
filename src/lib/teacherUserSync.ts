@@ -8,7 +8,15 @@
  * - Role: Guru
  */
 
-import { normalizeName, isDummyOrTestString, isForbiddenName } from './dataIntegrityGuard';
+import {
+  normalizeName,
+  isDummyOrTestString,
+  isForbiddenName,
+  getDefaultTeacherPassword,
+  resolveTeacherUsername
+} from './dataIntegrityGuard';
+
+export { getDefaultTeacherPassword, resolveTeacherUsername };
 
 export interface TeacherAccountItem {
   guruId: string;
@@ -22,30 +30,6 @@ export interface TeacherAccountItem {
   status: string;
   hasAccount: boolean;
   sekolahId: string;
-}
-
-/**
- * Derives default password for a teacher: username/NIP + '27'
- */
-export function getDefaultTeacherPassword(usernameOrNip: string): string {
-  const clean = (usernameOrNip || '').trim().replace(/\s+/g, '');
-  if (!clean || clean === '-' || clean.toLowerCase() === 'null' || clean.toLowerCase() === 'undefined') {
-    return 'guru27';
-  }
-  return `${clean}27`;
-}
-
-/**
- * Resolves the canonical username from a teacher record (prefers NIP, fallback to clean name)
- */
-export function resolveTeacherUsername(guru: { nip?: string | null; nama_guru?: string | null }): string {
-  const cleanNip = (guru?.nip || '').trim().replace(/\s+/g, '');
-  if (cleanNip && cleanNip !== '-' && cleanNip.toLowerCase() !== 'null' && cleanNip.toLowerCase() !== 'undefined') {
-    return cleanNip;
-  }
-  const cleanNama = (guru?.nama_guru || '').trim();
-  const fallback = cleanNama.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-  return fallback || 'guru';
 }
 
 /**
@@ -210,7 +194,7 @@ export async function syncTeacherAccounts(
 export async function updateTeacherCredentials(
   supabaseClient: any,
   params: {
-    userId: string;
+    userId?: string;
     guruId?: string;
     oldUsername?: string;
     newUsername: string;
@@ -220,12 +204,25 @@ export async function updateTeacherCredentials(
     syncNipToDataGuru?: boolean;
     sekolahId?: string;
   }
-): Promise<{ success: boolean; message: string }> {
-  const { userId, guruId, oldUsername, newUsername, newPassword, newNama, newNip, syncNipToDataGuru } = params;
+): Promise<{ success: boolean; message: string; userId?: string }> {
+  let { userId } = params;
+  const { guruId, oldUsername, newUsername, newPassword, newNama, newNip, syncNipToDataGuru } = params;
 
-  const cleanUsername = (newUsername || '').trim().replace(/\s+/g, '');
+  const cleanUsername = (newUsername || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/\s+/g, '');
+
   if (!cleanUsername) {
     return { success: false, message: 'Username tidak boleh kosong!' };
+  }
+
+  // Reject invalid characters / emojis / scripts
+  if (!/^[a-zA-Z0-9_.-]+$/.test(cleanUsername)) {
+    return {
+      success: false,
+      message: 'Username hanya boleh memuat huruf, angka, titik (.), garis bawah (_), atau tanda hubung (-).'
+    };
   }
 
   // Anti-dummy check & forbidden name validation
@@ -248,15 +245,85 @@ export async function updateTeacherCredentials(
       userQuery = userQuery.eq('username', cleanUsername);
     }
 
-    const { data: existing } = await userQuery
-      .neq('id', userId)
-      .maybeSingle();
+    if (userId) {
+      userQuery = userQuery.neq('id', userId);
+    }
 
-    if (existing) {
+    const { data: existing } = await userQuery.maybeSingle();
+
+    if (existing && existing.username?.toLowerCase() === cleanUsername.toLowerCase()) {
       return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
     }
 
-    // 2. Build user update payload
+    // 2. Self-heal if userId is missing
+    if (!userId) {
+      let targetUser = existing;
+      if (!targetUser && oldUsername && oldUsername !== '-') {
+        const { data: uByOld } = await supabaseClient
+          .from('users')
+          .select('id, username')
+          .ilike('username', oldUsername)
+          .maybeSingle();
+        targetUser = uByOld;
+      }
+
+      if (targetUser) {
+        userId = targetUser.id;
+      } else {
+        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const targetPassword = (newPassword && newPassword.trim())
+          ? newPassword.trim()
+          : getDefaultTeacherPassword(cleanUsername);
+
+        const { data: inserted, error: insertErr } = await supabaseClient
+          .from('users')
+          .insert([{
+            id: newId,
+            username: cleanUsername,
+            password: targetPassword,
+            nama: newNama?.trim() || 'Guru',
+            role: 'Guru',
+            sekolah_id: params.sekolahId || 'a0000000-0000-0000-0000-000000000001'
+          }])
+          .select();
+
+        if (insertErr) {
+          if (
+            insertErr.code === '23505' ||
+            insertErr.message?.includes('duplicate key') ||
+            insertErr.message?.includes('uq_users_username_lower')
+          ) {
+            return { success: false, message: `Username "${cleanUsername}" sudah digunakan oleh akun lain!` };
+          }
+          throw new Error(`Gagal membuat akun users: ${insertErr.message}`);
+        }
+
+        if (guruId) {
+          const guruPayload: Record<string, any> = {};
+          if (newNip && newNip.trim()) {
+            guruPayload.nip = newNip.trim();
+          } else if (syncNipToDataGuru && cleanUsername && cleanUsername !== '-') {
+            guruPayload.nip = cleanUsername;
+          }
+          if (newNama && newNama.trim()) {
+            guruPayload.nama_guru = newNama.trim();
+          }
+          if (Object.keys(guruPayload).length > 0) {
+            await supabaseClient.from('data_guru').update(guruPayload).eq('id', guruId);
+          }
+        }
+
+        return {
+          success: true,
+          message: 'Akun guru baru berhasil dibuat dengan kredensial yang ditentukan!',
+          userId: (Array.isArray(inserted) ? inserted[0]?.id : (inserted as any)?.id) || newId
+        };
+      }
+    }
+
+    // 3. Build user update payload
     const userPayload: Record<string, any> = {
       username: cleanUsername,
       updated_at: new Date().toISOString()
@@ -286,7 +353,7 @@ export async function updateTeacherCredentials(
       throw new Error(`Gagal memperbarui tabel users: ${userUpdateErr.message}`);
     }
 
-    // 3. Keep data_guru synchronized (NIP and nama)
+    // 4. Keep data_guru synchronized (NIP and nama)
     try {
       const guruPayload: Record<string, any> = {};
       if (newNip && newNip.trim()) {
@@ -309,7 +376,7 @@ export async function updateTeacherCredentials(
       console.warn('[teacherUserSync] Sync to data_guru warning:', syncErr);
     }
 
-    return { success: true, message: 'Kredensial akun guru berhasil diperbarui!' };
+    return { success: true, message: 'Kredensial akun guru berhasil diperbarui!', userId };
   } catch (err: any) {
     console.error('[teacherUserSync] updateTeacherCredentials error:', err);
     return { success: false, message: err.message || 'Gagal memperbarui kredensial akun guru.' };
@@ -322,22 +389,58 @@ export async function updateTeacherCredentials(
 export async function resetTeacherPasswordToDefault(
   supabaseClient: any,
   params: {
-    userId: string;
+    userId?: string;
     username: string;
     nip?: string;
+    nama?: string;
+    sekolahId?: string;
   }
 ): Promise<{ success: boolean; message: string; defaultPassword: string }> {
   const targetIdentifier = (params.nip && params.nip !== '-' && params.nip.toLowerCase() !== 'null') ? params.nip.trim() : params.username.trim();
   const defaultPassword = getDefaultTeacherPassword(targetIdentifier);
 
   try {
+    let targetUserId = params.userId;
+    if (!targetUserId) {
+      // Find user by username or NIP
+      const cleanTarget = resolveTeacherUsername({ nip: params.nip, nama_guru: params.nama });
+      const { data: found } = await supabaseClient
+        .from('users')
+        .select('id')
+        .ilike('username', cleanTarget)
+        .maybeSingle();
+
+      if (found) {
+        targetUserId = found.id;
+      } else {
+        // Create user
+        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
+        const { error: insErr } = await supabaseClient
+          .from('users')
+          .insert([{
+            id: newId,
+            username: cleanTarget,
+            password: defaultPassword,
+            nama: params.nama || 'Guru',
+            role: 'Guru',
+            sekolah_id: params.sekolahId || 'a0000000-0000-0000-0000-000000000001'
+          }]);
+        if (insErr) throw insErr;
+        return {
+          success: true,
+          message: `Akun dibuat dan password direset ke default: ${defaultPassword}`,
+          defaultPassword
+        };
+      }
+    }
+
     const { error } = await supabaseClient
       .from('users')
       .update({
         password: defaultPassword,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.userId);
+      .eq('id', targetUserId);
 
     if (error) {
       throw error;

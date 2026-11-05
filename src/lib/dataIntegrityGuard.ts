@@ -71,6 +71,59 @@ export function isForbiddenName(name?: string | null): boolean {
 }
 
 /**
+ * Derives default password for a teacher: username/NIP + '27'
+ */
+export function getDefaultTeacherPassword(usernameOrNip: string): string {
+  const clean = (usernameOrNip || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+
+  const isPlaceholder = !clean ||
+    /^[-_.\s0]+$/.test(clean) ||
+    /^(null|undefined|none|na|n\/a|tidak\s*ada|-+)$/i.test(clean);
+
+  if (isPlaceholder) {
+    return 'guru27';
+  }
+
+  // If formatted NIP (spaces, dots, hyphens) with pure digits (8-25 digits)
+  const digitsOnly = clean.replace(/[-.\s]/g, '');
+  if (/^\d{8,25}$/.test(digitsOnly)) {
+    return `${digitsOnly}27`;
+  }
+
+  return `${clean.replace(/\s+/g, '')}27`;
+}
+
+/**
+ * Resolves canonical username from a teacher record (prefers NIP, fallback to clean name)
+ */
+export function resolveTeacherUsername(guru: { nip?: string | null; nama_guru?: string | null }): string {
+  const rawNip = (guru?.nip || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim();
+
+  // Check if NIP is a placeholder or invalid
+  const isPlaceholder = !rawNip ||
+    /^[-_.\s0]+$/.test(rawNip) ||
+    /^(null|undefined|none|na|n\/a|tidak\s*ada|-+)$/i.test(rawNip);
+
+  if (!isPlaceholder) {
+    // If standard 8-25 digit NIP formatted with spaces, hyphens, or dots, normalize to digits
+    const digitsOnly = rawNip.replace(/[-.\s]/g, '');
+    if (/^\d{8,25}$/.test(digitsOnly)) {
+      return digitsOnly;
+    }
+    // Otherwise strip internal whitespace and return clean string
+    return rawNip.replace(/\s+/g, '');
+  }
+
+  const cleanNama = (guru?.nama_guru || '').trim();
+  const fallback = cleanNama.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  return fallback || 'guru';
+}
+
+/**
  * Validates teacher (data_guru) creation or update
  */
 export function validateTeacherData(
@@ -811,12 +864,9 @@ export async function importMasterDataFromCsv(
   if (tableName === 'data_guru' && rows.length > 0) {
     try {
       for (const row of rows) {
-        const cleanNip = (row.nip || '').trim().replace(/\s+/g, '');
-        const targetUsername = (cleanNip && cleanNip !== '-' && cleanNip.toLowerCase() !== 'null')
-          ? cleanNip
-          : (row.nama_guru || '').trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'guru';
+        const targetUsername = resolveTeacherUsername(row);
         if (targetUsername) {
-          const defaultPassword = `${targetUsername}27`;
+          const defaultPassword = getDefaultTeacherPassword(targetUsername);
           const userTable = supabase?.from?.('users');
           if (typeof userTable?.select === 'function') {
             const { data: existingUser } = await userTable

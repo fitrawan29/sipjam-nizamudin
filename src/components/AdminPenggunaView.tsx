@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
@@ -19,6 +19,7 @@ export interface AdminPenggunaViewProps {
 }
 
 export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
+  const isMountedRef = useRef<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
@@ -33,6 +34,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
   // Load and sync data
   const handleLoadAndSync = useCallback(async (isManualTrigger = false) => {
+    if (!isMountedRef.current) return;
     if (isManualTrigger) {
       setSyncing(true);
     } else {
@@ -43,6 +45,8 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
     try {
       const sekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
       const result = await syncTeacherAccounts(supabase, sekolahId);
+
+      if (!isMountedRef.current) return;
 
       if (result.accounts && result.accounts.length > 0) {
         setAccounts(result.accounts);
@@ -71,15 +75,23 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       }
     } catch (err: any) {
       console.error('[AdminPenggunaView] Error syncing teacher accounts:', err);
-      setErrorMsg(err.message || 'Gagal menyinkronkan akun guru.');
+      if (isMountedRef.current) {
+        setErrorMsg(err.message || 'Gagal menyinkronkan akun guru.');
+      }
     } finally {
-      setLoading(false);
-      setSyncing(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+        setSyncing(false);
+      }
     }
   }, [user?.sekolah_id]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     handleLoadAndSync(false);
+    return () => {
+      isMountedRef.current = false;
+    };
   }, [handleLoadAndSync]);
 
   // Unique mapel list for filter
@@ -165,10 +177,18 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
             <div class="relative">
               <input 
                 id="swal-password" 
-                type="text" 
-                class="swal2-input !mt-0 !w-full text-xs font-mono" 
+                type="password" 
+                class="swal2-input !mt-0 !w-full text-xs font-mono pr-9" 
                 placeholder="Kosongkan jika tidak ingin mengubah password"
               >
+              <button 
+                type="button" 
+                id="swal-btn-toggle-pwd" 
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer p-1" 
+                title="Tampilkan / Sembunyikan Password"
+              >
+                <i id="swal-icon-toggle-pwd" class="fa-solid fa-eye text-xs"></i>
+              </button>
             </div>
             <div class="flex items-center justify-between mt-1">
               <span class="text-[10px] text-gray-500 dark:text-gray-400">
@@ -183,14 +203,44 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               </button>
             </div>
           </div>
+
+          <div class="pt-1 border-t border-gray-100 dark:border-gray-800">
+            <label class="flex items-center gap-2 cursor-pointer text-[11px] text-gray-700 dark:text-gray-300">
+              <input 
+                id="swal-sync-nip" 
+                type="checkbox" 
+                class="rounded text-purple-600 focus:ring-purple-500"
+                ${/^\d{8,25}$/.test(item.nip !== '-' ? item.nip : item.username) ? 'checked' : ''}
+              >
+              <span>Sinkronkan username ke NIP di Data Guru</span>
+            </label>
+          </div>
         </div>
       `,
       didOpen: (popup) => {
-        const defaultBtn = popup.querySelector('#swal-btn-default-pwd') as HTMLButtonElement | null;
+        const toggleBtn = popup.querySelector('#swal-btn-toggle-pwd') as HTMLButtonElement | null;
         const pwdInput = popup.querySelector('#swal-password') as HTMLInputElement | null;
+        const iconToggle = popup.querySelector('#swal-icon-toggle-pwd') as HTMLElement | null;
+        if (toggleBtn && pwdInput) {
+          toggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (pwdInput.type === 'password') {
+              pwdInput.type = 'text';
+              if (iconToggle) iconToggle.className = 'fa-solid fa-eye-slash text-xs';
+            } else {
+              pwdInput.type = 'password';
+              if (iconToggle) iconToggle.className = 'fa-solid fa-eye text-xs';
+            }
+          });
+        }
+
+        const defaultBtn = popup.querySelector('#swal-btn-default-pwd') as HTMLButtonElement | null;
         if (defaultBtn && pwdInput) {
           defaultBtn.addEventListener('click', () => {
             pwdInput.value = defaultPwd;
+            pwdInput.type = 'text';
+            if (iconToggle) iconToggle.className = 'fa-solid fa-eye-slash text-xs';
           });
         }
       },
@@ -202,6 +252,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       preConfirm: () => {
         const usernameVal = (document.getElementById('swal-username') as HTMLInputElement)?.value?.trim();
         const passwordVal = (document.getElementById('swal-password') as HTMLInputElement)?.value?.trim();
+        const syncNipVal = (document.getElementById('swal-sync-nip') as HTMLInputElement)?.checked ?? false;
 
         if (!usernameVal) {
           Swal.showValidationMessage('Username tidak boleh kosong!');
@@ -210,48 +261,26 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
         return {
           newUsername: usernameVal,
-          newPassword: passwordVal || undefined
+          newPassword: passwordVal || undefined,
+          syncNipToDataGuru: syncNipVal
         };
       }
     });
 
     if (formValues) {
       setLoading(true);
-      let targetUserId = item.userId;
-      if (!targetUserId) {
-        // Self-heal: ensure account exists before updating
-        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
-        const { data: created, error: createErr } = await supabase
-          .from('users')
-          .insert([{
-            id: newId,
-            username: formValues.newUsername,
-            password: formValues.newPassword || defaultPwd,
-            nama: item.nama,
-            role: 'Guru',
-            sekolah_id: item.sekolahId || user?.sekolah_id
-          }])
-          .select()
-          .maybeSingle();
-
-        setLoading(false);
-        if (createErr) {
-          showToast('Gagal Membuat Akun', createErr.message, 'error');
-        } else {
-          showToast('Berhasil', 'Akun guru berhasil dibuat!', 'success');
-          handleLoadAndSync(false);
-        }
-        return;
-      }
-
       const res = await updateTeacherCredentials(supabase, {
-        userId: targetUserId,
+        userId: item.userId,
         guruId: item.guruId,
         oldUsername: item.username,
         newUsername: formValues.newUsername,
         newPassword: formValues.newPassword,
-        sekolahId: item.sekolahId
+        syncNipToDataGuru: formValues.syncNipToDataGuru,
+        sekolahId: item.sekolahId || user?.sekolah_id,
+        newNama: item.nama
       });
+
+      if (!isMountedRef.current) return;
       setLoading(false);
 
       if (res.success) {
@@ -292,38 +321,15 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
     if (result.isConfirmed) {
       setLoading(true);
-
-      let targetUserId = item.userId;
-      if (!targetUserId) {
-        // Self-heal: create account with default password NIP27
-        const targetUsername = item.nip !== '-' ? item.nip : item.username;
-        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined;
-        const { error: createErr } = await supabase
-          .from('users')
-          .insert([{
-            id: newId,
-            username: targetUsername,
-            password: defaultPwd,
-            nama: item.nama,
-            role: 'Guru',
-            sekolah_id: item.sekolahId || user?.sekolah_id
-          }]);
-
-        setLoading(false);
-        if (createErr) {
-          showToast('Gagal Membuat Akun', createErr.message, 'error');
-        } else {
-          showToast('Reset Berhasil', `Akun dibuat dan password direset ke default: ${defaultPwd}`, 'success');
-          handleLoadAndSync(false);
-        }
-        return;
-      }
-
       const res = await resetTeacherPasswordToDefault(supabase, {
-        userId: targetUserId,
+        userId: item.userId,
         username: item.username,
-        nip: item.nip
+        nip: item.nip,
+        nama: item.nama,
+        sekolahId: item.sekolahId || user?.sekolah_id
       });
+
+      if (!isMountedRef.current) return;
       setLoading(false);
 
       if (res.success) {

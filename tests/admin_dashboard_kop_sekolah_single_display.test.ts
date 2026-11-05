@@ -30,11 +30,12 @@ assert.strictEqual(resolveAdminDisplayName('SIPJAM - SMA NEGERI 1 BIMA'), 'Admin
 assert.strictEqual(resolveAdminDisplayName('Admin SMA NIZAMUDIN'), 'Admin SMA NIZAMUDIN');
 assert.strictEqual(resolveAdminDisplayName('admin SMK 2 MATARAM'), 'Admin SMK 2 MATARAM');
 assert.strictEqual(resolveAdminDisplayName('SMK 2 MATARAM'), 'Admin SMK 2 MATARAM');
+assert.strictEqual(resolveAdminDisplayName('SMA Negeri 1 Tutuyan'), 'Admin SMA Negeri 1 Tutuyan');
 assert.strictEqual(resolveAdminDisplayName(''), 'Admin Sekolah');
 console.log('  ✔ [PASS] resolveAdminDisplayName dynamically adjusts to kop_sekolah without duplicate Admin prefixes');
 
 // --- 2. Count "Admin" occurrences in rendered banner text ---
-console.log('\n--- 2. Testing Single "Admin" Text Enforcement ---');
+console.log('\n--- 2. Testing Single "Admin" Text & Zero School Mixing Enforcement ---');
 
 interface RenderedBannerParts {
   heading: string;
@@ -54,9 +55,8 @@ const renderBannerParts = (
   const usernameText = (user?.username && user.username.toLowerCase() !== 'admin')
     ? user.username
     : null;
-  const shouldRenderSchool = (!user?.nama?.toLowerCase().includes(((user as any)?.sekolah_nama || 'SMA NIZAMUDIN').toLowerCase()) &&
-    !user?.nama?.toLowerCase().includes('sma nizamudin'));
-  const schoolSubtext = shouldRenderSchool ? ((user as any)?.sekolah_nama || 'SMA NIZAMUDIN') : null;
+  // School name is completely incorporated in heading (adminDisplayName); subtext must not mix or duplicate
+  const schoolSubtext = null;
 
   return { heading: adminDisplayName, roleBadge, usernameText, schoolSubtext };
 };
@@ -90,6 +90,16 @@ assert.strictEqual(caseC.usernameText, 'operator_it');
 assert.strictEqual(countAdminOccurrences(caseC), 1, 'Non-admin username does not add extra "admin" words');
 console.log('  ✔ [PASS] Case C (custom username): Shows username while keeping "Admin" count at exactly 1');
 
+// Case D: User reported issue: Admin SMA Negeri 1 Tutuyan must NEVER mix with SMA NIZAMUDIN
+const caseD = renderBannerParts({ role: 'Admin', username: 'admin', nama: 'Admin' }, 'SMA Negeri 1 Tutuyan');
+assert.strictEqual(caseD.heading, 'Admin SMA Negeri 1 Tutuyan');
+assert.strictEqual(caseD.schoolSubtext, null, 'Subtext school must be null to prevent mixing');
+assert.strictEqual(caseD.usernameText, null);
+assert.strictEqual(countAdminOccurrences(caseD), 1);
+const allTextCaseD = [caseD.heading, caseD.roleBadge, caseD.usernameText, caseD.schoolSubtext].filter(Boolean).join(' ');
+assert(!allTextCaseD.includes('SMA NIZAMUDIN'), 'Must zero references to obsolete SMA NIZAMUDIN');
+console.log('  ✔ [PASS] Case D (SMA Negeri 1 Tutuyan): Completely clean "Admin SMA Negeri 1 Tutuyan" without SMA NIZAMUDIN mixing');
+
 // --- 3. Static Inspection of HomeViewAdmin.tsx ---
 console.log('\n--- 3. Static Code Verification in HomeViewAdmin.tsx ---');
 const homeAdminCode = fs.readFileSync(path.join(projectRoot, 'src/components/HomeViewAdmin.tsx'), 'utf8');
@@ -102,7 +112,8 @@ assert(homeAdminCode.includes("window.addEventListener('sipjam:config_updated'")
 assert(homeAdminCode.includes("window.addEventListener('storage'"), 'HomeViewAdmin.tsx listens to storage event for multi-tab sync');
 assert(homeAdminCode.includes("user?.role && user.role.toLowerCase() !== 'admin'"), 'HomeViewAdmin.tsx suppresses role badge when role is admin');
 assert(homeAdminCode.includes("user?.username && user.username.toLowerCase() !== 'admin'"), 'HomeViewAdmin.tsx suppresses username text when username is admin');
-console.log('  ✔ [PASS] HomeViewAdmin.tsx contains all reactive sync, kop_sekolah query, and deduplication logic');
+assert(!homeAdminCode.includes('<span className="truncate font-sans font-medium">{(user as any)?.sekolah_nama'), 'Must eliminate secondary school span mixing in HomeViewAdmin.tsx');
+console.log('  ✔ [PASS] HomeViewAdmin.tsx eliminates secondary mixed school span and cleanly manages admin title');
 
 // --- 4. Static Inspection of HomeView.tsx & AppScreen.tsx Props Propagation ---
 console.log('\n--- 4. Static Code Verification in HomeView.tsx & AppScreen.tsx ---');

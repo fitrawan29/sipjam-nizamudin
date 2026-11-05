@@ -957,7 +957,7 @@ export default function AppScreen({
                     {item.subItems && (isAdmin || isSuperadmin) && (
                       <div className="ml-7 pl-2.5 py-1 space-y-1 border-l-2 border-purple-300/60 dark:border-purple-800/60 my-1">
                         {item.subItems.map((sub: any) => {
-                          const isSubActive = currentView === sub.id || (currentView === 'view-admin-data' && urlTab === 'Pengguna');
+                          const isSubActive = currentView === sub.id || (currentView === 'view-admin-data' && (urlTab === 'Pengguna' || urlTab === 'pengguna' || urlTab === 'users'));
                           return (
                             <button
                               key={sub.id}
