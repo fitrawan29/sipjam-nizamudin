@@ -1,83 +1,83 @@
-> [!WARNING] **Skepticism Disclaimer**
-> High confidence in the core journal photo upload pipeline, flexible presensi pulang workflow, departure schedule time boundaries, dynamic rekap schedule cross-referencing, and title-normalized idempotency; production mobile file pickers remain dependent on browser OS permissions.
+# Handoff Report: Reviewer Round 2 — Sub Menu Pengguna & Kredensial Guru (Admin)
 
-## 1. What the prior attempt got wrong
+**Reviewer:** Teamwork Reviewer (Round 2)  
+**Date & Timestamp:** 2026-11-06T06:36:00Z  
+**Branch:** main  
+**Target Parent ID:** 0aa00ea1-9c92-421d-8e45-73f63b5e510d  
 
-1. **Rekap Jurnal Omission of Unfilled Scheduled Classes in `RekapJurnalView.tsx`**
-   - **Input:** Teacher was scheduled to teach on a given date/time but had not submitted a journal, and presensi pulang had not yet been executed (or auto-checkout had not yet run).
-   - **Expected:** Rekap Jurnal displays the scheduled class entry with `keterangan: "tidak masuk kelas"` and badge `status_verifikasi: "Tidak Masuk Kelas"`.
-   - **Actual:** Rekap Jurnal showed zero entries for that class or date (empty table), failing Requirement R3.
-   - **Root Cause:** In `RekapJurnalView.tsx`, `tarikRekap` only queried `jurnal_pembelajaran`. It lacked timetable schedule cross-referencing against `jadwal_pelajaran`. Unlike `PiketView.tsx` which synthesized missing entries for unsubmitted piket duties, `RekapJurnalView.tsx` only transformed rows that were already physically inserted into `jurnal_pembelajaran`.
+---
 
-2. **Duplicate Empty Journal Insertion Bug on Academic Title Differences**
-   - **Input:** `recordUnfilledJournalsAndPiket` executed where teacher name in `user.nama` has academic titles (e.g. `"Bambang Sudibyo, M.Pd."`) while `jurnal_pembelajaran` or `jadwal_pelajaran` had `"Bambang Sudibyo"`, or when `sched.mata_pelajaran` had minor naming differences from `jurnal.mapel`.
-   - **Expected:** Existing journals are recognized via token matching (`isTeacherJournalMatch`) and fuzzy schedule matching (`isJurnalMatchJadwal`), preventing duplicate inserts.
-   - **Actual:** Duplicate empty journal records were inserted on repeated checkout or re-submission.
-   - **Root Cause:** `recordUnfilledJournalsAndPiket` used strict equality query `.eq('nama_guru', teacher.nama_guru).eq('mapel', sched.mata_pelajaran)` directly in Supabase client instead of normalized token and fuzzy matching functions (`matchTeacherTokens`, `isTeacherJournalMatch`, `isJurnalMatchJadwal`).
+## 1. Executive Summary & Verdict
+Pada Reviewer Round 2, peninjauan adversarial menemukan 4 celah nyata pada codebase dan Open Issues Ledger yang berhasil diperbaiki dan diverifikasi secara tuntas:
+1. **Unmounted Component Memory Leak pada Tab Switching Cepat (`AdminPenggunaView.tsx`)**:
+   Jika pengguna berpindah tab secara cepat antara sub menu Pengguna dan tab Master Data lainnya saat proses sinkronisasi background atau modal edit sedang aktif, pemanggilan `setState` (`setAccounts`, `setLoading`, `setErrorMsg`) dieksekusi pada komponen yang telah unmounted. Telah diperbaiki dengan `isMountedRef` lifecycle guard dan cleanup effect.
+2. **Ketiadaan Validasi dan Redundansi Kode pada Self-Healing Account Insert (`AdminPenggunaView.tsx` & `teacherUserSync.ts`)**:
+   Sebelumnya jika sebuah record guru belum memiliki `userId`, `AdminPenggunaView` melakukan direct insert manual tanpa melalui filter anti-dummy (`isDummyOrTestString`), filter nama terlarang (`isForbiddenName`), karakter ilegal/emoji, atau penanganan duplikasi username. Logika ini telah dipusatkan ke dalam `updateTeacherCredentials` dan `resetTeacherPasswordToDefault` sehingga `userId` bersifat opsional dan self-healing terjadi secara defensif, tersanitasi, dan konsisten.
+3. **Penyempurnaan Normalisasi NIP Berformat & Fallback Placeholder NIP (`dataIntegrityGuard.ts` & `teacherUserSync.ts`)**:
+   - NIP berformat resmi (18 digit angka dengan pemisah spasi, tanda hubung `-`, atau titik `.`, contoh: `19850101-201001-1-001` atau `1985.01.01.2010.01.1.001`) kini dinormalisasi secara otomatis ke digit angka murni (`198501012010011001`), dan password default konsisten `${nip}27`.
+   - NIP bernilai placeholder umum (`--`, `N/A`, `none`, `tidak ada`, `0`, `00000000`, zero-width chars) kini dikenali secara cerdas dan fallback ke nama guru terstandarisasi / `guru27`.
+   - Penolakan karakter ilegal, emoji, dan script injection pada username login (`/^[a-zA-Z0-9_.-]+$/`).
+4. **Interaksi UX: Password Masking Toggle & Opsi Sinkronisasi NIP (`AdminPenggunaView.tsx`)**:
+   - Menambahkan tombol interaktif toggle visibility password (ikon mata `fa-eye` / `fa-eye-slash`) pada SweetAlert2 modal agar admin dapat melihat atau menyamarkan kata sandi saat mengatur kredensial.
+   - Menambahkan checkbox `syncNipToDataGuru` agar admin memiliki kontrol eksplisit apakah perubahan username juga disinkronkan ke kolom `nip` pada `data_guru`.
+   - Menyelaraskan highlight sub menu aktif pada `AppScreen.tsx` untuk variasi `urlTab` (`Pengguna`, `pengguna`, `users`).
 
-3. **Silent Failure When `recordUnfilledJournalsAndPiket` Called with Empty State `{}`**
-   - **Input:** Teacher submits checkout in `GuruPresensi.tsx` before `dailyState` has fully populated or when `dailyState` is an empty object `{}`.
-   - **Expected:** Autonomous resolution of schedules, piket duties, and existing journals from the database.
-   - **Actual:** Silent failure / skipped recording because `state.jadwalKBM` was undefined (`if (state.jadwalKBM && ...)` evaluated to false).
-   - **Root Cause:** Missing fallback queries in `recordUnfilledJournalsAndPiket` to fetch `jadwal_pelajaran`, `jurnal_pembelajaran`, and `penugasan_piket` when state fields are omitted.
+---
 
-4. **Gallery File Picker Re-Selection Freeze in `GuruJurnal.tsx`**
-   - **Input:** Teacher uploads a photo via the gallery input in `GuruJurnal.tsx`, cancels or resets, and then re-selects the exact same photo from their device.
-   - **Expected:** The photo input fires `onChange` and the selected photo is previewed.
-   - **Actual:** Nothing happens (no change event fired by the browser).
-   - **Root Cause:** Standard HTML `<input type="file">` does not trigger `onChange` if the file value hasn't changed. Missing `onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}` reset handler.
+## 2. Issues Discovered and Root Cause Analysis
 
-5. **Missing Function Import `getWitaDayName` in `attendanceAlpa.ts`**
-   - **Input:** Invoking `recordUnfilledJournalsAndPiket` without pre-computed schedule.
-   - **Expected:** Resolves day of week in WITA format.
-   - **Actual:** Crashed with `ReferenceError: getWitaDayName is not defined`.
-   - **Root Cause:** `getWitaDayName` was not included in the import list from `@/lib/wita`.
+### Issue 1: Unmounted Component State Updates During Fast Tab Switch
+- **Input:** Admin membuka sub menu Pengguna lalu segera beralih ke tab Siswa/Guru/Kalender saat `handleLoadAndSync` atau SweetAlert2 masih memproses query.
+- **Expected:** Operasi async yang tertunda membatalkan update state tanpa memicu error atau memory leak pada unmounted component.
+- **Actual:** `setAccounts`, `setLoading`, dan `setErrorMsg` dipanggil tanpa pengecekan mount status.
+- **Root Cause:** Ketiadaan `isMountedRef` lifecycle guard di `AdminPenggunaView.tsx`.
+- **Fix:** Menambahkan `isMountedRef = useRef<boolean>(true)` dengan cleanup unmount `false`, serta membungkus seluruh mutasi state dengan pengecekan `if (!isMountedRef.current) return;`.
 
-## 2. What I changed
+### Issue 2: Unvalidated Direct Insert on Self-Healing Fallback
+- **Input:** Admin mengatur kredensial atau mereset password pada guru yang belum memiliki `userId`, dengan memasukkan username dummy (`testuser`), emoji (`guru😊`), atau username yang sudah ada.
+- **Expected:** Sistem menolak username invalid/dummy/bertabrakan dengan pesan ramah, atau membuat akun baru dengan sanitasi penuh.
+- **Actual:** `AdminPenggunaView` melakukan insert SQL mentah ke tabel `users` melewati seluruh aturan anti-dummy dan sanitasi di `updateTeacherCredentials`.
+- **Root Cause:** `updateTeacherCredentials` dan `resetTeacherPasswordToDefault` sebelumnya mewajibkan `userId: string`, memaksa komponen UI menulis fallback insert sendiri.
+- **Fix:** Mengubah parameter `userId?: string` menjadi opsional pada `updateTeacherCredentials` dan `resetTeacherPasswordToDefault`. Fungsi kini secara otomatis melakukan query user eksisting atau membuat user baru secara tersanitasi dan memvalidasi keunikan serta format username.
 
-- `src/components/RekapJurnalView.tsx`:
-  - Imported `getWitaDayName`, `getWitaTimeStr`, `isJurnalMatchJadwal`, `isTeacherScheduleMatch`, and `isTeacherJournalMatch`.
-  - Added dynamic timetable schedule cross-referencing in `tarikRekap`: queries `jadwal_pelajaran` across the evaluated date range or month. For past dates or current date where class start time has elapsed, any unfilled schedule without a matching journal entry is synthesized into a missing entry with `keterangan: "tidak masuk kelas"`, `materi: "tidak masuk kelas"`, `kegiatan: "tidak masuk kelas"`, and `status_verifikasi: "Tidak Masuk Kelas"`.
-- `src/lib/attendanceAlpa.ts`:
-  - Imported `getWitaDayName` from `@/lib/wita`.
-  - Updated `isTeacherScheduleMatch` and `isTeacherJournalMatch` parameter types to accept `sekolah_id?: string | null`.
-  - Hardened `recordUnfilledJournalsAndPiket` with autonomous fallbacks for `jadwalKBM`, `jurnalKBM`, `isPiket`, and `laporanPiket` when `state` is empty or partial.
-  - Replaced strict `.eq('nama_guru', ...)` and `.eq('mapel', ...)` checks with `isTeacherJournalMatch`, `isJurnalMatchJadwal`, and `matchTeacherTokens` to guarantee idempotency and eliminate duplicate inserts from academic title or spacing differences.
-- `src/components/GuruJurnal.tsx`:
-  - Added `onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}` on `#jurnal-gallery-file-input` so re-selecting the same photo immediately triggers `onChange`.
-- `tests/jurnal_r1_r2_r3_verification.test.ts`:
-  - Added Test 1.2: File input value reset on click.
-  - Added Test 2.4: Departure time boundary conditions (`currTimeVal === startVal` allows checkout; `currTimeVal < startVal` blocks).
-  - Added Test 3.5: Autonomous `recordUnfilledJournalsAndPiket` resolution with empty state `{}`.
-  - Added Test 3.6: Title normalization and duplicate prevention with academic titles.
-  - Added Test 3.7: `RekapJurnalView` dynamic timetable cross-referencing for unsubmitted schedules.
-  - Total test count expanded from 8 to 13 tests (all passing).
+### Issue 3: Punctuation & Placeholder NIP Vulnerabilities
+- **Input:** NIP guru diinput dengan format tanda hubung (`19850101-201001-1-001`), titik (`1985.01.01.2010.01.1.001`), atau placeholder seperti `--`, `N/A`, `none`, `tidak ada`, `0`.
+- **Expected:** NIP berformat dinormalisasi ke 18 digit angka murni; placeholder NIP dideteksi aman dan fallback ke nama guru / `guru27`.
+- **Actual:** Sebelumnya NIP berformat menghasilkan username bertanda hubung/titik yang rentan benturan, sedangkan placeholder seperti `--` dan `N/A` menghasilkan username aneh `--` atau `na`.
+- **Root Cause:** Helper `resolveTeacherUsername` dan `getDefaultTeacherPassword` hanya memeriksa `nip !== '-'` dan spasi tanpa regex normalisasi format NIP dan deteksi placeholder.
+- **Fix:** Menambahkan deteksi placeholder `^[-_.\s0]+$` / `^(null|undefined|none|na|n\/a|tidak\s*ada|-+)$/i`, serta normalisasi digit NIP `\d{8,25}`.
 
-## 3. Verification Record
+---
 
-- **Deep Verification (ran actual tests):**
-  - Ran `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`:
-    - Result: **13 / 13 tests passed (0 failed)**.
-    - Verified:
-      - R1: Photo upload unconditional access (1.1) and re-selection reset (1.2).
-      - R2: Presensi pulang flexibility (2.1), blocking when no datang or on izin/sakit (2.2), jam_pulang check enforcement (2.3), and exact departure boundary condition `currTimeVal === startVal` vs `< startVal` (2.4).
-      - R3: Database standard descriptions for KBM and Piket (3.1), Kegiatan (3.2), UI/CSV display in RekapJurnalView (3.3), PiketView display (3.4), autonomous resolution with empty state (3.5), title-normalized duplicate prevention (3.6), and RekapJurnalView schedule cross-referencing (3.7).
-  - Ran `npm test`:
-    - Result: **All 44 test suites in repository passed 100% (0 failed)**.
-  - Ran `npm run build`:
-    - Result: **Compiled successfully in Next.js Turbopack, TypeScript check completed with 0 errors across 13/13 static and dynamic routes**.
-- **Shallow Verification (manual only):**
-  - None; all components, workflow state transitions, and edge cases are programmatically verified.
-- **Unverified aspects:**
-  - Hardware camera hardware driver quirks on specific Android/iOS webview browsers when switching directly from camera to native device file picker.
-  - High concurrency race condition when two admin clients trigger auto-checkout on the exact same second while a teacher simultaneously checks out.
+## 3. Files Modified
+1. `src/lib/dataIntegrityGuard.ts`:
+   - Memusatkan implementasi `resolveTeacherUsername` dan `getDefaultTeacherPassword` dengan dukungan normalisasi format NIP (titik/strip/spasi) dan penanganan placeholder (`--`, `n/a`, `none`, `tidak ada`, `0`).
+   - Menggunakan helper terpusat pada auto-sync `importMasterDataFromCsv`.
+2. `src/lib/teacherUserSync.ts`:
+   - Mengimpor dan me-re-export `resolveTeacherUsername` dan `getDefaultTeacherPassword` dari `dataIntegrityGuard`.
+   - Mengizinkan `userId?: string` opsional pada `updateTeacherCredentials` dan `resetTeacherPasswordToDefault` untuk self-healing akun yang aman dan terpusat.
+   - Validasi regex karakter username `/^[a-zA-Z0-9_.-]+$/` (menolak emoji, tag HTML, spasi tersembunyi).
+3. `src/components/AdminPenggunaView.tsx`:
+   - Menambahkan `isMountedRef` untuk mencegah memory leak dan unmounted state update.
+   - Menambahkan kontrol tombol toggle visibility password (mata `fa-eye` / `fa-eye-slash`) pada modal atur kredensial.
+   - Menambahkan checkbox `syncNipToDataGuru` untuk opsi sinkronisasi NIP guru.
+   - Menghapus duplicate raw SQL insert dan memanfaatkan self-healing `updateTeacherCredentials`.
+4. `src/components/AppScreen.tsx`:
+   - Menyelaraskan evaluasi `isSubActive` sub-menu pada sidebar untuk variasi tab (`Pengguna`, `pengguna`, `users`).
+5. `tests/admin_submenu_pengguna_kredensial_guru.test.ts`:
+   - Menambahkan 5 adversarial test checks (3.9 s.d. 3.13) yang menguji penolakan emoji/script, normalisasi NIP bertanda hubung/titik, deteksi placeholder, self-healing tanpa `userId`, dan static code inspection pada elemen DOM.
 
-## 4. Known Issues
+---
 
-- `Minor Robustness Risk`: If a mobile browser aggressively restricts storage read permissions for gallery photos, image compression canvas fallback will request re-selection.
-- `Minor Robustness Risk`: Teachers with schedules spanning midnight (e.g. 23:00 - 01:00) require day-boundary multi-day timetable handling, which standard K-12 school timetables do not use.
+## 4. Verification Record
+- **Automated Tests:**
+  - `npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts`: **23/23 checks PASSED** (100%).
+  - `npm test`: **53 Suites Executed | 53 PASSED | 0 FAILED** (100%).
+- **Production Build:**
+  - `npm run build`: Compiled successfully in 2.0s, Finished TypeScript in 2.6s, Generating static pages (13/13) in 1794ms. 0 errors.
 
-## 5. Remaining risk & next step
+---
 
-- **Remaining risk:** Live Supabase multi-tenant database policies in production should confirm `anon` or authenticated role has write permission to `laporan_piket` and `jurnal_pembelajaran` for auto-generated records.
-- **Next step:** The task implementation and adversarial verification are complete; all requirements R1, R2, and R3 are satisfied, verified, tested, and regression-free.
+## 5. Known Issues & Remaining Risk
+- **Minor Robustness Risk**: Jika terdapat admin sekolah yang sengaja memasukkan username guru dengan format non-NIP (misal nama panggilan), kredensial login tetap berfungsi normal, namun NIP di `data_guru` hanya terupdate jika opsi `syncNipToDataGuru` dicentang dan username memenuhi kriteria format.
+- **Deep Verification**: Seluruh automated test suite (53/53) dan build Next.js telah terverifikasi sukses tanpa regresi.
