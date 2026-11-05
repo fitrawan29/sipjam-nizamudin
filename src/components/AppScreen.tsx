@@ -285,6 +285,34 @@ export default function AppScreen({
   } = useBroadcasts(user, isAdmin, isWaliKelas, syncKey);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
   const [tutorialModalOpen, setTutorialModalOpen] = useState<boolean>(false);
+  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return localStorage.getItem('sipjam_ai_assistant_visible') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const handleAiVis = (e: any) => {
+      const v = e?.detail?.visible;
+      if (typeof v === 'boolean') {
+        setShowAiAssistant(v);
+      }
+    };
+    window.addEventListener('sipjam:ai_assistant_visibility', handleAiVis);
+    return () => window.removeEventListener('sipjam:ai_assistant_visibility', handleAiVis);
+  }, []);
+
+  useEffect(() => {
+    if (tourOpen && !showAiAssistant) {
+      setShowAiAssistant(true);
+      try {
+        localStorage.setItem('sipjam_ai_assistant_visible', 'true');
+      } catch {}
+    }
+  }, [tourOpen, showAiAssistant]);
 
   useEffect(() => {
     const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
@@ -982,6 +1010,24 @@ export default function AppScreen({
                     <span>Lihat Tutorial Lagi</span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !showAiAssistant;
+                    setShowAiAssistant(nextVal);
+                    try {
+                      localStorage.setItem('sipjam_ai_assistant_visible', String(nextVal));
+                    } catch {}
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('sipjam:ai_assistant_visibility', { detail: { visible: nextVal } }));
+                    }
+                  }}
+                  className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all border-2 border-emerald-200/50 dark:border-emerald-800/40 mt-1 mb-1 shadow-xs cursor-pointer"
+                  title={showAiAssistant ? 'Sembunyikan tombol asisten AI di layar' : 'Tampilkan tombol asisten AI di layar'}
+                >
+                  <i className={`fa-solid ${showAiAssistant ? 'fa-eye-slash text-gray-500' : 'fa-robot text-emerald-600'} w-5 text-center text-sm`}></i>
+                  <span>{showAiAssistant ? 'Sembunyikan Tombol AI' : 'Tampilkan Tombol AI'}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1550,6 +1596,8 @@ export default function AppScreen({
         currentView={currentView}
         userRole={isSuperadmin ? 'superadmin' : isAdmin ? 'admin' : 'guru'}
         userName={user?.nama || user?.name}
+        visible={showAiAssistant}
+        onVisibilityChange={setShowAiAssistant}
       />
       <OnboardingTutorial
         userRole={isSuperadmin ? 'superadmin' : isAdmin ? 'admin' : 'guru'}

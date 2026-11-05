@@ -34,6 +34,8 @@ export interface ClaySidebarProps {
   onOpenAccountSettings?: () => void;
   onOpenTutorial?: () => void;
   onOpenInteractiveTour?: () => void;
+  showAiAssistant?: boolean;
+  onToggleAiAssistant?: () => void;
   schoolName?: string;
 }
 
@@ -56,6 +58,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
   onOpenAccountSettings,
   onOpenTutorial,
   onOpenInteractiveTour,
+  showAiAssistant,
+  onToggleAiAssistant,
   schoolName = 'SIPJAM',
 }) => {
   if (!isOpen) return null;
@@ -297,6 +301,22 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
                   <i className="fa-solid fa-graduation-cap text-xs"></i>
                 </div>
                 <span>Lihat Tutorial Lagi</span>
+              </button>
+            )}
+
+            {onToggleAiAssistant && (
+              <button
+                type="button"
+                onClick={() => {
+                  onToggleAiAssistant();
+                }}
+                className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all border-2 border-emerald-200/50 dark:border-emerald-800/40 mt-1 mb-1 shadow-xs cursor-pointer"
+                title={showAiAssistant ? 'Sembunyikan tombol asisten AI di layar' : 'Tampilkan tombol asisten AI di layar'}
+              >
+                <div className="w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-800/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
+                  <i className={`fa-solid ${showAiAssistant ? 'fa-eye-slash' : 'fa-robot'} text-xs`}></i>
+                </div>
+                <span>{showAiAssistant ? 'Sembunyikan Tombol AI' : 'Tampilkan Tombol AI'}</span>
               </button>
             )}
           </div>

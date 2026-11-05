@@ -80,6 +80,32 @@ export default function AccountSettingsModal({
   const [autoReminderInterval, setAutoReminderInterval] = useState<number>(5);
   const [snoozeRemainingMinutes, setSnoozeRemainingMinutes] = useState<number>(0);
 
+  // AI Assistant floating button visibility state
+  const [showAiAssistant, setShowAiAssistant] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return localStorage.getItem('sipjam_ai_assistant_visible') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    try {
+      setShowAiAssistant(localStorage.getItem('sipjam_ai_assistant_visible') !== 'false');
+    } catch {}
+
+    const handleAiVis = (e: any) => {
+      const v = e?.detail?.visible;
+      if (typeof v === 'boolean') {
+        setShowAiAssistant(v);
+      }
+    };
+    window.addEventListener('sipjam:ai_assistant_visibility', handleAiVis);
+    return () => window.removeEventListener('sipjam:ai_assistant_visibility', handleAiVis);
+  }, [isOpen]);
+
   const [saving, setSaving] = useState<boolean>(false);
 
   useEffect(() => {
@@ -799,6 +825,41 @@ export default function AccountSettingsModal({
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Section 6: AI Assistant Display Preference */}
+          <div className="border border-emerald-200 dark:border-emerald-800/40 rounded-xl p-3.5 bg-emerald-50/40 dark:bg-emerald-900/10">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-800/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <i className="fa-solid fa-robot text-sm"></i>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Tombol Asisten AI</h4>
+                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">
+                    Tampilkan tombol mengambang Asisten AI di sudut kanan bawah aplikasi.
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={showAiAssistant}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setShowAiAssistant(checked);
+                    try {
+                      localStorage.setItem('sipjam_ai_assistant_visible', String(checked));
+                    } catch {}
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('sipjam:ai_assistant_visibility', { detail: { visible: checked } }));
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import Swal from 'sweetalert2';
 import { FAQItem } from './knowledgeBase';
 import {
   findBestAnswers,
@@ -20,6 +21,8 @@ export interface AIAssistantProps {
   } | null;
   className?: string;
   initialOpen?: boolean;
+  visible?: boolean;
+  onVisibilityChange?: (visible: boolean) => void;
 }
 
 export function getAIAssistantGreeting(
@@ -53,7 +56,20 @@ export function AIAssistant({
   user,
   className: _className = '',
   initialOpen = false,
+  visible: propVisible,
+  onVisibilityChange,
 }: AIAssistantProps) {
+  const [internalVisible, setInternalVisible] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return localStorage.getItem('sipjam_ai_assistant_visible') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const isVisible = propVisible !== undefined ? propVisible : internalVisible;
+
   const [isOpen, setIsOpen] = useState(initialOpen);
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -69,6 +85,60 @@ export function AIAssistant({
   });
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleToggleVisibility = (newVal: boolean) => {
+    setInternalVisible(newVal);
+    try {
+      localStorage.setItem('sipjam_ai_assistant_visible', String(newVal));
+    } catch {}
+    if (onVisibilityChange) onVisibilityChange(newVal);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sipjam:ai_assistant_visibility', { detail: { visible: newVal } }));
+    }
+    if (!newVal) {
+      setIsOpen(false);
+      try {
+        Swal.fire({
+          toast: true,
+          position: 'bottom-end',
+          showConfirmButton: false,
+          timer: 3500,
+          timerProgressBar: true,
+          icon: 'info',
+          title: 'Tombol Asisten AI Disembunyikan',
+          text: 'Aktifkan kembali melalui menu Sidebar atau Pengaturan Akun.'
+        });
+      } catch {}
+    }
+  };
+
+  useEffect(() => {
+    const handleVisEvent = (e: any) => {
+      const v = e?.detail?.visible;
+      if (typeof v === 'boolean') {
+        setInternalVisible(v);
+        if (onVisibilityChange) onVisibilityChange(v);
+      }
+    };
+    window.addEventListener('sipjam:ai_assistant_visibility', handleVisEvent);
+    return () => window.removeEventListener('sipjam:ai_assistant_visibility', handleVisEvent);
+  }, [onVisibilityChange]);
+
+  useEffect(() => {
+    const handleShortcut = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        if (!isVisible) {
+          handleToggleVisibility(true);
+          setIsOpen(true);
+        } else {
+          setIsOpen(prev => !prev);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [isVisible]);
 
   // Initialize or reset chat
   const initChat = () => {
@@ -166,25 +236,43 @@ export function AIAssistant({
 
   return (
     <>
-      {/* Floating Trigger Button */}
-      <button
-        type="button"
-        data-tour="ai-assistant-btn"
-        aria-label="Buka Asisten AI SIPJAM"
-        title="Tanya Asisten AI SIPJAM"
-        onClick={() => setIsOpen(prev => !prev)}
-        className="fixed bottom-5 right-5 z-[45] w-14 h-14 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white shadow-xl shadow-emerald-900/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none focus:ring-4 focus:ring-emerald-400/50 no-print print:hidden"
-      >
-        <i className="fa-solid fa-robot text-2xl text-amber-300 drop-shadow group-hover:rotate-12 transition-transform duration-300"></i>
+      {/* Floating Trigger Button Container */}
+      {isVisible && (
+        <div className="fixed bottom-5 right-5 z-[45] flex items-center group/ai-btn no-print print:hidden">
+          {/* Quick dismiss/hide button on hover or focus */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleVisibility(false);
+            }}
+            title="Sembunyikan tombol asisten"
+            aria-label="Sembunyikan tombol asisten"
+            className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-gray-900/90 hover:bg-red-600 text-gray-200 hover:text-white flex items-center justify-center text-[10px] shadow border border-white/20 transition-all opacity-0 group-hover/ai-btn:opacity-100 focus:opacity-100 cursor-pointer"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
 
-        {/* Hover tooltip for desktop */}
-        <span className="hidden sm:block absolute right-16 px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-xl shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-          🤖 Bantuan AI SIPJAM
-        </span>
-      </button>
+          <button
+            type="button"
+            data-tour="ai-assistant-btn"
+            aria-label="Buka Asisten AI SIPJAM"
+            title="Tanya Asisten AI SIPJAM"
+            onClick={() => setIsOpen(prev => !prev)}
+            className="w-14 h-14 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white shadow-xl shadow-emerald-900/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none focus:ring-4 focus:ring-emerald-400/50"
+          >
+            <i className="fa-solid fa-robot text-2xl text-amber-300 drop-shadow group-hover:rotate-12 transition-transform duration-300"></i>
+
+            {/* Hover tooltip for desktop */}
+            <span className="hidden sm:block absolute right-16 px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-xl shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              🤖 Bantuan AI SIPJAM
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Expandable Chat Panel */}
-      {isOpen && (
+      {isVisible && isOpen && (
         <div
           role="dialog"
           aria-label="Panel Asisten AI SIPJAM"
@@ -216,6 +304,15 @@ export function AIAssistant({
                 className="w-7 h-7 rounded-lg hover:bg-white/10 text-emerald-200 hover:text-white flex items-center justify-center transition-colors text-xs"
               >
                 <i className="fa-solid fa-rotate-right"></i>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleVisibility(false)}
+                title="Sembunyikan tombol asisten"
+                aria-label="Sembunyikan tombol asisten"
+                className="w-7 h-7 rounded-lg hover:bg-white/10 text-emerald-200 hover:text-white flex items-center justify-center transition-colors text-xs"
+              >
+                <i className="fa-solid fa-eye-slash"></i>
               </button>
               <button
                 type="button"
