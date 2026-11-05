@@ -1,74 +1,48 @@
-# Project: SIPJAM — Pemulihan Fitur, Aturan Bisnis, dan Tanda Tangan/Footer Cetak Pasca-Konsolidasi Menu
+# Project: SIPJAM — Penyesuaian & Perbaikan Role Admin Lingkungan Produksi (R1–R5)
 
 ## Architecture
 - **Framework**: Next.js 16 (App Router, `'use client'`), React 19, TypeScript, Tailwind CSS, Font Awesome 6 (CDN), SweetAlert2, Supabase (PostgreSQL + RLS).
-- **Navigation & Consolidation Layer**:
-  - `src/lib/navigation.ts`: Consolidated sidebar menus for all roles (`isAdmin`, `isWali`, `isKepalaSekolah`, `isDinas`, `isGuru`), route aliasing, and tab-level RBAC (`evaluateTabRBAC`).
-  - `src/components/ClaySidebar.tsx` & `src/components/ClayTabs.tsx`: Unified tabbed navigation reducing cognitive load while preserving sub-views.
-  - `src/components/AppScreen.tsx`: Top-level route dispatch, view rendering, and query parameter synchronization (`tab`, `mode`).
-- **Print & Document Legalities Layer**:
-  - `src/components/PrintHeader.tsx`: Official school Kop Surat and multi-column signature component (`PrintSignature`).
-  - `src/lib/printWithGps.ts`: Geolocation watermarking, timestamp formatting (WITA/WIB), and browser print trigger (`triggerPrintWithGps`).
-  - Views with legal printing: `AdminRekapView`, `RekapSiswaView`, `RekapJurnalView`, `GradebookView`, `RaporView`, `PiketView`, `DinasDashboard`.
-- **Teacher & Absence Workflow Layer**:
-  - `src/components/GuruPresensi.tsx`: Live selfie attendance + geofence + personal attendance history (`HistoryView`).
-  - `src/components/GuruJurnal.tsx`: KBM journal entry + personal recap (`RekapJurnalView` mode pribadi) + class supervision (`RekapJurnalView` mode kelas).
-  - `src/components/HistoryView.tsx`: Historical logs with rejection notes (`catatan_admin`), attachments, and date filters.
-- **Verification & Administration Layer**:
-  - `src/components/AdminVerifView.tsx`: Centralized multi-workflow verification (Presensi, Jurnal, Piket, Dokumen Perangkat Ajar via `DokumenView`).
-  - `src/components/AdminRekapView.tsx`: Executive analytics, consolidated table recap, and official document printing.
-  - `src/components/AdminDataView.tsx` & `src/components/AdminConfigView.tsx`: Master data, system block calendar, and system configuration.
+- **Executive & Operational Dashboard Layer**:
+  - `src/components/HomeViewAdmin.tsx`: Operational dashboard for Administrator, greeting card, quick links, active statistics.
+  - `src/components/AdminRekapView.tsx`: Executive analytics, teacher presence compilation, multi-mode filter, and print layout.
+- **Verification & Workflow Alignment Layer**:
+  - `src/components/AdminVerifView.tsx`: Verification center for Presensi, Jurnal, Piket, and Perangkat Ajar.
+  - `src/components/PiketView.tsx`: Teacher piket schedules and activity reporting.
+  - `src/components/DokumenView.tsx`: Teaching devices / RPP / modul ajar matrix by subject and grade level.
+  - `src/components/GuruPresensi.tsx` & `src/lib/attendanceAlpa.ts` & `src/components/RekapJurnalView.tsx`: Teacher attendance workflow and automated KBM journal synchronization.
+- **Assessment & Raport Layer**:
+  - `src/components/GradebookView.tsx` & `src/components/RaporView.tsx`: Academic gradebook, active semester/year synchronization, and dynamic meeting attendance point weights.
+- **Master Data, System Config, & Account Layer**:
+  - `src/components/AdminDataView.tsx`: Master data CSV templates, parsing, and database insertion guards.
+  - `src/components/AdminConfigView.tsx`: System parameters, school profile, working hours, and multi-tab configuration persistence.
+  - `src/components/AccountSettingsModal.tsx`: User profile editing, credentials, and identity configuration.
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | Pemulihan Tanda Tangan & GPS Footer Tab 2 `AdminRekapView` | Pasang `<PrintSignature>` dan footer sekuriti GPS universal pada print mode Tab Tabel (`activeTab === 'tabel'`) | M1 | Survey 1, 2, 3 | DONE |
-| 2 | Eliminasi Duplikasi Kop Surat Tab 3 `AdminRekapView` | Hapus `<PrintHeader>` duplikat di dalam Sub-Tab 3 agar kop surat tidak tercetak ganda | M1 | Survey 1, 2, 3 | DONE |
-| 3 | Perbaikan Blanket `isAdmin` Single Column di `PrintHeader` | Hapus `|| isAdmin` dari `isSingleColumnLayout` agar tanda tangan pihak ke-2/ke-3 (Wali Murid, Wali Kelas, Guru Mapel) tidak hilang saat Admin mencetak | M1 | Survey 2 | DONE |
-| 4 | Pemulihan Props Signature Tab 3 `PiketView` | Berikan props `leftSubtitle="Guru Piket"`, `leftName`, `leftNip` pada `<PrintSignature>` rekap piket | M1 | Survey 2 | DONE |
-| 5 | Penambahan Signature Tab 3 `GradebookView` | Pasang `<PrintSignature>` pada tampilan cetak Analisis & Statistik Nilai | M1 | Survey 2 | DONE |
-| 6 | Normalisasi Kontainer Cetak Landscape `GuruJurnal.tsx` | Tambahkan kelas `print:max-w-none print:w-full print:mx-0` agar cetak landscape rekap jurnal tidak terkompresi | M1 | Survey 1 | DONE |
-| 7 | Pemulihan Alur Umpan Balik Penolakan Jurnal Guru | Tampilkan alert banner jurnal ditolak beserta `catatan_admin` / alasan revisi pada `GuruJurnal.tsx` Tab 2 | M2 | Survey 1, 3 | DONE |
-| 8 | Tampilan Alasan Penolakan di `RekapJurnalView` & Pencarian Materi | Render `catatan_admin` pada tabel/modal rekap jurnal dan sediakan filter pencarian materi KBM | M2 | Survey 1, 3 | DONE |
-| 9 | Filter Pilihan Bulan Riwayat Presensi Guru `HistoryView` | Tambahkan filter pemilih bulan (`<input type="month">`) pada riwayat presensi mandiri guru | M2 | Survey 3 | DONE |
-| 10 | Unblock Akses Supervisi Jurnal Kepala Sekolah | Perbarui `evaluateTabRBAC` di `src/lib/navigation.ts` agar role `kepalasekolah` diizinkan membuka `tab=supervisi-kelas` | M3 | Survey 1 | DONE |
-| 11 | Pemulihan Menu Informasi untuk Administrator | Kembalikan `view-informasi` pada `menuItemsAdmin` di `src/lib/navigation.ts` dan tautan cepat di `HomeViewAdmin.tsx` | M3 | Survey 1 | DONE |
-| 12 | Pemulihan Akses Monitoring Satelit Dinas Pendidikan | Izinkan Dinas Pendidikan mengakses `view-rekap-siswa` dan `view-jurnal-kelas` (read-only) untuk sekolah binaan | M3 | Survey 1 | DONE |
-| 13 | Normalisasi Role & Penerusan `isReadOnly` di `DokumenView` | Terima `isReadOnly` di `DokumenView`, normalisasi pengecekan `isAdmin` case-insensitive, dan nonaktifkan aksi saat read-only | M3 | Survey 3 | DONE |
-| 14 | Pemulihan Rasio Komposisi Presensi `AdminRekapView` | Tambahkan progress bar komposisi kehadiran (Hadir %, Sakit/Izin %, Dinas Luar %) dan toggle Top 5 / Top 10 | M3 | Survey 3 | DONE |
-| 15 | Sanitasi DOM Container Embedded Views | Hapus wrapper `<section className="view-section">` ganda pada `AdminBackupView` dan `SistemBlokView` | M3 | Survey 3 | DONE |
-| 16 | Automated Regression Test Suite Pemulihan Fitur & Cetak | Buat automated test suite komprehensif memvalidasi seluruh perbaikan fitur, RBAC, dan print layout | M4 | R1-R3 | PLANNED |
-| 17 | Verifikasi Build, TypeCheck & Zero Error | Validasi `npx tsc --noEmit` dan `npm run build` berhasil tanpa error | M4 | Acceptance Criteria | PLANNED |
-| 18 | Mandatory Git Delivery ke `main` | Eksekusi `git status`, `git add .`, `git commit -m "..."`, dan `git push origin main` sesuai `GEMINI.md` | M5 | GEMINI.md | PLANNED |
+| 1 | R1: Eliminasi Duplikasi Nama Sekolah Dashboard Admin | Perbaiki teks admin [nama sekolah] di `HomeViewAdmin.tsx` agar tidak terduplikasi saat `user.nama` sudah memuat nama sekolah | M1 | R1 | DONE |
+| 2 | R1: Eliminasi Pusat Informasi dari Dashboard Operasional | Hapus seksi kartu 'Pusat Informasi' dari `HomeViewAdmin.tsx` | M1 | R1 | DONE |
+| 3 | R3: Deduplikasi & Normalisasi Guru "Ade Fitrawan Ibrahim" | Pada tabel rekapitulasi `AdminRekapView.tsx`, gabungkan entri bergulir/gelar dan tanpa gelar menjadi satu entri tunggal tanpa gelar | M1 | R3 | DONE |
+| 4 | R2: Eliminasi SOP Disiplin & Pedoman SIPJAM | Hapus tombol Pedoman Kebijakan & SOP SIPJAM dari `AdminVerifView.tsx` | M2 | R2 | PLANNED |
+| 5 | R2: Urutan Riwayat Presensi Terbaru ke Terlama | Pastikan daftar riwayat presensi di `AdminVerifView.tsx` terurut descending berdasarkan timestamp | M2 | R2 | PLANNED |
+| 6 | R2: Label "Bebas Hadir" Guru KBM Tanpa Jadwal | Tampilkan keterangan "Bebas Hadir" (tanpa keterangan lainnya) untuk guru wajib hadir pada jadwal KBM saat tidak ada jadwal KBM dan piket hari ini | M2 | R2 | PLANNED |
+| 7 | R2: Penegasan Status Izin Sakit & Kategori Presensi | Tampilkan badge status kategori presensi (Sakit, Izin, Dinas Luar, Hadir di Sekolah) secara tegas dan jelas di `AdminVerifView.tsx` | M2 | R2 | PLANNED |
+| 8 | R2: Penandaan Langsung "Tidak Membuat Laporan Piket" | Guru yang terjadwal piket namun belum melapor langsung ditandai "tidak membuat laporan piket" tanpa konfirmasi admin atau sistem | M2 | R2 | PLANNED |
+| 9 | R2: Pembatasan Unggah Perangkat Ajar Kelas Paralel | Batasi pengunggahan perangkat pembelajaran per mata pelajaran hanya 1 kali untuk kelas paralel pada tingkat kelas yang sama di `DokumenView.tsx` | M2 | R2 | PLANNED |
+| 10 | R2: Otomasi Jurnal KBM Ketidakhadiran (Sakit, Izin, Dinas Luar) | Otomatis isikan jurnal KBM guru berstatus Sakit, Izin, atau Dinas Luar yang memiliki jadwal KBM pada hari tersebut sesuai keterangan presensinya | M2 | R2 | PLANNED |
+| 11 | R4: Default Semester & Tahun Ajaran Aktif Admin | Tampilkan semester dan tahun ajaran aktif secara default sesuai pengaturan admin di `GradebookView.tsx` dan `RaporView.tsx` | M3 | R4 | PLANNED |
+| 12 | R4: Form Dinamis Bobot Poin Kehadiran per Pertemuan | Sediakan konfigurasi form dinamis bobot poin kehadiran per pertemuan (Hadir: 100, Sakit/Izin/Terlambat: 75, Alpa: 0) dan terapkan rumusnya | M3 | R4 | PLANNED |
+| 13 | R5: Penyesuaian Template CSV Master Data & Kalender | Sesuaikan template CSV Kalender Pendidikan dan Jadwal Pelajaran dengan skema UUID Supabase agar bebas error 22P02 | M4 | R5 | PLANNED |
+| 14 | R5: Persistensi Konfigurasi Sistem & Database Seluruh Sub Menu | Perbaiki form multi-tab di `AdminConfigView.tsx` (`noValidate`) dan sinkronisasi seluruh identitas sekolah ke tabel `sekolah` | M4 | R5 | PLANNED |
+| 15 | R5: Eliminasi Bidang/Fitur Penambahan Gelar Pengaturan Akun | Hapus kontainer Multi-Gelar Manager dan tombol "+ Tambah Gelar" pada `AccountSettingsModal.tsx` | M4 | R5 | PLANNED |
+| 16 | Validasi Sistem & Regression Test Suite | Buat automated regression test suite komprehensif untuk memvalidasi R1–R5 dan pastikan `npm run build` berhasil | M5 | Acceptance Criteria | PLANNED |
+| 17 | Mandatory Git Delivery ke `main` | Eksekusi `git status`, `git add .`, `git commit -m "..."`, dan `git push origin main` sesuai `GEMINI.md` | M5 | GEMINI.md | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Pemulihan Sistem Cetak, Tanda Tangan Resmi, dan Header/Footer | `src/components/PrintHeader.tsx`, `src/components/AdminRekapView.tsx`, `src/components/PiketView.tsx`, `src/components/GradebookView.tsx`, `src/components/GuruJurnal.tsx` | none | DONE |
-| M2 | Pemulihan Alur Umpan Balik Penolakan Jurnal & Filter Riwayat | `src/components/GuruJurnal.tsx`, `src/components/RekapJurnalView.tsx`, `src/components/HistoryView.tsx` | none | DONE |
-| M3 | Harmonisasi Hak Akses RBAC, Menu Informasi, & Pengawasan Dinas | `src/lib/navigation.ts`, `src/components/AdminVerifView.tsx`, `src/components/DokumenView.tsx`, `src/components/AdminRekapView.tsx`, `src/components/HomeViewAdmin.tsx`, `src/components/AdminBackupView.tsx`, `src/components/SistemBlokView.tsx` | M1, M2 | DONE |
-| M4 | Automated Regression Test Suite & E2E Verification | `tests/menu_consolidation_feature_recovery.test.ts`, `npm test`, `npx tsc --noEmit`, `npm run build` | M1, M2, M3 | DONE |
-| M5 | Final Forensic Audit, Quality Gate, & Git Push to `main` | Final Forensic Integrity Audit, `git status`, `git add .`, `git commit`, `git push origin main` | M4 | IN_PROGRESS |
-
-## Interface Contracts
-### `PrintHeader` ↔ View Consumers
-- Component: `<PrintSignature>`
-  - Props: `user`, `sekolahId`, `leftTitle?`, `leftSubtitle?`, `leftName?`, `leftNip?`, `rightTitle?`, `rightSubtitle?`, `rightName?`, `rightNip?`, `singleColumn?`, `showThirdColumn?`, `thirdTitle?`, `thirdSubtitle?`, `thirdName?`, `thirdNip?`
-  - Contract: Layout multi-kolom tanda tangan ditentukan secara eksplisit oleh props `singleColumn` / `showThirdColumn`. Nilai `user?.role === 'admin'` TIDAK BOLEH membatalkan kolom tanda tangan pihak lain secara sepihak.
-
-### `AdminVerifView` ↔ `DokumenView`
-- Component: `<DokumenView user={user} isReadOnly={isReadOnly} />`
-  - Props: `user: any`, `isReadOnly?: boolean`
-  - Contract: Ketika `isReadOnly === true`, tombol aksi verifikasi/tolak dinonaktifkan/disembunyikan. Pengecekan admin bersifat case-insensitive (`(user?.role || '').toLowerCase().includes('admin')`).
-
-### `GuruJurnal` ↔ `RekapJurnalView`
-- Interface: `JurnalWithFeedback`
-  - Contract: Jurnal KBM yang ditolak admin (`status_verifikasi === 'Ditolak'`) mengekspos properti `catatan_admin` / `catatan_penolakan` sehingga guru dapat membaca alasan revisi langsung di tampilan rekap maupun alert banner.
-
-### `navigation.ts` ↔ `AppScreen`
-- Function: `evaluateTabRBAC(viewId: string, tabId: string, userContext: { role?: string, isWaliKelas?: boolean }): { allowed: boolean, fallbackTab?: string, reason?: string }`
-  - Contract: Untuk `viewId === 'view-guru-jurnal'` dan `tabId === 'supervisi-kelas'`, izinkan jika `isWali || isAdmin || isKepalaSekolah` (`userContext.role === 'kepalasekolah' || userContext.role === 'Kepala Sekolah'`).
-
-## Code Layout
-- Existing conventions maintained. All source files in `src/`, tests in `tests/`.
-- No new isolated menu views created; all features integrated smoothly into existing consolidated views per requirement R3.
+| M1 | Dashboard Operasional & Laporan Analitik (R1, R3) | `src/components/HomeViewAdmin.tsx`, `src/components/AdminRekapView.tsx` | none | DONE |
+| M2 | Pusat Verifikasi & Workflow Penyelarasan Presensi, Piket, Perangkat, & Jurnal (R2) | `src/components/AdminVerifView.tsx`, `src/components/DokumenView.tsx`, `src/components/GuruPresensi.tsx`, `src/lib/attendanceAlpa.ts`, `src/components/RekapJurnalView.tsx` | M1 | IN_PROGRESS |
+| M3 | Asesmen, Raport, & Bobot Kehadiran Dinamis (R4) | `src/components/GradebookView.tsx`, `src/components/RaporView.tsx`, `src/components/AdminConfigView.tsx` | M1 | PLANNED |
+| M4 | Master Data Templates, System & DB Persistence, & Akun (R5) | `src/components/AdminDataView.tsx`, `src/lib/dataIntegrityGuard.ts`, `src/components/AdminConfigView.tsx`, `src/components/AccountSettingsModal.tsx` | M1 | PLANNED |
+| M5 | Automated Regression Test Suite & Git Delivery | `tests/production_admin_adjustments.test.ts`, `npm test`, `npm run build`, `git push origin main` | M1, M2, M3, M4 | PLANNED |

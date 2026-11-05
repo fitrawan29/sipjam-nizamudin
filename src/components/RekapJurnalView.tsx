@@ -254,6 +254,13 @@ export default function RekapJurnalView({
           }
         }
 
+        // R2: Fetch presensi_guru for this period to detect teachers with Sakit, Izin, or Dinas Luar
+        let presensiQ = supabase.from('presensi_guru').select('nama_guru, user_id, tipe_absen, jenis_presensi, detail_izin, keterangan, link_bukti, timestamp');
+        if (user?.sekolah_id) presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
+        if (activeMode === 'pribadi' && user?.nama) presensiQ = presensiQ.eq('nama_guru', user.nama);
+        presensiQ = presensiQ.gte('timestamp', `${startDStr}T00:00:00`).lte('timestamp', `${endDStr}T23:59:59`);
+        const { data: presensiRows } = await presensiQ;
+
         const missingEntries: any[] = [];
         const cur = new Date(`${startDStr}T00:00:00+08:00`);
         const end = new Date(`${endDStr}T00:00:00+08:00`);
@@ -300,6 +307,27 @@ export default function RekapJurnalView({
               );
 
               if (!hasJournal) {
+                // Check if teacher has excused attendance (Sakit, Izin, Dinas Luar) on dateStr
+                const leavePresensi = (presensiRows || []).find((p: any) => {
+                  if (!p.timestamp) return false;
+                  const pDate = p.timestamp.substring(0, 10);
+                  if (pDate !== dateStr) return false;
+                  const matchTeacher = isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, sched);
+                  if (!matchTeacher) return false;
+                  const jp = (p.jenis_presensi || '').toLowerCase();
+                  const di = (p.detail_izin || '').toLowerCase();
+                  return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || di.includes('sakit') || di.includes('izin') || di.includes('dinas');
+                });
+
+                const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = leavePresensi ? (
+                  (leavePresensi.jenis_presensi === 'Sakit' || leavePresensi.detail_izin?.toLowerCase().includes('sakit')) ? 'Sakit' :
+                  (leavePresensi.jenis_presensi === 'Dinas Luar' || leavePresensi.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : 'Izin'
+                ) : null;
+
+                const isExcused = Boolean(leaveType);
+                const leaveNote = leavePresensi?.detail_izin || leavePresensi?.keterangan || (leaveType || '');
+                const leaveProof = leavePresensi?.link_bukti && leavePresensi.link_bukti !== '-' ? leavePresensi.link_bukti : '-';
+
                 missingEntries.push({
                   id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
                   tanggal: dateStr,
@@ -309,20 +337,21 @@ export default function RekapJurnalView({
                   kelas: sched.kelas || '-',
                   mapel: sched.mata_pelajaran || sched.mapel || '-',
                   jam_ke: sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-'),
-                  materi: 'tidak masuk kelas',
-                  materi_pembelajaran: 'tidak masuk kelas',
-                  kegiatan: 'tidak masuk kelas',
-                  kegiatan_pembelajaran: 'tidak masuk kelas',
-                  keterangan: 'tidak masuk kelas',
-                  status_verifikasi: 'Tidak Masuk Kelas',
-                  catatan_refleksi: 'tidak masuk kelas',
+                  materi: isExcused ? leaveType! : 'tidak masuk kelas',
+                  materi_pembelajaran: isExcused ? leaveType! : 'tidak masuk kelas',
+                  kegiatan: isExcused ? `Presensi ${leaveType}${leaveNote ? `: ${leaveNote}` : ''}` : 'tidak masuk kelas',
+                  kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
+                  keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
+                  status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
+                  catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : undefined,
+                  catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
                   tujuan_pembelajaran: '-',
                   kktp: '-',
-                  konten: 'tidak masuk kelas',
+                  konten: isExcused ? leaveType! : 'tidak masuk kelas',
                   lokasi_kbm: '-',
                   kehadiran_murid: '-',
-                  foto_kegiatan: '-',
-                  link_bukti_foto: '-'
+                  foto_kegiatan: isExcused ? leaveProof : '-',
+                  link_bukti_foto: isExcused ? leaveProof : '-'
                 });
               }
             }
@@ -808,7 +837,16 @@ export default function RekapJurnalView({
                             const jamKbmStr = j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-');
                             const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
                             const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
-                            const ketKehadiran = isTidakMasukKelas
+                            const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
+                            const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
+                            const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
+                            const ketKehadiran = isSakit
+                              ? 'Sakit'
+                              : isIzin
+                              ? 'Izin'
+                              : isDinasLuar
+                              ? 'Dinas Luar'
+                              : isTidakMasukKelas
                               ? 'tidak masuk kelas'
                               : isTidakKegiatan
                               ? 'tidak melaksanakan kegiatan apapun'
@@ -923,6 +961,12 @@ export default function RekapJurnalView({
                                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                       : j.status_verifikasi === 'Ditolak'
                                       ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                      : isSakit
+                                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                                      : isIzin
+                                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                                      : isDinasLuar
+                                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                                       : ((j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas') || isTidakMasukKelas)
                                       ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                                       : isTidakKegiatan
@@ -1171,9 +1215,12 @@ export default function RekapJurnalView({
                         const col5 = j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-');
                         const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
                         const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
-                        const col6 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.materi_pembelajaran || j.materi || '-');
+                        const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
+                        const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
+                        const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
+                        const col6 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.materi_pembelajaran || j.materi || '-');
                         const col7 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                        const col8 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir'));
+                        const col8 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir'));
 
                         csvRows.push([
                           `"${col1.replace(/"/g, '""')}"`,
@@ -1210,15 +1257,18 @@ export default function RekapJurnalView({
                         const col4 = j.kktp || '-';
                         const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
                         const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
-                        const col5 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.konten || j.materi_pembelajaran || j.materi || '-');
-                        const col6 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.kegiatan_pembelajaran || j.kegiatan || '-');
+                        const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
+                        const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
+                        const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
+                        const col5 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.konten || j.materi_pembelajaran || j.materi || '-');
+                        const col6 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.kegiatan_pembelajaran || j.kegiatan || '-');
                         const col7 = j.kelas || '-';
                         const col8 = j.mapel || '-';
                         const col9 = formatAbsensi(j.absensi_siswa, j.detail_absen, j.kehadiran_murid);
                         const col10 = j.lokasi_kbm || j.lokasi || '-';
                         const col11 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                        const col12 = isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-');
-                        const status = isTidakMasukKelas ? 'Tidak Masuk Kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.status_verifikasi || 'Menunggu');
+                        const col12 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-');
+                        const status = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Tidak Masuk Kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.status_verifikasi || 'Menunggu');
 
                         csvRows.push([
                           `"${col1.replace(/"/g, '""')}"`,
@@ -1331,6 +1381,14 @@ export default function RekapJurnalView({
                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                       : selectedJurnal.status_verifikasi === 'Ditolak'
                       ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                      : selectedJurnal.status_verifikasi === 'Sakit'
+                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                      : selectedJurnal.status_verifikasi === 'Izin'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      : selectedJurnal.status_verifikasi === 'Dinas Luar'
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      : (selectedJurnal.status_verifikasi === 'Tidak Masuk Kelas' || selectedJurnal.keterangan === 'Tidak Masuk Kelas')
+                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                       : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                   }`}>
                     {selectedJurnal.status_verifikasi || 'Menunggu'}

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
-import { recordUnfilledJournalsAndPiket } from '@/lib/attendanceAlpa';
+import { recordUnfilledJournalsAndPiket, autoFillKbmJournalsForLeave } from '@/lib/attendanceAlpa';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, getWitaDayName, getWitaDateStr } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -631,6 +631,22 @@ export default function GuruPresensi({
       ).catch(e => console.warn('[GuruPresensi] Auto-record unfilled journals/piket warning:', e));
     }
 
+    // R2: Auto-fill KBM journal on teacher absence (Sakit, Izin, Dinas Luar)
+    if (tipeAbsen === 'Datang' && (currentJenis === 'Sakit' || currentJenis === 'Izin' || currentJenis === 'Dinas Luar' || detailIzin === 'Sakit')) {
+      const leaveType = (currentJenis === 'Sakit' || detailIzin === 'Sakit') ? 'Sakit' : (currentJenis === 'Dinas Luar') ? 'Dinas Luar' : 'Izin';
+      const daysCount = durasiHari || 1;
+      const startD = tanggalMulai || getWitaDateStr();
+      for (let dayOffset = 0; dayOffset < daysCount; dayOffset++) {
+        const targetD = addDaysToDateStr(startD, dayOffset);
+        autoFillKbmJournalsForLeave(
+          { nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id },
+          targetD,
+          leaveType,
+          { detail_izin: detailIzin, keterangan: keterangan, link_bukti: fileToUpload ? undefined : '-' }
+        ).catch(e => console.warn('[GuruPresensi] Auto-fill KBM journal on leave error:', e));
+      }
+    }
+
     // Reset Form & Update local states immediately
     const nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah';
     if (tipeAbsen === 'Datang') {
@@ -671,6 +687,20 @@ export default function GuruPresensi({
             .from('presensi_guru')
             .update({ link_bukti: driveUrl })
             .eq('id', presensiId);
+
+          if (currentJenis === 'Sakit' || currentJenis === 'Izin' || currentJenis === 'Dinas Luar') {
+            const startD = tanggalMulai || getWitaDateStr();
+            const daysCount = durasiHari || 1;
+            for (let dayOffset = 0; dayOffset < daysCount; dayOffset++) {
+              const targetD = addDaysToDateStr(startD, dayOffset);
+              await supabase
+                .from('jurnal_pembelajaran')
+                .update({ foto_kegiatan: driveUrl, link_bukti_foto: driveUrl })
+                .eq('nama_guru', currentTeacher)
+                .eq('tanggal', targetD)
+                .in('status_verifikasi', ['Sakit', 'Izin', 'Dinas Luar']);
+            }
+          }
 
           console.log(`[GuruPresensi] Background GAS upload complete for presensi ${presensiId}:`, driveUrl);
         } catch (uploadErr: any) {

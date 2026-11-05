@@ -71,6 +71,20 @@ function isTestGuruName(nama?: string | null): boolean {
   );
 }
 
+/**
+ * Normalisasi nama guru untuk rekapitulasi.
+ * Menghilangkan gelar akademik dari variasi nama "Ade Fitrawan Ibrahim" (misal "Ade Fitrawan Ibrahim, M.Pd., Gr.")
+ * sehingga terkonsolidasi menjadi satu entri nama tanpa gelar dan statistik kehadirannya tergabung.
+ */
+function canonicalizeTeacherRekapName(nama?: string | null): string {
+  if (!nama) return '';
+  const trimmed = nama.trim();
+  if (trimmed.toLowerCase().includes('ade fitrawan ibrahim')) {
+    return 'Ade Fitrawan Ibrahim';
+  }
+  return trimmed;
+}
+
 export interface AdminRekapViewProps {
   user: any;
   isKepalaSekolah?: boolean;
@@ -210,16 +224,19 @@ export default function AdminRekapView({
       guruList?.forEach(g => {
         const rawName = g.nama_guru?.trim();
         if (g.nama_guru && rawName && !isTestGuruName(g.nama_guru) && !isTestGuruName(rawName)) {
-          pMap[rawName] = {
-            nama: rawName,
-            hadir: 0,
-            izin: 0,
-            sakit: 0,
-            dinasLuar: 0,
-            telatDetik: 0,
-            piket: 0,
-            jurnal: 0
-          };
+          const cName = canonicalizeTeacherRekapName(rawName);
+          if (!pMap[cName]) {
+            pMap[cName] = {
+              nama: cName,
+              hadir: 0,
+              izin: 0,
+              sakit: 0,
+              dinasLuar: 0,
+              telatDetik: 0,
+              piket: 0,
+              jurnal: 0
+            };
+          }
         }
       });
 
@@ -227,9 +244,10 @@ export default function AdminRekapView({
       presensi?.forEach(p => {
         const nama = p.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
-        if (!pMap[nama]) {
-          pMap[nama] = {
-            nama,
+        const canonicalNama = canonicalizeTeacherRekapName(nama);
+        if (!pMap[canonicalNama]) {
+          pMap[canonicalNama] = {
+            nama: canonicalNama,
             hadir: 0,
             izin: 0,
             sakit: 0,
@@ -241,13 +259,13 @@ export default function AdminRekapView({
         }
         if (p.tipe_absen === 'Datang') {
           if (p.jenis_presensi === 'Sekolah' || p.jenis_presensi === 'Izin Terlambat' || p.jenis_presensi === 'Terlambat') {
-            pMap[nama].hadir++;
-            pMap[nama].telatDetik += (p.keterlambatan_detik || 0);
+            pMap[canonicalNama].hadir++;
+            pMap[canonicalNama].telatDetik += (p.keterlambatan_detik || 0);
           } else if (p.jenis_presensi === 'Dinas Luar') {
-            pMap[nama].dinasLuar++;
+            pMap[canonicalNama].dinasLuar++;
           } else if (p.jenis_presensi === 'Izin') {
-            if (p.detail_izin?.includes('Sakit')) pMap[nama].sakit++;
-            else pMap[nama].izin++;
+            if (p.detail_izin?.includes('Sakit')) pMap[canonicalNama].sakit++;
+            else pMap[canonicalNama].izin++;
           }
           // Record Alpa dari DB tidak dijumlah langsung — Alpa dihitung dari selisih
         }
@@ -258,8 +276,9 @@ export default function AdminRekapView({
       jurnal?.forEach(j => {
         const nama = j.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
-        if (pMap[nama]) pMap[nama].jurnal++;
-        jMap[nama] = (jMap[nama] || 0) + 1;
+        const canonicalNama = canonicalizeTeacherRekapName(nama);
+        if (pMap[canonicalNama]) pMap[canonicalNama].jurnal++;
+        jMap[canonicalNama] = (jMap[canonicalNama] || 0) + 1;
       });
 
       // Aggregate piket
@@ -267,8 +286,9 @@ export default function AdminRekapView({
       piket?.forEach(pk => {
         const nama = pk.guru_pelapor?.trim();
         if (!nama || isTestGuruName(nama)) return;
-        if (pMap[nama]) pMap[nama].piket++;
-        pkMap[nama] = (pkMap[nama] || 0) + 1;
+        const canonicalNama = canonicalizeTeacherRekapName(nama);
+        if (pMap[canonicalNama]) pMap[canonicalNama].piket++;
+        pkMap[canonicalNama] = (pkMap[canonicalNama] || 0) + 1;
       });
 
       const pArr = Object.keys(pMap)

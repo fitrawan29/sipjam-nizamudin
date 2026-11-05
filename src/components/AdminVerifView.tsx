@@ -61,7 +61,10 @@ export default function AdminVerifView({
   // Master & Schedule Data for Cross-Referencing
   const [allTeachers, setAllTeachers] = useState<any[]>([]);
   const [allPiketSchedule, setAllPiketSchedule] = useState<any[]>([]);
+  const [allPenugasanPiket, setAllPenugasanPiket] = useState<any[]>([]);
   const [allJadwalPelajaran, setAllJadwalPelajaran] = useState<any[]>([]);
+  const [aturanGlobal, setAturanGlobal] = useState<string>('Semua_Hari');
+  const [guruHanyaMengajarList, setGuruHanyaMengajarList] = useState<string[]>([]);
 
   // Submissions Data
   const [presensiList, setPresensiList] = useState<any[]>([]);
@@ -74,17 +77,42 @@ export default function AdminVerifView({
   useEffect(() => {
     const loadAuxData = async () => {
       try {
-        const [teachersRes, piketRes, jadwalRes] = await Promise.all([
+        const [teachersRes, piketRes, jadwalRes, penugasanRes, pengaturanRes] = await Promise.all([
           supabase.from('data_guru').select('*').order('nama_guru', { ascending: true }),
           supabase.from('jadwal_piket').select('*'),
           supabase.from('jadwal_pelajaran').select('*'),
+          supabase.from('penugasan_piket').select('*'),
+          supabase.from('pengaturan').select('*')
         ]);
 
         if (teachersRes.data) setAllTeachers(teachersRes.data);
         if (piketRes.data) setAllPiketSchedule(piketRes.data);
+        if (penugasanRes.data) setAllPenugasanPiket(penugasanRes.data);
         if (jadwalRes.data) {
           const cleanJadwal = jadwalRes.data.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
           setAllJadwalPelajaran(cleanJadwal);
+        }
+        if (pengaturanRes.data) {
+          const aturanRow = pengaturanRes.data.find(
+            (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
+          );
+          if (aturanRow) setAturanGlobal('Hari_Mengajar_Saja');
+
+          const ghmRow = pengaturanRes.data.find((p: any) => p.key === 'guru_hanya_mengajar');
+          if (ghmRow && ghmRow.value) {
+            try {
+              const parsed = JSON.parse(ghmRow.value);
+              if (Array.isArray(parsed)) setGuruHanyaMengajarList(parsed);
+              else if (parsed && typeof parsed === 'object') {
+                const list: string[] = [];
+                if (Array.isArray(parsed.ids)) list.push(...parsed.ids);
+                if (Array.isArray(parsed.names)) list.push(...parsed.names);
+                setGuruHanyaMengajarList(list);
+              }
+            } catch {
+              // ignore json parse error
+            }
+          }
         }
       } catch (err) {
         console.error('Error loading master data for verification:', err);
@@ -454,6 +482,8 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
       }
     });
 
+    const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
+
     return allTeachers
       .filter(t => {
         const hasSubmitted = submittedList.some(p => 
@@ -461,17 +491,59 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
         );
         return !hasSubmitted;
       })
-      .map(t => ({
-        id: `unsub-presensi-${t.id}`,
-        nama_guru: t.nama_guru,
-        nip: t.nip || '-',
-        mata_pelajaran: t.mata_pelajaran || 'Guru',
-        task_type: 'Presensi',
-        pesan_belum: 'Belum melakukan presensi datang maupun pulang',
-        tanggal: targetDate,
-        isUnsubmitted: true
-      }));
-  }, [allTeachers, presensiList, date, effectiveDate]);
+      .map(t => {
+        const namaNorm = normalizeName(t.nama_guru);
+        const firstName = namaNorm.split(/\s+/)[0] || '';
+        const nipNorm = normalizeName(t.nip);
+
+        // Check scheduled classes today
+        const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
+          if (j.hari !== effectiveDayName) return false;
+          if (isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
+          const jNorm = normalizeName(j.nama_guru);
+          return (nipNorm && nipNorm === jNorm) || 
+            (namaNorm === jNorm) || 
+            (firstName.length >= 2 && (firstName === jNorm || firstName.startsWith(jNorm)));
+        });
+
+        // Check piket today (jadwal_piket & penugasan_piket)
+        const inJadwalPiket = allPiketSchedule.some((p: any) => 
+          p.hari === effectiveDayName && isGuruDiPiket(p.daftar_guru, t.nama_guru)
+        );
+        const inPenugasanPiket = allPenugasanPiket.some((p: any) => 
+          p.hari === effectiveDayName && (
+            (p.guru_id && (p.guru_id === t.id || p.guru_id === t.user_id)) ||
+            isTeacherMatch(p.guru_nama, t.nama_guru, t.nip)
+          )
+        );
+        const hasPiketToday = inJadwalPiket || inPenugasanPiket;
+
+        // Check if teacher is in category "wajib hadir pada jadwal KBM"
+        const isExplicitExempt = t.wajib_hadir_hanya_mengajar === true || String(t.wajib_hadir_hanya_mengajar) === 'true' || t.wajib_hadir_hanya_mengajar === 1 || String(t.wajib_hadir_hanya_mengajar) === '1';
+        const isExplicitNonExempt = t.wajib_hadir_hanya_mengajar === false || String(t.wajib_hadir_hanya_mengajar) === 'false' || t.wajib_hadir_hanya_mengajar === 0 || String(t.wajib_hadir_hanya_mengajar) === '0';
+        const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
+        const isLegacyInList = guruHanyaMengajarList.some((item: string) => {
+          const itemClean = item.trim().toLowerCase();
+          return item === t.id || (t.user_id && item === t.user_id) || (itemClean && (itemClean === t.nama_guru?.toLowerCase().trim() || (t.nip && itemClean === t.nip.toLowerCase().trim())));
+        });
+        const isTeacherExempt = isExplicitExempt || (!hasExplicitSetting && (isLegacyInList || aturanGlobal === 'Hari_Mengajar_Saja'));
+
+        const isFreeFromPresence = isTeacherExempt && scheduledClasses.length === 0 && !hasPiketToday;
+
+        return {
+          id: `unsub-presensi-${t.id}`,
+          nama_guru: t.nama_guru,
+          nip: t.nip || '-',
+          mata_pelajaran: t.mata_pelajaran || 'Guru',
+          task_type: 'Presensi',
+          pesan_belum: isFreeFromPresence ? 'Bebas Hadir' : 'Belum melakukan presensi datang maupun pulang',
+          status_label: isFreeFromPresence ? 'Bebas Hadir' : 'Belum Selesai',
+          isFreeFromPresence,
+          tanggal: targetDate,
+          isUnsubmitted: true
+        };
+      });
+  }, [allTeachers, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, allPiketSchedule, allPenugasanPiket, aturanGlobal, guruHanyaMengajarList]);
 
   const unsubmittedJurnal = useMemo(() => {
     if (allTeachers.length === 0) return [];
@@ -482,8 +554,23 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
     const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
 
+    // R2: Teachers who have submitted attendance with status Sakit, Izin, or Dinas Luar must not be flagged as unsubmitted delinquency
+    const isTeacherOnLeave = (teacher: any) => {
+      return presensiList.some(p => {
+        if (!p.timestamp) return false;
+        const pDate = p.timestamp.substring(0, 10);
+        if (pDate !== targetDate) return false;
+        if (!isTeacherMatch(teacher.nama_guru, p.nama_guru, teacher.nip)) return false;
+        const jp = (p.jenis_presensi || '').toLowerCase();
+        const di = (p.detail_izin || '').toLowerCase();
+        return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || di.includes('sakit') || di.includes('izin') || di.includes('dinas');
+      });
+    };
+
     return allTeachers
       .filter(t => {
+        if (isTeacherOnLeave(t)) return false;
+
         const hasSubmitted = submittedList.some(j => 
           isTeacherMatch(t.nama_guru, j.nama_guru, t.nip)
         );
@@ -520,22 +607,28 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
           isUnsubmitted: true
         };
       });
-  }, [allTeachers, jurnalList, date, effectiveDate, effectiveDayName, allJadwalPelajaran]);
+  }, [allTeachers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran]);
 
   const unsubmittedPiket = useMemo(() => {
     if (allTeachers.length === 0) return [];
 
     const piketToday = allPiketSchedule.find((p: any) => p.hari === effectiveDayName);
-    if (!piketToday) return [];
 
     // Always filter strictly by targetDate = date || effectiveDate
     const targetDate = date || effectiveDate;
     const submittedList = piketList.filter(p => p.tanggal === targetDate);
 
-    // Only teachers assigned to picket today
-    const assignedTeachers = allTeachers.filter(t => 
-      isGuruDiPiket(piketToday.daftar_guru, t.nama_guru)
-    );
+    // Teachers assigned to picket today (from jadwal_piket or penugasan_piket)
+    const assignedTeachers = allTeachers.filter(t => {
+      const inJadwal = piketToday ? isGuruDiPiket(piketToday.daftar_guru, t.nama_guru) : false;
+      const inPenugasan = allPenugasanPiket.some((p: any) =>
+        p.hari === effectiveDayName && (
+          (p.guru_id && (p.guru_id === t.id || p.guru_id === t.user_id)) ||
+          isTeacherMatch(p.guru_nama, t.nama_guru, t.nip)
+        )
+      );
+      return inJadwal || inPenugasan;
+    });
 
     return assignedTeachers
       .filter(t => {
@@ -551,11 +644,14 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
         nip: t.nip || '-',
         mata_pelajaran: t.mata_pelajaran || 'Petugas Piket',
         task_type: 'Piket',
-        pesan_belum: `Terjadwal sebagai petugas piket hari ${effectiveDayName}, belum melapor`,
+        pesan_belum: 'tidak membuat laporan piket',
+        status_verifikasi: 'tidak membuat laporan piket',
+        status_label: 'tidak membuat laporan piket',
+        catatan_apel: 'tidak membuat laporan piket',
         tanggal: targetDate,
         isUnsubmitted: true
       }));
-  }, [allTeachers, allPiketSchedule, piketList, date, effectiveDate, effectiveDayName]);
+  }, [allTeachers, allPiketSchedule, allPenugasanPiket, piketList, date, effectiveDate, effectiveDayName]);
 
   // Reactive Instant Client-side Filter Calculation (Zero flicker, zero reload)
   const displayList = useMemo(() => {
@@ -628,6 +724,13 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
       }
     });
 
+    // R2: Explicitly sort history list (filteredSubmitted) from newest to oldest
+    const sortedSubmitted = filteredSubmitted.slice().sort((a: any, b: any) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeB - timeA;
+    });
+
     // 1. If filtering for Belum Menyelesaikan
     if (taskFilter === 'Belum') {
       return filteredUnsubmitted;
@@ -635,14 +738,14 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
 
     // 2. If filtering for Sudah Menyelesaikan
     if (taskFilter === 'Sudah') {
-      return filteredSubmitted;
+      return sortedSubmitted;
     }
 
     // 3. If filtering for Semua (Sudah & Belum): Combine submitted items with unsubmitted items
     if (verifFilter !== 'Semua') {
-      return filteredSubmitted;
+      return sortedSubmitted;
     }
-    return [...filteredSubmitted, ...filteredUnsubmitted];
+    return [...sortedSubmitted, ...filteredUnsubmitted];
   }, [
     taskFilter, 
     verifFilter, 
@@ -665,30 +768,7 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
             <i className="fa-solid fa-clipboard-check text-green-600 dark:text-green-400"></i> Verifikasi Data
           </h2>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                Swal.fire({
-                  title: 'Pedoman Kebijakan & SOP SIPJAM',
-                  html: `
-                    <div class="text-left text-xs space-y-2 text-gray-700 dark:text-gray-200">
-                      <p><strong>1. Kategori Pelanggaran:</strong> Kelalaian Tiket (Piket/Izin/Terlambat/Dinas), Jurnal KBM, dan Jurnal Kegiatan.</p>
-                      <p><strong>2. Konsekuensi Bertingkat:</strong> Teguran Lisan &rarr; SP 1 &rarr; SP 2 (potong insentif 25-50%) &rarr; SP 3 (penangguhan penuh 100%) &rarr; Sidang Disiplin Pimpinan/Yayasan/Dinas.</p>
-                      <p><strong>3. Batas Klarifikasi/Dispensasi:</strong> Maksimal 2x24 jam kerja (Formulir F-SIPJAM-01 & F-SIPJAM-02). Perpanjangan otomatis berlaku untuk Extended Force Majeure & wilayah 3T.</p>
-                      <p class="text-[11px] text-gray-500 dark:text-gray-400 pt-1 border-t border-gray-200 dark:border-gray-700">Rujukan Regulasi Lengkap: <code>docs/KONSEKUENSI_PELANGGARAN.md</code></p>
-                    </div>
-                  `,
-                  icon: 'info',
-                  confirmButtonText: 'Tutup',
-                  confirmButtonColor: '#0B4619'
-                });
-              }}
-              className="btn-click bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 px-2.5 h-8 rounded-lg text-xs font-bold shadow-sm border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1.5"
-              title="Lihat SOP & Regulasi Konsekuensi Pelanggaran"
-            >
-              <i className="fa-solid fa-scale-balanced text-xs"></i>
-              <span className="hidden sm:inline">SOP Disiplin</span>
-            </button>
+            {/* Eliminasi tampilan tombol Pedoman Kebijakan & SOP SIPJAM (SOP Disiplin, docs/KONSEKUENSI_PELANGGARAN.md) per spesifikasi R2 Pusat Verifikasi */}
             <button 
               type="button" 
               onClick={loadData} 
@@ -909,10 +989,19 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
           ) : displayList.map((item: any) => {
             // Render Unsubmitted Teacher Card
             if (item.isUnsubmitted) {
+              const isBebasHadir = item.isFreeFromPresence || item.pesan_belum === 'Bebas Hadir';
+              const isPiketUnsubmitted = item.task_type === 'Piket' || item.status_verifikasi === 'tidak membuat laporan piket';
+
               return (
                 <div 
                   key={item.id} 
-                  className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-rose-200/80 dark:border-rose-900/40 shadow-sm flex flex-col justify-between gap-2.5 transition hover:border-rose-400"
+                  className={`bg-white dark:bg-gray-800 p-3.5 rounded-xl border shadow-sm flex flex-col justify-between gap-2.5 transition ${
+                    isBebasHadir
+                      ? 'border-blue-200/80 dark:border-blue-900/40 hover:border-blue-400'
+                      : isPiketUnsubmitted
+                      ? 'border-orange-200/80 dark:border-orange-900/40 hover:border-orange-400'
+                      : 'border-rose-200/80 dark:border-rose-900/40 hover:border-rose-400'
+                  }`}
                 >
                   <div className="space-y-2">
                     <div className="flex justify-between items-start gap-2">
@@ -924,32 +1013,66 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                           {item.nip !== '-' && item.nip ? `NIP: ${item.nip}` : item.mata_pelajaran}
                         </p>
                       </div>
-                      <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
-                        <i className="fa-solid fa-clock-rotate-left mr-1 text-[8px]"></i> Belum Selesai
-                      </span>
-                    </div>
-
-                    <div className="p-2.5 rounded-lg bg-rose-50/70 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-xs text-rose-900 dark:text-rose-200 space-y-1">
-                      <p className="font-semibold leading-snug flex items-start gap-1.5">
-                        <i className="fa-solid fa-circle-exclamation mt-0.5 text-rose-500 text-[10px] shrink-0"></i>
-                        <span>{item.pesan_belum}</span>
-                      </p>
-                      {item.scheduledInfo && (
-                        <p className="text-[10px] text-gray-600 dark:text-gray-300 pl-4 font-medium">
-                          Status: {item.scheduledInfo}
-                        </p>
+                      {isBebasHadir ? (
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                          Bebas Hadir
+                        </span>
+                      ) : isPiketUnsubmitted ? (
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 shrink-0">
+                          tidak membuat laporan piket
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                          <i className="fa-solid fa-clock-rotate-left mr-1 text-[8px]"></i> Belum Selesai
+                        </span>
                       )}
                     </div>
 
+                    {isBebasHadir ? (
+                      <div className="p-2.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 text-xs text-blue-900 dark:text-blue-200">
+                        <p className="font-semibold text-center">Bebas Hadir</p>
+                      </div>
+                    ) : isPiketUnsubmitted ? (
+                      <div className="p-2.5 rounded-lg bg-orange-50/70 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 text-xs text-orange-900 dark:text-orange-200">
+                        <p className="font-semibold text-center">tidak membuat laporan piket</p>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-lg bg-rose-50/70 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-xs text-rose-900 dark:text-rose-200 space-y-1">
+                        <p className="font-semibold leading-snug flex items-start gap-1.5">
+                          <i className="fa-solid fa-circle-exclamation mt-0.5 text-rose-500 text-[10px] shrink-0"></i>
+                          <span>{item.pesan_belum}</span>
+                        </p>
+                        {item.scheduledInfo && (
+                          <p className="text-[10px] text-gray-600 dark:text-gray-300 pl-4 font-medium">
+                            Status: {item.scheduledInfo}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-between pt-1">
                       <span>Tanggal: {item.tanggal}</span>
-                      <span className="font-semibold text-rose-600 dark:text-rose-400">Belum Ada Data</span>
+                      <span className={`font-semibold ${
+                        isBebasHadir 
+                          ? 'text-blue-600 dark:text-blue-400' 
+                          : isPiketUnsubmitted 
+                          ? 'text-orange-600 dark:text-orange-400' 
+                          : 'text-rose-600 dark:text-rose-400'
+                      }`}>
+                        {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : 'Belum Ada Data'}
+                      </span>
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <div className="py-1 px-2 rounded-lg bg-gray-50 dark:bg-gray-700/40 text-center text-[10px] text-gray-500 dark:text-gray-400 font-medium italic">
-                      Menunggu pengajuan dari guru
+                    <div className={`py-1 px-2 rounded-lg text-center text-[10px] font-medium ${
+                      isBebasHadir
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : isPiketUnsubmitted
+                        ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300'
+                        : 'bg-gray-50 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 italic'
+                    }`}>
+                      {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : 'Menunggu pengajuan dari guru'}
                     </div>
                   </div>
                 </div>
@@ -966,7 +1089,10 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                       item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
                       item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas' || item.jenis_presensi === 'Pulang Cepat') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                      item.status_verifikasi === 'Sakit' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                      item.status_verifikasi === 'Izin' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                      item.status_verifikasi === 'Dinas Luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                      (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas' || item.jenis_presensi === 'Pulang Cepat' || item.status_verifikasi === 'tidak membuat laporan piket') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>{item.status_verifikasi || 'Menunggu'}</span>
                 </div>
@@ -975,6 +1101,39 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                   <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
                     <p><span className="font-semibold">Waktu:</span> {formatTimestampWita(item.timestamp)}</p>
                     <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-nizamudin-green dark:text-green-400">{item.tipe_absen}</span></p>
+                    <div className="flex items-center gap-1.5 flex-wrap my-1">
+                      <span className="font-semibold">Kategori:</span>
+                      {(() => {
+                        const jp = (item.jenis_presensi || '').toLowerCase();
+                        const di = (item.detail_izin || '').toLowerCase();
+                        if (jp === 'sakit' || di === 'sakit') {
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">
+                              <i className="fa-solid fa-notes-medical text-[10px]"></i> Sakit
+                            </span>
+                          );
+                        }
+                        if (jp === 'izin' || (di.includes('izin') && di !== 'sakit')) {
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 inline-flex items-center gap-1">
+                              <i className="fa-solid fa-envelope-open-text text-[10px]"></i> Izin
+                            </span>
+                          );
+                        }
+                        if (jp === 'dinas luar' || di.includes('dinas')) {
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800 inline-flex items-center gap-1">
+                              <i className="fa-solid fa-briefcase text-[10px]"></i> Dinas Luar
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 inline-flex items-center gap-1">
+                            <i className="fa-solid fa-school text-[10px]"></i> Hadir di Sekolah
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <p><span className="font-semibold">Jenis:</span> {item.jenis_presensi} {item.detail_izin && `(${item.detail_izin})`}</p>
                     {item.keterlambatan_detik > 0 && (
                       <p><span className="font-semibold">Terlambat:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{Math.ceil(item.keterlambatan_detik / 60)} menit</span></p>
@@ -1038,6 +1197,20 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                         </span>
                       </div>
                     )}
+                    {(item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar' || item.materi === 'Sakit' || item.materi === 'Izin' || item.materi === 'Dinas Luar' || item.is_auto_filled_leave) && (
+                      <div className="pt-1">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
+                          (item.status_verifikasi === 'Sakit' || item.materi === 'Sakit')
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                            : (item.status_verifikasi === 'Izin' || item.materi === 'Izin')
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                        }`}>
+                          <i className="fa-solid fa-calendar-check text-[10px]"></i>
+                          Otomatis ({item.status_verifikasi || item.materi} - Sesuai Presensi)
+                        </span>
+                      </div>
+                    )}
                     <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
                     {(item.link_bukti_foto || item.foto_kegiatan) && (item.link_bukti_foto !== '-' || item.foto_kegiatan !== '-') && (
                       <div className="mt-2 flex items-center gap-2">
@@ -1073,6 +1246,14 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                   <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
                     <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>
                     <p><span className="font-semibold">Guru Pelapor:</span> {item.guru_pelapor}</p>
+                    {item.status_verifikasi === 'tidak membuat laporan piket' && (
+                      <div className="pt-1">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 inline-flex items-center gap-1">
+                          <i className="fa-solid fa-circle-exclamation text-[10px]"></i>
+                          tidak membuat laporan piket
+                        </span>
+                      </div>
+                    )}
                     <p className="line-clamp-2"><span className="font-semibold">Catatan Apel:</span> {item.catatan_apel || '-'}</p>
                     {item.link_foto && item.link_foto !== '-' && (
                       <div className="mt-2 flex items-center gap-2">
@@ -1103,7 +1284,17 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                 )}
 
                 <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-                  {item.status_verifikasi === 'Ditolak' && (
+                  {item.status_verifikasi === 'tidak membuat laporan piket' ? (
+                    <div className="w-full text-center py-1.5 px-3 rounded-lg text-xs font-semibold bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                      <i className="fa-solid fa-circle-exclamation mr-1.5"></i>
+                      Otomatis Tercatat: tidak membuat laporan piket
+                    </div>
+                  ) : (item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar') ? (
+                    <div className="w-full text-center py-1.5 px-3 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      <i className="fa-solid fa-check-circle mr-1.5"></i>
+                      Otomatis Terverifikasi ({item.status_verifikasi} - Sesuai Presensi)
+                    </div>
+                  ) : item.status_verifikasi === 'Ditolak' ? (
                     <button
                       type="button"
                       disabled={isReadOnly || processingId === item.id}
@@ -1121,48 +1312,51 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
                         </>
                       )}
                     </button>
-                  )}
-                  {item.status_verifikasi !== 'Ditolak' && (
-                    <button 
-                      type="button"
-                      disabled={isReadOnly || processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
-                      onClick={() => !isReadOnly && verifyItem(item.id, 'Disetujui')} 
-                      title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan verifikasi dinonaktifkan' : 'Terima / Setujui Pengajuan'}
-                      aria-label="Terima / Setujui"
-                      className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
-                        item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
-                          : isReadOnly
-                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700'
-                          : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
-                      }`}
-                    >
-                      {processingId === item.id ? (
-                        <i className="fa-solid fa-spinner animate-spin"></i>
-                      ) : (
-                        <><i className="fa-solid fa-check"></i> Setujui</>
+                  ) : (
+                    <>
+                      {item.status_verifikasi !== 'Ditolak' && (
+                        <button 
+                          type="button"
+                          disabled={isReadOnly || processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
+                          onClick={() => !isReadOnly && verifyItem(item.id, 'Disetujui')} 
+                          title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan verifikasi dinonaktifkan' : 'Terima / Setujui Pengajuan'}
+                          aria-label="Terima / Setujui"
+                          className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                            item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
+                              : isReadOnly
+                              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700'
+                              : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
+                          }`}
+                        >
+                          {processingId === item.id ? (
+                            <i className="fa-solid fa-spinner animate-spin"></i>
+                          ) : (
+                            <><i className="fa-solid fa-check"></i> Setujui</>
+                          )}
+                        </button>
                       )}
-                    </button>
-                  )}
-                  {item.status_verifikasi !== 'Ditolak' && (
-                    <button 
-                      type="button"
-                      disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
-                      onClick={() => !isReadOnly && verifyItem(item.id, 'Ditolak')} 
-                      title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan penolakan dinonaktifkan' : 'Tolak Pengajuan'}
-                      aria-label="Tolak"
-                      className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
-                        isReadOnly
-                          ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none border border-gray-200 dark:border-gray-700'
-                          : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
-                      }`}
-                    >
-                      {processingId === item.id ? (
-                        <i className="fa-solid fa-spinner animate-spin"></i>
-                      ) : (
-                        <><i className="fa-solid fa-xmark"></i> Tolak</>
+                      {item.status_verifikasi !== 'Ditolak' && (
+                        <button 
+                          type="button"
+                          disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
+                          onClick={() => !isReadOnly && verifyItem(item.id, 'Ditolak')} 
+                          title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan penolakan dinonaktifkan' : 'Tolak Pengajuan'}
+                          aria-label="Tolak"
+                          className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                            isReadOnly
+                              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none border border-gray-200 dark:border-gray-700'
+                              : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
+                          }`}
+                        >
+                          {processingId === item.id ? (
+                            <i className="fa-solid fa-spinner animate-spin"></i>
+                          ) : (
+                            <><i className="fa-solid fa-xmark"></i> Tolak</>
+                          )}
+                        </button>
                       )}
-                    </button>
+                    </>
                   )}
                 </div>
               </div>

@@ -19,6 +19,36 @@ export const KURIKULUM_DOCS = [
   { id: 'RPM', code: 'RPM', name: 'Rencana Pembelajaran Mendalam', short: 'RPM' }
 ] as const;
 
+/**
+ * Normalisasi dan ekstraksi tingkat/jenjang kelas dari string kelas.
+ * Contoh: "X Merdeka 1" -> "X", "10A" -> "X", "XI Merdeka 2" -> "XI", "XII IPA 1" -> "XII",
+ *         "7A" / "VII-B" -> "VII", "8.1" / "VIII-A" -> "VIII", "9.2" / "IX-A" -> "IX",
+ *         "1A" -> "1", dst.
+ */
+export function extractTingkat(kelasStr?: string | null): string {
+  if (!kelasStr) return '';
+  const k = kelasStr.trim();
+  // SMA/SMK
+  if (/\bxii\b/i.test(k) || /\b12\b/.test(k)) return 'XII';
+  if (/\bxi\b/i.test(k) || /\b11\b/.test(k)) return 'XI';
+  if (/\bx\b/i.test(k) || /\b10\b/.test(k)) return 'X';
+  // SMP
+  if (/\bix\b/i.test(k) || /\b9\b/.test(k)) return 'IX';
+  if (/\bviii\b/i.test(k) || /\b8\b/.test(k)) return 'VIII';
+  if (/\bvii\b/i.test(k) || /\b7\b/.test(k)) return 'VII';
+  // SD (1-6)
+  const digitMatch = k.match(/\b([1-6])\b/);
+  if (digitMatch) return digitMatch[1];
+  if (/\bvi\b/i.test(k)) return 'VI';
+  if (/\bv\b/i.test(k)) return 'V';
+  if (/\biv\b/i.test(k)) return 'IV';
+  if (/\biii\b/i.test(k)) return 'III';
+  if (/\bii\b/i.test(k)) return 'II';
+  if (/\bi\b/i.test(k)) return 'I';
+
+  return k.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+}
+
 export interface DokumenViewProps {
   user: any;
   isReadOnly?: boolean;
@@ -335,6 +365,52 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
       return;
     }
 
+    // R2: Batasi pengunggahan perangkat pembelajaran per mata pelajaran hanya satu kali untuk kelas paralel pada tingkat yang sama
+    const targetTingkat = extractTingkat(selectedKelas);
+    const normalizedMapel = (selectedMapel || '').trim().toLowerCase();
+    const normalizedJenis = (jenis || '').trim().toLowerCase();
+
+    const duplicateDoc = dokumenList.find(d => {
+      // Guru yang sama
+      const isSameTeacher = (d.nama_guru || '').trim().toLowerCase() === (user.nama || '').trim().toLowerCase();
+      if (!isSameTeacher) return false;
+
+      // Jenis dokumen yang sama
+      const dJenis = (d.jenis_dokumen || '').trim().toLowerCase();
+      const isSameJenis = dJenis === normalizedJenis || 
+        (normalizedJenis.includes('cp') && (dJenis.includes('capaian') || dJenis.includes('cp'))) ||
+        (normalizedJenis.includes('atp') && (dJenis.includes('tujuan') || dJenis.includes('atp'))) ||
+        (normalizedJenis.includes('rpe') && (dJenis.includes('pekan') || dJenis.includes('rpe'))) ||
+        (normalizedJenis.includes('prota') && (dJenis.includes('tahunan') || dJenis.includes('prota'))) ||
+        (normalizedJenis.includes('promes') && (dJenis.includes('semester') || dJenis.includes('promes'))) ||
+        ((normalizedJenis.includes('rpm') || normalizedJenis.includes('modul')) && (dJenis.includes('rpm') || dJenis.includes('modul')));
+      if (!isSameJenis) return false;
+
+      // Mapel yang sama
+      const dMapel = (d.mapel || '').trim().toLowerCase();
+      const isSameMapel = !normalizedMapel || !dMapel || dMapel === normalizedMapel || (d.judul || '').toLowerCase().includes(normalizedMapel);
+      if (!isSameMapel) return false;
+
+      // Tingkat kelas paralel yang sama
+      const dTingkat = extractTingkat(d.kelas);
+      return Boolean(targetTingkat && dTingkat && targetTingkat === dTingkat);
+    });
+
+    if (duplicateDoc) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Pengunggahan Dibatasi',
+        html: `
+          <div class="text-xs text-left space-y-2">
+            <p>Perangkat pembelajaran <strong>${jenis}</strong> untuk mata pelajaran <strong>${selectedMapel || 'terpilih'}</strong> pada <strong>Tingkat ${targetTingkat}</strong> sudah pernah diunggah (Kelas: <em>${duplicateDoc.kelas || 'Paralel'}</em>).</p>
+            <p class="text-gray-500 dark:text-gray-400">Sesuai kebijakan Kurikulum Merdeka, pengunggahan perangkat pembelajaran per mata pelajaran dibatasi hanya <strong>satu kali</strong> untuk kelas paralel pada tingkat yang sama dan otomatis berlaku untuk seluruh kelas paralel tingkat tersebut.</p>
+          </div>
+        `,
+        confirmButtonColor: '#0B4619'
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       let fileUrl = '';
@@ -398,7 +474,8 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
 
   // Helper to match a document for a specific subject
   const matchDocToTypeForSubject = (teacherDocs: BankDokumen[], docId: string, mapelName?: string, kelasName?: string) => {
-    return teacherDocs.find(d => {
+    // 1. Exact match first
+    const exact = teacherDocs.find(d => {
       if (mapelName && d.mapel) {
         if (d.mapel.trim().toLowerCase() !== mapelName.trim().toLowerCase()) {
           if (!d.judul || !d.judul.toLowerCase().includes(mapelName.toLowerCase())) {
@@ -423,6 +500,37 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
       if (docId === 'RPM') return j.includes('mendalam') || j.includes('rpm') || j.includes('modul');
       return false;
     });
+
+    if (exact) return exact;
+
+    // 2. Fallback: match parallel class on same grade level (extractTingkat)
+    if (kelasName) {
+      const targetTingkat = extractTingkat(kelasName);
+      if (targetTingkat) {
+        return teacherDocs.find(d => {
+          if (mapelName && d.mapel) {
+            if (d.mapel.trim().toLowerCase() !== mapelName.trim().toLowerCase()) {
+              if (!d.judul || !d.judul.toLowerCase().includes(mapelName.toLowerCase())) {
+                return false;
+              }
+            }
+          }
+          const dTingkat = extractTingkat(d.kelas);
+          if (!dTingkat || dTingkat !== targetTingkat) return false;
+
+          const j = (d.jenis_dokumen || '').toLowerCase();
+          if (docId === 'CP') return j.includes('capaian') || j.includes('cp');
+          if (docId === 'ATP') return j.includes('tujuan') || j.includes('atp');
+          if (docId === 'RPE') return j.includes('pekan') || j.includes('rpe');
+          if (docId === 'Prota') return j.includes('tahunan') || j.includes('prota');
+          if (docId === 'Promes') return j.includes('semester') || j.includes('promes');
+          if (docId === 'RPM') return j.includes('mendalam') || j.includes('rpm') || j.includes('modul');
+          return false;
+        });
+      }
+    }
+
+    return undefined;
   };
 
   // Subjects assigned to the currently logged in teacher
@@ -676,10 +784,13 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
               }
             }
             if (sub.kelas && d.kelas) {
-              if (d.kelas.trim().toLowerCase() !== sub.kelas.trim().toLowerCase()) {
-                if (!d.judul || !d.judul.toLowerCase().includes(sub.kelas.toLowerCase())) {
-                  return false;
-                }
+              const exactClass = d.kelas.trim().toLowerCase() === sub.kelas.trim().toLowerCase() ||
+                (d.judul && d.judul.toLowerCase().includes(sub.kelas.toLowerCase()));
+              const targetTingkat = extractTingkat(sub.kelas);
+              const dTingkat = extractTingkat(d.kelas);
+              const parallelClass = Boolean(targetTingkat && dTingkat && targetTingkat === dTingkat);
+              if (!exactClass && !parallelClass) {
+                return false;
               }
             }
 
