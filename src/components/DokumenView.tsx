@@ -29,15 +29,15 @@ export function extractTingkat(kelasStr?: string | null): string {
   if (!kelasStr) return '';
   const k = kelasStr.trim();
   // SMA/SMK
-  if (/\bxii\b/i.test(k) || /\b12\b/.test(k)) return 'XII';
-  if (/\bxi\b/i.test(k) || /\b11\b/.test(k)) return 'XI';
-  if (/\bx\b/i.test(k) || /\b10\b/.test(k)) return 'X';
+  if (/\bxii\b/i.test(k) || /\b12\b/i.test(k) || /(?:^|\D)12(?!\d)/i.test(k)) return 'XII';
+  if (/\bxi\b/i.test(k) || /\b11\b/i.test(k) || /(?:^|\D)11(?!\d)/i.test(k)) return 'XI';
+  if (/\bx\b/i.test(k) || /\b10\b/i.test(k) || /(?:^|\D)10(?!\d)/i.test(k)) return 'X';
   // SMP
-  if (/\bix\b/i.test(k) || /\b9\b/.test(k)) return 'IX';
-  if (/\bviii\b/i.test(k) || /\b8\b/.test(k)) return 'VIII';
-  if (/\bvii\b/i.test(k) || /\b7\b/.test(k)) return 'VII';
+  if (/\bix\b/i.test(k) || /\b9\b/i.test(k) || /(?:^|\D)9(?!\d)/i.test(k)) return 'IX';
+  if (/\bviii\b/i.test(k) || /\b8\b/i.test(k) || /(?:^|\D)8(?!\d)/i.test(k)) return 'VIII';
+  if (/\bvii\b/i.test(k) || /\b7\b/i.test(k) || /(?:^|\D)7(?!\d)/i.test(k)) return 'VII';
   // SD (1-6)
-  const digitMatch = k.match(/\b([1-6])\b/);
+  const digitMatch = k.match(/(?:^|\D)([1-6])(?!\d)/);
   if (digitMatch) return digitMatch[1];
   if (/\bvi\b/i.test(k)) return 'VI';
   if (/\bv\b/i.test(k)) return 'V';

@@ -168,7 +168,30 @@ export default function AdminVerifView({
         
         const { data, error } = await query;
         if (error) console.error('Error loading presensi:', error);
-        if (data) setPresensiList(data);
+
+        // Also query active multi-day leave records spanning the evaluated date
+        let combinedData = data || [];
+        const targetD = date || getWitaDateStr();
+        if (targetD) {
+          try {
+            const { data: multiDayData, error: multiDayErr } = await supabase
+              .from('presensi_guru')
+              .select('*')
+              .lte('tanggal_mulai', targetD)
+              .gte('tanggal_selesai', targetD)
+              .neq('status_verifikasi', 'Ditolak');
+            if (multiDayErr) {
+              console.error('Error loading multi-day presensi:', multiDayErr);
+            } else if (multiDayData && multiDayData.length > 0) {
+              const existingIds = new Set(combinedData.map((d: any) => d.id));
+              const newMultiDay = multiDayData.filter((d: any) => !existingIds.has(d.id));
+              combinedData = [...combinedData, ...newMultiDay];
+            }
+          } catch (mErr) {
+            console.error('Multi-day presensi query exception:', mErr);
+          }
+        }
+        setPresensiList(combinedData);
       } else if (activeTab === 'Jurnal') {
         let query = supabase.from('jurnal_pembelajaran').select('*');
         if (date) {
@@ -179,6 +202,25 @@ export default function AdminVerifView({
         const { data, error } = await query;
         if (error) console.error('Error loading jurnal:', error);
         if (data) setJurnalList(data);
+
+        // Also fetch presensi records covering target date so unsubmittedJurnal accurately identifies excused leaves
+        const targetD = date || getWitaDateStr();
+        if (targetD) {
+          try {
+            const startOfDay = getWitaStartOfDay(targetD);
+            const endOfDay = getWitaEndOfDay(targetD);
+            const [presensiRes, multiDayRes] = await Promise.all([
+              supabase.from('presensi_guru').select('*').gte('timestamp', startOfDay).lte('timestamp', endOfDay),
+              supabase.from('presensi_guru').select('*').lte('tanggal_mulai', targetD).gte('tanggal_selesai', targetD).neq('status_verifikasi', 'Ditolak')
+            ]);
+            const pList = presensiRes.data || [];
+            const mList = multiDayRes.data || [];
+            const existingIds = new Set(pList.map((d: any) => d.id));
+            setPresensiList([...pList, ...mList.filter((d: any) => !existingIds.has(d.id))]);
+          } catch (pErr) {
+            console.error('Error loading presensi for jurnal view:', pErr);
+          }
+        }
       } else if (activeTab === 'Piket') {
         let query = supabase.from('laporan_piket').select('*');
         if (date) {
@@ -455,6 +497,20 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
   return false;
 }
 
+function addDaysToDateStr(dateStr: string, days: number): string {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    const year = dt.getFullYear();
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return dateStr;
+  }
+}
+
   // Target date for cross-referencing
   const effectiveDate = useMemo(() => {
     return date || getWitaDateStr();
@@ -473,6 +529,17 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
     // Always filter strictly by targetDate = date || effectiveDate
     const targetDate = date || effectiveDate;
     const submittedList = presensiList.filter(p => {
+      // Check multi-day leave span (targetDate >= p.tanggal_mulai && targetDate <= p.tanggal_selesai)
+      if (p.tanggal_mulai && p.tanggal_selesai && targetDate >= p.tanggal_mulai && targetDate <= p.tanggal_selesai) {
+        if (p.status_verifikasi !== 'Ditolak') return true;
+      }
+      if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
+        const days = Number(p.durasi_hari || p.durasiHari) || 1;
+        const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
+        if (targetDate >= p.tanggal_mulai && targetDate <= computedEnd) {
+          if (p.status_verifikasi !== 'Ditolak') return true;
+        }
+      }
       if (!p.timestamp) return false;
       if (p.timestamp.includes(targetDate)) return true;
       try {
@@ -557,13 +624,28 @@ function isTeacherMatch(teacherName?: string | null, candidateName?: string | nu
     // R2: Teachers who have submitted attendance with status Sakit, Izin, or Dinas Luar must not be flagged as unsubmitted delinquency
     const isTeacherOnLeave = (teacher: any) => {
       return presensiList.some(p => {
-        if (!p.timestamp) return false;
-        const pDate = p.timestamp.substring(0, 10);
-        if (pDate !== targetDate) return false;
         if (!isTeacherMatch(teacher.nama_guru, p.nama_guru, teacher.nip)) return false;
+        if (p.status_verifikasi === 'Ditolak') return false;
         const jp = (p.jenis_presensi || '').toLowerCase();
         const di = (p.detail_izin || '').toLowerCase();
-        return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || di.includes('sakit') || di.includes('izin') || di.includes('dinas');
+        const isLeave = jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || di.includes('sakit') || di.includes('izin') || di.includes('dinas');
+        if (!isLeave) return false;
+
+        // Check active multi-day leave span
+        if (p.tanggal_mulai && p.tanggal_selesai && targetDate >= p.tanggal_mulai && targetDate <= p.tanggal_selesai) {
+          return true;
+        }
+        if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
+          const days = Number(p.durasi_hari || p.durasiHari) || 1;
+          const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
+          if (targetDate >= p.tanggal_mulai && targetDate <= computedEnd) {
+            return true;
+          }
+        }
+
+        if (!p.timestamp) return false;
+        const pDate = p.timestamp.substring(0, 10);
+        return pDate === targetDate;
       });
     };
 
