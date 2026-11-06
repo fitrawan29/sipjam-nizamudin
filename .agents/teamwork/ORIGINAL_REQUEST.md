@@ -1,41 +1,37 @@
 # Original User Request
 
-## Initial Request — 2026-11-05T21:44:53Z
+## Initial Request — 2026-11-05T23:50:25Z
 
-This is a single self-contained fix; keep it small and focused. Pada role admin, pada menu master data dan kalender, tambahkan sub menu pengguna untuk mengatur username dan password setiap akun guru yang ditarik otomatis dari data guru yang ada, dengan username NIP dan password default NIP27.
+Menambahkan sub menu Kelas pada menu master data untuk role admin serta memusatkan penentuan/alokasi kelas siswa di menu ini. Menyelaraskan seluruh template master data (Kelas, Siswa, Guru, Mapel, Kalender Pendidikan, Jadwal Pelajaran, Wali Kelas) dengan skema database agar berkas CSV yang diunduh dan diunggah dapat terbaca serta tersimpan dengan tepat, tanpa mengubah logika atau fitur lain yang tidak terdampak.
 
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
 ## Requirements
 
-### R1. Sub Menu Pengguna pada Menu Master Data dan Kalender
-Pada navigasi role admin di bawah menu master data dan kalender, tambahkan sub menu "Pengguna" yang hanya dapat diakses oleh admin.
+### R1. Sub Menu Kelas dan Pemusatan Penentuan Kelas Siswa
+Pada role admin di menu master data, sediakan sub menu Kelas yang menampilkan daftar kelas dan memusatkan pengelolaan alokasi/penentuan kelas dari setiap siswa di menu ini. Pengguna admin dapat mengelola kelas serta menetapkan atau memindahkan siswa ke kelas tertentu secara terpusat dari sub menu ini.
 
-### R2. Penarikan Otomatis Akun dari Data Guru
-Data akun pada sub menu pengguna ditarik secara otomatis dari data guru yang ada di sistem dengan role pengguna sebagai guru. Setiap akun guru memiliki username awal berupa NIP dan password default berupa NIP27.
+### R2. Penyelarasan Template Master Data dengan Skema Database
+Seluruh template master data yang memiliki fitur unduh dan unggah (Kelas, Siswa, Guru, Mapel, Kalender Pendidikan, Jadwal Pelajaran, dan Wali Kelas) harus diselaraskan secara presisi dengan skema database yang berlaku. Header kolom dan format data pada template harus sesuai dengan definisi kolom tabel target sehingga berkas hasil unduhan template siap diisi dan diunggah.
 
-### R3. Manajemen Kredensial Pengguna oleh Admin
-Admin dapat mengelola, melihat daftar, serta memperbarui username dan password setiap akun guru melalui antarmuka sub menu pengguna.
+### R3. Pemrosesan dan Kompatibilitas Unggah CSV
+Mekanisme pembacaan dan impor berkas CSV master data harus memproses berkas template yang diisi pengguna secara akurat ke database yang ada. Validasi data dan feedback proses unggah harus memastikan data tersimpan dengan benar tanpa ada kegagalan pembacaan kolom maupun kesalahan pemetaan field.
 
-### R4. Integritas dan Non-Regresi Fitur Eksisting
-Penyesuaian ini tidak mempengaruhi fitur dan logika lain yang tidak terdampak; seluruh modul dan alur kerja aplikasi yang sudah ada tetap berfungsi normal.
+### R4. Batasan Non-Regresi (Preservasi Fitur Eksisting)
+Penambahan fitur maupun perubahan kode pada master data tidak boleh mengubah atau merusak fitur dan logika lain yang tidak terdampak dalam aplikasi. Fungsionalitas eksisting pada modul admin, guru, jadwal, presensi, serta alur kerja yang sudah berjalan harus tetap berfungsi normal.
 
 ## Acceptance Criteria
 
-### Navigasi dan Hak Akses
-- [ ] Sub menu Pengguna muncul di bawah menu Master Data dan Kalender saat login sebagai admin.
-- [ ] Sub menu Pengguna tidak dapat diakses atau dilihat oleh role non-admin.
+### Sub Menu Kelas & Manajemen Siswa
+- [ ] Sub menu Kelas dapat diakses oleh role admin pada menu master data.
+- [ ] Daftar kelas ditampilkan dan terdapat mekanisme untuk menetapkan atau memperbarui kelas siswa langsung dari sub menu ini.
+- [ ] Data penentuan kelas siswa yang diperbarui tersimpan dengan konsisten pada database dan terefleksi di aplikasi.
 
-### Sinkronisasi Akun Otomatis dan Kredensial Default
-- [ ] Seluruh data guru yang ada di sistem otomatis terdaftar sebagai akun pengguna dengan role guru.
-- [ ] Akun guru baru yang ditambahkan memiliki username sesuai NIP dan password default NIP27.
+### Template Master Data & Impor CSV
+- [ ] Tersedia opsi unduh template CSV untuk entitas Kelas, Siswa, Guru, Mapel, Kalender Pendidikan, Jadwal Pelajaran, dan Wali Kelas yang strukturnya sesuai skema database.
+- [ ] Berkas CSV dari seluruh template master data berhasil diunggah, diparsing, dan disimpan ke tabel database terkait tanpa kegagalan pemetaan kolom.
+- [ ] Seluruh dataset uji / sampel CSV yang valid dapat terbaca dan terimpor dengan benar.
 
-### Manajemen Kredensial oleh Admin
-- [ ] Admin dapat memperbarui username dan password akun guru melalui antarmuka sub menu Pengguna.
-- [ ] Kredensial baru yang diperbarui berhasil disimpan ke database dan dapat digunakan untuk autentikasi login.
-- [ ] Automated tests (unit/integration) dan verifikasi fungsional untuk fitur sub menu pengguna berhasil dijalankan tanpa error.
-
-### Integritas Sistem dan Non-Regresi
-- [ ] Penyesuaian ini tidak mempengaruhi fitur dan logika lain yang tidak terdampak; seluruh fitur yang sudah ada sebelumnya tetap berfungsi normal tanpa regresi.
-- [ ] Seluruh automated test suite yang sudah ada sebelumnya tetap lolos (pass) tanpa error.
+### Integritas Sistem & Preservasi Fitur (Zero Regression)
+- [ ] Penambahan fitur dan perubahan yang dilakukan tidak merubah fitur lain dan logika lain yang tidak terdampak pada perubahan ini.
+- [ ] Seluruh pengujian otomatis proyek yang ada (`npm test`) tetap lulus tanpa adanya kegagalan regresi (zero regression).

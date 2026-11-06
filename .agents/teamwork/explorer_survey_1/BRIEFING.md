@@ -1,51 +1,56 @@
-# BRIEFING — 2026-11-02T12:37:30Z
+# BRIEFING — 2026-11-06T08:05:00Z
 
 ## Mission
-Explore codebase for Sistem Blok data model, storage/persistence, and UI configuration (targets, date ranges, time ranges).
+Investigate Admin navigation and Master Data UI, classes, and student class allocation to design R1: adding sub-menu "Kelas" under Master Data for role admin and centralizing student class allocation.
 
 ## 🔒 My Identity
-- Archetype: teamwork_explorer
-- Roles: explorer, analyzer
+- Archetype: explorer
+- Roles: survey, investigation, synthesis
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: survey and analysis of Sistem Blok
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: Survey Phase
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement or modify project code/tests
-- Report exact file paths, line numbers, data structures
-- Propose schema/interface changes if needed
-- Maintain liveness heartbeat via progress.md
+- Read-only investigation — do NOT implement
+- Write only to working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\
+- Use send_message to report back to parent (77685953-a979-46b9-9e32-e6b24ab55eb5)
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: 2026-11-02T12:37:30Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T08:05:00Z
 
 ## Investigation State
 - **Explored paths**:
-  * `supabase/migrations/20260927_sistem_blok_schema.sql`
-  * `src/types/database.ts` (lines 1411–1450, 1972–1974)
-  * `src/components/SistemBlokView.tsx` (all 706 lines)
-  * `src/components/AdminDataView.tsx` (lines 102, 2049–2053)
-  * `src/components/AppScreen.tsx` (lines 1243–1246)
-  * `src/lib/workflow.ts` (lines 69–92, 244–256, 704–715)
-  * `src/components/HomeViewGuru.tsx` (lines 803, 849–960)
-  * `src/components/GuruJurnal.tsx` (lines 510–550, 595–615)
-  * `src/components/NaikKelasModal.tsx` (cohort advancement logic)
-  * `tests/sistem_blok_verification.test.ts` (all 614 lines, 85 passed assertions)
+  - `src/components/AppScreen.tsx` (lines 670-760, 1300-1340)
+  - `src/components/AdminDataView.tsx` (lines 1-145, 220-360, 760-895, 950-1100, 1170-1270, 1500-2335)
+  - `src/components/NaikKelasModal.tsx` (lines 1-350)
+  - `src/components/AdminPenggunaView.tsx` (lines 1-80)
+  - `src/components/DokumenView.tsx` (lines 20-60)
+  - `src/lib/navigation.ts` (lines 1-170)
+  - `src/lib/dataIntegrityGuard.ts` (lines 540-860)
+  - `src/lib/supabaseClient.ts` (lines 110-150)
+  - `src/types/database.ts` (lines 1-375, 1800-1835)
+  - `supabase/SETUP_NEW_SCHOOL_TEMPLATE.sql` (lines 50-145, 340-370)
+  - `supabase/migrations/20261102_restrict_master_data_to_admin.sql` (lines 1-78)
+  - `tests/master_data_admin_role_restriction.test.ts` (lines 1-100)
+  - `tests/admin_submenu_pengguna_kredensial_guru.test.ts` (lines 1-100, 518-522)
+  - `tests/e2e/tier1_feature_coverage.test.ts` (lines 770-820)
 - **Key findings**:
-  * Live DB table `public.sistem_blok` currently has only 8 columns (id, sekolah_id, nama_kegiatan, deskripsi, tanggal_mulai, tanggal_selesai, created_at, updated_at).
-  * 100% Supabase-backed; no mock or localStorage used for Sistem Blok.
-  * Adding `tipe_target` ('sekolah'|'angkatan'|'kelas'|'guru'), `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`, `is_full_day`, `jam_mulai`, and `jam_selesai` (with default `'sekolah'` and `is_full_day: true`) maintains 100% backward compatibility.
-  * Schedule-level masking algorithm formulated with interval overlap: `sched.jam_mulai < rule.jam_selesai && sched.jam_selesai > rule.jam_mulai`.
-- **Unexplored areas**: None within the exploration scope.
+  - Master data menu currently contains 8 sub-menus/tabs: `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `sistem_blok`, `Wali_Kelas`, `Pengguna`.
+  - There is currently NO "Kelas" sub-menu in Master Data or elsewhere in the app.
+  - Classes currently exist purely as decentralized string attributes on `data_siswa.kelas`, `wali_kelas.kelas`, `jadwal_pelajaran.kelas`.
+  - Student class allocation is currently fragmented across individual student edit modals and the "Naik Kelas" modal in `Data_Siswa`.
+  - `MASTER_DATA_TABLES` in `supabaseClient.ts` already anticipates `'data_kelas'` and `'kelas'`.
+  - Baseline test suite (`npm test`) passes 100% across 54 test files.
+- **Unexplored areas**: None for survey scope.
 
 ## Key Decisions Made
-- Completed read-only investigation and synthesized findings.
-- Generated comprehensive `analysis.md` and 5-component `handoff.md`.
+- Architecture for R1: Create `src/components/AdminKelasView.tsx` as a dedicated modular sub-view in `AdminDataView.tsx`.
+- Register `Data_Kelas` tab in `AdminDataView.tsx` and URL aliases in `src/lib/navigation.ts` (`view-admin-kelas`, `view-kelas`).
+- Provide class listing, student count per class, homeroom teacher info, unallocated student detection, and centralized student class allocation (assign, transfer, rename, batch).
 
 ## Artifact Index
-- DISPATCH.md — record of orchestrator instructions
-- BRIEFING.md — persistent situational awareness
+- DISPATCH.md — record of incoming dispatch messages
+- BRIEFING.md — persistent working memory
 - progress.md — liveness heartbeat
-- analysis.md — comprehensive technical analysis and architecture design
-- handoff.md — 5-component self-contained handoff report
+- handoff.md — comprehensive survey analysis and architectural design report

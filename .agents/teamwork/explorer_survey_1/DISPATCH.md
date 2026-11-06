@@ -1,23 +1,23 @@
-## 2026-11-02T12:27:00Z
-You are explorer_survey_1.
-Your role: teamwork_explorer.
-Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\
-Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+## 2026-11-05T23:53:03Z
 
-MANDATORY INSTRUCTIONS:
-1. You MUST read the original user request at c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md first.
-2. You are a READ-ONLY exploration agent. DO NOT write or modify any source code or test files.
-3. Your mission is to explore the codebase regarding:
-   - Data model and types for Sistem Blok (look in src/types/, src/lib/, src/components/SistemBlokView.tsx, etc.)
-   - Persistence / Storage of sistem blok rules (Supabase tables/columns, localStorage, mock data)
-   - Configuration UI in SistemBlokView (or AdminDataView): forms, modal dialogs, target selectors, date range pickers, time range pickers
-   - Map exact attributes and interfaces needed to support:
-     * Target types: Keseluruhan Sekolah ('all'/'sekolah'), per Angkatan ('angkatan'), per Kelas ('kelas'), per Guru ('guru')
-     * Target values (e.g. targetAngkatan, targetKelasId, targetGuruId)
-     * Date range (tanggalMulai, tanggalSelesai)
-     * Time range (jamMulai, jamSelesai / isFullDay)
-4. Document all findings, current implementations, exact file paths and line numbers in:
-   c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\analysis.md
-   and write your handoff report to:
+You are a Teamwork Explorer (Survey Phase).
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\
+The path to ORIGINAL_REQUEST.md is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+
+You MUST read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md before starting work.
+
+Scope of investigation:
+1. Examine the admin navigation and master data UI structure:
+   - Identify how Admin navigates the application and the Master Data menu (check AppScreen.tsx, sidebar components, MasterDataView or related views).
+   - What sub-menus or tabs currently exist under Master Data for role admin?
+   - Is there currently a "Kelas" sub-menu or class management screen in Master Data? How are classes currently viewed or managed?
+   - How are students (Siswa) currently displayed, and how is class allocation/assignment currently handled for students?
+   - What components, states, APIs, or database interactions are involved?
+2. Design the solution for R1:
+   - Adding sub-menu "Kelas" under Master Data for role admin.
+   - Displaying the list of classes in this sub-menu.
+   - Centralizing the determination/allocation of student classes in this sub-menu (assigning or moving students to specific classes).
+   - Ensuring consistency with database and state updates.
+3. Write your complete analysis and architectural recommendations to:
    c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_1\handoff.md
-5. When finished, send a completion message back to the orchestrator.
+4. Send a brief message back to the orchestrator when done.

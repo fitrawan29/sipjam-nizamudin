@@ -24,3 +24,29 @@ MANDATORY INSTRUCTIONS:
    and write your handoff report to:
    c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md
 5. When finished, send a completion message back to the orchestrator.
+
+## 2026-11-05T23:53:13Z
+Sender: 77685953-a979-46b9-9e32-e6b24ab55eb5
+Content:
+You are a Teamwork Explorer (Survey Phase).
+Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\
+The path to ORIGINAL_REQUEST.md is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+
+You MUST read c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md before starting work.
+
+Scope of investigation:
+1. Examine existing CSV template generation/download and CSV upload/import mechanisms in sipjam-app:
+   - Where are CSV templates generated or downloaded for Master Data entities?
+   - Check all 7 entities: Kelas, Siswa, Guru, Mapel, Kalender Pendidikan, Jadwal Pelajaran, Wali Kelas. Which ones currently have template download? Which are missing or misaligned?
+   - Where and how are uploaded CSV files parsed and saved to the database? (Identify parsing utilities, PapaParse/custom parsers, API routes or frontend handlers, error handling, feedback/notifications).
+   - What causes failures, misread columns, or incorrect field mappings in CSV imports?
+2. Examine existing automated tests:
+   - Identify existing tests for master data, CSV imports, or related modules (`tests/` directory).
+   - What test commands exist and how does the test harness verify CSV parsing or master data?
+3. Design recommendations for R2 & R3:
+   - Harmonizing template headers and sample data across all 7 entities.
+   - Robust parsing, validation, and feedback during CSV upload.
+   - Preserving existing functionality and preventing regressions (R4).
+4. Write your complete analysis and recommendations to:
+   c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\handoff.md
+5. Send a brief message back to the orchestrator when done.

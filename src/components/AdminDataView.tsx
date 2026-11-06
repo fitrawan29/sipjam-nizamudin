@@ -31,6 +31,7 @@ import {
 } from '@/lib/academicTitles';
 import SistemBlokView from './SistemBlokView';
 import AdminPenggunaView from './AdminPenggunaView';
+import AdminKelasView from './AdminKelasView';
 import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
 
 export interface AdminDataViewProps {
@@ -38,22 +39,21 @@ export interface AdminDataViewProps {
   initialTab?: string;
 }
 
+export function normalizeAdminTab(tab?: string): string {
+  if (!tab) return 'Data_Siswa';
+  const clean = tab.trim().toLowerCase();
+  if (clean === 'blok' || clean === 'sistem_blok') return 'sistem_blok';
+  if (clean === 'pengguna' || clean === 'users') return 'Pengguna';
+  if (clean === 'data_kelas' || clean === 'kelas') return 'Data_Kelas';
+  return tab;
+}
+
 export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
-  const [activeTab, setActiveTab] = useState(() => {
-    if (initialTab === 'blok' || initialTab === 'sistem_blok') return 'sistem_blok';
-    if (initialTab === 'Pengguna' || initialTab === 'pengguna' || initialTab === 'users') return 'Pengguna';
-    return initialTab || 'Data_Siswa';
-  });
+  const [activeTab, setActiveTab] = useState(() => normalizeAdminTab(initialTab));
 
   useEffect(() => {
     if (initialTab) {
-      if (initialTab === 'blok' || initialTab === 'sistem_blok') {
-        setActiveTab('sistem_blok');
-      } else if (initialTab === 'Pengguna' || initialTab === 'pengguna' || initialTab === 'users') {
-        setActiveTab('Pengguna');
-      } else {
-        setActiveTab(initialTab);
-      }
+      setActiveTab(normalizeAdminTab(initialTab));
     }
   }, [initialTab]);
 
@@ -116,6 +116,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
   const tabs = [
     { id: 'Data_Siswa', label: 'Siswa', table: 'data_siswa' },
+    { id: 'Data_Kelas', label: 'Kelas', table: 'data_kelas' },
     { id: 'Data_Guru', label: 'Guru', table: 'data_guru' },
     { id: 'Data_Mapel', label: 'Mapel', table: 'data_mapel' },
     { id: 'Kalender_Pendidikan', label: 'Kalender', table: 'kalender_pendidikan' },
@@ -126,7 +127,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   ];
 
   const loadData = useCallback(async () => {
-    if (activeTab === 'sistem_blok' || activeTab === 'blok' || activeTab === 'Pengguna') return;
+    if (activeTab === 'sistem_blok' || activeTab === 'blok' || activeTab === 'Pengguna' || activeTab === 'Data_Kelas') return;
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
 
@@ -1930,6 +1931,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             ) : activeTab === 'Pengguna' ? (
               <div className="mt-2">
                 <AdminPenggunaView user={user} />
+              </div>
+            ) : activeTab === 'Data_Kelas' ? (
+              <div className="mt-2">
+                <AdminKelasView user={user} />
               </div>
             ) : (
               <>

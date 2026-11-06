@@ -1,104 +1,69 @@
-# Project: SIPJAM — Flexible Sistem Blok (Target Scopes & Time Ranges)
+# Project: SIPJAM — Sub Menu Kelas & Penyelarasan Template Master Data
 
 ## Architecture
 - **Stack**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Font Awesome 6, SweetAlert2, Supabase PostgreSQL.
-- **Data Persistence**:
-  - `public.sistem_blok` table enhanced with flexible target attributes:
-    * `tipe_target`: `'sekolah' | 'angkatan' | 'kelas' | 'guru'` (DEFAULT `'sekolah'`)
-    * `target_angkatan`: `TEXT | NULL` (e.g. `'10'`, `'11'`, `'12'` / `'X'`, `'XI'`, `'XII'`)
-    * `target_kelas`: `TEXT | NULL` (e.g. `'X Merdeka'`, `'XI RPL 1'`)
-    * `target_guru_id`: `UUID | NULL` (REFERENCES `public.data_guru(id)` ON DELETE SET NULL)
-    * `target_guru_nama`: `TEXT | NULL`
-    * `is_full_day`: `BOOLEAN NOT NULL DEFAULT true`
-    * `jam_mulai`: `TEXT | NULL` (e.g. `'07:30'`)
-    * `jam_selesai`: `TEXT | NULL` (e.g. `'11:00'`)
-  - Backward compatibility: All new columns are nullable or have sensible defaults (`tipe_target = 'sekolah'`, `is_full_day = true`), preserving 100% of existing records and tests.
-- **Admin Configuration UI (`src/components/SistemBlokView.tsx`)**:
-  - Target selection: Segmented button/tabs (`Keseluruhan Sekolah`, `Per Angkatan`, `Per Kelas`, `Per Guru`).
-  - Contextual selectors:
-    * Angkatan: Grade levels extracted from school classes (`10 / X`, `11 / XI`, `12 / XII`).
-    * Kelas: Dynamic dropdown populated from school classes (`data_siswa`).
-    * Guru: Searchable dropdown populated from active teachers (`data_guru`).
-  - Time Range Controls: Full-day switch (`is_full_day`), with start time (`jam_mulai`) and end time (`jam_selesai`) inputs enabled when not full-day.
-  - Informative Badges: Visual indicators in the rule table showing target scope and time boundaries.
-- **Workflow & Granular Schedule Masking (`src/lib/workflow.ts` & `src/components/HomeViewGuru.tsx`)**:
-  - `getActiveSistemBloks(dateStr, sekolahId)` returns all active block rules for the specified date.
-  - `evaluateScheduleBlock(schedule, teacher, activeBloks)` evaluates whether a specific schedule item is blocked:
-    1. Target Matching: Whole school matches all; Angkatan matches grade tokens; Kelas matches class name; Guru matches teacher ID/name.
-    2. Time Overlap: Full-day always overlaps; Time-bounded blocks check interval intersection (`schedStart < blokEnd && schedEnd > blokStart`).
-  - In `HomeViewGuru.tsx`: Unaffected schedules continue regular KBM; affected schedules are masked with block indicator badge.
-  - In `GuruJurnal.tsx`: Affected teachers fill `Jurnal Kegiatan (Sistem Blok)`.
-- **Test Suite (`tests/sistem_blok_verification.test.ts`)**:
-  - Extended with comprehensive tests for all 4 target levels, time range isolation, schedule masking, and journal fulfillment.
+- **Navigation & Routing (`src/lib/navigation.ts`, `src/components/AppScreen.tsx`)**:
+  - Sub menu `Data_Kelas` (`Kelas`) registered in `AdminDataView.tsx` under master data tabs for role admin.
+  - Route aliases `view-admin-kelas` and `view-kelas` registered in `VIEW_ALIASES` mapping to `{ view: 'view-admin-data', tab: 'Data_Kelas' }`.
+  - Non-admin roles (Guru, Siswa, Dinas, Kepsek) strictly forbidden from accessing `view-admin-data`.
+- **Class & Student Allocation Component (`src/components/AdminKelasView.tsx`)**:
+  - Class directory: Displays class cards (e.g. `X Merdeka`, `XI Merdeka`, `XII Merdeka`), enrolled student counts, gender breakdown, and homeroom teacher.
+  - Centralized allocation workspace:
+    * Interactive student roster per class with multi-selection.
+    * Batch student transfer ("Pindahkan Siswa") to target class.
+    * Inbound student allocation ("Alokasikan Siswa Masuk") from unassigned students or other classes.
+    * Dedicated "Siswa Belum Memiliki Kelas" unallocated section.
+    * Class creation and class rename with cascading update to `data_siswa.kelas`.
+    * Integration with `NaikKelasModal.tsx` for bulk cohort advancement.
+- **CSV Template Harmonization (`src/components/AdminDataView.tsx`)**:
+  - Precisely aligned templates for all 7 Master Data entities:
+    1. Kelas (`Template_Data_Kelas.csv`): `nama_kelas,tingkat,jurusan`
+    2. Siswa (`Template_Data_Siswa.csv`): `nisn,nama_siswa,kelas,gender,status,no_hp_ortu`
+    3. Guru (`Template_Data_Guru.csv`): `sekolah_id,nip,nama_guru,mata_pelajaran,no_hp,status,email`
+    4. Mapel (`Template_Data_Mapel.csv`): `id,nama_mata_pelajaran,kategori`
+    5. Kalender Pendidikan (`Template_Kalender_Pendidikan.csv`): `tanggal,keterangan,tipe`
+    6. Jadwal Pelajaran (`Template_Jadwal_Pelajaran.csv`): `hari,nama_guru,mata_pelajaran,kelas`
+    7. Wali Kelas (`Template_Wali_Kelas.csv`): `kelas,nama_guru,nip,tahun_ajaran`
+  - Invariant preservation: Kalender & Jadwal templates omit `id` to prevent Postgres 22P02 and satisfy existing test invariants; Guru template includes `sekolah_id`.
+- **CSV Parsing, Validation & Upsert Engine (`src/lib/dataIntegrityGuard.ts`)**:
+  - `normalizeCsvHeaders`: Normalizes headers, adds aliases for `data_kelas` (`nama_kelas`, `tingkat`, `jurusan`, `kelas`, `rombel`).
+  - `parseAndValidateMasterCsv`: Supports validation for `data_kelas`, generates UUIDs, preserves non-UUID prevention rules.
+  - `importMasterDataFromCsv`: Supports `data_kelas` upsert and graceful fallback; performs idempotent student matching by `(sekolah_id, nisn)` for `data_siswa` to prevent duplicate student rows; provides detailed toast notifications with exact row errors.
+- **Verification Harness (`tests/`)**:
+  - New dedicated test suite `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`.
+  - Full automated suite regression `npm test` (54+ test files).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | F1: Database Schema & Type Expansion | Add target columns (`tipe_target`, `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`) and time range columns (`is_full_day`, `jam_mulai`, `jam_selesai`) to `public.sistem_blok` and update `src/types/database.ts` | M1 | Survey | DONE |
-| 2 | F2: Admin UI Target & Time Range Configuration | Update `src/components/SistemBlokView.tsx` with target type selector, dependent dropdowns (angkatan, kelas, guru), full-day toggle, time pickers, and visual badges | M1 | Survey | DONE |
-| 3 | F3: Granular Schedule Masking & Workflow Engine | Implement `getActiveSistemBloks`, `isKelasInAngkatan`, `isTimeRangeOverlap`, and `evaluateScheduleBlock` in `src/lib/workflow.ts` | M2 | Survey | DONE |
-| 4 | F4: Teacher Dashboard & Mixed Schedule Masking | Update `src/components/HomeViewGuru.tsx` to selectively mask affected schedules while rendering unaffected schedules as active KBM | M2 | Survey | DONE |
-| 5 | F5: Jurnal Kegiatan & Jurnal KBM Integration | Ensure `src/components/GuruJurnal.tsx` supports filling `Jurnal Kegiatan` for affected teachers/classes while keeping regular `Jurnal KBM` for unblocked classes | M2 | Survey | DONE |
-| 6 | F6: Automated Verification Suite Expansion | Expand `tests/sistem_blok_verification.test.ts` to test all 4 target types, hour-range filtering, schedule isolation matrix, and journal submission | M3 | Survey | DONE |
-| 7 | F7: Full Regression & Code Integrity Verification | Run full test suite (`npm test`), static type check (`npx tsc --noEmit`), and production build verification (`npm run build`) | M4 | Survey | DONE |
+| 1 | F1: Sub Menu Kelas Navigation & Access | Add `Data_Kelas` tab to `AdminDataView.tsx`, configure aliases in `src/lib/navigation.ts`, enforce admin role restriction | M1 | Survey | PLANNED |
+| 2 | F2: Centralized Student Class Allocation Workspace | Implement `AdminKelasView.tsx` with class directory cards, unallocated student indicators, student roster drawer, batch move/reassign, class creation/rename, and multi-tenant `data_siswa.kelas` updates | M1 | Survey | PLANNED |
+| 3 | F3: Harmonization of 7 Master Data CSV Templates | Provide `Template_Data_Kelas.csv` and ensure all 7 entity templates in `AdminDataView.tsx` precisely match database column structures while preserving test invariants | M2 | Survey | PLANNED |
+| 4 | F4: Robust CSV Parsing, Validation & Feedback | Enhance `src/lib/dataIntegrityGuard.ts` for `data_kelas` header normalization, validation, student upsert idempotency, and informative error/success feedback | M2 | Survey | PLANNED |
+| 5 | F5: Dedicated Automated Verification Test Suite | Implement `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` testing sub-menu access, route aliasing, class student allocation, and all 7 CSV template imports | M3 | Survey | PLANNED |
+| 6 | F6: Full Non-Regression & Code Integrity Gate | Full regression test suite (`npm test`), static typecheck (`npx tsc --noEmit`), and production build (`npm run build`) | M3 | Survey | PLANNED |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Database Schema, Types & Admin Configuration UI | Schema migration script, `src/types/database.ts`, `src/components/SistemBlokView.tsx` | none | DONE |
-| M2 | Workflow Engine, Granular Schedule Masking & Journal Workflows | `src/lib/workflow.ts`, `src/components/HomeViewGuru.tsx`, `src/components/GuruJurnal.tsx` | M1 | DONE |
-| M3 | Automated Verification Test Suite Expansion | Expand `tests/sistem_blok_verification.test.ts` to cover all target scopes, time boundaries, and isolation scenarios | M2 | DONE |
-| M4 | Final Milestone: Full Regression & Integrity Audit | 100% test pass on all test suites, TypeScript compilation, build verification, and forensic audit | M3 | DONE |
+| M1 | Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa | `src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/navigation.ts` | none | PLANNED |
+| M2 | Penyelarasan Template Master Data & Impor CSV | `src/components/AdminDataView.tsx` (`templates`), `src/lib/dataIntegrityGuard.ts` | M1 | PLANNED |
+| M3 | Automated Verification Tests & Non-Regression Gate | `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`, `npm test`, `npx tsc --noEmit`, `npm run build` | M2 | PLANNED |
 
 ## Interface Contracts
+### AdminDataView ↔ AdminKelasView
+- Props: `{ user: AppUser }`
+- Internal queries:
+  * Reads students: `supabase.from('data_siswa').select('id, nisn, nama_siswa, kelas, gender, status').eq('sekolah_id', user.sekolah_id)`
+  * Reads homeroom teachers: `supabase.from('wali_kelas').select('id, kelas, nama_guru, nip, tahun_ajaran').eq('sekolah_id', user.sekolah_id)`
+  * Updates student class: `supabase.from('data_siswa').update({ kelas: targetKelas }).in('id', studentIds).eq('sekolah_id', user.sekolah_id)`
+  * Renames class: Updates `data_siswa` (`kelas`), `wali_kelas` (`kelas`), and `jadwal_pelajaran` (`kelas`) where `kelas = oldKelas`.
+- Error handling: Graceful fallback if `data_kelas` table does not exist in schema cache; SweetAlert2 confirmations and toasts.
 
-### 1. Database Model (`src/types/database.ts`)
-```typescript
-export type TargetBlokType = 'sekolah' | 'angkatan' | 'kelas' | 'guru';
-
-export interface SistemBlok {
-  id: string;
-  sekolah_id: string;
-  nama_kegiatan: string;
-  deskripsi: string | null;
-  tanggal_mulai: string;
-  tanggal_selesai: string;
-  tipe_target: TargetBlokType;
-  target_angkatan: string | null;
-  target_kelas: string | null;
-  target_guru_id: string | null;
-  target_guru_nama: string | null;
-  is_full_day: boolean;
-  jam_mulai: string | null;
-  jam_selesai: string | null;
-  created_at: string;
-  updated_at: string;
-}
-```
-
-### 2. Workflow Matching Engine (`src/lib/workflow.ts`)
-```typescript
-export interface ScheduleBlockEvaluation {
-  isBlocked: boolean;
-  blockRule?: SistemBlok | null;
-  reason?: string;
-}
-
-export function isKelasInAngkatan(kelas: string | null | undefined, angkatan: string): boolean;
-export function isTimeRangeOverlap(schedStart?: string | null, schedEnd?: string | null, blokStart?: string | null, blokEnd?: string | null): boolean;
-export function evaluateScheduleBlock(
-  schedule: { kelas?: string; nama_guru?: string; user_id?: string; guru_id?: string; jam_mulai?: string; jam_selesai?: string },
-  teacher: { id?: string; user_id?: string; nama?: string; nama_guru?: string },
-  activeBloks: SistemBlok[]
-): ScheduleBlockEvaluation;
-export function getActiveSistemBloks(dateStr?: string, sekolahId?: string): Promise<SistemBlok[]>;
-```
-
-## Code Layout
-- `supabase/migrations/20261102_flexible_sistem_blok.sql`: SQL migration adding target and time range columns to `public.sistem_blok`.
-- `src/types/database.ts`: TypeScript definitions for `sistem_blok` Row, Insert, Update, and `SistemBlok`.
-- `src/components/SistemBlokView.tsx`: Admin management UI for Sistem Blok with target and time range configuration.
-- `src/lib/workflow.ts`: Core workflow logic, `getActiveSistemBloks`, and schedule block evaluation functions.
-- `src/components/HomeViewGuru.tsx`: Teacher home dashboard with granular schedule masking.
-- `src/components/GuruJurnal.tsx`: Teacher journal entry interface with flexible block journal support.
-- `tests/sistem_blok_verification.test.ts`: Expanded verification test suite.
+### AdminDataView ↔ dataIntegrityGuard
+- Function: `importMasterDataFromCsv(supabase, csvText, tableName, user)`
+- `tableName = 'data_kelas'`:
+  * Headers accepted: `nama_kelas, tingkat, jurusan` (or `kelas, tingkat, jurusan`)
+  * If `public.data_kelas` exists, upserts to `data_kelas`. If PGRST205 or missing table, handles student allocation or updates classes gracefully.
+- `tableName = 'data_siswa'`:
+  * Resolves existing student IDs by `(sekolah_id, nisn)` so re-import updates class allocations without creating duplicate rows.

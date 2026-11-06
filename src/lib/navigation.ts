@@ -35,6 +35,8 @@ export const VIEW_ALIASES: Record<string, { view: string; tab?: string }> = {
   'view-admin-pengguna':    { view: 'view-admin-data', tab: 'Pengguna' },
   'view-pengguna':          { view: 'view-admin-data', tab: 'Pengguna' },
   'view-admin-users':       { view: 'view-admin-data', tab: 'Pengguna' },
+  'view-admin-kelas':       { view: 'view-admin-data', tab: 'Data_Kelas' },
+  'view-kelas':             { view: 'view-admin-data', tab: 'Data_Kelas' },
   'view-admin-backup':      { view: 'view-admin-config', tab: 'backup' }
 };
 
@@ -45,7 +47,7 @@ export const SIDEBAR_TOUR_ALIASES: Record<string, string> = {
   'view-guru-presensi': 'view-history',
   'view-gradebook': 'view-rapor',
   'view-admin-rekap': 'view-analitik view-rekap-guru',
-  'view-admin-data': 'view-sistem-blok view-admin-pengguna view-pengguna',
+  'view-admin-data': 'view-sistem-blok view-admin-pengguna view-pengguna view-admin-kelas view-kelas',
   'view-admin-config': 'view-admin-backup'
 };
 
@@ -92,7 +94,7 @@ export function getConsolidatedMenuItems(params: {
           id: 'view-admin-data',
           icon: 'fa-database',
           label: 'Master Data & Kalender',
-          dataTour: 'view-admin-data view-sistem-blok'
+          dataTour: 'view-admin-data view-sistem-blok view-admin-kelas'
         },
         { id: 'view-admin-verif', icon: 'fa-clipboard-check', label: 'Pusat Verifikasi' },
         { id: 'view-admin-rekap', icon: 'fa-chart-pie', label: 'Laporan & Analitik', dataTour: 'view-admin-rekap view-analitik' },
@@ -146,7 +148,7 @@ export function getConsolidatedMenuItems(params: {
         id: 'view-admin-data',
         icon: 'fa-database',
         label: 'Master Data & Kalender',
-        dataTour: 'view-admin-data view-sistem-blok'
+        dataTour: 'view-admin-data view-sistem-blok view-admin-kelas'
       },
       { id: 'view-admin-config', icon: 'fa-gear', label: 'Pengaturan Sistem & Database', dataTour: 'view-admin-config view-admin-backup' }
     ];
@@ -223,7 +225,17 @@ export function evaluateTabRBAC(
     viewId === 'view-admin-pengguna' ||
     viewId === 'view-pengguna' ||
     viewId === 'view-admin-users' ||
-    (effectiveView === 'view-admin-data' && (effectiveTab === 'Pengguna' || effectiveTab === 'users' || effectiveTab === 'pengguna'))
+    viewId === 'view-admin-kelas' ||
+    viewId === 'view-kelas' ||
+    (effectiveView === 'view-admin-data' && (
+      effectiveTab === 'Pengguna' ||
+      effectiveTab === 'users' ||
+      effectiveTab === 'pengguna' ||
+      effectiveTab === 'Data_Kelas' ||
+      effectiveTab === 'data_kelas' ||
+      effectiveTab === 'Kelas' ||
+      effectiveTab === 'kelas'
+    ))
   ) {
     if (!isAdmin) {
       return { allowed: false, fallbackTab: 'view-home', reason: 'Seluruh data master hanya dapat diakses dan diubah oleh Administrator.' };

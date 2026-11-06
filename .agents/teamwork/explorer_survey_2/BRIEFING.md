@@ -1,58 +1,49 @@
-# BRIEFING — 2026-11-02T12:35:00Z
+# BRIEFING — 2026-11-06T08:05:00Z
 
 ## Mission
-Investigate how sistem blok rules are evaluated to mask schedules or alter journal workflows (JadwalView, GuruJurnal, helper libs, target types, time ranges, and block activity journals).
+Survey database schemas, migrations, table definitions, and TypeScript interfaces for 7 master data entities, identify discrepancies, and define exact canonical CSV headers and sample row values.
 
 ## 🔒 My Identity
-- Archetype: teamwork_explorer
-- Roles: explorer, analyst, synthesizer
+- Archetype: explorer
+- Roles: investigator, surveyor
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_2\
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: explorer_survey_2
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: survey
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement
-- Strictly read-only on project source/test code
-- Deliver thorough analysis.md and handoff.md in working directory
-- Notify orchestrator with send_message upon completion
+- Read-only investigation — do NOT implement or alter source code
+- Write only to working directory: .agents/teamwork/explorer_survey_2/
+- Follow Handoff Protocol (5 sections: Observation, Logic Chain, Caveats, Conclusion, Verification Method)
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: 2026-11-02T12:28:00Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T08:05:00Z
 
 ## Investigation State
 - **Explored paths**:
-  - `ORIGINAL_REQUEST.md`
-  - `supabase/migrations/20260927_sistem_blok_schema.sql`
-  - `src/types/database.ts`
-  - `src/lib/workflow.ts`
-  - `src/components/GuruJurnal.tsx`
-  - `src/components/HomeViewGuru.tsx`
-  - `src/components/HomeViewAdmin.tsx`
-  - `src/components/SistemBlokView.tsx`
-  - `src/lib/attendanceAlpa.ts`
-  - `src/app/api/push/send-reminders/route.ts`
-  - `src/components/TeacherReminderManager.tsx`
-  - `src/lib/warningSystem.ts`
-  - `tests/sistem_blok_verification.test.ts`
+  - `supabase/SETUP_NEW_SCHOOL_TEMPLATE.sql`
+  - `supabase/migrations/` (all 37 migration files examined)
+  - `src/types/database.ts` (all table rows, inserts, updates, relationships, helper types)
+  - `src/components/AdminDataView.tsx` (tabs, templates, loadData, renderCard, edit modals, unique helpers)
+  - `src/components/NaikKelasModal.tsx` (student cohort advancement and progression modes)
+  - `src/lib/dataIntegrityGuard.ts` (`importMasterDataFromCsv`, `parseAndValidateMasterCsv`, `normalizeCsvHeaders`)
+  - `csv/` directory (real-world sample CSV files)
+  - `tests/` (`data_guru_csv_import_sekolah_id_validation.test.ts`, `m6_master_data_polish.test.ts`)
 - **Key findings**:
-  - `JadwalView.tsx` does not exist; schedules are displayed in `HomeViewGuru.tsx` (lines 803-980), monitored in `HomeViewAdmin.tsx` (lines 89, 380-458), and entered in `GuruJurnal.tsx`.
-  - Current `getActiveSistemBlok()` evaluates only date range (`tanggal_mulai <= today <= tanggal_selesai`) at whole-school level.
-  - Current schedule masking in `HomeViewGuru.tsx` is all-or-nothing: if `dailyState?.isBlok`, the entire schedule list is hidden.
-  - Adding `tipe_target` ('keseluruhan', 'angkatan', 'kelas', 'guru'), `target_id`, `jam_mulai`, and `jam_selesai` allows granular per-schedule evaluation without breaking existing school-wide functionality.
-  - Interval overlap `sStart < bEnd && sEnd > bStart` handles partial-day blocking with full-day default.
-  - When mixed schedules exist, teachers need mode selection in `GuruJurnal.tsx` between regular KBM and block activity, with 1 Jurnal Kegiatan fulfilling blocked sessions for `canPresensiPulang`.
-  - Baseline test suite `tests/sistem_blok_verification.test.ts` has 85 passing tests ready for expansion.
-- **Unexplored areas**: None for survey scope.
+  - `kelas`: No physical table in PostgreSQL; currently implicit across `data_siswa.kelas`, `wali_kelas.kelas`, `jadwal_pelajaran.kelas`, etc. Must be formalized for R1/R2.
+  - `data_siswa`: Template lacks `id` and `sekolah_id` (auto-injected by session). Needs conflict key awareness during CSV re-import.
+  - `data_guru`: Strictly enforced `sekolah_id` UUID validation and teacher user account auto-sync.
+  - `data_mapel`: Primary key `id` is `TEXT`, not UUID. Template has `['id', 'nama_mata_pelajaran', 'kategori']`.
+  - `kalender_pendidikan`: DB has `tanggal DATE NOT NULL`; UI also supports `tanggal_mulai` and `tanggal_selesai`. Template only has `tanggal`. Old numeric CSV IDs cause UUID errors if not sanitized.
+  - `jadwal_pelajaran`: Current template is missing `jam_mulai` and `jam_selesai` (TIME). Validation trigger rejects dummy subjects.
+  - `wali_kelas`: Unique constraint on `(sekolah_id, kelas)`. Well-aligned.
+- **Unexplored areas**: Final implementation details will be handled by Worker agents.
 
 ## Key Decisions Made
-- Confirmed absence of standalone `JadwalView.tsx` and mapped schedule rendering to `HomeViewGuru.tsx` and `workflow.ts`.
-- Mapped angkatan matching logic to established Roman/Arabic numeral normalization patterns (as in `NaikKelasModal.tsx`).
-- Prepared complete findings in `analysis.md` and 5-component handoff in `handoff.md`.
+- Structured the complete 7-entity specification with exact SQL DDL, column types, nullability, defaults, constraints, discrepancies, and canonical CSV templates.
 
 ## Artifact Index
-- DISPATCH.md — Log of received dispatch instructions
-- BRIEFING.md — Persistent context and situational awareness
-- progress.md — Heartbeat and activity log
-- analysis.md — Detailed findings on sistem blok evaluation and schedule masking
-- handoff.md — 5-component handoff report
+- DISPATCH.md — incoming dispatch instructions
+- progress.md — liveness and progress tracking
+- BRIEFING.md — persistent situational awareness
+- handoff.md — final survey and schema alignment specification

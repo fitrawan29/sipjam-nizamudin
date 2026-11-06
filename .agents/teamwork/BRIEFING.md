@@ -1,41 +1,32 @@
-# BRIEFING — 2026-11-05T23:02:00Z
+# BRIEFING — 2026-11-05T23:51:00Z
 
 ## Mission
-Coordinate interview, routing, execution, and independent verification of user management submenu for admin role.
+Coordinate and monitor execution of the approved task prompt for Master Data Kelas and CSV templates alignment.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork
-- Orchestrator: 0aa00ea1-9c92-421d-8e45-73f63b5e510d
-- Victory Auditor: 978f8b6c-a741-4e71-a99c-1aac7682bdf7
+- Orchestrator: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Keep changes small and focused (SWE Light path)
-- Admin role only for "Pengguna" submenu under master data and calendar
-- Automatic account sync from teachers with username NIP and default password NIP27
-- Ensure non-regression and integrity of existing features
+- Penambahan fitur maupun perubahan kode pada master data tidak boleh mengubah atau merusak fitur dan logika lain yang tidak terdampak (Zero Regression)
+- Seluruh pengujian otomatis proyek (npm test) tetap lulus
 
 ## User Context
-- **Last user request**: Approved task prompt received for submenu pengguna.
+- **Last user request**: Approved task prompt: Add sub menu Kelas in master data, centralize student class allocation, align CSV templates (Kelas, Siswa, Guru, Mapel, Kalender, Jadwal, Wali Kelas) with database schema.
 - **Pending clarifications**: none
-- **Delivered results**:
-  - Sub menu 'Pengguna' under Master Data & Kalender on admin role.
-  - Automatic teacher-to-user account synchronization with username NIP and default password NIP27.
-  - Admin credential management interface with search, edit username/password modal, and RBAC guards.
-  - Comprehensive automated test suite with 28 passing checks and 53 passing test suites.
+- **Delivered results**: none
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
-- .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative user intent and approved prompt
-- .agents/teamwork/swe_1/handoff.md — Orchestrator handoff report
-- .agents/teamwork/auditor_sentinel/handoff.md — Victory Auditor report
-- .agents/teamwork/handoff.md — Sentinel final handoff report
+- .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative record of approved task prompt
