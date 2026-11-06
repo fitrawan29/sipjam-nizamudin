@@ -1457,10 +1457,13 @@ export async function importMasterDataFromCsv(
           const defaultPassword = getDefaultTeacherPassword(targetUsername);
           const userTable = supabase?.from?.('users');
           if (typeof userTable?.select === 'function') {
-            const { data: existingUser } = await userTable
-              .select('id')
-              .ilike('username', targetUsername)
-              .maybeSingle();
+            const queryBuilder = userTable.select('id');
+            const userQuery = typeof queryBuilder?.ilike === 'function'
+              ? queryBuilder.ilike('username', targetUsername)
+              : (typeof queryBuilder?.eq === 'function' ? queryBuilder.eq('username', targetUsername) : null);
+            const { data: existingUser } = userQuery && typeof userQuery.maybeSingle === 'function'
+              ? await userQuery.maybeSingle()
+              : { data: null };
 
             if (!existingUser && typeof userTable?.insert === 'function') {
               await userTable.insert([{

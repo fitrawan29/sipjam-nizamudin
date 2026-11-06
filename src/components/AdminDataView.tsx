@@ -128,9 +128,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   ];
 
   const loadData = useCallback(async (tabOverride?: string) => {
-    if (activeTab === 'sistem_blok' || activeTab === 'blok' || activeTab === 'Pengguna' || activeTab === 'Data_Kelas') return;
     const currentTab = tabOverride || activeTab;
     if (currentTab === 'sistem_blok' || currentTab === 'blok' || currentTab === 'Pengguna' || currentTab === 'Data_Kelas') return;
+    if (!tabOverride) {
+      if (activeTab === 'sistem_blok' || activeTab === 'blok' || activeTab === 'Pengguna' || activeTab === 'Data_Kelas') return;
+    }
     const tabObj = tabs.find(t => t.id === currentTab);
     if (!tabObj) return;
 
@@ -368,6 +370,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       // If student data was uploaded, sync student classes to localStorage for immediate AdminKelasView hydration
       if (targetTab === 'Data_Siswa' && Array.isArray(rows) && rows.length > 0) {
+        setDataList(rows);
         const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
         try {
           const studentClasses = Array.from(new Set(rows.map(r => String(r.kelas || '').trim()).filter(Boolean)));
@@ -382,11 +385,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           localStorage.setItem(`sipjam_custom_classes_${schoolId}`, JSON.stringify(mergedClasses));
           localStorage.setItem(`sipjam_custom_classes_meta_${schoolId}`, JSON.stringify(mergedMeta));
         } catch (_) {}
+      } else if (Array.isArray(rows) && rows.length > 0 && targetTab !== 'Data_Kelas') {
+        setDataList(rows);
       }
 
       // If target entity is different from active tab, automatically switch tab
       if (targetTab !== activeTab) {
         setActiveTab(targetTab);
+        if (typeof window !== 'undefined' && window.history?.replaceState) {
+          window.history.replaceState(null, '', `?view=view-admin-data&tab=${targetTab}`);
+        }
       }
 
       // Reset search, filters, and pagination so uploaded data is immediately visible in the table
@@ -440,7 +448,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
     } finally {
       setLoading(false);
-      e.target.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (e?.target) e.target.value = '';
     }
   };
 

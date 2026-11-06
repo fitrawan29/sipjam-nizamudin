@@ -444,6 +444,11 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
         // Reflect student classes in customClasses and customClassesMeta
         if (Array.isArray(rows) && rows.length > 0) {
+          setAllStudents(prev => {
+            const existingMap = new Map(prev.map(s => [s.id, s]));
+            rows.forEach(r => existingMap.set(r.id, r as StudentItem));
+            return Array.from(existingMap.values());
+          });
           const studentClasses = Array.from(new Set(rows.map(r => String(r.kelas || '').trim()).filter(Boolean)));
           const meta: Record<string, { tingkat?: string; jurusan?: string | null }> = {};
           studentClasses.forEach(k => {
@@ -455,6 +460,15 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
           if (studentClasses.length > 0) {
             setCustomClasses(prev => Array.from(new Set([...prev, ...studentClasses])));
             setCustomClassesMeta(prev => ({ ...prev, ...meta }));
+            const schoolId = sekolahId || user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+            try {
+              const existingClasses = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${schoolId}`) || '[]');
+              const existingMeta = JSON.parse(localStorage.getItem(`sipjam_custom_classes_meta_${schoolId}`) || '{}');
+              const mergedClasses = Array.from(new Set([...existingClasses, ...studentClasses]));
+              const mergedMeta = { ...existingMeta, ...meta };
+              localStorage.setItem(`sipjam_custom_classes_${schoolId}`, JSON.stringify(mergedClasses));
+              localStorage.setItem(`sipjam_custom_classes_meta_${schoolId}`, JSON.stringify(mergedMeta));
+            } catch (_) {}
           }
         }
 
@@ -530,7 +544,8 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       }
     } finally {
       setActionLoading(false);
-      e.target.value = '';
+      if (classFileInputRef.current) classFileInputRef.current.value = '';
+      if (e?.target) e.target.value = '';
     }
   };
 
