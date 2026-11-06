@@ -1976,7 +1976,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         );
       };
 
-      const guruOptE = guruListE.map(g => `<option value="${g.nama_guru}" ${isGuruMatch(g) ? 'selected' : ''}>${g.nama_guru}</option>`).join('');
+      const coreOf = (n: string) => (n || '').split(',')[0].trim().toLowerCase();
+      const exactIdx = guruListE.findIndex(g => (item.user_id && g.user_id === item.user_id) || coreOf(g.nama_guru) === coreOf(currentGuru));
+      const selIdx = exactIdx >= 0 ? exactIdx : guruListE.findIndex(isGuruMatch);
+      // Keep the stored teacher visible even if absent from data_guru list.
+      const guruOptE = (selIdx < 0 && currentGuru ? `<option value="${currentGuru}" selected>${currentGuru}</option>` : '') +
+        guruListE.map((g, i) => `<option value="${g.nama_guru}" ${i === selIdx ? 'selected' : ''}>${g.nama_guru}</option>`).join('');
       const mapelOptE = mapelListE.map(m => `<option value="${m.nama_mata_pelajaran}" ${isMapelMatch(m) ? 'selected' : ''}>${m.nama_mata_pelajaran}</option>`).join('');
 
       const { value: formValues } = await Swal.fire({
