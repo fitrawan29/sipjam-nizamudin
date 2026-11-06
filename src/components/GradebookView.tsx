@@ -345,6 +345,9 @@ export default function GradebookView({
 
     // Filter teacher assignments
     let matched = assignmentsPool.filter(a => isAssignmentMatchTeacher(a, currentTeacher));
+    // Non-admin pool is already queried per-teacher (nip/nama). If strict matching misses
+    // (e.g. name format differs), use the official pool instead of the data_guru placeholder fallback.
+    if (matched.length === 0 && !isAdmin) matched = assignmentsPool;
 
     // Fallback if teacher has no assignments in guru_mapel / jadwal_pelajaran
     if (matched.length === 0) {

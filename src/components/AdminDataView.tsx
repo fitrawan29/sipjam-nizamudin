@@ -59,6 +59,30 @@ export function normalizeAdminTab(tab?: string): string {
 import { getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
 export { getStorageCache, setStorageCache };
 
+const splitMapel = (s: any): string[] => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
+const escAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+// Checklist mapel guru: sumber data_mapel, mapel yang dipegang guru lain disembunyikan.
+async function buildMapelChecklistHtml(sekolahId: string | undefined, guruList: any[], selfId: string | undefined, selected: string): Promise<string> {
+  let q = supabase.from('data_mapel').select('nama_mata_pelajaran, nama_mapel').order('nama_mata_pelajaran');
+  if (sekolahId) q = q.eq('sekolah_id', sekolahId);
+  const { data } = await q;
+  const taken = new Set(guruList.filter(g => g.id !== selfId).flatMap(g => splitMapel(g.mata_pelajaran)).map(x => x.toLowerCase()));
+  const mine = splitMapel(selected);
+  const mineSet = new Set(mine.map(x => x.toLowerCase()));
+  const names = new Map<string, string>();
+  for (const m of data || []) {
+    const n = String(m.nama_mata_pelajaran || m.nama_mapel || '').trim();
+    if (n) names.set(n.toLowerCase(), n);
+  }
+  mine.forEach(n => { if (!names.has(n.toLowerCase())) names.set(n.toLowerCase(), n); });
+  const items = [...names.entries()].filter(([k]) => mineSet.has(k) || !taken.has(k));
+  if (items.length === 0) return '<div class="text-[11px] text-gray-500 italic p-2 border rounded">Tidak ada mata pelajaran tersedia. Semua mapel sudah dipilih guru lain atau Data Mapel masih kosong.</div>';
+  return `<div id="swal-mapel-list" class="max-h-44 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-1">${items.map(([k, n]) =>
+    `<label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" class="swal-mapel-cb" value="${escAttr(n)}" ${mineSet.has(k) ? 'checked' : ''}> <span>${escAttr(n)}</span></label>`).join('')}</div>`;
+}
+const readMapelChecklist = () => Array.from(document.querySelectorAll<HTMLInputElement>('.swal-mapel-cb:checked')).map(c => c.value).join(', ');
+
 export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
   const [activeTab, setActiveTab] = useState(() => normalizeAdminTab(initialTab));
 
@@ -804,6 +828,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         }
       }
     } else if (activeTab === 'Data_Guru') {
+      const mapelChecklistHtml = await buildMapelChecklistHtml(user?.sekolah_id, dataList, undefined, '');
       const { value: formValues } = await Swal.fire({
         title: 'Tambah Guru Baru',
         width: '560px',
@@ -858,7 +883,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
             <div>
               <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran Diampu *</label>
-              <input id="swal-mapel" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Bahasa Inggris">
+              ${mapelChecklistHtml}
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">No HP / WhatsApp</label>
@@ -894,7 +919,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           const rawNamaGuru = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim() || '';
           const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
           const nama_guru = (rawNamaGuru || rawCoreNama).replace(/\s+/g, ' ');
-          const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLInputElement)?.value?.trim();
+          const mata_pelajaran = readMapelChecklist();
           const no_hp = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || '-';
 
@@ -1652,6 +1677,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         }
       }
     } else if (activeTab === 'Data_Guru') {
+      const mapelChecklistHtml = await buildMapelChecklistHtml(user?.sekolah_id, dataList, item.id, item.mata_pelajaran);
       const { value: formValues } = await Swal.fire({
         title: 'Edit Data Guru',
         width: '560px',
@@ -1706,7 +1732,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
             <div>
               <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran Diampu *</label>
-              <input id="swal-edit-mapel" class="swal2-input !mt-0 !w-full text-xs" value="${item.mata_pelajaran || ''}" placeholder="Contoh: Bahasa Inggris">
+              ${mapelChecklistHtml}
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">No HP / WhatsApp</label>
@@ -1751,7 +1777,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           const rawNamaGuru = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim() || '';
           const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
           const nama_guru = (rawNamaGuru || rawCoreNama).replace(/\s+/g, ' ');
-          const mata_pelajaran = (document.getElementById('swal-edit-mapel') as HTMLInputElement)?.value?.trim();
+          const mata_pelajaran = readMapelChecklist();
           const no_hp = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-edit-email') as HTMLInputElement)?.value?.trim() || '-';
           const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
