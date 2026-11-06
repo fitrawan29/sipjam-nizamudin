@@ -42,6 +42,28 @@ export function setStorageCache(tab: string, schoolId: string, rows: any[]) {
 }
 
 /**
+ * Retrieves the currently active academic year configured by Admin from local configuration cache.
+ */
+export function getActiveTahunAjaranSync(fallback: string = '2024/2025'): string {
+  try {
+    const local = typeof window !== 'undefined' ? window.localStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).localStorage : null);
+    if (local) {
+      const syncRaw = local.getItem('sipjam_config_sync') || local.getItem('sipjam:config_sync');
+      if (syncRaw) {
+        const parsed = JSON.parse(syncRaw);
+        if (parsed?.tahun_ajaran && typeof parsed.tahun_ajaran === 'string' && parsed.tahun_ajaran.trim()) {
+          return parsed.tahun_ajaran.trim();
+        }
+        if (parsed?.config?.tahun_ajaran && typeof parsed.config.tahun_ajaran === 'string' && parsed.config.tahun_ajaran.trim()) {
+          return parsed.config.tahun_ajaran.trim();
+        }
+      }
+    }
+  } catch (_) {}
+  return fallback;
+}
+
+/**
  * Normalizes name strings:
  * - Strips zero-width characters (\u200B-\u200D\uFEFF)
  * - Normalizes Unicode diacritics / accents (e.g. é -> e)
@@ -948,7 +970,7 @@ export function parseAndValidateMasterCsv(
       row.qr_code = (cleanNisn && cleanNisn !== '-') ? cleanNisn : String(row.id).slice(0, 8);
     }
     if (tableName === 'data_guru' && !row.status) row.status = 'Aktif';
-    if (tableName === 'wali_kelas' && !row.tahun_ajaran) row.tahun_ajaran = '2024/2025';
+    if (tableName === 'wali_kelas' && !row.tahun_ajaran) row.tahun_ajaran = getActiveTahunAjaranSync('2024/2025');
 
     // Entity-Specific Validation & Anti-Dummy Guards
     if (tableName === 'data_kelas' || tableName === 'kelas') {
@@ -1563,7 +1585,7 @@ export async function importMasterDataFromCsv(
               kelas: cls,
               nama_guru: '-',
               nip: '-',
-              tahun_ajaran: '2024/2025'
+              tahun_ajaran: getActiveTahunAjaranSync('2024/2025')
             }, { onConflict: 'sekolah_id, kelas' });
           }
         } catch (wErr) {

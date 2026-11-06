@@ -8,7 +8,7 @@ import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import AccountSettingsModal from './AccountSettingsModal';
 import AdminBackupView from './AdminBackupView';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
-import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
+import { isMasterDataModificationAllowed, getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
 
 export interface AdminConfigViewProps {
   user: any;
@@ -477,6 +477,30 @@ export default function AdminConfigView({
           wajib_hadir_hanya_mengajar: exemptIds.includes(t.id)
         })));
         setExemptTeacherIds(exemptIds);
+      }
+
+      // Synchronize tahun_ajaran on master data wali_kelas for this school
+      if (saveConfig.tahun_ajaran && saveConfig.tahun_ajaran.trim()) {
+        const cleanTa = saveConfig.tahun_ajaran.trim();
+        try {
+          let wUpdateQ = supabase
+            .from('wali_kelas')
+            .update({ tahun_ajaran: cleanTa });
+          if (targetSekolahId) {
+            wUpdateQ = wUpdateQ.eq('sekolah_id', targetSekolahId);
+          }
+          await wUpdateQ;
+        } catch (wErr) {
+          console.warn('[AdminConfigView] Error syncing wali_kelas tahun_ajaran:', wErr);
+        }
+
+        try {
+          const cachedWali = getStorageCache('Wali_Kelas', targetSekolahId);
+          if (Array.isArray(cachedWali) && cachedWali.length > 0) {
+            const updatedWali = cachedWali.map((w: any) => ({ ...w, tahun_ajaran: cleanTa }));
+            setStorageCache('Wali_Kelas', targetSekolahId, updatedWali);
+          }
+        } catch (_) {}
       }
 
       // Realtime synchronization: dispatch local window custom events, storage event, and Supabase channel broadcast

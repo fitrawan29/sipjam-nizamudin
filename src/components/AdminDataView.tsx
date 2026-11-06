@@ -85,14 +85,27 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   const [isNaikKelasOpen, setIsNaikKelasOpen] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [schoolName, setSchoolName] = useState<string>(user?.sekolah_nama || 'SIPJAM');
+  const [configuredTahunAjaran, setConfiguredTahunAjaran] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const syncRaw = localStorage.getItem('sipjam_config_sync') || localStorage.getItem('sipjam:config_sync');
+        if (syncRaw) {
+          const parsed = JSON.parse(syncRaw);
+          const val = parsed?.tahun_ajaran || parsed?.config?.tahun_ajaran;
+          if (val && typeof val === 'string' && val.trim()) return val.trim();
+        }
+      } catch (_) {}
+    }
+    return '2024/2025';
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadedRowsCacheRef = useRef<Record<string, any[]>>({});
   const ITEMS_PER_PAGE = 20;
   const isAdmin = isMasterDataModificationAllowed(user?.role);
 
-  // Fetch school name from Supabase sekolah table on mount
+  // Fetch school name and active configuration from Supabase on mount
   useEffect(() => {
-    const fetchSchoolName = async () => {
+    const fetchSchoolSettings = async () => {
       const sId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
       try {
         const [schRes, confRes] = await Promise.all([
@@ -105,12 +118,17 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             .from('pengaturan')
             .select('key, value')
             .eq('sekolah_id', sId)
-            .in('key', ['kop_sekolah', 'NAMA_SEKOLAH'])
+            .in('key', ['kop_sekolah', 'NAMA_SEKOLAH', 'tahun_ajaran', 'TAHUN_AJARAN'])
         ]);
         let resolved = '';
         if (confRes.data && confRes.data.length > 0) {
           const row = confRes.data.find((r: any) => r.key === 'kop_sekolah') || confRes.data.find((r: any) => r.key === 'NAMA_SEKOLAH');
           if (row?.value?.trim()) resolved = row.value.trim();
+
+          const taRow = confRes.data.find((r: any) => r.key === 'tahun_ajaran' || r.key === 'TAHUN_AJARAN');
+          if (taRow?.value?.trim()) {
+            setConfiguredTahunAjaran(taRow.value.trim());
+          }
         }
         if (!resolved && schRes.data?.nama?.trim()) {
           resolved = schRes.data.nama.trim();
@@ -119,11 +137,50 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           setSchoolName(resolved);
         }
       } catch (err) {
-        console.error('[AdminDataView] Error fetching school name:', err);
+        console.error('[AdminDataView] Error fetching school settings:', err);
       }
     };
-    fetchSchoolName();
+    fetchSchoolSettings();
   }, [user?.sekolah_id]);
+
+  // Realtime synchronization: listen for admin config changes across window and tabs
+  useEffect(() => {
+    const handleConfigSync = (event: any) => {
+      const detail = event?.detail;
+      const sId = user?.sekolah_id;
+      if (detail?.sekolah_id && sId && detail.sekolah_id !== sId) return;
+
+      const newTa = detail?.tahun_ajaran || detail?.config?.tahun_ajaran;
+      if (newTa && typeof newTa === 'string' && newTa.trim()) {
+        const trimmedTa = newTa.trim();
+        setConfiguredTahunAjaran(trimmedTa);
+        if (activeTab === 'Wali_Kelas') {
+          setDataList(prev => {
+            if (!Array.isArray(prev)) return prev;
+            return prev.map(item => ({ ...item, tahun_ajaran: trimmedTa }));
+          });
+        }
+      }
+    };
+
+    const handleStorageSync = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync' || e.key === 'sipjam:config_sync') {
+        try {
+          const detail = e.newValue ? JSON.parse(e.newValue) : null;
+          if (detail && typeof detail === 'object') {
+            handleConfigSync({ detail });
+          }
+        } catch (_) {}
+      }
+    };
+
+    window.addEventListener('sipjam:config_updated', handleConfigSync);
+    window.addEventListener('storage', handleStorageSync);
+    return () => {
+      window.removeEventListener('sipjam:config_updated', handleConfigSync);
+      window.removeEventListener('storage', handleStorageSync);
+    };
+  }, [activeTab, user?.sekolah_id]);
 
   const tabs = [
     { id: 'Data_Siswa', label: 'Siswa', table: 'data_siswa' },
@@ -183,9 +240,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         const errText = `Error ${status}: ${error.message} (code: ${error.code})`;
         console.error('[AdminDataView]', errText);
         if (cachedRows && cachedRows.length > 0) {
-          setDataList(cachedRows);
+          let rowsToSet = cachedRows;
+          if (currentTab === 'Wali_Kelas' && configuredTahunAjaran) {
+            rowsToSet = rowsToSet.map((c: any) => ({
+              ...c,
+              tahun_ajaran: (!c.tahun_ajaran || (configuredTahunAjaran !== '2024/2025' && c.tahun_ajaran === '2024/2025')) ? configuredTahunAjaran : c.tahun_ajaran
+            }));
+          }
+          setDataList(rowsToSet);
           setErrorMsg('');
-          setDebugInfo(`Menampilkan ${cachedRows.length} data hasil unggahan (DB sync tertunda)`);
+          setDebugInfo(`Menampilkan ${rowsToSet.length} data hasil unggahan (DB sync tertunda)`);
         } else {
           setErrorMsg(errText);
           setDebugInfo(errText);
@@ -199,6 +263,22 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           cachedRows.forEach((c: any) => { if (c?.id && !mergedMap.has(c.id)) mergedMap.set(c.id, c); });
           finalData = Array.from(mergedMap.values());
         }
+        if (currentTab === 'Wali_Kelas' && configuredTahunAjaran) {
+          const hasLegacyOrMissingTa = finalData.some((d: any) => !d.tahun_ajaran || (configuredTahunAjaran !== '2024/2025' && d.tahun_ajaran === '2024/2025'));
+          if (hasLegacyOrMissingTa) {
+            finalData = finalData.map((d: any) => ({
+              ...d,
+              tahun_ajaran: (!d.tahun_ajaran || (configuredTahunAjaran !== '2024/2025' && d.tahun_ajaran === '2024/2025')) ? configuredTahunAjaran : d.tahun_ajaran
+            }));
+            if (isAdmin) {
+              void supabase
+                .from('wali_kelas')
+                .update({ tahun_ajaran: configuredTahunAjaran })
+                .eq('sekolah_id', schoolId)
+                .or('tahun_ajaran.is.null,tahun_ajaran.eq.,tahun_ajaran.eq.2024/2025');
+            }
+          }
+        }
         setDataList(finalData);
         uploadedRowsCacheRef.current[currentTab] = finalData;
         setStorageCache(currentTab, schoolId, finalData);
@@ -206,9 +286,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         setDebugInfo(`Berhasil memuat ${finalData.length} baris dari "${tabObj.table}"`);
       } else if (data && data.length === 0) {
         if (cachedRows && cachedRows.length > 0) {
-          setDataList(cachedRows);
+          let rowsToSet = cachedRows;
+          if (currentTab === 'Wali_Kelas' && configuredTahunAjaran) {
+            rowsToSet = rowsToSet.map((c: any) => ({
+              ...c,
+              tahun_ajaran: (!c.tahun_ajaran || (configuredTahunAjaran !== '2024/2025' && c.tahun_ajaran === '2024/2025')) ? configuredTahunAjaran : c.tahun_ajaran
+            }));
+          }
+          setDataList(rowsToSet);
           setErrorMsg('');
-          setDebugInfo(`Menampilkan ${cachedRows.length} data hasil unggahan`);
+          setDebugInfo(`Menampilkan ${rowsToSet.length} data hasil unggahan`);
         } else {
           setDataList([]);
           setDebugInfo(`Tabel "${tabObj.table}" mengembalikan 0 baris (kosong).`);
@@ -341,7 +428,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       Wali_Kelas: {
         filename: 'Template_Wali_Kelas.csv',
         headers: ['kelas', 'nama_guru', 'nip', 'tahun_ajaran'],
-        sample: ['X Merdeka', 'Fitri Aprilia Dotulong', '198501012010011001', '2024/2025']
+        sample: ['X Merdeka', 'Fitri Aprilia Dotulong', '198501012010011001', configuredTahunAjaran || '2024/2025']
       }
     };
 
@@ -1047,7 +1134,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">Tahun Ajaran *</label>
-              <input id="swal-wali-ta" class="swal2-input !mt-0 !w-full text-xs" value="2024/2025" placeholder="Contoh: 2024/2025">
+              <input id="swal-wali-ta" class="swal2-input !mt-0 !w-full text-xs" value="${configuredTahunAjaran || '2024/2025'}" placeholder="Contoh: 2024/2025">
             </div>
           </div>
         `,
@@ -1059,7 +1146,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         preConfirm: () => {
           const kelas = (document.getElementById('swal-wali-kelas') as HTMLInputElement)?.value?.trim();
           const guruId = (document.getElementById('swal-wali-guru') as HTMLSelectElement)?.value;
-          const tahun_ajaran = (document.getElementById('swal-wali-ta') as HTMLInputElement)?.value?.trim() || '2024/2025';
+          const tahun_ajaran = (document.getElementById('swal-wali-ta') as HTMLInputElement)?.value?.trim() || configuredTahunAjaran || '2024/2025';
 
           const selectedTeacher = guruList.find(g => g.id === guruId);
           if (!kelas || !selectedTeacher) {
@@ -1138,7 +1225,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">Tahun Ajaran *</label>
-              <input id="swal-edit-wali-ta" class="swal2-input !mt-0 !w-full text-xs" value="${item.tahun_ajaran || '2024/2025'}">
+              <input id="swal-edit-wali-ta" class="swal2-input !mt-0 !w-full text-xs" value="${item.tahun_ajaran || configuredTahunAjaran || '2024/2025'}">
             </div>
           </div>
         `,
@@ -1150,7 +1237,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         preConfirm: () => {
           const kelasVal = (document.getElementById('swal-edit-wali-kelas') as HTMLInputElement)?.value?.trim();
           const guruId = (document.getElementById('swal-edit-wali-guru') as HTMLSelectElement)?.value;
-          const taVal = (document.getElementById('swal-edit-wali-ta') as HTMLInputElement)?.value?.trim() || '2024/2025';
+          const taVal = (document.getElementById('swal-edit-wali-ta') as HTMLInputElement)?.value?.trim() || item.tahun_ajaran || configuredTahunAjaran || '2024/2025';
 
           const selectedTeacher = guruList.find(g => g.id === guruId);
           if (!kelasVal || !selectedTeacher) {
@@ -1960,13 +2047,14 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
   const uniqueTahunAjaran = useMemo(() => {
     const set = new Set<string>();
+    if (configuredTahunAjaran) set.add(configuredTahunAjaran.trim());
     if (Array.isArray(dataList)) {
       dataList.forEach(item => {
         if (item && item.tahun_ajaran) set.add(item.tahun_ajaran.trim());
       });
     }
     return Array.from(set).sort();
-  }, [dataList]);
+  }, [dataList, configuredTahunAjaran]);
 
   const filteredList = useMemo(() => {
     if (!Array.isArray(dataList)) return [];
@@ -2103,7 +2191,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               Kelas {item.kelas || '-'}
             </h3>
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-              {item.tahun_ajaran || '2024/2025'}
+              {item.tahun_ajaran || configuredTahunAjaran || '2024/2025'}
             </span>
           </div>
           <div className="text-xs text-gray-700 dark:text-gray-200 mt-2 space-y-1">
