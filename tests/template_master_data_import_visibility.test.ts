@@ -89,7 +89,7 @@ async function runVerification() {
   // Test 1.3: handleClassFileUpload resets filters and search query
   try {
     assert.ok(
-      adminKelasSrc.includes("setSelectedTingkat('ALL')") &&
+      adminKelasSrc.includes("setFilterTingkat('ALL')") &&
       adminKelasSrc.includes("setSearchQuery('')"),
       'AdminKelasView must reset tingkat filter and search query on import'
     );
@@ -299,6 +299,80 @@ async function runVerification() {
     pass('4.3: Existing wali kelas matched by class reuses ID and updates in-place');
   } catch (e) {
     fail('4.3: Wali kelas idempotency check failed', e);
+  }
+
+  // ==========================================================================
+  // SECTION 5: User Specific 12-Class CSV & Smart Auto-Routing
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}--- SECTION 5: User 12-Class CSV & Smart Auto-Routing ---${RESET}`);
+
+  // Test 5.1: Exact user CSV parses all 12 classes across grades 10, 11, 12 with empty jurusan
+  try {
+    const userCsv = [
+      'nama_kelas,tingkat,jurusan',
+      'X Merdeka A,10,Umum',
+      'X Merdeka B,10,Umum',
+      'X Merdeka C,10,Umum',
+      'X Merdeka D,10,Umum',
+      'XI Merdeka A,11,',
+      'XI Merdeka B,11,',
+      'XI Merdeka C,11,',
+      'XI Merdeka D,11,',
+      'XII Merdeka A,12,',
+      'XII Merdeka B,12,',
+      'XII Merdeka C,12,',
+      'XII Merdeka D,12,'
+    ].join('\n');
+
+    const rows = parseAndValidateMasterCsv(userCsv, 'data_kelas', {
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+
+    assert.strictEqual(rows.length, 12, 'Must parse exactly 12 class rows');
+    assert.strictEqual(rows[0].nama_kelas, 'X Merdeka A');
+    assert.strictEqual(rows[0].tingkat, '10');
+    assert.strictEqual(rows[0].jurusan, 'Umum');
+
+    assert.strictEqual(rows[4].nama_kelas, 'XI Merdeka A');
+    assert.strictEqual(rows[4].tingkat, '11');
+    assert.strictEqual(rows[4].jurusan, null, 'Empty jurusan must sanitize to null');
+
+    assert.strictEqual(rows[8].nama_kelas, 'XII Merdeka A');
+    assert.strictEqual(rows[8].tingkat, '12');
+    assert.strictEqual(rows[8].jurusan, null);
+
+    pass('5.1: Exact user CSV successfully parses 12 classes with correct tingkat and sanitized jurusan');
+  } catch (e) {
+    fail('5.1: Exact user CSV parsing failed', e);
+  }
+
+  // Test 5.2: AdminDataView smart auto-detection for data_kelas
+  try {
+    assert.ok(
+      adminDataSrc.includes("targetTab = 'Data_Kelas'") &&
+      adminDataSrc.includes("targetTable = 'data_kelas'") &&
+      adminDataSrc.includes('sipjam_custom_classes_'),
+      'AdminDataView must auto-detect class CSV and sync to localStorage'
+    );
+    pass('5.2: AdminDataView has smart auto-detection routing class CSVs to Data_Kelas');
+  } catch (e) {
+    fail('5.2: AdminDataView smart auto-detection check failed', e);
+  }
+
+  // Test 5.3: AdminKelasView localStorage persistence and no undefined setSelectedTingkat
+  try {
+    assert.ok(
+      !adminKelasSrc.includes('setSelectedTingkat'),
+      'AdminKelasView must not contain undefined setSelectedTingkat'
+    );
+    assert.ok(
+      adminKelasSrc.includes('sipjam_custom_classes_meta_') &&
+      adminKelasSrc.includes('customClassesMeta'),
+      'AdminKelasView must maintain and persist customClassesMeta'
+    );
+    pass('5.3: AdminKelasView eliminates undefined setSelectedTingkat and persists custom classes meta');
+  } catch (e) {
+    fail('5.3: AdminKelasView persistence check failed', e);
   }
 
   console.log(`\n${CYAN}${BOLD}========================================================================${RESET}`);

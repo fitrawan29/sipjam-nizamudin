@@ -78,7 +78,24 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
   const [allStudents, setAllStudents] = useState<StudentItem[]>([]);
   const [waliKelasList, setWaliKelasList] = useState<WaliKelasItem[]>([]);
   const [dbClasses, setDbClasses] = useState<{ id: string; nama_kelas: string; tingkat?: string; jurusan?: string }[]>([]);
-  const [customClasses, setCustomClasses] = useState<string[]>([]);
+  const [customClasses, setCustomClasses] = useState<string[]>(() => {
+    if (typeof window !== 'undefined' && user?.sekolah_id) {
+      try {
+        const saved = localStorage.getItem(`sipjam_custom_classes_${user.sekolah_id}`);
+        if (saved) return JSON.parse(saved);
+      } catch (_) {}
+    }
+    return [];
+  });
+  const [customClassesMeta, setCustomClassesMeta] = useState<Record<string, { tingkat?: string; jurusan?: string | null }>>(() => {
+    if (typeof window !== 'undefined' && user?.sekolah_id) {
+      try {
+        const saved = localStorage.getItem(`sipjam_custom_classes_meta_${user.sekolah_id}`);
+        if (saved) return JSON.parse(saved);
+      } catch (_) {}
+    }
+    return {};
+  });
 
   // Filtering & Search
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -187,16 +204,34 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     loadAllData();
   }, [loadAllData]);
 
+  // Sync custom classes & metadata to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sekolahId) {
+      try {
+        localStorage.setItem(`sipjam_custom_classes_${sekolahId}`, JSON.stringify(customClasses));
+        localStorage.setItem(`sipjam_custom_classes_meta_${sekolahId}`, JSON.stringify(customClassesMeta));
+      } catch (_) {}
+    }
+  }, [customClasses, customClassesMeta, sekolahId]);
+
   // Listen to external class updates (e.g. from AdminDataView CSV import)
   useEffect(() => {
     const handleExternalClassUpdate = () => {
+      if (typeof window !== 'undefined' && sekolahId) {
+        try {
+          const saved = localStorage.getItem(`sipjam_custom_classes_${sekolahId}`);
+          if (saved) setCustomClasses(JSON.parse(saved));
+          const savedMeta = localStorage.getItem(`sipjam_custom_classes_meta_${sekolahId}`);
+          if (savedMeta) setCustomClassesMeta(JSON.parse(savedMeta));
+        } catch (_) {}
+      }
       loadAllData(true);
     };
     window.addEventListener('sipjam:kelas-updated', handleExternalClassUpdate);
     return () => {
       window.removeEventListener('sipjam:kelas-updated', handleExternalClassUpdate);
     };
-  }, [loadAllData]);
+  }, [loadAllData, sekolahId]);
 
   // Derived: List of Unassigned / Unallocated Active Students
   const unassignedStudents = useMemo(() => {
@@ -232,11 +267,12 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     customClasses.forEach(name => {
       const clean = (name || '').trim();
       if (!clean || classMap.has(clean)) return;
+      const meta = customClassesMeta[clean];
       classMap.set(clean, {
         id: clean,
         nama_kelas: clean,
-        tingkat: parseTingkat(clean),
-        jurusan: null,
+        tingkat: (meta?.tingkat as any) || parseTingkat(clean),
+        jurusan: meta?.jurusan || null,
         wali_kelas: null,
         totalSiswa: 0,
         siswaLaki: 0,
@@ -282,12 +318,13 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     waliKelasList.forEach(w => {
       const k = (w.kelas || '').trim();
       if (!k) return;
+      const meta = customClassesMeta[k];
       if (!classMap.has(k)) {
         classMap.set(k, {
           id: w.id || k,
           nama_kelas: k,
-          tingkat: parseTingkat(k),
-          jurusan: null,
+          tingkat: (meta?.tingkat as any) || parseTingkat(k),
+          jurusan: meta?.jurusan || null,
           wali_kelas: w,
           totalSiswa: 0,
           siswaLaki: 0,
@@ -297,6 +334,9 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         });
       } else {
         classMap.get(k)!.wali_kelas = w;
+        if (meta?.jurusan && !classMap.get(k)!.jurusan) {
+          classMap.get(k)!.jurusan = meta.jurusan;
+        }
       }
     });
 
@@ -308,7 +348,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       }
       return a.nama_kelas.localeCompare(b.nama_kelas, undefined, { numeric: true });
     });
-  }, [dbClasses, customClasses, allStudents, waliKelasList]);
+  }, [dbClasses, customClasses, customClassesMeta, allStudents, waliKelasList]);
 
   // Keep active workspace drawer updated when students or directory mutate
   useEffect(() => {
@@ -398,13 +438,24 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       // Immediately reflect imported classes in local state
       if (Array.isArray(rows) && rows.length > 0) {
         const importedNames = rows.map(r => String(r.nama_kelas || '').trim()).filter(Boolean);
+        const meta: Record<string, { tingkat?: string; jurusan?: string | null }> = {};
+        rows.forEach(r => {
+          const k = String(r.nama_kelas || '').trim();
+          if (k) {
+            meta[k] = {
+              tingkat: r.tingkat || parseTingkat(k),
+              jurusan: r.jurusan || null
+            };
+          }
+        });
         if (importedNames.length > 0) {
           setCustomClasses(prev => Array.from(new Set([...prev, ...importedNames])));
+          setCustomClassesMeta(prev => ({ ...prev, ...meta }));
         }
       }
 
       // Reset filters and search so newly uploaded classes are immediately visible
-      setSelectedTingkat('ALL');
+      setFilterTingkat('ALL');
       setSearchQuery('');
 
       showToast(
@@ -518,6 +569,10 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       }
 
       setCustomClasses(prev => (prev.includes(formValues.nama_kelas) ? prev : [...prev, formValues.nama_kelas]));
+      setCustomClassesMeta(prev => ({
+        ...prev,
+        [formValues.nama_kelas]: { tingkat: formValues.tingkat, jurusan: formValues.jurusan }
+      }));
       showToast('Berhasil', `Kelas "${formValues.nama_kelas}" berhasil ditambahkan!`, 'success');
       await loadAllData();
     } catch (err: any) {
@@ -607,6 +662,14 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
       // Update in-memory state
       setCustomClasses(prev => prev.map(c => (c === oldName ? targetName : c)));
+      setCustomClassesMeta(prev => {
+        const next = { ...prev };
+        if (next[oldName]) {
+          next[targetName] = { ...next[oldName], tingkat: parseTingkat(targetName) };
+          delete next[oldName];
+        }
+        return next;
+      });
       setAllStudents(prev =>
         prev.map(s => (s.kelas === oldName ? { ...s, kelas: targetName } : s))
       );
@@ -666,6 +729,11 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       } catch (_) {}
 
       setCustomClasses(prev => prev.filter(c => c !== cls.nama_kelas));
+      setCustomClassesMeta(prev => {
+        const next = { ...prev };
+        delete next[cls.nama_kelas];
+        return next;
+      });
       showToast('Berhasil', `Kelas "${cls.nama_kelas}" berhasil dihapus.`, 'success');
       await loadAllData();
     } catch (err: any) {

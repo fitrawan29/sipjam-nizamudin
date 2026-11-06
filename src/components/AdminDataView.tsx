@@ -312,7 +312,61 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     setLoading(true);
     try {
       const text = await file.text();
-      const { count } = await importMasterDataFromCsv(supabase, text, tabObj.table, user);
+
+      // Smart auto-detection of target entity based on CSV headers
+      let targetTab = activeTab;
+      let targetTable = tabObj.table;
+      const firstLine = text.replace(/^\uFEFF/, '').split(/\r?\n/).find(l => l.trim() && !l.toLowerCase().startsWith('sep='));
+      if (firstLine) {
+        const lower = firstLine.toLowerCase();
+        if (
+          (lower.includes('nama_kelas') || (lower.includes('tingkat') && lower.includes('jurusan'))) &&
+          !lower.includes('nama_siswa') &&
+          !lower.includes('nama_guru')
+        ) {
+          targetTab = 'Data_Kelas';
+          targetTable = 'data_kelas';
+        } else if (lower.includes('nama_siswa') || (lower.includes('nisn') && lower.includes('kelas'))) {
+          targetTab = 'Data_Siswa';
+          targetTable = 'data_siswa';
+        } else if (lower.includes('nama_guru') || (lower.includes('nip') && lower.includes('mata_pelajaran'))) {
+          targetTab = 'Data_Guru';
+          targetTable = 'data_guru';
+        } else if (lower.includes('nama_mata_pelajaran') || lower.includes('kategori')) {
+          targetTab = 'Data_Mapel';
+          targetTable = 'data_mapel';
+        } else if (lower.includes('tanggal') && lower.includes('keterangan')) {
+          targetTab = 'Kalender_Pendidikan';
+          targetTable = 'kalender_pendidikan';
+        }
+      }
+
+      const activeObj = tabs.find(t => t.id === targetTab) || tabObj;
+      const { count, rows } = await importMasterDataFromCsv(supabase, text, targetTable, user);
+
+      // If class data was uploaded, sync to localStorage for immediate AdminKelasView hydration
+      if (targetTab === 'Data_Kelas' && Array.isArray(rows) && rows.length > 0) {
+        const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+        try {
+          const importedNames = rows.map(r => String(r.nama_kelas || '').trim()).filter(Boolean);
+          const meta: Record<string, { tingkat?: string; jurusan?: string | null }> = {};
+          rows.forEach(r => {
+            const k = String(r.nama_kelas || '').trim();
+            if (k) meta[k] = { tingkat: r.tingkat, jurusan: r.jurusan || null };
+          });
+          const existingClasses = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${schoolId}`) || '[]');
+          const existingMeta = JSON.parse(localStorage.getItem(`sipjam_custom_classes_meta_${schoolId}`) || '{}');
+          const mergedClasses = Array.from(new Set([...existingClasses, ...importedNames]));
+          const mergedMeta = { ...existingMeta, ...meta };
+          localStorage.setItem(`sipjam_custom_classes_${schoolId}`, JSON.stringify(mergedClasses));
+          localStorage.setItem(`sipjam_custom_classes_meta_${schoolId}`, JSON.stringify(mergedMeta));
+        } catch (_) {}
+      }
+
+      // If target entity is different from active tab, automatically switch tab
+      if (targetTab !== activeTab) {
+        setActiveTab(targetTab);
+      }
 
       // Reset search, filters, and pagination so uploaded data is immediately visible in the table
       setSearch('');
@@ -322,16 +376,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       showToast(
         'Unggah Berhasil',
-        `Berhasil mengimpor dan memperbarui ${count} data ke tabel ${tabObj.label}!`,
+        `Berhasil mengimpor dan memperbarui ${count} data ke tabel ${activeObj.label}!`,
         'success'
       );
 
       // Dispatch sipjam:kelas-updated when class or student data changes
-      if (tabObj.id === 'Data_Kelas' || tabObj.id === 'Data_Siswa') {
+      if (targetTab === 'Data_Kelas' || targetTab === 'Data_Siswa') {
         window.dispatchEvent(new CustomEvent('sipjam:kelas-updated'));
       }
 
-      if (tabObj.id !== 'Data_Kelas') {
+      if (targetTab !== 'Data_Kelas') {
         await loadData();
       }
     } catch (err: any) {
