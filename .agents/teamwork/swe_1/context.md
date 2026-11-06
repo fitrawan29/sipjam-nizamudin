@@ -1,5 +1,4 @@
-# Context for SWE Orchestrator
-
+# SWE Light Workspace Context
 - Working Directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1
-- Original Request File: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-- Project Root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+- Original Request: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+- Sentinel: active

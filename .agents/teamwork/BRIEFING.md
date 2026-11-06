@@ -1,32 +1,39 @@
-# BRIEFING — 2026-11-05T23:51:00Z
+# BRIEFING — 2026-11-06T06:36:20Z
 
 ## Mission
-Coordinate and monitor execution of the approved task prompt for Master Data Kelas and CSV templates alignment.
+Coordinate resolution of the student data upload issue in sipjam-app via SWE Light path.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork
-- Orchestrator: 77685953-a979-46b9-9e32-e6b24ab55eb5
-- Victory Auditor: 858e5488-6f8d-4949-9911-b49bc85801f4
+- Orchestrator: 44acaa5e-d152-4763-8123-65517e46f48b
+- Victory Auditor: [to be spawned on victory claim]
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Penambahan fitur maupun perubahan kode pada master data tidak boleh mengubah atau merusak fitur dan logika lain yang tidak terdampak (Zero Regression)
-- Seluruh pengujian otomatis proyek (npm test) tetap lulus
+- Single self-contained fix; keep small and focused (SWE Light)
+- Fix CSV template download and upload/import for student master data so data loads and displays
+- Zero regression on existing features and logic outside impacted scope
+- Support optional phone numbers and sample dataset formats
+
+## Routing Decision
+- **Path**: SWE Light (`teamwork_swe`)
+- **Rationale**: Single self-contained fix with explicit lightness signal ("This is a single self-contained fix; keep it small and focused"). Pre-flight audit not required.
 
 ## User Context
-- **Last user request**: Approved task prompt: Add sub menu Kelas in master data, centralize student class allocation, align CSV templates (Kelas, Siswa, Guru, Mapel, Kalender, Jadwal, Wali Kelas) with database schema.
+- **Last user request**: Approved task prompt received.
 - **Pending clarifications**: none
-- **Delivered results**: none
+- **Delivered results**: [none]
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
-- .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative record of approved task prompt
+- `.agents/teamwork/ORIGINAL_REQUEST.md` — Authoritative verbatim user request and approved prompt
+- `.agents/teamwork/swe_1/` — Working directory of SWE Light Orchestrator

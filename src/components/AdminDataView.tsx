@@ -43,9 +43,15 @@ export interface AdminDataViewProps {
 export function normalizeAdminTab(tab?: string): string {
   if (!tab) return 'Data_Siswa';
   const clean = tab.trim().toLowerCase();
-  if (clean === 'blok' || clean === 'sistem_blok') return 'sistem_blok';
-  if (clean === 'pengguna' || clean === 'users') return 'Pengguna';
-  if (clean === 'data_kelas' || clean === 'kelas') return 'Data_Kelas';
+  if (clean === 'blok' || clean === 'sistem_blok' || clean === 'periode_blok') return 'sistem_blok';
+  if (clean === 'pengguna' || clean === 'users' || clean === 'user') return 'Pengguna';
+  if (clean === 'data_kelas' || clean === 'kelas' || clean === 'classes' || clean === 'class') return 'Data_Kelas';
+  if (clean === 'data_siswa' || clean === 'siswa' || clean === 'students' || clean === 'student') return 'Data_Siswa';
+  if (clean === 'data_guru' || clean === 'guru' || clean === 'teachers' || clean === 'teacher') return 'Data_Guru';
+  if (clean === 'data_mapel' || clean === 'mapel' || clean === 'mata_pelajaran' || clean === 'subjects') return 'Data_Mapel';
+  if (clean === 'kalender_pendidikan' || clean === 'kalender' || clean === 'calendar') return 'Kalender_Pendidikan';
+  if (clean === 'jadwal_pelajaran' || clean === 'jadwal' || clean === 'schedule') return 'Jadwal_Pelajaran';
+  if (clean === 'wali_kelas' || clean === 'wali' || clean === 'homeroom') return 'Wali_Kelas';
   return tab;
 }
 
@@ -77,6 +83,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [schoolName, setSchoolName] = useState<string>(user?.sekolah_nama || 'SIPJAM');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadedRowsCacheRef = useRef<Record<string, any[]>>({});
   const ITEMS_PER_PAGE = 20;
   const isAdmin = isMasterDataModificationAllowed(user?.role);
 
@@ -128,17 +135,22 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   ];
 
   const loadData = useCallback(async (tabOverride?: string) => {
-    const currentTab = tabOverride || activeTab;
+    const currentTab = normalizeAdminTab(tabOverride || activeTab);
     if (currentTab === 'sistem_blok' || currentTab === 'blok' || currentTab === 'Pengguna' || currentTab === 'Data_Kelas') return;
     if (!tabOverride) {
       if (activeTab === 'sistem_blok' || activeTab === 'blok' || activeTab === 'Pengguna' || activeTab === 'Data_Kelas') return;
     }
-    const tabObj = tabs.find(t => t.id === currentTab);
+    const tabObj = tabs.find(t => t.id === currentTab) || tabs.find(t => t.id === 'Data_Siswa') || tabs[0];
     if (!tabObj) return;
 
     setLoading(true);
     setErrorMsg('');
-    setDataList([]);
+    const cachedRows = uploadedRowsCacheRef.current[currentTab];
+    if (cachedRows && cachedRows.length > 0) {
+      setDataList(cachedRows);
+    } else {
+      setDataList([]);
+    }
     setDebugInfo(`Memuat tabel "${tabObj.table}"...`);
 
     try {
@@ -158,17 +170,39 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       if (error) {
         const errText = `Error ${status}: ${error.message} (code: ${error.code})`;
         console.error('[AdminDataView]', errText);
-        setErrorMsg(errText);
-        setDebugInfo(errText);
+        if (cachedRows && cachedRows.length > 0) {
+          setDataList(cachedRows);
+          setErrorMsg('');
+          setDebugInfo(`Menampilkan ${cachedRows.length} data hasil unggahan (DB sync tertunda)`);
+        } else {
+          setErrorMsg(errText);
+          setDebugInfo(errText);
+          setDataList([]);
+        }
       } else if (data && data.length > 0) {
         setDataList(data);
+        uploadedRowsCacheRef.current[currentTab] = data;
+        setErrorMsg('');
         setDebugInfo(`Berhasil memuat ${data.length} baris dari "${tabObj.table}"`);
       } else if (data && data.length === 0) {
-        setDebugInfo(`Tabel "${tabObj.table}" mengembalikan 0 baris (kosong).`);
+        if (cachedRows && cachedRows.length > 0) {
+          setDataList(cachedRows);
+          setErrorMsg('');
+          setDebugInfo(`Menampilkan ${cachedRows.length} data hasil unggahan`);
+        } else {
+          setDataList([]);
+          setDebugInfo(`Tabel "${tabObj.table}" mengembalikan 0 baris (kosong).`);
+        }
       } else {
         // Fallback direct REST API
-        setDebugInfo(`Supabase mengembalikan data=null tanpa error. Kemungkinan masalah RLS atau koneksi.`);
-        setErrorMsg('Data null tanpa error. Coba refresh halaman (Ctrl+Shift+R).');
+        if (cachedRows && cachedRows.length > 0) {
+          setDataList(cachedRows);
+          setErrorMsg('');
+          setDebugInfo(`Menampilkan ${cachedRows.length} data hasil unggahan`);
+        } else {
+          setDebugInfo(`Supabase mengembalikan data=null tanpa error. Kemungkinan masalah RLS atau koneksi.`);
+          setErrorMsg('Data null tanpa error. Coba refresh halaman (Ctrl+Shift+R).');
+        }
         
         console.log('[AdminDataView] Trying fallback direct fetch...');
         try {
@@ -203,6 +237,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               console.log(`[AdminDataView] Fallback success: ${fallbackData.length} rows`);
               if (Array.isArray(fallbackData) && fallbackData.length > 0) {
                 setDataList(fallbackData);
+                uploadedRowsCacheRef.current[currentTab] = fallbackData;
                 setErrorMsg('');
                 setDebugInfo(`Fallback berhasil: ${fallbackData.length} baris dari "${tabObj.table}"`);
               }
@@ -216,8 +251,14 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
     } catch (err: any) {
       console.error('[AdminDataView] Unexpected error:', err);
-      setErrorMsg(err.message || 'Terjadi kesalahan jaringan');
-      setDebugInfo(`Exception: ${err.message}`);
+      if (cachedRows && cachedRows.length > 0) {
+        setDataList(cachedRows);
+        setErrorMsg('');
+        setDebugInfo(`Menampilkan ${cachedRows.length} data hasil unggahan`);
+      } else {
+        setErrorMsg(err.message || 'Terjadi kesalahan jaringan');
+        setDebugInfo(`Exception: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -269,7 +310,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
     };
 
-    const current = templates[activeTab] || templates[normalizeAdminTab(activeTab)];
+    const currentTab = normalizeAdminTab(activeTab);
+    const current = templates[currentTab] || templates[activeTab] || templates['Data_Siswa'];
     if (!current) return;
 
     const escapeCsv = (val: string) => {
@@ -300,7 +342,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const tabObj = tabs.find(t => t.id === activeTab);
+    const currentTab = normalizeAdminTab(activeTab);
+    const tabObj = tabs.find(t => t.id === currentTab) || tabs.find(t => t.id === activeTab) || tabs[0];
     if (!tabObj) return;
 
     if (!isAdmin) {
@@ -319,7 +362,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       const text = await file.text();
 
       // Smart auto-detection of target entity based on CSV headers
-      let targetTab = activeTab;
+      let targetTab = currentTab;
       let targetTable = tabObj.table;
       const firstLine = text.replace(/^\uFEFF/, '').split(/\r?\n/).find(l => l.trim() && !l.toLowerCase().startsWith('sep='));
       if (firstLine) {
@@ -370,6 +413,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       // If student data was uploaded, sync student classes to localStorage for immediate AdminKelasView hydration
       if (targetTab === 'Data_Siswa' && Array.isArray(rows) && rows.length > 0) {
+        uploadedRowsCacheRef.current[targetTab] = rows;
         setDataList(rows);
         const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
         try {
@@ -386,6 +430,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           localStorage.setItem(`sipjam_custom_classes_meta_${schoolId}`, JSON.stringify(mergedMeta));
         } catch (_) {}
       } else if (Array.isArray(rows) && rows.length > 0 && targetTab !== 'Data_Kelas') {
+        uploadedRowsCacheRef.current[targetTab] = rows;
         setDataList(rows);
       }
 
@@ -402,6 +447,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       setFilter1('ALL');
       setFilter2('ALL');
       setPage(0);
+      setLoading(false);
+      setErrorMsg('');
 
       showToast(
         'Unggah Berhasil',
@@ -424,7 +471,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             .eq('sekolah_id', user.sekolah_id)
             .limit(2000)
             .then(({ data }) => {
-              if (data && data.length > 0) setDataList(data);
+              if (data && data.length > 0) {
+                setDataList(data);
+                uploadedRowsCacheRef.current[targetTab] = data;
+              }
             });
         }
       }

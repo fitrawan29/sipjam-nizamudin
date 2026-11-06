@@ -1,38 +1,25 @@
-## 2026-11-05T21:44:53Z
-This is a single self-contained fix; keep it small and focused. Pada role admin, pada menu master data dan kalender, tambahkan sub menu pengguna untuk mengatur username dan password setiap akun guru yang ditarik otomatis dari data guru yang ada, dengan username NIP dan password default NIP27.
+# Dispatch Log
 
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+## 2026-11-06T06:36:20Z
+This is a single self-contained fix; keep it small and focused. Memperbaiki proses unggah data siswa dari berkas CSV template yang di-download dari aplikasi sesuai data master yang telah diisi agar data berhasil dimuat dan ditampilkan pada tabel master data siswa, tanpa mengubah fitur dan logika lain yang ada di aplikasi yang tidak terdampak.
+
 Integrity mode: development
 
 ## Requirements
 
-### R1. Sub Menu Pengguna pada Menu Master Data dan Kalender
-Pada navigasi role admin di bawah menu master data dan kalender, tambahkan sub menu "Pengguna" yang hanya dapat diakses oleh admin.
+### R1. Perbaikan Pemrosesan dan Pemuatan Berkas CSV Siswa
+Sistem harus memastikan berkas CSV template yang di-download dari aplikasi sesuai dengan data master, serta dapat membaca, memvalidasi, dan mengimpor data dari berkas CSV template siswa yang diunggah (termasuk menangani field opsional seperti nomor telepon yang kosong dan format nilai pada contoh dataset) ke dalam database master siswa, serta memastikan data langsung termuat dan ditampilkan pada tabel master siswa tanpa pesan atau status "tabel ini kosong dan data belum bisa dimuat".
 
-### R2. Penarikan Otomatis Akun dari Data Guru
-Data akun pada sub menu pengguna ditarik secara otomatis dari data guru yang ada di sistem dengan role pengguna sebagai guru. Setiap akun guru memiliki username awal berupa NIP dan password default berupa NIP27.
-
-### R3. Manajemen Kredensial Pengguna oleh Admin
-Admin dapat mengelola, melihat daftar, serta memperbarui username dan password setiap akun guru melalui antarmuka sub menu pengguna.
-
-### R4. Integritas dan Non-Regresi Fitur Eksisting
-Penyesuaian ini tidak mempengaruhi fitur dan logika lain yang tidak terdampak; seluruh modul dan alur kerja aplikasi yang sudah ada tetap berfungsi normal.
+### R2. Preservasi Fitur Eksisting (Zero Regression)
+Perbaikan harus terisolasi pada alur unggah dan pemuatan data siswa. Fitur serta logika lain di dalam aplikasi yang tidak terdampak tidak boleh diubah atau mengalami regresi fungsional.
 
 ## Acceptance Criteria
 
-### Navigasi dan Hak Akses
-- [ ] Sub menu Pengguna muncul di bawah menu Master Data dan Kalender saat login sebagai admin.
-- [ ] Sub menu Pengguna tidak dapat diakses atau dilihat oleh role non-admin.
+### Fungsionalitas Unggah dan Tampilan Master Siswa
+- [ ] Berkas CSV template yang di-download dari aplikasi sesuai data master dan diisi (termasuk dataset contoh 200+ siswa yang diberikan pengguna) berhasil diunggah tanpa error pemrosesan.
+- [ ] Seluruh baris data siswa yang valid tersimpan ke dalam database dan ditampilkan pada tabel master data siswa.
+- [ ] Tabel master data siswa menampilkan data hasil unggahan dan tidak menampilkan status "tabel ini kosong dan data belum bisa dimuat".
 
-### Sinkronisasi Akun Otomatis dan Kredensial Default
-- [ ] Seluruh data guru yang ada di sistem otomatis terdaftar sebagai akun pengguna dengan role guru.
-- [ ] Akun guru baru yang ditambahkan memiliki username sesuai NIP dan password default NIP27.
-
-### Manajemen Kredensial oleh Admin
-- [ ] Admin dapat memperbarui username dan password akun guru melalui antarmuka sub menu Pengguna.
-- [ ] Kredensial baru yang diperbarui berhasil disimpan ke database dan dapat digunakan untuk autentikasi login.
-- [ ] Automated tests (unit/integration) dan verifikasi fungsional untuk fitur sub menu pengguna berhasil dijalankan tanpa error.
-
-### Integritas Sistem dan Non-Regresi
-- [ ] Penyesuaian ini tidak mempengaruhi fitur dan logika lain yang tidak terdampak; seluruh fitur yang sudah ada sebelumnya tetap berfungsi normal tanpa regresi.
-- [ ] Seluruh automated test suite yang sudah ada sebelumnya tetap lolos (pass) tanpa error.
+### Verifikasi & Preservasi Sistem
+- [ ] Pengujian otomatis memverifikasi bahwa template CSV siswa yang diunduh sesuai data master dan penguraian (parsing) serta pemuatan data siswa dari contoh CSV berhasil secara menyeluruh.
+- [ ] Seluruh pengujian otomatis proyek yang ada tetap berjalan sukses (passing) tanpa regresi pada modul aplikasi lainnya.
