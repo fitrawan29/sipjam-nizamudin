@@ -43,8 +43,12 @@ export default function HomeViewGuru({
   const [attendanceStats, setAttendanceStats] = useState({
     hadir: 0,
     terlambat: 0,
+    dinasLuar: 0,
     izin: 0,
     sakit: 0,
+    alpa: 0,
+    pulangCepat: 0,
+    lupaCheckout: 0,
   });
   const [selectedMonth, setSelectedMonth] = useState(() => getWitaDateStr().substring(0, 7));
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
@@ -137,8 +141,7 @@ export default function HomeViewGuru({
           let query = supabase
             .from('presensi_guru')
             .select('timestamp, keterlambatan_detik, jenis_presensi, detail_izin, tipe_absen, status_verifikasi, sekolah_id')
-            .ilike('nama_guru', searchName)
-            .eq('tipe_absen', 'Datang');
+            .ilike('nama_guru', searchName);
 
           if (user?.sekolah_id) {
             query = query.eq('sekolah_id', user.sekolah_id);
@@ -172,8 +175,12 @@ export default function HomeViewGuru({
 
           let h = 0;
           let tl = 0;
+          let dl = 0;
           let iz = 0;
           let sk = 0;
+          let al = 0;
+          let pc = 0;
+          let lc = 0;
           let totalDetik = 0;
 
           data?.forEach((p: any) => {
@@ -183,10 +190,27 @@ export default function HomeViewGuru({
             // 2. Exclude rejected records from accumulation
             if (p.status_verifikasi === 'Ditolak') return;
 
-            const detik = Number(p.keterlambatan_detik) || 0;
-            totalDetik += detik;
+            const tipe = (p.tipe_absen || 'Datang').toLowerCase();
             const jenis = (p.jenis_presensi || '').toLowerCase();
             const detail = (p.detail_izin || '').toLowerCase();
+            const statusVerif = (p.status_verifikasi || '').toLowerCase();
+
+            if (tipe === 'pulang') {
+              if (jenis === 'pulang cepat' || statusVerif === 'pulang cepat') {
+                pc++;
+              } else if (statusVerif === 'lupa checkout' || jenis === 'auto-checkout' || jenis === 'lupa checkout') {
+                lc++;
+              }
+              return;
+            }
+
+            if (jenis === 'alpa' || statusVerif === 'alpa') {
+              al++;
+              return;
+            }
+
+            const detik = Number(p.keterlambatan_detik) || 0;
+            totalDetik += detik;
 
             if (jenis === 'izin') {
               if (detail.includes('sakit')) {
@@ -196,7 +220,11 @@ export default function HomeViewGuru({
               }
             } else if (jenis === 'sakit') {
               sk++;
-            } else if (jenis === 'sekolah' || jenis === 'dinas luar') {
+            } else if (jenis === 'dinas luar') {
+              dl++;
+            } else if (jenis === 'izin terlambat' || jenis === 'terlambat') {
+              tl++;
+            } else if (jenis === 'sekolah') {
               if (detik > 0) {
                 tl++;
               } else {
@@ -208,7 +236,16 @@ export default function HomeViewGuru({
             }
           });
 
-          setAttendanceStats({ hadir: h, terlambat: tl, izin: iz, sakit: sk });
+          setAttendanceStats({
+            hadir: h,
+            terlambat: tl,
+            dinasLuar: dl,
+            izin: iz,
+            sakit: sk,
+            alpa: al,
+            pulangCepat: pc,
+            lupaCheckout: lc,
+          });
           setAkumulasiTelat({ detik: totalDetik, alpa: Math.floor(totalDetik / 14400) });
         } catch (err) {
           console.error('Failed to load teacher stats:', err);
@@ -600,6 +637,18 @@ export default function HomeViewGuru({
                 </div>
               </div>
 
+              {/* Dinas Luar (DL) */}
+              <div className="clay-card-purple p-3 rounded-2xl border-2 border-white/90 dark:border-indigo-800/50 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-lg shrink-0">
+                  <i className="fa-solid fa-briefcase"></i>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">Dinas Luar (DL)</p>
+                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.dinasLuar}</p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tugas kedinasan</p>
+                </div>
+              </div>
+
               {/* Izin */}
               <div className="clay-card-blue p-3 rounded-2xl border-2 border-white/90 dark:border-sky-800/50 shadow-sm flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 flex items-center justify-center text-lg shrink-0">
@@ -621,6 +670,42 @@ export default function HomeViewGuru({
                   <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Sakit (S)</p>
                   <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.sakit}</p>
                   <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Dengan surat</p>
+                </div>
+              </div>
+
+              {/* Alpa (A) */}
+              <div className="clay-card-rose p-3 rounded-2xl border-2 border-white/90 dark:border-red-800/50 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 flex items-center justify-center text-lg shrink-0">
+                  <i className="fa-solid fa-user-xmark"></i>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-wider">Alpa (A)</p>
+                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.alpa}</p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tanpa keterangan</p>
+                </div>
+              </div>
+
+              {/* Pulang Cepat (PC) */}
+              <div className="clay-card-amber p-3 rounded-2xl border-2 border-white/90 dark:border-orange-800/50 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 flex items-center justify-center text-lg shrink-0">
+                  <i className="fa-solid fa-person-walking-dashed-line-arrow-right"></i>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wider">Pulang Cepat (PC)</p>
+                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.pulangCepat}</p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Sebelum waktunya</p>
+                </div>
+              </div>
+
+              {/* Lupa Checkout (LC) */}
+              <div className="clay-card-purple p-3 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 flex items-center justify-center text-lg shrink-0">
+                  <i className="fa-solid fa-robot"></i>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider">Lupa Checkout (LC)</p>
+                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.lupaCheckout}</p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Otomatis sistem</p>
                 </div>
               </div>
             </div>
