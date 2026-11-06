@@ -25,10 +25,6 @@ import {
   isMasterDataModificationAllowed,
   importMasterDataFromCsv
 } from '@/lib/dataIntegrityGuard';
-import {
-  parseNameAndTitles,
-  setupSwalTitleManager
-} from '@/lib/academicTitles';
 import SistemBlokView from './SistemBlokView';
 import AdminPenggunaView from './AdminPenggunaView';
 import AdminKelasView from './AdminKelasView';
@@ -839,47 +835,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               <input id="swal-nip" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 198501012010011001">
             </div>
             <div>
-              <label class="font-bold text-gray-700 block mb-1">Nama Pokok Guru (Tanpa Gelar) *</label>
-              <input id="swal-core-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Fitri Aprilia Dotulong">
+              <label class="font-bold text-gray-700 block mb-1">Nama Lengkap *</label>
+              <input id="swal-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Fitri Aprilia Dotulong">
             </div>
-
-            <!-- Multi-Gelar Manager Container -->
-            <div class="p-2.5 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-gray-700 flex items-center gap-1.5">
-                  <i class="fa-solid fa-graduation-cap text-emerald-700"></i> Gelar Akademik & Profesi
-                </span>
-                <button type="button" id="swal-btn-add-title" class="px-2 py-0.5 text-[11px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded transition shadow-xs cursor-pointer">
-                  + Tambah Gelar
-                </button>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-1">
-                <span class="text-[10px] text-gray-500 font-medium">Cepat:</span>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Dr.">+ Dr. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Prof.">+ Prof. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Ir.">+ Ir. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Hj.">+ Hj. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="S.Pd.">+ S.Pd. (Belakang)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="M.Pd.">+ M.Pd. (Belakang)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="S.Kom.">+ S.Kom. (Belakang)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="Gr.">+ Gr. (Belakang)</button>
-              </div>
-
-              <div id="swal-titles-list" class="space-y-1.5 max-h-32 overflow-y-auto pt-1"></div>
-            </div>
-
-            <!-- Real-time Preview -->
-            <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-lg">
-              <div class="text-[10px] font-bold text-blue-900 flex items-center justify-between mb-0.5">
-                <span>Preview Nama Lengkap Terformat:</span>
-                <span id="swal-titles-summary" class="text-[10px] text-blue-700 font-normal"></span>
-              </div>
-              <div id="swal-name-preview" class="font-bold text-xs text-gray-900 break-words"></div>
-            </div>
-
-            <!-- Synced input with id="swal-nama" for backwards-compatibility & submission -->
-            <input type="hidden" id="swal-nama" value="">
 
             <div>
               <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran Diampu *</label>
@@ -900,31 +858,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         confirmButtonText: 'Simpan Data',
         confirmButtonColor: '#0B4619',
         cancelButtonText: 'Batal',
-        didOpen: (popup) => {
-          setupSwalTitleManager({
-            popup,
-            initialCoreName: '',
-            initialTitles: [],
-            coreInputId: 'swal-core-nama',
-            titlesContainerId: 'swal-titles-list',
-            addBtnId: 'swal-btn-add-title',
-            previewId: 'swal-name-preview',
-            summaryId: 'swal-titles-summary',
-            hiddenInputId: 'swal-nama'
-          });
-        },
         preConfirm: () => {
           const nip = (document.getElementById('swal-nip') as HTMLInputElement)?.value?.trim() || '-';
-          const rawCoreNama = (document.getElementById('swal-core-nama') as HTMLInputElement)?.value?.trim() || '';
-          const rawNamaGuru = (document.getElementById('swal-nama') as HTMLInputElement)?.value?.trim() || '';
-          const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
-          const nama_guru = (rawNamaGuru || rawCoreNama).replace(/\s+/g, ' ');
+          const nama_guru = ((document.getElementById('swal-nama') as HTMLInputElement)?.value || '').trim().replace(/\s+/g, ' ');
           const mata_pelajaran = readMapelChecklist();
           const no_hp = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || '-';
 
-          if (!effectiveCoreNama || !nama_guru || !mata_pelajaran) {
-            Swal.showValidationMessage('Nama pokok guru (tanpa gelar) dan mata pelajaran wajib diisi!');
+          if (!nama_guru || !mata_pelajaran) {
+            Swal.showValidationMessage('Nama lengkap guru dan mata pelajaran wajib diisi!');
             return null;
           }
 
@@ -1688,47 +1630,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               <input id="swal-edit-nip" class="swal2-input !mt-0 !w-full text-xs" value="${item.nip || ''}" placeholder="Contoh: 198501012010011001">
             </div>
             <div>
-              <label class="font-bold text-gray-700 block mb-1">Nama Pokok Guru (Tanpa Gelar) *</label>
-              <input id="swal-edit-core-nama" class="swal2-input !mt-0 !w-full text-xs" value="" placeholder="Contoh: Fitri Aprilia Dotulong">
+              <label class="font-bold text-gray-700 block mb-1">Nama Lengkap *</label>
+              <input id="swal-edit-nama" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama_guru || ''}" placeholder="Contoh: Fitri Aprilia Dotulong">
             </div>
-
-            <!-- Multi-Gelar Manager Container -->
-            <div class="p-2.5 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-gray-700 flex items-center gap-1.5">
-                  <i class="fa-solid fa-graduation-cap text-emerald-700"></i> Gelar Akademik & Profesi
-                </span>
-                <button type="button" id="swal-edit-btn-add-title" class="px-2 py-0.5 text-[11px] font-bold bg-emerald-700 hover:bg-emerald-800 text-white rounded transition shadow-xs cursor-pointer">
-                  + Tambah Gelar
-                </button>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-1">
-                <span class="text-[10px] text-gray-500 font-medium">Cepat:</span>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Dr.">+ Dr. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Prof.">+ Prof. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Ir.">+ Ir. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="prefix" data-val="Hj.">+ Hj. (Depan)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="S.Pd.">+ S.Pd. (Belakang)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="M.Pd.">+ M.Pd. (Belakang)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="S.Kom.">+ S.Kom. (Belakang)</button>
-                <button type="button" class="swal-quick-chip px-1.5 py-0.5 text-[10px] bg-white border border-gray-300 rounded hover:bg-gray-100 cursor-pointer" data-pos="suffix" data-val="Gr.">+ Gr. (Belakang)</button>
-              </div>
-
-              <div id="swal-edit-titles-list" class="space-y-1.5 max-h-32 overflow-y-auto pt-1"></div>
-            </div>
-
-            <!-- Real-time Preview -->
-            <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-lg">
-              <div class="text-[10px] font-bold text-blue-900 flex items-center justify-between mb-0.5">
-                <span>Preview Nama Lengkap Terformat:</span>
-                <span id="swal-edit-titles-summary" class="text-[10px] text-blue-700 font-normal"></span>
-              </div>
-              <div id="swal-edit-name-preview" class="font-bold text-xs text-gray-900 break-words"></div>
-            </div>
-
-            <!-- Synced input with id="swal-edit-nama" for assertions and submission -->
-            <input type="hidden" id="swal-edit-nama" value="">
 
             <div>
               <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran Diampu *</label>
@@ -1757,33 +1661,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         confirmButtonText: 'Simpan Perubahan',
         confirmButtonColor: '#0B4619',
         cancelButtonText: 'Batal',
-        didOpen: (popup) => {
-          const parsed = parseNameAndTitles(item.nama_guru || '');
-          setupSwalTitleManager({
-            popup,
-            initialCoreName: parsed.coreName,
-            initialTitles: parsed.titles,
-            coreInputId: 'swal-edit-core-nama',
-            titlesContainerId: 'swal-edit-titles-list',
-            addBtnId: 'swal-edit-btn-add-title',
-            previewId: 'swal-edit-name-preview',
-            summaryId: 'swal-edit-titles-summary',
-            hiddenInputId: 'swal-edit-nama'
-          });
-        },
         preConfirm: () => {
           const nip = (document.getElementById('swal-edit-nip') as HTMLInputElement)?.value?.trim() || '-';
-          const rawCoreNama = (document.getElementById('swal-edit-core-nama') as HTMLInputElement)?.value?.trim() || '';
-          const rawNamaGuru = (document.getElementById('swal-edit-nama') as HTMLInputElement)?.value?.trim() || '';
-          const effectiveCoreNama = rawCoreNama || parseNameAndTitles(rawNamaGuru).coreName;
-          const nama_guru = (rawNamaGuru || rawCoreNama).replace(/\s+/g, ' ');
+          const nama_guru = ((document.getElementById('swal-edit-nama') as HTMLInputElement)?.value || '').trim().replace(/\s+/g, ' ');
           const mata_pelajaran = readMapelChecklist();
           const no_hp = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-edit-email') as HTMLInputElement)?.value?.trim() || '-';
           const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
 
-          if (!effectiveCoreNama || !nama_guru || !mata_pelajaran) {
-            Swal.showValidationMessage('Nama pokok guru (tanpa gelar) dan mata pelajaran wajib diisi!');
+          if (!nama_guru || !mata_pelajaran) {
+            Swal.showValidationMessage('Nama lengkap guru dan mata pelajaran wajib diisi!');
             return null;
           }
 

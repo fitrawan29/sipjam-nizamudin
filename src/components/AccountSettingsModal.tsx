@@ -19,12 +19,6 @@ import {
   setReminderConfig
 } from './TeacherReminderManager';
 import { normalizeName, isForbiddenName, isDummyOrTestString } from '@/lib/dataIntegrityGuard';
-import {
-  AcademicTitle,
-  TitlePosition,
-  formatFullName,
-  parseNameAndTitles
-} from '@/lib/academicTitles';
 
 interface AccountSettingsModalProps {
   isOpen: boolean;
@@ -40,28 +34,8 @@ export default function AccountSettingsModal({
   onUserUpdated
 }: AccountSettingsModalProps) {
   const [selectedAvatar, setSelectedAvatar] = useState<string>(user?.avatar || 'avatar_1');
-  const [coreNama, setCoreNama] = useState<string>('');
-  const [titles, setTitles] = useState<AcademicTitle[]>([]);
   const [nama, setNama] = useState<string>(user?.nama || '');
   const [username, setUsername] = useState<string>(user?.username || '');
-
-  // Title helpers
-  const addTitle = (position: TitlePosition = 'suffix', text: string = '') => {
-    setTitles(prev => [
-      ...prev,
-      { id: Math.random().toString(36).substring(2, 9), text, position }
-    ]);
-  };
-
-  const updateTitle = (index: number, updates: Partial<AcademicTitle>) => {
-    setTitles(prev =>
-      prev.map((t, i) => (i === index ? { ...t, ...updates } : t))
-    );
-  };
-
-  const removeTitle = (index: number) => {
-    setTitles(prev => prev.filter((_, i) => i !== index));
-  };
 
   // Password fields
   const [changePassword, setChangePassword] = useState<boolean>(false);
@@ -113,7 +87,6 @@ export default function AccountSettingsModal({
       setSelectedAvatar(user.avatar || 'avatar_1');
       const initialNama = user.nama || '';
       setNama(initialNama);
-      setCoreNama(initialNama);
       setUsername(user.username || '');
       setChangePassword(false);
       setCurrentPassword('');
@@ -300,7 +273,7 @@ export default function AccountSettingsModal({
       return;
     }
 
-    const effectiveCoreNama = (nama || coreNama || '').trim();
+    const effectiveCoreNama = (nama || '').trim();
     if (!effectiveCoreNama) {
       showToast('Validasi Gagal', 'Nama lengkap wajib diisi.', 'warning');
       return;
@@ -577,7 +550,6 @@ export default function AccountSettingsModal({
                   value={nama}
                   onChange={(e) => {
                     setNama(e.target.value);
-                    setCoreNama(e.target.value);
                   }}
                   placeholder="Contoh: Fitri Aprilia Dotulong"
                   required
@@ -600,10 +572,6 @@ export default function AccountSettingsModal({
               )}
             </div>
 
-            {/* Note for backward-compatibility with tests checking static strings:
-                parseNameAndTitles formatFullName Nama Pokok (Tanpa Gelar) Gelar Akademik & Profesi Tambah Gelar Depan (Prefix) Belakang (Suffix) Preview Nama Lengkap Terformat: min-w-0 break-words
-                fa-lock user?.username || username (Hanya Admin yang bisa mengubah) cursor-not-allowed
-            */}
           </div>
 
           {/* Section 3: Change Password Toggle */}

@@ -298,8 +298,7 @@ async function runAdversarialM4Suite() {
     assert.ok(accountModalContent.includes('Nama Lengkap *'), 'AccountSettingsModal must include label "Nama Lengkap *"');
     assert.ok(accountModalContent.includes('value={nama}'), 'Name input must bind directly to value={nama}');
     assert.ok(
-      accountModalContent.includes('setNama(e.target.value)') &&
-      accountModalContent.includes('setCoreNama(e.target.value)'),
+      accountModalContent.includes('setNama(e.target.value)'),
       'Name input must update state on change'
     );
     pass('ACCOUNT-02', 'Single "Nama Lengkap *" input exists and binds directly to state', 'Clean single-field input verified');
