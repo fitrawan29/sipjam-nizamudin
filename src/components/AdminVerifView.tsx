@@ -422,7 +422,7 @@ export default function AdminVerifView({
     }
     if (taskFilter === 'Belum') return;
     const { table, label } = getActiveConfig();
-    const pendingItems = displayList.filter(item => !item.isUnsubmitted && item.status_verifikasi !== 'Disetujui' && item.status_verifikasi !== 'Diverifikasi' && item.status_verifikasi !== 'Ditolak');
+    const pendingItems = displayList.filter(item => !item.isUnsubmitted && (activeTab !== 'Jurnal' || isRealSubmittedJournal(item)) && item.status_verifikasi !== 'Disetujui' && item.status_verifikasi !== 'Diverifikasi' && item.status_verifikasi !== 'Ditolak');
 
     if (pendingItems.length === 0) {
       return showToast('Info', `Semua ${label} yang tampil sudah berstatus Disetujui.`, 'info');
@@ -470,6 +470,18 @@ export default function AdminVerifView({
       setLoading(false);
     }
   };
+
+// Helper: Memastikan jurnal benar-benar diisi oleh guru dengan materi pembelajaran riil (bukan auto-record delinquency / auto-fill berhalangan)
+export function isRealSubmittedJournal(j: any): boolean {
+  if (!j) return false;
+  const sv = j.status_verifikasi;
+  if (sv === 'Tidak Masuk Kelas' || sv === 'Tidak Melaksanakan Kegiatan' || sv === 'Sakit' || sv === 'Izin') return false;
+  const ket = (j.keterangan || '').trim().toLowerCase();
+  if (ket === 'tidak masuk kelas' || ket === 'tidak melaksanakan kegiatan apapun' || ket === 'auto-fill sistem karena guru berhalangan hadir') return false;
+  const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
+  if (mat === 'tidak masuk kelas' || mat === 'tidak melaksanakan kegiatan apapun' || mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
+  return true;
+}
 
 // Helper: Normalisasi nama guru untuk perbandingan presisi tanpa false substring collision
 function normalizeTeacherName(name?: string | null): string {
@@ -618,7 +630,7 @@ function addDaysToDateStr(dateStr: string, days: number): string {
 
     // Always filter strictly by targetDate = date || effectiveDate
     const targetDate = date || effectiveDate;
-    const submittedList = jurnalList.filter(j => j.tanggal === targetDate && j.status_verifikasi !== 'Tidak Masuk Kelas' && j.keterangan !== 'Tidak Masuk Kelas');
+    const submittedList = jurnalList.filter(j => j.tanggal === targetDate && j.status_verifikasi !== 'Tidak Masuk Kelas' && isRealSubmittedJournal(j));
 
     const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
 
@@ -744,11 +756,16 @@ function addDaysToDateStr(dateStr: string, days: number): string {
       ? unsubmittedJurnal 
       : unsubmittedPiket;
 
-    const submittedList = activeTab === 'Presensi' 
+    const rawSubmittedList = activeTab === 'Presensi' 
       ? presensiList 
       : activeTab === 'Jurnal' 
       ? jurnalList 
       : piketList;
+
+    // Untuk tab Jurnal, pengajuan yang berstatus auto-record (Tidak Masuk Kelas / Tidak Melaksanakan Kegiatan) bukan pengajuan riil guru
+    const submittedList = activeTab === 'Jurnal'
+      ? rawSubmittedList.filter(j => isRealSubmittedJournal(j))
+      : rawSubmittedList;
 
     // Filter unsubmitted items by search
     const filteredUnsubmitted = unsubmittedList.filter((item: any) => {
