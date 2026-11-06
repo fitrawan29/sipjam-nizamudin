@@ -45,3 +45,33 @@ TASK: Empirical Validation & Stress Testing for Milestone 2 (M2) — Matching & 
 3. Provide empirical evidence in your handoff report.
 4. Render an explicit verdict: either APPROVE or REQUEST_CHANGES.
 5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_1\handoff.md` and message the orchestrator.
+
+## 2026-11-06T00:58:54Z
+You are a Teamwork Challenger for Milestone 2 (Penyelarasan Template Master Data & Impor CSV).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_1\
+Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
+
+You MUST read ORIGINAL_REQUEST.md and PROJECT.md before challenging.
+
+Your task:
+Empirically test the correctness, invariants, and edge cases of the CSV parsing, normalization, validation, and upsert engine:
+1. Empirically verify CSV template downloads:
+   - Verify `Template_Data_Kelas.csv` headers: `['nama_kelas', 'tingkat', 'jurusan']`.
+   - Verify all 7 templates match their database schemas.
+   - Verify Kalender & Jadwal templates omit `'id'`.
+   - Verify Guru template includes `'sekolah_id'`.
+2. Empirically verify CSV upload parsing:
+   - Test importing valid CSVs for all 7 entities.
+   - Test row error reporting: verify invalid rows trigger clear `Baris ${i}` messages.
+   - Test Excel apostrophe stripping (`'114367407`).
+   - Test student deduplication: verify re-uploading an existing student with a different class updates `data_siswa.kelas` without creating duplicate records.
+3. Run verification test suites:
+   - `npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts`
+   - `npx tsc --noEmit`
+4. Document empirical test results and state your final verdict:
+   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`
+   in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_1\handoff.md
+5. Send a brief message back to the orchestrator when done.
+

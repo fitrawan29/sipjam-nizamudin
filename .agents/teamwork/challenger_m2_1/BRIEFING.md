@@ -1,7 +1,7 @@
-# BRIEFING — 2026-11-02T13:41:00Z
+# BRIEFING — 2026-11-06T01:03:00Z
 
 ## Mission
-Empirical validation & adversarial stress testing for Milestone 2 (M2) — Flexible Sistem Blok: Matching & Masking Logic (`src/lib/workflow.ts`, `HomeViewGuru.tsx`, `GuruJurnal.tsx`).
+Empirical adversarial validation for Milestone 2: Penyelarasan Template Master Data & Impor CSV (`AdminDataView.tsx`, `dataIntegrityGuard.ts`, `AdminKelasView.tsx`).
 
 ## 🔒 My Identity
 - Archetype: EMPIRICAL CHALLENGER
@@ -10,9 +10,9 @@ Empirical validation & adversarial stress testing for Milestone 2 (M2) — Flexi
 - Original parent: 4fd5e35b-30eb-4eaa-ba5a-613af6a5d52c
 - Milestone: M2 (Sidebar Profile Card & Tutorial in AppScreen)
 - Instance: 1 of 1
-- Current parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Current Milestone: M2 (Flexible Sistem Blok: Target Scopes & Time Range Masking)
-- Current Instance: 1 of 1
+- Current parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Current Milestone: M2 (Penyelarasan Template Master Data & Impor CSV)
+- Current Instance: 1 of 2
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code directly (report failure if found, worker must fix)
@@ -23,38 +23,45 @@ Empirical validation & adversarial stress testing for Milestone 2 (M2) — Flexi
 - Review-only — do NOT modify implementation code
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: 2026-11-02T13:41:00Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T01:03:00Z
 
 ## Review Scope
-- **Files to review**: `src/lib/workflow.ts`, `src/components/HomeViewGuru.tsx`, `src/components/GuruJurnal.tsx`
+- **Files to review**: `src/components/AdminDataView.tsx`, `src/lib/dataIntegrityGuard.ts`, `src/components/AdminKelasView.tsx`
 - **Interface contracts**: `PROJECT.md`, `ORIGINAL_REQUEST.md`
 - **Review criteria**:
-  * Target matching (sekolah, angkatan, kelas, guru)
-  * Time range boundaries & overlap calculation
-  * Granular schedule masking (affected vs unaffected schedules)
-  * Mixed state journal fulfillment rules
+  * CSV template download headers (all 7 entities)
+  * Invariant preservation: Kalender & Jadwal omit 'id'; Guru contains 'sekolah_id'
+  * CSV upload parsing: valid CSVs for all 7 entities
+  * Row error reporting: exact `Baris ${i}` and column errors
+  * Excel apostrophe stripping across all numeric & text fields
+  * Student deduplication: in-place class updates by `(sekolah_id, nisn)` without duplicate rows
+  * Schema cache fallback on `PGRST205` / `42P01` for `data_kelas`
 
 ## Attack Surface
 - **Hypotheses tested**:
-  * Hypothesis 1: Whole-school rule matches all classes and teachers unconditionally -> CONFIRMED (Pass)
-  * Hypothesis 2: Angkatan matches grade variants (10/X, 11/XI, 12/XII, 7/VII, etc.) and isolates non-matching cohorts -> CONFIRMED (Pass)
-  * Hypothesis 3: Kelas exact matching isolates other classes -> CONFIRMED (Pass)
-  * Hypothesis 4: Bounded time intervals correctly detect overlap and reject boundary touches / outside hours -> CONFIRMED (Pass)
-  * Hypothesis 5: Teacher-targeted rules isolate other teachers when schedules omit `nama_guru` or when teacher object lacks `nama` -> FAILED (Vulnerability Found)
-- **Vulnerabilities found**:
-  * Critical Bug in `src/lib/workflow.ts` lines 258-264: `targetGuruNama.includes(schedNamaGuru)` and `targetGuruNama.includes(teacherNama)` evaluate to `true` when `schedNamaGuru` or `teacherNama` is empty string (`""`). This causes ANY schedule without `nama_guru` to be falsely blocked by any teacher-targeted block rule, and causes empty schedule evaluation at line 671 to falsely block all non-scheduled teachers.
-- **Untested angles**: All target scopes and time boundaries exhaustively covered with 144 adversarial assertions.
+  * Hypothesis 1: All 7 CSV templates in `AdminDataView.tsx` match database schema and preserve invariants -> CONFIRMED (Pass)
+  * Hypothesis 2: Incompatible templates or missing columns trigger immediate descriptive pre-validation errors -> CONFIRMED (Pass)
+  * Hypothesis 3: Parsing engine handles Indonesian delimiters (`;`, `\t`, `|`), UTF-8 BOM, CRLF, and quoted commas -> CONFIRMED (Pass)
+  * Hypothesis 4: Empty fields, duplicate names, or dummy strings trigger localized `Baris ${i}` error messages -> CONFIRMED (Pass)
+  * Hypothesis 5: Excel apostrophes (`'`) are cleanly stripped from all attributes -> CONFIRMED (Pass)
+  * Hypothesis 6: Student re-import updates class in-place without generating duplicate student rows -> CONFIRMED (Pass)
+  * Hypothesis 7: PostgREST schema cache absence (`PGRST205`) triggers graceful fallback to syncing classes into `wali_kelas` -> CONFIRMED (Pass)
+- **Vulnerabilities found**: None. All edge cases, invariants, and stress scenarios handled cleanly.
+- **Untested angles**: All 7 entities, 4 delimiters, 3 line-ending styles, and error paths verified empirically with 28 adversarial assertions.
 
 ## Loaded Skills
 - None assigned
 
 ## Key Decisions Made
-- Executed `tests/sistem_blok_verification.test.ts` (85/85 passed) and `tests/m2_schedule_masking_workflow.test.ts` (74/74 passed).
-- Authored adversarial empirical stress test suite `tests/challenger_m2_matching_masking_stress.test.ts` (144 assertions, 2 failures).
-- Render verdict: **REQUEST_CHANGES** due to empirical reproduction of false-positive teacher blocking.
+- Executed `tests/m2_csv_templates_and_import_harmonization.test.ts` (16/16 passed).
+- Executed `npx tsc --noEmit` (0 errors).
+- Authored and executed dedicated adversarial test suite `tests/challenger_m2_csv_empirical_stress.test.ts` (28/28 passed).
+- Executed `tests/data_guru_csv_import_sekolah_id_validation.test.ts` (31/31 passed) and `tests/production_admin_adjustments.test.ts` (24/24 passed).
+- Executed full automated regression suite `npm test` (54/54 test files passed, 0 failures).
+- Render verdict: **VERDICT: APPROVE**.
 
 ## Artifact Index
-- `tests/challenger_m2_matching_masking_stress.test.ts` — adversarial stress tests (144 assertions)
+- `tests/challenger_m2_csv_empirical_stress.test.ts` — 28 adversarial empirical assertions
 - `handoff.md` — 5-component handoff report
 - `progress.md` — heartbeat

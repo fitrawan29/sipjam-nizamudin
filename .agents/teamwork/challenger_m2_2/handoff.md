@@ -1,218 +1,153 @@
-# Handoff Report: Milestone 2 Challenger (M2-2) — Mixed Schedule & Dual Journal Workflow
+# Milestone 2 Empirical Challenge Report: Penyelarasan Template Master Data & Impor CSV
 
-**Challenger Role**: teamwork_challenger (empirical challenger, critic, specialist)  
-**Evaluated Milestone**: Milestone 2 (M2) — Workflow Engine, Granular Schedule Masking & Journal Workflows  
-**Verdict**: **APPROVE**
+- **Challenger Agent**: challenger_m2_2 (critic, specialist)
+- **Target Files Inspected**:
+  * `src/components/AdminDataView.tsx`
+  * `src/lib/dataIntegrityGuard.ts`
+  * `src/components/AdminKelasView.tsx`
+- **Verification Harnesses Executed**:
+  * `npm test` (54 test files)
+  * `npx tsx tests/production_admin_adjustments.test.ts`
+  * `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts`
+  * `npx tsx tests/adversarial_r1_r5_stress_test.ts`
+  * `npx tsx tests/adversarial_o27_m4_challenger.test.ts`
+  * `npx tsx tests/adversarial_centralized_class_allocation_m1.test.ts`
+  * `npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts`
+  * `tests/adversarial_m2_template_and_import_challenger.test.ts` (newly authored 19-test adversarial suite)
+  * `npx tsc --noEmit`
+  * `npm run build`
+- **Date**: 2026-11-06T01:04:30Z
 
 ---
 
 ## 1. Observation
 
-### Verified Source Paths & Core Implementations
-1. **`src/lib/workflow.ts`**:
-   - Lines 28-30: `GuruDailyState` contains `hasBlockedSchedule?: boolean` and `activeBloks?: SistemBlok[]`.
-   - Lines 72-102: `getActiveSistemBloks(dateStr?: string, sekolahId?: string): Promise<SistemBlok[]>` retrieves all active block rules for the day.
-   - Lines 100-104: `getActiveSistemBlok(dateStr?: string, sekolahId?: string): Promise<any | null>` preserves backward compatibility by returning the first active block.
-   - Lines 107-152: `isKelasInAngkatan(kelas: string | null | undefined, angkatan: string): boolean` performs bidirectional Arabic <-> Roman grade matching (`10 <-> X`, `11 <-> XI`, `12 <-> XII`) with boundary regex guarding against false substring matches (`XI` does not match `X`).
-   - Lines 155-197: `parseTimeToMinutes` and `isTimeRangeOverlap(schedStart, schedEnd, blokStart, blokEnd, isFullDay)` correctly compute minute offsets and verify `sStart < bEnd && sEnd > bStart`.
-   - Lines 205-295: `evaluateScheduleBlock(schedule, teacher, activeBloks)` matches target scopes (`sekolah`, `angkatan`, `kelas`, `guru`) and time overlap, returning `{ isBlocked: boolean, blockRule?: SistemBlok, reason?: string }`.
-   - Lines 641-678: `getGuruDailyState` maps each teacher schedule item in `jadwalKBM` using `evaluateScheduleBlock`. It sets `hasBlockedSchedule = hasBlocked` and sets `isBlok = true` **only when ALL schedules are blocked** (or whole-school block is active).
-   - Lines 976-986: Mixed journal completion logic checks `unblockedFulfilled` (each unblocked schedule has matching `jurnalKBM`) and `blockedFulfilled` (blocked period fulfilled by `jurnalKegiatan`).
-   - Lines 1005-1010 & 1024-1028: `canTeacherPresensiPulang(state)` satisfies the R2 requirement allowing teachers who recorded `presensiDatang` to checkout without being blocked by journal completion.
+Direct empirical execution of test suites and code inspection yielded the following facts:
 
-2. **`src/components/HomeViewGuru.tsx`**:
-   - Lines 814-818: Displays `Campuran` badge when `dailyState.hasBlockedSchedule && !dailyState.isBlok`.
-   - Lines 937-998: For blocked items (`jk.isBlocked`), renders `Kegiatan Blok` badge, block activity name, and `Isi Jurnal Kegiatan` action button.
-   - Lines 1000-1039: For unblocked items (`!jk.isBlocked`), renders regular KBM card and `Isi Jurnal` action button.
+1. **Automated Regression Suite (`npm test`)**:
+   - Command: `npm test`
+   - Output: Exited with code 0.
+   - Result: All 54 test files executed and passed with 0 failures, confirming zero regression across the existing application.
 
-3. **`src/components/GuruJurnal.tsx`**:
-   - Lines 516-526: In mixed mode (`hasBlockedSchedule && !isBlok`), auto-detects pending unblocked schedules and defaults appropriately.
-   - Lines 1327-1350: Replaces disabled select with an interactive dropdown allowing teacher to seamlessly switch between `Jurnal KBM` (for unblocked regular classes) and `Jurnal Kegiatan` (for blocked schedules).
+2. **Invariant Test Suites**:
+   - `npx tsx tests/production_admin_adjustments.test.ts`:
+     * Result: 24/24 PASSED (0 failed). Verbatim: `PASS: CSV templates for Kalender_Pendidikan and Jadwal_Pelajaran omit "id" and legacy strings ("KP-01", "JP-01")`.
+   - `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts`:
+     * Result: 31/31 PASSED (0 failed). Verbatim: `AdminDataView.tsx wires importMasterDataFromCsv and includes sekolah_id in Template_Data_Guru`.
+   - `npx tsx tests/adversarial_r1_r5_stress_test.ts`:
+     * Result: 14/14 PASSED (0 failed).
+   - `npx tsx tests/adversarial_o27_m4_challenger.test.ts`:
+     * Result: 13/13 PASSED (0 failed).
+   - `npx tsx tests/adversarial_centralized_class_allocation_m1.test.ts`:
+     * Result: 15/15 PASSED (0 failed). Verbatim: `PASS: normalizeAdminTab consistently standardizes all class tab variations to canonical Data_Kelas`.
+   - `npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts`:
+     * Result: 16/16 PASSED (0 failed).
 
-### Verbatim Tool Commands & Verification Results
-1. **Static Typecheck**:
-   ```powershell
-   npx tsc --noEmit
-   # Exit code: 0
-   ```
-2. **Milestone Verification Suite (`tests/sistem_blok_verification.test.ts`)**:
-   ```
-   TOTAL TESTS: 85
-   PASSED: 85
-   FAILED: 0
-   🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
-   ```
-3. **Milestone 2 Workflow Verification (`tests/m2_schedule_masking_workflow.test.ts`)**:
-   ```
-   TOTAL M2 TESTS: 74
-   PASSED: 74
-   FAILED: 0
-   ```
-4. **Challenger Empirical Test Suite (`tests/challenger_m2_2_mixed_schedule_journal.test.ts`)**:
-   ```powershell
-   npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
-   ```
-   Output:
-   ```
-   ====================================================
-   CHALLENGER M2-2: MIXED SCHEDULE & DUAL JOURNAL WORKFLOW STRESS TEST
-   Scope: Mixed Schedule Simulation, Dual Journaling, Presensi Pulang
-   ====================================================
+3. **Source Code Inspection**:
+   - `src/components/AdminDataView.tsx`:
+     * Lines 230–234: `Data_Kelas` template is registered with `filename: 'Template_Data_Kelas.csv'`, `headers: ['nama_kelas', 'tingkat', 'jurusan']`, and `sample: ['X Merdeka', '10', 'Umum']`.
+     * Lines 235–264: All 7 templates (`Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`) are defined with exact schema alignment.
+     * Line 267: Normalized template lookup via `templates[activeTab] || templates[normalizeAdminTab(activeTab)]`.
+     * Line 325: Dispatches `window.dispatchEvent(new CustomEvent('sipjam:kelas-updated'))` on `Data_Kelas` and `Data_Siswa` file uploads.
+     * Line 317: Retains required `showToast('Unggah Berhasil', ...)`.
+   - `src/lib/dataIntegrityGuard.ts`:
+     * Lines 612–630: `normalizeCsvHeaders` scopes headers for `data_kelas` (`nama_kelas`, `tingkat`, `jurusan`).
+     * Lines 759–781: `REQUIRED_HEADERS_BY_TABLE` performs upfront pre-validation on uploaded CSV files, preventing incompatible file uploads from triggering database errors.
+     * Lines 805–806: `data_kelas` and `kelas` are included in `isUuidKeyedTable`.
+     * Lines 902–956: Entity-specific validation for `data_kelas` enforces non-empty `nama_kelas`, rejects dummy strings (`isDummyOrTestString`), checks duplicate class names within the CSV file, and auto-derives `tingkat` (`10`, `11`, `12`, or `Lainnya`).
+     * Lines 1127–1172: Idempotent student resolution queries existing students by `(sekolah_id, nisn)` and binds their existing UUID `id` to matching rows, preventing duplicate student records upon re-import.
+     * Lines 1182–1230: Upsert for `data_kelas` targets `onConflict: 'sekolah_id, nama_kelas'` with graceful fallback if table is missing or unindexed.
+   - `src/components/AdminKelasView.tsx`:
+     * Lines 344–361: Implements `handleDownloadClassTemplate` downloading `Template_Data_Kelas.csv`.
+     * Lines 364–419: Implements `handleClassFileUpload` importing via `importMasterDataFromCsv`.
+     * Lines 179–185: Listens to `sipjam:kelas-updated` to trigger live refresh when class or student records are mutated.
 
-   --- Test Suite 1: Mixed 4-Schedule Simulation ---
-   ✅ PASS: Schedule 1 (10 RPL 1, 07:30-09:00) is marked isBlocked = true
-   ✅ PASS: Schedule 1 has correct blockRule attached
-   ✅ PASS: Schedule 2 (X TKJ 2, 09:15-10:45) is marked isBlocked = true
-   ✅ PASS: Schedule 2 has correct blockRule attached
-   ✅ PASS: Schedule 3 (XI RPL 1, 11:00-12:30) is marked isBlocked = false
-   ✅ PASS: Schedule 3 has null blockRule
-   ✅ PASS: Schedule 4 (XII RPL 1, 13:00-14:30) is marked isBlocked = false
-   ✅ PASS: Schedule 4 has null blockRule
+4. **Empirical Adversarial Stress Testing (`tests/adversarial_m2_template_and_import_challenger.test.ts`)**:
+   - Authored and ran a 19-test adversarial stress harness.
+   - Output: 19/19 PASSED (0 failed).
+   - Adversarial scenarios passed:
+     * Delimiter autodetection & encoding: Semicolon (Indonesian Excel), TSV (Tab), Pipe (`|`), Unix LF (`\n`), Windows CRLF (`\r\n`), Bare CR (`\r`), UTF-8 BOM (`\uFEFF`), and RFC 4180 escaped quotes (`"X ""Merdeka"" Unggulan"`).
+     * Incompatible template pre-validation: Uploading Guru CSV to Siswa table and Kalender CSV to Kelas table throws immediate descriptive errors without database roundtrips.
+     * Empty and 1-line CSV files rejected cleanly without unhandled crashes.
+     * Anti-dummy and duplicate detection on class names rejected with row indicators (`Baris 1`, `Baris 2`).
+     * Tingkat auto-derivation across Arabic and Roman numerals (`10`, `X`, `11`, `XI`, `12`, `XII`, and `Lainnya`).
+     * Student deduplication: Matched existing student NISN `0011223344` and reused UUID `11111111-1111-4111-8111-111111111111`.
 
-   --- Test Suite 2: dailyState Logic Matrix ---
-   ✅ PASS: Mixed 4-schedules: dailyState.hasBlockedSchedule === true
-   ✅ PASS: Mixed 4-schedules: dailyState.isBlok === false (NOT all blocked)
-   ✅ PASS: All-blocked case: dailyState.hasBlockedSchedule === true
-   ✅ PASS: All-blocked case: dailyState.isBlok === true
-   ✅ PASS: None-blocked case: dailyState.hasBlockedSchedule === false
-   ✅ PASS: None-blocked case: dailyState.isBlok === false
-   ✅ PASS: 1 of 4 blocked: dailyState.hasBlockedSchedule === true
-   ✅ PASS: 1 of 4 blocked: dailyState.isBlok === false
-   ✅ PASS: 3 of 4 blocked: dailyState.hasBlockedSchedule === true
-   ✅ PASS: 3 of 4 blocked: dailyState.isBlok === false
-
-   --- Test Suite 3: Time Boundary & Isolation Permutations ---
-   ✅ PASS: Boundary: Schedule 07:00-08:00 ending at block start (08:00) does NOT overlap
-   ✅ PASS: Boundary: Schedule 10:00-11:30 starting at block end (10:00) does NOT overlap
-   ✅ PASS: Boundary: Schedule 07:00-08:01 overlapping by 1 min at start overlaps
-   ✅ PASS: Boundary: Schedule 09:59-11:00 overlapping by 1 min at end overlaps
-   ✅ PASS: Boundary: Afternoon schedule 13:00-14:30 does NOT overlap
-
-   --- Test Suite 4: Dual Journal Workflow & Presensi Pulang ---
-   ✅ PASS: No journals: unblockedFulfilled is false
-   ✅ PASS: No journals: blockedFulfilled is false
-   ✅ PASS: No journals: isJurnalDone is false
-   ✅ PASS: No journals & no presensiDatang: canPresensiPulang is false
-   ✅ PASS: No journals: lockedReason indicates missing obligations
-   ✅ PASS: Only Kegiatan filled: blockedFulfilled is true
-   ✅ PASS: Only Kegiatan filled: unblockedFulfilled is false
-   ✅ PASS: Only Kegiatan filled: isJurnalDone is false (unblocked classes still required)
-   ✅ PASS: Partial KBM (1 of 2): unblockedFulfilled is false
-   ✅ PASS: Partial KBM (1 of 2): isJurnalDone is false
-   ✅ PASS: Complete journals: unblockedFulfilled is true
-   ✅ PASS: Complete journals: blockedFulfilled is true
-   ✅ PASS: Complete journals: isJurnalDone is true
-   ✅ PASS: Complete journals: canPresensiPulang is true
-   ✅ PASS: Complete journals: lockedReason is cleared
-   ✅ PASS: R2: Teacher with presensiDatang can presensiPulang immediately without prior journals
-   ✅ PASS: R2: lockedReason is cleared when presensiDatang is recorded
-   ✅ PASS: Teacher with isIzinSakit cannot presensiPulang
-
-   --- Test Suite 5: Code Architecture & Invariants ---
-   ✅ PASS: HomeViewGuru renders "Campuran" badge for mixed schedule
-   ✅ PASS: HomeViewGuru checks jk.isBlocked flag
-   ✅ PASS: HomeViewGuru renders "Kegiatan Blok" badge for blocked schedules
-   ✅ PASS: HomeViewGuru provides "Isi Jurnal Kegiatan" button
-   ✅ PASS: HomeViewGuru provides "Isi Jurnal" button for unblocked schedules
-   ✅ PASS: GuruJurnal explicitly detects mixed mode (hasBlockedSchedule && !isBlok)
-   ✅ PASS: GuruJurnal provides options for both Jurnal KBM and Jurnal Kegiatan in mixed mode
-   ✅ PASS: GuruJurnal displays helpful guidance for mixed schedule teachers
-   ✅ PASS: workflow exports ScheduleBlockEvaluation
-   ✅ PASS: workflow calls isTimeRangeOverlap during evaluation
-   ✅ PASS: getGuruDailyState evaluates each schedule item with activeBloks
-
-   ====================================================
-   TOTAL CHALLENGER TESTS: 52
-   PASSED: 52
-   FAILED: 0
-   ====================================================
-   ```
+5. **Static Typecheck and Build**:
+   - `npx tsc --noEmit`: Exited with code 0 (0 errors).
+   - `npm run build`: Exited with code 0 (compiled successfully with Turbopack, static page generation 13/13 succeeded).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Mixed Schedule Evaluation (4-Schedule Simulation)**:
-   - Observation: Teacher "Budi Santoso" has 4 schedules: Schedule 1 (`10 RPL 1`, 07:30-09:00), Schedule 2 (`X TKJ 2`, 09:15-10:45), Schedule 3 (`XI RPL 1`, 11:00-12:30), Schedule 4 (`XII RPL 1`, 13:00-14:30). An active block rule targets Angkatan 10 from 07:00 to 11:00.
-   - Deduction:
-     * Schedules 1 and 2 match `target_angkatan: '10'` (via `isKelasInAngkatan`) and fall within the 07:00-11:00 window (via `isTimeRangeOverlap`). Both evaluate to `isBlocked = true`.
-     * Schedules 3 and 4 belong to Angkatan 11 and 12, outside Angkatan 10 and outside the morning block window. Both evaluate to `isBlocked = false`.
-   - Empirically verified: 4/4 schedule assertions passed.
+1. **Verification of Acceptance Criteria 1 (Template CSV Harmonization)**:
+   - Observations 3 and 4 show all 7 master data templates (`Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`) are properly defined and aligned with the database schema.
+   - Invariants from prior milestones are fully preserved: `Kalender_Pendidikan` and `Jadwal_Pelajaran` omit `id` to prevent PostgreSQL Error 22P02, while `Data_Guru` includes `sekolah_id` to prevent PostgreSQL Error 23502.
 
-2. **dailyState State Transitions**:
-   - Observation: `getGuruDailyState` evaluates `hasBlocked = state.jadwalKBM.some(jk => jk.isBlocked)` and `allBlocked = state.jadwalKBM.every(jk => jk.isBlocked)`.
-   - Deduction:
-     * When 2 of 4 schedules are blocked: `hasBlockedSchedule === true`, while `isBlok === false`.
-     * When 1 of 4 or 3 of 4 are blocked: `hasBlockedSchedule === true`, while `isBlok === false`.
-     * When all 4 are blocked: `hasBlockedSchedule === true`, and `isBlok === true`.
-     * When 0 are blocked: `hasBlockedSchedule === false`, and `isBlok === false`.
-   - Empirically verified: All 10 state transition tests passed.
+2. **Verification of Acceptance Criteria 2 (CSV Parsing, Validation & Idempotency)**:
+   - Observation 3 shows `normalizeCsvHeaders` normalizes headers for all 7 entities without collisions.
+   - Pre-validation via `REQUIRED_HEADERS_BY_TABLE` catches wrong template uploads early.
+   - Anti-dummy and within-file duplicate guards reject invalid entries with clear, localized row-level feedback.
+   - Student re-import queries existing records by `(sekolah_id, nisn)` and maps their UUIDs, proving that updates happen in-place without generating duplicate student rows.
 
-3. **Time Boundary Isolation**:
-   - Observation: Interval overlap checks `sStart < bEnd && sEnd > bStart`.
-   - Deduction:
-     * Touching boundaries (schedule ends exactly at block start `08:00`, or schedule starts exactly at block end `10:00`) do not overlap (strict inequality).
-     * Minute intersections (e.g. `07:00-08:01` or `09:59-11:00`) overlap cleanly.
-   - Empirically verified: All 5 boundary permutation assertions passed.
-
-4. **Dual Journal Workflow**:
-   - Observation: In `GuruJurnal.tsx`, when `hasBlockedSchedule && !isBlok`, the mode dropdown becomes interactive, enabling the teacher to switch between `Jurnal KBM` and `Jurnal Kegiatan`.
-   - Deduction:
-     * For unblocked schedules (Schedule 3 and Schedule 4), teacher submits regular `Jurnal KBM`.
-     * For blocked schedules (Schedule 1 and Schedule 2), teacher submits `Jurnal Kegiatan`.
-     * In `workflow.ts`, complete duty requires `unblockedFulfilled` (each unblocked schedule has a matching KBM journal) and `blockedFulfilled` (blocked period covered by 1 `Jurnal Kegiatan`).
-   - Empirically verified: All partial and complete journal scenarios passed.
-
-5. **Presensi Pulang Fulfillment**:
-   - Observation: `workflow.ts` lines 993-1010 and `canTeacherPresensiPulang(state)`:
-     * When both journals and piket duties are fulfilled, `canPresensiPulang = true` and `lockedReason = null`.
-     * Additionally, per R2 rule (`canTeacherPresensiPulang`), any teacher with `presensiDatang` recorded can checkout directly without being blocked by journal requirements.
-     * Teachers on sick/leave (`isIzinSakit`) are properly blocked from checkout.
-   - Empirically verified: All 6 presensi pulang assertions passed.
+3. **Verification of Acceptance Criteria 3 (Zero Regression & Stability)**:
+   - Observation 1 demonstrates that all 54 existing test files in `npm test` continue to pass 100%.
+   - Observation 2 confirms that all 5 dedicated invariant and regression test suites pass 100%.
+   - Observation 5 verifies static type safety (`npx tsc --noEmit`) and production bundle buildability (`npm run build`).
 
 ---
 
 ## 3. Caveats
 
-1. **In-Memory vs Remote PostgREST Cache**:
-   If the remote Supabase PostgREST cache has not reloaded the migration columns (`tipe_target`, `is_full_day`, etc.), the codebase cleanly falls back to backward-compatible base fields without throwing runtime exceptions.
-2. **Review Scope Boundary**:
-   This evaluation was strictly limited to Milestone 2 requirements (workflow matching, schedule masking, and journal workflows) without altering implementation source code.
+- **NISN-less Students**: Students registered without an NISN (empty or `"-"`) are assigned genuine UUIDs and will not be deduplicated by NISN; this is expected behavior for unassigned/unregistered identification numbers.
+- No other caveats.
 
 ---
 
 ## 4. Conclusion
 
-**Verdict: APPROVE**
+The Milestone 2 implementation for "Penyelarasan Template Master Data & Impor CSV" satisfies all functional requirements and acceptance criteria in `ORIGINAL_REQUEST.md` and `PROJECT.md`. It preserves all test invariants and achieves zero regression across the entire automated test suite.
 
-Milestone 2 fully satisfies all empirical criteria:
-- Selective schedule masking accurately tags individual schedule items with `isBlocked: true` or `false`.
-- `dailyState.hasBlockedSchedule` accurately flags mixed days while keeping `dailyState.isBlok` false unless all schedules are blocked.
-- Dual journal workflow is fully functional in both UI (`HomeViewGuru.tsx`, `GuruJurnal.tsx`) and backend workflow logic (`workflow.ts`).
-- Presensi pulang requirements and R2 attendance flexibility are correctly satisfied.
-- 100% test pass across all verification suites (85 + 74 + 52 = 211 total tests, 0 failures).
+**VERDICT: APPROVE**
 
 ---
 
 ## 5. Verification Method
 
-To independently execute and verify all empirical tests:
+To independently verify the empirical results documented above, execute the following commands in the workspace root:
 
-```powershell
-# 1. Typecheck the entire codebase
-npx tsc --noEmit
+1. **Milestone 2 Invariant & Harmonization Suite**:
+   ```bash
+   npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts
+   ```
+   *Expected outcome*: 16/16 PASSED (0 failed).
 
-# 2. Run existing Sistem Blok verification suite (85 tests)
-npx tsx tests/sistem_blok_verification.test.ts
+2. **Milestone 2 Adversarial Stress Test Suite**:
+   ```bash
+   npx tsx tests/adversarial_m2_template_and_import_challenger.test.ts
+   ```
+   *Expected outcome*: 19/19 PASSED (0 failed).
 
-# 3. Run Milestone 2 schedule masking workflow suite (74 tests)
-npx tsx tests/m2_schedule_masking_workflow.test.ts
+3. **Core Regression & Invariant Suites**:
+   ```bash
+   npx tsx tests/production_admin_adjustments.test.ts
+   npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts
+   npx tsx tests/adversarial_r1_r5_stress_test.ts
+   npx tsx tests/adversarial_o27_m4_challenger.test.ts
+   npx tsx tests/adversarial_centralized_class_allocation_m1.test.ts
+   ```
+   *Expected outcome*: All suites exit with code 0 and 0 failures.
 
-# 4. Run Challenger M2-2 mixed schedule & dual journal stress suite (52 tests)
-npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
-```
+4. **Full Automated Project Regression Suite**:
+   ```bash
+   npm test
+   ```
+   *Expected outcome*: 54+ test files pass 100% with 0 failures.
 
-**Invalidation Conditions**:
-- Any assertion failure in `tests/challenger_m2_2_mixed_schedule_journal.test.ts`.
-- Any regression in `tests/sistem_blok_verification.test.ts`.
-- TypeScript compiler errors in `npx tsc --noEmit`.
+5. **Typecheck & Production Build Verification**:
+   ```bash
+   npx tsc --noEmit
+   npm run build
+   ```
+   *Expected outcome*: Both commands exit with code 0.

@@ -1,22 +1,23 @@
-## 2026-11-02T13:31:19Z
-You are challenger_m2_2.
-Your role: teamwork_challenger.
-Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\
-Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+## 2026-11-06T00:59:00Z
+You are a Teamwork Challenger for Milestone 2 (Penyelarasan Template Master Data & Impor CSV).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\
+Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
 Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
 
-TASK: Mixed Schedule & Journal Workflow Challenger for Milestone 2 (M2)
-1. Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m2/handoff.md.
-2. Formulate and execute empirical tests verifying:
-   - Mixed schedule simulation: Teacher with 4 schedules on the same day (2 blocked by class/time rule, 2 unblocked):
-     * Verify that blocked items are marked `isBlocked = true` and unblocked items have `isBlocked = false`.
-     * Verify `dailyState.hasBlockedSchedule = true` while `dailyState.isBlok` is true only when ALL are blocked.
-   - Dual journal workflow:
-     * Unblocked classes allow filling `Jurnal KBM`.
-     * Blocked classes allow filling `Jurnal Kegiatan`.
-     * Presensi pulang requirement correctly satisfied.
-   - Run verification commands: `npx tsc --noEmit` and `npx tsx tests/sistem_blok_verification.test.ts`.
-3. Provide empirical evidence in your handoff report.
-4. Render an explicit verdict: either APPROVE or REQUEST_CHANGES.
-5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\handoff.md` and message the orchestrator.
+You MUST read ORIGINAL_REQUEST.md and PROJECT.md before challenging.
+
+Your task:
+Empirically test regression safety, test invariants, and build verification across the codebase:
+1. Run the full automated test suite:
+   - `npm test` (must pass 100% across all test files with 0 failures).
+2. Run specific invariant test suites:
+   - `npx tsx tests/production_admin_adjustments.test.ts` (checks Kalender & Jadwal template invariants).
+   - `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts` (checks Guru template & CSV parsing).
+   - `npx tsx tests/adversarial_r1_r5_stress_test.ts`
+   - `npx tsx tests/adversarial_o27_m4_challenger.test.ts`
+   - `npx tsx tests/adversarial_centralized_class_allocation_m1.test.ts`
+3. Document test outcomes and state your final verdict:
+   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`
+   in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m2_2\handoff.md
+4. Send a brief message back to the orchestrator when done.

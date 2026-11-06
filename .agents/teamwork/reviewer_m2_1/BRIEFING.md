@@ -1,60 +1,65 @@
-# BRIEFING — 2026-11-02T13:36:30Z
+# BRIEFING — 2026-11-06T01:03:00Z
 
 ## Mission
-Review Milestone 2 (M2) implementation of Workflow Engine, Schedule Masking & Journal Workflows for correctness, edge cases, integrity, and test coverage.
+Independent quality review and adversarial challenge of Milestone 2: Penyelarasan Template Master Data & Impor CSV.
 
 ## 🔒 My Identity
-- Archetype: reviewer_m2_1
+- Archetype: reviewer
 - Roles: reviewer, critic
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: M2 - Workflow Engine, Schedule Masking & Journal Workflows
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: Milestone 2 (Penyelarasan Template Master Data & Impor CSV)
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Check for integrity violations (hardcoded test data, facades, shortcuts, self-certification)
-- Ground all findings in concrete file paths, line numbers, and evidence
-- Execute test and build verifications independently
+- Actively check for integrity violations (hardcoded test results, facade implementations, shortcuts, fabricated outputs)
+- Verify Requirements R2 & R3 and invariant guardrails strictly
+- Preserve Git Workflow Rule if applicable (subagent is review-only, but report accurately)
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: 2026-11-02T13:36:30Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T01:03:00Z
 
 ## Review Scope
 - **Files to review**:
-  - `src/lib/workflow.ts`
-  - `src/components/HomeViewGuru.tsx`
-  - `src/components/GuruJurnal.tsx`
-  - `tests/m2_schedule_masking_workflow.test.ts`
-  - `tests/sistem_blok_verification.test.ts`
-- **Interface contracts**: `PROJECT.md`, `ORIGINAL_REQUEST.md`, `worker_m2/handoff.md`
-- **Review criteria**: correctness, target matching, time overlap, journal fulfillment, edge cases, integrity
+  - `src/components/AdminDataView.tsx`
+  - `src/lib/dataIntegrityGuard.ts`
+  - `src/components/AdminKelasView.tsx`
+  - `tests/m2_csv_templates_and_import_harmonization.test.ts`
+  - `.agents/teamwork/worker_m2/handoff.md`
+- **Interface contracts**: `PROJECT.md`, `.agents/teamwork/ORIGINAL_REQUEST.md`
+- **Review criteria**: schema harmony across 7 master datasets, row-level validation feedback, invariant guardrails preservation, adversarial edge cases.
 
 ## Review Checklist
 - **Items reviewed**:
-  - `src/lib/workflow.ts` (getActiveSistemBloks, isKelasInAngkatan, isTimeRangeOverlap, evaluateScheduleBlock, getGuruDailyState)
-  - `src/components/HomeViewGuru.tsx` (schedule masking, mixed schedule indicators, block activity banners, progress tracker)
-  - `src/components/GuruJurnal.tsx` (dual-mode journal switcher, auto-selection, form field adaptation)
-  - `tests/m2_schedule_masking_workflow.test.ts` (74 tests)
-  - `tests/sistem_blok_verification.test.ts` (85 tests)
-- **Verdict**: APPROVE (with minor adversarial observations noted)
-- **Unverified claims**: All verified independently via execution and source inspection.
+  - `src/components/AdminDataView.tsx` (templates definition, download handler, handleFileUpload, cross-event dispatch)
+  - `src/lib/dataIntegrityGuard.ts` (normalizeCsvHeaders, parseAndValidateMasterCsv, importMasterDataFromCsv)
+  - `src/components/AdminKelasView.tsx` (Template CSV download, Impor CSV upload, sipjam:kelas-updated listener)
+  - `tests/m2_csv_templates_and_import_harmonization.test.ts` (16 test assertions)
+  - Full regression test suites (`production_admin_adjustments.test.ts`, `data_guru_csv_import_sekolah_id_validation.test.ts`, `adversarial_centralized_class_allocation_m1.test.ts`, `sistem_blok_verification.test.ts`)
+- **Verdict**: APPROVE
+- **Unverified claims**: 0 remaining (all verified empirically)
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Target matching: Arabic/Roman numerals boundary collision (X vs XI/XII) -> protected by boundary lookahead.
-  - Time overlap: interval arithmetic on boundaries (equal times do not overlap, strict inside/enclosing overlap) -> correctly implemented.
-  - Mixed schedule journal fulfillment: checking whether Jurnal Kegiatan alone bypasses unblocked KBM fulfillment (`|| state.jurnalKegiatan` in workflow.ts:985) -> identified as an adversarial edge-case caveat.
-  - Substring teacher matching: `targetGuruNama` using `.includes()` -> identified minor risk if two teachers share substring names without UUID.
-- **Vulnerabilities found**: No blocking defects. Two non-blocking edge-case observations.
-- **Untested angles**: Full regression suite currently executing.
+  - Incompatible template uploaded to master data tab -> caught upfront by `REQUIRED_HEADERS_BY_TABLE`.
+  - Non-UUID or legacy IDs in Kalender/Jadwal -> prevented by omitting `id` in templates and auto-generating valid UUIDs in parser.
+  - Missing or blank `nama_kelas` -> rejected with exact row error `Baris ${i}`.
+  - Excel apostrophe prefixes on NISN/NIP/Phone -> stripped.
+  - Semicolon/Tab/Pipe delimiters -> auto-detected.
+  - Re-uploading student CSV -> matched by `(sekolah_id, nisn)` and updated in-place without duplicate rows.
+  - Missing `data_kelas` table in PostgREST schema cache -> graceful fallback to `wali_kelas`.
+- **Vulnerabilities found**: None that compromise data integrity or violate requirements.
+- **Untested angles**: None within Milestone 2 scope.
 
 ## Key Decisions Made
-- All M2 implementation requirements from ORIGINAL_REQUEST (R1, R2, R3) and PROJECT.md are satisfied.
-- Verdict is APPROVE with documented non-blocking adversarial findings.
+- Confirmed zero integrity violations: no hardcoded outputs, facade implementations, or bypasses.
+- Confirmed all invariant guardrails are preserved.
+- Issued verdict: `VERDICT: APPROVE`.
 
 ## Artifact Index
-- `handoff.md` — Final review and adversarial challenge report
-- `progress.md` — Liveness and progress tracker
-- `DISPATCH.md` — Dispatch record
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\handoff.md` — Final review and challenge report
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\progress.md` — Liveness heartbeat
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\BRIEFING.md` — Persistent working memory
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\DISPATCH.md` — Dispatch logs

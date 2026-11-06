@@ -1,21 +1,28 @@
-## 2026-11-02T13:30:53Z
-You are reviewer_m2_1.
-Your role: teamwork_reviewer.
-Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\
-Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+## 2026-11-06T00:58:41Z
+You are a Teamwork Reviewer for Milestone 2 (Penyelarasan Template Master Data & Impor CSV).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\
+Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
 Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
 
-TASK: Code Correctness Review for Milestone 2 (M2) — Workflow Engine, Schedule Masking & Journal Workflows
-1. Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m2/handoff.md.
-2. Review implementation in:
-   - `src/lib/workflow.ts` (matching functions: getActiveSistemBloks, isKelasInAngkatan, isTimeRangeOverlap, evaluateScheduleBlock, getGuruDailyState)
-   - `src/components/HomeViewGuru.tsx` (schedule masking rendering and mixed schedule card displays)
-   - `src/components/GuruJurnal.tsx` (journal workflow toggle between Jurnal KBM and Jurnal Kegiatan)
-3. Verify:
-   - Target matching correctness: sekolah, angkatan, kelas, guru.
-   - Time overlap correctness: full-day default vs interval overlap (`sStart < bEnd && sEnd > bStart`).
-   - Journal fulfillment correctness: teachers affected by block can fill Jurnal Kegiatan, unaffected schedules fill Jurnal KBM.
-   - Run verification commands: `npx tsc --noEmit`, `npx tsx tests/sistem_blok_verification.test.ts`, and `npx tsx tests/m2_schedule_masking_workflow.test.ts`.
-4. Render an explicit verdict in your handoff report: either APPROVE or REQUEST_CHANGES.
-5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\handoff.md` and message the orchestrator.
+You MUST read ORIGINAL_REQUEST.md and PROJECT.md before reviewing.
+
+Scope of Review:
+1. Examine implementation changes in:
+   - `src/components/AdminDataView.tsx` (templates record, download handler, handleFileUpload, cross-event dispatch)
+   - `src/lib/dataIntegrityGuard.ts` (normalizeCsvHeaders, parseAndValidateMasterCsv, importMasterDataFromCsv)
+   - `src/components/AdminKelasView.tsx` (direct CSV download/upload buttons, sipjam:kelas-updated event listener)
+2. Verify Requirements R2 & R3:
+   - Are all 7 master data templates (Kelas, Siswa, Guru, Mapel, Kalender, Jadwal, Wali Kelas) harmonized with database schemas?
+   - Does CSV parsing, validation, and feedback report exact row errors (`Baris ${i}`)?
+   - Are existing invariant guardrails strictly preserved?
+     * Kalender & Jadwal templates omit `'id'`
+     * Guru template includes `'sekolah_id'`
+     * `showToast('Unggah Berhasil', ...)` is retained
+3. Run verification commands:
+   - `npx tsc --noEmit`
+   - `npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts`
+4. Document observations, logic chain, caveats, and state your final verdict:
+   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`
+   in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m2_1\handoff.md
+5. Send a brief message back to the orchestrator when done.
