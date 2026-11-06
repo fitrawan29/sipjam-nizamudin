@@ -1,21 +1,23 @@
-## 2026-11-02T13:00:07Z
-You are reviewer_m1_2.
-Your role: teamwork_reviewer.
-Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\
-Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+## 2026-11-06T00:24:05Z
+You are a Teamwork Reviewer for Milestone 1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\
+Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
 Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
 
-TASK: Adversarial Code & Architecture Review for Milestone 1 (M1) — Schema, Types, and Admin UI
-1. Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m1/handoff.md.
-2. Review implementation in:
-   - `supabase/migrations/20261102_flexible_sistem_blok.sql`
-   - `src/types/database.ts`
-   - `src/components/SistemBlokView.tsx`
-3. Stress-test review:
-   - Are there SQL constraint violations, missing indexes, or schema cache issues?
-   - In `SistemBlokView.tsx`, what happens if a teacher is deleted or has null name? What if a class has unusual formatting?
-   - Are edit operations preserving target and time range fields accurately without data loss?
-   - Run verification commands: `npx tsc --noEmit` and `npx tsx tests/sistem_blok_verification.test.ts`.
-4. Render an explicit verdict in your handoff report: either APPROVE or REQUEST_CHANGES.
-5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\handoff.md` and message the orchestrator.
+You MUST read ORIGINAL_REQUEST.md and PROJECT.md before reviewing.
+
+Scope of Review:
+1. Examine architecture, security boundaries, and multi-tenant isolation:
+   - Are mutations strictly scoped to `sekolah_id = user.sekolah_id`?
+   - Is RBAC enforced via `isMasterDataModificationAllowed(user?.role)`?
+   - Does `evaluateTabRBAC` block non-admin roles from accessing `view-admin-kelas` or the `Data_Kelas` tab?
+   - Are route aliases `'view-admin-kelas'` and `'view-kelas'` registered in `src/lib/navigation.ts` without conflicting with existing views?
+2. Run verification commands:
+   - `npx tsx tests/master_data_admin_role_restriction.test.ts`
+   - `npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts`
+   - `npx tsc --noEmit`
+3. Document observations, logic chain, caveats, and state your final verdict clearly:
+   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`
+   in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\handoff.md
+4. Send a brief message back to the orchestrator when done.

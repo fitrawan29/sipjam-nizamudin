@@ -1,126 +1,126 @@
-# Independent Code Review & Adversarial Analysis Report — Milestone 1 (M1)
+# Handoff Report: Milestone 1 Quality & Adversarial Review
 
-**Reviewer**: `reviewer_m1_1`  
-**Roles**: `reviewer`, `critic`  
-**Milestone**: Milestone 1 (M1) — Schema, Types, and Admin UI for Flexible Sistem Blok  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\`  
-**Date**: 2026-11-02  
-**Verdict**: **APPROVE**
+**Agent**: `reviewer_m1_1` (Roles: Reviewer, Critic)  
+**Milestone**: Milestone 1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa)  
+**Date**: 2026-11-06  
+**Final Verdict**: `VERDICT: APPROVE`
 
 ---
 
 ## 1. Observation
 
-### 1.1 Reviewed Work Products
-1. `supabase/migrations/20261102_flexible_sistem_blok.sql` (Lines 1–53):
-   - Adds target columns: `tipe_target TEXT NOT NULL DEFAULT 'sekolah'`, `target_angkatan TEXT DEFAULT NULL`, `target_kelas TEXT DEFAULT NULL`, `target_guru_id UUID REFERENCES public.data_guru(id) ON DELETE SET NULL DEFAULT NULL`, `target_guru_nama TEXT DEFAULT NULL`.
-   - Adds time range columns: `is_full_day BOOLEAN NOT NULL DEFAULT true`, `jam_mulai TEXT DEFAULT NULL`, `jam_selesai TEXT DEFAULT NULL`.
-   - Implements idempotent check constraint `sistem_blok_tipe_target_check` verifying `tipe_target IN ('sekolah', 'angkatan', 'kelas', 'guru')`.
-   - Executes idempotent backfill updates for legacy records: `UPDATE public.sistem_blok SET tipe_target = 'sekolah' WHERE tipe_target IS NULL` and `UPDATE public.sistem_blok SET is_full_day = true WHERE is_full_day IS NULL`.
-   - Creates composite and single performance indexes: `idx_sistem_blok_tipe_target`, `idx_sistem_blok_target_angkatan`, `idx_sistem_blok_target_kelas`, `idx_sistem_blok_target_guru_id`, `idx_sistem_blok_time_range`.
-   - Emits PostgREST schema cache reload signal: `NOTIFY pgrst, 'reload schema'`.
+Direct observations and evidence verified in the repository:
 
-2. `src/types/database.ts` (Lines 9, 1413–1483, 2005):
-   - Line 9: Exports `export type TargetBlokType = 'sekolah' | 'angkatan' | 'kelas' | 'guru';`.
-   - Lines 1413–1483: Updates `Database["public"]["Tables"]["sistem_blok"]` `Row`, `Insert`, and `Update` interfaces with all 8 new fields and the `sistem_blok_target_guru_id_fkey` foreign key relationship.
-   - Line 2005: `export type SistemBlok = Tables<"sistem_blok">;` automatically exposes all new fields to component consumers.
+1. **Sub Menu Kelas Navigation & Access**:
+   - In `src/components/AdminDataView.tsx`:
+     - Line 119: Added `{ id: 'Data_Kelas', label: 'Kelas', table: 'data_kelas' }` positioned immediately following `Data_Siswa` in master data `tabs`.
+     - Lines 42–49: Implemented `normalizeAdminTab(tab?: string)` which normalizes `'data_kelas'`, `'kelas'`, `'Kelas'`, and `'Data_Kelas'` to `'Data_Kelas'`.
+     - Line 130: `loadData()` immediately short-circuits on `activeTab === 'Data_Kelas'`, preventing generic table querying of `data_kelas` before Milestone 2.
+     - Lines 1935–1939: Top-level conditional branch renders `<AdminKelasView user={user} />` when `activeTab === 'Data_Kelas'`.
+   - In `src/lib/navigation.ts`:
+     - Lines 38–39: Registered aliases `'view-admin-kelas'` and `'view-kelas'` in `VIEW_ALIASES` mapping to `{ view: 'view-admin-data', tab: 'Data_Kelas' }`.
+     - Line 50: Registered `'view-admin-kelas'` and `'view-kelas'` in `SIDEBAR_TOUR_ALIASES['view-admin-data']`.
+     - Lines 97 & 151: Sidebar items include `'view-admin-kelas'` in `dataTour`.
+     - Lines 228–238: Hardened `evaluateTabRBAC` to block non-admin roles from accessing `view-admin-kelas`, `view-kelas`, and tabs `Data_Kelas`, `data_kelas`, `Kelas`, `kelas`.
 
-3. `src/components/SistemBlokView.tsx` (Lines 1–1282):
-   - Lines 52–91: State management for all 4 target scopes and time boundaries (`tipeTarget`, `targetAngkatan`, `targetKelas`, `targetGuruId`, `targetGuruNama`, `isFullDay`, `jamMulai`, `jamSelesai`).
-   - Lines 131–190: Dynamic fetching of teachers from `data_guru` and classes from `data_siswa` / `jadwal_pelajaran` scoped by `user.sekolah_id`, with fallback classes if none exist.
-   - Lines 193–210: Deterministic derivation of angkatan options (10, 11, 12) from class names via regular expression matching.
-   - Lines 257–276: Add form validation: requires non-empty name, chronological dates (`tanggalSelesai >= tanggalMulai`), target-specific selections (angkatan/kelas/guru), and non-empty valid time ordering (`jamMulai < jamSelesai`) when not full day.
-   - Lines 280–295: Clean payload mapping with sanitization (sets non-selected target attributes to `null` to prevent data cross-contamination).
-   - Lines 299–312: PostgREST schema cache delay resilience fallback (`PGRST204` / column missing fallback to base payload).
-   - Lines 328–346: `openEditModal` pre-populates all target scope and time range fields from existing records, with safe fallbacks for legacy nulls (`item.tipe_target || 'sekolah'`, `item.is_full_day ?? true`).
-   - Lines 367–404: Edit form validation and clean payload construction matching add submission.
-   - Lines 931–968: Rendering of informative visual badges on rule cards: "Semua Sekolah", "Angkatan {X}", "Kelas {X}", "Guru: {Nama}", alongside "Sepanjang Hari" or "{jam_mulai} - {jam_selesai}".
+2. **Class Directory Display & Centralized Allocation Component (`src/components/AdminKelasView.tsx`)**:
+   - Lines 53–59: Helper `parseTingkat(nama)` reliably extracts grade levels (`'10'`, `'11'`, `'12'`, `'Lainnya'`).
+   - Lines 64–68: Helper `isUnassignedClass(k)` identifies unallocated student placeholders (`null`, `''`, `'-'`, `'tanpa kelas'`, `'belum ada'`).
+   - Lines 197–284: `consolidatedClasses` groups and synthesizes data across `dbClasses` (`data_kelas`), in-memory created classes (`customClasses`), active students (`data_siswa.kelas`), and homeroom teachers (`wali_kelas`).
+   - Lines 718–792: Executive statistics banner renders Total Kelas, Siswa Teralokasi, and Siswa Tanpa Kelas with quick click action.
+   - Lines 797–821: Alert warning banner is displayed when `unassignedStudents.length > 0` with quick launcher button `Alokasikan Sekarang`.
+   - Lines 834–898: Toolbar includes search (filtering class name, homeroom teacher, and major/jurusan), grade pills filter (`ALL`, `10`, `11`, `12`), "+ Tambah Kelas Baru" launcher, and "Naik Kelas" button triggering `NaikKelasModal.tsx`.
+   - Lines 933–1057: Responsive grid renders class directory cards displaying class name, grade pill, homeroom teacher (`wali_kelas.nama_guru` or italicized "Belum ditentukan"), total students, and male/female breakdown badges.
+   - Lines 1063–1519: Centralized Allocation Workspace Slide-over Drawer:
+     * Tab 1: Interactive roster table with search, multi-selection checkboxes, and batch move action ("Pindahkan Siswa" to another class, unassigned pool, or "Lulus").
+     * Tab 2: Inbound allocation ("+ Alokasikan Siswa Masuk") filtering unassigned students vs other classes, multi-select, and batch allocation into the target class.
+   - Lines 1524–1707: Standalone Quick Unassigned Students Drawer with search, multi-selection, target class dropdown, and one-click allocation.
 
-4. `tests/m1_flexible_sistem_blok.test.ts` (Lines 1–333):
-   - 41 test cases covering migration file structure, TypeScript type contracts, UI controls, validation logic, edit modal binding, and badge rendering.
+3. **Class Management Mutations & Integrity Safeguards**:
+   - Class Creation (Lines 331–411): `handleAddClass` validates non-empty and non-duplicate class names via SweetAlert2, inserts into `data_kelas` with graceful fallback on `PGRST205` / missing table error, and updates local state.
+   - Cascading Rename (Lines 414–504): `handleRenameClass` cascades updates across:
+     * `data_siswa.kelas` where `sekolah_id = user.sekolah_id` and `kelas = oldName` (Line 445)
+     * `wali_kelas.kelas` with defensive check to prevent `23505` unique constraint collision (Lines 453–466)
+     * `jadwal_pelajaran.kelas` where `sekolah_id = user.sekolah_id` and `kelas = oldName` (Line 474)
+     * `data_kelas.nama_kelas` where `sekolah_id = user.sekolah_id` and `nama_kelas = oldName` (Line 486)
+   - Zero-Student Delete Protection (Lines 507–559): `handleDeleteClass` strictly blocks deletion if `cls.totalSiswa > 0`, displaying a modal warning requiring students to be moved first.
+   - RBAC Guard (Lines 699–711): Non-admin users are blocked with an "Akses Terblokir" lock screen if they bypass client navigation.
+   - Optimistic Rollback (Lines 592–628 & 654–687): In-memory student state is optimistically updated and automatically reverted if Supabase mutation fails.
 
-### 1.2 Independent Verification Results
-- **TypeScript Static Compilation**:
-  * Command: `npx tsc --noEmit`
-  * Result: Exit code 0 (zero errors, 0 warnings).
-- **Existing Sistem Blok Verification Test**:
-  * Command: `npx tsx tests/sistem_blok_verification.test.ts`
-  * Result: 85 passed, 0 failed.
-- **Milestone 1 Verification Test**:
-  * Command: `npx tsx tests/m1_flexible_sistem_blok.test.ts`
-  * Result: 41 passed, 0 failed.
-- **Next.js Production Build**:
-  * Command: `npm run build`
-  * Result: Compiled successfully in 2.1s, static page generation 13/13 completed with exit code 0.
+4. **Automated Verification Command Execution**:
+   - `npx tsc --noEmit`: Exited with code 0 (zero type errors).
+   - `npm test`: Exited with code 0 across all 54 test files (100% pass rate, zero regressions).
+   - `npx tsx tests/master_data_admin_role_restriction.test.ts`: Passed 8/8 tests.
+   - `npx tsx tests/challenger_m1_empirical.test.ts`: Passed 143/143 tests.
+
+5. **Integrity Violation Assessment**:
+   - Hardcoded test results / expected outputs: None detected.
+   - Facade or dummy implementations: None detected. All database queries and mutations use genuine Supabase PostgREST endpoints with multi-tenant filtering (`sekolah_id`).
+   - Shortcuts bypassing intended requirements: None detected. Full 1728 lines of robust React component logic.
+   - Fabricated verification: None detected; verified independently with live test runs.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Requirement R1 (Target Scopes)**:
-   - Observation 1.1 shows SQL migration adding `tipe_target` with check constraint for `'sekolah'`, `'angkatan'`, `'kelas'`, `'guru'`, and dedicated target columns.
-   - Observation 1.2 confirms `TargetBlokType` and `SistemBlok` types accurately reflect this schema.
-   - Observation 1.3 confirms the admin interface renders segmented buttons and contextual selectors for all 4 target levels, backed by strict client-side validations.
-   - Inference: Requirement R1 is fully and correctly satisfied for Milestone 1.
-
-2. **Requirement R2 (Time Ranges)**:
-   - Observation 1.1 shows `is_full_day`, `jam_mulai`, and `jam_selesai` columns in SQL migration.
-   - Observation 1.3 shows toggle switch defaulting to full-day, with start/end time pickers enabled when unchecked, strictly validating `jam_mulai < jam_selesai`.
-   - Inference: Requirement R2 is fully satisfied in schema, types, and admin UI.
-
-3. **Backward Compatibility & Robustness**:
-   - Observation 1.1 shows default values `tipe_target = 'sekolah'` and `is_full_day = true`, plus backfill queries for existing nulls.
-   - Observation 1.3 shows UI fallback handling for legacy records (`item.tipe_target || 'sekolah'`, `item.is_full_day ?? true`).
-   - Observation 1.2 shows that all 85 existing tests in `tests/sistem_blok_verification.test.ts` pass without regression.
-   - Inference: Full backward compatibility is preserved.
-
-4. **Adversarial Integrity Audit**:
-   - Reviewed code for hardcoding, shortcuts, facade implementations, or fake assertions.
-   - All tests use genuine filesystem reads, real TypeScript type assignments, and genuine live Supabase CRUD operations.
-   - Inference: Zero integrity violations detected.
+1. **Requirement R1 Fulfillment**:
+   - *Sub menu Kelas access*: Verified in `AdminDataView.tsx` (tab `Data_Kelas`), with canonical routes and aliases in `navigation.ts`.
+   - *Class directory and metrics*: Verified in `AdminKelasView.tsx` with responsive cards showing class names, homeroom teachers, enrolled student counts, and gender distribution.
+   - *Centralized student allocation*: Verified through two dedicated slide-over drawers allowing bidirectional student allocation (outbound transfer, inbound placement, and quick assignment of unallocated students).
+   - *Class creation, cascading rename, delete protection*: Verified through complete modal workflows, multi-table cascading updates, and zero-student deletion guards.
+2. **Data & Multi-Tenant Integrity**:
+   - Every Supabase mutation in `AdminKelasView.tsx` (`data_siswa`, `wali_kelas`, `jadwal_pelajaran`, `data_kelas`) explicitly includes `.eq('sekolah_id', sekolahId)`.
+   - Cascading rename guards against `wali_kelas` unique constraint violations (`uq_wali_kelas_sekolah_kelas`).
+   - In-memory state changes feature rollback handlers ensuring the UI never goes out of sync with the database if network errors occur.
+3. **Preservation of Existing Invariants (R4 - Zero Regression)**:
+   - `AdminDataView.tsx` short-circuits generic data loading when `Data_Kelas` is active, avoiding interference with other master data tabs.
+   - Full regression test suite (`npm test`) passed 54 test files without any broken assertions.
+   - TypeScript compilation completed cleanly with zero warnings or errors.
 
 ---
 
 ## 3. Caveats
 
-- **Milestone 2 Workflow Execution**:
-  * Milestone 1 delivers the schema, types, and admin configuration UI.
-  * Granular schedule masking (`workflow.ts`, `HomeViewGuru.tsx`) and journal entry workflows (`GuruJurnal.tsx`) for non-school scopes and non-full-day intervals are scheduled for Milestone 2 as specified in `PROJECT.md`.
-- No caveats regarding Milestone 1 deliverables.
+1. **Physical `data_kelas` Table Synchronization (Milestone 2 Scope)**:
+   - While `AdminKelasView.tsx` safely falls back to student-inferred classes when the physical `data_kelas` table is not yet migrated, full CSV template download/upload for `Template_Data_Kelas.csv` and header normalization in `dataIntegrityGuard.ts` are scheduled for Milestone 2.
+2. **Cohort Advancement for Large Student Populations**:
+   - Multi-student batch transfer in the workspace drawer is intended for class-level or cross-class reallocations. For whole-cohort bulk advancement (e.g. promoting all grade 10 students to grade 11), administrators should use the "Naik Kelas" button which launches `NaikKelasModal.tsx`.
 
 ---
 
 ## 4. Conclusion
 
-**Verdict: APPROVE**
+The implementation of Milestone 1 (`src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, and `src/lib/navigation.ts`) satisfies all requirements under Requirement R1:
+- Sub menu Kelas is seamlessly integrated into Admin Master Data.
+- Class directory displays comprehensive cards with homeroom teachers, student counts, and gender breakdown.
+- Student class allocation is centralized with interactive multi-selection, batch transfers, and unassigned student placement.
+- Class creation, cascading renames, and zero-student deletion protection are fully operational with multi-tenant scoping and optimistic rollback safety.
+- Automated type checking and full regression test suites pass with 100% success.
+- Zero integrity violations were found.
 
-The work product delivered by `worker_m1` for Milestone 1 meets all acceptance criteria:
-1. Migration file `supabase/migrations/20261102_flexible_sistem_blok.sql` is canonical, idempotent, and production-ready.
-2. TypeScript types in `src/types/database.ts` provide complete type safety and ergonomics.
-3. Admin UI in `src/components/SistemBlokView.tsx` features seamless target selection, dynamic selectors, time boundary controls, robust validation, schema cache fallback resilience, and clear badges.
-4. All test suites (`tsc --noEmit`, `sistem_blok_verification.test.ts`, `m1_flexible_sistem_blok.test.ts`, and `npm run build`) pass cleanly with 0 errors.
+**VERDICT: APPROVE**
 
 ---
 
 ## 5. Verification Method
 
-To independently verify this verdict:
+To independently reproduce and verify this review:
 
-```bash
-# 1. Type check
-npx tsc --noEmit
+1. **Static Type Checking**:
+   ```powershell
+   npx tsc --noEmit
+   ```
+   *Expected outcome*: Exits with code 0 and zero compilation errors.
 
-# 2. Existing regression suite (85 tests)
-npx tsx tests/sistem_blok_verification.test.ts
+2. **Master Data RBAC and Aliasing Verification**:
+   ```powershell
+   npx tsx tests/master_data_admin_role_restriction.test.ts
+   npx tsx tests/challenger_m1_empirical.test.ts
+   ```
+   *Expected outcome*: All checks pass (8/8 and 143/143).
 
-# 3. Milestone 1 test suite (41 tests)
-npx tsx tests/m1_flexible_sistem_blok.test.ts
-
-# 4. Production build check
-npm run build
-```
-
-Invalidation conditions:
-- Any TypeScript error emitted by `tsc --noEmit`.
-- Any test failure in `tests/sistem_blok_verification.test.ts` or `tests/m1_flexible_sistem_blok.test.ts`.
-- Failure in `npm run build`.
+3. **Full Regression Suite Gate**:
+   ```powershell
+   npm test
+   ```
+   *Expected outcome*: All 54 test files pass with code 0.

@@ -1,21 +1,23 @@
-## 2026-11-02T12:59:58Z
-You are reviewer_m1_1.
-Your role: teamwork_reviewer.
-Your working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\
-Original request file: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-Scope document: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+## 2026-11-06T00:23:59Z
+You are a Teamwork Reviewer for Milestone 1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\
+Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
 Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
 
-TASK: Independent Code Review for Milestone 1 (M1) — Schema, Types, and Admin UI for Flexible Sistem Blok
-1. Read ORIGINAL_REQUEST.md, PROJECT.md, and worker_m1/handoff.md.
-2. Review the code changes made in:
-   - `supabase/migrations/20261102_flexible_sistem_blok.sql`
-   - `src/types/database.ts`
-   - `src/components/SistemBlokView.tsx`
-3. Verify:
-   - Correctness: Target types (sekolah, angkatan, kelas, guru) and time ranges (is_full_day, jam_mulai, jam_selesai) accurately represented and validated.
-   - Robustness: Form handles missing/null data gracefully; backward compatibility preserved for legacy rows without targets.
-   - UI/UX: Dependent dropdowns operate cleanly, informative badges render correctly.
-   - Run verification commands: `npx tsc --noEmit` and `npx tsx tests/sistem_blok_verification.test.ts`.
-4. Render an explicit verdict in your handoff report: either APPROVE or REQUEST_CHANGES.
-5. Write your handoff report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\handoff.md` and message the orchestrator.
+You MUST read ORIGINAL_REQUEST.md and PROJECT.md before reviewing.
+
+Scope of Review:
+1. Examine the implementation of `src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, and `src/lib/navigation.ts`.
+2. Verify correctness and completeness for Requirement R1:
+   - Is sub menu Kelas accessible in Admin Master Data?
+   - Is the class list displayed with student counts and homeroom teachers?
+   - Is student class allocation centralized here (roster view, batch moving students between classes, assigning unallocated students)?
+   - Are class creation, cascading rename, and zero-student delete protection properly handled?
+3. Run verification commands:
+   - `npx tsc --noEmit`
+   - `npm test`
+4. Document observations, logic chain, caveats, and state your final verdict clearly:
+   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`
+   in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\handoff.md
+5. Send a brief message back to the orchestrator when done.

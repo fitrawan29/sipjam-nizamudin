@@ -1,118 +1,114 @@
-# Forensic Integrity Audit Report — Milestone 1 (M1): Flexible Sistem Blok
+# Forensic Integrity Audit Report: Milestone 1
 
-**Work Product**: Milestone 1 — Schema, Types, and Admin UI for Flexible Sistem Blok  
-**Auditor**: `auditor_m1_1`  
+**Work Product**: Milestone 1 Implementation (Commit `a7c1892` and modified files)  
 **Profile**: General Project  
-**Integrity Enforcement Mode**: Development Mode (as specified in `ORIGINAL_REQUEST.md`)  
-**Verdict**: **CLEAN**  
+**Integrity Mode**: `development` (per `ORIGINAL_REQUEST.md`)  
+**Auditor**: `auditor_m1_1`  
+**Verdict**: VERDICT: CLEAN  
 
 ---
 
-## Executive Summary
+## 1. Observation
 
-An independent, rigorous forensic integrity audit was conducted on all deliverables submitted by `worker_m1` for Milestone 1 (Flexible Sistem Blok: Target Scopes & Time Ranges). All deliverables were inspected at the source code level, tested against adversarial boundary conditions, and independently executed against the test runner, TypeScript compiler, and Next.js 16 production build.
+Direct empirical observations from source inspection, git logs, and test execution:
 
-No evidence of hardcoded test results, facade implementations, dummy bypasses, test tampering, or fabricated outputs was found. The implementation is authentic, fully typed, resilient against schema cache latency, and backward-compatible with 100% of existing functionality.
+1. **Git Commit & Repository State**:
+   - `git status` confirmed `On branch main` and `Your branch is up to date with 'origin/main'`.
+   - `git log -n 3 --oneline` confirmed commit `a7c1892 feat: tambahkan sub menu kelas dan pemusatan penentuan kelas siswa pada master data` is pushed cleanly to `origin/main`.
+   - `git show --stat a7c1892` demonstrated that zero test files were modified or tampered with in commit `a7c1892`. The only non-metadata files modified were `PROJECT.md`, `src/components/AdminDataView.tsx`, `src/components/AdminKelasView.tsx`, and `src/lib/navigation.ts`.
+
+2. **Source Code Integrity (`src/components/AdminKelasView.tsx`)**:
+   - Total lines: 1728 lines of genuine React/TypeScript implementation.
+   - Genuine Supabase queries:
+     * `data_siswa`: lines 130–135 (`supabase.from('data_siswa').select(...).eq('sekolah_id', sekolahId).order('nama_siswa', { ascending: true })`).
+     * `wali_kelas`: lines 141–145 (`supabase.from('wali_kelas').select(...).eq('sekolah_id', sekolahId)`).
+     * `data_kelas`: lines 154–159 (`supabase.from('data_kelas').select(...).eq('sekolah_id', sekolahId)` with fallback to distinct student/wali classes).
+   - Genuine Supabase mutations:
+     * Add class: lines 388–401 (`supabase.from('data_kelas').insert(...)`).
+     * Cascading class rename: lines 442–490 (updates `data_siswa.kelas`, `wali_kelas.kelas`, `jadwal_pelajaran.kelas`, and `data_kelas.nama_kelas`).
+     * Delete class: lines 535–550 (deletes from `data_kelas` and `wali_kelas`).
+     * Batch student transfer: lines 614–623 (`supabase.from('data_siswa').update({ kelas: newKelas, status: newStatus }).in('id', studentIds).eq('sekolah_id', sekolahId)`).
+     * Inbound student allocation: lines 674–683 (`supabase.from('data_siswa').update({ kelas: destClass.trim(), status: 'Aktif' }).in('id', studentIds).eq('sekolah_id', sekolahId)`).
+   - Zero hardcoded test results, zero dummy facade returns, zero mock arrays, zero test bypasses (grep for `mock`, `dummy`, `fake`, `stub`, `todo` returned 0 matches).
+   - Robust optimistic state handling with rollback protection (e.g. line 626: `setAllStudents(previousStudents)` on error).
+   - Defensive delete protection: lines 512–519 block class deletion if `cls.totalSiswa > 0`.
+   - RBAC enforcement: lines 699–711 display locked card for non-admin users.
+
+3. **Master Data Tab & Aliasing Integration (`src/components/AdminDataView.tsx` & `src/lib/navigation.ts`)**:
+   - `AdminDataView.tsx`: Tab `{ id: 'Data_Kelas', label: 'Kelas', table: 'data_kelas' }` registered right after `Data_Siswa` (line 117); `normalizeAdminTab` cleanly normalizes `Data_Kelas`, `data_kelas`, `Kelas`, `kelas` (lines 42–49); `loadData` short-circuits on `activeTab === 'Data_Kelas'` (line 130); `<AdminKelasView user={user} />` rendered in dedicated branch (lines 1935–1939).
+   - `navigation.ts`: Route aliases `'view-admin-kelas'` and `'view-kelas'` registered in `VIEW_ALIASES` (lines 38–39) and `SIDEBAR_TOUR_ALIASES` (line 50); `evaluateTabRBAC` blocks non-admin access (lines 228–238).
+
+4. **Independent Execution & Typecheck Results**:
+   - `npx tsc --noEmit`: Exited with code 0 (0 compilation errors).
+   - `npx tsx tests/master_data_admin_role_restriction.test.ts`: Exited with code 0 (8/8 tests passed).
+   - `npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts`: Exited with code 0 (16/16 checks passed, confirming all master data records 100% intact).
+   - `npm test`: Exited with code 0 across the entire regression test suite (all 54 test files passed 100% with zero regressions).
 
 ---
 
-## Forensic Verification Findings
+## 2. Logic Chain
 
-| # | Forensic Check | Expected Standard | Observed Implementation | Result |
-|---|----------------|-------------------|-------------------------|:------:|
-| 1 | **Hardcoded Output Detection** | Zero hardcoded test outcomes, return constants, or fake bypass flags | Source inspection of `SistemBlokView.tsx`, `database.ts`, and `20261102_flexible_sistem_blok.sql` shows genuine, data-driven logic. | **PASS** |
-| 2 | **Facade Implementation Detection** | Real logic connecting forms, validations, state, and Supabase client | Full state binding, conditional input rendering, multi-target validation, and live Supabase queries implemented. | **PASS** |
-| 3 | **Fabricated Output Detection** | No pre-generated or cached test results | All verification commands executed fresh in real time with clean exits. | **PASS** |
-| 4 | **Database Schema Authenticity** | Canonical DDL with check constraints, foreign keys, backfill, and indexes | `supabase/migrations/20261102_flexible_sistem_blok.sql` contains authentic DDL (`ADD COLUMN IF NOT EXISTS`, `CHECK`, `REFERENCES data_guru(id)`, `CREATE INDEX`, `NOTIFY pgrst`). | **PASS** |
-| 5 | **TypeScript Type Conformance** | Robust types without any-casts or dummy hacks | `src/types/database.ts` exports `TargetBlokType`, updates `sistem_blok` Row/Insert/Update, and provides foreign key relationship. `npx tsc --noEmit` passes with 0 errors. | **PASS** |
-| 6 | **Test Suite Authenticity** | Genuine test assertions verifying real files and schemas without weakening | `tests/sistem_blok_verification.test.ts` (85/85) and `tests/m1_flexible_sistem_blok.test.ts` (41/41) perform real file reads and functional validations. | **PASS** |
-| 7 | **Zero Regression & Production Build** | Existing app features and production build remain pristine | Full test suite (`npm test`) passed 100%. Next.js 16.3.4 production build (`npm run build`) succeeded with 0 errors. | **PASS** |
+1. **Rule Compliance & Ground Truth**:
+   - `ORIGINAL_REQUEST.md` specifies `development` integrity mode and sets acceptance criteria: Sub menu Kelas accessible to admin under master data, centralized student class assignment/transfer, real-time database reflection, and zero regression.
+   - All modifications were inspected against the Development Mode prohibited patterns (hardcoded test results, fake mock facades, dummy stubs, fabricated logs).
+   - The inspection confirmed that `AdminKelasView.tsx` implements complete, functional, reactive logic with genuine Supabase queries and mutations.
+
+2. **Non-Regression & Preserved Invariants**:
+   - No test files were modified, bypassed, or weakened.
+   - The complete test suite (`npm test`) executed and passed cleanly with exit code 0.
+   - The master data integrity suite confirmed that all existing records in `data_siswa`, `data_guru`, `data_mapel`, `jadwal_pelajaran`, and `data_kelas` are 100% intact.
+
+3. **Adversarial Resilience**:
+   - The implementation provides multi-tenant scoping (`.eq('sekolah_id', sekolahId)`).
+   - The implementation handles missing physical tables defensively (`isSchemaCacheOrMissingTableError`).
+   - The implementation prevents deleting populated classes (`cls.totalSiswa > 0`).
+   - The implementation guards against unique constraint collisions on homeroom teacher cascading rename.
 
 ---
 
-## 5-Component Handoff
+## 3. Caveats
 
-### 1. Observation
+1. **Database Schema State**:
+   - A physical `data_kelas` table in Postgres is optional in current production migrations. `AdminKelasView.tsx` handles this correctly by synthesizing classes from `data_siswa.kelas` and `wali_kelas.kelas` when `data_kelas` query errors with schema-cache / missing table.
+2. **Milestone 2 Scope Boundary**:
+   - Master data CSV templates and upload harmonization (`Template_Data_Kelas.csv` and `dataIntegrityGuard.ts`) are planned for Milestone 2. Milestone 1 isolates the `Kelas` tab with an early return in `loadData`, avoiding any errors when viewing `Data_Kelas`.
 
-1. **SQL Migration (`supabase/migrations/20261102_flexible_sistem_blok.sql`)**:
-   - Lines 8-14: Adds target scope columns (`tipe_target TEXT NOT NULL DEFAULT 'sekolah'`, `target_angkatan TEXT`, `target_kelas TEXT`, `target_guru_id UUID REFERENCES public.data_guru(id) ON DELETE SET NULL`, `target_guru_nama TEXT`).
-   - Lines 16-20: Adds time range columns (`is_full_day BOOLEAN NOT NULL DEFAULT true`, `jam_mulai TEXT`, `jam_selesai TEXT`).
-   - Lines 22-33: Adds check constraint `sistem_blok_tipe_target_check CHECK (tipe_target IN ('sekolah', 'angkatan', 'kelas', 'guru'))`.
-   - Lines 35-42: Idempotent backfill queries ensuring no null values in default columns.
-   - Lines 44-50: Creates dedicated performance indexes on target and time columns.
-   - Line 52: Issues `NOTIFY pgrst, 'reload schema';`.
+---
 
-2. **Database Types (`src/types/database.ts`)**:
-   - Line 9: Exports `export type TargetBlokType = 'sekolah' | 'angkatan' | 'kelas' | 'guru';`.
-   - Lines 1418-1428: Table `sistem_blok` Row schema updated with all 8 new fields.
-   - Lines 1435-1445: Table `sistem_blok` Insert schema updated with optional fields.
-   - Lines 1453-1463: Table `sistem_blok` Update schema updated with optional fields.
-   - Lines 1476-1482: Defines foreign key relationship `sistem_blok_target_guru_id_fkey` to `data_guru`.
-   - Line 2005: `export type SistemBlok = Tables<"sistem_blok">;` inherits all new fields.
+## 4. Conclusion
 
-3. **Admin Configuration UI (`src/components/SistemBlokView.tsx`)**:
-   - Target Scope Selector: Segmented buttons for Keseluruhan Sekolah (`sekolah`), Per Angkatan (`angkatan`), Per Kelas (`kelas`), and Per Guru (`guru`).
-   - Contextual Selectors:
-     * `sekolah`: Displays informative blue banner.
-     * `angkatan`: Populates dropdown with grade levels (10, 11, 12) detected from school classes.
-     * `kelas`: Populates dropdown with active school classes from `data_siswa` and `jadwal_pelajaran`.
-     * `guru`: Populates dropdown with active teachers from `data_guru`, capturing both `id` and `nama_guru`.
-   - Time Range Controls: Full-day toggle (`is_full_day`, default `true`), with start time (`jam_mulai`) and end time (`jam_selesai`) inputs conditionally revealed when unchecked.
-   - Form Validations:
-     * Non-empty name, required dates, `tanggalSelesai >= tanggalMulai`.
-     * Required angkatan when `tipeTarget === 'angkatan'`.
-     * Required class when `tipeTarget === 'kelas'`.
-     * Required teacher when `tipeTarget === 'guru'`.
-     * Required start and end time when `!isFullDay`.
-     * Strict chronological time order: `jamMulai < jamSelesai`.
-   - Schema Cache Resilience: Both `handleAddSubmit` (lines 300-311) and `handleEditSave` (lines 418-432) include fallback handlers for PostgREST `PGRST204` / missing column errors during pending schema cache updates.
-   - Visual Badges: Cards render target scope badges ("Semua Sekolah", "Angkatan {X}", "Kelas {X}", "Guru: {Nama}") and time badges ("Sepanjang Hari", "{jam_mulai} - {jam_selesai}").
+**FINAL AUDIT VERDICT**: **`VERDICT: CLEAN`**
 
-4. **Empirical Command Executions**:
-   - `npx tsc --noEmit`: Code 0 (0 errors).
-   - `npx tsx tests/sistem_blok_verification.test.ts`: Code 0 (85/85 passed, 0 failed).
-   - `npx tsx tests/m1_flexible_sistem_blok.test.ts`: Code 0 (41/41 passed, 0 failed).
-   - `npm test`: Code 0 (100% of all 41 test suites passed).
-   - `npm run build`: Code 0 (Next.js 16.3.4 production build succeeded in 2.6s, all 13 routes generated).
+The Milestone 1 work product is genuine, robust, correctly isolated, type-safe, and passes all integrity forensics checks and automated regression gates. It is approved for Milestone 2 progression.
 
-### 2. Logic Chain
+---
 
-1. Ground-truth requirements in `ORIGINAL_REQUEST.md` (R1, R2) require flexible target scopes and time boundaries in Sistem Blok under `development` integrity mode.
-2. The schema expansion in `supabase/migrations/20261102_flexible_sistem_blok.sql` and `src/types/database.ts` directly fulfills R1 and R2 without modifying any existing column contracts, ensuring complete backward compatibility.
-3. The UI additions in `src/components/SistemBlokView.tsx` provide complete client-side validation, multi-tenant scoping via `user.sekolah_id`, and resilient persistence against PostgREST schema cache reload latency.
-4. All existing tests pass without modification, confirming zero regressions.
-5. All newly added verification tests pass and verify real application behavior, not dummy stubs.
+## 5. Verification Method
 
-### 3. Caveats
+To independently reproduce the forensic verification:
 
-1. **Remote Hosted Database Schema Execution**:
-   - The canonical migration script `supabase/migrations/20261102_flexible_sistem_blok.sql` has been created and verified locally. The remote hosted database (`jicvvqxjyzntdrccnuyz.supabase.co`) does not yet have the columns applied in its remote schema cache.
-   - Because `worker_m1` implemented PostgREST `PGRST204` fallback resilience in `SistemBlokView.tsx`, the application operates smoothly without errors. Once a DBA executes `20261102_flexible_sistem_blok.sql` in the Supabase SQL Editor, the extended columns will seamlessly persist in full fidelity.
-2. **Date Sanitizer Whitespace Edge Case**:
-   - Adversarial testing noted that `sanitizeDateStr` does not strip leading whitespace before checking for spaces. In standard HTML `<input type="date">` and ISO strings, this never occurs; however, adding `.trim()` beforehand is recommended as an auxiliary quality refinement in future cleanup.
-3. **Downstream Schedule Masking (Milestone 2)**:
-   - Milestone 1 specifically addresses schema, types, and admin configuration UI. Evaluating schedule overlaps and selectively masking teacher KBM dashboards will be implemented in Milestone 2 (`workflow.ts` and `HomeViewGuru.tsx`).
+1. Verify git commit status:
+   ```powershell
+   git status
+   git log -n 1 --stat a7c1892
+   ```
 
-### 4. Conclusion
+2. Verify TypeScript static compilation:
+   ```powershell
+   npx tsc --noEmit
+   ```
 
-Milestone 1 satisfies all functional and architectural requirements set forth in `ORIGINAL_REQUEST.md` and `PROJECT.md`. The implementation is genuine, clean, robust, and free of any integrity violations.
+3. Verify master data role restriction & navigation aliases:
+   ```powershell
+   npx tsx tests/master_data_admin_role_restriction.test.ts
+   ```
 
-**Verdict**: **`CLEAN`** (APPROVED).
+4. Verify master data integrity & class level preservation:
+   ```powershell
+   npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts
+   ```
 
-### 5. Verification Method
-
-To independently reproduce and verify this audit:
-
-```bash
-# 1. Static Type Checking
-npx tsc --noEmit
-
-# 2. Existing Sistem Blok Verification Test Suite (85 assertions)
-npx tsx tests/sistem_blok_verification.test.ts
-
-# 3. Dedicated Milestone 1 Verification Test Suite (41 assertions)
-npx tsx tests/m1_flexible_sistem_blok.test.ts
-
-# 4. Production Build Verification
-npm run build
-```
+5. Verify full test suite regression:
+   ```powershell
+   npm test
+   ```

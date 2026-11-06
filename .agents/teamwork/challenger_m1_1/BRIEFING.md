@@ -1,55 +1,51 @@
-# BRIEFING — 2026-11-02T13:07:00Z
+# BRIEFING — 2026-11-06T00:35:00Z
 
 ## Mission
-Empirical validation and adversarial stress testing of Milestone 1 (Flexible Sistem Blok Architecture).
+Empirically test the correctness, invariants, and edge cases of the centralized class allocation mechanism in AdminKelasView and AdminDataView for Milestone 1.
 
 ## 🔒 My Identity
-- Archetype: empirical_challenger
+- Archetype: empirical-challenger
 - Roles: critic, specialist
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_1
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: M1
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m1_1\
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: Milestone 1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa)
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
-- Review-only — do NOT modify implementation code
-- Empirical verification mandatory: reproduce and verify all behaviors with executable tests
-- Do NOT trust claims or logs without running verification code
-- Target scope CRUD, time boundaries, fallback resilience, live db compatibility
+- Review-only — do NOT modify implementation code directly; test empirically and report findings
+- Only write metadata to .agents/teamwork/challenger_m1_1/
+- Test scripts must be placed in tests/
+- Must provide empirical verification with runnable tests and clear pass/fail criteria
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: not yet
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T00:35:00Z
 
 ## Review Scope
-- **Files to review**: PROJECT.md, ORIGINAL_REQUEST.md, worker_m1/handoff.md, src/components/SistemBlokView.tsx, src/types/database.ts, supabase/migrations/20261102_flexible_sistem_blok.sql, tests/
-- **Interface contracts**: PROJECT.md
-- **Review criteria**: correctness, robustness, validation integrity, target scope handling, boundary conditions
+- **Files to review**: src/components/AdminKelasView.tsx, src/components/AdminDataView.tsx, src/lib/navigation.ts
+- **Interface contracts**: PROJECT.md, .agents/teamwork/ORIGINAL_REQUEST.md, .agents/teamwork/worker_m1/handoff.md
+- **Review criteria**: Class card aggregation, student movement & allocation, cascading rename, deletion protection, multi-tenant isolation, clean UI segregation.
 
 ## Key Decisions Made
-- Created empirical stress test harness `tests/m1_challenger_stress.test.ts`.
-- Verified live Supabase compatibility: verified that PGRST204 fallback resilience activates seamlessly when cloud schema cache does not have new columns yet.
-- Stress-tested all 4 target scope CRUD flows (insert, read, update, delete for sekolah, angkatan, kelas, guru).
-- Validated all boundary time ranges: 00:00-23:59, 1-minute intervals, rejection of inverted hours (`jam_selesai < jam_mulai`), rejection of equal hours (`jam_selesai === jam_mulai`), and rejection of missing target selectors.
-- Ran all existing suites (`tests/sistem_blok_verification.test.ts`, `tests/m1_flexible_sistem_blok.test.ts`, `npx tsc --noEmit`, and `npm run build`). All passed with 0 failures.
-- Formulated verdict: APPROVE.
+- Implemented comprehensive empirical test suite: `tests/adversarial_centralized_class_allocation_m1.test.ts`.
+- Verified live Supabase master integrity, RLS multi-tenant boundary isolation, student mutation invariants, cascading rename across 4 tables, zero-student delete protection, and canonical route resolution.
+- Final verdict reached: `VERDICT: APPROVE`.
 
 ## Artifact Index
-- DISPATCH.md — Dispatch instructions
-- BRIEFING.md — Situational awareness
-- progress.md — Liveness heartbeat
-- tests/m1_challenger_stress.test.ts — Adversarial stress test harness
-- handoff.md — Final challenger evaluation report
+- DISPATCH.md — incoming dispatch instructions
+- progress.md — liveness and current step tracking
+- handoff.md — 5-component challenger report with empirical findings
+- tests/adversarial_centralized_class_allocation_m1.test.ts — runnable empirical challenge test harness
 
 ## Attack Surface
 - **Hypotheses tested**:
-  * Hypothesis 1: Does `SistemBlokView` crash or fail on live DB if Supabase cloud schema has not yet loaded the new migration columns? Result: Handled gracefully via `PGRST204` schema cache fallback.
-  * Hypothesis 2: Does input validation permit invalid time boundaries such as `jam_selesai <= jam_mulai` or missing target parameters? Result: Strictly rejected by validation oracle.
-  * Hypothesis 3: Can all 4 target scopes be created, edited, and deleted cleanly without orphan records? Result: Verified empirically with live DB CRUD round-trip.
-- **Vulnerabilities found**:
-  * None blocking. Remote database requires running `supabase/migrations/20261102_flexible_sistem_blok.sql` for full cloud schema persistence, but fallback gracefully prevents any crashes in interim.
-- **Untested angles**:
-  * Downstream masking in `HomeViewGuru.tsx` and journal workflow in `GuruJurnal.tsx` (planned for Milestone 2).
+  * Hypothesis 1: Multi-source aggregation (dbClasses + in-memory + inferred from students) could miscalculate gender breakdown or include alumni. Result: PASSED (alumni properly excluded, gender breakdown strictly accurate).
+  * Hypothesis 2: Batch transfer could orphan unassigned students or create ghost classes on alumni status. Result: PASSED (null/unassigned and Lulus handled correctly).
+  * Hypothesis 3: Cascading rename could violate unique constraint in wali_kelas or leak to foreign tenants. Result: PASSED (conflict avoidance check and strict sekolah_id scoping prevent leakage).
+  * Hypothesis 4: Deletion of classes with enrolled students could leave orphaned students. Result: PASSED (deletion guard strictly blocks deletion if totalSiswa > 0).
+  * Hypothesis 5: Non-admin users might bypass RBAC via aliases or tab tampering. Result: PASSED (evaluateTabRBAC and component guard block access with proper fallback).
+- **Vulnerabilities found**: None in production code. Identified and resolved test-client RLS authentication requirements for live database queries.
+- **Untested angles**: CSV upload parsing and template alignment for data_kelas (scheduled for Milestone 2).
 
 ## Loaded Skills
-- None
+- None requested.

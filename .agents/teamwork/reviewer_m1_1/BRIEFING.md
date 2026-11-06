@@ -1,61 +1,56 @@
-# BRIEFING — 2026-11-02T13:06:00Z
+# BRIEFING — 2026-11-06T00:29:00Z
 
 ## Mission
-Conduct independent code review and adversarial analysis for Milestone 1 (Flexible Sistem Blok: Schema, Types, and Admin UI).
+Review and adversarial stress-testing of Milestone 1 implementation: Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa (R1).
 
 ## 🔒 My Identity
-- Archetype: reviewer_critic
+- Archetype: reviewer_and_critic
 - Roles: reviewer, critic
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: M1
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: milestone_1
 - Instance: 1 of 1
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Actively check for integrity violations (hardcoding, shortcuts, fake tests, facade logic)
-- Evidence-based findings only
-- Write only to working directory .agents/teamwork/reviewer_m1_1/
+- Check for integrity violations (hardcoded test results, facade logic, bypassed requirements, fabricated attestation)
+- Do NOT approve work that cheats, regardless of test scores
+- Write only to my directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_1\
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: 2026-11-02T13:00:00Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T00:29:00Z
 
 ## Review Scope
-- **Files to review**: `supabase/migrations/20261102_flexible_sistem_blok.sql`, `src/types/database.ts`, `src/components/SistemBlokView.tsx`, `tests/m1_flexible_sistem_blok.test.ts`
-- **Interface contracts**: `PROJECT.md`, `ORIGINAL_REQUEST.md`
-- **Review criteria**: correctness, robustness, UI/UX, backward compatibility, integrity violations
-
-## Review Checklist
-- **Items reviewed**:
-  * `supabase/migrations/20261102_flexible_sistem_blok.sql` — inspected schema, check constraints, backfill, indexes, NOTIFY pgrst
-  * `src/types/database.ts` — inspected `TargetBlokType`, table row/insert/update definitions, foreign key relation
-  * `src/components/SistemBlokView.tsx` — inspected target UI, selectors, time range toggles, validations, fallback cache resilience, card badges, edit modal
-  * `tests/m1_flexible_sistem_blok.test.ts` — 41/41 tests pass
-  * `tests/sistem_blok_verification.test.ts` — 85/85 tests pass
-  * Static TypeScript check (`npx tsc --noEmit`) — exit code 0
-  * Production Next.js build (`npm run build`) — compiled and generated 13/13 pages with 0 errors
-- **Verdict**: APPROVE
-- **Unverified claims**: none
-
-## Attack Surface
-- **Hypotheses tested**:
-  * Legacy null values in `tipe_target` / `is_full_day`: safely handled with defaults
-  * Switching target scope clears unselected target attributes: verified in code
-  * Time range inversion (`jam_mulai >= jam_selesai`): verified rejected by validation
-  * Empty school classes fallback: verified fallback to standard grades/angkatan
-  * Non-admin tampering: verified strictly guarded by `isAdmin`
-  * PostgREST schema cache delay: verified resilient with PGRST204 fallback
-- **Vulnerabilities found**: none
-- **Untested angles**: downstream schedule masking and journal filling (delegated to M2 per project plan)
+- **Files to review**: `src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/navigation.ts`, regression suites
+- **Interface contracts**: `PROJECT.md`, `.agents/teamwork/ORIGINAL_REQUEST.md`, `worker_m1/handoff.md`
+- **Review criteria**: R1 requirements compliance, correctness, data integrity, edge case handling, zero-student delete protection, cascading renames, batch movements
 
 ## Key Decisions Made
-- Confirmed zero integrity violations: no facade logic, no hardcoded test responses.
-- Verified 100% backward compatibility for existing records and tests.
-- Issued verdict: APPROVE.
+- Confirmed zero integrity violations: no facade code, no hardcoded bypasses, real Supabase CRUD logic.
+- Independently ran typecheck (`npx tsc --noEmit`) with 0 errors.
+- Independently ran full test suite (`npm test`) with 54 test files passing and 0 failures.
+- Independently verified empirical test suites for RBAC and route aliasing (143/143 tests passed).
+- Confirmed full fulfillment of Requirement R1. Verdict issued: APPROVE.
 
 ## Artifact Index
-- DISPATCH.md — incoming dispatch instructions
-- BRIEFING.md — working memory and state
-- progress.md — liveness heartbeat
-- handoff.md — independent review report
+- `.agents/teamwork/reviewer_m1_1/DISPATCH.md` — Incoming dispatch log
+- `.agents/teamwork/reviewer_m1_1/BRIEFING.md` — Persistent agent briefing
+- `.agents/teamwork/reviewer_m1_1/progress.md` — Liveness & progress tracker
+- `.agents/teamwork/reviewer_m1_1/handoff.md` — Final review report and verdict
+
+## Review Checklist
+- **Items reviewed**: `src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/navigation.ts`, `tests/`
+- **Verdict**: APPROVE
+- **Unverified claims**: none remaining; all verified independently
+
+## Attack Surface
+- **Hypotheses tested**: 
+  - Sub menu accessibility and route aliases (`view-admin-kelas`, `view-kelas` -> `view-admin-data` tab `Data_Kelas`) -> PASS
+  - RBAC boundaries across non-admin roles (Guru, Siswa, Dinas, Kepsek, Piket, Anon) -> PASS
+  - Class directory display (student counts, gender distribution, homeroom teachers) -> PASS
+  - Centralized allocation (roster view, batch move, inbound allocation, unallocated drawer) -> PASS
+  - Class creation, cascading rename, and zero-student delete protection -> PASS
+  - Defensive fallback when `data_kelas` table is missing (PGRST205) -> PASS
+- **Vulnerabilities found**: No critical vulnerabilities or integrity violations found.
+- **Untested angles**: Bulk cohort advancement for >1000 students via UI drawers (mitigated by `NaikKelasModal.tsx` integration).

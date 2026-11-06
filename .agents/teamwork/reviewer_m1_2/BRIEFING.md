@@ -1,61 +1,56 @@
-# BRIEFING — 2026-11-02T13:10:00Z
+# BRIEFING — 2026-11-06T00:27:50Z
 
 ## Mission
-Adversarial Code & Architecture Review for Milestone 1 (M1) — Schema, Types, and Admin UI
+Objective review and adversarial challenge of Milestone 1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa) implementation.
 
 ## 🔒 My Identity
-- Archetype: reviewer
+- Archetype: reviewer_and_critic
 - Roles: reviewer, critic
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: M1
-- Instance: reviewer_m1_2
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: Milestone 1
+- Instance: 2 of 2
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Evidence-based adversarial review
-- Integrity checks: detect facade implementations, hardcoded outputs, bypassed tasks
+- Scrutinize multi-tenant isolation, RBAC enforcement, route collision
+- Check for integrity violations: hardcoded test results, facade logic, bypassed work
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: not yet
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T00:24:20Z
 
 ## Review Scope
-- **Files to review**:
-  - `supabase/migrations/20261102_flexible_sistem_blok.sql`
-  - `src/types/database.ts`
-  - `src/components/SistemBlokView.tsx`
-  - `tests/m1_flexible_sistem_blok.test.ts`
-  - `tests/sistem_blok_verification.test.ts`
-- **Interface contracts**: `PROJECT.md`, `ORIGINAL_REQUEST.md`, `worker_m1/handoff.md`
-- **Review criteria**: SQL constraints & performance, null safety & deleted teacher resilience, class formatting & regex word boundaries, edit state preservation, zero data loss, production build integrity.
+- **Files to review**: `src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/navigation.ts`
+- **Interface contracts**: PROJECT.md, ORIGINAL_REQUEST.md
+- **Review criteria**: Multi-tenant isolation, RBAC enforcement, route collision, zero regression, integrity violations
 
 ## Review Checklist
 - **Items reviewed**:
-  - `supabase/migrations/20261102_flexible_sistem_blok.sql`: verified columns, check constraint, backfill queries, indexes, reload notify.
-  - `src/types/database.ts`: verified `TargetBlokType`, Row, Insert, Update, FK relationships, `SistemBlok` export.
-  - `src/components/SistemBlokView.tsx`: verified target scope selector, contextual pickers, time boundaries, validations, edit modal pre-population, payload cleaning, schema cache resilience, badge rendering.
-  - `tests/sistem_blok_verification.test.ts`: verified 85/85 tests pass.
-  - `tests/m1_flexible_sistem_blok.test.ts`: verified 41/41 tests pass.
-  - `npm run build`: verified clean build (exit 0, Turbopack).
-  - `npx tsc --noEmit`: verified 0 type errors.
-- **Verdict**: APPROVE
-- **Unverified claims**: none
+  - `src/components/AdminKelasView.tsx`: verified multi-tenant scoping (`sekolah_id`), role-guard `isMasterDataModificationAllowed`, optimistic updates, delete guard, cascading rename, unassigned drawer, batch transfer.
+  - `src/components/AdminDataView.tsx`: verified `normalizeAdminTab`, tab injection, `loadData` short-circuiting, conditional sub-view rendering.
+  - `src/lib/navigation.ts`: verified `VIEW_ALIASES`, `SIDEBAR_TOUR_ALIASES`, `getConsolidatedMenuItems`, `evaluateTabRBAC` blocking non-admin roles.
+- **Verdict**: APPROVE (pending background test suite completion)
+- **Unverified claims**: None (all tested directly)
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - SQL check constraint violations for invalid `tipe_target`.
-  - Teacher deletion cascade: verified `ON DELETE SET NULL` and denormalized `target_guru_nama` persistence.
-  - Unusual class name formatting & angkatan regex word boundaries: verified against words with 'x' (EXCELLENT, MAXIMUM, TAXI) and hyphenated tokens (10-IPA-1, X-1).
-  - Stale target field mutation during edit: verified clean field nullification on scope switch.
-  - Schema cache delay resilience: verified fallback payload insertion logic.
-- **Vulnerabilities found**: None that block approval; noted operational requirement to apply migration SQL on remote database.
-- **Untested angles**: Granular schedule masking and journal workflows (explicitly scoped to Milestone 2).
+  - Cross-tenant data leakage: passed (all queries/mutations include `.eq('sekolah_id', sekolahId)`).
+  - RBAC bypass by non-admin roles (Guru, Siswa, Dinas, Kepsek, Piket): passed (all blocked by `evaluateTabRBAC` and component-level guard).
+  - Broken reference on class rename: passed (cascades to `data_siswa`, `wali_kelas`, `jadwal_pelajaran`, `data_kelas`).
+  - Accidental deletion of populated class: passed (blocked with warning if `totalSiswa > 0`).
+  - Integrity violation checks: passed (no facade logic, no hardcoded bypasses).
+- **Vulnerabilities found**: None detected.
+- **Untested angles**: CSV batch import pipeline for `data_kelas` (deferred to Milestone 2 per project plan).
 
 ## Key Decisions Made
-- Confirmed zero integrity violations, verified all acceptance criteria, and rendered APPROVE verdict.
+- Executed and verified `tests/master_data_admin_role_restriction.test.ts` (8/8 passed).
+- Executed and verified `tests/jadwal_mapel_validity_and_master_integrity.test.ts` (16/16 passed).
+- Executed static type check `npx tsc --noEmit` (0 errors).
+- Tested `evaluateTabRBAC` and route resolution across various roles.
 
 ## Artifact Index
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\BRIEFING.md`
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\progress.md`
-- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m1_2\handoff.md`
+- DISPATCH.md — incoming dispatch instructions
+- BRIEFING.md — persistent working memory
+- progress.md — liveness heartbeat
+- handoff.md — final review and challenge report
