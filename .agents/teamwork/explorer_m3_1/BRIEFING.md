@@ -1,42 +1,41 @@
-# BRIEFING — 2026-11-02T14:22:00Z
+# BRIEFING — 2026-11-06T01:11:15Z
 
 ## Mission
-Investigate and design the exact test expansion for Section 6 (Schema & UI form controls AST validation) and Section 7 (Live Database multi-target CRUD verification across all 4 target levels: sekolah, angkatan, kelas, guru with full-day and bounded time ranges) in `tests/sistem_blok_verification.test.ts`.
+Plan and design the test scenarios for Sub-Menu Kelas & Centralized Student Class Allocation for the upcoming test suite `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`.
 
 ## 🔒 My Identity
-- Archetype: explorer
-- Roles: investigator, synthesizer
+- Archetype: Teamwork explorer
+- Roles: Explorer, Test Scenario Architect
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_1\
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: milestone_3
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: Milestone 3 (Automated Test Suite & Non-Regression Gate)
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement directly in source/test files
-- Write exclusively to working directory `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_1\`
-- Provide exact, actionable code proposals for builder agent
+- Read-only investigation — do NOT implement the production code or tests yet, only plan and design test blueprints
+- Write only to your folder (.agents/teamwork/explorer_m3_1/)
+- Adhere to PROJECT.md and ORIGINAL_REQUEST.md specifications
+- Produce self-contained 5-component handoff report
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: 2026-11-02T14:19:58Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T01:11:15Z
 
 ## Investigation State
-- **Explored paths**: `src/types/database.ts`, `src/components/SistemBlokView.tsx`, `src/lib/workflow.ts`, `tests/sistem_blok_verification.test.ts`, `tests/m1_challenger_stress.test.ts`, `tests/m2_schedule_masking_workflow.test.ts`, `supabase/migrations/20261102_flexible_sistem_blok.sql`
+- **Explored paths**: `src/components/AdminDataView.tsx`, `src/components/AdminKelasView.tsx`, `src/lib/navigation.ts`, `src/lib/dataIntegrityGuard.ts`, `tests/adversarial_centralized_class_allocation_m1.test.ts`, `tests/adversarial_m2_template_and_import_challenger.test.ts`, `package.json`
 - **Key findings**:
-  1. Section 6 AST verification covers 20 assertions verifying TargetBlokType, row/insert/update interfaces, form states, target scope options, full-day toggle, time range inputs, form validation, edit modal, and rule badges.
-  2. Section 7 Live DB multi-target CRUD covers 12 assertions across all 4 target levels (sekolah, angkatan, kelas, guru) and full-day/bounded hours.
-  3. Non-conflicting UUID range `00000000-0000-0000-0000-00000000b110` through `...b113` allocated.
-  4. Foreign key safety: `target_guru_id` references `data_guru(id)`; lookup query added with graceful fallback to avoid FK violation `23503`.
-  5. PGRST204 resilience: Fallback handling implemented matching `SistemBlokView.tsx` line 300 to safeguard against PostgREST schema cache latency.
-- **Unexplored areas**: None. Design and drop-in code completed for Sections 6 and 7.
+  1. `Data_Kelas` tab is at index 1 directly following `Data_Siswa` in `AdminDataView.tsx:117-127`.
+  2. `AdminKelasView` conditionally mounts on `activeTab === 'Data_Kelas'`, with generic SQL queries suppressed.
+  3. `parseTingkat` and `isUnassignedClass` handle grade level derivation and unallocated student detection.
+  4. Cascading rename cascades to `data_siswa`, `wali_kelas`, `jadwal_pelajaran`, and `data_kelas` with tenant scoping.
+  5. Class deletion is strictly blocked when `totalSiswa > 0`.
+- **Unexplored areas**: None. All 4 target areas fully mapped and designed.
 
 ## Key Decisions Made
-- Assigned UUID range `...b110`..`...b113` for complete isolation from existing test records.
-- Included type imports `import type { TargetBlokType, ... }` for compile-time and runtime validation.
-- Delivered complete implementation in `analysis.md` and `handoff.md`.
+- Structured the blueprint into 4 core suites and 18 distinct test assertions.
+- Formulated full runnable TypeScript code for `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` compatible with `tsx` and project standard `npm test`.
 
 ## Artifact Index
-- DISPATCH.md — Initial dispatch and parent message tracking
-- BRIEFING.md — Persistent working memory
-- progress.md — Liveness & progress tracking
-- analysis.md — Full technical analysis and code specification
-- handoff.md — 5-component handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_1\DISPATCH.md — Incoming task dispatch record
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_1\BRIEFING.md — Situational awareness working memory
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_1\progress.md — Liveness heartbeat tracker
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_1\handoff.md — Complete 5-component handoff report with runnable blueprint

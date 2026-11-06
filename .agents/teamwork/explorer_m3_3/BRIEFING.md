@@ -1,7 +1,7 @@
-# BRIEFING — 2026-11-02T14:19:30Z
+# BRIEFING — 2026-11-06T01:13:30Z
 
 ## Mission
-Investigate and design the exact test expansion for Section 9 (Journal Submission Parity & Mixed Schedule Fulfillment) and Section 10 (Backward Compatibility with Legacy Sistem Blok records lacking target/time fields), ensuring AST checks, mixed checkout fulfillment, legacy defaulting, and preserving all 85 existing assertions.
+Plan and design the test scenarios for Route Aliasing, RBAC Security Boundaries, and Full Project Regression Gate in tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts for Milestone 3.
 
 ## 🔒 My Identity
 - Archetype: explorer
@@ -9,6 +9,7 @@ Investigate and design the exact test expansion for Section 9 (Journal Submissio
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_3\
 - Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
 - Milestone: milestone_3
+- Current Parent Dispatch: 77685953-a979-46b9-9e32-e6b24ab55eb5 (Milestone 3 Submenu Kelas & Master Data Template Harmonization)
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement in production/test source files directly
@@ -16,36 +17,41 @@ Investigate and design the exact test expansion for Section 9 (Journal Submissio
 - Write handoff report to `.agents/teamwork/explorer_m3_3/handoff.md`
 - Send completion message to parent via send_message
 - Preserve all original 85 assertions intact
+- Do NOT modify files outside .agents/teamwork/explorer_m3_3/
+- Ensure all 54 existing project test files continue to pass cleanly without regression
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Updated: 2026-11-02T14:19:30Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: 2026-11-06T01:13:30Z
 
 ## Investigation State
 - **Explored paths**:
-  - `ORIGINAL_REQUEST.md`, `PROJECT.md`, `explorer_survey_3/analysis.md`
-  - `src/components/GuruJurnal.tsx`
-  - `src/lib/workflow.ts`
-  - `tests/sistem_blok_verification.test.ts`
-  - `tests/challenger_m2_2_mixed_schedule_journal.test.ts`
-  - `supabase/migrations/20261102_flexible_sistem_blok.sql`
+  - `ORIGINAL_REQUEST.md`, `PROJECT.md`
+  - `src/lib/navigation.ts` (`resolveCanonicalRoute`, `VIEW_ALIASES`, `SIDEBAR_TOUR_ALIASES`, `evaluateTabRBAC`, `getConsolidatedMenuItems`)
+  - `src/components/AdminDataView.tsx` (`normalizeAdminTab`)
+  - `src/lib/dataIntegrityGuard.ts` (`isMasterDataModificationAllowed`, `validateMasterDataModificationRole`)
+  - `src/lib/supabaseClient.ts` (`isAdminRole`)
+  - `package.json` (`scripts.test` sequential chain of 54 test files)
+  - Full project test suite execution (`npm test` task-52: 54/54 passed with zero regressions)
 - **Key findings**:
-  - `GuruJurnal.tsx` detects mixed mode when `dailyState?.hasBlockedSchedule && !dailyState?.isBlok`, rendering an interactive dropdown between `Jurnal KBM` and `Jurnal Kegiatan`.
-  - Switching to `Jurnal Kegiatan` auto-fills block event name into `materi`, while switching to `Jurnal KBM` clears it.
-  - Checkout gate (`isJurnalDone` in `src/lib/workflow.ts`) enforces dual fulfillment for mixed schedules: `unblockedFulfilled` (every unblocked class has `jurnalKBM`) AND `blockedFulfilled` (`jurnalKegiatan` submitted).
-  - R2 Presensi Pulang exemption (`canTeacherPresensiPulang`) allows teachers with `presensiDatang` to bypass the journal gate immediately.
-  - Legacy records with null `tipe_target` default to `'sekolah'` via `(rule.tipe_target || 'sekolah')`, and null hours default to full-day active via `!blokStart && !blokEnd`.
-  - Live PostgreSQL database inserts without target/time columns inherit database defaults (`tipe_target = 'sekolah'`, `is_full_day = true`).
-  - All existing 85 assertions in `tests/sistem_blok_verification.test.ts` run and pass 100% with 0 failures.
-- **Unexplored areas**: None for Section 9 & Section 10.
+  - `resolveCanonicalRoute('view-admin-kelas')` and `resolveCanonicalRoute('view-kelas')` cleanly resolve to `{ canonicalView: 'view-admin-data', defaultTab: 'Data_Kelas', isLegacyAlias: true }`.
+  - `normalizeAdminTab` maps `Data_Kelas`, `data_kelas`, `Kelas`, `kelas`, uppercase `DATA_KELAS`, `KELAS`, mixed case `kElAs`, and whitespace-padded variants to canonical `'Data_Kelas'`, while preserving all other tabs and defaulting to `'Data_Siswa'`.
+  - `evaluateTabRBAC` strictly restricts `view-admin-data`, `view-admin-kelas`, `view-kelas`, and `Data_Kelas` (and its variants) to `admin` and `superadmin`. Non-admin roles (`guru`, `wali_kelas`, `piket`, `dinas_pendidikan`, `kepala_sekolah`, anonymous, untrusted) receive `allowed: false` with `fallbackTab: 'view-home'`.
+  - Role `siswa` is strictly isolated with `fallbackTab: 'view-ujian'`.
+  - `isMasterDataModificationAllowed` and `isAdminRole` consistently confirm admin privileges only for `admin` and `superadmin`.
+  - `getConsolidatedMenuItems` guarantees that non-admin roles never see `view-admin-data` or `view-admin-kelas` on their sidebars.
+  - All 54 existing test files in `package.json` pass 100% cleanly.
+- **Unexplored areas**: None for Route Aliasing, RBAC, and Project Regression Gate.
 
 ## Key Decisions Made
-- Section 9 designed with 13 assertions covering GuruJurnal AST checks, pure logic state permutations, and Presensi Pulang exemption override.
-- Section 10 designed with 7 assertions covering in-memory legacy defaulting, pre-migration object resilience, workflow AST invariants, live DB legacy record CRUD, and preservation of all 85 existing assertions.
+- SUITE 1 designed with 8 comprehensive tests covering exact route resolution, tab override preservation, whitespace/newline tolerance, sidebar tour alias invariants, case/spelling normalization for class tabs, and default preservation for non-class tabs.
+- SUITE 2 designed with 7 comprehensive tests covering authorized admin/superadmin access across case variations, strict blocking for all 7 non-admin roles and anonymous contexts, Siswa isolation to `view-ujian`, `isMasterDataModificationAllowed`, `isAdminRole`, and sidebar menu exposure isolation.
+- SUITE 5 designed with 2 comprehensive tests covering `package.json` integration invariant (55 tests) and filesystem verification of all 54 baseline tests.
+- Complete runnable TypeScript test implementation produced and documented in `handoff.md`.
 
 ## Artifact Index
-- DISPATCH.md — incoming dispatch message
+- DISPATCH.md — incoming dispatch messages
 - BRIEFING.md — persistent state briefing
 - progress.md — liveness & heartbeat tracker
-- analysis.md — comprehensive analysis and drop-in code proposal for Section 9 and Section 10
-- handoff.md — 5-component handoff report
+- analysis.md — comprehensive analysis of route aliasing, RBAC boundaries, and baseline regression gate
+- handoff.md — 5-component handoff report with runnable TypeScript test implementation

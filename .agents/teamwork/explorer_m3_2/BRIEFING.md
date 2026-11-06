@@ -1,47 +1,51 @@
-# BRIEFING — 2026-11-02T14:17:00Z
+# BRIEFING — 2026-11-06T01:10:30Z
 
 ## Mission
-Investigate and design the exact test expansion for Section 8 (Granular Schedule Masking, Cohort/Angkatan Isolation, Teacher Isolation, Class Isolation, and Time Boundary Overlaps) in `tests/sistem_blok_verification.test.ts`.
+Plan and design comprehensive test scenarios for the 7 Master Data CSV Templates & Importer Pipeline in `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: investigation, synthesis
+- Roles: investigator, synthesis
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_2\
-- Original parent: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
-- Milestone: milestone_3
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: Milestone 3 (Automated Test Suite & Non-Regression Gate)
 
 ## 🔒 Key Constraints
 - Read-only investigation — do NOT implement
-- Do NOT modify files outside `.agents/teamwork/explorer_m3_2/`
-- All proposals, analysis, and handoffs stay within `.agents/teamwork/explorer_m3_2/`
+- Strict adherence to 5-component handoff report
+- Plan exact runnable test cases with assertions for `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`
+- Maintain progress.md heartbeat
 
 ## Current Parent
-- Conversation ID: 4b795f59-8b14-4efc-839a-20e1afe8c2a0
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
 - Updated: not yet
 
 ## Investigation State
 - **Explored paths**:
-  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md`
-  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md`
-  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_3\analysis.md`
-  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\src\lib\workflow.ts`
-  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\tests\sistem_blok_verification.test.ts`
-  - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\tests\challenger_m2_matching_masking_stress.test.ts`
+  - `src/components/AdminDataView.tsx` (lines 228-265, templates dictionary and invariants)
+  - `src/components/AdminKelasView.tsx` (lines 344-361, class template download and file upload handlers)
+  - `src/lib/dataIntegrityGuard.ts` (lines 600-1300: `normalizeCsvHeaders`, `parseAndValidateMasterCsv`, `importMasterDataFromCsv`)
+  - `tests/m2_csv_templates_and_import_harmonization.test.ts` & `tests/adversarial_m2_template_and_import_challenger.test.ts`
 - **Key findings**:
-  - `tests/sistem_blok_verification.test.ts` baseline has 85 passing tests.
-  - `tests/challenger_m2_matching_masking_stress.test.ts` has 144 passing stress tests.
-  - Section 8 test cases designed with 57 in-memory assertions covering all 4 scopes (sekolah, angkatan, kelas, guru), time intervals, exact boundary touches (07:30-09:00 vs 09:00-11:00 does NOT overlap), and Roman $\leftrightarrow$ Arabic numerals.
-  - Section 8 is 100% in-memory with sub-20ms execution and 0 DB queries.
-- **Unexplored areas**: None for Section 8 scope.
+  - All 7 Master Data templates and invariants confirmed (`Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`).
+  - Invariants: `Kalender_Pendidikan` and `Jadwal_Pelajaran` strictly omit `id`; `Data_Guru` strictly includes `sekolah_id`.
+  - Multi-delimiter parser supports `,`, `;`, `\t`, `|` and mixed line endings (`\r\n`, `\n`, bare `\r`).
+  - Excel apostrophes (`'`) are cleanly stripped from numbers (`nisn`, `nip`, `no_hp_ortu`).
+  - Row error feedback consistently prefixes `Baris ${i}` for missing required fields, dummy names, and duplicates.
+  - Non-UUID values converted to random valid UUIDs to prevent PostgreSQL 22P02.
+  - Importer idempotency matches students by `(sekolah_id, nisn)` to update existing UUIDs without duplicate rows.
+  - Missing `data_kelas` table triggers graceful fallback syncing classes into `wali_kelas` on `PGRST205` / `42P01`.
+- **Unexplored areas**: None within the scope of CSV templates and importer pipeline.
 
 ## Key Decisions Made
-- Structured Section 8 into 6 sub-sections (8.1 through 8.6) with 57 assertions.
-- Provided complete drop-in code block in `analysis.md` ready for implementer (`worker_m3`).
-- Documented complete 5-component handoff in `handoff.md`.
+- Formulate 22 exact runnable assertions divided across 4 distinct test suites:
+  1. Suite B: 7 Master Data CSV Templates Verification & Invariants
+  2. Suite C: CSV Parsing, Normalization & Multi-Delimiter Stress
+  3. Suite D: Data Sanitization, Anti-Dummy Guards & Row Error Feedback
+  4. Suite E: Importer Idempotency & Database Integrity
+- Include full runnable TypeScript code blocks ready for drop-in into `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`.
 
 ## Artifact Index
-- `.agents/teamwork/explorer_m3_2/DISPATCH.md` — recorded instructions
-- `.agents/teamwork/explorer_m3_2/BRIEFING.md` — persistent awareness
-- `.agents/teamwork/explorer_m3_2/progress.md` — heartbeat and progress tracker
-- `.agents/teamwork/explorer_m3_2/analysis.md` — detailed analysis & test expansion design
-- `.agents/teamwork/explorer_m3_2/handoff.md` — handoff report
+- DISPATCH.md — Initial dispatch instructions
+- progress.md — Liveness heartbeat and progress tracking
+- handoff.md — Complete test blueprint and runnable test cases

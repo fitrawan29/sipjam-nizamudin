@@ -23,3 +23,28 @@ c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_3\anal
 and write handoff report to:
 c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_3\handoff.md
 Send a completion message back to orchestrator via send_message.
+
+## 2026-11-06T01:06:00Z
+You are a Teamwork Explorer for Milestone 3 (Automated Test Suite & Non-Regression Gate).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_3\
+Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+
+You MUST read ORIGINAL_REQUEST.md and PROJECT.md before starting work.
+
+Your task:
+Plan and design the test scenarios for Route Aliasing, RBAC Security Boundaries, and Full Project Regression Gate in `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`:
+1. Route aliasing:
+   - `resolveCanonicalRoute('view-admin-kelas')` -> `{ view: 'view-admin-data', defaultTab: 'Data_Kelas' }`
+   - `resolveCanonicalRoute('view-kelas')` -> `{ view: 'view-admin-data', defaultTab: 'Data_Kelas' }`
+   - `normalizeAdminTab` handling case and spelling variations (`Data_Kelas`, `data_kelas`, `Kelas`, `kelas`).
+2. RBAC access control:
+   - Role `admin` and `superadmin` have access.
+   - Roles `guru`, `wali_kelas`, `piket`, `siswa`, `dinas_pendidikan`, `kepala_sekolah`, and anonymous users are strictly blocked.
+3. Integration with project test runner:
+   - How `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` should be integrated into `package.json` test script.
+   - Baseline regression list (ensuring all 54 existing test files continue to pass cleanly).
+4. Formulate the exact runnable test cases with assertions.
+Write your complete test blueprint to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m3_3\handoff.md
+Send a brief message back to the orchestrator when done.
