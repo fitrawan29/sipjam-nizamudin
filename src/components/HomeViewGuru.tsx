@@ -42,13 +42,10 @@ export default function HomeViewGuru({
   const [loadingState, setLoadingState] = useState(false);
   const [attendanceStats, setAttendanceStats] = useState({
     hadir: 0,
-    terlambat: 0,
     dinasLuar: 0,
     izin: 0,
     sakit: 0,
     alpa: 0,
-    pulangCepat: 0,
-    lupaCheckout: 0,
   });
   const [selectedMonth, setSelectedMonth] = useState(() => getWitaDateStr().substring(0, 7));
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
@@ -176,13 +173,10 @@ export default function HomeViewGuru({
           };
 
           let h = 0;
-          let tl = 0;
           let dl = 0;
           let iz = 0;
           let sk = 0;
           let al = 0;
-          let pc = 0;
-          let lc = 0;
           let totalDetik = 0;
 
           data?.forEach((p: any) => {
@@ -197,14 +191,7 @@ export default function HomeViewGuru({
             const detail = (p.detail_izin || '').toLowerCase();
             const statusVerif = (p.status_verifikasi || '').toLowerCase();
 
-            if (tipe === 'pulang') {
-              if (jenis === 'pulang cepat' || statusVerif === 'pulang cepat') {
-                pc++;
-              } else if (statusVerif === 'lupa checkout' || jenis === 'auto-checkout' || jenis === 'lupa checkout') {
-                lc++;
-              }
-              return;
-            }
+            if (tipe === 'pulang') return;
 
             if (jenis === 'alpa' || statusVerif === 'alpa') {
               al++;
@@ -224,29 +211,17 @@ export default function HomeViewGuru({
               sk++;
             } else if (jenis === 'dinas luar') {
               dl++;
-            } else if (jenis === 'izin terlambat' || jenis === 'terlambat') {
-              tl++;
-            } else if (jenis === 'sekolah') {
-              if (detik > 0) {
-                tl++;
-              } else {
-                h++;
-              }
             } else {
-              if (detik > 0) tl++;
-              else h++;
+              h++;
             }
           });
 
           setAttendanceStats({
             hadir: h,
-            terlambat: tl,
             dinasLuar: dl,
             izin: iz,
             sakit: sk,
             alpa: al,
-            pulangCepat: pc,
-            lupaCheckout: lc,
           });
           let aktif = true;
           let batasJam = 4;
@@ -656,7 +631,8 @@ export default function HomeViewGuru({
                 />
               </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            {/* Statistik Presensi Pribadi (Hadir, Dinas Luar, Izin, Sakit, Alpa; Terlambat (TL) / Pulang Cepat / Lupa Checkout dihilangkan) */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
               {/* Hadir (H) */}
               <div className="clay-card-mint p-3 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg shrink-0">
@@ -665,19 +641,7 @@ export default function HomeViewGuru({
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Hadir (H)</p>
                   <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.hadir}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tepat waktu</p>
-                </div>
-              </div>
-
-              {/* Terlambat (TL) */}
-              <div className="clay-card-amber p-3 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg shrink-0">
-                  <i className="fa-solid fa-clock-rotate-left"></i>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Terlambat (TL)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.terlambat}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Ada keterlambatan</p>
+                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Kehadiran sekolah</p>
                 </div>
               </div>
 
@@ -726,30 +690,6 @@ export default function HomeViewGuru({
                   <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-wider">Alpa (A)</p>
                   <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.alpa}</p>
                   <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tanpa keterangan</p>
-                </div>
-              </div>
-
-              {/* Pulang Cepat (PC) */}
-              <div className="clay-card-amber p-3 rounded-2xl border-2 border-white/90 dark:border-orange-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 flex items-center justify-center text-lg shrink-0">
-                  <i className="fa-solid fa-person-walking-dashed-line-arrow-right"></i>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-orange-800 dark:text-orange-300 uppercase tracking-wider">Pulang Cepat (PC)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.pulangCepat}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Sebelum waktunya</p>
-                </div>
-              </div>
-
-              {/* Lupa Checkout (LC) */}
-              <div className="clay-card-purple p-3 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 flex items-center justify-center text-lg shrink-0">
-                  <i className="fa-solid fa-robot"></i>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider">Lupa Checkout (LC)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.lupaCheckout}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Otomatis sistem</p>
                 </div>
               </div>
             </div>

@@ -168,7 +168,7 @@ export default function AdminRekapView({
         .not('nama_guru', 'ilike', '%guru test%')
         .gte('timestamp', start)
         .lte('timestamp', end)
-        .in('status_verifikasi', ['Disetujui', 'Diverifikasi'])
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Pulang Cepat'])
         .order('timestamp', { ascending: true });
       if (user?.sekolah_id) {
         presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
@@ -257,6 +257,7 @@ export default function AdminRekapView({
               izin: 0,
               sakit: 0,
               dinasLuar: 0,
+              pulangCepat: 0,
               telatDetik: 0,
               piket: 0,
               jurnal: 0
@@ -277,12 +278,17 @@ export default function AdminRekapView({
             izin: 0,
             sakit: 0,
             dinasLuar: 0,
+            pulangCepat: 0,
             telatDetik: 0,
             piket: 0,
             jurnal: 0
           };
         }
-        if (p.tipe_absen === 'Datang') {
+        if (p.tipe_absen === 'Pulang') {
+          if (p.jenis_presensi === 'Pulang Cepat' || p.status_verifikasi === 'Pulang Cepat') {
+            pMap[canonicalNama].pulangCepat++;
+          }
+        } else if (p.tipe_absen === 'Datang' && (p.status_verifikasi === 'Disetujui' || p.status_verifikasi === 'Diverifikasi')) {
           if (p.jenis_presensi === 'Sekolah' || p.jenis_presensi === 'Izin Terlambat' || p.jenis_presensi === 'Terlambat') {
             pMap[canonicalNama].hadir++;
             pMap[canonicalNama].telatDetik += (p.keterlambatan_detik || 0);
@@ -423,7 +429,7 @@ export default function AdminRekapView({
 
   const handleExportCsv = () => {
     if (!rekapData || rekapData.presensi.length === 0) return;
-    const headers = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
+    const headers = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Pulang Cepat', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
     const csvRows = [headers.join(',')];
     rekapData.presensi
       .filter((r: any) => !isTestGuruName(r?.nama))
@@ -438,6 +444,7 @@ export default function AdminRekapView({
         r.sakit || 0,
         r.izin || 0,
         r.alpa || 0,
+        r.pulangCepat || 0,
         telatStr,
         r.piket || 0,
         r.jurnal || 0
@@ -764,6 +771,7 @@ export default function AdminRekapView({
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Pulang Cepat</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">Piket</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">Jurnal</th>
@@ -784,6 +792,7 @@ export default function AdminRekapView({
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat > 0 ? `${r.pulangCepat}x (Pulang Cepat)` : '-'}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
@@ -817,6 +826,9 @@ export default function AdminRekapView({
                       
                       {/* Print Signature & GPS Security Footer for Tab Tabel */}
                       <div className="hidden print:block mt-8">
+                        <p className="text-[8pt] text-black italic mb-4">
+                          * Keterangan Presensi Pulang Cepat: Tercatat apabila guru melakukan presensi datang namun tidak menyelesaikan kewajiban jurnal pembelajaran dan tidak melakukan presensi pulang.
+                        </p>
                         <PrintSignature
                           leftTitle="Mengetahui,"
                           leftSubtitle="Pengelola Data / Admin"
@@ -864,6 +876,7 @@ export default function AdminRekapView({
                                   <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
                                   <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
                                   <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Pulang Cepat</th>
                                   <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
                                   <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">Piket</th>
                                   <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">Jurnal</th>
@@ -884,6 +897,7 @@ export default function AdminRekapView({
                                       <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
                                       <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
                                       <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
+                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat > 0 ? `${r.pulangCepat}x (Pulang Cepat)` : '-'}</td>
                                       <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
                                       <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
                                       <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
@@ -893,6 +907,10 @@ export default function AdminRekapView({
                               </tbody>
                             </table>
                           </div>
+
+                          <p className="text-[11px] print:text-[8pt] text-gray-600 dark:text-gray-400 print:text-black italic mb-4">
+                            * Keterangan Presensi Pulang Cepat: Tercatat apabila guru melakukan presensi datang namun tidak menyelesaikan kewajiban jurnal pembelajaran dan tidak melakukan presensi pulang.
+                          </p>
 
                           <PrintSignature
                             leftTitle="Mengetahui,"
