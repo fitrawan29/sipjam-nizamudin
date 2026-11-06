@@ -309,7 +309,7 @@ export default function GuruJurnal({
         if (status === 'H') counts.H++;
         else if (status === 'I') counts.I++;
         else if (status === 'S') counts.S++;
-        else if (status === 'A') counts.A++;
+        else if (status === 'A' || status === 'B') counts.A++;
         else counts.H++;
       });
     }
@@ -824,7 +824,7 @@ export default function GuruJurnal({
       showToast('Presensi Terkunci', `Status ${morningLockedAttendance[nisn].label} ditentukan dari Presensi Kelas (Pagi) dan terkunci bagi Guru Mapel.`, 'info');
       return;
     }
-    if (status !== 'H' && status !== 'A') return;
+    if (!['H', 'I', 'S', 'A', 'B'].includes(status)) return;
 
     const newAbsensi = { ...absensi, [nisn]: status };
     setAbsensi(newAbsensi);
@@ -834,7 +834,7 @@ export default function GuruJurnal({
       [nisn]: {
         diubah_oleh: user?.nama || 'Guru Mapel',
         sumber_perubahan: 'Guru Mapel',
-        keterangan: status === 'A' ? 'Alfa di Mapel (Memicu Status Bolos Harian)' : 'Hadir di Mapel'
+        keterangan: status === 'A' ? 'Alfa di Mapel (Memicu Status Bolos Harian)' : status === 'B' ? 'Bolos di Mapel' : status === 'I' ? 'Izin di Mapel' : status === 'S' ? 'Sakit di Mapel' : 'Hadir di Mapel'
       }
     }));
   };
@@ -1043,7 +1043,7 @@ export default function GuruJurnal({
             const bolosUpdates: any[] = [];
             students.forEach(s => {
               const currentStatus = absensi[s.nisn];
-              if (currentStatus === 'A') {
+              if (currentStatus === 'A' || currentStatus === 'B') {
                 const classRec = existingClassAbs?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
                 const isExcused = classRec && (classRec.status === 'Sakit' || classRec.status === 'Izin' || classRec.status === 'S' || classRec.status === 'I');
                 const isMorningHadir = !isExcused && ((classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) ||
@@ -1674,32 +1674,27 @@ export default function GuruJurnal({
                                         </span>
                                       ) : (
                                         <div className="flex items-center gap-1">
-                                          <button 
-                                            key="H"
-                                            type="button"
-                                            onClick={() => handleAbsensiChange(siswa.nisn, 'H')}
-                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
-                                              absensi[siswa.nisn] === 'H' 
-                                                ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400' 
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                            }`}
-                                            title="Siswa hadir di jam pelajaran ini"
-                                          >
-                                            <i className="fa-solid fa-check text-[9px]"></i> Hadir
-                                          </button>
-                                          <button 
-                                            key="A"
-                                            type="button"
-                                            onClick={() => handleAbsensiChange(siswa.nisn, 'A')}
-                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
-                                              absensi[siswa.nisn] === 'A' 
-                                                ? 'bg-red-600 text-white shadow-sm ring-1 ring-red-400' 
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                            }`}
-                                            title="Tandai Alfa (memicu status Bolos harian jika pagi hadir)"
-                                          >
-                                            <i className="fa-solid fa-xmark text-[9px]"></i> Alfa
-                                          </button>
+                                          {([
+                                            { code: 'H', label: 'Hadir', icon: 'fa-check', on: 'bg-emerald-600 ring-emerald-400', title: 'Siswa hadir di jam pelajaran ini' },
+                                            { code: 'I', label: 'Izin', icon: 'fa-envelope', on: 'bg-orange-500 ring-orange-400', title: 'Tandai Izin di jam pelajaran ini' },
+                                            { code: 'S', label: 'Sakit', icon: 'fa-notes-medical', on: 'bg-yellow-500 ring-yellow-400', title: 'Tandai Sakit di jam pelajaran ini' },
+                                            { code: 'A', label: 'Alfa', icon: 'fa-xmark', on: 'bg-red-600 ring-red-400', title: 'Tandai Alfa (memicu status Bolos harian jika pagi hadir)' },
+                                            { code: 'B', label: 'Bolos', icon: 'fa-person-walking-arrow-right', on: 'bg-purple-600 ring-purple-400', title: 'Tandai Bolos di jam pelajaran ini' }
+                                          ] as const).map(opt => (
+                                            <button 
+                                              key={opt.code}
+                                              type="button"
+                                              onClick={() => handleAbsensiChange(siswa.nisn, opt.code)}
+                                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                                absensi[siswa.nisn] === opt.code 
+                                                  ? opt.on + ' text-white shadow-sm ring-1' 
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                              }`}
+                                              title={opt.title}
+                                            >
+                                              <i className={`fa-solid ${opt.icon} text-[9px]`}></i> {opt.label}
+                                            </button>
+                                          ))}
                                         </div>
                                       )}
                                     </div>

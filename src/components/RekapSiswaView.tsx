@@ -755,7 +755,7 @@ export default function RekapSiswaView({
                 if (code === 'H' || code === 'HADIR') target.hadir++;
                 else if (code === 'S' || code === 'SAKIT') target.sakit++;
                 else if (code === 'I' || code === 'IZIN') target.izin++;
-                else if (code === 'A' || code === 'ALPA') target.alpa++;
+                else if (code === 'A' || code === 'ALPA' || code === 'B' || code === 'BOLOS') target.alpa++;
               } else if (!hasExplicitHadir) {
                 // If JSON only listed absentees, unlisted students were present
                 target.hadir++;

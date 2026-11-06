@@ -500,7 +500,7 @@ export default function RekapJurnalView({
             if (val.startsWith('H')) counts.H++;
             else if (val.startsWith('I')) counts.I++;
             else if (val.startsWith('S')) counts.S++;
-            else if (val.startsWith('A')) counts.A++;
+            else if (val.startsWith('A') || val.startsWith('B')) counts.A++;
           });
           const total = counts.H + counts.I + counts.S + counts.A;
           return `Total murid: ${total}, Hadir: ${counts.H}, Izin: ${counts.I}, Sakit: ${counts.S}, Alpa: ${counts.A}`;

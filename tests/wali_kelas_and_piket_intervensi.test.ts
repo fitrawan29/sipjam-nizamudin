@@ -294,8 +294,8 @@ async function runTests() {
   }
 
   // 7.6 GuruJurnal limits Guru Mapel intervention strictly to Hadir and Alfa
-  if (jurnalCode.includes("status !== 'H' && status !== 'A'") && jurnalCode.includes('Terindikasi Bolos (Alfa Mapel, Pagi Hadir)')) {
-    pass('DOMAIN-06', 'GuruJurnal membatasi hak intervensi Guru Mapel hanya pada opsi Hadir dan Alfa');
+  if (jurnalCode.includes("['H', 'I', 'S', 'A', 'B'].includes(status)") && jurnalCode.includes('Terindikasi Bolos (Alfa Mapel, Pagi Hadir)')) {
+    pass('DOMAIN-06', 'GuruJurnal menyediakan opsi presensi mapel H, I, S, A, B (Alfa/Bolos memicu Bolos harian)');
   } else {
     fail('DOMAIN-06', 'GuruJurnal belum membatasi opsi intervensi mapel hanya pada Hadir dan Alfa');
   }
