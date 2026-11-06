@@ -147,9 +147,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
     const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
     let cachedRows = uploadedRowsCacheRef.current[currentTab];
-    if (!cachedRows || cachedRows.length === 0) {
-      const stored = getStorageCache(currentTab, schoolId);
-      if (stored && stored.length > 0) {
+    const stored = getStorageCache(currentTab, schoolId);
+    if (stored && stored.length > 0) {
+      if (!cachedRows || cachedRows.length === 0 || stored.length >= cachedRows.length) {
         cachedRows = stored;
         uploadedRowsCacheRef.current[currentTab] = stored;
       }
@@ -289,6 +289,21 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     setPage(0);
   }, [loadData]);
 
+  // Listen to external class & student updates (e.g. from AdminKelasView CSV import)
+  useEffect(() => {
+    const handleClassOrStudentUpdated = () => {
+      delete uploadedRowsCacheRef.current['Data_Siswa'];
+      delete uploadedRowsCacheRef.current['Data_Kelas'];
+      loadData();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sipjam:kelas-updated', handleClassOrStudentUpdated);
+      return () => {
+        window.removeEventListener('sipjam:kelas-updated', handleClassOrStudentUpdated);
+      };
+    }
+  }, [loadData]);
+
   // CSV Template Generation and Download
   const handleDownloadTemplate = () => {
     const templates: Record<string, { filename: string; headers: string[]; sample: string[] }> = {
@@ -300,7 +315,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       Data_Siswa: {
         filename: 'Template_Data_Siswa.csv',
         headers: ['nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu'],
-        sample: ['114367407', 'Moh. Candra Podomi', 'X Merdeka', 'Laki-laki', 'Aktif', '081234567890']
+        sample: ['0114367407', 'Moh. Candra Podomi', 'X Merdeka', 'Laki-laki', 'Aktif', '081234567890']
       },
       Data_Guru: {
         filename: 'Template_Data_Guru.csv',
@@ -496,7 +511,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               if (Array.isArray(data) && data.length > 0) {
                 const mergedMap = new Map();
                 data.forEach((d: any) => { if (d?.id) mergedMap.set(d.id, d); });
-                rows.forEach((r: any) => { if (r?.id && !mergedMap.has(r.id)) mergedMap.set(r.id, r); });
+                const baseRows = uploadedRowsCacheRef.current[targetTab] || rows;
+                baseRows.forEach((r: any) => { if (r?.id && !mergedMap.has(r.id)) mergedMap.set(r.id, r); });
                 const finalData = Array.from(mergedMap.values());
                 setDataList(finalData);
                 uploadedRowsCacheRef.current[targetTab] = finalData;

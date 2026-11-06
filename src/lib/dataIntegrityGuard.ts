@@ -658,7 +658,12 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
     }
 
     // 3. Name headers scoped by entity
-    if (clean === 'nama' || clean === 'nama_lengkap' || clean === 'namalengkap') {
+    if (
+      clean === 'nama' ||
+      clean === 'nama_lengkap' ||
+      clean === 'namalengkap' ||
+      (isSiswa && (clean === 'siswa' || clean === 'nama_murid' || clean === 'namamurid' || clean === 'murid'))
+    ) {
       if (isSiswa) return 'nama_siswa';
       if (isKelas) return 'nama_kelas';
       if (isMapel) return 'nama_mata_pelajaran';
@@ -675,7 +680,18 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
       clean === 'telepon_ortu' ||
       clean === 'no_telepon_ortu' ||
       clean === 'wa_ortu' ||
-      clean === 'nomor_ortu'
+      clean === 'nomor_ortu' ||
+      (isSiswa && (
+        clean === 'no_hp' ||
+        clean === 'nohp' ||
+        clean === 'hp' ||
+        clean === 'telepon' ||
+        clean === 'no_telepon' ||
+        clean === 'nomor_hp' ||
+        clean === 'no_wa' ||
+        clean === 'wa' ||
+        clean === 'whatsapp'
+      ))
     ) {
       return 'no_hp_ortu';
     }
@@ -1119,7 +1135,7 @@ export function parseAndValidateMasterCsv(
         seenNisns.add(cleanNisn);
       }
 
-      // Clean and sanitize no_hp_ortu (handle Excel scientific notation, missing leading zero, placeholders)
+      // Clean and sanitize no_hp_ortu (handle Excel scientific notation, missing leading zero, formatting, placeholders)
       if (row.no_hp_ortu !== undefined && row.no_hp_ortu !== null) {
         let hpClean = String(row.no_hp_ortu).replace(/[\u200B-\u200D\uFEFF]/g, '').trim().replace(/^['"]+|['"]+$/g, '').trim();
         if (!hpClean || hpClean === '-' || hpClean.toLowerCase() === 'null' || hpClean.toLowerCase() === 'undefined') {
@@ -1128,8 +1144,11 @@ export function parseAndValidateMasterCsv(
           if (/^\d+(\.\d+)?[eE]\+\d+$/.test(hpClean)) {
             hpClean = Number(hpClean).toFixed(0);
           }
-          if (/^8\d{8,12}$/.test(hpClean)) {
-            hpClean = `0${hpClean}`;
+          const digitsOnly = hpClean.replace(/[-.\s()]/g, '');
+          if (/^8\d{8,12}$/.test(digitsOnly)) {
+            hpClean = `0${digitsOnly}`;
+          } else if (/^(08|628)\d{7,12}$/.test(digitsOnly)) {
+            hpClean = digitsOnly;
           }
           row.no_hp_ortu = hpClean;
         }
@@ -1222,11 +1241,19 @@ export async function importMasterDataFromCsv(
   if (isSiswaTable && rows.length > 0) {
     const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
     try {
-      const nisnList = Array.from(new Set(
-        rows
-          .map(r => (r.nisn ? String(r.nisn).trim() : ''))
-          .filter(n => n.length > 0 && n !== '-')
-      ));
+      const nisnSet = new Set<string>();
+      rows.forEach(r => {
+        const n = r.nisn ? String(r.nisn).trim() : '';
+        if (n && n !== '-') {
+          nisnSet.add(n);
+          if (/^\d{9}$/.test(n)) {
+            nisnSet.add(`0${n}`);
+          } else if (/^0\d{9}$/.test(n)) {
+            nisnSet.add(n.replace(/^0+/, ''));
+          }
+        }
+      });
+      const nisnList = Array.from(nisnSet);
 
       const nisnToIdMap = new Map<string, string>();
       const nameClassToIdMap = new Map<string, string>();
@@ -1248,7 +1275,13 @@ export async function importMasterDataFromCsv(
           if (!fetchErr && existingStudents) {
             for (const s of existingStudents) {
               if (s.nisn) {
-                nisnToIdMap.set(String(s.nisn).trim().toLowerCase(), s.id);
+                const sNisn = String(s.nisn).trim().toLowerCase();
+                nisnToIdMap.set(sNisn, s.id);
+                if (/^\d{9}$/.test(sNisn)) {
+                  nisnToIdMap.set(`0${sNisn}`, s.id);
+                } else if (/^0\d{9}$/.test(sNisn)) {
+                  nisnToIdMap.set(sNisn.replace(/^0+/, ''), s.id);
+                }
               }
               if (s.nama_siswa && s.kelas) {
                 const normName = normalizeName(s.nama_siswa).toLowerCase().replace(/\s+/g, ' ');
@@ -1301,6 +1334,10 @@ export async function importMasterDataFromCsv(
         const nameClassKey = `${normName}_${normClass}`;
         if (cleanNisn && cleanNisn !== '-' && nisnToIdMap.has(cleanNisn)) {
           row.id = nisnToIdMap.get(cleanNisn);
+        } else if (cleanNisn && cleanNisn.length === 9 && nisnToIdMap.has(`0${cleanNisn}`)) {
+          row.id = nisnToIdMap.get(`0${cleanNisn}`);
+        } else if (cleanNisn && cleanNisn.startsWith('0') && nisnToIdMap.has(cleanNisn.replace(/^0+/, ''))) {
+          row.id = nisnToIdMap.get(cleanNisn.replace(/^0+/, ''));
         } else if (nameClassToIdMap.has(nameClassKey)) {
           row.id = nameClassToIdMap.get(nameClassKey);
         }

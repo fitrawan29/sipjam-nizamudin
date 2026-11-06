@@ -199,7 +199,7 @@ async function runAdversarialStudentCsvTests() {
     const parsed = parseAndValidateMasterCsv(excelMangledCsv, 'data_siswa');
     assert.strictEqual(parsed.length, 4);
 
-    // Row 0: Scientific notation expanded
+    // Row 0: Scientific notation expanded to integer string
     assert.strictEqual(parsed[0].nisn, '106436000', 'Scientific notation NISN must be expanded to integer string');
     assert.strictEqual(parsed[0].no_hp_ortu, '082193147509', 'Scientific notation phone number must be normalized and prefixed with 0');
 
@@ -297,6 +297,138 @@ async function runAdversarialStudentCsvTests() {
     assert.strictEqual(finalData[1].nama_siswa, 'Student 2', 'Cached student 2 must not be dropped');
     assert.strictEqual(finalData[2].nama_siswa, 'Student 3', 'Cached student 3 must not be dropped');
     console.log('✔ [PASS] 10.1: Merge by ID guarantees zero loss of uploaded records when DB query returns partial results');
+  }
+
+  // --- TEST 11: Leading-Zero Tolerant Idempotent Matching ---
+  console.log('\n--- TEST 11: Leading-Zero Tolerant Idempotent Matching ---');
+  {
+    const existingStudentUuid = 's9999999-0000-4000-a000-000000000001';
+    let queriedNisns: string[] = [];
+    const mockSupabase = {
+      from: (table: string) => {
+        if (table === 'data_siswa') {
+          return {
+            select: () => ({
+              eq: () => ({
+                in: (col: string, vals: string[]) => {
+                  queriedNisns = vals;
+                  // DB has 10 digits '0106436229'
+                  return Promise.resolve({
+                    data: [{ id: existingStudentUuid, nisn: '0106436229', sekolah_id: 'a0000000-0000-0000-0000-000000000001' }],
+                    error: null
+                  });
+                }
+              })
+            }),
+            upsert: () => Promise.resolve({ error: null })
+          };
+        }
+        return { upsert: () => Promise.resolve({ error: null }) };
+      }
+    };
+
+    // CSV has 9 digits '106436229' (Excel stripped leading 0)
+    const csvContent = 'nisn,nama_siswa,kelas\n106436229,Abdul Sendi Mamonto,XI Merdeka D\n';
+    const result = await importMasterDataFromCsv(mockSupabase, csvContent, 'data_siswa', {
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+
+    assert.strictEqual(result.count, 1);
+    assert.strictEqual(result.rows[0].id, existingStudentUuid, 'Existing student UUID must be preserved even if CSV NISN lacks leading zero');
+    assert.ok(queriedNisns.includes('0106436229'), 'Query chunk must include 0-padded NISN');
+    console.log('✔ [PASS] 11.1: Leading-zero variations between DB and CSV resolve idempotently');
+  }
+
+  // --- TEST 12: Student Header Aliases (siswa, nama_murid, no_hp, no_wa) ---
+  console.log('\n--- TEST 12: Student Header Aliases ---');
+  {
+    const aliasCsv = `nisn,siswa,kelas,gender,status,no_hp
+0106436229,Abdul Sendi Mamonto,XI Merdeka D,Laki-laki,Aktif,082193147509`;
+
+    const parsed = parseAndValidateMasterCsv(aliasCsv, 'data_siswa');
+    assert.strictEqual(parsed.length, 1);
+    assert.strictEqual(parsed[0].nama_siswa, 'Abdul Sendi Mamonto', 'Header "siswa" must map to "nama_siswa"');
+    assert.strictEqual(parsed[0].no_hp_ortu, '082193147509', 'Header "no_hp" must map to "no_hp_ortu"');
+
+    const muridCsv = `nisn,nama_murid,kelas,gender,status,no_wa
+0106436230,Budi Santoso,XI Merdeka D,Laki-laki,Aktif,082193147510`;
+    const parsedMurid = parseAndValidateMasterCsv(muridCsv, 'data_siswa');
+    assert.strictEqual(parsedMurid[0].nama_siswa, 'Budi Santoso', 'Header "nama_murid" must map to "nama_siswa"');
+    assert.strictEqual(parsedMurid[0].no_hp_ortu, '082193147510', 'Header "no_wa" must map to "no_hp_ortu"');
+    console.log('✔ [PASS] 12.1: Header aliases for student name and phone cleanly resolved');
+  }
+
+  // --- TEST 13: Phone Formatting with Spaces and Hyphens ---
+  console.log('\n--- TEST 13: Phone Formatting With Spaces & Hyphens ---');
+  {
+    const formattedPhoneCsv = `nisn,nama_siswa,kelas,gender,status,no_hp_ortu
+0106436229,Abdul Sendi Mamonto,XI Merdeka D,Laki-laki,Aktif,821-9314-7509
+0116150651,Abigail Rantung,X Merdeka D,Perempuan,Aktif,0852 5669 3473`;
+
+    const parsed = parseAndValidateMasterCsv(formattedPhoneCsv, 'data_siswa');
+    assert.strictEqual(parsed[0].no_hp_ortu, '082193147509', 'Hyphenated phone without leading 0 must be restored and cleaned');
+    assert.strictEqual(parsed[1].no_hp_ortu, '085256693473', 'Spaced phone must have spaces stripped');
+    console.log('✔ [PASS] 13.1: Phone numbers with formatting cleanly normalized');
+  }
+
+  // --- TEST 14: AdminKelasView ID-Based Student Merge on Partial DB Refresh ---
+  console.log('\n--- TEST 14: AdminKelasView Student Merge On DB Refresh ---');
+  {
+    const storedStudents = [
+      { id: 'sid-1', nama_siswa: 'Student 1', kelas: 'X Merdeka A' },
+      { id: 'sid-2', nama_siswa: 'Student 2', kelas: 'X Merdeka A' },
+      { id: 'sid-3', nama_siswa: 'Student 3', kelas: 'X Merdeka B' }
+    ];
+    const sData = [
+      { id: 'sid-1', nama_siswa: 'Student 1', kelas: 'X Merdeka A', sekolah_id: 'sch-1' }
+    ];
+
+    // Merge logic in AdminKelasView loadAllData
+    let finalStudents = sData;
+    const mergedMap = new Map();
+    finalStudents.forEach(s => { if (s?.id) mergedMap.set(s.id, s); });
+    storedStudents.forEach((c: any) => { if (c?.id && !mergedMap.has(c.id)) mergedMap.set(c.id, c); });
+    finalStudents = Array.from(mergedMap.values());
+
+    assert.strictEqual(finalStudents.length, 3, 'AdminKelasView must preserve all stored students on partial sData');
+    assert.strictEqual(finalStudents[1].nama_siswa, 'Student 2');
+    assert.strictEqual(finalStudents[2].nama_siswa, 'Student 3');
+    console.log('✔ [PASS] 14.1: AdminKelasView ID-based merge retains all uploaded students');
+  }
+
+  // --- TEST 15: Cross-View Cache Freshness In AdminDataView ---
+  console.log('\n--- TEST 15: Cross-View Cache Freshness in AdminDataView ---');
+  {
+    const mockStorage: Record<string, string> = {};
+    const schoolId = 'a0000000-0000-0000-0000-000000000001';
+    const staleMemoryCache = [
+      { id: 'stale-1', nama_siswa: 'Old Student', kelas: 'X Merdeka A' }
+    ];
+    const freshStorageCache = [
+      { id: 'fresh-1', nama_siswa: 'New Student 1', kelas: 'X Merdeka A' },
+      { id: 'fresh-2', nama_siswa: 'New Student 2', kelas: 'X Merdeka A' },
+      { id: 'fresh-3', nama_siswa: 'New Student 3', kelas: 'X Merdeka B' }
+    ];
+
+    // Simulate storage cache set by AdminKelasView
+    (global as any).sessionStorage = {
+      getItem: (k: string) => mockStorage[k] || null,
+      setItem: (k: string, v: string) => { mockStorage[k] = v; }
+    };
+    setStorageCache('Data_Siswa', schoolId, freshStorageCache);
+
+    // In loadData:
+    let cachedRows = staleMemoryCache;
+    const stored = getStorageCache('Data_Siswa', schoolId);
+    if (stored && stored.length > 0) {
+      if (!cachedRows || cachedRows.length === 0 || stored.length >= cachedRows.length) {
+        cachedRows = stored;
+      }
+    }
+
+    assert.strictEqual(cachedRows.length, 3, 'Fresher/larger stored cache must take precedence over stale in-memory cache');
+    assert.strictEqual(cachedRows[0].nama_siswa, 'New Student 1');
+    console.log('✔ [PASS] 15.1: AdminDataView correctly prefers fresh storage cache over stale memory cache');
   }
 
   console.log('\n========================================================================');

@@ -155,7 +155,16 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       if (sErr) throw sErr;
       if (!isMountedRef.current) return;
       if (sData && sData.length > 0) {
-        setAllStudents(sData as StudentItem[]);
+        let finalStudents = sData as StudentItem[];
+        const stored = getStorageCache('Data_Siswa', sekolahId);
+        if (stored && stored.length > 0) {
+          const mergedMap = new Map();
+          finalStudents.forEach(s => { if (s?.id) mergedMap.set(s.id, s); });
+          stored.forEach((c: any) => { if (c?.id && !mergedMap.has(c.id)) mergedMap.set(c.id, c as StudentItem); });
+          finalStudents = Array.from(mergedMap.values());
+        }
+        setAllStudents(finalStudents);
+        setStorageCache('Data_Siswa', sekolahId, finalStudents);
       } else {
         const stored = getStorageCache('Data_Siswa', sekolahId);
         if (stored && stored.length > 0) {
@@ -470,7 +479,11 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             setCustomClasses(prev => Array.from(new Set([...prev, ...studentClasses])));
             setCustomClassesMeta(prev => ({ ...prev, ...meta }));
             const schoolId = sekolahId || user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
-            setStorageCache('Data_Siswa', schoolId, rows);
+            const existingStored = getStorageCache('Data_Siswa', schoolId) || [];
+            const mergedCacheMap = new Map();
+            existingStored.forEach((s: any) => { if (s?.id) mergedCacheMap.set(s.id, s); });
+            rows.forEach((r: any) => { if (r?.id) mergedCacheMap.set(r.id, r); });
+            setStorageCache('Data_Siswa', schoolId, Array.from(mergedCacheMap.values()));
             try {
               const existingClasses = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${schoolId}`) || '[]');
               const existingMeta = JSON.parse(localStorage.getItem(`sipjam_custom_classes_meta_${schoolId}`) || '{}');
