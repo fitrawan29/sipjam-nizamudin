@@ -154,24 +154,9 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
       if (sErr) throw sErr;
       if (!isMountedRef.current) return;
-      if (sData && sData.length > 0) {
-        let finalStudents = sData as StudentItem[];
-        const stored = getStorageCache('Data_Siswa', sekolahId);
-        if (stored && stored.length > 0) {
-          const mergedMap = new Map();
-          finalStudents.forEach(s => { if (s?.id) mergedMap.set(s.id, s); });
-          stored.forEach((c: any) => { if (c?.id && !mergedMap.has(c.id)) mergedMap.set(c.id, c as StudentItem); });
-          finalStudents = Array.from(mergedMap.values());
-        }
-        setAllStudents(finalStudents);
-        setStorageCache('Data_Siswa', sekolahId, finalStudents);
-      } else {
-        const stored = getStorageCache('Data_Siswa', sekolahId);
-        if (stored && stored.length > 0) {
-          setAllStudents(stored as StudentItem[]);
-        } else {
-          setAllStudents(prev => (prev.length > 0 ? prev : []));
-        }
+      if (sData) {
+        setAllStudents(sData as StudentItem[]);
+        setStorageCache('Data_Siswa', sekolahId, sData);
       }
 
       // 2. Fetch Wali Kelas
@@ -187,6 +172,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       setWaliKelasList((wData as WaliKelasItem[]) || []);
 
       // 3. Fetch data_kelas with defensive schema cache fallback
+      let fetchedDbClasses: any[] = [];
       try {
         const { data: kData, error: kErr } = await supabase
           .from('data_kelas')
@@ -195,6 +181,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
           .order('nama_kelas', { ascending: true });
 
         if (!kErr && kData) {
+          fetchedDbClasses = kData;
           if (isMountedRef.current) setDbClasses(kData);
         } else {
           if (isMountedRef.current) setDbClasses([]);
@@ -205,6 +192,20 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         }
         if (isMountedRef.current) setDbClasses([]);
       }
+
+      // 4. Self-healing: Prune foreign/stale customClasses that have no students, no DB record, and no wali kelas
+      setCustomClasses(prev => {
+        const activeStudentClasses = new Set((sData || []).map(s => (s.kelas || '').trim()).filter(Boolean));
+        const dbClassNames = new Set(fetchedDbClasses.map(k => (k.nama_kelas || '').trim()).filter(Boolean));
+        const waliClassNames = new Set(((wData as any[]) || []).map(w => (w.kelas || '').trim()).filter(Boolean));
+        const validCustom = prev.filter(c => activeStudentClasses.has(c) || dbClassNames.has(c) || waliClassNames.has(c));
+        if (validCustom.length !== prev.length && typeof window !== 'undefined' && sekolahId) {
+          try {
+            localStorage.setItem(`sipjam_custom_classes_${sekolahId}`, JSON.stringify(validCustom));
+          } catch (_) {}
+        }
+        return validCustom;
+      });
     } catch (err: any) {
       console.error('[AdminKelasView] Error loading data:', err);
       if (isMountedRef.current) {

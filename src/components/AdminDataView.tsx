@@ -344,12 +344,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         }
       } else if (data && data.length > 0) {
         let finalData = data;
-        if (cachedRows && cachedRows.length > 0) {
-          const mergedMap = new Map();
-          data.forEach((d: any) => { if (d?.id) mergedMap.set(d.id, d); });
-          cachedRows.forEach((c: any) => { if (c?.id && !mergedMap.has(c.id)) mergedMap.set(c.id, c); });
-          finalData = Array.from(mergedMap.values());
-        }
+
         if (currentTab === 'Wali_Kelas' && configuredTahunAjaran) {
           const hasLegacyOrMissingTa = finalData.some((d: any) => !d.tahun_ajaran || (configuredTahunAjaran !== '2024/2025' && d.tahun_ajaran === '2024/2025'));
           if (hasLegacyOrMissingTa) {

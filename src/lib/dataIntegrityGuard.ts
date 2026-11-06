@@ -959,7 +959,13 @@ export function parseAndValidateMasterCsv(
         }
         row.sekolah_id = cleanSekolahId;
       } else {
-        row.sekolah_id = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+        const resolvedTargetId = user?.sekolah_id || (typeof window !== 'undefined' ? (() => {
+          try {
+            return JSON.parse(localStorage.getItem('sipjam_active_target_school') || '{}')?.id ||
+                   JSON.parse(localStorage.getItem('sipjam_user') || '{}')?.sekolah_id;
+          } catch (_) { return null; }
+        })() : null);
+        row.sekolah_id = resolvedTargetId || 'a0000000-0000-0000-0000-000000000001';
       }
     }
 
@@ -1567,7 +1573,13 @@ export async function importMasterDataFromCsv(
   if (isTableMissing && isKelasTable) {
     console.warn('[dataIntegrityGuard] Table data_kelas unavailable (PGRST205/missing). Falling back to syncing classes in wali_kelas.');
     try {
-      const schoolId = user?.sekolah_id || rows[0]?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      const resolvedScopeId = user?.sekolah_id || rows[0]?.sekolah_id || (typeof window !== 'undefined' ? (() => {
+        try {
+          return JSON.parse(localStorage.getItem('sipjam_active_target_school') || '{}')?.id ||
+                 JSON.parse(localStorage.getItem('sipjam_user') || '{}')?.sekolah_id;
+        } catch (_) { return null; }
+      })() : null);
+      const schoolId = resolvedScopeId || 'a0000000-0000-0000-0000-000000000001';
       const distinctClasses = Array.from(new Set(rows.map(r => r.nama_kelas).filter(Boolean)));
       for (const cls of distinctClasses) {
         try {

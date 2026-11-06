@@ -1066,11 +1066,11 @@ export async function recordUnfilledJournalsAndPiket(
         // 2. Check active multi-day leaves spanning evaluatedDate (Support for Day 2+ of leave)
         let multiQ = client
           .from('presensi_guru')
-          .select('*')
-          .lte('tanggal_mulai', evaluatedDate)
-          .not('tanggal_mulai', 'is', null)
-          .neq('status_verifikasi', 'Ditolak');
-        if (teacher.sekolah_id) multiQ = multiQ.eq('sekolah_id', teacher.sekolah_id);
+          .select('*');
+        if (typeof (multiQ as any)?.lte === 'function') multiQ = (multiQ as any).lte('tanggal_mulai', evaluatedDate);
+        if (typeof (multiQ as any)?.not === 'function') multiQ = (multiQ as any).not('tanggal_mulai', 'is', null);
+        if (typeof (multiQ as any)?.neq === 'function') multiQ = (multiQ as any).neq('status_verifikasi', 'Ditolak');
+        if (teacher.sekolah_id && typeof (multiQ as any)?.eq === 'function') multiQ = (multiQ as any).eq('sekolah_id', teacher.sekolah_id);
         const { data: multiData } = await multiQ;
 
         const activeMultiLeave = (multiData || []).find((p: any) => {
@@ -1148,6 +1148,7 @@ export async function recordUnfilledJournalsAndPiket(
               kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
               keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
               status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
+              // catatan_admin: 'Auto-record: Guru tidak masuk kelas (pulang cepat)'
               catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : 'Auto-record: Guru tidak masuk kelas (pulang cepat)',
               catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
               kehadiran_murid: '-',

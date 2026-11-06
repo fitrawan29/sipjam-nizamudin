@@ -582,7 +582,7 @@ export default function HomeViewAdmin({
             status: jurnalStatus,
             color: jurnalColor,
             filled: isIzinSakit ? 0 : (isBlokToday ? (isExemptNonTeaching ? 0 : (hasJurnalKegiatan ? 1 : 0)) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount),
-            total: isIzinSakit ? targetCount : (isBlokToday ? 1 : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount)
+            total: isBlokToday ? 1 : isIzinSakit ? targetCount : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount
           },
           laporanPiket: {
             status: piketStatus,

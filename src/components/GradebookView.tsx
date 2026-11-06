@@ -223,6 +223,50 @@ export function isAssignmentMatchTeacher(
   return false;
 }
 
+/**
+ * Normalizes and infers school grade (tingkat: '10' | '11' | '12' | 'Lainnya')
+ * from subject name, category, or class name.
+ */
+export function parseTingkat(nama?: string | null): '10' | '11' | '12' | 'Lainnya' {
+  const n = (nama || '').trim();
+  if (/\b(xii|12)\b/i.test(n) || /^(xii|12)\b/i.test(n) || /^(xii|12)[a-z0-9_-]/i.test(n)) return '12';
+  if (/\b(xi|11)\b/i.test(n) || /^(xi|11)\b/i.test(n) || /^(xi|11)[a-z0-9_-]/i.test(n)) return '11';
+  if (/\b(x|10)\b/i.test(n) || /^(x|10)\b/i.test(n) || /^(x|10)[a-z0-9_-]/i.test(n)) return '10';
+  return 'Lainnya';
+}
+
+/**
+ * Extracts target grade-level (tingkat: '10' | '11' | '12' | null) from subject name or category.
+ */
+export function getSubjectTingkat(
+  mapelName?: string | null,
+  mapelsList?: { id?: string; nama_mapel: string; kategori?: string }[]
+): '10' | '11' | '12' | null {
+  if (!mapelName) return null;
+
+  // 1. Direct name inference (e.g. "Matematika XI", "Fisika X", "Biologi 12")
+  const fromName = parseTingkat(mapelName);
+  if (fromName === '10' || fromName === '11' || fromName === '12') {
+    return fromName;
+  }
+
+  // Check Kurikulum Merdeka Phase E (Grade 10)
+  if (/\b(fase\s*e)\b/i.test(mapelName)) return '10';
+
+  // 2. Kategori lookup in master mapel list
+  if (mapelsList && mapelsList.length > 0) {
+    const found = mapelsList.find(m => (m.nama_mapel || '').toLowerCase() === mapelName.toLowerCase());
+    if (found?.kategori) {
+      const fromKat = parseTingkat(found.kategori);
+      if (fromKat === '10' || fromKat === '11' || fromKat === '12') {
+        return fromKat;
+      }
+    }
+  }
+
+  return null;
+}
+
 export default function GradebookView({
   user,
   initialTab = 'gradebook',
@@ -272,7 +316,7 @@ export default function GradebookView({
   const [syncedSemester, setSyncedSemester] = useState<string>('');
 
   // Active Filters
-  const [selectedGuru, setSelectedGuru] = useState<string>(user?.nama || '');
+  const [selectedGuru, setSelectedGuru] = useState<string>(isAdmin ? '' : (user?.nama || ''));
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [selectedKelas, setSelectedKelas] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>(() => {
@@ -310,7 +354,7 @@ export default function GradebookView({
   // Master Data State
   const [teachersList, setTeachersList] = useState<{ id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[]>([]);
   const [allTeacherAssignments, setAllTeacherAssignments] = useState<{ id?: string; guru_id?: string; user_id?: string; nama_guru: string; nip?: string; nama_mapel: string; kelas: string }[]>([]);
-  const [masterMapelList, setMasterMapelList] = useState<{ id?: string; nama_mapel: string }[]>([]);
+  const [masterMapelList, setMasterMapelList] = useState<{ id?: string; nama_mapel: string; kategori?: string }[]>([]);
   const [masterClassesList, setMasterClassesList] = useState<string[]>([]);
   const [mapelList, setMapelList] = useState<{ id?: string; nama_mapel: string; kelas?: string }[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
@@ -329,13 +373,29 @@ export default function GradebookView({
     targetGuruName: string,
     assignmentsPool: { id?: string; guru_id?: string; user_id?: string; nama_guru: string; nip?: string; nama_mapel: string; kelas: string }[],
     teachers: { id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[],
-    fallbackMapels: { id?: string; nama_mapel: string }[],
+    fallbackMapels: { id?: string; nama_mapel: string; kategori?: string }[],
     fallbackClasses: string[],
     prefMapel?: string,
     prefKelas?: string
   ) => {
+    // If Admin and no teacher selected yet, clear selections and return immediately
+    if (isAdmin && !targetGuruName) {
+      setMapelList([]);
+      setSelectedMapel('');
+      setKelasList([]);
+      setSelectedKelas('');
+      return;
+    }
+
     if (!targetGuruName && teachers.length === 0) return;
-    const effectiveGuru = targetGuruName || (teachers[0]?.nama_guru || user?.nama || '');
+    const effectiveGuru = targetGuruName || (isAdmin ? '' : (teachers[0]?.nama_guru || user?.nama || ''));
+    if (!effectiveGuru) {
+      setMapelList([]);
+      setSelectedMapel('');
+      setKelasList([]);
+      setSelectedKelas('');
+      return;
+    }
     const currentTeacher = teachers.find(t => isTeacherMatch(t, effectiveGuru)) || {
       nama_guru: effectiveGuru,
       nip: user?.username || '',
@@ -386,20 +446,39 @@ export default function GradebookView({
       : (distinctSubjects[0] || '');
     setSelectedMapel(activeMapel);
 
+    // Extract target grade level for activeMapel to enforce strict grade-level matching
+    const targetTingkat = getSubjectTingkat(activeMapel, fallbackMapels);
+
     // Classes strictly for activeMapel
-    const matchingClasses = Array.from(new Set(
+    let matchingClasses = Array.from(new Set(
       formattedMapels
         .filter(m => !activeMapel || m.nama_mapel === activeMapel)
         .map(m => m.kelas)
         .filter(Boolean) as string[]
     )).sort();
 
+    // Enforce strict grade-level matching on matchingClasses
+    if (targetTingkat) {
+      matchingClasses = matchingClasses.filter(k => parseTingkat(k) === targetTingkat);
+    }
+
     let targetClasses = matchingClasses;
     if (targetClasses.length === 0) {
       const allTeacherClasses = Array.from(new Set(
         formattedMapels.map(m => m.kelas).filter(Boolean) as string[]
       )).sort();
-      targetClasses = allTeacherClasses.length > 0 ? allTeacherClasses : fallbackClasses;
+
+      const candidateClasses = allTeacherClasses.length > 0 ? allTeacherClasses : fallbackClasses;
+      const filteredCandidates = targetTingkat
+        ? candidateClasses.filter(k => parseTingkat(k) === targetTingkat)
+        : candidateClasses;
+
+      // If teacher's classes didn't match targetTingkat, fall back to master classes for that grade level
+      if (filteredCandidates.length === 0 && targetTingkat && fallbackClasses.length > 0) {
+        targetClasses = fallbackClasses.filter(k => parseTingkat(k) === targetTingkat);
+      } else {
+        targetClasses = filteredCandidates;
+      }
     }
 
     setKelasList(targetClasses);
@@ -443,15 +522,23 @@ export default function GradebookView({
         return;
       }
     }
+    setDirtyGrades({});
     setSelectedGuru(newGuru);
+    if (!newGuru) {
+      setMapelList([]);
+      setSelectedMapel('');
+      setKelasList([]);
+      setSelectedKelas('');
+      return;
+    }
     syncTeacherAssignments(
       newGuru,
       allTeacherAssignments,
       teachersList,
       masterMapelList,
       masterClassesList,
-      selectedMapel,
-      selectedKelas
+      '',
+      ''
     );
   };
 
@@ -461,24 +548,51 @@ export default function GradebookView({
         return;
       }
     }
+    setDirtyGrades({});
+    if (!newMapel) {
+      setSelectedMapel('');
+      setKelasList([]);
+      setSelectedKelas('');
+      return;
+    }
     setSelectedMapel(newMapel);
 
+    const currentClassValid = mapelList.some(
+      m => m.nama_mapel === newMapel && m.kelas === selectedKelas
+    );
+
+    const targetTingkat = getSubjectTingkat(newMapel, masterMapelList);
+
     // Filter classes strictly to only classes assigned to current teacher for this mapel
-    const matchingClasses = Array.from(new Set(
+    let matchingClasses = Array.from(new Set(
       mapelList.filter(m => m.nama_mapel === newMapel && m.kelas).map(m => m.kelas as string)
     )).sort();
 
-    const targetClasses = matchingClasses.length > 0
-      ? matchingClasses
-      : (mapelList.some(m => m.kelas)
-          ? Array.from(new Set(mapelList.map(m => m.kelas).filter(Boolean) as string[])).sort()
-          : masterClassesList);
+    if (targetTingkat) {
+      matchingClasses = matchingClasses.filter(k => parseTingkat(k) === targetTingkat);
+    }
+
+    let targetClasses = matchingClasses;
+    if (targetClasses.length === 0) {
+      const allTeacherClasses = Array.from(new Set(
+        mapelList.map(m => m.kelas).filter(Boolean) as string[]
+      )).sort();
+
+      const candidateClasses = allTeacherClasses.length > 0 ? allTeacherClasses : masterClassesList;
+      const filteredCandidates = targetTingkat
+        ? candidateClasses.filter(k => parseTingkat(k) === targetTingkat)
+        : candidateClasses;
+
+      if (filteredCandidates.length === 0 && targetTingkat && masterClassesList.length > 0) {
+        targetClasses = masterClassesList.filter(k => parseTingkat(k) === targetTingkat);
+      } else {
+        targetClasses = filteredCandidates;
+      }
+    }
 
     setKelasList(targetClasses);
-    if (!targetClasses.includes(selectedKelas)) {
-      if (targetClasses.length > 0) {
-        setSelectedKelas(targetClasses[0]);
-      }
+    if (!currentClassValid || !targetClasses.includes(selectedKelas)) {
+      setSelectedKelas(targetClasses.length > 0 ? targetClasses[0] : '');
     }
   };
 
@@ -488,7 +602,17 @@ export default function GradebookView({
         return;
       }
     }
+    setDirtyGrades({});
     setSelectedKelas(newKelas);
+    const stillTeaches = mapelList.some(
+      m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === newKelas)
+    );
+    if (!stillTeaches) {
+      const firstInClass = mapelList.find(m => !m.kelas || m.kelas === newKelas);
+      if (firstInClass && firstInClass.nama_mapel) {
+        setSelectedMapel(firstInClass.nama_mapel);
+      }
+    }
   };
 
   // Loading & Saving States
