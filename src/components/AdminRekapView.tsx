@@ -219,6 +219,31 @@ export default function AdminRekapView({
       const liburDates = new Set<string>((kalenderLibur || []).map((k: any) => k.tanggal as string));
       const totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates);
 
+      let telatPenaltiAktif = true;
+      let batasJamPenalti = 4;
+      let penaltiHariAlpa = 1;
+      try {
+        let telatCfgQuery = supabase
+          .from('pengaturan')
+          .select('key, value')
+          .in('key', ['akumulasi_telat_aktif', 'batas_jam_penalti_telat', 'jumlah_hari_penalti_telat']);
+        if (user?.sekolah_id) {
+          telatCfgQuery = telatCfgQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: telatCfgRows } = await telatCfgQuery;
+        if (telatCfgRows && telatCfgRows.length > 0) {
+          const aktifRow = telatCfgRows.find((r: any) => r.key === 'akumulasi_telat_aktif');
+          const jamRow = telatCfgRows.find((r: any) => r.key === 'batas_jam_penalti_telat');
+          const hariRow = telatCfgRows.find((r: any) => r.key === 'jumlah_hari_penalti_telat');
+          if (aktifRow?.value !== undefined && aktifRow?.value !== null && aktifRow?.value !== '') {
+            telatPenaltiAktif = String(aktifRow.value) !== 'false';
+          }
+          if (Number(jamRow?.value) > 0) batasJamPenalti = Number(jamRow?.value);
+          if (Number(hariRow?.value) > 0) penaltiHariAlpa = Math.floor(Number(hariRow?.value));
+        }
+      } catch (_) {}
+      const batasDetikPenalti = Math.round(batasJamPenalti * 3600);
+
       // Seed map with all teachers from data_guru (excluding test accounts)
       const pMap: Record<string, any> = {};
       guruList?.forEach(g => {
@@ -296,7 +321,9 @@ export default function AdminRekapView({
         .map(k => {
           const { hadir, dinasLuar, sakit, izin, telatDetik } = pMap[k];
           // Keterlambatan >= 4 jam (14400 detik) dihitung sebagai 1 alpa otomatis
-          const alpaOtomatis = Math.floor((telatDetik || 0) / 14400);
+          const alpaOtomatis = telatPenaltiAktif && batasDetikPenalti > 0
+            ? (batasDetikPenalti === 14400 ? Math.floor((telatDetik || 0) / 14400) : Math.floor((telatDetik || 0) / batasDetikPenalti)) * penaltiHariAlpa
+            : 0;
           const hadirEfektif = Math.max(0, hadir - alpaOtomatis);
           // Alpa = Total Wajib Hadir − Hadir − Dinas Luar − Sakit − Izin
           const alpa = Math.max(0, totalHariKerja - hadirEfektif - dinasLuar - sakit - izin);

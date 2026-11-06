@@ -52,6 +52,8 @@ export default function HomeViewGuru({
   });
   const [selectedMonth, setSelectedMonth] = useState(() => getWitaDateStr().substring(0, 7));
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
+  const [telatConfig, setTelatConfig] = useState({ aktif: true, batasJam: 4, penaltiHari: 1 });
+  const [configSyncTick, setConfigSyncTick] = useState(0);
   const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
   const [schoolName, setSchoolName] = useState<string>(() => {
     if (typeof window !== 'undefined') {
@@ -246,7 +248,48 @@ export default function HomeViewGuru({
             pulangCepat: pc,
             lupaCheckout: lc,
           });
-          setAkumulasiTelat({ detik: totalDetik, alpa: Math.floor(totalDetik / 14400) });
+          let aktif = true;
+          let batasJam = 4;
+          let penaltiHari = 1;
+          try {
+            if (typeof window !== 'undefined') {
+              const syncRaw = localStorage.getItem('sipjam_config_sync');
+              if (syncRaw) {
+                const parsed = JSON.parse(syncRaw);
+                const cfg = parsed?.config;
+                if (cfg) {
+                  if (cfg.akumulasi_telat_aktif !== undefined) aktif = String(cfg.akumulasi_telat_aktif) !== 'false';
+                  if (Number(cfg.batas_jam_penalti_telat) > 0) batasJam = Number(cfg.batas_jam_penalti_telat);
+                  if (Number(cfg.jumlah_hari_penalti_telat) > 0) penaltiHari = Math.floor(Number(cfg.jumlah_hari_penalti_telat));
+                }
+              }
+            }
+            let cfgQuery = supabase
+              .from('pengaturan')
+              .select('key, value')
+              .in('key', ['akumulasi_telat_aktif', 'batas_jam_penalti_telat', 'jumlah_hari_penalti_telat']);
+            if (user?.sekolah_id) {
+              cfgQuery = cfgQuery.eq('sekolah_id', user.sekolah_id);
+            }
+            const { data: cfgRows } = await cfgQuery;
+            if (cfgRows && cfgRows.length > 0) {
+              const aktifRow = cfgRows.find((r: any) => r.key === 'akumulasi_telat_aktif');
+              const jamRow = cfgRows.find((r: any) => r.key === 'batas_jam_penalti_telat');
+              const hariRow = cfgRows.find((r: any) => r.key === 'jumlah_hari_penalti_telat');
+              if (aktifRow?.value !== undefined && aktifRow?.value !== null && aktifRow?.value !== '') {
+                aktif = String(aktifRow.value) !== 'false';
+              }
+              if (Number(jamRow?.value) > 0) batasJam = Number(jamRow?.value);
+              if (Number(hariRow?.value) > 0) penaltiHari = Math.floor(Number(hariRow?.value));
+            }
+          } catch (_) {}
+
+          const batasDetik = Math.round(batasJam * 3600);
+          const alpaPenalti = aktif && batasDetik > 0
+            ? (batasDetik === 14400 ? Math.floor(totalDetik / 14400) : Math.floor(totalDetik / batasDetik)) * penaltiHari
+            : 0;
+          setTelatConfig({ aktif, batasJam, penaltiHari });
+          setAkumulasiTelat({ detik: totalDetik, alpa: alpaPenalti });
         } catch (err) {
           console.error('Failed to load teacher stats:', err);
         }
@@ -254,7 +297,7 @@ export default function HomeViewGuru({
 
       fetchAttendanceStats();
     }
-  }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth]);
+  }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth, configSyncTick]);
 
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -268,6 +311,7 @@ export default function HomeViewGuru({
         setLoadingState(true);
         const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
         setDailyState(state);
+        setConfigSyncTick(t => t + 1);
         getTeacherDisciplineWarnings(user.nama, user.sekolah_id, selectedMonth)
           .then(setTeacherWarnings)
           .catch(err => console.error('Error refreshing discipline warnings:', err));
@@ -717,7 +761,12 @@ export default function HomeViewGuru({
                   <i className="fa-solid fa-stopwatch text-sm"></i>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-600 dark:text-white">Akumulasi Keterlambatan Bulan Ini</p>
+                  <p className="text-[10px] font-bold text-slate-600 dark:text-white">
+                    Akumulasi Keterlambatan Bulan Ini{' '}
+                    <span className="font-normal text-slate-500 dark:text-slate-300">
+                      ({telatConfig.aktif ? `Penalti: ${telatConfig.batasJam} Jam = ${telatConfig.penaltiHari} Hari Alpa` : 'Penalti Alpa Nonaktif'})
+                    </span>
+                  </p>
                   <p className="text-xs font-black text-gray-900 dark:text-white">
                     {Math.floor(akumulasiTelat.detik / 3600)} Jam {Math.floor((akumulasiTelat.detik % 3600) / 60)} Menit {akumulasiTelat.detik % 60} Detik
                   </p>

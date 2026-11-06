@@ -36,6 +36,9 @@ export default function AdminConfigView({
     jam_pulang_jumat: '11:00',
     jam_pulang_akhir: '22:00',
     jam_batas_intervensi_siswa: '08:00',
+    akumulasi_telat_aktif: 'true',
+    batas_jam_penalti_telat: '4',
+    jumlah_hari_penalti_telat: '1',
     kop_yayasan: '',
     kop_sekolah: '',
     kop_alamat: '',
@@ -917,8 +920,69 @@ export default function AdminConfigView({
                             Batas waktu bagi Guru Piket untuk mengisi presensi pagi siswa (default 08:00 WITA). Wali Kelas memiliki akses pagi diperpanjang hingga pk. 12:00 WITA.
                           </p>
                         </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-1">
+                            <i className="fa-solid fa-stopwatch text-amber-600 dark:text-amber-400"></i> Akumulasi Telat & Penalti
+                          </label>
+                          <select
+                            name="akumulasi_telat_aktif"
+                            value={config.akumulasi_telat_aktif ?? 'true'}
+                            onChange={handleChange}
+                            className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                          >
+                            <option value="true">Aktif (Penalti Alpa Otomatis)</option>
+                            <option value="false">Nonaktif (Tanpa Penalti Alpa)</option>
+                          </select>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                            Aktifkan atau nonaktifkan konversi akumulasi keterlambatan menjadi potongan Alpa otomatis.
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                              Batas Telat (Jam)
+                            </label>
+                            <input
+                              type="number"
+                              name="batas_jam_penalti_telat"
+                              min="0.5"
+                              step="0.5"
+                              value={config.batas_jam_penalti_telat ?? '4'}
+                              onChange={handleChange}
+                              disabled={String(config.akumulasi_telat_aktif) === 'false'}
+                              required
+                              className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium disabled:opacity-50"
+                            />
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                              Default: 4 jam
+                            </p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                              Penalti (Hari Alpa)
+                            </label>
+                            <input
+                              type="number"
+                              name="jumlah_hari_penalti_telat"
+                              min="1"
+                              step="1"
+                              value={config.jumlah_hari_penalti_telat ?? '1'}
+                              onChange={handleChange}
+                              disabled={String(config.akumulasi_telat_aktif) === 'false'}
+                              required
+                              className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium disabled:opacity-50"
+                            />
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                              Default: 1 hari
+                            </p>
+                          </div>
+                        </div>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total 4 jam keterlambatan = 1 Hari Alpa otomatis.</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">
+                      {String(config.akumulasi_telat_aktif) === 'false'
+                        ? '* Penalti Alpa dari akumulasi keterlambatan dinonaktifkan. Jam keterlambatan tetap dicatat tanpa potongan hari Alpa otomatis.'
+                        : `* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total ${config.batas_jam_penalti_telat || '4'} jam keterlambatan = ${config.jumlah_hari_penalti_telat || '1'} Hari Alpa otomatis.`}
+                    </p>
                 </div>
 
                 <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">
