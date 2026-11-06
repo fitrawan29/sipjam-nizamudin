@@ -308,7 +308,7 @@ async function runAdversarialM4Suite() {
 
   // Test 3.3: Verify handleSave saves nama directly without degree reconstruction
   try {
-    assert.ok(accountModalContent.includes('const effectiveCoreNama = (nama || coreNama || \'\').trim()'), 'Calculates effectiveCoreNama from direct inputs');
+    assert.ok(accountModalContent.includes('const effectiveCoreNama = (nama || \'\').trim()'), 'Calculates effectiveCoreNama from direct inputs');
     assert.ok(accountModalContent.includes('const cleanNama = normalizeName(effectiveCoreNama)'), 'Normalizes effectiveCoreNama cleanly');
     assert.ok(accountModalContent.includes('p_nama: cleanNama || user.nama'), 'RPC payload persists direct normalized name');
     assert.ok(accountModalContent.includes('nama: cleanNama || user.nama'), 'State/Storage persists direct normalized name');
