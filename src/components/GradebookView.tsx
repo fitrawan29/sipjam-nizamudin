@@ -171,6 +171,58 @@ interface StudentItem {
   status: string | null;
 }
 
+export function isTeacherMatch(
+  teacher: { id?: string | null; nama_guru?: string | null; nip?: string | null },
+  targetNameOrObj: string | { id?: string | null; nama_guru?: string | null; nip?: string | null }
+): boolean {
+  if (!teacher) return false;
+  const targetName = typeof targetNameOrObj === 'string' ? targetNameOrObj : (targetNameOrObj.nama_guru || '');
+  const targetNip = typeof targetNameOrObj === 'object' ? targetNameOrObj.nip : null;
+  const targetId = typeof targetNameOrObj === 'object' ? targetNameOrObj.id : null;
+
+  if (targetId && teacher.id && String(targetId) === String(teacher.id)) return true;
+  if (targetNip && teacher.nip) {
+    const tNip = String(targetNip).replace(/['\s]/g, '').trim();
+    const gNip = String(teacher.nip).replace(/['\s]/g, '').trim();
+    if (tNip && gNip && tNip === gNip) return true;
+  }
+
+  const cleanT = (teacher.nama_guru || '').toLowerCase().trim();
+  const cleanTarget = (targetName || '').toLowerCase().trim();
+  if (cleanT && cleanTarget) {
+    if (cleanT === cleanTarget) return true;
+    const normT = cleanT.split(',')[0].replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
+    const normTarget = cleanTarget.split(',')[0].replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
+    if (normT === normTarget) return true;
+  }
+  return false;
+}
+
+export function isAssignmentMatchTeacher(
+  assignment: { guru_id?: string | null; user_id?: string | null; nama_guru?: string | null; nip?: string | null },
+  teacher: { id?: string | null; nama_guru?: string | null; nip?: string | null }
+): boolean {
+  if (!assignment || !teacher) return false;
+  const aId = assignment.guru_id || assignment.user_id;
+  if (aId && teacher.id && String(aId) === String(teacher.id)) return true;
+
+  if (assignment.nip && teacher.nip) {
+    const aNip = String(assignment.nip).replace(/['\s]/g, '').trim();
+    const tNip = String(teacher.nip).replace(/['\s]/g, '').trim();
+    if (aNip && tNip && aNip === tNip) return true;
+  }
+
+  const aNama = (assignment.nama_guru || '').toLowerCase().trim();
+  const tNama = (teacher.nama_guru || '').toLowerCase().trim();
+  if (aNama && tNama) {
+    if (aNama === tNama) return true;
+    const normA = aNama.split(',')[0].replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
+    const normT = tNama.split(',')[0].replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\s+/g, ' ').trim();
+    if (normA === normT) return true;
+  }
+  return false;
+}
+
 export default function GradebookView({
   user,
   initialTab = 'gradebook',
@@ -256,8 +308,10 @@ export default function GradebookView({
   const [innerTab, setInnerTab] = useState<'tp-matrix' | 'rekap-semester' | 'statistik'>('tp-matrix');
 
   // Master Data State
-
-  const [teachersList, setTeachersList] = useState<{ id?: string; nama_guru: string; nip?: string }[]>([]);
+  const [teachersList, setTeachersList] = useState<{ id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[]>([]);
+  const [allTeacherAssignments, setAllTeacherAssignments] = useState<{ id?: string; guru_id?: string; user_id?: string; nama_guru: string; nip?: string; nama_mapel: string; kelas: string }[]>([]);
+  const [masterMapelList, setMasterMapelList] = useState<{ id?: string; nama_mapel: string }[]>([]);
+  const [masterClassesList, setMasterClassesList] = useState<string[]>([]);
   const [mapelList, setMapelList] = useState<{ id?: string; nama_mapel: string; kelas?: string }[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
 
@@ -269,6 +323,89 @@ export default function GradebookView({
       return true;
     });
   }, [mapelList]);
+
+  // Synchronize assigned subjects and classes for selected teacher
+  const syncTeacherAssignments = useCallback((
+    targetGuruName: string,
+    assignmentsPool: { id?: string; guru_id?: string; user_id?: string; nama_guru: string; nip?: string; nama_mapel: string; kelas: string }[],
+    teachers: { id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[],
+    fallbackMapels: { id?: string; nama_mapel: string }[],
+    fallbackClasses: string[],
+    prefMapel?: string,
+    prefKelas?: string
+  ) => {
+    if (!targetGuruName && teachers.length === 0) return;
+    const effectiveGuru = targetGuruName || (teachers[0]?.nama_guru || user?.nama || '');
+    const currentTeacher = teachers.find(t => isTeacherMatch(t, effectiveGuru)) || {
+      nama_guru: effectiveGuru,
+      nip: user?.username || '',
+      id: user?.id,
+      mata_pelajaran: user?.mata_pelajaran || '',
+    };
+
+    // Filter teacher assignments
+    let matched = assignmentsPool.filter(a => isAssignmentMatchTeacher(a, currentTeacher));
+
+    // Fallback if teacher has no assignments in guru_mapel / jadwal_pelajaran
+    if (matched.length === 0) {
+      const rawMapel = (currentTeacher as any).mata_pelajaran;
+      if (rawMapel && !isInvalidMapel(rawMapel)) {
+        matched = [{
+          id: 'fallback',
+          guru_id: currentTeacher.id,
+          nama_guru: currentTeacher.nama_guru,
+          nip: currentTeacher.nip || '',
+          nama_mapel: rawMapel,
+          kelas: ''
+        }];
+      } else if (isAdmin && fallbackMapels.length > 0) {
+        matched = fallbackMapels.map(m => ({
+          id: m.id,
+          guru_id: currentTeacher.id,
+          nama_guru: currentTeacher.nama_guru,
+          nip: currentTeacher.nip || '',
+          nama_mapel: m.nama_mapel,
+          kelas: ''
+        }));
+      }
+    }
+
+    const formattedMapels = matched.map(m => ({
+      id: m.id,
+      nama_mapel: m.nama_mapel,
+      kelas: m.kelas || undefined,
+    }));
+    setMapelList(formattedMapels);
+
+    const distinctSubjects = Array.from(new Set(formattedMapels.map(m => m.nama_mapel).filter(Boolean)));
+    const activeMapel = (prefMapel && distinctSubjects.includes(prefMapel))
+      ? prefMapel
+      : (distinctSubjects[0] || '');
+    setSelectedMapel(activeMapel);
+
+    // Classes strictly for activeMapel
+    const matchingClasses = Array.from(new Set(
+      formattedMapels
+        .filter(m => !activeMapel || m.nama_mapel === activeMapel)
+        .map(m => m.kelas)
+        .filter(Boolean) as string[]
+    )).sort();
+
+    let targetClasses = matchingClasses;
+    if (targetClasses.length === 0) {
+      const allTeacherClasses = Array.from(new Set(
+        formattedMapels.map(m => m.kelas).filter(Boolean) as string[]
+      )).sort();
+      targetClasses = allTeacherClasses.length > 0 ? allTeacherClasses : fallbackClasses;
+    }
+
+    setKelasList(targetClasses);
+
+    const activeKelas = (prefKelas && targetClasses.includes(prefKelas))
+      ? prefKelas
+      : (targetClasses[0] || '');
+    setSelectedKelas(activeKelas);
+  }, [user, isAdmin]);
 
   const [students, setStudents] = useState<StudentItem[]>([]);
 
@@ -297,6 +434,24 @@ export default function GradebookView({
   }, [dirtyGrades]);
 
   // Safe Filter Selection Handlers guarding unsaved grade changes
+  const handleSelectGuru = (newGuru: string) => {
+    if (Object.keys(dirtyGrades).length > 0) {
+      if (!window.confirm('Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti guru pengampu? Perubahan belum disimpan akan hilang.')) {
+        return;
+      }
+    }
+    setSelectedGuru(newGuru);
+    syncTeacherAssignments(
+      newGuru,
+      allTeacherAssignments,
+      teachersList,
+      masterMapelList,
+      masterClassesList,
+      selectedMapel,
+      selectedKelas
+    );
+  };
+
   const handleSelectMapel = (newMapel: string) => {
     if (Object.keys(dirtyGrades).length > 0) {
       if (!window.confirm('Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti mata pelajaran? Perubahan belum disimpan akan hilang.')) {
@@ -304,16 +459,22 @@ export default function GradebookView({
       }
     }
     setSelectedMapel(newMapel);
-    // Jika kelas saat ini tidak mengampu mapel baru, alihkan ke kelas pertama yang mengampu mapel ini
-    if (!isAdmin && mapelList.length > 0) {
-      const currentClassValid = mapelList.some(
-        m => m.nama_mapel === newMapel && (!m.kelas || m.kelas === selectedKelas)
-      );
-      if (!currentClassValid) {
-        const firstClass = mapelList.find(m => m.nama_mapel === newMapel && m.kelas);
-        if (firstClass?.kelas) {
-          setSelectedKelas(firstClass.kelas);
-        }
+
+    // Filter classes strictly to only classes assigned to current teacher for this mapel
+    const matchingClasses = Array.from(new Set(
+      mapelList.filter(m => m.nama_mapel === newMapel && m.kelas).map(m => m.kelas as string)
+    )).sort();
+
+    const targetClasses = matchingClasses.length > 0
+      ? matchingClasses
+      : (mapelList.some(m => m.kelas)
+          ? Array.from(new Set(mapelList.map(m => m.kelas).filter(Boolean) as string[])).sort()
+          : masterClassesList);
+
+    setKelasList(targetClasses);
+    if (!targetClasses.includes(selectedKelas)) {
+      if (targetClasses.length > 0) {
+        setSelectedKelas(targetClasses[0]);
       }
     }
   };
@@ -325,18 +486,6 @@ export default function GradebookView({
       }
     }
     setSelectedKelas(newKelas);
-    // Jika berpindah antar kelas paralel yang sama-sama mengampu selectedMapel, pertahankan selectedMapel!
-    if (!isAdmin && mapelList.length > 0) {
-      const stillTeaches = mapelList.some(
-        m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === newKelas)
-      );
-      if (!stillTeaches) {
-        const firstInClass = mapelList.find(m => !m.kelas || m.kelas === newKelas);
-        if (firstInClass) {
-          setSelectedMapel(firstInClass.nama_mapel);
-        }
-      }
-    }
   };
 
   // Loading & Saving States
@@ -696,122 +845,133 @@ export default function GradebookView({
     const fetchMasterAssignments = async () => {
       setIsLoadingMaster(true);
       try {
+        let teachers: { id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[] = [];
+        let assignments: typeof allTeacherAssignments = [];
+        let masterMapels: { id?: string; nama_mapel: string }[] = [];
+        let masterClasses: string[] = [];
+
+        // Fetch teachers
         if (isAdmin) {
-          // Fetch teachers
           const { data: gData } = await supabase
             .from('data_guru')
-            .select('id, nama_guru, nip')
+            .select('id, nama_guru, nip, mata_pelajaran')
             .order('nama_guru', { ascending: true });
           if (gData && gData.length > 0) {
-            const list = gData.map(g => ({
+            teachers = gData.map(g => ({
               id: g.id,
               nama_guru: g.nama_guru || 'Tanpa Nama',
               nip: g.nip || '',
+              mata_pelajaran: g.mata_pelajaran || '',
             }));
-            setTeachersList(list);
-            if (!selectedGuru && list.length > 0) {
-              setSelectedGuru(list[0].nama_guru);
-            }
-          }
-
-          // Fetch all mapel
-          const { data: mData } = await supabase
-            .from('data_mapel')
-            .select('*')
-            .order('nama_mata_pelajaran', { ascending: true });
-          if (mData && mData.length > 0) {
-            const formatted = mData
-              .filter(m => !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel))
-              .map(m => ({
-                id: m.id,
-                nama_mapel: m.nama_mata_pelajaran || '',
-                kelas: m.kategori || undefined,
-              }));
-            setMapelList(formatted);
-            if (!selectedMapel && formatted.length > 0) {
-              setSelectedMapel(formatted[0].nama_mapel);
-            }
-          }
-
-          // Fetch all classes
-          const { data: sData } = await supabase
-            .from('data_siswa')
-            .select('kelas');
-          if (sData) {
-            const unique = Array.from(new Set(sData.map(s => s.kelas).filter(Boolean))) as string[];
-            unique.sort();
-            setKelasList(unique);
-            if (!selectedKelas && unique.length > 0) {
-              setSelectedKelas(unique[0]);
-            }
           }
         } else {
-          // Teacher mode: fetch teacher's assigned subjects & classes
-          let query = supabase.from('guru_mapel').select('*');
+          teachers = [{
+            id: user?.id,
+            nama_guru: user?.nama || 'Tanpa Nama',
+            nip: user?.username || '',
+            mata_pelajaran: user?.mata_pelajaran || '',
+          }];
+        }
+        setTeachersList(teachers);
+
+        // Fetch guru_mapel
+        let gmQuery = supabase.from('guru_mapel').select('*');
+        if (!isAdmin) {
           if (user?.username && user?.nama) {
-            query = query.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
+            gmQuery = gmQuery.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
           } else if (user?.username) {
-            query = query.eq('nip', user.username);
+            gmQuery = gmQuery.eq('nip', user.username);
           } else if (user?.nama) {
-            query = query.ilike('nama_guru', `%${user.nama}%`);
-          }
-
-          let { data: gmData } = await query.order('nama_mapel', { ascending: true });
-          if (gmData) {
-            gmData = gmData.filter((g: any) => !isInvalidMapel(g.nama_mapel || g.mata_pelajaran));
-          }
-
-          // Fallback to jadwal_pelajaran
-          if (!gmData || gmData.length === 0) {
-            if (user?.nama) {
-              const { data: jData } = await supabase
-                .from('jadwal_pelajaran')
-                .select('*')
-                .ilike('nama_guru', `%${user.nama}%`);
-              if (jData && jData.length > 0) {
-                const uniqueMap = new Map();
-                jData.forEach((j: any) => {
-                  const m = j.mata_pelajaran || '-';
-                  if (isInvalidMapel(m)) return;
-                  const k = j.kelas || '-';
-                  const key = `${m}-${k}`;
-                  if (!uniqueMap.has(key)) {
-                    uniqueMap.set(key, {
-                      id: j.id,
-                      nama_mapel: m,
-                      kelas: k,
-                      nama_guru: j.nama_guru,
-                      nip: user?.username || '',
-                    });
-                  }
-                });
-                gmData = Array.from(uniqueMap.values());
-              }
-            }
-          }
-
-          if (gmData && gmData.length > 0) {
-            const mapped = gmData.map(d => ({
-              id: d.id,
-              nama_mapel: d.nama_mapel,
-              kelas: d.kelas,
-            }));
-            setMapelList(mapped);
-            if (!selectedMapel && mapped.length > 0) {
-              setSelectedMapel(mapped[0].nama_mapel);
-            }
-
-            const uniqueK = Array.from(new Set(gmData.map(d => d.kelas).filter(Boolean))) as string[];
-            uniqueK.sort();
-            setKelasList(uniqueK);
-            if (!selectedKelas && uniqueK.length > 0) {
-              setSelectedKelas(uniqueK[0]);
-            }
-          }
-          if (user?.nama) {
-            setSelectedGuru(user.nama);
+            gmQuery = gmQuery.ilike('nama_guru', `%${user.nama}%`);
           }
         }
+        if (sekolahId) gmQuery = gmQuery.eq('sekolah_id', sekolahId);
+        const { data: gmData } = await gmQuery.order('nama_mapel', { ascending: true });
+
+        // Fetch jadwal_pelajaran
+        let jmQuery = supabase.from('jadwal_pelajaran').select('*');
+        if (!isAdmin && user?.nama) {
+          jmQuery = jmQuery.ilike('nama_guru', `%${user.nama}%`);
+        }
+        if (sekolahId) jmQuery = jmQuery.eq('sekolah_id', sekolahId);
+        const { data: jmData } = await jmQuery;
+
+        // Fetch fallback data_mapel & data_siswa
+        const { data: mData } = await supabase
+          .from('data_mapel')
+          .select('*')
+          .order('nama_mata_pelajaran', { ascending: true });
+        if (mData) {
+          masterMapels = mData
+            .filter(m => !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel))
+            .map(m => ({ id: m.id, nama_mapel: m.nama_mata_pelajaran || m.nama_mapel || '' }));
+          setMasterMapelList(masterMapels);
+        }
+
+        const { data: sData } = await supabase.from('data_siswa').select('kelas');
+        if (sData) {
+          masterClasses = Array.from(new Set(sData.map(s => s.kelas).filter(Boolean))) as string[];
+          masterClasses.sort();
+          setMasterClassesList(masterClasses);
+        }
+
+        // Combine assignments
+        const poolMap = new Map<string, typeof allTeacherAssignments[0]>();
+        if (gmData) {
+          gmData.forEach((g: any) => {
+            const m = g.nama_mapel || g.mata_pelajaran;
+            if (!m || isInvalidMapel(m)) return;
+            const k = g.kelas || '';
+            const key = `${g.nama_guru || ''}__${m}__${k}`.toLowerCase();
+            poolMap.set(key, {
+              id: g.id,
+              guru_id: g.guru_id,
+              user_id: g.guru_id,
+              nama_guru: g.nama_guru || '',
+              nip: g.nip || '',
+              nama_mapel: m,
+              kelas: k
+            });
+          });
+        }
+        if (jmData) {
+          jmData.forEach((j: any) => {
+            const m = j.mata_pelajaran || j.mapel;
+            if (!m || isInvalidMapel(m)) return;
+            const k = j.kelas || '';
+            const key = `${j.nama_guru || ''}__${m}__${k}`.toLowerCase();
+            if (!poolMap.has(key)) {
+              poolMap.set(key, {
+                id: j.id,
+                guru_id: j.user_id,
+                user_id: j.user_id,
+                nama_guru: j.nama_guru || '',
+                nip: '',
+                nama_mapel: m,
+                kelas: k
+              });
+            }
+          });
+        }
+        assignments = Array.from(poolMap.values());
+        setAllTeacherAssignments(assignments);
+
+        // Determine initial guru
+        const initialGuru = selectedGuru || (isAdmin ? (teachers[0]?.nama_guru || '') : (user?.nama || ''));
+        if (!selectedGuru && initialGuru) {
+          setSelectedGuru(initialGuru);
+        }
+
+        // Apply filtering for initial teacher
+        syncTeacherAssignments(
+          initialGuru,
+          assignments,
+          teachers,
+          masterMapels,
+          masterClasses,
+          selectedMapel,
+          selectedKelas
+        );
       } catch (err) {
         console.error('Error fetching master data:', err);
       } finally {
@@ -820,7 +980,7 @@ export default function GradebookView({
     };
 
     fetchMasterAssignments();
-  }, [isAdmin, user]);
+  }, [isAdmin, user, sekolahId, syncTeacherAssignments]);
 
   // Verify if current user is the assigned teacher (Guru Pengampu) for selectedMapel & selectedKelas
   useEffect(() => {
@@ -2541,7 +2701,7 @@ export default function GradebookView({
               </label>
               <select
                 value={selectedGuru}
-                onChange={e => setSelectedGuru(e.target.value)}
+                onChange={e => handleSelectGuru(e.target.value)}
                 className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
                 {teachersList.map((g, idx) => (
@@ -2572,11 +2732,15 @@ export default function GradebookView({
               onChange={e => handleSelectMapel(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
             >
-              {uniqueMapelList.map((m, idx) => (
-                <option key={idx} value={m.nama_mapel}>
-                  {m.nama_mapel}
-                </option>
-              ))}
+              {uniqueMapelList.length === 0 ? (
+                <option value="">Tidak ada mapel ditugaskan</option>
+              ) : (
+                uniqueMapelList.map((m, idx) => (
+                  <option key={idx} value={m.nama_mapel}>
+                    {m.nama_mapel}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -2590,11 +2754,15 @@ export default function GradebookView({
               onChange={e => handleSelectKelas(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
             >
-              {kelasList.map((k, idx) => (
-                <option key={idx} value={k}>
-                  {k}
-                </option>
-              ))}
+              {kelasList.length === 0 ? (
+                <option value="">Tidak ada kelas ditugaskan</option>
+              ) : (
+                kelasList.map((k, idx) => (
+                  <option key={idx} value={k}>
+                    {k}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -4117,7 +4285,7 @@ export default function GradebookView({
             leftTitle="Mengetahui,"
             leftSubtitle="Guru Mata Pelajaran"
             leftName={selectedGuru || user?.nama}
-            leftNip={user?.nip}
+            leftNip={teachersList.find(t => t.nama_guru === selectedGuru)?.nip || user?.nip}
             user={user}
             sekolahId={sekolahId || undefined}
           />
@@ -4411,7 +4579,7 @@ export default function GradebookView({
             leftTitle="Mengetahui,"
             leftSubtitle="Guru Mata Pelajaran"
             leftName={selectedGuru || user?.nama}
-            leftNip={user?.nip}
+            leftNip={teachersList.find(t => t.nama_guru === selectedGuru)?.nip || user?.nip}
             user={user}
             sekolahId={sekolahId || undefined}
           />
