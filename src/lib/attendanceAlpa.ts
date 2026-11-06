@@ -8,7 +8,7 @@ import {
   getWitaDayName,
   extractWitaDateStr
 } from '@/lib/wita';
-import { isGuruDiPiket, isJurnalMatchJadwal } from '@/lib/workflow';
+import { isGuruDiPiket, isJurnalMatchJadwal, isLateArrival } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface AutoAlpaResult {
@@ -140,6 +140,7 @@ export async function evaluateAndApplyAutoAlpa(
 
   const activeMultiDayLeaves = (multiDayRecords || []).filter(rec => {
     if (rec.status_verifikasi === 'Ditolak') return false;
+    if (isLateArrival(rec)) return false;
     const isLeaveType = ['Sakit', 'Izin', 'Dinas Luar'].includes(rec.jenis_presensi) ||
       rec.detail_izin === 'Sakit' || (rec.detail_izin && rec.detail_izin.includes('Izin'));
     if (!isLeaveType) return false;
@@ -1045,7 +1046,8 @@ export async function recordUnfilledJournalsAndPiket(
         }) || null;
       }
 
-      const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = 
+      // Izin Terlambat / Terlambat is not leave: KBM journal must still be filled
+      const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = isLateArrival(presensiDatang) ? null :
         (state.isIzinSakit || presensiDatang?.jenis_presensi === 'Sakit' || presensiDatang?.detail_izin?.toLowerCase().includes('sakit')) ? 'Sakit' :
         (presensiDatang?.jenis_presensi === 'Izin' || presensiDatang?.detail_izin?.toLowerCase().includes('izin')) ? 'Izin' :
         (state.isDinasLuar || presensiDatang?.jenis_presensi === 'Dinas Luar' || presensiDatang?.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : null;

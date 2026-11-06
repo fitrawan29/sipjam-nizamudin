@@ -365,6 +365,11 @@ export function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
   return daftarArr.some(n => n === namaLower || namaLower.includes(n) || n.includes(namaLower));
 }
 
+export function isLateArrival(p: any): boolean {
+  // Izin Terlambat/Terlambat bukan cuti: guru tetap wajib mengisi jurnal KBM.
+  return /terlambat/i.test(p?.jenis_presensi || '');
+}
+
 /**
  * Helper: Cek apakah jurnal tertentu cocok dengan jadwal tertentu.
  * Jadwal punya mata_pelajaran (singkat: "MTK") sedangkan jurnal punya mapel (panjang: "XI Merdeka_Matematika")
@@ -1085,7 +1090,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       // If teacher has an active sick/leave record where today is within [tanggal_mulai, tanggal_selesai]
       const multiDayLeave = allPresensi.find((p: any) => {
         if (p.status_verifikasi === 'Ditolak') return false;
-        const isLeaveType = p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit' || p.detail_izin === 'Sakit' || (p.detail_izin && p.detail_izin.includes('Izin'));
+        const isLeaveType = !isLateArrival(p) && p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit' || p.detail_izin === 'Sakit' || (p.detail_izin && p.detail_izin.includes('Izin'));
         if (!isLeaveType) return false;
         if (p.tanggal_mulai && p.tanggal_selesai) {
           return todayStr >= p.tanggal_mulai && todayStr <= p.tanggal_selesai;

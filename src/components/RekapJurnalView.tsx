@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
-import { isJurnalMatchJadwal } from '@/lib/workflow';
+import { isJurnalMatchJadwal, isLateArrival } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceAlpa';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
@@ -314,6 +314,7 @@ export default function RekapJurnalView({
                   if (pDate !== dateStr) return false;
                   const matchTeacher = isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, sched);
                   if (!matchTeacher) return false;
+                  if (isLateArrival(p)) return false;
                   const jp = (p.jenis_presensi || '').toLowerCase();
                   const di = (p.detail_izin || '').toLowerCase();
                   return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || di.includes('sakit') || di.includes('izin') || di.includes('dinas');

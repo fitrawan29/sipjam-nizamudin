@@ -651,7 +651,7 @@ export default function GuruPresensi({
     }
 
     // R2: Auto-fill KBM journal on teacher absence (Sakit, Izin, Dinas Luar)
-    if (tipeAbsen === 'Datang' && (currentJenis === 'Sakit' || currentJenis === 'Izin' || currentJenis === 'Dinas Luar' || detailIzin === 'Sakit')) {
+    if (tipeAbsen === 'Datang' && (currentJenis === 'Sakit' || currentJenis === 'Izin' || currentJenis === 'Dinas Luar')) {
       const leaveType = (currentJenis === 'Sakit' || detailIzin === 'Sakit') ? 'Sakit' : (currentJenis === 'Dinas Luar') ? 'Dinas Luar' : 'Izin';
       const daysCount = durasiHari || 1;
       const startD = tanggalMulai || getWitaDateStr();
