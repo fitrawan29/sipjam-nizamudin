@@ -58,17 +58,25 @@ export function resolveCanonicalRoute(rawView: string | null | undefined, rawTab
   }
   const cleanView = trimmed;
   const alias = VIEW_ALIASES[cleanView];
+  let canonicalView = cleanView;
+  let defaultTab = (rawTab && rawTab.trim() !== '') ? rawTab.trim() : undefined;
+  let isLegacyAlias = false;
+
   if (alias) {
-    return {
-      canonicalView: alias.view,
-      defaultTab: (rawTab && rawTab.trim() !== '') ? rawTab.trim() : alias.tab,
-      isLegacyAlias: true
-    };
+    canonicalView = alias.view;
+    defaultTab = (rawTab && rawTab.trim() !== '') ? rawTab.trim() : alias.tab;
+    isLegacyAlias = true;
   }
+
+  // Requirement R2: Transparent redirection of legacy 'cetak' subtab to 'tabel'
+  if (canonicalView === 'view-admin-rekap' && defaultTab === 'cetak') {
+    defaultTab = 'tabel';
+  }
+
   return {
-    canonicalView: cleanView,
-    defaultTab: (rawTab && rawTab.trim() !== '') ? rawTab.trim() : undefined,
-    isLegacyAlias: false
+    canonicalView,
+    defaultTab,
+    isLegacyAlias
   };
 }
 

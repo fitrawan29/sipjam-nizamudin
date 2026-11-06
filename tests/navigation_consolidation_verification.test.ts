@@ -111,17 +111,25 @@ export function resolveCanonicalRoute(rawView: string | null | undefined, rawTab
   }
   const cleanView = rawView.trim();
   const alias = SPEC_VIEW_ALIASES[cleanView];
+  let canonicalView = cleanView;
+  let defaultTab = (rawTab && rawTab.trim() !== '') ? rawTab.trim() : undefined;
+  let isLegacyAlias = false;
+
   if (alias) {
-    return {
-      canonicalView: alias.view,
-      defaultTab: (rawTab && rawTab.trim() !== '') ? rawTab.trim() : alias.tab,
-      isLegacyAlias: true
-    };
+    canonicalView = alias.view;
+    defaultTab = (rawTab && rawTab.trim() !== '') ? rawTab.trim() : alias.tab;
+    isLegacyAlias = true;
   }
+
+  // Requirement R2: Transparent redirection of legacy 'cetak' subtab to 'tabel'
+  if (canonicalView === 'view-admin-rekap' && defaultTab === 'cetak') {
+    defaultTab = 'tabel';
+  }
+
   return {
-    canonicalView: cleanView,
-    defaultTab: (rawTab && rawTab.trim() !== '') ? rawTab.trim() : undefined,
-    isLegacyAlias: false
+    canonicalView,
+    defaultTab,
+    isLegacyAlias
   };
 }
 
@@ -401,7 +409,7 @@ async function runNavigationConsolidationSuite() {
   assertEqual(c4TabelTab.defaultTab, 'tabel', 'T1.4.3', 'Defines sub-tab "tabel" for monthly teacher attendance summary data table');
 
   const c4CetakTab = resolveCanonicalRoute('view-admin-rekap', 'cetak');
-  assertEqual(c4CetakTab.defaultTab, 'cetak', 'T1.4.4', 'Defines sub-tab "cetak" for official letterhead printing & Excel export');
+  assertEqual(c4CetakTab.defaultTab, 'tabel', 'T1.4.4', 'Legacy sub-tab "cetak" transparently aliases/redirects to "tabel" print view');
 
   const legacyRekapGuru = resolveCanonicalRoute('view-rekap-guru');
   assert(
@@ -625,7 +633,7 @@ async function runNavigationConsolidationSuite() {
       'view-guru-jurnal': ['input', 'rekap-pribadi', 'supervisi-kelas'],
       'view-guru-presensi': ['live', 'riwayat'],
       'view-gradebook': ['gradebook', 'rapor'],
-      'view-admin-rekap': ['analitik', 'tabel', 'cetak'],
+      'view-admin-rekap': ['analitik', 'tabel'],
       'view-admin-verif': ['presensi', 'jurnal', 'piket', 'perangkat']
     };
     const allowed = validTabs[viewId] || [];
@@ -1011,7 +1019,7 @@ async function runNavigationConsolidationSuite() {
 
   // S4.5: Official print with letterhead
   const s4Cetak = resolveCanonicalRoute('view-admin-rekap', 'cetak');
-  assertEqual(s4Cetak.defaultTab, 'cetak', 'T4.S4.5', 'Scenario 4.5: Principal generates signed official report in tab cetak');
+  assertEqual(s4Cetak.defaultTab, 'tabel', 'T4.S4.5', 'Scenario 4.5: Principal generates signed official report from consolidated tab tabel');
 
   // --------------------------------------------------------------------------
   // Scenario 5: Pengawas Dinas Satellite School Inspection

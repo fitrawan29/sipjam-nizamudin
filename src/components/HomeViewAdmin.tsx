@@ -27,7 +27,7 @@ interface TeacherStatusRow {
   };
   pengisianJurnal: {
     status: string;
-    color: 'green' | 'amber' | 'rose' | 'gray';
+    color: 'green' | 'amber' | 'blue' | 'rose' | 'gray';
     filled: number;
     total: number;
   };
@@ -491,7 +491,7 @@ export default function HomeViewAdmin({
         );
 
         let jurnalStatus = 'Bebas KBM';
-        let jurnalColor: 'green' | 'amber' | 'rose' | 'gray' = 'gray';
+        let jurnalColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = 'gray';
 
         if (isBlokToday) {
           if (isExemptNonTeaching) {

@@ -85,6 +85,20 @@ export function canonicalizeTeacherRekapName(nama?: string | null): string {
   return trimmed;
 }
 
+function addDaysToDateStr(dateStr: string, days: number): string {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    const year = dt.getFullYear();
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 export interface AdminRekapViewProps {
   user: any;
   isKepalaSekolah?: boolean;
@@ -100,12 +114,15 @@ export default function AdminRekapView({
   targetSchool,
   initialTab = 'tabel'
 }: AdminRekapViewProps) {
-  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  // Requirement R2: Redirect legacy 'cetak' subtab cleanly to 'tabel'
+  const normalizedInitialTab = initialTab === 'cetak' ? 'tabel' : initialTab;
+  const [activeTab, setActiveTab] = useState<string>(normalizedInitialTab);
   const [leaderboardLimit, setLeaderboardLimit] = useState<5 | 10>(5);
 
   useEffect(() => {
-    if (initialTab && initialTab !== activeTab) {
-      setActiveTab(initialTab);
+    const target = initialTab === 'cetak' ? 'tabel' : initialTab;
+    if (target && target !== activeTab) {
+      setActiveTab(target);
     }
   }, [initialTab]);
 
@@ -160,7 +177,7 @@ export default function AdminRekapView({
       }
       const { data: guruList } = await guruQuery;
 
-      // 2. Fetch presensi_guru
+      // 2. Fetch presensi_guru (both single-day and multi-day spans)
       let presensiQuery = supabase
         .from('presensi_guru')
         .select('*')
@@ -168,12 +185,35 @@ export default function AdminRekapView({
         .not('nama_guru', 'ilike', '%guru test%')
         .gte('timestamp', start)
         .lte('timestamp', end)
-        .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Pulang Cepat'])
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Pulang Cepat', 'Sakit', 'Izin'])
         .order('timestamp', { ascending: true });
       if (user?.sekolah_id) {
         presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
       }
-      const { data: presensi } = await presensiQuery;
+
+      let multiDayQuery = supabase
+        .from('presensi_guru')
+        .select('*')
+        .not('nama_guru', 'ilike', '%test guru%')
+        .not('nama_guru', 'ilike', '%guru test%')
+        .lte('tanggal_mulai', endDateStr)
+        .gte('tanggal_selesai', startDateStr)
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Sakit', 'Izin']);
+      if (user?.sekolah_id) {
+        multiDayQuery = multiDayQuery.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const [{ data: presensiSingle }, { data: presensiMulti }] = await Promise.all([
+        presensiQuery,
+        multiDayQuery
+      ]);
+
+      const presensiMap = new Map<string, any>();
+      (presensiSingle || []).forEach(p => presensiMap.set(p.id, p));
+      (presensiMulti || []).forEach(p => {
+        if (!presensiMap.has(p.id)) presensiMap.set(p.id, p);
+      });
+      const presensi = Array.from(presensiMap.values());
 
       // 3. Fetch jurnal_pembelajaran
       let jurnalQuery = supabase
@@ -207,16 +247,33 @@ export default function AdminRekapView({
       const { data: piket } = await piketQuery;
 
       // 5. Hitung total hari kerja wajib hadir untuk periode ini
+      let calLiburQ = supabase
+        .from('kalender_pendidikan')
+        .select('tanggal, tanggal_mulai, tanggal_selesai, tipe')
+        .eq('tipe', 'Libur');
+      if (user?.sekolah_id) {
+        calLiburQ = calLiburQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
+      }
+
       const [{ data: hsCfg }, { data: kalenderLibur }] = await Promise.all([
         supabase.from('pengaturan').select('value').eq('key', 'hari_sekolah').maybeSingle(),
-        supabase.from('kalender_pendidikan')
-          .select('tanggal')
-          .eq('tipe', 'Libur')
-          .gte('tanggal', startDateStr)
-          .lte('tanggal', endDateStr),
+        calLiburQ
       ]);
       const hariSekolah = parseInt((hsCfg as any)?.value || '6', 10);
-      const liburDates = new Set<string>((kalenderLibur || []).map((k: any) => k.tanggal as string));
+      const liburDates = new Set<string>();
+      (kalenderLibur || []).forEach((k: any) => {
+        if (k.tanggal_mulai && k.tanggal_selesai) {
+          const curCal = new Date(k.tanggal_mulai + 'T12:00:00+08:00');
+          const endCal = new Date(k.tanggal_selesai + 'T12:00:00+08:00');
+          while (curCal <= endCal) {
+            const dStr = curCal.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
+            liburDates.add(dStr);
+            curCal.setDate(curCal.getDate() + 1);
+          }
+        } else if (k.tanggal) {
+          liburDates.add(k.tanggal);
+        }
+      });
       const totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates);
 
       let telatPenaltiAktif = true;
@@ -266,6 +323,9 @@ export default function AdminRekapView({
         }
       });
 
+      // Track credited dates per teacher to prevent double counting
+      const creditedLeaveDates: Record<string, Set<string>> = {};
+
       // Aggregate presensi
       presensi?.forEach(p => {
         const nama = p.nama_guru?.trim();
@@ -284,19 +344,104 @@ export default function AdminRekapView({
             jurnal: 0
           };
         }
+        if (!creditedLeaveDates[canonicalNama]) {
+          creditedLeaveDates[canonicalNama] = new Set<string>();
+        }
+
         if (p.tipe_absen === 'Pulang') {
           if (p.jenis_presensi === 'Pulang Cepat' || p.status_verifikasi === 'Pulang Cepat') {
             pMap[canonicalNama].pulangCepat++;
           }
-        } else if (p.tipe_absen === 'Datang' && (p.status_verifikasi === 'Disetujui' || p.status_verifikasi === 'Diverifikasi')) {
-          if (p.jenis_presensi === 'Sekolah' || p.jenis_presensi === 'Izin Terlambat' || p.jenis_presensi === 'Terlambat') {
-            pMap[canonicalNama].hadir++;
-            pMap[canonicalNama].telatDetik += (p.keterlambatan_detik || 0);
+        } else if (
+          p.tipe_absen === 'Datang' || 
+          p.jenis_presensi === 'Sakit' || 
+          p.jenis_presensi === 'Izin' ||
+          p.jenis_presensi === 'Dinas Luar'
+        ) {
+          const isApproved = 
+            p.status_verifikasi === 'Disetujui' || 
+            p.status_verifikasi === 'Diverifikasi' ||
+            p.status_verifikasi === 'Sakit' ||
+            p.status_verifikasi === 'Izin';
+
+          if (!isApproved) return;
+
+          const detailLower = (p.detail_izin || '').toLowerCase();
+          const jenisLower = (p.jenis_presensi || '').toLowerCase();
+          const statusLower = (p.status_verifikasi || '').toLowerCase();
+
+          const isSakit = 
+            jenisLower === 'sakit' || 
+            detailLower.includes('sakit') || 
+            statusLower === 'sakit';
+
+          const isIzin = !isSakit && (
+            jenisLower === 'izin' || 
+            detailLower.includes('izin') || 
+            statusLower === 'izin'
+          );
+
+          if (isSakit || isIzin) {
+            // Calculate exact workdays within leave span to prevent undercounting multi-day leaves
+            if (p.tanggal_mulai && p.tanggal_selesai) {
+              const curLeave = new Date(p.tanggal_mulai + 'T12:00:00+08:00');
+              const endLeave = new Date(p.tanggal_selesai + 'T12:00:00+08:00');
+              while (curLeave <= endLeave) {
+                const dow = curLeave.getDay();
+                const dStr = curLeave.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
+                const isWeekend = dow === 0 || (hariSekolah === 5 && dow === 6);
+                if (
+                  dStr >= startDateStr && 
+                  dStr <= endDateStr && 
+                  !isWeekend && 
+                  !liburDates.has(dStr) && 
+                  !creditedLeaveDates[canonicalNama].has(dStr)
+                ) {
+                  creditedLeaveDates[canonicalNama].add(dStr);
+                  if (isSakit) pMap[canonicalNama].sakit++;
+                  else pMap[canonicalNama].izin++;
+                }
+                curLeave.setDate(curLeave.getDate() + 1);
+              }
+            } else if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
+              const days = Number(p.durasi_hari || p.durasiHari) || 1;
+              const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
+              const curLeave = new Date(p.tanggal_mulai + 'T12:00:00+08:00');
+              const endLeave = new Date(computedEnd + 'T12:00:00+08:00');
+              while (curLeave <= endLeave) {
+                const dow = curLeave.getDay();
+                const dStr = curLeave.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
+                const isWeekend = dow === 0 || (hariSekolah === 5 && dow === 6);
+                if (
+                  dStr >= startDateStr && 
+                  dStr <= endDateStr && 
+                  !isWeekend && 
+                  !liburDates.has(dStr) && 
+                  !creditedLeaveDates[canonicalNama].has(dStr)
+                ) {
+                  creditedLeaveDates[canonicalNama].add(dStr);
+                  if (isSakit) pMap[canonicalNama].sakit++;
+                  else pMap[canonicalNama].izin++;
+                }
+                curLeave.setDate(curLeave.getDate() + 1);
+              }
+            } else {
+              const pDate = p.timestamp ? p.timestamp.substring(0, 10) : '';
+              if (pDate && !creditedLeaveDates[canonicalNama].has(pDate)) {
+                creditedLeaveDates[canonicalNama].add(pDate);
+                if (isSakit) pMap[canonicalNama].sakit++;
+                else pMap[canonicalNama].izin++;
+              }
+            }
           } else if (p.jenis_presensi === 'Dinas Luar') {
             pMap[canonicalNama].dinasLuar++;
-          } else if (p.jenis_presensi === 'Izin') {
-            if (p.detail_izin?.includes('Sakit')) pMap[canonicalNama].sakit++;
-            else pMap[canonicalNama].izin++;
+          } else if (
+            p.jenis_presensi === 'Sekolah' || 
+            p.jenis_presensi === 'Izin Terlambat' || 
+            p.jenis_presensi === 'Terlambat'
+          ) {
+            pMap[canonicalNama].hadir++;
+            pMap[canonicalNama].telatDetik += (p.keterlambatan_detik || 0);
           }
           // Record Alpa dari DB tidak dijumlah langsung — Alpa dihitung dari selisih
         }
@@ -421,10 +566,10 @@ export default function AdminRekapView({
       .slice(0, leaderboardLimit);
   }, [rekapData, leaderboardLimit]);
 
+  // Requirement R2: Sub menu 'cetak' cleanly removed
   const tabItems: TabItem[] = [
     { id: 'analitik', label: 'Analitik & Leaderboard', icon: 'fa-chart-pie' },
     { id: 'tabel', label: 'Tabel Rekapitulasi', icon: 'fa-table-list' },
-    { id: 'cetak', label: 'Cetak Dokumen Resmi', icon: 'fa-print' },
   ];
 
   const handleExportCsv = () => {
@@ -837,89 +982,6 @@ export default function AdminRekapView({
                           user={user}
                           sekolahId={user?.sekolah_id}
                         />
-                      </div>
-
-                      <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">
-                          <button type="button" onClick={handleExportCsv} className="btn-click w-full bg-green-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-green-700 transition">
-                            <i className="fa-solid fa-file-excel"></i> Excel
-                          </button>
-                          <button type="button" onClick={() => triggerPrintWithGps()} className="btn-click w-full bg-blue-600 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 hover:bg-blue-700 transition">
-                            <i className="fa-solid fa-print"></i> Cetak Halaman
-                          </button>
-                      </div>
-                  </div>
-
-                  {/* ================================================================= */}
-                  {/* SUB-TAB 3: CETAK DOKUMEN RESMI                                   */}
-                  {/* ================================================================= */}
-                  <div className={`${activeTab === 'cetak' ? 'block' : 'hidden'} space-y-4`}>
-                      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 border border-gray-200 dark:border-gray-700 shadow-sm print:border-none print:p-0">
-                          <div className="text-center my-3 print:hidden">
-                            <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
-                              Rekapitulasi Akhir Presensi, Jurnal &amp; Piket Guru
-                            </h3>
-                            <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
-                              <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
-                              <span>Dicetak Oleh: <strong>{user?.nama || 'Administrator'}</strong></span>
-                            </div>
-                          </div>
-
-                          <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
-                            <table className="w-full text-left text-xs border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
-                              <thead>
-                                <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Guru</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">Wajib</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">Hadir</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">Dinas Luar</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-red-700 dark:text-red-400 print:text-black">Alpa</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Pulang Cepat</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">Piket</th>
-                                  <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">Jurnal</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {filteredPresensi.map((r: any, idx: number) => {
-                                  const jam = Math.floor((r.telatDetik || 0) / 3600);
-                                  const menit = Math.floor(((r.telatDetik || 0) % 3600) / 60);
-                                  const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
-                                  return (
-                                    <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat > 0 ? `${r.pulangCepat}x (Pulang Cepat)` : '-'}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
-                                      <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <p className="text-[11px] print:text-[8pt] text-gray-600 dark:text-gray-400 print:text-black italic mb-4">
-                            * Keterangan Presensi Pulang Cepat: Tercatat apabila guru melakukan presensi datang namun tidak menyelesaikan kewajiban jurnal pembelajaran dan tidak melakukan presensi pulang.
-                          </p>
-
-                          <PrintSignature
-                            leftTitle="Mengetahui,"
-                            leftSubtitle="Pengelola Data / Admin"
-                            leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}
-                            leftNip={isKepalaSekolah ? '-' : user?.nip}
-                            user={user}
-                            sekolahId={user?.sekolah_id}
-                          />
                       </div>
 
                       <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">

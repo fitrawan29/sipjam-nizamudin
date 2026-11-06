@@ -12,6 +12,20 @@ import { showToast } from '@/lib/toast';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 
+function addDaysToDateStr(dateStr: string, days: number): string {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    const year = dt.getFullYear();
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function RekapJurnalView({ 
   user,
   initialMode = 'pribadi',
@@ -254,12 +268,64 @@ export default function RekapJurnalView({
           }
         }
 
-        // R2: Fetch presensi_guru for this period to detect teachers with Sakit, Izin, or Dinas Luar
+        // Load 5-day vs 6-day school configuration
+        let hariSekolah = 6;
+        try {
+          let hsQ = supabase.from('pengaturan').select('value').eq('key', 'hari_sekolah');
+          if (user?.sekolah_id) hsQ = hsQ.eq('sekolah_id', user.sekolah_id);
+          const { data: hsRow } = await hsQ.maybeSingle();
+          if (hsRow?.value) hariSekolah = parseInt(hsRow.value, 10) || 6;
+        } catch (_) {}
+
+        // Load educational calendar holidays covering the period
+        const liburDates = new Set<string>();
+        try {
+          let calQ = supabase
+            .from('kalender_pendidikan')
+            .select('tanggal, keterangan, tipe, tanggal_mulai, tanggal_selesai')
+            .eq('tipe', 'Libur');
+          if (user?.sekolah_id) {
+            calQ = calQ.or(`sekolah_id.eq."${user.sekolah_id}",sekolah_id.is.null`);
+          }
+          const { data: calRows } = await calQ;
+          (calRows || []).forEach((c: any) => {
+            if (c.tanggal_mulai && c.tanggal_selesai) {
+              const cStart = new Date(c.tanggal_mulai + 'T12:00:00+08:00');
+              const cEnd = new Date(c.tanggal_selesai + 'T12:00:00+08:00');
+              const curCal = new Date(cStart);
+              while (curCal <= cEnd) {
+                const dStr = curCal.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
+                liburDates.add(dStr);
+                curCal.setDate(curCal.getDate() + 1);
+              }
+            } else if (c.tanggal) {
+              liburDates.add(c.tanggal);
+            }
+          });
+        } catch (_) {}
+
+        // R2: Fetch presensi_guru for this period to detect teachers with Sakit, Izin, or Dinas Luar (including multi-day spans)
         let presensiQ = supabase.from('presensi_guru').select('*');
         if (user?.sekolah_id) presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
         if (activeMode === 'pribadi' && user?.nama) presensiQ = presensiQ.eq('nama_guru', user.nama);
         presensiQ = presensiQ.gte('timestamp', `${startDStr}T00:00:00`).lte('timestamp', `${endDStr}T23:59:59`);
-        const { data: presensiRows } = await presensiQ;
+
+        let multiPresensiQ = supabase.from('presensi_guru').select('*');
+        if (user?.sekolah_id) multiPresensiQ = multiPresensiQ.eq('sekolah_id', user.sekolah_id);
+        if (activeMode === 'pribadi' && user?.nama) multiPresensiQ = multiPresensiQ.eq('nama_guru', user.nama);
+        multiPresensiQ = multiPresensiQ.lte('tanggal_mulai', endDStr).gte('tanggal_selesai', startDStr).neq('status_verifikasi', 'Ditolak');
+
+        const [{ data: presensiRowsRaw }, { data: multiPresensiRows }] = await Promise.all([
+          presensiQ,
+          multiPresensiQ
+        ]);
+
+        const combinedPresensiMap = new Map<string, any>();
+        (presensiRowsRaw || []).forEach((p: any) => combinedPresensiMap.set(p.id, p));
+        (multiPresensiRows || []).forEach((p: any) => {
+          if (!combinedPresensiMap.has(p.id)) combinedPresensiMap.set(p.id, p);
+        });
+        const presensiRows = Array.from(combinedPresensiMap.values());
 
         const missingEntries: any[] = [];
         const cur = new Date(`${startDStr}T00:00:00+08:00`);
@@ -270,101 +336,161 @@ export default function RekapJurnalView({
           if (dateStr > todayStr) break;
 
           const dayName = getWitaDayName(cur);
-          if (dayName !== 'Minggu') {
-            const daySchedules = (allSchedules || []).filter(s => s.hari === dayName);
-            let teacherSchedulesToday: any[] = [];
+          const isWeekend = dayName === 'Minggu' || (hariSekolah === 5 && dayName === 'Sabtu');
+          const isCalendarHoliday = liburDates.has(dateStr);
 
-            if (activeMode === 'pribadi' && user?.nama) {
-              teacherSchedulesToday = daySchedules.filter(s =>
-                isTeacherScheduleMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, s)
-              );
-            } else {
-              teacherSchedulesToday = daySchedules;
-            }
+          // REQUIREMENT R1: EXCLUDE ALL HOLIDAY DATES FROM SYNTHESIZED MISSING ENTRIES
+          if (isWeekend || isCalendarHoliday) {
+            cur.setDate(cur.getDate() + 1);
+            continue;
+          }
 
-            for (const sched of teacherSchedulesToday) {
-              // If today, only consider unfilled if class time has already started/passed
-              if (dateStr === todayStr) {
-                if (sched.jam_mulai) {
-                  const normTime = sched.jam_mulai.replace('.', ':');
-                  const [sh, sm] = normTime.split(':').map(Number);
-                  const [ch, cm] = currTime.split(':').map(Number);
-                  if (!isNaN(sh) && !isNaN(sm) && (ch * 60 + cm < sh * 60 + sm)) {
-                    continue;
-                  }
-                } else if (currTime < '07:00') {
+          const daySchedules = (allSchedules || []).filter(s => s.hari === dayName);
+          let teacherSchedulesToday: any[] = [];
+
+          if (activeMode === 'pribadi' && user?.nama) {
+            teacherSchedulesToday = daySchedules.filter(s =>
+              isTeacherScheduleMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, s)
+            );
+          } else {
+            teacherSchedulesToday = daySchedules;
+          }
+
+          for (const sched of teacherSchedulesToday) {
+            // If today, only consider unfilled if class time has already started/passed
+            if (dateStr === todayStr) {
+              if (sched.jam_mulai) {
+                const normTime = sched.jam_mulai.replace('.', ':');
+                const [sh, sm] = normTime.split(':').map(Number);
+                const [ch, cm] = currTime.split(':').map(Number);
+                if (!isNaN(sh) && !isNaN(sm) && (ch * 60 + cm < sh * 60 + sm)) {
                   continue;
                 }
-              }
-
-              // Check if combined already has a matching journal (either real or auto-recorded)
-              const hasJournal = combined.some(j => 
-                j.tanggal === dateStr &&
-                isJurnalMatchJadwal(j, sched) &&
-                (activeMode === 'pribadi'
-                  ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
-                  : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
-              );
-
-              if (!hasJournal) {
-                // Check if teacher has excused attendance (Sakit, Izin, Dinas Luar) on dateStr
-                const leavePresensi = (presensiRows || []).find((p: any) => {
-                  if (!p.timestamp) return false;
-                  const pDate = p.timestamp.substring(0, 10);
-                  if (pDate !== dateStr) return false;
-                  const matchTeacher = isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, sched);
-                  if (!matchTeacher) return false;
-                  if (isLateArrival(p)) return false;
-                  const jp = (p.jenis_presensi || '').toLowerCase();
-                  const di = (p.detail_izin || '').toLowerCase();
-                  return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || di.includes('sakit') || di.includes('izin') || di.includes('dinas');
-                });
-
-                const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = leavePresensi ? (
-                  (leavePresensi.jenis_presensi === 'Sakit' || leavePresensi.detail_izin?.toLowerCase().includes('sakit')) ? 'Sakit' :
-                  (leavePresensi.jenis_presensi === 'Dinas Luar' || leavePresensi.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : 'Izin'
-                ) : null;
-
-                const isExcused = Boolean(leaveType);
-                const leaveNote = leavePresensi?.detail_izin || leavePresensi?.keterangan || (leaveType || '');
-                const leaveProof = leavePresensi?.link_bukti && leavePresensi.link_bukti !== '-' ? leavePresensi.link_bukti : '-';
-
-                missingEntries.push({
-                  id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
-                  tanggal: dateStr,
-                  nama_guru: sched.nama_guru || '-',
-                  user_id: sched.user_id || null,
-                  sekolah_id: sched.sekolah_id || user?.sekolah_id || null,
-                  kelas: sched.kelas || '-',
-                  mapel: sched.mata_pelajaran || sched.mapel || '-',
-                  jam_ke: sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-'),
-                  materi: isExcused ? leaveType! : 'tidak masuk kelas',
-                  materi_pembelajaran: isExcused ? leaveType! : 'tidak masuk kelas',
-                  kegiatan: isExcused ? `Presensi ${leaveType}${leaveNote ? `: ${leaveNote}` : ''}` : 'tidak masuk kelas',
-                  kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
-                  keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
-                  status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
-                  catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : undefined,
-                  catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
-                  tujuan_pembelajaran: '-',
-                  kktp: '-',
-                  konten: isExcused ? leaveType! : 'tidak masuk kelas',
-                  lokasi_kbm: '-',
-                  kehadiran_murid: '-',
-                  foto_kegiatan: isExcused ? leaveProof : '-',
-                  link_bukti_foto: isExcused ? leaveProof : '-'
-                });
+              } else if (currTime < '07:00') {
+                continue;
               }
             }
 
-            // R3: For personal mode, if teacher has NO KBM schedules today, synthesize unsubmitted Jurnal Kegiatan
-            if (activeMode === 'pribadi' && !activeKelas && !mapel && user?.nama && teacherSchedulesToday.length === 0) {
-              const hasAnyJournal = combined.some(j =>
-                j.tanggal === dateStr &&
-                isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
-              );
-              const isEligibleTime = dateStr < todayStr || currTime >= '07:00';
-              if (!hasAnyJournal && isEligibleTime) {
+            // Check if combined already has a matching journal (either real or auto-recorded)
+            const hasJournal = combined.some(j => 
+              j.tanggal === dateStr &&
+              isJurnalMatchJadwal(j, sched) &&
+              (activeMode === 'pribadi'
+                ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
+                : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
+            );
+
+            if (!hasJournal) {
+              // Check if teacher has excused attendance (Sakit, Izin, Dinas Luar) on dateStr
+              const leavePresensi = (presensiRows || []).find((p: any) => {
+                const pDate = p.timestamp ? p.timestamp.substring(0, 10) : '';
+                const matchesDate = (p.tanggal_mulai && p.tanggal_selesai)
+                  ? (dateStr >= p.tanggal_mulai && dateStr <= p.tanggal_selesai)
+                  : (pDate === dateStr);
+                if (!matchesDate) return false;
+
+                const matchTeacher = isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, sched);
+                if (!matchTeacher) return false;
+                if (isLateArrival(p)) return false;
+                const jp = (p.jenis_presensi || '').toLowerCase();
+                const di = (p.detail_izin || '').toLowerCase();
+                const sv = (p.status_verifikasi || '').toLowerCase();
+                return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || 
+                       di.includes('sakit') || di.includes('izin') || di.includes('dinas') ||
+                       sv === 'sakit' || sv === 'izin';
+              });
+
+              const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = leavePresensi ? (
+                (leavePresensi.jenis_presensi === 'Sakit' || leavePresensi.detail_izin?.toLowerCase().includes('sakit') || leavePresensi.status_verifikasi === 'Sakit') ? 'Sakit' :
+                (leavePresensi.jenis_presensi === 'Dinas Luar' || leavePresensi.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : 'Izin'
+              ) : null;
+
+              const isExcused = Boolean(leaveType);
+              const leaveNote = leavePresensi?.detail_izin || leavePresensi?.keterangan || (leaveType || '');
+              const leaveProof = leavePresensi?.link_bukti && leavePresensi.link_bukti !== '-' ? leavePresensi.link_bukti : '-';
+
+              missingEntries.push({
+                id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
+                tanggal: dateStr,
+                nama_guru: sched.nama_guru || '-',
+                user_id: sched.user_id || null,
+                sekolah_id: sched.sekolah_id || user?.sekolah_id || null,
+                kelas: sched.kelas || '-',
+                mapel: sched.mata_pelajaran || sched.mapel || '-',
+                jam_ke: sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-'),
+                materi: isExcused ? leaveType! : 'tidak masuk kelas',
+                materi_pembelajaran: isExcused ? leaveType! : 'tidak masuk kelas',
+                kegiatan: isExcused ? `Presensi ${leaveType}${leaveNote ? `: ${leaveNote}` : ''}` : 'tidak masuk kelas',
+                kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
+                keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
+                status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
+                catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : undefined,
+                catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
+                tujuan_pembelajaran: '-',
+                kktp: '-',
+                konten: isExcused ? leaveType! : 'tidak masuk kelas',
+                lokasi_kbm: '-',
+                kehadiran_murid: '-',
+                foto_kegiatan: isExcused ? leaveProof : '-',
+                link_bukti_foto: isExcused ? leaveProof : '-'
+              });
+            }
+          }
+
+          // R3: For personal mode, if teacher has NO KBM schedules today, synthesize unsubmitted Jurnal Kegiatan
+          if (activeMode === 'pribadi' && !activeKelas && !mapel && user?.nama && teacherSchedulesToday.length === 0) {
+            const hasAnyJournal = combined.some(j =>
+              j.tanggal === dateStr &&
+              isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
+            );
+            const isEligibleTime = dateStr < todayStr || currTime >= '07:00';
+            if (!hasAnyJournal && isEligibleTime) {
+              const teacherLeaveToday = (presensiRows || []).find((p: any) => {
+                const pDate = p.timestamp ? p.timestamp.substring(0, 10) : '';
+                const matchesDate = (p.tanggal_mulai && p.tanggal_selesai)
+                  ? (dateStr >= p.tanggal_mulai && dateStr <= p.tanggal_selesai)
+                  : (pDate === dateStr);
+                if (!matchesDate) return false;
+                if (!isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, { nama_guru: user.nama, user_id: user.id })) return false;
+                const jp = (p.jenis_presensi || '').toLowerCase();
+                const di = (p.detail_izin || '').toLowerCase();
+                const sv = (p.status_verifikasi || '').toLowerCase();
+                return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || 
+                       di.includes('sakit') || di.includes('izin') || di.includes('dinas') ||
+                       sv === 'sakit' || sv === 'izin';
+              });
+
+              const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = teacherLeaveToday ? (
+                (teacherLeaveToday.jenis_presensi === 'Sakit' || teacherLeaveToday.detail_izin?.toLowerCase().includes('sakit') || teacherLeaveToday.status_verifikasi === 'Sakit') ? 'Sakit' :
+                (teacherLeaveToday.jenis_presensi === 'Dinas Luar' || teacherLeaveToday.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : 'Izin'
+              ) : null;
+
+              if (leaveType) {
+                missingEntries.push({
+                  id: `excused-kegiatan-${dateStr}-${user.id || 'guru'}`,
+                  tanggal: dateStr,
+                  nama_guru: user.nama,
+                  user_id: user.id || null,
+                  sekolah_id: user.sekolah_id || null,
+                  kelas: '-',
+                  mapel: 'Jurnal Kegiatan',
+                  jam_ke: '-',
+                  materi: leaveType,
+                  materi_pembelajaran: leaveType,
+                  kegiatan: `Presensi ${leaveType}`,
+                  kegiatan_pembelajaran: `Presensi ${leaveType}`,
+                  keterangan: leaveType,
+                  status_verifikasi: leaveType,
+                  catatan_refleksi: `Presensi ${leaveType}`,
+                  tujuan_pembelajaran: '-',
+                  kktp: '-',
+                  konten: leaveType,
+                  lokasi_kbm: '-',
+                  kehadiran_murid: '-',
+                  foto_kegiatan: teacherLeaveToday.link_bukti && teacherLeaveToday.link_bukti !== '-' ? teacherLeaveToday.link_bukti : '-',
+                  link_bukti_foto: teacherLeaveToday.link_bukti && teacherLeaveToday.link_bukti !== '-' ? teacherLeaveToday.link_bukti : '-'
+                });
+              } else {
                 missingEntries.push({
                   id: `unfilled-kegiatan-${dateStr}-${user.id || 'guru'}`,
                   tanggal: dateStr,
@@ -532,6 +658,14 @@ export default function RekapJurnalView({
 
   const filteredJurnal = (jurnalData || [])
     .filter(j => {
+      // REQUIREMENT R1: Exclude any rows labeled "Libur" from the document output
+      const statusLower = (j.status_verifikasi || '').toLowerCase();
+      const ketLower = (j.keterangan || '').toLowerCase();
+      const matLower = (j.materi || j.materi_pembelajaran || '').toLowerCase();
+      if (statusLower === 'libur' || ketLower === 'libur' || matLower === 'libur') {
+        return false;
+      }
+
       if (searchMateri) {
         const sm = searchMateri.toLowerCase();
         const matchesMateri = Boolean(

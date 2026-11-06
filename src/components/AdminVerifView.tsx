@@ -23,6 +23,72 @@ export interface AdminVerifViewProps {
   initialTab?: string;
 }
 
+// Helper: Memastikan jurnal bukan auto-record delinquency (Tidak Masuk Kelas / Tidak Melaksanakan Kegiatan)
+export function isDelinquencyJournal(j: any): boolean {
+  if (!j) return false;
+  const sv = j.status_verifikasi;
+  if (sv === 'Tidak Masuk Kelas' || sv === 'Tidak Melaksanakan Kegiatan') return true;
+  const ket = (j.keterangan || '').trim().toLowerCase();
+  if (ket === 'tidak masuk kelas' || ket === 'tidak melaksanakan kegiatan apapun') return true;
+  const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
+  if (mat === 'tidak masuk kelas' || mat === 'tidak melaksanakan kegiatan apapun') return true;
+  return false;
+}
+
+// Helper: Memastikan jurnal benar-benar diisi oleh guru dengan materi pembelajaran riil (bukan auto-record delinquency / auto-fill berhalangan)
+export function isRealSubmittedJournal(j: any): boolean {
+  if (!j) return false;
+  if (isDelinquencyJournal(j)) return false;
+  const sv = j.status_verifikasi;
+  if (sv === 'Sakit' || sv === 'Izin') return false;
+  const ket = (j.keterangan || '').trim().toLowerCase();
+  if (ket === 'auto-fill sistem karena guru berhalangan hadir') return false;
+  const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
+  if (mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
+  return true;
+}
+
+// Helper: Normalisasi nama guru untuk perbandingan presisi tanpa false substring collision
+function normalizeTeacherName(name?: string | null): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/,.*$/, '') // Hapus gelar setelah koma (misal: ", S.Pd.")
+    .replace(/\b(s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Hapus singkatan gelar
+    .replace(/[^a-z0-9\s]/gi, ' ') // Ganti tanda baca dengan spasi
+    .replace(/\s+/g, ' ') // Rapikan multi-spasi
+    .trim();
+}
+
+function isTeacherMatch(teacherName?: string | null, candidateName?: string | null, nip?: string | null): boolean {
+  if (!teacherName || !candidateName) return false;
+  const normTeacher = normalizeTeacherName(teacherName);
+  const normCandidate = normalizeTeacherName(candidateName);
+
+  if (normTeacher && normCandidate && normTeacher === normCandidate) return true;
+
+  if (nip) {
+    const normNip = normalizeTeacherName(nip);
+    if (normNip && (normNip === normTeacher || normNip === normCandidate)) return true;
+  }
+
+  return false;
+}
+
+function addDaysToDateStr(dateStr: string, days: number): string {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    const year = dt.getFullYear();
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function AdminVerifView({ 
   user, 
   isReadOnly: propReadOnly,
@@ -66,6 +132,8 @@ export default function AdminVerifView({
   const [allJadwalPelajaran, setAllJadwalPelajaran] = useState<any[]>([]);
   const [aturanGlobal, setAturanGlobal] = useState<string>('Semua_Hari');
   const [guruHanyaMengajarList, setGuruHanyaMengajarList] = useState<string[]>([]);
+  const [kalenderEvents, setKalenderEvents] = useState<any[]>([]);
+  const [hariSekolah, setHariSekolah] = useState<number>(6);
 
   // Submissions Data
   const [presensiList, setPresensiList] = useState<any[]>([]);
@@ -78,12 +146,18 @@ export default function AdminVerifView({
   useEffect(() => {
     const loadAuxData = async () => {
       try {
-        const [teachersRes, piketRes, jadwalRes, penugasanRes, pengaturanRes] = await Promise.all([
+        let kalenderQ = supabase.from('kalender_pendidikan').select('*');
+        if (user?.sekolah_id) {
+          kalenderQ = kalenderQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
+        }
+
+        const [teachersRes, piketRes, jadwalRes, penugasanRes, pengaturanRes, kalenderRes] = await Promise.all([
           supabase.from('data_guru').select('*').order('nama_guru', { ascending: true }),
           supabase.from('jadwal_piket').select('*'),
           supabase.from('jadwal_pelajaran').select('*'),
           supabase.from('penugasan_piket').select('*'),
-          supabase.from('pengaturan').select('*')
+          supabase.from('pengaturan').select('*'),
+          kalenderQ
         ]);
 
         if (teachersRes.data) setAllTeachers(teachersRes.data);
@@ -93,11 +167,20 @@ export default function AdminVerifView({
           const cleanJadwal = jadwalRes.data.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
           setAllJadwalPelajaran(cleanJadwal);
         }
+        if (kalenderRes.data) {
+          setKalenderEvents(kalenderRes.data);
+        }
         if (pengaturanRes.data) {
           const aturanRow = pengaturanRes.data.find(
             (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
           );
           if (aturanRow) setAturanGlobal('Hari_Mengajar_Saja');
+
+          const hsRow = pengaturanRes.data.find((p: any) => p.key === 'hari_sekolah' || p.hari_sekolah);
+          if (hsRow) {
+            const hsVal = parseInt(hsRow.value || hsRow.hari_sekolah, 10);
+            if (!isNaN(hsVal)) setHariSekolah(hsVal);
+          }
 
           const ghmRow = pengaturanRes.data.find((p: any) => p.key === 'guru_hanya_mengajar');
           if (ghmRow && ghmRow.value) {
@@ -175,17 +258,32 @@ export default function AdminVerifView({
         const targetD = date || getWitaDateStr();
         if (targetD) {
           try {
-            const { data: multiDayData, error: multiDayErr } = await supabase
+            let multiQ = supabase
               .from('presensi_guru')
               .select('*')
               .lte('tanggal_mulai', targetD)
-              .gte('tanggal_selesai', targetD)
+              .not('tanggal_mulai', 'is', null)
               .neq('status_verifikasi', 'Ditolak');
+            if (user?.sekolah_id) {
+              multiQ = multiQ.eq('sekolah_id', user.sekolah_id);
+            }
+            const { data: multiDayData, error: multiDayErr } = await multiQ;
             if (multiDayErr) {
               console.error('Error loading multi-day presensi:', multiDayErr);
             } else if (multiDayData && multiDayData.length > 0) {
+              const activeLeaves = multiDayData.filter((p: any) => {
+                if (p.tanggal_mulai && p.tanggal_selesai) {
+                  return targetD >= p.tanggal_mulai && targetD <= p.tanggal_selesai;
+                }
+                if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
+                  const days = Number(p.durasi_hari || p.durasiHari) || 1;
+                  const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
+                  return targetD >= p.tanggal_mulai && targetD <= computedEnd;
+                }
+                return false;
+              });
               const existingIds = new Set(combinedData.map((d: any) => d.id));
-              const newMultiDay = multiDayData.filter((d: any) => !existingIds.has(d.id));
+              const newMultiDay = activeLeaves.filter((d: any) => !existingIds.has(d.id));
               combinedData = [...combinedData, ...newMultiDay];
             }
           } catch (mErr) {
@@ -210,14 +308,27 @@ export default function AdminVerifView({
           try {
             const startOfDay = getWitaStartOfDay(targetD);
             const endOfDay = getWitaEndOfDay(targetD);
-            const [presensiRes, multiDayRes] = await Promise.all([
-              supabase.from('presensi_guru').select('*').gte('timestamp', startOfDay).lte('timestamp', endOfDay),
-              supabase.from('presensi_guru').select('*').lte('tanggal_mulai', targetD).gte('tanggal_selesai', targetD).neq('status_verifikasi', 'Ditolak')
-            ]);
+            let pSingleQ = supabase.from('presensi_guru').select('*').gte('timestamp', startOfDay).lte('timestamp', endOfDay);
+            let pMultiQ = supabase.from('presensi_guru').select('*').lte('tanggal_mulai', targetD).not('tanggal_mulai', 'is', null).neq('status_verifikasi', 'Ditolak');
+            if (user?.sekolah_id) {
+              pSingleQ = pSingleQ.eq('sekolah_id', user.sekolah_id);
+              pMultiQ = pMultiQ.eq('sekolah_id', user.sekolah_id);
+            }
+            const [presensiRes, multiDayRes] = await Promise.all([pSingleQ, pMultiQ]);
             const pList = presensiRes.data || [];
-            const mList = multiDayRes.data || [];
+            const activeLeaves = (multiDayRes.data || []).filter((p: any) => {
+              if (p.tanggal_mulai && p.tanggal_selesai) {
+                return targetD >= p.tanggal_mulai && targetD <= p.tanggal_selesai;
+              }
+              if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
+                const days = Number(p.durasi_hari || p.durasiHari) || 1;
+                const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
+                return targetD >= p.tanggal_mulai && targetD <= computedEnd;
+              }
+              return false;
+            });
             const existingIds = new Set(pList.map((d: any) => d.id));
-            setPresensiList([...pList, ...mList.filter((d: any) => !existingIds.has(d.id))]);
+            setPresensiList([...pList, ...activeLeaves.filter((d: any) => !existingIds.has(d.id))]);
           } catch (pErr) {
             console.error('Error loading presensi for jurnal view:', pErr);
           }
@@ -471,58 +582,6 @@ export default function AdminVerifView({
     }
   };
 
-// Helper: Memastikan jurnal benar-benar diisi oleh guru dengan materi pembelajaran riil (bukan auto-record delinquency / auto-fill berhalangan)
-export function isRealSubmittedJournal(j: any): boolean {
-  if (!j) return false;
-  const sv = j.status_verifikasi;
-  if (sv === 'Tidak Masuk Kelas' || sv === 'Tidak Melaksanakan Kegiatan' || sv === 'Sakit' || sv === 'Izin') return false;
-  const ket = (j.keterangan || '').trim().toLowerCase();
-  if (ket === 'tidak masuk kelas' || ket === 'tidak melaksanakan kegiatan apapun' || ket === 'auto-fill sistem karena guru berhalangan hadir') return false;
-  const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
-  if (mat === 'tidak masuk kelas' || mat === 'tidak melaksanakan kegiatan apapun' || mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
-  return true;
-}
-
-// Helper: Normalisasi nama guru untuk perbandingan presisi tanpa false substring collision
-function normalizeTeacherName(name?: string | null): string {
-  if (!name) return '';
-  return name
-    .toLowerCase()
-    .replace(/,.*$/, '') // Hapus gelar setelah koma (misal: ", S.Pd.")
-    .replace(/\b(s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Hapus singkatan gelar
-    .replace(/[^a-z0-9\s]/gi, ' ') // Ganti tanda baca dengan spasi
-    .replace(/\s+/g, ' ') // Rapikan multi-spasi
-    .trim();
-}
-
-function isTeacherMatch(teacherName?: string | null, candidateName?: string | null, nip?: string | null): boolean {
-  if (!teacherName || !candidateName) return false;
-  const normTeacher = normalizeTeacherName(teacherName);
-  const normCandidate = normalizeTeacherName(candidateName);
-
-  if (normTeacher && normCandidate && normTeacher === normCandidate) return true;
-
-  if (nip) {
-    const normNip = normalizeTeacherName(nip);
-    if (normNip && (normNip === normTeacher || normNip === normCandidate)) return true;
-  }
-
-  return false;
-}
-
-function addDaysToDateStr(dateStr: string, days: number): string {
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dt = new Date(y, m - 1, d);
-    dt.setDate(dt.getDate() + days);
-    const year = dt.getFullYear();
-    const month = String(dt.getMonth() + 1).padStart(2, '0');
-    const day = String(dt.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  } catch {
-    return dateStr;
-  }
-}
 
   // Target date for cross-referencing
   const effectiveDate = useMemo(() => {
@@ -535,9 +594,54 @@ function addDaysToDateStr(dateStr: string, days: number): string {
     return getWitaDayName(d);
   }, [effectiveDate]);
 
+  // Holiday evaluation for effectiveDate
+  const holidayInfo = useMemo(() => {
+    if (!effectiveDate) return null;
+
+    // 1. Sunday is always a weekend holiday
+    if (effectiveDayName === 'Minggu') {
+      return { isHoliday: true, keterangan: 'Hari Minggu (Libur Akhir Pekan)' };
+    }
+
+    // 2. Saturday is a holiday if 5-day school week is configured
+    if (effectiveDayName === 'Sabtu' && hariSekolah === 5) {
+      return { isHoliday: true, keterangan: 'Hari Sabtu (Libur Sekolah 5 Hari)' };
+    }
+
+    // 3. Kalender Pendidikan events with tipe Libur
+    const calMatch = kalenderEvents.find((evt: any) => {
+      const tipe = (evt.tipe || '').toLowerCase();
+      const isLibur = tipe === 'libur' || tipe.includes('libur');
+      if (!isLibur) return false;
+
+      // Exact single day
+      if (evt.tanggal && evt.tanggal === effectiveDate) return true;
+
+      // Date range [tanggal_mulai, tanggal_selesai]
+      if (evt.tanggal_mulai && evt.tanggal_selesai) {
+        return effectiveDate >= evt.tanggal_mulai && effectiveDate <= evt.tanggal_selesai;
+      }
+      if (evt.tanggal_mulai && !evt.tanggal_selesai && evt.tanggal_mulai === effectiveDate) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (calMatch) {
+      return {
+        isHoliday: true,
+        keterangan: calMatch.keterangan || 'Libur Kalender Pendidikan'
+      };
+    }
+
+    return null;
+  }, [effectiveDate, effectiveDayName, hariSekolah, kalenderEvents]);
+
   // Compute Unsubmitted Teachers per Tab
   const unsubmittedPresensi = useMemo(() => {
     if (allTeachers.length === 0) return [];
+    if (holidayInfo?.isHoliday) return []; // Non-delinquency holiday handling: zero teachers marked unsubmitted
     
     // Always filter strictly by targetDate = date || effectiveDate
     const targetDate = date || effectiveDate;
@@ -623,10 +727,11 @@ function addDaysToDateStr(dateStr: string, days: number): string {
           isUnsubmitted: true
         };
       });
-  }, [allTeachers, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, allPiketSchedule, allPenugasanPiket, aturanGlobal, guruHanyaMengajarList]);
+  }, [allTeachers, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, allPiketSchedule, allPenugasanPiket, aturanGlobal, guruHanyaMengajarList, holidayInfo]);
 
   const unsubmittedJurnal = useMemo(() => {
     if (allTeachers.length === 0) return [];
+    if (holidayInfo?.isHoliday) return []; // Non-delinquency holiday handling: zero teachers marked unsubmitted
 
     // Always filter strictly by targetDate = date || effectiveDate
     const targetDate = date || effectiveDate;
@@ -702,10 +807,11 @@ function addDaysToDateStr(dateStr: string, days: number): string {
           isUnsubmitted: true
         };
       });
-  }, [allTeachers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran]);
+  }, [allTeachers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, holidayInfo]);
 
   const unsubmittedPiket = useMemo(() => {
     if (allTeachers.length === 0) return [];
+    if (holidayInfo?.isHoliday) return []; // Non-delinquency holiday handling: zero teachers marked unsubmitted
 
     const piketToday = allPiketSchedule.find((p: any) => p.hari === effectiveDayName);
 
@@ -746,7 +852,7 @@ function addDaysToDateStr(dateStr: string, days: number): string {
         tanggal: targetDate,
         isUnsubmitted: true
       }));
-  }, [allTeachers, allPiketSchedule, allPenugasanPiket, piketList, date, effectiveDate, effectiveDayName]);
+  }, [allTeachers, allPiketSchedule, allPenugasanPiket, piketList, date, effectiveDate, effectiveDayName, holidayInfo]);
 
   // Reactive Instant Client-side Filter Calculation (Zero flicker, zero reload)
   const displayList = useMemo(() => {
@@ -762,9 +868,60 @@ function addDaysToDateStr(dateStr: string, days: number): string {
       ? jurnalList 
       : piketList;
 
-    // Untuk tab Jurnal, pengajuan yang berstatus auto-record (Tidak Masuk Kelas / Tidak Melaksanakan Kegiatan) bukan pengajuan riil guru
+    // Untuk tab Jurnal, jangan tampilkan auto-record delinquency (Tidak Masuk Kelas / Tidak Melaksanakan Kegiatan)
+    // tetapi TETAP tampilkan pengajuan riil guru dan pengajuan izin/sakit yang dikecualikan
+    const baseSubmitted = activeTab === 'Jurnal'
+      ? rawSubmittedList.filter(j => !isDelinquencyJournal(j))
+      : rawSubmittedList;
+
+    // Untuk tab Jurnal: Pastikan guru yang berstatus izin/sakit pada presensi_guru tetap muncul sebagai kartu terverifikasi
+    let synthesizedLeaveList: any[] = [];
+    if (activeTab === 'Jurnal') {
+      const targetDate = date || effectiveDate;
+      presensiList.forEach((p: any) => {
+        const jp = (p.jenis_presensi || '').toLowerCase();
+        const di = (p.detail_izin || '').toLowerCase();
+        const isLeave = jp === 'sakit' || jp === 'izin' || di.includes('sakit') || di.includes('izin');
+        if (!isLeave) return;
+        if (p.status_verifikasi === 'Ditolak') return;
+
+        let inDateRange = false;
+        if (p.tanggal_mulai && p.tanggal_selesai && targetDate >= p.tanggal_mulai && targetDate <= p.tanggal_selesai) {
+          inDateRange = true;
+        } else if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
+          const days = Number(p.durasi_hari || p.durasiHari) || 1;
+          const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
+          if (targetDate >= p.tanggal_mulai && targetDate <= computedEnd) inDateRange = true;
+        } else if (p.timestamp) {
+          const pDate = extractWitaDateStr(p.timestamp) || p.timestamp.substring(0, 10);
+          if (pDate === targetDate) inDateRange = true;
+        }
+        if (!inDateRange) return;
+
+        const alreadyInBase = baseSubmitted.some((j: any) => isTeacherMatch(j.nama_guru, p.nama_guru, null));
+        if (!alreadyInBase) {
+          const leaveLabel = (jp === 'sakit' || di.includes('sakit')) ? 'Sakit' : 'Izin';
+          synthesizedLeaveList.push({
+            id: `excused-jurnal-${p.id}`,
+            nama_guru: p.nama_guru,
+            nip: p.nip || '-',
+            tanggal: targetDate,
+            kelas: '-',
+            mapel: 'Dikecualikan (Izin / Sakit)',
+            materi: `Dikecualikan (${leaveLabel})`,
+            keterangan: `Presensi ${leaveLabel}: ${p.detail_izin || p.keterangan || leaveLabel}`,
+            status_verifikasi: leaveLabel,
+            isExcusedLeave: true,
+            leaveType: leaveLabel,
+            link_bukti_foto: p.link_bukti || '-',
+            timestamp: p.timestamp || `${targetDate}T07:00:00+08:00`
+          });
+        }
+      });
+    }
+
     const submittedList = activeTab === 'Jurnal'
-      ? rawSubmittedList.filter(j => isRealSubmittedJournal(j))
+      ? [...baseSubmitted, ...synthesizedLeaveList]
       : rawSubmittedList;
 
     // Filter unsubmitted items by search
@@ -794,7 +951,7 @@ function addDaysToDateStr(dateStr: string, days: number): string {
         if (verifFilter === 'Menunggu') {
           if (!isPending) return false;
         } else if (verifFilter === 'Disetujui') {
-          if (rawStatus !== 'Disetujui' && rawStatus !== 'Diverifikasi') return false;
+          if (rawStatus !== 'Disetujui' && rawStatus !== 'Diverifikasi' && rawStatus !== 'Sakit' && rawStatus !== 'Izin') return false;
         } else if (rawStatus !== verifFilter) {
           return false;
         }
@@ -948,6 +1105,24 @@ function addDaysToDateStr(dateStr: string, days: number): string {
 
         {/* Tabs 1-3: Presensi, Jurnal, Piket Content */}
         <div className={activeTab === 'Dokumen' ? 'hidden' : 'block'}>
+          {/* Banner Hari Libur */}
+          {holidayInfo?.isHoliday && (
+            <div 
+              data-testid="holiday-banner" 
+              className="mb-4 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-3 shadow-xs"
+            >
+              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <i className="fa-solid fa-umbrella-beach text-sm"></i>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-bold block text-sm">Hari Libur: {holidayInfo.keterangan}</span>
+                <span className="text-[11px] opacity-90 block">
+                  Pada hari libur ({effectiveDayName}, {effectiveDate}), seluruh guru dibebaskan dari kewajiban presensi, jurnal KBM, dan tugas piket tanpa ditandai alpa atau belum menyelesaikan tugas.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Filter Bar Controls */}
           <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-200 dark:border-gray-800 mb-4 space-y-3">
           {/* Date Picker Row */}
@@ -1297,17 +1472,19 @@ function addDaysToDateStr(dateStr: string, days: number): string {
                         </span>
                       </div>
                     )}
-                    {(item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar' || item.materi === 'Sakit' || item.materi === 'Izin' || item.materi === 'Dinas Luar' || item.is_auto_filled_leave) && (
+                    {(item.isExcusedLeave || item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar' || item.materi === 'Sakit' || item.materi === 'Izin' || item.materi === 'Dinas Luar' || item.is_auto_filled_leave) && (
                       <div className="pt-1">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
-                          (item.status_verifikasi === 'Sakit' || item.materi === 'Sakit')
+                        <span 
+                          data-testid="badge-excused-leave"
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
+                          (item.status_verifikasi === 'Sakit' || item.materi === 'Sakit' || item.leaveType === 'Sakit')
                             ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800'
-                            : (item.status_verifikasi === 'Izin' || item.materi === 'Izin')
+                            : (item.status_verifikasi === 'Izin' || item.materi === 'Izin' || item.leaveType === 'Izin')
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800'
                             : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800'
                         }`}>
                           <i className="fa-solid fa-calendar-check text-[10px]"></i>
-                          Otomatis ({item.status_verifikasi || item.materi} - Sesuai Presensi)
+                          Dikecualikan (Izin / Sakit)
                         </span>
                       </div>
                     )}
@@ -1389,10 +1566,10 @@ function addDaysToDateStr(dateStr: string, days: number): string {
                       <i className="fa-solid fa-circle-exclamation mr-1.5"></i>
                       Otomatis Tercatat: tidak membuat laporan piket
                     </div>
-                  ) : (item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar') ? (
-                    <div className="w-full text-center py-1.5 px-3 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                  ) : (item.isExcusedLeave || item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar') ? (
+                    <div className="w-full text-center py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                       <i className="fa-solid fa-check-circle mr-1.5"></i>
-                      Otomatis Terverifikasi ({item.status_verifikasi} - Sesuai Presensi)
+                      Dikecualikan ({item.status_verifikasi || item.leaveType || 'Izin / Sakit'} - Sesuai Presensi)
                     </div>
                   ) : item.status_verifikasi === 'Ditolak' ? (
                     <button

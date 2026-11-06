@@ -49,6 +49,224 @@ export function extractTingkat(kelasStr?: string | null): string {
   return k.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 }
 
+/**
+ * Normalizes name strings by removing academic and honorary titles and unifying spelling.
+ */
+export function normalizeTeacherToken(s?: string | null): string {
+  if (!s) return '';
+  return s
+    .toLowerCase()
+    .split(',')[0] // remove trailing degrees after comma
+    .replace(/\b(dr|drs|dra|ir|prof|h|hj|kh|ust|ustadz|ustadzah|s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b\.?/gi, '')
+    .replace(/z/g, 's') // Normalize Rizki <-> Riski, Azhar <-> Ashar
+    .replace(/[^a-z0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Tokenized / fuzzy teacher name matching.
+ * Accurately matches "Ade" <-> "Ade Fitrawan Ibrahim", "Ambar" <-> "Setia Ambar Ningsih Mamonto", etc.
+ */
+export function isTeacherNameMatch(
+  teacherName?: string | null,
+  candidateName?: string | null
+): boolean {
+  if (!teacherName || !candidateName) return false;
+  const n1 = normalizeTeacherToken(teacherName);
+  const n2 = normalizeTeacherToken(candidateName);
+  if (!n1 || !n2) return false;
+  if (n1 === n2) return true;
+
+  // Prefix matching
+  if (n1.startsWith(n2) || n2.startsWith(n1)) return true;
+
+  // Tokenized matching
+  const tokens1 = n1.split(' ').filter(t => t.length >= 2);
+  const tokens2 = n2.split(' ').filter(t => t.length >= 2);
+
+  if (tokens1.length === 1 && tokens2.includes(tokens1[0])) return true;
+  if (tokens2.length === 1 && tokens1.includes(tokens2[0])) return true;
+
+  const all1In2 = tokens1.length > 0 && tokens1.every(t => tokens2.includes(t));
+  const all2In1 = tokens2.length > 0 && tokens2.every(t => tokens1.includes(t));
+  if (all1In2 || all2In1) return true;
+
+  return false;
+}
+
+/**
+ * Multi-factor teacher entity matching (name, nip/nickname, user_id).
+ */
+export function isTeacherEntityMatch(
+  teacher: any,
+  candidateName?: string | null,
+  candidateNip?: string | null,
+  candidateUserId?: string | null
+): boolean {
+  if (!teacher) return false;
+  if (candidateUserId && teacher.user_id && candidateUserId === teacher.user_id) return true;
+  if (candidateUserId && teacher.id && candidateUserId === teacher.id) return true;
+  if (candidateNip && teacher.nip && candidateNip.trim().toLowerCase() === teacher.nip.trim().toLowerCase()) return true;
+
+  const teacherName = teacher.nama_guru || teacher.nama;
+  if (isTeacherNameMatch(teacherName, candidateName)) return true;
+  if (teacher.nip && isTeacherNameMatch(teacher.nip, candidateName)) return true;
+  if (candidateNip && isTeacherNameMatch(teacherName, candidateNip)) return true;
+
+  return false;
+}
+
+/**
+ * Subject acronym expansion mapping for clean, formal display.
+ */
+export const MAPEL_EXPANSIONS: Record<string, string> = {
+  'mtk': 'Matematika',
+  'matematika': 'Matematika',
+  'informatika': 'Informatika',
+  'fisika': 'Fisika',
+  'kimia': 'Kimia',
+  'biologi': 'Biologi',
+  'geografi': 'Geografi',
+  'sosiologi': 'Sosiologi',
+  'ekonomi': 'Ekonomi',
+  'sejarah': 'Sejarah',
+  'pp': 'Pendidikan Pancasila',
+  'pkn': 'Pendidikan Pancasila',
+  'pjok': 'PJOK',
+  'sb': 'Seni Budaya',
+  'b. ing': 'Bahasa Inggris',
+  'b.ing': 'Bahasa Inggris',
+  'b ing': 'Bahasa Inggris',
+  'b. indo': 'Bahasa Indonesia',
+  'b.indo': 'Bahasa Indonesia',
+  'b indo': 'Bahasa Indonesia',
+  'pai bp': 'PAI & BP',
+  'mtl': 'Matematika Tingkat Lanjut'
+};
+
+export function canonicalizeSubjectName(rawMapel: string): string {
+  const trimmed = (rawMapel || '').trim();
+  if (!trimmed) return '';
+  const core = trimmed.includes('_') ? (trimmed.split('_').pop() || '').trim() : trimmed;
+  const lowerCore = core.toLowerCase();
+  return MAPEL_EXPANSIONS[lowerCore] || core;
+}
+
+export function isMapelMatch(m1?: string | null, m2?: string | null): boolean {
+  if (!m1 || !m2) return false;
+  const s1 = m1.trim().toLowerCase();
+  const s2 = m2.trim().toLowerCase();
+  if (s1 === s2) return true;
+
+  const c1 = canonicalizeSubjectName(s1).toLowerCase();
+  const c2 = canonicalizeSubjectName(s2).toLowerCase();
+  if (c1 === c2) return true;
+
+  const core1 = s1.includes('_') ? s1.split('_').slice(1).join('_').trim() : s1;
+  const core2 = s2.includes('_') ? s2.split('_').slice(1).join('_').trim() : s2;
+  if (core1 === core2) return true;
+
+  return false;
+}
+
+export interface TeacherSubjectResolved {
+  nama_mapel: string;
+  kelas: string;
+}
+
+/**
+ * Pure multi-source subject resolver for any teacher.
+ * Aggregates assignments from jadwal_pelajaran, guru_mapel, and data_guru.mata_pelajaran.
+ * Guarantees zero fallback to 'Mata Pelajaran Umum'.
+ */
+export function resolveTeacherSubjects(
+  teacher: any,
+  jadwalList: any[] = [],
+  dataMapelList: any[] = [],
+  guruMapelList: any[] = []
+): TeacherSubjectResolved[] {
+  if (!teacher) return [];
+
+  const subjects: TeacherSubjectResolved[] = [];
+  const seen = new Set<string>();
+
+  const addSubject = (rawMapel?: string | null, rawKelas?: string | null) => {
+    if (!rawMapel || isInvalidMapel(rawMapel)) return;
+    let mapel = rawMapel.trim();
+    let kelas = (rawKelas || '').trim();
+
+    // Handle format "X Merdeka_MTK"
+    if (mapel.includes('_')) {
+      const parts = mapel.split('_');
+      if (!kelas) kelas = parts[0].trim();
+      mapel = parts.slice(1).join('_').trim();
+    }
+
+    // Look up in dataMapelList if kelas is still missing
+    if (!kelas && dataMapelList.length > 0) {
+      const dm = dataMapelList.find(m => {
+        const nm = (m.nama_mata_pelajaran || m.nama_mapel || '').trim().toLowerCase();
+        return nm === rawMapel.trim().toLowerCase() || nm.endsWith(`_${mapel.toLowerCase()}`);
+      });
+      if (dm) {
+        kelas = (dm.kategori || dm.kelompok || (dm.nama_mata_pelajaran?.includes('_') ? dm.nama_mata_pelajaran.split('_')[0].trim() : '')).trim();
+      }
+    }
+
+    // Canonicalize subject name (e.g. MTK -> Matematika)
+    const canonicalMapel = canonicalizeSubjectName(mapel);
+    const key = `${canonicalMapel.toLowerCase()}__${kelas.toLowerCase()}`;
+
+    if (canonicalMapel && !seen.has(key)) {
+      seen.add(key);
+      subjects.push({
+        nama_mapel: canonicalMapel,
+        kelas: kelas
+      });
+    }
+  };
+
+  // 1. Resolve from jadwal_pelajaran (Primary truth for teaching schedule)
+  const matchingJadwal = jadwalList.filter(j =>
+    isTeacherEntityMatch(teacher, j.nama_guru, j.nip, j.user_id)
+  );
+  matchingJadwal.forEach(j => {
+    addSubject(j.mata_pelajaran || j.mapel, j.kelas);
+  });
+
+  // 2. Resolve from guru_mapel relations
+  const matchingGm = guruMapelList.filter(gm =>
+    isTeacherEntityMatch(teacher, gm.nama_guru, gm.nip, gm.user_id || gm.guru_id)
+  );
+  matchingGm.forEach(gm => {
+    addSubject(gm.nama_mapel || gm.mapel_singkat, gm.kelas);
+  });
+
+  // 3. Resolve from teacher.mata_pelajaran in data_guru (e.g. "X Merdeka_MTK, X Merdeka_Informatika")
+  const rawMataPelajaran = teacher.mata_pelajaran;
+  if (rawMataPelajaran && typeof rawMataPelajaran === 'string') {
+    const tokens = rawMataPelajaran
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s && !isInvalidMapel(s));
+    tokens.forEach(tok => {
+      addSubject(tok, '');
+    });
+  }
+
+  // 4. Sort Class X subjects logically first
+  subjects.sort((a, b) => {
+    const tA = extractTingkat(a.kelas);
+    const tB = extractTingkat(b.kelas);
+    if (tA === 'X' && tB !== 'X') return -1;
+    if (tA !== 'X' && tB === 'X') return 1;
+    return a.nama_mapel.localeCompare(b.nama_mapel);
+  });
+
+  return subjects;
+}
+
 export interface DokumenViewProps {
   user: any;
   isReadOnly?: boolean;
@@ -63,6 +281,8 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
   const [dokumenList, setDokumenList] = useState<BankDokumen[]>([]);
   const [teachersList, setTeachersList] = useState<DataGuru[]>([]);
   const [guruMapelList, setGuruMapelList] = useState<GuruMapel[]>([]);
+  const [jadwalList, setJadwalList] = useState<any[]>([]);
+  const [dataMapelList, setDataMapelList] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [syaratList, setSyaratList] = useState<SyaratPerangkatPembelajaranRow[]>([]);
   const [fetching, setFetching] = useState(false);
@@ -111,64 +331,11 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
         docQuery = docQuery.eq('nama_guru', user.nama);
       }
 
-      const { data: docs, error: docError } = await docQuery;
-      if (docError) console.error('Error fetching bank_dokumen:', docError);
-      if (docs) setDokumenList(docs as BankDokumen[]);
-
-      // 2. Fetch all teachers
-      const { data: teachers, error: teacherError } = await supabase
-        .from('data_guru')
-        .select('*')
-        .order('nama_guru', { ascending: true });
-      if (teacherError) console.error('Error fetching data_guru:', teacherError);
-      if (teachers) setTeachersList(teachers as DataGuru[]);
-
-      // 3. Fetch guru_mapel relations
-      const { data: gm, error: gmError } = await supabase
-        .from('guru_mapel')
-        .select('*');
-      if (gmError) console.error('Error fetching guru_mapel:', gmError);
-      
-      let guruMapels = ((gm as GuruMapel[]) || []).filter((g: any) => !isInvalidMapel(g.nama_mapel || g.mata_pelajaran));
-      if (guruMapels.length === 0) {
-        const { data: jadwalData } = await supabase.from('jadwal_pelajaran').select('*');
-        if (jadwalData && jadwalData.length > 0) {
-          const uniqueMapels = new Map();
-          jadwalData.forEach((j: any) => {
-            const namaGuru = j.nama_guru || '-';
-            const mapel = j.mata_pelajaran || '-';
-            if (isInvalidMapel(mapel)) return;
-            const kls = j.kelas || '-';
-            const key = `${namaGuru}-${mapel}-${kls}`;
-            if (!uniqueMapels.has(key)) {
-              uniqueMapels.set(key, {
-                id: j.id,
-                nama_mapel: mapel,
-                kelas: kls,
-                mapel_singkat: mapel,
-                nama_guru: namaGuru,
-                sekolah_id: j.sekolah_id || ''
-              });
-            }
-          });
-          guruMapels = Array.from(uniqueMapels.values());
-        }
-      }
-      
-      setGuruMapelList(guruMapels);
-
-      // 4. Fetch distinct kelas from data_siswa
       let siswaQuery = supabase.from('data_siswa').select('kelas');
       if (user?.sekolah_id) {
         siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
       }
-      const { data: siswaData } = await siswaQuery;
-      if (siswaData) {
-        const uniqueKls = Array.from(new Set(siswaData.map((s: any) => s.kelas).filter(Boolean))) as string[];
-        setKelasList(uniqueKls.sort());
-      }
 
-      // 5. Fetch syarat_perangkat_pembelajaran
       let syaratQuery = supabase
         .from('syarat_perangkat_pembelajaran')
         .select('*')
@@ -176,7 +343,56 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
       if (user?.sekolah_id) {
         syaratQuery = syaratQuery.eq('sekolah_id', user.sekolah_id);
       }
-      const { data: syaratData, error: syaratErr } = await syaratQuery;
+
+      let jadwalQuery = supabase.from('jadwal_pelajaran').select('*');
+      if (user?.sekolah_id) {
+        jadwalQuery = jadwalQuery.eq('sekolah_id', user.sekolah_id);
+      }
+
+      let mapelQuery = supabase.from('data_mapel').select('*');
+      if (user?.sekolah_id) {
+        mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
+      }
+
+      // Parallel fetch of all master data tables
+      const [
+        { data: docs, error: docError },
+        { data: teachers, error: teacherError },
+        { data: gm, error: gmError },
+        { data: jadwalData, error: jadwalError },
+        { data: mapelData, error: mapelError },
+        { data: siswaData },
+        { data: syaratData, error: syaratErr }
+      ] = await Promise.all([
+        docQuery,
+        supabase.from('data_guru').select('*').order('nama_guru', { ascending: true }),
+        supabase.from('guru_mapel').select('*'),
+        jadwalQuery,
+        mapelQuery,
+        siswaQuery,
+        syaratQuery
+      ]);
+
+      if (docError) console.error('Error fetching bank_dokumen:', docError);
+      if (docs) setDokumenList(docs as BankDokumen[]);
+
+      if (teacherError) console.error('Error fetching data_guru:', teacherError);
+      if (teachers) setTeachersList(teachers as DataGuru[]);
+
+      const validGm = ((gm as GuruMapel[]) || []).filter((g: any) => !isInvalidMapel(g.nama_mapel || g.mata_pelajaran));
+      setGuruMapelList(validGm);
+
+      const validJadwal = (jadwalData || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+      setJadwalList(validJadwal);
+
+      const validMapel = (mapelData || []).filter((m: any) => !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel));
+      setDataMapelList(validMapel);
+
+      if (siswaData) {
+        const uniqueKls = Array.from(new Set(siswaData.map((s: any) => s.kelas).filter(Boolean))) as string[];
+        setKelasList(uniqueKls.sort());
+      }
+
       if (syaratErr) console.error('Error fetching syarat_perangkat_pembelajaran:', syaratErr);
       if (syaratData) setSyaratList(syaratData as SyaratPerangkatPembelajaranRow[]);
     } catch (err) {
@@ -184,7 +400,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
     } finally {
       setFetching(false);
     }
-  }, [isAdmin, user?.nama]);
+  }, [isAdmin, user?.nama, user?.sekolah_id]);
 
   useEffect(() => {
     loadAllData();
@@ -535,33 +751,17 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
 
   // Subjects assigned to the currently logged in teacher
   const myTeacherSubjects = useMemo(() => {
-    const list: { nama_mapel: string; kelas: string }[] = [];
-    const seen = new Set<string>();
+    const currentTeacher = teachersList.find(t =>
+      isTeacherEntityMatch(t, user?.nama, user?.nip, user?.id)
+    ) || {
+      nama_guru: user?.nama,
+      nip: user?.nip,
+      user_id: user?.id,
+      mata_pelajaran: user?.mata_pelajaran
+    };
 
-    const teacherGm = guruMapelList.filter(
-      gm => (gm.nama_guru || '').trim().toLowerCase() === (user?.nama || '').trim().toLowerCase()
-    );
-
-    teacherGm.forEach(gm => {
-      const mapelName = gm.nama_mapel || gm.mapel_singkat || '';
-      const kls = gm.kelas || '';
-      const key = `${mapelName}-${kls}`;
-      if (mapelName && !seen.has(key)) {
-        seen.add(key);
-        list.push({ nama_mapel: mapelName, kelas: kls });
-      }
-    });
-
-    // Fallback if no specific guru_mapel relations
-    if (list.length === 0) {
-      const g = teachersList.find(t => (t.nama_guru || '').trim().toLowerCase() === (user?.nama || '').trim().toLowerCase());
-      const rawFallback = g?.mata_pelajaran || user?.mata_pelajaran || 'Mata Pelajaran Umum';
-      const fallbackMapel = isInvalidMapel(rawFallback) ? normalizeScheduleMapel(rawFallback) : rawFallback;
-      list.push({ nama_mapel: fallbackMapel, kelas: '' });
-    }
-
-    return list;
-  }, [guruMapelList, teachersList, user]);
+    return resolveTeacherSubjects(currentTeacher, jadwalList, dataMapelList, guruMapelList);
+  }, [teachersList, jadwalList, dataMapelList, guruMapelList, user]);
 
   const availableMapels = useMemo(() => {
     const set = new Set<string>();
@@ -709,41 +909,18 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
     }[] = [];
 
     teachersList.forEach(teacher => {
-      const tName = (teacher.nama_guru || '').trim().toLowerCase();
-      // Teacher's assigned subjects
-      const teacherGm = guruMapelList.filter(
-        gm => (gm.nama_guru || '').trim().toLowerCase() === tName
-      );
+      // Resolve teacher's subjects across jadwal, guru_mapel, and data_guru
+      const subjects = resolveTeacherSubjects(teacher, jadwalList, dataMapelList, guruMapelList);
 
-      const subjects: { nama_mapel: string; kelas: string }[] = [];
-      const seenSub = new Set<string>();
-
-      teacherGm.forEach(gm => {
-        const mName = gm.nama_mapel || gm.mapel_singkat || '';
-        const kls = gm.kelas || '';
-        const key = `${mName}-${kls}`;
-        if (mName && !seenSub.has(key)) {
-          seenSub.add(key);
-          subjects.push({ nama_mapel: mName, kelas: kls });
-        }
-      });
-
-      if (subjects.length === 0) {
-        subjects.push({
-          nama_mapel: teacher.mata_pelajaran || 'Mata Pelajaran Umum',
-          kelas: ''
-        });
-      }
-
-      // Teacher's uploaded docs
-      const teacherDocs = dokumenList.filter(
-        d => (d.nama_guru || '').trim().toLowerCase() === tName
+      // Teacher's uploaded docs (tokenized match)
+      const teacherDocs = dokumenList.filter(d =>
+        isTeacherEntityMatch(teacher, d.nama_guru)
       );
 
       subjects.forEach(sub => {
         // Find requirements for this subject in syarat_perangkat_pembelajaran
         let reqs = syaratList.filter(
-          s => (s.nama_mapel || '').trim().toLowerCase() === sub.nama_mapel.trim().toLowerCase()
+          s => isMapelMatch(s.nama_mapel, sub.nama_mapel)
         );
         if (reqs.length === 0) {
           reqs = syaratList.filter(s => (s.nama_mapel || '').trim().toLowerCase() === 'semua mapel');
@@ -777,7 +954,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
 
             // Check mapel match
             if (sub.nama_mapel && d.mapel) {
-              if (d.mapel.trim().toLowerCase() !== sub.nama_mapel.trim().toLowerCase()) {
+              if (!isMapelMatch(sub.nama_mapel, d.mapel)) {
                 if (!d.judul || !d.judul.toLowerCase().includes(sub.nama_mapel.toLowerCase())) {
                   return false;
                 }
@@ -834,7 +1011,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
     });
 
     return list;
-  }, [teachersList, guruMapelList, dokumenList, syaratList]);
+  }, [teachersList, guruMapelList, jadwalList, dataMapelList, dokumenList, syaratList]);
 
   // Filtered Teacher-Subject Minimalist Cards
   const filteredTeacherSubjectCards = useMemo(() => {

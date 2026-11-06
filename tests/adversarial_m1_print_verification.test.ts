@@ -74,26 +74,23 @@ async function runAdversarialChallenge1() {
     '<PrintHeader /> is placed in the universal outer print header container `<div className="hidden print:block">`'
   );
 
-  // 1.3 Sub-Tab 3 (activeTab === 'cetak') does NOT contain an inner <PrintHeader>
-  const subTab3Start = adminRekapCode.indexOf("activeTab === 'cetak' ? 'block' : 'hidden'");
-  const subTab3Content = subTab3Start !== -1 ? adminRekapCode.substring(subTab3Start) : '';
-  const innerPrintHeaderInTab3 = subTab3Content.match(/<PrintHeader[\s\S]*?\/>/g) || [];
+  // 1.3 Sub-Tab 3 (activeTab === 'cetak') is cleanly eliminated (Requirement R2)
   assert(
-    innerPrintHeaderInTab3.length === 0,
+    !adminRekapCode.includes("id: 'cetak'"),
     'AR-03',
-    'Sub-Tab 3 does NOT contain duplicate inner <PrintHeader />'
+    'Sub-Tab 3 cetak is cleanly eliminated from tabItems'
   );
 
-  // 1.4 Sub-Tab 3 inner title has `print:hidden` to prevent duplicate title in print mode
+  // 1.4 Sub-Tab 3 block activeTab === 'cetak' is completely removed
   assert(
-    subTab3Content.includes('print:hidden') && subTab3Content.includes('Rekapitulasi Akhir Presensi, Jurnal &amp; Piket Guru'),
+    !adminRekapCode.includes("activeTab === 'cetak'"),
     'AR-04',
-    'Sub-Tab 3 title block contains `print:hidden` to avoid duplicating the outer print title'
+    'Sub-Tab 3 block activeTab === cetak is completely removed'
   );
 
   // 1.5 Tab 2 (activeTab === 'tabel') contains <PrintSignature> wrapped in `<div className="hidden print:block mt-8">`
   const subTab2Start = adminRekapCode.indexOf("activeTab === 'tabel' ? 'block' : 'hidden'");
-  const subTab2Content = subTab2Start !== -1 ? adminRekapCode.substring(subTab2Start, subTab3Start) : '';
+  const subTab2Content = subTab2Start !== -1 ? adminRekapCode.substring(subTab2Start) : '';
   assert(
     subTab2Content.includes('<div className="hidden print:block mt-8">') &&
     subTab2Content.includes('<PrintSignature'),
@@ -111,12 +108,12 @@ async function runAdversarialChallenge1() {
     'Tab 2 <PrintSignature> correctly passes Pengelola Data/Admin subtitle, user, and sekolahId'
   );
 
-  // 1.7 Sub-Tab 3 (activeTab === 'cetak') retains its <PrintSignature>
+  // 1.7 Consolidated Tab 2 retains official printing and Excel export capabilities
   assert(
-    subTab3Content.includes('<PrintSignature') &&
-    subTab3Content.includes('leftSubtitle="Pengelola Data / Admin"'),
+    adminRekapCode.includes('triggerPrintWithGps') &&
+    adminRekapCode.includes('handleExportCsv'),
     'AR-07',
-    'Sub-Tab 3 (Cetak) retains <PrintSignature> with Pengelola Data/Admin subtitle'
+    'Tab 2 consolidates GPS print and Excel export without needing redundant Sub-Tab 3'
   );
 
   // =========================================================================
@@ -470,23 +467,18 @@ async function runAdversarialChallenge1() {
   );
   delete (global as any).window;
 
-  // 6.4 CSS Print Isolation Verification in AdminRekapView:
-  // Tab 2 has `hidden print:block mt-8` for its signature container
-  // Tab 3 has `hidden` when activeTab !== 'cetak' and does NOT have print:block on container
-  const tab2Regex = /activeTab === 'tabel' \? 'block' : 'hidden'/;
-  const tab3Regex = /activeTab === 'cetak' \? 'block' : 'hidden'/;
+  // 6.4 Clean elimination of redundant Sub-Tab 3 and consolidated Tab 2 print layout:
   assert(
-    tab2Regex.test(adminRekapCode) && tab3Regex.test(adminRekapCode),
+    !adminRekapCode.includes("activeTab === 'cetak'") && !adminRekapCode.includes("id: 'cetak'"),
     'SEC-04',
-    'AdminRekapView enforces mutual exclusivity between Tab 2 (Tabel) and Tab 3 (Cetak)'
+    'AdminRekapView cleanly removed redundant Sub-Tab 3 (Cetak) per Requirement R2'
   );
 
-  // 6.5 Tab 3 outer container has NO `print:block`, meaning when Tab 2 is active, Tab 3 is completely hidden from print output
-  const tab3BlockMatch = adminRekapCode.match(/<div className=\{`\$\{activeTab === 'cetak' \? 'block' : 'hidden'\}[^`]*`\}>/);
+  // 6.5 Tab 2 provides the sole authoritative print layout with PrintHeader and PrintSignature
   assert(
-    tab3BlockMatch !== null && !tab3BlockMatch[0].includes('print:block'),
+    adminRekapCode.includes('<PrintHeader') && adminRekapCode.includes('<PrintSignature'),
     'SEC-05',
-    'Tab 3 container does NOT have `print:block`, guaranteeing it remains hidden in print when Tab 2 is active'
+    'Tab 2 is the single authoritative print layout with universal KOP and official signature'
   );
   console.log(`\n==============================================================================`);
   console.log(`CHALLENGER 1 RESULTS: ${passedTests} PASSED, ${failedTests} FAILED (TOTAL: ${totalTests})`);

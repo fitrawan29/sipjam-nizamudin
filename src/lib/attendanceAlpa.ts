@@ -59,6 +59,20 @@ function getDayNameFromDate(dateStr: string): string {
   return days[new Date(cleanDate + 'T12:00:00+08:00').getDay()];
 }
 
+function addDaysToDateStr(dateStr: string, days: number): string {
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + days);
+    const year = dt.getFullYear();
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 /**
  * Evaluates attendance submissions for a given date against the school's jam_pulang_akhir cutoff.
  * - Converts rejected-but-unresubmitted records to 'Alpa'.
@@ -1028,33 +1042,76 @@ export async function recordUnfilledJournalsAndPiket(
       laporanPiket = (lpData || []).find((lp: any) => matchTeacherTokens(teacher.nama_guru, lp.guru_pelapor)) || null;
     }
 
+    // Determine if teacher is legitimately excused via Sakit, Izin, or Dinas Luar (single-day or multi-day span)
+    let presensiDatang = state.presensiDatang;
+    if (presensiDatang === undefined) {
+      // 1. Check single-day presence record for evaluatedDate
+      let pQ = client.from('presensi_guru').select('*').eq('tipe_absen', 'Datang');
+      if (teacher.sekolah_id) pQ = pQ.eq('sekolah_id', teacher.sekolah_id);
+      const startOfDay = getWitaStartOfDay(evaluatedDate);
+      const endOfDay = getWitaEndOfDay(evaluatedDate);
+      if (typeof (pQ as any)?.gte === 'function') pQ = (pQ as any).gte('timestamp', startOfDay);
+      if (typeof (pQ as any)?.lte === 'function') pQ = (pQ as any).lte('timestamp', endOfDay);
+      const { data: pData } = await pQ;
+
+      let foundToday = (pData || []).find((p: any) => {
+        const pDate = extractWitaDateStr(p.timestamp) || (p.timestamp ? p.timestamp.substring(0, 10) : '');
+        if (pDate && pDate !== evaluatedDate) return false;
+        return matchTeacherTokens(teacher.nama_guru, p.nama_guru) || (teacher.user_id && p.user_id && teacher.user_id === p.user_id);
+      });
+
+      if (foundToday) {
+        presensiDatang = foundToday;
+      } else {
+        // 2. Check active multi-day leaves spanning evaluatedDate (Support for Day 2+ of leave)
+        let multiQ = client
+          .from('presensi_guru')
+          .select('*')
+          .lte('tanggal_mulai', evaluatedDate)
+          .not('tanggal_mulai', 'is', null)
+          .neq('status_verifikasi', 'Ditolak');
+        if (teacher.sekolah_id) multiQ = multiQ.eq('sekolah_id', teacher.sekolah_id);
+        const { data: multiData } = await multiQ;
+
+        const activeMultiLeave = (multiData || []).find((p: any) => {
+          if (p.status_verifikasi === 'Ditolak') return false;
+          if (isLateArrival(p)) return false;
+
+          const isMatch = matchTeacherTokens(teacher.nama_guru, p.nama_guru) || 
+            (teacher.user_id && p.user_id && teacher.user_id === p.user_id);
+          if (!isMatch) return false;
+
+          if (p.tanggal_mulai && p.tanggal_selesai) {
+            return evaluatedDate >= p.tanggal_mulai && evaluatedDate <= p.tanggal_selesai;
+          }
+          if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
+            const days = Number(p.durasi_hari || p.durasiHari) || 1;
+            const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
+            return evaluatedDate >= p.tanggal_mulai && evaluatedDate <= computedEnd;
+          }
+          return false;
+        });
+
+        presensiDatang = activeMultiLeave || null;
+      }
+    }
+
+    // Izin Terlambat / Terlambat is not leave: KBM journal must still be filled
+    const isLate = isLateArrival(presensiDatang);
+    const jp = (presensiDatang?.jenis_presensi || '').toLowerCase();
+    const di = (presensiDatang?.detail_izin || '').toLowerCase();
+    const sv = (presensiDatang?.status_verifikasi || '').toLowerCase();
+
+    const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = isLate ? null :
+      (state.isIzinSakit || jp === 'sakit' || di.includes('sakit') || sv === 'sakit') ? 'Sakit' :
+      (jp === 'izin' || di.includes('izin') || sv === 'izin') ? 'Izin' :
+      (state.isDinasLuar || jp === 'dinas luar' || di.includes('dinas') || sv === 'dinas luar') ? 'Dinas Luar' : null;
+
+    const leaveNote = presensiDatang?.detail_izin || presensiDatang?.keterangan || (leaveType || '');
+    const leaveProof = presensiDatang?.link_bukti && presensiDatang.link_bukti !== '-' ? presensiDatang.link_bukti : '-';
+
     // 1. KBM Schedules not filled -> Auto-record (Presensi Sakit/Izin/Dinas Luar or "tidak masuk kelas")
     if (jadwalKBM && jadwalKBM.length > 0) {
-      // Determine if teacher is legitimately excused via Sakit, Izin, or Dinas Luar
-      let presensiDatang = state.presensiDatang;
-      if (presensiDatang === undefined) {
-        let pQ = client.from('presensi_guru').select('*').eq('tipe_absen', 'Datang');
-        if (teacher.sekolah_id) pQ = pQ.eq('sekolah_id', teacher.sekolah_id);
-        const startOfDay = getWitaStartOfDay(evaluatedDate);
-        const endOfDay = getWitaEndOfDay(evaluatedDate);
-        if (typeof (pQ as any)?.gte === 'function') pQ = (pQ as any).gte('timestamp', startOfDay);
-        if (typeof (pQ as any)?.lte === 'function') pQ = (pQ as any).lte('timestamp', endOfDay);
-        const { data: pData } = await pQ;
-        presensiDatang = (pData || []).find((p: any) => {
-          if (p.timestamp && !p.timestamp.startsWith(evaluatedDate)) return false;
-          return matchTeacherTokens(teacher.nama_guru, p.nama_guru);
-        }) || null;
-      }
-
-      // Izin Terlambat / Terlambat is not leave: KBM journal must still be filled
-      const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = isLateArrival(presensiDatang) ? null :
-        (state.isIzinSakit || presensiDatang?.jenis_presensi === 'Sakit' || presensiDatang?.detail_izin?.toLowerCase().includes('sakit')) ? 'Sakit' :
-        (presensiDatang?.jenis_presensi === 'Izin' || presensiDatang?.detail_izin?.toLowerCase().includes('izin')) ? 'Izin' :
-        (state.isDinasLuar || presensiDatang?.jenis_presensi === 'Dinas Luar' || presensiDatang?.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : null;
-      
-      const leaveNote = presensiDatang?.detail_izin || presensiDatang?.keterangan || (leaveType || '');
-      const leaveProof = presensiDatang?.link_bukti && presensiDatang.link_bukti !== '-' ? presensiDatang.link_bukti : '-';
-
       for (const sched of jadwalKBM) {
         const isFilled = (jurnalKBM || []).some(j => 
           j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, sched)
@@ -1091,16 +1148,13 @@ export async function recordUnfilledJournalsAndPiket(
               kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
               keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
               status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
-              catatan_admin: 'Auto-record: Guru tidak masuk kelas (pulang cepat)',
+              catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : 'Auto-record: Guru tidak masuk kelas (pulang cepat)',
               catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
               kehadiran_murid: '-',
               absensi_siswa: '-',
               foto_kegiatan: isExcused ? leaveProof : '-',
               link_bukti_foto: isExcused ? leaveProof : '-'
             };
-            if (isExcused) {
-              kbmRecord.catatan_admin = `Otomatis terisi sesuai presensi (${leaveType})`;
-            }
             const { error: insErr } = await client.from('jurnal_pembelajaran').insert(kbmRecord);
             if (insErr && (insErr.message?.includes('schema cache') || insErr.message?.includes('column'))) {
               const { user_id: _u, catatan_admin: _, catatan_refleksi: _2, konten: _3, kegiatan_pembelajaran: _4, ...baseRec } = kbmRecord;
@@ -1113,7 +1167,9 @@ export async function recordUnfilledJournalsAndPiket(
     }
 
     // 2. Jurnal Kegiatan not filled -> "tidak melaksanakan kegiatan apapun"
-    const needsKegiatan = (jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay;
+    // Excused leaves must NOT generate delinquent kegiatan records
+    const isExcusedFromActivity = Boolean(leaveType || state.isIzinSakit);
+    const needsKegiatan = !isExcusedFromActivity && (jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay;
     if (needsKegiatan && !jurnalKegiatan) {
       let q = client
         .from('jurnal_pembelajaran')
@@ -1283,6 +1339,29 @@ export async function autoFillKbmJournalsForLeave(
     console.warn('[autoFillKbmJournalsForLeave] Error:', err);
     return 0;
   }
+}
+
+/**
+ * Automated Journal Cutoff Excused Detection:
+ * Evaluates empty teaching schedules and auto-closes them as excused (leaveType) or unexcused delinquency ("tidak masuk kelas").
+ * Recognizes multi-day leaves spanning evaluatedDate (Day 2+).
+ */
+export async function autoCloseOrMarkDelinquentJournals(
+  teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string | null },
+  targetDateStr: string,
+  state: {
+    isPiket?: boolean;
+    laporanPiket?: any | null;
+    jadwalKBM?: any[];
+    jurnalKBM?: any[];
+    jurnalKegiatan?: any | null;
+    presensiDatang?: any;
+    isIzinSakit?: boolean;
+    [key: string]: any;
+  } = {},
+  client: any = supabase
+): Promise<{ unfilledKbmCount: number; unfilledKegiatanCreated: boolean; unfilledPiketCreated: boolean }> {
+  return recordUnfilledJournalsAndPiket(teacher, targetDateStr, state, client);
 }
 
 

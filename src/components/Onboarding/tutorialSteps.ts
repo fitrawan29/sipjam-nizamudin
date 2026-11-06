@@ -129,7 +129,7 @@ export const ADMIN_STEPS: TourStep[] = [
     role: 'admin',
     placement: 'right',
     requiresSidebarOpen: true,
-    subTabs: ['Analitik & Leaderboard', 'Tabel Rekapitulasi', 'Cetak Dokumen Resmi'],
+    subTabs: ['Analitik & Leaderboard', 'Tabel Rekapitulasi'],
     activeSubTab: 'Analitik & Leaderboard',
   },
   {
