@@ -419,7 +419,7 @@ export default function RekapSiswaView({
     URL.revokeObjectURL(url);
   };
 
-  const handleSetWaliStatus = (nisn: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos') => {
+  const handleSetWaliStatus = (nisn: string, status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
     if (isReadOnly) return;
     setWaliAttendance(prev => ({
       ...prev,
@@ -441,7 +441,7 @@ export default function RekapSiswaView({
     }));
   };
 
-  const handleSetAllWaliStatus = (status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos') => {
+  const handleSetAllWaliStatus = (status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa') => {
     if (isReadOnly) return;
     setWaliAttendance(prev => {
       const updated = { ...prev };
@@ -1164,8 +1164,7 @@ export default function RekapSiswaView({
                                       st === 'Hadir' ? (isSelected ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
                                       st === 'Izin' ? (isSelected ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
                                       st === 'Sakit' ? (isSelected ? 'bg-yellow-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
-                                      st === 'Alpa' ? (isSelected ? 'bg-red-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
-                                      (isSelected ? 'bg-purple-600 text-white shadow-sm' : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300');
+                                      (isSelected ? 'bg-red-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300');
 
                                     return (
                                       <button
