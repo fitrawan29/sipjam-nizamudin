@@ -1144,7 +1144,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           if (mapelEl && kelasEl) {
             mapelEl.addEventListener('change', () => {
               const val = mapelEl.value || '';
-              if (val.includes('_')) {
+              if (val.includes('_') && (!kelasEl.value || kelasEl.value.trim() === '')) {
                 kelasEl.value = val.split('_')[0].trim();
               }
             });
@@ -2042,7 +2042,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           if (mapelEl && kelasEl) {
             mapelEl.addEventListener('change', () => {
               const val = mapelEl.value || '';
-              if (val.includes('_')) {
+              if (val.includes('_') && (!kelasEl.value || kelasEl.value.trim() === '')) {
                 kelasEl.value = val.split('_')[0].trim();
               }
             });

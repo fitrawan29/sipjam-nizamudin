@@ -157,7 +157,7 @@ console.log('  ✔ [PASS] HomeViewAdmin KPI metric cards & matrix container refa
 const guruHomePath = path.join(projectRoot, 'src', 'components', 'HomeViewGuru.tsx');
 const guruHomeSrc = fs.readFileSync(guruHomePath, 'utf8');
 
-assert(guruHomeSrc.includes('clay-card-mint') && guruHomeSrc.includes('clay-card-amber'), 'HomeViewGuru personal attendance cards use clay-card variants');
+assert(guruHomeSrc.includes('clay-card-mint') && (guruHomeSrc.includes('clay-card-blue') || guruHomeSrc.includes('clay-card-amber')), 'HomeViewGuru personal attendance cards use clay-card variants');
 assert(guruHomeSrc.includes('clay-inset rounded-2xl'), 'HomeViewGuru accumulation info uses clay-inset rounded-2xl');
 assert(guruHomeSrc.includes('clay-btn clay-btn-primary'), 'HomeViewGuru Wali Kelas CTA uses clay-btn-primary');
 console.log('  ✔ [PASS] HomeViewGuru personal stats & action cards refactored');

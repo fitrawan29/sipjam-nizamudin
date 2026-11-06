@@ -256,9 +256,20 @@ export default function GradebookView({
   const [innerTab, setInnerTab] = useState<'tp-matrix' | 'rekap-semester' | 'statistik'>('tp-matrix');
 
   // Master Data State
+
   const [teachersList, setTeachersList] = useState<{ id?: string; nama_guru: string; nip?: string }[]>([]);
   const [mapelList, setMapelList] = useState<{ id?: string; nama_mapel: string; kelas?: string }[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
+
+  const uniqueMapelList = useMemo(() => {
+    const seen = new Set<string>();
+    return mapelList.filter(m => {
+      if (!m.nama_mapel || seen.has(m.nama_mapel)) return false;
+      seen.add(m.nama_mapel);
+      return true;
+    });
+  }, [mapelList]);
+
   const [students, setStudents] = useState<StudentItem[]>([]);
 
   // TPs & Columns State
@@ -293,6 +304,18 @@ export default function GradebookView({
       }
     }
     setSelectedMapel(newMapel);
+    // Jika kelas saat ini tidak mengampu mapel baru, alihkan ke kelas pertama yang mengampu mapel ini
+    if (!isAdmin && mapelList.length > 0) {
+      const currentClassValid = mapelList.some(
+        m => m.nama_mapel === newMapel && (!m.kelas || m.kelas === selectedKelas)
+      );
+      if (!currentClassValid) {
+        const firstClass = mapelList.find(m => m.nama_mapel === newMapel && m.kelas);
+        if (firstClass?.kelas) {
+          setSelectedKelas(firstClass.kelas);
+        }
+      }
+    }
   };
 
   const handleSelectKelas = (newKelas: string) => {
@@ -302,6 +325,18 @@ export default function GradebookView({
       }
     }
     setSelectedKelas(newKelas);
+    // Jika berpindah antar kelas paralel yang sama-sama mengampu selectedMapel, pertahankan selectedMapel!
+    if (!isAdmin && mapelList.length > 0) {
+      const stillTeaches = mapelList.some(
+        m => m.nama_mapel === selectedMapel && (!m.kelas || m.kelas === newKelas)
+      );
+      if (!stillTeaches) {
+        const firstInClass = mapelList.find(m => !m.kelas || m.kelas === newKelas);
+        if (firstInClass) {
+          setSelectedMapel(firstInClass.nama_mapel);
+        }
+      }
+    }
   };
 
   // Loading & Saving States
@@ -2537,7 +2572,7 @@ export default function GradebookView({
               onChange={e => handleSelectMapel(e.target.value)}
               className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
             >
-              {mapelList.map((m, idx) => (
+              {uniqueMapelList.map((m, idx) => (
                 <option key={idx} value={m.nama_mapel}>
                   {m.nama_mapel}
                 </option>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari } from '@/lib/workflow';
@@ -57,6 +57,8 @@ export default function GuruJurnal({
   };
 
   const [hasDraft, setHasDraft] = useState(false);
+
+  
   const [tipeJurnal, setTipeJurnal] = useState('Jurnal KBM');
   const [mapel, setMapel] = useState('');
   const [kelas, setKelas] = useState('');
@@ -80,6 +82,17 @@ export default function GuruJurnal({
   const [mapelList, setMapelList] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
+
+  const uniqueMapelList = useMemo(() => {
+    const seen = new Set<string>();
+    return mapelList.filter(m => {
+      const name = m.nama_mata_pelajaran || m.nama_mapel;
+      if (!name || seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    });
+  }, [mapelList]);
+
   const [isFetchingAssignments, setIsFetchingAssignments] = useState(true);
   const [students, setStudents] = useState<any[]>([]);
   const [absensi, setAbsensi] = useState<Record<string, string>>({});
@@ -1207,15 +1220,21 @@ export default function GuruJurnal({
   const handleMapelChange = (val: string) => {
     setMapel(val);
     // Cascading auto-sync: automatically set corresponding class
-    const matched = assignments.find(
-      a => (a.nama_mapel === val || a.nama_mata_pelajaran === val)
+    // Jika kelas saat ini sudah mengampu mapel yang dipilih (misal pada kelas paralel), pertahankan kelas aktif!
+    const currentKelasMatches = assignments.some(
+      a => (a.nama_mapel === val || a.nama_mata_pelajaran === val) && a.kelas === kelas
     );
-    if (matched && matched.kelas) {
-      setKelas(matched.kelas);
-    } else {
-      const prefix = val.split('_')[0];
-      if (prefix && kelasList.includes(prefix)) {
-        setKelas(prefix);
+    if (!currentKelasMatches) {
+      const matched = assignments.find(
+        a => (a.nama_mapel === val || a.nama_mata_pelajaran === val)
+      );
+      if (matched && matched.kelas) {
+        setKelas(matched.kelas);
+      } else {
+        const prefix = val.split('_')[0];
+        if (prefix && kelasList.includes(prefix)) {
+          setKelas(prefix);
+        }
       }
     }
   };
@@ -1547,7 +1566,7 @@ export default function GuruJurnal({
                             className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
                           >
                             <option value="" disabled>Pilih Mapel...</option>
-                            {mapelList.map(m => (
+                            {uniqueMapelList.map(m => (
                               <option key={m.id || m.nama_mata_pelajaran} value={m.nama_mata_pelajaran}>
                                 {m.nama_mata_pelajaran}
                               </option>

@@ -586,17 +586,6 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       ) as string[];
 
       if (mapels.length === 0) {
-        let dmQuery = supabase.from('data_mapel').select('nama_mata_pelajaran, nama_mapel');
-        if (sekolahId) dmQuery = dmQuery.eq('sekolah_id', sekolahId);
-        const { data: dmData } = await dmQuery;
-        if (dmData && dmData.length > 0) {
-          mapels = Array.from(
-            new Set(dmData.map((d: any) => d.nama_mata_pelajaran || d.nama_mapel).filter(Boolean))
-          ) as string[];
-        }
-      }
-
-      if (mapels.length === 0) {
         try {
           let jpQuery = supabase.from('jadwal_pelajaran').select('mata_pelajaran').eq('kelas', selectedKelas);
           if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
@@ -606,6 +595,24 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
           }
         } catch {
           // ignore
+        }
+      }
+
+      if (mapels.length === 0) {
+        let dmQuery = supabase.from('data_mapel').select('nama_mata_pelajaran, nama_mapel, kategori, kelompok');
+        if (sekolahId) dmQuery = dmQuery.eq('sekolah_id', sekolahId);
+        const { data: dmData } = await dmQuery;
+        if (dmData && dmData.length > 0) {
+          const filtered = dmData.filter((d: any) => {
+            const kat = (d.kategori || d.kelompok || '').toLowerCase().trim();
+            const sk = (selectedKelas || '').toLowerCase().trim();
+            if (!kat) return true;
+            return kat === sk || sk.startsWith(kat) || kat.startsWith(sk);
+          });
+          const source = filtered.length > 0 ? filtered : dmData;
+          mapels = Array.from(
+            new Set(source.map((d: any) => d.nama_mata_pelajaran || d.nama_mapel).filter(Boolean))
+          ) as string[];
         }
       }
 
