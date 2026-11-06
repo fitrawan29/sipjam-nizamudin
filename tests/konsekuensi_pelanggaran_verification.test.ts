@@ -245,21 +245,17 @@ runTest('9.1: AdminVerifView menyediakan fitur Reset & Pulihkan via Dispensasi (
   );
 });
 
-runTest('9.2: HomeViewGuru menampilkan banner Peringatan Disiplin Administrasi jika guru memiliki kelalaian/warning', () => {
+runTest('9.2: HomeViewGuru menghilangkan banner Peringatan Disiplin Administrasi namun tetap menjaga statistik bulanan', () => {
   const homeGuruPath = path.join(root, 'src', 'components', 'HomeViewGuru.tsx');
   assert(fs.existsSync(homeGuruPath), 'HomeViewGuru.tsx harus ada');
   const homeGuruContent = fs.readFileSync(homeGuruPath, 'utf8');
   assert(
-    homeGuruContent.includes('Peringatan Disiplin Administrasi'),
-    'HomeViewGuru harus memiliki komponen visual Peringatan Disiplin Administrasi'
+    !homeGuruContent.includes('Peringatan Disiplin Administrasi'),
+    'HomeViewGuru tidak boleh menampilkan banner Peringatan Disiplin Administrasi'
   );
   assert(
-    homeGuruContent.includes('teacherWarnings?.hasWarning'),
-    'HomeViewGuru harus memeriksa kondisi teacherWarnings?.hasWarning'
-  );
-  assert(
-    homeGuruContent.includes('docs/KONSEKUENSI_PELANGGARAN.md'),
-    'Banner peringatan harus merujuk ke docs/KONSEKUENSI_PELANGGARAN.md'
+    homeGuruContent.includes('teacherWarnings?.stats'),
+    'HomeViewGuru tetap mempertahankan ringkasan statistik bulanan (teacherWarnings?.stats)'
   );
 });
 
