@@ -194,6 +194,36 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     { id: 'Pengguna', label: 'Pengguna', table: 'users' },
   ];
 
+  // Sync data_guru.mata_pelajaran from jadwal_pelajaran (fire-and-forget, only fills empty fields)
+  const syncGuruMapelFromJadwal = useCallback(async (jadwalRows: any[]) => {
+    if (!isAdmin) return;
+    const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+    // Build map: normalized guru name → first mapel from jadwal
+    const mapelByGuru = new Map<string, string>();
+    for (const j of jadwalRows) {
+      const gName = (j.nama_guru || '').trim();
+      const mapel = (j.mata_pelajaran || j.mapel || '').trim();
+      if (gName && mapel && !mapelByGuru.has(gName.toLowerCase())) {
+        mapelByGuru.set(gName.toLowerCase(), mapel);
+      }
+    }
+    if (mapelByGuru.size === 0) return;
+    // Fetch only guru with empty mata_pelajaran
+    const { data: guruRows } = await supabase
+      .from('data_guru')
+      .select('id, nama_guru, mata_pelajaran')
+      .eq('sekolah_id', schoolId)
+      .or('mata_pelajaran.is.null,mata_pelajaran.eq.');
+    if (!guruRows || guruRows.length === 0) return;
+    for (const g of guruRows) {
+      const mapel = mapelByGuru.get((g.nama_guru || '').trim().toLowerCase());
+      if (mapel) {
+        await supabase.from('data_guru').update({ mata_pelajaran: mapel }).eq('id', g.id);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, user?.sekolah_id]);
+
   const loadData = useCallback(async (tabOverride?: string) => {
     const currentTab = normalizeAdminTab(tabOverride || activeTab);
     if (currentTab === 'sistem_blok' || currentTab === 'blok' || currentTab === 'Pengguna' || currentTab === 'Data_Kelas') return;
@@ -284,6 +314,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         setStorageCache(currentTab, schoolId, finalData);
         setErrorMsg('');
         setDebugInfo(`Berhasil memuat ${finalData.length} baris dari "${tabObj.table}"`);
+        if (currentTab === 'Jadwal_Pelajaran') {
+          void syncGuruMapelFromJadwal(finalData);
+        }
       } else if (data && data.length === 0) {
         if (cachedRows && cachedRows.length > 0) {
           let rowsToSet = cachedRows;
@@ -1116,6 +1149,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           showToast('Gagal Menambah Jadwal', error.message, 'error');
         } else {
           showToast('Berhasil', 'Jadwal pelajaran berhasil disimpan!', 'success');
+          void syncGuruMapelFromJadwal([formValues]);
           loadData();
         }
       }
@@ -1972,6 +2006,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           showToast('Gagal Mengubah Jadwal', error.message, 'error');
         } else {
           showToast('Berhasil', 'Jadwal pelajaran berhasil diperbarui!', 'success');
+          void syncGuruMapelFromJadwal([formValues]);
           loadData();
         }
       }
