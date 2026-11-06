@@ -1003,6 +1003,31 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         }
       }
     } else if (activeTab === 'Jadwal_Pelajaran') {
+      setLoading(true);
+      let guruList: any[] = [];
+      let mapelList: any[] = [];
+      let gq = supabase.from('data_guru').select('id, nama_guru').order('nama_guru');
+      if (user?.sekolah_id) gq = gq.eq('sekolah_id', user.sekolah_id);
+      const { data: gData } = await gq;
+      if (gData) guruList = gData;
+      let mq = supabase.from('data_mapel').select('id, nama_mata_pelajaran').order('nama_mata_pelajaran');
+      if (user?.sekolah_id) mq = mq.eq('sekolah_id', user.sekolah_id);
+      const { data: mData } = await mq;
+      if (mData) mapelList = mData;
+      setLoading(false);
+
+      if (guruList.length === 0) {
+        showToast('Peringatan', 'Belum ada data guru. Silakan tambahkan data guru terlebih dahulu.', 'warning');
+        return;
+      }
+      if (mapelList.length === 0) {
+        showToast('Peringatan', 'Belum ada data mapel. Silakan tambahkan data mapel terlebih dahulu.', 'warning');
+        return;
+      }
+
+      const guruOptionsHtml = guruList.map(g => `<option value="${g.nama_guru}">${g.nama_guru}</option>`).join('');
+      const mapelOptionsHtml = mapelList.map(m => `<option value="${m.nama_mata_pelajaran}">${m.nama_mata_pelajaran}</option>`).join('');
+
       const { value: formValues } = await Swal.fire({
         title: 'Tambah Jadwal Pelajaran',
         html: `
@@ -1020,11 +1045,17 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">Nama Guru *</label>
-              <input id="swal-guru" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Fitri Aprilia Dotulong">
+              <select id="swal-guru" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="">-- Pilih Guru --</option>
+                ${guruOptionsHtml}
+              </select>
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran *</label>
-              <input id="swal-mapel" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: Bahasa Inggris">
+              <select id="swal-mapel" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="">-- Pilih Mata Pelajaran --</option>
+                ${mapelOptionsHtml}
+              </select>
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">Kelas *</label>
@@ -1039,8 +1070,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const hari = (document.getElementById('swal-hari') as HTMLSelectElement)?.value;
-          const nama_guru = (document.getElementById('swal-guru') as HTMLInputElement)?.value?.trim();
-          const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLInputElement)?.value?.trim();
+          const nama_guru = (document.getElementById('swal-guru') as HTMLSelectElement)?.value?.trim();
+          const mata_pelajaran = (document.getElementById('swal-mapel') as HTMLSelectElement)?.value?.trim();
           const kelas = (document.getElementById('swal-kelas') as HTMLInputElement)?.value?.trim();
 
           if (!nama_guru || !mata_pelajaran || !kelas) {
@@ -1818,6 +1849,24 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         }
       }
     } else if (activeTab === 'Jadwal_Pelajaran') {
+      setLoading(true);
+      let guruListE: any[] = [];
+      let mapelListE: any[] = [];
+      let gqe = supabase.from('data_guru').select('id, nama_guru').order('nama_guru');
+      if (user?.sekolah_id) gqe = gqe.eq('sekolah_id', user.sekolah_id);
+      const { data: gDataE } = await gqe;
+      if (gDataE) guruListE = gDataE;
+      let mqe = supabase.from('data_mapel').select('id, nama_mata_pelajaran').order('nama_mata_pelajaran');
+      if (user?.sekolah_id) mqe = mqe.eq('sekolah_id', user.sekolah_id);
+      const { data: mDataE } = await mqe;
+      if (mDataE) mapelListE = mDataE;
+      setLoading(false);
+
+      const currentMapel = item.mapel || item.mata_pelajaran || '';
+      const currentGuru = item.nama_guru || '';
+      const guruOptE = guruListE.map(g => `<option value="${g.nama_guru}" ${g.nama_guru === currentGuru ? 'selected' : ''}>${g.nama_guru}</option>`).join('');
+      const mapelOptE = mapelListE.map(m => `<option value="${m.nama_mata_pelajaran}" ${m.nama_mata_pelajaran === currentMapel ? 'selected' : ''}>${m.nama_mata_pelajaran}</option>`).join('');
+
       const { value: formValues } = await Swal.fire({
         title: 'Edit Jadwal Pelajaran',
         html: `
@@ -1841,11 +1890,17 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">Mata Pelajaran *</label>
-              <input id="swal-edit-mapel" class="swal2-input !mt-0 !w-full text-xs" value="${item.mapel || item.mata_pelajaran || ''}" placeholder="Contoh: Bahasa Inggris">
+              <select id="swal-edit-mapel" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="">-- Pilih Mata Pelajaran --</option>
+                ${mapelOptE}
+              </select>
             </div>
             <div>
               <label class="font-bold text-gray-700 block mb-1">Nama Guru *</label>
-              <input id="swal-edit-guru" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama_guru || ''}" placeholder="Contoh: Fitri Aprilia Dotulong">
+              <select id="swal-edit-guru" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="">-- Pilih Guru --</option>
+                ${guruOptE}
+              </select>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
@@ -1867,8 +1922,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         preConfirm: () => {
           const hari = (document.getElementById('swal-edit-hari') as HTMLSelectElement)?.value;
           const kelas = (document.getElementById('swal-edit-kelas') as HTMLInputElement)?.value?.trim();
-          const mapel = (document.getElementById('swal-edit-mapel') as HTMLInputElement)?.value?.trim();
-          const nama_guru = (document.getElementById('swal-edit-guru') as HTMLInputElement)?.value?.trim();
+          const mapel = (document.getElementById('swal-edit-mapel') as HTMLSelectElement)?.value?.trim();
+          const nama_guru = (document.getElementById('swal-edit-guru') as HTMLSelectElement)?.value?.trim();
           const jam_mulai = (document.getElementById('swal-edit-jam-mulai') as HTMLInputElement)?.value?.trim() || null;
           const jam_selesai = (document.getElementById('swal-edit-jam-selesai') as HTMLInputElement)?.value?.trim() || null;
 
