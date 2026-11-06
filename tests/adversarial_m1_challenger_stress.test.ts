@@ -235,6 +235,8 @@ async function runAdversarialStressVerification() {
   );
 
   // 1.4 Multi-day calendar holiday range
+  // 2026-12-21 is Monday, 2026-12-31 is Thursday
+  // 2026-12-18 is Friday (effective teaching day under 6-day week)
   const multiDayHoliday = [
     {
       id: 'cal-multi',
@@ -246,9 +248,9 @@ async function runAdversarialStressVerification() {
   ];
 
   assert(
-    evaluateHolidayInfo('2026-12-20', 6, multiDayHoliday) === null,
-    'CAL-MULTI-PRE',
-    'Day before multi-day holiday (2026-12-20) is not marked holiday'
+    evaluateHolidayInfo('2026-12-18', 6, multiDayHoliday) === null,
+    'CAL-MULTI-PRE-FRIDAY',
+    'Friday before multi-day holiday (2026-12-18) is not marked holiday under 6-day school week'
   );
   assert(
     evaluateHolidayInfo('2026-12-21', 6, multiDayHoliday)?.isHoliday === true,
@@ -264,6 +266,11 @@ async function runAdversarialStressVerification() {
     evaluateHolidayInfo('2026-12-31', 6, multiDayHoliday)?.isHoliday === true,
     'CAL-MULTI-END',
     'Last day of multi-day holiday (2026-12-31) is recognized as holiday'
+  );
+  assert(
+    evaluateHolidayInfo('2027-01-04', 6, multiDayHoliday) === null,
+    'CAL-MULTI-POST-MONDAY',
+    'Monday after multi-day holiday (2027-01-04) is an effective teaching day'
   );
 
   // 1.5 Verification that in AdminVerifView, on any holiday, zero teachers are unsubmitted / delinquent
@@ -301,6 +308,15 @@ async function runAdversarialStressVerification() {
     getUnsubmittedPiket(sampleTeachers, holidaySunday).length === 0,
     'VERIF-HOL-PIKET',
     'On Sunday holiday, unsubmittedPiket returns empty array (zero delinquent teachers)'
+  );
+
+  const calHolidayInfo = evaluateHolidayInfo('2026-12-25', 6, multiDayHoliday);
+  assert(
+    getUnsubmittedPresensi(sampleTeachers, calHolidayInfo).length === 0 &&
+    getUnsubmittedJurnal(sampleTeachers, calHolidayInfo).length === 0 &&
+    getUnsubmittedPiket(sampleTeachers, calHolidayInfo).length === 0,
+    'VERIF-HOL-ALL-TABS',
+    'On calendar holiday, all 3 tabs (Presensi, Jurnal, Piket) return zero delinquent teachers'
   );
 
   // 1.6 Multi-Day Leaves in recordUnfilledJournalsAndPiket & autoCloseOrMarkDelinquentJournals
@@ -458,7 +474,54 @@ async function runAdversarialStressVerification() {
     'Day 3 does NOT produce "Tidak Masuk Kelas"'
   );
 
-  // 1.7 Adversarial test: Unexcused / Delinquent Teacher
+  // 1.7 Multi-Day Leave using durasi_hari instead of tanggal_selesai
+  const teacherNur = {
+    nama_guru: 'Dra. Nur Halimah',
+    user_id: 'usr-nur-02',
+    sekolah_id: 'sch-001'
+  };
+  const durasiLeaveRecord = {
+    id: 'leave-nur-izin-01',
+    nama_guru: 'Dra. Nur Halimah',
+    user_id: 'usr-nur-02',
+    sekolah_id: 'sch-001',
+    tipe_absen: 'Datang',
+    jenis_presensi: 'Izin',
+    status_verifikasi: 'Disetujui',
+    tanggal_mulai: '2026-11-09',
+    durasi_hari: 3, // Nov 9, 10, 11
+    detail_izin: 'Izin Keperluan Keluarga',
+    timestamp: '2026-11-09T07:10:00+08:00'
+  };
+  const mockSchedulesNur = [
+    { id: 'sch-nur-selasa', hari: 'Selasa', nama_guru: 'Dra. Nur Halimah', kelas: 'XII-1', mata_pelajaran: 'Matematika', sekolah_id: 'sch-001' },
+    { id: 'sch-nur-rabu', hari: 'Rabu', nama_guru: 'Dra. Nur Halimah', kelas: 'XII-2', mata_pelajaran: 'Matematika', sekolah_id: 'sch-001' }
+  ];
+  const { client: mockClientNur, insertedRecords: insertedNur } = createMockSupabaseClient({
+    jadwal_pelajaran: mockSchedulesNur,
+    presensi_guru: [durasiLeaveRecord],
+    jurnal_pembelajaran: []
+  });
+
+  // Day 2 (Nov 10, Tuesday)
+  await autoCloseOrMarkDelinquentJournals(teacherNur, '2026-11-10', {}, mockClientNur);
+  const nurDay2 = insertedNur.jurnal_pembelajaran.find(j => j.tanggal === '2026-11-10');
+  assert(
+    nurDay2?.status_verifikasi === 'Izin',
+    'LEAVE-DURASI-DAY2',
+    `Leave with durasi_hari: 3 on Day 2 produces status_verifikasi 'Izin' (actual: '${nurDay2?.status_verifikasi}')`
+  );
+
+  // Day 3 (Nov 11, Wednesday)
+  await autoCloseOrMarkDelinquentJournals(teacherNur, '2026-11-11', {}, mockClientNur);
+  const nurDay3 = insertedNur.jurnal_pembelajaran.find(j => j.tanggal === '2026-11-11');
+  assert(
+    nurDay3?.status_verifikasi === 'Izin',
+    'LEAVE-DURASI-DAY3',
+    `Leave with durasi_hari: 3 on Day 3 produces status_verifikasi 'Izin' (actual: '${nurDay3?.status_verifikasi}')`
+  );
+
+  // 1.8 Adversarial test: Unexcused / Delinquent Teacher
   // An unexcused teacher with no approved leave MUST produce "Tidak Masuk Kelas"
   const teacherDelinquent = {
     nama_guru: 'Guru Tanpa Keterangan',
@@ -892,6 +955,56 @@ async function runAdversarialStressVerification() {
     sitiDedup?.sakit === 3,
     'REKAP-DEDUP',
     `Deduplication prevents double-counting on 2026-11-02 (expected 3 days, actual: ${sitiDedup?.sakit})`
+  );
+
+  // 2.5 Calendar Holiday falling inside Multi-Day Sick Leave
+  // If Wednesday 2026-11-04 is a holiday, total workdays in period = 4 (Mon, Tue, Thu, Fri).
+  // Sick leave is Mon-Wed (3 days). Wed is holiday -> so sick credit is 2 days (Mon, Tue).
+  // Teacher attends Thu, Fri (2 days).
+  // Alpa must be 0!
+  const sickWithHoliday = [
+    {
+      nama_guru: 'Budi Santoso',
+      tipe_absen: 'Datang',
+      jenis_presensi: 'Sakit',
+      status_verifikasi: 'Disetujui',
+      tanggal_mulai: '2026-11-02',
+      tanggal_selesai: '2026-11-04',
+      timestamp: '2026-11-02T07:00:00+08:00'
+    },
+    { nama_guru: 'Budi Santoso', tipe_absen: 'Datang', jenis_presensi: 'Sekolah', status_verifikasi: 'Disetujui', timestamp: '2026-11-05T07:00:00+08:00' },
+    { nama_guru: 'Budi Santoso', tipe_absen: 'Datang', jenis_presensi: 'Sekolah', status_verifikasi: 'Disetujui', timestamp: '2026-11-06T07:00:00+08:00' }
+  ];
+  const wednesdayHoliday = [{ id: 'cal-wed', tanggal: '2026-11-04', tipe: 'Libur', keterangan: 'Hari Libur Khusus' }];
+
+  const rekapHolidayOverlap = aggregateAttendanceRekap({
+    startDateStr: '2026-11-02',
+    endDateStr: '2026-11-06',
+    hariSekolah: 5,
+    kalenderLibur: wednesdayHoliday,
+    guruList: teacherBudi,
+    presensiList: sickWithHoliday
+  });
+  const budiOverlap = rekapHolidayOverlap.find(r => r.nama === 'Budi Santoso');
+  assert(
+    budiOverlap?.totalWajib === 4,
+    'REKAP-OVERLAP-WAJIB',
+    `Total workdays with Wednesday holiday is 4 (actual: ${budiOverlap?.totalWajib})`
+  );
+  assert(
+    budiOverlap?.hadir === 2,
+    'REKAP-OVERLAP-HADIR',
+    `Hadir is 2 days (Thu, Fri) (actual: ${budiOverlap?.hadir})`
+  );
+  assert(
+    budiOverlap?.sakit === 2,
+    'REKAP-OVERLAP-SAKIT',
+    `Sakit is 2 days (Mon, Tue) without counting Wednesday holiday as sick day (actual: ${budiOverlap?.sakit})`
+  );
+  assert(
+    budiOverlap?.alpa === 0,
+    'REKAP-OVERLAP-ALPA-0',
+    `Alpa remains 0 when holiday falls within sick leave (actual: ${budiOverlap?.alpa})`
   );
 
   // =========================================================================
