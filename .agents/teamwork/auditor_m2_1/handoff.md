@@ -1,195 +1,152 @@
-# Forensic Integrity Audit & Adversarial Review: Milestone 2
+# Forensic Audit & Handoff Report: Milestone 2
 
-**Auditor**: `auditor_m2_1`  
-**Role**: Teamwork Forensic Auditor & Critic  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_m2_1\`  
-**Scope**: Milestone 2 (Workflow Engine, Schedule Masking & Journal Workflows)  
-**Integrity Mode**: Development Mode (inferred from `ORIGINAL_REQUEST.md:7`)  
-**Verdict**: **CLEAN**
+- **Auditor**: auditor_m2_1 (forensic_auditor, critic, specialist, auditor)
+- **Target**: Milestone 2 (Penyelarasan Template Master Data & Impor CSV)
+- **Work Product**:
+  * Git commit `bd780077bf4267066b36bb4799b85345d8bd377a`
+  * `src/components/AdminDataView.tsx`
+  * `src/lib/dataIntegrityGuard.ts`
+  * `src/components/AdminKelasView.tsx`
+  * `tests/m2_csv_templates_and_import_harmonization.test.ts`
+- **Date**: 2026-11-06T01:05:00Z
+- **Ground Truth**: `ORIGINAL_REQUEST.md` (Integrity Mode: `development`)
 
 ---
 
 ## Forensic Audit Report
 
-**Work Product**:
-- `src/lib/workflow.ts`
-- `src/components/HomeViewGuru.tsx`
-- `src/components/GuruJurnal.tsx`
-- `tests/m2_schedule_masking_workflow.test.ts`
-
-**Profile**: General Project (Development Mode)  
-**Binary Verdict**: **CLEAN**
+**Work Product**: Milestone 2 — Penyelarasan Template Master Data & Impor CSV (`bd78007`)  
+**Profile**: General Project (Integrity Forensics)  
+**Verdict**: VERDICT: CLEAN  
 
 ### Phase Results
-- **Hardcoded Output Detection**: **PASS** — No hardcoded test results, expected outputs, or canned return values found in implementation source code.
-- **Facade Detection**: **PASS** — `isKelasInAngkatan`, `parseTimeToMinutes`, `isTimeRangeOverlap`, `evaluateScheduleBlock`, and UI components (`HomeViewGuru`, `GuruJurnal`) execute real mathematical, regex, and state-driven logic. No placeholder methods or dummy stubs detected.
-- **Pre-populated Artifact Detection**: **PASS** — Workspace inspection verified 0 pre-existing result files or mock execution logs.
-- **Test Tampering Verification**: **PASS** — Git diff verification confirms `tests/sistem_blok_verification.test.ts` was 100% untouched in M2 (commit `7a8ab33`). No assertions weakened, bypassed, or commented out.
-- **Build & Static Type Check**: **PASS** — `npx tsc --noEmit` exited with code 0 (zero type errors).
-- **Behavioral Verification (Existing Suite)**: **PASS** — `npx tsx tests/sistem_blok_verification.test.ts`: 85/85 tests passed (0 failures).
-- **Behavioral Verification (M2 Suite)**: **PASS** — `npx tsx tests/m2_schedule_masking_workflow.test.ts`: 74/74 tests passed (0 failures).
-- **Dependency Audit**: **PASS** — Zero external packages added; all logic uses existing standard dependencies.
+- **Hardcoded Output Detection**: PASS — No hardcoded test results, expected return constants, or bypass strings found in production code (`AdminDataView.tsx`, `dataIntegrityGuard.ts`, `AdminKelasView.tsx`).
+- **Facade Detection**: PASS — Genuine dynamic parsing, header alias resolution, row-level validation (`Baris ${i}`), chunked database queries, and conflict handling implemented. No dummy functions or placeholder returns.
+- **Pre-populated Artifact Detection**: PASS — No stale logs, result dumps, or fake attestation files exist in the repository.
+- **Behavioral Verification (Build & Test Suite)**: PASS — `npx tsc --noEmit` exited with code 0 (zero errors); dedicated suite `tests/m2_csv_templates_and_import_harmonization.test.ts` passed 16/16; full repository regression suite `npm test` executed all 54 test files to 100% completion with exit code 0.
+- **Dependency Audit**: PASS — Zero unapproved external dependencies introduced; implemented using built-in standard JavaScript and TypeScript.
+- **Git Push Verification**: PASS — Commit `bd780077bf4267066b36bb4799b85345d8bd377a` cleanly pushed to remote branch `origin/main`. Working directory is clean.
 
 ---
 
 ## 1. Observation
 
-### Exact File Paths & Lines Inspected
-1. **`src/lib/workflow.ts`**:
-   - Lines 101-104: `getActiveSistemBlok` backward-compatible wrapper.
-   - Lines 110-153: `isKelasInAngkatan(kelas, angkatan)`: Arabic <-> Roman numeral map with boundary regex `(^|[^a-z0-9])${token}([^a-z0-9]|(?![ivx])[a-z]|$)`.
-   - Lines 158-166: `parseTimeToMinutes(t, fallback)`: Parses `HH:mm` and `HH.mm` format into integer minutes from midnight.
-   - Lines 172-191: `isTimeRangeOverlap(sStart, sEnd, bStart, bEnd, isFullDay)`: Implements standard non-strict interval overlap `sStart < bEnd && sEnd > bStart`.
-   - Lines 202-295: `evaluateScheduleBlock(schedule, teacher, activeBloks)`: Multi-scope matching (`sekolah`, `angkatan`, `kelas`, `guru`) combined with time range evaluation.
-   - Lines 630-675: `getGuruDailyState`: Maps schedules through `evaluateScheduleBlock`, calculates `isBlocked`, `hasBlockedSchedule`, and flags `isBlok` if all schedules or school-wide full-day block is active.
-   - Lines 975-990: Dual journal fulfillment logic requiring `jurnalKBM` for unblocked schedules and `jurnalKegiatan` for blocked periods.
+Direct empirical inspection of the workspace and git commit history yielded the following evidence:
 
-2. **`src/components/HomeViewGuru.tsx`**:
-   - Lines 810-822: Renders `Campuran` badge when `dailyState.hasBlockedSchedule` is true.
-   - Lines 930-1035: Granular rendering per schedule:
-     * If `jk.isBlocked`: Displays amber card, `Kegiatan Blok` badge, block event title, time indicator, and button `<button onClick={() => setView('view-guru-jurnal')}>Isi Jurnal Kegiatan</button>` (or `Jurnal Selesai ✓`).
-     * If `!jk.isBlocked`: Displays regular KBM card and attendance status.
-   - Lines 1040-1060: Progress counter cleanly separates regular KBM progress from Kegiatan Blok status.
+1. **Git Commit & Push Status**:
+   - `git log -n 1`:
+     ```text
+     commit bd780077bf4267066b36bb4799b85345d8bd377a
+     Author: fitrawan29 <fitrawan29@gmail.com>
+     Date:   Fri Nov 6 08:57:38 2026 +0800
 
-3. **`src/components/GuruJurnal.tsx`**:
-   - Lines 513-525: In `checkState`, sets `tipeJurnal` to `'Jurnal KBM'` if unblocked schedules are pending, or `'Jurnal Kegiatan'` if blocked.
-   - Lines 1260-1275: Contextual guidance banner explains mixed schedule behavior.
-   - Lines 1324-1355: When `dailyState?.hasBlockedSchedule && !dailyState?.isBlok`, un-disables select dropdown and allows teacher to choose between `Jurnal KBM` and `Jurnal Kegiatan`, with automatic metadata pre-filling.
+         feat: selaraskan seluruh template master data dan mekanisme impor CSV dengan skema database
+     ```
+   - `git branch -vv`:
+     ```text
+     * main bd78007 [origin/main] feat: selaraskan seluruh template master data dan mekanisme impor CSV dengan skema database
+     ```
+   - `git status`:
+     No changes staged or unstaged on application source files. Only agent metadata files in `.agents/teamwork/` modified.
 
-4. **`tests/sistem_blok_verification.test.ts`**:
-   - Verified untouched via `git diff 7a8ab33~1..7a8ab33 -- tests/sistem_blok_verification.test.ts` (0 changes).
+2. **Template Harmonization (`src/components/AdminDataView.tsx`)**:
+   - Lines 230–234: `Data_Kelas` template added with `filename: 'Template_Data_Kelas.csv'`, `headers: ['nama_kelas', 'tingkat', 'jurusan']`, and `sample: ['X Merdeka', '10', 'Umum']`.
+   - Line 267: Tab lookup normalized using `normalizeAdminTab(activeTab)`.
+   - Lines 306–310: File size guard (`file.size === 0`) returns localized warning `"Berkas Kosong"`.
+   - Lines 323–326: Dispatches custom window event `sipjam:kelas-updated` when `Data_Kelas` or `Data_Siswa` is imported.
+   - Lines 339–358: When row/column validation errors occur (`Baris `, `Kolom `, `wajib`, `dilarang`), SweetAlert2 modal is launched providing readable, formatted error feedback.
+   - Invariant preservation verified: `Kalender_Pendidikan` and `Jadwal_Pelajaran` omit `'id'` and legacy `'KP-01'/'JP-01'`; `Data_Guru` includes `'sekolah_id'`; `showToast('Unggah Berhasil', ...)` preserved verbatim.
 
-### Verbatim Tool Execution Outputs
+3. **Normalization, Validation & Upsert Engine (`src/lib/dataIntegrityGuard.ts`)**:
+   - Lines 544–562: `isSchemaCacheError` detects `PGRST205` / `42P01` / `could not find the table` without external dependencies.
+   - Lines 609–630: `normalizeCsvHeaders` maps class aliases (`nama_kelas`, `namakelas`, `kelas`, `rombel`, `ruang_kelas` -> `'nama_kelas'`; `tingkat`, `grade`, `level` -> `'tingkat'`; `jurusan`, `peminatan`, `program_keahlian` -> `'jurusan'`).
+   - Lines 633–638: Header `'nama'` properly scoped by table (`nama_siswa`, `nama_kelas`, `nama_mata_pelajaran`, `nama_guru`).
+   - Lines 759–781: `REQUIRED_HEADERS_BY_TABLE` performs upfront pre-validation checking required columns before parsing records.
+   - Lines 799–844: `data_kelas` and `kelas` added to `isUuidKeyedTable`, generating valid UUIDs and preventing Postgres Error `22P02`.
+   - Lines 902–956: Strict row validation for `data_kelas`: requires non-empty `nama_kelas`, rejects dummy/forbidden names, prevents duplicate class names within file, auto-derives `tingkat` (`10`, `11`, `12`, or `Lainnya`), and sanitizes `jurusan`.
+   - Lines 1076–1101: `ALLOWED_COLUMNS_BY_TABLE` filters out auxiliary spreadsheet columns, preventing PostgREST `PGRST204` errors.
+   - Lines 1127–1172: Idempotent student resolution queries `data_siswa` on `(sekolah_id, nisn)` in chunks of 100, assigning existing student UUIDs to incoming rows before batch upsert to prevent duplicates.
+   - Lines 1180–1230: Upserts `data_kelas` with `onConflict: 'sekolah_id, nama_kelas'`. If table is missing from schema cache (`PGRST205`), catches error and falls back gracefully to syncing distinct class names into `wali_kelas`.
 
-#### Command 1: Static Type Check
-```powershell
-npx tsc --noEmit
-# Exit code: 0
-# Output: Clean (only router cert warning)
-```
+4. **UI Actions & Live Refresh (`src/components/AdminKelasView.tsx`)**:
+   - Lines 190–200: Subscribed to `sipjam:kelas-updated` event, auto-refreshing class directory and roster data.
+   - Lines 344–361: `handleDownloadClassTemplate` triggers direct browser download of `Template_Data_Kelas.csv`.
+   - Lines 364–419: `handleClassFileUpload` handles class CSV uploads via `importMasterDataFromCsv`, reloads data, and provides SweetAlert2 validation error reporting.
+   - Lines 968–998: Added "Template CSV" and "Impor CSV" buttons to action toolbar.
 
-#### Command 2: Existing Test Suite
-```powershell
-npx tsx tests/sistem_blok_verification.test.ts
-# TOTAL TESTS: 85
-# PASSED: 85
-# FAILED: 0
-# 🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
-```
-
-#### Command 3: Milestone 2 Test Suite
-```powershell
-npx tsx tests/m2_schedule_masking_workflow.test.ts
-# TOTAL M2 TESTS: 74
-# PASSED: 74
-# FAILED: 0
-```
+5. **Empirical Test Suite Execution**:
+   - `npx tsc --noEmit`: Exited with code 0.
+   - `npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts`: Exited with code 0 (16/16 passed).
+   - `npm test`: Exited with code 0 (all 54 test suites executed and passed).
+   - `npx tsx tests/production_admin_adjustments.test.ts`: 24/24 passed.
+   - `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts`: 31/31 passed.
+   - `npx tsx tests/adversarial_r1_r5_stress_test.ts`: 14/14 passed.
+   - `npx tsx tests/adversarial_centralized_class_allocation_m1.test.ts`: 15/15 passed.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Integrity Mode Conformance**:
-   `ORIGINAL_REQUEST.md` specifies `Integrity mode: development`. Under development mode, the auditor checks for hardcoded outputs, facade implementations, and fabricated artifacts.
-2. **Authenticity of Implementation**:
-   - `isKelasInAngkatan` uses real regex boundary checks and bidirectional mapping tables rather than hardcoded equality strings.
-   - `isTimeRangeOverlap` implements standard mathematical interval intersection (`sStart < bEnd && sEnd > bStart`).
-   - `evaluateScheduleBlock` inspects runtime entities across 4 target types dynamically.
-   - Zero facade: `HomeViewGuru.tsx` and `GuruJurnal.tsx` wire real state changes (`setView`, form submission, selective progress calculation).
-3. **No Test Tampering**:
-   The baseline test suite `tests/sistem_blok_verification.test.ts` has 0 modifications in the M2 commit, confirming that all 85 legacy test assertions ran in their authentic form.
-4. **Behavioral Success**:
-   Both test suites passed 100% of their assertions against the live Supabase database and in-memory mock fixtures.
+1. **Step 1 (Ground Truth Alignment)**:
+   - `ORIGINAL_REQUEST.md` specifies `Integrity mode: development`. Under this mode, genuine code implementation without hardcoded bypasses, dummy facades, or fake mocks is mandatory.
+   - R2 and R3 demand exact harmonization of all 7 master data templates with the database schema, robust CSV reading and validation, and zero regression on existing functionality.
+
+2. **Step 2 (Implementation Authenticity)**:
+   - Verified that `AdminDataView.tsx` and `dataIntegrityGuard.ts` implement authentic, robust CSV processing logic.
+   - The CSV parser dynamically splits lines, respects quotes, auto-detects delimiters (`,`, `;`, `\t`, `|`), maps aliases according to target table context, strips BOM and Excel apostrophes, verifies required columns, and validates every single row with clear `Baris ${i}` error messages.
+   - Database operations for `data_siswa` genuinely query existing student records on `(sekolah_id, nisn)` and map IDs so that re-uploading an updated student CSV updates existing rows instead of inserting duplicates.
+   - Database operations for `data_kelas` genuinely configure upsert on `(sekolah_id, nama_kelas)` and provide defensive fallback to `wali_kelas` when PostgREST schema cache has not yet refreshed the `data_kelas` table.
+
+3. **Step 3 (Absence of Prohibited Patterns)**:
+   - Searched source code for fixed constant return statements, fake mocks, or bypasses. None were found.
+   - Tests do not use hardcoded PASS assertions or mock bypasses in production paths.
+   - Invariant requirements from prior milestones (`production_admin_adjustments.test.ts:688, 696`, `data_guru_csv_import_sekolah_id_validation.test.ts:834`, `ui_ux_improvements_audit.test.ts:84`) are completely respected.
+
+4. **Step 4 (Empirical Verification of Non-Regression)**:
+   - Ran `npx tsc --noEmit`: 0 errors.
+   - Ran full `npm test`: All 54 test files across the repository passed with 0 regressions.
 
 ---
 
-## 3. Caveats & Adversarial Review
+## 3. Caveats
 
-### Challenge Summary
-**Overall Risk Assessment**: MEDIUM
-
-### Adversarial Finding: Empty String Substring Match in `evaluateScheduleBlock` for Teacher Targets
-
-#### Defect Detail
-In `src/lib/workflow.ts` lines 258-272:
-```typescript
-const teacherNama = String(teacher.nama || teacher.nama_guru || '').trim().toLowerCase();
-const schedNamaGuru = String(schedule.nama_guru || '').trim().toLowerCase();
-
-const namaMatches = Boolean(
-  targetGuruNama &&
-  (teacherNama.includes(targetGuruNama) ||
-    targetGuruNama.includes(teacherNama) ||
-    schedNamaGuru.includes(targetGuruNama) ||
-    targetGuruNama.includes(schedNamaGuru))
-);
-```
-
-#### Empirical Attack Scenario
-In JavaScript, for any non-empty string `str`, `str.includes("") === true`.
-If `schedule.nama_guru` is omitted or empty (e.g. `{ kelas: 'X Merdeka', jam_mulai: '08:30', jam_selesai: '09:30' }`), `schedNamaGuru` becomes `""`.
-Consequently:
-`targetGuruNama.includes(schedNamaGuru)` evaluates to `'budi santoso'.includes('')` which is **`true`**!
-
-Empirical reproduction output:
-```
-# With explicit nama_guru: 'Ade Fitrawan' -> isBlocked: false
-# Without nama_guru (omitted)             -> isBlocked: true (FALSE POSITIVE!)
-# With teacher having no nama attribute  -> isBlocked: true (FALSE POSITIVE!)
-```
-
-#### Blast Radius
-If an administrator creates an active block rule targeting Teacher Budi (`tipe_target: 'guru'`, `target_guru_nama: 'Budi Santoso'`), and another teacher (e.g. Teacher Ade) evaluates a schedule item that does not specify `schedule.nama_guru`, Ade's schedule will be falsely marked as blocked (`isBlocked = true`).
-
-#### Suggested Defense (Mitigation)
-Ensure `teacherNama` and `schedNamaGuru` are non-empty before running substring inclusion checks:
-```typescript
-const namaMatches = Boolean(
-  targetGuruNama &&
-  ((teacherNama && (teacherNama.includes(targetGuruNama) || targetGuruNama.includes(teacherNama))) ||
-   (schedNamaGuru && (schedNamaGuru.includes(targetGuruNama) || targetGuruNama.includes(schedNamaGuru))))
-);
-```
-*(Note: As an auditor following strict audit-only constraints, this modification is proposed for worker resolution in subsequent tasks, not altered in this audit turn).*
+- **Live Database Latency**: In live database integration tests where tests perform live CRUD concurrently against Supabase (e.g. `sistem_blok_verification.test.ts`), network hiccups or concurrent test runners can cause transient race conditions on shared database tables. When executed in sequence, all 54 suites pass cleanly (204/204 on `sistem_blok`).
+- **Students without NISN**: If incoming student records in CSV lack a valid NISN (empty or `"-"`), deduplication by NISN is skipped and unique UUIDs are generated, which is the expected fallback behavior.
 
 ---
 
 ## 4. Conclusion
 
-Milestone 2 satisfies all forensic integrity criteria:
-- **Zero hardcoding**: Logic is authentic and dynamically computed.
-- **Zero facades**: Components and workflow helpers are fully implemented and wired.
-- **Zero tampering**: Existing verification tests were completely untouched and pass 100%.
-- **Zero broken dependencies / static errors**: `npx tsc --noEmit` is clean (0 errors).
+The Milestone 2 work product is **AUTHENTIC, ROBUST, AND COMPLETE**. All requirements (R2, R3, R4) are met with genuine implementation logic, zero facade or mocked bypasses, 100% test pass rate across all 54 test suites, clean typecheck, and clean git push to `origin/main`.
 
-Final Verdict: **CLEAN** (Milestone 2 accepted with Adversarial Advisory on teacher target empty string guard).
+**FINAL VERDICT: CLEAN**
 
 ---
 
 ## 5. Verification Method
 
-To independently verify these findings:
+To independently verify the audit conclusions, run the following commands in the workspace root:
 
-```powershell
-# 1. Typecheck the codebase
-npx tsc --noEmit
+1. **Verify Git History and Clean State**:
+   ```bash
+   git status
+   git log -n 1 --stat bd78007
+   ```
 
-# 2. Run existing test suite (85 tests)
-npx tsx tests/sistem_blok_verification.test.ts
+2. **Verify Static TypeScript Types**:
+   ```bash
+   npx tsc --noEmit
+   ```
+   *Expected output: Exit code 0, 0 type errors.*
 
-# 3. Run Milestone 2 test suite (74 tests)
-npx tsx tests/m2_schedule_masking_workflow.test.ts
+3. **Verify Milestone 2 Dedicated Suite**:
+   ```bash
+   npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts
+   ```
+   *Expected output: 16/16 PASSED (0 FAILED).*
 
-# 4. Reproduce teacher target empty string edge case
-@'
-import { evaluateScheduleBlock } from './src/lib/workflow';
-const rule = { id: 'r1', tipe_target: 'guru', target_guru_nama: 'Budi Santoso', is_full_day: true };
-const schedWithoutNama = { kelas: 'X Merdeka' };
-const teacherAde = { id: 'ade', nama: 'Ade Fitrawan' };
-console.log('False positive result:', evaluateScheduleBlock(schedWithoutNama, teacherAde, [rule as any]).isBlocked);
-'@ | npx tsx
-```
-
-Invalidation conditions:
-- Any test failure in `sistem_blok_verification.test.ts` or `m2_schedule_masking_workflow.test.ts`.
-- Non-zero exit code from `npx tsc --noEmit`.
+4. **Verify Full Automated Test Suite (Zero Regression)**:
+   ```bash
+   npm test
+   ```
+   *Expected output: All 54 test files executed, Exit code 0.*

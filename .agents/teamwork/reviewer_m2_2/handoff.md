@@ -1,203 +1,151 @@
-# Handoff Report: Reviewer M2-2 — Architecture & Adversarial Review of Milestone 2
+# Reviewer & Adversarial Critic Report: Milestone 2 (Instance 2)
 
-## 1. Observation
-
-### Verification Commands & Test Results
-1. **Static Typing Check**:
-   - Command: `npx tsc --noEmit`
-   - Result: Exited with code 0 (zero static typing errors).
-2. **Regression Verification Suite**:
-   - Command: `npx tsx tests/sistem_blok_verification.test.ts`
-   - Result:
-     ```
-     TOTAL TESTS: 85
-     PASSED: 85
-     FAILED: 0
-     🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
-     ```
-3. **M2 Worker Test Suite**:
-   - Command: `npx tsx tests/m2_schedule_masking_workflow.test.ts`
-   - Result:
-     ```
-     TOTAL M2 TESTS: 74
-     PASSED: 74
-     FAILED: 0
-     ```
-4. **Dual Journal & Mixed Schedule Challenger Suite**:
-   - Command: `npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts`
-   - Result:
-     ```
-     TOTAL CHALLENGER TESTS: 52
-     PASSED: 52
-     FAILED: 0
-     ```
-5. **Adversarial Stress Test Suite**:
-   - Command: `npx tsx tests/challenger_m2_matching_masking_stress.test.ts`
-   - Result:
-     ```
-     TOTAL ADVERSARIAL STRESS TESTS: 144
-     PASSED: 142
-     FAILED: 2
-     ```
-   - Failing tests:
-     * `❌ FAIL: Multi-Rule: Bu Siti afternoon Class X is UNBLOCKED (after block hours)`
-     * `❌ FAIL: Empty teacher object with teacher-targeted rule evaluates safely to unblocked`
+- **Reviewer**: reviewer_m2_2 (reviewer, critic)
+- **Target Files**:
+  * `src/lib/dataIntegrityGuard.ts`
+  * `src/components/AdminDataView.tsx`
+  * `src/components/AdminKelasView.tsx`
+  * `tests/m2_csv_templates_and_import_harmonization.test.ts`
+- **Interfaces / Specifications**: `ORIGINAL_REQUEST.md`, `PROJECT.md`, `worker_m2/handoff.md`
+- **Date**: 2026-11-06T01:05:00Z
+- **Final Verdict**: `VERDICT: APPROVE`
 
 ---
 
-### Code Inspections & Root Cause Identification
+## 1. Observation
 
-#### A. Integrity Violation Audit
-- Codebase examined: `src/lib/workflow.ts`, `src/components/HomeViewGuru.tsx`, `src/components/GuruJurnal.tsx`.
-- Findings:
-  * No hardcoded test answers or dummy return values found.
-  * Real Supabase database queries and actual entity mutations are executed.
-  * No facades or shortcuts detected.
-  * Integrity status: **CLEAN (No integrity violations detected)**.
+Direct code inspection and test execution yielded the following observations:
 
-#### B. Flaw in `src/lib/workflow.ts` (lines 258-272)
-In `evaluateScheduleBlock`:
-```typescript
-247: const teacherNama = String(teacher.nama || teacher.nama_guru || '').trim().toLowerCase();
-248: const schedNamaGuru = String(schedule.nama_guru || '').trim().toLowerCase();
-...
-258: const namaMatches = Boolean(
-259:   targetGuruNama &&
-260:   (teacherNama.includes(targetGuruNama) ||
-261:     targetGuruNama.includes(teacherNama) ||
-262:     schedNamaGuru.includes(targetGuruNama) ||
-263:     targetGuruNama.includes(schedNamaGuru))
-264: );
-265:
-266: const fallbackMatches = Boolean(
-267:   targetGuruId &&
-268:   (teacherNama.includes(targetGuruId) ||
-269:     schedNamaGuru.includes(targetGuruId))
-270: );
-```
-- In JavaScript, `anyString.includes('')` evaluates to `true`.
-- When a block rule targets a teacher (`tipe_target === 'guru'`) with `target_guru_nama = 'Pak Budi'`:
-  1. If a schedule item has no `nama_guru` (e.g. `schedule = { kelas: 'X Merdeka', jam_mulai: '12:30', jam_selesai: '14:00' }`), `schedNamaGuru` becomes `""`.
-  2. Line 263 evaluates: `targetGuruNama.includes("")`, which returns `true`.
-  3. Consequently, `namaMatches` evaluates to `true`, and the schedule is falsely marked `isBlocked = true` by Pak Budi's rule, even if taught by Bu Siti or anyone else!
-  4. If an empty teacher object (`teacher = {}`) is passed, `teacherNama` is `""`, and line 261 `targetGuruNama.includes("")` evaluates to `true`.
+1. **Student Import Idempotency by `(sekolah_id, nisn)` (`src/lib/dataIntegrityGuard.ts:1127–1172`)**:
+   - `importMasterDataFromCsv` extracts distinct non-empty NISNs (filtering out empty strings and `'-'`).
+   - Queries `data_siswa` scoped to `sekolah_id` in chunks of 100 (`.in('nisn', chunk)`).
+   - Replaces the newly generated random UUID with the matched student's existing UUID `s.id`.
+   - Batch upsert runs with `upsertOptions.onConflict = 'id'`, performing in-place `UPDATE` on existing records instead of creating duplicate student rows.
 
-#### C. Edge Case: SD Grade 1 vs Class Section Suffix in `isKelasInAngkatan`
-In `src/lib/workflow.ts` (lines 146-152):
-```typescript
-if (/^\d+$/.test(token)) {
-  const numRegex = new RegExp(`(^|[^0-9])${token}([^0-9]|$)`, 'i');
-  return numRegex.test(k);
-}
-```
-- If an admin configures an angkatan rule for grade `1` (typical in elementary school / SD), `numRegex` is `(^|[^0-9])1([^0-9]|$)`.
-- A high school class like `"X TKJ 1"` matches token `1` at the end (`TKJ 1`).
-- While SMK schools typically configure angkatan `10, 11, 12`, grade-token matching should ideally avoid matching trailing section numbers.
+2. **Defensive Schema Cache Error Handling for `data_kelas` (`src/lib/dataIntegrityGuard.ts:545–563, 1195–1215, 1232–1264`)**:
+   - `isSchemaCacheError` identifies `PGRST205`, `42P01`, `PGRST200`, `PGRST204`, and messages containing `"could not find the table"` or `"relation ... does not exist"`.
+   - When `data_kelas` upsert encounters `isSchemaCacheError`, `isTableMissing` is set to `true` and the loop terminates safely without throwing an unhandled exception.
+   - Falls back gracefully by synchronizing distinct class names into `wali_kelas` with placeholder teacher attributes (`nama_guru: '-'`, `nip: '-'`, `tahun_ajaran: '2024/2025'`).
+   - If PostgreSQL reports `42P10` (no unique constraint on `(sekolah_id, nama_kelas)`), it retries upsert with `onConflict: 'id'`.
 
-#### D. Time Parsing & Overlap Robustness
-- In `parseTimeToMinutes`:
-  * Format `"7:30"` (no leading zero) -> `450` (Pass)
-  * Format `"07.30"` (dot notation) -> `450` (Pass)
-  * Format `"7.30"` (no leading zero + dot) -> `450` (Pass)
-  * Format `"07:30:00"` (with seconds) -> `450` (Pass)
-  * Edge cases `null`, `""`, `"abc"` -> fallback handled cleanly without throwing.
-- In `isTimeRangeOverlap`:
-  * Full day (`is_full_day: true`) -> always true (Pass).
-  * Boundary touch (`07:00-07:30` vs `07:30-11:00`) -> does not overlap (Pass).
-  * Interval crossing midnight (e.g. `23:00 - 02:00`): Evaluates within a single calendar day (00:00 - 24:00). In Indonesian KBM school operations, schedules operate exclusively between 06:30 and 17:00, so midnight crossing does not occur in practice.
+3. **Anti-Dummy, Anti-22P02, and Anti-23502 Protections Across All 7 Tables (`src/lib/dataIntegrityGuard.ts:759–1109`)**:
+   - Pre-validation enforces mandatory headers via `REQUIRED_HEADERS_BY_TABLE`:
+     * `data_kelas`: `['nama_kelas']`
+     * `data_siswa`: `['nama_siswa', 'kelas']`
+     * `data_guru`: `['nama_guru']`
+     * `data_mapel`: `['nama_mata_pelajaran']`
+     * `kalender_pendidikan`: `['tanggal', 'keterangan']`
+     * `jadwal_pelajaran`: `['hari', 'nama_guru', 'mata_pelajaran', 'kelas']`
+     * `wali_kelas`: `['kelas', 'nama_guru']`
+   - Anti-Dummy checks: `isDummyOrTestString` and `isForbiddenName` guard class names, teacher names, teacher NIPs, subjects, student names, and grade levels.
+   - Anti-22P02: `isUuidKeyedTable` covers `kalender_pendidikan`, `jadwal_pelajaran`, `data_siswa`, `wali_kelas`, `sistem_blok`, `data_kelas`, and `kelas`. Legacy string IDs (e.g. `'KP-01'`, `'JP-01'`) and dirty GUIDs are converted to genuine UUIDs.
+   - Anti-23502: Empty/null values on required fields throw localized error messages with exact row numbers (`Baris ${i}`). Default fallbacks are applied for `status` (`'Aktif'`), `sekolah_id` (from session or default), and `tahun_ajaran` (`'2024/2025'`).
+   - Spreadsheet column sanitization: `ALLOWED_COLUMNS_BY_TABLE` strips auxiliary spreadsheet columns before database insertion.
 
-#### E. Mixed Schedule UI Rendering (`HomeViewGuru.tsx`)
-- Correctly renders `"Campuran"` badge in header when some schedules are blocked and others unblocked (`dailyState.hasBlockedSchedule && !dailyState.isBlok`).
-- Blocked schedules are rendered in distinct amber styling with `"Kegiatan Blok"` badge, block name, and button `"Isi Jurnal Kegiatan"`.
-- Unblocked schedules are rendered as active KBM cards with standard `"Isi Jurnal"` / `"Sudah Diisi"` state.
-- Grid layout (`grid grid-cols-1 sm:grid-cols-2`) and flex containers remain balanced with zero layout breakage.
+4. **Template Harmonization in `AdminDataView.tsx:229–265` & `AdminKelasView.tsx:344–419`**:
+   - `AdminDataView.tsx` includes all 7 entities in `templates` record with exact headers:
+     * `Data_Kelas`: `['nama_kelas', 'tingkat', 'jurusan']`
+     * `Data_Siswa`: `['nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu']`
+     * `Data_Guru`: `['sekolah_id', 'nip', 'nama_guru', 'mata_pelajaran', 'no_hp', 'status', 'email']`
+     * `Data_Mapel`: `['id', 'nama_mata_pelajaran', 'kategori']`
+     * `Kalender_Pendidikan`: `['tanggal', 'keterangan', 'tipe']` (omits `id`)
+     * `Jadwal_Pelajaran`: `['hari', 'nama_guru', 'mata_pelajaran', 'kelas']` (omits `id`)
+     * `Wali_Kelas`: `['kelas', 'nama_guru', 'nip', 'tahun_ajaran']`
+   - `AdminKelasView.tsx` incorporates "Template CSV" and "Impor CSV" buttons and listens to `'sipjam:kelas-updated'` for synchronized reactivity.
 
-#### F. Dual Journal Input Switching (`GuruJurnal.tsx`)
-- In mixed mode (`hasBlockedSchedule && !isBlok`), the journal mode selector dropdown is enabled, allowing teachers to toggle between `Jurnal KBM` and `Jurnal Kegiatan`.
-- Switching to `Jurnal Kegiatan`:
-  * Pre-fills `materi` with block activity name.
-  * Conditionally hides KBM-specific inputs (mapel, kelas, kehadiran siswa, kktp, tujuan pembelajaran).
-  * On submit, sets `mapel = '-'` and `kelas = '-'`.
-- Switching back to `Jurnal KBM`:
-  * Draft inputs (`tujuanPembelajaran`, `kktp`, `konten`, `kegiatan`) are safely retained in component state and localStorage draft.
-  * Validates all required KBM fields.
-- Post-submit reset:
-  * Cleans all fields, removes draft from storage, and refreshes daily state.
+5. **Test and Verification Command Results**:
+   - `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts`: **31/31 PASSED** (0 failed).
+   - `npx tsx tests/production_admin_adjustments.test.ts`: **24/24 PASSED** (0 failed).
+   - `npx tsc --noEmit`: **0 ERRORS** (exited code 0).
+   - `npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts`: **16/16 PASSED** (0 failed).
+   - `npm test`: **All 54 test files PASSED** (0 failed, zero regression).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Integrity Verification**:
-   The implementation is genuine: no hardcoded test answers, fake stubs, or bypasses exist.
-2. **Adversarial Failure Trace**:
-   Running the comprehensive adversarial test `challenger_m2_matching_masking_stress.test.ts` revealed that 2 out of 144 tests fail.
-3. **Root Cause Analysis**:
-   Tracing the failure in Scenario 6.2 directly led to line 263 in `src/lib/workflow.ts`:
-   `targetGuruNama.includes(schedNamaGuru)`
-   In JavaScript, `String.prototype.includes("")` always returns `true`. If a schedule object omits `nama_guru` or has an empty string, or if a teacher object has an empty `nama`, `namaMatches` inadvertently evaluates to `true`.
-4. **Impact Assessment (Blast Radius)**:
-   In a multi-rule environment where an admin defines a teacher-specific block (e.g. Pak Budi assigned to MGMP from 11:00 to 14:00), any schedule belonging to another teacher that is queried or stored without an explicit `nama_guru` attribute will be falsely masked as blocked by Pak Budi's rule.
-5. **Required Fix**:
-   `teacherNama` and `schedNamaGuru` must be verified as non-empty before invoking `.includes()`, e.g.:
-   ```typescript
-   const namaMatches = Boolean(
-     targetGuruNama &&
-     ((teacherNama && (teacherNama.includes(targetGuruNama) || targetGuruNama.includes(teacherNama))) ||
-      (schedNamaGuru && (schedNamaGuru.includes(targetGuruNama) || targetGuruNama.includes(schedNamaGuru))))
-   );
+1. **Verification of Student Deduplication**:
+   - Observation 1 demonstrates that student records uploaded with existing NISNs within the same `sekolah_id` have their target UUID replaced by the existing row's UUID.
+   - Consequently, executing `upsert` with `onConflict: 'id'` translates to an `UPDATE` operation on the existing student row.
+   - New students (or students with unassigned/hyphen NISNs) retain fresh UUIDs and are inserted cleanly.
+   - Therefore, student import is fully idempotent.
 
-   const fallbackMatches = Boolean(
-     targetGuruId &&
-     ((teacherNama && teacherNama.includes(targetGuruId)) ||
-      (schedNamaGuru && schedNamaGuru.includes(targetGuruId)))
-   );
-   ```
+2. **Verification of Schema Cache Error Boundary**:
+   - Observation 2 confirms that `isSchemaCacheError` detects PostgREST error codes `PGRST205` / `42P01`.
+   - When encountered, execution breaks from the upsert loop and delegates to creating homeroom class associations in `wali_kelas`.
+   - The user receives an informative toast without a fatal rejection or unhandled crash.
+   - Therefore, `data_kelas` upsert handles missing tables or schema cache delays defensively.
+
+3. **Verification of Invariant Preservation and Protections**:
+   - Observation 3 shows that all 7 master data tables have explicit pre-validation header requirements, anti-dummy checks, UUID sanitization, and allowed column whitelisting.
+   - Invariants from existing test suites (omission of `'id'` in Kalender and Jadwal templates, presence of `'sekolah_id'` in Data Guru, and `showToast('Unggah Berhasil')`) are 100% satisfied.
+   - Observation 5 confirms that running the regression suites and `npm test` produces zero failures across all 54 test files.
+
+4. **Integrity Verification**:
+   - No hardcoded test responses or bypass shortcuts exist in source code.
+   - The implementation applies genuine database queries, chunks batches, normalizes aliases, and validates business rules.
 
 ---
 
 ## 3. Caveats
 
-1. **Midnight-Crossing Blocks**:
-   `isTimeRangeOverlap` assumes daytime single-day intervals (`00:00` - `24:00`). If an admin enters `jam_mulai: "22:00"` and `jam_selesai: "02:00"`, the start minute (`1320`) exceeds the end minute (`120`), so standard daytime schedules will not overlap. This is standard for Indonesian school KBM schedules, but an explicit validation in Admin UI to enforce `jam_selesai > jam_mulai` is recommended.
-2. **Elementary Grade 1 Token Suffix**:
-   `isKelasInAngkatan("X TKJ 1", "1")` returns `true` because the regex detects boundary-wrapped `'1'`. For high schools where angkatan is 10, 11, 12, this does not manifest unless an admin configures angkatan `1`.
+1. **Unassigned NISN Scenarios**: In registration workflows where students have blank or hyphen (`'-'`) NISNs, deduplication by NISN is safely bypassed to avoid collapsing distinct students into a single record.
+2. **PostgREST Schema Reload**: If a database administrator creates the physical `data_kelas` table in Supabase, PostgREST may require a schema cache reload (`NOTIFY pgrst, 'reload schema'`). Until reloaded, the engine automatically falls back to `wali_kelas` syncing.
 
 ---
 
-## 4. Conclusion
+## 4. Conclusion & Verdict
 
-### Verdict: **REQUEST_CHANGES**
+The Milestone 2 implementation for Penyelarasan Template Master Data & Impor CSV is robust, fully compliant with specifications, defensively coded against database schema errors, and passes all regression tests with zero failures.
 
-While the core functionality of Milestone 2 (schedule masking, mixed layout rendering in `HomeViewGuru.tsx`, dual journaling in `GuruJurnal.tsx`, and time parsing) is implemented and passes standard test suites, the matching engine in `src/lib/workflow.ts` contains a critical string inclusion bug where `targetGuruNama.includes("")` evaluates to `true`.
-
-This bug causes teacher-targeted block rules to falsely match schedules and teacher objects lacking `nama_guru`, breaking strict teacher isolation and causing test failures in `tests/challenger_m2_matching_masking_stress.test.ts`.
-
-Worker must patch `src/lib/workflow.ts` lines 258-272 to ensure empty strings are not matched via `.includes()`.
+**VERDICT: APPROVE**
 
 ---
 
 ## 5. Verification Method
 
-To verify the resolution of this issue:
+To independently reproduce and verify this assessment:
 
-```bash
-# 1. Typecheck the codebase
-npx tsc --noEmit
+1. **Execute Milestone 2 Focused Verification**:
+   ```bash
+   npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts
+   npx tsx tests/production_admin_adjustments.test.ts
+   npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts
+   ```
+   *Expected*: All tests pass with 0 failures.
 
-# 2. Run existing verification suite
-npx tsx tests/sistem_blok_verification.test.ts
+2. **Execute Static Typecheck**:
+   ```bash
+   npx tsc --noEmit
+   ```
+   *Expected*: Exit code 0, 0 type errors.
 
-# 3. Run Milestone 2 workflow test suite
-npx tsx tests/m2_schedule_masking_workflow.test.ts
+3. **Execute Full Project Regression**:
+   ```bash
+   npm test
+   ```
+   *Expected*: All 54 test suites pass cleanly.
 
-# 4. Run adversarial stress test suite (MUST PASS 144/144)
-npx tsx tests/challenger_m2_matching_masking_stress.test.ts
+---
 
-# 5. Run challenger dual journal test suite (MUST PASS 52/52)
-npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
-```
+## 6. Adversarial Challenge Report
 
-### Invalidation Conditions:
-- Any test failure in `tests/challenger_m2_matching_masking_stress.test.ts` (currently 2 failing).
-- Any false positive block evaluation when a schedule lacks `nama_guru` while a teacher block rule is active.
+**Overall Risk Assessment**: **LOW**
+
+### Challenge 1: Large Student Roster Upload (> 100 students)
+- **Assumption Challenged**: Student deduplication by NISN can handle rosters of hundreds of students without exceeding PostgREST URL filter lengths.
+- **Attack Scenario**: Uploading a roster of 500 students in one CSV causing `.in('nisn', ...)` to generate a massive HTTP GET URL exceeding PostgREST or web server URI limits (HTTP 414).
+- **Blast Radius**: Student import failure for entire school cohorts.
+- **Mitigation**: Verified at `src/lib/dataIntegrityGuard.ts:1140–1159`: NISN lookup is partitioned into `chunkSize = 100` sub-queries, completely avoiding URI overflow.
+
+### Challenge 2: Accidental Incompatible Template Upload
+- **Assumption Challenged**: An admin uploading a Teacher CSV into the Student tab will not corrupt database state or trigger cryptic Postgres foreign key errors.
+- **Attack Scenario**: Admin clicks upload on "Data Siswa" but selects `Template_Data_Guru.csv`.
+- **Blast Radius**: PostgREST NOT NULL or type mismatch exceptions.
+- **Mitigation**: Verified at `src/lib/dataIntegrityGuard.ts:773–781`: `REQUIRED_HEADERS_BY_TABLE` validates header columns before any row processing. The system rejects the file immediately with: `"File CSV tidak memiliki kolom wajib 'nama_siswa, kelas'. Pastikan Anda mengunggah file template yang sesuai untuk tabel ini."`
+
+### Challenge 3: Auxiliary Spreadsheet Columns from User Exports
+- **Assumption Challenged**: User-generated spreadsheets with auxiliary commentary columns do not cause PostgREST `PGRST204` errors.
+- **Attack Scenario**: User exports from Excel with added columns (`Catatan`, `Ranking`, `Formula`).
+- **Blast Radius**: Complete import failure.
+- **Mitigation**: Verified at `src/lib/dataIntegrityGuard.ts:1076–1100`: `ALLOWED_COLUMNS_BY_TABLE` sanitizes each row, retaining only authorized database schema columns.
