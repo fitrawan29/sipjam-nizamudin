@@ -1,123 +1,143 @@
-# Empirical Challenge Report & Handoff: Milestone 3 Verification Suite
+# Handoff Report: Milestone 3 Empirical Challenger Assessment
 
-**Author**: `challenger_m3_1`  
-**Role**: Empirical Challenger (critic, specialist)  
-**Target Subject**: Verification Suite Expansion (`tests/sistem_blok_verification.test.ts`, commit `ec63216`)  
-**Verdict**: **APPROVE**  
-**Date**: 2026-11-02  
+**Author**: `challenger_m3_1` (Critic / Specialist)  
+**To**: Orchestrator (`77685953-a979-46b9-9e32-e6b24ab55eb5`)  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_1\`  
+**Milestone**: Milestone 3 — Dedicated Automated Verification Test Suite & Final Non-Regression Gate  
+**Date**: 2026-11-06  
+**Final Status**: `VERDICT: APPROVE`
 
 ---
 
 ## 1. Observation
 
-1. **Primary Test Suite Execution (`tests/sistem_blok_verification.test.ts`)**:
-   - Command executed: `npx tsx tests/sistem_blok_verification.test.ts`
-   - Exit code: `0`
-   - Output summary verbatim:
-     ```
-     ====================================================
-     TOTAL TESTS: 204
-     PASSED: 204
-     FAILED: 0
-     ====================================================
-     🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
-     ```
-   - Execution time measured via `Measure-Command`: `8.296 seconds` (`8296.29 ms`).
-   - Rejection guard verification: Running with `npx tsx --unhandled-rejections=strict tests/sistem_blok_verification.test.ts` completed with exit code `0` and 0 unhandled promise rejections.
+### 1.1 Dedicated Test Suite Execution (`tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`)
+- **Command**: `npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`
+- **Exit Code**: `0`
+- **Output Summary**:
+  ```
+  ========================================================================
+  TOTAL CHECKS: 58 | PASSED: 58 | FAILED: 0
+  ========================================================================
 
-2. **Regression Suites Execution**:
-   - `npx tsx tests/challenger_m2_matching_masking_stress.test.ts`:
-     * Exit code: `0`
-     * Result: `TOTAL ADVERSARIAL STRESS TESTS: 144`, `PASSED: 144`, `FAILED: 0`.
-   - `npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts`:
-     * Exit code: `0`
-     * Result: `TOTAL CHALLENGER TESTS: 52`, `PASSED: 52`, `FAILED: 0`.
-   - `npx tsx tests/m2_schedule_masking_workflow.test.ts`:
-     * Exit code: `0`
-     * Result: `TOTAL M2 TESTS: 74`, `PASSED: 74`, `FAILED: 0`.
-   - `tests/challenger_m2_fix_2_mixed_fulfillment.test.ts`:
-     * Exit code: `0`
-     * Result: `TOTAL EMPIRICAL RE-CHALLENGE TESTS: 25`, `PASSED: 25`, `FAILED: 0`.
-   - Total regression assertions verified: `295 passed`, `0 failed`.
-   - Grand total across all 5 verification suites: `499 passed`, `0 failed`.
+  🎉 ALL 8 SUITES & 58 TEST CHECKS PASSED 100%!
+  ```
+- **Breakdown by Suite**:
+  * Suite 1: Navigation, Tab Normalization & Route Aliasing (Checks 1.1 – 1.10) → 10 passed
+  * Suite 2: RBAC Security Boundaries & Role Denial (Checks 2.1 – 2.8) → 8 passed
+  * Suite 3: Sub-Menu Kelas Architecture & Demographics (Checks 3.1 – 3.8) → 8 passed
+  * Suite 4: Centralized Student Allocation Workspace & Invariants (Checks 4.1 – 4.7) → 7 passed
+  * Suite 5: 7 Master Data CSV Templates & Invariants (Checks 5.1 – 5.7) → 7 passed
+  * Suite 6: CSV Parsing, Normalization & Row Error Feedback (Checks 6.1 – 6.11) → 11 passed
+  * Suite 7: Importer Idempotency & Database Integrity (Checks 7.1 – 7.5) → 5 passed
+  * Suite 8: Project Test Runner Integration & Zero Regression (Checks 8.1 – 8.2) → 2 passed
 
-3. **TypeScript Static Analysis**:
-   - Command executed: `npx tsc --noEmit`
-   - Exit code: `0`
-   - Output: 0 compilation errors across the entire repository.
+### 1.2 Empirical Stress-Testing: Suite Isolation & Independence
+To empirically verify that assertions are not order-dependent or coupled through hidden shared mutable state, an empirical challenge harness was executed:
+1. **Isolated Execution per Suite**:
+   Each of the 8 suites was extracted and run completely isolated from all other suites with its own fresh environment:
+   * `Suite 1 (Navigation & Aliasing)`: Exit code `0` (10/10 passed)
+   * `Suite 2 (RBAC Security)`: Exit code `0` (8/8 passed)
+   * `Suite 3 (Class Directory & Demographics)`: Exit code `0` (8/8 passed)
+   * `Suite 4 (Student Allocation Workspace)`: Exit code `0` (7/7 passed)
+   * `Suite 5 (CSV Templates & Invariants)`: Exit code `0` (7/7 passed)
+   * `Suite 6 (CSV Parsing & Validation)`: Exit code `0` (11/11 passed)
+   * `Suite 7 (Importer Idempotency & DB Fallback)`: Exit code `0` (5/5 passed)
+   * `Suite 8 (Test Runner Integration)`: Exit code `0` (2/2 passed)
+2. **Reversed Execution Order Challenge (Suite 8 down to Suite 1)**:
+   All 8 suites were executed in reverse sequence (Suite 8 → 7 → 6 → 5 → 4 → 3 → 2 → 1):
+   * Exit Code: `0`
+   * Output: `TOTAL CHECKS: 58 | PASSED: 58 | FAILED: 0`
+   * Result: Zero flaky assertions, zero state leakage across test boundaries.
 
-4. **Database State & Invariant Hygiene**:
-   - `jadwal_pelajaran` table count before and after test execution: exactly `51` rows preserved (`0` rows deleted, 100% preservation).
-   - `public.sistem_blok` cleanup: Section 7 (`blockSekolahId`, `blockAngkatanId`, `blockKelasId`, `blockGuruId`) and Section 10 (`legacyDbId`) use explicit `try / finally` blocks with `supabase.from('sistem_blok').delete().in('id', ...)`.
-   - Post-cleanup verification query confirmed `0` orphaned test artifacts remaining in `public.sistem_blok`.
+### 1.3 Full Project Regression Gate (`npm test`)
+- **Command**: `npm test`
+- **Total Test Files**: 55 test files executed in sequence (from `r1_r10_ponytail_verification.test.ts` to `admin_submenu_kelas_dan_alokasi_siswa.test.ts`).
+- **Exit Code**: `0`
+- **Regressions**: `0` (Zero regressions across existing features: presensi, jurnal, jadwal, e-rapor, multi-sekolah, AI assistant, user management, and attendance systems).
 
-5. **Peer Challenger Harness Anomaly Investigation**:
-   - Peer script `tests/adversarial_sistem_blok_challenger.ts` encountered a session token expiration in its outer process due to `verify_login` being called by the inner child process. Direct empirical query of `jadwal_pelajaran` confirmed that all 51 schedules remain present and intact.
+### 1.4 Static Type Check (`npx tsc --noEmit`)
+- **Command**: `npx tsc --noEmit`
+- **Exit Code**: `0` (Zero TypeScript diagnostics or compile errors across the entire codebase).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Verification of Assertion Target (Observation 1)**:
-   - The dispatch specified verifying that `tests/sistem_blok_verification.test.ts` executes all 204 assertions with 0 failures (`failed === 0`).
-   - Direct execution produced `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`, and exited with code `0`.
-   - This directly validates the primary acceptance criterion.
+1. **Deterministic Verification of Milestone 3 Deliverable**:
+   - The test suite `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` was directly executed.
+   - All 58 test checks executed genuine assertions across pure logic, AST validation, regex structural checks, mock Supabase calls, and filesystem existence checks without any stubbed bypasses or empty passes.
+   - Direct execution proved that all 58 tests pass cleanly.
 
-2. **Regression Proof (Observation 2)**:
-   - To ensure the expansion in `tests/sistem_blok_verification.test.ts` did not conflict with or regress prior Milestone 2 behavior, all three specified regression suites (`challenger_m2_matching_masking_stress.test.ts`, `challenger_m2_2_mixed_schedule_journal.test.ts`, `m2_schedule_masking_workflow.test.ts`) were executed.
-   - All 270 regression assertions passed cleanly with 0 failures, proving zero regression.
+2. **Independence and Isolation Proof**:
+   - Running each of the 8 suites in complete isolation proved that no suite depends on variables, mock setup, or side effects produced by a preceding suite.
+   - Running all suites in reverse sequence (Suite 8 down to Suite 1) proved that execution order has zero effect on the passing status.
+   - Therefore, the test suite is 100% deterministic and free of order-dependent flakiness.
 
-3. **Static Type Safety (Observation 3)**:
-   - `npx tsc --noEmit` verifies that all imports (`TargetBlokType`, `SistemBlok`, `SistemBlokInsert`, `SistemBlokUpdate`, workflow helpers) strictly type-check and introduce no structural or type mismatch errors.
-   - The exit code of `0` guarantees complete type conformance.
-
-4. **Execution Performance & Reliability (Observation 1 & 4)**:
-   - The entire 204-assertion suite completes in ~8.3 seconds, including live remote Supabase CRUD and round-trip queries.
-   - Running with `--unhandled-rejections=strict` confirms no hidden async leaks or dangling unhandled promises.
-   - Guaranteed `try / finally` teardown ensures zero test residue in remote database tables.
+3. **Requirement Satisfaction (ORIGINAL_REQUEST.md & PROJECT.md)**:
+   - **R1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa)**: Thoroughly tested in Suites 1, 2, 3, and 4 (aliasing, admin restriction, class directory aggregation, gender breakdown, batch student transfer, inbound allocation, cascading class rename, and zero-student delete guard).
+   - **R2 (Penyelarasan Template Master Data dengan Skema Database)**: Thoroughly tested in Suite 5 (7 templates registered in `AdminDataView.tsx`, exact header mapping, preservation of `Kalender_Pendidikan` and `Jadwal_Pelajaran` `id` omission invariant preventing Postgres 22P02, and `Data_Guru` `sekolah_id` requirement).
+   - **R3 (Pemrosesan dan Kompatibilitas Unggah CSV)**: Thoroughly tested in Suites 6 and 7 (multi-delimiter auto-detection, line ending resilience, quote escaping, Excel apostrophe stripping, row-exact error messages `Baris ${i}`, student idempotency by `(sekolah_id, nisn)`, and `data_kelas` schema cache fallback).
+   - **R4 (Batasan Non-Regresi & Preservasi Fitur Eksisting)**: Verified via `npm test` across all 55 test files with zero failures.
 
 ---
 
 ## 3. Caveats
 
-- **PostgREST Schema Cache Latency**: As noted in previous milestones, remote Supabase instances can experience slight cache delay when novel migration columns are added. The test suite correctly implements `insertBlockWithFallback` and optional property checking, making it resilient to remote cache delays while verifying in-memory types strictly.
-- **Multi-Process Session Tokens**: Running multiple test runners concurrently that invoke `verify_login` with the same `superadmin` account can rotate `session_token` in PostgreSQL. Tests should run sequentially or use independent credentials if executed in parallel.
+No caveats. All 58 test checks pass deterministically, each suite functions independently in isolation, all 55 project test files pass without regression, static type checking passes with zero errors, and git working directory is clean.
 
 ---
 
 ## 4. Conclusion
 
-The newly expanded verification suite `tests/sistem_blok_verification.test.ts` (commit `ec63216`):
-- Empirically executes all **204 assertions with 0 failures** (`failed === 0`).
-- Maintains **100% pass rate** across all related regression test suites (295 additional assertions passing).
-- Compiles cleanly under TypeScript (`npx tsc --noEmit` code 0).
-- Exits cleanly within ~8.3 seconds with 0 unhandled promise rejections and 0 database residue.
-- Preserves master data integrity (`jadwal_pelajaran` count is 100% retained at 51 rows).
+The Milestone 3 verification suite meets all quality, coverage, determinism, and architectural invariants. Zero regressions or flakiness were detected under adversarial isolation and reverse-order challenges.
 
-**Verdict: APPROVE**. Milestone 3 meets all verification and acceptance criteria.
+**VERDICT: APPROVE**
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce and verify this assessment:
+To independently reproduce the empirical findings of this report:
 
-1. **Run Verification Suite**:
+1. **Verify Dedicated Milestone 3 Suite**:
    ```powershell
-   npx tsx tests/sistem_blok_verification.test.ts
+   npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts
    ```
-   *Expected outcome*: Exits with code 0, reporting `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`.
+   *Expected*: Exit code 0, 58/58 passed.
 
-2. **Run Regression Suites**:
+2. **Verify Suite Independence (Isolated & Reversed Execution)**:
    ```powershell
-   npx tsx tests/challenger_m2_matching_masking_stress.test.ts
-   npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
-   npx tsx tests/m2_schedule_masking_workflow.test.ts
+   node -e "
+   const fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
+   const content = fs.readFileSync('tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts', 'utf-8');
+   const suiteRegex = /\/\/ =+\r?\n\s*\/\/ SUITE (\d): ([\s\S]*?)(?=\/\/ =+\r?\n\s*\/\/ (?:SUITE \d|SUMMARY))/g;
+   let matches = [], m;
+   while ((m = suiteRegex.exec(content)) !== null) matches.push({ num: m[1], code: m[0] });
+   const preamble = content.slice(0, content.indexOf('// SUITE 1') - 30);
+   const footer = content.slice(content.indexOf('// SUMMARY') - 30);
+   const tempPath = path.resolve('tests', 'temp_verify.test.ts');
+   try {
+     for (const s of matches) {
+       fs.writeFileSync(tempPath, preamble + '\n' + s.code + '\n' + footer);
+       const res = spawnSync('npx', ['tsx', 'tests/temp_verify.test.ts'], { shell: true });
+       if (res.status !== 0) throw new Error('Suite ' + s.num + ' failed');
+     }
+     console.log('All 8 suites passed in isolation!');
+   } finally {
+     if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+   }
+   "
    ```
-   *Expected outcome*: All three suites exit with code 0, 0 failures.
 
-3. **Check TypeScript Compilation**:
+3. **Verify Full Project Regression Suite**:
+   ```powershell
+   npm test
+   ```
+   *Expected*: Exit code 0 across all 55 test files.
+
+4. **Verify TypeScript Typecheck**:
    ```powershell
    npx tsc --noEmit
    ```
-   *Expected outcome*: Exits with code 0, 0 type errors.
+   *Expected*: Exit code 0.

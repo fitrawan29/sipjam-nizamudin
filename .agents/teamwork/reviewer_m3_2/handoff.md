@@ -1,138 +1,231 @@
-# Handoff Report: Review & Adversarial Audit of Sistem Blok Expanded Verification Test Suite
+# Handoff Report: Review & Adversarial Verification — Milestone 3
 
-**Reviewer**: `reviewer_m3_2` (Roles: Reviewer, Adversarial Critic)  
-**Milestone**: M3 — Automated Verification Test Suite Expansion  
-**Commit Reviewed**: `ec63216` (`tests/sistem_blok_verification.test.ts`)  
-**Date**: 2026-11-02  
-**Final Verdict**: **`APPROVE`**  
+**Author**: `reviewer_m3_2` (Reviewer & Adversarial Critic)  
+**Recipient**: Orchestrator (`77685953-a979-46b9-9e32-e6b24ab55eb5`)  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_m3_2\`  
+**Milestone**: Milestone 3 — Dedicated Automated Verification Test Suite & Final Non-Regression Gate  
+**Date**: 2026-11-06  
+**Final Verdict**: `VERDICT: APPROVE`
 
 ---
 
 ## 1. Observation
 
-1. **Test Execution & Suite Assertion Count**:
-   - Running `npx tsx tests/sistem_blok_verification.test.ts` yielded:
+### 1.1 Inspected Work Products & Files
+1. **Dedicated Automated Verification Test Suite**:
+   - Path: `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` (1516 lines, 58 assertions across 8 test suites).
+2. **Project Test Runner Configuration**:
+   - Path: `package.json` line 10 (`scripts.test`):
+     ```json
+     "test": "tsx tests/r1_r10_ponytail_verification.test.ts && ... && tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts"
      ```
-     ====================================================
-     TOTAL TESTS: 204
-     PASSED: 204
-     FAILED: 0
-     ====================================================
-     🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
+     Contains exactly 55 test targets chained sequentially with `&&`.
+3. **Component & Business Logic Implementations**:
+   - `src/components/AdminKelasView.tsx` (1850 lines): Class directory cards, unallocated student indicators, student roster drawer, batch transfer/reassign, class creation/rename, multi-tenant `data_siswa.kelas` updates, and SweetAlert2 notifications.
+   - `src/components/AdminDataView.tsx` (lines 40-75): 7 Master Data CSV templates (`Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`).
+   - `src/lib/dataIntegrityGuard.ts`: `normalizeCsvHeaders`, `parseAndValidateMasterCsv`, `importMasterDataFromCsv`.
+   - `src/lib/navigation.ts`: `resolveCanonicalRoute`, `evaluateTabRBAC`, `VIEW_ALIASES`, `SIDEBAR_TOUR_ALIASES`.
+
+### 1.2 Independent Tool Execution Results
+1. **TypeScript Static Typecheck**:
+   - Command: `npx tsc --noEmit`
+   - Exit code: `0`
+   - Output: Zero compilation errors or diagnostic warnings across the entire repository.
+2. **Dedicated Test Suite Execution**:
+   - Command: `npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`
+   - Exit code: `0`
+   - Verbatim Output:
      ```
-   - Total test count expanded from 85 baseline assertions to 204 assertions (+119 net new assertions). Zero assertions failed.
-2. **TypeScript Compilation**:
-   - Running `npx tsc --noEmit` exited cleanly with code 0 (zero type errors across all modules and tests).
-3. **Git Commit Inspection**:
-   - `git log -1 --stat` confirms commit `ec63216805e7035afa13b7f2b0f6f42e09b285f0`:
+     ╔══════════════════════════════════════════════════════════════════════╗
+     ║   AUTOMATED TEST SUITE: SUB MENU KELAS & MASTER DATA CSV HARMONY     ║
+     ╚══════════════════════════════════════════════════════════════════════╝
+
+     --- SUITE 1: Navigation, Tab Normalization & Route Aliasing ---
+       ✔ [PASS] 1.1: resolveCanonicalRoute("view-admin-kelas") resolves to view-admin-data with tab Data_Kelas
+       ✔ [PASS] 1.2: resolveCanonicalRoute("view-kelas") resolves to view-admin-data with tab Data_Kelas
+       ✔ [PASS] 1.3: VIEW_ALIASES contains exact mappings for view-admin-kelas and view-kelas
+       ✔ [PASS] 1.4: resolveCanonicalRoute preserves explicit override tab when provided
+       ✔ [PASS] 1.5: resolveCanonicalRoute handles trailing slashes, whitespace and newline characters
+       ✔ [PASS] 1.6: SIDEBAR_TOUR_ALIASES["view-admin-data"] includes view-admin-kelas and view-kelas
+       ✔ [PASS] 1.7: normalizeAdminTab standardizes all case, spelling, and whitespace variations to canonical Data_Kelas
+       ✔ [PASS] 1.8: normalizeAdminTab preserves existing tabs and defaults cleanly to Data_Siswa
+       ✔ [PASS] 1.9: Data_Kelas exists in AdminDataView.tsx tabs and is positioned right after Data_Siswa
+       ✔ [PASS] 1.10: AdminKelasView component mounts cleanly when activeTab === Data_Kelas without SQL query collisions
+
+     --- SUITE 2: RBAC Security Boundaries & Role Denial ---
+       ✔ [PASS] 2.1: evaluateTabRBAC grants full access to Admin & Superadmin across all case variations
+       ✔ [PASS] 2.2: evaluateTabRBAC strictly blocks Guru, Wali Kelas, Piket, Dinas, and Kepsek from Sub Menu Kelas
+       ✔ [PASS] 2.3: Role Siswa is quarantined with dedicated fallbackTab "view-ujian"
+       ✔ [PASS] 2.4: Anonymous and unauthenticated requests are strictly rejected
+       ✔ [PASS] 2.5: isMasterDataModificationAllowed permits only Admin/Superadmin and rejects all non-admins
+       ✔ [PASS] 2.6: isAdminRole consistently confirms admin status only for Admin/Superadmin
+       ✔ [PASS] 2.7: Sidebar menu items strictly isolate Master Data & Sub Menu Kelas from non-admin roles
+       ✔ [PASS] 2.8: AdminKelasView includes component-level non-admin security lock banner
+
+     --- SUITE 3: Sub-Menu Kelas Architecture & Demographics ---
+       ✔ [PASS] 3.1: parseTingkat accurately derives grade levels 10, 11, 12, and Lainnya
+       ✔ [PASS] 3.2: isUnassignedClass reliably catches empty, null, dash, and unassigned text tokens
+       ✔ [PASS] 3.3: Directory aggregation seamlessly combines dbClasses, customClasses, and active student classes
+       ✔ [PASS] 3.4: Demographics calculation accurately computes total, male, and female student counts per class
+       ✔ [PASS] 3.5: Alumni exclusion strictly omits graduated students (status === "Lulus") from active class counts
+       ✔ [PASS] 3.6: Homeroom teacher (wali_kelas) is accurately bound to corresponding class cards
+       ✔ [PASS] 3.7: Hierarchical sorting correctly arranges classes by grade level (10 -> 11 -> 12 -> Lainnya) then alphanumerically
+       ✔ [PASS] 3.8: Dedicated unassigned students pool cleanly captures students with null, empty, or unassigned class tokens
+
+     --- SUITE 4: Centralized Student Allocation Workspace & Invariants ---
+       ✔ [PASS] 4.1: Batch student transfer updates class counts and student records cleanly
+       ✔ [PASS] 4.2: Inbound allocation of unassigned student decrements unassigned count and increments target class
+       ✔ [PASS] 4.3: Cascading class rename updates data_siswa, wali_kelas, and jadwal_pelajaran within tenant boundaries
+       ✔ [PASS] 4.4: Zero-student delete guard strictly forbids deleting classes with enrolled active students
+       ✔ [PASS] 4.5: Permitted deletion of empty classes removes entries while preserving other schools
+       ✔ [PASS] 4.6: AdminKelasView strictly enforces multi-tenant scoping via sekolah_id filters
+       ✔ [PASS] 4.7: AdminKelasView and AdminDataView synchronize via sipjam:kelas-updated custom event
+
+     --- SUITE 5: 7 Master Data CSV Templates & Invariants ---
+       ✔ [PASS] 5.1: All 7 Master Data entities are registered in AdminDataView.tsx templates dictionary
+       ✔ [PASS] 5.2: Data_Kelas template defines filename "Template_Data_Kelas.csv" with headers [nama_kelas, tingkat, jurusan]
+       ✔ [PASS] 5.3: Invariant satisfied: Kalender_Pendidikan template omits "id" and legacy strings preventing 22P02
+       ✔ [PASS] 5.4: Invariant satisfied: Jadwal_Pelajaran template omits "id" and legacy strings preventing 22P02
+       ✔ [PASS] 5.5: Invariant satisfied: Data_Guru template includes "sekolah_id" in headers and sample
+       ✔ [PASS] 5.6: Data_Siswa, Data_Mapel, and Wali_Kelas templates conform precisely to database column structures
+       ✔ [PASS] 5.7: AdminKelasView has dedicated handleDownloadClassTemplate with BOM and valid headers
+
+     --- SUITE 6: CSV Parsing, Normalization & Row Error Feedback ---
+       ✔ [PASS] 6.1: normalizeCsvHeaders successfully normalizes class, student, and entity aliases
+       ✔ [PASS] 6.2: Header "nama" is scoped accurately to each entity without cross-table collisions
+       ✔ [PASS] 6.3: Multi-delimiter parsing auto-detects and parses comma, semicolon, tab, and pipe CSVs
+       ✔ [PASS] 6.4: Multi-line endings (Windows CRLF, Unix LF, bare CR) parse cleanly without blank row pollution
+       ✔ [PASS] 6.5: RFC 4180 escaped quotes and comma-within-quotes parsed cleanly
+       ✔ [PASS] 6.6: Excel apostrophes ("'") are cleanly stripped from NISN, NIP, and phone numbers
+       ✔ [PASS] 6.7: Non-UUID conversion generates valid UUIDs preventing PostgreSQL 22P02 syntax errors
+       ✔ [PASS] 6.8: Empty required columns throw descriptive error with exact row number (Baris ${i})
+       ✔ [PASS] 6.9: Dummy/test names in class and student records are rejected with exact row numbers
+       ✔ [PASS] 6.10: In-file duplicate class names and student keys are rejected with Baris ${i} feedback
+       ✔ [PASS] 6.11: Uploading mismatched CSV templates triggers immediate pre-validation error
+
+     --- SUITE 7: Importer Idempotency & Database Integrity ---
+       ✔ [PASS] 7.1: Student re-import matches by (sekolah_id, nisn) and updates row in-place without duplicate records
+       ✔ [PASS] 7.2: Mixed batch import correctly handles existing NISNs, new NISNs, and unassigned/hyphen NISNs
+       ✔ [PASS] 7.3: data_kelas upsert targets "sekolah_id, nama_kelas" for multi-tenant isolation
+     [dataIntegrityGuard] Table data_kelas unavailable (PGRST205/missing). Falling back to syncing classes in wali_kelas.
+       ✔ [PASS] 7.4: data_kelas gracefully falls back to syncing classes in wali_kelas on PGRST205 schema cache error
+       ✔ [PASS] 7.5: Database errors (23503 FK, 42501 RLS, 23502 NOT NULL) are mapped to user-friendly messages
+
+     --- SUITE 8: Project Test Runner Integration & Zero Regression (R4) ---
+       ✔ [PASS] 8.1: tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts is integrated into package.json test script
+       ✔ [PASS] 8.2: All 55 test files verified on filesystem with zero dropped baseline tests
+
+     ========================================================================
+     TOTAL CHECKS: 58 | PASSED: 58 | FAILED: 0
+     ========================================================================
+
+     🎉 ALL 8 SUITES & 58 TEST CHECKS PASSED 100%!
      ```
-     tests/sistem_blok_verification.test.ts | 1202 +++++++++++++++++++++++++++++++-
-     1 file changed, 1201 insertions(+), 1 deletion(-)
-     ```
-4. **Scope Coverage Inspection in `tests/sistem_blok_verification.test.ts`**:
-   - **Section 6** (lines 603–771): AST validation for `TargetBlokType` union (`'sekolah' | 'angkatan' | 'kelas' | 'guru'`), time range fields (`is_full_day`, `jam_mulai`, `jam_selesai`), UI state hooks, form inputs, validation guardrails (`jamMulai >= jamSelesai` rejected), and table badges.
-   - **Section 7** (lines 772–963): Live database CRUD verification across all 4 target levels:
-     * Line 817: Target `sekolah` (full day) -> persisted and verified.
-     * Line 836: Target `angkatan` ('10', bounded 07:30–10:00) -> persisted and verified.
-     * Line 855: Target `kelas` ('X-A', bounded 08:00–11:30) -> persisted and verified.
-     * Line 874: Target `guru` (sample teacher fixture, bounded 12:30–15:00) -> persisted and verified.
-     * Line 912: Update operation -> verified persisted.
-   - **Section 8** (lines 964–1433): 60 in-memory isolation and stress tests:
-     * [8.1] Class scope masking & strict class isolation (lines 970–1034).
-     * [8.2] Cohort/Angkatan Roman vs Arabic numerals matching & false-positive isolation (lines 1035–1141).
-     * [8.3] Teacher scope masking & strict teacher isolation (lines 1142–1210).
-     * [8.4] Time range overlap & exact boundary touches (lines 1211–1294).
-     * [8.5] Multi-rule concurrent evaluation matrix (lines 1295–1406).
-     * [8.6] In-memory edge cases & fault tolerance against empty/null inputs (lines 1407–1433).
-   - **Section 9** (lines 1434–1662): Mixed schedule checkout gate parity (lines 1438–1661) ensuring teachers with both blocked and unblocked schedules must fulfill both Jurnal KBM and Jurnal Kegiatan unless exempt by `presensiDatang`.
-   - **Section 10** (lines 1663–1791): Legacy backward compatibility verifying null/missing target scope and time fields default safely to whole-school full-day blocks without runtime exceptions.
-5. **Live Database Cleanup & Isolation Verification**:
-   - Section 7 implements a robust pre-cleanup (line 803) and `try ... finally` block (lines 801–962). In `finally`, `section7Ids` (`...b110` through `...b113`) are deleted, and a verification query asserts `(remainingRecords?.length ?? 0) === 0`.
-   - Section 10 implements pre-cleanup (line 1728) and `try ... finally` block (lines 1727–1780) for `legacyDbId` (`...b115`).
-   - Querying the live database via Supabase client confirmed exactly 0 residual test records in `public.sistem_blok`:
-     ```
-     All sistem_blok rows in db count: 2 (both are production records)
-     Residual test rows matching test IDs: 0
-     ```
-   - Target teacher fixture lookup (lines 806–814) safely reads an existing `data_guru` record, preventing foreign key constraint violations (`target_guru_id REFERENCES public.data_guru(id)`).
-6. **Schedule Masking Isolation & Boundary Touches**:
-   - `isTimeRangeOverlap('07:30', '09:00', '09:00', '11:00', false)` returned `false` (lines 1253–1256): period ending exactly when block starts does NOT overlap.
-   - `isTimeRangeOverlap('11:00', '12:30', '09:00', '11:00', false)` returned `false` (lines 1259–1262): period starting exactly when block ends does NOT overlap.
-   - Arabic $\leftrightarrow$ Roman numerals bidirectional matching:
-     * `'10'` matches `'10 RPL 2'`, `'Kelas 10-A'`, `'10.TKJ'`, `'10'`, `'X Merdeka'`, `'X RPL 1'`, `'X.1'`, `'Kelas X'`, `'X'`.
-     * Target `'10'` / `'X'` does NOT match Grade 11 (`'XI RPL 1'`), Grade 12 (`'XII TITL'`), or prefixed numbers (`'100 RPL'`, `'101 TKJ'`).
-     * Target `'11'` / `'XI'` does NOT match Grade 10 (`'X Merdeka'`), Grade 12 (`'XII TKJ'`), or prefixed number (`'110 TKJ'`).
-     * Target `'12'` / `'XII'` does NOT match Grade 10, Grade 11, or prefixed number (`'120 RPL'`).
-   - Multi-Rule Concurrency: Evaluated 3 rules active simultaneously (morning cohort 10, afternoon teacher Pak Budi, full-day class XII TITL) against 7 distinct teacher/schedule permutations, all 7 assertions passed as expected.
+3. **Next.js Production Build**:
+   - Command: `npm run build`
+   - Exit code: `0`
+   - Output: Turbopack compiled successfully in 2.1s; all 13 static and dynamic routes generated cleanly.
+4. **Full Regression Test Suite Execution**:
+   - Command: `npm test`
+   - Exit code: `0`
+   - Output: All 55 test files ran sequentially and passed 100% with zero regressions.
+5. **Git Status & Working Tree**:
+   - Command: `git status`
+   - Branch: `main`, up to date with `origin/main`. Working directory clean of any uncommitted project code.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Integrity Check**:
-   - Inspected test assertions across all sections. All assertions evaluate actual workflow methods (`evaluateScheduleBlock`, `isKelasInAngkatan`, `isTimeRangeOverlap`, `parseTimeToMinutes`, `canTeacherPresensiPulang`), live Supabase API responses, or static source ASTs.
-   - There are no hardcoded test shortcuts, dummy facades, or skipped requirements.
-2. **Scope Completeness (Requirements R1 & R2)**:
-   - The test additions thoroughly cover all 4 target scopes (`sekolah`, `angkatan`, `kelas`, `guru`) across AST inspection (Section 6), live database persistence (Section 7), and schedule evaluation/isolation (Section 8).
-   - Both full-day (`is_full_day: true`) and bounded time ranges (`is_full_day: false`, `jam_mulai`, `jam_selesai`) are tested in schema, UI validation, database CRUD, and mathematical interval intersection.
-3. **Database Hygiene & Safety**:
-   - Live DB tests use explicit deterministic UUIDs (`...b110` through `...b113`, and `...b115`).
-   - All DB operations are protected by `try / finally` blocks that guarantee deletion even if an intermediate assertion fails.
-   - Pre-cleanup ensures no leftover rows from prior canceled runs.
-   - Foreign key safety is enforced by querying a real teacher ID or falling back to `null`.
-   - Direct verification proved 0 lingering test artifacts remain in the database.
-4. **Adversarial Boundary & Concurrency Validation**:
-   - Section 8 stress-tests exact boundary touches (`07:30–09:00` vs `09:00–11:00`), open intervals, enclosure, and non-overlapping schedules before/after.
-   - Cohort matching is guarded by word boundary regular expressions in `src/lib/workflow.ts`, preventing false positive matches on numbers like `100` or `110`.
-   - Multi-rule concurrency ensures that overlapping rules for different entities and times do not bleed into each other.
-5. **Backward Compatibility**:
-   - Section 10 confirms that legacy records lacking new columns or with `null` values default safely to whole-school, full-day blocks without throwing runtime exceptions.
-   - All 85 baseline assertions from earlier milestones remain intact and passing.
+1. **Integrity Violation Analysis**:
+   - *Observation*: Inspected `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`. Real production functions (`resolveCanonicalRoute`, `evaluateTabRBAC`, `normalizeAdminTab`, `normalizeCsvHeaders`, `parseAndValidateMasterCsv`, `importMasterDataFromCsv`, `isAdminRole`) and component ASTs (`AdminDataView.tsx`, `AdminKelasView.tsx`) are imported and evaluated.
+   - *Logic*: The test assertions invoke authentic production logic without mock bypasses, dummy stubs, or hardcoded return statements. The test assertions strictly verify actual algorithm output against expected states.
+   - *Conclusion*: Zero integrity violations. No facade implementations, no shortcuts, and no fabricated results.
+
+2. **Verification of Requirements Against ORIGINAL_REQUEST.md & PROJECT.md**:
+   - **R1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa)**:
+     * Suite 1 verifies route resolution (`view-admin-kelas` and `view-kelas` -> `view-admin-data` with `tab: 'Data_Kelas'`), tab placement in `AdminDataView` (immediately after `Data_Siswa`), and conditional mounting of `<AdminKelasView user={user} />`.
+     * Suite 2 verifies RBAC security: only Admin and Superadmin may access; all other roles (Guru, Wali Kelas, Piket, Dinas, Kepsek, Anonymous) are blocked; Siswa is safely quarantined to `view-ujian`.
+     * Suite 3 verifies class directory aggregation, gender demographics, alumni filtering (`status === 'Lulus'`), homeroom teacher binding (`wali_kelas`), and unallocated students pool.
+     * Suite 4 verifies student allocation workspace: batch student transfer, inbound allocation from unassigned pool, cascading class renames across `data_siswa`, `wali_kelas`, and `jadwal_pelajaran`, zero-student delete guard, and `sipjam:kelas-updated` custom event sync.
+   - **R2 (Penyelarasan Template Master Data dengan Skema Database)**:
+     * Suite 5 verifies template registrations for all 7 entities: `Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`.
+     * Preserves critical database schema invariants: Kalender & Jadwal templates omit `id` to prevent PostgreSQL 22P02 syntax errors; Guru template requires `sekolah_id`.
+   - **R3 (Pemrosesan dan Kompatibilitas Unggah CSV)**:
+     * Suite 6 verifies header normalization, entity-scoped name collisions, multi-delimiter parsing (comma, semicolon, tab, pipe), line ending tolerance (CRLF, LF, CR), escaped quotes, Excel apostrophe stripping on numbers, row-exact errors (`Baris ${i}`), anti-dummy guards, and duplicate record detection.
+     * Suite 7 verifies idempotency on student re-import by `(sekolah_id, nisn)`, multi-tenant upsert targeting `(sekolah_id, nama_kelas)`, and graceful fallback to `wali_kelas` upon missing table (`PGRST205`).
+   - **R4 (Batasan Non-Regresi / Zero Regression)**:
+     * Suite 8 verifies all 55 test files exist on disk and `package.json` contains the updated test runner chain.
+     * `npm test` passes all 55 test files without any broken baseline tests.
+     * `npm run build` succeeds cleanly under Next.js 16 and Turbopack.
+
+3. **Synthesis & Alignment**:
+   - All acceptance criteria from `ORIGINAL_REQUEST.md` and `PROJECT.md` are fulfilled with authentic, repeatable automated tests and zero regression across the existing 7 modules.
 
 ---
 
-## 3. Caveats
+## 3. Adversarial Review & Challenge Report
 
-- **PostgREST Remote Schema Cache**:
-  As noted in Section 7 helper `insertBlockWithFallback`, live remote Supabase instances that have not reloaded schema cache might return `PGRST204` if queried with newly added columns before reload. The test file safely handles this fallback while still testing the live CRUD lifecycle.
-- **Production Build (`npm run build`)**:
-  Static type check (`tsc --noEmit`) passes cleanly (0 errors). Production build execution belongs to Milestone 4 final gate.
+**Overall Risk Assessment**: LOW
+
+### Challenges & Stress-Test Evaluations
+
+1. **Challenge 1: In-Flight Concurrency & Database Schema Cache Drift**
+   - *Attack Scenario*: During a CSV upload of class data, remote Supabase instance may return `PGRST205` (table `data_kelas` missing from PostgREST cache).
+   - *Defense & Stress Test*: Tested in Suite 7.4. `importMasterDataFromCsv` detects `PGRST205` and automatically synchronizes the class names into `wali_kelas`, ensuring the administrator's workflow is not halted. **PASSED**.
+
+2. **Challenge 2: Multi-Tenant Data Mutation Boundary Leak**
+   - *Attack Scenario*: Admin at School A renames class `X Merdeka` to `X Unggulan`. Does this update classes for School B with identical class name?
+   - *Defense & Stress Test*: Tested in Suite 4.3 and 4.6. Every update query enforces `.eq('sekolah_id', sekolahId)`. School B's students, teachers, and schedules remain untouched. **PASSED**.
+
+3. **Challenge 3: Student Re-import Record Duplication**
+   - *Attack Scenario*: Admin uploads a modified CSV with updated class assignments for existing students. Naive import without unique key matching generates duplicate student rows.
+   - *Defense & Stress Test*: Tested in Suite 7.1 and 7.2. Importer queries existing students by `(sekolah_id, nisn)`, retains original student UUIDs, and performs an in-place update. **PASSED**.
+
+4. **Challenge 4: Accidental Cascading Deletion of Enrolled Students**
+   - *Attack Scenario*: Admin attempts to delete a class card that still has enrolled students.
+   - *Defense & Stress Test*: Tested in Suite 4.4 and in `AdminKelasView.tsx`. The delete action triggers a zero-student guard that immediately blocks deletion and informs the user to reassign students first. **PASSED**.
+
+5. **Challenge 5: Non-Standard CSV Formats (Excel Indonesian Locale & Apostrophe Padding)**
+   - *Attack Scenario*: User saves CSV in Indonesian Excel (semicolon delimited, UTF-8 BOM, apostrophe-padded NISN `'114367407`).
+   - *Defense & Stress Test*: Tested in Suite 6.3, 6.6, and 5.7. The parser strips BOM, auto-detects semicolons, strips leading apostrophes, and correctly parses all records. **PASSED**.
 
 ---
 
-## 4. Conclusion
+## 4. Caveats
 
-- The expanded `tests/sistem_blok_verification.test.ts` (Commit `ec63216`) meets all architectural, functional, security, and backward compatibility requirements.
-- Zero integrity violations detected.
-- All 204 assertions pass without failure.
-- **Verdict**: **`APPROVE`**.
+No caveats. All 58 test assertions pass deterministically, the full project regression suite of 55 test files passes cleanly, static type checking passes with 0 errors, Next.js production build succeeds, and git tree is up to date on `main`.
 
 ---
 
-## 5. Verification Method
+## 5. Conclusion
 
-To independently reproduce and verify this assessment:
+Milestone 3 deliverables have been thoroughly reviewed and stress-tested. The test suite `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` provides complete, high-fidelity verification of all user requirements (R1–R4). The codebase preserves 100% operational integrity across existing modules with zero regression.
 
-1. **Run Verification Test Suite**:
+**VERDICT: APPROVE**
+
+---
+
+## 6. Verification Method
+
+To independently reproduce this verification:
+1. **Run dedicated test suite**:
    ```powershell
-   npx tsx tests/sistem_blok_verification.test.ts
+   npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts
    ```
-   *Expected Result*: Exits with code 0, prints `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`.
-
-2. **Run TypeScript Static Type Check**:
+   *Expected*: Exit code 0, 58/58 passed.
+2. **Run TypeScript static typecheck**:
    ```powershell
    npx tsc --noEmit
    ```
-   *Expected Result*: Exits with code 0 with zero errors.
-
-3. **Verify Database Cleanliness (0 residual test rows)**:
+   *Expected*: Exit code 0 (zero errors).
+3. **Run Next.js production build**:
    ```powershell
-   npx tsx -r dotenv/config -e "import { supabase } from './src/lib/supabaseClient'; async function c() { const { data } = await supabase.from('sistem_blok').select('id').in('id', ['00000000-0000-0000-0000-00000000b110', '00000000-0000-0000-0000-00000000b111', '00000000-0000-0000-0000-00000000b112', '00000000-0000-0000-0000-00000000b113', '00000000-0000-0000-0000-00000000b115']); console.log('Residual test rows:', data?.length ?? 0); } c();" dotenv_config_path=.env.local
+   npm run build
    ```
-   *Expected Result*: Prints `Residual test rows: 0`.
-
-4. **Verify Commit Log**:
+   *Expected*: Exit code 0, Turbopack build succeeds.
+4. **Run full project regression suite**:
    ```powershell
-   git log -1 --oneline
+   npm test
    ```
-   *Expected Result*: Shows `ec63216 test(sistem-blok): expand automated verification test suite to cover all target levels, time ranges, and isolation matrix`.
+   *Expected*: Exit code 0, all 55 test suites pass.

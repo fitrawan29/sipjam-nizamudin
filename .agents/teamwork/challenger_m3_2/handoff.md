@@ -1,147 +1,202 @@
-# Adversarial Challenger Handoff Report: Milestone 3 Verification
+# Handoff Report: Empirical Challenge & Non-Regression Gate (Milestone 3)
 
-**Agent**: `challenger_m3_2`  
-**Role**: Critic, Specialist (Empirical Challenger)  
-**Milestone**: Milestone 3 — Automated Verification Test Suite Expansion  
-**Target File**: `tests/sistem_blok_verification.test.ts`  
-**Verdict**: **APPROVE**  
-**Date**: 2026-11-02  
+**Author**: `challenger_m3_2` (Empirical Challenger)  
+**Role**: critic, specialist  
+**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\`  
+**Milestone**: Milestone 3 — Dedicated Automated Verification Test Suite & Final Non-Regression Gate  
+**Date**: 2026-11-06  
+
+---
+
+## Challenge Summary
+
+**Overall risk assessment**: LOW
+
+All empirical verification gates, non-regression checks, and role preservation tests have been executed directly. Zero regressions were detected. All 55 test files in the project pipeline passed with exit code 0. Static typecheck and Next.js Turbopack production builds passed cleanly.
+
+```
+========================================================================
+FINAL VERDICT: APPROVE
+========================================================================
+```
 
 ---
 
 ## 1. Observation
 
-1. **Direct Execution of Expanded Verification Suite**:
-   Command: `npx tsx tests/sistem_blok_verification.test.ts`  
-   Exit code: `0`  
-   Verbatim output:
-   ```
-   ====================================================
-   TOTAL TESTS: 204
-   PASSED: 204
-   FAILED: 0
-   ====================================================
-   🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
-   ```
+### 1.1 Role-Specific Verification Test Suites (Zero Feature Loss)
+The four specific role verification test suites were executed independently and directly observed:
 
-2. **Pre-Run vs Post-Run Database Schedule Counts (`public.jadwal_pelajaran`)**:
-   Empirical query before test run:
-   - Command: `supabase.from('jadwal_pelajaran').select('*', { count: 'exact', head: true })`
-   - Pre-run count: `51` rows.
-   - Sample row inspection: 51 rows fetched and hashed/fingerprinted across columns (`id`, `kelas`, `mata_pelajaran`, `hari`, `jam_mulai`, `jam_selesai`).
-   Empirical query after test run:
-   - Post-run count: `51` rows.
-   - Delta: `(51 - 51) = 0` (100% identical).
-   - Sample row verification: `51 / 51` sample rows matched verbatim in identity and column values. Zero rows were deleted or modified.
+1. **Master Data Admin Role Restriction Suite**:
+   - Command: `npx tsx tests/master_data_admin_role_restriction.test.ts`
+   - Exit code: `0`
+   - Output:
+     ```
+     --- Starting Master Data Role Restriction Verification ---
+     [Test 1] Validating role checks... -> ✓ Test 1 passed
+     [Test 2] Validating master data endpoint recognition -> ✓ Test 2 passed
+     [Test 3] Validating Navigation Tab RBAC -> ✓ Test 3 passed
+     [Test 4] Validating direct checkMasterDataMutationGuard -> ✓ Test 4 passed
+     [Test 5] Validating getTenantSupabaseClient role enforcement across all 16 master tables -> ✓ Test 5 passed
+     [Test 6] Validating serverTenantContext with global supabase client -> ✓ Test 6 passed
+     [Test 7] Validating HTTP method whitespace trimming -> ✓ Test 7 passed
+     [Test 8] Validating component-level guards for master data -> ✓ Test 8 passed
+     ======================================================
+     ALL MASTER DATA ROLE RESTRICTION TESTS PASSED (8/8)
+     ======================================================
+     ```
 
-3. **Section 7 & Section 10 Teardown Hygiene in `public.sistem_blok`**:
-   The verification suite inserts test UUIDs:
-   - `00000000-0000-0000-0000-00000000b110` (Sekolah target)
-   - `00000000-0000-0000-0000-00000000b111` (Angkatan target)
-   - `00000000-0000-0000-0000-00000000b112` (Kelas target)
-   - `00000000-0000-0000-0000-00000000b113` (Guru target)
-   - `00000000-0000-0000-0000-00000000b115` (Section 10 legacy record)
-   
-   Empirical check post-run:
-   - Query: `supabase.from('sistem_blok').select('id, nama_kegiatan').in('id', [...testUuids])`
-   - Result: Exactly `0` orphaned rows found.
-   - Total rows in `public.sistem_blok` before test: `2`.
-   - Total rows in `public.sistem_blok` after test: `2`.
-   - Zero unexpected or uninvited records remained.
+2. **Dinas Pendidikan Monitoring Suite**:
+   - Command: `npx tsx tests/dinas_pendidikan_monitoring.test.ts`
+   - Exit code: `0`
+   - Output:
+     ```
+     SUITE 1: SUPERADMIN REGIONAL ASSIGNMENT (R4.1) -> 5/5 PASSED
+     SUITE 2: REGIONAL SCOPING & ZERO-LEAK ISOLATION (R4.2) -> 5/5 PASSED
+     SUITE 3: RBAC & READ-ONLY ISOLATION (R4.3) -> 5/5 PASSED
+     SUITE 4: EXECUTIVE AGGREGATION METRICS & ATTENTION DETECTION (R4.4) -> 4/4 PASSED
+     SUITE 5: DRILLDOWN SCOPE SWITCHING & SESSION INTEGRITY (R4.4) -> 3/3 PASSED
+     SUITE 6: PRINT SYSTEM ACCESS & LAYOUT HYGIENE (R4.3 & R3) -> 3/3 PASSED
+     ======================================================================
+     Total Test Assertions : 25 | Passed: 25 | Failed: 0
+     🎉 ALL 6 TEST SUITES PASSED WITH 100% SUCCESS!
+     ======================================================================
+     ```
 
-4. **Adversarial Stress-Testing of Section 7 Teardown Resilience**:
-   In `tests/adversarial_sistem_blok_challenger.ts`:
-   - Inserted stress block records with UUIDs `00000000-0000-0000-0000-00000000c110` through `c113`.
-   - Simulated mid-execution failure by throwing an uncaught exception `SIMULATED_TEST_RUNNER_EXCEPTION`.
-   - Verified that the `try / finally` teardown handler safely caught and executed cleanup.
-   - Query after simulated crash: exactly `0` stress artifacts remained.
+3. **Sistem Blok Verification Suite**:
+   - Command: `npx tsx tests/sistem_blok_verification.test.ts`
+   - Exit code: `0`
+   - Output:
+     ```
+     Section 1: R1 - Manajemen Sistem Blok (CRUD) & Schema -> PASSED
+     Section 1.7: Live Database CRUD Execution -> PASSED
+     Section 2: R2 - Penyesuaian Tampilan Jadwal & Masking -> PASSED
+     Section 3: R3 - Jurnal Kegiatan Guru -> PASSED
+     Section 4: R4 - Batasan Implementasi & Minimalist Principles -> PASSED
+     Section 5: Adversarial Edge Cases & Open Issues Ledger QA -> PASSED
+     Section 6: Target Scope & Time Range AST & Type Validation -> PASSED
+     Section 7: Live Database Multi-Target CRUD Verification -> PASSED
+     Section 8: Granular Schedule Masking & Target/Time Isolation Matrix -> PASSED
+     Section 9: Journal Submission Parity & Mixed Schedule Fulfillment -> PASSED
+     Section 10: Backward Compatibility with Legacy Records -> PASSED
+     ====================================================
+     TOTAL TESTS: 204 | PASSED: 204 | FAILED: 0
+     🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
+     ====================================================
+     ```
 
-5. **Adversarial Oracle Testing of Section 10 Legacy Record Defaulting**:
-   Tested 5 legacy/abnormal block rule variants:
-   - Variant 1: All target & time fields explicitly `null`.
-   - Variant 2: Target & time fields completely undefined (missing object keys).
-   - Variant 3: Empty string `tipe_target: ''` and empty string times `jam_mulai: ''`.
-   - Variant 4: Legacy value `tipe_target: 'keseluruhan'`.
-   - Variant 5: `is_full_day: false` with missing `jam_mulai` and `jam_selesai`.
-   
-   Evaluated against a matrix of 10 disparate schedule configurations (covering Arabic/Roman cohorts: 10, X, 11, XI, 12, XII; custom class names; edge-case schedules with null/empty attributes):
-   - Total evaluations: `50` permutations.
-   - Passed evaluations: `50 / 50` (100% mask rate, zero crashes, zero `NaN`/`undefined` errors, zero false negatives).
+4. **Wali Kelas & Piket Intervensi Presensi Siswa Suite**:
+   - Command: `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`
+   - Exit code: `0`
+   - Output:
+     ```
+     1. UNIT TEST: isIntervensiAllowed & isWaliKelasIntervensiAllowed -> 10/10 PASSED
+     2. VERIFY ADMIN CONFIGURATION (AdminConfigView.tsx) -> 2/2 PASSED
+     3. VERIFY WALI KELAS PRESENSI (RekapSiswaView.tsx) -> 5/5 PASSED
+     4. VERIFY PIKET COLLISION PREVENTION (PiketView.tsx) -> 5/5 PASSED
+     5. VERIFY JURNAL KBM FOOTNOTE (GuruJurnal.tsx) -> 2/2 PASSED
+     6. VERIFY DASHBOARD QUICK ACCESS (HomeViewGuru.tsx) -> 2/2 PASSED
+     7. VERIFY SEPARATION OF ABSENSI KELAS VS PRESENSI MAPEL -> 10/10 PASSED
+     8. VERIFY STATUS BOLOS, FALLBACK SYSTEM, & PIKET 30-MIN PULANG -> 20/20 PASSED
+     ======================================================================
+     SUMMARY: Total 56 | Passed: 56 | Failed: 0
+     VERDICT: ALL REQUIREMENTS VERIFIED AND PASSED SUCCESSFULLY!
+     ======================================================================
+     ```
 
-6. **PostgreSQL Single-Session Concurrency Discovery**:
-   - Investigation proved that calling `supabase.rpc('verify_login', ...)` for `superadmin` generates a new session token that invalidates previously active session tokens for that user.
-   - Apparent zero-row results during cross-process execution were strictly caused by RLS filtering expired session tokens, not table deletions. Re-authenticating confirmed that `jadwal_pelajaran` maintained all 51 rows continuously.
+### 1.2 Dedicated Milestone 3 Suite
+- **File**: `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`
+- Command: `npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`
+- Exit code: `0`
+- Output:
+  ```
+  TOTAL CHECKS: 58 | PASSED: 58 | FAILED: 0
+  🎉 ALL 8 SUITES & 58 TEST CHECKS PASSED 100%!
+  ```
 
-7. **Static Type Compilation**:
-   Command: `npx tsc --noEmit`  
-   Exit code: `0` (Zero compilation errors across the entire codebase).
+### 1.3 Full Project Regression Gate (`npm test`)
+- Command: `npm test`
+- Exit code: `0`
+- Result: All 55 test files executed in sequential order via `package.json` script `test`. All 55 test files completed with 100% passes and zero failures.
+
+### 1.4 TypeScript Static Typecheck
+- Command: `npx tsc --noEmit`
+- Exit code: `0`
+- Result: Zero type diagnostics or errors detected across the entire codebase.
+
+### 1.5 Production Build Gate
+- Command: `npm run build`
+- Exit code: `0`
+- Output:
+  ```
+  ▲ Next.js 16.3.4 (Turbopack)
+  ✓ Compiled successfully in 2.4s
+  ✓ Generating static pages using 14 workers (13/13) in 1440ms
+  Finalizing page optimization ...
+  ```
 
 ---
 
 ## 2. Logic Chain
 
-1. **Schedule Invariant Verification (Requirement 1)**:
-   - Direct query before test: 51 rows in `jadwal_pelajaran` (Observation 2).
-   - Test executed completely (Observation 1).
-   - Direct query after test: 51 rows in `jadwal_pelajaran` (Observation 2).
-   - Exact attribute matching for all 51 rows confirmed no alterations or deletions occurred.
-   - Logical conclusion: Schedule count and content invariant is 100% satisfied.
+1. **Role Boundary & Non-Regression Soundness**:
+   - Observation 1.1 confirms that role-specific restrictions for Admin (`master_data_admin_role_restriction.test.ts`), Dinas Pendidikan (`dinas_pendidikan_monitoring.test.ts`), Sistem Blok scheduling (`sistem_blok_verification.test.ts`), and Wali Kelas vs Piket boundaries (`wali_kelas_and_piket_intervensi.test.ts`) are 100% passing (8 + 25 + 204 + 56 = 293 total passing assertions across these 4 suites).
+   - In particular, `evaluateTabRBAC` strictly enforces that only `Admin` and `Superadmin` can access `view-admin-data` and `Data_Kelas`, while non-admin roles (`Guru`, `Wali Kelas`, `Piket`, `Dinas`, `Kepsek`) are strictly blocked, and `Siswa` is redirected to `view-ujian`.
 
-2. **Multi-Target Cleanup Hygiene (Requirement 2)**:
-   - Section 7 inserts 4 target levels (sekolah, angkatan, kelas, guru) and updates angkatan (Observation 3).
-   - The `finally` block in lines 944-962 of `tests/sistem_blok_verification.test.ts` executes cleanup by explicit ID list.
-   - Empirical query confirmed 0 test artifacts remain across all 4 target levels and legacy records (Observation 3).
-   - Stress testing under simulated failure confirmed teardown reliability (Observation 4).
-   - Logical conclusion: Cleanup is airtight with zero orphaned records.
+2. **Sub-Menu Kelas & Allocation Robustness**:
+   - Observation 1.2 confirms that `admin_submenu_kelas_dan_alokasi_siswa.test.ts` validates route aliasing (`view-admin-kelas`, `view-kelas`), grade parsing (`parseTingkat`), multi-tenant isolation, demographic breakdown, batch transfer, inbound student allocation, cascading rename, empty-class deletion guards, and custom event sync (`sipjam:kelas-updated`).
 
-3. **Legacy Record Defaulting Backward Compatibility (Requirement 3)**:
-   - In `src/lib/workflow.ts`, fallback guards `rule.tipe_target || 'sekolah'`, `b.tipe_target === 'sekolah' || b.tipe_target === 'keseluruhan' || !b.tipe_target`, and `b.is_full_day !== false || (!b.jam_mulai && !b.jam_selesai)` govern legacy evaluation.
-   - In Section 10 and our adversarial oracle (Observation 5), evaluating 5 legacy variants across 10 schedule permutations (50 evaluations total) yielded 100% masking accuracy with 0 errors.
-   - Logical conclusion: Legacy backward compatibility is robust and proven empirically.
+3. **Master Data CSV Template Harmonization**:
+   - Observation 1.2 and source inspection of `src/components/AdminDataView.tsx` (lines 228-265) confirm that all 7 master data templates (`Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`) precisely align with PostgreSQL schema definitions while adhering to critical legacy test invariants (omitting `id` in Kalender and Jadwal to prevent `22P02`, and retaining `sekolah_id` in Guru).
 
-4. **Overall Suite Pass (Requirement 4)**:
-   - `npx tsx tests/sistem_blok_verification.test.ts` runs 204 assertions and passes 204/204 (Observation 1).
-   - `npx tsc --noEmit` exits with 0 errors (Observation 7).
-   - Logical conclusion: Milestone 3 test suite expansion meets all acceptance criteria.
+4. **Zero Codebase Regression**:
+   - Observation 1.3 proves that running the full test suite (`npm test`, 55 test files) exits with `0`. None of the previous 54 test suites were compromised by the changes in Milestone 1, 2, or 3.
+   - Observation 1.4 and 1.5 confirm that Next.js 16.3.4 with React 19 builds cleanly and passes all type checks.
 
 ---
 
 ## 3. Caveats
 
-- **Remote PostgREST Schema Cache**: The remote PostgreSQL instance may not yet have applied or reloaded the migration columns (`tipe_target`, `is_full_day`, etc.). The fallback handling (`insertBlockWithFallback`) in the test suite and the defensive evaluation in `workflow.ts` successfully insulate the application and test runs from schema cache latency.
-- No caveats regarding test correctness or schedule integrity.
+No caveats. All test suites were run directly in the target environment; all 55 test suites passed deterministically; database live CRUD tests completed with full teardown; and production build artifacts were verified.
 
 ---
 
 ## 4. Conclusion
 
-- **Verdict**: **APPROVE**
-- `tests/sistem_blok_verification.test.ts` satisfies all requirements:
-  1. `public.jadwal_pelajaran` schedule counts and records remain 100% unaltered (51 rows before = 51 rows after).
-  2. All 4 target levels (sekolah, angkatan, kelas, guru) and time ranges inserted in Section 7 (and legacy in Section 10) are completely cleaned up with zero orphaned rows.
-  3. Section 10 legacy defaulting evaluates without error or false negative across all schedules.
-  4. All 204 assertions pass cleanly with 0 failures, and TypeScript types compile with 0 errors.
+The implementation and verification for Milestone 3 (and the overarching Sub Menu Kelas & Penyelarasan Template Master Data feature) satisfy all acceptance criteria specified in `ORIGINAL_REQUEST.md` and `PROJECT.md` with zero regressions and complete role integrity preservation.
+
+**VERDICT: APPROVE**
 
 ---
 
 ## 5. Verification Method
 
-To independently verify this verdict:
+To independently reproduce this verification:
 
-1. **Run the expanded test suite**:
+1. **Verify Role Specific Suites**:
    ```powershell
+   npx tsx tests/master_data_admin_role_restriction.test.ts
+   npx tsx tests/dinas_pendidikan_monitoring.test.ts
    npx tsx tests/sistem_blok_verification.test.ts
+   npx tsx tests/wali_kelas_and_piket_intervensi.test.ts
    ```
-   *Expected result*: Exits with code 0, prints `TOTAL TESTS: 204`, `PASSED: 204`, `FAILED: 0`.
+   *Expected Output*: Exit code `0` for all 4 commands.
 
-2. **Run the adversarial challenger empirical harness**:
+2. **Verify Sub Menu Kelas Suite**:
    ```powershell
-   npx tsx tests/adversarial_sistem_blok_challenger.ts
+   npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts
    ```
-   *Expected result*: Exits with code 0, reports `PASSED: 25`, `FAILED: 0`, and prints `VERDICT: APPROVE`.
+   *Expected Output*: Exit code `0`, `TOTAL CHECKS: 58 | PASSED: 58 | FAILED: 0`.
 
-3. **Verify TypeScript compilation**:
+3. **Run Full Project Test Suite**:
+   ```powershell
+   npm test
+   ```
+   *Expected Output*: Exit code `0` across all 55 test files.
+
+4. **Run TypeScript Check & Build**:
    ```powershell
    npx tsc --noEmit
+   npm run build
    ```
-   *Expected result*: Exits with code 0 with 0 errors.
+   *Expected Output*: Exit code `0` for both commands.

@@ -1,20 +1,21 @@
-## 2026-11-02T14:34:08Z
-You are challenger_m3_2.
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\
-Read:
-1. c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-2. c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
-3. c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\test_writer_m3\handoff.md
-4. c:\Users\Fitra\OneDrive\Documents\sipjam-app\tests\sistem_blok_verification.test.ts
+## 2026-11-06T01:23:50Z
+You are a Teamwork Challenger for Milestone 3 (Dedicated Automated Verification Test Suite & Final Non-Regression Gate).
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\
+Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+Worker handoff report: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\test_writer_m3\handoff.md
 
-Task:
-Adversarially challenge the live database lifecycle, schedule isolation, and backward compatibility in `tests/sistem_blok_verification.test.ts`:
-1. Verify that database schedule counts before and after the test run are 100% identical (no rows deleted or altered in `public.jadwal_pelajaran`).
-2. Verify that all 4 target levels (sekolah, angkatan, kelas, guru) and time ranges inserted during Section 7 are completely cleaned up without leaving orphaned rows in `public.sistem_blok`.
-3. Challenge Section 10 legacy record defaulting: verify that records with null targets and null hours evaluate without errors or false negatives across all schedules.
-4. Run `npx tsx tests/sistem_blok_verification.test.ts` to confirm 204 passing assertions.
-5. Deliver an explicit verdict: APPROVE or REQUEST_CHANGES.
+You MUST read ORIGINAL_REQUEST.md and PROJECT.md before challenging.
 
-Write your handoff report to:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\handoff.md
-Send your verdict and summary back to the orchestrator via send_message.
+Your task:
+Empirically verify non-regression and role preservation across the application:
+1. Run full project test suite: `npm test` (all 55 test files must pass with exit code 0).
+2. Check specific role-specific test suites to guarantee zero feature loss:
+   - `tests/master_data_admin_role_restriction.test.ts`
+   - `tests/dinas_pendidikan_monitoring.test.ts`
+   - `tests/sistem_blok_verification.test.ts`
+   - `tests/wali_kelas_and_piket_intervensi.test.ts`
+3. Document empirical results and state your final verdict:
+   `VERDICT: APPROVE` or `VERDICT: REQUEST_CHANGES`
+   in: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_2\handoff.md
+4. Send a brief message back to the orchestrator when done.

@@ -1,95 +1,141 @@
-# Project Orchestrator Handoff Report: Flexible Sistem Blok Enhancement
+# Orchestrator Final Handoff Report: Sub Menu Kelas & Penyelarasan Template Master Data
 
-**Orchestrator**: Project Orchestrator  
-**Parent Sentinel**: `34e9fcc0-0e2b-426b-b899-621289fdc022`  
-**Date**: 2026-11-02  
-**Status**: 100% Complete (All Milestones M1–M4 Passed Gate with Unanimous Approval & Clean Forensic Audits)  
-**Git Status**: Clean, all code committed and pushed to `main` (Latest commit: `e32888c`)  
+**Mission**: Menambahkan sub menu Kelas pada menu master data untuk role admin serta memusatkan penentuan/alokasi kelas siswa di menu ini. Menyelaraskan seluruh template master data (Kelas, Siswa, Guru, Mapel, Kalender Pendidikan, Jadwal Pelajaran, Wali Kelas) dengan skema database agar berkas CSV yang diunduh dan diunggah dapat terbaca serta tersimpan dengan tepat, tanpa mengubah logika atau fitur lain yang tidak terdampak.  
+**Integrity Mode**: Development  
+**Author**: Project Orchestrator (`77685953-a979-46b9-9e32-e6b24ab55eb5`)  
+**Parent Sentinel**: Sentinel (`1cf2d098-0871-4486-acc7-a26d163e3931`)  
+**Final Status**: **COMPLETED (ALL MILESTONES PASSED GATE)**  
+**Date**: 2026-11-06  
 
 ---
 
 ## 1. Observation
 
-1. **User Requirements Implemented & Verified**:
-   - **R1 (Target Scopes)**:
-     - Implemented dynamic target selection per rule: Keseluruhan Sekolah (`sekolah`), per Angkatan (`angkatan`), per Kelas (`kelas`), and per Guru (`guru`).
-     - PostgreSQL database schema updated via migration (`supabase/migrations/20261102_flexible_sistem_blok.sql`): added `tipe_target`, `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`, `is_full_day`, `jam_mulai`, and `jam_selesai`.
-     - Admin UI updated in `src/components/SistemBlokView.tsx`: segmented target selector buttons, contextual dynamic selectors, form validation, edit modal pre-population, and visual table/card badges.
-   - **R2 (Date & Time Ranges)**:
-     - Supports date range (`tanggal_mulai` to `tanggal_selesai`) and optional bounded time range (`jam_mulai` to `jam_selesai`).
-     - Default full-day (`is_full_day: true`) when time range is omitted.
-     - Precise time overlap algorithm in `src/lib/workflow.ts` (`isTimeRangeOverlap`) with half-open boundary non-overlap (e.g. 07:30–09:00 vs 09:00–11:00 does not overlap).
-   - **R3 (Granular Schedule Masking & Journal Workflows)**:
-     - Matching engine in `src/lib/workflow.ts` (`evaluateScheduleBlock`, `isKelasInAngkatan`, `getGuruDailyState`) dynamically determines whether a specific schedule item is blocked.
-     - Teacher dashboard (`src/components/HomeViewGuru.tsx`) selectively masks blocked schedules with activity badges while rendering unblocked schedules as active regular teaching cards.
-     - Teacher journal interface (`src/components/GuruJurnal.tsx`) supports mixed-schedule detection and interactive mode toggling between `Jurnal KBM` and `Jurnal Kegiatan`.
-     - Checkout invariant strictly requires both regular KBM journals and block activity journals in mixed schedules (`unblockedFulfilled && blockedFulfilled`).
-   - **Automated Verification Suite Expansion**:
-     - `tests/sistem_blok_verification.test.ts` was expanded from 85 to 204 passing assertions (0 failures), covering all 4 target levels, live DB CRUD with RLS, schedule isolation matrices, journal submission parity, and backward compatibility.
+### 1.1 Scope Delivered Across Milestones
+All requirements defined in `.agents/teamwork/ORIGINAL_REQUEST.md` and `PROJECT.md` have been fully delivered, reviewed, challenged, and forensically audited with zero regressions:
 
-2. **Empirical Gate & Verification Metrics**:
-   - **Full Repository Test Suite (`npm test`)**: 46 / 46 test suites passed (100% pass rate, 0 failed).
-   - **Static Type Safety (`npx tsc --noEmit`)**: 0 errors.
-   - **Production Build (`npm run build`)**: Next.js 16.3.4 (Turbopack) production build compiled in 2.5s, passed TypeScript in 2.2s, prerendered 13/13 static routes with 0 errors.
-   - **Sistem Blok Primary Suite (`tests/sistem_blok_verification.test.ts`)**: 204 / 204 assertions passed (0 failed).
-   - **Adversarial Stress Suites**:
-     - `tests/challenger_m2_matching_masking_stress.test.ts`: 144 / 144 passed (0 failed).
-     - `tests/challenger_m2_2_mixed_schedule_journal.test.ts`: 52 / 52 passed (0 failed).
-     - `tests/challenger_m2_fix_2_mixed_fulfillment.test.ts`: 25 / 25 passed (0 failed).
-     - `tests/adversarial_sistem_blok_challenger.test.ts`: 22 / 22 passed (0 failed).
-   - **Database Hygiene**: All test records (`00000000-0000-0000-0000-00000000b110` through `b115`) cleanly purged in `finally` blocks; master schedule count in `public.jadwal_pelajaran` verified 100% intact (51 rows before and after, 0 rows modified or deleted).
-   - **Forensic Integrity Audits**: All 4 milestones independently audited and confirmed **CLEAN** (zero facades, zero hardcoding, zero test tampering).
+1. **Milestone 1 — Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa (R1)**:
+   - **`src/components/AdminKelasView.tsx`** (new, 1,850 lines):
+     * Executive metric indicators (Total Kelas, Siswa Terdaftar, Siswa Belum Memiliki Kelas).
+     * Warning indicator with quick drawer for unassigned students (`isUnassignedClass`).
+     * Class cards directory grouped and sorted by grade level (`parseTingkat`: 10 -> 11 -> 12 -> Lainnya) with student count and gender distribution.
+     * Slide-over roster & allocation drawer for inbound allocation and outbound batch student transfers.
+     * Class creation & cascading class rename across `data_siswa`, `wali_kelas`, and `jadwal_pelajaran`.
+     * Zero-student delete guard forbidding deletion of classes with active enrolled students.
+     * Integration with `NaikKelasModal.tsx` for bulk cohort promotions.
+   - **`src/components/AdminDataView.tsx`**:
+     * Added `Data_Kelas` tab under master data menu for role admin (positioned immediately after `Data_Siswa`).
+     * Implemented `normalizeAdminTab` handling case, spelling variations (`kelas`, `data_kelas`), and whitespace.
+     * Conditional mount of `<AdminKelasView user={user} />` short-circuiting generic master data loads.
+   - **`src/lib/navigation.ts`**:
+     * Added route aliases `view-admin-kelas` and `view-kelas` in `VIEW_ALIASES` mapping to `{ view: 'view-admin-data', tab: 'Data_Kelas' }`.
+     * Added `SIDEBAR_TOUR_ALIASES` entries for `view-admin-kelas` and `view-kelas`.
+     * Enforced strict RBAC in `evaluateTabRBAC` blocking non-admin roles (`Guru`, `Wali Kelas`, `Piket`, `Dinas`, `Kepsek`, `Anonymous`) and quarantining `Siswa` to `view-ujian`.
+   - **Gate Verdict**: PASS (Unanimously approved by `reviewer_m1_1`, `reviewer_m1_2`, `challenger_m1_1`, `challenger_m1_2`, and `auditor_m1_1` CLEAN). Commit `a7c1892` pushed to `origin main`.
+
+2. **Milestone 2 — Penyelarasan Template Master Data & Impor CSV (7 Entitas) (R2 & R3)**:
+   - **`src/components/AdminDataView.tsx`**:
+     * Added `Template_Data_Kelas.csv` (`nama_kelas,tingkat,jurusan`).
+     * Precisely aligned all 7 Master Data CSV templates with PostgreSQL database schemas:
+       1. `Data_Kelas`: `nama_kelas,tingkat,jurusan`
+       2. `Data_Siswa`: `nisn,nama_siswa,kelas,gender,status,no_hp_ortu`
+       3. `Data_Guru`: `sekolah_id,nip,nama_guru,mata_pelajaran,no_hp,status,email`
+       4. `Data_Mapel`: `id,nama_mata_pelajaran,kategori`
+       5. `Kalender_Pendidikan`: `tanggal,keterangan,tipe`
+       6. `Jadwal_Pelajaran`: `hari,nama_guru,mata_pelajaran,kelas`
+       7. `Wali_Kelas`: `kelas,nama_guru,nip,tahun_ajaran`
+     * Preserved critical test invariants: Kalender & Jadwal templates omit `id` (preventing Postgres 22P02); Data Guru requires `sekolah_id`.
+     * Added custom event dispatch `sipjam:kelas-updated` to synchronize class changes across views.
+   - **`src/lib/dataIntegrityGuard.ts`**:
+     * Multi-delimiter auto-detection (comma, semicolon, tab, pipe).
+     * Normalization for Windows CRLF, Unix LF, and bare CR line endings.
+     * RFC 4180 escaped quotes handling.
+     * Excel apostrophe (`'`) stripping on NISN, NIP, and telephone numbers.
+     * Anti-dummy and anti-test names validation with exact row feedback (`Baris ${i}`).
+     * Idempotent student re-import: matches existing students by `(sekolah_id, nisn)`, retains original student UUIDs, and updates `kelas` in place without creating duplicate student rows.
+     * Multi-tenant `data_kelas` upsert on `(sekolah_id, nama_kelas)` with defensive fallback syncing into `wali_kelas` upon missing table or schema cache latency (`PGRST205` / `42P01`).
+   - **Gate Verdict**: PASS (Unanimously approved by `reviewer_m2_1`, `reviewer_m2_2`, `challenger_m2_1`, `challenger_m2_2`, and `auditor_m2_1` CLEAN). Commit `bd78007` pushed to `origin main`.
+
+3. **Milestone 3 — Dedicated Automated Verification Test Suite & Non-Regression Gate (R4)**:
+   - **`tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`** (new, 1,516 lines):
+     * 58 assertions across 8 comprehensive suites covering navigation, RBAC security, class directory aggregation, student allocation mutations, 7 CSV templates alignment, CSV parsing/validation, student re-import idempotency, and test runner integration.
+   - **`package.json`**:
+     * Appended `&& tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` to `scripts.test` as the 55th test suite.
+   - **Gate Verdict**: PASS (Unanimously approved by `reviewer_m3_1`, `reviewer_m3_2`, `challenger_m3_1`, `challenger_m3_2`, and `auditor_m3_1` CLEAN). Commit `8ffd726` pushed to `origin main`.
+
+### 1.2 Git Commit History
+```
+8ffd726 test: tambahkan automated verification test suite untuk sub menu kelas dan penyelarasan template master data
+61cc216 test(m2): add empirical challenger stress tests and validation report
+ca58c0d test(m2): complete empirical challenge and adversarial stress harness for milestone 2
+bd78007 feat: selaraskan seluruh template master data dan mekanisme impor CSV dengan skema database
+8c6ebec test(m1): add empirical challenger test suite and verification report for centralized class allocation
+a7c1892 feat: tambahkan sub menu kelas dan pemusatan penentuan kelas siswa pada master data
+```
 
 ---
 
 ## 2. Logic Chain
 
-1. **Architecture & Separation of Concerns**:
-   - Admin configurations in `SistemBlokView.tsx` store granular target and time criteria into PostgreSQL `public.sistem_blok`.
-   - Core evaluation logic is encapsulated in pure functions in `src/lib/workflow.ts` (`isKelasInAngkatan`, `isTimeRangeOverlap`, `evaluateScheduleBlock`), ensuring unit testability and deterministic performance without database round-trips.
-   - Teacher views consume evaluated state from `getGuruDailyState`, allowing modular rendering of mixed schedules without altering underlying database records.
-
-2. **Remediation & Adversarial Hardening**:
-   - In Milestone 2, adversarial reviewers identified an ECMAScript empty string substring vulnerability (`"".includes("") === true`) and a mixed schedule journal bypass.
-   - Explorers formulated surgical fixes: wrapping candidate strings in truthy guards (`teacherNama && (...)`), binding matched block metadata to `state.blokInfo` while resetting unblocked teachers to `null`, and enforcing strict conjunction (`unblockedFulfilled && blockedFulfilled`).
-   - Re-verification with 355 assertions proved that the vulnerabilities were permanently eradicated without regressions.
-
-3. **Complete Backward Compatibility**:
-   - Legacy records lacking target or time properties seamlessly default to whole-school (`tipe_target: 'sekolah'`) and full-day (`is_full_day: true`).
-   - All 85 pre-existing assertions in `tests/sistem_blok_verification.test.ts` remain 100% functional and pass verbatim.
+1. **Decomposition & Execution Pattern**:
+   The Project Orchestrator mapped user requirements into 3 clear milestones with explicit interface contracts and write boundaries. Each milestone followed the strict direct iteration loop: Explorers -> Worker -> Reviewers (2) -> Challengers (2) -> Forensic Auditor (1) -> Gate.
+2. **Binary Veto & Zero-Tolerance Integrity**:
+   Every milestone gate required a mandatory CLEAN verdict from the Forensic Auditor (`teamwork_auditor`). In all three milestones, the forensic auditor independently verified that zero facades, dummy stubs, hardcoded test passes, or bypasses were used.
+3. **Multi-Tenant Scoping & Security**:
+   All database operations for class creation, student allocation, cascading rename, and deletion strictly filter by `.eq('sekolah_id', sekolahId)`. Multi-tenant isolation was validated by multiple challengers, ensuring zero cross-school data pollution.
+4. **Preservation of Existing Functionality (Zero Regression)**:
+   The existing 54 automated test files were completely preserved and continuously verified via `npm test`. Every single suite passed 100%. Next.js Turbopack production builds succeeded cleanly without TypeScript or lint errors.
 
 ---
 
 ## 3. Caveats
 
-- **Time Range Scope**: Bounded hours (`jam_mulai` to `jam_selesai`) operate on the daytime working interval within a single day. Cross-midnight blocks are out of scope for standard KBM operations.
-- **Client Camera Mocking**: Hardware webcam QR scanning for piket/kiosk remains mocked during headless CLI test runs while maintaining 100% workflow coverage.
+- **PostgREST Schema Cache Handling**: If a remote Supabase deployment has not yet migrated the physical `data_kelas` table or the PostgREST schema cache is refreshing, `AdminKelasView.tsx` and `dataIntegrityGuard.ts` automatically fall back to querying and syncing classes via `wali_kelas` and `data_siswa`, ensuring zero downtime or user disruption.
 
 ---
 
 ## 4. Conclusion
 
-The flexible Sistem Blok enhancement is 100% complete, verified by 46 repository test suites, 204 primary assertions, and 243 adversarial stress assertions. All gates passed with unanimous reviewer and challenger approval, and the final forensic audit confirmed clean integrity. The codebase has been committed and pushed to `main`.
+All acceptance criteria across R1, R2, R3, and R4 have been met in full:
+- [x] Sub menu Kelas is accessible to role admin under Master Data (`AdminDataView.tsx`).
+- [x] Class directory displays enrolled students, gender breakdown, and centralized student allocation/batch transfer tools.
+- [x] All 7 Master Data CSV templates (`Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`) are aligned with the database schema while maintaining legacy invariants.
+- [x] CSV upload accurately processes files with multi-delimiter detection, RFC 4180 support, Excel apostrophe cleanup, row error feedback (`Baris ${i}`), and idempotent student updates.
+- [x] Zero regressions across existing modules (55/55 test suites passed, production build succeeds, git pushed to `origin main`).
 
 ---
 
 ## 5. Verification Method
 
-To independently verify the deliverable:
-```bash
-# 1. Run the primary Sistem Blok automated verification test suite
-npx tsx tests/sistem_blok_verification.test.ts
-# Expected: 204 PASSED, 0 FAILED
+To independently reproduce and verify the deliverables:
 
-# 2. Run the full repository regression suite
-npm test
-# Expected: 46/46 suites passed, exit code 0
+1. **Run Dedicated Verification Suite**:
+   ```powershell
+   npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts
+   ```
+   *Expected Output*: Exit code `0`, `TOTAL CHECKS: 58 | PASSED: 58 | FAILED: 0`.
 
-# 3. Check static TypeScript compilation
-npx tsc --noEmit
-# Expected: 0 errors
+2. **Run TypeScript Static Typecheck**:
+   ```powershell
+   npx tsc --noEmit
+   ```
+   *Expected Output*: Exit code `0` (zero compilation errors).
 
-# 4. Verify Next.js production build
-npm run build
-# Expected: Next.js Turbopack compiles cleanly with 0 errors
-```
+3. **Run Full Project Test Runner (All 55 Suites)**:
+   ```powershell
+   npm test
+   ```
+   *Expected Output*: Exit code `0` (all 55 test files pass cleanly).
+
+4. **Run Next.js Production Build**:
+   ```powershell
+   npm run build
+   ```
+   *Expected Output*: Exit code `0` (Turbopack builds and generates all 13 routes).
+
+5. **Verify Git Repository & Remote Sync**:
+   ```powershell
+   git status
+   git log -3 --oneline
+   ```
+   *Expected Output*: Working directory clean, branch `main` up to date with `origin/main`.
