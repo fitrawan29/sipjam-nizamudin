@@ -27,6 +27,7 @@ export interface AttendanceStatusPoints {
   izin: number;
   terlambat: number;
   alpa: number;
+  bolos?: number;
 }
 
 export const DEFAULT_STATUS_POINTS: AttendanceStatusPoints = {
@@ -410,6 +411,7 @@ export default function GradebookView({
           if (st === 'I' || st === 'IZIN') return statusPoints.izin ?? 75;
           if (st === 'T' || st === 'TERLAMBAT') return statusPoints.terlambat ?? 75;
           if (st === 'A' || st === 'ALPA') return statusPoints.alpa ?? 0;
+          if (st === 'B' || st === 'BOLOS') return statusPoints.bolos ?? statusPoints.alpa ?? 0;
           if (st.includes('HADIR') || st.includes('BEBAS')) return statusPoints.hadir ?? 100;
           if (st.includes('SAKIT')) return statusPoints.sakit ?? 75;
           if (st.includes('IZIN') || st.includes('DINAS')) return statusPoints.izin ?? 75;

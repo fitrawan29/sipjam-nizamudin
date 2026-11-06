@@ -1004,7 +1004,7 @@ export default function RekapSiswaView({
                         </span>
                       </h3>
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                        Input presensi harian siswa (Izin, Sakit, Alpa, Hadir) dengan sinkronisasi global otomatis ke jurnal semua guru mapel.
+                        Input presensi harian siswa (Hadir, Izin, Sakit, Alpa, Bolos) dengan sinkronisasi global otomatis ke jurnal semua guru mapel.
                       </p>
                     </div>
                   </div>
@@ -1096,6 +1096,22 @@ export default function RekapSiswaView({
                           className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Izin
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isIntervensiExpired || isReadOnly}
+                          onClick={() => handleSetAllWaliStatus('Alpa')}
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Semua Alpa
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isIntervensiExpired || isReadOnly}
+                          onClick={() => handleSetAllWaliStatus('Bolos')}
+                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Semua Bolos
                         </button>
                       </div>
                     </div>

@@ -2170,6 +2170,6 @@ export type JenisDokumenKurikulum =
   | string;
 export type RoleUser = "Superadmin" | "Admin" | "Guru" | "dinas_pendidikan" | "Dinas Pendidikan";
 export type StatusSekolah = "aktif" | "nonaktif";
-export type StatusKehadiranSiswa = "Hadir" | "Izin" | "Sakit" | "Alpa";
+export type StatusKehadiranSiswa = "Hadir" | "Izin" | "Sakit" | "Alpa" | "Bolos";
 export type KategoriAsesmen = "Diagnostik" | "Formatif" | "Sumatif";
 export type ModePresensiSiswa = "qr" | "manual";

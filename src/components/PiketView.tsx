@@ -1179,6 +1179,7 @@ export default function PiketView({ user }: { user: any }) {
             if (st === 'Sakit' || st === 'S') initialAbsensi[s.nisn] = 'S';
             else if (st === 'Izin' || st === 'I') initialAbsensi[s.nisn] = 'I';
             else if (st === 'Alpa' || st === 'A') initialAbsensi[s.nisn] = 'A';
+            else if (st === 'Bolos' || st === 'B') initialAbsensi[s.nisn] = 'B';
             else initialAbsensi[s.nisn] = 'H';
           } else {
             initialAbsensi[s.nisn] = 'H';
@@ -1506,7 +1507,8 @@ export default function PiketView({ user }: { user: any }) {
     setPiketAbsensi(prev => ({ ...prev, [siswa.nisn]: status }));
 
     // Live upsert to public.absensi
-    const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
+    const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos'> = {
+      B: 'Bolos',
       H: 'Hadir',
       S: 'Sakit',
       I: 'Izin',
@@ -1660,7 +1662,8 @@ export default function PiketView({ user }: { user: any }) {
       // Sync Piket student attendance to canonical public.absensi (hanya sebelum batas intervensi berakhir)
       if (allStudents.length > 0 && (!isPiketIntervensiExpired || isAdmin)) {
         try {
-          const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'> = {
+          const statusMap: Record<string, 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos'> = {
+      B: 'Bolos',
             H: 'Hadir',
             S: 'Sakit',
             I: 'Izin',
@@ -1684,7 +1687,7 @@ export default function PiketView({ user }: { user: any }) {
             // Mencegah bentrok dengan Wali Kelas & Guru Mapel:
             // Jika status sudah diisi Wali Kelas atau Guru Mapel, dan Piket tidak mengubah secara eksplisit:
             if (existing && (existing.sumber_perubahan === 'Wali Kelas' || existing.sumber_perubahan === 'Guru Mapel')) {
-              const existingCode = existing.status === 'Sakit' ? 'S' : existing.status === 'Izin' ? 'I' : existing.status === 'Alpa' ? 'A' : 'H';
+              const existingCode = existing.status === 'Sakit' ? 'S' : existing.status === 'Izin' ? 'I' : existing.status === 'Alpa' ? 'A' : existing.status === 'Bolos' ? 'B' : 'H';
               if (!statusCode || statusCode === existingCode || statusCode === 'H') {
                 return null; // Pertahankan catatan Wali Kelas / Guru Mapel
               }
@@ -1754,14 +1757,14 @@ export default function PiketView({ user }: { user: any }) {
     if (!jsonStr) return null;
     try {
       const parsed = JSON.parse(jsonStr);
-      const counts = { H: 0, S: 0, I: 0, A: 0 };
+      const counts = { H: 0, S: 0, I: 0, A: 0, B: 0 };
       Object.values(parsed).forEach((val: any) => {
-        const code = String(val).toUpperCase() as 'H' | 'S' | 'I' | 'A';
+        const code = String(val).toUpperCase() as 'H' | 'S' | 'I' | 'A' | 'B';
         if (counts[code] !== undefined) counts[code]++;
       });
-      const total = counts.H + counts.S + counts.I + counts.A;
+      const total = counts.H + counts.S + counts.I + counts.A + counts.B;
       if (total === 0) return null;
-      return `H: ${counts.H} | S: ${counts.S} | I: ${counts.I} | A: ${counts.A} (${total} Siswa)`;
+      return `H: ${counts.H} | I: ${counts.I} | S: ${counts.S} | A: ${counts.A} | B: ${counts.B} (${total} Siswa)`;
     } catch (_) {
       return null;
     }
@@ -3869,7 +3872,7 @@ export default function PiketView({ user }: { user: any }) {
                                     </div>
                                   </div>
                                   <div className="flex gap-1 shrink-0">
-                                    {['H', 'S', 'I', 'A'].map(status => (
+                                    {['H', 'I', 'S', 'A', 'B'].map(status => (
                                       <button 
                                         key={status}
                                         type="button"
@@ -3882,6 +3885,7 @@ export default function PiketView({ user }: { user: any }) {
                                           ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
                                              status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
                                              status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
+                                             status === 'B' ? 'bg-purple-600 text-white shadow-sm' :
                                              'bg-red-500 text-white shadow-sm') 
                                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                                         }`}
