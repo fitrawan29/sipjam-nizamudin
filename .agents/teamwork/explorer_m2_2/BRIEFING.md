@@ -1,44 +1,43 @@
-# BRIEFING — 2026-09-24T16:53:23Z
+# BRIEFING — 2026-11-06T00:43:00Z
 
 ## Mission
-Investigate and synthesize forensic audit findings for Milestone 2 defects, and formulate an exact, concrete, verified remediation blueprint for the builder.
+Analyze CSV parsing, normalization, validation, and database upsert engine in `src/lib/dataIntegrityGuard.ts` for Milestone 2 (Master Data CSV Template Alignment & Import Engine), providing a complete design and code blueprint.
 
 ## 🔒 My Identity
 - Archetype: explorer
-- Roles: investigation, synthesis
+- Roles: Teamwork explorer
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_2\
-- Original parent: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Milestone: Milestone 2 Remediation Planning (Iteration 3)
+- Original parent: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Milestone: Milestone 2 (Penyelarasan Template Master Data & Impor CSV)
 
 ## 🔒 Key Constraints
-- Read-only investigation — do NOT implement code changes in the main repo directly
-- Address all 6 defects: Façade Alpa Rekap, Self-Certifying Tests, Cutoff String Comparison, Timezone Date Skew, Unbounded Date Queries, Rejection Route Input Validation
-- Write handoff.md in working directory and notify parent via send_message
+- Read-only investigation — do NOT implement directly in source files
+- Focus strictly on `src/lib/dataIntegrityGuard.ts` CSV parsing, normalization, validation, and upsert engine
+- Ensure zero-regression on existing test suites and existing behavior
 
 ## Current Parent
-- Conversation ID: ce92c68c-fd07-4434-ab0c-266a7caa8d41
-- Updated: 2026-09-24T16:57:00Z
+- Conversation ID: 77685953-a979-46b9-9e32-e6b24ab55eb5
+- Updated: not yet
 
 ## Investigation State
 - **Explored paths**:
-  - Audit reports: `auditor_m2_1/handoff.md`, `reviewer_m2_1/handoff.md`, `reviewer_m2_2/handoff.md`, `challenger_m2_1/handoff.md`, `challenger_m2_2/handoff.md`
-  - Source files: `src/components/AdminRekapView.tsx`, `src/lib/attendanceAlpa.ts`, `src/lib/warningSystem.ts`, `src/lib/wita.ts`, `src/app/api/notifications/rejection/route.ts`
-  - Tests: `tests/m2_adversarial_stress.test.ts`, `tests/m2_notifications_alpa_warning.test.ts`, `tests/challenger_m2_empirical.test.ts`
+  * `src/lib/dataIntegrityGuard.ts`: analyzed header normalization, UUID generation, anti-dummy checks, anti-22P02/23502 protections, batch upserts.
+  * `src/components/AdminDataView.tsx`: examined CSV template generation (`Template_Data_*.csv`), upload handler, tab configurations.
+  * `src/components/AdminKelasView.tsx`: examined schema cache handling for `data_kelas` and cascading updates.
+  * `tests/data_guru_csv_import_sekolah_id_validation.test.ts`, `tests/production_admin_adjustments.test.ts`, `tests/adversarial_r1_r5_stress_test.ts`: examined existing test contracts and invariants.
 - **Key findings**:
-  1. `AdminRekapView.tsx` line 65 queries `.eq('status_verifikasi', 'Disetujui')`, discarding all `Alpa` records. Remedy: `.in('status_verifikasi', ['Disetujui', 'Alpa'])`.
-  2. `tests/m2_notifications_alpa_warning.test.ts` contains 25 static string checks that masked runtime defects. Remedy: upgrade to genuine behavioral tests executing functions and simulating DB queries.
-  3. `attendanceAlpa.ts` compares dot-delimited WITA time (`15.30`) with colon-delimited cutoff (`15:00`). Remedy: normalize time separators with `isBeforeCutoff` and fix `getWitaTimeStr` in `wita.ts`.
-  4. `warningSystem.ts` uses `d.toISOString()` and `d.getUTCDay()` on UTC+8 midnight, causing -1 day skew, skipping Monday instead of Sunday. Remedy: `buildEvaluationDates` using WITA timezone and Indonesian day names (`Minggu`).
-  5. `attendanceAlpa.ts` lacks `.lte(endOfDay)` upper bound, leaking future records into past evaluations. Remedy: add `.lte('timestamp', endOfDay)` and in-memory date filter.
-  6. `rejection/route.ts` crashes with TypeError on non-string inputs. Remedy: validate `typeof === 'string'` and trim length, returning HTTP 400.
-- **Unexplored areas**: None. All 6 defects have been inspected, empirically reproduced, and formulated into concrete patches.
+  1. `normalizeCsvHeaders` needs table-scoped alias resolution for `data_kelas` / `kelas` (`nama_kelas`, `tingkat`, `jurusan`, `kelas`, `rombel`), and full cross-entity aliases (`no_hp_ortu`, `nama_siswa/nama_guru`, `mata_pelajaran`, `sekolah_id`, `gender`, `keterangan`, `tahun_ajaran`).
+  2. `parseAndValidateMasterCsv` must add `data_kelas` / `kelas` to `isUuidKeyedTable` (auto-generating UUID when missing and sanitizing invalid UUIDs to prevent 22P02), validate mandatory non-empty `nama_kelas` (anti-23502), enforce `isDummyOrTestString` (anti-dummy), and deduplicate class names within the CSV.
+  3. `importMasterDataFromCsv` must resolve student idempotency for `data_siswa` by querying existing students by `(sekolah_id, nisn)` and assigning existing `id` to matching rows before upserting.
+  4. `importMasterDataFromCsv` must support `data_kelas` upsert with `onConflict: 'sekolah_id, nama_kelas'` and provide a graceful schema-cache fallback (catching PGRST205/42P01) syncing to `wali_kelas` and `data_siswa` without crashing.
+- **Unexplored areas**: None. Complete blueprint ready.
 
 ## Key Decisions Made
-- Formulate an exact, copy-paste ready blueprint for the builder with before/after diffs for all 6 defects and updated test suites (`tests/m2_adversarial_stress.test.ts` and `tests/m2_notifications_alpa_warning.test.ts`).
-- Recommend helper exports (`isBeforeCutoff` and `buildEvaluationDates`) to allow clean, reusable, behaviorally verified testing across the application.
+- Architecture: Keep `src/lib/dataIntegrityGuard.ts` completely self-contained (define inline `isSchemaCacheError` helper) so it requires no external database client imports and remains lightweight for unit tests.
+- Deliverable: Write complete 5-component `handoff.md` with drop-in code replacements for the implementer agent.
 
 ## Artifact Index
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_2\DISPATCH.md — Task assignment and input refs
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_2\BRIEFING.md — Persistent situational awareness
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_2\progress.md — Heartbeat and progress log
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_2\handoff.md — Final remediation blueprint
+- `DISPATCH.md` — Initial dispatch message
+- `BRIEFING.md` — Situational awareness document
+- `progress.md` — Progress heartbeat
+- `handoff.md` — Complete 5-component handoff report and code blueprint

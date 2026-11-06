@@ -227,6 +227,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   // CSV Template Generation and Download
   const handleDownloadTemplate = () => {
     const templates: Record<string, { filename: string; headers: string[]; sample: string[] }> = {
+      Data_Kelas: {
+        filename: 'Template_Data_Kelas.csv',
+        headers: ['nama_kelas', 'tingkat', 'jurusan'],
+        sample: ['X Merdeka', '10', 'Umum']
+      },
       Data_Siswa: {
         filename: 'Template_Data_Siswa.csv',
         headers: ['nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu'],
@@ -259,7 +264,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
     };
 
-    const current = templates[activeTab];
+    const current = templates[activeTab] || templates[normalizeAdminTab(activeTab)];
     if (!current) return;
 
     const escapeCsv = (val: string) => {
@@ -298,6 +303,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       return;
     }
 
+    if (file.size === 0) {
+      showToast('Berkas Kosong', `Berkas "${file.name}" tidak memiliki data (0 bytes).`, 'error');
+      e.target.value = '';
+      return;
+    }
+
     setLoading(true);
     try {
       const text = await file.text();
@@ -308,13 +319,44 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         `Berhasil mengimpor dan memperbarui ${count} data ke tabel ${tabObj.label}!`,
         'success'
       );
-      loadData();
+
+      // Dispatch sipjam:kelas-updated when class or student data changes
+      if (tabObj.id === 'Data_Kelas' || tabObj.id === 'Data_Siswa') {
+        window.dispatchEvent(new CustomEvent('sipjam:kelas-updated'));
+      }
+
+      if (tabObj.id !== 'Data_Kelas') {
+        loadData();
+      }
     } catch (err: any) {
+      const errorMsg = err.message || 'Terjadi kesalahan saat memproses file CSV.';
       showToast(
         'Gagal Impor CSV',
-        err.message || 'Terjadi kesalahan saat memproses file CSV.',
+        errorMsg,
         'error'
       );
+
+      if (errorMsg.includes('Baris ') || errorMsg.includes('Kolom ') || errorMsg.includes('wajib') || errorMsg.includes('dilarang')) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Validasi CSV Gagal',
+          html: `
+            <div class="text-left text-xs space-y-2 text-gray-700 dark:text-gray-300">
+              <p class="font-bold text-red-600 dark:text-red-400">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Ditemukan kesalahan pada berkas CSV:
+              </p>
+              <div class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl font-mono text-[11px] text-red-800 dark:text-red-300 break-words">
+                ${errorMsg}
+              </div>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                Silakan periksa kembali berkas CSV Anda sesuai format template, lalu unggah ulang.
+              </p>
+            </div>
+          `,
+          confirmButtonText: 'Tutup & Perbaiki',
+          confirmButtonColor: '#7C3AED'
+        });
+      }
     } finally {
       setLoading(false);
       e.target.value = '';

@@ -1,132 +1,137 @@
-# Handoff Report: Milestone 2 — Workflow Engine, Granular Schedule Masking & Journal Workflows
+# Milestone 2 Handoff Report: Penyelarasan Template Master Data & Impor CSV
+
+- **Agent**: worker_m2 (implementer, qa, specialist)
+- **Target Files**:
+  * `src/components/AdminDataView.tsx`
+  * `src/lib/dataIntegrityGuard.ts`
+  * `src/components/AdminKelasView.tsx`
+- **Verification Harness**: `tests/m2_csv_templates_and_import_harmonization.test.ts`, `npm test`, `npx tsc --noEmit`
+- **Date**: 2026-11-06T00:57:00Z
+
+---
 
 ## 1. Observation
 
-### Exact File Paths & Code Changes
-1. **`src/lib/workflow.ts`**:
-   - Lines 28-30: Expanded `GuruDailyState` type with:
-     ```typescript
-     hasBlockedSchedule?: boolean;
-     activeBloks?: SistemBlok[];
-     ```
-   - Lines 72-102: Implemented `getActiveSistemBloks(dateStr?: string, sekolahId?: string): Promise<SistemBlok[]>` returning all block rules active on `dateStr` for `sekolahId`.
-   - Lines 100-104: Maintained backward-compatible wrapper:
-     ```typescript
-     export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string): Promise<any | null> {
-       const bloks = await getActiveSistemBloks(dateStr, sekolahId);
-       return bloks.length > 0 ? bloks[0] : null;
-     }
-     ```
-   - Lines 107-152: Implemented `isKelasInAngkatan(kelas: string | null | undefined, angkatan: string): boolean`:
-     * Supports bidirectional Arabic <-> Roman numeral grade equivalence (10 <-> X, 11 <-> XI, 12 <-> XII, 7 <-> VII, 8 <-> VIII, 9 <-> IX, 1..6 <-> I..VI).
-     * Enforces Roman numeral boundary assertion regex `(^|[^a-z0-9])${token}([^a-z0-9]|(?![ivx])[a-z]|$)` so Roman numerals like `XI` or `XII` never falsely match `X`.
-   - Lines 155-197: Implemented `parseTimeToMinutes(t?: string | null, fallbackMinutes = 0): number` and `isTimeRangeOverlap(schedStart, schedEnd, blokStart, blokEnd, isFullDay)`:
-     * Parses both `HH:mm` and `HH.mm` formats.
-     * Evaluates `sStartMin < bEndMin && sEndMin > bStartMin`.
-     * Returns `true` if `is_full_day === true` or both block times are unspecified.
-   - Lines 205-300: Implemented `evaluateScheduleBlock(schedule, teacher, activeBloks): ScheduleBlockEvaluation`:
-     * Matches target scopes:
-       - `sekolah` / `keseluruhan`: all schedules match.
-       - `angkatan`: matches via `isKelasInAngkatan(schedule.kelas, rule.target_angkatan)`.
-       - `kelas`: matches exact class name (case-insensitive).
-       - `guru`: matches `target_guru_id` or `target_guru_nama` against teacher / schedule attributes.
-     * Evaluates interval overlap via `isTimeRangeOverlap`.
-     * Returns `{ isBlocked: boolean, blockRule?: SistemBlok, reason?: string }`.
-   - Lines 445-475: Updated `getGuruDailyState()` step 0 to load all `activeBloks` via `getActiveSistemBloks(todayStr, sekolahId)`.
-   - Lines 630-675: Evaluated each schedule item in `state.jadwalKBM` using `evaluateScheduleBlock`, tagging each schedule with `isBlocked`, `blockRule`, and `blockedReason`.
-   - Set `state.hasBlockedSchedule = state.jadwalKBM.some((jk: any) => jk.isBlocked)`. If all schedules are blocked or full-day whole-school block is active, set `state.isBlok = true`.
-   - Lines 975-990: Evaluated `isJurnalDone` in mixed state: unblocked schedules require `jurnalKBM` matches, while blocked schedules are fulfilled by 1 `jurnalKegiatan`.
+Direct inspection of the codebase prior to Milestone 2 revealed the following:
 
-2. **`src/components/HomeViewGuru.tsx`**:
-   - Lines 810-822: Rendered `Campuran` badge when `dailyState.hasBlockedSchedule` is true.
-   - Lines 850-915: Preserved full-day block banner when `dailyState?.isBlok` is true.
-   - Lines 930-1035: In `dailyState.jadwalKBM.map`, conditionally distinguished:
-     * Blocked schedules (`jk.isBlocked`): rendered with `Kegiatan Blok` badge, block activity name, and button to `Isi Jurnal Kegiatan` (or `Jurnal Selesai ✓` if completed).
-     * Unblocked schedules (`!jk.isBlocked`): rendered with standard KBM card and regular `Isi Jurnal` / `Sudah Diisi` status.
-   - Lines 1040-1060: Updated progress summary to display both regular KBM progress and Kegiatan Blok status.
+1. **`src/components/AdminDataView.tsx` (templates & handleFileUpload)**:
+   - Line 229: `templates` record previously only included 6 entities (`Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`). `Data_Kelas` (`Template_Data_Kelas.csv`) was absent.
+   - Line 262: Lookup was `templates[activeTab]`, which failed if an unnormalized tab name was passed.
+   - Lines 306–312: When uploading a CSV file, `showToast('Unggah Berhasil', ...)` was called, but if `activeTab === 'Data_Kelas'`, `loadData()` returned early without updating `AdminKelasView` state. There was no cross-component event dispatch to notify class directory cards and rosters.
+   - Core invariants in test harness:
+     * `Template_Kalender_Pendidikan.csv` MUST NOT contain `'id'` (asserted by `tests/production_admin_adjustments.test.ts:688`).
+     * `Template_Jadwal_Pelajaran.csv` MUST NOT contain `'id'` (asserted by `tests/production_admin_adjustments.test.ts:696`).
+     * `Template_Data_Guru.csv` MUST contain `'sekolah_id'` (asserted by `tests/data_guru_csv_import_sekolah_id_validation.test.ts:834`).
+     * Preserving `showToast('Unggah Berhasil', ...)` is required for `tests/ui_ux_improvements_audit.test.ts:84`.
 
-3. **`src/components/GuruJurnal.tsx`**:
-   - Lines 510-530: In `checkState`, auto-selected journal mode based on workflow state. In mixed mode (`hasBlockedSchedule && !isBlok`), pre-filled block metadata while allowing switching.
-   - Lines 1260-1275: Updated block guidance banner to acknowledge mixed schedule mode.
-   - Lines 1325-1355: Replaced disabled select in mixed mode with interactive dropdown allowing teacher to toggle between `Jurnal KBM` (for unblocked regular classes) and `Jurnal Kegiatan` (for blocked schedules).
+2. **`src/lib/dataIntegrityGuard.ts` (normalizeCsvHeaders, parseAndValidateMasterCsv, importMasterDataFromCsv)**:
+   - `normalizeCsvHeaders` lacked mappings for `data_kelas` / `kelas` (`nama_kelas`, `tingkat`, `jurusan`, `kelas`, `rombel`). Header `nama` collapsed to `nama_guru` for any table other than `data_siswa`.
+   - `parseAndValidateMasterCsv`:
+     * `isUuidKeyedTable` omitted `data_kelas` and `kelas`.
+     * Missing pre-validation check for required headers when uploading an incompatible template (e.g. Guru CSV to Siswa tab).
+     * No validation branch existed for `data_kelas` (empty `nama_kelas` or test/dummy class names hit Postgres NOT NULL without a friendly row-level error `Baris ${i}`).
+     * Missing auto-derivation for `tingkat` when omitted in class CSV.
+     * Excel apostrophe prefix (`'`) on numbers (e.g. `'114367407` or `'081234567890`) was not stripped across student attributes.
+   - `importMasterDataFromCsv`:
+     * For `data_siswa`: student CSV templates omit `id`, resulting in newly generated random UUIDs. When upserting with `onConflict: 'id'`, re-uploading an updated student CSV resulted in duplicate student records instead of updating existing records in-place.
+     * For `data_kelas`: upsert defaulted to `onConflict: 'id'`. Furthermore, if `public.data_kelas` was absent or not yet loaded in PostgREST schema cache (`PGRST205` / `42P01`), the operation threw an unhandled error instead of falling back to syncing classes in `wali_kelas`.
 
-4. **`tests/m2_schedule_masking_workflow.test.ts`**:
-   - Created comprehensive test suite with 74 tests covering:
-     * Section 1: Grade / Angkatan matching (26 test assertions)
-     * Section 2: Time range parsing & interval overlap (18 test assertions)
-     * Section 3: Targeted block evaluation for all 4 scopes (10 test assertions)
-     * Section 4: Live DB fetching and in-memory schema mapping (9 test assertions)
-     * Section 5: Daily state mixed schedule masking & journal fulfillment (5 test assertions)
-     * Section 6: UI source code structural compliance (6 test assertions)
-
-### Verbatim Tool Commands & Test Execution Results
-- `npx tsc --noEmit`: Exited with code 0 (zero static errors).
-- `npx tsx tests/sistem_blok_verification.test.ts`:
-  ```
-  TOTAL TESTS: 85
-  PASSED: 85
-  FAILED: 0
-  🎉 ALL SISTEM BLOK VERIFICATION TESTS PASSED!
-  ```
-- `npx tsx tests/m2_schedule_masking_workflow.test.ts`:
-  ```
-  TOTAL M2 TESTS: 74
-  PASSED: 74
-  FAILED: 0
-  ```
+3. **`src/components/AdminKelasView.tsx`**:
+   - The toolbar only contained "Tambah Kelas" and "Naik Kelas", with no direct mechanism to download `Template_Data_Kelas.csv` or upload a class CSV from within the sub-menu.
+   - There was no listener to refresh class cards when CSV imports were performed.
 
 ---
 
 ## 2. Logic Chain
 
-1. **Target Identification Requirement (from Dispatch 3.A & ORIGINAL_REQUEST R1)**:
-   Previous block logic assumed school-wide full-day blocks. The new system supports 4 distinct target scopes (`sekolah`, `angkatan`, `kelas`, `guru`). `isKelasInAngkatan` provides flexible grade token recognition (such as `10 <-> X` and `11 <-> XI`) while preventing false substring matches (e.g., `XI` or `XII` never matching `X`).
-2. **Time Range Overlap Requirement (from Dispatch 3.A & ORIGINAL_REQUEST R2)**:
-   Block rules can either apply full day (`is_full_day: true` or null time bounds) or within explicit hours (`jam_mulai` to `jam_selesai`). `parseTimeToMinutes` converts `HH:mm` or `HH.mm` into minutes from midnight, and `isTimeRangeOverlap` implements strict interval overlap `sStart < bEnd && sEnd > bStart`.
-3. **Granular Schedule Masking (from Dispatch 3.A, 3.B & ORIGINAL_REQUEST R3)**:
-   Instead of an all-or-nothing boolean, `getGuruDailyState` maps each teacher schedule item through `evaluateScheduleBlock`. If a schedule falls within the targeted scope and active hours, it is tagged `isBlocked = true`. In `HomeViewGuru.tsx`, blocked schedules are visually masked with a prominent "Kegiatan Blok" badge and an action link to fill the activity journal, while unblocked schedules remain active KBM cards.
-4. **Teacher Journal Workflow (from Dispatch 3.C & ORIGINAL_REQUEST R3)**:
-   When a teacher has mixed schedules (e.g. morning block and afternoon class, or one class blocked while another is unaffected), `GuruJurnal.tsx` allows switching between `Jurnal KBM` and `Jurnal Kegiatan`. In `workflow.ts`, fulfillment of teaching obligations requires `jurnalKBM` for all unblocked schedules plus 1 `jurnalKegiatan` for blocked periods.
-5. **Regression Safety**:
-   All 85 legacy test assertions in `tests/sistem_blok_verification.test.ts` (including verbatim code checks) were preserved intact, ensuring 100% backward compatibility.
+1. **Step 1 (Template Harmonization in `AdminDataView.tsx`)**:
+   - Added `Data_Kelas` to `templates` record:
+     ```ts
+     Data_Kelas: {
+       filename: 'Template_Data_Kelas.csv',
+       headers: ['nama_kelas', 'tingkat', 'jurusan'],
+       sample: ['X Merdeka', '10', 'Umum']
+     }
+     ```
+   - Aligned template lookup with `normalizeAdminTab(activeTab)` so tab aliases (`data_kelas`, `kelas`) work seamlessly.
+   - Preserved all 6 existing templates and their exact sample data to guarantee zero regression on `tests/production_admin_adjustments.test.ts:688, 696`, `tests/adversarial_r1_r5_stress_test.ts:506–523`, and `tests/data_guru_csv_import_sekolah_id_validation.test.ts:834`.
+
+2. **Step 2 (Cross-Component Event & User Feedback in `AdminDataView.tsx`)**:
+   - In `handleFileUpload`, retained `showToast('Unggah Berhasil', ...)` and added:
+     ```ts
+     if (tabObj.id === 'Data_Kelas' || tabObj.id === 'Data_Siswa') {
+       window.dispatchEvent(new CustomEvent('sipjam:kelas-updated'));
+     }
+     ```
+   - When errors occur, if the error contains row/column validation information (`Baris `, `Kolom `, `wajib`, `dilarang`), displayed an informative SweetAlert2 modal alongside the quick toast so admins have sufficient time to read the exact row and column errors.
+
+3. **Step 3 (Header Normalization in `dataIntegrityGuard.ts`)**:
+   - In `normalizeCsvHeaders`, added BOM stripping, space trimming, and table-scoped normalization.
+   - For `data_kelas`: mapped `nama_kelas`, `namakelas`, `kelas`, `rombel`, `nama_rombel`, `ruang_kelas`, `nama` -> `'nama_kelas'`; `tingkat`, `tingkat_kelas`, `grade`, `level` -> `'tingkat'`; `jurusan`, `peminatan`, `program_keahlian`, `konsentrasi` -> `'jurusan'`.
+   - Scoped `nama` based on table: `data_siswa` -> `nama_siswa`, `data_kelas` -> `nama_kelas`, `data_mapel` -> `nama_mata_pelajaran`, else `nama_guru`.
+   - Scoped `rombel`: for `data_kelas` -> `nama_kelas`, for relational tables (`data_siswa`, `jadwal_pelajaran`) -> `kelas`.
+
+4. **Step 4 (Validation & UUID Handling in `dataIntegrityGuard.ts`)**:
+   - Added upfront required headers check via `REQUIRED_HEADERS_BY_TABLE` to catch incompatible file uploads before line processing.
+   - Added `data_kelas` and `kelas` to `isUuidKeyedTable`, ensuring missing IDs receive valid UUIDs and non-UUID legacy IDs are converted to prevent Postgres error 22P02.
+   - Added validation branch for `data_kelas` / `kelas`: requires non-empty `nama_kelas`, detects dummy/forbidden names, checks for within-file duplicate class names, auto-derives `tingkat` (`10`, `11`, `12`, or `Lainnya`), and sanitizes optional `jurusan`.
+   - Added non-empty checks for `nama_siswa` and `kelas` in `data_siswa`, `tanggal` and `keterangan` in `kalender_pendidikan`, and required columns in `jadwal_pelajaran` and `wali_kelas`.
+   - Stripped Excel apostrophes (`'`) across numeric columns (`nisn`, `nip`, `no_hp_ortu`).
+   - Filtered output row keys to known schema columns via `ALLOWED_COLUMNS_BY_TABLE` to prevent PostgREST PGRST204 errors from spreadsheet auxiliary columns.
+
+5. **Step 5 (Idempotent Student Resolution & Schema Cache Fallback in `dataIntegrityGuard.ts`)**:
+   - In `importMasterDataFromCsv` for `data_siswa`: queried existing student records by `(sekolah_id, nisn)` in chunks of 100 and mapped their existing UUID `id` to matching CSV rows. When batch upsert runs with `onConflict: 'id'`, existing students are cleanly updated in-place, eliminating duplicate rows.
+   - For `data_kelas`: configured upsert with `onConflict: 'sekolah_id, nama_kelas'`.
+   - Added `isSchemaCacheError` helper. If PostgREST schema cache error (`PGRST205` / `42P01`) occurs during `data_kelas` upsert, caught the error and gracefully fell back to syncing distinct class names into `wali_kelas` with placeholder teacher attributes.
+
+6. **Step 6 (UI Actions & Live Sync in `AdminKelasView.tsx`)**:
+   - Added "Template CSV" and "Impor CSV" buttons in `AdminKelasView` action toolbar.
+   - Integrated `handleDownloadClassTemplate` to trigger direct download of `Template_Data_Kelas.csv`.
+   - Integrated `handleClassFileUpload` to parse and import class CSV directly via `importMasterDataFromCsv`, followed by `loadAllData(true)`.
+   - Added an event listener for `sipjam:kelas-updated` to trigger `loadAllData(true)` whenever classes or students are modified across the application.
 
 ---
 
 ## 3. Caveats
 
-1. **Remote PostgREST Schema Cache (PGRST204)**:
-   As documented in M1, if the remote Supabase PostgREST schema cache has not yet reloaded the columns from `20261102_flexible_sistem_blok.sql`, the application and test suites seamlessly use fallback compatibility mode without throwing unhandled exceptions.
-2. **Schedules without Explicit Hours**:
-   If a schedule in `jadwal_pelajaran` lacks explicit `jam_mulai` and `jam_selesai`, `isTimeRangeOverlap` safely treats it as overlapping with any active block for that day.
+1. **No-NISN Students**: In registration scenarios where students do not yet have an assigned NISN (empty or `"-"`), student deduplication skips NISN matching and assigns genuine UUIDs.
+2. **Schema Cache Latency on `public.data_kelas`**: In deployments where the physical `data_kelas` table has not yet been registered into PostgREST schema cache, the engine gracefully falls back to syncing classes in `wali_kelas` and `data_siswa` without disrupting the user experience.
 
 ---
 
 ## 4. Conclusion
 
-Milestone 2 is complete and verified:
-- `src/lib/workflow.ts` fully implements `getActiveSistemBloks`, `getActiveSistemBlok`, `isKelasInAngkatan`, `isTimeRangeOverlap`, and `evaluateScheduleBlock`.
-- `src/components/HomeViewGuru.tsx` renders granular schedule masking for mixed schedules and full block banner for complete blocks.
-- `src/components/GuruJurnal.tsx` supports dual-journal entry for mixed schedule days.
-- Static typing (`npx tsc --noEmit`) passes with 0 errors.
-- Both test suites (`tests/sistem_blok_verification.test.ts` [85 tests] and `tests/m2_schedule_masking_workflow.test.ts` [74 tests]) pass with 100% success rate.
+All Milestone 2 requirements have been implemented and verified:
+- `AdminDataView.tsx` harmonizes all 7 CSV templates (including `Data_Kelas`) and dispatches `sipjam:kelas-updated`.
+- `dataIntegrityGuard.ts` features robust header normalization, pre-validation required header checks, row-level validation (`Baris ${i}`), student deduplication by `(sekolah_id, nisn)`, and `data_kelas` upsert with graceful fallback.
+- `AdminKelasView.tsx` provides direct "Template CSV" and "Impor CSV" actions and live-refreshes on `sipjam:kelas-updated`.
+- All existing project invariants (`production_admin_adjustments.test.ts:688, 696`, `data_guru_csv_import_sekolah_id_validation.test.ts:834`, `ui_ux_improvements_audit.test.ts:84`) are 100% preserved.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify the implementation:
+1. **Static Typecheck**:
+   ```bash
+   npx tsc --noEmit
+   ```
+   *Result*: 0 errors (exited with code 0).
 
-```bash
-# 1. Typecheck the codebase
-npx tsc --noEmit
+2. **Dedicated Milestone 2 Automated Test Suite**:
+   ```bash
+   npx tsx tests/m2_csv_templates_and_import_harmonization.test.ts
+   ```
+   *Result*: 16/16 PASSED (0 failed).
 
-# 2. Run existing test suite (85 tests, zero regressions)
-npx tsx tests/sistem_blok_verification.test.ts
+3. **Full Automated Test Suite**:
+   ```bash
+   npm test
+   ```
+   *Result*: All 54 test files passed (0 failures, zero regression).
 
-# 3. Run new Milestone 2 test suite (74 tests)
-npx tsx tests/m2_schedule_masking_workflow.test.ts
-```
-
-Invalidation conditions:
-- Any test failure in `tests/sistem_blok_verification.test.ts` or `tests/m2_schedule_masking_workflow.test.ts`.
-- TypeScript errors reported by `npx tsc --noEmit`.
+4. **Specific Regression Suites**:
+   - `npx tsx tests/production_admin_adjustments.test.ts`: 24/24 PASSED.
+   - `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts`: 31/31 PASSED.
+   - `npx tsx tests/adversarial_r1_r5_stress_test.ts`: 14/14 PASSED.
+   - `npx tsx tests/adversarial_o27_m4_challenger.test.ts`: 13/13 PASSED.
+   - `npx tsx tests/adversarial_centralized_class_allocation_m1.test.ts`: 15/15 PASSED.

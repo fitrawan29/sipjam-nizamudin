@@ -36,8 +36,8 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | F1: Sub Menu Kelas Navigation & Access | Add `Data_Kelas` tab to `AdminDataView.tsx`, configure aliases in `src/lib/navigation.ts`, enforce admin role restriction | M1 | Survey | PLANNED |
-| 2 | F2: Centralized Student Class Allocation Workspace | Implement `AdminKelasView.tsx` with class directory cards, unallocated student indicators, student roster drawer, batch move/reassign, class creation/rename, and multi-tenant `data_siswa.kelas` updates | M1 | Survey | PLANNED |
+| 1 | F1: Sub Menu Kelas Navigation & Access | Add `Data_Kelas` tab to `AdminDataView.tsx`, configure aliases in `src/lib/navigation.ts`, enforce admin role restriction | M1 | Survey | DONE |
+| 2 | F2: Centralized Student Class Allocation Workspace | Implement `AdminKelasView.tsx` with class directory cards, unallocated student indicators, student roster drawer, batch move/reassign, class creation/rename, and multi-tenant `data_siswa.kelas` updates | M1 | Survey | DONE |
 | 3 | F3: Harmonization of 7 Master Data CSV Templates | Provide `Template_Data_Kelas.csv` and ensure all 7 entity templates in `AdminDataView.tsx` precisely match database column structures while preserving test invariants | M2 | Survey | PLANNED |
 | 4 | F4: Robust CSV Parsing, Validation & Feedback | Enhance `src/lib/dataIntegrityGuard.ts` for `data_kelas` header normalization, validation, student upsert idempotency, and informative error/success feedback | M2 | Survey | PLANNED |
 | 5 | F5: Dedicated Automated Verification Test Suite | Implement `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` testing sub-menu access, route aliasing, class student allocation, and all 7 CSV template imports | M3 | Survey | PLANNED |
@@ -46,7 +46,7 @@
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa | `src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/navigation.ts` | none | PLANNED |
+| M1 | Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa | `src/components/AdminKelasView.tsx`, `src/components/AdminDataView.tsx`, `src/lib/navigation.ts` | none | DONE |
 | M2 | Penyelarasan Template Master Data & Impor CSV | `src/components/AdminDataView.tsx` (`templates`), `src/lib/dataIntegrityGuard.ts` | M1 | PLANNED |
 | M3 | Automated Verification Tests & Non-Regression Gate | `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`, `npm test`, `npx tsc --noEmit`, `npm run build` | M2 | PLANNED |
 

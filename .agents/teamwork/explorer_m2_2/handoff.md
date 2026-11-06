@@ -1,641 +1,606 @@
-# Milestone 2 Forensic Remediation Blueprint (Iteration 3)
-
-**Author**: Explorer M2 (Iteration 3 — Forensic Remediation)  
-**Assigned Scope**: Comprehensive Investigation & Concrete Remediation Plan for the 6 Milestone 2 Defects  
-**Working Directory**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_2\`  
-**Status**: Ready for Worker / Builder Implementation  
-
----
+# Handoff Report: Milestone 2 — CSV Normalization, Validation, and Idempotent Upsert Engine
 
 ## 1. Observation
 
-### Finding 1: Façade Alpa Rekap Query in `src/components/AdminRekapView.tsx`
-- **Location**: `src/components/AdminRekapView.tsx`, lines 60–70:
-  ```ts
-  60:       let presensiQuery = supabase
-  61:         .from('presensi_guru')
-  62:         .select('*')
-  63:         .gte('timestamp', start)
-  64:         .lte('timestamp', end)
-  65:         .eq('status_verifikasi', 'Disetujui')
-  66:         .order('timestamp', { ascending: true });
-  ```
-- **Direct Observation**:
-  Line 65 forces an equality filter exclusively on `status_verifikasi = 'Disetujui'`. All attendance records that were transitioned to `status_verifikasi = 'Alpa'` by the auto-alpa engine (`evaluateAndApplyAutoAlpa`) are filtered out at the Supabase query level.
-  Consequently, in lines 142–147:
-  ```ts
-  142:           } else if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') {
-  143:             pMap[nama].alpaDirect = (pMap[nama].alpaDirect || 0) + 1;
-  144:           }
-  145:         } else if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') {
-  146:           pMap[nama].alpaDirect = (pMap[nama].alpaDirect || 0) + 1;
-  147:         }
-  ```
-  This branch is completely unreachable for database-mutated Alpa records. `alpaDirect` remains `0` across all teachers.
+### 1.1 Existing Codebase Findings
+1. **`src/lib/dataIntegrityGuard.ts` (Lines 544–581, `normalizeCsvHeaders`)**:
+   - Current implementation handles header mapping for `data_siswa`, `data_guru`, and `data_mapel`.
+   - Lines 555–557:
+     ```ts
+     if (clean === 'nama' || clean === 'nama_lengkap' || clean === 'namalengkap') {
+       return tableName === 'data_siswa' ? 'nama_siswa' : 'nama_guru';
+     }
+     ```
+     Observed issue: If `tableName === 'data_kelas'` or `tableName === 'kelas'`, a column header named `nama` or `nama_lengkap` will inadvertently map to `nama_guru` rather than `nama_kelas`.
+   - Current header normalization has no mappings for `tableName === 'data_kelas'` / `tableName === 'kelas'`. Column names such as `nama_kelas`, `tingkat`, `jurusan`, `kelas`, `rombel` are not recognized or normalized.
+   - Cross-entity aliases are partially defined (e.g. `no_hp_orang_tua -> no_hp_ortu`, `id_sekolah -> sekolah_id`), but need complete coverage for aliases such as `jenis_kelamin -> gender`, `tingkat_kelas -> tingkat`, `peminatan -> jurusan`, and table-specific `rombel -> nama_kelas` (for `data_kelas`) vs `rombel -> kelas` (for other tables).
 
-### Finding 2: Self-Certifying & Facade Tests in `tests/m2_notifications_alpa_warning.test.ts`
-- **Location**: `tests/m2_notifications_alpa_warning.test.ts`, lines 68–241:
-  - 25 of 27 assertions are static text searches on source code files using `includes(...)`.
-  - For example, line 173–179:
-    ```ts
-    assert(
-      rekapContent.includes('alpaDirect') &&
-      rekapContent.includes("p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa'") &&
-      rekapContent.includes('totalAlpa = alpaOtomatis + alpaDirect'),
-      'F6.7: AdminRekapView aggregates explicit database Alpa with late deduction Alpa'
-    );
-    ```
-  - Line 208 asserts the presence of the broken code:
-    ```ts
-    warningServiceContent.includes('dayOfWeek === 0')
-    ```
-- **Direct Observation**:
-  The test suite asserted only that certain string tokens existed in file contents without executing the components or functions. This resulted in an illusory "27/27 PASSED (100%)" report while major runtime regressions went undetected.
+2. **`src/lib/dataIntegrityGuard.ts` (Lines 637–680, `isUuidKeyedTable`)**:
+   - `isUuidKeyedTable` defines tables that use UUID primary keys:
+     ```ts
+     const isUuidKeyedTable =
+       tableName === 'kalender_pendidikan' ||
+       tableName === 'jadwal_pelajaran' ||
+       tableName === 'data_siswa' ||
+       tableName === 'wali_kelas' ||
+       tableName === 'sistem_blok';
+     ```
+     Observed issue: `tableName === 'data_kelas'` and `tableName === 'kelas'` are missing. If a CSV without `id` is uploaded for `data_kelas`, it falls back to lines 650–657 which generates a UUID, but if a non-UUID ID (e.g. `KLS-01`) is present, it does not sanitize it to a valid UUID, which triggers PostgreSQL Error `22P02`.
+   - Missing validation branch for `data_kelas`: Lines 738–817 handle `data_guru`, `jadwal_pelajaran`, `data_mapel`, and `data_siswa`. There is no validation branch for `data_kelas`, so empty class names or dummy class names (e.g. `test`, `dummy`, `fiktif`) are not intercepted prior to database insertion, allowing PostgreSQL Error `23502` or dummy records to reach the database.
 
-### Finding 3: Cutoff ASCII Comparison Bug (`.` vs `:`) in `src/lib/attendanceAlpa.ts`
-- **Location**: `src/lib/attendanceAlpa.ts`, lines 38, 46, 50–60:
-  ```ts
-  38: const currentTimeWita = getWitaTimeStr();
-  ...
-  46: const cutoffTime = configData?.value || '22:00';
-  ...
-  52: if (currentTimeWita < cutoffTime) {
-  ```
-- **Helper Definition**: `src/lib/wita.ts`, lines 42–48:
-  ```ts
-  export function getWitaTimeStr(date: Date = new Date()): string {
-    return date.toLocaleTimeString('id-ID', {
-      timeZone: WITA_TIMEZONE,
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }
-  ```
-- **Direct Observation & Empirical Execution**:
-  - Live execution in Node.js reveals that `id-ID` locale outputs dot separators (`.`): `"00.56"`, `"15.30"`.
-  - Standard time inputs and `pengaturan.jam_pulang_akhir` use colon separators (`:`): `"15:00"`, `"22:00"`.
-  - In ASCII, `.` (ASCII 46) is strictly less than `:` (ASCII 58).
-  - Empirical result: `'15.30' < '15:00'` evaluates to `true`! `'23.15' < '22:00'` evaluates to `true`!
-  - For up to an entire hour after cutoff time has passed, the comparison evaluates to `true`, causing `evaluateAndApplyAutoAlpa` to abort with `affectedCount: 0`.
+3. **`src/lib/dataIntegrityGuard.ts` (Lines 833–865, `importMasterDataFromCsv`)**:
+   - Lines 845–849:
+     ```ts
+     if (tableName === 'wali_kelas') {
+       upsertOptions.onConflict = 'sekolah_id, kelas';
+     } else {
+       upsertOptions.onConflict = 'id';
+     }
+     ```
+     Observed issue A (`data_kelas`): When `tableName === 'data_kelas'`, `upsertOptions.onConflict` defaults to `'id'`. Re-uploading a class list or importing classes cannot deduplicate on `(sekolah_id, nama_kelas)`. Furthermore, if `public.data_kelas` table has not yet loaded into the PostgREST schema cache (PostgREST error `PGRST205` / PostgreSQL `42P01`), the entire import crashes with an unhandled exception instead of gracefully falling back to syncing classes in `wali_kelas` and `data_siswa`.
+     Observed issue B (`data_siswa`): The CSV template for `Data_Siswa` (`Template_Data_Siswa.csv`) omits `id` by design (`nisn,nama_siswa,kelas,gender,status,no_hp_ortu`). When `parseAndValidateMasterCsv` parses this file, lines 650–657 auto-generate a new random UUID for `row.id`. Because `upsertOptions.onConflict = 'id'`, re-uploading an updated student CSV (e.g. updating phone number or class) performs an `INSERT` with new IDs, creating duplicate student records or triggering unique constraint violations on `(sekolah_id, nisn)`.
 
-### Finding 4: Timezone Date Skew in `src/lib/warningSystem.ts`
-- **Location**: `src/lib/warningSystem.ts`, lines 123–143:
-  ```ts
-  123: const todayStr = getWitaDateStr();
-  124: const evaluationDates: { dateStr: string; dayName: string }[] = [];
-  125: const dateObj = new Date(todayStr + 'T00:00:00+08:00');
-  126: 
-  127: // Look back up to 30 calendar days
-  128: for (let i = 29; i >= 0; i--) {
-  129:   const d = new Date(dateObj);
-  130:   d.setDate(d.getDate() - i);
-  131:   const dateStr = d.toISOString().split('T')[0];
-  132:   const dayOfWeek = d.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  133:   const dayName = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Makassar', weekday: 'long' });
-  134: 
-  135:   // Exclude Sundays
-  136:   if (dayOfWeek === 0) continue;
-  ```
-- **Direct Observation & Empirical Execution**:
-  - `dateObj` is parsed as `todayStr + 'T00:00:00+08:00'`. At midnight in WITA (+08:00), the UTC timestamp is 16:00:00 on the previous calendar day.
-  - Calling `d.toISOString()` converts to UTC, shifting `dateStr` by -1 day (e.g., today `2026-09-24` evaluates to `2026-09-23`).
-  - Calling `d.getUTCDay()` returns the UTC day of week. On an Indonesian Monday morning, UTC is Sunday, so `dayOfWeek === 0`. Line 136 skips every Monday school day!
-  - On an Indonesian Sunday morning, UTC is Saturday, so `dayOfWeek === 6`. Line 136 is false, so Sunday is evaluated as an active school day and teachers are penalized for not attending on Sunday.
-  - Furthermore, `dayName` is computed in `Asia/Makassar` (Thursday `'Kamis'`) while `dateStr` is UTC (Wednesday `'2026-09-23'`). Class schedules are paired with the wrong day's attendance records.
+4. **`src/components/AdminDataView.tsx` (Lines 229–260, `templates`)**:
+   - `templates` contains configurations for `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, and `Wali_Kelas`.
+   - `Data_Kelas` (`Template_Data_Kelas.csv`) is missing from the templates mapping.
+   - Lines 1935–1938 render `<AdminKelasView user={user} />` inside a conditional branch where the generic "Impor & Kelola Data" banner (Template download & Unggah buttons) in lines 1955–1978 is bypassed. Therefore, `AdminDataView.tsx` / `AdminKelasView.tsx` needs a dedicated trigger or integrated download/upload controls for `Data_Kelas`.
 
-### Finding 5: Unbounded Date Queries in `src/lib/attendanceAlpa.ts`
-- **Location**: `src/lib/attendanceAlpa.ts`, lines 64–75:
-  ```ts
-  64: const startOfDay = getWitaStartOfDay(evaluatedDate);
-  65: const endOfDay = getWitaEndOfDay(evaluatedDate);
-  66: 
-  67: let query = supabase
-  68:   .from('presensi_guru')
-  69:   .select('*')
-  70:   .or(`timestamp.gte.${startOfDay},timestamp.ilike.${evaluatedDate}%`);
-  ```
-- **Direct Observation**:
-  `endOfDay` is computed on line 65 but never referenced. The query is unbounded from above (`.lte` is missing).
-  When evaluating a past date, attendance from subsequent dates is returned.
-  In line 108:
-  ```ts
-  const hasValidResubmission = teacherRecs.some(
-    r => r.tipe_absen === 'Datang' && r.status_verifikasi !== 'Ditolak' && r.status_verifikasi !== 'Alpa'
-  );
-  ```
-  Attendance on subsequent days satisfies `hasValidResubmission`, immunizing past unresubmitted rejections from transitioning to Alpa.
-
-### Finding 6: Rejection Route Input Validation in `src/app/api/notifications/rejection/route.ts`
-- **Location**: `src/app/api/notifications/rejection/route.ts`, lines 19–25 & 48–61:
-  - Line 55: `const teacherName = body.teacherName.trim();`
-  - Line 19: `sanitizeText(str)` calls `str.replace(...)`
-- **Direct Observation & Verbatim Errors**:
-  Running `tests/m2_adversarial_stress.test.ts` produced:
-  ```
-  [API /api/notifications/rejection] Exception: TypeError: body.teacherName.trim is not a function
-      at POST (src/app/api/notifications/rejection/route.ts:55:42)
-  [API /api/notifications/rejection] Exception: TypeError: str.replace is not a function
-      at sanitizeText (src/app/api/notifications/rejection/route.ts:22:6)
-  ```
-  Non-string values crash the route with HTTP 500 instead of HTTP 400. Whitespace-only strings pass `!body.teacherName` and produce empty database queries.
+5. **Existing Test Suite Baseline**:
+   - `npm test` executes 54 test files (including adversarial tests, PostgreSQL error prevention tests, and data integrity tests). All passed cleanly (exit code 0).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Façade Rekap (Finding 1)**:
-   - Observation 1 proves that `AdminRekapView.tsx` line 65 filters exclusively for `status_verifikasi = 'Disetujui'`.
-   - The auto-alpa cutoff engine sets `status_verifikasi = 'Alpa'`.
-   - Records with `status_verifikasi = 'Alpa'` will never be returned by Supabase to `AdminRekapView`.
-   - Therefore, `alpaDirect` is never incremented, rendering explicit Alpa reporting completely broken in the UI.
+```
+[Observation 1.1] normalizeCsvHeaders lacks data_kelas rules and has table-collision on 'nama'
+        ↓
+  Step 1: In normalizeCsvHeaders, scope 'nama' / 'nama_lengkap' by table (data_siswa -> nama_siswa; data_kelas/kelas -> nama_kelas; data_mapel -> nama_mata_pelajaran; default -> nama_guru).
+  Step 2: Add dedicated rules for tableName === 'data_kelas' || tableName === 'kelas': map 'kelas', 'rombel', 'nama_kelas', 'namakelas' -> 'nama_kelas'; map 'tingkat', 'tingkat_kelas', 'grade' -> 'tingkat'; map 'jurusan', 'peminatan' -> 'jurusan'.
+  Step 3: Unify aliases across all 7 entities so any standard Indonesian educational CSV format is recognized without column mapping errors.
 
-2. **Self-Certifying Tests (Finding 2)**:
-   - Observation 2 demonstrates that `tests/m2_notifications_alpa_warning.test.ts` checked only string tokens in file contents.
-   - Because code structure matched the substrings, the test passed despite the query filter, ASCII time comparison, and timezone bugs.
-   - Upgrading tests to execute behavioral logic is necessary to restore audit integrity.
+[Observation 1.2] parseAndValidateMasterCsv omits data_kelas from isUuidKeyedTable and lacks validation branch
+        ↓
+  Step 4: Include 'data_kelas' and 'kelas' in isUuidKeyedTable so missing IDs receive genuine UUIDs and legacy non-UUID strings are sanitized to UUIDs, preventing PostgreSQL Error 22P02.
+  Step 5: Add validation branch for data_kelas / kelas:
+          - Mandatory non-empty 'nama_kelas' check (prevents PostgreSQL 23502).
+          - Anti-dummy check via isDummyOrTestString('nama_kelas').
+          - Forbidden name check via isForbiddenName('nama_kelas').
+          - Deduplication check of class names within the CSV file.
+          - Automatic derivation of 'tingkat' ('10', '11', '12', or 'Lainnya') from class name if omitted.
+          - Null-safe sanitization of optional 'jurusan'.
 
-3. **Cutoff ASCII Bug (Finding 3)**:
-   - `getWitaTimeStr()` produces `HH.MM` with dot separator.
-   - Config values use `HH:MM` with colon separator.
-   - ASCII character 46 (`.`) is less than character 58 (`:`).
-   - In JavaScript, string comparison `'15.30' < '15:00'` evaluates to `true`.
-   - Normalizing both values with `.replace('.', ':')` ensures correct mathematical time comparison.
+[Observation 1.3] importMasterDataFromCsv lacks data_siswa idempotency and data_kelas fallback
+        ↓
+  Step 6: In importMasterDataFromCsv for tableName === 'data_siswa':
+          Extract all non-empty NISN values and query existing records in chunks of 100 via:
+          `supabase.from('data_siswa').select('id, nisn, sekolah_id').eq('sekolah_id', schoolId).in('nisn', chunk)`.
+          Map existing student UUIDs into matching CSV rows (row.id = existingId).
+          When batch upsert executes with `onConflict: 'id'`, existing students are cleanly updated in-place without duplicate rows or 23505 constraint violations.
+  Step 7: In importMasterDataFromCsv for tableName === 'data_kelas' / 'kelas':
+          Set upsertOptions.onConflict = 'sekolah_id, nama_kelas'.
+          Wrap upsert in defensive error handling. If PostgREST schema cache error (PGRST205 / 42P01) occurs:
+          Catch the error using an inline `isSchemaCacheError` helper and fallback gracefully to ensuring distinct class names are synced into `wali_kelas` with placeholder teacher records and standard school ID, returning `{ count, rows }` successfully.
 
-4. **Timezone Date Skew (Finding 4)**:
-   - At WITA midnight (`00:00:00+08:00`), UTC time is 16:00:00 on the prior day.
-   - `d.toISOString()` extracts the UTC date, shifting the date array back by 1 calendar day.
-   - `d.getUTCDay()` yields the UTC day of week, inverting Monday (skipped as Sunday) and Sunday (evaluated as active).
-   - Anchoring at noon WITA (`12:00:00+08:00`), formatting dates via `getWitaDateStr(d)`, and filtering using `getWitaDayName(d)` aligns dates and schedules with 100% accuracy.
-
-5. **Historical Query Leak (Finding 5)**:
-   - Omitting `.lte('timestamp', endOfDay)` allows all future records to enter `teacherRecs`.
-   - Future attendance satisfies `hasValidResubmission`, preventing past rejections from mutating to Alpa.
-   - Adding `.lte('timestamp', endOfDay)` and in-memory date scoping restores temporal isolation.
-
-6. **Input Validation Failures (Finding 6)**:
-   - Lack of `typeof === 'string'` checks causes unhandled TypeErrors on non-string inputs.
-   - Validating string types, non-empty trimmed strings, and category enum values prevents 500 errors and returns HTTP 400.
-
----
-
-## 3. Concrete Remediation Plan (Builder Instructions)
-
-### Patch 1: `src/components/AdminRekapView.tsx` (Finding 1)
-**File**: `src/components/AdminRekapView.tsx`  
-**Line**: 65  
-
-```diff
-<<<< OLD (Line 60-66)
-       let presensiQuery = supabase
-         .from('presensi_guru')
-         .select('*')
-         .gte('timestamp', start)
-         .lte('timestamp', end)
--        .eq('status_verifikasi', 'Disetujui')
-         .order('timestamp', { ascending: true });
-==== NEW
-       let presensiQuery = supabase
-         .from('presensi_guru')
-         .select('*')
-         .gte('timestamp', start)
-         .lte('timestamp', end)
-+        .in('status_verifikasi', ['Disetujui', 'Alpa'])
-         .order('timestamp', { ascending: true });
->>>>
+[Observation 1.4 & 1.5] Template alignment and regression prevention
+        ↓
+  Step 8: Provide `Template_Data_Kelas.csv` in `AdminDataView.tsx` with headers `nama_kelas,tingkat,jurusan`.
+  Step 9: Preserve self-contained nature of `dataIntegrityGuard.ts` (no heavy client imports) ensuring 100% test compatibility and zero regression across the 54 automated test suites.
 ```
 
 ---
 
-### Patch 2: `src/lib/wita.ts` & `src/lib/attendanceAlpa.ts` (Finding 3 & Finding 5)
+## 3. Caveats
 
-#### 2A. Update `src/lib/wita.ts`:
-Ensure `getWitaTimeStr` returns `HH:MM` format with colon:
+1. **Database Table `public.data_kelas` vs Relational Fallback**:
+   In older Supabase instances of SIPJAM, classes are dynamically derived from `data_siswa.kelas` and `wali_kelas.kelas`. A dedicated table `public.data_kelas` was introduced in later migrations. The proposed engine actively checks `data_kelas` first, and if `PGRST205` or `42P01` occurs, it automatically falls back to syncing `wali_kelas` and `data_siswa` without requiring manual database migration or causing user disruption.
+2. **NISN Formatting**:
+   Students in early registration may occasionally have empty NISN or placeholder `-`. The idempotent matching logic strictly ignores empty strings and `-`, falling back to genuine UUID generation for new students while maintaining safety.
+3. **Multi-tenant Safety**:
+   `sekolah_id` validation is strictly enforced. School-level Admins cannot upload CSVs targeting foreign `sekolah_id`s, while Superadmins retain cross-school administrative flexibility.
 
-```diff
-<<<< OLD (src/lib/wita.ts, lines 42-48)
- export function getWitaTimeStr(date: Date = new Date()): string {
-   return date.toLocaleTimeString('id-ID', {
-     timeZone: WITA_TIMEZONE,
-     hour: '2-digit',
-     minute: '2-digit',
-   });
- }
-==== NEW
- export function getWitaTimeStr(date: Date = new Date()): string {
-   return date.toLocaleTimeString('id-ID', {
-     timeZone: WITA_TIMEZONE,
-     hour: '2-digit',
-     minute: '2-digit',
-   }).replace('.', ':');
- }
->>>>
+---
+
+## 4. Conclusion & Technical Implementation Blueprint
+
+The solution consists of precise, backward-compatible enhancements to `src/lib/dataIntegrityGuard.ts` and integration in `src/components/AdminDataView.tsx`.
+
+### 4.1 Implementation Blueprint for `src/lib/dataIntegrityGuard.ts`
+
+#### Component A: Helper Function `isSchemaCacheError`
+Add an inline helper inside `src/lib/dataIntegrityGuard.ts` to keep the module completely self-contained:
+```ts
+/**
+ * Detects PostgREST PGRST205 or PostgreSQL 42P01 missing table errors
+ * without requiring external library imports.
+ */
+function isSchemaCacheError(err: any): boolean {
+  if (!err) return false;
+  const target = (typeof err === 'object' && err !== null && 'error' in err && err.error && typeof err.error === 'object')
+    ? err.error
+    : err;
+  const code = String(target.code || target.status || err.code || err.status || '').trim().toUpperCase();
+  const msg = String(target.message || target.error_description || err.message || '').toLowerCase();
+  const details = String(target.details || err.details || '').toLowerCase();
+  return (
+    code === 'PGRST205' ||
+    code === '42P01' ||
+    code === 'PGRST200' ||
+    code === 'PGRST204' ||
+    msg.includes('pgrst205') ||
+    msg.includes('could not find the table') ||
+    (msg.includes('relation') && msg.includes('does not exist')) ||
+    details.includes('does not exist')
+  );
+}
 ```
 
-#### 2B. Update `src/lib/attendanceAlpa.ts`:
-Export `isBeforeCutoff`, use it for cutoff evaluation, add `.lte('timestamp', endOfDay)` upper bound, and scope records to evaluated date:
+#### Component B: Enhanced `normalizeCsvHeaders`
+Replace `normalizeCsvHeaders` with the following comprehensive implementation:
+```ts
+/**
+ * Normalizes CSV header names across all 7 Master Data entities:
+ * - data_kelas / kelas: nama_kelas, tingkat, jurusan, kelas, rombel
+ * - data_siswa: nisn, nama_siswa, kelas, gender, status, no_hp_ortu
+ * - data_guru: nip, nama_guru, mata_pelajaran, no_hp, status, email, sekolah_id
+ * - data_mapel: id, nama_mata_pelajaran, kategori
+ * - kalender_pendidikan: tanggal, keterangan, tipe
+ * - jadwal_pelajaran: hari, nama_guru, mata_pelajaran, kelas
+ * - wali_kelas: kelas, nama_guru, nip, tahun_ajaran
+ */
+export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): string[] {
+  const normTable = (tableName || '').toLowerCase().trim();
+  const isKelas = normTable === 'data_kelas' || normTable === 'kelas';
+  const isSiswa = normTable === 'data_siswa' || normTable === 'siswa';
+  const isMapel = normTable === 'data_mapel' || normTable === 'mapel';
+  const isGuru = normTable === 'data_guru' || normTable === 'guru';
 
-```diff
-<<<< OLD (src/lib/attendanceAlpa.ts, lines 26-76)
--/**
-- * Evaluates attendance submissions for a given date against the school's jam_pulang_akhir cutoff.
-- * If unresubmitted rejections are detected after cutoff, mutates their status in the database to 'Alpa'.
-- */
--export async function evaluateAndApplyAutoAlpa(
-...
--  if (evaluatedDate === todayWita && !options?.force) {
--    // Compare times in HH:MM format
--    if (currentTimeWita < cutoffTime) {
--      return {
--        affectedCount: 0,
--        details: [],
--        cutoffTime,
--        evaluatedDate,
--        reason: `Cutoff time (${cutoffTime} WITA) has not been reached yet for today (${currentTimeWita} WITA).`
--      };
--    }
--  }
--
--  // 3. Query all presensi_guru records for the evaluated date
--  const startOfDay = getWitaStartOfDay(evaluatedDate);
--  const endOfDay = getWitaEndOfDay(evaluatedDate);
--
--  let query = supabase
--    .from('presensi_guru')
--    .select('*')
--    .or(`timestamp.gte.${startOfDay},timestamp.ilike.${evaluatedDate}%`);
-==== NEW
-+/**
-+ * Safely compares two time strings (HH:MM or HH.MM).
-+ * Returns true if currentTime is strictly before cutoffTime.
-+ */
-+export function isBeforeCutoff(currentTime: string, cutoffTime: string): boolean {
-+  const normCurrent = (currentTime || '').replace('.', ':').trim();
-+  const normCutoff = (cutoffTime || '').replace('.', ':').trim();
-+  return normCurrent < normCutoff;
-+}
-+
- /**
-  * Evaluates attendance submissions for a given date against the school's jam_pulang_akhir cutoff.
-  * If unresubmitted rejections are detected after cutoff, mutates their status in the database to 'Alpa'.
-  */
- export async function evaluateAndApplyAutoAlpa(
-   targetDateStr?: string,
-   sekolahId?: string,
-   options?: EvaluateAutoAlpaOptions
- ): Promise<AutoAlpaResult> {
-   const evaluatedDate = targetDateStr || getWitaDateStr();
-   const todayWita = getWitaDateStr();
-   const currentTimeWita = getWitaTimeStr();
+  return rawHeaders.map(h => {
+    const clean = h
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .trim()
+      .replace(/^["']+|["']+$/g, '')
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, '_')
+      .replace(/^_+|_+$/g, '');
 
-   // 1. Fetch jam_pulang_akhir from pengaturan
-   let configQuery = supabase.from('pengaturan').select('*').eq('key', 'jam_pulang_akhir');
-   if (sekolahId) {
-     configQuery = configQuery.eq('sekolah_id', sekolahId);
-   }
-   const { data: configData } = await configQuery.maybeSingle();
-   const cutoffTime = configData?.value || '22:00';
+    // 1. School ID aliases across all entities
+    if (
+      clean === 'id_sekolah' ||
+      clean === 'school_id' ||
+      clean === 'sekolahid' ||
+      clean === 'schoolid' ||
+      clean === 'idsekolah' ||
+      clean === 'id_school' ||
+      clean === 'idschool' ||
+      clean === 'sekolah_uuid' ||
+      clean === 'uuid_sekolah' ||
+      clean === 'sekolahuuid' ||
+      clean === 'uuidsekolah' ||
+      clean === 'kode_sekolah' ||
+      clean === 'kodesekolah'
+    ) {
+      return 'sekolah_id';
+    }
 
-   // 2. Pre-cutoff early exit (F6-B2)
-   // If target date is today and current time is before cutoff, exit without changes unless forced
-   if (evaluatedDate === todayWita && !options?.force) {
-+    if (isBeforeCutoff(currentTimeWita, cutoffTime)) {
-       return {
-         affectedCount: 0,
-         details: [],
-         cutoffTime,
-         evaluatedDate,
-         reason: `Cutoff time (${cutoffTime} WITA) has not been reached yet for today (${currentTimeWita} WITA).`
-       };
-     }
-   }
+    // 2. Class entity specific mappings
+    if (isKelas) {
+      if (
+        clean === 'nama_kelas' ||
+        clean === 'namakelas' ||
+        clean === 'kelas' ||
+        clean === 'rombel' ||
+        clean === 'nama_rombel' ||
+        clean === 'ruang_kelas' ||
+        clean === 'nama'
+      ) {
+        return 'nama_kelas';
+      }
+      if (clean === 'tingkat' || clean === 'tingkat_kelas' || clean === 'tingkatkelas' || clean === 'grade' || clean === 'level') {
+        return 'tingkat';
+      }
+      if (clean === 'jurusan' || clean === 'peminatan' || clean === 'program_keahlian' || clean === 'program' || clean === 'konsentrasi') {
+        return 'jurusan';
+      }
+    }
 
-   // 3. Query all presensi_guru records for the evaluated date (bounded by startOfDay and endOfDay)
-   const startOfDay = getWitaStartOfDay(evaluatedDate);
-   const endOfDay = getWitaEndOfDay(evaluatedDate);
+    // 3. Name headers scoped by entity
+    if (clean === 'nama' || clean === 'nama_lengkap' || clean === 'namalengkap') {
+      if (isSiswa) return 'nama_siswa';
+      if (isKelas) return 'nama_kelas';
+      if (isMapel) return 'nama_mata_pelajaran';
+      return 'nama_guru';
+    }
 
-   let query = supabase
-     .from('presensi_guru')
-     .select('*')
-+    .gte('timestamp', startOfDay)
-+    .lte('timestamp', endOfDay);
->>>>
+    // 4. Student Phone / Parent Phone aliases
+    if (
+      clean === 'no_hp_orang_tua' ||
+      clean === 'hp_ortu' ||
+      clean === 'hp_orang_tua' ||
+      clean === 'nohporangtua' ||
+      clean === 'nohp_ortu' ||
+      clean === 'telepon_ortu' ||
+      clean === 'no_telepon_ortu' ||
+      clean === 'wa_ortu' ||
+      clean === 'nomor_ortu'
+    ) {
+      return 'no_hp_ortu';
+    }
+
+    // 5. Subject aliases
+    if (
+      clean === 'mata_pelajaran' ||
+      clean === 'matapelajaran' ||
+      clean === 'mapel' ||
+      clean === 'nama_mapel' ||
+      clean === 'namamapel' ||
+      clean === 'nama_mata_pelajaran' ||
+      clean === 'namamatapelajaran'
+    ) {
+      return isMapel ? 'nama_mata_pelajaran' : 'mata_pelajaran';
+    }
+
+    // 6. Teacher name aliases
+    if (clean === 'guru' || clean === 'wali_kelas' || clean === 'walikelas' || clean === 'nama_wali_kelas') {
+      return 'nama_guru';
+    }
+
+    // 7. Rombel in student, schedule, or homeroom teacher tables maps to 'kelas'
+    if (clean === 'rombel') {
+      return isKelas ? 'nama_kelas' : 'kelas';
+    }
+
+    // 8. Gender aliases
+    if (clean === 'jenis_kelamin' || clean === 'jeniskelamin' || clean === 'jk' || clean === 'sex') {
+      return 'gender';
+    }
+
+    // 9. Calendar / Event aliases
+    if (clean === 'deskripsi' || clean === 'agenda' || clean === 'kegiatan' || clean === 'uraian' || clean === 'acara') {
+      return 'keterangan';
+    }
+    if (clean === 'tgl' || clean === 'date') {
+      return 'tanggal';
+    }
+    if (clean === 'jenis' || clean === 'type') {
+      return 'tipe';
+    }
+
+    // 10. Academic year aliases
+    if (clean === 'tahunajaran' || clean === 'tahun_akademik' || clean === 'ta') {
+      return 'tahun_ajaran';
+    }
+
+    // 11. Category aliases
+    if (clean === 'kelompok' || clean === 'kategori_mapel') {
+      return 'kategori';
+    }
+
+    // 12. NISN / NIP aliases
+    if (clean === 'nomor_induk_siswa_nasional' || clean === 'no_induk') {
+      return 'nisn';
+    }
+    if (clean === 'nuptk' || clean === 'nomor_induk_pegawai') {
+      return 'nip';
+    }
+
+    return clean;
+  });
+}
 ```
 
-Also, in `src/lib/attendanceAlpa.ts`, ensure `teacherRecordsMap` population isolates records to `evaluatedDate`:
+#### Component C: Enhanced `parseAndValidateMasterCsv`
+Update UUID handling and add the `data_kelas` validation branch:
+```ts
+    // In parseAndValidateMasterCsv:
+    // Update isUuidKeyedTable (include data_kelas & kelas):
+    const isUuidKeyedTable =
+      tableName === 'kalender_pendidikan' ||
+      tableName === 'jadwal_pelajaran' ||
+      tableName === 'data_siswa' ||
+      tableName === 'wali_kelas' ||
+      tableName === 'sistem_blok' ||
+      tableName === 'data_kelas' ||
+      tableName === 'kelas';
+```
+Add tracking set before loop:
+```ts
+  const seenClassNames = new Set<string>();
+```
+Add validation branch inside line processing:
+```ts
+    // Validation branch for data_kelas / kelas
+    if (tableName === 'data_kelas' || tableName === 'kelas') {
+      const rawNamaKelas = row.nama_kelas ? String(row.nama_kelas).trim() : '';
+      if (!rawNamaKelas || rawNamaKelas.toLowerCase() === 'null' || rawNamaKelas.toLowerCase() === 'undefined') {
+        throw new Error(`Baris ${i}: Kolom "nama_kelas" wajib diisi dan tidak boleh kosong untuk data kelas.`);
+      }
 
-```diff
-<<<< OLD (src/lib/attendanceAlpa.ts, lines 82-95)
-   const presensiRecords = records || [];
+      if (isDummyOrTestString(rawNamaKelas)) {
+        throw new Error(`Baris ${i}: Terdeteksi nama kelas dummy/percobaan ("${rawNamaKelas}"). Harap masukkan data kelas riil.`);
+      }
 
-   // 4. Identify unresubmitted rejected records
-   // Group all records by teacher name (normalized)
-   const teacherRecordsMap = new Map<string, typeof presensiRecords>();
-   for (const rec of presensiRecords) {
-     const teacherKey = (rec.nama_guru || '').toLowerCase().trim();
-     if (!teacherKey) continue;
-     if (!teacherRecordsMap.has(teacherKey)) {
-       teacherRecordsMap.set(teacherKey, []);
-     }
-     teacherRecordsMap.get(teacherKey)!.push(rec);
-   }
-==== NEW
-   const presensiRecords = (records || []).filter(rec => {
-     const ts = rec.timestamp || '';
-     return ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
-   });
+      if (isForbiddenName(rawNamaKelas)) {
+        throw new Error(`Baris ${i}: Nama kelas "${rawNamaKelas}" dilarang.`);
+      }
 
-   // 4. Identify unresubmitted rejected records
-   // Group all records by teacher name (normalized)
-   const teacherRecordsMap = new Map<string, typeof presensiRecords>();
-   for (const rec of presensiRecords) {
-     const teacherKey = (rec.nama_guru || '').toLowerCase().trim();
-     if (!teacherKey) continue;
-     if (!teacherRecordsMap.has(teacherKey)) {
-       teacherRecordsMap.set(teacherKey, []);
-     }
-     teacherRecordsMap.get(teacherKey)!.push(rec);
-   }
->>>>
+      const cleanNamaKelas = rawNamaKelas.replace(/\s+/g, ' ');
+      row.nama_kelas = cleanNamaKelas;
+
+      const lowerClass = cleanNamaKelas.toLowerCase();
+      if (seenClassNames.has(lowerClass)) {
+        throw new Error(`Baris ${i}: Duplikat nama kelas "${cleanNamaKelas}" dalam file CSV.`);
+      }
+      seenClassNames.add(lowerClass);
+
+      // Auto-derive tingkat if missing or empty
+      if (!row.tingkat || String(row.tingkat).trim() === '' || String(row.tingkat).toLowerCase() === 'null') {
+        if (/^10\b|^x\b/i.test(cleanNamaKelas)) {
+          row.tingkat = '10';
+        } else if (/^11\b|^xi\b/i.test(cleanNamaKelas)) {
+          row.tingkat = '11';
+        } else if (/^12\b|^xii\b/i.test(cleanNamaKelas)) {
+          row.tingkat = '12';
+        } else {
+          row.tingkat = 'Lainnya';
+        }
+      } else {
+        row.tingkat = String(row.tingkat).trim();
+        if (isDummyOrTestString(row.tingkat)) {
+          throw new Error(`Baris ${i}: Terdeteksi tingkat kelas dummy/percobaan ("${row.tingkat}").`);
+        }
+      }
+
+      // Sanitize optional jurusan
+      if (row.jurusan !== undefined && row.jurusan !== null) {
+        const rawJurusan = String(row.jurusan).trim();
+        if (rawJurusan && rawJurusan.toLowerCase() !== 'null' && rawJurusan.toLowerCase() !== 'undefined') {
+          if (isDummyOrTestString(rawJurusan)) {
+            throw new Error(`Baris ${i}: Terdeteksi jurusan kelas dummy/percobaan ("${rawJurusan}").`);
+          }
+          row.jurusan = rawJurusan;
+        } else {
+          row.jurusan = null;
+        }
+      } else {
+        row.jurusan = null;
+      }
+    }
+```
+
+#### Component D: Enhanced `importMasterDataFromCsv`
+Enhance student idempotency matching and class upsert with fallback:
+```ts
+export async function importMasterDataFromCsv(
+  supabase: any,
+  csvText: string,
+  tableName: string,
+  user?: any
+): Promise<{ count: number; rows: Record<string, any>[] }> {
+  const rows = parseAndValidateMasterCsv(csvText, tableName, user);
+  const isKelasTable = tableName === 'data_kelas' || tableName === 'kelas';
+  const isSiswaTable = tableName === 'data_siswa' || tableName === 'siswa';
+  const effectiveTableName = isKelasTable ? 'data_kelas' : tableName;
+
+  // 1. IDEMPOTENT STUDENT RESOLUTION (data_siswa)
+  // Match incoming students by (sekolah_id, nisn) to update existing rows instead of creating duplicates
+  if (isSiswaTable && rows.length > 0) {
+    const nisnList = Array.from(new Set(
+      rows
+        .map(r => (r.nisn ? String(r.nisn).trim() : ''))
+        .filter(n => n.length > 0 && n !== '-')
+    ));
+
+    if (nisnList.length > 0) {
+      const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
+      try {
+        const nisnToIdMap = new Map<string, string>();
+        const chunkSize = 100;
+        for (let k = 0; k < nisnList.length; k += chunkSize) {
+          const chunk = nisnList.slice(k, k + chunkSize);
+          let studentQuery = supabase
+            .from('data_siswa')
+            .select('id, nisn, sekolah_id');
+          if (schoolId) {
+            studentQuery = studentQuery.eq('sekolah_id', schoolId);
+          }
+          studentQuery = studentQuery.in('nisn', chunk);
+
+          const { data: existingStudents, error: fetchErr } = await studentQuery;
+          if (!fetchErr && existingStudents) {
+            for (const s of existingStudents) {
+              if (s.nisn) {
+                nisnToIdMap.set(String(s.nisn).trim().toLowerCase(), s.id);
+              }
+            }
+          }
+        }
+
+        // Map existing UUID to matching rows
+        for (const row of rows) {
+          const cleanNisn = row.nisn ? String(row.nisn).trim().toLowerCase() : '';
+          if (cleanNisn && nisnToIdMap.has(cleanNisn)) {
+            row.id = nisnToIdMap.get(cleanNisn);
+          }
+        }
+      } catch (nisnMatchErr) {
+        console.warn('[dataIntegrityGuard] Warning resolving existing students by NISN:', nisnMatchErr);
+      }
+    }
+  }
+
+  // 2. BATCH UPSERT WITH CONFLICT RESOLUTION AND FALLBACK
+  const batchSize = 50;
+  let isTableMissing = false;
+
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const upsertOptions: any = { ignoreDuplicates: false };
+
+    if (isKelasTable) {
+      upsertOptions.onConflict = 'sekolah_id, nama_kelas';
+    } else if (tableName === 'wali_kelas') {
+      upsertOptions.onConflict = 'sekolah_id, kelas';
+    } else {
+      upsertOptions.onConflict = 'id';
+    }
+
+    const { error } = await supabase
+      .from(effectiveTableName)
+      .upsert(batch, upsertOptions);
+
+    if (error) {
+      // Check if data_kelas table is missing from schema cache (PGRST205 / 42P01)
+      if (isKelasTable && isSchemaCacheError(error)) {
+        isTableMissing = true;
+        break;
+      }
+
+      // If onConflict specification on (sekolah_id, nama_kelas) fails due to constraint absence, retry on 'id'
+      if (isKelasTable && (error.code === '42P10' || String(error.message).includes('conflict target') || String(error.message).includes('constraint'))) {
+        const { error: idErr } = await supabase
+          .from(effectiveTableName)
+          .upsert(batch, { onConflict: 'id', ignoreDuplicates: false });
+        if (idErr) {
+          if (isSchemaCacheError(idErr)) {
+            isTableMissing = true;
+            break;
+          }
+          throw idErr;
+        }
+        continue;
+      }
+
+      // Localized error message translations
+      if (error.code === '23503' || String(error.message).includes('sekolah_id_fkey') || String(error.message).includes('foreign key constraint')) {
+        throw new Error('ID sekolah ("sekolah_id") dalam CSV tidak terdaftar di sistem sekolah. Pastikan menggunakan ID sekolah yang valid.');
+      }
+      if (error.code === '23502') {
+        throw new Error(`Gagal menyimpan data: terdapat kolom wajib yang bernilai kosong (${error.message}).`);
+      }
+      if (error.code === '23505') {
+        throw new Error(`Gagal menyimpan data: terdapat data duplikat yang melanggar batasan unik database (${error.message}).`);
+      }
+      if (error.code === '42501' || String(error.message).includes('row-level security')) {
+        throw new Error('Akses ditolak oleh kebijakan keamanan data sekolah (RLS). Pastikan Anda hanya mengimpor data untuk sekolah Anda sendiri.');
+      }
+      throw error;
+    }
+  }
+
+  // 3. GRACEFUL FALLBACK FOR data_kelas
+  if (isTableMissing && isKelasTable) {
+    console.warn('[dataIntegrityGuard] Table data_kelas unavailable (PGRST205/missing). Falling back to syncing classes in wali_kelas.');
+    try {
+      const schoolId = user?.sekolah_id || rows[0]?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      const distinctClasses = Array.from(new Set(rows.map(r => r.nama_kelas).filter(Boolean)));
+      for (const cls of distinctClasses) {
+        try {
+          const { data: existingWali } = await supabase
+            .from('wali_kelas')
+            .select('id, kelas')
+            .eq('sekolah_id', schoolId)
+            .eq('kelas', cls)
+            .maybeSingle();
+
+          if (!existingWali) {
+            await supabase.from('wali_kelas').upsert({
+              id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined,
+              sekolah_id: schoolId,
+              kelas: cls,
+              nama_guru: '-',
+              nip: '-',
+              tahun_ajaran: '2024/2025'
+            }, { onConflict: 'sekolah_id, kelas' });
+          }
+        } catch (wErr) {
+          console.warn('[dataIntegrityGuard] Fallback sync to wali_kelas warning for class:', cls, wErr);
+        }
+      }
+    } catch (fallbackErr) {
+      console.warn('[dataIntegrityGuard] Graceful fallback sync error:', fallbackErr);
+    }
+  }
+
+  // 4. AUTO-SYNC TEACHER ACCOUNTS (data_guru)
+  if (tableName === 'data_guru' && rows.length > 0) {
+    try {
+      for (const row of rows) {
+        const targetUsername = resolveTeacherUsername(row);
+        if (targetUsername) {
+          const defaultPassword = getDefaultTeacherPassword(targetUsername);
+          const userTable = supabase?.from?.('users');
+          if (typeof userTable?.select === 'function') {
+            const { data: existingUser } = await userTable
+              .select('id')
+              .ilike('username', targetUsername)
+              .maybeSingle();
+
+            if (!existingUser && typeof userTable?.insert === 'function') {
+              await userTable.insert([{
+                id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : undefined,
+                username: targetUsername,
+                password: defaultPassword,
+                nama: row.nama_guru,
+                role: 'Guru',
+                sekolah_id: row.sekolah_id || user?.sekolah_id
+              }]);
+            }
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[dataIntegrityGuard] Auto-sync users for imported data_guru warning:', syncErr);
+    }
+  }
+
+  return { count: rows.length, rows };
+}
 ```
 
 ---
 
-### Patch 3: `src/lib/warningSystem.ts` (Finding 4 & Finding 5)
-Export `buildEvaluationDates` and use WITA date arithmetic:
+### 4.2 Integration Blueprint for `src/components/AdminDataView.tsx`
 
-```diff
-<<<< OLD (src/lib/warningSystem.ts, lines 122-144)
--  // 6. Build evaluation window: past 30 days up to yesterday (or today if after school hours)
--  const todayStr = getWitaDateStr();
--  const evaluationDates: { dateStr: string; dayName: string }[] = [];
--  const dateObj = new Date(todayStr + 'T00:00:00+08:00');
--
--  // Look back up to 30 calendar days
--  for (let i = 29; i >= 0; i--) {
--    const d = new Date(dateObj);
--    d.setDate(d.getDate() - i);
--    const dateStr = d.toISOString().split('T')[0];
--    const dayOfWeek = d.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
--    const dayName = d.toLocaleDateString('id-ID', { timeZone: 'Asia/Makassar', weekday: 'long' });
--
--    // Exclude Sundays
--    if (dayOfWeek === 0) continue;
--    // Exclude Saturdays if 5-day school week
--    if (hariSekolah === '5' && dayOfWeek === 6) continue;
--    // Exclude calendar holidays (F7-B3)
--    if (holidaySet.has(dateStr)) continue;
--
--    evaluationDates.push({ dateStr, dayName });
--  }
-==== NEW
-+/**
-+ * Builds the evaluation date window (past lookbackDays up to today) in WITA timezone.
-+ * Properly excludes Sundays, Saturdays (for 5-day school weeks), and calendar holidays.
-+ */
-+export function buildEvaluationDates(
-+  todayStr: string = getWitaDateStr(),
-+  lookbackDays: number = 30,
-+  hariSekolah: string = '6',
-+  holidaySet: Set<string> = new Set()
-+): { dateStr: string; dayName: string }[] {
-+  const evaluationDates: { dateStr: string; dayName: string }[] = [];
-+  // Anchor at noon WITA (+08:00) so adding/subtracting days never crosses midnight
-+  const dateObj = new Date(todayStr + 'T12:00:00+08:00');
-+
-+  for (let i = lookbackDays - 1; i >= 0; i--) {
-+    const d = new Date(dateObj.getTime() - i * 86400000);
-+    const dateStr = getWitaDateStr(d);
-+    const dayName = getWitaDayName(d);
-+
-+    // Exclude Sundays in WITA
-+    if (dayName === 'Minggu') continue;
-+
-+    // Exclude Saturdays if 5-day school week
-+    if (hariSekolah === '5' && dayName === 'Sabtu') continue;
-+
-+    // Exclude calendar holidays
-+    if (holidaySet.has(dateStr)) continue;
-+
-+    evaluationDates.push({ dateStr, dayName });
-+  }
-+  return evaluationDates;
-+}
-+
-   // 6. Build evaluation window
-   const todayStr = getWitaDateStr();
-   const evaluationDates = buildEvaluationDates(todayStr, 30, hariSekolah, holidaySet);
->>>>
-```
-
-Also, in lines 145–165 of `src/lib/warningSystem.ts`, bound queries by adding `.lte`:
-
-```diff
-<<<< OLD (src/lib/warningSystem.ts, lines 145-165)
-   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
-
-   const [presensiRes, jurnalRes, piketRes] = await Promise.all([
-     supabase
-       .from('presensi_guru')
-       .select('*')
-       .ilike('nama_guru', normName)
-       .gte('timestamp', minDate),
-     supabase
-       .from('jurnal_pembelajaran')
-       .select('*')
-       .ilike('nama_guru', normName)
-       .gte('tanggal', minDate),
-     supabase
-       .from('laporan_piket')
-       .select('*')
-       .or(`guru_pelapor.ilike.%${normName}%,kehadiran_guru_piket.ilike.%${normName}%`)
-       .gte('tanggal', minDate)
-   ]);
-==== NEW
-   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
-   const maxDate = todayStr + 'T23:59:59+08:00';
-
-   const [presensiRes, jurnalRes, piketRes] = await Promise.all([
-     supabase
-       .from('presensi_guru')
-       .select('*')
-       .ilike('nama_guru', normName)
-       .gte('timestamp', minDate)
-       .lte('timestamp', maxDate),
-     supabase
-       .from('jurnal_pembelajaran')
-       .select('*')
-       .ilike('nama_guru', normName)
-       .gte('tanggal', minDate)
-       .lte('tanggal', todayStr),
-     supabase
-       .from('laporan_piket')
-       .select('*')
-       .or(`guru_pelapor.ilike.%${normName}%,kehadiran_guru_piket.ilike.%${normName}%`)
-       .gte('tanggal', minDate)
-       .lte('tanggal', todayStr)
-   ]);
->>>>
-```
-
----
-
-### Patch 4: `src/app/api/notifications/rejection/route.ts` (Finding 6)
-**File**: `src/app/api/notifications/rejection/route.ts`  
-Ensure type safety in `sanitizeText` and validate body fields with HTTP 400:
-
-```diff
-<<<< OLD (src/app/api/notifications/rejection/route.ts, lines 19-61)
- function sanitizeText(str: string): string {
-   if (!str) return '';
-   return str
-     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-     .replace(/<[^>]+>/g, '')
-     .trim();
- }
-...
- export async function POST(req: NextRequest) {
-   try {
-     const body: RejectionNotificationRequest = await req.json().catch(() => ({}));
-
-     // 1. Validate required fields (F5-B1)
-     if (!body.teacherName || !body.category || !body.rejectionReason) {
-       return NextResponse.json(
-         { success: false, error: 'Missing required parameters' },
-         { status: 400 }
-       );
-     }
-
-     const teacherName = body.teacherName.trim();
-     const category = body.category;
-     const cleanReason = sanitizeText(body.rejectionReason);
-==== NEW
- function sanitizeText(str: any): string {
-   if (typeof str !== 'string' || !str) return '';
-   return str
-     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-     .replace(/<[^>]+>/g, '')
-     .trim();
- }
-...
- export async function POST(req: NextRequest) {
-   try {
-     const body: any = await req.json().catch(() => ({}));
-
-     // 1. Validate required fields (F5-B1)
-     const teacherName = typeof body.teacherName === 'string' ? body.teacherName.trim() : '';
-     const category = typeof body.category === 'string' ? body.category.trim() : '';
-     const rejectionReason = typeof body.rejectionReason === 'string' ? body.rejectionReason.trim() : '';
-
-     if (!teacherName || !category || !rejectionReason) {
-       return NextResponse.json(
-         { success: false, error: 'Missing or invalid required parameters' },
-         { status: 400 }
-       );
-     }
-
-     const validCategories = ['Presensi', 'Jurnal', 'Piket'];
-     if (!validCategories.includes(category)) {
-       return NextResponse.json(
-         { success: false, error: 'Invalid category. Must be Presensi, Jurnal, or Piket' },
-         { status: 400 }
-       );
-     }
-
-     const cleanReason = sanitizeText(rejectionReason);
->>>>
-```
-
----
-
-### Patch 5: Upgrade Test Suites (Finding 2)
-
-#### 5A. Update `tests/m2_adversarial_stress.test.ts`:
-Wire Suite 1 and Suite 2 to import and test the actual production functions (`buildEvaluationDates`, `isBeforeCutoff`) instead of running inline mock code:
-
-1. Import `buildEvaluationDates` from `../src/lib/warningSystem`:
+1. **Add `Data_Kelas` to `templates` mapping**:
    ```ts
-   import { calculateStreak, buildEvaluationDates } from '../src/lib/warningSystem';
-   import { isBeforeCutoff } from '../src/lib/attendanceAlpa';
+   Data_Kelas: {
+     filename: 'Template_Data_Kelas.csv',
+     headers: ['nama_kelas', 'tingkat', 'jurusan'],
+     sample: ['X Merdeka', '10', 'Umum']
+   },
    ```
-2. In Suite 1.2:
-   ```ts
-   const testWitaToday = '2026-09-24';
-   const evaluatedDaysSim = buildEvaluationDates(testWitaToday, 7, '6', new Set());
-   ```
-   Check WS-2.1 (`todayEntry.dateStr === testWitaToday`), WS-2.2 (`dayName === 'Senin'`), WS-2.3 (Sunday excluded), WS-2.4 (dateStr matches Kamis).
-3. In Suite 2.1:
-   Use `isBeforeCutoff`:
-   ```ts
-   const isBeforeAt1MinBefore = isBeforeCutoff(time1MinBeforeCutoff, cutoffColon);
-   const isBeforeAtExact = isBeforeCutoff(timeExactCutoff, cutoffColon);
-   const isBeforeAt1MinAfter = isBeforeCutoff(time1MinAfterCutoff, cutoffColon);
-   const isBeforeAt30MinAfter = isBeforeCutoff(time30MinAfterCutoff, cutoffColon);
-   ```
-4. In Suite 2.2:
-   Ensure `multiDayTeacherRecords` evaluates with date-scoped logic so that AA-2.1 passes.
-5. In Suite 3:
-   With Patch 4 in place, RN-1.1, RN-1.2, RN-1.3, RN-1.4 will pass (4/4).
-   **Target: 22/22 checks PASS**.
 
-#### 5B. Update `tests/m2_notifications_alpa_warning.test.ts`:
-Add behavioral test sections:
-1. Behavioral test for `isBeforeCutoff` testing `'15.30'` vs `'15:00'` -> `false`, `'14.59'` vs `'15:00'` -> `true`.
-2. Behavioral test for `buildEvaluationDates` testing that Sunday is excluded and Monday is included.
-3. Behavioral test simulating `AdminRekapView` aggregation with mock records having `status_verifikasi: 'Alpa'` and asserting `alpaDirect === 1` and `totalAlpa === 1`.
-4. Behavioral test for `/api/notifications/rejection` sending live `NextRequest` with non-string and whitespace payloads, verifying HTTP 400 responses.
+2. **Expose CSV Template Download & Upload in `AdminKelasView.tsx`**:
+   In `src/components/AdminKelasView.tsx`, provide an "Impor & Kelola Data" action bar with:
+   - "Unduh Template": Downloads `Template_Data_Kelas.csv` (`nama_kelas,tingkat,jurusan`).
+   - "Unggah CSV": File input accepting `.csv`, passing content to `importMasterDataFromCsv(supabase, text, 'data_kelas', user)`.
+   - On success: refreshes class cards and directory via `loadAllData()`.
 
 ---
 
-## 4. Caveats
+## 5. Verification Method
 
-- **Web Push Device Receipt**: Physical delivery of APNs and FCM push notifications requires genuine user subscription tokens in a live browser. Server-side dispatch logic, payload serialization, 410 cleanup, and in-app `chat_messages` fallback are verified.
-- **No other caveats**: All 6 defects have been inspected, their root causes proven, and the proposed code fixes verified for TypeScript compatibility and behavioral correctness.
+To independently verify the implementation:
 
----
-
-## 5. Conclusion
-
-Milestone 2 implementation failed audit due to 6 distinct defects spanning database query filters, ASCII string comparisons, timezone conversions, unbounded queries, and self-certifying tests.
-
-By applying the exact 5 patches described above:
-1. `AdminRekapView.tsx` will fetch and aggregate both approved and Alpa records (`.in('status_verifikasi', ['Disetujui', 'Alpa'])`).
-2. `attendanceAlpa.ts` will reliably evaluate cutoff times regardless of dot or colon formatting (`isBeforeCutoff`) and bound queries by `endOfDay`.
-3. `warningSystem.ts` will calculate 30-day evaluation windows in WITA without date rollback or inverted weekday exclusions (`buildEvaluationDates`).
-4. `rejection/route.ts` will safely handle malformed or non-string inputs with HTTP 400 responses.
-5. The test suites (`tests/m2_adversarial_stress.test.ts` and `tests/m2_notifications_alpa_warning.test.ts`) will execute genuine behavioral logic and pass with 100% pass rates.
-
----
-
-## 6. Verification Method
-
-Once Worker M2.3 applies the patches, execute these verification commands in order:
-
-1. **Verify Adversarial Stress Suite**:
-   ```bash
-   npx tsx tests/m2_adversarial_stress.test.ts
-   ```
-   *Expected*: `TOTAL CHECKS: 22`, `PASSED: 22`, `FAILED: 0`, exit code 0.
-
-2. **Verify Milestone 2 Test Suite**:
-   ```bash
-   npx tsx tests/m2_notifications_alpa_warning.test.ts
-   ```
-   *Expected*: All tests PASS, exit code 0.
-
-3. **Verify Empirical Challenger Suite**:
-   ```bash
-   npx tsx tests/challenger_m2_empirical.test.ts
-   ```
-   *Expected*: `PASSED: 16`, `FAILED: 0`, exit code 0.
-
-4. **Verify TypeScript Compilation**:
+1. **Execute TypeScript Static Typecheck**:
    ```bash
    npx tsc --noEmit
    ```
-   *Expected*: Exit code 0, zero type errors.
+   *Expected result*: 0 type errors.
 
-5. **Verify Production Build**:
+2. **Execute Full Project Regression Test Suite**:
    ```bash
-   npm run build
+   npm test
    ```
-   *Expected*: Successful Turbopack compilation and static page generation.
+   *Expected result*: All 54 test suites pass with 0 failures (Zero Regression).
+
+3. **Dedicated Milestone 2 Verification Test Suite**:
+   Verify with unit tests covering:
+   - Header normalization: `normalizeCsvHeaders(['kelas', 'tingkat', 'jurusan'], 'data_kelas')` returns `['nama_kelas', 'tingkat', 'jurusan']`.
+   - Alias normalization: `normalizeCsvHeaders(['rombel', 'grade', 'peminatan'], 'data_kelas')` returns `['nama_kelas', 'tingkat', 'jurusan']`.
+   - Missing/dummy class name validation: `parseAndValidateMasterCsv` rejects empty `nama_kelas` and dummy strings (`test`, `dummy`, `fiktif`) with clear error messages mentioning row numbers.
+   - Non-UUID / missing ID auto-generation: `parseAndValidateMasterCsv` generates valid UUIDs and prevents PostgreSQL 22P02.
+   - Student idempotency: `importMasterDataFromCsv` matches existing student by `(sekolah_id, nisn)` and updates existing student ID rather than inserting duplicates.
+   - Graceful fallback: Mock Supabase returning `PGRST205` on `data_kelas` upsert falls back to `wali_kelas` sync without throwing errors.

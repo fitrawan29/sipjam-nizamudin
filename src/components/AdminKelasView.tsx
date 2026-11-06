@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
-import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
+import { isMasterDataModificationAllowed, importMasterDataFromCsv } from '@/lib/dataIntegrityGuard';
 import NaikKelasModal from './NaikKelasModal';
 import { AppUser } from '@/types/user';
 
@@ -105,6 +105,8 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
   // Naik Kelas Modal Launcher
   const [isNaikKelasOpen, setIsNaikKelasOpen] = useState<boolean>(false);
 
+  const classFileInputRef = useRef<HTMLInputElement>(null);
+
   const isAdmin = isMasterDataModificationAllowed(user?.role);
   const sekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
 
@@ -183,6 +185,17 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
   useEffect(() => {
     loadAllData();
+  }, [loadAllData]);
+
+  // Listen to external class updates (e.g. from AdminDataView CSV import)
+  useEffect(() => {
+    const handleExternalClassUpdate = () => {
+      loadAllData(true);
+    };
+    window.addEventListener('sipjam:kelas-updated', handleExternalClassUpdate);
+    return () => {
+      window.removeEventListener('sipjam:kelas-updated', handleExternalClassUpdate);
+    };
   }, [loadAllData]);
 
   // Derived: List of Unassigned / Unallocated Active Students
@@ -326,6 +339,84 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
   // ==========================================
   // ACTION HANDLERS & MUTATIONS
   // ==========================================
+
+  // CSV Template Download for Data Kelas
+  const handleDownloadClassTemplate = () => {
+    const content = '\uFEFF' + [
+      'nama_kelas,tingkat,jurusan',
+      'X Merdeka,10,Umum',
+      'XI Merdeka,11,IPA',
+      'XII Merdeka,12,IPS'
+    ].join('\r\n');
+
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Template_Data_Kelas.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // CSV File Upload & Import for Data Kelas
+  const handleClassFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!isAdmin) {
+      showToast('Akses Ditolak', 'Hanya Admin yang dapat mengunggah data kelas.', 'error');
+      return;
+    }
+
+    if (file.size === 0) {
+      showToast('Berkas Kosong', `Berkas "${file.name}" tidak memiliki data (0 bytes).`, 'error');
+      e.target.value = '';
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const text = await file.text();
+      const { count } = await importMasterDataFromCsv(supabase, text, 'data_kelas', user);
+
+      showToast(
+        'Unggah Berhasil',
+        `Berhasil mengimpor dan memperbarui ${count} data kelas ke sistem!`,
+        'success'
+      );
+      await loadAllData(true);
+    } catch (err: any) {
+      const errorMsg = err.message || 'Terjadi kesalahan saat memproses CSV kelas.';
+      showToast('Gagal Impor CSV', errorMsg, 'error');
+
+      if (errorMsg.includes('Baris ') || errorMsg.includes('Kolom ') || errorMsg.includes('wajib') || errorMsg.includes('dilarang')) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Validasi CSV Kelas Gagal',
+          html: `
+            <div class="text-left text-xs space-y-2 text-gray-700 dark:text-gray-300">
+              <p class="font-bold text-red-600 dark:text-red-400">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Kesalahan pada berkas CSV Kelas:
+              </p>
+              <div class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl font-mono text-[11px] text-red-800 dark:text-red-300 break-words">
+                ${errorMsg}
+              </div>
+              <p class="text-[11px] text-gray-500 dark:text-gray-400">
+                Pastikan kolom "nama_kelas" terisi dan sesuai format template.
+              </p>
+            </div>
+          `,
+          confirmButtonText: 'Tutup & Perbaiki',
+          confirmButtonColor: '#7C3AED'
+        });
+      }
+    } finally {
+      setActionLoading(false);
+      e.target.value = '';
+    }
+  };
 
   // 1. Create New Class
   const handleAddClass = async () => {
@@ -874,7 +965,38 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 shrink-0">
+          <input
+            type="file"
+            ref={classFileInputRef}
+            accept=".csv,text/csv,text/plain"
+            onChange={handleClassFileUpload}
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={handleDownloadClassTemplate}
+            className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            title="Unduh format template CSV Data Kelas"
+          >
+            <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i>
+            <span>Template CSV</span>
+          </button>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => classFileInputRef.current?.click()}
+              disabled={actionLoading}
+              className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              title="Unggah berkas CSV Data Kelas"
+            >
+              <i className="fa-solid fa-upload"></i>
+              <span>Impor CSV</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleAddClass}
