@@ -54,3 +54,18 @@ Gate Result: **PASS** (Milestone 3 Approved Unanimously with Clean Forensic Audi
 | auditor_m1_nov_1 | teamwork_auditor | CLEAN | handoff.md |
 
 Gate Result: **PASS** (Milestone 1 Approved Unanimously with Clean Forensic Audit)
+
+
+---
+
+## Gate — Milestone 2 (M2): Penyesuaian Asesmen & Rapor (Buku Nilai Mapel Cascading)
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| worker_m2_nov | teamwork_worker | DONE (commit 5306f20) | handoff.md |
+| reviewer_m2_nov_1 | teamwork_reviewer | APPROVE | handoff.md |
+| reviewer_m2_nov_2 | teamwork_reviewer | APPROVE | handoff.md |
+| challenger_m2_nov_1 | teamwork_challenger | APPROVE | handoff.md |
+| challenger_m2_nov_2 | teamwork_challenger | IN_PROGRESS | pending |
+| auditor_m2_nov_1 | teamwork_auditor | CLEAN | handoff.md |
+
+Gate Result: **IN_PROGRESS** (Awaiting challenger_m2_nov_2)

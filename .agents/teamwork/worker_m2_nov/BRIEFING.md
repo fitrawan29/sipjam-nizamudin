@@ -1,4 +1,4 @@
-# BRIEFING — 2026-11-06T23:36:00Z
+# BRIEFING — 2026-11-06T23:45:00Z
 
 ## Mission
 Implement Milestone M2: Hierarchical teacher-subject-class cascading selection with strict grade-level matching, empty state, and dirty grades safeguard in GradebookView.tsx, and create dedicated test suite tests/gradebook_cascading_selection.test.ts.
@@ -20,7 +20,7 @@ Implement Milestone M2: Hierarchical teacher-subject-class cascading selection w
 
 ## Current Parent
 - Conversation ID: 1ab94413-d6cb-47b9-9e53-4e1689efbdd2
-- Updated: not yet
+- Updated: 2026-11-06T23:45:00Z
 
 ## Task Summary
 - **What to build**: Hierarchical teacher-subject-class cascading selection with strict grade-level isolation in GradebookView.tsx and unit test suite tests/gradebook_cascading_selection.test.ts.
@@ -35,19 +35,23 @@ Implement Milestone M2: Hierarchical teacher-subject-class cascading selection w
 - **Code layout**: src/components/GradebookView.tsx, tests/gradebook_cascading_selection.test.ts
 
 ## Key Decisions Made
-- Unify blueprints from explorer 1, 2, and 3: Include both `parseTingkat` and `getSubjectTingkat` directly in `GradebookView.tsx` (and export them) to make GradebookView self-contained while also importing `parseTingkat` or keeping it compatible.
-- Include `stillTeaches` in `handleSelectKelas` and `currentClassValid` in `handleSelectMapel` to resolve existing failure in `tests/mata_pelajaran_kelas_paralel_isolation.test.ts`.
+- Exported `parseTingkat` and `getSubjectTingkat` from `GradebookView.tsx` with comprehensive grade matching (Roman numerals X/XI/XII, Arabic numerals 10/11/12, prefix alphanumeric like 10A/11B/12C, and Kurikulum Merdeka Phase E).
+- Preserved all AST invariants (`stillTeaches`, `currentClassValid`, `isTeacherMatch`, `isAssignmentMatchTeacher`, `dirtyGrades`, `window.confirm`).
+- Wrapped Gradebook workspace in Admin unselected empty state card ("Silakan pilih Guru Pengampu terlebih dahulu untuk memulai asesmen dan pengelolaan buku nilai.") while leaving modals outside the fragment.
+- Pushed commit `5306f20` to `main`.
 
 ## Artifact Index
 - handoff.md — Final handoff report
 - progress.md — Liveness heartbeat
 
 ## Change Tracker
-- **Files modified**: pending
-- **Build status**: pending
+- **Files modified**:
+  - `src/components/GradebookView.tsx`: Teacher-first selection, cascading filters, strict grade-level matching, empty state, dirty check reset, parallel class isolation keywords.
+  - `tests/gradebook_cascading_selection.test.ts`: Dedicated 27-check test suite covering static invariants, admin flow, dynamic teacher/mapel cascading, strict grade-level isolation, dirty grades safeguards.
+- **Build status**: PASS (Next.js build & npx tsc --noEmit 0 errors)
 - **Pending issues**: none
 
 ## Quality Status
-- **Build/test result**: pending
-- **Lint status**: pending
-- **Tests added/modified**: tests/gradebook_cascading_selection.test.ts
+- **Build/test result**: PASS (27/27 cascading tests, 17/17 ponytail tests, 15/15 parallel isolation tests, 24/24 forensic audit tests, 44/44 unified setup tests)
+- **Lint status**: Clean (tsc --noEmit 0 errors)
+- **Tests added/modified**: `tests/gradebook_cascading_selection.test.ts` (27 checks added)
