@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
-import { getWitaDateStr, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
+import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft, getJurnalDraftKey } from '@/utils/draftStorage';
@@ -358,80 +358,71 @@ export default function GuruJurnal({
           return;
         }
 
-        // Teacher role: query guru_mapel matching nip (user.username) or nama_guru (user.nama)
+        // Teacher role: connect data_mapel, data_guru, guru_mapel, and jadwal_pelajaran
         const cleanNama = (user.nama || '').split(',')[0].trim();
-        let query = supabase.from('guru_mapel').select('*');
+        let gmQuery = supabase.from('guru_mapel').select('*');
+        let jdwlQuery = supabase.from('jadwal_pelajaran').select('*');
+        let mapelMasterQuery = supabase.from('data_mapel').select('*');
+        let guruMasterQuery = supabase.from('data_guru').select('*');
+
         if (user?.sekolah_id) {
-          query = query.eq('sekolah_id', user.sekolah_id);
+          gmQuery = gmQuery.eq('sekolah_id', user.sekolah_id);
+          jdwlQuery = jdwlQuery.eq('sekolah_id', user.sekolah_id);
+          mapelMasterQuery = mapelMasterQuery.eq('sekolah_id', user.sekolah_id);
+          guruMasterQuery = guruMasterQuery.eq('sekolah_id', user.sekolah_id);
         }
+
         if (user.username && cleanNama) {
-          query = query.or(`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`);
+          gmQuery = gmQuery.or(`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`);
         } else if (user.username) {
-          query = query.eq('nip', user.username);
+          gmQuery = gmQuery.eq('nip', user.username);
         } else if (cleanNama) {
-          query = query.ilike('nama_guru', `%${cleanNama}%`);
+          gmQuery = gmQuery.ilike('nama_guru', `%${cleanNama}%`);
         }
 
-        const queryRes = await query.order('nama_mapel', { ascending: true });
-        let data = (queryRes.data || []).filter((d: any) => !isInvalidMapel(d.nama_mapel || d.mata_pelajaran));
-        const error = queryRes.error;
+        const [queryRes, jdwlRes, mapelMasterRes, guruMasterRes] = await Promise.all([
+          gmQuery.order('nama_mapel', { ascending: true }),
+          jdwlQuery,
+          mapelMasterQuery.order('nama_mata_pelajaran', { ascending: true }),
+          guruMasterQuery
+        ]);
 
-        if (error) {
-          console.error('Error fetching guru_mapel:', error);
-        }
-        
-        // Fallback to jadwal_pelajaran if guru_mapel is empty
-        if (!data || data.length === 0) {
-          if (cleanNama) {
-            let jdwlQuery = supabase.from('jadwal_pelajaran')
-              .select('*')
-              .ilike('nama_guru', `%${cleanNama}%`);
-            if (user?.sekolah_id) jdwlQuery = jdwlQuery.eq('sekolah_id', user.sekolah_id);
-            const { data: jadwalData } = await jdwlQuery;
-              
-            if (jadwalData && jadwalData.length > 0) {
-              const uniqueMapels = new Map();
-              jadwalData.forEach((j: any) => {
-                const mapel = j.mata_pelajaran || '-';
-                if (isInvalidMapel(mapel)) return;
-                const kls = j.kelas || '-';
-                const key = `${mapel}-${kls}`;
-                if (!uniqueMapels.has(key)) {
-                  uniqueMapels.set(key, {
-                    id: j.id,
-                    nama_mapel: mapel,
-                    kelas: kls,
-                    mapel_singkat: mapel,
-                    nip: user.username || '',
-                    nama_guru: j.nama_guru
-                  });
-                }
-              });
-              data = Array.from(uniqueMapels.values());
-            }
-          }
+        if (queryRes.error) {
+          console.error('Error fetching guru_mapel:', queryRes.error);
         }
 
-        if (data && data.length > 0) {
-          setAssignments(data);
+        const guruRows = guruMasterRes.data || [];
+        const matchedGuruRow = guruRows.find(
+          (g: any) =>
+            (user.id && g.user_id === user.id) ||
+            (user.username && (g.nip || '').toLowerCase() === user.username.toLowerCase()) ||
+            (cleanNama && (g.nama_guru || '').toLowerCase().includes(cleanNama.toLowerCase()))
+        );
 
-          const assignedMapel = data.map(d => ({
-            id: d.mapel_id || d.id,
-            nama_mata_pelajaran: d.nama_mapel,
-            nama_mapel: d.nama_mapel,
-            kelas: d.kelas,
-            mapel_singkat: d.mapel_singkat
-          }));
-          setMapelList(assignedMapel);
-          setMyAssignments(assignedMapel); // ponytail: store for inval reset
+        const connectedAll = connectGuruMapelWithJadwal(
+          { id: user.id, user_id: user.id, username: user.username, nama: user.nama },
+          jdwlRes.data || [],
+          mapelMasterRes.data || [],
+          queryRes.data || [],
+          matchedGuruRow
+        );
 
-          const assignedKelas = [...new Set(data.map(d => d.kelas).filter(Boolean))].sort();
+        if (connectedAll.length > 0) {
+          setMyAssignments(connectedAll); // ponytail: store full connected assignments for day-filter & inval reset
+
+          const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
+          const dayFiltered = filterGuruMapelByHari(connectedAll, activeHari, mapel);
+
+          setAssignments(dayFiltered);
+          setMapelList(dayFiltered);
+
+          const assignedKelas = [...new Set(dayFiltered.map(d => d.kelas).filter(Boolean))].sort();
           setKelasList(assignedKelas as string[]);
 
-          // Auto-select if teacher only teaches 1 subject
-          if (assignedMapel.length === 1) {
-            setMapel(assignedMapel[0].nama_mata_pelajaran);
-            setKelas(assignedMapel[0].kelas);
+          // Auto-select if teacher only teaches 1 subject on active day
+          if (dayFiltered.length === 1) {
+            setMapel(prev => prev || dayFiltered[0].nama_mata_pelajaran);
+            setKelas(prev => prev || dayFiltered[0].kelas);
           }
         } else {
           setAssignments([]);
@@ -578,6 +569,26 @@ export default function GuruJurnal({
     return Array.from(map.values());
   })();
 
+  // Sinkronisasi daftar mapel & kelas sesuai hari dari tanggal yang dipilih
+  useEffect(() => {
+    if (isInval || user?.role === 'Admin' || myAssignments.length === 0) return;
+    const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
+    const dayFiltered = filterGuruMapelByHari(myAssignments, activeHari, mapel);
+    setAssignments(dayFiltered);
+    setMapelList(dayFiltered);
+    const assignedKelas = [...new Set(dayFiltered.map((d: any) => d.kelas).filter(Boolean))].sort() as string[];
+    setKelasList(assignedKelas);
+
+    if (dayFiltered.length === 1) {
+      const onlyMapel = dayFiltered[0].nama_mata_pelajaran || dayFiltered[0].nama_mapel;
+      if (!mapel || !dayFiltered.some((m: any) => (m.nama_mata_pelajaran || m.nama_mapel) === mapel)) {
+        setMapel(onlyMapel);
+        setKelas(dayFiltered[0].kelas || '');
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tanggal, myAssignments, isInval, user?.role]);
+
   // Auto-fill mapel & kelas & jam ke- saat mapelList + dailyState sudah ready
   useEffect(() => {
     if (
@@ -588,18 +599,27 @@ export default function GuruJurnal({
       !dailyState?.jadwalKBM
     ) return;
 
-    const jadwalHariIni = dailyState.jadwalKBM;
-    if (jadwalHariIni.length !== 1) return; // hanya auto-fill jika tepat 1 jadwal hari ini
+    const jadwalHariIni = dailyState.jadwalKBM.filter((jk: any) => !jk.isBlocked);
+    if (jadwalHariIni.length === 0) return;
 
-    const j = jadwalHariIni[0];
-    const matchedMapel = mapelList.find(m => {
-      const mName = (m.nama_mapel || m.nama_mata_pelajaran || '').toLowerCase();
-      const jMapel = (j.mata_pelajaran || '').toLowerCase();
-      return mName.includes(jMapel) || jMapel.includes(mName) || m.kelas === j.kelas;
-    });
+    // Pilih jadwal hari ini yang belum diisi jurnalnya terlebih dahulu, fallback ke jadwal pertama hari ini
+    const j =
+      jadwalHariIni.find((jk: any) => !(dailyState.jurnalKBM || []).some(jr => isJurnalMatchJadwal(jr, jk))) ||
+      jadwalHariIni[0];
+
+    const matchedMapel = mapelList.find(m =>
+      isJurnalMatchJadwal(
+        { kelas: m.kelas, mapel: m.nama_mata_pelajaran || m.nama_mapel },
+        j
+      )
+    );
     if (matchedMapel) {
-      setMapel(prev => prev || (matchedMapel.nama_mata_pelajaran || matchedMapel.nama_mapel));
-      setKelas(prev => prev || (matchedMapel.kelas || j.kelas || ''));
+      const targetMapelName = matchedMapel.nama_mata_pelajaran || matchedMapel.nama_mapel;
+      const currentValid = mapel && mapelList.some(m => (m.nama_mata_pelajaran || m.nama_mapel) === mapel);
+      if (!currentValid) {
+        setMapel(targetMapelName);
+        setKelas(matchedMapel.kelas || j.kelas || '');
+      }
     }
     // Auto-fill jam ke-
     if (j.jam_mulai && !jamKe) {
@@ -1094,9 +1114,11 @@ export default function GuruJurnal({
         // Reset inval mode
         setIsInval(false);
         setGuruDigantikan(null);
-        setMapelList(myAssignments);
-        setAssignments(myAssignments);
-        const origKelas = [...new Set(myAssignments.map(m => m.kelas).filter(Boolean))].sort() as string[];
+        const activeHariReset = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
+        const dayFilteredReset = filterGuruMapelByHari(myAssignments, activeHariReset);
+        setMapelList(dayFilteredReset);
+        setAssignments(dayFilteredReset);
+        const origKelas = [...new Set(dayFilteredReset.map(m => m.kelas).filter(Boolean))].sort() as string[];
         setKelasList(origKelas);
 
         // Refresh state to update canPresensiPulang
@@ -1118,12 +1140,14 @@ export default function GuruJurnal({
   const handleInvalToggle = (checked: boolean) => {
     setIsInval(checked);
     if (!checked) {
-      // Restore original teacher assignments
+      // Restore original teacher assignments filtered by active day
       setGuruDigantikan(null);
-      setMapelList(myAssignments);
-      const origKelas = [...new Set(myAssignments.map(m => m.kelas).filter(Boolean))].sort() as string[];
+      const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
+      const dayFiltered = filterGuruMapelByHari(myAssignments, activeHari);
+      setMapelList(dayFiltered);
+      const origKelas = [...new Set(dayFiltered.map(m => m.kelas).filter(Boolean))].sort() as string[];
       setKelasList(origKelas);
-      setAssignments(myAssignments);
+      setAssignments(dayFiltered);
       setMapel('');
       setKelas('');
     }
@@ -1136,26 +1160,43 @@ export default function GuruJurnal({
     setMapel('');
     setKelas('');
 
-    // Fetch jadwal of the selected guru
+    // Fetch jadwal & guru_mapel of the selected guru
     let gmQuery = supabase
       .from('guru_mapel')
       .select('*')
       .eq('guru_id', guruId);
-    if (user?.sekolah_id) gmQuery = gmQuery.eq('sekolah_id', user.sekolah_id);
-    const { data } = await gmQuery.order('nama_mapel', { ascending: true });
+    let jdwlQuery = supabase.from('jadwal_pelajaran').select('*');
+    let mapelMasterQuery = supabase.from('data_mapel').select('*');
+    if (user?.sekolah_id) {
+      gmQuery = gmQuery.eq('sekolah_id', user.sekolah_id);
+      jdwlQuery = jdwlQuery.eq('sekolah_id', user.sekolah_id);
+      mapelMasterQuery = mapelMasterQuery.eq('sekolah_id', user.sekolah_id);
+    }
+    const [gmRes, jdwlRes, mapelMasterRes] = await Promise.all([
+      gmQuery.order('nama_mapel', { ascending: true }),
+      jdwlQuery,
+      mapelMasterQuery.order('nama_mata_pelajaran', { ascending: true }),
+    ]);
 
-    if (data && data.length > 0) {
-      const mapels = data.map(d => ({
-        id: d.mapel_id || d.id,
-        nama_mata_pelajaran: d.nama_mapel,
-        nama_mapel: d.nama_mapel,
-        kelas: d.kelas,
-        mapel_singkat: d.mapel_singkat,
-      }));
+    const connectedInval = connectGuruMapelWithJadwal(
+      { id: selected.user_id || selected.id, user_id: selected.user_id, nama: selected.nama_guru },
+      jdwlRes.data || [],
+      mapelMasterRes.data || [],
+      gmRes.data || [],
+      selected
+    );
+    const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
+    const mapels = filterGuruMapelByHari(connectedInval, activeHari);
+
+    if (mapels.length > 0) {
       setMapelList(mapels);
-      setAssignments(data);
-      const kelas = [...new Set(data.map(d => d.kelas).filter(Boolean))].sort() as string[];
+      setAssignments(mapels);
+      const kelas = [...new Set(mapels.map(d => d.kelas).filter(Boolean))].sort() as string[];
       setKelasList(kelas);
+      if (mapels.length === 1) {
+        setMapel(mapels[0].nama_mata_pelajaran || mapels[0].nama_mapel);
+        setKelas(mapels[0].kelas || '');
+      }
     } else {
       setMapelList([]);
       setAssignments([]);

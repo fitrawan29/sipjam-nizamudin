@@ -405,6 +405,257 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   return false;
 }
 
+export interface ConnectedGuruMapelItem {
+  id: string;
+  mapel_id: string;
+  nama_mata_pelajaran: string;
+  nama_mapel: string;
+  mapel_singkat: string;
+  kelas: string;
+  hariList: string[];
+  jadwalByHari: Record<string, { jam_mulai?: string | null; jam_selesai?: string | null }>;
+}
+
+/**
+ * Menghubungkan data_mapel, data_guru, guru_mapel, dan jadwal_pelajaran
+ * sehingga setiap guru mendapatkan daftar mata pelajaran & kelas yang terkoneksi
+ * lengkap dengan daftar hari jadwal mengajarnya (hariList).
+ */
+export function connectGuruMapelWithJadwal(
+  teacher: {
+    id?: string;
+    user_id?: string;
+    username?: string;
+    nip?: string;
+    nama?: string;
+    nama_guru?: string;
+  },
+  jadwalRows: any[] = [],
+  dataMapelRows: any[] = [],
+  guruMapelRows: any[] = [],
+  dataGuruRow?: any
+): ConnectedGuruMapelItem[] {
+  const normalizeName = (s: string) => (s || '').split(',')[0].toLowerCase().trim().replace(/z/g, 's');
+
+  const userId = teacher.user_id || dataGuruRow?.user_id || teacher.id || '';
+  const guruName = dataGuruRow?.nama_guru || teacher.nama_guru || teacher.nama || '';
+  const username = dataGuruRow?.nip || teacher.nip || teacher.username || '';
+
+  const namaNorm = normalizeName(guruName);
+  const firstName = namaNorm.split(/\s+/)[0] || '';
+  const userNorm = username ? normalizeName(username) : '';
+
+  const validMapelMaster = (dataMapelRows || []).filter(
+    (m: any) => !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel)
+  );
+
+  const isTeacherJadwalMatch = (j: any): boolean => {
+    if (!j || isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
+    if (userId && j.user_id && j.user_id === userId) return true;
+    const jNama = (j.nama_guru || '').trim();
+    if (!jNama) return false;
+    const jNorm = normalizeName(jNama);
+    if (userNorm && userNorm === jNorm) return true;
+    if (namaNorm && namaNorm === jNorm) return true;
+    if (firstName && firstName.length >= 2) {
+      if (firstName === jNorm || firstName.startsWith(jNorm) || jNorm.startsWith(firstName)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const myJadwal = (jadwalRows || []).filter(isTeacherJadwalMatch);
+  const myGm = (guruMapelRows || []).filter(
+    (g: any) => !isInvalidMapel(g.nama_mapel || g.mapel_singkat || g.mata_pelajaran)
+  );
+
+  const resultMap = new Map<string, ConnectedGuruMapelItem>();
+
+  const resolveCanonicalMapel = (kelasRaw: string, mapelRaw: string) => {
+    const kls = (kelasRaw || '').trim();
+    const rawM = (mapelRaw || '').trim();
+    const shortM =
+      kls && rawM.toLowerCase().startsWith(kls.toLowerCase() + '_')
+        ? rawM.slice(kls.length + 1).trim()
+        : rawM.includes('_')
+        ? (rawM.split('_').pop() || '').trim()
+        : rawM;
+    const canonicalCandidate = kls ? `${kls}_${shortM}` : rawM;
+
+    const dm = validMapelMaster.find((m: any) => {
+      const mName = (m.nama_mata_pelajaran || m.nama_mapel || '').trim();
+      if (!mName) return false;
+      if (mName.toLowerCase() === canonicalCandidate.toLowerCase()) return true;
+      if (mName.toLowerCase() === rawM.toLowerCase()) {
+        const mKelas = (m.kategori || m.kelompok || '').trim();
+        if (!mKelas || !kls || mKelas.toLowerCase() === kls.toLowerCase()) return true;
+      }
+      return isJurnalMatchJadwal(
+        { kelas: m.kategori || m.kelompok || kls, mapel: mName },
+        { kelas: kls, mata_pelajaran: rawM }
+      );
+    });
+
+    const gm = myGm.find((g: any) =>
+      isJurnalMatchJadwal(
+        { kelas: g.kelas || kls, mapel: g.nama_mapel || g.mapel_singkat },
+        { kelas: kls, mata_pelajaran: rawM }
+      )
+    );
+
+    const finalNama = dm?.nama_mata_pelajaran || dm?.nama_mapel || gm?.nama_mapel || canonicalCandidate;
+    const finalKelas = kls || dm?.kategori || dm?.kelompok || gm?.kelas || (finalNama.includes('_') ? finalNama.split('_')[0].trim() : '');
+    const finalId = String(dm?.id || gm?.mapel_id || gm?.id || finalNama);
+    const finalSingkat = gm?.mapel_singkat || shortM || finalNama;
+
+    return { finalId, finalNama, finalSingkat, finalKelas };
+  };
+
+  for (const j of myJadwal) {
+    const kls = (j.kelas || '').trim();
+    const rawM = (j.mata_pelajaran || j.mapel || '').trim();
+    if (!rawM || isInvalidMapel(rawM)) continue;
+
+    const { finalId, finalNama, finalSingkat, finalKelas } = resolveCanonicalMapel(kls, rawM);
+    const key = `${finalNama.toLowerCase()}__${finalKelas.toLowerCase()}`;
+    const hari = (j.hari || '').trim();
+
+    if (!resultMap.has(key)) {
+      resultMap.set(key, {
+        id: finalId,
+        mapel_id: finalId,
+        nama_mata_pelajaran: finalNama,
+        nama_mapel: finalNama,
+        mapel_singkat: finalSingkat,
+        kelas: finalKelas,
+        hariList: hari ? [hari] : [],
+        jadwalByHari: hari ? { [hari]: { jam_mulai: j.jam_mulai, jam_selesai: j.jam_selesai } } : {},
+      });
+    } else {
+      const existing = resultMap.get(key)!;
+      if (hari && !existing.hariList.some(h => h.toLowerCase() === hari.toLowerCase())) {
+        existing.hariList.push(hari);
+      }
+      if (hari && !existing.jadwalByHari[hari]) {
+        existing.jadwalByHari[hari] = { jam_mulai: j.jam_mulai, jam_selesai: j.jam_selesai };
+      }
+    }
+  }
+
+  for (const g of myGm) {
+    const rawM = (g.nama_mapel || g.mapel_singkat || '').trim();
+    const kls = (g.kelas || (rawM.includes('_') ? rawM.split('_')[0].trim() : '')).trim();
+    if (!rawM || isInvalidMapel(rawM)) continue;
+
+    const { finalId, finalNama, finalSingkat, finalKelas } = resolveCanonicalMapel(kls, rawM);
+    const key = `${finalNama.toLowerCase()}__${finalKelas.toLowerCase()}`;
+
+    if (!resultMap.has(key)) {
+      const matchedHariList: string[] = [];
+      const jadwalByHari: Record<string, { jam_mulai?: string | null; jam_selesai?: string | null }> = {};
+      for (const j of myJadwal) {
+        if (isJurnalMatchJadwal({ kelas: finalKelas, mapel: finalNama }, j)) {
+          const h = (j.hari || '').trim();
+          if (h && !matchedHariList.some(x => x.toLowerCase() === h.toLowerCase())) {
+            matchedHariList.push(h);
+            jadwalByHari[h] = { jam_mulai: j.jam_mulai, jam_selesai: j.jam_selesai };
+          }
+        }
+      }
+      resultMap.set(key, {
+        id: String(g.mapel_id || g.id || finalId),
+        mapel_id: String(g.mapel_id || g.id || finalId),
+        nama_mata_pelajaran: finalNama,
+        nama_mapel: finalNama,
+        mapel_singkat: g.mapel_singkat || finalSingkat,
+        kelas: finalKelas,
+        hariList: matchedHariList,
+        jadwalByHari,
+      });
+    }
+  }
+
+  if (dataGuruRow?.mata_pelajaran) {
+    const tokens = String(dataGuruRow.mata_pelajaran)
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter((s: string) => s && !isInvalidMapel(s));
+    for (const token of tokens) {
+      const kls = token.includes('_') ? token.split('_')[0].trim() : '';
+      const { finalId, finalNama, finalSingkat, finalKelas } = resolveCanonicalMapel(kls, token);
+      const key = `${finalNama.toLowerCase()}__${finalKelas.toLowerCase()}`;
+      if (!resultMap.has(key)) {
+        const matchedHariList: string[] = [];
+        const jadwalByHari: Record<string, { jam_mulai?: string | null; jam_selesai?: string | null }> = {};
+        for (const j of myJadwal) {
+          if (isJurnalMatchJadwal({ kelas: finalKelas, mapel: finalNama }, j)) {
+            const h = (j.hari || '').trim();
+            if (h && !matchedHariList.some(x => x.toLowerCase() === h.toLowerCase())) {
+              matchedHariList.push(h);
+              jadwalByHari[h] = { jam_mulai: j.jam_mulai, jam_selesai: j.jam_selesai };
+            }
+          }
+        }
+        resultMap.set(key, {
+          id: finalId,
+          mapel_id: finalId,
+          nama_mata_pelajaran: finalNama,
+          nama_mapel: finalNama,
+          mapel_singkat: finalSingkat,
+          kelas: finalKelas,
+          hariList: matchedHariList,
+          jadwalByHari,
+        });
+      }
+    }
+  }
+
+  return Array.from(resultMap.values()).sort((a, b) =>
+    a.nama_mata_pelajaran.localeCompare(b.nama_mata_pelajaran)
+  );
+}
+
+/**
+ * Memfilter daftar mapel guru berdasarkan hari KBM aktif.
+ * Jika guru memiliki jadwal pada hari tersebut, hanya mapel pada hari tersebut yang ditampilkan
+ * (ditambah mapel yang sedang dipilih dari draf/revisi jika ada).
+ * Jika tidak ada jadwal pada hari tersebut, mengembalikan seluruh penugasan guru sebagai fallback.
+ */
+export function filterGuruMapelByHari(
+  allAssignments: ConnectedGuruMapelItem[],
+  hari?: string,
+  preserveSelectedMapel?: string
+): ConnectedGuruMapelItem[] {
+  if (!allAssignments || allAssignments.length === 0) return [];
+  if (!hari) return allAssignments;
+
+  const normHari = hari.trim().toLowerCase();
+  const scheduledToday = allAssignments.filter(
+    item => Array.isArray(item.hariList) && item.hariList.some(h => h.trim().toLowerCase() === normHari)
+  );
+
+  if (scheduledToday.length === 0) {
+    return allAssignments;
+  }
+
+  if (preserveSelectedMapel) {
+    const alreadyIn = scheduledToday.some(
+      m => m.nama_mata_pelajaran === preserveSelectedMapel || m.nama_mapel === preserveSelectedMapel
+    );
+    if (!alreadyIn) {
+      const preserved = allAssignments.find(
+        m => m.nama_mata_pelajaran === preserveSelectedMapel || m.nama_mapel === preserveSelectedMapel
+      );
+      if (preserved) {
+        return [...scheduledToday, preserved];
+      }
+    }
+  }
+
+  return scheduledToday;
+}
+
 export async function getGuruDailyState(namaGuru: string, username?: string, userId?: string, sekolahId?: string): Promise<GuruDailyState> {
   const now = new Date();
   const todayStr = getWitaDateStr(now);

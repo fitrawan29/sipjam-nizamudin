@@ -33,6 +33,7 @@ import SistemBlokView from './SistemBlokView';
 import AdminPenggunaView from './AdminPenggunaView';
 import AdminKelasView from './AdminKelasView';
 import { parseTingkat } from './AdminKelasView';
+import { connectGuruMapelWithJadwal, isJurnalMatchJadwal } from '@/lib/workflow';
 import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
 
 export interface AdminDataViewProps {
@@ -194,32 +195,68 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     { id: 'Pengguna', label: 'Pengguna', table: 'users' },
   ];
 
-  // Sync data_guru.mata_pelajaran from jadwal_pelajaran (fire-and-forget, only fills empty fields)
-  const syncGuruMapelFromJadwal = useCallback(async (jadwalRows: any[]) => {
+  // Sync data_guru.mata_pelajaran & guru_mapel from jadwal_pelajaran + data_mapel
+  const syncGuruMapelFromJadwal = useCallback(async (jadwalRows?: any[]) => {
     if (!isAdmin) return;
     const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
-    // Build map: normalized guru name → first mapel from jadwal
-    const mapelByGuru = new Map<string, string>();
-    for (const j of jadwalRows) {
-      const gName = (j.nama_guru || '').trim();
-      const mapel = (j.mata_pelajaran || j.mapel || '').trim();
-      if (gName && mapel && !mapelByGuru.has(gName.toLowerCase())) {
-        mapelByGuru.set(gName.toLowerCase(), mapel);
+    try {
+      const [guruRes, mapelRes, jadwalRes, gmRes] = await Promise.all([
+        supabase.from('data_guru').select('*').eq('sekolah_id', schoolId),
+        supabase.from('data_mapel').select('*').eq('sekolah_id', schoolId),
+        supabase.from('jadwal_pelajaran').select('*').eq('sekolah_id', schoolId),
+        supabase.from('guru_mapel').select('*').eq('sekolah_id', schoolId),
+      ]);
+      const guruList = guruRes.data || [];
+      const mapelList = mapelRes.data || [];
+      const allJadwal = (jadwalRes.data && jadwalRes.data.length > 0) ? jadwalRes.data : (jadwalRows || []);
+      const allGm = gmRes.data || [];
+      if (guruList.length === 0 || allJadwal.length === 0) return;
+
+      for (const g of guruList) {
+        const myGm = allGm.filter((x: any) => x.guru_id === g.id || (g.nip && x.nip === g.nip));
+        const connected = connectGuruMapelWithJadwal(
+          { id: g.user_id || g.id, user_id: g.user_id, nip: g.nip, nama_guru: g.nama_guru },
+          allJadwal,
+          mapelList,
+          myGm,
+          g
+        );
+        if (connected.length === 0) continue;
+
+        const canonicalNames = connected.map(c => c.nama_mata_pelajaran);
+        const currentTokens = (g.mata_pelajaran || '')
+          .split(',')
+          .map((s: string) => s.trim())
+          .filter(Boolean);
+        const mergedTokens = Array.from(new Set([...currentTokens, ...canonicalNames]));
+        const newMataPelajaran = mergedTokens.join(', ');
+
+        if (!g.mata_pelajaran || g.mata_pelajaran.trim() !== newMataPelajaran) {
+          await supabase.from('data_guru').update({ mata_pelajaran: newMataPelajaran }).eq('id', g.id);
+        }
+
+        for (const c of connected) {
+          const existsInGm = myGm.some(
+            (x: any) =>
+              (x.nama_mapel || '').toLowerCase() === c.nama_mata_pelajaran.toLowerCase() &&
+              (x.kelas || '').toLowerCase() === (c.kelas || '').toLowerCase()
+          );
+          if (!existsInGm && c.kelas) {
+            await supabase.from('guru_mapel').insert([{
+              guru_id: g.id,
+              nip: g.nip || '',
+              nama_guru: g.nama_guru,
+              mapel_id: c.mapel_id,
+              nama_mapel: c.nama_mata_pelajaran,
+              mapel_singkat: c.mapel_singkat,
+              kelas: c.kelas,
+              sekolah_id: schoolId,
+            }]);
+          }
+        }
       }
-    }
-    if (mapelByGuru.size === 0) return;
-    // Fetch only guru with empty mata_pelajaran
-    const { data: guruRows } = await supabase
-      .from('data_guru')
-      .select('id, nama_guru, mata_pelajaran')
-      .eq('sekolah_id', schoolId)
-      .or('mata_pelajaran.is.null,mata_pelajaran.eq.');
-    if (!guruRows || guruRows.length === 0) return;
-    for (const g of guruRows) {
-      const mapel = mapelByGuru.get((g.nama_guru || '').trim().toLowerCase());
-      if (mapel) {
-        await supabase.from('data_guru').update({ mata_pelajaran: mapel }).eq('id', g.id);
-      }
+    } catch (err) {
+      console.warn('syncGuruMapelFromJadwal error:', err);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin, user?.sekolah_id]);
@@ -1039,11 +1076,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       setLoading(true);
       let guruList: any[] = [];
       let mapelList: any[] = [];
-      let gq = supabase.from('data_guru').select('id, nama_guru').order('nama_guru');
+      let gq = supabase.from('data_guru').select('id, nama_guru, nip, user_id').order('nama_guru');
       if (user?.sekolah_id) gq = gq.eq('sekolah_id', user.sekolah_id);
       const { data: gData } = await gq;
       if (gData) guruList = gData;
-      let mq = supabase.from('data_mapel').select('id, nama_mata_pelajaran').order('nama_mata_pelajaran');
+      let mq = supabase.from('data_mapel').select('id, nama_mata_pelajaran, kategori, kelompok').order('nama_mata_pelajaran');
       if (user?.sekolah_id) mq = mq.eq('sekolah_id', user.sekolah_id);
       const { data: mData } = await mq;
       if (mData) mapelList = mData;
@@ -1101,6 +1138,18 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         confirmButtonText: 'Simpan Data',
         confirmButtonColor: '#0B4619',
         cancelButtonText: 'Batal',
+        didOpen: () => {
+          const mapelEl = document.getElementById('swal-mapel') as HTMLSelectElement | null;
+          const kelasEl = document.getElementById('swal-kelas') as HTMLInputElement | null;
+          if (mapelEl && kelasEl) {
+            mapelEl.addEventListener('change', () => {
+              const val = mapelEl.value || '';
+              if (val.includes('_')) {
+                kelasEl.value = val.split('_')[0].trim();
+              }
+            });
+          }
+        },
         preConfirm: () => {
           const hari = (document.getElementById('swal-hari') as HTMLSelectElement)?.value;
           const nama_guru = (document.getElementById('swal-guru') as HTMLSelectElement)?.value?.trim();
@@ -1130,13 +1179,17 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             return null;
           }
 
+          const matchedGuru = guruList.find(g => (g.nama_guru || '').toLowerCase() === cleanGuru.toLowerCase());
+
           return {
             id: crypto.randomUUID(),
             sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
             hari,
             nama_guru: cleanGuru,
             mata_pelajaran,
-            kelas
+            mapel: mata_pelajaran,
+            kelas,
+            ...(matchedGuru?.user_id ? { user_id: matchedGuru.user_id } : {})
           };
         }
       });
@@ -1886,11 +1939,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       setLoading(true);
       let guruListE: any[] = [];
       let mapelListE: any[] = [];
-      let gqe = supabase.from('data_guru').select('id, nama_guru').order('nama_guru');
+      let gqe = supabase.from('data_guru').select('id, nama_guru, nip, user_id').order('nama_guru');
       if (user?.sekolah_id) gqe = gqe.eq('sekolah_id', user.sekolah_id);
       const { data: gDataE } = await gqe;
       if (gDataE) guruListE = gDataE;
-      let mqe = supabase.from('data_mapel').select('id, nama_mata_pelajaran').order('nama_mata_pelajaran');
+      let mqe = supabase.from('data_mapel').select('id, nama_mata_pelajaran, kategori, kelompok').order('nama_mata_pelajaran');
       if (user?.sekolah_id) mqe = mqe.eq('sekolah_id', user.sekolah_id);
       const { data: mDataE } = await mqe;
       if (mDataE) mapelListE = mDataE;
@@ -1898,8 +1951,33 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       const currentMapel = item.mapel || item.mata_pelajaran || '';
       const currentGuru = item.nama_guru || '';
-      const guruOptE = guruListE.map(g => `<option value="${g.nama_guru}" ${g.nama_guru === currentGuru ? 'selected' : ''}>${g.nama_guru}</option>`).join('');
-      const mapelOptE = mapelListE.map(m => `<option value="${m.nama_mata_pelajaran}" ${m.nama_mata_pelajaran === currentMapel ? 'selected' : ''}>${m.nama_mata_pelajaran}</option>`).join('');
+      const currentKelas = item.kelas || '';
+
+      const isGuruMatch = (g: any): boolean => {
+        if (item.user_id && g.user_id === item.user_id) return true;
+        const gName = (g.nama_guru || '').trim().toLowerCase();
+        const cName = currentGuru.trim().toLowerCase().split(',')[0].trim();
+        if (!gName || !cName) return false;
+        if (gName === cName) return true;
+        if (g.nip && g.nip.trim().toLowerCase() === cName) return true;
+        const gFirst = gName.split(/\s+/)[0] || '';
+        const cFirst = cName.split(/\s+/)[0] || '';
+        return Boolean(gFirst.length >= 2 && (gFirst === cFirst || gFirst.startsWith(cFirst) || cFirst.startsWith(gFirst)));
+      };
+
+      const isMapelMatch = (m: any): boolean => {
+        const mName = (m.nama_mata_pelajaran || '').trim();
+        if (!mName || !currentMapel) return false;
+        if (mName.toLowerCase() === currentMapel.toLowerCase()) return true;
+        if (currentKelas && mName.toLowerCase() === `${currentKelas}_${currentMapel}`.toLowerCase()) return true;
+        return isJurnalMatchJadwal(
+          { kelas: m.kategori || m.kelompok || currentKelas, mapel: mName },
+          { kelas: currentKelas, mata_pelajaran: currentMapel }
+        );
+      };
+
+      const guruOptE = guruListE.map(g => `<option value="${g.nama_guru}" ${isGuruMatch(g) ? 'selected' : ''}>${g.nama_guru}</option>`).join('');
+      const mapelOptE = mapelListE.map(m => `<option value="${m.nama_mata_pelajaran}" ${isMapelMatch(m) ? 'selected' : ''}>${m.nama_mata_pelajaran}</option>`).join('');
 
       const { value: formValues } = await Swal.fire({
         title: 'Edit Jadwal Pelajaran',
@@ -1953,6 +2031,18 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         confirmButtonText: 'Simpan Perubahan',
         confirmButtonColor: '#0B4619',
         cancelButtonText: 'Batal',
+        didOpen: () => {
+          const mapelEl = document.getElementById('swal-edit-mapel') as HTMLSelectElement | null;
+          const kelasEl = document.getElementById('swal-edit-kelas') as HTMLInputElement | null;
+          if (mapelEl && kelasEl) {
+            mapelEl.addEventListener('change', () => {
+              const val = mapelEl.value || '';
+              if (val.includes('_')) {
+                kelasEl.value = val.split('_')[0].trim();
+              }
+            });
+          }
+        },
         preConfirm: () => {
           const hari = (document.getElementById('swal-edit-hari') as HTMLSelectElement)?.value;
           const kelas = (document.getElementById('swal-edit-kelas') as HTMLInputElement)?.value?.trim();
@@ -1984,6 +2074,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             return null;
           }
 
+          const matchedGuru = guruListE.find(g => (g.nama_guru || '').toLowerCase() === cleanGuru.toLowerCase());
+
           return {
             hari,
             kelas,
@@ -1991,7 +2083,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             mata_pelajaran: mapel,
             nama_guru: cleanGuru,
             jam_mulai,
-            jam_selesai
+            jam_selesai,
+            ...(matchedGuru?.user_id ? { user_id: matchedGuru.user_id } : {})
           };
         }
       });
