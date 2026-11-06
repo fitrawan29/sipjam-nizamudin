@@ -2831,6 +2831,7 @@ export default function GradebookView({
                 onChange={e => handleSelectGuru(e.target.value)}
                 className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
               >
+                <option value="">-- Pilih Guru Pengampu --</option>
                 {teachersList.map((g, idx) => (
                   <option key={idx} value={g.nama_guru}>
                     {g.nama_guru}
@@ -2857,9 +2858,12 @@ export default function GradebookView({
             <select
               value={selectedMapel}
               onChange={e => handleSelectMapel(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              disabled={!selectedGuru}
+              className={`w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none ${!selectedGuru ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {uniqueMapelList.length === 0 ? (
+              {!selectedGuru ? (
+                <option value="">-- Pilih guru pengampu terlebih dahulu --</option>
+              ) : uniqueMapelList.length === 0 ? (
                 <option value="">Tidak ada mapel ditugaskan</option>
               ) : (
                 uniqueMapelList.map((m, idx) => (
@@ -2879,9 +2883,12 @@ export default function GradebookView({
             <select
               value={selectedKelas}
               onChange={e => handleSelectKelas(e.target.value)}
-              className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              disabled={!selectedGuru || !selectedMapel}
+              className={`w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none ${!selectedGuru || !selectedMapel ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {kelasList.length === 0 ? (
+              {!selectedGuru || !selectedMapel ? (
+                <option value="">-- Pilih mata pelajaran terlebih dahulu --</option>
+              ) : kelasList.length === 0 ? (
                 <option value="">Tidak ada kelas ditugaskan</option>
               ) : (
                 kelasList.map((k, idx) => (
@@ -2935,6 +2942,21 @@ export default function GradebookView({
         </div>
       </div>
 
+      {/* ADMIN UNSELECTED GURU INITIAL EMPTY STATE */}
+      {isAdmin && !selectedGuru ? (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-14 text-center shadow-sm border border-gray-100 dark:border-gray-700/80 mt-4 no-print animate-in fade-in duration-200">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center text-2xl shadow-inner mb-4">
+            <i className="fa-solid fa-chalkboard-user"></i>
+          </div>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">
+            Pilih Guru Pengampu Terlebih Dahulu
+          </h3>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+            Silakan pilih Guru Pengampu terlebih dahulu untuk memulai asesmen dan pengelolaan buku nilai.
+          </p>
+        </div>
+      ) : (
+        <>
       {/* VIEW TABS NAVIGATION */}
       <div className="flex items-center justify-between gap-3 flex-wrap no-print">
         <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-x-auto custom-scroll max-w-full">
@@ -4995,6 +5017,8 @@ export default function GradebookView({
             </form>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Modal Bobot Nilai (Admin Only) */}
