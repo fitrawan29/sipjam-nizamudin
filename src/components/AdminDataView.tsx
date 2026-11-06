@@ -32,6 +32,7 @@ import {
 import SistemBlokView from './SistemBlokView';
 import AdminPenggunaView from './AdminPenggunaView';
 import AdminKelasView from './AdminKelasView';
+import { parseTingkat } from './AdminKelasView';
 import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
 
 export interface AdminDataViewProps {
@@ -126,9 +127,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     { id: 'Pengguna', label: 'Pengguna', table: 'users' },
   ];
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (tabOverride?: string) => {
     if (activeTab === 'sistem_blok' || activeTab === 'blok' || activeTab === 'Pengguna' || activeTab === 'Data_Kelas') return;
-    const tabObj = tabs.find(t => t.id === activeTab);
+    const currentTab = tabOverride || activeTab;
+    if (currentTab === 'sistem_blok' || currentTab === 'blok' || currentTab === 'Pengguna' || currentTab === 'Data_Kelas') return;
+    const tabObj = tabs.find(t => t.id === currentTab);
     if (!tabObj) return;
 
     setLoading(true);
@@ -363,6 +366,24 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         } catch (_) {}
       }
 
+      // If student data was uploaded, sync student classes to localStorage for immediate AdminKelasView hydration
+      if (targetTab === 'Data_Siswa' && Array.isArray(rows) && rows.length > 0) {
+        const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+        try {
+          const studentClasses = Array.from(new Set(rows.map(r => String(r.kelas || '').trim()).filter(Boolean)));
+          const meta: Record<string, { tingkat?: string; jurusan?: string | null }> = {};
+          studentClasses.forEach(k => {
+            meta[k] = { tingkat: parseTingkat(k), jurusan: null };
+          });
+          const existingClasses = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${schoolId}`) || '[]');
+          const existingMeta = JSON.parse(localStorage.getItem(`sipjam_custom_classes_meta_${schoolId}`) || '{}');
+          const mergedClasses = Array.from(new Set([...existingClasses, ...studentClasses]));
+          const mergedMeta = { ...existingMeta, ...meta };
+          localStorage.setItem(`sipjam_custom_classes_${schoolId}`, JSON.stringify(mergedClasses));
+          localStorage.setItem(`sipjam_custom_classes_meta_${schoolId}`, JSON.stringify(mergedMeta));
+        } catch (_) {}
+      }
+
       // If target entity is different from active tab, automatically switch tab
       if (targetTab !== activeTab) {
         setActiveTab(targetTab);
@@ -386,7 +407,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
 
       if (targetTab !== 'Data_Kelas') {
-        await loadData();
+        await loadData(targetTab);
       }
     } catch (err: any) {
       const errorMsg = err.message || 'Terjadi kesalahan saat memproses file CSV.';

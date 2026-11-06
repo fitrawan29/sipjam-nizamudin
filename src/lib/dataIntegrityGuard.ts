@@ -897,7 +897,11 @@ export function parseAndValidateMasterCsv(
     }
 
     // Apply default values if needed
-    if (tableName === 'data_siswa' && !row.status) row.status = 'Aktif';
+    if ((tableName === 'data_siswa' || tableName === 'siswa') && !row.status) row.status = 'Aktif';
+    if ((tableName === 'data_siswa' || tableName === 'siswa') && !row.qr_code) {
+      const cleanNisn = row.nisn ? String(row.nisn).trim() : '';
+      row.qr_code = (cleanNisn && cleanNisn !== '-') ? cleanNisn : String(row.id).slice(0, 8);
+    }
     if (tableName === 'data_guru' && !row.status) row.status = 'Aktif';
     if (tableName === 'wali_kelas' && !row.tahun_ajaran) row.tahun_ajaran = '2024/2025';
 
@@ -1132,24 +1136,27 @@ export async function importMasterDataFromCsv(
   const effectiveTableName = isKelasTable ? 'data_kelas' : tableName;
 
   // 1. IDEMPOTENT STUDENT RESOLUTION (data_siswa)
-  // Match incoming students by (sekolah_id, nisn) to update existing rows instead of creating duplicates
+  // Match incoming students by (sekolah_id, nisn) or (sekolah_id, nama_siswa, kelas) to update existing rows instead of creating duplicates
   if (isSiswaTable && rows.length > 0) {
-    const nisnList = Array.from(new Set(
-      rows
-        .map(r => (r.nisn ? String(r.nisn).trim() : ''))
-        .filter(n => n.length > 0 && n !== '-')
-    ));
+    const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
+    try {
+      const nisnList = Array.from(new Set(
+        rows
+          .map(r => (r.nisn ? String(r.nisn).trim() : ''))
+          .filter(n => n.length > 0 && n !== '-')
+      ));
 
-    if (nisnList.length > 0) {
-      const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
-      try {
-        const nisnToIdMap = new Map<string, string>();
+      const nisnToIdMap = new Map<string, string>();
+      const nameClassToIdMap = new Map<string, string>();
+
+      // A. Query existing students with matching NISNs in chunks
+      if (nisnList.length > 0) {
         const chunkSize = 100;
         for (let k = 0; k < nisnList.length; k += chunkSize) {
           const chunk = nisnList.slice(k, k + chunkSize);
           let studentQuery = supabase
             .from('data_siswa')
-            .select('id, nisn, sekolah_id');
+            .select('id, nisn, nama_siswa, kelas, sekolah_id');
           if (schoolId) {
             studentQuery = studentQuery.eq('sekolah_id', schoolId);
           }
@@ -1161,20 +1168,55 @@ export async function importMasterDataFromCsv(
               if (s.nisn) {
                 nisnToIdMap.set(String(s.nisn).trim().toLowerCase(), s.id);
               }
+              if (s.nama_siswa && s.kelas) {
+                const key = `${String(s.nama_siswa).trim().toLowerCase()}_${String(s.kelas).trim().toLowerCase()}`;
+                nameClassToIdMap.set(key, s.id);
+              }
             }
           }
         }
-
-        // Map existing UUID to matching rows
-        for (const row of rows) {
-          const cleanNisn = row.nisn ? String(row.nisn).trim().toLowerCase() : '';
-          if (cleanNisn && nisnToIdMap.has(cleanNisn)) {
-            row.id = nisnToIdMap.get(cleanNisn);
-          }
-        }
-      } catch (nisnMatchErr) {
-        console.warn('[dataIntegrityGuard] Warning resolving existing students by NISN:', nisnMatchErr);
       }
+
+      // B. Also resolve students without NISN (or any remaining) by (nama_siswa, kelas)
+      const studentsWithoutNisn = rows.filter(r => !r.nisn || String(r.nisn).trim() === '' || String(r.nisn).trim() === '-');
+      if (studentsWithoutNisn.length > 0) {
+        try {
+          const studentTable = supabase?.from?.('data_siswa');
+          if (typeof studentTable?.select === 'function') {
+            let noNisnQuery = studentTable.select('id, nama_siswa, kelas, sekolah_id');
+            if (schoolId && typeof noNisnQuery?.eq === 'function') {
+              noNisnQuery = noNisnQuery.eq('sekolah_id', schoolId);
+            }
+            let res: any = null;
+            if (typeof noNisnQuery?.limit === 'function') {
+              res = await noNisnQuery.limit(2000);
+            } else if (typeof noNisnQuery?.then === 'function') {
+              res = await noNisnQuery;
+            }
+            if (res && !res.error && Array.isArray(res.data)) {
+              for (const s of res.data) {
+                if (s.nama_siswa && s.kelas) {
+                  const key = `${String(s.nama_siswa).trim().toLowerCase()}_${String(s.kelas).trim().toLowerCase()}`;
+                  nameClassToIdMap.set(key, s.id);
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Map existing UUID to matching rows
+      for (const row of rows) {
+        const cleanNisn = row.nisn ? String(row.nisn).trim().toLowerCase() : '';
+        const nameClassKey = `${String(row.nama_siswa || '').trim().toLowerCase()}_${String(row.kelas || '').trim().toLowerCase()}`;
+        if (cleanNisn && cleanNisn !== '-' && nisnToIdMap.has(cleanNisn)) {
+          row.id = nisnToIdMap.get(cleanNisn);
+        } else if (nameClassToIdMap.has(nameClassKey)) {
+          row.id = nameClassToIdMap.get(nameClassKey);
+        }
+      }
+    } catch (nisnMatchErr) {
+      console.warn('[dataIntegrityGuard] Warning resolving existing students idempotently:', nisnMatchErr);
     }
   }
 

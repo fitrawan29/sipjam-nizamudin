@@ -433,6 +433,45 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     setActionLoading(true);
     try {
       const text = await file.text();
+
+      // Smart CSV header detection: check if uploading student records or class records
+      const firstLine = text.replace(/^\uFEFF/, '').split(/\r?\n/).find(l => l.trim() && !l.toLowerCase().startsWith('sep='));
+      const lowerHeader = (firstLine || '').toLowerCase();
+      const isStudentCsv = lowerHeader.includes('nama_siswa') || (lowerHeader.includes('nisn') && lowerHeader.includes('kelas'));
+
+      if (isStudentCsv) {
+        const { count, rows } = await importMasterDataFromCsv(supabase, text, 'data_siswa', user);
+
+        // Reflect student classes in customClasses and customClassesMeta
+        if (Array.isArray(rows) && rows.length > 0) {
+          const studentClasses = Array.from(new Set(rows.map(r => String(r.kelas || '').trim()).filter(Boolean)));
+          const meta: Record<string, { tingkat?: string; jurusan?: string | null }> = {};
+          studentClasses.forEach(k => {
+            meta[k] = {
+              tingkat: parseTingkat(k),
+              jurusan: null
+            };
+          });
+          if (studentClasses.length > 0) {
+            setCustomClasses(prev => Array.from(new Set([...prev, ...studentClasses])));
+            setCustomClassesMeta(prev => ({ ...prev, ...meta }));
+          }
+        }
+
+        // Reset filters and search so newly uploaded students and classes are immediately visible
+        setFilterTingkat('ALL');
+        setSearchQuery('');
+
+        showToast(
+          'Unggah Berhasil',
+          `Berhasil mengimpor dan memperbarui ${count} data siswa ke dalam kelas!`,
+          'success'
+        );
+        window.dispatchEvent(new CustomEvent('sipjam:kelas-updated'));
+        await loadAllData(true);
+        return;
+      }
+
       const { count, rows } = await importMasterDataFromCsv(supabase, text, 'data_kelas', user);
 
       // Immediately reflect imported classes in local state
