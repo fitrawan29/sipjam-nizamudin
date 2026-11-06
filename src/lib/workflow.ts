@@ -557,7 +557,14 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       } else {
         tQ = tQ.eq('nama_guru', cleanTeacherName);
       }
-      const { data: tData } = await tQ;
+      const { data: tDataRaw, error: tErrQuery } = await tQ;
+      let tData = tDataRaw;
+      if (tErrQuery) {
+        let fbTQ = supabase.from('data_guru').select('*').eq('nama_guru', cleanTeacherName);
+        if (sekolahId) fbTQ = fbTQ.eq('sekolah_id', sekolahId);
+        const fbRes = await fbTQ;
+        tData = fbRes.data as any;
+      }
       if (tData && tData.length > 0) {
         for (const teacher of tData) {
           if (!teacherDataGuruId && teacher.id) teacherDataGuruId = String(teacher.id);
@@ -782,7 +789,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       presensiQuery = presensiQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
     }
 
-    const { data: allPresensi } = await presensiQuery;
+    const { data: allPresensiRaw, error: presensiErr } = await presensiQuery;
+    let allPresensi = allPresensiRaw;
+    if (presensiErr && userId) {
+      let fbPresensiQuery = supabase.from('presensi_guru').select('*').order('timestamp', { ascending: false }).limit(50);
+      if (sekolahId) fbPresensiQuery = fbPresensiQuery.eq('sekolah_id', sekolahId);
+      fbPresensiQuery = fbPresensiQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+      const fbRes = await fbPresensiQuery;
+      allPresensi = fbRes.data;
+    }
 
     if (allPresensi) {
       // Filter presensi hari ini - handle berbagai format timestamp
@@ -923,7 +938,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         piketQuery = piketQuery.ilike('guru_pelapor', `%${cleanTeacherName}%`);
       }
 
-      const { data: lp } = await piketQuery;
+      const { data: lpRaw, error: lpErr } = await piketQuery;
+      let lp = lpRaw;
+      if (lpErr && userId) {
+        let fbPiketQuery = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
+        if (sekolahId) fbPiketQuery = fbPiketQuery.eq('sekolah_id', sekolahId);
+        fbPiketQuery = fbPiketQuery.ilike('guru_pelapor', `%${cleanTeacherName}%`);
+        const fbRes = await fbPiketQuery;
+        lp = fbRes.data;
+      }
       
       if (lp && lp.length > 0) {
         // Rejected laporan piket: teacher must re-submit
@@ -953,7 +976,15 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       jurnalQuery = jurnalQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
     }
 
-    const { data: jurnal } = await jurnalQuery;
+    const { data: jurnalRaw, error: jurnalErr } = await jurnalQuery;
+    let jurnal = jurnalRaw;
+    if (jurnalErr && userId) {
+      let fbJurnalQuery = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
+      if (sekolahId) fbJurnalQuery = fbJurnalQuery.eq('sekolah_id', sekolahId);
+      fbJurnalQuery = fbJurnalQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+      const fbRes = await fbJurnalQuery;
+      jurnal = fbRes.data;
+    }
 
     if (jurnal) {
       // Separate rejected jurnal entries — they must be re-submitted

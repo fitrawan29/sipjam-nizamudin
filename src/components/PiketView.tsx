@@ -1580,7 +1580,12 @@ export default function PiketView({ user }: { user: any }) {
         kehadiran_guru_piket: 'Hadir',
         ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
       };
-      const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
+      let { error } = await supabase.from('laporan_piket').insert([newLaporan]);
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        const { user_id: _u, ...compatibleLaporan } = newLaporan;
+        const retry = await supabase.from('laporan_piket').insert([compatibleLaporan]);
+        error = retry.error;
+      }
       setLoading(false);
       if (error) return showToast('Gagal Simpan', error.message, 'error');
       if (dailyState?.laporanPiketDitolak?.id) {
@@ -1633,7 +1638,12 @@ export default function PiketView({ user }: { user: any }) {
       kehadiran_guru_piket: 'Hadir',
       ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
     };
-    const { error } = await supabase.from('laporan_piket').insert([newLaporan]);
+    let { error } = await supabase.from('laporan_piket').insert([newLaporan]);
+    if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+      const { user_id: _u, ...compatibleLaporan } = newLaporan;
+      const retry = await supabase.from('laporan_piket').insert([compatibleLaporan]);
+      error = retry.error;
+    }
 
     if (error) {
       showToast('Error', 'Gagal menyimpan laporan piket: ' + error.message, 'error');

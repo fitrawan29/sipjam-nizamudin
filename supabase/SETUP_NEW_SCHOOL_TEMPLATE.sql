@@ -56,12 +56,14 @@ CREATE TABLE IF NOT EXISTS public.users (
 CREATE TABLE IF NOT EXISTS public.data_guru (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     nip TEXT,
     nama_guru TEXT NOT NULL,
     mata_pelajaran TEXT,
     no_hp TEXT,
     status TEXT DEFAULT 'Aktif',
     email TEXT,
+    wajib_hadir_hanya_mengajar BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -124,6 +126,7 @@ CREATE TABLE IF NOT EXISTS public.wali_kelas (
 CREATE TABLE IF NOT EXISTS public.jadwal_pelajaran (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     hari TEXT NOT NULL,
     nama_guru TEXT NOT NULL,
     mata_pelajaran TEXT NOT NULL,
@@ -172,14 +175,18 @@ CREATE TABLE IF NOT EXISTS public.piket_form_lock (
 CREATE TABLE IF NOT EXISTS public.laporan_piket (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     timestamp TIMESTAMPTZ DEFAULT now(),
     tanggal TEXT NOT NULL,
     guru_pelapor TEXT NOT NULL,
     rekap_absen_kelas TEXT,
     catatan_apel TEXT,
+    keterangan TEXT,
     link_foto TEXT,
     status_verifikasi TEXT DEFAULT 'Menunggu',
     kehadiran_guru_piket TEXT,
+    catatan_admin TEXT,
+    alasan_penolakan TEXT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -187,15 +194,17 @@ CREATE TABLE IF NOT EXISTS public.laporan_piket (
 CREATE TABLE IF NOT EXISTS public.presensi_guru (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     timestamp TIMESTAMPTZ DEFAULT now(),
     nama_guru TEXT NOT NULL,
     tipe_absen TEXT,
     jenis_presensi TEXT,
     detail_izin TEXT,
     lokasi TEXT,
-    jarak NUMERIC,
+    jarak TEXT,
     link_bukti TEXT,
     status_verifikasi TEXT DEFAULT 'Menunggu',
+    keterlambatan_detik INTEGER DEFAULT NULL,
     durasi_hari INTEGER DEFAULT 1,
     tanggal_mulai DATE,
     tanggal_selesai DATE,
@@ -203,6 +212,8 @@ CREATE TABLE IF NOT EXISTS public.presensi_guru (
     is_auto_checkout BOOLEAN DEFAULT FALSE,
     latitude NUMERIC(10, 7),
     longitude NUMERIC(10, 7),
+    catatan_admin TEXT,
+    alasan_penolakan TEXT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -210,6 +221,7 @@ CREATE TABLE IF NOT EXISTS public.presensi_guru (
 CREATE TABLE IF NOT EXISTS public.jurnal_pembelajaran (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
     timestamp TIMESTAMPTZ DEFAULT now(),
     nama_guru TEXT NOT NULL,
     mapel TEXT NOT NULL,
@@ -228,6 +240,8 @@ CREATE TABLE IF NOT EXISTS public.jurnal_pembelajaran (
     jam_ke TEXT,
     tujuan_pembelajaran TEXT,
     materi_pembelajaran TEXT,
+    materi_kegiatan TEXT,
+    kegiatan_pembelajaran TEXT,
     kehadiran_murid TEXT,
     catatan_refleksi TEXT,
     foto_kegiatan TEXT,
@@ -235,6 +249,12 @@ CREATE TABLE IF NOT EXISTS public.jurnal_pembelajaran (
     kktp TEXT,
     konten TEXT,
     lokasi_kbm TEXT,
+    lokasi TEXT,
+    latitude NUMERIC(10, 7),
+    longitude NUMERIC(10, 7),
+    waktu_upload TEXT,
+    catatan_admin TEXT,
+    alasan_penolakan TEXT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 

@@ -526,35 +526,52 @@ export default function GuruPresensi({
         insertSuccess = true;
       } else {
         insertErrorMsg = error.message;
-        // ponytail: fallback if database schema does not have milestone 2 columns (e.g. durasi_hari)
-        if (error.message && (error.message.includes('schema cache') || error.message.includes('column'))) {
-          const compatiblePresensi: any = {
-            id: newPresensi.id,
-            timestamp: newPresensi.timestamp,
-            nama_guru: newPresensi.nama_guru,
-            user_id: newPresensi.user_id,
-            tipe_absen: newPresensi.tipe_absen,
-            jenis_presensi: newPresensi.jenis_presensi,
-            detail_izin: ((jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') && durasiHari > 1)
-              ? `${detailIzin || 'Izin'} (${durasiHari} Hari: ${tanggalMulai} s/d ${tanggalSelesai})`
-              : newPresensi.detail_izin,
-            lokasi: newPresensi.lokasi,
-            jarak: newPresensi.jarak,
-            link_bukti: newPresensi.link_bukti,
-            status_verifikasi: statusVerif,
-            keterlambatan_detik: keterlambatanDetik,
-            latitude: newPresensi.latitude,
-            longitude: newPresensi.longitude,
-          };
-          if (newPresensi.sekolah_id) {
-            compatiblePresensi.sekolah_id = newPresensi.sekolah_id;
+        // ponytail: fallback if database schema does not have user_id or milestone 2 columns (e.g. durasi_hari)
+        if (error.code === 'PGRST204' || (error.message && (error.message.includes('schema cache') || error.message.includes('column') || error.message.includes('Could not find the')))) {
+          if (error.message?.includes('user_id')) {
+            const { user_id: _u, ...withoutUserId } = newPresensi;
+            const { error: uidErr } = await supabase.from('presensi_guru').insert([withoutUserId]);
+            if (!uidErr) {
+              insertSuccess = true;
+              insertErrorMsg = '';
+            } else {
+              insertErrorMsg = uidErr.message;
+            }
           }
-          const { error: retryError } = await supabase.from('presensi_guru').insert([compatiblePresensi]);
-          if (!retryError) {
-            insertSuccess = true;
-            insertErrorMsg = '';
-          } else {
-            insertErrorMsg = retryError.message;
+          if (!insertSuccess) {
+            const compatiblePresensi: any = {
+              id: newPresensi.id,
+              timestamp: newPresensi.timestamp,
+              nama_guru: newPresensi.nama_guru,
+              tipe_absen: newPresensi.tipe_absen,
+              jenis_presensi: newPresensi.jenis_presensi,
+              detail_izin: ((jenisPresensi === 'Izin' || jenisPresensi === 'Sakit') && durasiHari > 1)
+                ? `${detailIzin || 'Izin'} (${durasiHari} Hari: ${tanggalMulai} s/d ${tanggalSelesai})`
+                : newPresensi.detail_izin,
+              lokasi: newPresensi.lokasi,
+              jarak: newPresensi.jarak,
+              link_bukti: newPresensi.link_bukti,
+              status_verifikasi: statusVerif,
+            };
+            if (newPresensi.sekolah_id) {
+              compatiblePresensi.sekolah_id = newPresensi.sekolah_id;
+            }
+            const { error: retryError } = await supabase.from('presensi_guru').insert([compatiblePresensi]);
+            if (!retryError) {
+              insertSuccess = true;
+              insertErrorMsg = '';
+            } else if (retryError.message?.includes('numeric')) {
+              compatiblePresensi.jarak = jarakAktual !== null ? jarakAktual : null;
+              const { error: numRetryErr } = await supabase.from('presensi_guru').insert([compatiblePresensi]);
+              if (!numRetryErr) {
+                insertSuccess = true;
+                insertErrorMsg = '';
+              } else {
+                insertErrorMsg = numRetryErr.message;
+              }
+            } else {
+              insertErrorMsg = retryError.message;
+            }
           }
         }
       }

@@ -431,7 +431,7 @@ export async function evaluateAndApplyAutoAlpa(
     }
 
     // INSERT record Alpa baru
-    const { error: insErr } = await supabase.from('presensi_guru').insert({
+    const alpaRecord = {
       id: crypto.randomUUID(),
       timestamp: `${evaluatedDate}T23:59:00+08:00`,
       nama_guru: guru.nama_guru,
@@ -441,7 +441,13 @@ export async function evaluateAndApplyAutoAlpa(
       status_verifikasi: 'Alpa',
       catatan_admin: 'Alpa otomatis: tidak melakukan presensi datang hingga batas waktu.',
       sekolah_id: guru.sekolah_id,
-    });
+    };
+    let { error: insErr } = await supabase.from('presensi_guru').insert(alpaRecord);
+    if (insErr && (insErr.message.includes('schema cache') || insErr.message.includes('column'))) {
+      const { user_id: _u, catatan_admin: _c, ...baseAlpaRecord } = alpaRecord;
+      const retry = await supabase.from('presensi_guru').insert(baseAlpaRecord);
+      if (!retry.error) insErr = null;
+    }
 
     if (insErr) {
       console.error(`[attendanceAlpa] Failed to insert Alpa for ${guru.nama_guru}:`, insErr.message);
@@ -891,7 +897,7 @@ export async function evaluateAndApplyAutoCheckout(
 
     let { error: insErr } = await supabase.from('presensi_guru').insert(autoRecord);
     if (insErr && (insErr.message.includes('schema cache') || insErr.message.includes('column'))) {
-      const { is_auto_checkout: _, ...baseAutoRecord } = autoRecord;
+      const { is_auto_checkout: _, user_id: _u, catatan_admin: _c, ...baseAutoRecord } = autoRecord;
       const retry = await supabase.from('presensi_guru').insert(baseAutoRecord);
       if (!retry.error) {
         insErr = null;
@@ -1094,7 +1100,7 @@ export async function recordUnfilledJournalsAndPiket(
             }
             const { error: insErr } = await client.from('jurnal_pembelajaran').insert(kbmRecord);
             if (insErr && (insErr.message?.includes('schema cache') || insErr.message?.includes('column'))) {
-              const { catatan_admin: _, catatan_refleksi: _2, konten: _3, ...baseRec } = kbmRecord;
+              const { user_id: _u, catatan_admin: _, catatan_refleksi: _2, konten: _3, kegiatan_pembelajaran: _4, ...baseRec } = kbmRecord;
               await client.from('jurnal_pembelajaran').insert(baseRec);
             }
             unfilledKbmCount++;
@@ -1143,7 +1149,7 @@ export async function recordUnfilledJournalsAndPiket(
         };
         const { error: insErr } = await client.from('jurnal_pembelajaran').insert(emptyKegiatanRecord);
         if (insErr && (insErr.message?.includes('schema cache') || insErr.message?.includes('column'))) {
-          const { catatan_admin: _, catatan_refleksi: _2, konten: _3, ...baseRec } = emptyKegiatanRecord;
+          const { user_id: _u, catatan_admin: _, catatan_refleksi: _2, konten: _3, materi_kegiatan: _4, kegiatan_pembelajaran: _5, ...baseRec } = emptyKegiatanRecord;
           await client.from('jurnal_pembelajaran').insert(baseRec);
         }
         unfilledKegiatanCreated = true;
@@ -1179,7 +1185,7 @@ export async function recordUnfilledJournalsAndPiket(
         };
         const { error: pErr } = await client.from('laporan_piket').insert(emptyPiketRecord);
         if (pErr && (pErr.message?.includes('schema cache') || pErr.message?.includes('column'))) {
-          const { keterangan: _, ...basePiket } = emptyPiketRecord;
+          const { user_id: _u, keterangan: _, ...basePiket } = emptyPiketRecord;
           await client.from('laporan_piket').insert(basePiket);
         }
         unfilledPiketCreated = true;
@@ -1262,7 +1268,7 @@ export async function autoFillKbmJournalsForLeave(
 
         const { error } = await client.from('jurnal_pembelajaran').insert(autoJournalRecord);
         if (error && (error.message?.includes('schema cache') || error.message?.includes('column'))) {
-          const { catatan_admin: _, catatan_refleksi: _2, konten: _3, ...baseRec } = autoJournalRecord;
+          const { user_id: _u, catatan_admin: _, catatan_refleksi: _2, konten: _3, kegiatan_pembelajaran: _4, ...baseRec } = autoJournalRecord;
           await client.from('jurnal_pembelajaran').insert(baseRec);
         }
         if (!error) insertedCount++;

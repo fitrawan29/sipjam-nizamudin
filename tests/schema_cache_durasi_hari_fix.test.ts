@@ -146,6 +146,36 @@ async function run() {
     console.log('   ✅ Cleaned up test record from live Supabase.\n');
   }
 
+  // Test 5: user_id schema cache fallback & SQL template/migration verification
+  console.log('👉 [Test 5] Checking user_id schema cache resilience & SQL migration...');
+  assert.ok(
+    presensiSrc.includes('withoutUserId'),
+    'GuruPresensi must strip user_id when user_id column is missing in schema cache'
+  );
+  assert.ok(
+    !presensiSrc.match(/const compatiblePresensi[\s\S]*?user_id:\s*newPresensi\.user_id/),
+    'compatiblePresensi in GuruPresensi must NOT include user_id'
+  );
+  assert.ok(
+    !routeSrc.match(/const baseCleanRecord[\s\S]*?user_id:\s*presensiRecord\.user_id/),
+    'baseCleanRecord in /api/attendance/route.ts must NOT include user_id'
+  );
+  const templateSql = fs.readFileSync(path.join(root, 'supabase', 'SETUP_NEW_SCHOOL_TEMPLATE.sql'), 'utf8');
+  assert.ok(
+    templateSql.includes('CREATE TABLE IF NOT EXISTS public.presensi_guru (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,\n    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,'),
+    'SETUP_NEW_SCHOOL_TEMPLATE.sql must define user_id on presensi_guru'
+  );
+  const migrationSql = fs.readFileSync(
+    path.join(root, 'supabase', 'migrations', '20261106_fix_presensi_guru_user_id_schema_cache.sql'),
+    'utf8'
+  );
+  assert.ok(
+    migrationSql.includes('ALTER TABLE public.presensi_guru ADD COLUMN IF NOT EXISTS user_id') &&
+      migrationSql.includes("NOTIFY pgrst, 'reload schema';"),
+    'Migration must add user_id to presensi_guru and reload PostgREST schema cache'
+  );
+  console.log('   ✅ user_id schema cache fallback and SQL migration verified.\n');
+
   console.log('================================================================');
   console.log('🎉 ALL DURASI_HARI SCHEMA CACHE TESTS PASSED WITH 100% SUCCESS!');
   console.log('================================================================');

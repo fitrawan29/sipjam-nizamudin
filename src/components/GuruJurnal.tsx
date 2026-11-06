@@ -999,7 +999,12 @@ export default function GuruJurnal({
         }
       }
 
-      const { error } = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
+      let { error } = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, ...compatibleJurnal } = newJurnal;
+        const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
+        error = retry.error;
+      }
 
       if (error) {
         showToast('Gagal Menyimpan Jurnal', 'Koneksi internet aktif diwajibkan untuk menyimpan jurnal pembelajaran. ' + (error.message || 'Silakan periksa koneksi Anda dan coba lagi.'), 'error');

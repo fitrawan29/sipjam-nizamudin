@@ -255,7 +255,7 @@ export default function RekapJurnalView({
         }
 
         // R2: Fetch presensi_guru for this period to detect teachers with Sakit, Izin, or Dinas Luar
-        let presensiQ = supabase.from('presensi_guru').select('nama_guru, user_id, tipe_absen, jenis_presensi, detail_izin, keterangan, link_bukti, timestamp');
+        let presensiQ = supabase.from('presensi_guru').select('*');
         if (user?.sekolah_id) presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
         if (activeMode === 'pribadi' && user?.nama) presensiQ = presensiQ.eq('nama_guru', user.nama);
         presensiQ = presensiQ.gte('timestamp', `${startDStr}T00:00:00`).lte('timestamp', `${endDStr}T23:59:59`);

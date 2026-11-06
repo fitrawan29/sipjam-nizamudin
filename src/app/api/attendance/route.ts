@@ -133,28 +133,47 @@ export async function POST(req: NextRequest) {
       .select()
       .single();
 
-    if (error && (error.message.includes('schema cache') || error.message.includes('column'))) {
-      const baseCleanRecord = {
-        id: presensiRecord.id,
-        timestamp: presensiRecord.timestamp,
-        nama_guru: presensiRecord.nama_guru,
-        user_id: presensiRecord.user_id,
-        tipe_absen: presensiRecord.tipe_absen,
-        jenis_presensi: presensiRecord.jenis_presensi,
-        detail_izin: presensiRecord.detail_izin,
-        lokasi: presensiRecord.lokasi,
-        jarak: presensiRecord.jarak,
-        link_bukti: presensiRecord.link_bukti,
-        status_verifikasi: presensiRecord.status_verifikasi,
-        keterlambatan_detik: presensiRecord.keterlambatan_detik,
-        latitude: presensiRecord.latitude,
-        longitude: presensiRecord.longitude,
-        ...(presensiRecord.sekolah_id ? { sekolah_id: presensiRecord.sekolah_id } : {})
-      };
-      const retry = await dbClient.from('presensi_guru').insert([baseCleanRecord]).select().single();
-      if (!retry.error) {
-        data = retry.data;
-        error = null;
+    if (error && (error.code === 'PGRST204' || error.message.includes('schema cache') || error.message.includes('column') || error.message.includes('Could not find the'))) {
+      if (error.message.includes('user_id')) {
+        const { user_id: _u, ...withoutUserId } = presensiRecord;
+        const uidRetry = await dbClient.from('presensi_guru').insert([withoutUserId]).select().single();
+        if (!uidRetry.error) {
+          data = uidRetry.data;
+          error = null;
+        } else {
+          error = uidRetry.error;
+        }
+      }
+      if (error) {
+        const baseCleanRecord: any = {
+          id: presensiRecord.id,
+          timestamp: presensiRecord.timestamp,
+          nama_guru: presensiRecord.nama_guru,
+          tipe_absen: presensiRecord.tipe_absen,
+          jenis_presensi: presensiRecord.jenis_presensi,
+          detail_izin: presensiRecord.detail_izin,
+          lokasi: presensiRecord.lokasi,
+          jarak: presensiRecord.jarak,
+          link_bukti: presensiRecord.link_bukti,
+          status_verifikasi: presensiRecord.status_verifikasi,
+          ...(presensiRecord.sekolah_id ? { sekolah_id: presensiRecord.sekolah_id } : {})
+        };
+        const retry = await dbClient.from('presensi_guru').insert([baseCleanRecord]).select().single();
+        if (!retry.error) {
+          data = retry.data;
+          error = null;
+        } else if (retry.error.message?.includes('numeric')) {
+          baseCleanRecord.jarak = numericJarak;
+          const numRetry = await dbClient.from('presensi_guru').insert([baseCleanRecord]).select().single();
+          if (!numRetry.error) {
+            data = numRetry.data;
+            error = null;
+          } else {
+            error = numRetry.error;
+          }
+        } else {
+          error = retry.error;
+        }
       }
     }
 
@@ -217,7 +236,20 @@ export async function GET(req: NextRequest) {
       query = query.eq('jenis_presensi', jenisPresensi);
     }
 
-    const { data, error } = await query;
+    let { data, error } = await query;
+
+    if (error && userId && (error.message.includes('schema cache') || error.message.includes('column') || error.message.includes('user_id'))) {
+      let fallbackQuery = dbClient
+        .from('presensi_guru')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(limit);
+      if (namaGuru) fallbackQuery = fallbackQuery.ilike('nama_guru', `%${namaGuru}%`);
+      if (jenisPresensi) fallbackQuery = fallbackQuery.eq('jenis_presensi', jenisPresensi);
+      const retry = await fallbackQuery;
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       console.error('[API /api/attendance] GET error:', error);
