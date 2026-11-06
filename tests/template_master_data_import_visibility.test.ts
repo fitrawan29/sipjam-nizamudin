@@ -1,0 +1,316 @@
+/**
+ * Automated Verification: Template Master Data Import Visibility & Idempotency
+ * 
+ * Verifies:
+ * 1. AdminKelasView consolidatedClasses seeds and displays classes from wali_kelas
+ *    even when data_kelas table is missing from schema cache and classes have 0 enrolled students.
+ * 2. AdminKelasView handleClassFileUpload immediately updates customClasses state and clears filters.
+ * 3. AdminDataView handleFileUpload resets search, filter1, filter2, and page so imported data
+ *    is immediately visible on screen.
+ * 4. importMasterDataFromCsv resolves existing teachers (data_guru) by NIP/name idempotently
+ *    and updates in-place without PostgreSQL 23505 errors.
+ * 5. importMasterDataFromCsv resolves existing subjects (data_mapel) by name idempotently.
+ * 6. parseAndValidateMasterCsv strips leading "sep=..." lines commonly produced by Microsoft Excel.
+ */
+
+import assert from 'assert';
+import * as fs from 'fs';
+import * as path from 'path';
+import {
+  parseAndValidateMasterCsv,
+  importMasterDataFromCsv
+} from '../src/lib/dataIntegrityGuard';
+
+const GREEN = '\x1b[32m';
+const RED = '\x1b[31m';
+const CYAN = '\x1b[36m';
+const YELLOW = '\x1b[33m';
+const BOLD = '\x1b[1m';
+const RESET = '\x1b[0m';
+
+let totalTests = 0;
+let passedTests = 0;
+let failedTests = 0;
+
+function pass(desc: string) {
+  totalTests++;
+  passedTests++;
+  console.log(`  ${GREEN}✔ [PASS]${RESET} ${desc}`);
+}
+
+function fail(desc: string, err?: any) {
+  totalTests++;
+  failedTests++;
+  console.error(`  ${RED}✖ [FAIL]${RESET} ${desc}`);
+  if (err) console.error(`    ↳ Error:`, err);
+}
+
+async function runVerification() {
+  console.log(`\n${CYAN}${BOLD}========================================================================${RESET}`);
+  console.log(`${CYAN}${BOLD}🧪 TEST SUITE: TEMPLATE MASTER DATA IMPORT VISIBILITY & IDEMPOTENCY${RESET}`);
+  console.log(`${CYAN}${BOLD}========================================================================${RESET}\n`);
+
+  const adminKelasPath = path.join(__dirname, '..', 'src', 'components', 'AdminKelasView.tsx');
+  const adminKelasSrc = fs.readFileSync(adminKelasPath, 'utf8');
+
+  const adminDataPath = path.join(__dirname, '..', 'src', 'components', 'AdminDataView.tsx');
+  const adminDataSrc = fs.readFileSync(adminDataPath, 'utf8');
+
+  // ==========================================================================
+  // SECTION 1: AdminKelasView Display & Upload Handlers
+  // ==========================================================================
+  console.log(`${YELLOW}${BOLD}--- SECTION 1: AdminKelasView Display & State Sync ---${RESET}`);
+
+  // Test 1.1: consolidatedClasses seeds from waliKelasList for classes with 0 students
+  try {
+    assert.ok(
+      adminKelasSrc.includes('waliKelasList.forEach(w => {') &&
+      adminKelasSrc.includes('if (!classMap.has(k)) {') &&
+      adminKelasSrc.includes('totalSiswa: 0'),
+      'AdminKelasView must seed empty classes from waliKelasList so fallback-imported classes appear on screen'
+    );
+    pass('1.1: consolidatedClasses seeds empty classes from wali_kelas fallback records');
+  } catch (e) {
+    fail('1.1: consolidatedClasses seeding from wali_kelas check failed', e);
+  }
+
+  // Test 1.2: handleClassFileUpload updates customClasses state with imported classes
+  try {
+    assert.ok(
+      adminKelasSrc.includes('const { count, rows } = await importMasterDataFromCsv') &&
+      adminKelasSrc.includes('setCustomClasses(prev => Array.from(new Set([...prev, ...importedNames])))'),
+      'AdminKelasView must immediately reflect imported class names in customClasses state'
+    );
+    pass('1.2: handleClassFileUpload immediately syncs imported class names into customClasses state');
+  } catch (e) {
+    fail('1.2: handleClassFileUpload customClasses state sync check failed', e);
+  }
+
+  // Test 1.3: handleClassFileUpload resets filters and search query
+  try {
+    assert.ok(
+      adminKelasSrc.includes("setSelectedTingkat('ALL')") &&
+      adminKelasSrc.includes("setSearchQuery('')"),
+      'AdminKelasView must reset tingkat filter and search query on import'
+    );
+    pass('1.3: handleClassFileUpload resets filter and search so uploaded classes are immediately visible');
+  } catch (e) {
+    fail('1.3: handleClassFileUpload reset filter check failed', e);
+  }
+
+  // ==========================================================================
+  // SECTION 2: AdminDataView Upload Handler Visibility
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}--- SECTION 2: AdminDataView Filter & Page Reset on Upload ---${RESET}`);
+
+  // Test 2.1: handleFileUpload in AdminDataView resets search, filters, and page
+  try {
+    assert.ok(
+      adminDataSrc.includes("setSearch('')") &&
+      adminDataSrc.includes("setFilter1('ALL')") &&
+      adminDataSrc.includes("setFilter2('ALL')") &&
+      adminDataSrc.includes("setPage(0)"),
+      'AdminDataView handleFileUpload must reset search, filter1, filter2, and page to 0'
+    );
+    assert.ok(
+      adminDataSrc.includes('await loadData()'),
+      'AdminDataView handleFileUpload must await loadData()'
+    );
+    pass('2.1: AdminDataView resets search, filters, and page on upload so imported rows are visible');
+  } catch (e) {
+    fail('2.1: AdminDataView filter reset check failed', e);
+  }
+
+  // ==========================================================================
+  // SECTION 3: Excel "sep=..." Prefix Handling
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}--- SECTION 3: Excel CSV Compatibility (sep=...) ---${RESET}`);
+
+  // Test 3.1: parseAndValidateMasterCsv strips leading sep=, line
+  try {
+    const csvWithSep = [
+      'sep=,',
+      'nama_kelas,tingkat,jurusan',
+      'X TKJ 1,10,TKJ'
+    ].join('\n');
+    const parsed = parseAndValidateMasterCsv(csvWithSep, 'data_kelas');
+    assert.strictEqual(parsed.length, 1);
+    assert.strictEqual(parsed[0].nama_kelas, 'X TKJ 1');
+    assert.strictEqual(parsed[0].tingkat, '10');
+    pass('3.1: parseAndValidateMasterCsv safely handles and strips leading "sep=," line');
+  } catch (e) {
+    fail('3.1: Excel sep=, line test failed', e);
+  }
+
+  // Test 3.2: parseAndValidateMasterCsv strips leading sep=; line
+  try {
+    const csvWithSepSemi = [
+      'sep=;',
+      'nama_kelas;tingkat;jurusan',
+      'XI TKJ 2;11;TKJ'
+    ].join('\n');
+    const parsed = parseAndValidateMasterCsv(csvWithSepSemi, 'data_kelas');
+    assert.strictEqual(parsed.length, 1);
+    assert.strictEqual(parsed[0].nama_kelas, 'XI TKJ 2');
+    assert.strictEqual(parsed[0].tingkat, '11');
+    pass('3.2: parseAndValidateMasterCsv safely handles and strips leading "sep=;" line');
+  } catch (e) {
+    fail('3.2: Excel sep=; line test failed', e);
+  }
+
+  // ==========================================================================
+  // SECTION 4: Idempotent Teacher & Subject Resolution
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}--- SECTION 4: Teacher & Subject Idempotent Resolution ---${RESET}`);
+
+  // Test 4.1: data_guru re-import with matching NIP reuses existing teacher UUID
+  try {
+    const existingTeacherId = 't1111111-1111-4111-8111-111111111111';
+    let capturedBatch: any[] = [];
+    const mockSupabase = {
+      from: (table: string) => {
+        if (table === 'data_guru') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({
+                data: [{
+                  id: existingTeacherId,
+                  nip: '198501012010011001',
+                  nama_guru: 'Fitri Aprilia Dotulong',
+                  sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+                }],
+                error: null
+              })
+            }),
+            upsert: (batch: any[]) => {
+              capturedBatch = batch;
+              return Promise.resolve({ error: null });
+            }
+          };
+        }
+        return { select: () => Promise.resolve({ data: null, error: null }), upsert: () => Promise.resolve({ error: null }) };
+      }
+    };
+
+    const teacherCsv = [
+      'sekolah_id,nip,nama_guru,mata_pelajaran,no_hp,status,email',
+      'a0000000-0000-0000-0000-000000000001,198501012010011001,Fitri Aprilia Dotulong,Bahasa Inggris,628999999999,Aktif,fitri_new@gmail.com'
+    ].join('\n');
+
+    const result = await importMasterDataFromCsv(mockSupabase, teacherCsv, 'data_guru', {
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+
+    assert.strictEqual(result.count, 1);
+    assert.strictEqual(capturedBatch.length, 1);
+    assert.strictEqual(capturedBatch[0].id, existingTeacherId, 'Existing teacher ID must be preserved to update in-place');
+    assert.strictEqual(capturedBatch[0].no_hp, '628999999999', 'Phone number must be updated');
+    pass('4.1: Existing teacher matched by NIP reuses UUID and updates in-place without duplicate error');
+  } catch (e) {
+    fail('4.1: Teacher NIP idempotency check failed', e);
+  }
+
+  // Test 4.2: data_mapel re-import with matching subject name reuses existing mapel UUID
+  try {
+    const existingMapelId = 'm1111111-1111-4111-8111-111111111111';
+    let capturedBatch: any[] = [];
+    const mockSupabase = {
+      from: (table: string) => {
+        if (table === 'data_mapel') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({
+                data: [{
+                  id: existingMapelId,
+                  nama_mata_pelajaran: 'Matematika Wajib',
+                  sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+                }],
+                error: null
+              })
+            }),
+            upsert: (batch: any[]) => {
+              capturedBatch = batch;
+              return Promise.resolve({ error: null });
+            }
+          };
+        }
+        return { select: () => Promise.resolve({ data: null, error: null }), upsert: () => Promise.resolve({ error: null }) };
+      }
+    };
+
+    const mapelCsv = [
+      'nama_mata_pelajaran,kategori',
+      'Matematika Wajib,Umum'
+    ].join('\n');
+
+    const result = await importMasterDataFromCsv(mockSupabase, mapelCsv, 'data_mapel', {
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+
+    assert.strictEqual(result.count, 1);
+    assert.strictEqual(capturedBatch.length, 1);
+    assert.strictEqual(capturedBatch[0].id, existingMapelId, 'Existing subject ID must be preserved');
+    pass('4.2: Existing subject matched by name reuses ID and updates in-place');
+  } catch (e) {
+    fail('4.2: Subject name idempotency check failed', e);
+  }
+
+  // Test 4.3: wali_kelas re-import with matching class name reuses existing wali UUID
+  try {
+    const existingWaliId = 'w1111111-1111-4111-8111-111111111111';
+    let capturedBatch: any[] = [];
+    const mockSupabase = {
+      from: (table: string) => {
+        if (table === 'wali_kelas') {
+          return {
+            select: () => ({
+              eq: () => Promise.resolve({
+                data: [{
+                  id: existingWaliId,
+                  kelas: 'X Merdeka',
+                  sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+                }],
+                error: null
+              })
+            }),
+            upsert: (batch: any[]) => {
+              capturedBatch = batch;
+              return Promise.resolve({ error: null });
+            }
+          };
+        }
+        return { select: () => Promise.resolve({ data: null, error: null }), upsert: () => Promise.resolve({ error: null }) };
+      }
+    };
+
+    const waliCsv = [
+      'kelas,nama_guru,nip,tahun_ajaran',
+      'X Merdeka,Guru Baru Pengganti,19800101,2024/2025'
+    ].join('\n');
+
+    const result = await importMasterDataFromCsv(mockSupabase, waliCsv, 'wali_kelas', {
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+
+    assert.strictEqual(result.count, 1);
+    assert.strictEqual(capturedBatch.length, 1);
+    assert.strictEqual(capturedBatch[0].id, existingWaliId, 'Existing wali kelas ID must be preserved');
+    assert.strictEqual(capturedBatch[0].nama_guru, 'Guru Baru Pengganti');
+    pass('4.3: Existing wali kelas matched by class reuses ID and updates in-place');
+  } catch (e) {
+    fail('4.3: Wali kelas idempotency check failed', e);
+  }
+
+  console.log(`\n${CYAN}${BOLD}========================================================================${RESET}`);
+  console.log(`${CYAN}${BOLD}TOTAL TESTS: ${totalTests} | PASSED: ${passedTests} | FAILED: ${failedTests}${RESET}`);
+  console.log(`${CYAN}${BOLD}========================================================================${RESET}\n`);
+
+  if (failedTests > 0) {
+    process.exit(1);
+  }
+}
+
+runVerification().catch(err => {
+  console.error('Test execution failed:', err);
+  process.exit(1);
+});

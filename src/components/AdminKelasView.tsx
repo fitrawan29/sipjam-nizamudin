@@ -278,10 +278,24 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       }
     });
 
-    // Attach Homeroom Teachers (Wali Kelas)
+    // Attach Homeroom Teachers (Wali Kelas) and seed classes from wali_kelas (including fallback-imported classes when data_kelas table is absent)
     waliKelasList.forEach(w => {
       const k = (w.kelas || '').trim();
-      if (k && classMap.has(k)) {
+      if (!k) return;
+      if (!classMap.has(k)) {
+        classMap.set(k, {
+          id: w.id || k,
+          nama_kelas: k,
+          tingkat: parseTingkat(k),
+          jurusan: null,
+          wali_kelas: w,
+          totalSiswa: 0,
+          siswaLaki: 0,
+          siswaPerempuan: 0,
+          students: [],
+          isDbRecord: true
+        });
+      } else {
         classMap.get(k)!.wali_kelas = w;
       }
     });
@@ -379,7 +393,19 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     setActionLoading(true);
     try {
       const text = await file.text();
-      const { count } = await importMasterDataFromCsv(supabase, text, 'data_kelas', user);
+      const { count, rows } = await importMasterDataFromCsv(supabase, text, 'data_kelas', user);
+
+      // Immediately reflect imported classes in local state
+      if (Array.isArray(rows) && rows.length > 0) {
+        const importedNames = rows.map(r => String(r.nama_kelas || '').trim()).filter(Boolean);
+        if (importedNames.length > 0) {
+          setCustomClasses(prev => Array.from(new Set([...prev, ...importedNames])));
+        }
+      }
+
+      // Reset filters and search so newly uploaded classes are immediately visible
+      setSelectedTingkat('ALL');
+      setSearchQuery('');
 
       showToast(
         'Unggah Berhasil',

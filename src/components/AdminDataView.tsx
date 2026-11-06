@@ -314,6 +314,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       const text = await file.text();
       const { count } = await importMasterDataFromCsv(supabase, text, tabObj.table, user);
 
+      // Reset search, filters, and pagination so uploaded data is immediately visible in the table
+      setSearch('');
+      setFilter1('ALL');
+      setFilter2('ALL');
+      setPage(0);
+
       showToast(
         'Unggah Berhasil',
         `Berhasil mengimpor dan memperbarui ${count} data ke tabel ${tabObj.label}!`,
@@ -326,7 +332,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
 
       if (tabObj.id !== 'Data_Kelas') {
-        loadData();
+        await loadData();
       }
     } catch (err: any) {
       const errorMsg = err.message || 'Terjadi kesalahan saat memproses file CSV.';

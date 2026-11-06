@@ -724,7 +724,10 @@ export function parseAndValidateMasterCsv(
   tableName: string,
   user?: any
 ): Record<string, any>[] {
-  const lines = splitCsvRecords(text);
+  let lines = splitCsvRecords(text);
+  if (lines.length > 0 && lines[0].toLowerCase().trim().startsWith('sep=')) {
+    lines = lines.slice(1);
+  }
   if (lines.length < 2) {
     throw new Error('File CSV kosong atau tidak memiliki baris data.');
   }
@@ -1122,6 +1125,10 @@ export async function importMasterDataFromCsv(
   const normTable = (tableName || '').toLowerCase().trim();
   const isKelasTable = normTable === 'data_kelas' || normTable === 'kelas';
   const isSiswaTable = normTable === 'data_siswa' || normTable === 'siswa';
+  const isGuruTable = normTable === 'data_guru' || normTable === 'guru';
+  const isMapelTable = normTable === 'data_mapel' || normTable === 'mapel';
+  const isWaliTable = normTable === 'wali_kelas';
+  const isKalenderTable = normTable === 'kalender_pendidikan';
   const effectiveTableName = isKelasTable ? 'data_kelas' : tableName;
 
   // 1. IDEMPOTENT STUDENT RESOLUTION (data_siswa)
@@ -1168,6 +1175,142 @@ export async function importMasterDataFromCsv(
       } catch (nisnMatchErr) {
         console.warn('[dataIntegrityGuard] Warning resolving existing students by NISN:', nisnMatchErr);
       }
+    }
+  }
+
+  // 1B. IDEMPOTENT TEACHER RESOLUTION (data_guru)
+  // Match incoming teachers by (sekolah_id, nip) or (sekolah_id, nama_guru) to update existing rows in-place
+  if (isGuruTable && rows.length > 0) {
+    const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
+    try {
+      const teacherTable = supabase?.from?.('data_guru');
+      if (typeof teacherTable?.select === 'function') {
+        let teacherQuery = teacherTable.select('id, nip, nama_guru, sekolah_id');
+        if (schoolId && typeof teacherQuery?.eq === 'function') {
+          teacherQuery = teacherQuery.eq('sekolah_id', schoolId);
+        }
+        const { data: existingTeachers, error: fetchErr } = await teacherQuery;
+        if (!fetchErr && Array.isArray(existingTeachers) && existingTeachers.length > 0) {
+          const nipToIdMap = new Map<string, string>();
+          const nameToIdMap = new Map<string, string>();
+          for (const t of existingTeachers) {
+            if (t.nip && String(t.nip).trim() !== '-') {
+              nipToIdMap.set(String(t.nip).trim().toLowerCase(), t.id);
+            }
+            if (t.nama_guru) {
+              nameToIdMap.set(String(t.nama_guru).trim().toLowerCase(), t.id);
+            }
+          }
+          for (const row of rows) {
+            const cleanNip = row.nip ? String(row.nip).trim().toLowerCase() : '';
+            const cleanName = row.nama_guru ? String(row.nama_guru).trim().toLowerCase() : '';
+            if (cleanNip && cleanNip !== '-' && nipToIdMap.has(cleanNip)) {
+              row.id = nipToIdMap.get(cleanNip);
+            } else if (cleanName && nameToIdMap.has(cleanName)) {
+              row.id = nameToIdMap.get(cleanName);
+            }
+          }
+        }
+      }
+    } catch (tMatchErr) {
+      console.warn('[dataIntegrityGuard] Warning resolving existing teachers by NIP/name:', tMatchErr);
+    }
+  }
+
+  // 1C. IDEMPOTENT MAPEL RESOLUTION (data_mapel)
+  // Match incoming subjects by (sekolah_id, nama_mata_pelajaran) to update existing rows in-place
+  if (isMapelTable && rows.length > 0) {
+    const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
+    try {
+      const mapelTable = supabase?.from?.('data_mapel');
+      if (typeof mapelTable?.select === 'function') {
+        let mapelQuery = mapelTable.select('id, nama_mata_pelajaran, sekolah_id');
+        if (schoolId && typeof mapelQuery?.eq === 'function') {
+          mapelQuery = mapelQuery.eq('sekolah_id', schoolId);
+        }
+        const { data: existingMapel, error: fetchErr } = await mapelQuery;
+        if (!fetchErr && Array.isArray(existingMapel) && existingMapel.length > 0) {
+          const nameToIdMap = new Map<string, string>();
+          for (const m of existingMapel) {
+            if (m.nama_mata_pelajaran) {
+              nameToIdMap.set(String(m.nama_mata_pelajaran).trim().toLowerCase(), m.id);
+            }
+          }
+          for (const row of rows) {
+            const cleanName = row.nama_mata_pelajaran ? String(row.nama_mata_pelajaran).trim().toLowerCase() : '';
+            if (cleanName && nameToIdMap.has(cleanName)) {
+              row.id = nameToIdMap.get(cleanName);
+            }
+          }
+        }
+      }
+    } catch (mMatchErr) {
+      console.warn('[dataIntegrityGuard] Warning resolving existing subjects by name:', mMatchErr);
+    }
+  }
+
+  // 1D. IDEMPOTENT WALI KELAS RESOLUTION (wali_kelas)
+  // Match incoming homeroom teacher assignment by (sekolah_id, kelas)
+  if (isWaliTable && rows.length > 0) {
+    const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
+    try {
+      const waliTable = supabase?.from?.('wali_kelas');
+      if (typeof waliTable?.select === 'function') {
+        let waliQuery = waliTable.select('id, kelas, sekolah_id');
+        if (schoolId && typeof waliQuery?.eq === 'function') {
+          waliQuery = waliQuery.eq('sekolah_id', schoolId);
+        }
+        const { data: existingWali, error: fetchErr } = await waliQuery;
+        if (!fetchErr && Array.isArray(existingWali) && existingWali.length > 0) {
+          const classToIdMap = new Map<string, string>();
+          for (const w of existingWali) {
+            if (w.kelas) {
+              classToIdMap.set(String(w.kelas).trim().toLowerCase(), w.id);
+            }
+          }
+          for (const row of rows) {
+            const cleanClass = row.kelas ? String(row.kelas).trim().toLowerCase() : '';
+            if (cleanClass && classToIdMap.has(cleanClass)) {
+              row.id = classToIdMap.get(cleanClass);
+            }
+          }
+        }
+      }
+    } catch (wMatchErr) {
+      console.warn('[dataIntegrityGuard] Warning resolving existing wali kelas:', wMatchErr);
+    }
+  }
+
+  // 1E. IDEMPOTENT KALENDER RESOLUTION (kalender_pendidikan)
+  // Match incoming calendar events by (sekolah_id, tanggal, keterangan)
+  if (isKalenderTable && rows.length > 0) {
+    const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
+    try {
+      const calTable = supabase?.from?.('kalender_pendidikan');
+      if (typeof calTable?.select === 'function') {
+        let calQuery = calTable.select('id, tanggal, keterangan, sekolah_id');
+        if (schoolId && typeof calQuery?.eq === 'function') {
+          calQuery = calQuery.eq('sekolah_id', schoolId);
+        }
+        const { data: existingCal, error: fetchErr } = await calQuery;
+        if (!fetchErr && Array.isArray(existingCal) && existingCal.length > 0) {
+          const calMap = new Map<string, string>();
+          for (const c of existingCal) {
+            if (c.tanggal) {
+              const key = `${String(c.tanggal).trim().toLowerCase()}_${String(c.keterangan || '').trim().toLowerCase()}`;
+              calMap.set(key, c.id);
+            }
+          }
+          for (const row of rows) {
+            const key = `${String(row.tanggal || '').trim().toLowerCase()}_${String(row.keterangan || '').trim().toLowerCase()}`;
+            if (calMap.has(key)) {
+              row.id = calMap.get(key);
+            }
+          }
+        }
+      }
+    } catch (cMatchErr) {
+      console.warn('[dataIntegrityGuard] Warning resolving existing calendar events:', cMatchErr);
     }
   }
 
