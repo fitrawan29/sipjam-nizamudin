@@ -58,7 +58,7 @@ export default function RekapSiswaView({
   }, [initialTab]);
 
   // Gerbang (Gate Attendance) states
-  const [gerbangTanggal, setGerbangTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [gerbangTanggal, setGerbangTanggal] = useState<string>(getWitaDateStr());
   const [gerbangKelas, setGerbangKelas] = useState<string>(propAssignedKelas || '');
   const [gerbangStudents, setGerbangStudents] = useState<any[]>([]);
   const [gerbangLoading, setGerbangLoading] = useState(false);
@@ -73,7 +73,7 @@ export default function RekapSiswaView({
   const isOwnHomeroomClass = Boolean(userAssignedKelas && activeWaliKelas?.kelas && activeWaliKelas.kelas === userAssignedKelas);
   const isReadOnly = isGlobalReadOnly && !isOwnHomeroomClass;
   const [showWaliInput, setShowWaliInput] = useState(false);
-  const [waliTanggal, setWaliTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [waliTanggal, setWaliTanggal] = useState<string>(getWitaDateStr());
   const [waliStudents, setWaliStudents] = useState<any[]>([]);
   const [waliAttendance, setWaliAttendance] = useState<Record<string, { status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa' | 'Bolos' | ''; keterangan: string; logs: string[] }>>({});
   const [waliLoading, setWaliLoading] = useState(false);
@@ -1284,7 +1284,7 @@ export default function RekapSiswaView({
                         />
                         <button
                           type="button"
-                          onClick={() => setGerbangTanggal(new Date().toISOString().split('T')[0])}
+                          onClick={() => setGerbangTanggal(getWitaDateStr())}
                           className="btn-click px-3 py-2 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shrink-0"
                           title="Kembali ke Hari Ini"
                         >

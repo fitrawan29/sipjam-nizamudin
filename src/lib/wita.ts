@@ -40,11 +40,72 @@ export function getWitaDateLong(date: Date = new Date()): string {
  * Contoh: "14:30"
  */
 export function getWitaTimeStr(date: Date = new Date()): string {
-  return date.toLocaleTimeString('id-ID', {
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: WITA_TIMEZONE,
     hour: '2-digit',
     minute: '2-digit',
-  }).replace('.', ':');
+    hour12: false,
+  }).formatToParts(date);
+  const hh = (parts.find(p => p.type === 'hour')?.value || '00').replace('24', '00').padStart(2, '0');
+  const mm = (parts.find(p => p.type === 'minute')?.value || '00').padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+/**
+ * Mendapatkan string waktu WITA dalam format HH:mm:ss
+ * Contoh: "14:30:05"
+ */
+export function getWitaTimeWithSecondsStr(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: WITA_TIMEZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const hh = (parts.find(p => p.type === 'hour')?.value || '00').replace('24', '00').padStart(2, '0');
+  const mm = (parts.find(p => p.type === 'minute')?.value || '00').padStart(2, '0');
+  const ss = (parts.find(p => p.type === 'second')?.value || '00').padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
+/**
+ * Mengekstrak tanggal WITA (YYYY-MM-DD) dari berbagai format timestamp database.
+ * Mendukung ISO dengan Z/+00/+08:00, "YYYY-MM-DD HH:mm:ss", dan "M/D/YYYY H:mm:ss".
+ */
+export function extractWitaDateStr(rawTs: string | Date | null | undefined): string | null {
+  if (!rawTs) return null;
+  if (rawTs instanceof Date) {
+    return isNaN(rawTs.getTime()) ? null : getWitaDateStr(rawTs);
+  }
+  const str = String(rawTs).trim();
+  if (!str || str === '-') return null;
+
+  // Jika memiliki indikator zona waktu eksplisit (Z, +00, +08:00, dll), konversi ke tanggal WITA
+  if (str.endsWith('Z') || /[+-]\d{2}(?::?\d{2})?$/.test(str)) {
+    const normalizedIso = str
+      .replace(/^(\d{4}-\d{2}-\d{2})\s+/, '$1T')
+      .replace(/([+-]\d{2})$/, '$1:00');
+    const d = new Date(normalizedIso);
+    if (!isNaN(d.getTime())) {
+      return getWitaDateStr(d);
+    }
+  }
+
+  // Format YYYY-MM-DD...
+  const ymdMatch = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (ymdMatch) return ymdMatch[1];
+
+  // Format M/D/YYYY...
+  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (slashMatch) {
+    const month = slashMatch[1].padStart(2, '0');
+    const day = slashMatch[2].padStart(2, '0');
+    const year = slashMatch[3];
+    return `${year}-${month}-${day}`;
+  }
+
+  return null;
 }
 
 /**
@@ -144,9 +205,12 @@ export function formatPresensiTime(rawTime: string | null | undefined | Date): s
     return null;
   }
 
-  // Handle ISO datetime strings with timezone offset or UTC 'Z' (e.g. "2026-11-03T06:15:00.000Z", "2026-11-03 06:15:00Z")
-  if (str.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(str)) {
-    const d = new Date(str);
+  // Handle ISO datetime strings with timezone offset or UTC 'Z' (e.g. "2026-11-03T06:15:00.000Z", "2026-11-03 22:30:00+00")
+  if (str.endsWith('Z') || /[+-]\d{2}(?::?\d{2})?$/.test(str)) {
+    const normalizedIso = str
+      .replace(/^(\d{4}-\d{2}-\d{2})\s+/, '$1T')
+      .replace(/([+-]\d{2})$/, '$1:00');
+    const d = new Date(normalizedIso);
     if (!isNaN(d.getTime())) {
       return getWitaTimeStr(d);
     }

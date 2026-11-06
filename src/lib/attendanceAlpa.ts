@@ -5,7 +5,8 @@ import {
   getWitaStartOfDay, 
   getWitaEndOfDay,
   getWitaTimestamp,
-  getWitaDayName
+  getWitaDayName,
+  extractWitaDateStr
 } from '@/lib/wita';
 import { isGuruDiPiket, isJurnalMatchJadwal } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
@@ -116,7 +117,7 @@ export async function evaluateAndApplyAutoAlpa(
 
   const presensiRecords = (records || []).filter(rec => {
     const ts = rec.timestamp || '';
-    return ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
+    return extractWitaDateStr(ts) === evaluatedDate || ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
   });
 
   // 3b. Query approved or pending multi-day leave records covering evaluatedDate
@@ -765,7 +766,7 @@ export async function evaluateAndApplyAutoCheckout(
 
   const presensiRecords = (records || []).filter(rec => {
     const ts = rec.timestamp || '';
-    return ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
+    return extractWitaDateStr(ts) === evaluatedDate || ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
   });
 
   // 3b. Fetch all schedules and journals for the evaluated date

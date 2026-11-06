@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import assert from 'assert';
-import { formatPresensiTime } from '../src/lib/wita';
+import { formatPresensiTime, extractWitaDateStr, getWitaTimeWithSecondsStr } from '../src/lib/wita';
+import { getLocalTodayDate, getLocalCurrentTime } from '../src/lib/qrSiswa';
 
 console.log('====================================================');
 console.log('TEST SUITE: VERIFIKASI JAM DATANG & JAM PULANG GERBANG PIKET');
@@ -136,7 +137,7 @@ check('R2.9 - Cross-component gate presence formatting in GuruJurnal and qrSiswa
   const qrSiswaSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/qrSiswa.ts'), 'utf8');
 
   assert(guruJurnalSrc.includes('formatPresensiTime(p.jam)'), 'GuruJurnal must use formatPresensiTime for gate presence');
-  assert(qrSiswaSrc.includes("import { formatPresensiTime } from './wita'"), 'qrSiswa must import formatPresensiTime');
+  assert(qrSiswaSrc.includes('formatPresensiTime') && qrSiswaSrc.includes("from './wita'"), 'qrSiswa must import formatPresensiTime from ./wita');
 });
 
 check('R2.10 - PiketView kiosk feedback banner formats timestamp cleanly via formatPresensiTime', () => {
@@ -197,10 +198,23 @@ check('R1 & R2 Helper - formatPresensiTime handles diverse timestamp and datetim
   assert.strictEqual(formatPresensiTime('2026-11-03 07:15:00'), '07:15');
   assert.strictEqual(formatPresensiTime('2026-11-03T14:30:00+08:00'), '14:30');
 
-  // UTC ISO timestamp with 'Z' correctly converts to WITA (UTC+8)
+  // UTC ISO timestamp with 'Z' or Postgres short offset (+00) correctly converts to WITA (UTC+8)
   assert.strictEqual(formatPresensiTime('2026-11-03T06:15:00Z'), '14:15');
   assert.strictEqual(formatPresensiTime('2026-11-03 06:15:00Z'), '14:15');
   assert.strictEqual(formatPresensiTime('2026-11-03 06:15:00+00:00'), '14:15');
+  assert.strictEqual(formatPresensiTime('2026-11-03 22:45:00+00'), '06:45');
+  assert.strictEqual(formatPresensiTime('2026-11-04 06:15:00+08'), '06:15');
+
+  // extractWitaDateStr handles morning WITA check-ins stored in UTC (22:45 UTC prev day -> next day WITA)
+  assert.strictEqual(extractWitaDateStr('2026-11-03T22:45:00Z'), '2026-11-04');
+  assert.strictEqual(extractWitaDateStr('2026-11-03 22:45:00+00'), '2026-11-04');
+  assert.strictEqual(extractWitaDateStr('2026-11-04T06:45:00+08:00'), '2026-11-04');
+  assert.strictEqual(extractWitaDateStr('11/4/2026 06:45:00'), '2026-11-04');
+
+  // qrSiswa time & date helpers use WITA
+  assert(/^\d{4}-\d{2}-\d{2}$/.test(getLocalTodayDate()), 'getLocalTodayDate returns YYYY-MM-DD in WITA');
+  assert(/^\d{2}:\d{2}:\d{2}$/.test(getLocalCurrentTime()), 'getLocalCurrentTime returns HH:mm:ss in WITA');
+  assert.strictEqual(getWitaTimeWithSecondsStr(new Date('2026-11-03T22:45:09Z')), '06:45:09');
 
   // Date instance support
   assert.strictEqual(formatPresensiTime(new Date('2026-11-03T06:15:00Z')), '14:15');

@@ -201,7 +201,7 @@ export interface TeacherReminderManagerProps {
  */
 export function parseTimeToMinutes(timeStr: string): number {
   if (!timeStr) return 0;
-  const clean = timeStr.replace('.', ':');
+  const clean = String(timeStr).trim().replace(/\./g, ':');
   const [h, m] = clean.split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
 }
@@ -401,7 +401,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
     try {
       // 1. Fetch school hours configuration
-      const { data: configData } = await supabase
+      let configQuery = supabase
         .from('pengaturan')
         .select('*')
         .in('key', [
@@ -412,20 +412,27 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
           'jam_pulang_jumat',
           'jam_pulang_akhir',
         ]);
+      if (user?.sekolah_id) {
+        configQuery = configQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const { data: configData } = await configQuery;
 
       const config: ReminderConfig = {
-        jam_datang_mulai: '06:00',
+        jam_datang_mulai: '06:45',
         jam_datang_batas: '07:15',
-        jam_datang_akhir: '12:00',
-        jam_pulang_mulai: '14:00',
+        jam_datang_akhir: '08:00',
+        jam_pulang_mulai: '11:00',
         jam_pulang_jumat: '11:00',
-        jam_pulang_akhir: '18:00',
+        jam_pulang_akhir: '22:00',
       };
 
       if (configData) {
         configData.forEach((item: any) => {
           if (item.key && item.value) {
             config[item.key] = item.value;
+          }
+          if (item.jam_pulang_jumat && !configData.some((r: any) => r.key === 'jam_pulang_jumat' && r.value)) {
+            config.jam_pulang_jumat = item.jam_pulang_jumat;
           }
         });
       }

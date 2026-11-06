@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabaseClient';
 import { 
   getWitaDateStr, 
-  getWitaDayName 
+  getWitaDayName, extractWitaDateStr 
 } from '@/lib/wita';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
@@ -151,7 +151,7 @@ export function evaluateTeacherWarningsSync(
 
     const dayPresensi = presensiRecords.filter(p => {
       const ts = p.timestamp || '';
-      return ts.startsWith(dateStr) && p.tipe_absen === 'Datang';
+      return (extractWitaDateStr(ts) === dateStr || ts.startsWith(dateStr)) && p.tipe_absen === 'Datang';
     });
 
     let isAbsent = false;

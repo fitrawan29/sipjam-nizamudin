@@ -4,7 +4,7 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { formatPresensiTime } from './wita';
+import { formatPresensiTime, getWitaDateStr, getWitaTimeWithSecondsStr, getWitaTimestamp } from './wita';
 
 export interface QrOptions {
   size?: number;
@@ -428,25 +428,17 @@ export async function resolveStudentByCode(
 // ============================================================================
 
 /**
- * Returns current date string formatted as YYYY-MM-DD in local time.
+ * Returns current date string formatted as YYYY-MM-DD in WITA (Asia/Makassar).
  */
 export function getLocalTodayDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getWitaDateStr();
 }
 
 /**
- * Returns current time string formatted as HH:mm:ss in local time.
+ * Returns current time string formatted as HH:mm:ss in WITA (Asia/Makassar).
  */
 export function getLocalCurrentTime(): string {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
+  return getWitaTimeWithSecondsStr();
 }
 
 /**
@@ -502,7 +494,7 @@ export async function recordPresensiSiswa(
       tanggal,
       status,
       jam,
-      timestamp: new Date().toISOString(),
+      timestamp: getWitaTimestamp(),
       device_id: deviceId
     };
 

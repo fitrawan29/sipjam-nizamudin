@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getWitaTimeStr, 
   getWitaDayName, 
-  getWitaDateStr 
+  getWitaDateStr, formatPresensiTime 
 } from '@/lib/wita';
 import { 
   getGuruDailyState, 
@@ -361,7 +361,7 @@ export default function HomeViewGuru({
     } else if (dailyState.presensiDatang) {
       const jp = dailyState.presensiDatang.jenis_presensi;
       const ts = dailyState.presensiDatang.timestamp || '';
-      const timeOnly = ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : '');
+      const timeOnly = formatPresensiTime(ts) || (ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : ''));
       steps.push({ label: 'Presensi Datang', status: 'done', detail: `${jp} · ${timeOnly} WITA`, icon: 'fa-right-to-bracket' });
     } else {
       steps.push({ label: 'Presensi Datang', status: 'active', detail: 'Belum presensi hari ini', icon: 'fa-right-to-bracket' });
@@ -430,7 +430,7 @@ export default function HomeViewGuru({
       const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat';
       const isLupaCheckout = dailyState.presensiPulang.status_verifikasi === 'Lupa Checkout' || dailyState.presensiPulang.is_auto_checkout;
       const ts = dailyState.presensiPulang.timestamp || '';
-      const timeOnly = ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : '');
+      const timeOnly = formatPresensiTime(ts) || (ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : ''));
       if (isPulangCepat) {
         steps.push({ label: 'Presensi Pulang', status: 'active', detail: `⚠️ Pulang Cepat · ${timeOnly} WITA`, icon: 'fa-person-walking-dashed-line-arrow-right' });
       } else if (isLupaCheckout) {

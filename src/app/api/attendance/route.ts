@@ -156,6 +156,8 @@ export async function POST(req: NextRequest) {
           jarak: presensiRecord.jarak,
           link_bukti: presensiRecord.link_bukti,
           status_verifikasi: presensiRecord.status_verifikasi,
+          latitude: presensiRecord.latitude,
+          longitude: presensiRecord.longitude,
           ...(presensiRecord.sekolah_id ? { sekolah_id: presensiRecord.sekolah_id } : {})
         };
         const retry = await dbClient.from('presensi_guru').insert([baseCleanRecord]).select().single();

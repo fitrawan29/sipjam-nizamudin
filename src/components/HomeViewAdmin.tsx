@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   getWitaTimeStr, 
   getWitaDayName, 
-  getWitaDateStr 
+  getWitaDateStr, formatPresensiTime, extractWitaDateStr 
 } from '@/lib/wita';
 import { 
   isJurnalMatchJadwal, 
@@ -261,7 +261,7 @@ export default function HomeViewAdmin({
       const presensiList = rawPresensi.filter((p: any) => {
         const ts = (p.timestamp || '').trim();
         if (!ts) return false;
-        if (ts.startsWith(todayStr)) return true;
+        if (extractWitaDateStr(ts) === todayStr || ts.startsWith(todayStr)) return true;
         if (ts.includes('T') && ts.substring(0, 10) === todayStr) return true;
         const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
         if (slashMatch) {
@@ -370,7 +370,8 @@ export default function HomeViewAdmin({
 
         // 2. Presensi Datang
         const pDatang = presensiList.find((p: any) => 
-          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Datang'
+          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Datang' && p.status_verifikasi !== 'Ditolak'
+        ) || presensiList.find((p: any) => isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Datang'
         );
         let presensiDatangStatus = isSchoolDayOff ? 'Libur' : isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang';
         let presensiDatangColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = (isSchoolDayOff || isFreeFromPresence) ? 'blue' : 'gray';
@@ -378,9 +379,9 @@ export default function HomeViewAdmin({
 
         if (pDatang) {
           const ts = pDatang.timestamp || '';
-          datangTime = ts.includes(' ') 
+          datangTime = formatPresensiTime(ts) || (ts.includes(' ') 
             ? ts.split(' ')[1].substring(0, 5) 
-            : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : '');
+            : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : ''));
           const jp = pDatang.jenis_presensi || 'Sekolah';
           if (jp === 'Izin') {
             const isSakit = (pDatang.detail_izin || '').toLowerCase().includes('sakit');
@@ -427,7 +428,8 @@ export default function HomeViewAdmin({
 
         // 3. Presensi Pulang
         const pPulang = presensiList.find((p: any) => 
-          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang'
+          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang' && p.status_verifikasi !== 'Ditolak'
+        ) || presensiList.find((p: any) => isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang'
         );
         let presensiPulangStatus = isSchoolDayOff ? 'Libur' : (isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang';
         let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' = (isSchoolDayOff || (isFreeFromPresence && !pDatang)) ? 'blue' : 'gray';
@@ -435,15 +437,15 @@ export default function HomeViewAdmin({
 
         if (pPulang) {
           const ts = pPulang.timestamp || '';
-          pulangTime = ts.includes(' ') 
+          pulangTime = formatPresensiTime(ts) || (ts.includes(' ') 
             ? ts.split(' ')[1].substring(0, 5) 
-            : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : '');
+            : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : ''));
           if (pPulang.status_verifikasi === 'Pulang Cepat' || pPulang.jenis_presensi === 'Pulang Cepat') {
             presensiPulangStatus = `Pulang Cepat [${pulangTime}]`;
             presensiPulangColor = 'amber';
           } else {
-            presensiPulangStatus = `Pulang [${pulangTime}]`;
-            presensiPulangColor = 'green';
+            presensiPulangStatus = (pPulang.status_verifikasi === 'Lupa Checkout' || pPulang.is_auto_checkout) ? `Lupa Checkout [${pulangTime}]` : `Pulang [${pulangTime}]`;
+            presensiPulangColor = (pPulang.status_verifikasi === 'Lupa Checkout' || pPulang.is_auto_checkout) ? 'amber' : 'green';
           }
         }
 

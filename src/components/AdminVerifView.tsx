@@ -9,7 +9,8 @@ import {
   getWitaEndOfDay, 
   formatTimestampWita, 
   getWitaDateStr, 
-  getWitaDayName 
+  getWitaDayName,
+  extractWitaDateStr
 } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { isGuruDiPiket } from '@/lib/workflow';
@@ -644,7 +645,7 @@ function addDaysToDateStr(dateStr: string, days: number): string {
         }
 
         if (!p.timestamp) return false;
-        const pDate = p.timestamp.substring(0, 10);
+        const pDate = extractWitaDateStr(p.timestamp) || p.timestamp.substring(0, 10);
         return pDate === targetDate;
       });
     };

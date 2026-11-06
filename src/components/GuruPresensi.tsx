@@ -121,7 +121,7 @@ export default function GuruPresensi({
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
 
   const [jamPresensi, setJamPresensi] = useState({
-    datangMulai: '06:00',
+    datangMulai: '06:45',
     datangBatas: '07:15',
     datangAkhir: '08:00',
     pulangMulai: '11:00',
@@ -168,7 +168,7 @@ export default function GuruPresensi({
   // Fetch Supabase Config & State
   useEffect(() => {
     const initConfig = async () => {
-      const { data } = await supabase.from('pengaturan').select('*').in('key', ['gps_lat', 'gps_lng', 'gps_radius', 'jam_datang_mulai', 'jam_datang_batas', 'jam_datang_akhir', 'jam_pulang_mulai', 'jam_pulang_jumat', 'jam_pulang_akhir']);
+      let configQuery = supabase.from('pengaturan').select('*').in('key', ['gps_lat', 'gps_lng', 'gps_radius', 'jam_datang_mulai', 'jam_datang_batas', 'jam_datang_akhir', 'jam_pulang_mulai', 'jam_pulang_jumat', 'jam_pulang_akhir']); if (user?.sekolah_id) configQuery = configQuery.eq('sekolah_id', user.sekolah_id); const { data } = await configQuery;
       const newConfig = { lat: -6.200000, lng: 106.816666, radius: 100 };
       const newJam = { ...jamPresensi };
       if (data) {
@@ -180,7 +180,7 @@ export default function GuruPresensi({
           if (item.key === 'jam_datang_batas') newJam.datangBatas = item.value;
           if (item.key === 'jam_datang_akhir') newJam.datangAkhir = item.value;
           if (item.key === 'jam_pulang_mulai') newJam.pulangMulai = item.value;
-          if (item.key === 'jam_pulang_jumat') newJam.pulangJumat = item.value;
+          if (item.key === 'jam_pulang_jumat' && item.value) newJam.pulangJumat = item.value; else if (item.jam_pulang_jumat) newJam.pulangJumat = item.jam_pulang_jumat;
           if (item.key === 'jam_pulang_akhir') newJam.pulangAkhir = item.value;
         });
         setGpsConfig(newConfig);
@@ -419,7 +419,7 @@ export default function GuruPresensi({
 
     const parseTime = (timeStr: string) => {
       if (!timeStr) return 0;
-      const [h, m] = timeStr.split(':').map(Number);
+      const [h, m] = String(timeStr).trim().replace(/\./g, ':').split(':').map(Number);
       return h * 60 + m;
     };
 
@@ -552,6 +552,8 @@ export default function GuruPresensi({
               jarak: newPresensi.jarak,
               link_bukti: newPresensi.link_bukti,
               status_verifikasi: statusVerif,
+              latitude: newPresensi.latitude,
+              longitude: newPresensi.longitude,
             };
             if (newPresensi.sekolah_id) {
               compatiblePresensi.sekolah_id = newPresensi.sekolah_id;

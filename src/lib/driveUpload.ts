@@ -84,6 +84,46 @@ async function compressImage(file: File, maxWidth = 1600, quality = 0.7): Promis
   });
 }
 
+export const SIPJAM_ROOT_FOLDER = 'SIPJAM';
+
+export const SIPJAM_FEATURE_FOLDERS = [
+  'Presensi_Guru',
+  'Presensi_DinasLuar',
+  'Jurnal_KBM',
+  'Jurnal_Kegiatan',
+  'Laporan_Piket',
+  'Perangkat_Pembelajaran',
+] as const;
+
+export function normalizeDriveFeatureFolder(rawFitur: string): string {
+  const clean = (rawFitur || 'Umum').trim();
+  if (!clean) return 'Umum';
+  const lower = clean.toLowerCase().replace(/[\s_-]+/g, '_');
+  if (lower === 'presensi' || lower === 'presensi_guru') return 'Presensi_Guru';
+  if (lower === 'presensi_dinasluar' || lower === 'presensi_dinas_luar' || lower === 'dinas_luar') return 'Presensi_DinasLuar';
+  if (lower === 'jurnal_kbm' || lower === 'jurnal') return 'Jurnal_KBM';
+  if (lower === 'jurnal_kegiatan') return 'Jurnal_Kegiatan';
+  if (lower === 'piket' || lower === 'laporan_piket') return 'Laporan_Piket';
+  if (lower === 'dokumen' || lower === 'perangkat_pembelajaran' || lower === 'bank_dokumen') return 'Perangkat_Pembelajaran';
+  return clean.replace(/\s+/g, '_');
+}
+
+export function normalizeDriveTeacherFolder(rawNama: string): string {
+  const clean = (rawNama || 'Guru_Umum').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  return clean || 'Guru_Umum';
+}
+
+export function buildDriveFolderPath(folderFitur: string, namaGuru: string) {
+  const normalizedFitur = normalizeDriveFeatureFolder(folderFitur);
+  const normalizedGuru = normalizeDriveTeacherFolder(namaGuru);
+  return {
+    rootFolder: SIPJAM_ROOT_FOLDER,
+    folderFitur: normalizedFitur,
+    guruFolder: normalizedGuru,
+    folderPath: `${SIPJAM_ROOT_FOLDER}/${normalizedFitur}/${normalizedGuru}`,
+  };
+}
+
 export async function uploadToDrive(
   originalFile: File,
   namaGuru: string,
@@ -96,6 +136,8 @@ export async function uploadToDrive(
   if (!resolvedEmail) {
     resolvedEmail = await getTargetEmail();
   }
+
+  const { rootFolder, folderFitur: normalizedFitur, guruFolder, folderPath } = buildDriveFolderPath(folderFitur, namaGuru);
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -110,8 +152,12 @@ export async function uploadToDrive(
           filename: filename,
           mimeType: file.type,
           base64Data: base64Data,
-          namaGuru: namaGuru,
-          folderFitur: folderFitur
+          rootFolder: rootFolder,
+          namaGuru: guruFolder,
+          guruFolder: guruFolder,
+          subFolder: guruFolder,
+          folderFitur: normalizedFitur,
+          folderPath: folderPath,
         };
 
         // Include target email in payload for Google Apps Script routing

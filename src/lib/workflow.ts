@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { getWitaDateStr, getWitaDayName } from './wita';
+import { getWitaDateStr, getWitaDayName, extractWitaDateStr } from './wita';
 import { isInvalidMapel } from './dataIntegrityGuard';
 import type { SistemBlok } from '@/types/database';
 
@@ -804,7 +804,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       const todayPresensi = allPresensi.filter((p: any) => {
         const ts = p.timestamp || '';
         // Format 1: "YYYY-MM-DD HH:mm:ss" -> ambil YYYY-MM-DD
-        if (ts.startsWith(todayStr)) return true;
+        if (extractWitaDateStr(ts) === todayStr || ts.startsWith(todayStr)) return true;
         // Format 2: "M/D/YYYY H:mm:ss" -> parse manual
         const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
         if (slashMatch) {
