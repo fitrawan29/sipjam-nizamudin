@@ -3872,7 +3872,7 @@ export default function PiketView({ user }: { user: any }) {
                                     </div>
                                   </div>
                                   <div className="flex gap-1 shrink-0">
-                                    {['H', 'I', 'S', 'A', 'B'].map(status => (
+                                    {['H', 'I', 'S', 'A'].map(status => (
                                       <button 
                                         key={status}
                                         type="button"
@@ -3885,7 +3885,6 @@ export default function PiketView({ user }: { user: any }) {
                                           ? (status === 'H' ? 'bg-green-500 text-white shadow-sm' : 
                                              status === 'S' ? 'bg-blue-500 text-white shadow-sm' : 
                                              status === 'I' ? 'bg-orange-500 text-white shadow-sm' : 
-                                             status === 'B' ? 'bg-purple-600 text-white shadow-sm' :
                                              'bg-red-500 text-white shadow-sm') 
                                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                                         }`}

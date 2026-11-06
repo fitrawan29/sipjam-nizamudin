@@ -1004,7 +1004,7 @@ export default function RekapSiswaView({
                         </span>
                       </h3>
                       <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
-                        Input presensi harian siswa (Hadir, Izin, Sakit, Alpa, Bolos) dengan sinkronisasi global otomatis ke jurnal semua guru mapel.
+                        Input presensi harian siswa (Hadir, Izin, Sakit, Alpa) dengan sinkronisasi global otomatis ke jurnal semua guru mapel.
                       </p>
                     </div>
                   </div>
@@ -1105,14 +1105,6 @@ export default function RekapSiswaView({
                         >
                           Semua Alpa
                         </button>
-                        <button
-                          type="button"
-                          disabled={isIntervensiExpired || isReadOnly}
-                          onClick={() => handleSetAllWaliStatus('Bolos')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/40 dark:text-purple-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          Semua Bolos
-                        </button>
                       </div>
                     </div>
 
@@ -1166,7 +1158,7 @@ export default function RekapSiswaView({
 
                               <div className="flex flex-wrap items-center gap-2 md:justify-end flex-1">
                                 <div className="flex gap-1">
-                                  {(['Hadir', 'Izin', 'Sakit', 'Alpa', 'Bolos'] as const).map(st => {
+                                  {(['Hadir', 'Izin', 'Sakit', 'Alpa'] as const).map(st => {
                                     const isSelected = currentRec.status === st;
                                     const colorClasses = 
                                       st === 'Hadir' ? (isSelected ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
