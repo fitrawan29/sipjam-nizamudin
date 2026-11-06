@@ -55,7 +55,8 @@ export function normalizeAdminTab(tab?: string): string {
   return tab;
 }
 
-export { getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
+import { getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
+export { getStorageCache, setStorageCache };
 
 export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
   const [activeTab, setActiveTab] = useState(() => normalizeAdminTab(initialTab));
@@ -2250,7 +2251,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                         </button>
                       </>
                     )}
-                    <button type="button" onClick={loadData} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
+                    <button type="button" onClick={() => { void loadData(); }} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
                       <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                     </button>
                     {isAdmin && (
