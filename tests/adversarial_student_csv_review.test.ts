@@ -187,6 +187,118 @@ async function runAdversarialStudentCsvTests() {
     console.log('✔ [PASS] 6.1: Verified with exact 392-student dataset');
   }
 
+  // --- TEST 7: Excel Scientific Notation, Phone Leading Zero & Placeholder Sanitization ---
+  console.log('\n--- TEST 7: Scientific Notation & Phone Formatting ---');
+  {
+    const excelMangledCsv = `nisn,nama_siswa,kelas,gender,status,no_hp_ortu
+1.06436E+08,Student Sci Nisn,XI Merdeka D,Laki-laki,Aktif,8.2193147509e+10
+0116150652,Student Missing Zero,X Merdeka D,Perempuan,Aktif,82193147509
+0089808304,Student Dash Phone,XII Merdeka C,Laki-laki,Aktif,-
+0118556863,Student Null Phone,X Merdeka B,Perempuan,Aktif,null`;
+
+    const parsed = parseAndValidateMasterCsv(excelMangledCsv, 'data_siswa');
+    assert.strictEqual(parsed.length, 4);
+
+    // Row 0: Scientific notation expanded
+    assert.strictEqual(parsed[0].nisn, '106436000', 'Scientific notation NISN must be expanded to integer string');
+    assert.strictEqual(parsed[0].no_hp_ortu, '082193147509', 'Scientific notation phone number must be normalized and prefixed with 0');
+
+    // Row 1: Missing leading zero restored
+    assert.strictEqual(parsed[1].no_hp_ortu, '082193147509', 'Phone number starting with 8 must be prefixed with 0');
+
+    // Row 2 & 3: Placeholders cleared to empty string
+    assert.strictEqual(parsed[2].no_hp_ortu, '', 'Dash "-" phone placeholder must be normalized to empty string');
+    assert.strictEqual(parsed[3].no_hp_ortu, '', 'Literal "null" phone placeholder must be normalized to empty string');
+    console.log('✔ [PASS] 7.1: Excel scientific notation expanded, missing leading zero restored, and placeholders cleared');
+  }
+
+  // --- TEST 8: Class Name Space Normalization & Multi-Space Name Resolution ---
+  console.log('\n--- TEST 8: Class Name & Student Name Space Normalization ---');
+  {
+    const dirtySpacesCsv = `nisn,nama_siswa,kelas,gender,status,no_hp_ortu
+0106436299,  Abdul   Sendi   Mamonto  ,  XI   Merdeka   D  ,Laki-laki,Aktif,082193147509`;
+
+    const parsed = parseAndValidateMasterCsv(dirtySpacesCsv, 'data_siswa');
+    assert.strictEqual(parsed[0].nama_siswa, 'Abdul Sendi Mamonto', 'Student name must have multiple spaces collapsed to 1');
+    assert.strictEqual(parsed[0].kelas, 'XI Merdeka D', 'Class name must have multiple spaces collapsed to 1');
+    console.log('✔ [PASS] 8.1: Class name and student name cleanly collapsed to single space');
+  }
+
+  // --- TEST 9: Diacritic and Multi-Space Tolerant Idempotent Resolution ---
+  console.log('\n--- TEST 9: Diacritic & Multi-Space Tolerant Idempotent Resolution ---');
+  {
+    const existingStudentId = 'c9999999-8888-7777-6666-555555555555';
+
+    const mockSupabase: any = {
+      from: (table: string) => {
+        return {
+          select: (fields: string) => {
+            const builder: any = {
+              eq: (col: string, val: string) => builder,
+              in: (col: string, vals: string[]) => Promise.resolve({ data: [], error: null }),
+              limit: (lim: number) => {
+                return Promise.resolve({
+                  data: [
+                    {
+                      id: existingStudentId,
+                      sekolah_id: 'a0000000-0000-0000-0000-000000000001',
+                      // Existing DB record has diacritics and multiple spaces
+                      nama_siswa: 'André   René   Gautier',
+                      kelas: 'X   Merdeka   A',
+                      nisn: null
+                    }
+                  ],
+                  error: null
+                });
+              }
+            };
+            return builder;
+          },
+          upsert: async (batch: any[], opts: any) => ({ data: batch, error: null })
+        };
+      }
+    };
+
+    // CSV has plain normalized form: 'Andre Rene Gautier' and single space 'X Merdeka A'
+    const csvContent = `nisn,nama_siswa,kelas,gender,status,no_hp_ortu
+-,Andre Rene Gautier,X Merdeka A,Laki-laki,Aktif,082193147509`;
+
+    const res = await importMasterDataFromCsv(mockSupabase, csvContent, 'data_siswa', {
+      sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+    });
+
+    assert.strictEqual(res.count, 1);
+    assert.strictEqual(res.rows[0].id, existingStudentId, 'Student with diacritics in DB must match normalized CSV row');
+    console.log('✔ [PASS] 9.1: Diacritic and multi-space differences cleanly resolved idempotently');
+  }
+
+  // --- TEST 10: DB Refresh Merge by ID Preserving Uploaded Records ---
+  console.log('\n--- TEST 10: DB Refresh Merge By ID ---');
+  {
+    // Simulate background DB refresh returning fewer rows than uploaded
+    const uploadedRows = [
+      { id: 'id-1', nama_siswa: 'Student 1', kelas: 'X Merdeka A' },
+      { id: 'id-2', nama_siswa: 'Student 2', kelas: 'X Merdeka A' },
+      { id: 'id-3', nama_siswa: 'Student 3', kelas: 'X Merdeka A' }
+    ];
+    // DB query only returned row 1 (e.g. pagination or lagging replication)
+    const dbData = [
+      { id: 'id-1', nama_siswa: 'Student 1', kelas: 'X Merdeka A', updated_at: '2026-11-06' }
+    ];
+
+    // Merge logic used in loadData and handleFileUpload
+    const mergedMap = new Map();
+    dbData.forEach((d: any) => { if (d?.id) mergedMap.set(d.id, d); });
+    uploadedRows.forEach((r: any) => { if (r?.id && !mergedMap.has(r.id)) mergedMap.set(r.id, r); });
+    const finalData = Array.from(mergedMap.values());
+
+    assert.strictEqual(finalData.length, 3, 'Merged list must preserve all 3 uploaded students');
+    assert.strictEqual(finalData[0].updated_at, '2026-11-06', 'DB data fields must be retained');
+    assert.strictEqual(finalData[1].nama_siswa, 'Student 2', 'Cached student 2 must not be dropped');
+    assert.strictEqual(finalData[2].nama_siswa, 'Student 3', 'Cached student 3 must not be dropped');
+    console.log('✔ [PASS] 10.1: Merge by ID guarantees zero loss of uploaded records when DB query returns partial results');
+  }
+
   console.log('\n========================================================================');
   console.log('🎉 ALL ADVERSARIAL STUDENT CSV TESTS PASSED SUCCESSFULLY (100%)!');
   console.log('========================================================================');

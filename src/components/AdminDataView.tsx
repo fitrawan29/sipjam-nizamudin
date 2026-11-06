@@ -55,30 +55,7 @@ export function normalizeAdminTab(tab?: string): string {
   return tab;
 }
 
-export const getStorageCache = (tab: string, schoolId: string): any[] | null => {
-  try {
-    const session = typeof window !== 'undefined' ? window.sessionStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).sessionStorage : null);
-    const local = typeof window !== 'undefined' ? window.localStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).localStorage : null);
-    const raw = session?.getItem(`sipjam_master_data_${schoolId}_${tab}`) ||
-                local?.getItem(`sipjam_master_data_${schoolId}_${tab}`);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (_) {}
-  return null;
-};
-
-export const setStorageCache = (tab: string, schoolId: string, rows: any[]) => {
-  if (!Array.isArray(rows) || rows.length === 0) return;
-  try {
-    const session = typeof window !== 'undefined' ? window.sessionStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).sessionStorage : null);
-    const local = typeof window !== 'undefined' ? window.localStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).localStorage : null);
-    const json = JSON.stringify(rows);
-    session?.setItem(`sipjam_master_data_${schoolId}_${tab}`, json);
-    local?.setItem(`sipjam_master_data_${schoolId}_${tab}`, json);
-  } catch (_) {}
-};
+export { getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
 
 export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
   const [activeTab, setActiveTab] = useState(() => normalizeAdminTab(initialTab));
@@ -214,11 +191,18 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           setDataList([]);
         }
       } else if (data && data.length > 0) {
-        setDataList(data);
-        uploadedRowsCacheRef.current[currentTab] = data;
-        setStorageCache(currentTab, schoolId, data);
+        let finalData = data;
+        if (cachedRows && cachedRows.length > 0) {
+          const mergedMap = new Map();
+          data.forEach((d: any) => { if (d?.id) mergedMap.set(d.id, d); });
+          cachedRows.forEach((c: any) => { if (c?.id && !mergedMap.has(c.id)) mergedMap.set(c.id, c); });
+          finalData = Array.from(mergedMap.values());
+        }
+        setDataList(finalData);
+        uploadedRowsCacheRef.current[currentTab] = finalData;
+        setStorageCache(currentTab, schoolId, finalData);
         setErrorMsg('');
-        setDebugInfo(`Berhasil memuat ${data.length} baris dari "${tabObj.table}"`);
+        setDebugInfo(`Berhasil memuat ${finalData.length} baris dari "${tabObj.table}"`);
       } else if (data && data.length === 0) {
         if (cachedRows && cachedRows.length > 0) {
           setDataList(cachedRows);
@@ -509,10 +493,14 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             .eq('sekolah_id', user.sekolah_id)
             .limit(2000)
             .then(({ data }) => {
-              if (data && data.length > 0) {
-                setDataList(data);
-                uploadedRowsCacheRef.current[targetTab] = data;
-                setStorageCache(targetTab, user.sekolah_id, data);
+              if (Array.isArray(data) && data.length > 0) {
+                const mergedMap = new Map();
+                data.forEach((d: any) => { if (d?.id) mergedMap.set(d.id, d); });
+                rows.forEach((r: any) => { if (r?.id && !mergedMap.has(r.id)) mergedMap.set(r.id, r); });
+                const finalData = Array.from(mergedMap.values());
+                setDataList(finalData);
+                uploadedRowsCacheRef.current[targetTab] = finalData;
+                setStorageCache(targetTab, user.sekolah_id, finalData);
               }
             });
         }

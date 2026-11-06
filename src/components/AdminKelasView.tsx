@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
-import { isMasterDataModificationAllowed, importMasterDataFromCsv } from '@/lib/dataIntegrityGuard';
+import { isMasterDataModificationAllowed, importMasterDataFromCsv, getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
 import NaikKelasModal from './NaikKelasModal';
 import { AppUser } from '@/types/user';
 
@@ -157,7 +157,12 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       if (sData && sData.length > 0) {
         setAllStudents(sData as StudentItem[]);
       } else {
-        setAllStudents(prev => (prev.length > 0 ? prev : []));
+        const stored = getStorageCache('Data_Siswa', sekolahId);
+        if (stored && stored.length > 0) {
+          setAllStudents(stored as StudentItem[]);
+        } else {
+          setAllStudents(prev => (prev.length > 0 ? prev : []));
+        }
       }
 
       // 2. Fetch Wali Kelas
@@ -465,6 +470,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             setCustomClasses(prev => Array.from(new Set([...prev, ...studentClasses])));
             setCustomClassesMeta(prev => ({ ...prev, ...meta }));
             const schoolId = sekolahId || user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+            setStorageCache('Data_Siswa', schoolId, rows);
             try {
               const existingClasses = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${schoolId}`) || '[]');
               const existingMeta = JSON.parse(localStorage.getItem(`sipjam_custom_classes_meta_${schoolId}`) || '{}');

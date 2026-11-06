@@ -14,6 +14,34 @@ export interface ValidationResult {
 }
 
 /**
+ * Shared storage cache helper for Master Data across components (sessionStorage with localStorage fallback)
+ */
+export function getStorageCache(tab: string, schoolId: string): any[] | null {
+  try {
+    const session = typeof window !== 'undefined' ? window.sessionStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).sessionStorage : null);
+    const local = typeof window !== 'undefined' ? window.localStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).localStorage : null);
+    const raw = session?.getItem(`sipjam_master_data_${schoolId}_${tab}`) ||
+                local?.getItem(`sipjam_master_data_${schoolId}_${tab}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+  return null;
+}
+
+export function setStorageCache(tab: string, schoolId: string, rows: any[]) {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  try {
+    const session = typeof window !== 'undefined' ? window.sessionStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).sessionStorage : null);
+    const local = typeof window !== 'undefined' ? window.localStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).localStorage : null);
+    const json = JSON.stringify(rows);
+    try { session?.setItem(`sipjam_master_data_${schoolId}_${tab}`, json); } catch (_) {}
+    try { local?.setItem(`sipjam_master_data_${schoolId}_${tab}`, json); } catch (_) {}
+  } catch (_) {}
+}
+
+/**
  * Normalizes name strings:
  * - Strips zero-width characters (\u200B-\u200D\uFEFF)
  * - Normalizes Unicode diacritics / accents (e.g. é -> e)
@@ -1065,11 +1093,22 @@ export function parseAndValidateMasterCsv(
         throw new Error(`Baris ${i}: Terdeteksi data siswa dummy/percobaan ("${rawNamaSiswa}").`);
       }
       row.nama_siswa = normalizeName(rawNamaSiswa);
-      const studentKey = `${rawKelasSiswa.toLowerCase()}_${row.nama_siswa.toLowerCase()}`;
+      const cleanKelasSiswa = rawKelasSiswa.replace(/\s+/g, ' ');
+      row.kelas = cleanKelasSiswa;
+      const studentKey = `${cleanKelasSiswa.toLowerCase()}_${row.nama_siswa.toLowerCase()}`;
       if (seenStudentKeys.has(studentKey)) {
         throw new Error(`Baris ${i}: Duplikat siswa "${row.nama_siswa}" di kelas ${row.kelas} dalam file CSV.`);
       }
       seenStudentKeys.add(studentKey);
+
+      // Clean and sanitize NISN (strip Excel scientific notation e.g. 1.06436E+08, zero-width chars, quotes)
+      if (row.nisn !== undefined && row.nisn !== null) {
+        let cleanNisnVal = String(row.nisn).replace(/[\u200B-\u200D\uFEFF]/g, '').trim().replace(/^['"]+|['"]+$/g, '').trim();
+        if (/^\d+(\.\d+)?[eE]\+\d+$/.test(cleanNisnVal)) {
+          cleanNisnVal = Number(cleanNisnVal).toFixed(0);
+        }
+        row.nisn = cleanNisnVal;
+      }
 
       // Validate duplicate NISN within the CSV if provided
       const cleanNisn = row.nisn ? String(row.nisn).trim() : '';
@@ -1078,6 +1117,22 @@ export function parseAndValidateMasterCsv(
           throw new Error(`Baris ${i}: Duplikat NISN "${cleanNisn}" dalam file CSV.`);
         }
         seenNisns.add(cleanNisn);
+      }
+
+      // Clean and sanitize no_hp_ortu (handle Excel scientific notation, missing leading zero, placeholders)
+      if (row.no_hp_ortu !== undefined && row.no_hp_ortu !== null) {
+        let hpClean = String(row.no_hp_ortu).replace(/[\u200B-\u200D\uFEFF]/g, '').trim().replace(/^['"]+|['"]+$/g, '').trim();
+        if (!hpClean || hpClean === '-' || hpClean.toLowerCase() === 'null' || hpClean.toLowerCase() === 'undefined') {
+          row.no_hp_ortu = '';
+        } else {
+          if (/^\d+(\.\d+)?[eE]\+\d+$/.test(hpClean)) {
+            hpClean = Number(hpClean).toFixed(0);
+          }
+          if (/^8\d{8,12}$/.test(hpClean)) {
+            hpClean = `0${hpClean}`;
+          }
+          row.no_hp_ortu = hpClean;
+        }
       }
 
       // Standardize status and gender values for consistent filtering and display
@@ -1196,8 +1251,9 @@ export async function importMasterDataFromCsv(
                 nisnToIdMap.set(String(s.nisn).trim().toLowerCase(), s.id);
               }
               if (s.nama_siswa && s.kelas) {
-                const key = `${String(s.nama_siswa).trim().toLowerCase()}_${String(s.kelas).trim().toLowerCase()}`;
-                nameClassToIdMap.set(key, s.id);
+                const normName = normalizeName(s.nama_siswa).toLowerCase().replace(/\s+/g, ' ');
+                const normClass = String(s.kelas).trim().toLowerCase().replace(/\s+/g, ' ');
+                nameClassToIdMap.set(`${normName}_${normClass}`, s.id);
               }
             }
           }
@@ -1227,8 +1283,9 @@ export async function importMasterDataFromCsv(
             if (res && !res.error && Array.isArray(res.data)) {
               for (const s of res.data) {
                 if (s.nama_siswa && s.kelas) {
-                  const key = `${String(s.nama_siswa).trim().toLowerCase().replace(/\s+/g, ' ')}_${String(s.kelas).trim().toLowerCase()}`;
-                  nameClassToIdMap.set(key, s.id);
+                  const normName = normalizeName(s.nama_siswa).toLowerCase().replace(/\s+/g, ' ');
+                  const normClass = String(s.kelas).trim().toLowerCase().replace(/\s+/g, ' ');
+                  nameClassToIdMap.set(`${normName}_${normClass}`, s.id);
                 }
               }
             }
@@ -1239,7 +1296,9 @@ export async function importMasterDataFromCsv(
       // Map existing UUID to matching rows
       for (const row of rows) {
         const cleanNisn = row.nisn ? String(row.nisn).trim().toLowerCase() : '';
-        const nameClassKey = `${String(row.nama_siswa || '').trim().toLowerCase().replace(/\s+/g, ' ')}_${String(row.kelas || '').trim().toLowerCase()}`;
+        const normName = normalizeName(row.nama_siswa).toLowerCase().replace(/\s+/g, ' ');
+        const normClass = String(row.kelas || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const nameClassKey = `${normName}_${normClass}`;
         if (cleanNisn && cleanNisn !== '-' && nisnToIdMap.has(cleanNisn)) {
           row.id = nisnToIdMap.get(cleanNisn);
         } else if (nameClassToIdMap.has(nameClassKey)) {
