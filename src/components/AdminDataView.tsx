@@ -184,15 +184,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   }, [activeTab, user?.sekolah_id]);
 
   const tabs = [
+    { id: 'Data_Guru', label: 'Guru', table: 'data_guru' },
     { id: 'Data_Siswa', label: 'Siswa', table: 'data_siswa' },
     { id: 'Data_Kelas', label: 'Kelas', table: 'data_kelas' },
-    { id: 'Data_Guru', label: 'Guru', table: 'data_guru' },
     { id: 'Data_Mapel', label: 'Mapel', table: 'data_mapel' },
-    { id: 'Kalender_Pendidikan', label: 'Kalender', table: 'kalender_pendidikan' },
     { id: 'Jadwal_Pelajaran', label: 'Jadwal', table: 'jadwal_pelajaran' },
-    { id: 'sistem_blok', label: 'Periode Sistem Blok', table: 'sistem_blok' },
+    { id: 'Kalender_Pendidikan', label: 'Kalender', table: 'kalender_pendidikan' },
     { id: 'Wali_Kelas', label: 'Wali Kelas', table: 'wali_kelas' },
     { id: 'Pengguna', label: 'Pengguna', table: 'users' },
+    { id: 'sistem_blok', label: 'Periode Sistem Blok', table: 'sistem_blok' },
   ];
 
   // Sync data_guru.mata_pelajaran & guru_mapel from jadwal_pelajaran + data_mapel
