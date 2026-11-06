@@ -154,7 +154,11 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
       if (sErr) throw sErr;
       if (!isMountedRef.current) return;
-      setAllStudents((sData as StudentItem[]) || []);
+      if (sData && sData.length > 0) {
+        setAllStudents(sData as StudentItem[]);
+      } else {
+        setAllStudents(prev => (prev.length > 0 ? prev : []));
+      }
 
       // 2. Fetch Wali Kelas
       const { data: wData, error: wErr } = await supabase
@@ -435,7 +439,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       const text = await file.text();
 
       // Smart CSV header detection: check if uploading student records or class records
-      const firstLine = text.replace(/^\uFEFF/, '').split(/\r?\n/).find(l => l.trim() && !l.toLowerCase().startsWith('sep='));
+      const firstLine = text.replace(/^\uFEFF/, '').split(/\r\n|\n|\r/).find(l => l.trim() && !l.toLowerCase().startsWith('sep='));
       const lowerHeader = (firstLine || '').toLowerCase();
       const isStudentCsv = lowerHeader.includes('nama_siswa') || (lowerHeader.includes('nisn') && lowerHeader.includes('kelas'));
 

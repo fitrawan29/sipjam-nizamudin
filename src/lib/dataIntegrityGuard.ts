@@ -757,6 +757,7 @@ export function parseAndValidateMasterCsv(
   const seenTeacherNames = new Set<string>();
   const seenTeacherNips = new Set<string>();
   const seenStudentKeys = new Set<string>();
+  const seenNisns = new Set<string>();
   const seenClassNames = new Set<string>();
 
   const REQUIRED_HEADERS_BY_TABLE: Record<string, string[]> = {
@@ -1069,6 +1070,32 @@ export function parseAndValidateMasterCsv(
         throw new Error(`Baris ${i}: Duplikat siswa "${row.nama_siswa}" di kelas ${row.kelas} dalam file CSV.`);
       }
       seenStudentKeys.add(studentKey);
+
+      // Validate duplicate NISN within the CSV if provided
+      const cleanNisn = row.nisn ? String(row.nisn).trim() : '';
+      if (cleanNisn && cleanNisn !== '-') {
+        if (seenNisns.has(cleanNisn)) {
+          throw new Error(`Baris ${i}: Duplikat NISN "${cleanNisn}" dalam file CSV.`);
+        }
+        seenNisns.add(cleanNisn);
+      }
+
+      // Standardize status and gender values for consistent filtering and display
+      if (row.status) {
+        const sNorm = String(row.status).trim();
+        if (sNorm.toLowerCase() === 'aktif') row.status = 'Aktif';
+        else if (sNorm.toLowerCase() === 'lulus') row.status = 'Lulus';
+        else if (sNorm.toLowerCase() === 'keluar') row.status = 'Keluar';
+        else if (sNorm.toLowerCase() === 'nonaktif') row.status = 'Nonaktif';
+      }
+      if (row.gender) {
+        const gNorm = String(row.gender).trim().toLowerCase();
+        if (gNorm === 'l' || gNorm === 'laki-laki' || gNorm === 'laki - laki' || gNorm === 'pria') {
+          row.gender = 'Laki-laki';
+        } else if (gNorm === 'p' || gNorm === 'perempuan' || gNorm === 'wanita') {
+          row.gender = 'Perempuan';
+        }
+      }
     } else if (tableName === 'kalender_pendidikan') {
       const rawTanggal = row.tanggal ? String(row.tanggal).trim() : '';
       if (!rawTanggal || rawTanggal.toLowerCase() === 'null' || rawTanggal.toLowerCase() === 'undefined') {
@@ -1177,26 +1204,30 @@ export async function importMasterDataFromCsv(
         }
       }
 
-      // B. Also resolve students without NISN (or any remaining) by (nama_siswa, kelas)
-      const studentsWithoutNisn = rows.filter(r => !r.nisn || String(r.nisn).trim() === '' || String(r.nisn).trim() === '-');
-      if (studentsWithoutNisn.length > 0) {
+      // B. Also resolve any students not yet matched by NISN by matching (nama_siswa, kelas)
+      const unresolvedRows = rows.filter(r => {
+        const cleanNisn = r.nisn ? String(r.nisn).trim().toLowerCase() : '';
+        return !cleanNisn || cleanNisn === '-' || !nisnToIdMap.has(cleanNisn);
+      });
+
+      if (unresolvedRows.length > 0) {
         try {
           const studentTable = supabase?.from?.('data_siswa');
           if (typeof studentTable?.select === 'function') {
-            let noNisnQuery = studentTable.select('id, nama_siswa, kelas, sekolah_id');
-            if (schoolId && typeof noNisnQuery?.eq === 'function') {
-              noNisnQuery = noNisnQuery.eq('sekolah_id', schoolId);
+            let unresolvedQuery = studentTable.select('id, nama_siswa, kelas, sekolah_id');
+            if (schoolId && typeof unresolvedQuery?.eq === 'function') {
+              unresolvedQuery = unresolvedQuery.eq('sekolah_id', schoolId);
             }
             let res: any = null;
-            if (typeof noNisnQuery?.limit === 'function') {
-              res = await noNisnQuery.limit(2000);
-            } else if (typeof noNisnQuery?.then === 'function') {
-              res = await noNisnQuery;
+            if (typeof unresolvedQuery?.limit === 'function') {
+              res = await unresolvedQuery.limit(2000);
+            } else if (typeof unresolvedQuery?.then === 'function') {
+              res = await unresolvedQuery;
             }
             if (res && !res.error && Array.isArray(res.data)) {
               for (const s of res.data) {
                 if (s.nama_siswa && s.kelas) {
-                  const key = `${String(s.nama_siswa).trim().toLowerCase()}_${String(s.kelas).trim().toLowerCase()}`;
+                  const key = `${String(s.nama_siswa).trim().toLowerCase().replace(/\s+/g, ' ')}_${String(s.kelas).trim().toLowerCase()}`;
                   nameClassToIdMap.set(key, s.id);
                 }
               }
@@ -1208,7 +1239,7 @@ export async function importMasterDataFromCsv(
       // Map existing UUID to matching rows
       for (const row of rows) {
         const cleanNisn = row.nisn ? String(row.nisn).trim().toLowerCase() : '';
-        const nameClassKey = `${String(row.nama_siswa || '').trim().toLowerCase()}_${String(row.kelas || '').trim().toLowerCase()}`;
+        const nameClassKey = `${String(row.nama_siswa || '').trim().toLowerCase().replace(/\s+/g, ' ')}_${String(row.kelas || '').trim().toLowerCase()}`;
         if (cleanNisn && cleanNisn !== '-' && nisnToIdMap.has(cleanNisn)) {
           row.id = nisnToIdMap.get(cleanNisn);
         } else if (nameClassToIdMap.has(nameClassKey)) {

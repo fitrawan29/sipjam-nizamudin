@@ -55,6 +55,31 @@ export function normalizeAdminTab(tab?: string): string {
   return tab;
 }
 
+export const getStorageCache = (tab: string, schoolId: string): any[] | null => {
+  try {
+    const session = typeof window !== 'undefined' ? window.sessionStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).sessionStorage : null);
+    const local = typeof window !== 'undefined' ? window.localStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).localStorage : null);
+    const raw = session?.getItem(`sipjam_master_data_${schoolId}_${tab}`) ||
+                local?.getItem(`sipjam_master_data_${schoolId}_${tab}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+  return null;
+};
+
+export const setStorageCache = (tab: string, schoolId: string, rows: any[]) => {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  try {
+    const session = typeof window !== 'undefined' ? window.sessionStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).sessionStorage : null);
+    const local = typeof window !== 'undefined' ? window.localStorage : (typeof globalThis !== 'undefined' ? (globalThis as any).localStorage : null);
+    const json = JSON.stringify(rows);
+    session?.setItem(`sipjam_master_data_${schoolId}_${tab}`, json);
+    local?.setItem(`sipjam_master_data_${schoolId}_${tab}`, json);
+  } catch (_) {}
+};
+
 export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
   const [activeTab, setActiveTab] = useState(() => normalizeAdminTab(initialTab));
 
@@ -143,14 +168,23 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const tabObj = tabs.find(t => t.id === currentTab) || tabs.find(t => t.id === 'Data_Siswa') || tabs[0];
     if (!tabObj) return;
 
-    setLoading(true);
-    setErrorMsg('');
-    const cachedRows = uploadedRowsCacheRef.current[currentTab];
+    const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+    let cachedRows = uploadedRowsCacheRef.current[currentTab];
+    if (!cachedRows || cachedRows.length === 0) {
+      const stored = getStorageCache(currentTab, schoolId);
+      if (stored && stored.length > 0) {
+        cachedRows = stored;
+        uploadedRowsCacheRef.current[currentTab] = stored;
+      }
+    }
+
     if (cachedRows && cachedRows.length > 0) {
       setDataList(cachedRows);
     } else {
       setDataList([]);
+      setLoading(true);
     }
+    setErrorMsg('');
     setDebugInfo(`Memuat tabel "${tabObj.table}"...`);
 
     try {
@@ -182,6 +216,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       } else if (data && data.length > 0) {
         setDataList(data);
         uploadedRowsCacheRef.current[currentTab] = data;
+        setStorageCache(currentTab, schoolId, data);
         setErrorMsg('');
         setDebugInfo(`Berhasil memuat ${data.length} baris dari "${tabObj.table}"`);
       } else if (data && data.length === 0) {
@@ -364,7 +399,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       // Smart auto-detection of target entity based on CSV headers
       let targetTab = currentTab;
       let targetTable = tabObj.table;
-      const firstLine = text.replace(/^\uFEFF/, '').split(/\r?\n/).find(l => l.trim() && !l.toLowerCase().startsWith('sep='));
+      const firstLine = text.replace(/^\uFEFF/, '').split(/\r\n|\n|\r/).find(l => l.trim() && !l.toLowerCase().startsWith('sep='));
       if (firstLine) {
         const lower = firstLine.toLowerCase();
         if (
@@ -413,9 +448,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       // If student data was uploaded, sync student classes to localStorage for immediate AdminKelasView hydration
       if (targetTab === 'Data_Siswa' && Array.isArray(rows) && rows.length > 0) {
-        uploadedRowsCacheRef.current[targetTab] = rows;
-        setDataList(rows);
         const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+        uploadedRowsCacheRef.current[targetTab] = rows;
+        setStorageCache(targetTab, schoolId, rows);
+        setDataList(rows);
         try {
           const studentClasses = Array.from(new Set(rows.map(r => String(r.kelas || '').trim()).filter(Boolean)));
           const meta: Record<string, { tingkat?: string; jurusan?: string | null }> = {};
@@ -430,7 +466,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           localStorage.setItem(`sipjam_custom_classes_meta_${schoolId}`, JSON.stringify(mergedMeta));
         } catch (_) {}
       } else if (Array.isArray(rows) && rows.length > 0 && targetTab !== 'Data_Kelas') {
+        const schoolId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
         uploadedRowsCacheRef.current[targetTab] = rows;
+        setStorageCache(targetTab, schoolId, rows);
         setDataList(rows);
       }
 
@@ -474,6 +512,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               if (data && data.length > 0) {
                 setDataList(data);
                 uploadedRowsCacheRef.current[targetTab] = data;
+                setStorageCache(targetTab, user.sekolah_id, data);
               }
             });
         }
