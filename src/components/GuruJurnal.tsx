@@ -743,7 +743,7 @@ export default function GuruJurnal({
         setLastChangeMap(changeMap);
 
         // Sinkronisasi Referensi Pagi:
-        // - Jika pagi diisi Sakit/Izin/Alfa: status di mapel otomatis terkunci sesuai status tersebut
+        // - Jika pagi diisi Sakit/Izin: status di mapel otomatis terkunci sesuai status tersebut; selain itu (Alfa/Bolos/Hadir) masih dapat disesuaikan
         // - Jika pagi diisi Hadir: status default awal di mapel adalah Hadir
         const initialAbsensi: Record<string, string> = {};
         const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean; isMorningHadir?: boolean }> = {};
@@ -760,10 +760,10 @@ export default function GuruJurnal({
               lockedMap[s.nisn] = { status: 'I', label: 'Izin', isLocked: true, isMorningHadir: false };
             } else if (rawSt === 'alpa' || rawSt === 'a' || rawSt === 'alfa') {
               initialAbsensi[s.nisn] = 'A';
-              lockedMap[s.nisn] = { status: 'A', label: 'Alfa', isLocked: true, isMorningHadir: false };
+              lockedMap[s.nisn] = { status: 'A', label: 'Alfa', isLocked: false, isMorningHadir: false };
             } else if (rawSt === 'bolos' || rawSt === 'b') {
-              initialAbsensi[s.nisn] = 'A';
-              lockedMap[s.nisn] = { status: 'A', label: 'Bolos', isLocked: true, isMorningHadir: false };
+              initialAbsensi[s.nisn] = 'B';
+              lockedMap[s.nisn] = { status: 'A', label: 'Bolos', isLocked: false, isMorningHadir: false };
             } else if (rawSt === 'hadir' || rawSt === 'h') {
               initialAbsensi[s.nisn] = 'H';
               lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false, isMorningHadir: true };
