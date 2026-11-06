@@ -112,9 +112,10 @@ async function runVerification() {
       adminDataSrc.includes("setPage(0)"),
       'AdminDataView handleFileUpload must reset search, filter1, filter2, and page to 0'
     );
+    // Background refresh via .then() avoids race condition where loadData clears setDataList first
     assert.ok(
-      adminDataSrc.includes('await loadData'),
-      'AdminDataView handleFileUpload must await loadData()'
+      adminDataSrc.includes('.then(({ data })') || adminDataSrc.includes('await loadData'),
+      'AdminDataView handleFileUpload must refresh data after import (via .then or await loadData)'
     );
     pass('2.1: AdminDataView resets search, filters, and page on upload so imported rows are visible');
   } catch (e) {

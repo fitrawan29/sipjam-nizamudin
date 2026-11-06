@@ -414,8 +414,19 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         window.dispatchEvent(new CustomEvent('sipjam:kelas-updated'));
       }
 
+      // Background DB refresh without clearing displayed rows (avoids race with useEffect loadData)
       if (targetTab !== 'Data_Kelas') {
-        await loadData(targetTab);
+        const tabObj2 = tabs.find(t => t.id === targetTab);
+        if (tabObj2 && user?.sekolah_id) {
+          supabase
+            .from(tabObj2.table)
+            .select('*')
+            .eq('sekolah_id', user.sekolah_id)
+            .limit(2000)
+            .then(({ data }) => {
+              if (data && data.length > 0) setDataList(data);
+            });
+        }
       }
     } catch (err: any) {
       const errorMsg = err.message || 'Terjadi kesalahan saat memproses file CSV.';
