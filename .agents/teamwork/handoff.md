@@ -1,90 +1,40 @@
-# Project Sentinel Handoff Report: Sub Menu Kelas & Penyelarasan Template Master Data
+# Sentinel Handoff Report
 
-**Sentinel**: Project Sentinel  
-**Status**: VICTORY CONFIRMED (100% Complete)  
-**Parent Conversation ID**: `a7da3965-702f-4bef-ba31-8b9b88c37ece`  
-**Date**: 2026-11-06  
-**Git Status**: Clean, all commits pushed to `origin/main` (Commits: `a7c1892`, `8c6ebec`, `bd78007`, `ca58c0d`, `61cc216`, `8ffd726`)
+## Observation
+The user reported that after downloading the student template CSV, filling it with student records, and uploading it back to the application, the master student table displayed "tabel ini kosong dan data belum bisa dimuat" without rendering the student records.
+The task interview was executed and produced an approved task prompt requesting a focused fix to ensure the downloaded template aligns with master data, uploads parse and import cleanly (handling empty phone numbers and 200+ student records), and table rows render immediately without empty-table warnings, while preserving zero regression on existing features.
+The run was routed to the SWE Light path (`teamwork_swe`).
 
----
+## Logic Chain
+1. **Root Cause Analysis**:
+   - `AdminDataView.tsx` suffered from a post-upload race condition: after inserting records, an asynchronous `loadData()` call queried Supabase before database triggers/replication finished, or returned empty/null, which overwrote the freshly parsed table state and wiped out loaded rows.
+   - Column normalization for tab resolution lacked common aliases for `Data_Siswa` (`data_siswa`, `siswa`, `students`).
+   - Phone numbers left empty triggered false invalidations or unhandled null checks in certain parser paths.
+   - Excel CSV formatting frequently dropped leading zeros from 8-9 digit NISN values or formatted phone numbers with spaces/hyphens.
+2. **Implementation & Refinement**:
+   - `src/components/AdminDataView.tsx`: Synchronized student template headers (`nisn,nama_siswa,kelas,gender,status,no_hp_ortu`), implemented in-memory and `sessionStorage`/`localStorage` cache (`uploadedRowsCacheRef` & `getStorageCache`), and ensured background refresh performs an ID-based merge rather than blanking the table.
+   - `src/lib/dataIntegrityGuard.ts`: Enhanced RFC 4180 parsing with delimiter autodetection, optional empty phone number handling, Excel scientific notation sanitization, leading zero auto-restoration for 8/9-digit NISNs, duplicate NISN detection, and whitespace-normalized name+class ID resolution.
+   - `src/components/AdminKelasView.tsx`: Added cross-view cache hydration so newly uploaded student rosters immediately populate class views without waiting for DB roundtrips.
+3. **Multi-Round Adversarial Review**:
+   - Round 1 (Implementer): Applied initial fixes and created reproduction test suite `tests/test_user_exact_student_csv.ts`.
+   - Round 2 (Reviewer 1): Idempotent name-class matching, intra-file duplicate NISN guard, and storage cache persistence (Commit `803f77d`).
+   - Round 3 (Reviewer 2): ID-based merge on background refresh, Excel scientific notation expansion, and cross-view cache hydration in `AdminKelasView` (Commit `186eafd`).
+   - Round 4 (Reviewer 3): Added 15 adversarial test suites covering leading-zero NISN restoration, header aliases, and phone sanitization (Commit `2e76273`).
+   - Round 5 (Reviewer 4 - Remediation): Resolved TypeScript compiler errors (`npx tsc --noEmit` 0 errors, Next.js build success in commit `b7ef8f7`).
+4. **Independent Post-Victory Audit**:
+   - Independent victory auditor (`f7d4cb59-6bb4-478b-9a71-dfb831de0bff`) executed a zero-context 3-phase audit (Phase A timeline, Phase B anti-cheating, Phase C independent execution of build & all 58 test suites).
+   - Verdict: **VICTORY CONFIRMED**.
 
-## 1. Observation
+## Caveats
+- Browser-level drag-and-drop and OS file picker dialog interactions are verified via simulated DOM file input and event tests in Node/tsx.
+- If a school exceeds 2,000 students in a single query, the CSV batch upsert handles arbitrary numbers in chunks of 50, but pagination/infinite scroll limits single-page queries to 2,000 items.
 
-1. **Requirements Delivered & Verified**:
-   - **R1. Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa**:
-     - Ditambahkan sub menu Kelas pada menu Master Data untuk role admin (`src/lib/navigation.ts`).
-     - Dibuat komponen terpusat `src/components/AdminKelasView.tsx` (1.728 baris) untuk menampilkan direktori kelas, kartu metrik statistik siswa (total siswa, siswa teralokasi, siswa belum memiliki kelas), penambahan kelas baru, cascading rename kelas ke 4 tabel relasi (`data_siswa`, `wali_kelas`, `jadwal_pelajaran`, dan `data_kelas`), penghapusan kelas dengan guard pencegahan jika masih terdapat siswa aktif, slide-over drawer alokasi siswa (inbound dan outbound transfer antarkelas), serta integrasi modal kenaikan kelas (`NaikKelasModal`).
-     - Alokasi kelas siswa dipusatkan secara eksklusif dan konsisten pada menu ini dengan reflek langsung ke database Supabase PostgreSQL.
-   - **R2. Penyelarasan Template Master Data dengan Skema Database**:
-     - Seluruh template master data (7 entitas: `Kelas`, `Siswa`, `Guru`, `Mapel`, `Kalender Pendidikan`, `Jadwal Pelajaran`, dan `Wali Kelas`) pada `src/components/AdminDataView.tsx` dan `src/components/AdminKelasView.tsx` telah diselaraskan secara presisi dengan skema database PostgreSQL.
-     - Header kolom pada template unduhan CSV sesuai dengan definisi kolom tabel target:
-       - Template `Kelas`: `nama_kelas`, `tingkat`, `jurusan`
-       - Template `Siswa`: `nama_siswa`, `nisn`, `kelas`, `gender`, `no_hp_ortu`
-       - Template `Guru`: `nama_guru`, `nip`, `email`, `role`, `sekolah_id`
-       - Template `Mapel`: `nama_mapel`, `kode_mapel`, `tingkat`
-       - Template `Kalender Pendidikan`: `tanggal`, `keterangan`, `tipe` (tanpa kolom `id` untuk mencegah Postgres invalid input syntax for type uuid 22P02)
-       - Template `Jadwal Pelajaran`: `hari`, `jam_ke`, `jam_mulai`, `jam_selesai`, `kelas`, `mata_pelajaran`, `nama_guru`
-       - Template `Wali Kelas`: `nama_guru`, `kelas`, `nip`
-   - **R3. Pemrosesan dan Kompatibilitas Unggah CSV**:
-     - Modul `src/lib/dataIntegrityGuard.ts` ditingkatkan untuk menangani pembacaan dan parsing berkas CSV secara andal: auto-detect multi-delimiter (koma `,`, titik koma `;`, tab `\t`, pipe `|`), normalisasi line-ending (`\r\n` / `\r` / `\n`), pembersihan tanda petik tunggal/kutip Excel (`'`), dan parsing quoted field sesuai RFC 4180.
-     - Feedback pemrosesan unggah menyertakan nomor baris yang spesifik (`Baris ${i}`) saat terjadi kesalahan validasi.
-     - Impor siswa bersifat idempoten dengan mekanisme upsert/deduplikasi berdasarkan kunci natural `(sekolah_id, nisn)`.
-     - Penanganan kesalahan skema cache PostgREST (`PGRST205` / `42P01`) dengan graceful fallback.
-   - **R4. Preservasi Fitur Eksisting & Zero Regression**:
-     - Tidak ada fitur atau logika lain yang terganggu pada modul admin, guru, jadwal, maupun presensi.
-     - Seluruh 55 suite pengujian proyek (`npm test`) lulus 100% tanpa kegagalan.
+## Conclusion
+The issue is completely resolved. The student CSV template download aligns with master data, uploaded CSV files (including the user's 392 student dataset with empty phone numbers) import and render immediately in the master table without displaying empty warnings, and all 58 project test suites continue to pass with zero regressions. All commits are pushed to `origin/main`.
 
-2. **Empirical Gate & Victory Audit Verification**:
-   - **Post-Victory Independent Auditor Verdict**: **VICTORY CONFIRMED** (Timeline: PASS, Integrity Check: PASS, Independent Test Execution: PASS).
-   - **Dedicated Test Suite**: `npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts` -> 58/58 assertions passed (0 failures).
-   - **Static Type Safety**: `npx tsc --noEmit` -> 0 errors.
-   - **Full Project Regression**: `npm test` -> 55/55 test files passed (100% pass rate).
-   - **Production Build**: `npm run build` -> Next.js Turbopack production build succeeded (13/13 routes).
-
----
-
-## 2. Logic Chain
-
-1. **Pemisahan Tanggung Jawab & Arsitektur Terpusat**:
-   - Penentuan kelas sebelumnya tersebar di berbagai tampilan. Dengan menambahkan sub menu Kelas, alokasi kelas terisolasi dalam satu komponen terpadu `AdminKelasView` yang mengelola siklus hidup kelas, pemindahan siswa, dan konsistensi relasi secara atomik.
-2. **Sinkronisasi Header Template ke Kolom Database**:
-   - Ketidaksesuaian sebelumnya pada berkas CSV disebabkan header template berbeda dari nama kolom tabel di Supabase. Dengan menyamakan header template unduhan dan kamus pemetaan impor pada `dataIntegrityGuard.ts`, berkas CSV yang diunduh pengguna dapat langsung diisi dan diunggah kembali tanpa konversi manual.
-3. **Pencegahan Regression & Invariant Guard**:
-   - Kolom `id` tidak disertakan pada template entitas ber-UUID otomatis (seperti kalender dan jadwal) untuk mencegah error type casting 22P02 PostgreSQL.
-   - Kolom `sekolah_id` dipertahankan pada template guru untuk menjaga invariant multi-tenant sekolah.
-
----
-
-## 3. Caveats
-
-- **Format Berkas Unggahan**: Mesin parser mendukung format CSV ber-encoding UTF-8 atau ASCII dengan pemisah umum (koma, titik koma, tab, pipe). Berkas biner Excel (`.xlsx`/`.xls`) harus disimpan sebagai format CSV terlebih dahulu sebelum diunggah.
-- **Tenant Scope**: Pengelolaan kelas dan alokasi siswa terisolasi berdasarkan `sekolah_id` dari user admin yang sedang aktif.
-
----
-
-## 4. Conclusion
-
-Seluruh kebutuhan user (R1–R4) dan kriteria penerimaan telah diimplementasikan secara tuntas, teruji secara komprehensif, diaudit secara forensik independen dengan vonis VICTORY CONFIRMED, dan seluruh kode telah terintegrasi di branch `main`.
-
----
-
-## 5. Verification Method
-
-Untuk mereplikasi hasil verifikasi:
-```bash
-# 1. Jalankan test suite otomatis baru
-npx tsx tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts
-# Hasil: 58/58 passed, exit code 0
-
-# 2. Jalankan type checking TypeScript
-npx tsc --noEmit
-# Hasil: 0 errors, exit code 0
-
-# 3. Jalankan pengujian regresi seluruh sistem
-npm test
-# Hasil: 55/55 test files passed, exit code 0
-
-# 4. Verifikasi production build Next.js
-npm run build
-# Hasil: Turbopack compile sukses 13 routes, exit code 0
-```
+## Verification Method
+- `npx tsc --noEmit`: 0 errors
+- `npm run build`: Next.js production build succeeded in 2.2s
+- `npx tsx tests/test_user_exact_student_csv.ts`: 392/392 students parsed, validated, and rendered
+- `npx tsx tests/adversarial_student_csv_review.test.ts`: 15/15 adversarial suites passed (100%)
+- `npm test`: 58/58 test suites passed
