@@ -1084,21 +1084,28 @@ export default function GradebookView({
         setAllTeacherAssignments(assignments);
 
         // Determine initial guru
-        const initialGuru = selectedGuru || (isAdmin ? (teachers[0]?.nama_guru || '') : (user?.nama || ''));
+        const initialGuru = selectedGuru || (isAdmin ? '' : (user?.nama || ''));
         if (!selectedGuru && initialGuru) {
           setSelectedGuru(initialGuru);
         }
 
-        // Apply filtering for initial teacher
-        syncTeacherAssignments(
-          initialGuru,
-          assignments,
-          teachers,
-          masterMapels,
-          masterClasses,
-          selectedMapel,
-          selectedKelas
-        );
+        // Apply filtering for initial teacher only if teacher is selected
+        if (initialGuru) {
+          syncTeacherAssignments(
+            initialGuru,
+            assignments,
+            teachers,
+            masterMapels,
+            masterClasses,
+            selectedMapel,
+            selectedKelas
+          );
+        } else {
+          setMapelList([]);
+          setKelasList([]);
+          setSelectedMapel('');
+          setSelectedKelas('');
+        }
       } catch (err) {
         console.error('Error fetching master data:', err);
       } finally {
