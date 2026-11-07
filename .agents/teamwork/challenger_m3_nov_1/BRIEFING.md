@@ -1,4 +1,4 @@
-# BRIEFING — 2026-11-07T00:41:30Z
+# BRIEFING — 2026-11-07T00:48:50Z
 
 ## Mission
 Empirically stress-test Master Data Relational Dependencies, CSV template harmonization, and wali kelas guru_id enrichment.
@@ -30,18 +30,28 @@ Empirically stress-test Master Data Relational Dependencies, CSV template harmon
 - **Review criteria**: Relational dependency validation, CSV template vs DB schema alignment, `guru_id` enrichment, edge cases and stress testing.
 
 ## Attack Surface
-- **Hypotheses tested**: TBD
-- **Vulnerabilities found**: TBD
-- **Untested angles**: Relational checks with missing references, invalid schemas, case insensitivity, circular/broken references.
+- **Hypotheses tested**:
+  * Relational dependency failures correctly prevent upserts: CONFIRMED (Zero DB pollution).
+  * Missing class in data_siswa raises 23503 diagnostic error: CONFIRMED.
+  * Missing teacher/mapel/class in jadwal_pelajaran raises 23503: CONFIRMED.
+  * Missing teacher/class in wali_kelas raises 23503: CONFIRMED.
+  * Guru_ID and NIP auto-population in wali_kelas: CONFIRMED.
+  * Template vs schema column roundtrip: FAILED for data_mapel due to header alias collision.
+- **Vulnerabilities found**:
+  * **DEFECT-01**: In `src/lib/dataIntegrityGuard.ts` line 801, `clean === 'kelompok'` is unconditionally aliased to `'kategori'`. In `data_mapel`, both `kategori` and `kelompok` exist as separate DB columns. Uploading `Template_Data_Mapel.csv` drops `kelompok` and overwrites `kategori`.
+- **Untested angles**:
+  * Extreme CSV files with >10,000 rows (mocked at 50-row batches).
 
 ## Loaded Skills
 - None requested in dispatch.
 
 ## Key Decisions Made
-- Initialized briefing and test strategy.
+- Authored 26 automated checks in `tests/adversarial_m3_dependencies.test.ts`.
+- Verdict: REQUEST_CHANGES due to DEFECT-01 in `src/lib/dataIntegrityGuard.ts`.
 
 ## Artifact Index
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_nov_1\DISPATCH.md`
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_nov_1\BRIEFING.md`
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_nov_1\progress.md`
 - `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\challenger_m3_nov_1\handoff.md`
+- `c:\Users\Fitra\OneDrive\Documents\sipjam-app\tests\adversarial_m3_dependencies.test.ts`
