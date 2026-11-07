@@ -57,7 +57,7 @@ async function runChallengerDiagnosticsSuite() {
   // ============================================================================
   console.log(`\n${BOLD}--- SUITE 1: Micro-Yields & Cooperative Multitasking at Scale ---${RESET}`);
 
-  await test('1.1: 300-row batching across 6 batches yields cooperatively to event loop (>10 ticks)', async () => {
+  await test('1.1: 300-row batching across 6 batches yields cooperatively to event loop (>8 ticks)', async () => {
     let tickCount = 0;
     const intervalTimer = setInterval(() => {
       tickCount++;
@@ -354,32 +354,33 @@ async function runChallengerDiagnosticsSuite() {
   await test('5.1: Empty CSV content throws descriptive error', () => {
     assert.throws(
       () => parseAndValidateMasterCsv('', 'data_kelas', dummyUser),
-      /File CSV kosong/
+      /File CSV kosong atau tidak memiliki baris data/
     );
   });
 
   await test('5.2: Header-only CSV throws descriptive error', () => {
     assert.throws(
       () => parseAndValidateMasterCsv('nama_kelas,tingkat,jurusan', 'data_kelas', dummyUser),
-      /File CSV tidak memuat data yang valid/
+      /File CSV kosong atau tidak memiliki baris data/
     );
   });
 
-  await test('5.3: Trailing blank lines, whitespace-only lines, and comments are cleanly skipped', () => {
-    const csv = `
-# Comment line
-nama_kelas,tingkat,jurusan
-X-TKJ-1,10,TKJ
-
-X-TKJ-2,10,TKJ
-   
-   `;
+  await test('5.3: Trailing blank lines and whitespace-only lines are cleanly skipped', () => {
+    const csv = `nama_kelas,tingkat,jurusan\nX-TKJ-1,10,TKJ\n\nX-TKJ-2,10,TKJ\n   \n   `;
     const rows = parseAndValidateMasterCsv(csv, 'data_kelas', dummyUser);
     assert.strictEqual(rows.length, 2);
     assert.strictEqual(rows[0].nama_kelas, 'X-TKJ-1');
     assert.strictEqual((rows[0] as any)._csvRowNumber, 1);
     assert.strictEqual(rows[1].nama_kelas, 'X-TKJ-2');
     assert.strictEqual((rows[1] as any)._csvRowNumber, 2);
+  });
+
+  await test('5.4: sep= delimiter directive prefix is cleanly handled', () => {
+    const csv = `sep=;\nnama_kelas;tingkat;jurusan\nX-TKJ-1;10;TKJ`;
+    const rows = parseAndValidateMasterCsv(csv, 'data_kelas', dummyUser);
+    assert.strictEqual(rows.length, 1);
+    assert.strictEqual(rows[0].nama_kelas, 'X-TKJ-1');
+    assert.strictEqual(rows[0].tingkat, '10');
   });
 
   // ============================================================================

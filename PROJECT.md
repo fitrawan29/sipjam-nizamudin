@@ -35,9 +35,9 @@
 | 3 | F3: Spesifikasi Mapel Kelas X pada Verifikasi Perangkat | Menampilkan nama mata pelajaran spesifik kelas X pada verifikasi perangkat pembelajaran tanpa fallback 'Mata Pelajaran Umum' | M1 | R1 | DONE |
 | 4 | F4: Penghapusan Sub Menu Cetak Dokumen Resmi pada Laporan & Analitik | Menghilangkan sub menu cetak dokumen resmi dari navigasi dan routing Laporan & Analitik Kinerja dengan fallback transparan ke tabel | M1 | R2 | DONE |
 | 5 | F5: Alur Filter Bertingkat Buku Nilai Mapel (Guru -> Mapel -> Kelas) | Mengharuskan pemilihan guru pengampu terlebih dahulu, diikuti penyesuaian berjenjang mapel dan kelas terfilter spesifik tingkat kelas | M2 | R3 | DONE |
-| 6 | F6: Urutan Navigasi & Panduan Alur Master Data | Menata urutan navigasi master data (Siswa s/d Periode Blok) dan menambahkan visual workflow stepper panduan alur | M3 | R4 | PLANNED |
-| 7 | F7: Penyelarasan Template Master Data & Validasi Dependensi Upload | Memastikan template sesuai skema DB dan memvalidasi keberadaan data prasyarat relasional saat proses upload | M3 | R4 | PLANNED |
-| 8 | F8: Visualisasi Progress Bar & Error Handling Spesifik Master Data | Menampilkan progress bar interaktif saat upload berlangsung dan menyajikan rincian error spesifik (nomor baris, kolom, saran) | M3 | R4 | PLANNED |
+| 6 | F6: Urutan Navigasi & Panduan Alur Master Data | Menata urutan navigasi master data (Siswa s/d Periode Blok) dan menambahkan visual workflow stepper panduan alur | M3 | R4 | DONE |
+| 7 | F7: Penyelarasan Template Master Data & Validasi Dependensi Upload | Memastikan template sesuai skema DB dan memvalidasi keberadaan data prasyarat relasional saat proses upload | M3 | R4 | DONE |
+| 8 | F8: Visualisasi Progress Bar & Error Handling Spesifik Master Data | Menampilkan progress bar interaktif saat upload berlangsung dan menyajikan rincian error spesifik (nomor baris, kolom, saran) | M3 | R4 | DONE |
 | 9 | F9: Pencadangan Sistem Komprehensif Berkas ZIP (Data JSON + Foto) | Mencadangkan seluruh 33 entitas database dalam folder data JSON dan folder foto dalam satu arsip ZIP mandiri | M4 | R5 | PLANNED |
 | 10 | F10: Pemulihan Sistem Berkas ZIP Terstruktur (Topological Restore) | Membaca ulang berkas cadangan ZIP dan memulihkan seluruh data secara kompatibel dengan urutan dependensi foreign key | M4 | R5 | PLANNED |
 | 11 | F11: Dedicated Automated Verification Suites & Zero Regression Gate | Membuat test suite baru dan memverifikasi npm test (60+ file test), npx tsc --noEmit, serta npm run build lulus tanpa regresi | M5 | R6 | PLANNED |
@@ -47,7 +47,7 @@
 |---|------|-------|-------------|--------|
 | M1 | Penyesuaian Pusat Verifikasi Data & Laporan Analitik | `AdminVerifView.tsx`, `AdminRekapView.tsx`, `DokumenView.tsx`, `RekapJurnalView.tsx`, `attendanceAlpa.ts`, `HomeViewAdmin.tsx`, `tutorialSteps.ts` | none | DONE |
 | M2 | Penyesuaian Asesmen & Rapor (Buku Nilai Mapel Cascading) | `src/components/GradebookView.tsx` | none | DONE |
-| M3 | Penyesuaian Master Data (Stepper, Dependensi, Progress, Error) | `src/components/AdminDataView.tsx`, `src/lib/dataIntegrityGuard.ts`, `AdminKelasView.tsx` | none | PLANNED |
+| M3 | Penyesuaian Master Data (Stepper, Dependensi, Progress, Error) | `src/components/AdminDataView.tsx`, `src/lib/dataIntegrityGuard.ts`, `AdminKelasView.tsx` | none | DONE |
 | M4 | Penyesuaian Pencadangan & Pemulihan Sistem Berkas ZIP | `src/components/AdminBackupView.tsx` | none | PLANNED |
 | M5 | Verifikasi Otomatis Komprehensif & Zero Regression Gate | `tests/`, `npm test`, `npx tsc --noEmit`, `npm run build` | M1, M2, M3, M4 | PLANNED |
 
