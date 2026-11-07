@@ -1556,18 +1556,13 @@ async function runTests() {
 
     if (isJurnalDone && isPiketDone) {
       canPresensiPulang = true;
+      lockedReason = null;
     } else {
+      canPresensiPulang = false;
       const missing: string[] = [];
       if (!isPiketDone) missing.push('Laporan Piket');
       if (!isJurnalDone) missing.push(dailyState.isBlok ? 'Jurnal Kegiatan (Sistem Blok)' : 'Jurnal (KBM/Kegiatan)');
       lockedReason = `Anda belum menyelesaikan: ${missing.join(', ')}`;
-    }
-
-    if (canTeacherPresensiPulang(dailyState)) {
-      canPresensiPulang = true;
-      if (lockedReason && lockedReason.startsWith('Anda belum menyelesaikan')) {
-        lockedReason = null;
-      }
     }
 
     return {
@@ -1639,15 +1634,25 @@ async function runTests() {
     'Mixed Schedule: Submitting both Jurnal KBM and Jurnal Kegiatan fulfills isJurnalDone and unlocks Presensi Pulang'
   );
 
-  // 9.12 R2 Exemption: Teacher with presensiDatang
+  // 9.12 Presensi Pulang Gate: Teacher with presensiDatang but unfulfilled journals is blocked
   const stateWithDatang = {
     ...stateNoJournals,
     presensiDatang: { id: 'datang-001', jam_masuk: '06:55:00' },
   };
   const resWithDatang = evaluateMixedJournalCheckout(stateWithDatang);
   assert(
-    canTeacherPresensiPulang(stateWithDatang) === true && resWithDatang.canPresensiPulang === true,
-    'Presensi Pulang R2: Teacher with presensiDatang is exempted from journal gate and can presensiPulang immediately'
+    canTeacherPresensiPulang(stateWithDatang) === false && resWithDatang.canPresensiPulang === false,
+    'Presensi Pulang: Teacher with presensiDatang is blocked from checkout until all journals/duties are filled'
+  );
+
+  const stateCompleteWithDatang = {
+    ...stateComplete,
+    presensiDatang: { id: 'datang-001', jam_masuk: '06:55:00' },
+  };
+  const resCompleteWithDatang = evaluateMixedJournalCheckout(stateCompleteWithDatang);
+  assert(
+    canTeacherPresensiPulang(stateCompleteWithDatang) === true && resCompleteWithDatang.canPresensiPulang === true,
+    'Presensi Pulang: Teacher with presensiDatang and all journals filled is allowed to presensiPulang'
   );
 
   // 9.13 Workflow AST: Mixed schedule checkout invariant

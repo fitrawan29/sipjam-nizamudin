@@ -374,8 +374,13 @@ export default function GuruPresensi({
       if (dailyState?.isIzinSakit) {
         return showToast('Info', 'Anda sedang Izin/Sakit hari ini, tidak perlu melakukan presensi pulang.', 'info');
       }
-      // R2: Guru yang telah tercatat presensi datang dapat langsung melakukan presensi pulang
-      // tanpa harus mengisi jurnal KBM, jurnal kegiatan, maupun jurnal piket terlebih dahulu.
+      if (!dailyState?.canPresensiPulang) {
+        return showToast(
+          'Tugas Belum Selesai',
+          dailyState?.lockedReason || 'Anda belum menyelesaikan semua tugas hari ini sebelum melakukan Presensi Pulang.',
+          'warning'
+        );
+      }
     }
 
     // Validasi Workflow Datang - kecualikan jika presensi sebelumnya DITOLAK (perlu isi ulang)

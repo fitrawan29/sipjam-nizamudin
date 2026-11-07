@@ -1309,21 +1309,13 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     if (isJurnalDone && isPiketDone) {
       state.canPresensiPulang = true;
+      state.lockedReason = null;
     } else {
+      state.canPresensiPulang = false;
       const missing = [];
       if (!isPiketDone) missing.push('Laporan Piket');
       if (!isJurnalDone) missing.push(state.isBlok ? 'Jurnal Kegiatan (Sistem Blok)' : 'Jurnal (KBM/Kegiatan)');
       state.lockedReason = `Anda belum menyelesaikan: ${missing.join(', ')}`;
-    }
-
-    // R2: Fleksibilitas Presensi Tanpa Kewajiban Mengisi Jurnal
-    // Guru yang telah tercatat presensi datang dapat langsung melakukan presensi pulang
-    // tanpa kewajiban mengisi jurnal KBM, jurnal kegiatan, maupun laporan piket terlebih dahulu.
-    if (canTeacherPresensiPulang(state)) {
-      state.canPresensiPulang = true;
-      if (state.lockedReason && state.lockedReason.startsWith('Anda belum menyelesaikan')) {
-        state.lockedReason = null;
-      }
     }
 
   } catch (error) {
@@ -1334,14 +1326,49 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 }
 
 /**
- * R2: Cek apakah guru diizinkan melakukan presensi pulang.
- * Guru yang telah tercatat presensi datang dapat langsung melakukan presensi pulang
- * tanpa kewajiban mengisi jurnal KBM, jurnal kegiatan, maupun laporan piket terlebih dahulu.
+ * Cek apakah guru diizinkan melakukan presensi pulang.
+ * Presensi pulang dapat dilakukan jika guru telah tercatat presensi datang,
+ * tidak sedang izin/sakit, dan semua tugas (laporan piket & jurnal) sudah terisi/selesai.
  */
 export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolean {
   if (!state.presensiDatang) return false;
   if (state.isIzinSakit) return false;
-  return true;
+  if (state.isLibur) return false;
+
+  // Jika state sudah dihitung lengkap oleh workflow
+  if (typeof state.canPresensiPulang === 'boolean') {
+    return state.canPresensiPulang;
+  }
+
+  // Evaluasi piket
+  let isPiketDone = true;
+  if (state.isPiket && !state.laporanPiket) {
+    isPiketDone = false;
+  }
+  if (!isPiketDone) return false;
+
+  // Evaluasi jurnal
+  if (state.isNonTeachingDay) {
+    return true;
+  }
+
+  const isTeacherExempt = state.aturanKehadiran === 'Hari_Mengajar_Saja';
+  if (state.isBlok || state.isDinasLuar || !state.jadwalKBM || state.jadwalKBM.length === 0) {
+    if (state.jurnalKegiatan) return true;
+    if (isTeacherExempt && (!state.jadwalKBM || state.jadwalKBM.length === 0)) return true;
+    if ((!state.jadwalKBM || state.jadwalKBM.length === 0) && state.isPiket) return true;
+    return false;
+  }
+
+  const unblockedSchedules = (state.jadwalKBM || []).filter((jk: any) => !jk.isBlocked);
+  const blockedSchedules = (state.jadwalKBM || []).filter((jk: any) => jk.isBlocked);
+
+  const unblockedFulfilled = unblockedSchedules.every((jk: any) => 
+    (state.jurnalKBM || []).some((j: any) => isJurnalMatchJadwal(j, jk))
+  );
+  const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
+
+  return unblockedFulfilled && blockedFulfilled;
 }
 
 

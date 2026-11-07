@@ -80,7 +80,7 @@ async function runAll() {
   // ==========================================================================
   console.log('\n--- Section 2: R2 - Presensi Pulang Flexibility & Time Validation ---');
 
-  await runTest('2.1: canTeacherPresensiPulang allows departure when presensiDatang is present even without journals', () => {
+  await runTest('2.1: canTeacherPresensiPulang enforces duties completion: locked without duties, unlocked when all duties filled', () => {
     const stateWithoutJournals: Partial<GuruDailyState> = {
       presensiDatang: { id: 'pres-1', tipe_absen: 'Datang', timestamp: '2026-10-31T07:10:00+08:00' },
       isIzinSakit: false,
@@ -91,8 +91,21 @@ async function runAll() {
       jurnalKegiatan: null // No kegiatan journal
     };
 
-    const canPulang = canTeacherPresensiPulang(stateWithoutJournals);
-    assert.strictEqual(canPulang, true, 'canTeacherPresensiPulang MUST return true once presensiDatang exists');
+    const canPulangWithoutDuties = canTeacherPresensiPulang(stateWithoutJournals);
+    assert.strictEqual(canPulangWithoutDuties, false, 'canTeacherPresensiPulang MUST return false when duties are incomplete');
+
+    const stateWithDuties: Partial<GuruDailyState> = {
+      presensiDatang: { id: 'pres-1', tipe_absen: 'Datang', timestamp: '2026-10-31T07:10:00+08:00' },
+      isIzinSakit: false,
+      isPiket: true,
+      laporanPiket: { id: 'piket-1', tanggal: '2026-10-31' },
+      jadwalKBM: [{ id: 'kbm-1', mapel: 'Matematika', kelas: 'X A' }],
+      jurnalKBM: [{ id: 'jur-1', mapel: 'Matematika', kelas: 'X A', tanggal: '2026-10-31' }],
+      jurnalKegiatan: null
+    };
+
+    const canPulangWithDuties = canTeacherPresensiPulang(stateWithDuties);
+    assert.strictEqual(canPulangWithDuties, true, 'canTeacherPresensiPulang MUST return true once all duties are filled');
   });
 
   await runTest('2.2: canTeacherPresensiPulang forbids departure if no presensiDatang or on izin/sakit', () => {
