@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, getActiveTargetSchool } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaTimestamp, formatTimestampWita } from '@/lib/wita';
@@ -9,6 +9,46 @@ import { BankDokumen, DataGuru, GuruMapel, SyaratPerangkatPembelajaranRow } from
 import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { isInvalidMapel, normalizeScheduleMapel } from '@/lib/dataIntegrityGuard';
+
+export const NIZAMUDIN_SEKOLAH_ID = 'a0000000-0000-0000-0000-000000000001';
+export const TUTUYAN_SEKOLAH_ID = 'fd7f077e-5fc6-4f3b-b375-21c6be89b492';
+
+const NON_CLASS_KATEGORI_REGEX = /^(umum|wajib|peminatan|pilihan|kejuruan|muatan\s*lokal|mulok|-)$/i;
+
+/**
+ * Multi-tenant cross-school guard between SMA Nizamudin (X Merdeka, XI Merdeka, XII Merdeka)
+ * and SMAN 1 Tutuyan (X Merdeka A..G, XI Merdeka A..F, XII Merdeka A..F).
+ */
+export function isCrossTenantMapelOrKelas(
+  rawMapel?: string | null,
+  rawKelas?: string | null,
+  sekolahId?: string | null,
+  validClasses: string[] = []
+): boolean {
+  const m = (rawMapel || '').trim();
+  const k = (rawKelas || '').trim();
+  const prefixKelas = m.includes('_') ? m.split('_')[0].trim() : '';
+  const candidates = [k, prefixKelas].filter(Boolean);
+  if (candidates.length === 0) return false;
+
+  const sid = (sekolahId || '').trim().toLowerCase();
+  const hasLetterParallelInSchool =
+    sid === TUTUYAN_SEKOLAH_ID ||
+    (validClasses.length > 0 && validClasses.every(c => /^(X|XI|XII)\s+Merdeka\s+[A-Z]\b/i.test(c.trim())));
+  const hasBareMerdekaInSchool =
+    sid === NIZAMUDIN_SEKOLAH_ID ||
+    (validClasses.length > 0 && validClasses.every(c => /^(X|XI|XII)\s+Merdeka$/i.test(c.trim())));
+
+  for (const cls of candidates) {
+    if (hasBareMerdekaInSchool && /^(X|XI|XII)\s+Merdeka\s+[A-Z]\b/i.test(cls)) {
+      return true;
+    }
+    if (hasLetterParallelInSchool && /^(X|XI|XII)\s+Merdeka$/i.test(cls)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export const KURIKULUM_DOCS = [
   { id: 'CP', code: 'CP', name: 'Analisis Capaian Pembelajaran', short: 'CP' },
@@ -78,41 +118,59 @@ export function isTeacherNameMatch(
   if (!n1 || !n2) return false;
   if (n1 === n2) return true;
 
-  // Prefix matching
-  if (n1.startsWith(n2) || n2.startsWith(n1)) return true;
+  // Word-boundary prefix matching (prevents "fitra" matching "fitrawan"/"fitri")
+  if (n1.startsWith(n2 + ' ') || n2.startsWith(n1 + ' ')) return true;
 
   // Tokenized matching
   const tokens1 = n1.split(' ').filter(t => t.length >= 2);
   const tokens2 = n2.split(' ').filter(t => t.length >= 2);
+  if (tokens1.length === 0 || tokens2.length === 0) return false;
 
-  if (tokens1.length === 1 && tokens2.includes(tokens1[0])) return true;
-  if (tokens2.length === 1 && tokens1.includes(tokens2[0])) return true;
+  if (tokens1.length === 1) {
+    return tokens2[0] === tokens1[0] || (tokens1[0].length >= 4 && tokens2.includes(tokens1[0]));
+  }
+  if (tokens2.length === 1) {
+    return tokens1[0] === tokens2[0] || (tokens2[0].length >= 4 && tokens1.includes(tokens2[0]));
+  }
 
-  const all1In2 = tokens1.length > 0 && tokens1.every(t => tokens2.includes(t));
-  const all2In1 = tokens2.length > 0 && tokens2.every(t => tokens1.includes(t));
-  if (all1In2 || all2In1) return true;
-
-  return false;
+  const all1In2 = tokens1.every(t => tokens2.includes(t));
+  const all2In1 = tokens2.every(t => tokens1.includes(t));
+  return all1In2 || all2In1;
 }
 
 /**
- * Multi-factor teacher entity matching (name, nip/nickname, user_id).
+ * Multi-factor teacher entity matching (name, nip/nickname, user_id, sekolah_id).
  */
 export function isTeacherEntityMatch(
   teacher: any,
   candidateName?: string | null,
   candidateNip?: string | null,
-  candidateUserId?: string | null
+  candidateUserId?: string | null,
+  candidateSekolahId?: string | null
 ): boolean {
   if (!teacher) return false;
-  if (candidateUserId && teacher.user_id && candidateUserId === teacher.user_id) return true;
-  if (candidateUserId && teacher.id && candidateUserId === teacher.id) return true;
-  if (candidateNip && teacher.nip && candidateNip.trim().toLowerCase() === teacher.nip.trim().toLowerCase()) return true;
+  if (teacher.sekolah_id && candidateSekolahId && teacher.sekolah_id !== candidateSekolahId) {
+    return false;
+  }
+
+  const tUid = (teacher.user_id || teacher.id || '').trim();
+  const cUid = (candidateUserId || '').trim();
+  if (cUid && tUid && (cUid === teacher.user_id || cUid === teacher.id)) return true;
+
+  const tNip = (teacher.nip || '').trim().toLowerCase();
+  const cNip = (candidateNip || '').trim().toLowerCase();
+  const hasRealTNip = Boolean(tNip && tNip !== '-' && tNip.length >= 5);
+  const hasRealCNip = Boolean(cNip && cNip !== '-' && cNip.length >= 5);
+  if (hasRealTNip && hasRealCNip) {
+    if (tNip === cNip) return true;
+    return false;
+  }
+  if (tNip && tNip !== '-' && cNip && cNip !== '-' && tNip === cNip) return true;
 
   const teacherName = teacher.nama_guru || teacher.nama;
   if (isTeacherNameMatch(teacherName, candidateName)) return true;
-  if (teacher.nip && isTeacherNameMatch(teacher.nip, candidateName)) return true;
-  if (candidateNip && isTeacherNameMatch(teacherName, candidateNip)) return true;
+  if (teacher.nip && teacher.nip !== '-' && isTeacherNameMatch(teacher.nip, candidateName)) return true;
+  if (candidateNip && candidateNip !== '-' && isTeacherNameMatch(teacherName, candidateNip)) return true;
 
   return false;
 }
@@ -177,24 +235,36 @@ export interface TeacherSubjectResolved {
 
 /**
  * Pure multi-source subject resolver for any teacher.
- * Aggregates assignments from jadwal_pelajaran, guru_mapel, and data_guru.mata_pelajaran.
- * Guarantees zero fallback to 'Mata Pelajaran Umum'.
+ * Aggregates assignments from jadwal_pelajaran, guru_mapel, and data_guru.mata_pelajaran,
+ * strictly scoped to the teacher's school and assigned subjects.
  */
 export function resolveTeacherSubjects(
   teacher: any,
   jadwalList: any[] = [],
   dataMapelList: any[] = [],
-  guruMapelList: any[] = []
+  guruMapelList: any[] = [],
+  validClasses: string[] = []
 ): TeacherSubjectResolved[] {
   if (!teacher) return [];
+
+  const targetSekolahId = teacher.sekolah_id || null;
+  const scopedMapelList = (dataMapelList || []).filter(m => {
+    if (targetSekolahId && m?.sekolah_id && m.sekolah_id !== targetSekolahId) return false;
+    const rawM = m?.nama_mata_pelajaran || m?.nama_mapel || '';
+    const rawK = m?.kategori && !NON_CLASS_KATEGORI_REGEX.test(String(m.kategori).trim()) ? m.kategori : '';
+    return !isCrossTenantMapelOrKelas(rawM, rawK, targetSekolahId, validClasses);
+  });
 
   const subjects: TeacherSubjectResolved[] = [];
   const seen = new Set<string>();
 
   const addSubject = (rawMapel?: string | null, rawKelas?: string | null) => {
     if (!rawMapel || isInvalidMapel(rawMapel)) return;
+    if (isCrossTenantMapelOrKelas(rawMapel, rawKelas, targetSekolahId, validClasses)) return;
+
     let mapel = rawMapel.trim();
     let kelas = (rawKelas || '').trim();
+    if (NON_CLASS_KATEGORI_REGEX.test(kelas)) kelas = '';
 
     // Handle format "X Merdeka_MTK"
     if (mapel.includes('_')) {
@@ -203,22 +273,46 @@ export function resolveTeacherSubjects(
       mapel = parts.slice(1).join('_').trim();
     }
 
-    // Look up in dataMapelList if kelas is still missing
-    if (!kelas && dataMapelList.length > 0) {
-      const dm = dataMapelList.find(m => {
+    // Look up exact match in scopedMapelList if kelas is still missing
+    if (!kelas && scopedMapelList.length > 0) {
+      const dm = scopedMapelList.find(m => {
         const nm = (m.nama_mata_pelajaran || m.nama_mapel || '').trim().toLowerCase();
-        return nm === rawMapel.trim().toLowerCase() || nm.endsWith(`_${mapel.toLowerCase()}`);
+        return nm === rawMapel.trim().toLowerCase();
       });
       if (dm) {
-        kelas = (dm.kategori || dm.kelompok || (dm.nama_mata_pelajaran?.includes('_') ? dm.nama_mata_pelajaran.split('_')[0].trim() : '')).trim();
+        const dmName = String(dm.nama_mata_pelajaran || dm.nama_mapel || '').trim();
+        const dmKat = String(dm.kategori || dm.kelompok || '').trim();
+        const candidateKelas = dmName.includes('_')
+          ? dmName.split('_')[0].trim()
+          : (!NON_CLASS_KATEGORI_REGEX.test(dmKat) ? dmKat : '');
+        if (candidateKelas && !isCrossTenantMapelOrKelas(rawMapel, candidateKelas, targetSekolahId, validClasses)) {
+          kelas = candidateKelas;
+        }
       }
     }
 
+    if (isCrossTenantMapelOrKelas(mapel, kelas, targetSekolahId, validClasses)) return;
+
     // Canonicalize subject name (e.g. MTK -> Matematika)
     const canonicalMapel = canonicalizeSubjectName(mapel);
-    const key = `${canonicalMapel.toLowerCase()}__${kelas.toLowerCase()}`;
+    if (!canonicalMapel) return;
 
-    if (canonicalMapel && !seen.has(key)) {
+    const lowerCanon = canonicalMapel.toLowerCase();
+    // Avoid adding a duplicate classless entry when a class-specific assignment already exists for the same subject
+    if (!kelas && subjects.some(s => s.nama_mapel.toLowerCase() === lowerCanon && Boolean(s.kelas))) {
+      return;
+    }
+    // If a classless entry was added earlier and now we have a specific class, upgrade it in-place
+    if (kelas) {
+      const classlessIdx = subjects.findIndex(s => s.nama_mapel.toLowerCase() === lowerCanon && !s.kelas);
+      if (classlessIdx !== -1) {
+        seen.delete(`${lowerCanon}__`);
+        subjects.splice(classlessIdx, 1);
+      }
+    }
+
+    const key = `${lowerCanon}__${kelas.toLowerCase()}`;
+    if (!seen.has(key)) {
       seen.add(key);
       subjects.push({
         nama_mapel: canonicalMapel,
@@ -227,33 +321,43 @@ export function resolveTeacherSubjects(
     }
   };
 
+  const rawMataPelajaran = teacher.mata_pelajaran;
+  const assignedTokens = (rawMataPelajaran && typeof rawMataPelajaran === 'string')
+    ? rawMataPelajaran
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s && !isInvalidMapel(s) && !isCrossTenantMapelOrKelas(s, '', targetSekolahId, validClasses))
+    : [];
+
   // 1. Resolve from jadwal_pelajaran (Primary truth for teaching schedule)
-  const matchingJadwal = jadwalList.filter(j =>
-    isTeacherEntityMatch(teacher, j.nama_guru, j.nip, j.user_id)
+  const matchingJadwal = (jadwalList || []).filter(j =>
+    isTeacherEntityMatch(teacher, j.nama_guru, j.nip, j.user_id, j.sekolah_id) &&
+    !isCrossTenantMapelOrKelas(j.mata_pelajaran || j.mapel, j.kelas, targetSekolahId, validClasses)
   );
   matchingJadwal.forEach(j => {
     addSubject(j.mata_pelajaran || j.mapel, j.kelas);
   });
 
-  // 2. Resolve from guru_mapel relations
-  const matchingGm = guruMapelList.filter(gm =>
-    isTeacherEntityMatch(teacher, gm.nama_guru, gm.nip, gm.user_id || gm.guru_id)
-  );
+  // 2. Resolve from guru_mapel relations (filtered against stale/unassigned subjects when assignedTokens or jadwal exist)
+  const matchingGm = (guruMapelList || []).filter(gm => {
+    if (!isTeacherEntityMatch(teacher, gm.nama_guru, gm.nip, gm.user_id || gm.guru_id, gm.sekolah_id)) return false;
+    const gmMapel = gm.nama_mapel || gm.mapel_singkat || gm.mata_pelajaran;
+    if (isCrossTenantMapelOrKelas(gmMapel, gm.kelas, targetSekolahId, validClasses)) return false;
+    if (assignedTokens.length > 0) {
+      const inAssigned = assignedTokens.some(tok => isMapelMatch(tok, gmMapel));
+      const inJadwal = matchingJadwal.some(j => isMapelMatch(j.mata_pelajaran || j.mapel, gmMapel));
+      if (!inAssigned && !inJadwal) return false;
+    }
+    return true;
+  });
   matchingGm.forEach(gm => {
     addSubject(gm.nama_mapel || gm.mapel_singkat, gm.kelas);
   });
 
   // 3. Resolve from teacher.mata_pelajaran in data_guru (e.g. "X Merdeka_MTK, X Merdeka_Informatika")
-  const rawMataPelajaran = teacher.mata_pelajaran;
-  if (rawMataPelajaran && typeof rawMataPelajaran === 'string') {
-    const tokens = rawMataPelajaran
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => s && !isInvalidMapel(s));
-    tokens.forEach(tok => {
-      addSubject(tok, '');
-    });
-  }
+  assignedTokens.forEach(tok => {
+    addSubject(tok, '');
+  });
 
   // 4. Sort Class X subjects logically first
   subjects.sort((a, b) => {
@@ -275,6 +379,7 @@ export interface DokumenViewProps {
 export default function DokumenView({ user, isReadOnly = false }: DokumenViewProps) {
   const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const isAdmin = normRole === 'admin' || normRole === 'superadmin';
+  const effectiveSekolahId = getActiveTargetSchool()?.id || user?.sekolah_id;
   const [activeTab, setActiveTab] = useState<'matrix' | 'syarat' | 'list' | 'upload'>(isAdmin ? 'matrix' : 'list');
     
   // Data states
@@ -286,6 +391,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [syaratList, setSyaratList] = useState<SyaratPerangkatPembelajaranRow[]>([]);
   const [fetching, setFetching] = useState(false);
+  const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   // Filters & Search
@@ -321,37 +427,52 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
   const loadAllData = useCallback(async () => {
     try {
       setFetching(true);
+      const targetSchoolId = getActiveTargetSchool()?.id || user?.sekolah_id;
+
       // 1. Fetch bank_dokumen
       let docQuery = supabase
         .from('bank_dokumen')
         .select('*')
         .order('timestamp', { ascending: false });
 
+      if (targetSchoolId) {
+        docQuery = docQuery.eq('sekolah_id', targetSchoolId);
+      }
       if (!isAdmin && user?.nama) {
         docQuery = docQuery.eq('nama_guru', user.nama);
       }
 
-      let siswaQuery = supabase.from('data_siswa').select('kelas');
-      if (user?.sekolah_id) {
-        siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
+      let guruQuery = supabase.from('data_guru').select('*').order('nama_guru', { ascending: true });
+      if (targetSchoolId) {
+        guruQuery = guruQuery.eq('sekolah_id', targetSchoolId);
+      }
+
+      let gmQuery = supabase.from('guru_mapel').select('*');
+      if (targetSchoolId) {
+        gmQuery = gmQuery.eq('sekolah_id', targetSchoolId);
+      }
+
+      let siswaQuery = supabase.from('data_siswa').select('kelas, sekolah_id');
+      if (targetSchoolId) {
+        siswaQuery = siswaQuery.eq('sekolah_id', targetSchoolId);
       }
 
       let syaratQuery = supabase
         .from('syarat_perangkat_pembelajaran')
         .select('*')
         .order('urutan', { ascending: true });
-      if (user?.sekolah_id) {
-        syaratQuery = syaratQuery.eq('sekolah_id', user.sekolah_id);
+      if (targetSchoolId) {
+        syaratQuery = syaratQuery.eq('sekolah_id', targetSchoolId);
       }
 
       let jadwalQuery = supabase.from('jadwal_pelajaran').select('*');
-      if (user?.sekolah_id) {
-        jadwalQuery = jadwalQuery.eq('sekolah_id', user.sekolah_id);
+      if (targetSchoolId) {
+        jadwalQuery = jadwalQuery.eq('sekolah_id', targetSchoolId);
       }
 
       let mapelQuery = supabase.from('data_mapel').select('*');
-      if (user?.sekolah_id) {
-        mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
+      if (targetSchoolId) {
+        mapelQuery = mapelQuery.eq('sekolah_id', targetSchoolId);
       }
 
       // Parallel fetch of all master data tables
@@ -365,36 +486,70 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
         { data: syaratData, error: syaratErr }
       ] = await Promise.all([
         docQuery,
-        supabase.from('data_guru').select('*').order('nama_guru', { ascending: true }),
-        supabase.from('guru_mapel').select('*'),
+        guruQuery,
+        gmQuery,
         jadwalQuery,
         mapelQuery,
         siswaQuery,
         syaratQuery
       ]);
 
+      const matchesTenant = (row: any) => !targetSchoolId || !row?.sekolah_id || row.sekolah_id === targetSchoolId;
+
+      const uniqueKls = siswaData
+        ? (Array.from(
+            new Set(
+              siswaData
+                .filter((s: any) => matchesTenant(s) && !isCrossTenantMapelOrKelas('', s.kelas, targetSchoolId))
+                .map((s: any) => s.kelas)
+                .filter(Boolean)
+            )
+          ) as string[]).sort()
+        : [];
+      setKelasList(uniqueKls);
+
       if (docError) console.error('Error fetching bank_dokumen:', docError);
-      if (docs) setDokumenList(docs as BankDokumen[]);
-
-      if (teacherError) console.error('Error fetching data_guru:', teacherError);
-      if (teachers) setTeachersList(teachers as DataGuru[]);
-
-      const validGm = ((gm as GuruMapel[]) || []).filter((g: any) => !isInvalidMapel(g.nama_mapel || g.mata_pelajaran));
-      setGuruMapelList(validGm);
-
-      const validJadwal = (jadwalData || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
-      setJadwalList(validJadwal);
-
-      const validMapel = (mapelData || []).filter((m: any) => !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel));
-      setDataMapelList(validMapel);
-
-      if (siswaData) {
-        const uniqueKls = Array.from(new Set(siswaData.map((s: any) => s.kelas).filter(Boolean))) as string[];
-        setKelasList(uniqueKls.sort());
+      if (docs) {
+        setDokumenList(
+          (docs as BankDokumen[]).filter(
+            (d: any) => matchesTenant(d) && !isCrossTenantMapelOrKelas(d.mapel, d.kelas, targetSchoolId, uniqueKls)
+          )
+        );
       }
 
+      if (teacherError) console.error('Error fetching data_guru:', teacherError);
+      if (teachers) {
+        setTeachersList((teachers as DataGuru[]).filter(matchesTenant));
+      }
+
+      const validGm = ((gm as GuruMapel[]) || []).filter(
+        (g: any) =>
+          matchesTenant(g) &&
+          !isInvalidMapel(g.nama_mapel || g.mata_pelajaran) &&
+          !isCrossTenantMapelOrKelas(g.nama_mapel || g.mata_pelajaran, g.kelas, targetSchoolId, uniqueKls)
+      );
+      setGuruMapelList(validGm);
+
+      const validJadwal = (jadwalData || []).filter(
+        (j: any) =>
+          matchesTenant(j) &&
+          !isInvalidMapel(j.mata_pelajaran || j.mapel) &&
+          !isCrossTenantMapelOrKelas(j.mata_pelajaran || j.mapel, j.kelas, targetSchoolId, uniqueKls)
+      );
+      setJadwalList(validJadwal);
+
+      const validMapel = (mapelData || []).filter(
+        (m: any) =>
+          matchesTenant(m) &&
+          !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel) &&
+          !isCrossTenantMapelOrKelas(m.nama_mata_pelajaran || m.nama_mapel, '', targetSchoolId, uniqueKls)
+      );
+      setDataMapelList(validMapel);
+
       if (syaratErr) console.error('Error fetching syarat_perangkat_pembelajaran:', syaratErr);
-      if (syaratData) setSyaratList(syaratData as SyaratPerangkatPembelajaranRow[]);
+      if (syaratData) {
+        setSyaratList((syaratData as SyaratPerangkatPembelajaranRow[]).filter(matchesTenant));
+      }
     } catch (err) {
       console.error('loadAllData exception:', err);
     } finally {
@@ -451,7 +606,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
         wajib: syaratWajib,
         urutan: Number(syaratUrutan) || 1,
         deskripsi: syaratDeskripsi.trim() || null,
-        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001'
+        sekolah_id: effectiveSekolahId || NIZAMUDIN_SEKOLAH_ID
       };
 
       if (editingSyarat) {
@@ -581,6 +736,18 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
       return;
     }
 
+    if (!isAdmin && availableMapels.length > 0 && selectedMapel.trim()) {
+      const isAssignedMapel = availableMapels.some(m => isMapelMatch(m, selectedMapel));
+      if (!isAssignedMapel) {
+        Swal.fire(
+          'Mata Pelajaran Tidak Sesuai',
+          `Mata pelajaran "${selectedMapel}" tidak termasuk dalam penugasan mengajar Anda (${availableMapels.join(', ')}).`,
+          'warning'
+        );
+        return;
+      }
+    }
+
     // R2: Batasi pengunggahan perangkat pembelajaran per mata pelajaran hanya satu kali untuk kelas paralel pada tingkat yang sama
     const targetTingkat = extractTingkat(selectedKelas);
     const normalizedMapel = (selectedMapel || '').trim().toLowerCase();
@@ -604,7 +771,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
 
       // Mapel yang sama
       const dMapel = (d.mapel || '').trim().toLowerCase();
-      const isSameMapel = !normalizedMapel || !dMapel || dMapel === normalizedMapel || (d.judul || '').toLowerCase().includes(normalizedMapel);
+      const isSameMapel = !normalizedMapel || !dMapel || isMapelMatch(dMapel, normalizedMapel) || (d.judul || '').toLowerCase().includes(normalizedMapel);
       if (!isSameMapel) return false;
 
       // Tingkat kelas paralel yang sama
@@ -650,7 +817,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
         catatan_admin: '',
         mapel: selectedMapel || null,
         kelas: selectedKelas || null,
-        sekolah_id: user?.sekolah_id || null
+        sekolah_id: effectiveSekolahId || user?.sekolah_id || null
       };
 
       const { error } = await supabase.from('bank_dokumen').insert([newDokumen]);
@@ -693,7 +860,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
     // 1. Exact match first
     const exact = teacherDocs.find(d => {
       if (mapelName && d.mapel) {
-        if (d.mapel.trim().toLowerCase() !== mapelName.trim().toLowerCase()) {
+        if (!isMapelMatch(mapelName, d.mapel)) {
           if (!d.judul || !d.judul.toLowerCase().includes(mapelName.toLowerCase())) {
             return false;
           }
@@ -725,7 +892,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
       if (targetTingkat) {
         return teacherDocs.find(d => {
           if (mapelName && d.mapel) {
-            if (d.mapel.trim().toLowerCase() !== mapelName.trim().toLowerCase()) {
+            if (!isMapelMatch(mapelName, d.mapel)) {
               if (!d.judul || !d.judul.toLowerCase().includes(mapelName.toLowerCase())) {
                 return false;
               }
@@ -752,35 +919,84 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
   // Subjects assigned to the currently logged in teacher
   const myTeacherSubjects = useMemo(() => {
     const currentTeacher = teachersList.find(t =>
-      isTeacherEntityMatch(t, user?.nama, user?.nip, user?.id)
+      isTeacherEntityMatch(t, user?.nama, user?.nip || user?.username, user?.id, effectiveSekolahId)
     ) || {
       nama_guru: user?.nama,
-      nip: user?.nip,
+      nip: user?.nip || user?.username,
       user_id: user?.id,
-      mata_pelajaran: user?.mata_pelajaran
+      mata_pelajaran: user?.mata_pelajaran,
+      sekolah_id: effectiveSekolahId
     };
 
-    return resolveTeacherSubjects(currentTeacher, jadwalList, dataMapelList, guruMapelList);
-  }, [teachersList, jadwalList, dataMapelList, guruMapelList, user]);
+    return resolveTeacherSubjects(currentTeacher, jadwalList, dataMapelList, guruMapelList, kelasList);
+  }, [teachersList, jadwalList, dataMapelList, guruMapelList, kelasList, user, effectiveSekolahId]);
 
   const availableMapels = useMemo(() => {
     const set = new Set<string>();
-    myTeacherSubjects.forEach(s => {
-      if (s.nama_mapel && !isInvalidMapel(s.nama_mapel)) set.add(s.nama_mapel);
-    });
+    if (isAdmin) {
+      dataMapelList.forEach(m => {
+        const raw = m.nama_mata_pelajaran || m.nama_mapel || '';
+        const canon = canonicalizeSubjectName(raw);
+        if (canon && !isInvalidMapel(canon) && !isCrossTenantMapelOrKelas(raw, '', effectiveSekolahId, kelasList)) {
+          set.add(canon);
+        }
+      });
+      teachersList.forEach(t => {
+        resolveTeacherSubjects(t, jadwalList, dataMapelList, guruMapelList, kelasList).forEach(s => {
+          if (s.nama_mapel && !isInvalidMapel(s.nama_mapel)) set.add(s.nama_mapel);
+        });
+      });
+    } else {
+      myTeacherSubjects.forEach(s => {
+        if (s.nama_mapel && !isInvalidMapel(s.nama_mapel)) set.add(s.nama_mapel);
+      });
+    }
     return Array.from(set);
-  }, [myTeacherSubjects]);
+  }, [isAdmin, myTeacherSubjects, dataMapelList, teachersList, jadwalList, guruMapelList, kelasList, effectiveSekolahId]);
 
   const allKelasOptions = useMemo(() => {
     const set = new Set<string>();
-    myTeacherSubjects.forEach(s => {
-      if (s.kelas) set.add(s.kelas);
-    });
-    kelasList.forEach(k => {
-      if (k) set.add(k);
-    });
+    if (!isAdmin) {
+      const matchingSubjects = selectedMapel.trim()
+        ? myTeacherSubjects.filter(s => isMapelMatch(s.nama_mapel, selectedMapel))
+        : myTeacherSubjects;
+      matchingSubjects.forEach(s => {
+        if (s.kelas) set.add(s.kelas);
+      });
+      if (set.size === 0) {
+        myTeacherSubjects.forEach(s => {
+          if (s.kelas) set.add(s.kelas);
+        });
+      }
+      if (set.size === 0) {
+        kelasList.forEach(k => {
+          if (k) set.add(k);
+        });
+      }
+    } else {
+      kelasList.forEach(k => {
+        if (k) set.add(k);
+      });
+    }
     return Array.from(set).sort();
-  }, [myTeacherSubjects, kelasList]);
+  }, [isAdmin, myTeacherSubjects, selectedMapel, kelasList]);
+
+  // Auto-select default mapel & kelas for teacher when switching to upload tab
+  useEffect(() => {
+    if (!isAdmin && activeTab === 'upload') {
+      if (!selectedMapel && availableMapels.length > 0) {
+        setSelectedMapel(availableMapels[0]);
+      }
+      if (!selectedKelas && myTeacherSubjects.length > 0) {
+        const targetSub = selectedMapel
+          ? myTeacherSubjects.find(s => isMapelMatch(s.nama_mapel, selectedMapel) && s.kelas)
+          : myTeacherSubjects.find(s => s.kelas);
+        if (targetSub?.kelas) {
+          setSelectedKelas(targetSub.kelas);
+        }
+      }
+    }
+  }, [isAdmin, activeTab, availableMapels, myTeacherSubjects, selectedMapel, selectedKelas]);
 
   // Structured Print Table Rows for Teacher
   const teacherPrintRows = useMemo(() => {
@@ -827,13 +1043,11 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
 
   // Teacher Matrix Calculations
   const teacherMatrixData = teachersList.map(teacher => {
-    const teacherDocs = dokumenList.filter(
-      d => (d.nama_guru || '').trim().toLowerCase() === (teacher.nama_guru || '').trim().toLowerCase()
+    const teacherDocs = dokumenList.filter(d =>
+      isTeacherEntityMatch(teacher, d.nama_guru, undefined, undefined, d.sekolah_id)
     );
 
-    const teacherMapel = guruMapelList.filter(
-      gm => (gm.nama_guru || '').trim().toLowerCase() === (teacher.nama_guru || '').trim().toLowerCase()
-    );
+    const teacherMapel = resolveTeacherSubjects(teacher, jadwalList, dataMapelList, guruMapelList, kelasList);
 
     const docStatusMap: Record<string, BankDokumen | undefined> = {};
     let completedCount = 0;
@@ -910,11 +1124,11 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
 
     teachersList.forEach(teacher => {
       // Resolve teacher's subjects across jadwal, guru_mapel, and data_guru
-      const subjects = resolveTeacherSubjects(teacher, jadwalList, dataMapelList, guruMapelList);
+      const subjects = resolveTeacherSubjects(teacher, jadwalList, dataMapelList, guruMapelList, kelasList);
 
       // Teacher's uploaded docs (tokenized match)
       const teacherDocs = dokumenList.filter(d =>
-        isTeacherEntityMatch(teacher, d.nama_guru)
+        isTeacherEntityMatch(teacher, d.nama_guru, undefined, undefined, d.sekolah_id)
       );
 
       subjects.forEach(sub => {
@@ -1011,7 +1225,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
     });
 
     return list;
-  }, [teachersList, guruMapelList, jadwalList, dataMapelList, dokumenList, syaratList]);
+  }, [teachersList, guruMapelList, jadwalList, dataMapelList, kelasList, dokumenList, syaratList]);
 
   // Filtered Teacher-Subject Minimalist Cards
   const filteredTeacherSubjectCards = useMemo(() => {
@@ -1032,6 +1246,14 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
       return true;
     });
   }, [teacherSubjectCards, search, statusFilter]);
+
+  // Group filtered subject cards per teacher (only teachers that have mapel)
+  const teacherGroups: { teacher: DataGuru; cards: typeof filteredTeacherSubjectCards }[] = [];
+  filteredTeacherSubjectCards.forEach(card => {
+    const g = teacherGroups.find(x => x.teacher.id === card.teacher.id);
+    if (g) g.cards.push(card);
+    else teacherGroups.push({ teacher: card.teacher, cards: [card] });
+  });
 
   // KPI Statistics
   const totalGuru = teachersList.length;
@@ -1252,8 +1474,35 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
                 Tidak ada data guru atau mata pelajaran yang cocok dengan filter atau pencarian.
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
-                {filteredTeacherSubjectCards.map((card) => {
+              <div className="space-y-3">
+                {teacherGroups.map((g) => {
+                  const tOpen = expandedTeacherId === g.teacher.id;
+                  const doneCount = g.cards.filter(c => c.isComplete).length;
+                  return (
+                    <div key={g.teacher.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/90 dark:border-gray-700/80 p-4 shadow-sm">
+                      <div
+                        onClick={() => setExpandedTeacherId(tOpen ? null : g.teacher.id)}
+                        className="flex items-center justify-between gap-2.5 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/40">
+                            {(g.teacher.nama_guru || 'G').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">{g.teacher.nama_guru}</h4>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400">{g.cards.length} Mapel/Kelas</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${doneCount === g.cards.length ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'}`}>
+                            {doneCount}/{g.cards.length} Lengkap
+                          </span>
+                          <i className={`fa-solid fa-chevron-down text-[9px] text-gray-400 transition-transform duration-200 ${tOpen ? 'rotate-180' : ''}`}></i>
+                        </div>
+                      </div>
+                      {tOpen && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/80 grid grid-cols-1 md:grid-cols-2 gap-3 fade-in">
+                {g.cards.map((card) => {
                   const isExpanded = expandedCardKey === card.cardKey;
                   return (
                     <div
@@ -1266,15 +1515,15 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
                         <div className="flex items-start justify-between gap-2.5">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/40">
-                              {(card.teacher.nama_guru || 'G').charAt(0).toUpperCase()}
+                              {(card.subject.nama_mapel || 'M').charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">
                               <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
-                                {card.teacher.nama_guru}
+                                {card.subject.nama_mapel}
                               </h4>
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/80 px-2 py-0.5 rounded-md truncate">
-                                  {card.subject.nama_mapel} {card.subject.kelas ? `• Kelas ${card.subject.kelas}` : ''}
+                                  {card.subject.kelas ? `Kelas ${card.subject.kelas}` : 'Semua Kelas'}
                                 </span>
                               </div>
                             </div>
@@ -1372,6 +1621,11 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
                           </div>
                         )}
                       </div>
+                    </div>
+                  );
+                })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
