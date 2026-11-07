@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { formatTimestampWita } from '@/lib/wita';
+import {
+  createFullSystemBackupZip,
+  restoreFullSystemBackupZip
+} from '@/lib/backupEngine';
 
 export default function AdminBackupView({ user }: { user: any }) {
   const [tahun, setTahun] = useState(new Date().getFullYear().toString());
   const [riwayat, setRiwayat] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const webhookUrl = process.env.NEXT_PUBLIC_SPREADSHEET_WEBHOOK_URL;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchRiwayat();
@@ -30,164 +34,118 @@ export default function AdminBackupView({ user }: { user: any }) {
 
   const handleBackup = async () => {
     if (!tahun) return Swal.fire('Error', 'Tahun harus diisi', 'error');
-    if (!webhookUrl) return Swal.fire('Error', 'Webhook URL belum dikonfigurasi di .env.local', 'error');
-    
-    // Confirm backup
-    const confirm = await Swal.fire({
-      title: 'Yakin Backup & Kosongkan Data?',
-      text: "Data presensi dan jurnal di database akan dikirim ke Spreadsheet dan dihapus dari sistem ini.",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#4f46e5',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Ya, Backup Sekarang!'
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    setLoading(true);
-    Swal.fire({ title: 'Memproses Backup...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-    try {
-      // 1. Fetch data scoped by user.sekolah_id
-      // Fetch helpers
-      const fetchAllData = async (table: string) => {
-        let allData: any[] = [];
-        let from = 0;
-        const limit = 1000;
-        while (true) {
-          let q = supabase.from(table).select("*").range(from, from + limit - 1);
-          if (user?.sekolah_id) q = q.eq("sekolah_id", user.sekolah_id);
-          const { data } = await q;
-          if (!data || data.length === 0) break;
-          allData = allData.concat(data);
-          if (data.length < limit) break;
-          from += limit;
-        }
-        return allData;
-      };
-      
-      const presensi = await fetchAllData("presensi_guru");
-      const jurnal = await fetchAllData("jurnal_pembelajaran");
-      
-
-      if ((!presensi || presensi.length === 0) && (!jurnal || jurnal.length === 0)) {
-        Swal.fire('Info', 'Tidak ada data presensi atau jurnal untuk dibackup.', 'info');
-        setLoading(false);
-        return;
-      }
-
-      // 2. Post to Webhook (Presensi)
-      if (presensi && presensi.length > 0) {
-        const resP = await fetch(webhookUrl, {
-          method: 'POST',
-          body: JSON.stringify({ table: 'presensi_guru', data: presensi })
-        });
-        const resPJson = await resP.json();
-        if (!resPJson.success) throw new Error("Gagal mengirim presensi ke spreadsheet");
-      }
-
-      // 3. Post to Webhook (Jurnal)
-      if (jurnal && jurnal.length > 0) {
-        const resJ = await fetch(webhookUrl, {
-          method: 'POST',
-          body: JSON.stringify({ table: 'jurnal_pembelajaran', data: jurnal })
-        });
-        const resJJson = await resJ.json();
-        if (!resJJson.success) throw new Error("Gagal mengirim jurnal ke spreadsheet");
-      }
-
-      // 4. Hapus data dari Supabase by ID in chunks to bypass PostgREST 1000-row limits
-      const deleteInChunks = async (table: string, items: any[]) => {
-        const ids = items.map(item => item.id);
-        const chunkSize = 200;
-        for (let i = 0; i < ids.length; i += chunkSize) {
-          const chunk = ids.slice(i, i + chunkSize);
-          await supabase.from(table).delete().in("id", chunk);
-        }
-      };
-      
-      await deleteInChunks("presensi_guru", presensi);
-      await deleteInChunks("jurnal_pembelajaran", jurnal);
-
-      // 5. Catat riwayat backup sesuai skema riwayat_backup
-      const newBackup = {
-        id: crypto.randomUUID(),
-        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
-        timestamp: new Date().toISOString(),
-        tahun_backup: tahun,
-        link_file: webhookUrl || '',
-        status: 'Sukses',
-        keterangan: `Backup transaksi tahun ${tahun} oleh ${user?.nama || 'Admin'} (${user?.role || 'Admin'})`
-      };
-      const { error: insertErr } = await supabase.from('riwayat_backup').insert([newBackup]);
-      if (insertErr) {
-        console.error('Catat riwayat backup gagal:', insertErr);
-      }
-
-      Swal.fire('Berhasil', 'Backup data berhasil dilakukan dan database dikosongkan.', 'success');
-      fetchRiwayat();
-    } catch (error: any) {
-      Swal.fire('Gagal', error.message || 'Terjadi kesalahan saat membackup data.', 'error');
-    }
-    setLoading(false);
-  };
-
-  const handleRestore = async () => {
-    if (!webhookUrl) return Swal.fire('Error', 'Webhook URL belum dikonfigurasi di .env.local', 'error');
 
     const confirm = await Swal.fire({
-      title: 'Tarik Data Kembali?',
-      text: "Data dari Spreadsheet akan dimasukkan kembali ke Supabase.",
+      title: 'Cadangkan Seluruh Data Sistem?',
+      text: 'Sistem akan mengekspor seluruh 33 entitas database dan aset foto ke dalam berkas ZIP mandiri tanpa menghapus data database.',
       icon: 'question',
       showCancelButton: true,
-      confirmButtonText: 'Ya, Tarik Data!'
+      confirmButtonColor: '#4f46e5',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Buat Berkas ZIP',
+      cancelButtonText: 'Batal'
     });
 
     if (!confirm.isConfirmed) return;
 
     setLoading(true);
-    Swal.fire({ title: 'Menarik Data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    Swal.fire({
+      title: 'Membuat Berkas Cadangan ZIP...',
+      html: '<div id="swal-backup-progress" class="text-xs text-gray-600 dark:text-gray-300 mt-2">Menghubungi database Supabase...</div>',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
 
     try {
-      const res = await fetch(webhookUrl);
-      const json = await res.json();
+      const { blob, fileName, manifest } = await createFullSystemBackupZip(
+        user,
+        tahun,
+        (step, current, total) => {
+          const el = document.getElementById('swal-backup-progress');
+          if (el) {
+            el.innerText = `${step} (${current}/${total})`;
+          }
+        }
+      );
 
-      if (!json.success || !json.data) throw new Error("Gagal menarik data dari Spreadsheet");
+      // Trigger browser download
+      const blobUrl = URL.createObjectURL(blob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(blobUrl);
 
-      const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
-
-      const presensiToInsert = json.data.filter((r: any) => r.Tabel === 'presensi_guru').map((r: any) => {
-        const { Tabel: _, ...rest } = r;
-        return {
-          ...rest,
-          sekolah_id: rest.sekolah_id || targetSekolahId
-        };
-      });
-
-      const jurnalToInsert = json.data.filter((r: any) => r.Tabel === 'jurnal_pembelajaran').map((r: any) => {
-        const { Tabel: _, ...rest } = r;
-        return {
-          ...rest,
-          sekolah_id: rest.sekolah_id || targetSekolahId
-        };
-      });
-
-      let count = 0;
-      if (presensiToInsert.length > 0) {
-        await supabase.from('presensi_guru').upsert(presensiToInsert, { ignoreDuplicates: true });
-        count += presensiToInsert.length;
-      }
-      if (jurnalToInsert.length > 0) {
-        await supabase.from('jurnal_pembelajaran').upsert(jurnalToInsert, { ignoreDuplicates: true });
-        count += jurnalToInsert.length;
-      }
-
-      Swal.fire('Berhasil', `Berhasil mengembalikan ${count} baris data ke database.`, 'success');
+      Swal.fire(
+        'Berhasil',
+        `Berkas cadangan <b>${fileName}</b> berhasil dibuat dan diunduh (${manifest.totalEntities} entitas, ${manifest.assetCount} aset foto).`,
+        'success'
+      );
+      fetchRiwayat();
     } catch (error: any) {
-      Swal.fire('Gagal', error.message || 'Terjadi kesalahan saat restore data.', 'error');
+      console.error('[AdminBackupView] Backup error:', error);
+      Swal.fire('Gagal', error.message || 'Terjadi kesalahan saat membuat cadangan ZIP.', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const handleTriggerRestore = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const confirm = await Swal.fire({
+      title: 'Pulihkan Data dari Berkas ZIP?',
+      html: `Anda akan memulihkan data dari berkas: <b>${file.name}</b>.<br><span class="text-xs text-amber-600 dark:text-amber-400">Proses ini akan memperbarui dan menyinkronkan data database berdasarkan urutan relasional (Level 0 - Level 5).</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Mulai Restore',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setLoading(true);
+    Swal.fire({
+      title: 'Memulihkan Data Sistem...',
+      html: '<div id="swal-restore-progress" class="text-xs text-gray-600 dark:text-gray-300 mt-2">Membaca arsip ZIP...</div>',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      const { restoredTableCount, restoredRowCount } = await restoreFullSystemBackupZip(
+        file,
+        user,
+        (step, current, total) => {
+          const el = document.getElementById('swal-restore-progress');
+          if (el) {
+            el.innerText = `${step} (${current}/${total})`;
+          }
+        }
+      );
+
+      Swal.fire(
+        'Pemulihan Selesai',
+        `Berhasil memulihkan ${restoredRowCount} baris data dari ${restoredTableCount} tabel.`,
+        'success'
+      );
+      fetchRiwayat();
+    } catch (err: any) {
+      console.error('[AdminBackupView] Restore error:', err);
+      Swal.fire('Gagal Restore', err.message || 'Terjadi kesalahan saat memulihkan data dari ZIP.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -196,78 +154,137 @@ export default function AdminBackupView({ user }: { user: any }) {
         <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <i className="fa-solid fa-hard-drive text-indigo-500 dark:text-indigo-400"></i> Akses Data &amp; Backup
         </h2>
-        <button type="button" onClick={fetchRiwayat} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center">
+        <button
+          type="button"
+          onClick={fetchRiwayat}
+          className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
+        >
           <i className="fa-solid fa-rotate-right"></i>
         </button>
       </div>
-            
-            <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 text-center">
-                <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">Lakukan Backup & Restore</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">Backup akan memindahkan data transaksi (presensi, jurnal) ke Spreadsheet dan <b>mengosongkan database Supabase</b> agar performa tetap cepat. Gunakan Restore untuk menarik kembali data tersebut ke Supabase.</p>
-                <div className="flex flex-col sm:flex-row justify-center gap-2 max-w-sm mx-auto">
-                    <input type="number" value={tahun} onChange={e => setTahun(e.target.value)} className="w-full sm:w-24 px-3 py-2.5 text-sm rounded-xl input-premium text-center text-gray-900 dark:text-white bg-white dark:bg-gray-800" placeholder="Tahun" />
-                    <div className="flex gap-2 flex-grow">
-                      <button type="button" onClick={handleBackup} disabled={loading} className="btn-click flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50">
-                        {loading ? 'Proses...' : <><i className="fa-solid fa-cloud-arrow-up"></i> Backup</>}
-                      </button>
-                      <button type="button" onClick={handleRestore} disabled={loading} className="btn-click flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50">
-                        {loading ? 'Proses...' : <><i className="fa-solid fa-cloud-arrow-down"></i> Restore</>}
-                      </button>
-                    </div>
-                </div>
-            </div>
 
-            <div>
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
-                  <i className="fa-solid fa-clock-rotate-left text-indigo-500 dark:text-indigo-400"></i> Riwayat Backup
-                </h3>
-                <div id="list-backup-area" className="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto custom-scroll pr-1">
-                    {riwayat.length === 0 ? (
-                      <div className="text-center py-5 text-gray-500 text-xs italic dark:text-gray-400">Belum ada riwayat backup.</div>
-                    ) : (
-                      riwayat.map(item => (
-                        <div key={item.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-gray-900 dark:text-white">
-                                  Backup {item.tahun_backup || item.periode || 'Data'}
-                                </span>
-                                {item.status && (
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                    item.status === 'Sukses' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                                  }`}>
-                                    {item.status}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-xs text-gray-600 dark:text-gray-300">
-                                {item.keterangan || (item.admin ? `Oleh: ${item.admin}` : 'Backup Transaksi')}
-                              </div>
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 text-right shrink-0">
-                              {formatTimestampWita(item.timestamp)}
-                            </div>
-                          </div>
-                          {item.link_file && item.link_file !== '-' && (
-                            <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
-                              <a 
-                                href={item.link_file} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-                              >
-                                <i className="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> Tautan File / Webhook
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                </div>
+      <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 text-center">
+        <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">
+          Lakukan Backup &amp; Restore
+        </h3>
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+          Fitur pencadangan mengemas seluruh 33 entitas database dan aset foto ke dalam berkas ZIP mandiri tanpa menghapus data database. Fitur pemulihan membaca kembali berkas ZIP untuk sinkronisasi database berdasarkan urutan topologis relasional (Level 0 - Level 5).
+        </p>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelected}
+          accept=".zip"
+          className="hidden"
+        />
+        <div className="flex flex-col sm:flex-row justify-center gap-2 max-w-sm mx-auto">
+          <input
+            type="number"
+            value={tahun}
+            onChange={(e) => setTahun(e.target.value)}
+            className="w-full sm:w-24 px-3 py-2.5 text-sm rounded-xl input-premium text-center text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+            placeholder="Tahun"
+          />
+          <div className="flex gap-2 flex-grow">
+            <button
+              type="button"
+              onClick={handleBackup}
+              disabled={loading}
+              className="btn-click flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+            >
+              {loading ? (
+                'Proses...'
+              ) : (
+                <>
+                  <i className="fa-solid fa-file-zipper"></i> Unduh Cadangan ZIP
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleTriggerRestore}
+              disabled={loading}
+              className="btn-click flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+            >
+              {loading ? (
+                'Proses...'
+              ) : (
+                <>
+                  <i className="fa-solid fa-upload"></i> Pulihkan dari ZIP
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
+          <i className="fa-solid fa-clock-rotate-left text-indigo-500 dark:text-indigo-400"></i> Riwayat Backup
+        </h3>
+        <div
+          id="list-backup-area"
+          className="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto custom-scroll pr-1"
+        >
+          {riwayat.length === 0 ? (
+            <div className="text-center py-5 text-gray-500 text-xs italic dark:text-gray-400">
+              Belum ada riwayat backup.
             </div>
+          ) : (
+            riwayat.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-900 dark:text-white">
+                        Backup {item.tahun_backup || item.periode || 'Data'}
+                      </span>
+                      {item.status && (
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            item.status === 'Sukses'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-600 dark:text-gray-300">
+                      {item.keterangan || (item.admin ? `Oleh: ${item.admin}` : 'Backup Transaksi')}
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-right shrink-0">
+                    {formatTimestampWita(item.timestamp)}
+                  </div>
+                </div>
+                {item.link_file && item.link_file !== '-' && (
+                  <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
+                    {item.link_file.startsWith('http://') || item.link_file.startsWith('https://') ? (
+                      <a
+                        href={item.link_file}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                      >
+                        <i className="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> Tautan File / Webhook
+                      </a>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                        <i className="fa-solid fa-file-zipper text-[9px] text-indigo-500"></i> {item.link_file}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 }
-
-

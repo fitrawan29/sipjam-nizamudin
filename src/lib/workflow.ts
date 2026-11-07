@@ -335,7 +335,7 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
     // 3. Match first name (e.g. "Ade" matches "Ade Fitrawan Ibrahim", "Riski" matches "Riski Candra Mamangkai")
     // Do NOT match middle/last name tokens if the first name is different (e.g. "assyfa" must NOT match "fitra")
     if (firstName && firstName.length >= 2) {
-      if (firstName === jNorm || firstName.startsWith(jNorm) || jNorm.startsWith(firstName)) {
+      if (firstName === jNorm || (!jNorm.includes(' ') && firstName.startsWith(jNorm)) || (!namaNorm.includes(' ') && jNorm.startsWith(firstName + ' '))) {
         return true;
       }
     }
@@ -463,7 +463,7 @@ export function connectGuruMapelWithJadwal(
     if (userNorm && userNorm === jNorm) return true;
     if (namaNorm && namaNorm === jNorm) return true;
     if (firstName && firstName.length >= 2) {
-      if (firstName === jNorm || firstName.startsWith(jNorm) || jNorm.startsWith(firstName)) {
+      if (firstName === jNorm || (!jNorm.includes(' ') && firstName.startsWith(jNorm)) || (!namaNorm.includes(' ') && jNorm.startsWith(firstName + ' '))) {
         return true;
       }
     }
@@ -492,6 +492,7 @@ export function connectGuruMapelWithJadwal(
       const mName = (m.nama_mata_pelajaran || m.nama_mapel || '').trim();
       if (!mName) return false;
       if (mName.toLowerCase() === canonicalCandidate.toLowerCase()) return true;
+      if (mName.includes('_') && kls && mName.split('_')[0].trim().toLowerCase() !== kls.toLowerCase()) return false;
       if (mName.toLowerCase() === rawM.toLowerCase()) {
         const mKelas = (m.kategori || m.kelompok || '').trim();
         if (!mKelas || !kls || mKelas.toLowerCase() === kls.toLowerCase()) return true;

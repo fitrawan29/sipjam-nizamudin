@@ -597,6 +597,17 @@ async function runAllTests() {
     assert.ok(adminKelasCode.includes('bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500'), 'AdminKelasView must render animated class gradient progress bar');
   });
 
+  await test('6.3: buildMapelChecklistHtml and relational checks select(*) from data_mapel so schemas without nama_mapel column never fail with 42703', () => {
+    assert.ok(
+      adminDataCode.includes("supabase.from('data_mapel').select('*').order('nama_mata_pelajaran')"),
+      'buildMapelChecklistHtml must query data_mapel with select(*) to avoid 42703 on schemas without nama_mapel'
+    );
+    assert.ok(
+      !adminDataCode.includes("select('nama_mata_pelajaran, nama_mapel')"),
+      'AdminDataView must not select non-portable nama_mapel column from data_mapel'
+    );
+  });
+
   // Summary Output
   console.log(`\n${BOLD}========================================================================${RESET}`);
   console.log(`${BOLD}  TEST SUITE RESULTS: ${passedTests} / ${totalTests} PASSED${RESET}`);

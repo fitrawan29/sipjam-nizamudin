@@ -59,12 +59,15 @@ const splitMapel = (s: any): string[] => String(s || '').split(',').map(x => x.t
 const escAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 // Checklist mapel guru: sumber data_mapel, mapel yang dipegang guru lain disembunyikan.
-async function buildMapelChecklistHtml(sekolahId: string | undefined, guruList: any[], selfId: string | undefined, selected: string): Promise<string> {
-  let q = supabase.from('data_mapel').select('nama_mata_pelajaran, nama_mapel').order('nama_mata_pelajaran');
+export async function buildMapelChecklistHtml(sekolahId: string | undefined, guruList: any[], selfId: string | undefined, selected: string): Promise<string> {
+  let q = supabase.from('data_mapel').select('*').order('nama_mata_pelajaran');
   if (sekolahId) q = q.eq('sekolah_id', sekolahId);
-  const { data } = await q;
+  let { data } = await q;
+  if (!data?.length && sekolahId) data = getStorageCache('Data_Mapel', sekolahId);
+  const isCrossSchool = (n: string) => (sekolahId === 'a0000000-0000-0000-0000-000000000001' && /^(X|XI|XII)\s+Merdeka\s+[A-Z]\b/i.test(n)) || (sekolahId === 'fd7f077e-5fc6-4f3b-b375-21c6be89b492' && /^(X|XI|XII)\s+Merdeka_/i.test(n));
+  data = (data || []).filter((m: any) => (!sekolahId || !m?.sekolah_id || m.sekolah_id === sekolahId) && !isCrossSchool(String(m?.nama_mata_pelajaran || m?.nama_mapel || '').trim()));
   const taken = new Set(guruList.filter(g => g.id !== selfId).flatMap(g => splitMapel(g.mata_pelajaran)).map(x => x.toLowerCase()));
-  const mine = splitMapel(selected);
+  const mine = splitMapel(selected).filter(n => !isCrossSchool(n));
   const mineSet = new Set(mine.map(x => x.toLowerCase()));
   const names = new Map<string, string>();
   for (const m of data || []) {
@@ -1845,6 +1848,23 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           }
           setLoading(false);
           showToast('Berhasil', 'Data guru berhasil diperbarui!', 'success');
+          if (item.id && formValues.mata_pelajaran) {
+            void (async () => {
+              try {
+                const allowed = splitMapel(formValues.mata_pelajaran).map(x => x.toLowerCase());
+                let gmQ = supabase.from('guru_mapel').select('id, nama_mapel, mapel_singkat').eq('guru_id', item.id);
+                if (user?.sekolah_id) gmQ = gmQ.eq('sekolah_id', user.sekolah_id);
+                const { data: gmRows } = await gmQ;
+                for (const r of gmRows || []) {
+                  const nm = String(r.nama_mapel || r.mapel_singkat || '').trim().toLowerCase();
+                  const core = nm.includes('_') ? (nm.split('_').pop() || '').trim() : nm;
+                  if (nm && !allowed.some(a => a === nm || a === core || a.endsWith('_' + core))) {
+                    await supabase.from('guru_mapel').delete().eq('id', r.id);
+                  }
+                }
+              } catch (_) {}
+            })();
+          }
           loadData();
         }
       }
@@ -1887,8 +1907,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             return null;
           }
           return {
-            kode_mapel,
-            nama_mapel,
+            ...('kode_mapel' in item ? { kode_mapel } : {}),
+            ...('nama_mapel' in item ? { nama_mapel } : {}),
             nama_mata_pelajaran: nama_mapel,
             kelompok,
             kategori: kelompok

@@ -599,7 +599,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
       }
 
       if (mapels.length === 0) {
-        let dmQuery = supabase.from('data_mapel').select('nama_mata_pelajaran, nama_mapel, kategori, kelompok');
+        let dmQuery = supabase.from('data_mapel').select('*');
         if (sekolahId) dmQuery = dmQuery.eq('sekolah_id', sekolahId);
         const { data: dmData } = await dmQuery;
         if (dmData && dmData.length > 0) {

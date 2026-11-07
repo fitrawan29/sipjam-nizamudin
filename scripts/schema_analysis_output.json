@@ -1,0 +1,992 @@
+{
+  "sekolah": {
+    "tableName": "sekolah",
+    "pk": "id",
+    "hasSekolahId": false,
+    "sekolahIdNullable": true,
+    "fks": [],
+    "cols": [
+      "id",
+      "nama",
+      "npsn",
+      "alamat",
+      "kota_kabupaten",
+      "provinsi",
+      "telepon",
+      "email",
+      "website",
+      "logo_url",
+      "logo_kiri_url",
+      "logo_kanan_url",
+      "nama_kepala_sekolah",
+      "nip_kepala_sekolah",
+      "status",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "users": {
+    "tableName": "users",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": true,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "username",
+      "password",
+      "nama",
+      "role",
+      "sekolah_id",
+      "session_token",
+      "avatar",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "data_guru": {
+    "tableName": "data_guru",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "user_id",
+        "targetTable": "users",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "user_id",
+      "nip",
+      "nama_guru",
+      "mata_pelajaran",
+      "no_hp",
+      "status",
+      "email",
+      "wajib_hadir_hanya_mengajar",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "data_mapel": {
+    "tableName": "data_mapel",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "nama_mata_pelajaran",
+      "kategori",
+      "kelompok",
+      "urutan",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "data_siswa": {
+    "tableName": "data_siswa",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "nisn",
+      "nama_siswa",
+      "kelas",
+      "gender",
+      "status",
+      "no_hp_ortu",
+      "qr_code",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "guru_mapel": {
+    "tableName": "guru_mapel",
+    "pk": "id",
+    "hasSekolahId": false,
+    "sekolahIdNullable": true,
+    "fks": [
+      {
+        "column": "guru_id",
+        "targetTable": "data_guru",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      },
+      {
+        "column": "mapel_id",
+        "targetTable": "data_mapel",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "guru_id",
+      "nip",
+      "nama_guru",
+      "mapel_id",
+      "nama_mapel",
+      "mapel_singkat",
+      "kelas",
+      "created_at"
+    ]
+  },
+  "wali_kelas": {
+    "tableName": "wali_kelas",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      },
+      {
+        "column": "guru_id",
+        "targetTable": "data_guru",
+        "targetCol": "id",
+        "onDelete": "SET NULL",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "kelas",
+      "guru_id",
+      "nama_guru",
+      "nip",
+      "tahun_ajaran",
+      "created_at"
+    ]
+  },
+  "jadwal_pelajaran": {
+    "tableName": "jadwal_pelajaran",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "user_id",
+        "targetTable": "users",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "user_id",
+      "hari",
+      "nama_guru",
+      "mata_pelajaran",
+      "kelas",
+      "jam_ke",
+      "jam_mulai",
+      "jam_selesai",
+      "created_at"
+    ]
+  },
+  "jadwal_piket": {
+    "tableName": "jadwal_piket",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "hari",
+      "daftar_guru",
+      "created_at"
+    ]
+  },
+  "penugasan_piket": {
+    "tableName": "penugasan_piket",
+    "pk": "id",
+    "hasSekolahId": false,
+    "sekolahIdNullable": true,
+    "fks": [
+      {
+        "column": "guru_id",
+        "targetTable": "data_guru",
+        "targetCol": "id",
+        "onDelete": "SET NULL",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "hari",
+      "tipe_petugas",
+      "guru_id",
+      "guru_nama",
+      "guru_nip",
+      "siswa_nama",
+      "siswa_nisn",
+      "kelas",
+      "tahun_ajaran",
+      "created_at"
+    ]
+  },
+  "piket_form_lock": {
+    "tableName": "piket_form_lock",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "tanggal",
+      "form_type",
+      "locked_by_user_id",
+      "locked_by_user_name",
+      "locked_at",
+      "expires_at"
+    ]
+  },
+  "laporan_piket": {
+    "tableName": "laporan_piket",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "user_id",
+        "targetTable": "users",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "user_id",
+      "timestamp",
+      "tanggal",
+      "guru_pelapor",
+      "rekap_absen_kelas",
+      "catatan_apel",
+      "keterangan",
+      "link_foto",
+      "status_verifikasi",
+      "kehadiran_guru_piket",
+      "catatan_admin",
+      "alasan_penolakan",
+      "created_at"
+    ]
+  },
+  "presensi_guru": {
+    "tableName": "presensi_guru",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "user_id",
+        "targetTable": "users",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "user_id",
+      "timestamp",
+      "nama_guru",
+      "tipe_absen",
+      "jenis_presensi",
+      "detail_izin",
+      "lokasi",
+      "jarak",
+      "link_bukti",
+      "status_verifikasi",
+      "keterlambatan_detik",
+      "durasi_hari",
+      "tanggal_mulai",
+      "tanggal_selesai",
+      "memerlukan_persetujuan_admin",
+      "is_auto_checkout",
+      "latitude",
+      "longitude",
+      "catatan_admin",
+      "alasan_penolakan",
+      "created_at"
+    ]
+  },
+  "jurnal_pembelajaran": {
+    "tableName": "jurnal_pembelajaran",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "user_id",
+        "targetTable": "users",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "user_id",
+      "timestamp",
+      "nama_guru",
+      "mapel",
+      "kelas",
+      "tanggal",
+      "materi",
+      "kegiatan",
+      "absensi_siswa",
+      "keterangan",
+      "refleksi",
+      "detail_absen",
+      "link_bukti_foto",
+      "status_verifikasi",
+      "catatan_khusus_siswa",
+      "pertemuan_ke",
+      "jam_ke",
+      "tujuan_pembelajaran",
+      "materi_pembelajaran",
+      "materi_kegiatan",
+      "kegiatan_pembelajaran",
+      "kehadiran_murid",
+      "catatan_refleksi",
+      "foto_kegiatan",
+      "status",
+      "kktp",
+      "konten",
+      "lokasi_kbm",
+      "lokasi",
+      "latitude",
+      "longitude",
+      "waktu_upload",
+      "catatan_admin",
+      "alasan_penolakan",
+      "created_at"
+    ]
+  },
+  "absensi": {
+    "tableName": "absensi",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "tanggal",
+      "kelas",
+      "siswa_id",
+      "nisn",
+      "nama_siswa",
+      "status",
+      "keterangan",
+      "sumber_perubahan",
+      "diubah_oleh",
+      "log_perubahan",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "presensi_siswa": {
+    "tableName": "presensi_siswa",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "siswa_id",
+        "targetTable": "data_siswa",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "siswa_id",
+      "nisn",
+      "nama_siswa",
+      "kelas",
+      "tanggal",
+      "status",
+      "jam",
+      "timestamp",
+      "device_id",
+      "created_at"
+    ]
+  },
+  "capaian_pembelajaran": {
+    "tableName": "capaian_pembelajaran",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "guru_mapel_id",
+        "targetTable": "guru_mapel",
+        "targetCol": "id",
+        "onDelete": "SET NULL",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "guru_mapel_id",
+      "nama_mapel",
+      "kelas",
+      "semester",
+      "tahun_ajaran",
+      "kode_cp",
+      "deskripsi",
+      "urutan",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "tujuan_pembelajaran": {
+    "tableName": "tujuan_pembelajaran",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      },
+      {
+        "column": "guru_id",
+        "targetTable": "data_guru",
+        "targetCol": "id",
+        "onDelete": "SET NULL",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "guru_id",
+      "nama_guru",
+      "mapel_id",
+      "nama_mapel",
+      "kelas",
+      "kode_tp",
+      "deskripsi",
+      "semester",
+      "tahun_ajaran",
+      "urutan",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "asesmen_kolom": {
+    "tableName": "asesmen_kolom",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      },
+      {
+        "column": "tp_id",
+        "targetTable": "tujuan_pembelajaran",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "tp_id",
+      "kategori",
+      "nama",
+      "bobot",
+      "urutan",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "nilai_siswa": {
+    "tableName": "nilai_siswa",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      },
+      {
+        "column": "tp_id",
+        "targetTable": "tujuan_pembelajaran",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      },
+      {
+        "column": "asesmen_id",
+        "targetTable": "asesmen_kolom",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "tp_id",
+      "asesmen_id",
+      "siswa_id",
+      "nisn",
+      "nama_siswa",
+      "kelas",
+      "mapel",
+      "nama_guru",
+      "nilai",
+      "catatan",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "kalender_pendidikan": {
+    "tableName": "kalender_pendidikan",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "tanggal",
+      "keterangan",
+      "tipe",
+      "created_at"
+    ]
+  },
+  "bank_dokumen": {
+    "tableName": "bank_dokumen",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "timestamp",
+      "nama_guru",
+      "jenis_dokumen",
+      "judul",
+      "link_file",
+      "status_verifikasi",
+      "catatan_admin",
+      "created_at"
+    ]
+  },
+  "pengaturan": {
+    "tableName": "pengaturan",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "key",
+      "value",
+      "email_tujuan_upload",
+      "aturan_kehadiran_guru",
+      "jam_pulang_jumat",
+      "guru_hanya_mengajar",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "pengumuman": {
+    "tableName": "pengumuman",
+    "pk": "id",
+    "hasSekolahId": false,
+    "sekolahIdNullable": true,
+    "fks": [],
+    "cols": [
+      "id",
+      "judul",
+      "konten",
+      "sasaran",
+      "mode",
+      "penulis_nama",
+      "penulis_role",
+      "is_pinned",
+      "lampiran_url",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "pengumuman_dibaca": {
+    "tableName": "pengumuman_dibaca",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      },
+      {
+        "column": "pengumuman_id",
+        "targetTable": "pengumuman",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "pengumuman_id",
+      "user_id",
+      "read_at"
+    ]
+  },
+  "pengumuman_tanggapan": {
+    "tableName": "pengumuman_tanggapan",
+    "pk": "id",
+    "hasSekolahId": false,
+    "sekolahIdNullable": true,
+    "fks": [
+      {
+        "column": "pengumuman_id",
+        "targetTable": "pengumuman",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "pengumuman_id",
+      "user_nama",
+      "user_role",
+      "komentar",
+      "created_at"
+    ]
+  },
+  "chat_messages": {
+    "tableName": "chat_messages",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "sender_id",
+      "sender_nama",
+      "recipient_id",
+      "recipient_nama",
+      "pesan",
+      "is_read",
+      "created_at"
+    ]
+  },
+  "push_subscriptions": {
+    "tableName": "push_subscriptions",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": true,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": true
+      },
+      {
+        "column": "user_id",
+        "targetTable": "users",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": true
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "user_id",
+      "user_nama",
+      "user_role",
+      "endpoint",
+      "p256dh",
+      "auth",
+      "user_agent",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "sistem_blok": {
+    "tableName": "sistem_blok",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "nama_kegiatan",
+      "deskripsi",
+      "tanggal_mulai",
+      "tanggal_selesai",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "syarat_perangkat_pembelajaran": {
+    "tableName": "syarat_perangkat_pembelajaran",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE DEFAULT public",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "nama_mapel",
+      "kode_dokumen",
+      "nama_dokumen",
+      "format_dokumen",
+      "deskripsi",
+      "wajib",
+      "urutan",
+      "created_at",
+      "updated_at"
+    ]
+  },
+  "riwayat_backup": {
+    "tableName": "riwayat_backup",
+    "pk": "id",
+    "hasSekolahId": true,
+    "sekolahIdNullable": false,
+    "fks": [
+      {
+        "column": "sekolah_id",
+        "targetTable": "sekolah",
+        "targetCol": "id",
+        "onDelete": "CASCADE",
+        "isNullable": false
+      }
+    ],
+    "cols": [
+      "id",
+      "sekolah_id",
+      "timestamp",
+      "tahun_backup",
+      "link_file",
+      "status",
+      "keterangan"
+    ]
+  },
+  "sekolah_registry": {
+    "tableName": "sekolah_registry",
+    "pk": "id",
+    "hasSekolahId": false,
+    "sekolahIdNullable": true,
+    "fks": [],
+    "cols": [
+      "id",
+      "nama",
+      "npsn",
+      "kota_kabupaten",
+      "provinsi",
+      "vercel_url",
+      "supabase_url",
+      "supabase_anon_key",
+      "status",
+      "created_at",
+      "updated_at"
+    ]
+  }
+}

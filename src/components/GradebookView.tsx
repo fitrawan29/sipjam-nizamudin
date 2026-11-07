@@ -979,10 +979,11 @@ export default function GradebookView({
 
         // Fetch teachers
         if (isAdmin) {
-          const { data: gData } = await supabase
+          let gQuery = supabase
             .from('data_guru')
-            .select('id, nama_guru, nip, mata_pelajaran')
-            .order('nama_guru', { ascending: true });
+            .select('id, nama_guru, nip, mata_pelajaran');
+          if (sekolahId) gQuery = gQuery.eq('sekolah_id', sekolahId);
+          const { data: gData } = await gQuery.order('nama_guru', { ascending: true });
           if (gData && gData.length > 0) {
             teachers = gData.map(g => ({
               id: g.id,
@@ -1024,10 +1025,9 @@ export default function GradebookView({
         const { data: jmData } = await jmQuery;
 
         // Fetch fallback data_mapel & data_siswa
-        const { data: mData } = await supabase
-          .from('data_mapel')
-          .select('*')
-          .order('nama_mata_pelajaran', { ascending: true });
+        let mQuery = supabase.from('data_mapel').select('*');
+        if (sekolahId) mQuery = mQuery.eq('sekolah_id', sekolahId);
+        const { data: mData } = await mQuery.order('nama_mata_pelajaran', { ascending: true });
         if (mData) {
           masterMapels = mData
             .filter(m => !isInvalidMapel(m.nama_mata_pelajaran || m.nama_mapel))
@@ -1035,7 +1035,9 @@ export default function GradebookView({
           setMasterMapelList(masterMapels);
         }
 
-        const { data: sData } = await supabase.from('data_siswa').select('kelas');
+        let sQuery = supabase.from('data_siswa').select('kelas');
+        if (sekolahId) sQuery = sQuery.eq('sekolah_id', sekolahId);
+        const { data: sData } = await sQuery;
         if (sData) {
           masterClasses = Array.from(new Set(sData.map(s => s.kelas).filter(Boolean))) as string[];
           masterClasses.sort();

@@ -1530,7 +1530,7 @@ export async function validateRelationalDependencies(
       if (typeof supabase?.from === 'function') {
         const [guruRes, mapelRes, kelasRes, waliRes] = await Promise.all([
           safeSelect('data_guru', 'id, nama_guru, nip, user_id'),
-          safeSelect('data_mapel', 'id, nama_mata_pelajaran, nama_mapel'),
+          safeSelect('data_mapel', '*'),
           safeSelect('data_kelas', 'id, nama_kelas'),
           safeSelect('wali_kelas', 'id, kelas')
         ]);
