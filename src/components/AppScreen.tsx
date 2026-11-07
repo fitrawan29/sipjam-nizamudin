@@ -192,7 +192,7 @@ export default function AppScreen({
     if (isSuperadmin) return 'view-superadmin-overview';
     if (isDinas) return 'view-dinas-overview';
     if (isSiswa) return 'view-ujian';
-    if (isTataUsaha) return 'view-admin-data';
+    if (isTataUsaha) return 'view-guru-presensi';
     return 'view-home';
   });
 
@@ -231,7 +231,7 @@ export default function AppScreen({
         setUrlTab(null);
         const defaultDinasPopView = isDinas ? 'view-dinas-overview' : 'view-home';
         const defaultSiswaPopView = isSiswa ? 'view-ujian' : 'view-home';
-        const defaultTuPopView = isTataUsaha ? 'view-admin-data' : defaultDinasPopView;
+        const defaultTuPopView = isTataUsaha ? 'view-guru-presensi' : defaultDinasPopView;
         setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultTuPopView));
       }
     };
@@ -479,6 +479,12 @@ export default function AppScreen({
 
   const handleNavigation = async (targetId: string, targetTab?: string) => {
     try {
+      if (targetId === 'view-pengaturan-akun') {
+        setSidebarOpen(false);
+        setIsAccountModalOpen(true);
+        return;
+      }
+
       // Superadmin and Admin bypass all daily guru checks
       if (isSuperadmin || isAdmin) {
         const resolution = resolveCanonicalRoute(targetId, targetTab);
@@ -492,7 +498,7 @@ export default function AppScreen({
         return;
       }
 
-      // Tata Usaha navigation guard: strictly Data Siswa and Data Guru within view-admin-data
+      // Tata Usaha navigation guard: strictly restricted to 6 dedicated modules
       if (isTataUsaha) {
         if (targetId === 'view-dokumen') {
           Swal.fire({
@@ -509,7 +515,7 @@ export default function AppScreen({
           Swal.fire({
             icon: 'warning',
             title: 'Akses Ditolak',
-            text: rbacCheck.reason || 'Akses Terblokir: Role Tata Usaha hanya memiliki akses ke Data Siswa dan Data Guru.',
+            text: rbacCheck.reason || 'Akses Terblokir: Role Tata Usaha tidak memiliki izin akses ke modul ini.',
             confirmButtonColor: '#0B4619'
           });
           return;
@@ -810,10 +816,10 @@ export default function AppScreen({
   // Role landing view resolution satisfying both dinas and siswa RBAC contracts:
   // - Dinas Pendidikan contract: isDinas ? 'view-dinas-overview' : 'view-home'
   // - Siswa contract: isSiswa ? 'view-ujian' : 'view-home'
-  // - Tata Usaha contract: isTataUsaha ? 'view-admin-data' : defaultDinasHomeView
+  // - Tata Usaha contract: isTataUsaha ? 'view-guru-presensi' : defaultDinasHomeView
   const defaultDinasHomeView = isDinas ? 'view-dinas-overview' : 'view-home';
   const defaultSiswaHomeView = isSiswa ? 'view-ujian' : 'view-home';
-  const defaultTuHomeView = isTataUsaha ? 'view-admin-data' : defaultDinasHomeView;
+  const defaultTuHomeView = isTataUsaha ? 'view-guru-presensi' : defaultDinasHomeView;
   const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaHomeView : defaultTuHomeView);
 
   return (
@@ -1024,23 +1030,27 @@ export default function AppScreen({
                     </button>
                   </React.Fragment>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
-                  className="w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 border-2 border-transparent transition-all"
-                >
-                  <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
-                  className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100/90 transition-all border-2 border-emerald-200/60 dark:border-emerald-800/60 mt-2 mb-1 shadow-xs cursor-pointer"
-                  title="Buka panduan & tutorial lengkap seluruh menu"
-                >
-                  <i className="fa-solid fa-book-bookmark text-sm"></i>
-                  <span>Panduan & Tutorial Lengkap</span>
-                </button>
-                {!isSuperadmin && (
+                {!isTataUsaha && (
+                  <button
+                    type="button"
+                    onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
+                    className="w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 border-2 border-transparent transition-all"
+                  >
+                    <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
+                  </button>
+                )}
+                {!isTataUsaha && (
+                  <button
+                    type="button"
+                    onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
+                    className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100/90 transition-all border-2 border-emerald-200/60 dark:border-emerald-800/60 mt-2 mb-1 shadow-xs cursor-pointer"
+                    title="Buka panduan & tutorial lengkap seluruh menu"
+                  >
+                    <i className="fa-solid fa-book-bookmark text-sm"></i>
+                    <span>Panduan & Tutorial Lengkap</span>
+                  </button>
+                )}
+                {!isSuperadmin && !isTataUsaha && (
                   <button
                     type="button"
                     onClick={() => { setTourOpen(true); setSidebarOpen(false); }}
@@ -1266,7 +1276,9 @@ export default function AppScreen({
                 )
               )}
               {currentView === 'view-rapor' && (
-                isAdmin || isSuperadmin || isWaliKelas ? (
+                isTataUsaha ? (
+                  <RaporView user={user} assignedKelas={assignedKelas} />
+                ) : isAdmin || isSuperadmin || isWaliKelas ? (
                   <RaporView user={user} assignedKelas={assignedKelas} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
@@ -1366,7 +1378,7 @@ export default function AppScreen({
                 )
               )}
               {currentView === 'view-admin-data' && (
-                isAdmin || isSuperadmin || isTataUsaha ? (
+                isAdmin || isSuperadmin ? (
                   <AdminDataView user={user} initialTab={urlTab || undefined} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">

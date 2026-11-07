@@ -62,14 +62,19 @@ export async function syncTeacherAccounts(
 
     const teacherList = gurus || [];
 
-    // 2. Fetch users accounts with role Guru
-    let userQuery = supabaseClient.from('users').select('*').eq('role', 'Guru');
+    // 2. Fetch users accounts with role Guru and Tata Usaha
+    let userQuery = supabaseClient.from('users').select('*');
+    if (typeof (userQuery as any).in === 'function') {
+      userQuery = (userQuery as any).in('role', ['Guru', 'tata_usaha', 'Tata Usaha']);
+    } else if (typeof (userQuery as any).eq === 'function') {
+      userQuery = (userQuery as any).eq('role', 'Guru');
+    }
     if (sekolahId) {
       userQuery = userQuery.eq('sekolah_id', sekolahId);
     }
     const { data: users, error: userErr } = await userQuery;
     if (userErr) {
-      console.warn('[teacherUserSync] Query users with role=Guru error:', userErr.message);
+      console.warn('[teacherUserSync] Query users with role error:', userErr.message);
     }
 
     const userList: any[] = users || [];
@@ -160,7 +165,7 @@ export async function syncTeacherAccounts(
         nip: nip || '-',
         username: matchedUser?.username || targetUsername,
         defaultPassword: defaultPassword,
-        role: 'Guru',
+        role: matchedUser?.role || 'Guru',
         mataPelajaran: guru.mata_pelajaran || '-',
         status: guru.status || 'Aktif',
         hasAccount: Boolean(matchedUser),

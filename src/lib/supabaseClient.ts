@@ -140,6 +140,36 @@ export const MASTER_DATA_TABLES = [
   'sistem_blok',
 ] as const;
 
+export const ASSESSMENT_TABLES = [
+  'capaian_pembelajaran',
+  'tujuan_pembelajaran',
+  'asesmen_kolom',
+  'nilai_siswa',
+] as const;
+
+export function isAssessmentEndpoint(urlOrPath: string): boolean {
+  if (!urlOrPath) return false;
+  let clean = String(urlOrPath).trim();
+  clean = clean.split(/[?#]/)[0].trim();
+  clean = clean.replace(/^[a-z]+:\/\/[^/]+/i, '');
+  try {
+    clean = decodeURIComponent(clean);
+  } catch (_) {}
+  clean = clean.replace(/\/+/g, '/').trim();
+  const path = clean.startsWith('/') ? clean : `/${clean}`;
+
+  return ASSESSMENT_TABLES.some(table => {
+    const pattern = new RegExp(`/(?:rest/v1/)?(?:public\\.)?${table}(?:/|$|\\?)`, 'i');
+    return (
+      pattern.test(path) ||
+      path.endsWith(`/${table}`) ||
+      path === `/${table}` ||
+      path.endsWith(`/public.${table}`) ||
+      path === `/public.${table}`
+    );
+  });
+}
+
 export function isMasterDataEndpoint(urlOrPath: string): boolean {
   if (!urlOrPath) return false;
   let clean = String(urlOrPath).trim();
@@ -196,11 +226,33 @@ export function createMasterDataForbiddenResponse(): Response {
 export function checkMasterDataMutationGuard(requestUrlStr: string, method: string, role?: string | null): Response | null {
   const upperMethod = (method || 'GET').trim().toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
+    const normRole = String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+
+    // Tata Usaha: strictly forbidden to mutate assessment tables (R2 read-only requirement)
+    if (normRole === 'tatausaha' && isAssessmentEndpoint(requestUrlStr)) {
+      return new Response(
+        JSON.stringify({
+          code: '42501',
+          status: 403,
+          error: 'Forbidden: Hak akses Tata Usaha pada Asesmen dan Rapor adalah read-only (tinjau saja).',
+          message: 'Akses ditolak: Role Tata Usaha tidak memiliki izin memodifikasi data asesmen atau nilai siswa.',
+          details: 'Tabel asesmen (capaian_pembelajaran, tujuan_pembelajaran, asesmen_kolom, nilai_siswa) bersifat read-only untuk role Tata Usaha.',
+          hint: 'Hubungi Guru Pengampu atau Administrator untuk penginputan nilai.'
+        }),
+        {
+          status: 403,
+          statusText: 'Forbidden',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
     if (isMasterDataEndpoint(requestUrlStr)) {
       if (isAdminRole(role)) return null;
 
       // Tata Usaha operational scope: permit mutations on student and teacher tables only
-      const normRole = String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
       if (normRole === 'tatausaha') {
         const isStudentOrTeacher = ['data_siswa', 'siswa', 'data_guru', 'guru'].some(t => {
           const pattern = new RegExp(`/(?:rest/v1/)?(?:public\\.)?${t}(?:/|$|\\?)`, 'i');

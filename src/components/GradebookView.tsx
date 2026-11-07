@@ -276,6 +276,8 @@ export default function GradebookView({
   // Mode & Tenant Resolution
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
+  const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+  const canSelectAllTeachers = isAdmin || isTataUsaha;
   const isWaliKelas = Boolean(
     assignedKelas ||
     user?.penugasan?.kelas_binaan ||
@@ -283,7 +285,7 @@ export default function GradebookView({
     user?.isWaliKelas === true ||
     user?.is_wali_kelas === true
   );
-  const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas;
+  const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas || isTataUsaha;
 
   // Cluster 3 Active Tab ('gradebook' | 'rapor')
   const [activeTab, setActiveTab] = useState<'gradebook' | 'rapor'>(initialTab);
@@ -316,7 +318,7 @@ export default function GradebookView({
   const [syncedSemester, setSyncedSemester] = useState<string>('');
 
   // Active Filters
-  const [selectedGuru, setSelectedGuru] = useState<string>(isAdmin ? '' : (user?.nama || ''));
+  const [selectedGuru, setSelectedGuru] = useState<string>(canSelectAllTeachers ? '' : (user?.nama || ''));
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [selectedKelas, setSelectedKelas] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>(() => {
@@ -978,7 +980,7 @@ export default function GradebookView({
         let masterClasses: string[] = [];
 
         // Fetch teachers
-        if (isAdmin) {
+        if (canSelectAllTeachers) {
           let gQuery = supabase
             .from('data_guru')
             .select('id, nama_guru, nip, mata_pelajaran');
@@ -1004,7 +1006,7 @@ export default function GradebookView({
 
         // Fetch guru_mapel
         let gmQuery = supabase.from('guru_mapel').select('*');
-        if (!isAdmin) {
+        if (!canSelectAllTeachers) {
           if (user?.username && user?.nama) {
             gmQuery = gmQuery.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
           } else if (user?.username) {
@@ -1018,7 +1020,7 @@ export default function GradebookView({
 
         // Fetch jadwal_pelajaran
         let jmQuery = supabase.from('jadwal_pelajaran').select('*');
-        if (!isAdmin && user?.nama) {
+        if (!canSelectAllTeachers && user?.nama) {
           jmQuery = jmQuery.ilike('nama_guru', `%${user.nama}%`);
         }
         if (sekolahId) jmQuery = jmQuery.eq('sekolah_id', sekolahId);
@@ -1116,12 +1118,12 @@ export default function GradebookView({
     };
 
     fetchMasterAssignments();
-  }, [isAdmin, user, sekolahId, syncTeacherAssignments]);
+  }, [canSelectAllTeachers, user, sekolahId, syncTeacherAssignments]);
 
   // Verify if current user is the assigned teacher (Guru Pengampu) for selectedMapel & selectedKelas
   useEffect(() => {
     const verifyGuruPengampu = async () => {
-      if (isAdmin) {
+      if (isAdmin || isTataUsaha) {
         setIsGuruPengampu(false);
         return;
       }
@@ -1804,7 +1806,7 @@ export default function GradebookView({
       );
     }
 
-    if (isAdmin) {
+    if (isAdmin || isTataUsaha) {
       return;
     }
     if (!isGuruPengampu) {
@@ -2770,6 +2772,11 @@ export default function GradebookView({
                     Mode Review Admin
                   </span>
                 )}
+                {isTataUsaha && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                    Mode Tinjau TU (Read-Only)
+                  </span>
+                )}
               </div>
               <p className="text-xs text-gray-700 dark:text-gray-200 mt-0.5">
                 Pengelolaan Tujuan Pembelajaran (TP), Asesmen Diagnostik, Formatif, dan Sumatif dengan kalkulasi otomatis.
@@ -2806,7 +2813,7 @@ export default function GradebookView({
               </button>
             </div>
           )}
-          {isAdmin && (
+          {isAdmin && !isTataUsaha && (
             <button
               type="button"
               onClick={() => {
@@ -2829,8 +2836,8 @@ export default function GradebookView({
 
         {/* FILTER CONTROLS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-5 mt-5 border-t border-gray-100 dark:border-gray-700">
-          {/* Guru Filter (Admin Mode only) */}
-          {isAdmin ? (
+          {/* Guru Filter (Admin & TU Mode) */}
+          {canSelectAllTeachers ? (
             <div>
               <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
                 Guru Pengampu

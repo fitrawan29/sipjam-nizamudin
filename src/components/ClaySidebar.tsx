@@ -225,7 +225,14 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
                     key={item.id}
                     data-tour={item.dataTour || item.id}
                     type="button"
-                    onClick={() => onNavigate(item.id)}
+                    onClick={() => {
+                      if (item.id === 'view-pengaturan-akun') {
+                        onClose();
+                        if (onOpenAccountSettings) onOpenAccountSettings();
+                      } else {
+                        onNavigate(item.id);
+                      }
+                    }}
                     className={`w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center justify-between gap-2.5 transition-all duration-200 select-none ${
                       isActive
                         ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-950 dark:from-emerald-900/40 dark:to-green-900/30 dark:text-amber-300 border-2 border-white dark:border-emerald-700/50 shadow-[3px_3px_8px_rgba(180,210,190,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1'
@@ -264,7 +271,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
             })}
 
             {/* Quick Actions in Sidebar */}
-            {onOpenAccountSettings && (
+            {!isTU && onOpenAccountSettings && (
               <button
                 type="button"
                 onClick={() => {
@@ -280,7 +287,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
               </button>
             )}
 
-            {onOpenTutorial && (
+            {!isTU && onOpenTutorial && (
               <button
                 type="button"
                 onClick={() => {
@@ -297,7 +304,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
               </button>
             )}
 
-            {!isSuperadmin && onOpenInteractiveTour && (
+            {!isSuperadmin && !isTU && onOpenInteractiveTour && (
               <button
                 type="button"
                 onClick={() => {

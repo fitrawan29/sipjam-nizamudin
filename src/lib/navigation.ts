@@ -23,10 +23,13 @@ export const VIEW_ALIASES: Record<string, { view: string; tab?: string }> = {
   // Klaster 1: Jurnal Mengajar
   'view-guru-rekap-jurnal': { view: 'view-guru-jurnal', tab: 'rekap-pribadi' },
   'view-jurnal-kelas':      { view: 'view-guru-jurnal', tab: 'supervisi-kelas' },
-  // Klaster 2: Presensi Guru
+  'view-jurnal-kegiatan':   { view: 'view-guru-jurnal', tab: 'input' },
+  // Klaster 2: Presensi Guru & TU
   'view-history':           { view: 'view-guru-presensi', tab: 'riwayat' },
+  'view-presensi-tu':       { view: 'view-guru-presensi' },
   // Klaster 3: Asesmen & Rapor
   'view-rapor':             { view: 'view-gradebook', tab: 'rapor' },
+  'view-asesmen':           { view: 'view-gradebook', tab: 'gradebook' },
   // Klaster 4: Laporan & Analitik Kinerja
   'view-analitik':          { view: 'view-admin-rekap', tab: 'analitik' },
   'view-rekap-guru':        { view: 'view-admin-rekap', tab: 'tabel' },
@@ -47,9 +50,9 @@ export const VIEW_ALIASES: Record<string, { view: string; tab?: string }> = {
 export const SPEC_VIEW_ALIASES = VIEW_ALIASES;
 
 export const SIDEBAR_TOUR_ALIASES: Record<string, string> = {
-  'view-guru-jurnal': 'view-guru-rekap-jurnal view-jurnal-kelas',
-  'view-guru-presensi': 'view-history',
-  'view-gradebook': 'view-rapor',
+  'view-guru-jurnal': 'view-guru-rekap-jurnal view-jurnal-kelas view-jurnal-kegiatan',
+  'view-guru-presensi': 'view-history view-presensi-tu',
+  'view-gradebook': 'view-rapor view-asesmen',
   'view-admin-rekap': 'view-analitik view-rekap-guru',
   'view-admin-data': 'view-sistem-blok view-admin-pengguna view-pengguna view-admin-kelas view-kelas view-data-siswa view-data-guru',
   'view-admin-config': 'view-admin-backup'
@@ -175,8 +178,12 @@ export function getConsolidatedMenuItems(params: {
 
   if (normRole === 'tatausaha') {
     return [
-      { id: 'view-data-siswa', icon: 'fa-user-graduate', label: 'Data Siswa', dataTour: 'view-admin-data' },
-      { id: 'view-data-guru', icon: 'fa-chalkboard-user', label: 'Data Guru', dataTour: 'view-admin-data' }
+      { id: 'view-guru-presensi', icon: 'fa-clock', label: 'Presensi TU', dataTour: 'view-guru-presensi' },
+      { id: 'view-guru-jurnal', icon: 'fa-book-open', label: 'Jurnal Kegiatan', dataTour: 'view-guru-jurnal' },
+      { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen', dataTour: 'view-gradebook' },
+      { id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor', dataTour: 'view-rapor' },
+      { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi Sekolah', dataTour: 'view-informasi' },
+      { id: 'view-pengaturan-akun', icon: 'fa-user-gear', label: 'Pengaturan Akun', dataTour: 'view-pengaturan-akun' }
     ];
   }
 
@@ -222,7 +229,7 @@ export function evaluateTabRBAC(
 
   // Strict isolation for Tata Usaha: strictly cannot access Bank Dokumen / Persuratan
   if (isTataUsaha && viewId === 'view-dokumen') {
-    return { allowed: false, fallbackTab: 'view-data-siswa', reason: 'Role Tata Usaha tidak memiliki hak akses ke Bank Dokumen / Persuratan.' };
+    return { allowed: false, fallbackTab: 'view-guru-presensi', reason: 'Role Tata Usaha tidak memiliki hak akses ke Bank Dokumen / Persuratan.' };
   }
 
   // Cluster 1: Jurnal Mengajar
@@ -234,8 +241,8 @@ export function evaluateTabRBAC(
 
   // Cluster 3: Asesmen & Rapor
   if (viewId === 'view-gradebook' && tabId === 'rapor') {
-    if (!isWali && !isAdmin) {
-      return { allowed: false, fallbackTab: 'gradebook', reason: 'Halaman Rapor secara eksklusif hanya dapat diakses oleh Wali Kelas dan Administrator.' };
+    if (!isWali && !isAdmin && !isTataUsaha) {
+      return { allowed: false, fallbackTab: 'gradebook', reason: 'Halaman Rapor secara eksklusif hanya dapat diakses oleh Wali Kelas, Administrator, dan Tata Usaha.' };
     }
   }
 
@@ -245,17 +252,19 @@ export function evaluateTabRBAC(
   const effectiveTab = resolved.defaultTab || tabId;
 
   if (isTataUsaha) {
-    if (effectiveView === 'view-admin-data') {
-      const allowedTuTabs = ['Data_Siswa', 'data_siswa', 'siswa', 'Data_Guru', 'data_guru', 'guru'];
-      if (allowedTuTabs.includes(effectiveTab || 'Data_Siswa')) {
-        return { allowed: true };
-      }
-      return { allowed: false, fallbackTab: 'view-data-siswa', reason: 'Role Tata Usaha hanya memiliki akses ke Data Siswa dan Data Guru.' };
+    const allowedTuViews = [
+      'view-guru-presensi',
+      'view-guru-jurnal',
+      'view-gradebook',
+      'view-rapor',
+      'view-informasi',
+      'view-home',
+      'view-pengaturan-akun'
+    ];
+    if (allowedTuViews.includes(effectiveView) || allowedTuViews.includes(viewId)) {
+      return { allowed: true };
     }
-    if (effectiveView !== 'view-home') {
-      return { allowed: false, fallbackTab: 'view-data-siswa', reason: 'Role Tata Usaha tidak memiliki izin akses ke modul ini.' };
-    }
-    return { allowed: true };
+    return { allowed: false, fallbackTab: 'view-guru-presensi', reason: 'Role Tata Usaha tidak memiliki izin akses ke modul ini.' };
   }
   if (
     effectiveView === 'view-admin-data' ||

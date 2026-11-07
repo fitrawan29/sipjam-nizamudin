@@ -39,6 +39,7 @@ interface WaliKelasInfo {
 export default function RaporView({ user, assignedKelas }: RaporViewProps) {
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
   const isSuperadmin = user?.role === 'Superadmin' || user?.role === 'superadmin';
+  const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
   const sekolahId = user?.sekolah_id || null;
 
   // View state
@@ -158,10 +159,10 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Synchronize non-admin homeroom teacher's selectedKelas with assignedKelas
   useEffect(() => {
-    if (!isAdmin && assignedKelas && selectedKelas !== assignedKelas) {
+    if (!isAdmin && !isTataUsaha && assignedKelas && selectedKelas !== assignedKelas) {
       setSelectedKelas(assignedKelas);
     }
-  }, [isAdmin, assignedKelas, selectedKelas]);
+  }, [isAdmin, isTataUsaha, assignedKelas, selectedKelas]);
 
   // Fetch available classes (all active classes in school for Admin)
   useEffect(() => {
@@ -800,7 +801,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Save Catatan Wali to database Supabase & localStorage
   const saveCatatanToSupabase = useCallback(async (dataToSave: Record<string, string>, options: { throwOnError?: boolean } = {}) => {
-    if (!selectedKelas) return false;
+    if (isTataUsaha || !selectedKelas) return false;
     setIsSaving(true);
     setSaveStatus('Menyimpan...');
     const notesKey = `sipjam_rapor_catatan_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
@@ -835,7 +836,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Save Deep Learning observations to database Supabase & localStorage
   const saveDlToSupabase = useCallback(async (dataToSave: Record<string, { mindful: string; meaningful: string; joyful: string }>, options: { throwOnError?: boolean } = {}) => {
-    if (!selectedKelas) return false;
+    if (isTataUsaha || !selectedKelas) return false;
     setIsSaving(true);
     setSaveStatus('Menyimpan...');
     const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
@@ -910,6 +911,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
 
   // Manual save trigger for Admin & Wali Kelas
   const handleManualSave = async () => {
+    if (isTataUsaha) return;
     if (!selectedKelas) {
       showToast('Peringatan', 'Pilih kelas terlebih dahulu sebelum menyimpan rapor.', 'warning');
       return;
@@ -1119,21 +1121,33 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               </span>
             ) : null}
 
-            <button
-              type="button"
-              onClick={handleManualSave}
-              disabled={isSaving}
-              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-300 border border-teal-200 dark:border-teal-700/50 transition cursor-pointer flex items-center gap-1.5"
-              title="Simpan Catatan & Observasi ke Database"
-            >
-              <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
-              Simpan Rapor
-            </button>
+            {!isTataUsaha && (
+              <button
+                type="button"
+                onClick={handleManualSave}
+                disabled={isSaving}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-300 border border-teal-200 dark:border-teal-700/50 transition cursor-pointer flex items-center gap-1.5"
+                title="Simpan Catatan & Observasi ke Database"
+              >
+                <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
+                Simpan Rapor
+              </button>
+            )}
 
             {/* Kelas selector */}
             <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs">
               <span className="font-semibold text-gray-600 dark:text-gray-300">Kelas:</span>
               {isAdmin || isSuperadmin ? (
+                <select
+                  value={selectedKelas}
+                  onChange={(e) => setSelectedKelas(e.target.value)}
+                  className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
+                >
+                  {kelasList.map(k => (
+                    <option key={k} value={k} className="dark:bg-gray-800">{k}</option>
+                  ))}
+                </select>
+              ) : isTataUsaha ? (
                 <select
                   value={selectedKelas}
                   onChange={(e) => setSelectedKelas(e.target.value)}
@@ -1344,13 +1358,17 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                         </div>
                       </td>
                       <td className="py-3 px-3">
-                        <input
-                          type="text"
-                          value={note}
-                          placeholder="Tulis catatan wali kelas..."
-                          onChange={(e) => handleCatatanChange(s.nisn, e.target.value)}
-                          className="w-full text-xs px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-gray-800 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 outline-none"
-                        />
+                        {isTataUsaha ? (
+                          <span className="text-xs text-gray-700 dark:text-gray-300 italic">{note || '-'}</span>
+                        ) : (
+                          <input
+                            type="text"
+                            value={note}
+                            placeholder="Tulis catatan wali kelas..."
+                            onChange={(e) => handleCatatanChange(s.nisn, e.target.value)}
+                            className="w-full text-xs px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-gray-800 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 outline-none"
+                          />
+                        )}
                       </td>
                       <td className="py-3 px-3 text-center no-print">
                         <button
@@ -1493,40 +1511,46 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden text-xs">
                   <div className="flex flex-col py-1.5 px-3 border-b border-gray-100 dark:border-gray-700">
                     <span className="font-bold text-gray-900 dark:text-white">1. Mindful Learning (Kesadaran Belajar)</span>
-                    <input 
-                      type="text" 
-                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
-                      placeholder="Catatan mindfulness..." 
-                      value={deepLearningMap[selectedStudent.nisn]?.mindful || ''}
-                      onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'mindful', e.target.value)}
-                    />
-                    <p className="hidden print:block text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs">
+                    {!isTataUsaha && (
+                      <input 
+                        type="text" 
+                        className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
+                        placeholder="Catatan mindfulness..." 
+                        value={deepLearningMap[selectedStudent.nisn]?.mindful || ''}
+                        onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'mindful', e.target.value)}
+                      />
+                    )}
+                    <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs`}>
                       {deepLearningMap[selectedStudent.nisn]?.mindful || '-'}
                     </p>
                   </div>
                   <div className="flex flex-col py-1.5 px-3 border-b border-gray-100 dark:border-gray-700">
                     <span className="font-bold text-gray-900 dark:text-white">2. Meaningful Learning (Pemaknaan Materi)</span>
-                    <input 
-                      type="text" 
-                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
-                      placeholder="Catatan meaningfulness..." 
-                      value={deepLearningMap[selectedStudent.nisn]?.meaningful || ''}
-                      onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'meaningful', e.target.value)}
-                    />
-                    <p className="hidden print:block text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs">
+                    {!isTataUsaha && (
+                      <input 
+                        type="text" 
+                        className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
+                        placeholder="Catatan meaningfulness..." 
+                        value={deepLearningMap[selectedStudent.nisn]?.meaningful || ''}
+                        onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'meaningful', e.target.value)}
+                      />
+                    )}
+                    <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs`}>
                       {deepLearningMap[selectedStudent.nisn]?.meaningful || '-'}
                     </p>
                   </div>
                   <div className="flex flex-col py-1.5 px-3">
                     <span className="font-bold text-gray-900 dark:text-white">3. Joyful Learning (Kegembiraan Belajar)</span>
-                    <input 
-                      type="text" 
-                      className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
-                      placeholder="Catatan joyfulness..." 
-                      value={deepLearningMap[selectedStudent.nisn]?.joyful || ''}
-                      onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'joyful', e.target.value)}
-                    />
-                    <p className="hidden print:block text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs">
+                    {!isTataUsaha && (
+                      <input 
+                        type="text" 
+                        className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
+                        placeholder="Catatan joyfulness..." 
+                        value={deepLearningMap[selectedStudent.nisn]?.joyful || ''}
+                        onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'joyful', e.target.value)}
+                      />
+                    )}
+                    <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs`}>
                       {deepLearningMap[selectedStudent.nisn]?.joyful || '-'}
                     </p>
                   </div>
@@ -1540,14 +1564,16 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
                 D. Catatan Wali Kelas
               </h3>
               <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs min-h-[50px] bg-gray-50/30 dark:bg-gray-900/30 print:bg-transparent">
-                <textarea
-                  value={catatanWaliMap[selectedStudent.nisn] ?? ''}
-                  onChange={(e) => handleCatatanChange(selectedStudent.nisn, e.target.value)}
-                  placeholder="Tulis catatan wali kelas..."
-                  rows={2}
-                  className="w-full bg-transparent text-gray-800 dark:text-gray-200 leading-relaxed italic outline-none resize-none print:hidden border-none focus:ring-0 p-0 text-xs"
-                />
-                <p className="hidden print:block text-gray-800 dark:text-gray-200 leading-relaxed italic">
+                {!isTataUsaha && (
+                  <textarea
+                    value={catatanWaliMap[selectedStudent.nisn] ?? ''}
+                    onChange={(e) => handleCatatanChange(selectedStudent.nisn, e.target.value)}
+                    placeholder="Tulis catatan wali kelas..."
+                    rows={2}
+                    className="w-full bg-transparent text-gray-800 dark:text-gray-200 leading-relaxed italic outline-none resize-none print:hidden border-none focus:ring-0 p-0 text-xs"
+                  />
+                )}
+                <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 leading-relaxed italic`}>
                   {catatanWaliMap[selectedStudent.nisn] ||
                     'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.'}
                 </p>
@@ -1561,8 +1587,8 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               leftName="..........................................."
               hideLeftNip={true}
               rightTitle={`Wali Kelas ${selectedKelas}`}
-              rightName={assignedWaliInfo?.nama_guru || (!isAdmin ? user?.nama : '') || '...........................................'}
-              rightNip={assignedWaliInfo?.nip ?? (!isAdmin ? user?.nip : undefined)}
+              rightName={assignedWaliInfo?.nama_guru || (!isAdmin && !isTataUsaha ? user?.nama : '') || '...........................................'}
+              rightNip={assignedWaliInfo?.nip ?? (!isAdmin && !isTataUsaha ? user?.nip : undefined)}
               showKepalaSekolah={true}
               user={user}
               sekolahId={sekolahId || undefined}

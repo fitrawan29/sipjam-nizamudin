@@ -116,70 +116,91 @@ async function runTests() {
 
   const tuMenuItems = getConsolidatedMenuItems({ role: 'tata_usaha' });
 
-  // Test 2.1: Exactly 2 menu items
+  // Test 2.1: Exactly 6 menu items
   recordAssert(
-    tuMenuItems.length === 2,
+    tuMenuItems.length === 6,
     'T2.1',
-    `getConsolidatedMenuItems returns strictly 2 menu items for tata_usaha (got: ${tuMenuItems.length})`,
-    'Satisfies Miller\'s Law and minimal scope'
+    `getConsolidatedMenuItems returns strictly 6 menu items for tata_usaha (got: ${tuMenuItems.length})`,
+    'Satisfies Milestone 2 TU specification'
   );
 
-  // Test 2.2: The 2 menu items are Data Siswa and Data Guru
-  const hasDataSiswa = tuMenuItems.some(item => item.id === 'view-data-siswa' && item.label === 'Data Siswa');
-  const hasDataGuru = tuMenuItems.some(item => item.id === 'view-data-guru' && item.label === 'Data Guru');
+  // Test 2.2: The 6 menu items are Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, Pengaturan Akun
+  const expectedItems = [
+    { id: 'view-guru-presensi', label: 'Presensi TU' },
+    { id: 'view-guru-jurnal', label: 'Jurnal Kegiatan' },
+    { id: 'view-gradebook', label: 'Asesmen' },
+    { id: 'view-rapor', label: 'Rapor' },
+    { id: 'view-informasi', label: 'Informasi Sekolah' },
+    { id: 'view-pengaturan-akun', label: 'Pengaturan Akun' }
+  ];
+  const allItemsPresent = expectedItems.every(exp =>
+    tuMenuItems.some(item => item.id === exp.id && item.label === exp.label)
+  );
   recordAssert(
-    hasDataSiswa && hasDataGuru,
+    allItemsPresent,
     'T2.2',
-    'Menu items contain strictly Data Siswa and Data Guru',
+    'Menu items contain strictly Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, and Pengaturan Akun',
     JSON.stringify(tuMenuItems.map(i => ({ id: i.id, label: i.label })))
   );
 
   // Test 2.3: Zero exposure of prohibited modules
   const exposedProhibited = tuMenuItems.filter(item =>
     [
+      'view-admin-data',
       'view-dokumen',
       'view-admin-config',
       'view-admin-backup',
       'view-admin-verif',
-      'view-guru-jurnal',
-      'view-guru-presensi',
+      'view-admin-rekap',
+      'view-piket',
+      'view-ujian',
       'view-superadmin-overview',
-      'view-home'
+      'view-superadmin-schools',
+      'view-dinas-overview'
     ].includes(item.id)
   );
   recordAssert(
     exposedProhibited.length === 0,
     'T2.3',
-    'Menu items strictly exclude view-dokumen, view-admin-config, and teacher modules',
+    'Menu items strictly exclude view-admin-data, view-dokumen, view-admin-config, and administrative modules',
     `Exposed prohibited: ${exposedProhibited.length}`
   );
 
   // Test 2.4: Aliases in VIEW_ALIASES
   recordAssert(
-    VIEW_ALIASES['view-data-siswa']?.view === 'view-admin-data' &&
-    VIEW_ALIASES['view-data-siswa']?.tab === 'Data_Siswa',
+    VIEW_ALIASES['view-presensi-tu']?.view === 'view-guru-presensi',
     'T2.4',
-    "VIEW_ALIASES maps 'view-data-siswa' -> { view: 'view-admin-data', tab: 'Data_Siswa' }"
+    "VIEW_ALIASES maps 'view-presensi-tu' -> { view: 'view-guru-presensi' }"
   );
   recordAssert(
-    VIEW_ALIASES['view-data-guru']?.view === 'view-admin-data' &&
-    VIEW_ALIASES['view-data-guru']?.tab === 'Data_Guru',
+    VIEW_ALIASES['view-jurnal-kegiatan']?.view === 'view-guru-jurnal',
     'T2.5',
-    "VIEW_ALIASES maps 'view-data-guru' -> { view: 'view-admin-data', tab: 'Data_Guru' }"
+    "VIEW_ALIASES maps 'view-jurnal-kegiatan' -> { view: 'view-guru-jurnal' }"
+  );
+  recordAssert(
+    VIEW_ALIASES['view-asesmen']?.view === 'view-gradebook',
+    'T2.6',
+    "VIEW_ALIASES maps 'view-asesmen' -> { view: 'view-gradebook' }"
   );
 
-  // Test 2.6: Canonical Route Resolution
-  const resSiswa = resolveCanonicalRoute('view-data-siswa');
+  // Test 2.7: Canonical Route Resolution
+  const resPresensi = resolveCanonicalRoute('view-presensi-tu');
   recordAssert(
-    resSiswa.canonicalView === 'view-admin-data' && resSiswa.defaultTab === 'Data_Siswa',
-    'T2.6',
-    "resolveCanonicalRoute('view-data-siswa') resolves to view-admin-data with Data_Siswa"
-  );
-  const resGuru = resolveCanonicalRoute('view-data-guru');
-  recordAssert(
-    resGuru.canonicalView === 'view-admin-data' && resGuru.defaultTab === 'Data_Guru',
+    resPresensi.canonicalView === 'view-guru-presensi',
     'T2.7',
-    "resolveCanonicalRoute('view-data-guru') resolves to view-admin-data with Data_Guru"
+    "resolveCanonicalRoute('view-presensi-tu') resolves to view-guru-presensi"
+  );
+  const resJurnal = resolveCanonicalRoute('view-jurnal-kegiatan');
+  recordAssert(
+    resJurnal.canonicalView === 'view-guru-jurnal',
+    'T2.8',
+    "resolveCanonicalRoute('view-jurnal-kegiatan') resolves to view-guru-jurnal"
+  );
+  const resAsesmen = resolveCanonicalRoute('view-asesmen');
+  recordAssert(
+    resAsesmen.canonicalView === 'view-gradebook',
+    'T2.9',
+    "resolveCanonicalRoute('view-asesmen') resolves to view-gradebook"
   );
 
   // ==========================================================================
@@ -187,80 +208,72 @@ async function runTests() {
   // ==========================================================================
   console.log(`\n${BOLD}--- Suite 3: Tab RBAC & Routing Isolation (evaluateTabRBAC) ---${RESET}`);
 
-  // Test 3.1: Permitted Tabs
-  const rbacSiswa = evaluateTabRBAC('view-admin-data', 'Data_Siswa', { role: 'tata_usaha' });
-  recordAssert(
-    rbacSiswa.allowed === true,
-    'T3.1',
-    "evaluateTabRBAC allows 'view-admin-data' tab 'Data_Siswa' for tata_usaha"
-  );
-  const rbacGuru = evaluateTabRBAC('view-admin-data', 'Data_Guru', { role: 'tata_usaha' });
-  recordAssert(
-    rbacGuru.allowed === true,
-    'T3.2',
-    "evaluateTabRBAC allows 'view-admin-data' tab 'Data_Guru' for tata_usaha"
-  );
-  const rbacAliasSiswa = evaluateTabRBAC('view-data-siswa', '', { role: 'tata_usaha' });
-  recordAssert(
-    rbacAliasSiswa.allowed === true,
-    'T3.3',
-    "evaluateTabRBAC allows 'view-data-siswa' for tata_usaha"
-  );
-  const rbacAliasGuru = evaluateTabRBAC('view-data-guru', '', { role: 'tata_usaha' });
-  recordAssert(
-    rbacAliasGuru.allowed === true,
-    'T3.4',
-    "evaluateTabRBAC allows 'view-data-guru' for tata_usaha"
-  );
-
-  // Test 3.5: Disallowed Master Tabs
-  const disallowedMasterTabs = [
-    'Pengguna',
-    'Data_Kelas',
-    'Data_Mapel',
-    'Jadwal_Pelajaran',
-    'Wali_Kelas',
-    'Kalender_Pendidikan',
-    'sistem_blok'
+  // Test 3.1: Permitted Views
+  const permittedViews = [
+    'view-guru-presensi',
+    'view-guru-jurnal',
+    'view-gradebook',
+    'view-rapor',
+    'view-informasi',
+    'view-home'
   ];
-  disallowedMasterTabs.forEach((tab, index) => {
-    const res = evaluateTabRBAC('view-admin-data', tab, { role: 'tata_usaha' });
+  permittedViews.forEach((v, index) => {
+    const res = evaluateTabRBAC(v, '', { role: 'tata_usaha' });
     recordAssert(
-      res.allowed === false,
-      `T3.5.${index + 1}`,
-      `evaluateTabRBAC strictly blocks view-admin-data tab '${tab}' for tata_usaha`,
-      `Fallback: ${res.fallbackTab}, Reason: ${res.reason}`
+      res.allowed === true,
+      `T3.1.${index + 1}`,
+      `evaluateTabRBAC allows '${v}' for tata_usaha`
     );
   });
 
-  // Test 3.6: Strict Denial of Bank Dokumen / Persuratan (R2 Requirement)
+  // Test 3.2: Allowed Subtab under gradebook
+  const rbacRaporSubtab = evaluateTabRBAC('view-gradebook', 'rapor', { role: 'tata_usaha' });
+  recordAssert(
+    rbacRaporSubtab.allowed === true,
+    'T3.2',
+    "evaluateTabRBAC allows 'view-gradebook' subtab 'rapor' for tata_usaha"
+  );
+
+  // Test 3.3: Strict Denial of view-admin-data (Data Siswa & Data Guru no longer accessible to TU)
+  const rbacAdminData = evaluateTabRBAC('view-admin-data', '', { role: 'tata_usaha' });
+  recordAssert(
+    rbacAdminData.allowed === false,
+    'T3.3',
+    "evaluateTabRBAC strictly blocks 'view-admin-data' for tata_usaha (fallback: view-guru-presensi)",
+    `Fallback: ${rbacAdminData.fallbackView}`
+  );
+
+  // Test 3.4: Strict Denial of Bank Dokumen / Persuratan
   const rbacDokumen = evaluateTabRBAC('view-dokumen', '', { role: 'tata_usaha' });
   recordAssert(
     rbacDokumen.allowed === false && rbacDokumen.reason?.includes('Bank Dokumen'),
-    'T3.6',
+    'T3.4',
     "evaluateTabRBAC strictly blocks 'view-dokumen' for tata_usaha with descriptive reason",
     `Reason: ${rbacDokumen.reason}`
   );
 
-  // Test 3.7: Strict Denial of System Config & Superadmin Views
-  const rbacConfig = evaluateTabRBAC('view-admin-config', '', { role: 'tata_usaha' });
-  recordAssert(
-    rbacConfig.allowed === false,
-    'T3.7',
-    "evaluateTabRBAC strictly blocks 'view-admin-config' for tata_usaha"
-  );
-  const rbacSuperadmin = evaluateTabRBAC('view-superadmin-overview', '', { role: 'tata_usaha' });
-  recordAssert(
-    rbacSuperadmin.allowed === false,
-    'T3.8',
-    "evaluateTabRBAC strictly blocks 'view-superadmin-overview' for tata_usaha"
-  );
-  const rbacJurnal = evaluateTabRBAC('view-guru-jurnal', '', { role: 'tata_usaha' });
-  recordAssert(
-    rbacJurnal.allowed === false,
-    'T3.9',
-    "evaluateTabRBAC strictly blocks teacher views ('view-guru-jurnal') for tata_usaha"
-  );
+  // Test 3.5: Strict Denial of System Config & Superadmin & Administrative Views
+  const disallowedViews = [
+    'view-admin-config',
+    'view-admin-backup',
+    'view-sistem-blok',
+    'view-admin-verif',
+    'view-admin-rekap',
+    'view-piket',
+    'view-ujian',
+    'view-superadmin-overview',
+    'view-superadmin-schools',
+    'view-dinas-overview'
+  ];
+  disallowedViews.forEach((v, index) => {
+    const res = evaluateTabRBAC(v, '', { role: 'tata_usaha' });
+    recordAssert(
+      res.allowed === false,
+      `T3.5.${index + 1}`,
+      `evaluateTabRBAC strictly blocks '${v}' for tata_usaha`,
+      `Fallback: ${res.fallbackView || res.fallbackTab}, Reason: ${res.reason}`
+    );
+  });
 
   // ==========================================================================
   // SUITE 4: PostgREST Mutation Interception Security (checkMasterDataMutationGuard)
@@ -357,9 +370,10 @@ async function runTests() {
     "AppScreen.tsx guards 'view-dokumen' with !isTataUsaha check"
   );
   recordAssert(
-    appScreenContent.includes("isAdmin || isSuperadmin || isTataUsaha"),
+    appScreenContent.includes("currentView === 'view-rapor'") &&
+    appScreenContent.includes("isTataUsaha ? ("),
     'T5.5',
-    "AppScreen.tsx allows view-admin-data for isTataUsaha"
+    "AppScreen.tsx allows view-rapor for isTataUsaha"
   );
 
   // Test 5.6: AdminDataView.tsx contains tabs filtering and canModify

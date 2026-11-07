@@ -1,2 +1,2 @@
 # Orchestrator Directory
-Initialized by Sentinel.
+Initialized by Sentinel for Project Orchestrator workspace.

@@ -168,14 +168,23 @@ export default function AdminRekapView({
       // 1. Fetch all teachers from data_guru to seed the map (ensures 0 attendance teachers appear)
       let guruQuery = supabase
         .from('data_guru')
-        .select('nama_guru')
+        .select('nama_guru, nip, mata_pelajaran, user_id')
         .not('nama_guru', 'ilike', '%test guru%')
         .not('nama_guru', 'ilike', '%guru test%')
         .order('nama_guru', { ascending: true });
       if (user?.sekolah_id) {
         guruQuery = guruQuery.eq('sekolah_id', user.sekolah_id);
       }
-      const { data: guruList } = await guruQuery;
+      let userQuery = supabase
+        .from('users')
+        .select('id, nama, username, role');
+      if (user?.sekolah_id) {
+        userQuery = userQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const [{ data: guruList }, { data: userAccounts }] = await Promise.all([
+        guruQuery,
+        userQuery
+      ]);
 
       // 2. Fetch presensi_guru (both single-day and multi-day spans)
       let presensiQuery = supabase
@@ -301,15 +310,52 @@ export default function AdminRekapView({
       } catch (_) {}
       const batasDetikPenalti = Math.round(batasJamPenalti * 3600);
 
-      // Seed map with all teachers from data_guru (excluding test accounts)
+      // Set of identifiers belonging to Tata Usaha (TU)
+      const tuIdentifiers = new Set<string>();
+      (userAccounts || []).forEach((u: any) => {
+        const norm = (u.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+        if (norm === 'tatausaha') {
+          if (u.id) tuIdentifiers.add(String(u.id).toLowerCase());
+          if (u.username) tuIdentifiers.add(String(u.username).trim().toLowerCase());
+          if (u.nama) {
+            tuIdentifiers.add(String(u.nama).trim().toLowerCase());
+            tuIdentifiers.add(canonicalizeTeacherRekapName(u.nama).toLowerCase());
+          }
+        }
+      });
+      (guruList || []).forEach((g: any) => {
+        const mapel = (g.mata_pelajaran || '').toLowerCase();
+        if (mapel.includes('tata usaha')) {
+          if (g.nama_guru) {
+            tuIdentifiers.add(String(g.nama_guru).trim().toLowerCase());
+            tuIdentifiers.add(canonicalizeTeacherRekapName(g.nama_guru).toLowerCase());
+          }
+          if (g.nip) tuIdentifiers.add(String(g.nip).trim().toLowerCase());
+          if (g.user_id) tuIdentifiers.add(String(g.user_id).toLowerCase());
+        }
+      });
+
+      const isStaffTU = (person: any) => {
+        if (!person) return false;
+        const n = String(person.nama || person.nama_guru || '').trim().toLowerCase();
+        const c = canonicalizeTeacherRekapName(n).toLowerCase();
+        const nip = String(person.nip || '').trim().toLowerCase();
+        const uid = String(person.user_id || person.userId || person.id || '').toLowerCase();
+        const mapel = String(person.mata_pelajaran || '').toLowerCase();
+        return tuIdentifiers.has(n) || tuIdentifiers.has(c) || (nip && tuIdentifiers.has(nip)) || (uid && tuIdentifiers.has(uid)) || mapel.includes('tata usaha');
+      };
+
+      // Seed map with all teachers and staff from data_guru (excluding test accounts)
       const pMap: Record<string, any> = {};
       guruList?.forEach(g => {
         const rawName = g.nama_guru?.trim();
         if (g.nama_guru && rawName && !isTestGuruName(g.nama_guru) && !isTestGuruName(rawName)) {
           const cName = canonicalizeTeacherRekapName(rawName);
+          const isTuPerson = isStaffTU(g) || tuIdentifiers.has(cName.toLowerCase());
           if (!pMap[cName]) {
             pMap[cName] = {
               nama: cName,
+              isTU: isTuPerson,
               hadir: 0,
               izin: 0,
               sakit: 0,
@@ -319,6 +365,8 @@ export default function AdminRekapView({
               piket: 0,
               jurnal: 0
             };
+          } else if (isTuPerson) {
+            pMap[cName].isTU = true;
           }
         }
       });
@@ -331,9 +379,11 @@ export default function AdminRekapView({
         const nama = p.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
         const canonicalNama = canonicalizeTeacherRekapName(nama);
+        const isTuPerson = isStaffTU(p) || tuIdentifiers.has(canonicalNama.toLowerCase());
         if (!pMap[canonicalNama]) {
           pMap[canonicalNama] = {
             nama: canonicalNama,
+            isTU: isTuPerson,
             hadir: 0,
             izin: 0,
             sakit: 0,
@@ -343,6 +393,8 @@ export default function AdminRekapView({
             piket: 0,
             jurnal: 0
           };
+        } else if (isTuPerson) {
+          pMap[canonicalNama].isTU = true;
         }
         if (!creditedLeaveDates[canonicalNama]) {
           creditedLeaveDates[canonicalNama] = new Set<string>();
@@ -507,6 +559,14 @@ export default function AdminRekapView({
     !isTestGuruName(p.nama) && p.nama.toLowerCase().includes(search.toLowerCase())
   );
 
+  const guruPresensiList = useMemo(() => {
+    return filteredPresensi.filter(p => !p.isTU);
+  }, [filteredPresensi]);
+
+  const tuPresensiList = useMemo(() => {
+    return filteredPresensi.filter(p => Boolean(p.isTU));
+  }, [filteredPresensi]);
+
   // Summary counts
   const totalGuru = rekapData?.presensi?.length || 0;
   const totalHadirSemua = rekapData?.presensi?.reduce((acc, curr) => acc + (curr.hadir || 0), 0) || 0;
@@ -574,11 +634,14 @@ export default function AdminRekapView({
 
   const handleExportCsv = () => {
     if (!rekapData || rekapData.presensi.length === 0) return;
-    const headers = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Pulang Cepat', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
-    const csvRows = [headers.join(',')];
-    rekapData.presensi
-      .filter((r: any) => !isTestGuruName(r?.nama))
-      .forEach((r: any, i: number) => {
+    const csvRows: string[] = [];
+
+    // Section 1: Dewan Guru
+    csvRows.push('=== REKAPITULASI PRESENSI DEWAN GURU ===');
+    const headersGuru = ['No', 'Nama Guru', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Pulang Cepat', 'Keterlambatan (Jam/Menit)', 'Piket Disetujui', 'Jurnal Disetujui'];
+    csvRows.push(headersGuru.join(','));
+    const guruItems = rekapData.presensi.filter((r: any) => !isTestGuruName(r?.nama) && !r?.isTU);
+    guruItems.forEach((r: any, i: number) => {
       const telatStr = `"${Math.floor((r.telatDetik||0) / 3600)}j ${Math.floor(((r.telatDetik||0) % 3600) / 60)}m"`;
       csvRows.push([
         i + 1,
@@ -595,11 +658,34 @@ export default function AdminRekapView({
         r.jurnal || 0
       ].join(','));
     });
+
+    // Section 2: Tenaga Tata Usaha (TU)
+    csvRows.push('');
+    csvRows.push('=== REKAPITULASI PRESENSI TENAGA TATA USAHA (TU) ===');
+    const headersTU = ['No', 'Nama Staf TU', 'Wajib', 'Hadir', 'Dinas Luar', 'Sakit', 'Izin', 'Alpa', 'Pulang Cepat', 'Keterlambatan (Jam/Menit)'];
+    csvRows.push(headersTU.join(','));
+    const tuItems = rekapData.presensi.filter((r: any) => !isTestGuruName(r?.nama) && Boolean(r?.isTU));
+    tuItems.forEach((r: any, i: number) => {
+      const telatStr = `"${Math.floor((r.telatDetik||0) / 3600)}j ${Math.floor(((r.telatDetik||0) % 3600) / 60)}m"`;
+      csvRows.push([
+        i + 1,
+        `"${r.nama}"`,
+        r.totalWajib ?? 0,
+        r.hadir || 0,
+        r.dinasLuar || 0,
+        r.sakit || 0,
+        r.izin || 0,
+        r.alpa || 0,
+        r.pulangCepat || 0,
+        telatStr
+      ].join(','));
+    });
+
     const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Rekap_Guru_${bulan || 'custom'}.csv`;
+    a.download = `Rekap_Presensi_Guru_dan_TU_${bulan || 'custom'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -898,13 +984,23 @@ export default function AdminRekapView({
                               onClick={() => setSearch('')}
                               className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold"
                             >
-                              Reset
+                              Reset pencarian
                             </button>
                           )}
                       </div>
 
-                      {/* 11-Column Professional Recap Table */}
-                      <div className="overflow-x-auto w-full my-4 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
+                      {/* SECTION 1: REKAPITULASI PRESENSI DEWAN GURU */}
+                      <div className="flex items-center justify-between mt-4 mb-2">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <i className="fa-solid fa-chalkboard-user text-emerald-600 dark:text-emerald-400"></i>
+                          <span>Rekapitulasi Presensi Dewan Guru</span>
+                        </h4>
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 no-print">
+                          Total: {guruPresensiList.length} Guru
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto w-full mb-6 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
                         <table className="w-full text-left text-xs border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
                           <thead>
                             <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
@@ -923,7 +1019,7 @@ export default function AdminRekapView({
                             </tr>
                           </thead>
                           <tbody>
-                            {filteredPresensi.map((r: any, idx: number) => {
+                            {guruPresensiList.map((r: any, idx: number) => {
                               const jam = Math.floor((r.telatDetik || 0) / 3600);
                               const menit = Math.floor(((r.telatDetik || 0) % 3600) / 60);
                               const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
@@ -944,24 +1040,10 @@ export default function AdminRekapView({
                                 </tr>
                               );
                             })}
-                            {filteredPresensi.length === 0 && (
+                            {guruPresensiList.length === 0 && (
                               <tr>
-                                <td colSpan={11} className="text-center py-8 text-gray-500 dark:text-gray-400 text-xs italic">
-                                  <div className="flex flex-col items-center justify-center gap-2">
-                                    <i className="fa-solid fa-user-slash text-2xl text-gray-400 dark:text-gray-500"></i>
-                                    <span>
-                                      {search ? `Tidak ada data guru yang sesuai dengan pencarian "${search}".` : 'Tidak ada data kehadiran guru untuk periode ini.'}
-                                    </span>
-                                    {search && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setSearch('')}
-                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1 no-print"
-                                      >
-                                        <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
-                                      </button>
-                                    )}
-                                  </div>
+                                <td colSpan={12} className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
+                                  Tidak ada data kehadiran guru untuk periode ini.
                                 </td>
                               </tr>
                             )}
@@ -969,7 +1051,7 @@ export default function AdminRekapView({
                         </table>
                       </div>
                       
-                      {/* Print Signature & GPS Security Footer for Tab Tabel */}
+                      {/* Print Signature Dewan Guru */}
                       <div className="hidden print:block mt-8">
                         <p className="text-[8pt] text-black italic mb-4">
                           * Keterangan Presensi Pulang Cepat: Tercatat apabila guru melakukan presensi datang namun tidak menyelesaikan kewajiban jurnal pembelajaran dan tidak melakukan presensi pulang.
@@ -982,6 +1064,92 @@ export default function AdminRekapView({
                           user={user}
                           sekolahId={user?.sekolah_id}
                         />
+                      </div>
+
+                      {/* SECTION 2: REKAPITULASI PRESENSI TENAGA TATA USAHA (TU) WITH PRINT PAGE-BREAK */}
+                      <div className="mt-8 print:mt-0" style={{ breakBefore: 'page', pageBreakBefore: 'always' }}>
+                        {/* Dedicated Print Header for TU Page */}
+                        <div className="hidden print:block">
+                          <PrintHeader user={user} sekolahId={user?.sekolah_id} />
+                          <div className="text-center my-3 print:my-2">
+                            <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+                              Rekapitulasi Presensi Tenaga Tata Usaha (TU)
+                            </h3>
+                            <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+                              <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
+                              <span>Dicetak Oleh: <strong>{user?.nama || 'Administrator'}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <i className="fa-solid fa-id-card-clip text-teal-600 dark:text-teal-400"></i>
+                            <span>Rekapitulasi Presensi Tenaga Tata Usaha (TU)</span>
+                          </h4>
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 no-print">
+                            Total: {tuPresensiList.length} Staf TU
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto w-full my-3 rounded-xl border border-gray-300 dark:border-gray-700 print:border-black print:overflow-visible shadow-sm">
+                          <table className="w-full text-left text-xs border-collapse border border-gray-300 dark:border-gray-700 print:border-black print:text-[8pt]">
+                            <thead>
+                              <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10">No</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black font-bold">Nama Staf TU</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">Wajib</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">Hadir</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">Dinas Luar</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-yellow-700 dark:text-yellow-400 print:text-black">Sakit</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-red-700 dark:text-red-400 print:text-black">Alpa</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Pulang Cepat</th>
+                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {tuPresensiList.map((r: any, idx: number) => {
+                                const jam = Math.floor((r.telatDetik || 0) / 3600);
+                                const menit = Math.floor(((r.telatDetik || 0) % 3600) / 60);
+                                const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
+                                return (
+                                  <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat > 0 ? `${r.pulangCepat}x (Pulang Cepat)` : '-'}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
+                                  </tr>
+                                );
+                              })}
+                              {tuPresensiList.length === 0 && (
+                                <tr>
+                                  <td colSpan={10} className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
+                                    Tidak ada data kehadiran staf TU untuk periode ini.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Print Signature Tenaga TU */}
+                        <div className="hidden print:block mt-8">
+                          <PrintSignature
+                            leftTitle="Mengetahui,"
+                            leftSubtitle="Pengelola Data / Admin"
+                            leftName={isKepalaSekolah ? '( ........................................ )' : user?.nama}
+                            leftNip={isKepalaSekolah ? '-' : user?.nip}
+                            user={user}
+                            sekolahId={user?.sekolah_id}
+                          />
+                        </div>
                       </div>
 
                       <div className="pt-2 border-t dark:border-gray-800 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 no-print">

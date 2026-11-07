@@ -155,7 +155,46 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
   const totalPages = Math.ceil(filteredAccounts.length / ITEMS_PER_PAGE) || 1;
 
-  // Handle Create Tata Usaha Account
+  // Handle Toggle Tata Usaha Role Assignment (Mekanisme 1: Tunjuk TU / Ke Guru)
+  const handleToggleTuAssignment = async (item: TeacherAccountItem) => {
+    if (!isAdmin) return;
+    const isCurrentlyTU = (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+    const targetRole = isCurrentlyTU ? 'Guru' : 'tata_usaha';
+    const actionLabel = isCurrentlyTU ? 'Kembalikan ke Guru' : 'Tunjuk sebagai Tata Usaha (TU)';
+
+    const confirm = await Swal.fire({
+      title: `${actionLabel}?`,
+      text: isCurrentlyTU
+        ? `Akun "${item.nama}" akan dikembalikan ke role Guru.`
+        : `Akun "${item.nama}" akan dialihkan ke role Tata Usaha (TU). Hak akses akan disesuaikan ke modul TU.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Lanjutkan',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0D9488'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setLoading(true);
+    try {
+      if (item.userId) {
+        const { error: updErr } = await supabase
+          .from('users')
+          .update({ role: targetRole })
+          .eq('id', item.userId);
+        if (updErr) throw updErr;
+      }
+      showToast('Berhasil', `Role ${item.nama} berhasil diubah menjadi ${targetRole === 'tata_usaha' ? 'Tata Usaha' : 'Guru'}.`, 'success');
+      handleLoadAndSync(false);
+    } catch (err: any) {
+      showToast('Gagal Mengubah Role', err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Create Tata Usaha Account (Mekanisme 2: Form Akun Baru TU - 4 Field Wajib)
   const handleCreateTuUser = async () => {
     if (!isAdmin) return;
     const { value: formValues } = await Swal.fire({
@@ -164,16 +203,20 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       html: `
         <div class="text-left space-y-3 text-xs">
           <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">NIP (Nomor Induk Pegawai) *</label>
+            <input id="swal-tu-nip" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="NIP staf TU...">
+          </div>
+          <div>
             <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nama Lengkap *</label>
-            <input id="swal-tu-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Nama staf TU...">
+            <input id="swal-tu-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Nama lengkap staf TU...">
           </div>
           <div>
-            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Username Login *</label>
-            <input id="swal-tu-user" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="Username login...">
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nomor HP (WhatsApp) *</label>
+            <input id="swal-tu-hp" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 081234567890...">
           </div>
           <div>
-            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Kata Sandi (Password) *</label>
-            <input id="swal-tu-pwd" type="password" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="Password login...">
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Email Aktif *</label>
+            <input id="swal-tu-email" type="email" class="swal2-input !mt-0 !w-full text-xs" placeholder="email@sekolah.sch.id...">
           </div>
         </div>
       `,
@@ -183,34 +226,61 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       confirmButtonColor: '#0D9488',
       cancelButtonText: 'Batal',
       preConfirm: () => {
+        const nip = (document.getElementById('swal-tu-nip') as HTMLInputElement)?.value?.trim();
         const nama = (document.getElementById('swal-tu-nama') as HTMLInputElement)?.value?.trim();
-        const username = (document.getElementById('swal-tu-user') as HTMLInputElement)?.value?.trim();
-        const password = (document.getElementById('swal-tu-pwd') as HTMLInputElement)?.value?.trim();
-        if (!nama || !username || !password) {
-          Swal.showValidationMessage('Semua kolom wajib diisi!');
+        const no_hp = (document.getElementById('swal-tu-hp') as HTMLInputElement)?.value?.trim();
+        const email = (document.getElementById('swal-tu-email') as HTMLInputElement)?.value?.trim();
+        if (!nip || !nama || !no_hp || !email) {
+          Swal.showValidationMessage('Semua 4 data (NIP, Nama Lengkap, Nomor HP, dan Email Aktif) wajib diisi!');
           return null;
         }
-        return { nama, username, password };
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          Swal.showValidationMessage('Format email aktif tidak valid (contoh: user@sekolah.sch.id)!');
+          return null;
+        }
+        return { nip, nama, no_hp, email };
       }
     });
 
     if (formValues) {
       setLoading(true);
-      const sekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
-      const { error: insErr } = await supabase.from('users').insert({
+      const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      const userId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `usr-tu-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const defaultPassword = `${formValues.nip}27`;
+
+      const { error: insUserErr } = await supabase.from('users').insert({
+        id: userId,
         nama: formValues.nama,
-        username: formValues.username,
-        password: formValues.password,
+        username: formValues.nip,
+        password: defaultPassword,
         role: 'tata_usaha',
-        sekolah_id: sekolahId
+        sekolah_id: targetSekolahId
+      });
+
+      if (insUserErr) {
+        setLoading(false);
+        showToast('Gagal Membuat Akun', insUserErr.message, 'error');
+        return;
+      }
+
+      const { error: insGuruErr } = await supabase.from('data_guru').insert({
+        sekolah_id: targetSekolahId,
+        user_id: userId,
+        nip: formValues.nip,
+        nama_guru: formValues.nama,
+        mata_pelajaran: 'Tata Usaha (Administrasi)',
+        no_hp: formValues.no_hp,
+        email: formValues.email,
+        status: 'Aktif'
       });
       setLoading(false);
-      if (insErr) {
-        showToast('Gagal Membuat Akun', insErr.message, 'error');
-      } else {
-        showToast('Berhasil', `Akun Tata Usaha "${formValues.nama}" berhasil dibuat.`, 'success');
-        handleLoadAndSync(false);
+      if (insGuruErr) {
+        console.warn('data_guru insert note:', insGuruErr.message);
       }
+      showToast('Berhasil', `Akun Tata Usaha "${formValues.nama}" berhasil dibuat.`, 'success');
+      handleLoadAndSync(false);
     }
   };
 
@@ -708,7 +778,24 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                         </span>
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleTuAssignment(item)}
+                            className={`btn-click px-2 py-1 rounded-lg font-bold text-[11px] border transition flex items-center gap-1 ${
+                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha'
+                                ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/60'
+                                : 'bg-teal-100 hover:bg-teal-200 text-teal-900 dark:bg-teal-900/40 dark:text-teal-300 border-teal-300/60'
+                            }`}
+                            title={
+                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha'
+                                ? 'Kembalikan role ke Guru'
+                                : 'Tunjuk sebagai staf Tata Usaha'
+                            }
+                          >
+                            <i className={`fa-solid ${(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha' ? 'fa-chalkboard-user' : 'fa-id-card-clip'} text-[10px]`}></i>
+                            <span>{(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha' ? 'Ke Guru' : 'Tunjuk TU'}</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(item)}
