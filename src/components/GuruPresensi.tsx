@@ -54,13 +54,43 @@ export default function GuruPresensi({
     };
   }, []);
 
-  const [tipeAbsen, setTipeAbsen] = useState('Datang');
-  const [jenisPresensi, setJenisPresensi] = useState('Sekolah');
-  const [detailIzin, setDetailIzin] = useState('Sakit');
-  const [keterangan, setKeterangan] = useState('');
-  const [durasiHari, setDurasiHari] = useState(1);
-  const [tanggalMulai, setTanggalMulai] = useState(getWitaDateStr());
-  const [tanggalSelesai, setTanggalSelesai] = useState(getWitaDateStr());
+  const DRAFT_KEY = 'sipjam_presensi_form_draft';
+
+  const getSavedDraft = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const initialDraft = getSavedDraft();
+
+  const [tipeAbsen, setTipeAbsen] = useState(initialDraft?.tipeAbsen || 'Datang');
+  const [jenisPresensi, setJenisPresensi] = useState(initialDraft?.jenisPresensi || 'Sekolah');
+  const [detailIzin, setDetailIzin] = useState(initialDraft?.detailIzin || 'Sakit');
+  const [keterangan, setKeterangan] = useState(initialDraft?.keterangan || '');
+  const [durasiHari, setDurasiHari] = useState(initialDraft?.durasiHari || 1);
+  const [tanggalMulai, setTanggalMulai] = useState(initialDraft?.tanggalMulai || getWitaDateStr());
+  const [tanggalSelesai, setTanggalSelesai] = useState(initialDraft?.tanggalSelesai || getWitaDateStr());
+
+  const saveDraft = (fields: Partial<{
+    tipeAbsen: string;
+    jenisPresensi: string;
+    detailIzin: string;
+    keterangan: string;
+    durasiHari: number;
+    tanggalMulai: string;
+    tanggalSelesai: string;
+  }>) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const current = getSavedDraft() || {};
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ...current, ...fields }));
+    } catch {}
+  };
 
   const addDaysToDateStr = (dateStr: string, days: number): string => {
     try {
@@ -93,12 +123,16 @@ export default function GuruPresensi({
   const handleDurasiChange = (val: number) => {
     const durasi = Math.max(1, val);
     setDurasiHari(durasi);
-    setTanggalSelesai(addDaysToDateStr(tanggalMulai, durasi - 1));
+    const end = addDaysToDateStr(tanggalMulai, durasi - 1);
+    setTanggalSelesai(end);
+    saveDraft({ durasiHari: durasi, tanggalSelesai: end });
   };
 
   const handleTanggalMulaiChange = (newStart: string) => {
     setTanggalMulai(newStart);
-    setTanggalSelesai(addDaysToDateStr(newStart, durasiHari - 1));
+    const end = addDaysToDateStr(newStart, durasiHari - 1);
+    setTanggalSelesai(end);
+    saveDraft({ tanggalMulai: newStart, tanggalSelesai: end });
   };
 
   const handleTanggalSelesaiChange = (newEnd: string) => {
@@ -107,6 +141,7 @@ export default function GuruPresensi({
     setTanggalSelesai(effectiveEnd);
     const days = getDaysBetween(tanggalMulai, effectiveEnd);
     setDurasiHari(days);
+    saveDraft({ tanggalSelesai: effectiveEnd, durasiHari: days });
   };
 
   const isSakit = detailIzin === 'Sakit' || jenisPresensi === 'Sakit';
@@ -193,12 +228,32 @@ export default function GuruPresensi({
       if (state.presensiDatangDitolak) {
         setTipeAbsen('Datang');
         setJenisPresensi(state.presensiDatangDitolak.jenis_presensi || 'Sekolah');
+        if (state.presensiDatangDitolak.detail_izin) {
+          setDetailIzin(state.presensiDatangDitolak.detail_izin);
+        }
+      } else if (state.isIzinSakit) {
+        setTipeAbsen('Datang');
+        setJenisPresensi('Izin');
+        const activeLeave = state.activeLeaveRecord || state.presensiDatang;
+        if (activeLeave?.detail_izin) {
+          setDetailIzin(activeLeave.detail_izin);
+        }
       } else if (state.presensiDatang && (!state.presensiPulang || state.presensiPulangDitolak)) {
         setTipeAbsen('Pulang');
         if (state.isDinasLuar) {
           setJenisPresensi('Dinas Luar');
         } else {
           setJenisPresensi(state.presensiPulangDitolak?.jenis_presensi || 'Sekolah');
+        }
+      } else {
+        const draft = getSavedDraft();
+        if (draft?.jenisPresensi) {
+          setJenisPresensi(draft.jenisPresensi);
+          if (draft.detailIzin) setDetailIzin(draft.detailIzin);
+          if (draft.keterangan) setKeterangan(draft.keterangan);
+          if (draft.durasiHari) setDurasiHari(draft.durasiHari);
+          if (draft.tanggalMulai) setTanggalMulai(draft.tanggalMulai);
+          if (draft.tanggalSelesai) setTanggalSelesai(draft.tanggalSelesai);
         }
       }
     };
@@ -267,6 +322,7 @@ export default function GuruPresensi({
     }
     // Switching between modes of the same type (e.g. Sekolah <-> Terlambat <-> Dinas Luar) preserves the attachment seamlessly without prompt
     setJenisPresensi(val);
+    saveDraft({ jenisPresensi: val });
   };
 
   const handleTipeAbsenChange = async (val: string) => {
@@ -330,6 +386,7 @@ export default function GuruPresensi({
 
     setTipeAbsen(val);
     setJenisPresensi(nextJenisPresensi);
+    saveDraft({ tipeAbsen: val, jenisPresensi: nextJenisPresensi });
   };
 
   // Determine if selfie camera is required
@@ -341,10 +398,10 @@ export default function GuruPresensi({
   const isSelfieRequired = jenisPresensi === 'Sekolah' || jenisPresensi === 'Dinas Luar' || jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
 
     const getRequiredDocName = () => {
-      if (jenisPresensi === 'Izin' && detailIzin === 'Sakit') {
+      if (jenisPresensi === 'Izin' && (detailIzin === 'Sakit' || detailIzin.includes('Sakit'))) {
         return durasiHari >= 3 ? 'Surat Dokter' : 'Surat Sakit Mandiri';
       }
-      if (jenisPresensi === 'Izin' && detailIzin === 'Izin') {
+      if (jenisPresensi === 'Izin' && (detailIzin === 'Izin' || detailIzin.includes('Izin'))) {
         return durasiHari > 3 ? 'Surat Cuti Legal (Dinas)' : 'Surat Izin Mandiri';
       }
       return 'Dokumen Keterangan';
@@ -672,25 +729,35 @@ export default function GuruPresensi({
     }
 
     // Reset Form & Update local states immediately
-    const nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah';
+    let nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah';
     if (tipeAbsen === 'Datang') {
       setTipeAbsen('Pulang');
+    }
+    if (currentJenis === 'Izin' || currentJenis === 'Sakit') {
+      nextJenisAfterSubmit = 'Izin';
+      setTipeAbsen('Datang');
     }
     setJenisPresensi(nextJenisAfterSubmit);
     setKeterangan('');
     setFile(null);
     setPhotoPreviewUrl(null);
+    if (typeof window !== 'undefined') {
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+    }
     
     // Refresh workflow state safely
     try {
       const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
       if (!isMountedRef.current) return;
       setDailyState(state);
-      if (tipeAbsen === 'Datang') {
+      if (tipeAbsen === 'Datang' && !state.isIzinSakit) {
         setTipeAbsen('Pulang');
         if (state.isDinasLuar) {
           setJenisPresensi('Dinas Luar');
         }
+      } else if (state.isIzinSakit) {
+        setTipeAbsen('Datang');
+        setJenisPresensi('Izin');
       }
     } catch (stateErr) {
       console.warn('[GuruPresensi] Daily state refresh warning:', stateErr);
@@ -751,8 +818,8 @@ export default function GuruPresensi({
       id: 'live',
       label: 'Presensi Hari Ini',
       icon: 'fa-right-to-bracket',
-      badge: dailyState?.presensiDatang ? (dailyState.presensiPulang ? 'Selesai' : 'Pulang') : 'Datang',
-      badgeVariant: dailyState?.presensiDatang ? 'mint' : 'amber',
+      badge: dailyState?.isIzinSakit ? 'Izin/Sakit' : dailyState?.presensiDatang ? (dailyState.presensiPulang ? 'Selesai' : 'Pulang') : 'Datang',
+      badgeVariant: dailyState?.isIzinSakit ? 'amber' : (dailyState?.presensiDatang ? 'mint' : 'amber'),
     },
     {
       id: 'riwayat',
@@ -854,7 +921,26 @@ export default function GuruPresensi({
               </div>
             )}
             
-            <form onSubmit={handlePresensiSubmit} className={`space-y-4 ${dailyState?.isLibur ? 'opacity-50 pointer-events-none' : ''}`}>
+            {/* Status Izin/Sakit Banner */}
+            {dailyState?.isIzinSakit && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-2xl p-4 sm:p-5 mb-4 space-y-2">
+                <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-300 font-bold text-sm">
+                  <i className="fa-solid fa-bed text-base shrink-0 text-amber-600 dark:text-amber-400"></i>
+                  <span>Status Kehadiran Hari Ini: {dailyState.presensiDatang?.detail_izin || dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.detail_izin || 'Izin / Sakit'}</span>
+                </div>
+                <div className="pl-6 text-xs text-amber-700 dark:text-amber-300/90 leading-relaxed">
+                  {dailyState.lockedReason || 'Anda sedang Izin/Sakit hari ini. Tidak perlu melakukan presensi pulang, piket, atau mengisi jurnal kegiatan.'}
+                </div>
+                <div className="pl-6 pt-1 flex items-center gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-200/60 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
+                    <i className="fa-solid fa-circle-info text-[10px]"></i>
+                    Status: {dailyState.presensiDatang?.status_verifikasi || dailyState.activeLeaveRecord?.status_verifikasi || 'Menunggu'}
+                  </span>
+                </div>
+              </div>
+            )}
+            
+<form onSubmit={handlePresensiSubmit} className={`space-y-4 ${dailyState?.isLibur || dailyState?.isIzinSakit ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tipe Absen</label>
@@ -930,7 +1016,7 @@ export default function GuruPresensi({
                   <div id="row-detail-izin" className="fade-in space-y-4">
                       <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kategori Detail</label>
-                          <select value={detailIzin} onChange={e => setDetailIzin(e.target.value)} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
+                          <select value={detailIzin} onChange={e => { setDetailIzin(e.target.value); saveDraft({ detailIzin: e.target.value }); }} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
                             <option value="Sakit">Sakit</option>
                             <option value="Izin Pribadi">Izin Pribadi</option>
                             <option value="Izin Khusus">Izin Khusus</option>
@@ -1013,7 +1099,7 @@ export default function GuruPresensi({
                           </label>
                           <textarea 
                             value={keterangan}
-                            onChange={e => setKeterangan(e.target.value)}
+                            onChange={e => { setKeterangan(e.target.value); saveDraft({ keterangan: e.target.value }); }}
                             rows={3} 
                             required
                             className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-nizamudin-green/20 outline-none transition resize-none placeholder-gray-400 dark:placeholder-gray-500" 

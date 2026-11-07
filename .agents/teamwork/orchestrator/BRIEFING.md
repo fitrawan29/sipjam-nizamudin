@@ -75,12 +75,17 @@ Melakukan penyesuaian fungsional pada role admin aplikasi sipjam-app untuk kebut
 | explorer_m3_fix_1 | teamwork_explorer | M3 Fix: Mapel Kelompok Column Analysis | completed | 8ca8276d-96fe-4409-b378-eb143e84064d |
 | explorer_m3_fix_2 | teamwork_explorer | M3 Fix: CI Regression Harmonization | completed | b7ee54e2-6852-473a-afcb-1ab24c76c13e |
 | explorer_m3_fix_3 | teamwork_explorer | M3 Fix: Remediation Blueprint Synthesis | completed | d825b780-4526-403a-8f41-3b0e641fc421 |
-| worker_m3_fix | teamwork_worker | M3 Iteration 2 Remediation Implementation | in-progress | 5939e5a4-03b8-4fce-bc81-74cfce3e2b66 |
+| worker_m3_fix | teamwork_worker | M3 Iteration 2 Remediation Implementation | completed | 5939e5a4-03b8-4fce-bc81-74cfce3e2b66 |
+| reviewer_m3_it2_1 | teamwork_reviewer | M3 It2: Mapel & Stepper Review | in-progress | d4c45678-1c4c-420a-a94f-6436a095622c |
+| reviewer_m3_it2_2 | teamwork_reviewer | M3 It2: Regression & Diagnostics Review | in-progress | c5634c0f-591f-41bc-97be-2c4a51f17a9a |
+| challenger_m3_it2_1 | teamwork_challenger | M3 It2: Dependencies Challenger | in-progress | b510638b-1d46-4e0b-83ac-e700140ba0c0 |
+| challenger_m3_it2_2 | teamwork_challenger | M3 It2: Diagnostics Challenger | in-progress | 3e305667-1f6c-4f1e-8f0f-055398830657 |
+| auditor_m3_it2_1 | teamwork_auditor | M3 It2: Forensic Integrity Audit | in-progress | 840eba20-9895-424b-8a2e-eb080b7b8d68 |
 
 ## Succession Status
 - Succession required: no (orchestrator type self-spawn restricted in environment; continuing direct orchestration within 128 limit)
-- Spawn count: 34 / 128
-- Pending subagents: 5939e5a4-03b8-4fce-bc81-74cfce3e2b66
+- Spawn count: 39 / 128
+- Pending subagents: d4c45678-1c4c-420a-a94f-6436a095622c, c5634c0f-591f-41bc-97be-2c4a51f17a9a, b510638b-1d46-4e0b-83ac-e700140ba0c0, 3e305667-1f6c-4f1e-8f0f-055398830657, 840eba20-9895-424b-8a2e-eb080b7b8d68
 - Predecessor: none
 - Successor: not yet spawned
 

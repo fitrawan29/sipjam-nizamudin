@@ -10,6 +10,6 @@ Current iteration: 2 / 32
 - [x] Milestone 2: Penyesuaian Asesmen & Rapor (Buku Nilai Mapel Cascading) (R3) [PASSED GATE: unanimous approve, clean audit, commit 5306f20]
 - [/] Milestone 3: Penyesuaian Master Data (Stepper, Dependensi, Progress, Error) (R4)
   - [x] Iteration 1: Implemented by worker_m3_nov (commit 485ac42). Gate check: FAIL (auditor CLEAN, but reviewers/challenger found DEFECT-01: data_mapel kelompok column overwrite, and CI test regression)
-  - [/] Iteration 2: Remediation loop (explorers m3_fix_1, m3_fix_2, m3_fix_3 completed; worker_m3_fix actively implementing fix)
+  - [/] Iteration 2: Remediation loop (worker_m3_fix completed; reviewers, challengers, auditor dispatched for Gate check)
 - [ ] Milestone 4: Penyesuaian Pencadangan & Pemulihan Sistem Berkas ZIP (R5)
 - [ ] Milestone 5: Automated Verification Test Suite & Full Non-Regression Gate (R6)
