@@ -84,3 +84,17 @@ Gate Result: **PASS** (Milestone 2 Approved Unanimously with Clean Forensic Audi
 
 Gate Result: **FAIL** (REQUEST_CHANGES on DEFECT-01: Data_Mapel kelompok column mapping in normalizeCsvHeaders)
 
+
+---
+
+## Gate — Role Tata Usaha (TU): Implementasi & Hak Akses Minimalis (/ponytail)
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| worker_tu | teamwork_worker | PENDING | - |
+| reviewer_tu_1 | teamwork_reviewer | PENDING | - |
+| reviewer_tu_2 | teamwork_reviewer | PENDING | - |
+| challenger_tu_1 | teamwork_challenger | PENDING | - |
+| challenger_tu_2 | teamwork_challenger | PENDING | - |
+| auditor_tu_1 | teamwork_auditor | PENDING | - |
+
+Gate Result: **IN_PROGRESS**

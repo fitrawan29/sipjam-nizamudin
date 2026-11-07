@@ -46,13 +46,35 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       const sekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
       const result = await syncTeacherAccounts(supabase, sekolahId);
 
+      // Load Tata Usaha accounts without altering teacher sync
+      const { data: tuUsers } = await supabase
+        .from('users')
+        .select('*')
+        .eq('sekolah_id', sekolahId);
+
+      const tuAccounts: TeacherAccountItem[] = (tuUsers || [])
+        .filter((u: any) => {
+          const norm = (u.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+          return norm === 'tatausaha';
+        })
+        .map((u: any) => ({
+          guruId: u.id,
+          userId: u.id,
+          nama: u.nama,
+          nip: u.nip || '-',
+          username: u.username,
+          defaultPassword: '-',
+          role: 'tata_usaha',
+          mataPelajaran: 'Tata Usaha (Administrasi)',
+          status: 'Aktif',
+          hasAccount: true,
+          sekolahId: u.sekolah_id
+        }));
+
       if (!isMountedRef.current) return;
 
-      if (result.accounts && result.accounts.length > 0) {
-        setAccounts(result.accounts);
-      } else {
-        setAccounts([]);
-      }
+      const combinedAccounts = [...(result.accounts || []), ...tuAccounts];
+      setAccounts(combinedAccounts);
 
       if (result.errors && result.errors.length > 0) {
         setErrorMsg(result.errors.join('; '));
@@ -133,10 +155,146 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
   const totalPages = Math.ceil(filteredAccounts.length / ITEMS_PER_PAGE) || 1;
 
+  // Handle Create Tata Usaha Account
+  const handleCreateTuUser = async () => {
+    if (!isAdmin) return;
+    const { value: formValues } = await Swal.fire({
+      title: 'Tambah Akun Tata Usaha',
+      width: '450px',
+      html: `
+        <div class="text-left space-y-3 text-xs">
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nama Lengkap *</label>
+            <input id="swal-tu-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Nama staf TU...">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Username Login *</label>
+            <input id="swal-tu-user" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="Username login...">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Kata Sandi (Password) *</label>
+            <input id="swal-tu-pwd" type="password" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="Password login...">
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Simpan Akun TU',
+      confirmButtonColor: '#0D9488',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const nama = (document.getElementById('swal-tu-nama') as HTMLInputElement)?.value?.trim();
+        const username = (document.getElementById('swal-tu-user') as HTMLInputElement)?.value?.trim();
+        const password = (document.getElementById('swal-tu-pwd') as HTMLInputElement)?.value?.trim();
+        if (!nama || !username || !password) {
+          Swal.showValidationMessage('Semua kolom wajib diisi!');
+          return null;
+        }
+        return { nama, username, password };
+      }
+    });
+
+    if (formValues) {
+      setLoading(true);
+      const sekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      const { error: insErr } = await supabase.from('users').insert({
+        nama: formValues.nama,
+        username: formValues.username,
+        password: formValues.password,
+        role: 'tata_usaha',
+        sekolah_id: sekolahId
+      });
+      setLoading(false);
+      if (insErr) {
+        showToast('Gagal Membuat Akun', insErr.message, 'error');
+      } else {
+        showToast('Berhasil', `Akun Tata Usaha "${formValues.nama}" berhasil dibuat.`, 'success');
+        handleLoadAndSync(false);
+      }
+    }
+  };
+
+  // Handle Delete Tata Usaha Account
+  const handleDeleteTu = async (item: TeacherAccountItem) => {
+    if (!isAdmin) return;
+    const result = await Swal.fire({
+      title: 'Hapus Akun TU?',
+      text: `Hapus akun "${item.nama}" (${item.username})?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    });
+    if (result.isConfirmed) {
+      setLoading(true);
+      const { error: delErr } = await supabase.from('users').delete().eq('id', item.userId);
+      setLoading(false);
+      if (delErr) {
+        showToast('Gagal Menghapus', delErr.message, 'error');
+      } else {
+        showToast('Berhasil', 'Akun Tata Usaha berhasil dihapus.', 'success');
+        handleLoadAndSync(false);
+      }
+    }
+  };
+
   // Handle Edit Credentials Modal
   const handleOpenEditModal = async (item: TeacherAccountItem) => {
     if (!isAdmin) {
       showToast('Akses Ditolak', 'Hanya Admin yang dapat mengelola kredensial pengguna.', 'error');
+      return;
+    }
+
+    if (item.role === 'tata_usaha') {
+      const { value: formValues } = await Swal.fire({
+        title: 'Atur Kredensial Akun Tata Usaha',
+        width: '450px',
+        html: `
+          <div class="text-left space-y-3 text-xs">
+            <div>
+              <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nama Lengkap *</label>
+              <input id="swal-tu-nama" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama}" placeholder="Nama staf TU...">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Username Login *</label>
+              <input id="swal-tu-user" class="swal2-input !mt-0 !w-full text-xs font-mono" value="${item.username}" placeholder="Username...">
+            </div>
+            <div>
+              <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Kata Sandi Baru (Opsional)</label>
+              <input id="swal-tu-pwd" type="password" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="Kosongkan jika tidak diubah...">
+            </div>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        confirmButtonColor: '#0D9488',
+        cancelButtonText: 'Batal',
+        preConfirm: () => {
+          const nama = (document.getElementById('swal-tu-nama') as HTMLInputElement)?.value?.trim();
+          const username = (document.getElementById('swal-tu-user') as HTMLInputElement)?.value?.trim();
+          const password = (document.getElementById('swal-tu-pwd') as HTMLInputElement)?.value?.trim();
+          if (!nama || !username) {
+            Swal.showValidationMessage('Nama dan username tidak boleh kosong!');
+            return null;
+          }
+          return { nama, username, password };
+        }
+      });
+      if (formValues) {
+        setLoading(true);
+        const updateData: any = { nama: formValues.nama, username: formValues.username };
+        if (formValues.password) updateData.password = formValues.password;
+        const { error: updErr } = await supabase.from('users').update(updateData).eq('id', item.userId);
+        setLoading(false);
+        if (updErr) {
+          showToast('Gagal Memperbarui', updErr.message, 'error');
+        } else {
+          showToast('Berhasil', 'Akun Tata Usaha berhasil diperbarui.', 'success');
+          handleLoadAndSync(false);
+        }
+      }
       return;
     }
 
@@ -379,6 +537,16 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           <div className="shrink-0 flex items-center gap-2">
             <button
               type="button"
+              onClick={handleCreateTuUser}
+              disabled={syncing || loading}
+              className="clay-btn px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              title="Tambah akun pengguna Tata Usaha baru"
+            >
+              <i className="fa-solid fa-user-plus"></i>
+              <span>+ Akun TU</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleLoadAndSync(true)}
               disabled={syncing || loading}
               className="clay-btn px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
@@ -550,15 +718,27 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                             <i className="fa-solid fa-key text-[10px]"></i>
                             <span>Atur</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleQuickReset(item)}
-                            className="btn-click px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-[11px] border border-amber-300/60 transition"
-                            title="Reset password ke default NIP27"
-                          >
-                            <i className="fa-solid fa-rotate-left text-[10px]"></i>
-                            <span>NIP27</span>
-                          </button>
+                          {item.role === 'tata_usaha' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTu(item)}
+                              className="btn-click px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300 font-bold text-[11px] border border-red-300/60 transition"
+                              title="Hapus akun Tata Usaha"
+                            >
+                              <i className="fa-solid fa-trash-can text-[10px]"></i>
+                              <span>Hapus</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleQuickReset(item)}
+                              className="btn-click px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-[11px] border border-amber-300/60 transition"
+                              title="Reset password ke default NIP27"
+                            >
+                              <i className="fa-solid fa-rotate-left text-[10px]"></i>
+                              <span>NIP27</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

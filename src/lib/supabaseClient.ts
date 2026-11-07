@@ -196,7 +196,21 @@ export function createMasterDataForbiddenResponse(): Response {
 export function checkMasterDataMutationGuard(requestUrlStr: string, method: string, role?: string | null): Response | null {
   const upperMethod = (method || 'GET').trim().toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
-    if (isMasterDataEndpoint(requestUrlStr) && !isAdminRole(role)) {
+    if (isMasterDataEndpoint(requestUrlStr)) {
+      if (isAdminRole(role)) return null;
+
+      // Tata Usaha operational scope: permit mutations on student and teacher tables only
+      const normRole = String(role || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+      if (normRole === 'tatausaha') {
+        const isStudentOrTeacher = ['data_siswa', 'siswa', 'data_guru', 'guru'].some(t => {
+          const pattern = new RegExp(`/(?:rest/v1/)?(?:public\\.)?${t}(?:/|$|\\?)`, 'i');
+          return pattern.test(requestUrlStr) || requestUrlStr.endsWith(`/${t}`) || requestUrlStr === t;
+        });
+        if (isStudentOrTeacher) {
+          return null;
+        }
+      }
+
       return createMasterDataForbiddenResponse();
     }
   }

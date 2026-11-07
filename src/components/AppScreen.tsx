@@ -92,6 +92,7 @@ export default function AppScreen({
   const isDinas = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'dinaspendidikan';
   const isAdmin = isSuperadmin || (baseUser?.role || '').toLowerCase() === 'admin';
   const isSiswa = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'siswa';
+  const isTataUsaha = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
     return (isSuperadmin || isDinas) ? getActiveTargetSchool() : null;
@@ -191,6 +192,7 @@ export default function AppScreen({
     if (isSuperadmin) return 'view-superadmin-overview';
     if (isDinas) return 'view-dinas-overview';
     if (isSiswa) return 'view-ujian';
+    if (isTataUsaha) return 'view-admin-data';
     return 'view-home';
   });
 
@@ -229,18 +231,19 @@ export default function AppScreen({
         setUrlTab(null);
         const defaultDinasPopView = isDinas ? 'view-dinas-overview' : 'view-home';
         const defaultSiswaPopView = isSiswa ? 'view-ujian' : 'view-home';
-        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultDinasPopView));
+        const defaultTuPopView = isTataUsaha ? 'view-admin-data' : defaultDinasPopView;
+        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultTuPopView));
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isSuperadmin, isDinas, isSiswa]);
+  }, [isSuperadmin, isDinas, isSiswa, isTataUsaha]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    if (!isSuperadmin) {
+    if (!isSuperadmin && !isTataUsaha) {
       if (isAdmin) {
         if (localStorage.getItem(STORAGE_KEY_ADMIN) !== 'true') {
           setTourOpen(true);
@@ -251,7 +254,7 @@ export default function AppScreen({
         }
       }
     }
-  }, [isAdmin, isSuperadmin]);
+  }, [isAdmin, isSuperadmin, isTataUsaha]);
   const [schoolData, setSchoolData] = useState<any>(() => {
     if (typeof window === 'undefined') return null;
     try {
@@ -478,6 +481,40 @@ export default function AppScreen({
     try {
       // Superadmin and Admin bypass all daily guru checks
       if (isSuperadmin || isAdmin) {
+        const resolution = resolveCanonicalRoute(targetId, targetTab);
+        const nextView = resolution.canonicalView;
+        const nextTab = resolution.defaultTab;
+        const url = nextTab ? `?view=${nextView}&tab=${nextTab}` : `?view=${nextView}`;
+        window.history.pushState(null, '', url);
+        setCurrentView(nextView);
+        setUrlTab(nextTab || null);
+        setSidebarOpen(false);
+        return;
+      }
+
+      // Tata Usaha navigation guard: strictly Data Siswa and Data Guru within view-admin-data
+      if (isTataUsaha) {
+        if (targetId === 'view-dokumen') {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Role Tata Usaha tidak memiliki hak akses ke Bank Dokumen / Persuratan.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+
+        const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', { role: user?.role, isWaliKelas });
+        if (!rbacCheck.allowed) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: rbacCheck.reason || 'Akses Terblokir: Role Tata Usaha hanya memiliki akses ke Data Siswa dan Data Guru.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+
         const resolution = resolveCanonicalRoute(targetId, targetTab);
         const nextView = resolution.canonicalView;
         const nextTab = resolution.defaultTab;
@@ -763,7 +800,7 @@ export default function AppScreen({
 
   // Active consolidated menus generated for Miller's Law ergonomics (7 ± 2 items per role)
   const consolidatedMenuItems = getConsolidatedMenuItems({
-    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : isSiswa ? 'siswa' : 'guru'),
+    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : isSiswa ? 'siswa' : isTataUsaha ? 'tata_usaha' : 'guru'),
     isWaliKelas,
     isPiketHariIni,
     isKepalaSekolah,
@@ -773,9 +810,11 @@ export default function AppScreen({
   // Role landing view resolution satisfying both dinas and siswa RBAC contracts:
   // - Dinas Pendidikan contract: isDinas ? 'view-dinas-overview' : 'view-home'
   // - Siswa contract: isSiswa ? 'view-ujian' : 'view-home'
+  // - Tata Usaha contract: isTataUsaha ? 'view-admin-data' : defaultDinasHomeView
   const defaultDinasHomeView = isDinas ? 'view-dinas-overview' : 'view-home';
   const defaultSiswaHomeView = isSiswa ? 'view-ujian' : 'view-home';
-  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaHomeView : defaultDinasHomeView);
+  const defaultTuHomeView = isTataUsaha ? 'view-admin-data' : defaultDinasHomeView;
+  const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaHomeView : defaultTuHomeView);
 
   return (
     <div className="flex-col h-full w-full flex">
@@ -901,14 +940,16 @@ export default function AppScreen({
                         ? 'bg-[#EDE9FE] text-[#5B21B6] dark:bg-indigo-900/50 dark:text-indigo-300 border border-[#C4B5FD] dark:border-indigo-700/60'
                         : isAdmin
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'
+                        : isTataUsaha
+                        ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
                         : isKepalaSekolah
                         ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200/50'
                         : isWaliKelas
                         ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
                     }`}>
-                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
-                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isKepalaSekolah ? 'Kepala Sekolah' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
+                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isTataUsaha ? 'fa-id-card-clip' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
+                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isKepalaSekolah ? 'Kepala Sekolah' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
                     </span>
                     {(user?.username || user?.nip) && (
                       <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
@@ -1143,7 +1184,28 @@ export default function AppScreen({
                   </div>
                 )
               )}
-              {currentView === 'view-dokumen' && <DokumenView user={user} />}
+              {currentView === 'view-dokumen' && (
+                !isTataUsaha ? (
+                  <DokumenView user={user} />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Role Tata Usaha tidak memiliki hak akses ke Bank Dokumen / Persuratan.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
+              )}
               {currentView === 'view-gradebook' && (
                 <GradebookView
                   user={user}
@@ -1304,7 +1366,7 @@ export default function AppScreen({
                 )
               )}
               {currentView === 'view-admin-data' && (
-                isAdmin || isSuperadmin ? (
+                isAdmin || isSuperadmin || isTataUsaha ? (
                   <AdminDataView user={user} initialTab={urlTab || undefined} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">

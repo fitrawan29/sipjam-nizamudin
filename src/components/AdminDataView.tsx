@@ -83,13 +83,26 @@ export async function buildMapelChecklistHtml(sekolahId: string | undefined, gur
 const readMapelChecklist = () => Array.from(document.querySelectorAll<HTMLInputElement>('.swal-mapel-cb:checked')).map(c => c.value).join(', ');
 
 export default function AdminDataView({ user, initialTab }: AdminDataViewProps) {
-  const [activeTab, setActiveTab] = useState(() => normalizeAdminTab(initialTab));
+  const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const norm = normalizeAdminTab(initialTab);
+    if (isTataUsaha && norm !== 'Data_Siswa' && norm !== 'Data_Guru') {
+      return 'Data_Siswa';
+    }
+    return norm;
+  });
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(normalizeAdminTab(initialTab));
+      const norm = normalizeAdminTab(initialTab);
+      if (isTataUsaha && norm !== 'Data_Siswa' && norm !== 'Data_Guru') {
+        setActiveTab('Data_Siswa');
+      } else {
+        setActiveTab(norm);
+      }
     }
-  }, [initialTab]);
+  }, [initialTab, isTataUsaha]);
 
   const [search, setSearch] = useState('');
   const [filter1, setFilter1] = useState('ALL');
@@ -137,6 +150,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   const uploadedRowsCacheRef = useRef<Record<string, any[]>>({});
   const ITEMS_PER_PAGE = 20;
   const isAdmin = isMasterDataModificationAllowed(user?.role);
+  const canModify = isAdmin || (isTataUsaha && (activeTab === 'Data_Siswa' || activeTab === 'Data_Guru'));
 
   // Fetch school name and active configuration from Supabase on mount
   useEffect(() => {
@@ -229,7 +243,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     { id: 'sistem_blok', label: 'Periode Sistem Blok', table: 'sistem_blok', step: 9, icon: 'fa-cubes', desc: 'Rotasi Blok KBM', optional: true },
   ];
 
+  const visibleTabs = isTataUsaha ? tabs.filter(t => t.id === 'Data_Siswa' || t.id === 'Data_Guru') : tabs;
+
   const handleSwitchTab = (tabId: string) => {
+    if (isTataUsaha && tabId !== 'Data_Siswa' && tabId !== 'Data_Guru') {
+      return;
+    }
     setActiveTab(tabId);
     setSelectedStudentIds([]);
     setSearch('');
@@ -670,8 +689,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const tabObj = tabs.find(t => t.id === currentTab) || tabs.find(t => t.id === activeTab) || tabs[0];
     if (!tabObj) return;
 
-    if (!isAdmin) {
-      showToast('Akses Ditolak', 'Hanya Admin yang dapat mengunggah atau memodifikasi data master.', 'error');
+    if (!canModify) {
+      showToast('Akses Ditolak', 'Hanya Admin atau Tata Usaha yang dapat mengunggah atau memodifikasi data master.', 'error');
       return;
     }
 
@@ -880,8 +899,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
 
-    if (!isAdmin) {
-      showToast('Akses Ditolak', 'Hanya Admin yang dapat menambah data master.', 'error');
+    if (!canModify) {
+      showToast('Akses Ditolak', 'Hanya Admin atau Tata Usaha yang dapat menambah data master.', 'error');
       return;
     }
 
@@ -1654,8 +1673,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
 
-    if (!isAdmin) {
-      showToast('Akses Ditolak', 'Hanya Admin yang dapat mengubah data master.', 'error');
+    if (!canModify) {
+      showToast('Akses Ditolak', 'Hanya Admin atau Tata Usaha yang dapat mengubah data master.', 'error');
       return;
     }
 
@@ -2179,8 +2198,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const tabObj = tabs.find(t => t.id === activeTab);
     if (!tabObj) return;
 
-    if (!isAdmin) {
-      showToast('Akses Ditolak', 'Hanya Admin yang dapat menghapus data master.', 'error');
+    if (!canModify) {
+      showToast('Akses Ditolak', 'Hanya Admin atau Tata Usaha yang dapat menghapus data master.', 'error');
       return;
     }
 
@@ -2502,11 +2521,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               {/* Stepper Pipeline */}
               {(() => {
                 const currentNormTab = normalizeAdminTab(activeTab);
-                const activeIndex = tabs.findIndex(t => normalizeAdminTab(t.id) === currentNormTab);
+                const activeIndex = visibleTabs.findIndex(t => normalizeAdminTab(t.id) === currentNormTab);
 
                 return (
                   <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scroll pb-1.5 pt-0.5 max-w-full">
-                    {tabs.map((step, idx) => {
+                    {visibleTabs.map((step, idx) => {
                       const isActive = idx === activeIndex;
                       const isPast = activeIndex !== -1 && idx < activeIndex;
 
@@ -2542,10 +2561,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                               <div className="flex items-center gap-1.5">
                                 <i className={`fa-solid ${step.icon} text-[11px] ${
                                   isActive ? 'text-purple-100' : isPast ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-purple-500'
-                                }`}></i>
+                                }}`}></i>
                                 <span className={`text-xs font-bold whitespace-nowrap ${
                                   isActive ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                                }`}>
+                                }}`}>
                                   {step.label}
                                 </span>
                                 {step.optional && (
@@ -2567,7 +2586,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                           </button>
 
                           {/* Connecting Chevron between steps */}
-                          {idx < tabs.length - 1 && (
+                          {idx < visibleTabs.length - 1 && (
                             <i className="fa-solid fa-chevron-right text-[9px] text-gray-300 dark:text-gray-600 shrink-0"></i>
                           )}
                         </div>
@@ -2580,7 +2599,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
             {/* TABS */}
             <div className="flex overflow-x-auto custom-scroll gap-2 mb-4 pb-1 max-w-full">
-                {tabs.map(tab => {
+                {visibleTabs.map(tab => {
                   const isTabActive = normalizeAdminTab(activeTab) === normalizeAdminTab(tab.id);
                   return (
                     <button 
@@ -2674,7 +2693,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                         >
                           <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i> Template
                         </button>
-                        {isAdmin && (
+                        {canModify && (
                           <button 
                             type="button" 
                             onClick={() => fileInputRef.current?.click()} 
@@ -2706,7 +2725,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                           <i className={`fa-solid ${selectedStudentIds.length === filteredList.length && filteredList.length > 0 ? 'fa-square-check text-emerald-600 dark:text-emerald-400' : 'fa-square text-gray-400'}`}></i>
                           <span className="hidden sm:inline">Pilih Semua</span>
                         </button>
-                        {isAdmin && (
+                        {canModify && (
                           <button 
                             type="button" 
                             onClick={() => setIsNaikKelasOpen(true)}
@@ -2728,7 +2747,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                     <button type="button" onClick={() => { void loadData(); }} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
                       <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                     </button>
-                    {isAdmin && (
+                    {canModify && (
                       <button 
                         type="button" 
                         onClick={handleOpenCreateModal} 
@@ -2985,7 +3004,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                               </button>
                             </>
                           )}
-                          {isAdmin && (
+                          {canModify && (
                             <>
                               <button 
                                 type="button" 
@@ -3041,7 +3060,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           selectedStudentIds={selectedStudentIds}
           students={activeTab === 'Data_Siswa' ? dataList : []}
           sekolahId={user?.sekolah_id}
-          role={user?.role}
+          role={isTataUsaha ? 'Admin' : user?.role}
         />
     </section>
   );

@@ -2168,7 +2168,7 @@ export type JenisDokumenKurikulum =
   | "Program Semester (Promes)"
   | "Rencana Pembelajaran Mendalam / Modul Ajar (RPM)"
   | string;
-export type RoleUser = "Superadmin" | "Admin" | "Guru" | "dinas_pendidikan" | "Dinas Pendidikan";
+export type RoleUser = "Superadmin" | "Admin" | "Guru" | "dinas_pendidikan" | "Dinas Pendidikan" | "tata_usaha" | "Tata Usaha";
 export type StatusSekolah = "aktif" | "nonaktif";
 export type StatusKehadiranSiswa = "Hadir" | "Izin" | "Sakit" | "Alpa" | "Bolos";
 export type KategoriAsesmen = "Diagnostik" | "Formatif" | "Sumatif";

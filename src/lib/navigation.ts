@@ -37,6 +37,10 @@ export const VIEW_ALIASES: Record<string, { view: string; tab?: string }> = {
   'view-admin-users':       { view: 'view-admin-data', tab: 'Pengguna' },
   'view-admin-kelas':       { view: 'view-admin-data', tab: 'Data_Kelas' },
   'view-kelas':             { view: 'view-admin-data', tab: 'Data_Kelas' },
+  'view-data-siswa':        { view: 'view-admin-data', tab: 'Data_Siswa' },
+  'view-siswa':             { view: 'view-admin-data', tab: 'Data_Siswa' },
+  'view-data-guru':         { view: 'view-admin-data', tab: 'Data_Guru' },
+  'view-guru':              { view: 'view-admin-data', tab: 'Data_Guru' },
   'view-admin-backup':      { view: 'view-admin-config', tab: 'backup' }
 };
 
@@ -47,7 +51,7 @@ export const SIDEBAR_TOUR_ALIASES: Record<string, string> = {
   'view-guru-presensi': 'view-history',
   'view-gradebook': 'view-rapor',
   'view-admin-rekap': 'view-analitik view-rekap-guru',
-  'view-admin-data': 'view-sistem-blok view-admin-pengguna view-pengguna view-admin-kelas view-kelas',
+  'view-admin-data': 'view-sistem-blok view-admin-pengguna view-pengguna view-admin-kelas view-kelas view-data-siswa view-data-guru',
   'view-admin-config': 'view-admin-backup'
 };
 
@@ -169,6 +173,13 @@ export function getConsolidatedMenuItems(params: {
     ];
   }
 
+  if (normRole === 'tatausaha') {
+    return [
+      { id: 'view-data-siswa', icon: 'fa-user-graduate', label: 'Data Siswa', dataTour: 'view-admin-data' },
+      { id: 'view-data-guru', icon: 'fa-chalkboard-user', label: 'Data Guru', dataTour: 'view-admin-data' }
+    ];
+  }
+
   // Guru (Reguler, Wali Kelas, Piket)
   const items: MenuItem[] = [
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
@@ -202,10 +213,16 @@ export function evaluateTabRBAC(
   const isDinas = normRole === 'dinaspendidikan' || rawRole === 'dinas pendidikan';
   const isWali = !!user?.isWaliKelas;
   const isSiswa = normRole === 'siswa';
+  const isTataUsaha = normRole === 'tatausaha';
 
   // Strict isolation for Siswa role: cannot access teacher/admin operational modules
   if (isSiswa && viewId !== 'view-ujian' && viewId !== 'view-informasi') {
     return { allowed: false, fallbackTab: 'view-ujian', reason: 'Role Siswa hanya memiliki akses ke modul Ujian dan Informasi.' };
+  }
+
+  // Strict isolation for Tata Usaha: strictly cannot access Bank Dokumen / Persuratan
+  if (isTataUsaha && viewId === 'view-dokumen') {
+    return { allowed: false, fallbackTab: 'view-data-siswa', reason: 'Role Tata Usaha tidak memiliki hak akses ke Bank Dokumen / Persuratan.' };
   }
 
   // Cluster 1: Jurnal Mengajar
@@ -226,6 +243,20 @@ export function evaluateTabRBAC(
   const resolved = resolveCanonicalRoute(viewId, tabId);
   const effectiveView = resolved.canonicalView;
   const effectiveTab = resolved.defaultTab || tabId;
+
+  if (isTataUsaha) {
+    if (effectiveView === 'view-admin-data') {
+      const allowedTuTabs = ['Data_Siswa', 'data_siswa', 'siswa', 'Data_Guru', 'data_guru', 'guru'];
+      if (allowedTuTabs.includes(effectiveTab || 'Data_Siswa')) {
+        return { allowed: true };
+      }
+      return { allowed: false, fallbackTab: 'view-data-siswa', reason: 'Role Tata Usaha hanya memiliki akses ke Data Siswa dan Data Guru.' };
+    }
+    if (effectiveView !== 'view-home') {
+      return { allowed: false, fallbackTab: 'view-data-siswa', reason: 'Role Tata Usaha tidak memiliki izin akses ke modul ini.' };
+    }
+    return { allowed: true };
+  }
   if (
     effectiveView === 'view-admin-data' ||
     viewId === 'view-admin-data' ||

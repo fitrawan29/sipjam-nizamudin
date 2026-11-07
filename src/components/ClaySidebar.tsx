@@ -26,6 +26,7 @@ export interface ClaySidebarProps {
   isSuperadmin?: boolean;
   isDinas?: boolean;
   isAdmin?: boolean;
+  isTataUsaha?: boolean;
   isKepalaSekolah?: boolean;
   isWaliKelas?: boolean;
   satelliteSchools?: any[];
@@ -50,6 +51,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
   isSuperadmin = false,
   isDinas = false,
   isAdmin = false,
+  isTataUsaha = false,
   isKepalaSekolah = false,
   isWaliKelas = false,
   satelliteSchools = [],
@@ -64,12 +66,16 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const isTU = isTataUsaha || (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+
   const roleBadgeStyle = isSuperadmin
     ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-300/60'
     : isDinas
     ? 'bg-[#EDE9FE] text-[#5B21B6] dark:bg-indigo-900/50 dark:text-indigo-300 border border-[#C4B5FD] dark:border-indigo-700/60'
     : isAdmin
     ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-300/60'
+    : isTU
+    ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-300/60'
     : isKepalaSekolah
     ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-300/60'
     : isWaliKelas
@@ -82,6 +88,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'Dinas Pendidikan'
     : isAdmin
     ? 'Administrator'
+    : isTU
+    ? 'Tata Usaha'
     : isKepalaSekolah
     ? 'Kepala Sekolah'
     : isWaliKelas
@@ -94,6 +102,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'fa-building-columns'
     : isAdmin
     ? 'fa-user-shield'
+    : isTU
+    ? 'fa-id-card-clip'
     : isKepalaSekolah
     ? 'fa-user-tie'
     : 'fa-chalkboard-user';
