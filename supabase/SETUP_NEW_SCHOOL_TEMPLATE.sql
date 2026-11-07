@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     nama TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('Superadmin', 'Admin', 'Guru', 'Piket', 'Wali Kelas')),
+    role TEXT NOT NULL,
     sekolah_id UUID REFERENCES public.sekolah(id) ON DELETE CASCADE,
     session_token UUID DEFAULT gen_random_uuid(),
     avatar TEXT,

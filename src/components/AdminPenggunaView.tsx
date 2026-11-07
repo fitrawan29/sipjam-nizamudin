@@ -73,7 +73,12 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
       if (!isMountedRef.current) return;
 
-      const combinedAccounts = [...(result.accounts || []), ...tuAccounts];
+      const combinedAccounts = [...(result.accounts || []).map((acc: TeacherAccountItem) => {
+        if ((acc.mataPelajaran || '').toLowerCase().includes('tata usaha')) {
+          return { ...acc, role: 'tata_usaha' };
+        }
+        return acc;
+      }), ...tuAccounts];
       setAccounts(combinedAccounts);
 
       if (result.errors && result.errors.length > 0) {
@@ -183,7 +188,49 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           .from('users')
           .update({ role: targetRole })
           .eq('id', item.userId);
-        if (updErr) throw updErr;
+
+        if (updErr) {
+          if (updErr.message?.includes('users_role_check')) {
+            const newMapel = targetRole === 'tata_usaha' ? 'Tata Usaha (Administrasi)' : '-';
+            await supabase
+              .from('data_guru')
+              .update({ mata_pelajaran: newMapel })
+              .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
+
+            await Swal.fire({
+              icon: 'warning',
+              title: 'Constraint Database Perlu Dihapus',
+              html: `
+                <div class="text-left text-xs space-y-3">
+                  <p>Database Supabase Anda masih menerapkan constraint <code>users_role_check</code> lama yang membatasi role.</p>
+                  <p class="text-gray-600 dark:text-gray-400">Jalankan perintah SQL berikut di <b>Supabase SQL Editor</b> agar role dapat disimpan di tabel <code>users</code>:</p>
+                  <div class="p-2.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] select-all border border-gray-300 dark:border-gray-700">
+                    ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+                  </div>
+                  <p class="text-[11px] text-teal-700 dark:text-teal-400 font-semibold">Tugas di data guru telah disesuaikan ke "${newMapel}".</p>
+                </div>
+              `,
+              confirmButtonText: 'Salin Perintah SQL',
+              showCancelButton: true,
+              cancelButtonText: 'Tutup',
+              confirmButtonColor: '#0D9488'
+            }).then((res) => {
+              if (res.isConfirmed && typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText('ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;');
+                showToast('Disalin', 'Perintah SQL berhasil disalin ke clipboard.', 'success');
+              }
+            });
+            handleLoadAndSync(false);
+            return;
+          }
+          throw updErr;
+        }
+
+        const newMapel = targetRole === 'tata_usaha' ? 'Tata Usaha (Administrasi)' : '-';
+        await supabase
+          .from('data_guru')
+          .update({ mata_pelajaran: newMapel })
+          .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
       }
       showToast('Berhasil', `Role ${item.nama} berhasil diubah menjadi ${targetRole === 'tata_usaha' ? 'Tata Usaha' : 'Guru'}.`, 'success');
       handleLoadAndSync(false);
@@ -250,7 +297,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
         : `usr-tu-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
       const defaultPassword = `${formValues.nip}27`;
 
-      const { error: insUserErr } = await supabase.from('users').insert({
+      let { error: insUserErr } = await supabase.from('users').insert({
         id: userId,
         nama: formValues.nama,
         username: formValues.nip,
@@ -258,6 +305,42 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
         role: 'tata_usaha',
         sekolah_id: targetSekolahId
       });
+
+      if (insUserErr && insUserErr.message?.includes('users_role_check')) {
+        const { error: retryErr } = await supabase.from('users').insert({
+          id: userId,
+          nama: formValues.nama,
+          username: formValues.nip,
+          password: defaultPassword,
+          role: 'Guru',
+          sekolah_id: targetSekolahId
+        });
+        if (!retryErr) {
+          insUserErr = null;
+          Swal.fire({
+            icon: 'info',
+            title: 'Akun Dibuat (Perlu Update Constraint)',
+            html: `
+              <div class="text-left text-xs space-y-2">
+                <p>Akun TU berhasil dibuat. Namun database Supabase Anda masih menerapkan constraint <code>users_role_check</code>.</p>
+                <p class="text-gray-600 dark:text-gray-400">Jalankan perintah SQL ini di <b>Supabase SQL Editor</b> agar role dapat tersimpan sebagai <code>tata_usaha</code> murni:</p>
+                <div class="p-2 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[10px] select-all border border-gray-300 dark:border-gray-700">
+                  ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+                </div>
+              </div>
+            `,
+            confirmButtonText: 'Salin SQL',
+            showCancelButton: true,
+            cancelButtonText: 'Tutup',
+            confirmButtonColor: '#0D9488'
+          }).then((r) => {
+            if (r.isConfirmed && typeof navigator !== 'undefined' && navigator.clipboard) {
+              navigator.clipboard.writeText('ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;');
+              showToast('Disalin', 'Perintah SQL disalin ke clipboard.', 'success');
+            }
+          });
+        }
+      }
 
       if (insUserErr) {
         setLoading(false);

@@ -92,7 +92,9 @@ export default function AppScreen({
   const isDinas = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'dinaspendidikan';
   const isAdmin = isSuperadmin || (baseUser?.role || '').toLowerCase() === 'admin';
   const isSiswa = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'siswa';
-  const isTataUsaha = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+  const isTataUsaha =
+    (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha' ||
+    (baseUser?.mata_pelajaran || '').toLowerCase().includes('tata usaha');
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
     return (isSuperadmin || isDinas) ? getActiveTargetSchool() : null;
