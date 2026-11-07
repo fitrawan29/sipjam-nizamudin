@@ -1164,6 +1164,14 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     }
 
     const jp = state.presensiDatang?.jenis_presensi;
+    if (jp === 'Alpa' || state.presensiDatang?.status_verifikasi === 'Alpa') {
+      state.isAlpa = true;
+      state.bebasAlpa = false;
+      state.canPresensiPulang = false;
+      state.lockedReason = 'Anda tercatat Alpa hari ini (tidak melakukan presensi datang dan pulang).';
+      return state;
+    }
+
     if (state.activeLeaveRecord || jp === 'Izin' || jp === 'Sakit') {
       state.isIzinSakit = true;
       state.bebasAlpa = true;
@@ -1334,6 +1342,7 @@ export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolea
   if (!state.presensiDatang) return false;
   if (state.isIzinSakit) return false;
   if (state.isLibur) return false;
+  if (state.isAlpa || state.presensiDatang?.jenis_presensi === 'Alpa' || state.presensiDatang?.status_verifikasi === 'Alpa') return false;
 
   // Jika state sudah dihitung lengkap oleh workflow
   if (typeof state.canPresensiPulang === 'boolean') {

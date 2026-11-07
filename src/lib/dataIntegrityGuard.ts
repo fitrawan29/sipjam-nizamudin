@@ -648,7 +648,7 @@ function isSchemaCacheError(err: any): boolean {
  * - data_kelas / kelas: nama_kelas, tingkat, jurusan, kelas, rombel
  * - data_siswa: nisn, nama_siswa, kelas, gender, status, no_hp_ortu
  * - data_guru: nip, nama_guru, mata_pelajaran, no_hp, status, email, sekolah_id
- * - data_mapel: id, nama_mata_pelajaran, kategori
+ * - data_mapel: id, nama_mata_pelajaran, kategori, kelompok
  * - kalender_pendidikan: tanggal, keterangan, tipe
  * - jadwal_pelajaran: hari, nama_guru, mata_pelajaran, kelas
  * - wali_kelas: kelas, nama_guru, nip, tahun_ajaran
@@ -797,9 +797,15 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
       return 'tahun_ajaran';
     }
 
-    // 11. Category aliases
-    if (clean === 'kelompok' || clean === 'kategori_mapel') {
+    // 11. Category and Group aliases
+    if (clean === 'kategori_mapel') {
       return 'kategori';
+    }
+    if (clean === 'kelompok_mapel') {
+      return 'kelompok';
+    }
+    if (clean === 'kelompok') {
+      return isMapel ? 'kelompok' : 'kategori';
     }
 
     // 12. NISN / NIP aliases

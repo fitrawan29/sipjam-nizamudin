@@ -408,6 +408,9 @@ export default function HomeViewAdmin({
           } else if (jp === 'Dinas Luar') {
             presensiDatangStatus = 'Dinas Luar';
             presensiDatangColor = 'blue';
+          } else if (jp === 'Alpa' || pDatang.status_verifikasi === 'Alpa') {
+            presensiDatangStatus = 'Alpa';
+            presensiDatangColor = 'rose';
           } else if (jp === 'Izin Terlambat' || jp === 'Terlambat') {
             const stVerif = pDatang.status_verifikasi;
             if (stVerif === 'Disetujui' || stVerif === 'Diverifikasi') {
@@ -447,7 +450,7 @@ export default function HomeViewAdmin({
         ) || presensiList.find((p: any) => isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang'
         );
         let presensiPulangStatus = isSchoolDayOff ? 'Libur' : (isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang';
-        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' = (isSchoolDayOff || (isFreeFromPresence && !pDatang)) ? 'blue' : 'gray';
+        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' | 'rose' = (isSchoolDayOff || (isFreeFromPresence && !pDatang)) ? 'blue' : 'gray';
         let pulangTime = '';
 
         if (pPulang) {
@@ -462,6 +465,9 @@ export default function HomeViewAdmin({
             presensiPulangStatus = (pPulang.status_verifikasi === 'Lupa Checkout' || pPulang.is_auto_checkout) ? `Lupa Checkout [${pulangTime}]` : `Pulang [${pulangTime}]`;
             presensiPulangColor = (pPulang.status_verifikasi === 'Lupa Checkout' || pPulang.is_auto_checkout) ? 'amber' : 'green';
           }
+        } else if (pDatang && (pDatang.jenis_presensi === 'Alpa' || pDatang.status_verifikasi === 'Alpa')) {
+          presensiPulangStatus = 'Alpa';
+          presensiPulangColor = 'rose';
         }
 
         // 5. Pengisian Jurnal (Handling regular KBM and Dinas Luar / Jurnal Kegiatan)
@@ -636,7 +642,7 @@ export default function HomeViewAdmin({
     
     // Wajib Datang = Yang tidak Libur dan tidak Bebas Hadir
     const wajibDatang = matrixList.filter(r => r.presensiDatang.status !== 'Libur' && r.presensiDatang.status !== 'Bebas Hadir').length;
-    const sudahDatang = matrixList.filter(r => r.presensiDatang.status !== 'Libur' && r.presensiDatang.status !== 'Bebas Hadir' && r.presensiDatang.status !== 'Belum Datang' && r.presensiDatang.status !== 'Ditolak').length;
+    const sudahDatang = matrixList.filter(r => r.presensiDatang.status !== 'Libur' && r.presensiDatang.status !== 'Bebas Hadir' && r.presensiDatang.status !== 'Belum Datang' && r.presensiDatang.status !== 'Ditolak' && r.presensiDatang.status !== 'Alpa').length;
     
     // Wajib Jurnal = Yang tidak Bebas KBM
     const wajibJurnal = matrixList.filter(r => r.pengisianJurnal.status !== 'Bebas KBM' && r.pengisianJurnal.status !== 'Libur').length;

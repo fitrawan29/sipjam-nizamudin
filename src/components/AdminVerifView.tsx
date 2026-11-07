@@ -721,8 +721,10 @@ export default function AdminVerifView({
           mata_pelajaran: t.mata_pelajaran || 'Guru',
           task_type: 'Presensi',
           pesan_belum: isFreeFromPresence ? 'Bebas Hadir' : 'Belum melakukan presensi datang maupun pulang',
-          status_label: isFreeFromPresence ? 'Bebas Hadir' : 'Belum Selesai',
+          status_label: isFreeFromPresence ? 'Bebas Hadir' : 'Alpa',
+          status_verifikasi: isFreeFromPresence ? 'Bebas Hadir' : 'Alpa',
           isFreeFromPresence,
+          isAlpa: !isFreeFromPresence,
           tanggal: targetDate,
           isUnsubmitted: true
         };
@@ -933,7 +935,9 @@ export default function AdminVerifView({
         (item.guru_pelapor || '').toLowerCase().includes(q) ||
         (item.nip || '').toLowerCase().includes(q) ||
         (item.mata_pelajaran || '').toLowerCase().includes(q) ||
-        (item.pesan_belum || '').toLowerCase().includes(q)
+        (item.pesan_belum || '').toLowerCase().includes(q) ||
+        (item.status_label || '').toLowerCase().includes(q) ||
+        (item.status_verifikasi || '').toLowerCase().includes(q)
       );
     });
 
@@ -964,7 +968,8 @@ export default function AdminVerifView({
         return (
           (item.nama_guru || '').toLowerCase().includes(q) ||
           (item.tipe_absen || '').toLowerCase().includes(q) ||
-          (item.jenis_presensi || '').toLowerCase().includes(q)
+          (item.jenis_presensi || '').toLowerCase().includes(q) ||
+          (item.status_verifikasi || '').toLowerCase().includes(q)
         );
       } else if (activeTab === 'Jurnal') {
         return (
@@ -1002,6 +1007,7 @@ export default function AdminVerifView({
     if (verifFilter !== 'Semua') {
       return sortedSubmitted;
     }
+    // return [...filteredSubmitted, ...filteredUnsubmitted];
     return [...sortedSubmitted, ...filteredUnsubmitted];
   }, [
     taskFilter, 
@@ -1266,6 +1272,7 @@ export default function AdminVerifView({
             if (item.isUnsubmitted) {
               const isBebasHadir = item.isFreeFromPresence || item.pesan_belum === 'Bebas Hadir';
               const isPiketUnsubmitted = item.task_type === 'Piket' || item.status_verifikasi === 'tidak membuat laporan piket';
+              const isPresensiUnsubmitted = (item.task_type === 'Presensi' || item.isAlpa || item.status_label === 'Alpa' || item.status_verifikasi === 'Alpa') && !isBebasHadir;
 
               return (
                 <div 
@@ -1275,6 +1282,8 @@ export default function AdminVerifView({
                       ? 'border-blue-200/80 dark:border-blue-900/40 hover:border-blue-400'
                       : isPiketUnsubmitted
                       ? 'border-orange-200/80 dark:border-orange-900/40 hover:border-orange-400'
+                      : isPresensiUnsubmitted
+                      ? 'border-red-200/80 dark:border-red-900/40 hover:border-red-400'
                       : 'border-rose-200/80 dark:border-rose-900/40 hover:border-rose-400'
                   }`}
                 >
@@ -1296,6 +1305,10 @@ export default function AdminVerifView({
                         <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 shrink-0">
                           tidak membuat laporan piket
                         </span>
+                      ) : isPresensiUnsubmitted ? (
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800 shrink-0">
+                          <i className="fa-solid fa-user-xmark mr-1 text-[8px]"></i> Alpa
+                        </span>
                       ) : (
                         <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
                           <i className="fa-solid fa-clock-rotate-left mr-1 text-[8px]"></i> Belum Selesai
@@ -1310,6 +1323,18 @@ export default function AdminVerifView({
                     ) : isPiketUnsubmitted ? (
                       <div className="p-2.5 rounded-lg bg-orange-50/70 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 text-xs text-orange-900 dark:text-orange-200">
                         <p className="font-semibold text-center">tidak membuat laporan piket</p>
+                      </div>
+                    ) : isPresensiUnsubmitted ? (
+                      <div className="p-2.5 rounded-lg bg-red-50/70 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-xs text-red-900 dark:text-red-200 space-y-1">
+                        <p className="font-semibold leading-snug flex items-start gap-1.5">
+                          <i className="fa-solid fa-circle-exclamation mt-0.5 text-red-500 text-[10px] shrink-0"></i>
+                          <span>{item.pesan_belum}</span>
+                        </p>
+                        {item.scheduledInfo && (
+                          <p className="text-[10px] text-gray-600 dark:text-gray-300 pl-4 font-medium">
+                            Status: {item.scheduledInfo}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div className="p-2.5 rounded-lg bg-rose-50/70 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-xs text-rose-900 dark:text-rose-200 space-y-1">
@@ -1332,22 +1357,26 @@ export default function AdminVerifView({
                           ? 'text-blue-600 dark:text-blue-400' 
                           : isPiketUnsubmitted 
                           ? 'text-orange-600 dark:text-orange-400' 
+                          : isPresensiUnsubmitted
+                          ? 'text-red-600 dark:text-red-400'
                           : 'text-rose-600 dark:text-rose-400'
                       }`}>
-                        {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : 'Belum Ada Data'}
+                        {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : isPresensiUnsubmitted ? 'Alpa' : 'Belum Ada Data'}
                       </span>
                     </div>
                   </div>
 
                   <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <div className={`py-1 px-2 rounded-lg text-center text-[10px] font-medium ${
+                    <div className={`py-1 px-2 rounded-lg text-center text-[10px] font-bold ${
                       isBebasHadir
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
                         : isPiketUnsubmitted
-                        ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300'
-                        : 'bg-gray-50 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 italic'
+                        ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 font-medium'
+                        : isPresensiUnsubmitted
+                        ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                        : 'bg-gray-50 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 italic font-medium'
                     }`}>
-                      {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : 'Menunggu pengajuan dari guru'}
+                      {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : isPresensiUnsubmitted ? 'Alpa (Tidak Melakukan Presensi Datang & Pulang)' : 'Menunggu pengajuan dari guru'}
                     </div>
                   </div>
                 </div>
@@ -1367,6 +1396,7 @@ export default function AdminVerifView({
                       item.status_verifikasi === 'Sakit' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
                       item.status_verifikasi === 'Izin' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                       item.status_verifikasi === 'Dinas Luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                      (item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                       (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas' || item.jenis_presensi === 'Pulang Cepat' || item.status_verifikasi === 'tidak membuat laporan piket') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                       'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>{item.status_verifikasi || 'Menunggu'}</span>
@@ -1381,6 +1411,14 @@ export default function AdminVerifView({
                       {(() => {
                         const jp = (item.jenis_presensi || '').toLowerCase();
                         const di = (item.detail_izin || '').toLowerCase();
+                        const sv = (item.status_verifikasi || '').toLowerCase();
+                        if (jp === 'alpa' || sv === 'alpa') {
+                          return (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-300 dark:border-red-800 inline-flex items-center gap-1">
+                              <i className="fa-solid fa-user-xmark text-[10px]"></i> Alpa
+                            </span>
+                          );
+                        }
                         if (jp === 'sakit' || di === 'sakit') {
                           return (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">

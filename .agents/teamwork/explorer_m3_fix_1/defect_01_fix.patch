@@ -1,0 +1,20 @@
+--- a/src/lib/dataIntegrityGuard.ts
++++ b/src/lib/dataIntegrityGuard.ts
+@@ -651,1 +651,1 @@
+- * - data_mapel: id, nama_mata_pelajaran, kategori
++ * - data_mapel: id, nama_mata_pelajaran, kategori, kelompok
+@@ -800,4 +800,10 @@
+-    // 11. Category aliases
+-    if (clean === 'kelompok' || clean === 'kategori_mapel') {
+-      return 'kategori';
+-    }
++    // 11. Category and Group aliases
++    if (clean === 'kategori_mapel') {
++      return 'kategori';
++    }
++    if (clean === 'kelompok_mapel') {
++      return 'kelompok';
++    }
++    if (clean === 'kelompok') {
++      return isMapel ? 'kelompok' : 'kategori';
++    }
