@@ -1,89 +1,77 @@
-# Independent Victory Audit Report: Role Tata Usaha ('tata_usaha') Implementation
+# Victory Auditor Handoff Report
 
 ## 1. Observation
-1. **Target Deliverable & Scope (ORIGINAL_REQUEST.md)**:
-   - R1: Sistem mendukung role `tata_usaha` pada autentikasi, otorisasi, dan manajemen pengguna aplikasi.
-   - R2: Role Tata Usaha memiliki akses operasional hanya untuk mengelola Data Siswa dan Data Guru, serta tidak memiliki akses ke Bank Dokumen / Persuratan, pengaturan konfigurasi sistem, maupun akun superadmin.
-   - R3: Pendekatan /ponytail (solusi paling ringkas, tepat guna, zero duplicate components, zero new external dependencies).
-   - R4: Preservasi fitur dan logika eksisting dengan zero regression untuk role superadmin, admin, guru, dinas_pendidikan, siswa.
-
-2. **Phase A — Timeline & Provenance Audit**:
-   - Initial user task dispatched at `2026-11-07T17:05:30Z`.
-   - Iterative commit sequence:
-     - `ec6a0eb` (`2026-11-08 01:43:28 +0800` / `17:43:28 UTC`): `feat(rbac): implement role Tata Usaha with isolated operational scope for student and teacher master data`.
-     - `486ed6b` (`2026-11-08 01:54:31 +0800` / `17:54:31 UTC`): `test(tu): add empirical adversarial stress test harness for tata_usaha RBAC and menu isolation`.
-   - Both commits are pushed and up to date with `origin/main` (`git log -n 1 origin/main` -> `486ed6b`).
-   - Clean workspace tree, zero orphaned or pre-populated result/output artifacts.
-
-3. **Phase B — Forensic Integrity & Cheating / Facade Detection**:
-   - Inspection of modified codebase:
-     - `src/types/user.ts` & `src/types/database.ts`: Extended `UserRole` and `RoleUser` to include `'tata_usaha'` and `'Tata Usaha'`.
-     - `src/lib/navigation.ts`:
-       - `VIEW_ALIASES` & `SIDEBAR_TOUR_ALIASES`: Mapped `'view-data-siswa'` and `'view-data-guru'` to `'view-admin-data'` with respective tabs.
-       - `getConsolidatedMenuItems`: For `normRole === 'tatausaha'`, returns strictly 2 menu items (`Data Siswa`, `Data Guru`).
-       - `evaluateTabRBAC`: Explicitly denies `view-dokumen`, system config (`view-admin-config`), superadmin modules, teacher modules, and all non-Siswa/Guru master tabs.
-     - `src/lib/supabaseClient.ts`:
-       - `isAdminRole('tata_usaha')` strictly returns `false`.
-       - `checkMasterDataMutationGuard`: Filters mutative methods (`POST`, `PUT`, `PATCH`, `DELETE`). For `tata_usaha`, permits mutations only on `data_siswa`, `siswa`, `data_guru`, `guru`, while returning HTTP 403 Forbidden with PostgREST code 42501 for all other 12 master data tables.
-     - `src/components/AdminDataView.tsx`:
-       - Reuses existing view without code duplication (/ponytail).
-       - Restricts `visibleTabs` to `Data_Siswa` and `Data_Guru` for `isTataUsaha`.
-       - Automatic fallback from unauthorized initial tabs.
-       - Restricts CRUD mutations via `canModify = isAdmin || (isTataUsaha && (activeTab === 'Data_Siswa' || activeTab === 'Data_Guru'))`.
-     - `src/components/AdminPenggunaView.tsx`:
-       - Adds "+ Akun TU" creation modal and delete handler without affecting teacher synchronization.
-     - `src/components/AppScreen.tsx` & `ClaySidebar.tsx`:
-       - Enforces route guard and renders "Akses Terblokir" card on `view-dokumen`.
-       - Renders role badge "Tata Usaha" with icon `fa-id-card-clip`.
-       - Preserves verbatim `{/* AST preservation: data-tour={item.id} */}`.
-     - `package.json`: 0 new external dependencies added.
-     - Zero hardcoded test outputs or mock test bypassing.
-     - Zero existing tests modified or weakened.
-
-4. **Phase C — Independent Test Execution**:
-   - `npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts`: 81/81 assertions passed (0 failed).
-   - `npx tsx tests/adversarial_tu_stress_challenger_1.test.ts`: 172/172 assertions passed (0 failed).
-   - `npx tsx tests/adversarial_tu_postgrest_ast_challenger_2.test.ts`: 457/457 assertions passed (0 failed).
-   - `npx tsc --noEmit`: Exited with code 0 (0 TypeScript errors).
-   - `npm run build`: Exited with code 0 (Next.js 16.3.4 Turbopack compiled 13/13 routes successfully).
-   - `npm test`: Exited with code 0 (All 69 test suites executed and passed 100%).
+- **Mission**: Independent 3-phase post-victory audit (Timeline & Git provenance, Cheating & Placeholder detection, Independent Test Execution) to verify whether all acceptance criteria in `ORIGINAL_REQUEST.md` are genuinely satisfied.
+- **Git State & History**:
+  - Commits inspected: `9a68fcd` (feature implementation) and `b59e2f7` (adversarial challenge test harnesses).
+  - Clean working tree for application source code and tests (`git diff --stat -- ':(exclude).agents'` shows 0 modified source/test files).
+  - No fabricated history, no pre-populated log or result artifacts in workspace.
+- **Phase B Forensic Analysis**:
+  - `src/lib/navigation.ts`: `getConsolidatedMenuItems({ role: 'tata_usaha' })` strictly restricts navigation items to exactly 6 elements (`Presensi TU`, `Jurnal Kegiatan`, `Asesmen`, `Rapor`, `Informasi Sekolah`, `Pengaturan Akun`). Registered aliases (`view-presensi-tu`, `view-jurnal-kegiatan`, `view-asesmen`). `evaluateTabRBAC` strictly prevents TU access to unlisted/prohibited modules with fallback to `view-guru-presensi`.
+  - `src/lib/supabaseClient.ts`: `isAssessmentEndpoint` detects tables `capaian_pembelajaran`, `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa`. `checkMasterDataMutationGuard` blocks `POST`, `PUT`, `PATCH`, `DELETE` requests for role `tata_usaha` with HTTP 403 Forbidden and code `42501`.
+  - `src/components/GradebookView.tsx`: Implements `isTataUsaha`, permits teacher selection (`canSelectAllTeachers`), forces `isGuruPengampu = false` for TU, renders grades in read-only `<span>`, hides save/bobot buttons, and guards `handleSaveGrades`.
+  - `src/components/RaporView.tsx`: Unlocks class selection for TU, hides "Simpan Rapor", renders notes/deep learning as static text, and falls back to homeroom teacher info for print signature.
+  - `src/components/AdminRekapView.tsx`: Partitions presensi records into Dewan Guru and Tenaga TU (`guruPresensiList` and `tuPresensiList`), renders separate UI tables, injects print container with `style={{ breakBefore: 'page', pageBreakBefore: 'always' }}` and dual `PrintHeader` / `PrintSignature`, and segments CSV export.
+  - `src/components/AdminPenggunaView.tsx`: Implements role toggle ("Tunjuk TU" / "Ke Guru") with SweetAlert2 confirmation updating `users.role`, and "+ Akun TU" modal enforcing all 4 required fields (NIP, Nama Lengkap, Nomor HP, Email Aktif) with email regex validation.
+  - `src/lib/teacherUserSync.ts`: Auto-sync preserves existing `tata_usaha` role on matched users.
+  - Zero hardcoded test outputs or cheating facades detected.
+- **Phase C Independent Execution**:
+  - `npx tsc --noEmit`: 0 errors (exit code 0).
+  - `npx tsx tests/tu_refinements_and_admin_rekap.test.ts`: 81/81 passed (exit code 0).
+  - `npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts`: 87/87 passed (exit code 0).
+  - `npx tsx tests/adversarial_tu_nav_m2_challenger.test.ts`: 166/166 passed (exit code 0).
+  - `npx tsx tests/adversarial_tu_presensi_and_account_m2.test.ts`: 62/62 passed (exit code 0).
+  - `npm test`: All 69 test suites passed with exit code 0.
 
 ## 2. Logic Chain
-1. The original task in `ORIGINAL_REQUEST.md` required adding role `tata_usaha` to SIPJAM with operational access limited strictly to Data Siswa and Data Guru, blocking Bank Dokumen / Persuratan, system configuration, and superadmin views, while preserving all existing roles without regression using the /ponytail philosophy.
-2. Forensic code analysis proved that the implementation was achieved without adding new components or dependencies, by reusing `AdminDataView` through dynamic tab filtering and scoping CRUD authorization via `canModify`.
-3. Defense-in-depth protection was independently verified across 3 distinct boundaries:
-   - Boundary 1 (UI Navigation): Menu isolation in `getConsolidatedMenuItems` produces strictly 2 menu items (`Data Siswa`, `Data Guru`).
-   - Boundary 2 (Route / Tab RBAC): `evaluateTabRBAC` and `AppScreen.tsx` reject access to `view-dokumen`, system config, and other master tables with clear error messages and fallback.
-   - Boundary 3 (Data / PostgREST Layer): `checkMasterDataMutationGuard` intercepts and rejects mutations to all other 12 master tables with HTTP 403 Forbidden, while allowing mutations on `data_siswa` and `data_guru`.
-4. Independent execution of the full regression suite (`npm test`), adversarial stress harnesses (629 assertions across 2 challenger suites), TypeScript type checker, and Next.js Turbopack build all completed with 0 errors and 100% pass rates.
-5. All acceptance criteria are genuinely satisfied.
+1. *Timeline & Provenance (Phase A)*: Git commit history shows authentic progression from exploratory analysis to implementation (`9a68fcd`) to adversarial testing (`b59e2f7`). No files appeared pre-populated, and timestamps reflect genuine development sequence.
+2. *Integrity & Forensics (Phase B)*: Inspection of AST, components, and libraries verified that all changes implement concrete, functional business logic without facades or dummy returns. PostgREST guards enforce database-level access control, and UI components enforce interface-level read-only constraints.
+3. *Empirical Execution (Phase C)*: Re-executing all tests independently produced zero failures and perfectly matched the claimed results. Non-regression is proved across all 69 test suites in the repository.
+4. *Acceptance Criteria Compliance*:
+   - R1: Navigasi role TU strictly limited to 6 items -> PASS.
+   - R2: Read-only asesmen & rapor for TU across all teachers/classes with 2-layer defense -> PASS.
+   - R3: Admin attendance split (Guru vs TU) with CSS page-break print separation -> PASS.
+   - R4: Admin TU account management (appointment toggle + 4-field mandatory modal) -> PASS.
+   - R5: Preservation of existing application features -> PASS.
+   - R6: 100% automated test coverage and verification -> PASS.
 
 ## 3. Caveats
-- No caveats. All requirements R1 through R4 and all acceptance criteria are fully verified and backed by independent empirical execution.
+No caveats. All verification checks and independent test runs completed with zero discrepancies and zero failures.
 
 ## 4. Conclusion
-- **VERDICT: VICTORY CONFIRMED**.
-- All requirements from `ORIGINAL_REQUEST.md` are genuinely implemented and satisfied.
-- The implementation adheres strictly to the /ponytail philosophy with zero unnecessary dependencies, zero code duplication, and zero regressions.
+The implementation fully and genuinely satisfies all requirements in `ORIGINAL_REQUEST.md`. There are no cheating patterns, facades, or regressions.
+
+```
+=== VICTORY AUDIT REPORT ===
+
+VERDICT: VICTORY CONFIRMED
+
+PHASE A — TIMELINE:
+  Result: PASS
+  Anomalies: none
+
+PHASE B — INTEGRITY CHECK:
+  Result: PASS
+  Details: Clean forensic audit. Zero hardcoded test results, zero facades, zero pre-populated artifacts. Concrete 2-layer defense for TU read-only mode, strict 6-item menu isolation, robust admin presensi partitioning with physical CSS print page-breaks, and strict 4-field validation for TU account creation.
+
+PHASE C — INDEPENDENT TEST EXECUTION:
+  Test command: npx tsc --noEmit && npx tsx tests/tu_refinements_and_admin_rekap.test.ts && npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts && npx tsx tests/adversarial_tu_nav_m2_challenger.test.ts && npx tsx tests/adversarial_tu_presensi_and_account_m2.test.ts && npm test
+  Your results: 100% passed across all suites (TypeScript compilation: 0 errors; Dedicated M2: 81/81; RBAC & Isolation: 87/87; Challenger 1: 166/166; Challenger 2: 62/62; Full regression: 69/69 test suites passed, exit code 0)
+  Claimed results: 100% passed (69/69 test suites passed, exit code 0)
+  Match: YES — exact match across all test suites
+
+EVIDENCE (if REJECTED):
+  N/A
+```
 
 ## 5. Verification Method
-To independently reproduce and verify this audit:
+To independently reproduce the entire victory verification:
 ```bash
-# 1. Verify Role Tata Usaha RBAC and Isolation
-npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts
-
-# 2. Run Adversarial Stress Test Suite 1 (172 assertions)
-npx tsx tests/adversarial_tu_stress_challenger_1.test.ts
-
-# 3. Run Adversarial PostgREST & AST Invariant Suite 2 (457 assertions)
-npx tsx tests/adversarial_tu_postgrest_ast_challenger_2.test.ts
-
-# 4. Verify TypeScript Compilation
 npx tsc --noEmit
-
-# 5. Verify Next.js Production Build
-npm run build
-
-# 6. Run Complete Regression Test Suite
+npx tsx tests/tu_refinements_and_admin_rekap.test.ts
+npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts
+npx tsx tests/adversarial_tu_nav_m2_challenger.test.ts
+npx tsx tests/adversarial_tu_presensi_and_account_m2.test.ts
 npm test
 ```
+All commands terminate with exit code 0.

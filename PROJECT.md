@@ -34,23 +34,23 @@
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
 | 1 | F1: Role Tata Usaha Type & Session Support | Tipe data `UserRole` dan `RoleUser` mendukung `tata_usaha`, login berhasil mengidentifikasi role TU dan tersimpan di sesi | M1 | R1 (Old) | DONE |
-| 2 | F2: Penyesuaian Menu Navigasi Role TU (6 Menu Wajib) | Menu navigasi TU dibatasi tepat 6 menu: Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, Pengaturan Akun | M2 | R1 | PLANNED |
-| 3 | F3: Pembatasan RBAC & Blokir Menu di Luar 6 Menu | Menolak akses TU ke Master Data (`view-admin-data`), Bank Dokumen, Config, Superadmin, dll | M2 | R1 | PLANNED |
-| 4 | F4: Hak Akses Read-Only Asesmen (Buku Nilai Mapel) | TU dapat melihat asesmen seluruh guru & kelas, input & tombol aksi dinonaktifkan/disembunyikan, bobot admin disembunyikan | M2 | R2 | PLANNED |
-| 5 | F5: Hak Akses Read-Only Rapor Kelas | TU dapat melihat rapor seluruh kelas, tombol simpan rapor disembunyikan, input catatan & deep learning read-only | M2 | R2 | PLANNED |
-| 6 | F6: Guard Mutasi PostgREST Asesmen & Rapor | Interseptor `supabaseClient.ts` memblokir mutasi (403) pada tabel asesmen untuk role TU | M2 | R2 | PLANNED |
-| 7 | F7: Pemisahan Tabel Rekap Presensi Guru dan TU di UI | AdminRekapView menyajikan tabel presensi Dewan Guru dan Tenaga TU secara terpisah | M2 | R3 | PLANNED |
-| 8 | F8: Pemisah Halaman Cetak (Page-Break) Rekap Presensi | Terdapat CSS page-break yang memisahkan cetak rekap Guru dan TU pada halaman terpisah dengan kop & tanda tangan tersendiri | M2 | R3 | PLANNED |
-| 9 | F9: Mekanisme 1: Menunjuk Akun TU dari Data Guru | Admin dapat menunjuk akun TU dari guru yang ada via tombol aksi & konfirmasi SweetAlert | M2 | R4 | PLANNED |
-| 10 | F10: Mekanisme 2: Form Akun Baru TU (4 Field Wajib) | Admin membuat akun baru TU dengan form wajib 4 field: NIP, nama lengkap, no HP, email aktif dan validasi form | M2 | R4 | PLANNED |
-| 11 | F11: Preservasi Fitur Eksisting & Non-Regresi | Alur kerja role lain tetap 100% normal tanpa regresi fungsional | M2 | R5 | PLANNED |
-| 12 | F12: Automated Verification Test Suite | Pengujian otomatis memverifikasi 100% batasan menu TU, read-only mode, pemisahan rekap, dan penugasan/pembuatan akun TU | M2 | R6 | PLANNED |
+| 2 | F2: Penyesuaian Menu Navigasi Role TU (6 Menu Wajib) | Menu navigasi TU dibatasi tepat 6 menu: Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, Pengaturan Akun | M2 | R1 | DONE |
+| 3 | F3: Pembatasan RBAC & Blokir Menu di Luar 6 Menu | Menolak akses TU ke Master Data (`view-admin-data`), Bank Dokumen, Config, Superadmin, dll | M2 | R1 | DONE |
+| 4 | F4: Hak Akses Read-Only Asesmen (Buku Nilai Mapel) | TU dapat melihat asesmen seluruh guru & kelas, input & tombol aksi dinonaktifkan/disembunyikan, bobot admin disembunyikan | M2 | R2 | DONE |
+| 5 | F5: Hak Akses Read-Only Rapor Kelas | TU dapat melihat rapor seluruh kelas, tombol simpan rapor disembunyikan, input catatan & deep learning read-only | M2 | R2 | DONE |
+| 6 | F6: Guard Mutasi PostgREST Asesmen & Rapor | Interseptor `supabaseClient.ts` memblokir mutasi (403) pada tabel asesmen untuk role TU | M2 | R2 | DONE |
+| 7 | F7: Pemisahan Tabel Rekap Presensi Guru dan TU di UI | AdminRekapView menyajikan tabel presensi Dewan Guru dan Tenaga TU secara terpisah | M2 | R3 | DONE |
+| 8 | F8: Pemisah Halaman Cetak (Page-Break) Rekap Presensi | Terdapat CSS page-break yang memisahkan cetak rekap Guru dan TU pada halaman terpisah dengan kop & tanda tangan tersendiri | M2 | R3 | DONE |
+| 9 | F9: Mekanisme 1: Menunjuk Akun TU dari Data Guru | Admin dapat menunjuk akun TU dari guru yang ada via tombol aksi & konfirmasi SweetAlert | M2 | R4 | DONE |
+| 10 | F10: Mekanisme 2: Form Akun Baru TU (4 Field Wajib) | Admin membuat akun baru TU dengan form wajib 4 field: NIP, nama lengkap, no HP, email aktif dan validasi form | M2 | R4 | DONE |
+| 11 | F11: Preservasi Fitur Eksisting & Non-Regresi | Alur kerja role lain tetap 100% normal tanpa regresi fungsional | M2 | R5 | DONE |
+| 12 | F12: Automated Verification Test Suite | Pengujian otomatis memverifikasi 100% batasan menu TU, read-only mode, pemisahan rekap, dan penugasan/pembuatan akun TU | M2 | R6 | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
 | M1 | Implementasi Role Tata Usaha, Navigasi Awal & RBAC Guard | Fondasi role `tata_usaha` pada autentikasi dan database | none | DONE |
-| M2 | Penyesuaian Navigasi TU, Read-Only Asesmen & Rapor, Pemisahan Rekap Admin, Pengelolaan Akun TU, dan Verifikasi Otomatis (/ponytail) | `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/GradebookView.tsx`, `src/components/RaporView.tsx`, `src/lib/supabaseClient.ts`, `src/components/AdminRekapView.tsx`, `src/components/AdminPenggunaView.tsx`, `src/lib/teacherUserSync.ts`, `tests/` | M1 | IN_PROGRESS |
+| M2 | Penyesuaian Navigasi TU, Read-Only Asesmen & Rapor, Pemisahan Rekap Admin, Pengelolaan Akun TU, dan Verifikasi Otomatis (/ponytail) | `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/GradebookView.tsx`, `src/components/RaporView.tsx`, `src/lib/supabaseClient.ts`, `src/components/AdminRekapView.tsx`, `src/components/AdminPenggunaView.tsx`, `src/lib/teacherUserSync.ts`, `tests/` | M1 | DONE |
 
 ## Interface Contracts
 

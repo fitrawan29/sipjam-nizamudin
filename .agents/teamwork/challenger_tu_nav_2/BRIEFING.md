@@ -27,13 +27,21 @@ Adversarially challenge Milestone 2 changes focusing on Admin Presensi separatio
 - **Review criteria**: Empirical correctness, edge case resilience, strict validation, page-break print specs, auto-sync integrity
 
 ## Key Decisions Made
-- Will inspect the exact code changes made to `AdminRekapView.tsx`, `AdminPenggunaView.tsx`, and `teacherUserSync.ts`.
-- Will construct comprehensive empirical stress tests in `tests/adversarial_tu_nav_m2.test.ts` executing via `npx tsx`.
+- Authored dedicated empirical adversarial test suite `tests/adversarial_tu_presensi_and_account_m2.test.ts` (62 assertions) executing live algorithms and mock DB.
+- Empirically verified presensi partitioning algorithm, print layout CSS page break, CSV formatting, TU account creation modal form validation (4 mandatory fields + email fuzzing), role toggling, and teacherUserSync auto-sync resilience.
+- Ran full test verification: `npx tsc --noEmit` (clean), `npm test` (100% pass), and `tests/adversarial_tu_presensi_and_account_m2.test.ts` (62/62 pass).
 
 ## Attack Surface
-- **Hypotheses tested**: [TBD]
-- **Vulnerabilities found**: [TBD]
-- **Untested angles**: [TBD]
+- **Hypotheses tested**:
+  - H1: TU accounts might leak into Dewan Guru presensi list, or vice versa -> DISPROVED (strictly mutually exclusive, 0 overlap).
+  - H2: Zero-attendance teachers or TU staff might be dropped -> DISPROVED (both preserved with hadir=0, alpa=wajib).
+  - H3: Print layout might omit pageBreakBefore or dual signatures -> DISPROVED (both breakBefore: 'page' and pageBreakBefore: 'always' present; 2 distinct PrintHeader and PrintSignature components).
+  - H4: Form validation for TU account creation might accept missing fields or invalid emails -> DISPROVED (all 10 missing field variations and 9 invalid email variants rejected).
+  - H5: teacherUserSync might overwrite appointed TU role back to 'Guru' -> DISPROVED (role preserved as 'tata_usaha' across repeated sync runs).
+- **Vulnerabilities found**:
+  - None critical. Minor / Low observation: Email validation regex `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` complies with `/ponytail` minimal standard and handles required cases (no @, no domain, spaces), but permits consecutive dots (`..`) or html characters in local part. Non-critical in React environment.
+- **Untested angles**:
+  - Direct physical printer pagination rendering (verified via CSS styles and DOM inspection).
 
 ## Loaded Skills
 - Source: None specified by orchestrator dispatch
@@ -44,3 +52,5 @@ Adversarially challenge Milestone 2 changes focusing on Admin Presensi separatio
 - DISPATCH.md — Dispatch log from parent orchestrator
 - progress.md — Liveness heartbeat and checklist
 - BRIEFING.md — Situational awareness
+- tests/adversarial_tu_presensi_and_account_m2.test.ts — Empirical adversarial test harness
+
